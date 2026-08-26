@@ -99,9 +99,9 @@ import {
 } from '../../utils/gisGeometry';
 import {
   DEFAULT_SHOW_PLANNING,
+  GIS_LAYER_INTERACTION_POLICY,
   getPlanningFeatureKey,
   getPlanningLeafletColorStyle,
-  resolvePlanningPopupFeatures,
   getPlanningStatusPresentation,
   getPlanningStyleZoomBand,
   getPlanningVisualStyle,
@@ -122,11 +122,6 @@ declare global {
 }
 
 let leafletRuntime: any;
-
-const KCHT_PANE_NAME = 'kchtPane';
-const KCHT_PANE_Z_INDEX = '575';
-const KCHT_SHAPE_PANE_NAME = 'kchtShapePane';
-const KCHT_SHAPE_PANE_Z_INDEX = '540';
 
 const CELL_COORDINATES: Record<string, [number, number]> = {
   'HP': [20.80, 106.70],     // Hải Phòng
@@ -2058,16 +2053,17 @@ export default function GISChartView() {
     customGisFeatures.forEach((feature) => {
       try {
         let layer: any = null;
-        let polygonUnderlay: any = null;
+        let interactionPosition: [number, number] | null = null;
         if (feature.type === 'Point') {
           const coordinates = normalizePointCoordinates(feature.coordinates);
           if (!coordinates) return;
+          interactionPosition = [coordinates[1], coordinates[0]];
           layer = L.circleMarker([coordinates[1], coordinates[0]], {
-            pane: KCHT_PANE_NAME,
             radius: 7,
             color: '#13c2c2', // Teal-cyan for points
             fillColor: '#13c2c2',
             fillOpacity: 0.85,
+            pane: GIS_LAYER_INTERACTION_POLICY.kchtGeometryPane,
             weight: 2,
             pmIgnore: true,
           });
@@ -2075,44 +2071,55 @@ export default function GISChartView() {
           const coordinates = normalizeLineCoordinates(feature.coordinates);
           if (!coordinates) return;
           const latlngs = coordinates.map((coordinate) => [coordinate[1], coordinate[0]]);
+          const center = L.latLngBounds(latlngs).getCenter();
+          interactionPosition = [center.lat, center.lng];
           layer = L.polyline(latlngs, {
-            pane: KCHT_PANE_NAME,
             color: '#fa8c16', // Orange for lines
             weight: 3,
             opacity: 0.9,
+            pane: GIS_LAYER_INTERACTION_POLICY.kchtGeometryPane,
             pmIgnore: true,
           });
         } else if (feature.type === 'Polygon') {
           const coordinates = normalizePolygonCoordinates(feature.coordinates);
           if (!coordinates) return;
           const latlngs = coordinates.map((ring) => ring.map((coordinate) => [coordinate[1], coordinate[0]]));
-          // The filled polygon stays below planning so a planning area remains
-          // clickable when the two datasets overlap.
-          polygonUnderlay = L.polygon(latlngs, {
-            pane: KCHT_SHAPE_PANE_NAME,
-            color: '#1890ff',
+          const center = L.latLngBounds(latlngs.flat()).getCenter();
+          interactionPosition = [center.lat, center.lng];
+          layer = L.polygon(latlngs, {
+            color: '#1890ff', // Blue for polygons
             fillColor: '#1890ff',
             fillOpacity: 0.25,
-            weight: 2,
-            pmIgnore: true,
-          });
-
-          // Keep only the KCHT outline above planning. With fill disabled,
-          // the outline does not swallow clicks across the polygon interior.
-          layer = L.polygon(latlngs, {
-            pane: KCHT_PANE_NAME,
-            color: '#1890ff', // Blue for polygons
-            fill: false,
+            pane: GIS_LAYER_INTERACTION_POLICY.kchtGeometryPane,
             weight: 2,
             pmIgnore: true,
           });
         }
 
-        if (layer) {
-          layer.bindTooltip(
+        if (layer && interactionPosition) {
+          // Keep KCHT geometry in the default overlay pane. Only its compact
+          // interaction marker uses Leaflet's markerPane, exactly like VMD.
+          // This avoids the previous all-or-nothing z-index conflict with QHCB.
+          const interactionMarker = L.marker(interactionPosition, {
+            icon: L.divIcon({
+              className: 'gis-kcht-click-target-wrapper',
+              html: '<span class="gis-kcht-click-target" aria-hidden="true"></span>',
+              iconSize: [28, 28],
+              iconAnchor: [14, 14],
+              popupAnchor: [0, -14],
+            }),
+            keyboard: true,
+            pane: GIS_LAYER_INTERACTION_POLICY.kchtMarkerPane,
+            pmIgnore: true,
+            riseOnHover: true,
+            title: feature.name,
+          });
+          const clickableLayers = [layer, interactionMarker];
+
+          clickableLayers.forEach((clickableLayer) => clickableLayer.bindTooltip(
             `<div style="font-weight: 600;">${feature.name}</div>`,
             { direction: 'top', offset: [0, -5], opacity: 0.9 }
-          );
+          ));
 
           const getPopupHtml = (portName: string) => `
             <div style="min-width: 250px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 4px;">
@@ -2167,27 +2174,24 @@ export default function GISChartView() {
             </div>
           `;
 
-          const popupLayers = polygonUnderlay ? [polygonUnderlay, layer] : [layer];
-          popupLayers.forEach((popupLayer) => {
-            popupLayer.bindPopup(getPopupHtml(feature.refId ? 'Đang tải...' : '—'));
+          clickableLayers.forEach((clickableLayer) => {
+            clickableLayer.bindPopup(getPopupHtml(feature.refId ? 'Đang tải...' : '—'));
 
             if (feature.refId) {
-              popupLayer.on('popupopen', async () => {
+              clickableLayer.on('popupopen', async () => {
                 try {
                   const port = await portCRUD.findById(feature.refId);
-                  popupLayer.setPopupContent(getPopupHtml(port?.portName || '—'));
+                  clickableLayer.setPopupContent(getPopupHtml(port?.portName || '—'));
                 } catch (err) {
                   console.error(err);
-                  popupLayer.setPopupContent(getPopupHtml('—'));
+                  clickableLayer.setPopupContent(getPopupHtml('—'));
                 }
               });
             }
           });
 
-          if (polygonUnderlay) {
-            customGisGroupRef.current.addLayer(polygonUnderlay);
-          }
           customGisGroupRef.current.addLayer(layer);
+          customGisGroupRef.current.addLayer(interactionMarker);
         }
       } catch (err) {
         console.error('Failed to draw custom feature:', feature, err);
@@ -2241,7 +2245,7 @@ export default function GISChartView() {
         );
         
         const layer = L.geoJSON(geojsonObj, {
-          pane: 'planningPane',
+          pane: GIS_LAYER_INTERACTION_POLICY.planningPane,
           pmIgnore: true,
           style: () => ({
             color: visualStyle.color,
@@ -2253,7 +2257,7 @@ export default function GISChartView() {
           }),
           pointToLayer: (geoJsonFeature: any, latlng: any) => {
             return L.circleMarker(latlng, {
-              pane: 'planningPane',
+              pane: GIS_LAYER_INTERACTION_POLICY.planningPane,
               radius: visualStyle.radius,
               fillColor: visualStyle.fillColor,
               color: '#ffffff',
@@ -2272,16 +2276,11 @@ export default function GISChartView() {
           const latlng = e.latlng;
           
           try {
-            let queriedFeatures: unknown = [];
-            try {
-              const res = await api.get('/gis/planning/features/at-point', {
-                params: { lat: latlng.lat, lon: latlng.lng }
-              });
-              queriedFeatures = res.data?.data;
-            } catch (queryError) {
-              console.warn('Unable to enrich planning popup at click point', queryError);
-            }
-            const featuresAtPoint = resolvePlanningPopupFeatures(queriedFeatures, feature);
+            const res = await api.get('/gis/planning/features/at-point', {
+              params: { lat: latlng.lat, lon: latlng.lng }
+            });
+            const featuresAtPoint = res.data?.data || [];
+            if (featuresAtPoint.length === 0) return;
 
             const itemsHtml = featuresAtPoint.map((feat: any, idx: number) => {
               const statusPresentation = getPlanningStatusPresentation(
@@ -2403,15 +2402,8 @@ export default function GISChartView() {
     setMapInstance(map);
 
     // Create a high-priority pane for QHCB planning layers so they render above ENC layers
-    const planningPane = map.createPane('planningPane');
-    planningPane.style.zIndex = '550';
-
-    // Filled KCHT shapes stay below planning. KCHT points, lines and polygon
-    // outlines stay above planning, while Leaflet markers remain highest (600).
-    const kchtShapePane = map.createPane(KCHT_SHAPE_PANE_NAME);
-    kchtShapePane.style.zIndex = KCHT_SHAPE_PANE_Z_INDEX;
-    const kchtPane = map.createPane(KCHT_PANE_NAME);
-    kchtPane.style.zIndex = KCHT_PANE_Z_INDEX;
+    const planningPane = map.createPane(GIS_LAYER_INTERACTION_POLICY.planningPane);
+    planningPane.style.zIndex = String(GIS_LAYER_INTERACTION_POLICY.planningPaneZIndex);
 
     // Use Google Maps tile layer with Vietnamese localization (hl=vi, gl=vn)
     // Use {s} subdomain rotation (mt0-mt3) for parallel tile downloads (4x6=24 concurrent connections)
@@ -2875,7 +2867,11 @@ export default function GISChartView() {
         if (renderedCount >= maxVertices) return;
         if (!bounds.contains(L.latLng(coord[0], coord[1]))) return;
 
-        const vertexMarker = L.marker(coord, { icon: markerIcon, pmIgnore: true });
+        const vertexMarker = L.marker(coord, {
+          icon: markerIcon,
+          pane: GIS_LAYER_INTERACTION_POLICY.kchtMarkerPane,
+          pmIgnore: true,
+        });
         vertexMarker.on('click', async (e: any) => {
           L.DomEvent.stopPropagation(e);
           const popup = L.popup({ minWidth: 460, maxWidth: 500, autoPanPadding: [50, 100] })
@@ -3030,7 +3026,11 @@ export default function GISChartView() {
           
           // Always create a point marker for all record types (including LINE/POLYLINE)
           // At low zoom, users see the marker icon; at high zoom >= 10, the full polyline/polygon shape is also drawn
-          marker = L.marker([lat, lon], { icon: markerIcon, pmIgnore: true });
+          marker = L.marker([lat, lon], {
+            icon: markerIcon,
+            pane: GIS_LAYER_INTERACTION_POLICY.kchtMarkerPane,
+            pmIgnore: true,
+          });
             marker.on('click', async (e: any) => {
               L.DomEvent.stopPropagation(e);
               const popup = L.popup({ minWidth: 460, maxWidth: 500, autoPanPadding: [50, 100] })
@@ -3061,10 +3061,10 @@ export default function GISChartView() {
               const geomType = record.loaiHinhHoc.toUpperCase();
               if (geomType === 'LINE' || geomType === 'POLYLINE') {
                 shapeLayer = L.polyline(shapeCoordinates, {
-                  pane: KCHT_SHAPE_PANE_NAME,
                   color: '#1890ff',
                   weight: 4,
                   opacity: 0.85,
+                  pane: GIS_LAYER_INTERACTION_POLICY.kchtGeometryPane,
                   pmIgnore: true,
                 });
 
@@ -3089,11 +3089,11 @@ export default function GISChartView() {
                 });
               } else if (geomType === 'POLYGON' || geomType === 'AREA') {
                 shapeLayer = L.polygon(shapeCoordinates, {
-                  pane: KCHT_SHAPE_PANE_NAME,
                   color: '#1890ff',
                   weight: 2,
                   fillColor: '#1890ff',
                   fillOpacity: 0.35,
+                  pane: GIS_LAYER_INTERACTION_POLICY.kchtGeometryPane,
                   pmIgnore: true,
                 });
 
@@ -4166,6 +4166,23 @@ export default function GISChartView() {
         }
         .kcht-detail-modal .ant-modal-close:hover {
           background: #f5f5f5;
+        }
+        .gis-kcht-click-target-wrapper {
+          background: transparent;
+          border: 0;
+        }
+        .gis-kcht-click-target {
+          align-items: center;
+          background: var(--color-primary);
+          border: 2px solid var(--bg-container);
+          border-radius: 999px;
+          box-shadow: var(--shadow-card-hover);
+          box-sizing: border-box;
+          cursor: pointer;
+          display: flex;
+          height: 24px;
+          justify-content: center;
+          width: 24px;
         }
       `}} />
     </div>

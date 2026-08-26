@@ -1,5 +1,17 @@
 export const DEFAULT_SHOW_PLANNING = true;
 
+/**
+ * Leaflet interaction policy for overlapping KCHT and port-planning data:
+ * visual KCHT geometry stays below planning, while only compact KCHT markers
+ * use markerPane. Do not move complete KCHT polygons above planningPane.
+ */
+export const GIS_LAYER_INTERACTION_POLICY = {
+  kchtGeometryPane: 'overlayPane',
+  planningPane: 'planningPane',
+  planningPaneZIndex: 550,
+  kchtMarkerPane: 'markerPane',
+} as const;
+
 export const PLANNING_STATUS_COLORS = {
   existingPort: '#d49400',
   planned2030: '#2f9e44',
@@ -25,27 +37,6 @@ export const getPlanningFeatureKey = (
   String(tableName ?? '').trim(),
   String(fid ?? '').trim(),
 ].join(':');
-
-export const resolvePlanningPopupFeatures = <T extends Record<string, unknown>>(
-  queriedFeatures: unknown,
-  clickedFeature: T,
-): T[] => {
-  const queried = Array.isArray(queriedFeatures) ? queriedFeatures as T[] : [];
-  const clickedKey = getPlanningFeatureKey(
-    clickedFeature.geomType,
-    clickedFeature.schemaName,
-    clickedFeature.tableName,
-    clickedFeature.fid,
-  );
-  const containsClickedFeature = queried.some((feature) => getPlanningFeatureKey(
-    feature.geomType,
-    feature.schemaName,
-    feature.tableName,
-    feature.fid,
-  ) === clickedKey);
-
-  return containsClickedFeature ? queried : [clickedFeature, ...queried];
-};
 
 // AutoCAD Color Index used by the imported port-planning GIS dataset.
 const PLANNING_ACI_COLORS: Record<number, string> = {

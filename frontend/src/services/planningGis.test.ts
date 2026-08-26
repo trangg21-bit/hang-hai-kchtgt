@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_SHOW_PLANNING,
+  GIS_LAYER_INTERACTION_POLICY,
   getPlanningAciColor,
   getPlanningFeatureColor,
   getPlanningFeatureKey,
@@ -9,13 +10,21 @@ import {
   getPlanningStyleZoomBand,
   getPlanningVisualStyle,
   PLANNING_STATUS_COLORS,
-  resolvePlanningPopupFeatures,
   shouldRenderPlanningFeature,
 } from '../utils/planningGis';
 
 describe('planningGis', () => {
   it('shows the port-planning layer by default', () => {
     expect(DEFAULT_SHOW_PLANNING).toBe(true);
+  });
+
+  it('keeps KCHT click markers above planning without raising complete KCHT geometry', () => {
+    expect(GIS_LAYER_INTERACTION_POLICY).toEqual({
+      kchtGeometryPane: 'overlayPane',
+      planningPane: 'planningPane',
+      planningPaneZIndex: 550,
+      kchtMarkerPane: 'markerPane',
+    });
   });
 
   it('uses the same cache key for API and Leaflet geometry type casing', () => {
@@ -32,27 +41,6 @@ describe('planningGis', () => {
       'BenCangPhatTrienCoDieuKien_A',
       '3',
     )).toBe('area:nam_dinh:BenCangPhatTrienCoDieuKien_A:3');
-  });
-
-  it('keeps the clicked planning feature when the at-point query is empty or misses it', () => {
-    const clicked = {
-      geomType: 'AREA',
-      schemaName: 'hai_phong',
-      tableName: 'BenCangQuyHoachDenNam2030_A',
-      fid: 12,
-      name: 'Bến cảng đã click',
-    };
-    const overlapping = {
-      geomType: 'LINE',
-      schemaName: 'hai_phong',
-      tableName: 'RanhGioiVungNuocCangBien_L',
-      fid: 30,
-      name: 'Ranh giới chồng lấn',
-    };
-
-    expect(resolvePlanningPopupFeatures([], clicked)).toEqual([clicked]);
-    expect(resolvePlanningPopupFeatures([overlapping], clicked)).toEqual([clicked, overlapping]);
-    expect(resolvePlanningPopupFeatures([clicked, overlapping], clicked)).toEqual([clicked, overlapping]);
   });
 
   it('maps updated planning color values from number or API string', () => {
