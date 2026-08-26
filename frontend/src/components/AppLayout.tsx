@@ -31,6 +31,8 @@ import {
   TruckOutlined,
   AimOutlined,
   HomeOutlined,
+  VideoCameraOutlined,
+  MonitorOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 import { usePermissionStore } from '../store/permissionStore';
@@ -72,6 +74,7 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/vts-operation-center': 'vtsoperationcenter:read',
   '/ais-system': 'aissystem:read',
   '/cctv': 'cctv:read',
+  '/scada': 'scada:read',
   '/station/coastal': 'coastalstation:read',
   '/station/special': 'specialstation:read',
   '/station/cospas-sarsat': 'coastalstationcospassarsat:read',
@@ -127,6 +130,7 @@ const pageTitles: Record<string, string> = {
   '/vts-operation-center': 'Trung tâm điều hành VTS',
   '/ais-system': 'Hệ thống trạm bờ AIS',
   '/cctv': 'Quản lý hệ thống CCTV',
+  '/scada': 'Quản lý hệ thống SCADA',
   '/connections': 'Liên thông dữ liệu',
   '/interconnect': 'Quản lý kết nối liên thông',
   '/reports': 'Báo cáo & Thống kê',
@@ -221,7 +225,7 @@ export default function AppLayout() {
         setOpenKeys(['asset-movement']);
       } else if (selectedKey.startsWith('/documents')) {
         setOpenKeys(['documents-incidents']);
-      } else if (['/navigation-channel', '/dike-revetment', '/ship-repair-facility', '/radar-station', '/vts-system', '/cctv'].includes(selectedKey)) {
+      } else if (['/navigation-channel', '/dike-revetment', '/ship-repair-facility', '/radar-station', '/vts-system', '/cctv', '/scada'].includes(selectedKey)) {
         setOpenKeys(['khu-nuoc-vts']);
       } else if (selectedKey.startsWith('/station')) {
         setOpenKeys(['stations']);
@@ -346,7 +350,8 @@ export default function AppLayout() {
         canAccessMenu('/vts-system') ? { key: '/vts-system', label: 'Hệ thống VTS' } : null,
         canAccessMenu('/vts-operation-center') ? { key: '/vts-operation-center', label: 'Trung tâm điều hành VTS' } : null,
         canAccessMenu('/ais-system') ? { key: '/ais-system', label: 'Hệ thống trạm bờ AIS' } : null,
-        canAccessMenu('/cctv') ? { key: '/cctv', label: 'Quản lý hệ thống CCTV', icon: <DashboardOutlined /> } : null,
+        canAccessMenu('/cctv') ? { key: '/cctv', label: 'Quản lý hệ thống CCTV', icon: <VideoCameraOutlined /> } : null,
+        canAccessMenu('/scada') ? { key: '/scada', label: 'Quản lý hệ thống SCADA', icon: <MonitorOutlined /> } : null,
       ].filter(Boolean),
     },
     {

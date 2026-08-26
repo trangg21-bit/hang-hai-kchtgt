@@ -48,6 +48,8 @@ public class ChangeHistoryService {
             case "VTSOPERATIONCENTER", "VTS_OPERATION_CENTER" -> InfrastructureType.VTS_OPERATION_CENTER;
             case "RADARSTATION", "RADAR_STATION" -> InfrastructureType.RADAR_STATION;
             case "AISSYSTEM", "AIS_SYSTEM" -> InfrastructureType.AIS_SYSTEM;
+            case "CCTV" -> InfrastructureType.CCTV;
+            case "SCADA" -> InfrastructureType.SCADA;
             case "BEACONSTATION", "BEACON_STATION", "DEN_BIEN" -> InfrastructureType.LIGHTHOUSE;
             case "SHIPREPAIRFACILITY", "SHIP_REPAIR_FACILITY" -> InfrastructureType.SHIP_REPAIR_FACILITY;
             default -> InfrastructureType.SEAPORT;

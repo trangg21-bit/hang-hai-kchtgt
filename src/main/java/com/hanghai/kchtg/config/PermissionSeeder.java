@@ -298,6 +298,23 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "cctv", "history", "Lịch sử phê duyệt CCTV",
                                 "Xem lịch sử thay đổi và phê duyệt hệ thống CCTV");
 
+                // 8.8 Hệ thống SCADA (SCADA System)
+                seedPermission(definitions, "scada", "read", "Xem hệ thống SCADA", "Tra cứu thông tin hệ thống SCADA");
+                seedPermission(definitions, "scada", "read:restricted", "Xem bản ghi hạn chế SCADA",
+                                "Xem các bản ghi dữ liệu mức độ Hạn chế của hệ thống SCADA");
+                seedPermission(definitions, "scada", "read:confidential", "Xem bản ghi mật SCADA",
+                                "Xem các bản ghi dữ liệu mức độ Mật của hệ thống SCADA");
+                seedPermission(definitions, "scada", "create", "Thêm hệ thống SCADA", "Tạo mới hồ sơ hệ thống SCADA");
+                seedPermission(definitions, "scada", "update", "Cập nhật hệ thống SCADA", "Chỉnh sửa thông tin hệ thống SCADA");
+                seedPermission(definitions, "scada", "delete", "Xóa hệ thống SCADA", "Xóa hệ thống SCADA khỏi hệ thống");
+                seedPermission(definitions, "scada", "approve", "Phê duyệt hệ thống SCADA", "Phê duyệt dữ liệu hệ thống SCADA");
+                seedPermission(definitions, "scada", "approvec1", "Phê duyệt C1 hệ thống SCADA",
+                                "Phê duyệt cấp 1 hệ thống SCADA");
+                seedPermission(definitions, "scada", "approvec2", "Phê duyệt C2 hệ thống SCADA",
+                                "Phê duyệt cấp 2 hệ thống SCADA");
+                seedPermission(definitions, "scada", "history", "Lịch sử phê duyệt SCADA",
+                                "Xem lịch sử thay đổi và phê duyệt hệ thống SCADA");
+
                 seedPermission(definitions, "waterarea", "read", "Xem vùng nước cảng",
                                 "Tra cứu thông tin vùng nước cảng");
                 seedPermission(definitions, "waterarea", "create", "Thêm vùng nước cảng",

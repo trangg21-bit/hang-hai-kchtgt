@@ -49,6 +49,8 @@ const PortDeleteConfirm = lazy(() => import('./services/port/PortDeleteConfirm')
 
 // M-NEW: CCTV Management
 const CctvListPage = lazy(() => import('./services/cctv/CctvListPage'));
+// M-NEW: SCADA Management
+const ScadaListPage = lazy(() => import('./services/scada/ScadaListPage'));
 const BerthList = lazy(() => import('./pages/port/BerthListPage'));
 const AnchorageList = lazy(() => import('./pages/anchorage/AnchorageListPage'));
 
@@ -193,6 +195,7 @@ export default function App() {
                 <Route path="/port/:id/delete" element={<PermissionGuard permission="port:delete"><PortDeleteConfirm /></PermissionGuard>} />
 
                 <Route path="/cctv" element={<PermissionGuard permission="cctv:read"><CctvListPage /></PermissionGuard>} />
+                <Route path="/scada" element={<PermissionGuard permission="scada:read"><ScadaListPage /></PermissionGuard>} />
                 <Route path="/berth" element={<PermissionGuard permission="berth:read"><BerthList /></PermissionGuard>} />
 
                 <Route path="/anchorage" element={<PermissionGuard permission="anchorage:read"><AnchorageList /></PermissionGuard>} />
