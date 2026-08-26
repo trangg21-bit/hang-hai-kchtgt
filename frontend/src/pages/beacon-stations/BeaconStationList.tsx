@@ -35,6 +35,7 @@ import {
 } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import type { UploadFile } from 'antd';
+import type { RcFile } from 'antd/es/upload/interface';
 import {
   beaconStationCRUD,
   approval,
@@ -167,26 +168,35 @@ const historyFieldName = (fn: string): string => FIELD_LABELS[fn] || fn;
 
 const STATUS_TAB_LIST = [
   { key: '', label: 'Tất cả', color: actionPrimary },
-  { key: 'DRAFT', label: 'Nháp', color: statusDraft },
-  { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt', color: statusAttention },
-  { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
+  { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
+  { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', color: statusAttention },
+  { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', color: '#0284C7' },
+  { key: 'APPROVED', label: 'Đã duyệt', color: statusOperational },
   { key: 'REJECTED', label: 'Từ chối', color: statusCritical },
 ];
 
 const TAB_QUERY_MAP: Record<string, BeaconStatus | undefined> = {
   '': undefined,
   DRAFT: 'DRAFT',
+  PROPOSED: 'DRAFT',
   PENDING_APPROVAL: 'PENDING_APPROVAL',
+  APPROVED_LEVEL1: 'APPROVED_LEVEL1',
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',
 };
 
 // Status badge config — semantic token colors (AGENTS.md: no hardcoded hex)
 const BEACON_STATUS_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  DRAFT: { color: statusDraft, label: 'Nháp' },
-  PENDING_APPROVAL: { color: statusAttention, label: 'Chờ phê duyệt' },
-  APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
+  DRAFT: { color: statusDraft, label: 'Lưu tạm' },
+  PROPOSED: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
+  PENDING: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
+  PENDING_APPROVAL: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
+  APPROVED_LEVEL1: { color: '#0284C7', label: 'Chờ Cục duyệt' },
+  APPROVED_LEVEL2: { color: statusOperational, label: 'Đã duyệt' },
+  APPROVED: { color: statusOperational, label: 'Đã duyệt' },
   REJECTED: { color: statusCritical, label: 'Từ chối' },
+  REJECTED_LEVEL1: { color: statusCritical, label: 'Cảng vụ trả về' },
+  REJECTED_LEVEL2: { color: statusCritical, label: 'Cục trả về' },
   DELETED: { color: textTertiary, label: 'Đã xóa' },
 };
 
@@ -553,7 +563,7 @@ export default function BeaconStationList() {
   }, [createForm]);
 
   // ── File đính kèm ───────────────────────────────────────────────
-  const handleBeforeUpload = useCallback((file: File): false => {
+  const handleBeforeUpload = useCallback((file: RcFile): false => {
     if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB'); return false; }
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) { toast.error('Định dạng không hỗ trợ'); return false; }
@@ -1111,7 +1121,7 @@ export default function BeaconStationList() {
     },
     { key: 'technical', label: 'Thông tin kỹ thuật đèn biển', children: renderDetailRowsTwoCol(detailTechnicalRows) },
     { key: 'station', label: 'Thông tin nhà trạm', children: renderDetailRows(detailStationRows) },
-    { key: 'gis', label: 'Thông tin vị trí (tọa độ GIS)', children: renderDetailRows(detailGisRows) },
+    { key: 'gis', label: 'Thông tin vị trí', children: renderDetailRows(detailGisRows) },
     {
       key: 'files',
       label: 'File đính kèm',

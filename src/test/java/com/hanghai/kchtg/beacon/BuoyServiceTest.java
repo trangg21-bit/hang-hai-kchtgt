@@ -343,7 +343,7 @@ class BuoyServiceTest {
             assertThat(result.getCode()).isEqualTo("PHAO-001");
 
             verify(buoyRepo, atLeastOnce()).save(any());
-            verify(historyRepo).save(any());
+            verify(historyRepo, never()).save(any());
         }
 
         @Test
@@ -382,12 +382,12 @@ class BuoyServiceTest {
         }
 
         @Test
-        @DisplayName("update on approved entity — reverts status to DRAFT")
+        @DisplayName("update on approved entity — keeps APPROVED status and records history")
         void updateApprovedEntityRevertsStatus() {
             UUID id = UUID.randomUUID();
-            Buoy entity = makeEntity(id, "APPROVED_L1");
+            Buoy entity = makeEntity(id, "APPROVED_L2");
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
-            entity.setApprovalLevel(1);
+            entity.setApprovalLevel(2);
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
             when(buoyRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -397,9 +397,9 @@ class BuoyServiceTest {
 
             BuoyResponse result = service.update(id, request);
 
-            assertThat(result.getStatus()).isEqualTo(ApprovalStatus.PENDING_APPROVAL.name());
-            assertThat(result.getApprovalStatus()).isEqualTo(ApprovalStatus.PROPOSED.name());
-            assertThat(result.getApprovalLevel()).isEqualTo(ApprovalLevel.LEVEL_1);
+            assertThat(result.getStatus()).isEqualTo("APPROVED_L2");
+            assertThat(result.getApprovalStatus()).isEqualTo("APPROVED");
+            verify(historyRepo, atLeastOnce()).save(any());
         }
 
         @Test

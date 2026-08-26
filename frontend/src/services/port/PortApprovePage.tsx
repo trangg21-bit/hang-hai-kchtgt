@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card, Button, Space, Typography, Tag, Row, Col, Form, Checkbox, Input } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { borderDefault } from '../../tokens';
-import { fetchCangBienById, approveCangBien, rejectCangBien } from './api';
+import { fetchCangBienById, approveCangBienC1, approveCangBienC2, rejectCangBien } from './api';
 import { trangThaiPheDuyetBadge } from './schema';
 import type { CangBienResponse } from './types';
 import { fmtNum } from '../../utils/numFmt';
@@ -77,8 +77,15 @@ export default function PortApprovePage() {
     setSubmitting(true);
     try {
       if (tab === 'approve') {
-        await approveCangBien(data.id);
-        toast.success('Đã phê duyệt thành công');
+        // Vòng duyệt do trạng thái hiện tại quyết định: "Chờ Cảng vụ duyệt" là
+        // vòng 1, "Chờ Cục duyệt" (APPROVED_LEVEL1) là vòng 2.
+        const isLevel2 = data.approvalStatus === 'APPROVED_LEVEL1';
+        if (isLevel2) {
+          await approveCangBienC2(data.id);
+        } else {
+          await approveCangBienC1(data.id);
+        }
+        toast.success(isLevel2 ? 'Phê duyệt cấp Cục thành công' : 'Phê duyệt cấp Cảng vụ thành công');
       } else {
         await rejectCangBien(data.id, rejectReason);
         toast.success('Đã từ chối');

@@ -71,11 +71,25 @@ export async function deleteCangBien(id: string): Promise<void> {
 
 // ── Approval ────────────────────────────────────────────────────────
 
-export async function approveCangBien(id: string): Promise<ApprovalResult> {
-  const res = await api.post(`${BASE}/${id}/approve`);
+/** T02/T03 — gửi hồ sơ đi duyệt (vòng 1, hoặc thẳng vòng 2 nếu người gửi cấp Cục). */
+export async function submitCangBien(id: string): Promise<ApprovalResult> {
+  const res = await api.post(`${BASE}/${id}/submit`);
   return res.data;
 }
 
+/** T06 — Cảng vụ / Chi cục duyệt vòng 1. */
+export async function approveCangBienC1(id: string, reason?: string): Promise<ApprovalResult> {
+  const res = await api.post(`${BASE}/${id}/approve/c1`, null, { params: { reason } });
+  return res.data;
+}
+
+/** T08 — Cục duyệt vòng 2, hồ sơ trở thành "Đã duyệt". */
+export async function approveCangBienC2(id: string, reason?: string): Promise<ApprovalResult> {
+  const res = await api.post(`${BASE}/${id}/approve/c2`, null, { params: { reason } });
+  return res.data;
+}
+
+/** T07/T09 — từ chối; backend suy ra vòng bị từ chối từ trạng thái hiện tại. */
 export async function rejectCangBien(id: string, reason: string): Promise<ApprovalResult> {
   const res = await api.post(`${BASE}/${id}/reject`, null, { params: { reason } });
   return res.data;

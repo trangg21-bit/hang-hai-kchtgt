@@ -73,7 +73,7 @@ public abstract class BaseApprovableEntity extends BaseEntity implements Approva
             this.securityLevel = RecordSecurityLevel.NORMAL;
         }
         if (this.approvalStatus == null) {
-            this.approvalStatus = ApprovalStatus.PROPOSED;
+            this.approvalStatus = ApprovalStatus.DRAFT;
         }
     }
 }

@@ -1,9 +1,9 @@
 package com.hanghai.kchtg.document;
 
-import com.hanghai.kchtg.common.entity.ApprovalHistory;
-import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.document.dto.LegalDocumentCreateRequest;
 import com.hanghai.kchtg.document.entity.DocumentType;
 import com.hanghai.kchtg.document.entity.LegalDocument;
@@ -52,7 +52,7 @@ class LegalDocumentServiceTest {
     @Mock
     private SearchSuggestionRepository searchSuggestionRepository;
     @Mock
-    private ApprovalHistoryRepository approvalHistoryRepository;
+    private InfrastructureHistoryRepository approvalHistoryRepository;
     @Mock
     private UserRepository userRepository;
 
@@ -197,11 +197,11 @@ class LegalDocumentServiceTest {
         LegalDocument document = LegalDocument.builder().documentName("Doc with history").build();
         document.setId(id);
 
-        ApprovalHistory history1 = ApprovalHistory.builder()
+        InfrastructureHistory history1 = InfrastructureHistory.builder()
                 .refId(id)
                 .refType(InfrastructureType.LEGAL_DOCUMENT)
                 .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(ApprovalHistoryStatus.CREATED)
+                .status(InfrastructureHistoryStatus.CREATED)
                 .approvedBy(userId)
                 .approvedDate(LocalDateTime.now())
                 .changedField("Doc with history")

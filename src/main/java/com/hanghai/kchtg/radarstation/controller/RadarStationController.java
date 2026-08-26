@@ -1,8 +1,8 @@
 package com.hanghai.kchtg.radarstation.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
-import com.hanghai.kchtg.radarstation.dto.*;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.radarstation.dto.*;
 import com.hanghai.kchtg.radarstation.service.RadarStationService;
 import com.hanghai.kchtg.user.entity.User;
 import jakarta.validation.Valid;
@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -31,12 +32,18 @@ public class RadarStationController {
 
     private final RadarStationService service;
 
+    private UUID getUserId(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof User u) {
+            return u.getId();
+        }
+        return null;
+    }
+
     @PreAuthorize("@auth.check(authentication, 'radarstation:create')")
     @PostMapping
     public ResponseEntity<ApiResponse<RadarStationResponse>> create(@Valid @RequestBody RadarStationCreateRequest request, Authentication authentication) {
         try {
-            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
-            RadarStationResponse response = service.create(request, userId);
+            RadarStationResponse response = service.create(request, getUserId(authentication));
             return ResponseEntity.ok(ApiResponse.success("Tạo mới thành công", response));
         } catch (Exception e) {
             log.warn("Lỗi khi tạo trạm radar: {}", e.getMessage());
@@ -52,6 +59,34 @@ public class RadarStationController {
             return ResponseEntity.ok(ApiResponse.success("Sinh mã trạm radar thành công", Map.of("code", code)));
         } catch (Exception e) {
             log.warn("Lỗi khi sinh mã trạm radar: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PreAuthorize("@auth.check(authentication, 'radarstation:read')")
+    @GetMapping("/options")
+    public ResponseEntity<ApiResponse<List<RadarStationOptionResponse>>> getOptions(
+            @RequestParam(required = false) UUID orgUnitId) {
+        try {
+            List<RadarStationOptionResponse> options = service.getOptions(orgUnitId);
+            return ResponseEntity.ok(ApiResponse.success("Danh sách lựa chọn trạm radar", options));
+        } catch (Exception e) {
+            log.warn("Lỗi khi lấy options trạm radar: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PreAuthorize("@auth.check(authentication, 'radarstation:read')")
+    @GetMapping("/tab-counts")
+    public ResponseEntity<ApiResponse<Map<String, Long>>> getTabCounts(
+            @RequestParam(required = false) UUID orgUnitId,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String conditionStatus) {
+        try {
+            Map<String, Long> counts = service.getTabCounts(orgUnitId, keyword, conditionStatus);
+            return ResponseEntity.ok(ApiResponse.success("Thống kê số lượng theo trạng thái", counts));
+        } catch (Exception e) {
+            log.warn("Lỗi khi lấy tab counts trạm radar: {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
@@ -82,12 +117,6 @@ public class RadarStationController {
         }
     }
 
-    /**
-     * Danh sách phân trang mở rộng cho màn danh sách F-068.
-     * Lọc theo keyword, đơn vị quản lý, cảng biển, hệ thống VTS, trung tâm điều hành VTS,
-     * đơn vị khai thác, tỉnh/thành phố, tình trạng, trạng thái phê duyệt,
-     * cán bộ cập nhật (updatedBy), ngày cập nhật từ/đến (updatedFrom/updatedTo).
-     */
     @PreAuthorize("@auth.check(authentication, 'radarstation:read')")
     @GetMapping("/search-paged")
     public ResponseEntity<ApiResponse<Page<RadarStationResponse>>> searchPaged(
@@ -128,8 +157,7 @@ public class RadarStationController {
                                     @Valid @RequestBody RadarStationUpdateRequest request,
                                     Authentication authentication) {
         try {
-            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
-            RadarStationResponse response = service.update(id, request, userId);
+            RadarStationResponse response = service.update(id, request, getUserId(authentication));
             return ResponseEntity.ok(ApiResponse.success("Cập nhật thành công", response));
         } catch (Exception e) {
             log.warn("Lỗi khi cập nhật trạm radar id {}: {}", id, e.getMessage());
@@ -141,8 +169,7 @@ public class RadarStationController {
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id, Authentication authentication) {
         try {
-            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
-            service.delete(id, userId);
+            service.delete(id, getUserId(authentication));
             return ResponseEntity.ok(ApiResponse.success("Xóa thành công", null));
         } catch (Exception e) {
             log.warn("Lỗi khi xóa trạm radar id {}: {}", id, e.getMessage());
@@ -151,12 +178,11 @@ public class RadarStationController {
     }
 
     @PreAuthorize("@auth.check(authentication, 'radarstation:create') or @auth.check(authentication, 'radarstation:update')")
-    @PostMapping("/{id}/submit-approval")
-    public ResponseEntity<ApiResponse<Void>> submitForApproval(@PathVariable UUID id, Authentication authentication) {
+    @PostMapping(value = {"/{id}/submit", "/{id}/submit-approval"})
+    public ResponseEntity<ApiResponse<RadarStationResponse>> submitForApproval(@PathVariable UUID id, Authentication authentication) {
         try {
-            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
-            service.submitForApproval(id, userId);
-            return ResponseEntity.ok(ApiResponse.success("Đã gửi phê duyệt", null));
+            RadarStationResponse response = service.submitForApproval(id, getUserId(authentication));
+            return ResponseEntity.ok(ApiResponse.success("Đã gửi phê duyệt", response));
         } catch (Exception e) {
             log.warn("Lỗi khi gửi phê duyệt trạm radar id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
@@ -164,28 +190,63 @@ public class RadarStationController {
     }
 
     @PreAuthorize("@auth.check(authentication, 'radarstation:approvec1')")
-    @PostMapping("/{id}/approve-l1")
-    public ResponseEntity<ApiResponse<RadarStationResponse>> approveL1(@PathVariable UUID id,
-                                       @RequestParam java.util.UUID approverId) {
+    @PostMapping(value = {"/{id}/approvec1", "/{id}/approve-l1"})
+    public ResponseEntity<ApiResponse<RadarStationResponse>> approveLevel1(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String note,
+            Authentication authentication) {
         try {
-            RadarStationResponse response = service.approveL1(id, approverId);
-            return ResponseEntity.ok(ApiResponse.success("Phê duyệt thành công", response));
+            RadarStationResponse response = service.approveLevel1(id, getUserId(authentication), note);
+            return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 1 thành công", response));
         } catch (Exception e) {
-            log.warn("Lỗi khi phê duyệt trạm radar id {}: {}", id, e.getMessage());
+            log.warn("Lỗi khi phê duyệt C1 trạm radar id {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PreAuthorize("@auth.check(authentication, 'radarstation:approvec2')")
+    @PostMapping("/{id}/approvec2")
+    public ResponseEntity<ApiResponse<RadarStationResponse>> approveLevel2(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String note,
+            Authentication authentication) {
+        try {
+            RadarStationResponse response = service.approveLevel2(id, getUserId(authentication), note);
+            return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 2 thành công", response));
+        } catch (Exception e) {
+            log.warn("Lỗi khi phê duyệt C2 trạm radar id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
 
     @PreAuthorize("@auth.check(authentication, 'radarstation:approvec1')")
-    @PostMapping("/{id}/reject")
-    public ResponseEntity<ApiResponse<RadarStationResponse>> reject(@PathVariable UUID id,
-                                       @RequestParam String rejectReason,
-                                       @RequestParam java.util.UUID approverId) {
+    @PostMapping(value = {"/{id}/rejectc1", "/{id}/reject"})
+    public ResponseEntity<ApiResponse<RadarStationResponse>> rejectLevel1(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason,
+            @RequestParam(required = false) String rejectReason,
+            Authentication authentication) {
         try {
-            RadarStationResponse response = service.reject(id, rejectReason, approverId);
-            return ResponseEntity.ok(ApiResponse.success("Đã từ chối", response));
+            String r = reason != null && !reason.isBlank() ? reason : rejectReason;
+            RadarStationResponse response = service.rejectLevel1(id, getUserId(authentication), r);
+            return ResponseEntity.ok(ApiResponse.success("Đã từ chối cấp 1", response));
         } catch (Exception e) {
-            log.warn("Lỗi khi từ chối trạm radar id {}: {}", id, e.getMessage());
+            log.warn("Lỗi khi từ chối C1 trạm radar id {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PreAuthorize("@auth.check(authentication, 'radarstation:approvec2')")
+    @PostMapping("/{id}/rejectc2")
+    public ResponseEntity<ApiResponse<RadarStationResponse>> rejectLevel2(
+            @PathVariable UUID id,
+            @RequestParam String reason,
+            Authentication authentication) {
+        try {
+            RadarStationResponse response = service.rejectLevel2(id, getUserId(authentication), reason);
+            return ResponseEntity.ok(ApiResponse.success("Đã từ chối cấp 2", response));
+        } catch (Exception e) {
+            log.warn("Lỗi khi từ chối C2 trạm radar id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
@@ -202,10 +263,6 @@ public class RadarStationController {
         }
     }
 
-    /**
-     * List records sitting at a given approval status. Mirrors the endpoint the other
-     * infrastructure modules expose, which the frontend already calls.
-     */
     @PreAuthorize("@auth.check(authentication, 'radarstation:read')")
     @GetMapping("/approval-status/{status}")
     public ResponseEntity<ApiResponse<List<RadarStationResponse>>> filterByApprovalStatus(
@@ -247,11 +304,10 @@ public class RadarStationController {
             if (files == null || files.isEmpty()) {
                 return ResponseEntity.badRequest().body(ApiResponse.error("Không có file nào được chọn để tải lên"));
             }
-            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
-            List<RadarStationAttachmentResponse> responses = service.uploadAttachments(id, files, userId);
-            return ResponseEntity.ok(ApiResponse.success("Tải lên file đính kèm thành công", responses));
+            List<RadarStationAttachmentResponse> responses = service.uploadAttachments(id, files, getUserId(authentication));
+            return ResponseEntity.ok(ApiResponse.success("Tải lên tệp đính kèm thành công", responses));
         } catch (Exception e) {
-            log.warn("Lỗi khi tải lên file đính kèm trạm radar id {}: {}", id, e.getMessage());
+            log.warn("Lỗi khi tải lên attachment trạm radar id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
@@ -260,42 +316,39 @@ public class RadarStationController {
     @GetMapping("/{id}/attachments")
     public ResponseEntity<ApiResponse<List<RadarStationAttachmentResponse>>> listAttachments(@PathVariable UUID id) {
         try {
-            List<RadarStationAttachmentResponse> responses = service.listAttachments(id);
-            return ResponseEntity.ok(ApiResponse.success("Lấy danh sách file đính kèm thành công", responses));
+            List<RadarStationAttachmentResponse> attachments = service.listAttachments(id);
+            return ResponseEntity.ok(ApiResponse.success("Danh sách file đính kèm thành công", attachments));
         } catch (Exception e) {
-            log.warn("Lỗi khi lấy danh sách file đính kèm trạm radar id {}: {}", id, e.getMessage());
+            log.warn("Lỗi khi lấy danh sách attachments trạm radar id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
 
-    @PreAuthorize("@auth.check(authentication, 'radarstation:update')")
-    @DeleteMapping("/{id}/attachments/{attId}")
+    @PreAuthorize("@auth.check(authentication, 'radarstation:delete')")
+    @DeleteMapping("/{id}/attachments/{attachmentId}")
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,
-            @PathVariable UUID attId,
+            @PathVariable UUID attachmentId,
             Authentication authentication) {
         try {
-            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
-            service.deleteAttachment(id, attId, userId);
+            service.deleteAttachment(id, attachmentId, getUserId(authentication));
             return ResponseEntity.ok(ApiResponse.success("Xóa file đính kèm thành công", null));
         } catch (Exception e) {
-            log.warn("Lỗi khi xóa file đính kèm trạm radar id {}: {}", id, e.getMessage());
+            log.warn("Lỗi khi xóa attachment {} của trạm radar id {}: {}", attachmentId, id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
 
-    /**
-     * Chuyển chuỗi ngày giờ từ request sang LocalDateTime (ISO).
-     * Rỗng/null -> null; khoảng trắng thay bằng 'T' theo pattern chuẩn của beacon/PortService.
-     */
-    private LocalDateTime parseLocalDateTime(String value) {
-        if (value == null || value.trim().isEmpty()) {
-            return null;
-        }
+    private LocalDateTime parseLocalDateTime(String dateStr) {
+        if (dateStr == null || dateStr.trim().isEmpty()) return null;
         try {
-            return LocalDateTime.parse(value.trim().replace(" ", "T"));
+            return LocalDateTime.parse(dateStr, DateTimeFormatter.ISO_DATE_TIME);
         } catch (Exception e) {
-            return null;
+            try {
+                return LocalDateTime.parse(dateStr + "T00:00:00");
+            } catch (Exception e2) {
+                return null;
+            }
         }
     }
 }

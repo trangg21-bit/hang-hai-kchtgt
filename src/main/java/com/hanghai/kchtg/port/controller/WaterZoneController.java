@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.port.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.port.dto.waterzone.CreateWaterZoneRequest;
 import com.hanghai.kchtg.port.dto.waterzone.UpdateWaterZoneRequest;
 import com.hanghai.kchtg.port.dto.waterzone.WaterZoneResponse;
@@ -86,14 +87,45 @@ public class WaterZoneController {
         return ResponseEntity.ok(ApiResponse.success("Xóa vùng nước thành công", null));
     }
 
+    // ── Phê duyệt 2 cấp (approval-2-level-spec §3.2) ────────────────────────
+
+    @PostMapping("/{id}/submit")
+    @PreAuthorize("@auth.check(authentication, 'waterzone:update')")
+    public ResponseEntity<ApiResponse<Void>> submit(@PathVariable UUID id) {
+        waterZoneApprovalService.submit(id, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success("Gửi phê duyệt vùng nước thành công", null));
+    }
+
+    @PostMapping("/{id}/approve/c1")
+    @PreAuthorize("@auth.check(authentication, 'waterzone:approvec1')")
+    public ResponseEntity<ApiResponse<Void>> approveC1(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason) {
+        waterZoneApprovalService.approveC1(id, reason, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cảng vụ thành công", null));
+    }
+
+    @PostMapping("/{id}/approve/c2")
+    @PreAuthorize("@auth.check(authentication, 'waterzone:approvec2')")
+    public ResponseEntity<ApiResponse<Void>> approveC2(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason) {
+        waterZoneApprovalService.approveC2(id, reason, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", null));
+    }
+
+    /**
+     * Giữ URL cũ để giao diện chưa chuyển đổi không hỏng, nhưng nay duyệt đúng
+     * vòng đang mở thay vì duyệt một phát — không còn đường vòng bỏ qua quy trình.
+     */
     @PostMapping("/{id}/approve")
-    @PreAuthorize("@auth.check(authentication, 'waterzone:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'waterzone:approvec1', 'waterzone:approvec2', 'waterzone:approve')")
     public ResponseEntity<ApiResponse<Void>> approve(
             @PathVariable UUID id,
             Authentication authentication) {
-        String userId = authentication.getName();
+        UUID userId = SecurityUtils.getCurrentUserId();
         log.info("Approving WaterZone: id={}, userId={}", id, userId);
-        waterZoneApprovalService.approve(id, userId, null);
+        waterZoneApprovalService.approveCurrentStage(id, null, userId);
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt vùng nước thành công", null));
     }
 
@@ -103,9 +135,9 @@ public class WaterZoneController {
             @PathVariable UUID id,
             @RequestParam @jakarta.validation.constraints.Size(min = 10, message = "Lý do từ chối tối thiểu 10 ký tự") String reason,
             Authentication authentication) {
-        String userId = authentication.getName();
+        UUID userId = SecurityUtils.getCurrentUserId();
         log.info("Rejecting WaterZone: id={}, userId={}", id, userId);
-        waterZoneApprovalService.approve(id, userId, reason);
+        waterZoneApprovalService.reject(id, reason, userId);
         return ResponseEntity.ok(ApiResponse.success("Từ chối vùng nước thành công", null));
     }
 

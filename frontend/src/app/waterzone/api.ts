@@ -62,8 +62,24 @@ export const waterZoneApi = {
     await api.delete(`/v1/water-zones/${id}`);
   },
 
-  /* ── Approval ─────────────────────────────────────────────────────── */
+  /* ── Phê duyệt 2 cấp (approval-2-level-spec §3.2) ──────────────────── */
 
+  async submit(id: string) {
+    await api.post(`/v1/water-zones/${id}/submit`);
+  },
+
+  async approveC1(id: string, reason?: string) {
+    await api.post(`/v1/water-zones/${id}/approve/c1`, null, { params: { reason } });
+  },
+
+  async approveC2(id: string, reason?: string) {
+    await api.post(`/v1/water-zones/${id}/approve/c2`, null, { params: { reason } });
+  },
+
+  /**
+   * Duyệt vòng đang mở. Backend suy ra vòng từ trạng thái hồ sơ nên màn hình
+   * chưa chuyển đổi vẫn chạy đúng quy trình 2 cấp.
+   */
   async approve(id: string) {
     await api.post(`/v1/water-zones/${id}/approve`);
   },

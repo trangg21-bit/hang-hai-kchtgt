@@ -21,7 +21,7 @@ import type {
   ShipRepairFacilityResponse,
   CreateShipRepairFacilityRequest,
   UpdateShipRepairFacilityRequest,
-  PheDuyetRequest,
+  ApprovalRequest,
 } from '../../types/shipRepairFacility';
 import { useAuthStore } from '../../store/authStore';
 import ApprovalActionBar from '../../components/shared/ApprovalActionBar';

@@ -480,17 +480,22 @@ public class PierService {
             });
         }
 
-        if (request.getSaveAction() != null) {
+        ApprovalStatus previousApprovalStatus = snapshot.getApprovalStatus();
+        boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
+                || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
+
+        if (wasApproved) {
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        } else if (request.getSaveAction() != null) {
             applySaveAction(entity, request.getSaveAction());
-        } else if (entity.getApprovalStatus() == ApprovalStatus.APPROVED) {
-            // Khi chỉnh sửa: "Được phê duyệt" → quay về "Chờ phê duyệt" để duyệt lại
-            entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         }
 
         Pier saved = pierRepository.save(entity);
 
-        changeHistoryService.recordChanges("Pier", saved.getId().toString(),
-                "system", snapshot, saved);
+        if (wasApproved) {
+            changeHistoryService.recordChanges("Pier", saved.getId().toString(),
+                    "system", snapshot, saved);
+        }
 
         log.info("Updated Pier [{}] code={}", saved.getId(), saved.getPierCode());
         return toResponse(saved);

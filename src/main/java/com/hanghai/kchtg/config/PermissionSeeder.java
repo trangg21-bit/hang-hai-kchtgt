@@ -15,8 +15,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 @Order(1)
@@ -413,6 +416,46 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "vts", "history", "Lịch sử phê duyệt hệ thống VTS",
                                 "Xem lịch sử thay đổi hệ thống VTS");
 
+                // 9.6 Trung tâm điều hành VTS (VTS Operation Center)
+                seedPermission(definitions, "vtsoperationcenter", "read", "Xem trung tâm điều hành VTS",
+                                "Tra cứu thông tin trung tâm điều hành VTS");
+                seedPermission(definitions, "vtsoperationcenter", "read:restricted", "Xem bản ghi hạn chế trung tâm VTS",
+                                "Xem các bản ghi dữ liệu mức độ Hạn chế của trung tâm điều hành VTS");
+                seedPermission(definitions, "vtsoperationcenter", "read:confidential", "Xem bản ghi mật trung tâm VTS",
+                                "Xem các bản ghi dữ liệu mức độ Mật của trung tâm điều hành VTS");
+                seedPermission(definitions, "vtsoperationcenter", "create", "Thêm trung tâm điều hành VTS",
+                                "Tạo mới trung tâm điều hành VTS");
+                seedPermission(definitions, "vtsoperationcenter", "update", "Cập nhật trung tâm điều hành VTS",
+                                "Chỉnh sửa thông tin trung tâm điều hành VTS");
+                seedPermission(definitions, "vtsoperationcenter", "delete", "Xóa trung tâm điều hành VTS",
+                                "Xóa trung tâm điều hành VTS");
+                seedPermission(definitions, "vtsoperationcenter", "approvec1", "Phê duyệt C1 trung tâm điều hành VTS",
+                                "Phê duyệt cấp 1 trung tâm điều hành VTS");
+                seedPermission(definitions, "vtsoperationcenter", "approvec2", "Phê duyệt C2 trung tâm điều hành VTS",
+                                "Phê duyệt cấp 2 trung tâm điều hành VTS");
+                seedPermission(definitions, "vtsoperationcenter", "history", "Lịch sử phê duyệt trung tâm điều hành VTS",
+                                "Xem lịch sử thay đổi trung tâm điều hành VTS");
+
+                // 9.7 Hệ thống trạm bờ AIS (AIS System)
+                seedPermission(definitions, "aissystem", "read", "Xem hệ thống trạm bờ AIS",
+                                "Tra cứu thông tin hệ thống trạm bờ AIS");
+                seedPermission(definitions, "aissystem", "read:restricted", "Xem bản ghi hạn chế AIS",
+                                "Xem các bản ghi dữ liệu mức độ Hạn chế của hệ thống trạm bờ AIS");
+                seedPermission(definitions, "aissystem", "read:confidential", "Xem bản ghi mật AIS",
+                                "Xem các bản ghi dữ liệu mức độ Mật của hệ thống trạm bờ AIS");
+                seedPermission(definitions, "aissystem", "create", "Thêm hệ thống trạm bờ AIS",
+                                "Tạo mới hệ thống trạm bờ AIS");
+                seedPermission(definitions, "aissystem", "update", "Cập nhật hệ thống trạm bờ AIS",
+                                "Chỉnh sửa thông tin hệ thống trạm bờ AIS");
+                seedPermission(definitions, "aissystem", "delete", "Xóa hệ thống trạm bờ AIS",
+                                "Xóa hệ thống trạm bờ AIS");
+                seedPermission(definitions, "aissystem", "approvec1", "Phê duyệt C1 hệ thống trạm bờ AIS",
+                                "Phê duyệt cấp 1 hệ thống trạm bờ AIS");
+                seedPermission(definitions, "aissystem", "approvec2", "Phê duyệt C2 hệ thống trạm bờ AIS",
+                                "Phê duyệt cấp 2 hệ thống trạm bờ AIS");
+                seedPermission(definitions, "aissystem", "history", "Lịch sử phê duyệt hệ thống trạm bờ AIS",
+                                "Xem lịch sử thay đổi hệ thống trạm bờ AIS");
+
                 // 10. Trạm hải đăng, Báo hiệu, Phao tiêu & Nhà trạm ven biển (Stations & Aids
                 // to Navigation)
                 seedPermission(definitions, "station", "read", "Xem nhà trạm", "Tra cứu danh mục nhà trạm");
@@ -423,6 +466,14 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "station", "create", "Thêm nhà trạm", "Tạo mới nhà trạm hàng hải");
                 seedPermission(definitions, "station", "update", "Cập nhật nhà trạm", "Chỉnh sửa thông tin nhà trạm");
                 seedPermission(definitions, "station", "delete", "Xóa nhà trạm", "Xóa nhà trạm hàng hải");
+                // Nhóm quyền phê duyệt dùng cho toàn bộ endpoint /api/v1/stations/** —
+                // PermissionMiddleware quy resource của các đường dẫn này về "station".
+                seedPermission(definitions, "station", "approve", "Phê duyệt nhà trạm", "Phê duyệt hồ sơ nhà trạm");
+                seedPermission(definitions, "station", "approvec1", "Phê duyệt C1 nhà trạm",
+                                "Phê duyệt cấp 1 (Cảng vụ/Chi cục) hồ sơ nhà trạm");
+                seedPermission(definitions, "station", "approvec2", "Phê duyệt C2 nhà trạm",
+                                "Phê duyệt cấp 2 (Cục Hàng hải) hồ sơ nhà trạm");
+                seedPermission(definitions, "station", "reject", "Từ chối nhà trạm", "Từ chối phê duyệt hồ sơ nhà trạm");
 
                 seedPermission(definitions, "beaconstation", "read", "Xem đèn biển và nhà trạm", "Tra cứu thông tin đèn biển và nhà trạm");
                 seedPermission(definitions, "beaconstation", "read:restricted", "Xem bản ghi hạn chế đèn biển và nhà trạm",
@@ -499,6 +550,13 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "coastalstation", "update", "Cập nhật trạm bờ",
                                 "Chỉnh sửa trạm thông tin bờ");
                 seedPermission(definitions, "coastalstation", "delete", "Xóa trạm bờ", "Xóa trạm thông tin bờ");
+                seedPermission(definitions, "coastalstation", "approve", "Phê duyệt trạm bờ", "Phê duyệt trạm thông tin bờ");
+                seedPermission(definitions, "coastalstation", "approvec1", "Phê duyệt C1 trạm bờ",
+                                "Phê duyệt cấp 1 (Cảng vụ/Chi cục) trạm thông tin bờ");
+                seedPermission(definitions, "coastalstation", "approvec2", "Phê duyệt C2 trạm bờ",
+                                "Phê duyệt cấp 2 (Cục Hàng hải) trạm thông tin bờ");
+                seedPermission(definitions, "coastalstation", "reject", "Từ chối trạm bờ",
+                                "Từ chối phê duyệt trạm thông tin bờ");
 
                 seedPermission(definitions, "specialstation", "read", "Xem trạm chuyên dùng",
                                 "Tra cứu trạm chuyên dùng");
@@ -511,6 +569,38 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "specialstation", "update", "Cập nhật trạm chuyên dùng",
                                 "Chỉnh sửa trạm chuyên dùng");
                 seedPermission(definitions, "specialstation", "delete", "Xóa trạm chuyên dùng", "Xóa trạm chuyên dùng");
+                seedPermission(definitions, "specialstation", "approve", "Phê duyệt trạm chuyên dùng", "Phê duyệt trạm chuyên dùng");
+                seedPermission(definitions, "specialstation", "approvec1", "Phê duyệt C1 trạm chuyên dùng", "Phê duyệt cấp 1 trạm chuyên dùng");
+                seedPermission(definitions, "specialstation", "approvec2", "Phê duyệt C2 trạm chuyên dùng", "Phê duyệt cấp 2 trạm chuyên dùng");
+                seedPermission(definitions, "specialstation", "reject", "Từ chối trạm chuyên dùng", "Từ chối phê duyệt trạm chuyên dùng");
+
+                // 10.3 Đài thông tin vệ tinh Inmarsat (Coastal Station Inmarsat - M-004)
+                seedPermission(definitions, "coastalstationinmarsat", "read", "Xem đài Inmarsat", "Xem danh sách và chi tiết đài Inmarsat");
+                seedPermission(definitions, "coastalstationinmarsat", "create", "Thêm đài Inmarsat", "Tạo mới đài Inmarsat");
+                seedPermission(definitions, "coastalstationinmarsat", "update", "Cập nhật đài Inmarsat", "Chỉnh sửa đài Inmarsat");
+                seedPermission(definitions, "coastalstationinmarsat", "delete", "Xóa đài Inmarsat", "Xóa đài Inmarsat");
+                seedPermission(definitions, "coastalstationinmarsat", "approve", "Phê duyệt đài Inmarsat", "Phê duyệt đài Inmarsat");
+                seedPermission(definitions, "coastalstationinmarsat", "approvec1", "Phê duyệt C1 đài Inmarsat", "Phê duyệt cấp 1 (Cảng vụ/Chi cục) đài Inmarsat");
+                seedPermission(definitions, "coastalstationinmarsat", "approvec2", "Phê duyệt C2 đài Inmarsat", "Phê duyệt cấp 2 (Cục Hàng hải) đài Inmarsat");
+                seedPermission(definitions, "coastalstationinmarsat", "reject", "Từ chối đài Inmarsat", "Từ chối phê duyệt đài Inmarsat");
+
+                // 10.4 Đài Cospas-Sarsat (Coastal Station Cospas-Sarsat - M-004)
+                seedPermission(definitions, "coastalstationcospassarsat", "read", "Xem đài Cospas-Sarsat",
+                                "Xem danh sách và chi tiết đài Cospas-Sarsat");
+                seedPermission(definitions, "coastalstationcospassarsat", "create", "Thêm đài Cospas-Sarsat",
+                                "Tạo mới đài Cospas-Sarsat");
+                seedPermission(definitions, "coastalstationcospassarsat", "update", "Cập nhật đài Cospas-Sarsat",
+                                "Chỉnh sửa đài Cospas-Sarsat");
+                seedPermission(definitions, "coastalstationcospassarsat", "delete", "Xóa đài Cospas-Sarsat",
+                                "Xóa đài Cospas-Sarsat");
+                seedPermission(definitions, "coastalstationcospassarsat", "approve", "Phê duyệt đài Cospas-Sarsat",
+                                "Phê duyệt đài Cospas-Sarsat");
+                seedPermission(definitions, "coastalstationcospassarsat", "approvec1", "Phê duyệt C1 đài Cospas-Sarsat",
+                                "Phê duyệt cấp 1 (Cảng vụ/Chi cục) đài Cospas-Sarsat");
+                seedPermission(definitions, "coastalstationcospassarsat", "approvec2", "Phê duyệt C2 đài Cospas-Sarsat",
+                                "Phê duyệt cấp 2 (Cục Hàng hải) đài Cospas-Sarsat");
+                seedPermission(definitions, "coastalstationcospassarsat", "reject", "Từ chối đài Cospas-Sarsat",
+                                "Từ chối phê duyệt đài Cospas-Sarsat");
 
                 // 11. Quản lý tài sản kết cấu hạ tầng, Điều chuyển, Kiểm kê & Bảo trì (Asset
                 // Management & Operations)
@@ -656,22 +746,27 @@ public class PermissionSeeder implements CommandLineRunner {
 
                 int inserted = 0;
                 int updated = 0;
+                Map<String, Permission> existingMap = permissionRepository.findAll().stream()
+                                .collect(java.util.stream.Collectors.toMap(Permission::getCode, p -> p, (a, b) -> a));
+                List<Permission> toSave = new ArrayList<>();
                 for (Permission definition : definitions.values()) {
-                        var existing = permissionRepository.findByCode(definition.getCode());
-                        if (existing.isEmpty()) {
-                                permissionRepository.save(definition);
+                        Permission p = existingMap.get(definition.getCode());
+                        if (p == null) {
+                                toSave.add(definition);
                                 inserted++;
                         } else {
-                                Permission p = existing.get();
                                 if (!java.util.Objects.equals(p.getName(), definition.getName())
                                                 || !java.util.Objects.equals(p.getDescription(),
                                                                 definition.getDescription())) {
                                         p.setName(definition.getName());
                                         p.setDescription(definition.getDescription());
-                                        permissionRepository.save(p);
+                                        toSave.add(p);
                                         updated++;
                                 }
                         }
+                }
+                if (!toSave.isEmpty()) {
+                        permissionRepository.saveAll(toSave);
                 }
                 // Clean up deprecated / redundant permissions safely
                 if (jdbcTemplate != null) {

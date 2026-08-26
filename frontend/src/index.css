@@ -7,6 +7,10 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, #root { height: 100%; width: 100%; }
 
+:root {
+  --table-header-bg: #F5F8FA;
+}
+
 body {
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
@@ -30,33 +34,131 @@ body {
 .ant-table-row { transition: background 0.15s; }
 
 .filter-table-spin,
+.filter-table-spin .ant-spin,
 .filter-table-spin .ant-spin-nested-loading,
 .filter-table-spin .ant-spin-container {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  height: 100%;
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: 100% !important;
 }
 
-/* Chiều cao thân bảng do DataTable đo động (scroll.y = shell − header):
-   nhiều bản ghi → mép dưới thẳng hàng panel filter + thanh cuộn TRONG bảng;
-   ít bản ghi → thân bảng co sát nội dung. (scrollbar-gutter: theme.ts) */
+/* Chiều cao thân bảng do DataTable lấp đầy vùng khả dụng (flex: 1):
+   mép dưới bảng luôn kéo dài thẳng hàng với panel filter,
+   thanh cuộn ngang luôn nằm ở đáy bảng ngay phía trên phân trang. */
 
-.list-view-table .ant-table-content {
+.list-view-table-shell {
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 0% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  height: 100% !important;
+}
+
+.list-view-table,
+.list-view-table .ant-table-wrapper,
+.list-view-table .ant-spin,
+.list-view-table .ant-spin-nested-loading,
+.list-view-table .ant-spin-container,
+.list-view-table .ant-table {
+  flex: 1 1 0% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  height: 100% !important;
+}
+
+.list-view-table .ant-table-container {
+  flex: 1 1 0% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  height: 100% !important;
+}
+
+.list-view-table .ant-table-content,
+.list-view-table .ant-table-body {
+  flex: 1 1 0% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  height: 100% !important;
   overflow-x: auto !important;
+  overflow-y: auto !important;
 }
 
-/* Thân bảng chỉ bị giới hạn trên bởi max-height (scroll.y) — ít bản ghi thì
-   bảng co sát nội dung, nhiều bản ghi thì cuộn trong bảng. KHÔNG đặt
-   min-height theo viewport: nó thắng max-height (CSS) và tạo khoảng trống
-   lớn dưới bản ghi cuối cùng khi danh sách ngắn. */
+.list-view-table .ant-table-thead > tr > th {
+  position: sticky !important;
+  top: 0 !important;
+  background: var(--table-header-bg, #F5F8FA) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  z-index: 10 !important;
+}
+
+.list-view-table th.ant-table-cell-scrollbar {
+  display: none !important;
+}
+
+.list-view-table .ant-table-thead > tr > th.ant-table-cell-fix-left,
+.list-view-table .ant-table-thead > tr > th.ant-table-cell-fix-start {
+  position: sticky !important;
+  top: 0 !important;
+  background: var(--table-header-bg, #F5F8FA) !important;
+  z-index: 25 !important;
+}
+
+.list-view-table .ant-table-thead > tr > th.ant-table-cell-fix-right,
+.list-view-table .ant-table-thead > tr > th.ant-table-cell-fix-end {
+  position: sticky !important;
+  top: 0 !important;
+  background: var(--table-header-bg, #F5F8FA) !important;
+  z-index: 25 !important;
+}
+
+.list-view-table .ant-table-tbody > tr > td.ant-table-cell-fix-left,
+.list-view-table .ant-table-tbody > tr > td.ant-table-cell-fix-start {
+  position: sticky !important;
+  background: #ffffff !important;
+  z-index: 9 !important;
+}
+
+.list-view-table .ant-table-tbody > tr > td.ant-table-cell-fix-right,
+.list-view-table .ant-table-tbody > tr > td.ant-table-cell-fix-end {
+  position: sticky !important;
+  background: #ffffff !important;
+  z-index: 9 !important;
+}
+
+.list-view-table .ant-table-thead > tr > th.ant-table-cell-fix-left-last,
+.list-view-table .ant-table-thead > tr > th.ant-table-cell-fix-start-last,
+.list-view-table .ant-table-tbody > tr > td.ant-table-cell-fix-left-last,
+.list-view-table .ant-table-tbody > tr > td.ant-table-cell-fix-start-last {
+  box-shadow: 1px 0 0 rgba(0, 0, 0, 0.06) !important;
+}
+
+.list-view-table .ant-table-thead > tr > th.ant-table-cell-fix-right-first,
+.list-view-table .ant-table-thead > tr > th.ant-table-cell-fix-end-first,
+.list-view-table .ant-table-tbody > tr > td.ant-table-cell-fix-right-first,
+.list-view-table .ant-table-tbody > tr > td.ant-table-cell-fix-end-first {
+  box-shadow: -1px 0 0 rgba(0, 0, 0, 0.06) !important;
+}
+
+.list-view-table .ant-table-cell {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+}
 
 /* Keep the empty state centered in the same full-height body as a populated
    list. AntD otherwise sizes the placeholder row only to its content and
    leaves a visible separator underneath it. */
 .list-view-table .ant-table-placeholder > td {
-  height: var(--list-table-scroll-y) !important;
+  height: 100% !important;
+  min-height: var(--list-table-scroll-y) !important;
   padding: 0 !important;
   vertical-align: middle;
   border-bottom: 0 !important;
@@ -102,4 +204,39 @@ body {
   width: 100% !important;
   max-width: 100% !important;
   min-width: 0 !important;
+}
+
+/* Status badge: luôn nằm trên 1 hàng ngang, không được rớt dòng */
+.status-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  line-height: 1.4 !important;
+}
+
+/* Form Item Label chuẩn thương hiệu Cảng biển: Xanh Navy #12468C, Bold 600, 13px */
+.ant-form-item-label > label {
+  color: #12468C !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+}
+
+/* Table Header Height & Padding chuẩn Cảng biển: chiều cao header ~40px */
+.list-view-table .ant-table-thead > tr > th {
+  padding: 10px 12px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  color: #12468C !important;
+}
+
+/* Drawer & Modal Tabs: Loại bỏ margin-bottom mặc định (16px) của AntD Tabs */
+.ant-drawer .ant-tabs-nav,
+.ant-modal .ant-tabs-nav {
+  margin-bottom: 0 !important;
+}
+.ant-drawer .ant-tabs-content-holder,
+.ant-modal .ant-tabs-content-holder {
+  padding-top: 0 !important;
 }

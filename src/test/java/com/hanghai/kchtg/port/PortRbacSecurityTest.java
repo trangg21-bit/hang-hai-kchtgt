@@ -102,14 +102,14 @@ class PortRbacSecurityTest {
 
     @Test
     @WithMockUser(username = "approver-user")
-    @DisplayName("approve endpoint — user WITH port:approve authority → 200 OK")
+    @DisplayName("approve C1 endpoint — user WITH port:approvec1 authority → 200 OK")
     void approve_withAuthority_returns200() throws Exception {
         UUID id = UUID.randomUUID();
 
-        when(auth.check(any(Authentication.class), eq("port:approve")))
+        when(auth.check(any(Authentication.class), eq("port:approvec1")))
                 .thenReturn(true);
 
-        mockMvc.perform(post("/api/v1/ports/{id}/approve", id)
+        mockMvc.perform(post("/api/v1/ports/{id}/approve/c1", id)
                         .with(principalOf("approver-user")))
                 .andExpect(status().isOk());
     }
@@ -131,7 +131,7 @@ class PortRbacSecurityTest {
 
     @Test
     @WithMockUser(username = "test-user")
-    @DisplayName("approve endpoint — user WITHOUT port:approve authority → AccessDeniedException (fail-closed)")
+    @DisplayName("approve C1 endpoint — user WITHOUT port:approvec1 authority → AccessDeniedException (fail-closed)")
     void approve_withoutAuthority_raisesAccessDenied() throws Exception {
         UUID id = UUID.randomUUID();
 
@@ -139,8 +139,8 @@ class PortRbacSecurityTest {
                 .thenReturn(false);
 
         assertThrows(Exception.class, () ->
-                mockMvc.perform(post("/api/v1/ports/{id}/approve", id)),
-                "Expected AccessDeniedException propagated for denied port:approve");
+                mockMvc.perform(post("/api/v1/ports/{id}/approve/c1", id)),
+                "Expected AccessDeniedException propagated for denied port:approvec1");
     }
 
     @Test

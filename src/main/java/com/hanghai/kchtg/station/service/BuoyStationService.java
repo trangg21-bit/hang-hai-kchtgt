@@ -351,13 +351,13 @@ public class BuoyStationService {
         if (request.getCondition() != null) entity.setCondition(request.getCondition());
         if (request.getIsActive() != null) entity.setIsActive(request.getIsActive());
 
-        if (isApprovedStatus(entity.getStatus())) {
-            // Bản đã phê duyệt khi cập nhật → quay về chờ Cảng vụ duyệt (yêu cầu user 2026-08-20)
-            entity.setStatus(StationStatus.PENDING_APPROVAL);
-            entity.setApprovalStatus(ApprovalStatus.PROPOSED);
-            entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
-            entity.setSentApprovedBy(SecurityUtils.getCurrentUserId());
-            entity.setSentApprovedDate(LocalDateTime.now());
+        boolean wasApproved = isApprovedStatus(entity.getStatus())
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+
+        if (wasApproved) {
+            entity.setStatus(StationStatus.APPROVED_L2);
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
         }
 
         phaoRepo.save(entity);
@@ -386,12 +386,12 @@ public class BuoyStationService {
         }
 
         String newJson = toJson(entity);
-        if (!compareJsonNodes(oldJson, newJson)) {
+        if (wasApproved && !compareJsonNodes(oldJson, newJson)) {
             logHistory(entity, "UPDATE",
                     getChangedFields(oldJson, newJson), oldJson, newJson);
+            changeHistoryService.recordChanges("BuoyStation", entity.getId().toString(),
+                    "system", snapshot, entity);
         }
-        changeHistoryService.recordChanges("BuoyStation", entity.getId().toString(),
-                "system", snapshot, entity);
         return toResponse(entity);
     }
 

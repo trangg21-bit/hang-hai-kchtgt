@@ -377,7 +377,13 @@ public class DryPortService {
             entity.setDisplayRule(request.getDisplayRule());
 
         // Set approval status
-        if (isSubmit) {
+        ApprovalStatus previousApprovalStatus = snapshot.getApprovalStatus();
+        boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
+                || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
+
+        if (wasApproved) {
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        } else if (isSubmit) {
             entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         } else if (isApprove) {
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
@@ -387,9 +393,6 @@ public class DryPortService {
                     "DRYPORT_UPDATE_APPROVE",
                     "Cập nhật và phê duyệt cảng cạn: " + entity.getDryPortCode(),
                     null);
-        } else if (entity.getApprovalStatus() == ApprovalStatus.APPROVED
-                || entity.getApprovalStatus() == ApprovalStatus.REJECTED) {
-            entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         }
 
         DryPort saved = dryPortRepository.save(entity);
@@ -418,9 +421,11 @@ public class DryPortService {
             saved = dryPortRepository.save(saved);
         }
 
-        java.util.List<String> changed = changeHistoryService.recordChanges("DryPort", saved.getId().toString(),
-                "system", snapshot, saved);
-        log.info("DryPort update: recorded {} changed fields for id={}: {}", changed.size(), saved.getId(), changed);
+        if (wasApproved) {
+            java.util.List<String> changed = changeHistoryService.recordChanges("DryPort", saved.getId().toString(),
+                    "system", snapshot, saved);
+            log.info("DryPort update: recorded {} changed fields for id={}: {}", changed.size(), saved.getId(), changed);
+        }
 
         log.info("Updated DryPort [{}] code={} action={}", saved.getId(), saved.getDryPortCode(),
                 action != null ? action : "default");

@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -81,21 +82,46 @@ public class CoastalStationCospasSarsatController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @PostMapping("/{id}/submit")
+    @Operation(summary = "Gửi phê duyệt cấp Cảng vụ/Chi cục")
+    @PreAuthorize("hasAnyAuthority('coastalstationcospassarsat:create', 'coastalstationcospassarsat:update', 'specialstation:create', 'specialstation:update', 'station:create', 'station:update', 'data:create', 'admin:all')")
+    public ResponseEntity<CoastalStationCospasSarsat> submit(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.submit(id));
+    }
+
+    @PostMapping("/{id}/approve-l1")
+    @Operation(summary = "Phê duyệt cấp 1 (Cảng vụ / Chi cục)")
+    @PreAuthorize("hasAnyAuthority('coastalstationcospassarsat:approvec1', 'coastalstationcospassarsat:approve', 'specialstation:approve', 'station:approvec1', 'station:approve', 'data:approvec1', 'data:approve', 'admin:all')")
+    public ResponseEntity<CoastalStationCospasSarsat> approveLevel1(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.approveLevel1(id));
+    }
+
+    @PostMapping("/{id}/approve-l2")
+    @Operation(summary = "Phê duyệt cấp 2 (Cục Hàng hải Việt Nam)")
+    @PreAuthorize("hasAnyAuthority('coastalstationcospassarsat:approvec2', 'coastalstationcospassarsat:approve', 'specialstation:approve', 'station:approvec2', 'station:approve', 'data:approvec2', 'data:approve', 'admin:all')")
+    public ResponseEntity<CoastalStationCospasSarsat> approveLevel2(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.approveLevel2(id));
+    }
+
+    /** @deprecated dùng /approve-l1 hoặc /approve-l2 — endpoint này giữ để tương thích client cũ. */
+    @Deprecated
     @PostMapping("/{id}/approve")
-    @Operation(summary = "Approve a Cospas-Sarsat station (supports L1 and L2 levels)")
+    @Operation(summary = "Approve a Cospas-Sarsat station (legacy — tự chọn vòng theo trạng thái hiện tại)")
+    @PreAuthorize("hasAnyAuthority('coastalstationcospassarsat:approvec1', 'coastalstationcospassarsat:approvec2', 'coastalstationcospassarsat:approve', 'specialstation:approve', 'station:approve', 'data:approve', 'admin:all')")
     public ResponseEntity<CoastalStationCospasSarsat> approveStation(
             @PathVariable UUID id,
             @Valid @RequestBody CoastalStationCospasSarsatApprovalRequest request) {
-        CoastalStationCospasSarsat approved = service.approveStation(id, request.getApproved(), 1L);
+        CoastalStationCospasSarsat approved = service.approveStation(id, Boolean.TRUE.equals(request.getApproved()));
         return ResponseEntity.ok(approved);
     }
 
     @PostMapping("/{id}/reject")
-    @Operation(summary = "Reject a Cospas-Sarsat station")
+    @Operation(summary = "Từ chối phê duyệt kèm lý do (tối thiểu 10 ký tự)")
+    @PreAuthorize("hasAnyAuthority('coastalstationcospassarsat:reject', 'coastalstationcospassarsat:approvec1', 'coastalstationcospassarsat:approvec2', 'coastalstationcospassarsat:approve', 'specialstation:approve', 'station:approve', 'data:approve', 'admin:all')")
     public ResponseEntity<CoastalStationCospasSarsat> rejectStation(
             @PathVariable UUID id,
             @Valid @RequestBody CoastalStationCospasSarsatApprovalRequest request) {
-        CoastalStationCospasSarsat rejected = service.rejectStation(id, request.getRejectionReason(), 1L);
+        CoastalStationCospasSarsat rejected = service.reject(id, request.getRejectionReason());
         return ResponseEntity.ok(rejected);
     }
 

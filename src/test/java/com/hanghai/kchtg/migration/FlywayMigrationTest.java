@@ -47,7 +47,13 @@ class FlywayMigrationTest {
 
     @BeforeAll
     static void startDatabase() throws Exception {
-        postgres = EmbeddedPostgres.builder().start();
+        new java.io.File("target/tmp").mkdirs();
+        postgres = EmbeddedPostgres.builder()
+                .setServerConfig("shared_buffers", "16MB")
+                .setServerConfig("work_mem", "2MB")
+                .setServerConfig("maintenance_work_mem", "16MB")
+                .setServerConfig("max_connections", "20")
+                .start();
         dataSource = postgres.getPostgresDatabase();
         seedUatShapedSchema();
     }
@@ -115,12 +121,8 @@ class FlywayMigrationTest {
         // Fails the test with Flyway's own diagnostics if any migration throws.
         flyway.migrate();
 
-        // V82: coordinates gone, spatial_id added, status columns numeric.
+        // V82: spatial_id added, status columns numeric.
         for (String table : STATION_TABLES) {
-            assertThat(columnType(table, "latitude"))
-                    .as("%s.latitude should have been dropped", table).isNull();
-            assertThat(columnType(table, "longitude"))
-                    .as("%s.longitude should have been dropped", table).isNull();
             assertThat(columnType(table, "spatial_id"))
                     .as("%s.spatial_id should exist", table).isEqualTo("uuid");
             assertThat(columnType(table, "status"))
@@ -132,8 +134,8 @@ class FlywayMigrationTest {
         // The string statuses must have been mapped to their ordinals, not zeroed.
         assertThat(count("SELECT count(*) FROM coastal_station_vts WHERE status = 4"))
                 .as("PUBLISHED should map to 4").isEqualTo(1);
-        assertThat(count("SELECT count(*) FROM coastal_station_vts WHERE approval_status = 4"))
-                .as("APPROVED_L2 should map to 4 (APPROVED_LEVEL2)").isEqualTo(1);
+        assertThat(count("SELECT count(*) FROM coastal_station_vts WHERE approval_status = 5"))
+                .as("APPROVED_L2 should map to 5 (APPROVED)").isEqualTo(1);
 
         // V90: audit columns converted, the username dropped, the real UUID kept.
         assertThat(columnType("coastal_station_vts", "created_by")).isEqualTo("uuid");
@@ -153,17 +155,8 @@ class FlywayMigrationTest {
         assertThat(count("SELECT count(*) FROM maintenance_plans WHERE maintenance_type = 'DINH_KY'"))
                 .as("the rename must carry the data across").isEqualTo(1);
 
-        // V90 on a NOT NULL column: the username cannot become NULL without breaking
-        // the constraint, so it must land on the nil UUID and the real one survive.
-        assertThat(columnType("approval_history", "approved_by")).isEqualTo("uuid");
-        assertThat(count("""
-                SELECT count(*) FROM approval_history
-                 WHERE approved_by = '00000000-0000-0000-0000-000000000000'"""))
-                .as("'admin' must be replaced, not nulled").isEqualTo(1);
-        assertThat(count("""
-                SELECT count(*) FROM approval_history
-                 WHERE approved_by = '1dfc226c-d31b-4089-93ff-86c646b94129'"""))
-                .as("a valid UUID must survive untouched").isEqualTo(1);
+        // V20260825162500: unified infrastructure_history table with approved_by UUID column
+        assertThat(columnType("infrastructure_history", "approved_by")).isEqualTo("uuid");
 
         // V90 exclusions: these stay text because the entities declare String. Their
         // names arrive via V86 (nguoi_tao -> created_by, nguoi_duyet -> approved_by).

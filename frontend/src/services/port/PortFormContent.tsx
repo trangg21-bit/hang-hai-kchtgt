@@ -13,8 +13,8 @@ import {
   radiusMd, radiusPill, spaceXs, spaceSm, spaceFormField, spaceMd, spaceLg,
   surfaceCard, surfacePage, uploadHintStyle,
 } from '../../tokens';
-import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import PagedTable from '../../components/list-view/PagedTable';
+import { normalizeSearchText } from '../../components/org-unit';
 
 const labelProps = (text: string) => ({
   label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
@@ -121,7 +121,7 @@ export default function PortFormContent({
             <Col span={12}>
               <Form.Item name="province" {...labelProps('Địa điểm (Tỉnh/Thành phố)')} required style={{ marginBottom: spaceFormField }}>
                 <Select showSearch placeholder="Chọn tỉnh/thành phố..."
-                  filterOption={(input: string, option: any) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                  filterOption={(input: string, option: any) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
                   options={provinces.map((p: string) => ({ value: p, label: p }))} style={selectStyle} />
               </Form.Item>
             </Col>

@@ -59,6 +59,7 @@ import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
+import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
 import { symbolService } from '../../services/symbolService';
 import { usePermissionStore } from '../../store/permissionStore';
@@ -123,29 +124,38 @@ import {
 
 // ── Constants ────────────────────────────────────────────────────────
 
-// Status tabs dựa trên trường status 1 cấp (mirror beacon): DRAFT → PENDING_APPROVAL → APPROVED / REJECTED
+// Status tabs 6 tab chuẩn
 const STATUS_TAB_LIST = [
   { key: '', label: 'Tất cả', color: actionPrimary },
-  { key: 'DRAFT', label: 'Nháp', color: statusDraft },
-  { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt', color: statusAttention },
-  { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
+  { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
+  { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', color: statusAttention },
+  { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', color: '#0284C7' },
+  { key: 'APPROVED', label: 'Đã duyệt', color: statusOperational },
   { key: 'REJECTED', label: 'Từ chối', color: statusCritical },
 ];
 
 const TAB_QUERY_MAP: Record<string, RadarStationStatus | undefined> = {
   '': undefined,
   DRAFT: 'DRAFT',
+  PROPOSED: 'DRAFT',
   PENDING_APPROVAL: 'PENDING_APPROVAL',
+  APPROVED_LEVEL1: 'APPROVED_LEVEL1',
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',
 };
 
 // Status badge — semantic tokens (AGENTS.md: không hardcode màu)
 const RADAR_STATION_STATUS_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  DRAFT: { color: statusDraft, label: 'Nháp' },
-  PENDING_APPROVAL: { color: statusAttention, label: 'Chờ phê duyệt' },
-  APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
+  DRAFT: { color: statusDraft, label: 'Lưu tạm' },
+  PROPOSED: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
+  PENDING: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
+  PENDING_APPROVAL: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
+  APPROVED_LEVEL1: { color: '#0284C7', label: 'Chờ Cục duyệt' },
+  APPROVED_LEVEL2: { color: statusOperational, label: 'Đã duyệt' },
+  APPROVED: { color: statusOperational, label: 'Đã duyệt' },
   REJECTED: { color: statusCritical, label: 'Từ chối' },
+  REJECTED_LEVEL1: { color: statusCritical, label: 'Cảng vụ trả về' },
+  REJECTED_LEVEL2: { color: statusCritical, label: 'Cục trả về' },
 };
 
 // Bộ lọc trạng thái (Select) — 4 trạng thái mới
@@ -824,11 +834,8 @@ export default function RadarStationList() {
       render: (v: string | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{userOptions.find((u) => u.value === v)?.label || '—'}</span>,
     },
     {
-      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 150,
-      render: (status: string) => {
-        const s = RADAR_STATION_STATUS_STYLE_MAP[status] || { color: textTertiary, label: status || '—' };
-        return <span style={{ ...badgeBaseStyle, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
-      },
+      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 160,
+      render: (status: string) => <ApprovalStatusBadge status={status} />,
     },
   ], [page, pageSize, openDetailDrawer, orgNameById, seaportLabelById, vtsLabelById, userOptions]);
 

@@ -21,8 +21,86 @@ Mọi bộ lọc có trường `Đơn vị`, `Đơn vị quản lý`, `Đơn v�
 - Chỉ dựng cây từ danh sách đã được backend giới hạn theo quyền. Nếu đơn vị cha không có trong response thì coi đơn vị đó là node gốc của danh sách hiện tại.
 - Dùng preset `selectStyle` từ `frontend/src/tokens.ts`; tìm kiếm của `TreeSelect` dùng `treeNodeFilterProp="title"`.
 
-Reference implementation: `frontend/src/pages/vtssystem/VtsSystemList.tsx` — biến `orgUnitTreeOptions` và bộ lọc `TreeSelect`.
+**Reference implementation chuẩn mẫu**: `frontend/src/services/port/PortListPage.tsx` (Màn hình Quản lý Cảng biển `/port`).
 - Các bảng con trong form/detail có thể khai báo `scroll` riêng vì đó không phải bảng danh sách chính.
+
+### Quy chuẩn cấu trúc và thứ tự cột trên Bảng danh sách (Unified Column Standards):
+
+0. **Tiêu đề Bảng Danh sách vs Nội dung ô bản ghi (Column Headers vs Cell Content)**:
+   - **Tiêu đề cột (`<th>`)**:
+     - **BẮT BUỘC hiển thị đầy đủ 100% chữ**, thiết lập `label: '...'` và cấp đủ bề rộng (`width`) cho từng cột. **TUYỆT ĐỐI CẤM** để tiêu đề cột bị cắt chữ hoặc hiển thị dấu ba chấm `...` (như `THA...`, `ĐỊA ĐI...`, `TÊN TRUNG TÂM...`).
+     - Chiều cao Header cố định `40px` - `42px` chuẩn xác theo màn Cảng biển (`/port`).
+     - Padding ô tiêu đề: `padding: 10px 12px !important;`.
+     - Màu chữ tiêu đề: Xanh Navy thương hiệu (`#12468C` / `colors.sidebarBg`), in hoa (`text-transform: uppercase`), cỡ chữ `13px` (`fontSizeMd`), độ đậm `600` (`fontWeightBold`).
+     - Màu nền tiêu đề: `tableHeaderBg` (`#F5F8FA` / `colors.bodyBg`).
+   - **Nội dung ô bản ghi (`<td>`)**:
+     - Nếu nội dung văn bản trong bản ghi quá dài (như tên KCHT, địa chỉ chi tiết, đơn vị quản lý, ghi chú...), **BẮT BUỘC hiển thị dấu ba chấm `...`** (`overflow: hidden; text-overflow: ellipsis; white-space: nowrap;` kèm `title` hoặc Tooltip khi hover để xem đầy đủ), **TUYỆT ĐỐI CẤM** để chữ dài tràn/chờm đè sang cột bên cạnh.
+
+1. **Cột STT (Số thứ tự)**:
+   - Cố định bên trái (`fixed: 'left'`), chiều rộng `60px`, căn giữa (`align: 'center'`).
+   - Công thức tính: `(page - 1) * pageSize + index + 1`.
+
+2. **Cột Tên / Mã KCHT (Fixed Left)**:
+   - Cố định bên trái (`fixed: 'left'`) ngay sau cột STT, chiều rộng từ `220px` - `260px`, căn trái (`align: 'left'`).
+   - Cấu trúc 2 dòng:
+     - **Dòng 1 (Tên KCHT)**: Cỡ chữ `13px` (`fontSizeMd`), `fontWeightBold`, màu `textPrimary` hoặc `colors.sidebarBg` (click để mở xem chi tiết).
+     - **Dòng 2 (Mã KCHT)**: Cỡ chữ `13px` (`fontSizeMd`), `fontWeightMedium`, màu `textSecondary`. **BẮT BUỘC dùng `fontSizeMd` (13px)**, tuyệt đối không dùng `fontSizeSm` (10px) để đảm bảo chữ to rõ, dễ nhìn và đồng bộ toàn hệ thống.
+
+3. **Cột Cán bộ cập nhật (Gộp Tên cán bộ + Ngày giờ cập nhật)**:
+   - Chiều rộng `190px` - `220px`, `ellipsis: false`, căn trái (`align: 'left'`).
+   - Cấu trúc 2 dòng:
+     - **Dòng 1 (Họ và tên cán bộ)**: Cỡ chữ `13px` (`fontSizeMd`), `fontWeightBold`, màu đậm `#0F172A`.
+     - **Dòng 2 (Ngày giờ cập nhật)**: Cỡ chữ `13px` (`fontSizeMd`), màu `textSecondary`, định dạng `DD/MM/YYYY HH:mm:ss` bằng `dayjs`.
+   - **Quy tắc Họ và tên (Full Name)**: Cả Backend và Frontend **BẮT BUỘC** hiển thị **Họ và tên** (`fullName`), tuyệt đối không hiển thị email (như `admin@hh.gov.vn`) hay mã UUID làm tên cán bộ.
+
+4. **Cột Tình trạng & Trạng thái phê duyệt (Badge Columns)**:
+   - Hai cột độc lập, căn giữa (`align: 'center'`), `ellipsis: false`:
+     - **Cột Tình trạng hoạt động (`conditionStatus`)**: Chiều rộng `160px`.
+     - **Cột Trạng thái phê duyệt (`approvalStatus`)**: Chiều rộng `180px`.
+   - Mọi ô trên bảng danh sách (`.ant-table-cell`) bắt buộc có `overflow: hidden !important;` và `white-space: nowrap !important;` để nội dung dài (như tên đơn vị, hệ thống) tự động cắt ngắn và **tuyệt đối không bao giờ bị tràn/chờm đè sang cột bên cạnh**.
+   - Cột văn bản thông thường tự động áp dụng `textOverflow: 'ellipsis'` (hiển thị `...` khi bị cắt).
+   - Cột chứa Badge (`ellipsis: false`) áp dụng `textOverflow: 'clip'` kết hợp chiều rộng đủ lớn (`160px` - `180px`) để Badge luôn hiển thị trọn vẹn và không bao giờ xuất hiện dấu ba chấm `...` thừa phía sau.
+
+5. **Cột Thao tác (Action Column)**:
+   - Cố định bên phải (`fixed: 'right'`), chiều rộng `60px`, căn giữa (`align: 'center'`).
+   - **BẮT BUỘC** truyền qua prop `rowActions={rowActions}` của `<DataTable rowActions={rowActions} />`. CẤM tự thêm cột Thao tác thủ công vào mảng `columns`.
+
+### Quy chuẩn Status Tabs & Bảng màu Semantic Tokens (Status Tabs & Semantic Badge Colors):
+
+1. **Bảng màu Semantic Tokens chuẩn cho Trạng thái Phê duyệt (`ApprovalStatus`)**:
+   - **Tất cả (`ALL`)**: `actionPrimary` (`#0E6FD6` - Xanh thương hiệu).
+   - **Lưu tạm (`DRAFT`)**: `statusDraft` / `textTertiary` (`#93A3B3` - Xám trung tính). Mặc định khi tạo mới.
+   - **Chờ Cảng vụ duyệt (`PENDING_APPROVAL`)**: `statusAttention` (`#EDA100` - Vàng cam Amber).
+   - **Chờ Cục duyệt (`APPROVED_LEVEL1`)**: `#0284C7` (Xanh da trời Sky Cyan).
+   - **Đã duyệt (`APPROVED`)**: `statusOperational` (`#1BAF7A` - Xanh lá Emerald).
+   - **Từ chối (`REJECTED_LEVEL1`, `REJECTED_LEVEL2`)**: `statusCritical` (`#E34948` - Đỏ tươi Rose).
+
+2. **Bảng màu Semantic Tokens chuẩn cho Tình trạng Hoạt động (`ConditionStatus`)**:
+   - **Đang hoạt động (`OPERATIONAL`)**: `statusOperational` (`#1BAF7A` - Xanh lá Emerald).
+   - **Đang bảo trì (`MAINTENANCE`)**: `statusAttention` (`#EDA100` - Vàng cam Amber).
+   - **Dừng hoạt động (`STOPPED`)**: `statusCritical` (`#E34948` - Đỏ tươi Rose).
+   - **Đang xây dựng (`UNDER_CONSTRUCTION`)**: `actionPrimary` (`#0E6FD6` - Xanh dương).
+
+3. **Quy tắc khớp tổng số lượng trên Status Tabs (Status Count Consistency)**:
+   - Số lượng trên tab "Tất cả" **BẮT BUỘC** bằng tổng số lượng của các tab trạng thái con:
+     $$\text{Tất cả} = \text{Lưu tạm} + \text{Chờ Cảng vụ duyệt} + \text{Chờ Cục duyệt} + \text{Đã duyệt} + \text{Từ chối}$$
+   - Tab "Từ chối" trên Frontend tự động gom tổng: `REJECTED_LEVEL1` + `REJECTED_LEVEL2`.
+   - Backend `countByApprovalStatus` trả về số lượng chính xác theo từng trạng thái chuẩn.
+
+4. **Dọn sạch trạng thái legacy trong DB và Code**:
+   - Trong quá trình phát triển, tuyệt đối không giữ các mã fallback legacy (`PROPOSED (1)`, `APPROVED_LEVEL2 (4)`, `REJECTED (6)`).
+   - Dữ liệu trong CSDL được chuẩn hóa hoàn toàn qua Flyway script: `1 -> 2 (PENDING_APPROVAL)`, `4 -> 5 (APPROVED)`, `6 -> 8 (REJECTED_LEVEL1)`.
+
+5. **Quy chuẩn Style hiển thị Badge trong ô bảng (Badge Style)**:
+   - `borderRadius: radiusPill` (`999px`) dạng viên thuốc tròn 2 đầu.
+   - `fontSize: fontSizeMd` (`13px`), `fontWeight: fontWeightMedium` (`500`).
+   - `padding: '2px 10px'`, `whiteSpace: 'nowrap'`, `display: 'inline-flex'`.
+   - Màu nền `background: ${color}15` (15% opacity), viền `border: 1px solid ${color}40` (40% opacity), màu chữ `${color}`.
+
+### Quy chuẩn căn lề cột và hiển thị Badge (Alignment Standards):
+- **Cột STT / Thao tác**: Căn giữa (`align: 'center'`).
+- **Cột Văn bản / Tên / Mã / Địa điểm / Đơn vị / Cán bộ cập nhật / Tình trạng / Trạng thái**: Mặc định **căn trái (`align: 'left'`)** để Badge và tiêu đề thẳng hàng đồng bộ với các cột nội dung.
+- **Cột Số liệu / Chiều dài / Diện tích / Tải trọng / Công suất**: Căn phải (`align: 'right'`), có định dạng phân cách hàng nghìn (`#,###.##`).
 
 ## Kết cấu chuẩn
 

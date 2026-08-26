@@ -61,10 +61,16 @@ const getProvinceLabel = (provinceId?: string): string =>
 
 // Status badge — semantic tokens (AGENTS.md: không hardcode màu), label từ RADAR_STATION_STATUS_MAP
 const RADAR_STATION_STATUS_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  DRAFT: { color: statusDraft, label: RADAR_STATION_STATUS_MAP.DRAFT.label },
-  PENDING_APPROVAL: { color: statusAttention, label: RADAR_STATION_STATUS_MAP.PENDING_APPROVAL.label },
-  APPROVED: { color: statusOperational, label: RADAR_STATION_STATUS_MAP.APPROVED.label },
-  REJECTED: { color: statusCritical, label: RADAR_STATION_STATUS_MAP.REJECTED.label },
+  DRAFT: { color: statusDraft, label: RADAR_STATION_STATUS_MAP.DRAFT?.label || 'Lưu tạm' },
+  PROPOSED: { color: statusAttention, label: RADAR_STATION_STATUS_MAP.PROPOSED?.label || 'Chờ Cảng vụ duyệt' },
+  PENDING: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
+  PENDING_APPROVAL: { color: statusAttention, label: RADAR_STATION_STATUS_MAP.PENDING_APPROVAL?.label || 'Chờ Cảng vụ duyệt' },
+  APPROVED_LEVEL1: { color: '#0284C7', label: RADAR_STATION_STATUS_MAP.APPROVED_LEVEL1?.label || 'Chờ Cục duyệt' },
+  APPROVED_LEVEL2: { color: statusOperational, label: RADAR_STATION_STATUS_MAP.APPROVED_LEVEL2?.label || 'Đã duyệt' },
+  APPROVED: { color: statusOperational, label: RADAR_STATION_STATUS_MAP.APPROVED?.label || 'Đã duyệt' },
+  REJECTED: { color: statusCritical, label: RADAR_STATION_STATUS_MAP.REJECTED?.label || 'Từ chối' },
+  REJECTED_LEVEL1: { color: statusCritical, label: RADAR_STATION_STATUS_MAP.REJECTED_LEVEL1?.label || 'Cảng vụ trả về' },
+  REJECTED_LEVEL2: { color: statusCritical, label: RADAR_STATION_STATUS_MAP.REJECTED_LEVEL2?.label || 'Cục trả về' },
 };
 
 export default function RadarStationForm({ open, editId, mode, onCancel, onSuccess }: RadarStationFormProps = {}) {

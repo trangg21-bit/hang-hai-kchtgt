@@ -1,11 +1,11 @@
 package com.hanghai.kchtg.common.service;
 
 import com.hanghai.kchtg.common.entity.ApprovableEntity;
-import com.hanghai.kchtg.common.entity.ApprovalHistory;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitRank;
@@ -33,7 +33,7 @@ import static org.mockito.Mockito.*;
 class InfrastructureApprovalServiceTest {
 
     @Mock
-    private ApprovalHistoryRepository historyRepository;
+    private InfrastructureHistoryRepository historyRepository;
 
     @Mock
     private UserRepository userRepository;
@@ -113,7 +113,7 @@ class InfrastructureApprovalServiceTest {
         approvalService.submit(entity, InfrastructureType.VTS_SYSTEM, userIdCangVu);
 
         assertThat(entity.getApprovalStatus()).isEqualTo(ApprovalStatus.PENDING_APPROVAL);
-        verify(historyRepository).save(any(ApprovalHistory.class));
+        verify(historyRepository).save(any(InfrastructureHistory.class));
     }
 
     @Test
@@ -125,7 +125,7 @@ class InfrastructureApprovalServiceTest {
         approvalService.submit(entity, InfrastructureType.VTS_SYSTEM, userIdCuc);
 
         assertThat(entity.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED_LEVEL1);
-        verify(historyRepository).save(any(ApprovalHistory.class));
+        verify(historyRepository).save(any(InfrastructureHistory.class));
     }
 
     @Test
@@ -176,7 +176,7 @@ class InfrastructureApprovalServiceTest {
     }
 
     @Test
-    @DisplayName("Approve C2 vi phạm 4-eyes (trùng người duyệt C1) -> Ném ngoại lệ IllegalStateException")
+    @DisplayName("Approve C2 vi phạm chống tự duyệt (trùng người duyệt C1) -> Ném ngoại lệ IllegalStateException")
     void testApproveC2_ViolationFourEyes_SameApprover() {
         TestEntity entity = new TestEntity();
         entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
@@ -184,11 +184,11 @@ class InfrastructureApprovalServiceTest {
 
         assertThatThrownBy(() -> approvalService.approveC2(entity, InfrastructureType.VTS_SYSTEM, "APPROVED", "Duyệt C2", userIdC1))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("4-eyes principle");
+                .hasMessageContaining("Người phê duyệt cấp Cục không được trùng");
     }
 
     @Test
-    @DisplayName("Approve C2 vi phạm 4-eyes (người tạo tự duyệt) -> Ném ngoại lệ IllegalStateException")
+    @DisplayName("Approve C2 vi phạm chống tự duyệt (người tạo tự duyệt) -> Ném ngoại lệ IllegalStateException")
     void testApproveC2_ViolationFourEyes_CreatorSelfApprove() {
         TestEntity entity = new TestEntity();
         entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
@@ -239,7 +239,7 @@ class InfrastructureApprovalServiceTest {
     }
 
     @Test
-    @DisplayName("Approve C1 vi phạm 4-eyes (người tạo tự duyệt) -> Ném ngoại lệ IllegalStateException")
+    @DisplayName("Approve C1 vi phạm chống tự duyệt (người tạo tự duyệt) -> Ném ngoại lệ IllegalStateException")
     void testApproveC1_ViolationFourEyes_CreatorSelfApprove() {
         TestEntity entity = new TestEntity();
         entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
@@ -247,7 +247,7 @@ class InfrastructureApprovalServiceTest {
 
         assertThatThrownBy(() -> approvalService.approveC1(entity, InfrastructureType.VTS_SYSTEM, "APPROVED", "Duyệt C1", userIdC1))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Bạn không thể phê duyệt bản do chính mình gửi");
+                .hasMessageContaining("Bạn không thể tự phê duyệt");
     }
 
     @Test

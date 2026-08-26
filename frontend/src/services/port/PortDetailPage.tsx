@@ -12,7 +12,7 @@ import {
 } from '@ant-design/icons';
 import toast from '../../components/ToastNotification';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { fetchCangBienById, deleteCangBien, approveCangBien, rejectCangBien } from './api';
+import { fetchCangBienById, deleteCangBien } from './api';
 import { trangThaiHoatDongBadge, trangThaiPheDuyetBadge } from './schema';
 import type { CangBienResponse } from './types';
 import { documentApi } from '../../app/document/api';

@@ -36,8 +36,8 @@ export function normalizeSearchText(value: unknown): string {
  * Dùng để hiển thị Đơn vị quản lý đồng nhất giữa danh sách và chi tiết:
  * chain[0] = cấp cao nhất (level 1), cấp 2 = chain[1]; nếu không có cấp 2 thì trả chính đơn vị.
  */
-export function resolveOrgLevel2Name(orgUnits: readonly OrgUnitTreeOption[], orgUnitId?: string | null): string | undefined {
-  if (!orgUnitId) return undefined;
+export function resolveOrgLevel2Name(orgUnits: readonly OrgUnitTreeOption[] = [], orgUnitId?: string | null): string | undefined {
+  if (!orgUnitId || !Array.isArray(orgUnits) || orgUnits.length === 0) return undefined;
   const byId = new Map<string, OrgUnitTreeOption>(orgUnits.map((o) => [o.id, o]));
   const chain: OrgUnitTreeOption[] = [];
   let cur: OrgUnitTreeOption | undefined = byId.get(orgUnitId);
@@ -54,8 +54,8 @@ export function resolveOrgLevel2Name(orgUnits: readonly OrgUnitTreeOption[], org
  * Chuỗi tên từ cấp 2 đến cấp cuối của đơn vị (vd: "Cảng vụ X / Đội Y") —
  * dùng cho dòng Đơn vị quản lý ở chi tiết: hiện "cấp trước đó / cấp cuối".
  */
-export function resolveOrgTailPath(orgUnits: readonly OrgUnitTreeOption[], orgUnitId?: string | null): string | undefined {
-  if (!orgUnitId) return undefined;
+export function resolveOrgTailPath(orgUnits: readonly OrgUnitTreeOption[] = [], orgUnitId?: string | null): string | undefined {
+  if (!orgUnitId || !Array.isArray(orgUnits) || orgUnits.length === 0) return undefined;
   const byId = new Map<string, OrgUnitTreeOption>(orgUnits.map((o) => [o.id, o]));
   const chain: OrgUnitTreeOption[] = [];
   let cur: OrgUnitTreeOption | undefined = byId.get(orgUnitId);
@@ -72,8 +72,8 @@ export function resolveOrgTailPath(orgUnits: readonly OrgUnitTreeOption[], orgUn
  * Danh sách tên đầy đủ các cấp của đơn vị (cấp cao nhất → đơn vị cuối) —
  * dùng cho dòng Đơn vị quản lý ở chi tiết: hiện đủ cấp, màu chữ giảm dần.
  */
-export function resolveOrgFullPath(orgUnits: readonly OrgUnitTreeOption[], orgUnitId?: string | null): string[] | undefined {
-  if (!orgUnitId) return undefined;
+export function resolveOrgFullPath(orgUnits: readonly OrgUnitTreeOption[] = [], orgUnitId?: string | null): string[] | undefined {
+  if (!orgUnitId || !Array.isArray(orgUnits) || orgUnits.length === 0) return undefined;
   const byId = new Map<string, OrgUnitTreeOption>(orgUnits.map((o) => [o.id, o]));
   const chain: OrgUnitTreeOption[] = [];
   let cur: OrgUnitTreeOption | undefined = byId.get(orgUnitId);
@@ -87,13 +87,35 @@ export function resolveOrgFullPath(orgUnits: readonly OrgUnitTreeOption[], orgUn
 }
 
 /**
+ * Lấy tập hợp tất cả ID của đơn vị gốc và toàn bộ đơn vị cấp con/cháu bên dưới.
+ * Dùng cho logic lọc Cascading (chọn Cục -> hiển thị KCHT thuộc Cục và toàn bộ Cảng vụ con).
+ */
+export function resolveOrgSubtreeIds(orgUnits: readonly OrgUnitTreeOption[] = [], rootOrgUnitId?: string | null): Set<string> {
+  const result = new Set<string>();
+  if (!rootOrgUnitId || !Array.isArray(orgUnits)) return result;
+  result.add(rootOrgUnitId);
+  const queue = [rootOrgUnitId];
+  while (queue.length > 0) {
+    const parentId = queue.shift()!;
+    for (const org of orgUnits) {
+      if (org.parentId === parentId && !result.has(org.id)) {
+        result.add(org.id);
+        queue.push(org.id);
+      }
+    }
+  }
+  return result;
+}
+
+/**
  * Dựng cây từ danh sách phẳng. Có thể tái sử dụng cho Tree, Cascader hoặc
  * các component khác cần cùng một cấu trúc đơn vị.
  */
-export function buildOrgUnitTreeData(options: readonly OrgUnitTreeOption[]): OrgUnitTreeNode[] {
+export function buildOrgUnitTreeData(options: readonly OrgUnitTreeOption[] = []): OrgUnitTreeNode[] {
+  const safeOptions = Array.isArray(options) ? options : [];
   const nodes = new Map<string, OrgUnitTreeNode>();
 
-  options.forEach((option) => {
+  safeOptions.forEach((option) => {
     nodes.set(option.id, {
       key: option.id,
       value: option.id,
@@ -103,7 +125,7 @@ export function buildOrgUnitTreeData(options: readonly OrgUnitTreeOption[]): Org
   });
 
   const roots: OrgUnitTreeNode[] = [];
-  options.forEach((option) => {
+  safeOptions.forEach((option) => {
     const node = nodes.get(option.id);
     const parent = option.parentId ? nodes.get(option.parentId) : undefined;
     if (!node) return;
@@ -130,7 +152,7 @@ export function buildOrgUnitTreeData(options: readonly OrgUnitTreeOption[]): Org
 
 export interface OrgUnitTreeSelectProps
   extends Omit<TreeSelectProps, 'treeData'> {
-  organizations: readonly OrgUnitTreeOption[];
+  organizations?: readonly OrgUnitTreeOption[];
   /** Hiển thị đường dẫn đầy đủ (cấp cao nhất → cấp được chọn) trên thanh select. */
   showPath?: boolean;
   /** Hiển thị item đầu tiên "Tất cả" (value = '__all__') cùng cấp với cấp ngoài cùng — dùng cho bộ lọc. */
@@ -142,7 +164,7 @@ export interface OrgUnitTreeSelectProps
  * Các màn hình chỉ cần truyền danh sách đơn vị và dùng value trả về làm orgUnitId.
  */
 export default function OrgUnitTreeSelect({
-  organizations,
+  organizations = [],
   style,
   showSearch = true,
   treeDefaultExpandAll = true,
@@ -153,7 +175,8 @@ export default function OrgUnitTreeSelect({
   ...props
 }: OrgUnitTreeSelectProps) {
   const treeData = useMemo(() => {
-    const built = buildOrgUnitTreeData(organizations);
+    const list = Array.isArray(organizations) ? organizations : [];
+    const built = buildOrgUnitTreeData(list);
     const base = allLabel
       ? [{ key: '__all__', value: '__all__', title: allLabel }, ...built]
       : built;
@@ -161,7 +184,7 @@ export default function OrgUnitTreeSelect({
 
     // Gắn label = đường dẫn đầy đủ (cấp cao nhất → cấp được chọn) cho từng node.
     // title giữ tên ngắn cho dropdown; label chỉ dùng để hiển thị trên thanh select.
-    const byId = new Map<string, OrgUnitTreeOption>(organizations.map((o) => [o.id, o]));
+    const byId = new Map<string, OrgUnitTreeOption>(list.map((o) => [o.id, o]));
     const pathOf = (o: OrgUnitTreeOption): string => {
       const parts: string[] = [];
       let cur: OrgUnitTreeOption | undefined = o;

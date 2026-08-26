@@ -278,12 +278,20 @@ public class WaterZoneService {
             });
         }
 
-        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        ApprovalStatus previousApprovalStatus = snapshot.getApprovalStatus();
+        boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
+                || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
+
+        if (wasApproved) {
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        }
 
         WaterZone saved = waterZoneRepository.save(entity);
 
-        // changeHistoryService.recordChanges("WaterZone", saved.getId().toString(),
-        // "system", snapshot, saved);
+        if (wasApproved) {
+            changeHistoryService.recordChanges("WaterZone", saved.getId().toString(),
+                    "system", snapshot, saved);
+        }
 
         log.info("Updated WaterZone [{}] code={}", saved.getId(), saved.getWaterZoneCode());
         return toResponse(saved);

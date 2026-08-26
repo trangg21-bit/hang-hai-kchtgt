@@ -1,7 +1,11 @@
 package com.hanghai.kchtg.port.service.shared;
 
 import com.hanghai.kchtg.common.entity.EntityFields;
-
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.port.entity.ChangeLog;
 import com.hanghai.kchtg.port.repository.ChangeLogRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +23,7 @@ import java.util.UUID;
  * Service for inserting change history records.
  * <p>
  * INSERT-only — no update or delete operations. Each call persists
- * a single change-record row into the lich_su_thay_doi table (INT-003a fix).
+ * a change record into the infrastructure_history table.
  * Called within the same @Transactional as the entity mutation.
  * </p>
  */
@@ -28,7 +32,30 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ChangeHistoryService {
 
+    private final InfrastructureHistoryRepository historyRepository;
     private final ChangeLogRepository changeLogRepository;
+
+    public static InfrastructureType resolveInfrastructureType(String entityName) {
+        if (entityName == null) return InfrastructureType.SEAPORT;
+        return switch (entityName.toUpperCase()) {
+            case "PORT", "CANG_BIEN", "SEAPORT" -> InfrastructureType.SEAPORT;
+            case "BERTH", "BEN_CANG", "PORT_TERMINAL" -> InfrastructureType.PORT_TERMINAL;
+            case "PIER", "CAU_CANG" -> InfrastructureType.PIER;
+            case "DRYPORT", "DRY_PORT", "CANG_CAN" -> InfrastructureType.DRY_PORT;
+            case "WATERZONE", "WATER_ZONE", "VUNG_NUOC", "WATER_AREA" -> InfrastructureType.WATER_AREA;
+            case "BUOY", "PHAO_TIEU" -> InfrastructureType.BUOY;
+            case "BUOYSTATION", "BUOY_STATION", "TRAM_PHAO" -> InfrastructureType.BUOY_STATION;
+            case "DIKEREVETMENT", "DIKE_REVETMENT", "DE_KE" -> InfrastructureType.DIKE_REVETMENT;
+            case "NAVIGATIONCHANNEL", "NAVIGATION_CHANNEL", "LUONG_HANG_HAI" -> InfrastructureType.NAVIGATION_CHANNEL;
+            case "VTSSYSTEM", "VTS_SYSTEM" -> InfrastructureType.VTS_SYSTEM;
+            case "VTSOPERATIONCENTER", "VTS_OPERATION_CENTER" -> InfrastructureType.VTS_OPERATION_CENTER;
+            case "RADARSTATION", "RADAR_STATION" -> InfrastructureType.RADAR_STATION;
+            case "AISSYSTEM", "AIS_SYSTEM" -> InfrastructureType.AIS_SYSTEM;
+            case "BEACONSTATION", "BEACON_STATION", "DEN_BIEN" -> InfrastructureType.LIGHTHOUSE;
+            case "SHIPREPAIRFACILITY", "SHIP_REPAIR_FACILITY" -> InfrastructureType.SHIP_REPAIR_FACILITY;
+            default -> InfrastructureType.SEAPORT;
+        };
+    }
 
     /**
      * Compare old and new entity values field-by-field and record changes.
@@ -49,6 +76,16 @@ public class ChangeHistoryService {
                 actualActor = auth.getName();
             }
         }
+
+        UUID userUuid = null;
+        try {
+            if (actualActor != null) userUuid = UUID.fromString(actualActor);
+        } catch (Exception ignored) {}
+
+        UUID refUuid = null;
+        try {
+            if (entityId != null) refUuid = UUID.fromString(entityId);
+        } catch (Exception ignored) {}
 
         List<String> changedFields = new ArrayList<>();
         Class<?> clazz = oldEntity.getClass();
@@ -74,20 +111,34 @@ public class ChangeHistoryService {
                     log.info("ChangeHistory: FIELD CHANGE {} [{}] {} = [{}] -> [{}]",
                             entityName, entityId, fieldName, oldValueStr, newValueStr);
 
-                    // Insert a ChangeLog record into the database
-                    ChangeLog history = ChangeLog.builder()
-                            .id(UUID.randomUUID())
-                            .entityType(entityName)
-                            .entityId(entityId)
-                            .fieldName(fieldName)
-                            .oldValue(oldValueStr)
-                            .newValue(newValueStr)
-                            .changedBy(actualActor)
-                            .changedAt(LocalDateTime.now())
-                            .createdAt(LocalDateTime.now())
-                            .build();
+                    if (refUuid != null && historyRepository != null) {
+                        historyRepository.save(InfrastructureHistory.builder()
+                                .refId(refUuid)
+                                .refType(resolveInfrastructureType(entityName))
+                                .approvalLevel(ApprovalLevel.LEVEL_0)
+                                .status(InfrastructureHistoryStatus.UPDATED)
+                                .approvedBy(userUuid)
+                                .approvedDate(LocalDateTime.now())
+                                .changedField(fieldName)
+                                .previousValue(oldValueStr)
+                                .newValue(newValueStr)
+                                .build());
+                    }
 
-                    changeLogRepository.save(history);
+                    if (changeLogRepository != null) {
+                        ChangeLog history = ChangeLog.builder()
+                                .id(UUID.randomUUID())
+                                .entityType(entityName)
+                                .entityId(entityId)
+                                .fieldName(fieldName)
+                                .oldValue(oldValueStr)
+                                .newValue(newValueStr)
+                                .changedBy(actualActor)
+                                .changedAt(LocalDateTime.now())
+                                .createdAt(LocalDateTime.now())
+                                .build();
+                        changeLogRepository.save(history);
+                    }
                     changedFields.add(fieldName);
                 }
             } catch (IllegalAccessException e) {
@@ -162,22 +213,41 @@ public class ChangeHistoryService {
                 actualActor = auth.getName();
             }
         }
-        log.debug("ChangeHistory INSERT: {} [{}] {} = [{}] -> [{}]",
-                entityType, entityId, fieldName, oldValue, newValue);
+        UUID userUuid = null;
+        try {
+            if (actualActor != null) userUuid = UUID.fromString(actualActor);
+        } catch (Exception ignored) {}
 
-        ChangeLog record = ChangeLog.builder()
-                .entityType(entityType)
-                .entityId(entityId.toString())
-                .fieldName(fieldName)
-                .oldValue(oldValue)
-                .newValue(newValue)
-                .changedBy(actualActor)
-                .changedAt(LocalDateTime.now())
-                .createdAt(LocalDateTime.now())
-                .build();
+        if (entityId != null && historyRepository != null) {
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(entityId)
+                    .refType(resolveInfrastructureType(entityType))
+                    .approvalLevel(ApprovalLevel.LEVEL_0)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(userUuid)
+                    .approvedDate(LocalDateTime.now())
+                    .changedField(fieldName)
+                    .previousValue(oldValue)
+                    .newValue(newValue)
+                    .build());
+        }
 
-        changeLogRepository.save(record);
-        return record.getId();
+        if (changeLogRepository != null) {
+            ChangeLog record = ChangeLog.builder()
+                    .entityType(entityType)
+                    .entityId(entityId.toString())
+                    .fieldName(fieldName)
+                    .oldValue(oldValue)
+                    .newValue(newValue)
+                    .changedBy(actualActor)
+                    .changedAt(LocalDateTime.now())
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            changeLogRepository.save(record);
+            return record.getId();
+        }
+        return UUID.randomUUID();
     }
 
     /**

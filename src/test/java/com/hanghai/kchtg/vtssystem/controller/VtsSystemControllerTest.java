@@ -26,6 +26,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -84,23 +85,31 @@ class VtsSystemControllerTest {
 
     @Test
     void testFindAll() {
-        when(service.findAllWithSearchAndCounts(null, null, null, null, null, 0, 20, true)).thenReturn(VtsSystemListResponse.builder().build());
-        ResponseEntity<?> result = controller.findAll(null, null, null, null, null, 0, 20, true);
+        when(service.findAllWithSearchAndCounts(null, null, null, null, null, 0, 20, true, null)).thenReturn(VtsSystemListResponse.builder().build());
+        ResponseEntity<?> result = controller.findAll(null, null, null, null, null, 0, 20, true, null);
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 
     @Test
     void testFindAll_WithoutIncludeCounts() {
-        when(service.findAllWithSearchAndCounts(null, null, null, null, null, 0, 20, false)).thenReturn(VtsSystemListResponse.builder().build());
-        ResponseEntity<?> result = controller.findAll(null, null, null, null, null, 0, 20, false);
+        when(service.findAllWithSearchAndCounts(null, null, null, null, null, 0, 20, false, null)).thenReturn(VtsSystemListResponse.builder().build());
+        ResponseEntity<?> result = controller.findAll(null, null, null, null, null, 0, 20, false, null);
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 
     @Test
     void testFindAll_WithYearFilter() {
-        when(service.findAllWithSearchAndCounts(null, "keyword", null, null, 2025, 0, 20, true))
+        when(service.findAllWithSearchAndCounts(null, "keyword", null, null, 2025, 0, 20, true, null))
                 .thenReturn(VtsSystemListResponse.builder().build());
-        ResponseEntity<?> result = controller.findAll(null, "keyword", null, null, 2025, 0, 20, true);
+        ResponseEntity<?> result = controller.findAll(null, "keyword", null, null, 2025, 0, 20, true, null);
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+    }
+
+    @Test
+    void testFindAll_WithSortParam() {
+        when(service.findAllWithSearchAndCounts(null, null, null, null, null, 0, 20, true, "systemName,asc"))
+                .thenReturn(VtsSystemListResponse.builder().build());
+        ResponseEntity<?> result = controller.findAll(null, null, null, null, null, 0, 20, true, "systemName,asc");
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 
@@ -150,11 +159,15 @@ class VtsSystemControllerTest {
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 
+    /**
+     * Controller không còn bắt Exception rồi quy hết về 400: lỗi được đẩy lên
+     * GlobalExceptionHandler để ánh xạ đúng mã (400 cho dữ liệu sai, 404 cho
+     * không tìm thấy, 500 cho lỗi hệ thống) thay vì che mất lỗi thật.
+     */
     @Test
-    void testCreate_WithException() {
-        when(service.create(any(), any())).thenThrow(new RuntimeException("Test error"));
-        ResponseEntity<?> result = controller.create(createRequest, mockAuth());
-        assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
+    void testCreate_PropagatesExceptionToGlobalHandler() {
+        when(service.create(any(), any())).thenThrow(new IllegalArgumentException("Test error"));
+        assertThrows(IllegalArgumentException.class, () -> controller.create(createRequest, mockAuth()));
     }
 
     @Test

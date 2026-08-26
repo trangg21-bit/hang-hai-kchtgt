@@ -1,13 +1,23 @@
 server:
-  max-http-header-size: 32KB
-  max-http-request-header-size: 32KB
+  max-http-header-size: 2MB
+  max-http-request-header-size: 2MB
   tomcat:
-    max-http-header-size: 32KB
-
+    max-http-header-size: 2MB
+    max-swallow-size: 50MB
 
 spring:
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 20MB
+      max-request-size: 50MB
   application:
     name: kchtg-m001-quan-tri-he-thong
+  devtools:
+    restart:
+      enabled: false
+    livereload:
+      enabled: false
   # Default profile (dev with H2)
   profiles:
     active: local
@@ -159,7 +169,7 @@ spring:
     baseline-on-migrate: true
     validate-on-migrate: false
   datasource:
-    url: ${SPRING_DATASOURCE_POSTGIS_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:vmd_csdl_v2_dev}}
+    url: ${SPRING_DATASOURCE_POSTGIS_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:vmd_csdl_v2}}
     driver-class-name: org.postgresql.Driver
     username: ${SPRING_DATASOURCE_POSTGIS_USERNAME:${DB_USER:admin}}
     # TODO(production): drop the fallback and require DB_PASS.

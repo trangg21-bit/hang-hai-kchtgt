@@ -9,8 +9,8 @@ export interface StatusTab {
   key: string;
   label: string;
   count: number;
-  color: string;
-  active: boolean;
+  color?: string;
+  active?: boolean;
 }
 
 export interface FilterTableLayoutProps {
@@ -36,6 +36,8 @@ export interface FilterTableLayoutProps {
   loading?: boolean;
   /** Error state */
   error?: boolean;
+  /** Nguyên nhân lỗi cụ thể; bỏ trống thì hiện thông báo chung */
+  errorMessage?: string;
   /** Called when retry button clicked */
   onRetry?: () => void;
   /** Table content or any children to render in the main area */
@@ -58,6 +60,7 @@ export default function FilterTableLayout({
   hideStatusTabs = false,
   loading,
   error,
+  errorMessage,
   onRetry,
   children,
 }: FilterTableLayoutProps) {
@@ -67,7 +70,7 @@ export default function FilterTableLayout({
       <div
         style={{
           ...cardStyle,
-          width: 364,
+          width: 280,
           flexShrink: 0,
           display: 'flex',
           flexDirection: 'column',
@@ -86,7 +89,7 @@ export default function FilterTableLayout({
             icon={<ReloadOutlined />}
             onClick={onFilterReset}
             shape="circle"
-            style={{ color: textSecondary, borderColor: borderDefault, width: 38, height: 38, fontSize: fontSizeMd }}
+            style={{ color: textSecondary, borderColor: borderDefault, width: 38, height: 38, fontSize: fontSizeMd, flexShrink: 0 }}
           />
           <Button
             type="primary"
@@ -101,10 +104,18 @@ export default function FilterTableLayout({
               icon={<FilterOutlined />}
               onClick={onToggleCollapse}
               shape="circle"
-              style={{ color: filterCollapsed ? actionPrimary : textSecondary, borderColor: filterCollapsed ? actionPrimary : borderDefault, width: 38, height: 38, fontSize: fontSizeMd }}
+              title={filterCollapsed ? 'Thu gọn bộ lọc nâng cao' : 'Mở rộng bộ lọc nâng cao'}
+              style={{
+                color: filterCollapsed ? actionPrimary : textSecondary,
+                borderColor: filterCollapsed ? actionPrimary : borderDefault,
+                width: 38,
+                height: 38,
+                fontSize: fontSizeMd,
+                flexShrink: 0,
+              }}
             />
           ) : (
-            <div style={{ width: 38, height: 38 }} aria-hidden="true" />
+            <div style={{ width: 38, height: 38, flexShrink: 0 }} aria-hidden="true" />
           )}
         </div>
       </div>
@@ -123,7 +134,7 @@ export default function FilterTableLayout({
           <Spin spinning={loading ?? false} classNames={{ root: 'filter-table-spin' }} style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
             {error ? (
               <div style={{ textAlign: 'center', padding: 40 }}>
-                <p>Đã xảy ra lỗi khi tải danh sách.</p>
+                <p>{errorMessage || 'Đã xảy ra lỗi khi tải danh sách.'}</p>
                 {onRetry && <Button onClick={onRetry}>Thử lại</Button>}
               </div>
             ) : (

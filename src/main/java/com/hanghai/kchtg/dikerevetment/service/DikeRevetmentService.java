@@ -1,47 +1,47 @@
 package com.hanghai.kchtg.dikerevetment.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.EntityFields;
-
-import com.hanghai.kchtg.common.entity.ApprovalHistory;
-import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+import com.hanghai.kchtg.common.util.EntityUpdateUtils;
+import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
 import com.hanghai.kchtg.dikerevetment.dto.*;
-import com.hanghai.kchtg.dikerevetment.entity.*;
-import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
-import java.time.LocalDateTime;
+import com.hanghai.kchtg.dikerevetment.entity.DikeRevetment;
+import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentAttachment;
+import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
 import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentAttachmentRepository;
 import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentRepository;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService.Scope;
 import com.hanghai.kchtg.port.service.PortCacheService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
-import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
-import com.hanghai.kchtg.security.AdminAutoApproval;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+import java.time.LocalDateTime;
+import java.util.*;
 
 /**
- * Service for DikeRevetment (F-044 to F-049).
+ * Service for DikeRevetment (F-044 to F-049) complying with M-1006 2-level approval architecture.
  */
 @Service
 @RequiredArgsConstructor
@@ -50,20 +50,38 @@ public class DikeRevetmentService {
 
     private final DikeRevetmentRepository repo;
     private final DikeRevetmentAttachmentRepository attachmentRepo;
-    private final ApprovalHistoryRepository approvalHistoryRepo;
+    private final InfrastructureHistoryRepository approvalHistoryRepo;
     private final InfrastructureApprovalService approvalService;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final OrgUnitCacheService orgUnitCacheService;
+    private final OrgUnitScopeService orgUnitScopeService;
     private final PortCacheService portCacheService;
     private final UserResolverService userResolverService;
 
+    private Scope resolveEffectiveScope(UUID explicitOrgUnitId) {
+        Scope userScope = orgUnitScopeService.currentUserScope();
+        if (explicitOrgUnitId == null) {
+            return userScope;
+        }
+        if (!userScope.allows(explicitOrgUnitId)) {
+            throw new org.springframework.security.access.AccessDeniedException("Bạn không có quyền truy cập dữ liệu của đơn vị này");
+        }
+        return userScope;
+    }
+
+    private void validateAllowedOrgUnit(UUID orgUnitId) {
+        if (orgUnitId != null && !orgUnitScopeService.currentUserScope().allows(orgUnitId)) {
+            throw new org.springframework.security.access.AccessDeniedException("Bạn không có quyền thao tác trên đơn vị này");
+        }
+    }
+
     @Transactional
-    public DikeRevetmentResponse create(DikeRevetmentCreateRequest req, java.util.UUID userId) {
+    public DikeRevetmentResponse create(DikeRevetmentCreateRequest req, UUID userId) {
         FieldWriteGuard.validateObject(req);
-        RecordSecurityLevel secLevel = req.getSecurityLevel() != null ? req.getSecurityLevel()
-                : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "dikerevetment", SecurityUtils.getCurrentUserPermissions(),
-                SecurityUtils.isElevatedAdministrator());
+        RecordSecurityLevel secLevel = req.getSecurityLevel() != null ? req.getSecurityLevel() : RecordSecurityLevel.NORMAL;
+        RecordSecurityLevel.validateAssignment(secLevel, "dikerevetment", SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+
+        validateAllowedOrgUnit(req.getOrgUnitId());
 
         String code = req.getCode() != null && !req.getCode().trim().isEmpty()
                 ? req.getCode().trim()
@@ -81,13 +99,11 @@ public class DikeRevetmentService {
                 .commissioningDate(req.getCommissioningDate())
                 .height(req.getHeight())
                 .surfaceMaterial(req.getSurfaceMaterial())
-                .status(req.getStatus())
+                .status(req.getStatus() != null ? req.getStatus() : "1")
                 .note(req.getNote())
                 .orgUnitId(req.getOrgUnitId())
                 .symbolId(req.getSymbolId())
-                .approvalStatus(ApprovalStatus.PROPOSED)
-                .isApprovedLevel1(false)
-                .isApprovedLevel2(false)
+                .approvalStatus(ApprovalStatus.DRAFT)
                 .createdBy(userId)
                 .build();
 
@@ -96,368 +112,287 @@ public class DikeRevetmentService {
         if (req.getCoordinates() != null && !req.getCoordinates().trim().isEmpty()) {
             GisGeometryType geomType = req.getGeometryType() != null ? req.getGeometryType() : GisGeometryType.LINE;
             GisSpatialObjectType objType = getSpatialObjectType(geomType);
-            UUID refId = dr.getId();
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     null,
-                    "Đê kè tại " + req.getLocation(),
-                    "DIR_" + dr.getId(),
+                    dr.getDikeRevetmentName(),
+                    dr.getCode(),
                     geomType,
                     objType,
                     req.getCoordinates(),
-                    refId,
-                    InfrastructureType.DIKE_REVETMENT);
+                    dr.getId(),
+                    InfrastructureType.DIKE_REVETMENT
+            );
             dr.setSpatialId(spatialObj.getId());
             dr = repo.save(dr);
         }
 
-        // Save attachments if provided
-        if (req.getAttachments() != null && !req.getAttachments().isEmpty()) {
-            for (DikeRevetmentCreateRequest.DikeRevetmentAttachmentCreate attReq : req.getAttachments()) {
-                DikeRevetmentAttachment att = DikeRevetmentAttachment.builder()
-                        .dikeRevetment(dr)
-                        .fileName(attReq.getFileName())
-                        .filePath(attReq.getFilePath())
-                        .fileSize(attReq.getFileSize())
-                        .documentType(attReq.getDocumentType())
-                        .uploadedBy(attReq.getUploadedBy())
-                        .build();
-                dr.getAttachments().add(att);
-            }
-            dr = repo.save(dr);
-        }
+        approvalHistoryRepo.save(InfrastructureHistory.builder()
+                .refId(dr.getId())
+                .refType(InfrastructureType.DIKE_REVETMENT)
+                .approvalLevel(ApprovalLevel.LEVEL_0)
+                .status(InfrastructureHistoryStatus.CREATED)
+                .approvedBy(userId)
+                .reason("Tạo mới đê kè (Lưu tạm)")
+                .build());
 
         return toResponse(dr);
     }
 
     @Transactional(readOnly = true)
-    public String generateDikeRevetmentCode() {
-        String maxCode = repo.findMaxCode();
-        int nextNumber = 1;
-        if (maxCode != null && maxCode.startsWith("DK-")) {
-            try {
-                String numPart = maxCode.substring(3);
-                nextNumber = Integer.parseInt(numPart) + 1;
-            } catch (NumberFormatException e) {
-                log.debug("Mã đê kè không đúng định dạng DK-XXXXXX: {}, bắt đầu từ 1", maxCode);
-            }
-        }
-        String code = String.format("DK-%06d", nextNumber);
-        log.info("Sinh mã đê kè: {}", code);
-        return code;
-    }
-
-    @Transactional(readOnly = true)
     public DikeRevetmentResponse getById(UUID id) {
-        return toResponse(repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id)));
+        DikeRevetment dr = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đê kè với id: " + id));
+        if (dr.getDeletedAt() != null || dr.getApprovalStatus() == ApprovalStatus.ARCHIVED) {
+            throw new RuntimeException("Đê kè đã bị xóa hoặc lưu trữ");
+        }
+        return toResponse(dr);
     }
 
     @Transactional(readOnly = true)
-    public List<DikeRevetmentResponse> findAll() {
-        return repo.findByDeletedAtIsNull(Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT))
-                .stream().map(this::toResponse).collect(Collectors.toList());
+    public List<DikeRevetmentResponse> findAll(int page, int size) {
+        Scope scope = resolveEffectiveScope(null);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "updatedAt"));
+        return repo.searchPaged(!scope.unrestricted(), scope.orgUnitIds(), null, null, null, null, null, null, null, null, null, pageable)
+                .map(this::toResponse)
+                .getContent();
     }
 
     @Transactional(readOnly = true)
-    public Page<DikeRevetmentResponse> findAll(int page, int size) {
-        return repo
-                .findByDeletedAtIsNull(
-                        PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)))
+    public Page<DikeRevetmentResponse> searchPaged(UUID orgUnitId, String keyword, UUID seaportId,
+                                                   DikeRevetmentType dikeRevetmentType, String conditionStatus,
+                                                   ApprovalStatus approvalStatus, UUID updatedBy,
+                                                   LocalDateTime updatedFrom, LocalDateTime updatedTo,
+                                                   Pageable pageable) {
+        Scope scope = resolveEffectiveScope(orgUnitId);
+        String keywordPattern = (keyword != null && !keyword.trim().isEmpty())
+                ? "%" + keyword.trim().toLowerCase() + "%"
+                : null;
+        return repo.searchPaged(
+                !scope.unrestricted(), scope.orgUnitIds(), orgUnitId, keywordPattern,
+                seaportId, dikeRevetmentType, conditionStatus, approvalStatus,
+                updatedBy, updatedFrom, updatedTo, pageable)
                 .map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
-    public Page<DikeRevetmentResponse> search(UUID orgUnitId, String keyword, DikeRevetmentType dikeRevetmentType,
-            String status,
-            String approvalStatusStr, int page, int size) {
-        Page<DikeRevetment> results;
-        ApprovalStatus approvalStatus = null;
-        if (approvalStatusStr != null && !approvalStatusStr.isEmpty()) {
-            try {
-                approvalStatus = ApprovalStatus.valueOf(approvalStatusStr);
-            } catch (IllegalArgumentException e) {
-                log.debug("Bỏ qua bộ lọc trạng thái không hợp lệ: {}", approvalStatusStr);
+    public Map<String, Long> getTabCounts(UUID orgUnitId, String keyword, String conditionStatus) {
+        Scope scope = resolveEffectiveScope(orgUnitId);
+        String keywordPattern = (keyword != null && !keyword.trim().isEmpty())
+                ? "%" + keyword.trim().toLowerCase() + "%"
+                : null;
+        List<Object[]> rows = repo.countByApprovalStatus(
+                !scope.unrestricted(), scope.orgUnitIds(), orgUnitId, keywordPattern, conditionStatus);
+
+        Map<String, Long> counts = new HashMap<>();
+        counts.put("", 0L);
+        counts.put("DRAFT", 0L);
+        counts.put("PENDING_APPROVAL", 0L);
+        counts.put("APPROVED_LEVEL1", 0L);
+        counts.put("REJECTED", 0L);
+        counts.put("APPROVED", 0L);
+
+        long total = 0L;
+        for (Object[] row : rows) {
+            if (row[0] == null) continue;
+            ApprovalStatus st = (ApprovalStatus) row[0];
+            long count = ((Number) row[1]).longValue();
+            total += count;
+            switch (st) {
+                case DRAFT, PROPOSED -> counts.put("DRAFT", counts.get("DRAFT") + count);
+                case PENDING_APPROVAL -> counts.put("PENDING_APPROVAL", counts.get("PENDING_APPROVAL") + count);
+                case APPROVED_LEVEL1 -> counts.put("APPROVED_LEVEL1", counts.get("APPROVED_LEVEL1") + count);
+                case REJECTED_LEVEL1, REJECTED_LEVEL2, REJECTED -> counts.put("REJECTED", counts.get("REJECTED") + count);
+                case APPROVED, APPROVED_LEVEL2 -> counts.put("APPROVED", counts.get("APPROVED") + count);
+                default -> {}
             }
         }
-        if (orgUnitId != null || (keyword != null && !keyword.isEmpty()) || dikeRevetmentType != null || status != null
-                || approvalStatus != null) {
-            results = repo.searchDocuments(orgUnitId, keyword, dikeRevetmentType, status, approvalStatus,
-                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
-        } else {
-            results = repo.findByDeletedAtIsNull(
-                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
-        }
-        return results.map(this::toResponse);
+        counts.put("", total);
+        return counts;
+    }
+
+    @Transactional(readOnly = true)
+    public List<DikeRevetmentOptionResponse> getOptions(UUID orgUnitId) {
+        return repo.findAllApprovedOptions(orgUnitId).stream()
+                .map(dr -> DikeRevetmentOptionResponse.builder()
+                        .id(dr.getId())
+                        .code(dr.getCode())
+                        .dikeRevetmentName(dr.getDikeRevetmentName())
+                        .orgUnitId(dr.getOrgUnitId())
+                        .seaportId(dr.getSeaportId())
+                        .build())
+                .toList();
     }
 
     @Transactional
-    public DikeRevetmentResponse update(UUID id, DikeRevetmentUpdateRequest req, java.util.UUID userId) {
+    public DikeRevetmentResponse update(UUID id, DikeRevetmentUpdateRequest req, UUID userId) {
         FieldWriteGuard.validateObject(req);
         DikeRevetment dr = repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đê kè với id: " + id));
 
+        if (dr.getDeletedAt() != null || dr.getApprovalStatus() == ApprovalStatus.ARCHIVED) {
+            throw new RuntimeException("Không thể chỉnh sửa đê kè đã bị xóa hoặc lưu trữ");
+        }
+
+        validateAllowedOrgUnit(dr.getOrgUnitId());
+        if (req.getOrgUnitId() != null && !req.getOrgUnitId().equals(dr.getOrgUnitId())) {
+            validateAllowedOrgUnit(req.getOrgUnitId());
+        }
+
+        ApprovalStatus previousApprovalStatus = dr.getApprovalStatus();
+        boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
+                || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
+
+        EntityUpdateUtils.copyPropertiesIfPresent(req, dr, Collections.emptyMap());
+
+        if (wasApproved) {
+            dr.setApprovalStatus(ApprovalStatus.APPROVED);
+        }
+
+        if (req.getStatus() != null) {
+            dr.setStatus(req.getStatus());
+        }
         if (req.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(req.getSecurityLevel(), "dikerevetment",
-                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
             dr.setSecurityLevel(req.getSecurityLevel());
         }
-        if (req.getDikeRevetmentType() != null)
-            dr.setDikeRevetmentType(req.getDikeRevetmentType());
-        if (req.getLocation() != null)
-            dr.setLocation(req.getLocation());
-        if (req.getDikeRevetmentName() != null)
-            dr.setDikeRevetmentName(req.getDikeRevetmentName());
-        if (req.getLength() != null)
-            dr.setLength(req.getLength());
-        if (req.getCrestElevation() != null)
-            dr.setCrestElevation(req.getCrestElevation());
-        if (req.getCommissioningDate() != null)
-            dr.setCommissioningDate(req.getCommissioningDate());
-        if (req.getHeight() != null)
-            dr.setHeight(req.getHeight());
-        if (req.getSurfaceMaterial() != null)
-            dr.setSurfaceMaterial(req.getSurfaceMaterial());
-        if (req.getStatus() != null)
-            dr.setStatus(req.getStatus());
-        if (req.getNote() != null)
-            dr.setNote(req.getNote());
-        if (req.getOrgUnitId() != null)
-            dr.setOrgUnitId(req.getOrgUnitId());
-        if (req.getSymbolId() != null)
-            dr.setSymbolId(req.getSymbolId());
+
         dr.setUpdatedBy(userId);
-
-        if (req.getCoordinates() != null) {
-            if (req.getCoordinates().trim().isEmpty()) {
-                if (dr.getSpatialId() != null) {
-                    gisSpatialObjectService.delete(dr.getSpatialId());
-                    dr.setSpatialId(null);
-                }
-            } else {
-                GisGeometryType geomType = req.getGeometryType() != null ? req.getGeometryType() : GisGeometryType.LINE;
-                GisSpatialObjectType objType = getSpatialObjectType(geomType);
-                UUID refId = dr.getId();
-                GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
-                        dr.getSpatialId(),
-                        "Đê kè tại " + dr.getLocation(),
-                        "DIR_" + dr.getId(),
-                        geomType,
-                        objType,
-                        req.getCoordinates(),
-                        refId,
-                        InfrastructureType.DIKE_REVETMENT);
-                dr.setSpatialId(spatialObj.getId());
-            }
-        } else if (dr.getSpatialId() != null && req.getLocation() != null) {
-            gisSpatialObjectService.findById(dr.getSpatialId()).ifPresent(spatialObj -> {
-                UUID refId = dr.getId();
-                gisSpatialObjectService.createOrUpdate(
-                        spatialObj.getId(),
-                        "Đê kè tại " + req.getLocation(),
-                        spatialObj.getCode(),
-                        spatialObj.getGeometryType(),
-                        spatialObj.getObjectType(),
-                        spatialObj.getCoordinates(),
-                        refId,
-                        InfrastructureType.DIKE_REVETMENT);
-            });
-        }
-
         DikeRevetment saved = repo.save(dr);
 
-        log.info("Updated DikeRevetment id={}, user={}", id, userId);
+        if (req.getCoordinates() != null && !req.getCoordinates().trim().isEmpty()) {
+            GisGeometryType geomType = req.getGeometryType() != null ? req.getGeometryType() : GisGeometryType.LINE;
+            GisSpatialObjectType objType = getSpatialObjectType(geomType);
+            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                    dr.getSpatialId(),
+                    dr.getDikeRevetmentName(),
+                    dr.getCode(),
+                    geomType,
+                    objType,
+                    req.getCoordinates(),
+                    dr.getId(),
+                    InfrastructureType.DIKE_REVETMENT
+            );
+            saved.setSpatialId(spatialObj.getId());
+            saved = repo.save(saved);
+        }
+
+        if (wasApproved) {
+            approvalHistoryRepo.save(InfrastructureHistory.builder()
+                    .refId(saved.getId())
+                    .refType(InfrastructureType.DIKE_REVETMENT)
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(userId)
+                    .reason("Cập nhật sau phê duyệt")
+                    .build());
+        }
+
         return toResponse(saved);
     }
 
     @Transactional
-    public void softDelete(UUID id) {
+    public void delete(UUID id, UUID userId) {
         DikeRevetment dr = repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đê kè với id: " + id));
 
-        // Only approved records can be soft-deleted
-        if (dr.getApprovalStatus() != ApprovalStatus.APPROVED) {
-            throw new IllegalStateException("Chi co de ke da duyet moi co the xoa mem");
-        }
+        validateAllowedOrgUnit(dr.getOrgUnitId());
 
+        InfrastructureHistoryUtils.recordSoftDelete(approvalHistoryRepo, dr.getId(), InfrastructureType.DIKE_REVETMENT, userId, "Xóa đê kè");
         dr.setDeletedAt(LocalDateTime.now());
-        if (dr.getSpatialId() != null) {
-            gisSpatialObjectService.delete(dr.getSpatialId());
+        dr.setDeletedBy(userId);
+        dr.setApprovalStatus(ApprovalStatus.ARCHIVED);
+        repo.save(dr);
+    }
+
+    @Transactional
+    public DikeRevetmentResponse submitForApproval(UUID id, UUID userId) {
+        DikeRevetment entity = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đê kè với id: " + id));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
+        approvalService.submit(entity, InfrastructureType.DIKE_REVETMENT, userId);
+        return toResponse(repo.save(entity));
+    }
+
+    @Transactional
+    public DikeRevetmentResponse approveLevel1(UUID id, UUID userId, String note) {
+        DikeRevetment entity = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đê kè với id: " + id));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
+        approvalService.approveC1(entity, InfrastructureType.DIKE_REVETMENT, "APPROVED", note, userId);
+        return toResponse(repo.save(entity));
+    }
+
+    @Transactional
+    public DikeRevetmentResponse approveLevel2(UUID id, UUID userId, String note) {
+        DikeRevetment entity = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đê kè với id: " + id));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
+        approvalService.approveC2(entity, InfrastructureType.DIKE_REVETMENT, "APPROVED", note, userId);
+        return toResponse(repo.save(entity));
+    }
+
+    @Transactional
+    public DikeRevetmentResponse rejectLevel1(UUID id, UUID userId, String reason) {
+        DikeRevetment entity = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đê kè với id: " + id));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
+        approvalService.approveC1(entity, InfrastructureType.DIKE_REVETMENT, "REJECTED", reason, userId);
+        return toResponse(repo.save(entity));
+    }
+
+    @Transactional
+    public DikeRevetmentResponse rejectLevel2(UUID id, UUID userId, String reason) {
+        DikeRevetment entity = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đê kè với id: " + id));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
+        approvalService.approveC2(entity, InfrastructureType.DIKE_REVETMENT, "REJECTED", reason, userId);
+        return toResponse(repo.save(entity));
+    }
+
+    public String generateDikeRevetmentCode() {
+        String maxCode = repo.findMaxCode();
+        if (maxCode == null || !maxCode.startsWith("DK-")) {
+            return "DK-0001";
         }
-        repo.save(dr);
-        log.info("Soft deleted de ke id={}", id);
-    }
-
-    @Transactional
-    public ApprovalResponse approveC1(UUID id, ApprovalRequest req, java.util.UUID approvedBy) {
-        DikeRevetment dr = repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
-
-        approvalService.approveC1(dr, InfrastructureType.DIKE_REVETMENT, req.getDecision(), req.getReason(), approvedBy);
-        dr.setIsApprovedLevel1(dr.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1);
-        repo.save(dr);
-        return buildApprovalResponse(dr, 1);
-    }
-
-    @Transactional
-    public ApprovalResponse approveC2(UUID id, ApprovalRequest req, java.util.UUID approvedBy) {
-        DikeRevetment dr = repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
-
-        approvalService.approveC2(dr, InfrastructureType.DIKE_REVETMENT, req.getDecision(), req.getReason(), approvedBy);
-        dr.setIsApprovedLevel2(dr.getApprovalStatus() == ApprovalStatus.APPROVED);
-        repo.save(dr);
-        return buildApprovalResponse(dr, 2);
-    }
-
-    @Transactional
-    public void submitForApproval(UUID id, java.util.UUID submittedBy) {
-        DikeRevetment dr = repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
-
-        approvalService.submit(dr, InfrastructureType.DIKE_REVETMENT, submittedBy);
-        repo.save(dr);
-    }
-
-    @Transactional
-    public ApprovalResponse approveL1(UUID id, java.util.UUID approvedBy) {
-        return approveC1(id, ApprovalRequest.builder().decision("APPROVED").build(), approvedBy);
-    }
-
-    @Transactional
-    public ApprovalResponse reject(UUID id, ApprovalRequest req, java.util.UUID approvedBy) {
-        DikeRevetment dr = repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
-
-        Integer cap = req.getApprovalLevel() != null ? req.getApprovalLevel().getValue() : 1;
-        if (cap == 2) {
-            approvalService.approveC2(dr, InfrastructureType.DIKE_REVETMENT, "REJECTED", req.getReason(), approvedBy);
-        } else {
-            approvalService.approveC1(dr, InfrastructureType.DIKE_REVETMENT, "REJECTED", req.getReason(), approvedBy);
+        try {
+            int seq = Integer.parseInt(maxCode.substring(3));
+            return String.format("DK-%04d", seq + 1);
+        } catch (NumberFormatException e) {
+            return "DK-" + System.currentTimeMillis();
         }
-        repo.save(dr);
-        return buildApprovalResponse(dr, cap);
-    }
-
-    private void saveApprovalHistory(DikeRevetment dr, Integer cap, String status, String user, String reason) {
-        ApprovalHistory hist = ApprovalHistory.builder()
-                .refId(dr.getId())
-                .refType(InfrastructureType.DIKE_REVETMENT)
-                .approvalLevel(ApprovalLevel.fromInt(cap))
-                .status(ApprovalHistoryStatus.fromValue(status))
-                .approvedBy(user != null ? UUID.fromString(user) : null)
-                .approvedDate(LocalDateTime.now())
-                .reason(reason)
-                .build();
-        approvalHistoryRepo.save(hist);
-    }
-
-    private ApprovalResponse buildApprovalResponse(DikeRevetment dr, Integer cap) {
-        return ApprovalResponse.builder()
-                .id(String.valueOf(dr.getId()))
-                .dikeRevetmentId(dr.getId())
-                .approvalLevel(ApprovalLevel.fromInt(cap))
-                .status(dr.getApprovalStatus().name())
-                .approver(String.valueOf(cap == 1 ? dr.getApproverLevel1() : dr.getApproverLevel2()))
-                .approvalDate(cap == 1
-                        ? (dr.getApprovedDateLevel1() != null ? dr.getApprovedDateLevel1().toLocalDate() : null)
-                        : (dr.getApprovedDateLevel2() != null ? dr.getApprovedDateLevel2().toLocalDate() : null))
-                .reason(dr.getRejectionReason())
-                .build();
     }
 
     @Transactional(readOnly = true)
-    public List<HistoryEntry> getApprovalHistory(UUID id) {
-        repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
-
-        List<ApprovalHistory> history = approvalHistoryRepo
-                .findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.DIKE_REVETMENT, id);
-        return history.stream().map(h -> HistoryEntry.builder()
+    public List<HistoryEntry> getHistory(UUID id) {
+        List<InfrastructureHistory> historyList = approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+                InfrastructureType.DIKE_REVETMENT, id);
+        return historyList.stream().map(h -> HistoryEntry.builder()
                 .id(h.getId())
                 .dikeRevetmentId(h.getRefId())
                 .approvalLevel(h.getApprovalLevel())
-                .status(h.getStatus() != null ? h.getStatus().getCode() : null)
-                .approver(h.getApprovedBy() != null ? h.getApprovedBy().toString() : null)
+                .status(h.getStatus() != null ? h.getStatus().name() : null)
+                .approver(h.getApprovedBy() != null ? userResolverService.resolveName(h.getApprovedBy()) : null)
                 .approvalDate(h.getApprovedDate() != null ? h.getApprovedDate().toLocalDate() : null)
                 .reason(h.getReason())
-                .build()).collect(Collectors.toList());
+                .build())
+                .toList();
     }
 
-    @Transactional(readOnly = true)
-    public List<DikeRevetmentResponse> findByApprovalStatus(ApprovalStatus s) {
-        return repo.findByApprovalStatusAndDeletedAtIsNull(s)
-                .stream().map(this::toResponse).collect(Collectors.toList());
-    }
-
-    @Transactional(readOnly = true)
-    public List<DikeRevetmentResponse> searchByType(DikeRevetmentType dikeRevetmentType) {
-        return repo.findByDikeRevetmentTypeAndDeletedAtIsNull(dikeRevetmentType)
-                .stream().map(this::toResponse).collect(Collectors.toList());
-    }
-
-    @Transactional(readOnly = true)
-    public SearchResultResponse searchDocuments(UUID orgUnitId, String kw, DikeRevetmentType dikeRevetmentType,
-            String status, String approvalStatusStr, int page, int size) {
-        ApprovalStatus approvalStatus = null;
-        if (approvalStatusStr != null && !approvalStatusStr.trim().isEmpty()) {
-            try {
-                approvalStatus = ApprovalStatus.valueOf(approvalStatusStr.trim());
-            } catch (IllegalArgumentException e) {
-                log.debug("Bỏ qua bộ lọc trạng thái không hợp lệ: {}", approvalStatusStr);
-            }
-        }
-        String keywordLike = (kw != null && !kw.trim().isEmpty()) ? "%" + kw.trim().toLowerCase() + "%" : null;
-        String statusVal = (status != null && !status.trim().isEmpty()) ? status.trim() : null;
-        Page<DikeRevetment> r = repo.searchDocuments(orgUnitId, keywordLike, dikeRevetmentType, statusVal,
-                approvalStatus, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
-        return SearchResultResponse.builder()
-                .results(r.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
-                .totalElements(r.getTotalElements())
-                .totalPages(r.getTotalPages())
-                .currentPage(r.getNumber())
-                .pageSize(r.getSize())
-                .build();
+    private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {
+        if (geomType == GisGeometryType.POINT) return GisSpatialObjectType.POINT_OTHER;
+        if (geomType == GisGeometryType.POLYGON) return GisSpatialObjectType.POLYGON_OTHER;
+        return GisSpatialObjectType.LINE_OTHER;
     }
 
     private DikeRevetmentResponse toResponse(DikeRevetment dr) {
-        List<DikeRevetmentAttachmentResponse> atts = dr.getAttachments() != null
-                ? dr.getAttachments().stream()
-                        .map(a -> DikeRevetmentAttachmentResponse.builder()
-                                .id(a.getId())
-                                .fileName(a.getFileName())
-                                .filePath(a.getFilePath())
-                                .fileSize(a.getFileSize())
-                                .documentType(a.getDocumentType())
-                                .uploadedBy(a.getUploadedBy())
-                                .uploadDate(a.getUploadDate())
-                                .build())
-                        .collect(Collectors.toList())
-                : new ArrayList<>();
-
-        List<ApprovalHistory> histories = approvalHistoryRepo
-                .findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.DIKE_REVETMENT, dr.getId());
-        List<ApprovalResponse> hist = histories.stream()
-                .map(h -> ApprovalResponse.builder()
-                        .id(String.valueOf(h.getId()))
-                        .dikeRevetmentId(h.getRefId())
-                        .approvalLevel(h.getApprovalLevel())
-                        .status(h.getStatus() != null ? h.getStatus().getCode() : null)
-                        .approver(h.getApprovedBy() != null ? h.getApprovedBy().toString() : null)
-                        .approvalDate(h.getApprovedDate() != null ? h.getApprovedDate().toLocalDate() : null)
-                        .reason(h.getReason())
-                        .build())
-                .collect(Collectors.toList());
-
-        GisGeometryType geomType = null;
-        String coords = null;
-        if (dr.getSpatialId() != null) {
-            java.util.Optional<GisSpatialObject> spatialOpt = gisSpatialObjectService.findById(dr.getSpatialId());
-            if (spatialOpt.isPresent()) {
-                GisSpatialObject spatial = spatialOpt.get();
-                geomType = spatial.getGeometryType();
-                coords = spatial.getCoordinates();
-            }
-        }
+        String orgUnitName = dr.getOrgUnitId() != null
+                ? orgUnitCacheService.getName(dr.getOrgUnitId())
+                : null;
+        String seaportName = dr.getSeaportId() != null
+                ? portCacheService.getName(dr.getSeaportId())
+                : null;
+        String updatedByName = dr.getUpdatedBy() != null
+                ? userResolverService.resolveName(dr.getUpdatedBy())
+                : null;
 
         return DikeRevetmentResponse.builder()
                 .id(dr.getId())
@@ -467,7 +402,7 @@ public class DikeRevetmentService {
                 .dikeRevetmentName(dr.getDikeRevetmentName())
                 .code(dr.getCode())
                 .seaportId(dr.getSeaportId())
-                .seaportName(portCacheService.getName(dr.getSeaportId()))
+                .seaportName(seaportName)
                 .length(dr.getLength())
                 .crestElevation(dr.getCrestElevation())
                 .commissioningDate(dr.getCommissioningDate())
@@ -476,46 +411,25 @@ public class DikeRevetmentService {
                 .status(dr.getStatus())
                 .note(dr.getNote())
                 .orgUnitId(dr.getOrgUnitId())
-                .orgUnitName(orgUnitCacheService.getName(dr.getOrgUnitId()))
+                .orgUnitName(orgUnitName)
                 .approvalStatus(dr.getApprovalStatus())
-                .isApprovedLevel1(dr.getIsApprovedLevel1())
+                .isApprovedLevel1(dr.getApprovedDateLevel1() != null)
                 .approverLevel1(dr.getApproverLevel1())
                 .approvedDateLevel1(dr.getApprovedDateLevel1() != null ? dr.getApprovedDateLevel1().toLocalDate() : null)
-                .isApprovedLevel2(dr.getIsApprovedLevel2())
+                .isApprovedLevel2(dr.getApprovedDateLevel2() != null)
                 .approverLevel2(dr.getApproverLevel2())
                 .approvedDateLevel2(dr.getApprovedDateLevel2() != null ? dr.getApprovedDateLevel2().toLocalDate() : null)
                 .rejectionReason(dr.getRejectionReason())
+                .isDeleted(dr.getDeletedAt() != null)
                 .createdAt(dr.getCreatedAt())
                 .updatedAt(dr.getUpdatedAt())
                 .createdBy(dr.getCreatedBy())
                 .updatedBy(dr.getUpdatedBy())
-                .updatedByName(userResolverService.resolveName(dr.getUpdatedBy()))
+                .updatedByName(updatedByName)
                 .deletedAt(dr.getDeletedAt())
                 .deletedBy(dr.getDeletedBy())
-                .attachments(atts)
-                .approvalHistory(hist)
                 .spatialId(dr.getSpatialId())
                 .symbolId(dr.getSymbolId())
-                .geometryType(geomType)
-                .coordinates(coords)
                 .build();
-    }
-
-    private GisGeometryType parseGeometryType(String typeStr) {
-        if (typeStr == null)
-            return GisGeometryType.LINE;
-        try {
-            return GisGeometryType.valueOf(typeStr.toUpperCase());
-        } catch (IllegalArgumentException ex) {
-            return GisGeometryType.LINE;
-        }
-    }
-
-    private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {
-        if (geomType == GisGeometryType.POINT)
-            return GisSpatialObjectType.POINT_OTHER;
-        if (geomType == GisGeometryType.POLYGON)
-            return GisSpatialObjectType.POLYGON_OTHER;
-        return GisSpatialObjectType.LINE_OTHER;
     }
 }

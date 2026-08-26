@@ -1,9 +1,9 @@
 server:
   port: 8081
-  max-http-header-size: 32KB
-  max-http-request-header-size: 32KB
+  max-http-header-size: 2MB
+  max-http-request-header-size: 2MB
   tomcat:
-    max-http-header-size: 32KB
+    max-http-header-size: 2MB
 
 spring:
   flyway:
@@ -16,8 +16,12 @@ spring:
     username: ${DB_USER:admin}
     password: ${DB_PASS:Etc@1234}
     hikari:
-      maximum-pool-size: 2
-      minimum-idle: 1
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+  devtools:
+    restart:
+      enabled: false
   jpa:
     hibernate:
       ddl-auto: none
@@ -35,9 +39,13 @@ spring:
       - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
 logging:
   level:
-    root: WARN
-    org.hibernate: ERROR
-    org.springframework.security: WARN
+    root: INFO
+    org.hibernate: WARN
+    org.hibernate.SQL: WARN
+    org.springframework.security: INFO
+    org.springframework.boot: INFO
+    org.flywaydb: INFO
+    com.zaxxer.hikari: INFO
     com.hanghai.kchtg: INFO
 
 app:

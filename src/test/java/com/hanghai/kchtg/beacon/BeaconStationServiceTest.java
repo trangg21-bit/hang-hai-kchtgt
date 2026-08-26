@@ -62,6 +62,9 @@ class BeaconStationServiceTest {
     private OrgUnitRepository orgUnitRepo;
 
     @Mock
+    private com.hanghai.kchtg.orgunit.service.OrgUnitScopeService orgUnitScopeService;
+
+    @Mock
     private com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService;
 
     @InjectMocks
@@ -89,6 +92,8 @@ class BeaconStationServiceTest {
         dummySpatial.setId(UUID.randomUUID());
         lenient().when(gisSpatialObjectService.createOrUpdate(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(dummySpatial);
+        lenient().when(orgUnitScopeService.currentUserScope()).thenReturn(com.hanghai.kchtg.orgunit.service.OrgUnitScopeService.Scope.allScope());
+        lenient().when(orgUnitCacheService.getName(any())).thenReturn("Đơn vị Test");
     }
 
     private BeaconStation makeEntity(UUID id, String status) {
@@ -96,6 +101,7 @@ class BeaconStationServiceTest {
                 .code("DEN-001")
                 .name("Đèn biển test")
                 .type("LIGHTHOUSE")
+                .unitId(UUID.randomUUID())
                 .lightRange(15.0)
                 .towerColor("Trắng")
                 .area(12.0)
@@ -123,6 +129,7 @@ class BeaconStationServiceTest {
         return CreateBeaconStationRequest.builder()
                 .code("DEN-002")
                 .name("Đèn biển mới")
+                .unitId(UUID.randomUUID())
                 .type("BEACON_LIGHT")
                 .lightRange(15.0)
                 .towerColor("Đỏ")
@@ -313,7 +320,7 @@ class BeaconStationServiceTest {
             assertThat(result.getCode()).isEqualTo("DEN-001");
 
             verify(beaconStationRepo, atLeastOnce()).save(any());
-            verify(historyRepo).save(any());
+            verify(historyRepo, never()).save(any());
         }
 
         @Test
@@ -352,12 +359,12 @@ class BeaconStationServiceTest {
         }
 
         @Test
-        @DisplayName("update on approved entity — reverts status to DRAFT")
+        @DisplayName("update on approved entity — keeps APPROVED status and records history")
         void updateApprovedEntityRevertsStatus() {
             UUID id = UUID.randomUUID();
-            BeaconStation entity = makeEntity(id, "APPROVED_L1");
+            BeaconStation entity = makeEntity(id, "APPROVED_L2");
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
-            entity.setApprovalLevel(1);
+            entity.setApprovalLevel(2);
             when(beaconStationRepo.findById(id)).thenReturn(Optional.of(entity));
             when(beaconStationRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -367,9 +374,9 @@ class BeaconStationServiceTest {
 
             BeaconStationResponse result = service.update(id, request);
 
-            assertThat(result.getStatus()).isEqualTo("DRAFT");
-            assertThat(result.getApprovalStatus()).isEqualTo("PROPOSED");
-            assertThat(result.getApprovalLevel()).isEqualTo(ApprovalLevel.LEVEL_1);
+            assertThat(result.getStatus()).isEqualTo("APPROVED_L2");
+            assertThat(result.getApprovalStatus()).isEqualTo("APPROVED");
+            verify(historyRepo, atLeastOnce()).save(any());
         }
 
         @Test

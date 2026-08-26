@@ -39,15 +39,26 @@ export const BUOY_TYPE_MAP: Record<BuoyType, { color: string }> = {
 export type BeaconStatus =
   | 'DRAFT'
   | 'PENDING_APPROVAL'
+  | 'APPROVED_LEVEL1'
+  | 'REJECTED_LEVEL1'
+  | 'REJECTED_LEVEL2'
   | 'APPROVED'
+  | 'PROPOSED'
+  | 'APPROVED_LEVEL2'
   | 'REJECTED'
-  | 'DELETED';
+  | 'DELETED'
+  | string;
 
-export const BEACON_STATUS_MAP: Record<BeaconStatus, { color: string; label: string }> = {
-  DRAFT: { color: 'blue', label: 'Nháp' },
-  PENDING_APPROVAL: { color: 'orange', label: 'Chờ phê duyệt' },
-  APPROVED: { color: 'green', label: 'Đã phê duyệt' },
+export const BEACON_STATUS_MAP: Record<string, { color: string; label: string }> = {
+  DRAFT: { color: 'default', label: 'Lưu tạm' },
+  PROPOSED: { color: 'orange', label: 'Chờ Cảng vụ duyệt' },
+  PENDING_APPROVAL: { color: 'orange', label: 'Chờ Cảng vụ duyệt' },
+  APPROVED_LEVEL1: { color: 'blue', label: 'Chờ Cục duyệt' },
+  APPROVED_LEVEL2: { color: 'green', label: 'Đã duyệt' },
+  APPROVED: { color: 'green', label: 'Đã duyệt' },
   REJECTED: { color: 'red', label: 'Từ chối' },
+  REJECTED_LEVEL1: { color: 'red', label: 'Cảng vụ trả về' },
+  REJECTED_LEVEL2: { color: 'red', label: 'Cục trả về' },
   DELETED: { color: 'default', label: 'Đã xóa' },
 };
 

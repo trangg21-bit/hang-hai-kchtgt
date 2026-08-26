@@ -13,6 +13,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.hanghai.kchtg.mapicon.dto.MapSymbolOptionResponse;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -21,6 +23,11 @@ public class MapSymbolServiceImpl implements MapSymbolService {
 
     private final MapSymbolRepository repository;
     private final UserResolverService userResolverService;
+
+    @Override
+    public List<MapSymbolOptionResponse> getOptions() {
+        return repository.findOptions();
+    }
 
     @Override
     public Page<MapSymbolResponse> search(String search, String code, MapSymbolStatus status, Pageable pageable) {

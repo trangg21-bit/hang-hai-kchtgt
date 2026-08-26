@@ -389,13 +389,14 @@ public class BerthService {
             entity.setInvestmentAgreement(request.getInvestmentAgreement());
         if (request.getStructureType() != null)
             entity.setStructureType(request.getStructureType());
-        entity.setMapSymbolId(request.getMapSymbolId());
-        if (request.getSaveAction() != null) {
+        ApprovalStatus previousApprovalStatus = snapshot.getApprovalStatus();
+        boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
+                || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
+
+        if (wasApproved) {
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        } else if (request.getSaveAction() != null) {
             applySaveAction(entity, request.getSaveAction());
-        } else if (entity.getApprovalStatus() == ApprovalStatus.APPROVED) {
-            // Khi chỉnh sửa: "Được phê duyệt" → quay về "Chờ cảng vụ duyệt"
-            // (APPROVED_LEVEL1)
-            entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         }
 
         Berth saved = berthRepository.save(entity);
@@ -418,8 +419,10 @@ public class BerthService {
             saved = berthRepository.save(saved);
         }
 
-        // Record field-level change history
-        changeHistoryService.recordChanges("Berth", saved.getId().toString(), "system", snapshot, saved);
+        // Record field-level change history only if the record was already approved
+        if (wasApproved) {
+            changeHistoryService.recordChanges("Berth", saved.getId().toString(), "system", snapshot, saved);
+        }
 
         log.info("Updated Berth [{}] code={}", saved.getId(), saved.getBerthCode());
         return toResponse(saved);

@@ -29,7 +29,28 @@ export const vtsSystemCRUD = {
     return Array.isArray(data) ? data : [];
   },
 
-  async list(params?: ListParams & { includeCounts?: boolean }): Promise<{ items: VtsSystemListItem[]; total: number; statusCounts: Record<string, number> }> {
+  async getOptions(params?: { orgUnitId?: string }): Promise<Array<{ id: string; name: string; code?: string; orgUnitId?: string }>> {
+    try {
+      const res = await api.get(`${VTS_BASE_PATH}/options`, {
+        params: {
+          orgUnitId: params?.orgUnitId,
+        },
+      });
+      const data = res.data?.data;
+      if (Array.isArray(data)) return data;
+      if (Array.isArray(res.data)) return res.data;
+      return [];
+    } catch {
+      // Fallback if needed
+      const res = await api.get(VTS_BASE_PATH, {
+        params: { size: 1000, orgUnitId: params?.orgUnitId, includeCounts: false },
+      });
+      const data = res.data?.data?.items || res.data?.items;
+      return Array.isArray(data) ? data.map((s: any) => ({ id: s.id, name: s.systemName || s.name, code: s.code, orgUnitId: s.orgUnitId })) : [];
+    }
+  },
+
+  async list(params?: ListParams & { includeCounts?: boolean; sort?: string }): Promise<{ items: VtsSystemListItem[]; total: number; statusCounts: Record<string, number> }> {
     const res = await api.get(VTS_BASE_PATH, {
       params: {
         orgUnitId: params?.orgUnitId,
@@ -40,6 +61,9 @@ export const vtsSystemCRUD = {
         approvalStatus: params?.approvalStatus,
         year: params?.year,
         includeCounts: params?.includeCounts ?? true,
+        // `<field>,<asc|desc>` — sắp xếp thực hiện ở server để áp dụng cho toàn bộ
+        // kết quả, không chỉ trang đang hiển thị.
+        sort: params?.sort,
       },
     });
     const data = res.data?.data || {};
@@ -111,6 +135,11 @@ export const vtsSystemCRUD = {
 };
 
 export const vtsSystemApproval = {
+  async submit(id: string): Promise<VtsSystemResponse> {
+    const res = await api.post(`${VTS_BASE_PATH}/${id}/submit`);
+    return toSingle<VtsSystemResponse>(res.data) || {} as VtsSystemResponse;
+  },
+
   async approveC1(id: string, data: ApprovalRequest): Promise<VtsSystemResponse> {
     const res = await api.post(`${VTS_BASE_PATH}/${id}/approve/c1`, data);
     return toSingle<VtsSystemResponse>(res.data) || {} as VtsSystemResponse;

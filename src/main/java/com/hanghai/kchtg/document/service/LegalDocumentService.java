@@ -2,10 +2,10 @@ package com.hanghai.kchtg.document.service;
 
 import com.hanghai.kchtg.common.entity.EntityFields;
 import com.hanghai.kchtg.common.util.H2Functions;
-import com.hanghai.kchtg.common.entity.ApprovalHistory;
-import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.document.dto.*;
 import com.hanghai.kchtg.document.entity.*;
 import com.hanghai.kchtg.document.repository.*;
@@ -52,7 +52,7 @@ public class LegalDocumentService {
     private final SearchLogRepository searchLogRepository;
     private final SearchResultRepository searchResultRepository;
     private final SearchSuggestionRepository searchSuggestionRepository;
-    private final ApprovalHistoryRepository approvalHistoryRepository;
+    private final InfrastructureHistoryRepository approvalHistoryRepository;
     private final UserRepository userRepository;
 
     @Value("${app.upload.legal-document-path:uploads/legal-documents}")
@@ -234,10 +234,10 @@ public class LegalDocumentService {
     public List<LegalDocumentHistoryResponse> getHistory(UUID id) {
         LegalDocument doc = legalDocumentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy văn bản với id: " + id));
-        List<ApprovalHistory> histories = approvalHistoryRepository
+        List<InfrastructureHistory> histories = approvalHistoryRepository
                 .findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.LEGAL_DOCUMENT, id);
         List<UUID> userIds = histories.stream()
-                .map(ApprovalHistory::getApprovedBy)
+                .map(InfrastructureHistory::getApprovedBy)
                 .filter(Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());
@@ -456,8 +456,8 @@ public class LegalDocumentService {
     }
 
     private void recordHistory(LegalDocument document, LegalDocumentHistoryAction action, String note) {
-        ApprovalHistoryStatus status = mapActionToStatus(action);
-        approvalHistoryRepository.save(ApprovalHistory.builder()
+        InfrastructureHistoryStatus status = mapActionToStatus(action);
+        approvalHistoryRepository.save(InfrastructureHistory.builder()
                 .refId(document.getId())
                 .refType(InfrastructureType.LEGAL_DOCUMENT)
                 .approvalLevel(ApprovalLevel.LEVEL_0)
@@ -478,20 +478,20 @@ public class LegalDocumentService {
         recordHistory(document, action, null);
     }
 
-    private ApprovalHistoryStatus mapActionToStatus(LegalDocumentHistoryAction action) {
-        if (action == null) return ApprovalHistoryStatus.UPDATED;
+    private InfrastructureHistoryStatus mapActionToStatus(LegalDocumentHistoryAction action) {
+        if (action == null) return InfrastructureHistoryStatus.UPDATED;
         return switch (action) {
-            case CREATED -> ApprovalHistoryStatus.CREATED;
-            case DELETED -> ApprovalHistoryStatus.DELETED;
-            case ATTACHMENT_UPLOADED -> ApprovalHistoryStatus.ATTACHMENT_UPLOADED;
-            case ATTACHMENT_DELETED -> ApprovalHistoryStatus.ATTACHMENT_DELETED;
-            case DRAFT_SAVED -> ApprovalHistoryStatus.DRAFT_SAVED;
-            case EXPIRED -> ApprovalHistoryStatus.EXPIRED;
-            case STATUS_CHANGED, UPDATED -> ApprovalHistoryStatus.UPDATED;
+            case CREATED -> InfrastructureHistoryStatus.CREATED;
+            case DELETED -> InfrastructureHistoryStatus.DELETED;
+            case ATTACHMENT_UPLOADED -> InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
+            case ATTACHMENT_DELETED -> InfrastructureHistoryStatus.ATTACHMENT_DELETED;
+            case DRAFT_SAVED -> InfrastructureHistoryStatus.DRAFT_SAVED;
+            case EXPIRED -> InfrastructureHistoryStatus.EXPIRED;
+            case STATUS_CHANGED, UPDATED -> InfrastructureHistoryStatus.UPDATED;
         };
     }
 
-    private LegalDocumentHistoryAction mapStatusToAction(ApprovalHistoryStatus status) {
+    private LegalDocumentHistoryAction mapStatusToAction(InfrastructureHistoryStatus status) {
         if (status == null) return LegalDocumentHistoryAction.UPDATED;
         return switch (status) {
             case CREATED -> LegalDocumentHistoryAction.CREATED;
@@ -504,7 +504,7 @@ public class LegalDocumentService {
         };
     }
 
-    private LegalDocumentHistoryResponse toHistoryResponse(ApprovalHistory history, LegalDocument doc,
+    private LegalDocumentHistoryResponse toHistoryResponse(InfrastructureHistory history, LegalDocument doc,
             Map<UUID, User> userMap) {
         User actorUser = history.getApprovedBy() != null ? userMap.get(history.getApprovedBy()) : null;
         String changedByName = actorUser != null ? getDisplayName(actorUser) : null;

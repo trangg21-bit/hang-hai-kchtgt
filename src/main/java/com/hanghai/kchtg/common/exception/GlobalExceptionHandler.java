@@ -101,6 +101,25 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Không tìm thấy tài nguyên: " + ex.getResourcePath()));
     }
 
+    @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<String>> handleMethodArgumentTypeMismatch(
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException ex) {
+        log.warn("Method argument type mismatch: parameter '{}', value '{}'", ex.getName(), ex.getValue());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Tham số '" + ex.getName() + "' không đúng định dạng mong muốn: " + ex.getValue()));
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<String>> handleMaxUploadSizeExceeded(
+            org.springframework.web.multipart.MaxUploadSizeExceededException ex) {
+
+        log.warn("Upload size limit exceeded: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(ApiResponse.error("Dung lượng file tải lên vượt quá giới hạn cho phép (tối đa 20MB/file, tổng 50MB/bản ghi)"));
+    }
+
     /**
      * Handles {@code IllegalArgumentException} from service-layer guard
      * clauses (dispatched as 400 Bad Request).
@@ -151,12 +170,28 @@ public class GlobalExceptionHandler {
                     .body(ApiResponse.error("Địa điểm (Tỉnh/Thành phố) được chọn không tồn tại trong hệ thống"));
         }
 
-        if (detail != null
-                && (detail.contains("violates foreign key constraint") || detail.contains("foreign key constraint"))) {
+        if (detail != null && (detail.contains("vts_system_code_key") || detail.contains("uk_vts_system_code") || detail.contains("idx_vts_system_code"))) {
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse
-                            .error("Dữ liệu liên kết (Đơn vị/Cảng biển/Tỉnh thành) không tồn tại trong hệ thống"));
+                    .body(ApiResponse.error("Mã hệ thống VTS đã tồn tại trong hệ thống. Vui lòng nhập mã khác."));
+        }
+
+        if (detail != null && (detail.contains("vts_operation_center_code_key") || detail.contains("uk_vts_operation_center_code") || detail.contains("idx_vts_operation_center_code"))) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Mã trung tâm điều hành VTS đã tồn tại trong hệ thống. Vui lòng nhập mã khác."));
+        }
+
+        if (detail != null && (detail.contains("ais_system_code_key") || detail.contains("uk_ais_system_code") || detail.contains("idx_ais_system_code"))) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Mã hệ thống AIS đã tồn tại trong hệ thống. Vui lòng nhập mã khác."));
+        }
+
+        if (detail != null && (detail.contains("violates unique constraint") || detail.contains("duplicate key value"))) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Mã hoặc dữ liệu định danh đã tồn tại trong hệ thống. Vui lòng kiểm tra lại."));
         }
 
         log.warn("Data integrity violation: {}", detail);

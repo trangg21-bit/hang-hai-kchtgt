@@ -83,8 +83,8 @@ class CoastalStationVTSControllerTest {
         entity.setContactPerson("John Doe");
         entity.setContactPhone("+84123456789");
         entity.setIsActive(true);
-        entity.setStatus(StationStatus.PENDING_APPROVAL);
-        entity.setApprovalStatus(ApprovalStatus.PROPOSED);
+        entity.setStatus(StationStatus.DRAFT);
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
         entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_0);
         return entity;
     }
@@ -100,8 +100,8 @@ class CoastalStationVTSControllerTest {
                 .locationAddress("123 Main St")
                 .contactPerson("John Doe")
                 .contactPhone("+84123456789")
-                .status(StationStatus.PENDING_APPROVAL)
-                .approvalStatus(ApprovalStatus.PROPOSED)
+                .status(StationStatus.DRAFT)
+                .approvalStatus(ApprovalStatus.DRAFT)
                 .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_0)
                 .build();
     }
@@ -231,14 +231,62 @@ class CoastalStationVTSControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/stations/coastal/{id}/approve — approves and returns 200")
-    void testApprove() throws Exception {
+    @DisplayName("POST /api/v1/stations/coastal/{id}/submit — gửi phê duyệt và trả về 200")
+    void testSubmit() throws Exception {
+        UUID id = UUID.randomUUID();
+        CoastalStationVTS entity = makeEntity(id);
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        entity.setStatus(StationStatus.PENDING_APPROVAL);
+        when(service.submit(id)).thenReturn(entity);
+
+        mockMvc.perform(post(BASE + "/{id}/submit", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.approvalStatus").value("PENDING_APPROVAL"));
+
+        verify(service).submit(id);
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/stations/coastal/{id}/approve-l1 — duyệt vòng 1 -> Chờ Cục duyệt")
+    void testApproveLevel1() throws Exception {
         UUID id = UUID.randomUUID();
         CoastalStationVTS entity = makeEntity(id);
         entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1);
         entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         entity.setStatus(StationStatus.APPROVED_L1);
-        when(service.approveStation(eq(id), eq(true), any(Long.class))).thenReturn(entity);
+        when(service.approveLevel1(id)).thenReturn(entity);
+
+        mockMvc.perform(post(BASE + "/{id}/approve-l1", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.approvalLevel").value(1))
+                .andExpect(jsonPath("$.approvalStatus").value("APPROVED_LEVEL1"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/stations/coastal/{id}/approve-l2 — duyệt vòng 2 -> Đã duyệt")
+    void testApproveLevel2() throws Exception {
+        UUID id = UUID.randomUUID();
+        CoastalStationVTS entity = makeEntity(id);
+        entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_2);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        entity.setStatus(StationStatus.APPROVED_L2);
+        when(service.approveLevel2(id)).thenReturn(entity);
+
+        mockMvc.perform(post(BASE + "/{id}/approve-l2", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.approvalLevel").value(2))
+                .andExpect(jsonPath("$.approvalStatus").value("APPROVED"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/stations/coastal/{id}/approve — endpoint cũ vẫn chạy (tự chọn vòng)")
+    void testApproveLegacy() throws Exception {
+        UUID id = UUID.randomUUID();
+        CoastalStationVTS entity = makeEntity(id);
+        entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+        entity.setStatus(StationStatus.APPROVED_L1);
+        when(service.approveStation(id, true)).thenReturn(entity);
 
         String json = """
                 {
@@ -259,14 +307,15 @@ class CoastalStationVTSControllerTest {
     void testReject() throws Exception {
         UUID id = UUID.randomUUID();
         CoastalStationVTS entity = makeEntity(id);
-        entity.setRejectionReason("Invalid data");
-        entity.setApprovalStatus(ApprovalStatus.PROPOSED);
-        when(service.rejectStation(eq(id), anyString(), any(Long.class))).thenReturn(entity);
+        entity.setRejectionReason("Dữ liệu chưa hợp lệ");
+        entity.setApprovalStatus(ApprovalStatus.REJECTED_LEVEL1);
+        entity.setStatus(StationStatus.REJECTED);
+        when(service.reject(eq(id), anyString())).thenReturn(entity);
 
         String json = """
                 {
                   "approved": false,
-                  "rejectionReason": "Invalid data"
+                  "rejectionReason": "Dữ liệu chưa hợp lệ"
                 }
                 """;
 
@@ -274,7 +323,8 @@ class CoastalStationVTSControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.rejectionReason").value("Invalid data"));
+                .andExpect(jsonPath("$.rejectionReason").value("Dữ liệu chưa hợp lệ"))
+                .andExpect(jsonPath("$.approvalStatus").value("REJECTED_LEVEL1"));
     }
 
     @Test

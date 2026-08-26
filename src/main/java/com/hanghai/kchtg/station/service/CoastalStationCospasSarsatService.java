@@ -2,7 +2,6 @@ package com.hanghai.kchtg.station.service;
 
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
-import com.hanghai.kchtg.security.AdminAutoApproval;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.station.dto.cospas.CoastalStationCospasSarsatHistoryResponse;
@@ -148,92 +147,150 @@ public class CoastalStationCospasSarsatService {
         return repository.findByCode(code);
     }
 
-    public CoastalStationCospasSarsat approveStation(UUID id, boolean approved, Long userId) {
-        CoastalStationCospasSarsat entity = repository.findById(id)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
-                        "Cospas-Sarsat station not found with id: " + id));
+    // --- QUY TRÌNH PHÊ DUYỆT 2 CẤP (docs/conventions/approval-2-level-spec.md mục 3) ---
 
-        String creatorId = resolveCreatedBy(entity);
-        if (creatorId != null && creatorId.equals(String.valueOf(userId))) {
-            throw new IllegalStateException("Bạn không thể phê duyệt bản do chính mình gửi");
+    public CoastalStationCospasSarsat submit(UUID id) {
+        CoastalStationCospasSarsat entity = getStationById(id);
+        if (entity.getApprovalStatus() != ApprovalStatus.DRAFT &&
+            entity.getApprovalStatus() != ApprovalStatus.REJECTED_LEVEL1 &&
+            entity.getApprovalStatus() != ApprovalStatus.REJECTED_LEVEL2) {
+            throw new IllegalStateException("Chỉ bản ghi ở trạng thái Lưu tạm hoặc Bị trả về mới được gửi phê duyệt");
         }
 
-        if (approved) {
-            ApprovalLevel currentLevel = entity.getApprovalLevel() != null ? entity.getApprovalLevel()
-                    : ApprovalLevel.LEVEL_0;
-            if (currentLevel == ApprovalLevel.LEVEL_0 && AdminAutoApproval.isAutoApprover()) {
-                // Administrators clear both levels in one step.
-                entity.setApprovalLevel(ApprovalLevel.LEVEL_2);
-                entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL2);
-                entity.setStatus(StationStatus.APPROVED_L2);
-            } else if (currentLevel == ApprovalLevel.LEVEL_0) {
-                entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
-                entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
-                entity.setStatus(StationStatus.APPROVED_L1);
-            } else if (currentLevel == ApprovalLevel.LEVEL_1) {
-                entity.setApprovalLevel(ApprovalLevel.LEVEL_2);
-                entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL2);
-                entity.setStatus(StationStatus.APPROVED_L2);
-            } else {
-                entity.setStatus(StationStatus.PUBLISHED);
-                entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL2);
-            }
-            entity.setApprovedBy(String.valueOf(userId));
-            entity.setApprovedDate(LocalDateTime.now());
-            entity.setRejectionReason(null);
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
 
-            historyService.recordHistory(
-                    entity.getCode(),
-                    currentLevel == ApprovalLevel.LEVEL_0 ? StationHistoryActionType.APPROVE_L1
-                            : StationHistoryActionType.APPROVE_L2,
-                    "Pending approval",
-                    "Approved at level " + entity.getApprovalLevel(),
-                    String.valueOf(userId),
-                    LocalDateTime.now());
-        } else {
-            entity.setApprovalStatus(ApprovalStatus.PROPOSED);
-            entity.setStatus(StationStatus.PENDING_APPROVAL);
-            entity.setApprovedBy(null);
-            entity.setApprovedDate(null);
-            entity.setApprovalLevel(ApprovalLevel.LEVEL_0);
-            historyService.recordHistory(
-                    entity.getCode(),
-                    StationHistoryActionType.UPDATE,
-                    "Approved L1",
-                    "Reset to pending",
-                    String.valueOf(userId),
-                    LocalDateTime.now());
-        }
-
-        return repository.save(entity);
-    }
-
-    public CoastalStationCospasSarsat rejectStation(UUID id, String rejectionReason, Long userId) {
-        CoastalStationCospasSarsat entity = repository.findById(id)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
-                        "Cospas-Sarsat station not found with id: " + id));
-
-        if (rejectionReason == null || rejectionReason.length() < 10) {
-            throw new IllegalArgumentException("Lý do từ chối phải có ít nhất 10 ký tự");
-        }
-
-        entity.setApprovalStatus(ApprovalStatus.PROPOSED);
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         entity.setStatus(StationStatus.PENDING_APPROVAL);
-        entity.setRejectionReason(rejectionReason);
-        entity.setApprovedBy(null);
-        entity.setApprovedDate(null);
         entity.setApprovalLevel(ApprovalLevel.LEVEL_0);
+        entity.setSubmittedAt(LocalDateTime.now());
+        entity.setSubmittedBy(currentUserId);
+        entity.setRejectionReason(null);
 
         historyService.recordHistory(
                 entity.getCode(),
-                StationHistoryActionType.REJECT,
-                "Approved",
-                "Rejected: " + rejectionReason,
-                String.valueOf(userId),
+                StationHistoryActionType.UPDATE,
+                "Lưu tạm",
+                "Gửi phê duyệt cấp Cảng vụ/Chi cục",
+                String.valueOf(currentUserId),
                 LocalDateTime.now());
 
         return repository.save(entity);
     }
+
+    public CoastalStationCospasSarsat approveLevel1(UUID id) {
+        CoastalStationCospasSarsat entity = getStationById(id);
+        if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
+            throw new IllegalStateException("Bản ghi không ở trạng thái Chờ duyệt cấp Cảng vụ/Chi cục");
+        }
+
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        validateNotSelfApproval(entity.getCreatedBy(), currentUserId);
+
+        entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+        entity.setStatus(StationStatus.APPROVED_L1);
+        entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
+        entity.setApproverLevel1(currentUserId);
+        entity.setApprovedDateLevel1(LocalDateTime.now());
+        entity.setRejectionReason(null);
+
+        historyService.recordHistory(
+                entity.getCode(),
+                StationHistoryActionType.APPROVE_L1,
+                "Chờ duyệt C1",
+                "Phê duyệt cấp 1 (Cảng vụ/Chi cục)",
+                String.valueOf(currentUserId),
+                LocalDateTime.now());
+
+        return repository.save(entity);
+    }
+
+    public CoastalStationCospasSarsat approveLevel2(UUID id) {
+        CoastalStationCospasSarsat entity = getStationById(id);
+        if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1) {
+            throw new IllegalStateException("Bản ghi không ở trạng thái Chờ duyệt cấp Cục");
+        }
+
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        validateNotSelfApproval(entity.getCreatedBy(), currentUserId);
+        // 4 mắt: người đã duyệt vòng 1 không được duyệt tiếp vòng 2
+        if (entity.getApproverLevel1() != null && entity.getApproverLevel1().equals(currentUserId)) {
+            throw new IllegalStateException(
+                    "Người phê duyệt cấp Cục không được trùng với người phê duyệt cấp Cảng vụ / Chi cục");
+        }
+
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        entity.setStatus(StationStatus.APPROVED_L2);
+        entity.setApprovalLevel(ApprovalLevel.LEVEL_2);
+        entity.setApproverLevel2(currentUserId);
+        entity.setApprovedDateLevel2(LocalDateTime.now());
+        entity.setApprovedBy(currentUserId);
+        entity.setApprovedDate(LocalDateTime.now());
+        entity.setRejectionReason(null);
+
+        historyService.recordHistory(
+                entity.getCode(),
+                StationHistoryActionType.APPROVE_L2,
+                "Chờ duyệt C2",
+                "Phê duyệt cấp 2 (Cục Hàng hải Việt Nam) - Ban hành chính thức",
+                String.valueOf(currentUserId),
+                LocalDateTime.now());
+
+        return repository.save(entity);
+    }
+
+    public CoastalStationCospasSarsat reject(UUID id, String rejectionReason) {
+        CoastalStationCospasSarsat entity = getStationById(id);
+        if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL &&
+            entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1) {
+            throw new IllegalStateException("Bản ghi không ở trạng thái Chờ duyệt để từ chối");
+        }
+
+        if (rejectionReason == null || rejectionReason.trim().length() < 10) {
+            throw new IllegalArgumentException("Lý do từ chối phải có ít nhất 10 ký tự");
+        }
+
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        validateNotSelfApproval(entity.getCreatedBy(), currentUserId);
+
+        ApprovalStatus nextStatus = (entity.getApprovalStatus() == ApprovalStatus.PENDING_APPROVAL)
+                ? ApprovalStatus.REJECTED_LEVEL1
+                : ApprovalStatus.REJECTED_LEVEL2;
+
+        entity.setApprovalStatus(nextStatus);
+        entity.setStatus(StationStatus.REJECTED);
+        entity.setRejectionReason(rejectionReason.trim());
+
+        historyService.recordHistory(
+                entity.getCode(),
+                StationHistoryActionType.REJECT,
+                "Chờ duyệt",
+                "Từ chối phê duyệt: " + rejectionReason.trim(),
+                String.valueOf(currentUserId),
+                LocalDateTime.now());
+
+        return repository.save(entity);
+    }
+
+    // Tương thích ngược với endpoint /approve, /reject cũ
+    public CoastalStationCospasSarsat approveStation(UUID id, boolean approved) {
+        return approveStation(id, approved, null);
+    }
+
+    public CoastalStationCospasSarsat approveStation(UUID id, boolean approved, Long userId) {
+        CoastalStationCospasSarsat entity = getStationById(id);
+        if (!approved) {
+            return reject(id, "Từ chối phê duyệt bởi quản trị viên");
+        }
+        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1) {
+            return approveLevel2(id);
+        }
+        return approveLevel1(id);
+    }
+
+    public CoastalStationCospasSarsat rejectStation(UUID id, String rejectionReason, Long userId) {
+        return reject(id, rejectionReason);
+    }
+
 
     public List<CoastalStationCospasSarsatHistoryResponse> getHistory(UUID id) {
         CoastalStationCospasSarsat entity = repository.findById(id)
@@ -256,8 +313,11 @@ public class CoastalStationCospasSarsatService {
 
     // -- HELPERS --
 
-    private String resolveCreatedBy(CoastalStationCospasSarsat entity) {
-        return entity.getApprovedBy();
+    /** Chống tự duyệt (4 mắt) — quy tắc 8 của quy trình phê duyệt 2 cấp. */
+    private void validateNotSelfApproval(UUID createdBy, UUID currentUserId) {
+        if (createdBy != null && currentUserId != null && createdBy.equals(currentUserId)) {
+            throw new IllegalStateException("Bạn không thể tự phê duyệt bản ghi do chính mình tạo (Nguyên tắc 4 mắt)");
+        }
     }
 
     public CoastalStationCospasSarsatResponse buildResponse(CoastalStationCospasSarsat entity) {
@@ -279,8 +339,15 @@ public class CoastalStationCospasSarsatService {
                 .status(entity.getStatus())
                 .approvalStatus(entity.getApprovalStatus())
                 .approvalLevel(entity.getApprovalLevel())
-                .approvedBy(entity.getApprovedBy() != null ? java.util.UUID.fromString(entity.getApprovedBy()) : null)
+                .approvedBy(entity.getApprovedBy())
                 .approvedDate(entity.getApprovedDate())
+                .submittedAt(entity.getSubmittedAt())
+                .submittedBy(entity.getSubmittedBy())
+                .approverLevel1(entity.getApproverLevel1())
+                .approvedDateLevel1(entity.getApprovedDateLevel1())
+                .approverLevel2(entity.getApproverLevel2())
+                .approvedDateLevel2(entity.getApprovedDateLevel2())
+                .rejectionReason(entity.getRejectionReason())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .deletedAt(entity.getDeletedAt())

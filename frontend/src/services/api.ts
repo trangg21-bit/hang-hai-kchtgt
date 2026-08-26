@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type { AxiosResponseHeaders, RawAxiosResponseHeaders, InternalAxiosRequestConfig, AxiosRequestConfig } from 'axios';
-import { message } from '../components/ToastNotification';
+import { toast } from '../components/ToastNotification';
 import { useAuthStore } from '../store/authStore';
 
 const api = axios.create({
@@ -24,17 +24,8 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-let lastErrorMsg = '';
-let lastErrorTime = 0;
-
 const showUniqueError = (msg: string) => {
-  const now = Date.now();
-  if (msg === lastErrorMsg && now - lastErrorTime < 1000) {
-    return;
-  }
-  lastErrorMsg = msg;
-  lastErrorTime = now;
-  message.error(msg);
+  toast.error(msg);
 };
 
 const syncNewToken = (

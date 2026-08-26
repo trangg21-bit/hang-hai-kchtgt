@@ -3,12 +3,12 @@ import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.shiprepairfacility.dto.*;
-import com.hanghai.kchtg.common.entity.ApprovalHistory;
-import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.shiprepairfacility.entity.FacilityType;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairFacility;
-import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.shiprepairfacility.repository.ShipRepairFacilityRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,7 +38,7 @@ class ShipRepairFacilityServiceTest {
     private InfrastructureAttachmentRepository attachmentRepository;
 
     @Mock
-    private ApprovalHistoryRepository historyRepository;
+    private InfrastructureHistoryRepository historyRepository;
 
     @Mock
     private com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
@@ -101,7 +101,7 @@ class ShipRepairFacilityServiceTest {
                 .build();
 
         when(repository.save(any())).thenReturn(saved);
-        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
+        when(historyRepository.save(any())).thenReturn(mock(InfrastructureHistory.class));
 
         ShipRepairFacilityResponse response = service.create(createRequest, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
@@ -185,7 +185,7 @@ class ShipRepairFacilityServiceTest {
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
         when(repository.save(any())).thenReturn(updatedEntity);
-        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
+        when(historyRepository.save(any())).thenReturn(mock(InfrastructureHistory.class));
 
         ShipRepairFacilityResponse response = service.update(TEST_ID, updateReq, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
@@ -215,7 +215,7 @@ class ShipRepairFacilityServiceTest {
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(approvedEntity));
         when(repository.save(any())).thenReturn(approvedEntity);
-        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
+        when(historyRepository.save(any())).thenReturn(mock(InfrastructureHistory.class));
 
         ShipRepairFacilityResponse response = service.update(TEST_ID, updateReqDto, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
@@ -269,7 +269,7 @@ class ShipRepairFacilityServiceTest {
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(approvedEntity));
         when(repository.save(any())).thenReturn(approvedEntity);
-        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
+        when(historyRepository.save(any())).thenReturn(mock(InfrastructureHistory.class));
 
         service.delete(TEST_ID, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
@@ -300,7 +300,7 @@ class ShipRepairFacilityServiceTest {
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
-        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
+        when(historyRepository.save(any())).thenReturn(mock(InfrastructureHistory.class));
 
         ShipRepairFacilityResponse response = service.approveC1(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
@@ -320,7 +320,7 @@ class ShipRepairFacilityServiceTest {
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
-        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
+        when(historyRepository.save(any())).thenReturn(mock(InfrastructureHistory.class));
 
         ShipRepairFacilityResponse response = service.approveC1(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
@@ -345,7 +345,7 @@ class ShipRepairFacilityServiceTest {
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
-        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
+        when(historyRepository.save(any())).thenReturn(mock(InfrastructureHistory.class));
 
         ShipRepairFacilityResponse response = service.approveC2(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
 
@@ -365,7 +365,7 @@ class ShipRepairFacilityServiceTest {
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
-        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
+        when(historyRepository.save(any())).thenReturn(mock(InfrastructureHistory.class));
 
         ShipRepairFacilityResponse response = service.approveC2(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
 
@@ -399,11 +399,12 @@ class ShipRepairFacilityServiceTest {
 
     @Test
     void testGetHistory() {
-        ApprovalHistory history = ApprovalHistory.builder()
+        InfrastructureHistory history = InfrastructureHistory.builder()
                 .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
-                .refId(TEST_ID).refType(InfrastructureType.SHIP_REPAIR_FACILITY)
+                .refId(TEST_ID)
+                .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
                 .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1)
-                .status(ApprovalHistoryStatus.fromValue("APPROVED"))
+                .status(InfrastructureHistoryStatus.fromValue("APPROVED"))
                 .approvedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .approvedDate(LocalDateTime.now())
                 .reason("Duyệt")

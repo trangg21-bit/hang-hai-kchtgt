@@ -18,7 +18,7 @@ public interface ShipRepairFacilityRepository extends JpaRepository<ShipRepairFa
     @Query("SELECT c FROM ShipRepairFacility c WHERE " +
             "c.deletedAt IS NULL AND " +
             "(:orgUnitId IS NULL OR c.orgUnitId = :orgUnitId) AND " +
-            "(:keyword IS NULL OR LOWER(c.facilityName) LIKE :keyword OR LOWER(c.address) LIKE :keyword) AND " +
+            "(CAST(:keyword AS string) IS NULL OR LOWER(c.facilityName) LIKE :keyword OR LOWER(c.address) LIKE :keyword) AND " +
             "(:provinceId IS NULL OR c.provinceId = :provinceId) AND " +
             "(:approvalStatus IS NULL OR c.approvalStatus = :approvalStatus) AND " +
             "(:reviewStatus IS NULL OR c.approvalStatus = :reviewStatus)")
@@ -30,7 +30,7 @@ public interface ShipRepairFacilityRepository extends JpaRepository<ShipRepairFa
     @Query("SELECT c FROM ShipRepairFacility c WHERE " +
            "c.deletedAt IS NULL AND " +
            "(:orgUnitId IS NULL OR c.orgUnitId = :orgUnitId) AND " +
-           "(:search IS NULL OR LOWER(c.facilityName) LIKE :search OR LOWER(c.address) LIKE :search)")
+           "(CAST(:search AS string) IS NULL OR LOWER(c.facilityName) LIKE :search OR LOWER(c.address) LIKE :search)")
     List<ShipRepairFacility> searchFiltered(
             @Param("orgUnitId") UUID orgUnitId,
             @Param("search") String search);

@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.vtssystem.dto;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
@@ -21,6 +22,7 @@ import lombok.experimental.FieldNameConstants;
 @FieldNameConstants
 public class VtsSystemUpdateRequest {
     private String systemName;
+    private ApprovalStatus approvalStatus;
     private ConditionStatus conditionStatus;
     private RecordSecurityLevel recordSecurityLevel;
     private UUID orgUnitId;
