@@ -34,6 +34,16 @@ export interface CoastalStationVTSResponse {
   contactPhone: string;
   status: string;
   approvalStatus: string;
+  approvalLevel?: number;
+  submittedAt?: string;
+  submittedBy?: string;
+  approverLevel1?: string;
+  approvedDateLevel1?: string;
+  approverLevel2?: string;
+  approvedDateLevel2?: string;
+  approvedBy?: string;
+  approvedDate?: string;
+  rejectionReason?: string;
   createdBy: string;
   createdByName: string;
   createdAt: string;

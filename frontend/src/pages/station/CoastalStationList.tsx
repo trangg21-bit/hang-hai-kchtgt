@@ -12,18 +12,26 @@ import {
   EditOutlined,
   DeleteOutlined,
   ExclamationCircleOutlined,
-  FileExcelOutlined
+  FileExcelOutlined,
+  SendOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined
 } from '@ant-design/icons';
 import {
   fetchCoastalVTSList,
   createCoastalVTS,
   updateCoastalVTS,
   deleteCoastalVTS,
+  submitCoastalVTS,
+  approveCoastalVTSL1,
+  approveCoastalVTSL2,
+  rejectCoastalVTS,
 } from '../../services/station/api';
 import type { CoastalStationVTSResponse, CoastalStationVTSRequest } from '../../services/station/types';
 import { colors } from '../../theme';
 import { fontWeightBold, fontSizeMd, fontSizeLg, radiusPill, spaceFormField } from '../../tokens';
 import { ScreenHeader, FilterBar, DataTable, Pagination } from '../../components/list-view';
+import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import { usePermissionStore } from '../../store/permissionStore';
 import toast, { message, modal } from '../../components/ToastNotification';
 
@@ -46,6 +54,11 @@ export default function CoastalStationList() {
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
   
+  // Phe duyet 2 cap
+  const [rejectingItem, setRejectingItem] = useState<CoastalStationVTSResponse | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [approving, setApproving] = useState(false);
+
   const [searchParams] = useSearchParams();
   const isIframeModal = (window.self !== window.top) && searchParams.has('action');
 
@@ -199,16 +212,88 @@ export default function CoastalStationList() {
     setPageSize(ps);
   }, []);
 
+  // --- Phê duyệt 2 cấp (docs/conventions/approval-2-level-spec.md) ---
+  const handleSubmitApproval = useCallback(async (record: CoastalStationVTSResponse) => {
+    try {
+      await submitCoastalVTS(record.id);
+      toast.success('Đã gửi phê duyệt');
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || 'Không gửi được phê duyệt');
+    }
+  }, [loadData]);
+
+  const handleApprove = useCallback(async (record: CoastalStationVTSResponse) => {
+    try {
+      if (record.approvalStatus === 'APPROVED_LEVEL1') {
+        await approveCoastalVTSL2(record.id);
+        toast.success('Đã phê duyệt cấp Cục — hồ sơ có hiệu lực');
+      } else {
+        await approveCoastalVTSL1(record.id);
+        toast.success('Đã phê duyệt cấp Cảng vụ/Chi cục — chuyển Cục duyệt');
+      }
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || 'Không phê duyệt được');
+    }
+  }, [loadData]);
+
+  const confirmReject = useCallback(async () => {
+    if (!rejectingItem) return;
+    if (rejectReason.trim().length < 10) {
+      message.error('Lý do từ chối phải có tối thiểu 10 ký tự');
+      return;
+    }
+    setApproving(true);
+    try {
+      await rejectCoastalVTS(rejectingItem.id, rejectReason.trim());
+      toast.success('Đã từ chối hồ sơ');
+      setRejectingItem(null);
+      setRejectReason('');
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || 'Không từ chối được hồ sơ');
+    } finally {
+      setApproving(false);
+    }
+  }, [rejectingItem, rejectReason, loadData]);
+
   const rowActions = useCallback((record: CoastalStationVTSResponse) => {
     const actions: { key: string; label: string; icon?: ReactNode; onClick: () => void; danger?: boolean; }[] = [];
+    const st = record.approvalStatus || 'DRAFT';
+    const isDraftOrReturned = st === 'DRAFT' || st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2';
+    const isPendingC1 = st === 'PENDING_APPROVAL';
+    const isPendingC2 = st === 'APPROVED_LEVEL1';
+    const canApproveC1 = hasPerm('coastalstation:approvec1') || hasPerm('coastalstation:approve');
+    const canApproveC2 = hasPerm('coastalstation:approvec2') || hasPerm('coastalstation:approve');
+
     if (hasPerm('coastalstation:update')) {
       actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => handleOpenModal(record) });
     }
-    if (hasPerm('coastalstation:delete')) {
+    if (isDraftOrReturned && hasPerm('coastalstation:update')) {
+      actions.push({ key: 'submit', label: 'Gửi phê duyệt', icon: <SendOutlined />, onClick: () => handleSubmitApproval(record) });
+    }
+    if ((isPendingC1 && canApproveC1) || (isPendingC2 && canApproveC2)) {
+      actions.push({
+        key: 'approve',
+        label: isPendingC2 ? 'Phê duyệt (Cục)' : 'Phê duyệt (Cảng vụ/Chi cục)',
+        icon: <CheckCircleOutlined />,
+        onClick: () => handleApprove(record),
+      });
+      actions.push({
+        key: 'reject',
+        label: 'Từ chối',
+        icon: <CloseCircleOutlined />,
+        onClick: () => { setRejectingItem(record); setRejectReason(''); },
+        danger: true,
+      });
+    }
+    // Chỉ xóa được hồ sơ ở trạng thái Lưu tạm (quy tắc 11 — xóa mềm)
+    if (st === 'DRAFT' && hasPerm('coastalstation:delete')) {
       actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => confirmDelete(record), danger: true });
     }
     return actions;
-  }, [hasPerm, handleOpenModal, confirmDelete]);
+  }, [hasPerm, handleOpenModal, confirmDelete, handleSubmitApproval, handleApprove]);
 
   const columns = useMemo(() => [
     { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
@@ -224,6 +309,8 @@ export default function CoastalStationList() {
         {status === 'ACTIVE' ? 'Hoạt động' : 'Tạm dừng'}
       </span>
     )},
+    { key: 'approvalStatus', label: 'Trạng thái phê duyệt', dataIndex: 'approvalStatus',
+      render: (st: string) => <ApprovalStatusBadge status={st || 'DRAFT'} /> },
   ], [page, pageSize]);
 
   return (
@@ -331,6 +418,31 @@ export default function CoastalStationList() {
             </Form.Item>
           </Space>
         </Form>
+      </Modal>
+
+      <Modal
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Từ chối phê duyệt</span>}
+        open={!!rejectingItem}
+        onOk={confirmReject}
+        onCancel={() => { setRejectingItem(null); setRejectReason(''); }}
+        confirmLoading={approving}
+        okText="Từ chối"
+        okType="danger"
+        cancelText="Hủy"
+        okButtonProps={{ style: { borderRadius: radiusPill, height: 40 } }}
+        cancelButtonProps={{ style: { borderRadius: radiusPill, height: 40 } }}
+      >
+        <div style={{ marginTop: 16 }}>
+          <div style={{ marginBottom: 8, fontSize: fontSizeMd }}>
+            Nhập lý do từ chối hồ sơ <strong>{rejectingItem?.stationName}</strong> (tối thiểu 10 ký tự):
+          </div>
+          <Input.TextArea
+            rows={4}
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="Nhập lý do từ chối..."
+          />
+        </div>
       </Modal>
     </div>
   );
