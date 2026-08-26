@@ -2228,7 +2228,7 @@ const ScadaListPage = () => {
           <Tabs
             defaultActiveKey="general"
             className="port-detail-tabs"
-            tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }}
+            tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 100, background: surfaceCard }}
             items={[
               {
                 key: "general",
@@ -2351,34 +2351,30 @@ const ScadaListPage = () => {
                 ),
               },
               {
-                key: "operation",
-                label: "Vận hành khai thác",
-                children: <ScadaRefTable title="Thông tin vận hành khai thác" emptyText="Chưa có dữ liệu" columns={[
-                  { title: 'Mã kế hoạch', dataIndex: 'opPlanCode', width: 180 },
-                  { title: 'Tên kế hoạch', dataIndex: 'opPlanName', width: 220 },
-                  { title: 'Ngày bắt đầu', dataIndex: 'opStartDate', width: 200 },
-                  { title: 'Ngày kết thúc', dataIndex: 'opEndDate', width: 200 },
-                ]} />,
-              },
-              {
-                key: "maintenance",
-                label: "Bảo trì",
-                children: <ScadaRefTable title="Thông tin bảo trì" emptyText="Chưa có dữ liệu" columns={[
-                  { title: 'Mã kế hoạch', dataIndex: 'maintCode', width: 180 },
-                  { title: 'Tên kế hoạch', dataIndex: 'maintName', width: 220 },
-                  { title: 'Thời gian bắt đầu', dataIndex: 'maintStart', width: 200 },
-                  { title: 'Thời gian kết thúc', dataIndex: 'maintEnd', width: 200 },
-                ]} />,
-              },
-              {
-                key: "incident",
-                label: "Sự cố",
-                children: <ScadaRefTable title="Thông tin sự cố" emptyText="Chưa có dữ liệu" columns={[
-                  { title: 'Mã sự cố', dataIndex: 'incidentCode', width: 150 },
-                  { title: 'Loại sự cố', dataIndex: 'incidentType', width: 150 },
-                  { title: 'Địa điểm', dataIndex: 'incidentLocation', width: 200 },
-                  { title: 'Thời gian', dataIndex: 'incidentTime', width: 180 },
-                ]} />,
+                key: "operationMaintenance",
+                label: "Vận hành & bảo trì",
+                children: (
+                  <div>
+                    <ScadaRefTable title="Thông tin vận hành khai thác" emptyText="Chưa có dữ liệu" columns={[
+                      { title: 'Mã kế hoạch', dataIndex: 'opPlanCode', width: 180 },
+                      { title: 'Tên kế hoạch', dataIndex: 'opPlanName', width: 220 },
+                      { title: 'Ngày bắt đầu', dataIndex: 'opStartDate', width: 200 },
+                      { title: 'Ngày kết thúc', dataIndex: 'opEndDate', width: 200 },
+                    ]} />
+                    <ScadaRefTable title="Thông tin bảo trì" emptyText="Chưa có dữ liệu" columns={[
+                      { title: 'Mã kế hoạch', dataIndex: 'maintCode', width: 180 },
+                      { title: 'Tên kế hoạch', dataIndex: 'maintName', width: 220 },
+                      { title: 'Thời gian bắt đầu', dataIndex: 'maintStart', width: 200 },
+                      { title: 'Thời gian kết thúc', dataIndex: 'maintEnd', width: 200 },
+                    ]} />
+                    <ScadaRefTable title="Thông tin sự cố" emptyText="Chưa có dữ liệu" columns={[
+                      { title: 'Mã sự cố', dataIndex: 'incidentCode', width: 150 },
+                      { title: 'Loại sự cố', dataIndex: 'incidentType', width: 150 },
+                      { title: 'Địa điểm', dataIndex: 'incidentLocation', width: 200 },
+                      { title: 'Thời gian', dataIndex: 'incidentTime', width: 180 },
+                    ]} />
+                  </div>
+                ),
               },
               {
                 key: "handlingAndTracking",
@@ -2717,7 +2713,7 @@ const ScadaListPage = () => {
         <Form form={createForm} layout="vertical" onFinish={handleCreate}>
           <Tabs
             defaultActiveKey="general"
-            tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }}
+            tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 100, background: surfaceCard }}
             items={[
               {
                 key: 'general',
@@ -3349,7 +3345,7 @@ const ScadaListPage = () => {
         <Form form={updateForm} layout="vertical" onFinish={handleUpdate}>
           <Tabs
             defaultActiveKey="general"
-            tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }}
+            tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 100, background: surfaceCard }}
             items={[
               {
                 key: 'general',
