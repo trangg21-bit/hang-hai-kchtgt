@@ -124,6 +124,8 @@ let leafletRuntime: any;
 
 const KCHT_PANE_NAME = 'kchtPane';
 const KCHT_PANE_Z_INDEX = '575';
+const KCHT_SHAPE_PANE_NAME = 'kchtShapePane';
+const KCHT_SHAPE_PANE_Z_INDEX = '540';
 
 const CELL_COORDINATES: Record<string, [number, number]> = {
   'HP': [20.80, 106.70],     // Hải Phòng
@@ -2055,6 +2057,7 @@ export default function GISChartView() {
     customGisFeatures.forEach((feature) => {
       try {
         let layer: any = null;
+        let polygonUnderlay: any = null;
         if (feature.type === 'Point') {
           const coordinates = normalizePointCoordinates(feature.coordinates);
           if (!coordinates) return;
@@ -2082,11 +2085,23 @@ export default function GISChartView() {
           const coordinates = normalizePolygonCoordinates(feature.coordinates);
           if (!coordinates) return;
           const latlngs = coordinates.map((ring) => ring.map((coordinate) => [coordinate[1], coordinate[0]]));
+          // The filled polygon stays below planning so a planning area remains
+          // clickable when the two datasets overlap.
+          polygonUnderlay = L.polygon(latlngs, {
+            pane: KCHT_SHAPE_PANE_NAME,
+            color: '#1890ff',
+            fillColor: '#1890ff',
+            fillOpacity: 0.25,
+            weight: 2,
+            pmIgnore: true,
+          });
+
+          // Keep only the KCHT outline above planning. With fill disabled,
+          // the outline does not swallow clicks across the polygon interior.
           layer = L.polygon(latlngs, {
             pane: KCHT_PANE_NAME,
             color: '#1890ff', // Blue for polygons
-            fillColor: '#1890ff',
-            fillOpacity: 0.25,
+            fill: false,
             weight: 2,
             pmIgnore: true,
           });
@@ -2151,24 +2166,26 @@ export default function GISChartView() {
             </div>
           `;
 
-          layer.bindPopup(getPopupHtml(feature.refId ? 'Đang tải...' : '—'));
+          const popupLayers = polygonUnderlay ? [polygonUnderlay, layer] : [layer];
+          popupLayers.forEach((popupLayer) => {
+            popupLayer.bindPopup(getPopupHtml(feature.refId ? 'Đang tải...' : '—'));
 
-          if (feature.refId) {
-            layer.on('popupopen', async () => {
-              try {
-                const port = await portCRUD.findById(feature.refId);
-                if (port) {
-                  layer.setPopupContent(getPopupHtml(port.portName || '—'));
-                } else {
-                  layer.setPopupContent(getPopupHtml('—'));
+            if (feature.refId) {
+              popupLayer.on('popupopen', async () => {
+                try {
+                  const port = await portCRUD.findById(feature.refId);
+                  popupLayer.setPopupContent(getPopupHtml(port?.portName || '—'));
+                } catch (err) {
+                  console.error(err);
+                  popupLayer.setPopupContent(getPopupHtml('—'));
                 }
-              } catch (err) {
-                console.error(err);
-                layer.setPopupContent(getPopupHtml('—'));
-              }
-            });
-          }
+              });
+            }
+          });
 
+          if (polygonUnderlay) {
+            customGisGroupRef.current.addLayer(polygonUnderlay);
+          }
           customGisGroupRef.current.addLayer(layer);
         }
       } catch (err) {
@@ -2383,8 +2400,10 @@ export default function GISChartView() {
     const planningPane = map.createPane('planningPane');
     planningPane.style.zIndex = '550';
 
-    // KCHT must stay clickable when it overlaps the port-planning layer.
-    // Keep vectors above planning (550) but below Leaflet's marker pane (600).
+    // Filled KCHT shapes stay below planning. KCHT points, lines and polygon
+    // outlines stay above planning, while Leaflet markers remain highest (600).
+    const kchtShapePane = map.createPane(KCHT_SHAPE_PANE_NAME);
+    kchtShapePane.style.zIndex = KCHT_SHAPE_PANE_Z_INDEX;
     const kchtPane = map.createPane(KCHT_PANE_NAME);
     kchtPane.style.zIndex = KCHT_PANE_Z_INDEX;
 
@@ -3036,7 +3055,7 @@ export default function GISChartView() {
               const geomType = record.loaiHinhHoc.toUpperCase();
               if (geomType === 'LINE' || geomType === 'POLYLINE') {
                 shapeLayer = L.polyline(shapeCoordinates, {
-                  pane: KCHT_PANE_NAME,
+                  pane: KCHT_SHAPE_PANE_NAME,
                   color: '#1890ff',
                   weight: 4,
                   opacity: 0.85,
@@ -3064,7 +3083,7 @@ export default function GISChartView() {
                 });
               } else if (geomType === 'POLYGON' || geomType === 'AREA') {
                 shapeLayer = L.polygon(shapeCoordinates, {
-                  pane: KCHT_PANE_NAME,
+                  pane: KCHT_SHAPE_PANE_NAME,
                   color: '#1890ff',
                   weight: 2,
                   fillColor: '#1890ff',
