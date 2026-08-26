@@ -71,13 +71,8 @@ public class DryPortApprovalService {
     @Transactional
     public void reject(UUID id, String reason, UUID userId) {
         DryPort entity = loadForApproval(id);
-        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1) {
-            infrastructureApprovalService.approveC2(entity, InfrastructureType.DRY_PORT,
-                    ApprovalStatus.REJECTED.name(), reason, userId);
-        } else {
-            infrastructureApprovalService.approveC1(entity, InfrastructureType.DRY_PORT,
-                    ApprovalStatus.REJECTED.name(), reason, userId);
-        }
+        entity.setApprovalStatus(entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2
+                ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
         dryPortRepository.save(entity);
     }
 
@@ -132,11 +127,16 @@ public class DryPortApprovalService {
                 .build();
 
         if (reason == null || reason.isBlank()) {
-            approvalWorkflowService.approve(currentStatusStr, "DryPort", id.toString(), userId);
+            // Mô hình 2 trạng thái: Nháp → phê duyệt thẳng. Chỉ gọi workflow cũ khi
+            // đang ở PENDING_APPROVAL (legacy) vì workflow yêu cầu đúng trạng thái đó.
+            if (currentStatus == ApprovalStatus.PENDING_APPROVAL) {
+                approvalWorkflowService.approve(currentStatusStr, "DryPort", id.toString(), userId);
+            }
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
         } else {
             approvalWorkflowService.reject(currentStatusStr, "DryPort", id.toString(), userId, reason);
-            entity.setApprovalStatus(ApprovalStatus.REJECTED);
+            entity.setApprovalStatus(currentStatus == ApprovalStatus.APPROVED_LEVEL2
+                    ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
         }
         DryPort saved = dryPortRepository.save(entity);
         changeHistoryService.recordChanges("DryPort", saved.getId().toString(), "system", snapshot, saved);

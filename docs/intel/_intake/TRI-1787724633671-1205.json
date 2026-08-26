@@ -1,0 +1,59 @@
+{
+  "triage_id": "TRI-1787724633671-1205",
+  "created_at": 1787724633671,
+  "request_summary": "Escalation từ tripwire (vượt 50 LOC): tiếp tục hoàn thiện tab \"Khu nước neo buộc tàu\" trong AnchorageDetailContent — bỏ (n) khỏi label, đổi block card sang bảng giống form Thêm mới (STT + Phạm vi khu nước neo buộc tàu, read-only, không cột Thao tác) + expandable row chứa chi tiết khu nước + bảng điểm neo DMS. Toàn bộ thay đổi gói trong 1 file.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/anchorage/AnchorageDetailContent.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/anchorage/AnchorageDetailContent.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Drawer chi tiết Khu neo đậu — tab Khu nước neo buộc tàu",
+  "blast_radius": 1,
+  "done_oracle": "Drawer chi tiết Khu neo đậu: tab \"Khu nước neo buộc tàu\" (không có (n)) hiển thị như form Thêm mới — bảng STT + Phạm vi khu nước neo buộc tàu, read-only, expandable row hiển thị Loại đối tượng/Biểu tượng/Hệ quy chiếu/Quy tắc hiển thị + bảng Điểm neo DMS. Build exit 0.",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht\\frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageDetailContent.tsx",
+      "line": 252,
+      "quote": "key: 'mooring', label: 'Khu nước neo buộc tàu',",
+      "source_hash": "a7d2dd8ec1f6619df616f2c840a82c8d9b5d1d7b72695cdcdfe6abae59644d4f",
+      "quote_hash": "96e8a41a7ce1af7f1598a15951bd09d57c152e42089d458c8b66b9aa76a3e5e9",
+      "note": "Tab mooring — đang sửa label + cấu trúc bảng"
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1787724259189-177a",
+    "breach_kind": "loc_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787724633906
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

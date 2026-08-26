@@ -213,6 +213,27 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "berth", "history", "Lịch sử phê duyệt bến cảng",
                                 "Xem lịch sử thay đổi bến cảng");
 
+                // 8.2.1 Khu neo đậu (Anchorage)
+                seedPermission(definitions, "anchorage", "read", "Xem khu neo đậu",
+                                "Tra cứu thông tin khu neo đậu");
+                seedPermission(definitions, "anchorage", "read:restricted", "Xem bản ghi hạn chế khu neo đậu",
+                                "Xem các bản ghi dữ liệu mức độ Hạn chế của khu neo đậu");
+                seedPermission(definitions, "anchorage", "read:confidential", "Xem bản ghi mật khu neo đậu",
+                                "Xem các bản ghi dữ liệu mức độ Mật của khu neo đậu");
+                seedPermission(definitions, "anchorage", "create", "Thêm khu neo đậu",
+                                "Tạo mới hồ sơ khu neo đậu");
+                seedPermission(definitions, "anchorage", "update", "Cập nhật khu neo đậu",
+                                "Chỉnh sửa thông tin khu neo đậu");
+                seedPermission(definitions, "anchorage", "delete", "Xóa khu neo đậu", "Xóa khu neo đậu");
+                seedPermission(definitions, "anchorage", "approve", "Phê duyệt khu neo đậu",
+                                "Phê duyệt dữ liệu khu neo đậu");
+                seedPermission(definitions, "anchorage", "approvec1", "Phê duyệt C1 khu neo đậu",
+                                "Phê duyệt cấp 1 khu neo đậu");
+                seedPermission(definitions, "anchorage", "approvec2", "Phê duyệt C2 khu neo đậu",
+                                "Phê duyệt cấp 2 khu neo đậu");
+                seedPermission(definitions, "anchorage", "history", "Lịch sử phê duyệt khu neo đậu",
+                                "Xem lịch sử thay đổi khu neo đậu");
+
                 // 8.3 Cầu cảng (Pier)
                 seedPermission(definitions, "pier", "read", "Xem cầu cảng", "Tra cứu thông tin cầu cảng");
                 seedPermission(definitions, "pier", "read:restricted", "Xem bản ghi hạn chế cầu cảng",

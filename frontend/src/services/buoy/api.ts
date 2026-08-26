@@ -53,8 +53,8 @@ export interface BuoySearchParams {
 
 export async function searchBuoys(params?: BuoySearchParams): Promise<Buoy[]> {
   const sp = buildSearchParams({
-    name: params?.name,
-    code: params?.code,
+    name: params?.name?.trim(),
+    code: params?.code?.trim(),
     type: params?.type,
     status: params?.status,
     condition: params?.condition,

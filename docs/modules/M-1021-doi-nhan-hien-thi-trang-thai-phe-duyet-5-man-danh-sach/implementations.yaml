@@ -1,0 +1,21 @@
+module_id: M-1021
+module_name: "Đổi nhãn hiển thị trạng thái phê duyệt 5 màn danh sách KCHT"
+type: bounded-context
+slug: doi-nhan-hien-thi-trang-thai-phe-duyet-5-man-danh-sach
+
+# Map logical module → physical implementations across apps/services/libs.
+# Updated by `from-code` Phase 5 (auto-detect) or `dev` agent (manual).
+implementations:
+  apps: []
+  services: []
+  libs: []
+  packages: []
+
+# Stakeholder roster (BA fills business-owner; tech-lead fills tech-lead)
+stakeholders:
+  business-owner: ""
+  tech-lead: ""
+  qa-lead: ""
+
+# Cross-references
+depends_on: []

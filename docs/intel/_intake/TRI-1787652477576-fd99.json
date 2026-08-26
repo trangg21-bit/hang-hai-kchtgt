@@ -1,0 +1,61 @@
+{
+  "triage_id": "TRI-1787652477576-fd99",
+  "created_at": 1787652477576,
+  "request_summary": "Sửa bộ lọc Đơn vị quản lý màn Quản lý khu neo đậu: mở rộng lọc theo subtree đơn vị (resolveSubtreeIds) giống logic BerthService",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java"
+    ],
+    "impact_files": [
+      "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "backend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn hình Quản lý khu neo đậu (route /anchorage) — bộ lọc \"Đơn vị quản lý\"",
+  "blast_radius": 1,
+  "done_oracle": "Chọn một đơn vị cha trong bộ lọc Đơn vị quản lý của màn Quản lý khu neo đậu → danh sách hiển thị cả khu neo đậu của các đơn vị con (hậu duệ), giống hệt bến cảng; mvn clean compile thành công",
+  "verification_commands": [
+    {
+      "command": "mvn clean compile -q",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 600000
+    }
+  ],
+  "change_type": "business_rule",
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java",
+      "line": 168,
+      "quote": "                orgUnitId == null, orgUnitId != null ? List.of(orgUnitId) : List.of(),",
+      "source_hash": "e31e311028815a46ed1d35ea0a46073835beaf1f7acdcea9155ae63c336327de",
+      "quote_hash": "7f3098d4cff931f20d263ec1e3edca4f202a78f635324a463b5bb62b46062a26",
+      "note": "AnchorageService.findAll chỉ lọc đúng đơn vị được chọn, không mở rộng cây đơn vị con"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/BerthService.java",
+      "line": 208,
+      "quote": "        List<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of();",
+      "source_hash": "294e94cd64e41de2b9db8da355af9fcb094e22dd9a69e71a19feec127ddeda6c",
+      "quote_hash": "833df55a30d27f42b5b0570dffc6d98fde1d9621b4cd69bd22660b77a771caaf",
+      "note": "BerthService.findAll mở rộng subtree — logic chuẩn cần áp dụng cho anchorage"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "9b1b3d651330307588d9cfb59316b68c7975bc12",
+    "dirty": true,
+    "captured_at": 1787652477783
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

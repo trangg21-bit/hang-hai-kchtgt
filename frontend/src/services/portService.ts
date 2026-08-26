@@ -16,6 +16,10 @@ import type {
   WaterZone,
   CreateWaterZoneRequest,
   UpdateWaterZoneRequest,
+  Anchorage,
+  CreateAnchorageRequest,
+  UpdateAnchorageRequest,
+  AnchorageApprovalResponse,
 } from '../types/port';
 
 // ── Helper: search params builder ──────────────────────────────────
@@ -693,5 +697,131 @@ export const waterZoneHistory = {
       page: (pageData.number ?? 0) + 1,
       pageSize: pageData.size ?? 20,
     };
+  },
+};
+
+// ── Anchorage CRUD ──────────────────────────────────────────────────
+
+export const anchorageCRUD = {
+  async findAll(params?: {
+    page?: number;
+    size?: number;
+    orgUnitId?: string;
+  }): Promise<PaginatedResponse<Anchorage>> {
+    const sp = buildSearchParams({
+      page: params?.page !== undefined ? params.page - 1 : undefined,
+      size: params?.size,
+      orgUnitId: params?.orgUnitId,
+    });
+    const res = await api.get(`/v1/anchorage?${sp}`);
+    const pageData = res.data.data;
+    return {
+      data: pageData.content || [],
+      total: pageData.totalElements ?? 0,
+      page: (pageData.number ?? 0) + 1,
+      pageSize: pageData.size ?? 20,
+    };
+  },
+
+  async findById(id: string): Promise<Anchorage> {
+    const res = await api.get(`/v1/anchorage/${id}`);
+    return res.data.data;
+  },
+
+  async search(params?: {
+    anchorageName?: string;
+    anchorageCode?: string;
+    portId?: string;
+    orgUnitId?: string;
+    navigationChannelId?: string;
+    buoyStationId?: string;
+    provinceId?: number;
+    operationalStatus?: string;
+    approvalStatus?: string;
+    updatedFrom?: string;
+    updatedTo?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<PaginatedResponse<Anchorage>> {
+    const sp = buildSearchParams({
+      anchorageName: params?.anchorageName,
+      anchorageCode: params?.anchorageCode,
+      portId: params?.portId,
+      orgUnitId: params?.orgUnitId,
+      navigationChannelId: params?.navigationChannelId,
+      buoyStationId: params?.buoyStationId,
+      provinceId: params?.provinceId,
+      operationalStatus: params?.operationalStatus,
+      approvalStatus: params?.approvalStatus,
+      updatedFrom: params?.updatedFrom,
+      updatedTo: params?.updatedTo,
+      page: params?.page !== undefined ? params.page - 1 : undefined,
+      size: params?.pageSize,
+    });
+    const res = await api.get(`/v1/anchorage?${sp}`);
+    const pageData = res.data.data;
+    return {
+      data: pageData.content || [],
+      total: pageData.totalElements ?? 0,
+      page: (pageData.number ?? 0) + 1,
+      pageSize: pageData.size ?? 20,
+    };
+  },
+
+  async create(payload: CreateAnchorageRequest): Promise<Anchorage> {
+    const res = await api.post('/v1/anchorage', payload);
+    return res.data.data;
+  },
+
+  async update(payload: UpdateAnchorageRequest): Promise<Anchorage> {
+    const res = await api.put('/v1/anchorage', payload);
+    return res.data.data;
+  },
+
+  async delete(id: string): Promise<void> {
+    await api.delete(`/v1/anchorage/${id}`);
+  },
+
+  async generateCode(portId: string): Promise<{ anchorageCode: string }> {
+    const res = await api.get(`/v1/anchorage/generate-code?portId=${portId}`);
+    return res.data.data;
+  },
+
+  async approve(id: string, cap: string, content?: string): Promise<void> {
+    await api.post(`/v1/anchorage/${id}/approve`, { cap, content });
+  },
+
+  async reject(id: string, cap: string, lyDo: string): Promise<void> {
+    await api.post(`/v1/anchorage/${id}/reject`, { cap, lyDo });
+  },
+
+  async getHistory(id: string): Promise<AnchorageApprovalResponse> {
+    const res = await api.get(`/v1/anchorage/${id}/history`);
+    return res.data.data;
+  },
+
+  async getAllHistory(): Promise<any> {
+    const res = await api.get('/v1/anchorage/history/all');
+    return res.data.data;
+  },
+
+  async uploadAttachments(id: string, files: File[]): Promise<any> {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('files', file);
+    }
+    const res = await api.post(`/v1/anchorage/${id}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data.data;
+  },
+
+  async listAttachments(id: string): Promise<any> {
+    const res = await api.get(`/v1/anchorage/${id}/attachments`);
+    return res.data.data;
+  },
+
+  async deleteAttachment(id: string, attId: string): Promise<void> {
+    await api.delete(`/v1/anchorage/${id}/attachments/${attId}`);
   },
 };

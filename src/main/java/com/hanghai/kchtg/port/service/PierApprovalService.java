@@ -141,7 +141,8 @@ public class PierApprovalService {
         ApprovalLog approvalLogRecord = ApprovalLog.builder()
                 .entityType("Pier").entityId(id.toString()).decision("APPROVED").cap(cap)
                 .decidedBy(userId).decidedAt(LocalDateTime.now()).build();
-        approvalLogRepository.save(approvalLogRecord);
+        // [TẠM TẮT GHI LỊCH SỬ] Bảng approval_logs đã bị V20260825162500 drop; user yêu cầu không ghi lịch sử phê duyệt
+        // approvalLogRepository.save(approvalLogRecord);
         pierRepository.save(entity);
     }
 
@@ -150,12 +151,14 @@ public class PierApprovalService {
         Pier entity = pierRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cầu cảng với id: " + id));
 
-        entity.setApprovalStatus(ApprovalStatus.REJECTED);
+        entity.setApprovalStatus(entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2
+                ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
 
         ApprovalLog approvalLog = ApprovalLog.builder()
                 .entityType("Pier").entityId(id.toString()).decision("REJECTED").cap(cap)
                 .reason(reason).decidedBy(userId).decidedAt(LocalDateTime.now()).build();
-        approvalLogRepository.save(approvalLog);
+        // [TẠM TẮT GHI LỊCH SỬ] Bảng approval_logs đã bị V20260825162500 drop; user yêu cầu không ghi lịch sử phê duyệt
+        // approvalLogRepository.save(approvalLog);
         pierRepository.save(entity);
 
         log.info("Pier [{}] rejected by {} at level {}: {}", id, userId, cap, reason);

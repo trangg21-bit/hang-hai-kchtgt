@@ -154,8 +154,8 @@ public class DryPortController {
     }
 
     /**
-     * Giữ URL cũ để giao diện chưa chuyển đổi không hỏng, nhưng nay duyệt đúng
-     * vòng đang mở thay vì duyệt một phát — không còn đường vòng bỏ qua quy trình.
+     * Mô hình 2 trạng thái (cảng cạn): phê duyệt thẳng Nháp → Đã phê duyệt.
+     * URL cũ giữ cho giao diện hiện tại; không còn luồng duyệt 2 cấp.
      */
     @PostMapping("/{id}/approve")
     @PreAuthorize("@auth.checkAny(authentication, 'dryport:approvec1', 'dryport:approvec2', 'dryport:approve')")
@@ -164,7 +164,7 @@ public class DryPortController {
             Authentication authentication) {
         UUID userId = SecurityUtils.getCurrentUserId();
         log.info("Approving DryPort: id={}, userId={}", id, userId);
-        dryPortApprovalService.approveCurrentStage(id, null, userId);
+        dryPortApprovalService.approve(id, userId.toString(), null);
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt cảng cạn thành công", null));
     }
 

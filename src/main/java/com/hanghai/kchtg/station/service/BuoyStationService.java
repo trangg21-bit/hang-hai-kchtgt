@@ -195,6 +195,20 @@ public class BuoyStationService {
             UUID currentUserId = SecurityUtils.getCurrentUserId();
             entity.setSentApprovedBy(currentUserId);
             entity.setSentApprovedDate(LocalDateTime.now());
+        } else if ("approved".equals(request.getAction())) {
+            // "Lưu và phê duyệt" — duyệt thẳng (mirror BuoyService.create approved)
+            entity.setStatus(StationStatus.PUBLISHED);
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            entity.setApprovalLevel(ApprovalLevel.LEVEL_2);
+            UUID uid = SecurityUtils.getCurrentUserId();
+            entity.setSentApprovedBy(uid);
+            entity.setSentApprovedDate(LocalDateTime.now());
+            entity.setApprovedBy(uid);
+            entity.setApprovedDate(LocalDateTime.now());
+            entity.setLevel1ApprovedBy(uid);
+            entity.setLevel1ApprovedDate(LocalDateTime.now());
+            entity.setLevel2ApprovedBy(uid);
+            entity.setLevel2ApprovedDate(LocalDateTime.now());
         }
 
         entity = phaoRepo.save(entity);
@@ -355,7 +369,29 @@ public class BuoyStationService {
                 || entity.getApprovalStatus() == ApprovalStatus.APPROVED
                 || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
 
-        if (wasApproved) {
+        // "Lưu và gửi phê duyệt" / "Lưu và phê duyệt" (mirror create: action submit/approved)
+        String action = request.getAction();
+        if ("submit".equals(action)) {
+            entity.setStatus(StationStatus.PENDING_APPROVAL);
+            entity.setApprovalStatus(ApprovalStatus.PROPOSED);
+            entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
+            UUID uid = SecurityUtils.getCurrentUserId();
+            entity.setSentApprovedBy(uid);
+            entity.setSentApprovedDate(LocalDateTime.now());
+        } else if ("approved".equals(action)) {
+            entity.setStatus(StationStatus.PUBLISHED);
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            entity.setApprovalLevel(ApprovalLevel.LEVEL_2);
+            UUID uid = SecurityUtils.getCurrentUserId();
+            entity.setSentApprovedBy(uid);
+            entity.setSentApprovedDate(LocalDateTime.now());
+            entity.setApprovedBy(uid);
+            entity.setApprovedDate(LocalDateTime.now());
+            entity.setLevel1ApprovedBy(uid);
+            entity.setLevel1ApprovedDate(LocalDateTime.now());
+            entity.setLevel2ApprovedBy(uid);
+            entity.setLevel2ApprovedDate(LocalDateTime.now());
+        } else if (wasApproved) {
             entity.setStatus(StationStatus.APPROVED_L2);
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
         }
@@ -434,9 +470,11 @@ public class BuoyStationService {
                         "Nhà trạm phao không tìm thấy: " + id));
 
         if (!StationStatus.DRAFT.equals(entity.getStatus()) && !StationStatus.REJECTED.equals(entity.getStatus())
+                && !StationStatus.REJECTED_L1.equals(entity.getStatus())
+                && !StationStatus.REJECTED_L2.equals(entity.getStatus())
                 && !StationStatus.PENDING_APPROVAL.equals(entity.getStatus())) {
             throw new IllegalStateException(
-                    "Chỉ có thể gửi phê duyệt khi status = DRAFT, REJECTED hoặc PENDING_APPROVAL");
+                    "Chỉ có thể gửi phê duyệt khi status = DRAFT, REJECTED, REJECTED_L1, REJECTED_L2 hoặc PENDING_APPROVAL");
         }
 
         entity.setStatus(StationStatus.PENDING_APPROVAL);
@@ -514,8 +552,9 @@ public class BuoyStationService {
                     "Lý do từ chối phải có ít nhất 10 ký tự");
         }
 
-        entity.setStatus(StationStatus.REJECTED);
-        entity.setApprovalStatus(ApprovalStatus.REJECTED);
+        boolean rejectedAtC2 = entity.getStatus() == StationStatus.APPROVED_L1;
+        entity.setStatus(rejectedAtC2 ? StationStatus.REJECTED_L2 : StationStatus.REJECTED_L1);
+        entity.setApprovalStatus(rejectedAtC2 ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
         entity.setRejectionReason(rejectReason);
         phaoRepo.save(entity);
 
@@ -554,18 +593,24 @@ public class BuoyStationService {
 
     private void logHistory(BuoyStation entity,
             String action, String fields, String previousJson, String newJson) {
-        StationHistory entry = StationHistory.builder()
-                .stationType("PHAO")
-                .entityId(entity.getId())
-                .actionType(action)
-                .changedField(fields)
-                .previousValue(previousJson)
-                .newValue(newJson != null ? newJson : ("REJECT".equals(action) ? "REJECTED" : null))
-                .changedBy(resolveCurrentUserId())
-                .changedAt(LocalDateTime.now())
-                .reason("REJECT".equals(action) ? newJson : null)
-                .build();
-        historyRepo.save(entry);
+        // ⛔ TẠM KHÓA GHI LỊCH SỬ (2026-08-26): bảng station_history đã bị xóa bởi migration
+        // V20260825162500__unify_all_history_to_infrastructure_history.sql (hợp nhất toàn bộ
+        // nhật ký về bảng infrastructure_history). Ghi tiếp vào bảng cũ gây lỗi
+        // 'relation "station_history" does not exist' ở mọi thao tác create/update/approve/reject.
+        // Khi cần khôi phục: ghi qua HistoryService.recordHistory(...) như các service trạm khác
+        // (CoastalStationVTSService, CoastalStationInmarsatService, ...).
+        // StationHistory entry = StationHistory.builder()
+        //         .stationType("PHAO")
+        //         .entityId(entity.getId())
+        //         .actionType(action)
+        //         .changedField(fields)
+        //         .previousValue(previousJson)
+        //         .newValue(newJson != null ? newJson : ("REJECT".equals(action) ? "REJECTED" : null))
+        //         .changedBy(resolveCurrentUserId())
+        //         .changedAt(LocalDateTime.now())
+        //         .reason("REJECT".equals(action) ? newJson : null)
+        //         .build();
+        // historyRepo.save(entry);
     }
 
     private BuoyStationResponse toResponse(BuoyStation entity) {

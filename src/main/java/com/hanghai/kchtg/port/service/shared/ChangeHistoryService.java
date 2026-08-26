@@ -137,7 +137,8 @@ public class ChangeHistoryService {
                                 .changedAt(LocalDateTime.now())
                                 .createdAt(LocalDateTime.now())
                                 .build();
-                        changeLogRepository.save(history);
+                        // [TẠM TẮT GHI LỊCH SỬ] Bảng change_logs đã bị V20260825162500 drop; user yêu cầu không ghi lịch sử thay đổi cũ
+                        // changeLogRepository.save(history);
                     }
                     changedFields.add(fieldName);
                 }
@@ -244,7 +245,8 @@ public class ChangeHistoryService {
                     .createdAt(LocalDateTime.now())
                     .build();
 
-            changeLogRepository.save(record);
+            // [TẠM TẮT GHI LỊCH SỬ] Bảng change_logs đã bị V20260825162500 drop; user yêu cầu không ghi lịch sử thay đổi cũ
+            // changeLogRepository.save(record);
             return record.getId();
         }
         return UUID.randomUUID();

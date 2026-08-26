@@ -26,6 +26,9 @@ public class UpdateBuoyRequest {
 
     private RecordSecurityLevel securityLevel;
 
+    /** "draft" | "submit" | "approved" — hành động lưu (mirror CreateBuoyRequest.action). */
+    private String action;
+
     @Size(max = 50)
     private String code;
 

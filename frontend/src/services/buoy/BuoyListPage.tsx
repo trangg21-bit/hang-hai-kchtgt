@@ -31,7 +31,7 @@ import type { BuoyStationResponse } from '../buoy-station/types';
 import {
   BUOY_TYPE_OPTIONS, BUOY_TYPE_MAP,
   COLOR_LABEL_MAP, SHAPE_LABEL_MAP, LIGHT_CHAR_LABEL_MAP, BUOY_FIELD_MAP,
-  CONDITION_OPTIONS,
+  CONDITION_OPTIONS, buoyStatusBadge, TAB_STATUS_LIST,
 } from './schema';
 import type { Buoy, ChangeHistory } from './types';
 import { documentApi } from '../../app/document/api';
@@ -47,7 +47,7 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import toast from '../../components/ToastNotification';
 import api from '../../services/api';
 import {
-  statusOperational, statusCritical, actionPrimary, statusDraft, statusAttention,
+  statusOperational, statusCritical, actionPrimary, statusAttention,
   textPrimary, textSecondary, textTertiary, borderDefault,
   fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
   spaceMd, spaceSm, spaceXs, spaceXl, spaceFormField, radiusPill,
@@ -62,6 +62,35 @@ import { colors } from '../../theme';
 import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
 
 // ── Helpers (moved verbatim from BuoyList.tsx / BuoyForm.tsx) ────────
+
+// Nhãn trường form — dùng cho phản hồi validate rõ ràng
+const BUOY_FORM_FIELD_LABELS: Record<string, string> = {
+  unitId: 'Đơn vị quản lý',
+  buoyStationId: 'Thuộc nhà trạm quản lý vận hành phao, tiêu',
+  classification: 'Phân loại',
+  name: 'Tên phao, tiêu',
+  lightHeight: 'Chiều cao tâm sáng',
+  range: 'Phạm vi chiếu sáng',
+  condition: 'Tình trạng',
+  mapSymbolId: 'Biểu tượng',
+  coordinateSystem: 'Hệ quy chiếu',
+  displayRule: 'Quy tắc hiển thị',
+  geometryType: 'Loại đối tượng',
+};
+
+/** Phản hồi khi validate form thất bại: toast liệt kê trường thiếu + tự cuộn tới lỗi đầu tiên.
+ *  Trước đây lỗi nằm ở các trường dưới vùng cuộn của popup khiến bấm nút tưởng như không phản ứng. */
+function showValidationFeedback(e: { errorFields?: { name?: (string | number)[]; errors?: string[] }[] }) {
+  const fields = e?.errorFields ?? [];
+  const names = fields.map((f) => String(f.name?.[0])).filter(Boolean);
+  if (names.length > 0) {
+    const labels = [...new Set(names.map((n) => BUOY_FORM_FIELD_LABELS[n] ?? n))];
+    toast.error(`Vui lòng hoàn thiện các trường bắt buộc: ${labels.join(', ')}`);
+  }
+  requestAnimationFrame(() => {
+    document.querySelector('.ant-drawer-open .ant-form-item-has-error')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+}
 
 function formatDateOnly(dateStr: string | null | undefined): string {
   if (!dateStr) return '—';
@@ -137,9 +166,9 @@ const HISTORY_FIELD_ORDER = ['code', 'name', 'type', 'classification', 'classifi
 const GEOMETRY_TYPE_LABELS: Record<string, string> = { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' };
 const COORD_SYS_LABELS: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000' };
 const APPROVAL_STATUS_LABELS: Record<string, string> = {
-  DRAFT: 'Nháp', PROPOSED: 'Chờ phê duyệt', PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
-  APPROVED_LEVEL1: 'Chờ Cục duyệt', APPROVED_LEVEL2: 'Đã duyệt L2', APPROVED: 'Đã phê duyệt',
-  REJECTED: 'Từ chối',
+  DRAFT: 'Lưu tạm', PROPOSED: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+  APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục', APPROVED_LEVEL2: 'Đã phê duyệt', APPROVED: 'Đã phê duyệt',
+  REJECTED: 'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL2: 'Từ chối cấp cục',
 };
 
 function formatDateTime(dateStr: string | null | undefined): string {
@@ -166,29 +195,6 @@ function parseGisCoordinateList(gisLocation: { geometryType?: string; coordinate
 // Số lượng tọa độ mặc định tương ứng với từng loại đối tượng: điểm → 1, đường → 2, vùng → 3
 const GEOMETRY_POINT_COUNT: Record<string, number> = { POINT: 1, LINE: 2, POLYGON: 3 };
 
-// Tab trạng thái giống BerthList (key = giá trị field `status` của Buoy: DRAFT → PENDING_APPROVAL → APPROVED_L1 → PUBLISHED)
-const TAB_STATUS_LIST = [
-  { key: 'all', label: 'Tất cả', color: actionPrimary },
-  { key: 'DRAFT', label: 'Nháp', color: statusDraft },
-  { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', color: actionPrimary },
-  { key: 'APPROVED_L1', label: 'Chờ Cục duyệt', color: statusAttention },
-  { key: 'PUBLISHED', label: 'Đã phê duyệt', color: statusOperational },
-  { key: 'REJECTED', label: 'Từ chối', color: statusCritical },
-];
-
-function buoyStatusBadge(status: string | null | undefined): { color: string; label: string } {
-  const m: Record<string, { color: string; label: string }> = {
-    DRAFT: { color: statusDraft, label: 'Nháp' },
-    PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ Cảng vụ duyệt' },
-    APPROVED_L1: { color: statusAttention, label: 'Chờ Cục duyệt' },
-    PUBLISHED: { color: statusOperational, label: 'Đã phê duyệt' },
-    REJECTED: { color: statusCritical, label: 'Từ chối' },
-    APPROVED_L2: { color: statusAttention, label: 'Đã duyệt L2' },
-    DELETED: { color: textTertiary, label: 'Đã xóa' },
-  };
-  return m[status || ''] || { color: textTertiary, label: status || '—' };
-}
-
 // Style badge Tình trạng giống bến cảng (operationalStatus pill)
 const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
   'Đang khai thác/vận hành': { color: statusOperational, label: 'Đang khai thác/vận hành' },
@@ -199,7 +205,7 @@ const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
 // Map tab key → giá trị status lọc (giống BerthList TAB_QUERY_MAP; giá trị theo field `status` của Buoy)
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
   all: undefined, DRAFT: 'DRAFT', PENDING_APPROVAL: 'PENDING_APPROVAL',
-  APPROVED_L1: 'APPROVED_L1', PUBLISHED: 'PUBLISHED', REJECTED: 'REJECTED',
+  APPROVED_L1: 'APPROVED_L1', PUBLISHED: 'PUBLISHED', REJECTED_L1: 'REJECTED_L1', REJECTED_L2: 'REJECTED_L2',
 };
 
 function ddToDms(dd: number | null | undefined): { d: number | null; m: number | null; s: number | null } {
@@ -236,7 +242,6 @@ export default function BuoyListPage() {
   // Bộ lọc nâng cao (toggle)
   const [filterProvince, setFilterProvince] = useState('');
   const [filterCondition, setFilterCondition] = useState<string | undefined>();
-  const [filterApprovalStatus, setFilterApprovalStatus] = useState<string | undefined>();
   const [filterUpdatedFrom, setFilterUpdatedFrom] = useState<string | undefined>();
   const [filterUpdatedTo, setFilterUpdatedTo] = useState<string | undefined>();
 
@@ -566,8 +571,8 @@ export default function BuoyListPage() {
       });
       setTabCounts(counts);
 
-      // Lọc trạng thái hiệu dụng = bộ lọc nâng cao || tab đang chọn (giống BerthList: filterApprovalStatus || TAB_QUERY_MAP[activeTab])
-      const effectiveStatus = filterApprovalStatus || TAB_QUERY_MAP[activeTab];
+      // Lọc trạng thái theo tab đang chọn (bộ lọc nâng cao đã bỏ trạng thái — tab là nguồn duy nhất)
+      const effectiveStatus = TAB_QUERY_MAP[activeTab];
       const tabFiltered = effectiveStatus ? stationFiltered.filter((d) => d.status === effectiveStatus) : stationFiltered;
       setAllData(tabFiltered);
       setTotal(tabFiltered.length);
@@ -579,7 +584,7 @@ export default function BuoyListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [filterName, filterCode, filterCondition, filterProvince, filterApprovalStatus, managingUnitId, organizations, filterStationId, filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize]);
+  }, [filterName, filterCode, filterCondition, filterProvince, managingUnitId, organizations, filterStationId, filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
 
@@ -598,7 +603,6 @@ export default function BuoyListPage() {
     setFilterCode('');
     setFilterProvince('');
     setFilterCondition(undefined);
-    setFilterApprovalStatus(undefined);
     setFilterUpdatedFrom(undefined);
     setFilterUpdatedTo(undefined);
     setActiveTab('all');
@@ -770,6 +774,14 @@ export default function BuoyListPage() {
       }
     }
 
+    if (values.geometryType) {
+      const minCount = GEOMETRY_POINT_COUNT[values.geometryType] ?? 1;
+      if (manualCoords.length < minCount) {
+        toast.error(values.geometryType === 'POLYGON' ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ' : values.geometryType === 'LINE' ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ' : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ');
+        return;
+      }
+    }
+
     // Kiểm tra trùng tên/mã phao tiêu (chặn lưu — không cho thêm mới trùng)
     try {
       const dupByName = await searchBuoys({ name });
@@ -879,6 +891,14 @@ export default function BuoyListPage() {
       }
     }
 
+    if (values.geometryType) {
+      const minCount = GEOMETRY_POINT_COUNT[values.geometryType] ?? 1;
+      if (manualCoords.length < minCount) {
+        toast.error(values.geometryType === 'POLYGON' ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ' : values.geometryType === 'LINE' ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ' : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ');
+        return;
+      }
+    }
+
     // Kiểm tra trùng tên phao tiêu khi chỉnh sửa (chặn lưu — trừ chính bản ghi đang sửa)
     try {
       const dupByName = await searchBuoys({ name });
@@ -942,8 +962,11 @@ export default function BuoyListPage() {
       payload.displayRule = values.displayRule || undefined;
       Object.keys(payload).forEach((key) => { if (payload[key] === undefined) delete payload[key]; });
 
+      if (actionTypeRef.current === 'approved') {
+        (payload as any).action = 'approved';
+      }
       await updateBuoy(editingRecord.id, payload as any);
-      toast.success('Cập nhật thành công');
+      toast.success(actionTypeRef.current === 'approved' ? 'Lưu và phê duyệt thành công' : 'Cập nhật thành công');
 
       if (uploadFileList.length > 0) {
         await uploadFilesAfterSave(editingRecord.id, uploadFileList);
@@ -956,7 +979,7 @@ export default function BuoyListPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [editingRecord, editCoords, uploadFileList, uploadFilesAfterSave, closeEditDrawer, fetchData]);
+  }, [editingRecord, editCoords, uploadFileList, uploadFilesAfterSave, closeEditDrawer, fetchData, currentUser]);
 
   // ── History Drawer ──────────────────────────────────────────────
 
@@ -1325,9 +1348,9 @@ export default function BuoyListPage() {
     },
     {
       key: 'provinceId',
-      label: 'Địa điểm (Tỉnh/TP)',
+      label: 'Địa điểm (Tỉnh/Thành phố)',
       dataIndex: 'provinceId',
-      width: 200,
+      width: 250,
       ellipsis: false,
       sortable: true,
       render: (v: number) => (v != null ? (VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(v))?.label || String(v)) : '—'),
@@ -1348,7 +1371,7 @@ export default function BuoyListPage() {
       key: 'status',
       label: 'Trạng thái',
       dataIndex: 'status',
-      width: 220,
+      width: 260,
       sortable: true,
       render: (status: string | null | undefined) => {
         const b = buoyStatusBadge(status);
@@ -1466,7 +1489,18 @@ export default function BuoyListPage() {
       });
     }
 
-    if ((hasPerm('buoy:update') || hasPerm('buoy:manage') || hasPerm('data:update') || hasPerm('data:read') || hasPerm('admin:manage')) && (record.status === 'DRAFT' || record.status === 'REJECTED')) {
+    const deletableStatuses = ['DRAFT', 'REJECTED', 'REJECTED_L1', 'REJECTED_L2'];
+    if ((hasPerm('buoy:delete') || hasPerm('buoy:manage') || hasPerm('data:delete')) && deletableStatuses.includes(record.status || '')) {
+      actions.push({
+        key: 'delete',
+        label: 'Xóa',
+        icon: <DeleteOutlined />,
+        onClick: () => openDeleteModal(record),
+        danger: true,
+      });
+    }
+
+    if ((hasPerm('buoy:update') || hasPerm('buoy:manage') || hasPerm('data:update') || hasPerm('data:read') || hasPerm('admin:manage')) && (record.status === 'DRAFT' || record.status === 'REJECTED' || record.status === 'REJECTED_L1' || record.status === 'REJECTED_L2')) {
       actions.push({
         key: 'submit',
         label: 'Gửi Cảng vụ phê duyệt',
@@ -1504,17 +1538,6 @@ export default function BuoyListPage() {
         label: 'Từ chối',
         icon: <CloseCircleOutlined />,
         onClick: () => openRejectModal(record),
-        danger: true,
-      });
-    }
-
-    const deletableStatuses = ['DRAFT', 'REJECTED'];
-    if ((hasPerm('buoy:delete') || hasPerm('buoy:manage') || hasPerm('data:delete')) && deletableStatuses.includes(record.status || '')) {
-      actions.push({
-        key: 'delete',
-        label: 'Xóa',
-        icon: <DeleteOutlined />,
-        onClick: () => openDeleteModal(record),
         danger: true,
       });
     }
@@ -1574,20 +1597,6 @@ export default function BuoyListPage() {
               value={filterName}
               onChange={(e) => { setFilterName(e.target.value); setPage(1); }}
               style={{ borderRadius: radiusPill, height: 40 }} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
-            <Select placeholder="Chọn trạng thái" allowClear
-              value={filterApprovalStatus || undefined}
-              onChange={(v) => { setFilterApprovalStatus(v); setPage(1); }}
-              options={[
-                { value: 'DRAFT', label: 'Nháp' },
-                { value: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt' },
-                { value: 'APPROVED_L1', label: 'Chờ Cục duyệt' },
-                { value: 'PUBLISHED', label: 'Đã phê duyệt' },
-                { value: 'REJECTED', label: 'Từ chối' },
-              ]}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
           </div>
 
           {/* ── Bộ lọc nâng cao (toggle) ────────────────────────────── */}
@@ -1736,6 +1745,7 @@ export default function BuoyListPage() {
             } else {
               setCreateTabKey('general');
             }
+            showValidationFeedback(e);
           }}
         >
           <BuoyFormContent
@@ -1771,7 +1781,7 @@ export default function BuoyListPage() {
         extra={<Button type="text" onClick={closeEditDrawer} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
           <div style={drawerFooterStyle}>
-            <Button type="primary" onClick={() => updateForm.submit()} loading={submitting} disabled={submitting} style={primaryButtonStyle}>Cập nhật</Button>
+            <Button type="primary" onClick={() => { actionTypeRef.current = 'approved'; updateForm.submit(); }} loading={submitting} disabled={submitting} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
           </div>
         }
         styles={{
@@ -1788,6 +1798,7 @@ export default function BuoyListPage() {
             if (e?.errorFields?.some((f: any) => ['mapSymbolId', 'coordinateSystem', 'displayRule', 'geometryType'].includes(f.name[0]))) {
               setEditTabKey('gis');
             }
+            showValidationFeedback(e);
           }}
         >
           <BuoyFormContent

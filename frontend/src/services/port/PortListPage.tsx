@@ -33,7 +33,7 @@ import {
   DeleteOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
-  SendOutlined,
+
   EyeOutlined,
   HistoryOutlined,
   ClockCircleOutlined,
@@ -66,11 +66,12 @@ import {
   deleteCangBien,
   approveCangBienC1,
   approveCangBienC2,
-  submitCangBien,
+
   rejectCangBien,
   fetchCangBienById,
   updateCangBien,
 } from './api';
+import { portApproval } from '../portService';
 import { trangThaiHoatDongBadge, trangThaiPheDuyetBadge, TRANG_THAI_HOAT_DONG_OPTIONS } from './schema';
 import type { CangBienResponse } from './types';
 import toast, { message, modal } from '../../components/ToastNotification';
@@ -304,7 +305,7 @@ function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, 
   if (!val || val === '(null)' || val === 'null') return '(trống)';
   if (fn === 'orgUnitId' && orgMap) { const full = orgMap.get(val); return full ? full.split(' - ').pop() || full : val; }
   if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
-  if (fn === 'approvalStatus') { const m: Record<string, string> = { DRAFT: 'Nháp', PROPOSED: 'Đề xuất', PENDING: 'Chờ duyệt', CHO_PHE_DUYET: 'Chờ phê duyệt', PENDING_APPROVAL: 'Chờ phê duyệt', APPROVED: 'Đã phê duyệt', DA_PHE_DUYET: 'Đã phê duyệt', REJECTED: 'Từ chối', TU_CHOI: 'Từ chối' }; return m[val] || m[val?.toUpperCase()] || val; }
+  if (fn === 'approvalStatus') { const m: Record<string, string> = { DRAFT: 'Lưu tạm', PROPOSED: 'Đề xuất', PENDING: 'Chờ duyệt', CHO_PHE_DUYET: 'Chờ phê duyệt', PENDING_APPROVAL: 'Chờ phê duyệt', APPROVED: 'Đã phê duyệt', DA_PHE_DUYET: 'Đã phê duyệt', REJECTED: 'Từ chối', TU_CHOI: 'Từ chối' }; return m[val] || m[val?.toUpperCase()] || val; }
   if (fn === 'operationalStatus') {
     const m: Record<string, string> = {
       OPERATIONAL: 'Đang hoạt động', SUSPENDED: 'Tạm ngừng',
@@ -398,7 +399,7 @@ const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   DRAFT: { color: statusDraft, label: 'Lưu tạm' },
   PENDING_APPROVAL: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
   APPROVED_LEVEL1: { color: actionPrimary, label: 'Chờ Cục duyệt' },
-  APPROVED: { color: statusOperational, label: 'Đã duyệt' },
+  APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
   REJECTED_LEVEL1: { color: statusCritical, label: 'Cảng vụ trả về' },
   REJECTED_LEVEL2: { color: statusCritical, label: 'Cục trả về' },
   ARCHIVED: { color: statusDraft, label: 'Đã xóa (lịch sử)' },
@@ -633,10 +634,6 @@ export default function PortListPage() {
   const [rejectReason, setRejectReason] = useState('');
   const [rejectError, setRejectError] = useState('');
 
-  // Submit modal
-  const [submitModalOpen, setSubmitModalOpen] = useState(false);
-  const [submittingRecord, setSubmittingRecord] = useState<CangBienResponse | null>(null);
-
   // Approve modal
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [approvingRecord, setApprovingRecord] = useState<CangBienResponse | null>(null);
@@ -713,6 +710,7 @@ export default function PortListPage() {
   const [submitting, setSubmitting] = useState(false);
   const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve'>('submit');
   const actionTypeRef = useRef<'draft' | 'submit' | 'approve'>('submit');
+  const editActionRef = useRef<'draft' | 'approve'>('approve');
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
   const [symbols, setSymbols] = useState<any[]>([]);
 
@@ -753,7 +751,6 @@ export default function PortListPage() {
     setFilterTinh(filterValues.province || '');
     setFilterUpdatedFrom(filterValues.updatedFrom || undefined);
     setFilterUpdatedTo(filterValues.updatedTo || undefined);
-    setFilterApprovalStatus(filterValues.approvalStatus || undefined);
     setPage(1);
   }, [filterValues]);
 
@@ -1109,6 +1106,24 @@ export default function PortListPage() {
       if (fieldErrors.length) { createForm.setFields(fieldErrors); return; }
     }
 
+    if (values.geometryType) {
+      const minCount = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
+      const validCount = gpsCoordList.filter(c => c.lat != null && c.lng != null && !isNaN(c.lat) && !isNaN(c.lng)).length;
+      if (validCount < minCount) {
+        toast.error(values.geometryType === 'POLYGON' ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ' : values.geometryType === 'LINE' ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ' : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ');
+        return;
+      }
+    }
+
+    if (values.geometryType) {
+      const minCount = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
+      const validCount = gpsCoordList.filter(c => c.lat != null && c.lng != null && !isNaN(c.lat) && !isNaN(c.lng)).length;
+      if (validCount < minCount) {
+        toast.error(values.geometryType === 'POLYGON' ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ' : values.geometryType === 'LINE' ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ' : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ');
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       const coordinateList: Array<{ latitude: number; longitude: number }> = gpsCoordList
@@ -1186,7 +1201,7 @@ export default function PortListPage() {
       };
       const createdPort = await import('./api').then((m) => m.createCangBien(payload));
       const createdPortId = createdPort?.id || (createdPort as any)?.portId;
-      toast.success(currentAction === 'draft' ? 'Lưu tạm thành công' : 'Gửi phê duyệt thành công');
+      toast.success(currentAction === 'draft' ? 'Lưu tạm thành công' : 'Lưu và phê duyệt thành công');
       createForm.resetFields();
 
       setInfraList([]);
@@ -1251,7 +1266,7 @@ export default function PortListPage() {
         area: values.area as number | undefined,
         maxVesselCapacity: values.khaNangTiepNhan as number | undefined,
         operationalStatus: (values.operationalStatus as string) || undefined,
-        approvalStatus: selectedRecord.approvalStatus === 'APPROVED' ? 'PENDING' : selectedRecord.approvalStatus,
+        approvalStatus: editActionRef.current === 'draft' ? 'DRAFT' : 'APPROVED',
         orgUnitId: (values.orgUnitId as string) && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(values.orgUnitId as string) ? (values.orgUnitId as string) : undefined,
         portGroup: values.portGroup ? Number(values.portGroup) : undefined,
         mapSymbolId: (values.gisLocation as any)?.mapSymbolId || (values.mapSymbolId as string) || undefined,
@@ -1286,7 +1301,7 @@ export default function PortListPage() {
         remarks: (values.remarks as string) || undefined,
       };
       const res = await import('./api').then((m) => m.updateCangBien(payload));
-      toast.success('Cập nhật thành công');
+      toast.success(editActionRef.current === 'draft' ? 'Lưu tạm thành công' : 'Lưu và phê duyệt thành công');
       if (window.parent && (window.parent as any).kchtDetailCache) {
         (window.parent as any).kchtDetailCache[selectedRecord.id] = res;
       }
@@ -1403,15 +1418,22 @@ export default function PortListPage() {
   const handleConfirmApprove = useCallback(async () => {
     if (!approvingRecord) return;
     try {
-      // Vòng duyệt do trạng thái hiện tại quyết định: "Chờ Cảng vụ duyệt" là
-      // vòng 1, "Chờ Cục duyệt" là vòng 2 (approval-2-level-spec §3.2).
-      const isLevel2 = approvingRecord.approvalStatus === 'APPROVED_LEVEL1';
-      if (isLevel2) {
-        await approveCangBienC2(approvingRecord.id);
+      const st = approvingRecord.approvalStatus;
+      if (st === 'DRAFT' || st === 'NHAP') {
+        // Trạng thái Nháp → phê duyệt thẳng thành Đã phê duyệt (mô hình 2 trạng thái)
+        await portApproval.approve(approvingRecord.id);
+        toast.success('Đã phê duyệt');
       } else {
-        await approveCangBienC1(approvingRecord.id);
+        // Vòng duyệt do trạng thái hiện tại quyết định: "Chờ Cảng vụ duyệt" là
+        // vòng 1, "Chờ Cục duyệt" là vòng 2 (approval-2-level-spec §3.2).
+        const isLevel2 = st === 'APPROVED_LEVEL1';
+        if (isLevel2) {
+          await approveCangBienC2(approvingRecord.id);
+        } else {
+          await approveCangBienC1(approvingRecord.id);
+        }
+        toast.success(isLevel2 ? 'Phê duyệt cấp Cục thành công' : 'Phê duyệt cấp Cảng vụ thành công');
       }
-      toast.success(isLevel2 ? 'Phê duyệt cấp Cục thành công' : 'Phê duyệt cấp Cảng vụ thành công');
       setApproveModalOpen(false);
       setApprovingRecord(null);
       fetchData();
@@ -1421,32 +1443,6 @@ export default function PortListPage() {
       toast.error(msg);
     }
   }, [approvingRecord, fetchData, fetchTabCounts]);
-
-  const handleSubmitDraft = useCallback(
-    (record: CangBienResponse) => {
-      setSubmittingRecord(record);
-      setSubmitModalOpen(true);
-    },
-    [],
-  );
-
-  const handleConfirmSubmit = useCallback(async () => {
-    if (!submittingRecord) return;
-    setSubmitModalOpen(false);
-    try {
-      // Trước đây gửi duyệt bằng cách PUT approvalStatus = 'PENDING' — trạng thái
-      // không thuộc tập 7 trạng thái chuẩn và bỏ qua quy tắc phân cấp theo đơn vị
-      // gửi. Nay dùng đúng endpoint gửi duyệt của backend.
-      await submitCangBien(submittingRecord.id);
-      toast.success('Đã gửi phê duyệt');
-      setSubmittingRecord(null);
-      fetchData();
-      fetchTabCounts();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Gửi phê duyệt thất bại';
-      toast.error(msg);
-    }
-  }, [submittingRecord, fetchData, fetchTabCounts]);
 
   const handleReject = useCallback((record: CangBienResponse) => {
     setRejectTarget(record);
@@ -1528,14 +1524,6 @@ export default function PortListPage() {
           onClick: () => openDetail(record),
         },
       ];
-      if (hasPerm?.(PERMISSIONS.PORT.HISTORY)) {
-        actions.push({
-          key: 'history',
-          label: 'Lịch sử',
-          icon: <HistoryOutlined />,
-          onClick: () => historyHandler(record),
-        });
-      }
       const status = record.approvalStatus;
       // Chỉnh sửa: tất cả trạng thái
       if (hasPerm?.(PERMISSIONS.PORT.UPDATE)) {
@@ -1622,14 +1610,19 @@ export default function PortListPage() {
           },
         });
       }
-      // DRAFT: Gửi phê duyệt
-      if (status === 'DRAFT' && hasPerm?.(PERMISSIONS.PORT.UPDATE)) {
+      // Xóa: chỉ trạng thái DRAFT/NHAP
+      if (hasPerm?.(PERMISSIONS.PORT.DELETE) && (status === 'DRAFT' || status === 'NHAP')) {
         actions.push({
-          key: 'submit',
-          label: 'Gửi phê duyệt',
-          icon: <SendOutlined />,
-          onClick: () => handleSubmitDraft(record),
+          key: 'delete',
+          label: 'Xóa',
+          icon: <DeleteOutlined />,
+          danger: true,
+          onClick: () => handleDelete(record),
         });
+      }
+      // Nháp: phê duyệt thẳng thành Đã phê duyệt (mô hình 2 trạng thái)
+      if ((status === 'DRAFT' || status === 'NHAP') && hasPerm?.('port:approve')) {
+        actions.push({ key: 'approve', label: 'Phê duyệt', icon: <CheckCircleOutlined />, onClick: () => handleApprove(record) });
       }
       // CHO_PHE_DUYET / PENDING / PENDING_APPROVAL: Phê duyệt + Từ chối
       if ((status === 'CHO_PHE_DUYET' || status === 'PENDING' || status === 'PENDING_APPROVAL') && hasPerm?.('port:approve')) {
@@ -1647,19 +1640,17 @@ export default function PortListPage() {
           onClick: () => handleReject(record),
         });
       }
-      // Xóa: chỉ trạng thái DRAFT/NHAP
-      if (hasPerm?.(PERMISSIONS.PORT.DELETE) && (status === 'DRAFT' || status === 'NHAP')) {
+      if (hasPerm?.(PERMISSIONS.PORT.HISTORY)) {
         actions.push({
-          key: 'delete',
-          label: 'Xóa',
-          icon: <DeleteOutlined />,
-          danger: true,
-          onClick: () => handleDelete(record),
+          key: 'history',
+          label: 'Lịch sử',
+          icon: <HistoryOutlined />,
+          onClick: () => historyHandler(record),
         });
       }
       return actions;
     },
-    [hasPerm, updateForm, handleApprove, handleDelete, handleReject, historyHandler, handleSubmitDraft, openDetail],
+    [hasPerm, updateForm, handleApprove, handleDelete, handleReject, historyHandler, openDetail],
   );
 
   // ── Columns (DataTable format) ───────────────────────────────────
@@ -1727,7 +1718,7 @@ export default function PortListPage() {
         key: 'portClass',
         label: 'Phân cấp cảng biển',
         dataIndex: 'portClass',
-        width: 180,
+        width: 250,
         sortable: true,
         sortOrder: sortField === 'portClass' ? sortOrder : null,
         render: (v: number | null) => v != null ? (v === 5 ? 'Cấp đặc biệt' : `Cấp ${v}`) : '—',
@@ -1736,7 +1727,7 @@ export default function PortListPage() {
         key: 'province',
         label: 'Địa điểm (Tỉnh/Thành phố)',
         dataIndex: 'province',
-        width: 220,
+        width: 250,
         ellipsis: false,
         sortable: true,
         sortOrder: sortField === 'province' ? sortOrder : null,
@@ -2044,7 +2035,7 @@ export default function PortListPage() {
                     style={{ borderRadius: radiusPill, height: 40 }} />
                 </div>
                 <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tỉnh/Thành phố</div>
+                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành phố)</div>
                   <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
                     filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
                     value={filterValues.province || undefined}
@@ -2055,28 +2046,18 @@ export default function PortListPage() {
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
                   <DatePicker.RangePicker format="DD/MM/YYYY"
-                    placeholder={['Chọn từ ngày', 'Chọn đến ngày']} allowClear className="port-range-picker" popupClassName="range-single-panel"
+                    placeholder={['Từ ngày', 'Đến ngày']} allowClear className="port-range-picker" popupClassName="range-single-panel"
                     value={[filterValues.updatedFrom ? dayjs(filterValues.updatedFrom) : null, filterValues.updatedTo ? dayjs(filterValues.updatedTo) : null]}
                     onChange={(dates) => setFilterValues((prev) => ({ ...prev, updatedFrom: dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined, updatedTo: dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined }))}
                     style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} />
                 </div>
                 <style>{`.port-range-picker .ant-picker-cell-selected .ant-picker-cell-inner{background:${actionPrimary}!important}.port-range-picker .ant-picker-ok button{background:${actionPrimary}!important;border-color:${actionPrimary}!important;border-radius:${radiusPill}px!important}.port-range-picker .ant-picker-time-panel-cell-selected .ant-picker-time-panel-cell-inner{background:${actionPrimary}15!important;color:${actionPrimary}!important}.port-range-picker .ant-picker-today-btn{color:${actionPrimary}!important}.range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child{display:none!important}`}</style>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
-                  <Select placeholder="Tất cả" allowClear
-                    value={filterValues.approvalStatus || undefined}
-                    onChange={(val) => setFilterValues((prev) => ({ ...prev, approvalStatus: val }))}
-                    options={[{ value: 'DRAFT', label: 'Nháp' }, { value: 'PENDING', label: 'Chờ phê duyệt' }, { value: 'APPROVED', label: 'Đã phê duyệt' }, { value: 'REJECTED', label: 'Từ chối' }]}
-                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-                </div>
               </>)}
             </>}
             statusTabs={[
               { key: 'all', label: 'Tất cả', count: totalAll || 0, color: actionPrimary, active: !activeStatusTab },
-              { key: 'DRAFT', label: 'Nháp', count: tabCounts['DRAFT'] ?? 0, color: statusDraft, active: activeStatusTab === 'DRAFT' },
-              { key: 'PENDING', label: 'Chờ phê duyệt', count: tabCounts['PENDING'] ?? 0, color: statusAttention, active: activeStatusTab === 'PENDING' },
+              { key: 'DRAFT', label: 'Lưu tạm', count: tabCounts['DRAFT'] ?? 0, color: statusDraft, active: activeStatusTab === 'DRAFT' },
               { key: 'APPROVED', label: 'Đã phê duyệt', count: tabCounts['APPROVED'] ?? 0, color: statusOperational, active: activeStatusTab === 'APPROVED' },
-              { key: 'REJECTED', label: 'Từ chối', count: tabCounts['REJECTED'] ?? 0, color: statusCritical, active: activeStatusTab === 'REJECTED' },
             ]}
             onStatusTabChange={(key) => {
               setActiveStatusTab(key === 'all' ? '' : key);
@@ -2135,7 +2116,6 @@ export default function PortListPage() {
           footer={
             <div style={drawerFooterStyle}>
               <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); createForm.submit(); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button>
-              {canSubmitForApproval && <Button type="primary" onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); createForm.submit(); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>}
               {canSubmitForApproval && <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); createForm.submit(); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>}
             </div>
           }
@@ -2898,7 +2878,8 @@ export default function PortListPage() {
           extra={<Button type="text" onClick={closeUpdateModal} style={drawerCloseBtnStyle}>✕</Button>}
           footer={
             <div style={drawerFooterStyle}>
-              <Button type="primary" htmlType="submit" loading={submitting} onClick={() => updateForm.submit()} style={primaryButtonStyle}>Cập nhật</Button>
+              <Button htmlType="submit" loading={submitting} onClick={() => { editActionRef.current = 'draft'; updateForm.submit(); }} style={outlineButtonStyle}>Lưu tạm</Button>
+              <Button type="primary" htmlType="submit" loading={submitting} onClick={() => { editActionRef.current = 'approve'; updateForm.submit(); }} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
             </div>
           }
           styles={{
@@ -4091,24 +4072,6 @@ export default function PortListPage() {
               {rejectReason.length}/10
             </span>
           </div>
-        </div>
-      </Modal>
-
-      {/* Submit Modal */}
-      <Modal styles={{ mask: { background: 'rgba(0, 0, 0, 0.4)' } }}
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận gửi phê duyệt</span>}
-        open={submitModalOpen} onCancel={() => { setSubmitModalOpen(false); setSubmittingRecord(null); }}
-        footer={[
-          <Button key="cancel" onClick={() => { setSubmitModalOpen(false); setSubmittingRecord(null); }}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
-          <Button key="submit" type="primary" onClick={handleConfirmSubmit}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Xác nhận</Button>,
-        ]}
-        width={480}>
-        <div style={{ padding: '8px 0' }}>
-          <p style={{ fontSize: fontSizeMd, color: textPrimary }}>
-            Gửi <strong>{submittingRecord?.portCode} — {submittingRecord?.portName}</strong> để phê duyệt?
-          </p>
         </div>
       </Modal>
 

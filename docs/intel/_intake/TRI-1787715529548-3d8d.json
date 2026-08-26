@@ -1,0 +1,55 @@
+{
+  "triage_id": "TRI-1787715529548-3d8d",
+  "created_at": 1787715529548,
+  "request_summary": "Submenu title có class 'submenu-active' đang được CSS inline trong AppLayout.tsx tô nền trắng mờ (rgba(255,255,255,0.1)) khi selected — user muốn màu xanh dương như item leaf Khu neo đậu (dùng style selected antd với primary #1B84FF). Sửa rule CSS .submenu-active thành màu primary translucent qua var(--ant-color-primary).",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/components/AppLayout.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/components/AppLayout.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Sidebar menu — submenu Quản lý bến cảng / Nhà trạm Phao, tiêu (AppLayout)",
+  "blast_radius": 1,
+  "done_oracle": "Click menu \"Quản lý bến cảng\" / \"Nhà trạm Phao, tiêu\" / \"Quản lý cảng biển\" → submenu title được highlight XANH dương (giống item leaf \"Quản lý khu neo đậu\"), không còn nền trắng mờ.",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht\\frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/components/AppLayout.tsx",
+      "line": 692,
+      "quote": "background: rgba(255, 255, 255, 0.1) !important;",
+      "source_hash": "ab7ed614c03288beb02e49170332c6871e64525091113dd29087a20e380344f9",
+      "quote_hash": "4a4140dfb7e355a8f337569f288257b2cc6e7bb169fb429fddbfe47d8ba68b0e",
+      "note": "CSS nền trắng mờ của submenu-active — đổi sang primary blue"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787715529830
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

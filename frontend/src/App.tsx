@@ -51,6 +51,7 @@ const PortDeleteConfirm = lazy(() => import('./services/port/PortDeleteConfirm')
 const CctvListPage = lazy(() => import('./services/cctv/CctvListPage'));
 
 const BerthList = lazy(() => import('./pages/port/BerthListPage'));
+const AnchorageList = lazy(() => import('./pages/anchorage/AnchorageListPage'));
 
 const PierListPage = lazy(() => import('./pages/port/PierListPage'));
 
@@ -195,6 +196,8 @@ export default function App() {
                 <Route path="/cctv" element={<PermissionGuard permission="cctv:read"><CctvListPage /></PermissionGuard>} />
 
                 <Route path="/berth" element={<PermissionGuard permission="berth:read"><BerthList /></PermissionGuard>} />
+
+                <Route path="/anchorage" element={<PermissionGuard permission="anchorage:read"><AnchorageList /></PermissionGuard>} />
 
                 <Route path="/pier" element={<PermissionGuard permission="pier:read"><PierListPage /></PermissionGuard>} />
 

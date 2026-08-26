@@ -1,0 +1,143 @@
+{
+  "triage_id": "TRI-1787651300305-b64e",
+  "created_at": 1787651300305,
+  "request_summary": "Sửa logic lịch sử 6 module KCHT (cảng biển, bến cảng, cầu cảng, cảng cạn, nhà trạm phao tiêu, phao tiêu): không ghi lịch sử cho bản ghi nháp/lưu tạm (create DRAFT và update không phải trạng thái đã duyệt); chỉ ghi + hiển thị lịch sử khi bản ghi đã phê duyệt được chỉnh sửa (use case 8: giữ trạng thái Đã duyệt, ghi bản cũ vào nhật ký thay đổi)",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/services/port/PortListPage.tsx",
+      "src/main/java/com/hanghai/kchtg/beacon/service/BuoyService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/BerthService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/DryPortService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/PierService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/PortService.java",
+      "src/main/java/com/hanghai/kchtg/station/service/BuoyStationService.java"
+    ],
+    "impact_files": [
+      "frontend/src/services/port/PortListPage.tsx",
+      "src/main/java/com/hanghai/kchtg/beacon/service/BuoyService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/BerthService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/DryPortService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/PierService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/PortService.java",
+      "src/main/java/com/hanghai/kchtg/station/service/BuoyStationService.java"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C2: 7 edit-target files exceed the inline gate (7 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn Lịch sử thay đổi (drawer/timeline) trên trang danh sách của 6 module: PortListPage, BerthListPage, PierListPage, DryPortListPage, BuoyListPage, BuoyStationListPage",
+  "blast_radius": 7,
+  "done_oracle": "Tạo mới bản ghi với Lưu tạm (DRAFT) ở 6 module (cảng biển, bến cảng, cầu cảng, cảng cạn, nhà trạm phao tiêu, phao tiêu) → màn Lịch sử thay đổi trống (không có bản ghi CREATE/Thông tin thêm mới). Sửa bản ghi đã phê duyệt (APPROVED/PUBLISHED) → bản ghi giữ nguyên trạng thái Đã duyệt và xuất hiện bản ghi UPDATED (diff cũ→mới) trong Lịch sử. Sửa bản ghi nháp/chờ duyệt → không xuất hiện trong Lịch sử. Phê duyệt 2 cấp (submit/approve/reject) vẫn ghi nhận như cũ.",
+  "verification_commands": [
+    {
+      "command": "mvn -q -DskipTests compile",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 420000
+    },
+    {
+      "command": "npm run build",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht\\frontend",
+      "timeout_ms": 420000
+    }
+  ],
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/beacon/service/BuoyService.java",
+      "line": 268,
+      "quote": "logHistory(entity, BeaconHistoryActionType.CREATE, null, null, toJson(entity));",
+      "source_hash": "81ec2a41bd6cb18a9d24c42e34ef8affb1647b13cea4a4c0e150e7fc289aa0ca",
+      "quote_hash": "5377518da5ddfae2931929ba0c84e92b1e531a3bf8c9a5af883c4b41487ec9f2",
+      "note": "Buoy create luôn ghi CREATE history kể cả khi status=DRAFT — cần gate theo trạng thái"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/beacon/service/BuoyService.java",
+      "line": 481,
+      "quote": "if (isApprovedStatus(entity.getStatus())) {",
+      "source_hash": "81ec2a41bd6cb18a9d24c42e34ef8affb1647b13cea4a4c0e150e7fc289aa0ca",
+      "quote_hash": "aab61af7e25cfb66752388d8d51353b169243b89c7de447304cf9d01b8884d91",
+      "note": "Buoy update: bản đã duyệt bị revert về PENDING_APPROVAL (quyết định 2026-08-20) — use case 8 yêu cầu giữ Đã duyệt + ghi UPDATED"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/BerthService.java",
+      "line": 422,
+      "quote": "changeHistoryService.recordChanges(\"Berth\", saved.getId().toString(), \"system\", snapshot, saved);",
+      "source_hash": "294e94cd64e41de2b9db8da355af9fcb094e22dd9a69e71a19feec127ddeda6c",
+      "quote_hash": "c8203f46e15ac5f25d1343ddfb2efeb0bd093ba72bb74efbf706461ceec25c44",
+      "note": "Berth update luôn ghi field-diff history kể cả khi sửa nháp — cần gate theo trạng thái trước khi sửa"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/BerthService.java",
+      "line": 395,
+      "quote": "} else if (entity.getApprovalStatus() == ApprovalStatus.APPROVED) {",
+      "source_hash": "294e94cd64e41de2b9db8da355af9fcb094e22dd9a69e71a19feec127ddeda6c",
+      "quote_hash": "2bce8f5a7029c9904aa9851fa1cec3e2d50a7bc24bb9e5528af2bdf4df51ba5a",
+      "note": "Berth update bản APPROVED không có saveAction → revert APPROVED_LEVEL1 — use case 8 yêu cầu giữ APPROVED"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/PortService.java",
+      "line": 543,
+      "quote": "changeTrackingService.recordChanges(\"Port\", saved.getId().toString(), \"system\", preImage, saved);",
+      "source_hash": "7c799cb98cb96b84f03e8b2928cd2b7fe8ab53c8aab0cb522cc1017e02031ee6",
+      "quote_hash": "2df14ee3c8118d1f49028a78fe2e4c1473e329b87c45ce2aaed607797e9b9bba",
+      "note": "Port update luôn ghi history kể cả khi sửa nháp — cần gate"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/PortService.java",
+      "line": 462,
+      "quote": "if (request.getApprovalStatus() == ApprovalStatus.APPROVED) {",
+      "source_hash": "7c799cb98cb96b84f03e8b2928cd2b7fe8ab53c8aab0cb522cc1017e02031ee6",
+      "quote_hash": "ce2fb8724e1f973c7be5130114af18441c00484af3310d3aaba92115222c1dd8",
+      "note": "Port update: APPROVED → PENDING_APPROVAL — use case 8 yêu cầu giữ APPROVED"
+    },
+    {
+      "file": "frontend/src/services/port/PortListPage.tsx",
+      "line": 1242,
+      "quote": "approvalStatus: selectedRecord.approvalStatus === 'APPROVED' ? 'PENDING' : selectedRecord.approvalStatus,",
+      "source_hash": "fc0b2a4b633da4152d199bdb63c053defc7235cb193514f5f3c7bd8ef8ad74cd",
+      "quote_hash": "710885712ad6f6249be4ad28160cdb765c2acf7d8598270b03aa9621de0edd97",
+      "note": "Frontend Port ép APPROVED→PENDING khi update — phải bỏ để giữ trạng thái Đã duyệt"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/PierService.java",
+      "line": 186,
+      "quote": "changeHistoryService.recordChanges(\"Pier\", saved.getId().toString(), \"system\", emptySnapshot, saved);",
+      "source_hash": "42a9996918ac85845e682231f57f4b90dc21359e0b3c9bf651e78e26ef7ff215",
+      "quote_hash": "0fc152776f0c0b083c290cecb7cfb1c54b18c351ec4a3633773bc2b99e7e09f1",
+      "note": "Pier create luôn ghi history kể cả khi DRAFT — cần gate"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/DryPortService.java",
+      "line": 421,
+      "quote": "java.util.List<String> changed = changeHistoryService.recordChanges(\"DryPort\", saved.getId().toString(),",
+      "source_hash": "b1c3e270f53dd1c085208a2ec5d719d30a88955d991ae4399c9c9d70f11bebd9",
+      "quote_hash": "750d355cab0e2fb25ca4e8baec41142f522755a290f103b7fcb9b468ffefd10b",
+      "note": "DryPort update luôn ghi history kể cả khi sửa nháp — cần gate"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/station/service/BuoyStationService.java",
+      "line": 356,
+      "quote": "entity.setStatus(StationStatus.PENDING_APPROVAL);",
+      "source_hash": "a36dba250a6cdd0c99bccd8bbc480688cbb8fe1fea115e47ef1ad4f481275d0e",
+      "quote_hash": "4c3905083ab958305ec51d9977f01b289dca1750cb5eabfd167c57b87be4fda1",
+      "note": "BuoyStation update bản đã duyệt → revert PENDING_APPROVAL (quyết định 2026-08-20) — use case 8 yêu cầu giữ đã duyệt + ghi UPDATED"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "9b1b3d651330307588d9cfb59316b68c7975bc12",
+    "dirty": true,
+    "captured_at": 1787651300476
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

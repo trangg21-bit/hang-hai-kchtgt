@@ -1,0 +1,69 @@
+{
+  "triage_id": "TRI-1787716073634-ea9b",
+  "created_at": 1787716073634,
+  "request_summary": "Upload file đính kèm khu neo đậu lỗi 500 (đã test live: BERTH 200 OK, ANCHORAGE 500; không có folder uploads/attachments/ANCHORAGE). AnchorageService.uploadAttachments khác BerthService: (1) thiếu @Transactional + check max 10 file, (2) dùng Paths.get(attachmentPath) RELATIVE thay vì .toAbsolutePath().normalize() → Tomcat Part.write resolve sai vị trí → 500, (3) storageFileName dùng UUID.randomUUID + originalFilename có thể null. Ngoài ra deleteAttachment:365 so UUID với entityId.toString() → luôn false → delete luôn lỗi. Sửa khớp chuẩn BerthService:628-702.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java"
+    ],
+    "impact_files": [
+      "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "backend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Form Thêm mới Khu neo đậu — tab File đính kèm → POST /api/v1/anchorage/{id}/attachments",
+  "blast_radius": 1,
+  "done_oracle": "POST /api/v1/anchorage/{id}/attachments trả 200, file được ghi vào uploads/attachments/ANCHORAGE/{id}/ (đã verify live bằng curl trước/sau); GET /{id}/attachments trả về file; DELETE /{id}/attachments/{attId} xóa được (không còn lỗi 'File không thuộc entity này'); quá 10 file bị chặn.",
+  "verification_commands": [
+    {
+      "command": "\"C:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.1.4\\plugins\\maven\\lib\\maven3\\bin\\mvn.cmd\" compile -q && echo BUILD_EXIT_OK",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 180000
+    }
+  ],
+  "change_type": "hotfix",
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java",
+      "line": 323,
+      "quote": "java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath);",
+      "source_hash": "08b9199ba6668e3a4231b7c65ccadd1e9715b755f9e3d5a0b4bcb7825d7badd8",
+      "quote_hash": "e3403a7ec379c56f4a381eb22158336d9731086d485cf1458cb9076743904e45",
+      "note": "Path RELATIVE — Tomcat Part.write resolve theo multipart location thay vì CWD → upload 500"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java",
+      "line": 365,
+      "quote": "if (!attachment.getEntityId().equals(entityId.toString())) {",
+      "source_hash": "08b9199ba6668e3a4231b7c65ccadd1e9715b755f9e3d5a0b4bcb7825d7badd8",
+      "quote_hash": "bac51f34639a1302c3c8535e45d883a60b1fb7b45098914e612c8a853dacee79",
+      "note": "So UUID với String → luôn false → delete attachment luôn lỗi (Berth so UUID.equals(UUID))"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/BerthService.java",
+      "line": 639,
+      "quote": "java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath).toAbsolutePath().normalize();",
+      "source_hash": "6fff5eeb5f11b4d657ceaaafa8f6dd3f8159a794ff01a36d09fb74a2666b3c9b",
+      "quote_hash": "2de0b119f1c9e23776e005a7f5db1394a025129d8bd7762fadecb3fc85489acf",
+      "note": "Chuẩn đúng: absolute path + @Transactional + max-10 — Anchorage phải khớp"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787716073841
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

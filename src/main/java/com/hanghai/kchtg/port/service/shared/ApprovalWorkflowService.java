@@ -91,7 +91,8 @@ public class ApprovalWorkflowService {
                     .decidedAt(LocalDateTime.now())
                     .createdAt(LocalDateTime.now())
                     .build();
-            approvalLogRepository.save(approvalLog);
+            // [TẠM TẮT GHI LỊCH SỬ] Bảng approval_logs đã bị V20260825162500 drop; user yêu cầu không ghi lịch sử phê duyệt
+            // approvalLogRepository.save(approvalLog);
         }
 
         return ApprovalStatus.APPROVED;
@@ -161,7 +162,8 @@ public class ApprovalWorkflowService {
                     .decidedAt(LocalDateTime.now())
                     .createdAt(LocalDateTime.now())
                     .build();
-            approvalLogRepository.save(rejectionLog);
+            // [TẠM TẮT GHI LỊCH SỬ] Bảng approval_logs đã bị V20260825162500 drop; user yêu cầu không ghi lịch sử phê duyệt
+            // approvalLogRepository.save(rejectionLog);
         }
 
         return ApprovalStatus.REJECTED;

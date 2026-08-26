@@ -1,0 +1,42 @@
+{
+  "triage_id": "TRI-1787654030862-98e3",
+  "created_at": 1787654030862,
+  "request_summary": "Xóa 1 file dev artifact (docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/dev/05-fe-dev-w1-port-edit-keeps-approval-status.md) do pipeline bị hủy git add — restore --staged --worktree để xóa khỏi index và worktree",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/dev/05-fe-dev-w1-port-edit-keeps-approval-status.md"
+    ],
+    "impact_files": [
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/dev/05-fe-dev-w1-port-edit-keeps-approval-status.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "unknown"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Yêu cầu user: revert toàn bộ thay đổi pipeline đã hủy — 6 service + PortListPage + 12 docs đã revert xong, file dev artifact là thứ duy nhất còn sót",
+  "blast_radius": 1,
+  "done_oracle": "git status --short -- docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/ returns empty — file dev artifact không còn trong index và worktree",
+  "verification_commands": [
+    {
+      "command": "git status --short -- docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 60000
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "9b1b3d651330307588d9cfb59316b68c7975bc12",
+    "dirty": true,
+    "captured_at": 1787654031028
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

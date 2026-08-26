@@ -1,0 +1,63 @@
+{
+  "triage_id": "TRI-1787719058456-cce8",
+  "created_at": 1787719058456,
+  "request_summary": "User: Drawer con \"Thêm mới thông tin khu nước neo buộc tàu\" nhỏ hơn ~50px so với drawer cha và nút Lưu footer chưa bằng kích thước nút của form Thêm mới/Chỉnh sửa Khu neo đậu. Code đã dùng cùng drawerProps (width 50%) — khác biệt còn lại: styles.body con có padding-top 16px + maxHeight calc(100vh-220px) (cha không có), và nút Lưu không minWidth (cha có nút dài hơn). Sửa: body con → '0 24px 12px 24px' + bỏ maxHeight (antd body tự scroll như cha); nút Lưu → {...primaryButtonStyle, minWidth: 120}.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/anchorage/AnchorageForm.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/anchorage/AnchorageForm.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Drawer con Khu nước neo buộc tàu — so sánh với Drawer cha Thêm mới/Chỉnh sửa Khu neo đậu",
+  "blast_radius": 1,
+  "done_oracle": "Drawer con \"Thêm mới/Chỉnh sửa thông tin khu nước neo buộc tàu\" render y hệt Drawer cha: width 50% (cùng drawerProps), body padding '0 24px 12px 24px' + scroll tự động, nút Lưu cùng kích thước (height 40 + minWidth 120) với nút footer cha.",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht\\frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "line": 792,
+      "quote": "body: { padding: '16px 24px 12px 24px', maxHeight: 'calc(100vh - 220px)', overflowY: 'auto', overflowX: 'hidden' },",
+      "source_hash": "f68edcef1f1b4bc05b1af76452c742cc57f03783ec98857bd5dba3e69d1e9de6",
+      "quote_hash": "00d424bf009208e2e41e8fe6c1c233e9154da362039f8ac3067c6b198e2c3bf0",
+      "note": "body con lệch cha (padding 16px + maxHeight) — gỡ để khớp drawer cha"
+    },
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "line": 790,
+      "quote": "<Button type=\"primary\" onClick={saveWaterArea} loading={waterAreaSaving} style={primaryButtonStyle}>Lưu</Button>",
+      "source_hash": "f68edcef1f1b4bc05b1af76452c742cc57f03783ec98857bd5dba3e69d1e9de6",
+      "quote_hash": "f60ea9311d99334160ce4386ae75973195ab2ce5404f1cc5af1cd176bfb862a1",
+      "note": "Nút Lưu thiếu minWidth — thêm để cùng kích thước nút cha"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787719058721
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

@@ -72,13 +72,9 @@ public class BerthApprovalService {
     @Transactional
     public void reject(UUID id, String reason, UUID userId) {
         Berth entity = loadForApproval(id);
-        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1) {
-            infrastructureApprovalService.approveC2(entity, InfrastructureType.PORT_TERMINAL,
-                    ApprovalStatus.REJECTED.name(), reason, userId);
-        } else {
-            infrastructureApprovalService.approveC1(entity, InfrastructureType.PORT_TERMINAL,
-                    ApprovalStatus.REJECTED.name(), reason, userId);
-        }
+        entity.setApprovalStatus(entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2
+                ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
+        entity.setRejectionReason(reason);
         berthRepository.save(entity);
     }
 
@@ -137,7 +133,8 @@ public class BerthApprovalService {
         ApprovalLog approvalLogRecord = ApprovalLog.builder()
                 .entityType("Berth").entityId(id.toString()).decision("APPROVED").cap(cap)
                 .decidedBy(userId).decidedAt(LocalDateTime.now()).build();
-        approvalLogRepository.save(approvalLogRecord);
+        // [TẠM TẮT GHI LỊCH SỬ] Bảng approval_logs đã bị V20260825162500 drop; user yêu cầu không ghi lịch sử phê duyệt
+        // approvalLogRepository.save(approvalLogRecord);
         berthRepository.save(entity);
 
         log.info("Berth [{}] approved by {} at level {}", id, userId, cap);
@@ -148,13 +145,15 @@ public class BerthApprovalService {
         Berth entity = berthRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến cảng với id: " + id));
 
-        entity.setApprovalStatus(ApprovalStatus.REJECTED);
+        entity.setApprovalStatus(entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2
+                ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
         entity.setRejectionReason(reason);
 
         ApprovalLog approvalLog = ApprovalLog.builder()
                 .entityType("Berth").entityId(id.toString()).decision("REJECTED").cap(cap)
                 .reason(reason).decidedBy(userId).decidedAt(LocalDateTime.now()).build();
-        approvalLogRepository.save(approvalLog);
+        // [TẠM TẮT GHI LỊCH SỬ] Bảng approval_logs đã bị V20260825162500 drop; user yêu cầu không ghi lịch sử phê duyệt
+        // approvalLogRepository.save(approvalLog);
         berthRepository.save(entity);
 
         log.info("Berth [{}] rejected by {} at level {}: {}", id, userId, cap, reason);
