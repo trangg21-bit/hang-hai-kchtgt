@@ -20,6 +20,8 @@ import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.common.util.EntityUpdateUtils;
 import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
+import com.hanghai.kchtg.common.entity.OperatingOrganization;
+import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
@@ -78,6 +80,7 @@ public class AisSystemService {
     private final OrgUnitScopeService orgUnitScopeService;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final OrgUnitCacheService orgUnitCacheService;
+    private final OperatingOrganizationRepository operatingOrganizationRepository;
     private final PortCacheService portCacheService;
     private final JdbcTemplate jdbcTemplate;
 
@@ -134,8 +137,9 @@ public class AisSystemService {
         VtsOperationCenter opCenter = vtsOperationCenterRepository.findByIdAndDeletedAtIsNull(request.getVtsOperationCenterId())
                 .orElseThrow(() -> new IllegalArgumentException("Trung tâm điều hành VTS không tồn tại"));
 
-        OrgUnit operatingOrg = orgUnitRepository.findById(request.getOperatingOrgId())
-                .orElseThrow(() -> new IllegalArgumentException("Đơn vị khai thác không tồn tại"));
+        if (request.getOperatingOrgId() == null) {
+            throw new IllegalArgumentException("Vui lòng chọn đơn vị khai thác");
+        }
 
         OrgUnit orgUnit = orgUnitRepository.findById(request.getOrgUnitId())
                 .orElseThrow(() -> new IllegalArgumentException("Đơn vị quản lý không tồn tại"));
@@ -144,7 +148,7 @@ public class AisSystemService {
                 .code(request.getCode().trim())
                 .name(request.getName().trim())
                 .vtsOperationCenterId(opCenter.getId())
-                .operatingOrgId(operatingOrg.getId())
+                .operatingOrgId(request.getOperatingOrgId())
                 .orgUnitId(orgUnit.getId())
                 .provinceId(request.getProvinceId())
                 .detailedLocation(request.getDetailedLocation())
@@ -212,11 +216,6 @@ public class AisSystemService {
         if (request.getVtsOperationCenterId() != null) {
             vtsOperationCenterRepository.findByIdAndDeletedAtIsNull(request.getVtsOperationCenterId())
                     .orElseThrow(() -> new IllegalArgumentException("Trung tâm điều hành VTS không tồn tại"));
-        }
-
-        if (request.getOperatingOrgId() != null) {
-            orgUnitRepository.findById(request.getOperatingOrgId())
-                    .orElseThrow(() -> new IllegalArgumentException("Đơn vị khai thác không tồn tại"));
         }
 
         Map<String, String> previousValues = new LinkedHashMap<>();
@@ -862,8 +861,12 @@ public class AisSystemService {
             }
         }
 
-        // Tên đơn vị lấy từ cache dùng chung thay vì mỗi trường một truy vấn.
-        String operatingOrgName = orgUnitCacheService.getName(entity.getOperatingOrgId());
+        // Tên đơn vị lấy từ cache/repository dùng chung
+        String operatingOrgName = entity.getOperatingOrgId() != null
+                ? operatingOrganizationRepository.findById(entity.getOperatingOrgId())
+                        .map(OperatingOrganization::getName)
+                        .orElseGet(() -> orgUnitCacheService.getName(entity.getOperatingOrgId()))
+                : null;
         String orgUnitName = orgUnitCacheService.getName(entity.getOrgUnitId());
 
         // Gom 4 người dùng (tạo / sửa / duyệt C1 / duyệt C2) vào một truy vấn.
@@ -980,9 +983,11 @@ public class AisSystemService {
 
         String operatingOrgName = null;
         if (entity.getOperatingOrgId() != null) {
-            operatingOrgName = orgUnitMap.containsKey(entity.getOperatingOrgId())
-                    ? orgUnitMap.get(entity.getOperatingOrgId())
-                    : orgUnitRepository.findById(entity.getOperatingOrgId()).map(OrgUnit::getName).orElse(null);
+            operatingOrgName = operatingOrganizationRepository.findById(entity.getOperatingOrgId())
+                    .map(OperatingOrganization::getName)
+                    .orElseGet(() -> orgUnitMap.containsKey(entity.getOperatingOrgId())
+                            ? orgUnitMap.get(entity.getOperatingOrgId())
+                            : orgUnitRepository.findById(entity.getOperatingOrgId()).map(OrgUnit::getName).orElse(null));
         }
 
         String orgUnitName = null;

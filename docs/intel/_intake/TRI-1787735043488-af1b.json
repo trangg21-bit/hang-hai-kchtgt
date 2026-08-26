@@ -1,0 +1,78 @@
+{
+  "triage_id": "TRI-1787735043488-af1b",
+  "created_at": 1787735043488,
+  "request_summary": "Fix compile errors (duplicate field/method + missing symbol ChangeLogRepository/ApprovalLogRepository) trong DryPortApprovalService, PierApprovalService, BerthApprovalService: xóa khối code legacy bị append chồng (viết ApprovalLog — bảng đã drop V20260825162500), giữ luồng phê duyệt 2 cấp qua InfrastructureApprovalService.",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/java/com/hanghai/kchtg/port/service/BerthApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/DryPortApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/PierApprovalService.java"
+    ],
+    "impact_files": [
+      "src/main/java/com/hanghai/kchtg/port/service/BerthApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/DryPortApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/PierApprovalService.java"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "backend"
+  },
+  "rationale": "C1: 3 edit-target files in one package, no one-way door — pre-declared write scope required (3 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "API phê duyệt KCHT cảng: /api/v1/dry-ports/.../approve + approveC1/approveC2 (DryPortController:167, PierController:152, BerthController:149)",
+  "blast_radius": 3,
+  "done_oracle": "mvn compile không còn lỗi biên dịch; controller vẫn gọi được đúng signature approve/reject hiện có; hành vi phê duyệt 2 cấp không đổi.",
+  "verification_commands": [
+    {
+      "command": "mvn compile -q",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "src/main/java/com/hanghai/kchtg/port/service/BerthApprovalService.java",
+    "src/main/java/com/hanghai/kchtg/port/service/DryPortApprovalService.java",
+    "src/main/java/com/hanghai/kchtg/port/service/PierApprovalService.java"
+  ],
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/DryPortApprovalService.java",
+      "line": 144,
+      "quote": "    private final ApprovalWorkflowService approvalWorkflowService;",
+      "source_hash": "a7f88d5e03adeb95e4428427362eb21e1a2899fba72b07bfdea71f0a903273cb",
+      "quote_hash": "344e76478ea6e38a41bc0a427c0a7f1d7fe08b76c13494a3a2e35647c71a849d",
+      "note": "Khối field lặp thứ 2 sau loadForApproval — nguồn gây 'variable already defined' + 'cannot find symbol ChangeLogRepository'"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/PierApprovalService.java",
+      "line": 135,
+      "quote": "    private final PortNotificationService notificationService;",
+      "source_hash": "98fe51dacd2669c578c49e4ccd4ce96af82f461f44a58f5885a14b60d46a0e8a",
+      "quote_hash": "7ae7b0b9288ddc0986bed873a0d97f5f491954e19817db1e1f997d07e4fac9e2",
+      "note": "Khai báo lặp notificationService (lần 2) sau loadForApproval — gây 'variable already defined'"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/BerthApprovalService.java",
+      "line": 128,
+      "quote": "    private final ChangeLogRepository changeLogRepository;",
+      "source_hash": "fd1ef7b630396a9aec759a517627e22f145ad74722a69f2273b31b622fc88a68",
+      "quote_hash": "d32522b2be28cbab9b5209cd429eb13d6c71e0fdad70e6047d388a6fe9ac8271",
+      "note": "Khối legacy append tham chiếu ChangeLogRepository/ApprovalLogRepository không import + trùng method approve 4 tham số"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "97a62a2e50b49584125f39dc663894b8a59ad2ac",
+    "dirty": false,
+    "captured_at": 1787735043785
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

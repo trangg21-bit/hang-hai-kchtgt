@@ -7,8 +7,6 @@ import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.port.entity.DryPort;
 import com.hanghai.kchtg.port.repository.DryPortRepository;
-import com.hanghai.kchtg.port.service.shared.ApprovalWorkflowService;
-import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.PortNotificationService;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -33,9 +31,7 @@ public class DryPortApprovalService {
     private final InfrastructureApprovalService infrastructureApprovalService;
     private final InfrastructureHistoryRepository historyRepository;
     private final UserRepository userRepository;
-    private final ApprovalWorkflowService approvalWorkflowService;
     private final PortNotificationService notificationService;
-    private final ChangeHistoryService changeHistoryService;
 
     // -- Phe duyet 2 cap (approval-2-level-spec 3.2) --
     // Uy quyen cho InfrastructureApprovalService: noi cai dat dung 7 trang thai,
@@ -76,13 +72,8 @@ public class DryPortApprovalService {
     @Transactional
     public void reject(UUID id, String reason, UUID userId) {
         DryPort entity = loadForApproval(id);
-        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1) {
-            infrastructureApprovalService.approveC2(entity, InfrastructureType.DRY_PORT,
-                    ApprovalStatus.REJECTED.name(), reason, userId);
-        } else {
-            infrastructureApprovalService.approveC1(entity, InfrastructureType.DRY_PORT,
-                    ApprovalStatus.REJECTED.name(), reason, userId);
-        }
+        entity.setApprovalStatus(entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2
+                ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
         dryPortRepository.save(entity);
     }
 

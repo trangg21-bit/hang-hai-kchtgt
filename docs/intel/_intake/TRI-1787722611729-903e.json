@@ -1,0 +1,71 @@
+{
+  "triage_id": "TRI-1787722611729-903e",
+  "created_at": 1787722611729,
+  "request_summary": "3 tinh chỉnh AnchorageForm: (1) renderDmsGroup thêm param disabled (default false) truyền xuống 3 InputNumber; bảng điểm neo: Input tên + 2 cột lat/lng pass disabled={!waterAreaGeometryType}; (2) Select Biểu tượng thêm ref + onChange blur sau khi chọn (hết con trỏ trong field); (3) bỏ maskClosable={false} trên Drawer con → bấm ngoài đóng.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/anchorage/AnchorageForm.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/anchorage/AnchorageForm.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Drawer con \"Thêm mới thông tin khu nước neo buộc tàu\" — điểm neo + Biểu tượng + đóng bằng mask",
+  "blast_radius": 1,
+  "done_oracle": "Trong Drawer con: (1) chưa chọn Loại đối tượng → input Tên điểm neo + 3 ô Độ/Phút/Giây bị disabled; (2) chọn Biểu tượng xong Select tự blur — không còn con trỏ nhấp nháy trong field; (3) bấm vào mask bên ngoài → Drawer con đóng.",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht\\frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "line": 91,
+      "quote": "const renderDmsGroup = (",
+      "source_hash": "4e254ca813c4aa7882864b3ab6721c3d9c595ba442c7368c0cd49de1a4b971bf",
+      "quote_hash": "6d53146933a15f8aed81a96d5459634081e0617ed2569b79f33a8495b85f0889",
+      "note": "renderDmsGroup thiếu param disabled"
+    },
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "line": 813,
+      "quote": "<Select placeholder=\"Tìm biểu tượng...\" allowClear showSearch optionFilterProp=\"label\" disabled={!waterAreaGeometryType} value={waterAreaMapSymbolId} onChange={(v) => setWaterAreaMapSymbolId(v)} style={selectStyle}>",
+      "source_hash": "4e254ca813c4aa7882864b3ab6721c3d9c595ba442c7368c0cd49de1a4b971bf",
+      "quote_hash": "c6d6883824888a54ed35c26715505b2a52902f285ff44139b29914fbe3f101df",
+      "note": "Select Biểu tượng giữ con trỏ sau khi chọn (showSearch) — thêm blur"
+    },
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "line": 784,
+      "quote": "maskClosable={false}",
+      "source_hash": "4e254ca813c4aa7882864b3ab6721c3d9c595ba442c7368c0cd49de1a4b971bf",
+      "quote_hash": "f7d342ff46f63ebf81e65305c3dd40a250f03fd7d78c178e76b63576e4c30269",
+      "note": "maskClosable=false ngăn đóng bằng bấm ngoài — bỏ"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787722612031
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

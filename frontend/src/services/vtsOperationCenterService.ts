@@ -27,6 +27,9 @@ export interface VtsOperationCenterListParams {
   provinceId?: number;
   conditionStatus?: number | string;
   approvalStatus?: number | string;
+  /** Khoảng ngày cập nhật (bộ lọc nâng cao) — chuỗi ISO-8601. */
+  updatedFrom?: string;
+  updatedTo?: string;
   page?: number;
   size?: number;
   sortBy?: string;
@@ -60,6 +63,8 @@ export const vtsOperationCenterService = {
       provinceId: params?.provinceId,
       conditionStatus: params?.conditionStatus,
       approvalStatus: params?.approvalStatus,
+      updatedFrom: params?.updatedFrom,
+      updatedTo: params?.updatedTo,
       page: params?.page !== undefined ? Math.max(0, params.page > 0 ? params.page - 1 : 0) : 0,
       size: params?.size || 20,
       sortBy: params?.sortBy,

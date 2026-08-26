@@ -36,6 +36,8 @@ import type {
 import { aisSystemService } from '../../services/aisSystemService';
 import { vtsOperationCenterService } from '../../services/vtsOperationCenterService';
 import { organizationService } from '../../services/organizationService';
+import { vtsSystemCRUD } from '../../services/vtsSystemService';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { symbolService, type Symbol as GisSymbol } from '../../services/symbolService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import toast from '../../components/ToastNotification';
@@ -171,6 +173,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [actionType, setActionType] = useState<'DRAFT' | 'SUBMIT' | 'APPROVE' | 'UPDATE'>('DRAFT');
   const [orgUnits, setOrgUnits] = useState<any[]>(propOrgUnits || []);
+  const [operatingOrganizations, setOperatingOrganizations] = useState(DEFAULT_OPERATING_ORGANIZATIONS);
   const [opCenters, setOpCenters] = useState<{ id: string; name: string; orgUnitId?: string }[]>(propOpCenters || []);
   const [symbols, setSymbols] = useState<GisSymbol[]>([]);
   const [coordinateList, setCoordinateList] = useState<CoordinateItem[]>([{ latitude: null, longitude: null }]);
@@ -214,6 +217,13 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
           }
         }).catch(() => {});
       }
+
+      // 2b. Load Operating Organizations
+      vtsSystemCRUD.getOperatingOrganizationOptions().then((res) => {
+        if (Array.isArray(res) && res.length > 0) {
+          setOperatingOrganizations(res);
+        }
+      }).catch(() => {});
 
       // 3. Load Symbols
       symbolService.list().then((syms) => {
@@ -506,10 +516,13 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                 rules={[{ required: true, message: 'Vui lòng chọn đơn vị khai thác' }]}
                 style={formFieldStyle}
               >
-                <OrgUnitTreeSelect
-                  organizations={orgUnits}
+                <Select
+                  showSearch
+                  allowClear
                   placeholder="Chọn đơn vị khai thác"
-                  style={formTreeSelectStyle}
+                  filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
+                  options={operatingOrganizations.map((o) => ({ value: o.id, label: o.name }))}
+                  style={{ borderRadius: radiusPill, height: 40 }}
                 />
               </Form.Item>
             </Col>
@@ -517,12 +530,11 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
               <Form.Item
                 name="code"
                 label="Mã thiết bị"
-                rules={[{ required: true, message: 'Vui lòng nhập mã thiết bị' }]}
                 style={{ marginBottom: spaceFormField }}
               >
                 <Input
                   placeholder="Mã thiết bị tự sinh (AIS-xxxxxx)"
-                  disabled={!isEdit}
+                  disabled={true}
                   style={{ ...inputStyle, borderRadius: radiusPill, height: 40, backgroundColor: '#f5f5f5' }}
                 />
               </Form.Item>

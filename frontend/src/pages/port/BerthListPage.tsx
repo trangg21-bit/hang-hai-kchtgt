@@ -1,7 +1,18 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
-  Button, Tag, Modal, Input, Select, Alert, Divider, DatePicker,
-  Drawer, Radio, Space, Typography, Table, Form,
+  Button,
+  Tag,
+  Modal,
+  Input,
+  Select,
+  Alert,
+  Divider,
+  DatePicker,
+  Radio,
+  Space,
+  Typography,
+  Table,
+  Form,
 } from 'antd';
 import {
   PlusOutlined,
@@ -82,18 +93,32 @@ import {
   surfaceCard,
   surfacePage,
   metaStyle,
-  drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
-  primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
-  historyBadgeStyle, historyGroupGridStyle, historyTimeStyle, historyMetaRowStyle,
-  historyInfoCardStyle, historyAccentBarStyle, historyInfoTitleStyle,
-  historyChangeRowStyle, historyCreateRowStyle, historyFieldLabelStyle,
-  historyOldValueStyle, historyNewValueStyle, historyArrowStyle,
+  drawerTitleStyle,
+  primaryButtonStyle,
+  outlineButtonStyle,
+  requiredMarkStyle,
+  historyBadgeStyle,
+  historyGroupGridStyle,
+  historyTimeStyle,
+  historyMetaRowStyle,
+  historyInfoCardStyle,
+  historyAccentBarStyle,
+  historyInfoTitleStyle,
+  historyChangeRowStyle,
+  historyCreateRowStyle,
+  historyFieldLabelStyle,
+  historyOldValueStyle,
+  historyNewValueStyle,
+  historyArrowStyle,
+  drawerFooterStyle,
 } from '../../tokens';
 import { colors } from '../../theme';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import { approvalStatusLabel } from '../../components/shared/ApprovalStatusBadge';
 import { APPROVAL_STATUS_OPTIONS } from '../../components/shared/ApprovalStatusBadge';
+import { formLabelProps as labelProps } from '../../components/shared/formLabel';
+import { AppDrawer } from '../../components/shared/AppDrawer';
 
 // ── Field name translation ───────────────────────────────────────────
 
@@ -124,12 +149,14 @@ const translateField = (fn: string) => FIELD_LABELS[fn] || fn;
 const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   NHAP: { color: statusDraft, label: 'Lưu tạm' },
   DRAFT: { color: statusDraft, label: 'Lưu tạm' },
-  APPROVED_LEVEL1: { color: actionPrimary, label: 'Chờ Cảng vụ duyệt' },
-  APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ Cục duyệt' },
-  APPROVED: { color: statusOperational, label: 'Đã duyệt' },
-  DA_PHE_DUYET: { color: statusOperational, label: 'Đã duyệt' },
-  REJECTED: { color: statusCritical, label: 'Từ chối' },
-  TU_CHOI: { color: statusCritical, label: 'Từ chối' },
+  APPROVED_LEVEL1: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
+  APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
+  DA_PHE_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
+  REJECTED: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  TU_CHOI: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  REJECTED_LEVEL1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp cục' },
 };
 
 const STRUCTURE_TYPE_OPTIONS = [
@@ -144,15 +171,16 @@ const TAB_STATUS_LIST = [
   // tab "Chờ Cục duyệt" truy vấn APPROVED_LEVEL2 (mã legacy = Đã duyệt, luôn rỗng),
   // và thiếu hẳn tab cho hồ sơ đang chờ vòng 1.
   { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
-  { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', color: statusAttention },
-  { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', color: '#0284C7' },
-  { key: 'APPROVED', label: 'Đã duyệt', color: statusOperational },
-  { key: 'REJECTED_LEVEL1', label: 'Bị trả về', color: statusCritical },
+  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
+  { key: 'APPROVED_LEVEL2', label: 'Chờ phê duyệt cấp cục', color: statusAttention },
+  { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
+  { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
+  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
 ];
 
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
-  all: undefined, DRAFT: 'DRAFT', PENDING_APPROVAL: 'PENDING_APPROVAL',
-  APPROVED_LEVEL1: 'APPROVED_LEVEL1', APPROVED: 'APPROVED', REJECTED_LEVEL1: 'REJECTED_LEVEL1',
+  all: undefined, DRAFT: 'DRAFT', APPROVED_LEVEL1: 'APPROVED_LEVEL1',
+  APPROVED_LEVEL2: 'APPROVED_LEVEL2', APPROVED: 'APPROVED', REJECTED_LEVEL1: 'REJECTED_LEVEL1', REJECTED_LEVEL2: 'REJECTED_LEVEL2',
 };
 
 // ── Helper: format date ──────────────────────────────────────────────
@@ -187,7 +215,7 @@ function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, 
   if (fn === 'orgUnitId' && orgMap) { const full = orgMap.get(val); return full ? full.split(' - ').pop() || full : val; }
   if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
   if (fn === 'portId' && portMap) return portMap.get(val) || val;
-  if (fn === 'approvalStatus') return approvalStatusLabel(val);
+  if (fn === 'approvalStatus') { const m: Record<string,string> = { DRAFT:'Lưu tạm', APPROVED_LEVEL1:'Chờ phê duyệt cấp Cảng vụ/Chi cục', APPROVED_LEVEL2:'Chờ phê duyệt cấp cục', APPROVED:'Đã phê duyệt', REJECTED:'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL1:'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL2:'Từ chối cấp cục' }; return m[val.toUpperCase()] || val; }
   if (fn === 'operationalStatus') { const m: Record<string,string> = { OPERATIONAL:'Đang khai thác/Vận hành', NOT_YET_OPERATIONAL:'Chưa khai thác/Vận hành', SUSPENDED:'Dừng khai thác/Vận hành', DANG_KHAI_THAC:'Đang khai thác/Vận hành', CHUA_KHAI_THAC:'Chưa khai thác/Vận hành', DUNG_KHAI_THAC:'Dừng khai thác/Vận hành' }; return m[val.toUpperCase()] || val; }
   if (fn === 'structureType') { const opt = STRUCTURE_TYPE_OPTIONS.find(o => o.value === Number(val)); return opt ? opt.label : val; }
   if (fn === 'provinceId') return VIETNAM_PROVINCES[Number(val)-1] || val;
@@ -211,10 +239,6 @@ function getActionLabel(items: any[]): { label: string; color: string } {
   return { label: 'Chỉnh sửa', color: 'blue' };
 }
 
-const labelProps = (text: string) => ({
-  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
-});
-
 // ── Component ────────────────────────────────────────────────────────
 
 export default function BerthList() {
@@ -234,7 +258,6 @@ export default function BerthList() {
   const [filterOperationalFunction, setFilterOperationalFunction] = useState('');
   const [filterStructureType, setFilterStructureType] = useState<number | undefined>();
   const [filterOperationalStatus, setFilterOperationalStatus] = useState<string | undefined>();
-  const [filterApprovalStatus, setFilterApprovalStatus] = useState<string | undefined>();
   const [filterProvince, setFilterProvince] = useState('');
   const [filterUpdatedFrom, setFilterUpdatedFrom] = useState<string | undefined>();
   const [filterUpdatedTo, setFilterUpdatedTo] = useState<string | undefined>();
@@ -583,7 +606,7 @@ export default function BerthList() {
         operationalFunction: filterOperationalFunction || undefined,
         structureType: filterStructureType,
         operationalStatus: filterOperationalStatus,
-        approvalStatus: filterApprovalStatus || TAB_QUERY_MAP[activeTab],
+        approvalStatus: TAB_QUERY_MAP[activeTab],
         provinceId: filterProvince ? VIETNAM_PROVINCES.indexOf(filterProvince) + 1 : undefined,
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
@@ -595,7 +618,7 @@ export default function BerthList() {
       setError(err instanceof Error ? err : new Error('Không thể tải danh sách bến cảng'));
     } finally { setIsLoading(false); }
   }, [managingUnitId, filterName, filterCode, filterPortId, filterWaterwayId,
-    filterOperationalFunction, filterOperationalStatus, filterApprovalStatus,
+    filterOperationalFunction, filterOperationalStatus,
     filterStructureType, filterProvince, filterUpdatedFrom, filterUpdatedTo,
     activeTab, page, pageSize]);
 
@@ -614,7 +637,7 @@ export default function BerthList() {
     setFilterName(''); setFilterCode(''); setFilterPortId(undefined); setFilterWaterwayId(undefined);
     setFilterOperationalFunction('');
     setFilterStructureType(undefined); setFilterOperationalStatus(undefined);
-    setFilterApprovalStatus(undefined); setFilterProvince('');
+    setFilterProvince('');
     setFilterUpdatedFrom(undefined); setFilterUpdatedTo(undefined);
     setActiveTab('all'); setPage(1);
   }, []);
@@ -807,13 +830,6 @@ export default function BerthList() {
           onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined); setPage(1); }}
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
-        <Select placeholder="Tất cả" allowClear value={filterApprovalStatus}
-          onChange={(v) => { setFilterApprovalStatus(v); setPage(1); }}
-          options={APPROVAL_STATUS_OPTIONS}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-      </div>
       </>)}
     </>
   );
@@ -831,12 +847,11 @@ export default function BerthList() {
         { key: 'view', label: 'Chi tiết', icon: <EyeOutlined />, onClick: () => openDetailDrawer(record) },
       ];
       const st = record.approvalStatus || '';
-      // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
-      if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'berth' })) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => { setEditBerthId(record.id); setEditBerthName(record.berthName || ''); } });
-      if (hasPerm('berth:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistory(record) });
+      if (hasPerm('berth:update')) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => { setEditBerthId(record.id); setEditBerthName(record.berthName || ''); } });
+      if (hasPerm('berth:delete') && ['DRAFT','NHAP'].includes(st)) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => openDeleteModal(record) });
       if (['DRAFT','NHAP'].includes(st) && hasPerm('berth:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
       if (hasPerm('berth:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) { actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setApprovingRecord(record); setApprovalContent(''); setApproveModalOpen(true); } }); actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, danger: true, onClick: () => openRejectModal(record) }); }
-      if (hasPerm('berth:delete') && ['DRAFT','NHAP'].includes(st)) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => openDeleteModal(record) });
+      if (hasPerm('berth:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistory(record) });
       return actions;
     },
     [hasPerm, openDetailDrawer, openHistory, openDeleteModal, openRejectModal],
@@ -870,7 +885,7 @@ export default function BerthList() {
         render: (v: string | null) => portOptions.find(o => o.value === v)?.label || v || '—' },
       { key: 'waterwayId', label: 'Thuộc luồng hàng hải', dataIndex: 'waterwayId', width: 280, ellipsis: true, sortable: true, sortOrder,
         render: (v?: string) => (v ? (waterwayMap.get(v) || v) : '—') },
-      { key: 'provinceId', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'provinceId', width: 250, sortable: true, sortOrder,
+      { key: 'provinceId', label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'provinceId', width: 250, sortable: true, sortOrder,
         render: (v: number | null) => v ? VIETNAM_PROVINCES[v - 1] : '—' },
       { key: 'operationalFunction', label: 'Công năng khai thác', dataIndex: 'operationalFunction', width: 240, sortable: true, sortOrder,
         render: (v: string | null) => v || '—' },
@@ -923,8 +938,11 @@ export default function BerthList() {
     ] : [];
 
     const tailColumns: any[] = [
-      { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 170, sortable: true, sortOrder, ellipsis: false,
-        render: (v: string) => <ApprovalStatusBadge status={v} /> },
+      { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 260, sortable: true, sortOrder, ellipsis: false,
+        render: (v: string) => {
+          const s = APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v?.toUpperCase()] || { color: textTertiary, label: v || '—' };
+          return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
+        } },
       ...(!isAuditViewer ? [{
         key: 'updatedAt',
         label: 'Cán bộ cập nhật',
@@ -1042,19 +1060,18 @@ export default function BerthList() {
       </FilterTableLayout>
 
       {/* ── Create Drawer ──────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới Bến cảng</span>}
         open={createDrawerVisible}
         destroyOnHidden
         onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
-        extra={<Button type="text" onClick={() => { setCreateDrawerVisible(false); createForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
-          <div style={drawerFooterStyle}>
-            <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); berthFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button>
+          <>
+
+          <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); berthFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button>
             <Button type="primary" onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); berthFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>
             <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); berthFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: '#1BAF7A', borderColor: '#1BAF7A' }}>Lưu và phê duyệt</Button>
-          </div>
+          </>
         }
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -1066,18 +1083,16 @@ export default function BerthList() {
         <Form form={createForm} layout="vertical" initialValues={{}}>
           <BerthForm ref={berthFormRef} form={createForm} onFinish={() => { setCreateDrawerVisible(false); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
         </Form>
-      </Drawer>
+      </AppDrawer>
 
       {/* ── Edit Drawer ────────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin — {editBerthName || 'Bến cảng'}</span>}
         open={!!editBerthId}
         onClose={() => { setEditBerthId(undefined); setEditBerthName(''); updateForm.resetFields(); }}
-        extra={<Button type="text" onClick={() => { setEditBerthId(undefined); setEditBerthName(''); updateForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
           <div style={drawerFooterStyle}>
-            <Button type="primary" onClick={() => { actionTypeRef.current = 'update'; setActionType('update'); editBerthFormRef.current?.submit('UPDATE'); }} loading={submitting && actionType === 'update'} style={primaryButtonStyle}>Cập nhật</Button>
+            <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); editBerthFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
           </div>
         }
         styles={{
@@ -1091,15 +1106,13 @@ export default function BerthList() {
             <BerthForm ref={editBerthFormRef} form={updateForm} id={editBerthId} onFinish={() => { setEditBerthId(undefined); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
           </Form>
         </>)}
-      </Drawer>
+      </AppDrawer>
 
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         title={<span style={drawerTitleStyle}>Chi tiết bến cảng{detailRecord ? ` - ${detailRecord.berthName}` : ''}</span>}
         open={detailDrawerVisible}
         onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); }}
-        extra={<Button type="text" onClick={() => { setDetailDrawerVisible(false); setDetailRecord(null); }} style={drawerCloseBtnStyle}>✕</Button>}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
           body: { padding: '0 24px 12px 24px' },
@@ -1107,7 +1120,7 @@ export default function BerthList() {
         footer={null}
       >
         {renderDetailContent()}
-      </Drawer>
+      </AppDrawer>
 
       {/* ── Delete Confirmation Modal ────────────────────────────── */}
       <Modal
@@ -1208,13 +1221,11 @@ export default function BerthList() {
       </Modal>
 
       {/* ── Pier Detail Drawer (sibling — tránh drawer lồng bị đẩy kích thước) ── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         size={950}
         title={<span style={drawerTitleStyle}>Chi tiết cầu cảng{pierDetailRecord ? ` - ${pierDetailRecord.pierName || pierDetailRecord.pierCode || ''}` : ''}</span>}
         open={pierDetailOpen}
         onClose={() => setPierDetailOpen(false)}
-        extra={<Button type="text" onClick={() => setPierDetailOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
         footer={null}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -1244,11 +1255,10 @@ export default function BerthList() {
             waterwayMap={waterwayMap}
           />
         ) : null}
-      </Drawer>
+      </AppDrawer>
 
       {/* ── History Drawer ──────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         size={880}
         mask
         title={
@@ -1264,7 +1274,6 @@ export default function BerthList() {
         }
         open={historyOpen}
         onClose={() => setHistoryOpen(false)}
-        extra={<Button type="text" onClick={() => setHistoryOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
         footer={null}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -1305,7 +1314,7 @@ export default function BerthList() {
           <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div></div>
         ) : renderBerthHistoryTimeline(historyRecords)}
         </div>
-      </Drawer>
+      </AppDrawer>
     </div>
   );
 }

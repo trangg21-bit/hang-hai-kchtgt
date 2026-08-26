@@ -36,6 +36,7 @@ import {
   ApprovalStatus,
 } from '../../types/vtsSystem';
 import { UNIT_OF_MEASURE_MAP } from '../../types/aisSystem';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import type {
   AisSystemListItem,
   AisSystemResponse,
@@ -788,7 +789,7 @@ export const AisSystemList: React.FC = () => {
       dataIndex: 'operatingOrgName',
       width: 200,
       ellipsis: false,
-      render: (oName: string) => oName || '—',
+      render: (oName: string, record: AisSystemListItem) => oName || DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === record.operatingOrgId)?.name || '—',
     },
     {
       key: 'provinceId',

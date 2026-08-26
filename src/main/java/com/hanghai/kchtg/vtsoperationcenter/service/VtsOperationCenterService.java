@@ -172,15 +172,17 @@ public class VtsOperationCenterService {
             saved = repository.save(saved);
         }
 
-        // Ghi lịch sử tạo mới
-        historyRepository.save(InfrastructureHistory.builder()
-                .refId(saved.getId())
-                .refType(InfrastructureType.VTS_OPERATION_CENTER)
-                .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(InfrastructureHistoryStatus.CREATED)
-                .approvedBy(userId)
-                .reason("Tạo mới trung tâm điều hành VTS: " + saved.getName())
-                .build());
+        // Chỉ ghi lịch sử khi tạo mới ở trạng thái ĐÃ DUYỆT hoặc GỬI DUYỆT (tuyệt đối không ghi khi Lưu tạm DRAFT)
+        if (saved.getApprovalStatus() != null && saved.getApprovalStatus() != ApprovalStatus.DRAFT) {
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(saved.getId())
+                    .refType(InfrastructureType.VTS_OPERATION_CENTER)
+                    .approvalLevel(saved.getApprovalStatus() == ApprovalStatus.APPROVED ? ApprovalLevel.LEVEL_2 : ApprovalLevel.LEVEL_0)
+                    .status(saved.getApprovalStatus() == ApprovalStatus.APPROVED ? InfrastructureHistoryStatus.APPROVED : InfrastructureHistoryStatus.PROPOSED)
+                    .approvedBy(userId)
+                    .reason("Tạo mới và phê duyệt trung tâm điều hành VTS: " + saved.getName())
+                    .build());
+        }
 
         return toResponse(saved);
     }
@@ -277,7 +279,7 @@ public class VtsOperationCenterService {
         if (fieldName.equals(VtsOperationCenter.Fields.coverage)) return entity.getCoverage();
         if (fieldName.equals(VtsOperationCenter.Fields.conditionStatus)) return entity.getConditionStatus();
         if (fieldName.equals(VtsOperationCenter.Fields.note)) return entity.getNote();
-        if (fieldName.equals(VtsOperationCenter.Fields.spatialId)) return entity.getSpatialId();
+        if (fieldName.equals(BaseApprovableEntity.Fields.spatialId)) return entity.getSpatialId();
         return null;
     }
 
@@ -327,6 +329,21 @@ public class VtsOperationCenterService {
             ConditionStatus conditionStatus,
             ApprovalStatus approvalStatus,
             Pageable pageable) {
+        return search(keyword, orgUnitId, vtsSystemId, portId, provinceId, conditionStatus, approvalStatus, null, null, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<VtsOperationCenterListItem> search(
+            String keyword,
+            UUID orgUnitId,
+            UUID vtsSystemId,
+            UUID portId,
+            Integer provinceId,
+            ConditionStatus conditionStatus,
+            ApprovalStatus approvalStatus,
+            LocalDateTime updatedFrom,
+            LocalDateTime updatedTo,
+            Pageable pageable) {
 
         Scope scope = resolveEffectiveScope(orgUnitId);
         if (!scope.unrestricted() && scope.orgUnitIds().isEmpty()) {
@@ -344,6 +361,8 @@ public class VtsOperationCenterService {
                 conditionStatus,
                 approvalStatus,
                 kw,
+                updatedFrom,
+                updatedTo,
                 pageable);
 
         List<VtsOperationCenter> content = page.getContent();
@@ -398,6 +417,19 @@ public class VtsOperationCenterService {
             UUID portId,
             Integer provinceId,
             ConditionStatus conditionStatus) {
+        return countByStatus(keyword, orgUnitId, vtsSystemId, portId, provinceId, conditionStatus, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> countByStatus(
+            String keyword,
+            UUID orgUnitId,
+            UUID vtsSystemId,
+            UUID portId,
+            Integer provinceId,
+            ConditionStatus conditionStatus,
+            LocalDateTime updatedFrom,
+            LocalDateTime updatedTo) {
 
         Scope scope = resolveEffectiveScope(orgUnitId);
         if (!scope.unrestricted() && scope.orgUnitIds().isEmpty()) {
@@ -418,7 +450,9 @@ public class VtsOperationCenterService {
                 portId,
                 provinceId,
                 conditionStatus,
-                kw);
+                kw,
+                updatedFrom,
+                updatedTo);
 
         Map<String, Long> counts = new HashMap<>();
         counts.put("ALL", 0L);
@@ -589,17 +623,19 @@ public class VtsOperationCenterService {
             InfrastructureAttachment saved = attachmentRepository.save(attachment);
             uploaded.add(toAttachmentResponse(saved));
 
-            historyRepository.save(InfrastructureHistory.builder()
-                    .refId(id)
-                    .refType(InfrastructureType.VTS_OPERATION_CENTER)
-                    .approvalLevel(ApprovalLevel.LEVEL_0)
-                    .status(InfrastructureHistoryStatus.UPDATED)
-                    .approvedBy(userId)
-                    .reason("Tải lên tài liệu đính kèm: " + originalFilename)
-                    .changedField("Tài liệu đính kèm")
-                    .previousValue(null)
-                    .newValue(originalFilename)
-                    .build());
+            if (entity.getApprovalStatus() == ApprovalStatus.APPROVED || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2) {
+                historyRepository.save(InfrastructureHistory.builder()
+                        .refId(id)
+                        .refType(InfrastructureType.VTS_OPERATION_CENTER)
+                        .approvalLevel(ApprovalLevel.LEVEL_2)
+                        .status(InfrastructureHistoryStatus.UPDATED)
+                        .approvedBy(userId)
+                        .reason("Tải lên tài liệu đính kèm: " + originalFilename)
+                        .changedField("Tài liệu đính kèm")
+                        .previousValue(null)
+                        .newValue(originalFilename)
+                        .build());
+            }
         }
         return uploaded;
     }
@@ -684,17 +720,19 @@ public class VtsOperationCenterService {
 
         attachmentRepository.delete(att);
 
-        historyRepository.save(InfrastructureHistory.builder()
-                .refId(id)
-                .refType(InfrastructureType.VTS_OPERATION_CENTER)
-                .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(InfrastructureHistoryStatus.UPDATED)
-                .approvedBy(userId)
-                .reason("Xóa tài liệu đính kèm: " + att.getFileName())
-                .changedField("Tài liệu đính kèm")
-                .previousValue(att.getFileName())
-                .newValue(null)
-                .build());
+        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2) {
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(id)
+                    .refType(InfrastructureType.VTS_OPERATION_CENTER)
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(userId)
+                    .reason("Xóa tài liệu đính kèm: " + att.getFileName())
+                    .changedField("Tài liệu đính kèm")
+                    .previousValue(att.getFileName())
+                    .newValue(null)
+                    .build());
+        }
     }
 
     private String getFieldDisplayName(String field) {
@@ -943,6 +981,11 @@ public class VtsOperationCenterService {
                         : userRepository.findById(entity.getApproverLevel2()).map(User::getFullName).orElse(null))
                 : null;
 
+        String submitterName = entity.getSubmittedBy() != null
+                ? (userMap.containsKey(entity.getSubmittedBy()) ? userMap.get(entity.getSubmittedBy())
+                        : userRepository.findById(entity.getSubmittedBy()).map(User::getFullName).orElse(null))
+                : null;
+
         return VtsOperationCenterListItem.builder()
                 .id(entity.getId())
                 .code(entity.getCode())
@@ -959,6 +1002,9 @@ public class VtsOperationCenterService {
                 .conditionStatus(entity.getConditionStatus())
                 .approvalStatus(entity.getApprovalStatus())
                 .approvalStatusLabel(entity.getApprovalStatus() != null ? entity.getApprovalStatus().getLabel() : null)
+                .submittedAt(entity.getSubmittedAt())
+                .submittedBy(entity.getSubmittedBy())
+                .submittedByName(submitterName)
                 .approverLevel1(entity.getApproverLevel1())
                 .approverLevel1Name(approver1Name)
                 .approvedDateLevel1(entity.getApprovedDateLevel1())

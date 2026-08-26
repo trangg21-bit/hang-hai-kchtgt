@@ -24,6 +24,7 @@ import dayjs from 'dayjs';
 import toast from '../../components/ToastNotification';
 import api from '../../services/api';
 import { vtsSystemCRUD, vtsSystemApproval } from '../../services/vtsSystemService';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type {
   VtsSystemResponse,
@@ -32,7 +33,7 @@ import type {
   ApprovalRequest,
 } from '../../types/vtsSystem';
 import { ApprovalStatus, ConditionStatus, RecordSecurityLevel, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/vtsSystem';
-import { drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, requiredMarkStyle, spaceFormField, radiusPill, radiusMd, sidebarBg, fontWeightBold, fontWeightMedium, spaceMd, spaceSm, fontSizeMd, fontSizeSm, textSecondary, textTertiary, textPrimary, borderDefault, surfaceCard, uploadHintStyle, statusCritical, statusAttention, statusOperational, actionPrimary } from '../../tokens';
+import { drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, requiredMarkStyle, spaceFormField, radiusPill, radiusMd, sidebarBg, fontWeightBold, fontWeightMedium, spaceMd, spaceSm, fontSizeMd, fontSizeSm, textSecondary, textTertiary, textPrimary, borderDefault, surfaceCard, uploadHintStyle, statusCritical, statusAttention, statusOperational, actionPrimary, textAreaStyle, readonlyInputStyle } from '../../tokens';
 import { colors } from '../../theme';
 import { VIETNAM_PROVINCES, getProvinceIdByName, getProvinceNameById } from '../../types/common';
 
@@ -204,8 +205,10 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
   const [formError, setFormError] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [organizations, setOrganizations] = useState<any[]>([]);
+  const [operatingOrganizations, setOperatingOrganizations] = useState<Array<{ id: string; name: string; code: string }>>(DEFAULT_OPERATING_ORGANIZATIONS);
   const [rawPorts, setRawPorts] = useState<any[]>([]);
   const [tabKey, setTabKey] = useState('general');
+  const [generatedCode, setGeneratedCode] = useState<string>('');
   const [zoneList, setZoneList] = useState<any[]>([]);
   const [detailSectionsLoaded, setDetailSectionsLoaded] = useState({ zones: false, attachments: false });
   const [loadingDetailSection, setLoadingDetailSection] = useState<'zones' | 'attachments' | null>(null);
@@ -241,12 +244,14 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
     if (!isDetailMode) {
       (async () => {
         try {
-          const [scopedOrganizations, scopedPorts] = await Promise.all([
+          const [scopedOrganizations, scopedPorts, operatingOrgs] = await Promise.all([
             vtsSystemCRUD.getScopedOrgUnitOptions(),
             vtsSystemCRUD.getScopedPortOptions(),
+            vtsSystemCRUD.getOperatingOrganizationOptions(),
           ]);
           const allowedOrgUnitIds = new Set(scopedOrganizations.map((organization) => String(organization.id)));
           setOrganizations(scopedOrganizations);
+          setOperatingOrganizations(operatingOrgs);
           setRawPorts(scopedPorts.filter((port) => port.orgUnitId && allowedOrgUnitIds.has(String(port.orgUnitId))));
         } catch (err) {
           console.error('Không thể tải danh sách đơn vị và cảng biển', err);
@@ -256,15 +261,6 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
       setRawPorts([]);
     }
   }, [open, isDetailMode]);
-
-  useEffect(() => {
-    if (open && isCreateMode) {
-      setHasChanges(false);
-      setPendingFiles([]);
-      setZoneList([]);
-      form.resetFields();
-    }
-  }, [open, isCreateMode, form]);
 
   // Fetch detail data
   useEffect(() => {
@@ -339,12 +335,38 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
         }
       };
       loadData();
-    } else if (!id && isCreateMode && !isModalMode) {
+    } else if (!id && isCreateMode && (isModalMode ? open : true)) {
       form.resetFields();
       setRecord(null);
       setFormError(null);
       setPendingFiles([]);
       setZoneList([]);
+      setHasChanges(false);
+      setTabKey('general');
+      vtsSystemCRUD.generateCode().then((res) => {
+        if (!cancelled && res?.code) {
+          setGeneratedCode(res.code);
+          form.setFieldsValue({
+            code: res.code,
+            conditionStatus: ConditionStatus.OPERATIONAL,
+            recordSecurityLevel: RecordSecurityLevel.NORMAL,
+          });
+          requestAnimationFrame(() => {
+            form.setFieldsValue({
+              code: res.code,
+              conditionStatus: ConditionStatus.OPERATIONAL,
+              recordSecurityLevel: RecordSecurityLevel.NORMAL,
+            });
+          });
+        }
+      }).catch(() => {
+        requestAnimationFrame(() => {
+          form.setFieldsValue({
+            conditionStatus: ConditionStatus.OPERATIONAL,
+            recordSecurityLevel: RecordSecurityLevel.NORMAL,
+          });
+        });
+      });
     }
     return () => {
       cancelled = true;
@@ -426,11 +448,11 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
         approvalStatus: targetApprovalStatus as any,
         recordSecurityLevel: values.recordSecurityLevel || RecordSecurityLevel.NORMAL,
         scope: values.scope,
-        orgUnitId: values.orgUnitId,
-        owningOrgId: values.owningOrgId,
+        orgUnitId: values.orgUnitId || values.owningOrgId,
+        owningOrgId: values.owningOrgId || values.orgUnitId,
         operatingOrgId: values.operatingOrgId,
         portId: values.portId,
-        code: values.code,
+        code: values.code || generatedCode || undefined,
         zones: zoneList,
         province: values.province,
         provinceId: values.provinceId || (values.province ? getProvinceIdByName(values.province) : undefined),
@@ -787,7 +809,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
         >
           <p style={{ marginBottom: spaceFormField }}>Nhập lý do từ chối (tối thiểu 10 ký tự):</p>
           <Input.TextArea rows={3} value={rejectReason} maxLength={500} showCount
-            onChange={(e) => setRejectReason(e.target.value)} placeholder="Nhập lý do từ chối..." />
+            onChange={(e) => setRejectReason(e.target.value)} placeholder="Nhập lý do từ chối..." style={textAreaStyle} />
         </Modal>
       </>
     );
@@ -1071,8 +1093,16 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
           if (visible) {
             setTabKey('general');
             if (isCreateMode) {
-              form.resetFields();
-              setZoneList([]);
+              vtsSystemCRUD.generateCode().then((res) => {
+                if (res?.code) {
+                  setGeneratedCode(res.code);
+                  form.setFieldsValue({
+                    code: res.code,
+                    conditionStatus: ConditionStatus.OPERATIONAL,
+                    recordSecurityLevel: RecordSecurityLevel.NORMAL,
+                  });
+                }
+              });
             }
           }
         }}
@@ -1088,64 +1118,26 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
           >
             <Tabs activeKey={tabKey} onChange={setTabKey} tabBarStyle={{ marginBottom: 0, paddingTop: 0 }} items={[
               {
-                key: 'general', label: 'Thông tin chung',
-                children: <div style={{ paddingTop: spaceMd }}>
-                  <Form.Item
-                    label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị quản lý</span>}
-                    name="orgUnitId"
-                    rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
-                    style={{ marginBottom: spaceFormField }}
-                  >
-                    <OrgUnitTreeSelect
-                      organizations={organizations}
-                      placeholder="Chọn đơn vị quản lý"
-                      disabled={isEditMode}
-                      style={{ borderRadius: radiusPill, height: 40 }}
-                      onChange={(val) => {
-                        form.setFieldValue('orgUnitId', val);
-                        if (!form.getFieldValue('owningOrgId')) {
-                          form.setFieldValue('owningOrgId', val);
-                        }
-                        if (!form.getFieldValue('operatingOrgId')) {
-                          form.setFieldValue('operatingOrgId', val);
-                        }
-                        const curPort = form.getFieldValue('portId');
-                        if (curPort && !rawPorts.some((p) => p.id === curPort && String(p.orgUnitId) === String(val))) {
-                          form.setFieldValue('portId', undefined);
-                        }
-                      }}
-                    />
-                  </Form.Item>
-
-                  <Form.Item
-                    label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Ghi chú</span>}
-                    name="note"
-                    style={{ marginBottom: spaceFormField }}
-                  >
-                    <Input.TextArea rows={3} placeholder="Nhập ghi chú" showCount maxLength={2000} style={{ borderRadius: radiusMd }} />
-                  </Form.Item>
-                </div>,
-              },
-              {
-                key: 'vts', label: 'Thông tin hệ thống VTS',
+                key: 'general', label: 'Thông tin hệ thống VTS',
                 children: <div style={{ paddingTop: spaceMd }}>
                   <Row gutter={16}>
                     <Col span={12}>
                       <Form.Item
-                        label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị chủ quản</span>}
-                        name="owningOrgId"
-                        rules={[{ required: true, message: 'Vui lòng chọn đơn vị chủ quản' }]}
+                        label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị quản lý</span>}
+                        name="orgUnitId"
+                        rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
                         style={{ marginBottom: spaceFormField }}
                       >
                         <OrgUnitTreeSelect
                           organizations={organizations}
-                          placeholder="Chọn đơn vị chủ quản"
+                          placeholder="Chọn đơn vị quản lý"
+                          disabled={isEditMode}
                           style={{ borderRadius: radiusPill, height: 40 }}
                           onChange={(val) => {
+                            form.setFieldValue('orgUnitId', val);
                             form.setFieldValue('owningOrgId', val);
                             const curPort = form.getFieldValue('portId');
-                            const targetOrg = form.getFieldValue('orgUnitId') || val;
-                            if (curPort && !rawPorts.some((p) => p.id === curPort && String(p.orgUnitId) === String(targetOrg))) {
+                            if (curPort && !rawPorts.some((p) => p.id === curPort && String(p.orgUnitId) === String(val))) {
                               form.setFieldValue('portId', undefined);
                             }
                           }}
@@ -1159,9 +1151,12 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                         rules={[{ required: true, message: 'Vui lòng chọn đơn vị vận hành' }]}
                         style={{ marginBottom: spaceFormField }}
                       >
-                        <OrgUnitTreeSelect
-                          organizations={organizations}
+                        <Select
+                          showSearch
+                          allowClear
                           placeholder="Chọn đơn vị vận hành"
+                          filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
+                          options={operatingOrganizations.map((o) => ({ value: o.id, label: o.name }))}
                           style={{ borderRadius: radiusPill, height: 40 }}
                         />
                       </Form.Item>
@@ -1190,10 +1185,14 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                       <Form.Item
                         label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Mã hệ thống VTS</span>}
                         name="code"
-                        rules={[{ required: true, message: 'Vui lòng nhập mã hệ thống VTS' }]}
                         style={{ marginBottom: spaceFormField }}
                       >
-                        <Input placeholder="Nhập mã hệ thống VTS" disabled={isEditMode} maxLength={50} showCount style={{ borderRadius: radiusPill, height: 40 }} />
+                        <Input
+                          placeholder="Mã tự sinh (VTS-xxxxxx)"
+                          disabled={true}
+                          maxLength={50}
+                          style={readonlyInputStyle}
+                        />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -1257,7 +1256,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                     name="scope"
                     style={{ marginBottom: spaceFormField }}
                   >
-                    <Input.TextArea rows={3} placeholder="Nhập phạm vi áp dụng" showCount maxLength={2000} style={{ borderRadius: radiusMd }} />
+                    <Input.TextArea rows={3} placeholder="Nhập phạm vi áp dụng" showCount maxLength={2000} style={textAreaStyle} />
                   </Form.Item>
 
                   <Form.Item
@@ -1265,7 +1264,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                     name="maritimeNotice"
                     style={{ marginBottom: spaceFormField }}
                   >
-                    <Input.TextArea rows={3} placeholder="Nhập thông báo hàng hải" showCount maxLength={2000} style={{ borderRadius: radiusMd }} />
+                    <Input.TextArea rows={3} placeholder="Nhập thông báo hàng hải" showCount maxLength={2000} style={textAreaStyle} />
                   </Form.Item>
 
                   <Row gutter={16}>
@@ -1281,6 +1280,15 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                           options={CONDITION_STATUS_OPTIONS}
                           style={{ borderRadius: radiusPill, height: 40 }}
                         />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item
+                        label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Ghi chú</span>}
+                        name="note"
+                        style={{ marginBottom: spaceFormField }}
+                      >
+                        <Input.TextArea rows={1} placeholder="Nhập ghi chú" showCount maxLength={2000} style={textAreaStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -1497,7 +1505,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
           </Form.Item>
 
           <Form.Item label="Phạm vi áp dụng" name="scope">
-            <Input.TextArea rows={3} placeholder="Nhập phạm vi áp dụng" />
+            <Input.TextArea rows={3} placeholder="Nhập phạm vi áp dụng" style={textAreaStyle} />
           </Form.Item>
 
           <Form.Item
@@ -1529,10 +1537,13 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
             name="operatingOrgId"
             rules={[{ required: true, message: 'Vui lòng chọn đơn vị vận hành' }]}
           >
-            <OrgUnitTreeSelect
-              organizations={organizations}
-              placeholder="Chọn đơn vị vận hành"
+            <Select
+              showSearch
               allowClear
+              placeholder="Chọn đơn vị vận hành"
+              filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
+              options={operatingOrganizations.map((o) => ({ value: o.id, label: o.name }))}
+              style={{ borderRadius: radiusPill, height: 40 }}
             />
           </Form.Item>
 
@@ -1552,9 +1563,13 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
           <Form.Item
             label="Mã hệ thống VTS"
             name="code"
-            rules={[{ required: true, message: 'Vui lòng nhập mã hệ thống VTS' }]}
           >
-            <Input placeholder="Nhập mã hệ thống VTS" maxLength={50} showCount />
+            <Input
+              placeholder="Mã tự sinh (VTS-xxxxxx)"
+              disabled={true}
+              maxLength={50}
+              style={readonlyInputStyle}
+            />
           </Form.Item>
 
           <Form.Item
@@ -1588,7 +1603,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
             label="Thông báo hàng hải"
             name="maritimeNotice"
           >
-            <Input.TextArea rows={3} placeholder="Nhập thông báo hàng hải" maxLength={2000} showCount />
+            <Input.TextArea rows={3} placeholder="Nhập thông báo hàng hải" maxLength={2000} showCount style={textAreaStyle} />
           </Form.Item>
 
           <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>

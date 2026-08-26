@@ -46,10 +46,6 @@ public class AisSystem extends BaseEntity implements ApprovableEntity {
     @Column(name = "operating_org_id", nullable = false)
     private UUID operatingOrgId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "operating_org_id", insertable = false, updatable = false)
-    private OrgUnit operatingOrg;
-
     @Column(name = "detailed_location", length = 500)
     private String detailedLocation;
 

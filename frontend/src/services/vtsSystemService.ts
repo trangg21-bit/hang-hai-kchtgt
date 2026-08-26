@@ -1,5 +1,6 @@
 import api from './api';
 import { toArray, toSingle, toTotalCount } from './resilient';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from './operatingOrganizationsData';
 import type {
   VtsSystemResponse,
   VtsSystemAttachment,
@@ -29,6 +30,17 @@ export const vtsSystemCRUD = {
     return Array.isArray(data) ? data : [];
   },
 
+  async getOperatingOrganizationOptions(): Promise<Array<{ id: string; name: string; code: string }>> {
+    try {
+      const res = await api.get(`${COMMON_OPTIONS_BASE_PATH}/operating-organizations`);
+      const data = res.data?.data;
+      if (Array.isArray(data) && data.length > 0) return data;
+    } catch {
+      // ignore
+    }
+    return DEFAULT_OPERATING_ORGANIZATIONS;
+  },
+
   async getOptions(params?: { orgUnitId?: string }): Promise<Array<{ id: string; name: string; code?: string; orgUnitId?: string }>> {
     try {
       const res = await api.get(`${VTS_BASE_PATH}/options`, {
@@ -54,12 +66,18 @@ export const vtsSystemCRUD = {
     const res = await api.get(VTS_BASE_PATH, {
       params: {
         orgUnitId: params?.orgUnitId,
+        portId: params?.portId,
+        provinceId: params?.provinceId,
         page: params?.page || 0,
         size: params?.size || 20,
         keyword: params?.keyword,
         conditionStatus: params?.conditionStatus,
         approvalStatus: params?.approvalStatus,
         year: params?.year,
+        operationStartDateFrom: params?.operationStartDateFrom,
+        operationStartDateTo: params?.operationStartDateTo,
+        updatedFrom: params?.updatedFrom,
+        updatedTo: params?.updatedTo,
         includeCounts: params?.includeCounts ?? true,
         // `<field>,<asc|desc>` — sắp xếp thực hiện ở server để áp dụng cho toàn bộ
         // kết quả, không chỉ trang đang hiển thị.
@@ -131,6 +149,19 @@ export const vtsSystemCRUD = {
   async getByStatus(status: string): Promise<VtsSystemResponse[]> {
     const res = await api.get(`${VTS_BASE_PATH}/approval-status/${status}`);
     return toArray<VtsSystemResponse>(res.data);
+  },
+
+  async generateCode(): Promise<{ code: string }> {
+    try {
+      const res = await api.get(`${VTS_BASE_PATH}/generate-code`);
+      const val = toSingle<{ code: string }>(res.data) || res.data?.data || res.data;
+      if (val && typeof val === 'object' && 'code' in val && val.code) {
+        return { code: String(val.code) };
+      }
+    } catch {
+      // Fallback if needed
+    }
+    return { code: 'VTS-000001' };
   },
 };
 

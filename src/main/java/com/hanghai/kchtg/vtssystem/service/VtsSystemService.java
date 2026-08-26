@@ -133,7 +133,21 @@ public class VtsSystemService {
         this.permissionCacheService = permissionCacheService;
     }
 
+    public String generateCode() {
+        long count = repository.count();
+        String candidate;
+        int i = 1;
+        do {
+            candidate = String.format("VTS-%06d", count + i);
+            i++;
+        } while (repository.existsByCode(candidate));
+        return candidate;
+    }
+
     public VtsSystemResponse create(VtsSystemCreateRequest request, UUID userId) {
+        if (request.getCode() == null || request.getCode().trim().isEmpty()) {
+            request.setCode(generateCode());
+        }
         validateCreateRequest(request);
         validateWriteGuard(request);
         String normalizedCode = request.getCode().trim();
@@ -208,31 +222,34 @@ public class VtsSystemService {
             saved = repository.save(saved);
         }
 
-        String initialZones = (entity.getZones() != null && !entity.getZones().isEmpty())
-                ? formatZones(entity.getZones())
-                : null;
-        String statusLabel = initialStatus != null ? initialStatus.getLabel() : "Lưu tạm";
-        String fields = "Trạng thái phê duyệt" + (initialZones != null ? ", Vùng VTS" : "");
-        String newVals = "Trạng thái phê duyệt=" + statusLabel
-                + (initialZones != null ? "; Vùng VTS=" + initialZones : "");
-        ApprovalLevel approvalLevel = initialStatus == ApprovalStatus.APPROVED ? ApprovalLevel.LEVEL_2
-                : (initialStatus == ApprovalStatus.APPROVED_LEVEL1 ? ApprovalLevel.LEVEL_2
-                : (initialStatus == ApprovalStatus.PENDING_APPROVAL ? ApprovalLevel.LEVEL_1 : ApprovalLevel.LEVEL_0));
-        InfrastructureHistoryStatus historyStatus = initialStatus == ApprovalStatus.APPROVED ? InfrastructureHistoryStatus.APPROVED
-                : (initialStatus == ApprovalStatus.PENDING_APPROVAL || initialStatus == ApprovalStatus.APPROVED_LEVEL1 ? InfrastructureHistoryStatus.PROPOSED : InfrastructureHistoryStatus.CREATED);
-        String reason = initialStatus == ApprovalStatus.APPROVED ? "Tạo mới và phê duyệt hệ thống VTS"
-                : (initialStatus == ApprovalStatus.PENDING_APPROVAL || initialStatus == ApprovalStatus.APPROVED_LEVEL1 ? "Tạo mới và gửi phê duyệt hệ thống VTS" : "Tạo mới hệ thống VTS");
+        // Chỉ ghi lịch sử khi tạo mới ở trạng thái ĐÃ DUYỆT hoặc GỬI DUYỆT (tuyệt đối không ghi khi Lưu tạm DRAFT)
+        if (initialStatus != null && initialStatus != ApprovalStatus.DRAFT) {
+            String initialZones = (entity.getZones() != null && !entity.getZones().isEmpty())
+                    ? formatZones(entity.getZones())
+                    : null;
+            String statusLabel = initialStatus.getLabel();
+            String fields = "Trạng thái phê duyệt" + (initialZones != null ? ", Vùng VTS" : "");
+            String newVals = "Trạng thái phê duyệt=" + statusLabel
+                    + (initialZones != null ? "; Vùng VTS=" + initialZones : "");
+            ApprovalLevel approvalLevel = initialStatus == ApprovalStatus.APPROVED ? ApprovalLevel.LEVEL_2
+                    : (initialStatus == ApprovalStatus.APPROVED_LEVEL1 ? ApprovalLevel.LEVEL_2
+                    : ApprovalLevel.LEVEL_1);
+            InfrastructureHistoryStatus historyStatus = initialStatus == ApprovalStatus.APPROVED ? InfrastructureHistoryStatus.APPROVED
+                    : InfrastructureHistoryStatus.PROPOSED;
+            String reason = initialStatus == ApprovalStatus.APPROVED ? "Tạo mới và phê duyệt hệ thống VTS"
+                    : "Tạo mới và gửi phê duyệt hệ thống VTS";
 
-        historyRepository.save(InfrastructureHistory.builder()
-                .refId(saved.getId())
-                .refType(InfrastructureType.VTS_SYSTEM)
-                .approvalLevel(approvalLevel)
-                .status(historyStatus)
-                .approvedBy(userId)
-                .reason(reason)
-                .changedField(fields)
-                .newValue(newVals)
-                .build());
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(saved.getId())
+                    .refType(InfrastructureType.VTS_SYSTEM)
+                    .approvalLevel(approvalLevel)
+                    .status(historyStatus)
+                    .approvedBy(userId)
+                    .reason(reason)
+                    .changedField(fields)
+                    .newValue(newVals)
+                    .build());
+        }
         return toLightResponse(saved);
     }
 
@@ -530,18 +547,33 @@ public class VtsSystemService {
     public VtsSystemListResponse findAllWithSearchAndCounts(UUID orgUnitId, String keyword,
             ConditionStatus conditionStatus, ApprovalStatus approvalStatus, Integer year, int page, int size,
             boolean includeCounts, String sort) {
+        return findAllWithSearchAndCounts(orgUnitId, null, null, keyword, conditionStatus, approvalStatus,
+                null, null, null, null, year, page, size, includeCounts, sort);
+    }
+
+    public VtsSystemListResponse findAllWithSearchAndCounts(
+            UUID orgUnitId, UUID portId, Integer provinceId, String keyword,
+            ConditionStatus conditionStatus, ApprovalStatus approvalStatus,
+            LocalDate operationStartDateFrom, LocalDate operationStartDateTo,
+            LocalDateTime updatedFrom, LocalDateTime updatedTo,
+            Integer year, int page, int size,
+            boolean includeCounts, String sort) {
         DataScopeContext scope = resolveDataScopeForFilter(orgUnitId);
         String keywordLike = toKeywordLike(keyword);
-        Page<VtsSystemListItemResponse> pageResult = findAllListItems(orgUnitId, keyword, conditionStatus,
-                approvalStatus,
-                year, page, size, scope, sort);
-        LocalDate fromDate = year != null ? LocalDate.of(year, 1, 1) : null;
-        LocalDate toDate = year != null ? LocalDate.of(year + 1, 1, 1) : null;
+        LocalDate fromDate = operationStartDateFrom != null ? operationStartDateFrom
+                : (year != null ? LocalDate.of(year, 1, 1) : null);
+        LocalDate toDate = operationStartDateTo != null ? operationStartDateTo
+                : (year != null ? LocalDate.of(year, 12, 31) : null);
+
+        Page<VtsSystemListItemResponse> pageResult = findAllListItems(
+                orgUnitId, portId, provinceId, keyword, conditionStatus, approvalStatus,
+                fromDate, toDate, updatedFrom, updatedTo, page, size, scope, sort);
+
         return VtsSystemListResponse.builder()
                 .items(pageResult.getContent())
                 .total(pageResult.getTotalElements())
                 .statusCounts(includeCounts
-                        ? countByApprovalStatus(scope, null, keywordLike, conditionStatus, fromDate, toDate)
+                        ? countByApprovalStatus(scope, null, portId, provinceId, keywordLike, conditionStatus, fromDate, toDate, updatedFrom, updatedTo)
                         : Collections.emptyMap())
                 .build();
     }
@@ -550,18 +582,19 @@ public class VtsSystemService {
      * List query projection. It intentionally avoids the detail mapper because
      * that mapper loads attachments, spatial objects and creator names per row.
      */
-    private Page<VtsSystemListItemResponse> findAllListItems(UUID orgUnitId, String keyword,
-            ConditionStatus conditionStatus, ApprovalStatus approvalStatus, Integer year, int page, int size,
-            DataScopeContext scope, String sort) {
+    private Page<VtsSystemListItemResponse> findAllListItems(
+            UUID orgUnitId, UUID portId, Integer provinceId, String keyword,
+            ConditionStatus conditionStatus, ApprovalStatus approvalStatus,
+            LocalDate fromDate, LocalDate toDate, LocalDateTime updatedFrom, LocalDateTime updatedTo,
+            int page, int size, DataScopeContext scope, String sort) {
         String keywordLike = toKeywordLike(keyword);
         Pageable pageable = PageRequest.of(page, size, resolveListSort(sort));
         if (scope.enabled() && scope.orgUnitIds().isEmpty()) {
             return Page.empty(pageable);
         }
-        LocalDate fromDate = year != null ? LocalDate.of(year, 1, 1) : null;
-        LocalDate toDate = year != null ? LocalDate.of(year + 1, 1, 1) : null;
-        Page<VtsSystemListProjection> rawPage = repository.searchList(scope.enabled(), scope.orgUnitIds(), null, keywordLike,
-                conditionStatus, approvalStatus, fromDate, toDate, pageable);
+        Page<VtsSystemListProjection> rawPage = repository.searchList(
+                scope.enabled(), scope.orgUnitIds(), orgUnitId, portId, provinceId, keywordLike,
+                conditionStatus, approvalStatus, fromDate, toDate, updatedFrom, updatedTo, pageable);
 
         // Batch resolve user names in a single query to eliminate N+1 queries
         Set<UUID> userIds = rawPage.getContent().stream()
@@ -910,20 +943,20 @@ public class VtsSystemService {
         entity.setUpdatedBy(effectiveUserId);
         repository.save(entity);
 
-        // Trạng thái phê duyệt không đổi: hồ sơ chỉ sửa được tài liệu khi đang
-        // "Lưu tạm" hoặc "Bị trả về" (xem ensureAttachmentEditable), nên không còn
-        // trường hợp phải đưa hồ sơ về lại Lưu tạm.
-        historyRepository.save(InfrastructureHistory.builder()
-                .refId(vtsSystemId)
-                .refType(InfrastructureType.VTS_SYSTEM)
-                .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(InfrastructureHistoryStatus.UPDATED)
-                .approvedBy(effectiveUserId)
-                .reason("Tải lên tài liệu đính kèm: " + originalName)
-                .changedField("Tài liệu đính kèm")
-                .previousValue(null)
-                .newValue(originalName)
-                .build());
+        // Chỉ ghi lịch sử khi hồ sơ đã được duyệt chính thức (không ghi khi đang Lưu tạm/Bị trả về)
+        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2) {
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(vtsSystemId)
+                    .refType(InfrastructureType.VTS_SYSTEM)
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(effectiveUserId)
+                    .reason("Tải lên tài liệu đính kèm: " + originalName)
+                    .changedField("Tài liệu đính kèm")
+                    .previousValue(null)
+                    .newValue(originalName)
+                    .build());
+        }
 
         return toAttachmentResponse(saved);
     }
@@ -946,17 +979,20 @@ public class VtsSystemService {
         entity.setUpdatedBy(effectiveUserId);
         repository.save(entity);
 
-        historyRepository.save(InfrastructureHistory.builder()
-                .refId(vtsSystemId)
-                .refType(InfrastructureType.VTS_SYSTEM)
-                .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(InfrastructureHistoryStatus.UPDATED)
-                .approvedBy(effectiveUserId)
-                .reason("Xóa tài liệu đính kèm: " + attachment.getFileName())
-                .changedField("Tài liệu đính kèm")
-                .previousValue(attachment.getFileName())
-                .newValue(null)
-                .build());
+        // Chỉ ghi lịch sử khi hồ sơ đã được duyệt chính thức (không ghi khi đang Lưu tạm/Bị trả về)
+        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2) {
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(vtsSystemId)
+                    .refType(InfrastructureType.VTS_SYSTEM)
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(effectiveUserId)
+                    .reason("Xóa tài liệu đính kèm: " + attachment.getFileName())
+                    .changedField("Tài liệu đính kèm")
+                    .previousValue(attachment.getFileName())
+                    .newValue(null)
+                    .build());
+        }
     }
 
     public InfrastructureAttachment getAttachment(UUID vtsSystemId, UUID attachmentId) {
@@ -1140,12 +1176,13 @@ public class VtsSystemService {
     }
 
     private VtsZoneDto toZoneDto(VtsZone zone) {
-        return VtsZoneDto.builder()
-                .id(zone.getId())
-                .code(zone.getCode())
-                .name(zone.getName())
-                .conditionStatus(zone.getConditionStatus())
-                .build();
+        if (zone == null) return null;
+        return VtsZoneDto.of(
+                zone.getId(),
+                zone.getCode(),
+                zone.getName(),
+                zone.getConditionStatus()
+        );
     }
 
     private String formatZones(List<?> zones) {
@@ -1496,24 +1533,26 @@ public class VtsSystemService {
 
     @Transactional(readOnly = true)
     public java.util.Map<String, Long> countByApprovalStatus() {
-        return countByApprovalStatus(resolveDataScopeForFilter(null), null, null, null, null, null);
+        return countByApprovalStatus(resolveDataScopeForFilter(null), null, null, null, null, null, null, null, null, null);
     }
 
     @Transactional(readOnly = true)
     public java.util.Map<String, Long> countByApprovalStatus(UUID orgUnitId, String keyword,
             ConditionStatus conditionStatus) {
-        return countByApprovalStatus(resolveDataScopeForFilter(orgUnitId), orgUnitId, keyword, conditionStatus, null, null);
+        return countByApprovalStatus(resolveDataScopeForFilter(orgUnitId), orgUnitId, null, null, keyword, conditionStatus, null, null, null, null);
     }
 
-    private java.util.Map<String, Long> countByApprovalStatus(DataScopeContext scope, UUID orgUnitId, String keyword,
-            ConditionStatus conditionStatus, LocalDate fromDate, LocalDate toDate) {
+    private java.util.Map<String, Long> countByApprovalStatus(
+            DataScopeContext scope, UUID orgUnitId, UUID portId, Integer provinceId, String keyword,
+            ConditionStatus conditionStatus, LocalDate fromDate, LocalDate toDate,
+            LocalDateTime updatedFrom, LocalDateTime updatedTo) {
         if (scope.enabled() && scope.orgUnitIds().isEmpty()) {
             return Collections.emptyMap();
         }
         java.util.Map<String, Long> counts = new java.util.LinkedHashMap<>();
-        List<Object[]> rows = fromDate == null
-                ? repository.countByApprovalStatus(scope.enabled(), scope.orgUnitIds(), orgUnitId, keyword, conditionStatus)
-                : repository.countByApprovalStatus(scope.enabled(), scope.orgUnitIds(), orgUnitId, keyword, conditionStatus, fromDate, toDate);
+        List<Object[]> rows = repository.countByApprovalStatus(
+                scope.enabled(), scope.orgUnitIds(), orgUnitId, portId, provinceId, keyword, conditionStatus,
+                fromDate, toDate, updatedFrom, updatedTo);
         for (Object[] row : rows) {
             counts.put(((ApprovalStatus) row[0]).name(), (Long) row[1]);
         }

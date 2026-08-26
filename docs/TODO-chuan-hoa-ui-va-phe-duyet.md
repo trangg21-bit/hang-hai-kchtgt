@@ -16,6 +16,8 @@ Phần đã làm chỉ liệt kê ngắn để biết điểm dừng.
 | `FormSaveFooter` | `frontend/src/components/shared/FormSaveFooter.tsx` | bộ 3 nút "Lưu tạm / Lưu và gửi phê duyệt / Lưu và phê duyệt" chép tay ở 11 màn |
 | `FORM_TAB_LABEL` | `frontend/src/components/shared/formTabs.ts` | nhãn tab form tự đặt tên ("Vị trí & GIS", "Tệp đính kèm", đánh số 1..5) |
 | token `listPageContainerStyle` | `frontend/src/tokens.ts` | giá trị `calc(100% - 32px)` rải rác |
+| `formLabelProps` | `frontend/src/components/shared/formLabel.tsx` | `const labelProps = …` chép tay ở **21 màn**; màn Inmarsat thì không có → nhãn rơi về mặc định AntD |
+| `headerMinWidth()` trong `DataTable` | `frontend/src/components/list-view/DataTable.tsx` | tiêu đề cột bị cắt `...` do `onHeaderCell` ép `overflow:hidden` |
 
 **Backend**: VTS (`coastal_station_vts`) và Cospas-Sarsat đã chuyển sang quy trình 2 cấp chuẩn
 (`InfrastructureApprovalService`, quy tắc 14, chống tự duyệt 4 mắt); nhật ký nhà trạm đã
@@ -43,6 +45,27 @@ Mỗi màn làm độc lập, rủi ro thấp vì chỉ đổi phần render.
 - [ ] `FORM_TAB_LABEL` cho các form còn đặt tên riêng — rà `'Thông tin cơ bản'` (7 chỗ),
       `'Vị trí (GIS)'` (2 chỗ), `'Tệp đính kèm'`.
 
+### 1b. `AppDrawer` — đã lan xong đợt 1 (26/08/2026)
+
+Đã chuyển **7 màn / 21 drawer** sang `AppDrawer`: Cảng biển (6), Bến cảng (5), Trạm phao (5),
+Phao tiêu (4), Đê kè (1), Trạm Radar (1), Đèn biển (1) — bỏ luôn 21 nút ✕ chép tay và các lớp
+`<div style={drawerFooterStyle}>` thừa (AppDrawer đã tự bọc). `AppDrawer` hiện phủ **12 màn**.
+
+`FormSaveFooter` đã áp cho Cảng biển (cả form tạo mới lẫn form sửa) + Inmarsat.
+
+Còn lại:
+
+- [ ] **5 màn KCHT chưa chuyển được bằng máy** vì `<Drawer>` không đi kèm `{...drawerProps}`
+      nên số thẻ mở/đóng không khớp — phải xem tay: `pages/port/PierListPage` (3),
+      `pages/port/DryPortListPage` (4), `pages/vtssystem/VtsSystemList` (1),
+      `pages/aissystem/AisSystemList` (1), `pages/vtsoperationcenter/VtsOperationCenterList` (1).
+- [ ] `FormSaveFooter` cho các màn còn chép tay bộ nút (Bến cảng, Cầu cảng, Cảng cạn, Đê kè,
+      VTS, AIS, Phao tiêu, Trạm phao).
+- [ ] **Chân form khi CHỈNH SỬA theo trạng thái** (`infrastructure-screen-template.md` §3.6):
+      hồ sơ `APPROVED` phải là `Hủy` · `Lưu và phê duyệt`; `DRAFT`/`REJECTED_*` phải là
+      `Hủy` · `Lưu tạm` · `Lưu và gửi phê duyệt`. Hiện form sửa Cảng biển vẫn 1 nút "Cập nhật"
+      vì endpoint update của cảng biển **chưa nhận tham số `action`** như endpoint create.
+
 ### 2. Tám màn còn dùng `FilterBar` thay vì `FilterTableLayout`
 
 Trái với `docs/conventions/list-screen-ui-standard.md`. Ba màn in đậm là KCHT nên ưu tiên:
@@ -57,10 +80,10 @@ Trái với `docs/conventions/list-screen-ui-standard.md`. Ba màn in đậm là
 
 ### 3. Màn Đài vệ tinh Inmarsat — phần chưa xong
 
-- [ ] Bật nút **"Lưu và phê duyệt"** khi backend Inmarsat mở đường duyệt thẳng cho cấp Cục
-      (như `VtsSystemService` đang làm). Hiện `FormSaveFooter` đã có sẵn prop `canApprove`,
-      chỉ cần truyền `true`. Chưa bật vì `approveLevel1` chặn 4 mắt — người tạo bấm vào
-      chắc chắn lỗi.
+- [x] **ĐÃ LÀM 26/08/2026** — `CoastalStationInmarsatService` chuyển sang
+      `InfrastructureApprovalService` (quy tắc 14: cấp Cục gửi → thẳng "Chờ Cục duyệt",
+      chống tự duyệt 4 mắt, nhật ký dùng chung) + `syncStationStatus()`. Nút
+      **"Lưu và phê duyệt"** đã bật, gắn quyền `coastalstationinmarsat:approvec2`.
 - [ ] Dọn ~13 import/biến thừa và 1 lỗi kiểu thật còn sót từ trước:
       `SpecialStationList.tsx:140` — `Parameter 's' implicitly has an 'any' type`
       (`usePermissionStore((s) => ...)`).

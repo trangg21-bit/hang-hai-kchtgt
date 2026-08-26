@@ -58,6 +58,7 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/history': 'admin:view',
   '/port': 'port:read',
   '/berth': 'berth:read',
+  '/anchorage': 'anchorage:read',
   '/pier': 'pier:read',
   '/dry-port': 'dryport:read',
   '/water-zone': 'waterarea:read',
@@ -117,6 +118,7 @@ const pageTitles: Record<string, string> = {
   '/history': 'Lịch sử thay đổi',
   '/port': 'Quản lý cảng biển',
   '/berth': 'Quản lý bến cảng',
+  '/anchorage': 'Quản lý khu neo đậu',
   '/pier': 'Quản lý cầu cảng',
   '/dry-port': 'Quản lý cảng cạn',
   '/water-zone': 'Quản lý vùng nước',
@@ -187,6 +189,8 @@ export default function AppLayout() {
     selectedKey = 'port-parent';
   } else if (pathSegments[0] === 'berth') {
     selectedKey = 'berth-parent';
+  } else if (pathSegments[0] === 'anchorage') {
+    selectedKey = '/anchorage';
   } else if (pathSegments[0] === 'pier' || pathSegments[0] === 'dry-port' || pathSegments[0] === 'water-zone') {
     selectedKey = '/' + pathSegments[0];
   } else if (pathSegments[0] === 'navigation-channel' || pathSegments[0] === 'dike-revetment' || pathSegments[0] === 'ship-repair-facility' || pathSegments[0] === 'radar-station' || pathSegments[0] === 'vts-system') {
@@ -209,6 +213,8 @@ export default function AppLayout() {
         setOpenKeys(['gis']);
       } else if (selectedKey === 'berth-parent') {
         setOpenKeys(['cangben', 'port-parent', 'berth-parent']);
+      } else if (selectedKey === '/anchorage') {
+        setOpenKeys(['cangben', 'port-parent']);
       } else if (selectedKey === 'port-parent') {
         setOpenKeys(['cangben', 'port-parent']);
       } else if (selectedKey === '/pier') {
@@ -301,6 +307,7 @@ export default function AppLayout() {
                 canAccessMenu('/pier') ? { key: '/pier', label: 'Quản lý cầu cảng', icon: <BuildOutlined /> } : null,
               ].filter(Boolean),
             } : null,
+            canAccessMenu('/anchorage') ? { key: '/anchorage', label: 'Quản lý khu neo đậu', icon: <CompassOutlined /> } : null,
           ].filter(Boolean),
         } : null,
         canAccessMenu('/dry-port') ? { key: '/dry-port', label: 'Quản lý cảng cạn', icon: <TruckOutlined /> } : null,
@@ -689,7 +696,7 @@ export default function AppLayout() {
         }
         .submenu-active.ant-menu-submenu > .ant-menu-submenu-title {
           color: #fff !important;
-          background: rgba(255, 255, 255, 0.1) !important;
+          background: var(--ant-color-primary, #1B84FF) !important;
         }
       `}</style>
       <Layout style={{ height: '100vh', position: 'relative', overflow: 'hidden' }}>

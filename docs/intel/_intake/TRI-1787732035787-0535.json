@@ -1,0 +1,66 @@
+{
+  "triage_id": "TRI-1787732035787-0535",
+  "created_at": 1787732035787,
+  "request_summary": "Thêm migration Flyway DROP check constraint cũ buoy_station_status_check (+ buoy_status_check) — constraint không do migration nào tạo (Hibernate ddl-auto tạo từ enum cũ) và chặn status REJECTED_L1/L2 mới (từ chối 2 cấp vừa đồng bộ theo Berth) gây lỗi reject cấp Cục; đồng thời áp trực tiếp lên DB dev để test ngay.",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/resources/db/migration/V20260826160000__drop_stale_status_check_constraints.sql"
+    ],
+    "impact_files": [
+      "src/main/resources/db/migration/V20260826160000__drop_stale_status_check_constraints.sql"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/V20260826160000__drop_stale_status_check_constraints.sql"
+      }
+    ],
+    "dev_footprint": "backend"
+  },
+  "rationale": "C3: one-way door: schema:src/main/resources/db/migration/V20260826160000__drop_stale_status_check_constraints.sql — floors at C3 regardless of size (1 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Thao tác Từ chối cấp Cục trên màn Nhà trạm phao tiêu (POST /api/v1/buoy-station/{id}/reject) — trước đây lỗi DataIntegrityViolationException do check constraint cũ buoy_station_status_check chặn status REJECTED_L1/L2.",
+  "blast_radius": 1,
+  "done_oracle": "Migration mới DROP CONSTRAINT IF EXISTS buoy_station_status_check (+ buoy_status_check phòng thủ) được thêm; DB dev đã bỏ constraint cũ; reject cấp Cục (REJECTED_L2) và cấp 1 (REJECTED_L1) của Nhà trạm phao tiêu + phao tiêu ghi DB thành công (không còn DataIntegrityViolationException); migration hợp lệ cho môi trường UAT/prod khi restart.",
+  "verification_commands": [
+    {
+      "command": "mvn clean compile -q",
+      "cwd": "C:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.1.4\\plugins\\maven\\lib\\maven3\\bin",
+      "timeout_ms": 600000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "src/main/resources/db/migration/V52__convert_beacon_enums_to_int.sql",
+      "line": 7,
+      "quote": "ALTER TABLE public.buoy DROP CONSTRAINT IF EXISTS buoy_status_check;",
+      "source_hash": "18af30fe7982b54feeaeddf00131cc0f96041cb757674c8f46b426fd33a048f6",
+      "quote_hash": "06fd298cad9ea1ddf84ec404f4416f45df689db34155580471b021298b9ab795",
+      "note": "Tiền lệ: bảng buoy đã drop buoy_status_check khi chuyển enum sang int — buoy_station chưa được xử lý tương tự"
+    },
+    {
+      "file": "src/main/resources/db/migration/V20260825140000__migrate_legacy_approval_status_to_standard.sql",
+      "line": 16,
+      "quote": "ALTER TABLE buoy_station DROP CONSTRAINT IF EXISTS buoy_station_approval_status_check;",
+      "source_hash": "b7183b479cdc6c94b594abbf879f3b41018478243d133a6fdeb3617dfb8508b3",
+      "quote_hash": "9763aa8e98183d6f5441db812ce9b366e757c031522a3d56b027a130fd06b61b",
+      "note": "Đã drop buoy_station_approval_status_check nhưng không drop buoy_station_status_check — khoảng trống cần vá"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787732036015
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

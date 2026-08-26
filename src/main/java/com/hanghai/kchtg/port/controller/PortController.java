@@ -145,6 +145,16 @@ public class PortController {
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", null));
     }
 
+    /** Phê duyệt thẳng (mô hình 2 trạng thái: Nháp → Đã phê duyệt). */
+    @PostMapping("/{id}/approve")
+    @PreAuthorize("@auth.checkAny(authentication, 'port:approve', 'port:approvec1', 'port:approvec2')")
+    public ResponseEntity<ApiResponse<Void>> approve(@PathVariable UUID id) {
+        UUID userId = SecurityUtils.getCurrentUserId();
+        log.info("Approving Port directly: id={}, userId={}", id, userId);
+        portApprovalService.approve(id, userId.toString(), null);
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cảng biển thành công", null));
+    }
+
     /** Vòng bị từ chối do trạng thái hiện tại quyết định (xem PortApprovalService). */
     @PostMapping("/{id}/reject")
     @PreAuthorize("@auth.checkAny(authentication, 'port:approvec1', 'port:approvec2')")

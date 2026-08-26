@@ -1,0 +1,63 @@
+{
+  "triage_id": "TRI-1787724259189-177a",
+  "created_at": 1787724259189,
+  "request_summary": "Màn chi tiết Khu neo đậu (AnchorageDetailContent) chưa hiển thị dữ liệu tab \"Khu nước neo buộc tàu\" của form Thêm mới (record.mooringWaterAreas có sẵn, type MooringWaterAreaPayload tại types/port.ts:613). Thêm tab mới theo style detail-grid/detail-row hiện có (tham khảo BerthDetailContent): mỗi khu nước = 1 khối (Phạm vi, Loại đối tượng, Biểu tượng qua symbolMap/symbolImageMap, Hệ quy chiếu WGS-84/VN-2000, Quy tắc hiển thị) + bảng Điểm neo DMS (dùng ddToDms sẵn có).",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/anchorage/AnchorageDetailContent.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/anchorage/AnchorageDetailContent.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Drawer chi tiết Khu neo đậu — tab Khu nước neo buộc tàu",
+  "blast_radius": 1,
+  "done_oracle": "Drawer chi tiết Khu neo đậu hiển thị đầy đủ dữ liệu các tab của form Thêm mới: thêm tab \"Khu nước neo buộc tàu\" hiển thị từng khu nước (Phạm vi, Loại đối tượng, Biểu tượng, Hệ quy chiếu, Quy tắc hiển thị) + bảng Điểm neo (STT, Tên, Vĩ độ/Kinh độ DMS) — đọc từ record.mooringWaterAreas.",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht\\frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageDetailContent.tsx",
+      "line": 250,
+      "quote": "key: 'files', label: 'File đính kèm',",
+      "source_hash": "8f6f6b0c9d448dc27d6909cc651d7d5cbb586bdeff8e6184b58b99f65595e408",
+      "quote_hash": "bf818eee9ce761a8ac73857523a16b38be552db8fc9f75245dead2c2d3d297e3",
+      "note": "Tab File đính kèm — chèn tab Khu nước neo buộc tàu trước nó"
+    },
+    {
+      "file": "frontend/src/types/port.ts",
+      "line": 613,
+      "quote": "export interface MooringWaterAreaPayload {",
+      "source_hash": "d5113bdf0e6d3ba4e87a31f782772a7a717091f123c0c2e473bcf4dca094f11c",
+      "quote_hash": "e219ef2a157195d2de3a8e04823bae74d1ee86c7a314725bb7dec581451bc79d",
+      "note": "Type MooringWaterAreaPayload có sẵn (description/geometryType/mapSymbolId/coordinateSystem/displayRule/anchorPoints)"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787724259355
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

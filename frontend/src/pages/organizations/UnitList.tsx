@@ -16,13 +16,12 @@ import { statusOperational, statusCritical, actionPrimary, textPrimary, textSeco
 import { colors } from '../../theme';
 import { normalizeSearchText } from '../../components/org-unit';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
+import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 
 const { confirm } = modal;
 
 const STATUS_COLORS: Record<string, string> = { active: statusOperational, inactive: statusCritical };
 const STATUS_LABELS: Record<string, string> = { active: 'Sử dụng', inactive: 'Không sử dụng' };
-const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
-
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function fmtUser(s?: string, userMap?: Map<string, string>) {

@@ -15,8 +15,7 @@ import { organizationService } from '../../services/organizationService';
 import { OrgUnitTreeSelect, normalizeSearchText, type OrgUnitTreeOption } from '../../components/org-unit';
 import { portCRUD } from '../../services/portService';
 import {
-  createBuoyStation, updateBuoyStation, submitBuoyStationForApproval,
-  approveBuoyStationL1, approveBuoyStationL2, generateBuoyStationCode,
+  createBuoyStation, updateBuoyStation, generateBuoyStationCode,
 } from './api';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import type { BuoyStationResponse, CreateBuoyStationRequest } from './types';
@@ -28,10 +27,10 @@ import {
   GEOMETRY_OPTIONS, COORD_SYS_OPTIONS, GEOMETRY_POINT_COUNT,
 } from './schema';
 import { CONDITION_OPTIONS } from '../buoy/schema';
+import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 
 type SaveAction = 'DRAFT' | 'SUBMIT' | 'APPROVED' | 'UPDATE';
 
-const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
 const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 const numberInputStyle: React.CSSProperties = { width: '100%', borderRadius: radiusPill, height: 40 };
@@ -292,6 +291,14 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
         toast.error('Kinh độ phải từ -180° đến 180° (WGS84)'); setActiveTabKey('gis'); return;
       }
     }
+    if (geomType) {
+      const minCount = GEOMETRY_POINT_COUNT[geomType] ?? 1;
+      if (manualCoords.length < minCount) {
+        toast.error(geomType === 'POLYGON' ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ' : geomType === 'LINE' ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ' : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ');
+        setActiveTabKey('gis');
+        return;
+      }
+    }
     setGpsError(null);
     try {
       const p: Record<string, unknown> = {
@@ -309,20 +316,15 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
         coordinates: manualCoords.length > 1 ? `MULTIPOINT(${manualCoords.map(c => `(${c.longitude} ${c.latitude})`).join(',')})` : manualCoords.length === 1 ? `POINT(${manualCoords[0].longitude} ${manualCoords[0].latitude})` : undefined,
       };
       Object.keys(p).forEach(k => { if (p[k] === undefined) delete p[k]; });
-      const uid = currentUser?.userId;
       let sid: string | undefined;
+      p.action = saveAction === 'DRAFT' ? 'draft' : saveAction === 'APPROVED' ? 'approved' : 'submit';
       if (isEdit && entityData?.id) {
         await updateBuoyStation(entityData.id, p as unknown as CreateBuoyStationRequest);
         sid = entityData.id;
-        if (saveAction === 'SUBMIT' || saveAction === 'APPROVED') await submitBuoyStationForApproval(entityData.id);
       } else {
         p.code = code;
-        p.action = saveAction === 'DRAFT' ? 'draft' : 'submit';
         const r = await createBuoyStation(p as unknown as CreateBuoyStationRequest);
         sid = (r as { id?: string })?.id;
-      }
-      if (saveAction === 'APPROVED' && sid) {
-        try { if (uid) { await approveBuoyStationL1(sid, uid); await approveBuoyStationL2(sid, uid); } } catch (e) { toast.warning('Đã lưu, nhưng phê duyệt tự động thất bại: ' + (e instanceof Error ? e.message : 'lỗi')); }
       }
       toast.success(saveAction === 'DRAFT' ? 'Lưu nháp thành công' : saveAction === 'UPDATE' ? 'Cập nhật thành công' : saveAction === 'APPROVED' ? 'Phê duyệt thành công' : 'Gửi phê duyệt thành công');
       if (sid && uploadedFiles.length > 0) {
@@ -355,7 +357,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
       </Row>
       <Row gutter={16}>
         <Col span={12}><Form.Item name="name" {...labelProps('Tên nhà trạm')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Tên nhà trạm không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]} validateStatus={atMax.name ? 'error' : undefined} help={atMax.name ? 'Đã đạt tối đa 255 ký tự' : undefined}><Input placeholder="Nhập Tên nhà trạm quản lý vận hành phao, tiêu" maxLength={255} style={inputStyle} /></Form.Item></Col>
-        <Col span={12}><Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành phố)')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Địa điểm (Tỉnh/Thành phố) là bắt buộc' }]}><Select placeholder="Chọn địa điểm" showSearch optionFilterProp="label" filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))} options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))} style={selectStyle} /></Form.Item></Col>
+        <Col span={12}><Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành Phố)')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Địa điểm (Tỉnh/Thành phố) là bắt buộc' }]}><Select placeholder="Chọn địa điểm" showSearch optionFilterProp="label" filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))} options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))} style={selectStyle} /></Form.Item></Col>
       </Row>
       <Row gutter={16}>
         <Col span={12}><Form.Item name="address" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }} rules={[{ max: 500, message: 'Tối đa 500 ký tự' }]} validateStatus={atMax.address ? 'error' : undefined} help={atMax.address ? 'Đã đạt tối đa 500 ký tự' : undefined}><Input placeholder="Nhập Địa điểm chi tiết" maxLength={500} style={inputStyle} /></Form.Item></Col>
@@ -402,14 +404,12 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
       </Row>
       <Row gutter={16}>
         <Col span={12}>
-          <Form.Item name="coordinateSystem" {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }}
-            rules={watchedGeometryType ? [{ required: true, message: 'Hệ quy chiếu là bắt buộc khi chọn loại đối tượng' }] : []}>
+          <Form.Item name="coordinateSystem" {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }}>
             <Select placeholder="Chọn Hệ quy chiếu" disabled style={selectStyle} options={COORD_SYS_OPTIONS} />
           </Form.Item>
         </Col>
         <Col span={12}>
-          <Form.Item name="displayRule" {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }}
-            rules={watchedGeometryType ? [{ required: true, message: 'Quy tắc hiển thị là bắt buộc khi chọn loại đối tượng' }] : []}>
+          <Form.Item name="displayRule" {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }}>
           <Input placeholder="Nhập Quy tắc hiển thị" maxLength={255} disabled style={{ ...inputStyle, color: textTertiary, cursor: 'not-allowed' }} />
           </Form.Item>
         </Col>
@@ -418,7 +418,6 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span>
           <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS</span>
-          {watchedGeometryType && <span style={{ color: colors.error, marginLeft: 4, fontSize: fontSizeMd }}>*</span>}
         </span>
         {coordinateList.length > 0 && (
           <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!watchedGeometryType} style={{ borderRadius: radiusPill }}>

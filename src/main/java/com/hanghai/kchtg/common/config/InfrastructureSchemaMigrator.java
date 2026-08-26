@@ -63,6 +63,11 @@ public class InfrastructureSchemaMigrator implements CommandLineRunner {
             jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS rejection_reason TEXT;");
             jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS submitted_at " + dateType + ";");
             jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS submitted_by UUID;");
+            // Ba cột dưới đây thuộc BaseApprovableEntity; loại KCHT nào chuyển sang kế thừa
+            // lớp cha đó mà thiếu cột sẽ lỗi "Column SECURITY_LEVEL not found" khi khởi động.
+            jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS security_level SMALLINT DEFAULT 0;");
+            jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS level1_approval_content VARCHAR(2000);");
+            jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS level2_approval_content VARCHAR(2000);");
             jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;");
             jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS deleted_by UUID;");
             coerceApprovedByToUuid(table);

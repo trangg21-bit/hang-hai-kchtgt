@@ -169,7 +169,12 @@ export interface ListParams {
   approvalStatus?: ApprovalStatus;
   orgUnitId?: string;
   portId?: string;
+  provinceId?: number;
   year?: number;
+  operationStartDateFrom?: string;
+  operationStartDateTo?: string;
+  updatedFrom?: string;
+  updatedTo?: string;
 }
 
 export interface SearchResponse<T> {

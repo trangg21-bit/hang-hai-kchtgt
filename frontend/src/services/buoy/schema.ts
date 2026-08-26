@@ -22,11 +22,15 @@ export { BUOY_TYPE_OPTIONS, BUOY_TYPE_MAP };
 // ── Status badge (moved from BuoyList.tsx APPROVAL_STYLE_MAP) ────────
 
 const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  DRAFT: { color: statusDraft, label: 'Nháp' },
-  PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ phê duyệt' },
-  APPROVED_L1: { color: statusAttention, label: 'Đã phê duyệt L1' },
-  PUBLISHED: { color: statusOperational, label: 'Đã công bố' },
-  REJECTED: { color: statusCritical, label: 'Từ chối' },
+  DRAFT: { color: statusDraft, label: 'Lưu tạm' },
+  PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  APPROVED_L1: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
+  PUBLISHED: { color: statusOperational, label: 'Đã phê duyệt' },
+  REJECTED: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  REJECTED_L1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  REJECTED_L2: { color: statusCritical, label: 'Từ chối cấp cục' },
+  APPROVED_L2: { color: statusAttention, label: 'Đã phê duyệt' },
+  DELETED: { color: textTertiary, label: 'Đã xóa' },
 };
 
 /** Trả về { color (semantic token), label (Tiếng Việt) } cho trạng thái duyệt phao tiêu. */
@@ -42,11 +46,12 @@ export function buoyStatusBadge(status: string | null | undefined): { color: str
 
 export const TAB_STATUS_LIST = [
   { key: 'all', label: 'Tất cả', color: actionPrimary },
-  { key: 'DRAFT', label: 'Nháp', color: statusDraft },
-  { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt', color: actionPrimary },
-  { key: 'APPROVED_L1', label: 'Đã phê duyệt L1', color: statusAttention },
-  { key: 'PUBLISHED', label: 'Đã công bố', color: statusOperational },
-  { key: 'REJECTED', label: 'Từ chối', color: statusCritical },
+  { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
+  { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
+  { key: 'APPROVED_L1', label: 'Chờ phê duyệt cấp cục', color: statusAttention },
+  { key: 'PUBLISHED', label: 'Đã phê duyệt', color: statusOperational },
+  { key: 'REJECTED_L1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
+  { key: 'REJECTED_L2', label: 'Từ chối cấp cục', color: statusCritical },
 ];
 
 /** Status filter options (from BEACON_STATUS_MAP, §2.2). */

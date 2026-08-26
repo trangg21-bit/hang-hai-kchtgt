@@ -116,6 +116,8 @@ export const metronicTheme: ThemeConfig = {
     colorWarning: colors.warning,
     colorError: colors.error,
     colorInfo: colors.info,
+    // antd v6: colorLink mặc định fallback vào colorInfo (#7239EA tím) — ép về xanh dương chuẩn
+    colorLink: colors.primary,
 
     colorBgLayout: colors.bodyBg,
     colorBgContainer: colors.containerBg,
@@ -924,9 +926,79 @@ body, .ant-layout {
   background: var(--bg-body);
 }
 
-/* ---------- TextArea — bo góc chặt (4px) làm mặc định; từng form có thể override bằng token radiusPill ---------- */
+/* ---------- Chuẩn hóa lề & bo cong đồng bộ 100% cho toàn bộ Input, Select, DatePicker, TextArea ---------- */
+.ant-input-affix-wrapper {
+  padding: 4px 11px !important;
+}
+.ant-input-affix-wrapper > input.ant-input {
+  padding: 0 !important;
+  font-size: 13px !important;
+}
+.ant-input-affix-wrapper .ant-input-suffix {
+  margin-left: 8px !important;
+}
+.ant-input:not(.ant-input-affix-wrapper):not(textarea):not(.ant-input-affix-wrapper input) {
+  padding: 4px 11px !important;
+  font-size: 13px !important;
+}
+
+.ant-select-single:not(.ant-select-customize-input) .ant-select-selector {
+  padding: 0 11px !important;
+}
+.ant-select-single:not(.ant-select-customize-input) .ant-select-selector .ant-select-selection-placeholder,
+.ant-select-single:not(.ant-select-customize-input) .ant-select-selector .ant-select-selection-item {
+  left: 11px !important;
+  padding: 0 !important;
+  font-size: 13px !important;
+  line-height: 38px !important;
+}
+
+.ant-picker {
+  padding: 4px 11px !important;
+}
+.ant-picker .ant-picker-input > input {
+  padding: 0 !important;
+  font-size: 13px !important;
+}
+
+.ant-input-number {
+  padding: 0 11px !important;
+}
+.ant-input-number .ant-input-number-input {
+  padding: 0 !important;
+  height: 38px !important;
+  font-size: 13px !important;
+}
+
+.ant-input-textarea-show-count,
+.ant-input-textarea {
+  padding: 0 !important;
+}
+.ant-input-textarea-show-count textarea.ant-input,
+.ant-input-textarea textarea.ant-input,
 textarea.ant-input {
-  border-radius: 4px;
+  padding: 8px 11px !important;
+  border-radius: 20px !important;
+  font-size: 13px !important;
+}
+
+/* ---------- Đồng bộ kích thước font chữ, màu sắc và kiểu dáng Placeholder trên toàn hệ thống ---------- */
+input::placeholder,
+textarea::placeholder,
+.ant-input::placeholder,
+.ant-input-affix-wrapper input::placeholder,
+.ant-select-selection-placeholder,
+.ant-picker-input > input::placeholder,
+.ant-tree-select .ant-select-selection-placeholder,
+.ant-select-single .ant-select-selector .ant-select-selection-placeholder {
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  color: #94A3B8 !important;
+  font-family: inherit !important;
+}
+
+.ant-input {
+  font-size: 13px !important;
 }
 
 /* ---------- Form Item Label chuẩn Cảng biển: Xanh Navy #12468C, Bold 600, 13px ---------- */

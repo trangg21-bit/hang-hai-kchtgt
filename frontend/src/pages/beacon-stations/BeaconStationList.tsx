@@ -6,7 +6,6 @@ import {
   Input,
   Select,
   TreeSelect,
-  Drawer,
   Radio,
   Space,
   Typography,
@@ -72,6 +71,8 @@ import { portCRUD } from '../../services/portService';
 import { symbolService } from '../../services/symbolService';
 import type { Symbol as MapSymbol } from '../../services/symbolService';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import { formLabelProps as labelProps } from '../../components/shared/formLabel';
+import { AppDrawer } from '../../components/shared/AppDrawer';
 import {
   statusOperational,
   statusAttention,
@@ -105,10 +106,7 @@ import {
   dangerButtonStyle,
   formFieldStyle,
   formRowGutter,
-  drawerProps,
   drawerTitleStyle,
-  drawerCloseBtnStyle,
-  drawerFooterStyle,
   requiredMarkStyle,
   filterLabelStyle,
   filterInputStyle,
@@ -246,10 +244,6 @@ function formatDate(dateStr: string | null | undefined): string {
 
 const rangeValue = (from: string, to: string): [Dayjs | null, Dayjs | null] | null =>
   from || to ? [from ? dayjs(from) : null, to ? dayjs(to) : null] : null;
-
-const labelProps = (text: string) => ({
-  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
-});
 
 const buildOrgTree = (nodes: Organization[]): any[] => {
   const map = new Map<string, any>();
@@ -1312,8 +1306,7 @@ export default function BeaconStationList() {
       </FilterTableLayout>
 
       {/* ── Create / Edit / Detail Drawer ─────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         title={
           <span style={drawerTitleStyle}>
             {isDetailMode
@@ -1326,15 +1319,14 @@ export default function BeaconStationList() {
         open={drawerVisible}
         destroyOnHidden
         onClose={closeDrawer}
-        extra={<Button type="text" onClick={closeDrawer} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
           isDetailMode ? null : (
-            <div style={drawerFooterStyle}>
+            <>
               <Button onClick={closeDrawer} style={outlineButtonStyle}>Hủy</Button>
               <Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>
                 {editingRecord ? 'Cập nhật' : 'Tạo mới'}
               </Button>
-            </div>
+            </>
           )
         }
       >
@@ -1643,7 +1635,7 @@ export default function BeaconStationList() {
             </Form>
           </>
         )}
-      </Drawer>
+      </AppDrawer>
 
       {/* ── Delete Confirmation Modal ────────────────────────────── */}
       <Modal

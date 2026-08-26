@@ -550,9 +550,12 @@ public class BeaconStationService {
                 .changedAt(LocalDateTime.now())
                 .reason(action == BeaconHistoryActionType.REJECT ? newJson : null)
                 .build();
-        if (historyRepo != null) {
-            historyRepo.save(entry);
-        }
+        // TODO (2026-08-26): tạm ẩn ghi beacon_history — DB đang chạy chưa có bảng này
+        // (ERROR: relation "beacon_history" does not exist; migration
+        // V20260803370000__repair_all_schema_types_and_columns.sql chưa được áp dụng).
+        // if (historyRepo != null) {
+        //     historyRepo.save(entry);
+        // }
 
         if (infraHistoryRepo != null && entity.getId() != null) {
             InfrastructureHistoryStatus status = switch (action) {

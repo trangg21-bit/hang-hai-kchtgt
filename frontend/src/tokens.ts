@@ -162,6 +162,11 @@ export const selectStyle: React.CSSProperties = {
   height: controlHeight,
 };
 
+/** TextArea nhiều dòng — bo cong tròn đồng bộ 100% với ô Input/Dropdown viên thuốc */
+export const textAreaStyle: React.CSSProperties = {
+  borderRadius: 20,
+};
+
 /** Nút chính: "Tạo mới", "Lưu", "Phê duyệt", "Tìm kiếm" */
 export const primaryButtonStyle: React.CSSProperties = {
   borderRadius: radiusPill,
@@ -393,6 +398,8 @@ export const drawerProps = {
   width: '50%',
   placement: 'right' as const,
   closable: false,
+  // Chống Drawer con đẩy Drawer cha (antd v6 mặc định push {distance:180} khi lồng nhau)
+  push: false,
   styles: {
     header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
     body: { padding: '0 24px 12px 24px' },

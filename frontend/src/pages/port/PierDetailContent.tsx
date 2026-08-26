@@ -152,7 +152,7 @@ export default function PierDetailContent({
                   ['Thuộc luồng hàng hải', waterwayMap?.get(r.navigationChannelId || '') || r.navigationChannelId || '—'],
                   ['Mã cầu cảng', <span key="pierCode" style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{r.pierCode || '—'}</span>],
                   ['Tên cầu cảng', <span style={{ fontWeight: fontWeightBold }}>{r.pierName || '—'}</span>],
-                  ['Địa điểm (Tỉnh/Thành phố)', r.province || '—'],
+                  ['Địa điểm (Tỉnh/Thành Phố)', r.province || '—'],
                   ['Địa điểm chi tiết', r.detailedLocation || '—'],
                   ['Chiều dài (m)', r.length != null ? r.length : '—'],
                   ['Chiều rộng (m)', r.width != null ? r.width : '—'],
@@ -298,7 +298,7 @@ export default function PierDetailContent({
               title={(
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                   <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Loại kết cấu hạ tầng</span>
-                  <Select allowClear placeholder="Chọn loại kết cấu hạ tầng" value={infraTypeFilter}
+                  <Select allowClear placeholder="Chọn loại kết cấu hạ tầng" value={infraTypeFilter || undefined}
                     onChange={(v: string | undefined) => setInfraTypeFilter(v || '')}
                     options={PIER_INFRA_TYPE_OPTIONS} style={{ width: 360, borderRadius: radiusPill, height: 40 }} />
                 </div>

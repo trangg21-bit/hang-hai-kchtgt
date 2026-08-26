@@ -123,6 +123,7 @@ public class ChangeHistoryService {
                                 .newValue(newValueStr)
                                 .build());
                     }
+
                     changedFields.add(fieldName);
                 }
             } catch (IllegalAccessException e) {

@@ -164,7 +164,7 @@ spring:
     baseline-on-migrate: true
     validate-on-migrate: false
   datasource:
-    url: ${SPRING_DATASOURCE_POSTGIS_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:vmd_csdl_v2}}
+    url: ${SPRING_DATASOURCE_POSTGIS_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:vmd_csdl_v2_dev}}
     driver-class-name: org.postgresql.Driver
     username: ${SPRING_DATASOURCE_POSTGIS_USERNAME:${DB_USER:admin}}
     # TODO(production): drop the fallback and require DB_PASS.

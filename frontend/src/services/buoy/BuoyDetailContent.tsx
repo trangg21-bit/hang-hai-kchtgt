@@ -191,7 +191,7 @@ export default function BuoyDetailContent({
                   ['Phân loại tiêu', r.classificationMark || '—'],
                   ['Mã phao tiêu', <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{r.code || '—'}</span>],
                   ['Tên phao tiêu', <span style={{ fontWeight: fontWeightBold }}>{r.name || '—'}</span>],
-                  ['Địa điểm (Tỉnh/TP)', provinceName(r.provinceId)],
+                  ['Địa điểm (Tỉnh/Thành Phố)', provinceName(r.provinceId)],
                   ['Địa điểm chi tiết', r.locationDetail || '—'],
                   ['Hình dáng', r.shape ? (SHAPE_LABEL_MAP[r.shape] || r.shape) : '—'],
                   ['Kết cấu', r.structure || '—'],

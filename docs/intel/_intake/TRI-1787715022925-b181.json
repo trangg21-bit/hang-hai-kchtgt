@@ -1,0 +1,61 @@
+{
+  "triage_id": "TRI-1787715022925-b181",
+  "created_at": 1787715022925,
+  "request_summary": "Bug list Khu neo đậu rỗng: AnchorageService.findAll truyền 'operationalStatus == null' làm tham số operationalStatusNull của searchAnchorages → khi không lọc tình trạng, điều kiện SQL thành 'a.operationalStatus IS NULL' → loại hết bản ghi có operational_status != NULL (DB: cả 6 bản ghi đều có giá trị) → API trả rỗng dù DB có dữ liệu. BerthService.findAll truyền 'false' (đúng). Sửa: đổi 'operationalStatus == null' thành 'false' để khớp Berth.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java"
+    ],
+    "impact_files": [
+      "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "backend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn danh sách Khu neo đậu — GET /api/v1/anchorage (AnchorageListPage fetchData → AnchorageService.findAll)",
+  "blast_radius": 1,
+  "done_oracle": "GET /api/v1/anchorage (không lọc operationalStatus) trả về 6 bản ghi (5 DRAFT + 1 APPROVED_LEVEL1) của org b25bee7b khi lọc orgUnitId=71405bdf (Cục cha); list Khu neo đậu hiển thị đủ bản ghi, badge trạng thái hiển thị đúng (Nháp/Chờ Cảng vụ duyệt/...).",
+  "verification_commands": [
+    {
+      "command": "\"C:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.1.4\\plugins\\maven\\lib\\maven3\\bin\\mvn.cmd\" compile -q && echo BUILD_EXIT_OK",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 180000
+    }
+  ],
+  "change_type": "hotfix",
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java",
+      "line": 254,
+      "quote": "provinceId, approvalEnum, statusEnum, operationalStatus == null,",
+      "source_hash": "c3db75beb819d523764d097db0f52fa53a628a2985461152db9c20fd60c6fcf7",
+      "quote_hash": "3fffb972a33332d8bed7754b975cccbc997ed1964f2e69064f8a6c6e1cc85e11",
+      "note": "Tham số operationalStatusNull bị truyền ngược: khi không lọc → true → query chỉ trả bản ghi có operationalStatus IS NULL (0 bản ghi)"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/BerthService.java",
+      "line": 211,
+      "quote": "waterway, waterwayId, berthTypeEnum, approvalEnum, statusEnum, false,",
+      "source_hash": "6fff5eeb5f11b4d657ceaaafa8f6dd3f8159a794ff01a36d09fb74a2666b3c9b",
+      "quote_hash": "0e4360da08a4fe98ef5f71b633d5e7c9b65446babdf41db7909cd8c657cbe1ce",
+      "note": "Chuẩn đúng của Berth: truyền false → không lọc thì trả tất cả"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787715023192
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

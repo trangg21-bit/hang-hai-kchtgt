@@ -161,7 +161,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_navigation_channel_org_code
 CREATE INDEX IF NOT EXISTS idx_navigation_channel_org_unit ON public.navigation_channel (org_unit_id);
 
 -- ----------------------------------------------------------------------------
--- 9. channel_route_detail — RENAME from chi_tiet_tuyen_luong, English columns, audit columns
+-- 9. channel_route_detail — RENAME from chi_tiet_tuyen_luong or CREATE IF NOT EXISTS
 -- ----------------------------------------------------------------------------
 DO $$
 BEGIN
@@ -170,6 +170,35 @@ BEGIN
         ALTER TABLE public.chi_tiet_tuyen_luong RENAME TO channel_route_detail;
     END IF;
 END $$;
+
+CREATE TABLE IF NOT EXISTS public.channel_route_detail (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    navigation_channel_id UUID,
+    sequence_no INTEGER NOT NULL DEFAULT 1,
+    route_classification INTEGER,
+    route_code VARCHAR(50),
+    route_name VARCHAR(255),
+    route_type INTEGER,
+    channel_length_kilometers NUMERIC(19,4),
+    design_depth_meters NUMERIC(19,4),
+    current_depth_meters NUMERIC(19,4),
+    maximum_design_width_meters NUMERIC(19,4),
+    minimum_design_width_meters NUMERIC(19,4),
+    design_slope NUMERIC(19,4),
+    minimum_curve_radius_meters NUMERIC(19,4),
+    vertical_clearance_meters NUMERIC(19,4),
+    turning_basin_location VARCHAR(255),
+    turning_basin_radius_meters NUMERIC(19,4),
+    route_latest_maintenance_year INTEGER,
+    route_latest_dredging_volume_cubic_meters NUMERIC(19,4),
+    route_grade INTEGER,
+    created_at TIMESTAMP NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP NOT NULL DEFAULT now(),
+    created_by UUID,
+    updated_by UUID,
+    deleted_at TIMESTAMP,
+    deleted_by UUID
+);
 
 DO $$
 BEGIN

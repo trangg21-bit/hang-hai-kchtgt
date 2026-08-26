@@ -415,6 +415,45 @@
       ],
       "version": 1
     },
+    "docs/modules/M-1022-fix-mooring-anchor-point-audit-columns/_state.md": {
+      "content_hash": "sha256:f5905636ab5f05dadb22a3f60f6dbea39f2c76f43d64a1f9b3d958214f430d65",
+      "last_modified": "2026-08-26T04:37:42Z",
+      "last_producer": "ai-kit/update_state(stage_rollback)",
+      "version": 1
+    },
+    "docs/modules/M-1022-fix-mooring-anchor-point-audit-columns/qa/07-qa-report-w1.md": {
+      "content_hash": "sha256:70f7ecbab64ee1c5470efb649f8f77ed233b60bc170036a67ae1d938ce2c40c5",
+      "last_modified": "2026-08-26T04:15:27Z",
+      "last_producer": "ai-kit/state-update(auto-lock-qa)",
+      "locked_fields": [
+        "content_hash"
+      ],
+      "version": 1
+    },
+    "docs/modules/M-1022-fix-mooring-anchor-point-audit-columns/qa/07-qa-report-w2.md": {
+      "content_hash": "sha256:bd0e0944f565c088b6c38b69333351fbd81023cb01c3a330a843352ed8650084",
+      "last_modified": "2026-08-26T04:49:42Z",
+      "last_producer": "ai-kit/state-update(auto-lock-qa)",
+      "locked_fields": [
+        "content_hash"
+      ],
+      "version": 1
+    },
+    "docs/modules/M-1023-chuan-hoa-cot-dia-diem-6-man-danh-sach-kcht/_state.md": {
+      "content_hash": "sha256:0e7a11fc1d4a1250d5a45dfd32d0cc72a6bb72ebc5158c10a46ee4d334f7ac68",
+      "last_modified": "2026-08-26T07:24:47Z",
+      "last_producer": "ai-kit/update_state(stage_rollback)",
+      "version": 1
+    },
+    "docs/modules/M-1023-chuan-hoa-cot-dia-diem-6-man-danh-sach-kcht/qa/07-qa-report-w2.md": {
+      "content_hash": "sha256:8fadbd693f1eedcc33c7ed205636822bab2581a4bed046eed4082c3e7a76c506",
+      "last_modified": "2026-08-26T07:29:50Z",
+      "last_producer": "ai-kit/state-update(auto-lock-qa)",
+      "locked_fields": [
+        "content_hash"
+      ],
+      "version": 2
+    },
     "feature-catalog.json": {
       "content_hash": "sha256:c43f373f413835fdd1318e4533bdd6e1cf51d5fd939b0feccefd92caa699948f",
       "last_modified": "2026-06-16T05:08:25Z",

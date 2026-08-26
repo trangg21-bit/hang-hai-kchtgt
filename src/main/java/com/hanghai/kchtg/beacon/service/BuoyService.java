@@ -485,7 +485,29 @@ public class BuoyService {
                 || entity.getApprovalStatus() == ApprovalStatus.APPROVED
                 || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
 
-        if (wasApproved) {
+        // "Lưu và gửi phê duyệt" / "Lưu và phê duyệt" (mirror create: action submit/approved)
+        String action = request.getAction();
+        if ("submit".equals(action)) {
+            entity.setStatus("PENDING_APPROVAL");
+            entity.setApprovalStatus(ApprovalStatus.PROPOSED);
+            entity.setApprovalLevel(1);
+            java.util.UUID uid = SecurityUtils.getCurrentUserId();
+            entity.setSubmittedForApprovalBy(uid);
+            entity.setSubmittedForApprovalAt(LocalDateTime.now());
+        } else if ("approved".equals(action)) {
+            entity.setStatus("PUBLISHED");
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            entity.setApprovalLevel(2);
+            java.util.UUID uid = SecurityUtils.getCurrentUserId();
+            entity.setSubmittedForApprovalBy(uid);
+            entity.setSubmittedForApprovalAt(LocalDateTime.now());
+            entity.setApprovedBy(uid);
+            entity.setApprovedDate(LocalDateTime.now());
+            entity.setLevel1ApprovedBy(uid);
+            entity.setLevel1ApprovedDate(LocalDateTime.now());
+            entity.setLevel2ApprovedBy(uid);
+            entity.setLevel2ApprovedDate(LocalDateTime.now());
+        } else if (wasApproved) {
             entity.setStatus("APPROVED_L2");
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
         }
@@ -558,9 +580,10 @@ public class BuoyService {
                         "Phao tiêu không tìm thấy: " + id));
 
         if (!"DRAFT".equals(entity.getStatus()) && !"REJECTED".equals(entity.getStatus())
+                && !"REJECTED_L1".equals(entity.getStatus()) && !"REJECTED_L2".equals(entity.getStatus())
                 && !"PENDING_APPROVAL".equals(entity.getStatus())) {
             throw new IllegalStateException(
-                    "Chỉ có thể gửi phê duyệt khi status = DRAFT, REJECTED hoặc PENDING_APPROVAL");
+                    "Chỉ có thể gửi phê duyệt khi status = DRAFT, REJECTED, REJECTED_L1, REJECTED_L2 hoặc PENDING_APPROVAL");
         }
 
         entity.setStatus("PENDING_APPROVAL");
@@ -651,8 +674,9 @@ public class BuoyService {
                     "Lý do từ chối phải có ít nhất 10 ký tự");
         }
 
-        entity.setStatus("REJECTED");
-        entity.setApprovalStatus(ApprovalStatus.REJECTED);
+        boolean rejectedAtC2 = "APPROVED_L1".equals(entity.getStatus());
+        entity.setStatus(rejectedAtC2 ? "REJECTED_L2" : "REJECTED_L1");
+        entity.setApprovalStatus(rejectedAtC2 ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
         entity.setRejectionReason(rejectReason);
         buoyRepo.save(entity);
 
@@ -704,9 +728,12 @@ public class BuoyService {
                 .changedAt(LocalDateTime.now())
                 .reason(action == BeaconHistoryActionType.REJECT ? newJson : null)
                 .build();
-        if (historyRepo != null) {
-            historyRepo.save(entry);
-        }
+        // TODO (2026-08-26): tạm ẩn ghi beacon_history — DB đang chạy chưa có bảng này
+        // (ERROR: relation "beacon_history" does not exist; migration
+        // V20260803370000__repair_all_schema_types_and_columns.sql chưa được áp dụng).
+        // if (historyRepo != null) {
+        //     historyRepo.save(entry);
+        // }
 
         if (infraHistoryRepo != null && entity.getId() != null) {
             InfrastructureHistoryStatus status = switch (action) {

@@ -549,3 +549,141 @@ export type UpdatePierRequest = UpdateCauCangRequest;
 export type CreateWaterZoneRequest = CreateVungNuocRequest;
 export type UpdateWaterZoneRequest = UpdateVungNuocRequest;
 
+// ── 6. Khu neo đậu (Anchorage) ──────────────────────────────────────
+
+export interface Anchorage {
+  id: string;
+  securityLevel?: string;
+  anchorageCode: string;
+  anchorageName: string;
+  portId: string;
+  portName?: string;
+  orgUnitId?: string;
+  orgUnitName?: string;
+  navigationChannelId?: string;
+  buoyStationId?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalStatus?: string;
+  approvalStatus?: string;
+  // GIS fields
+  latitude?: number;
+  longitude?: number;
+  mapSymbolId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
+  coordinateSystem?: number;
+  displayRule?: number;
+  mooringWaterAreas?: MooringWaterAreaPayload[];
+  // Technical fields
+  shapeDescription?: string;
+  area?: number;
+  designWaterDepth?: number;
+  currentWaterDepth?: number;
+  bottomElevationDesign?: number;
+  maxVesselDWT?: number;
+  activeAnchorageCount?: number;
+  publishedAnchorageCount?: number;
+  underInvestmentAnchorageCount?: number;
+  remarks?: string;
+  // Publication fields
+  openingAnnouncementDate?: string;
+  publicDecision?: string;
+  investmentAgreement?: string;
+  // Approval tracking
+  activityStatus?: string;
+  submittedForApprovalAt?: string;
+  submittedForApprovalBy?: string;
+  portAuthorityApprovedAt?: string;
+  portAuthorityApprovedBy?: string;
+  portAuthorityApprovalContent?: string;
+  departmentApprovedAt?: string;
+  departmentApprovedBy?: string;
+  departmentApprovalContent?: string;
+  rejectionReason?: string;
+  // Audit
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AnchorPointPayload { name?: string; latitude?: number; longitude?: number; }
+
+export interface MooringWaterAreaPayload {
+  description: string;
+  geometryType?: string;
+  mapSymbolId?: string;
+  coordinateSystem?: number;
+  displayRule?: string;
+  anchorPoints?: AnchorPointPayload[];
+}
+
+export interface CreateAnchorageRequest {
+  securityLevel?: string;
+  anchorageCode?: string;
+  anchorageName: string;
+  portId: string;
+  orgUnitId?: string;
+  navigationChannelId?: string;
+  buoyStationId?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalStatus?: string;
+  shapeDescription?: string;
+  area?: number;
+  designWaterDepth?: number;
+  currentWaterDepth?: number;
+  bottomElevationDesign?: number;
+  maxVesselDWT?: number;
+  activeAnchorageCount?: number;
+  publishedAnchorageCount?: number;
+  underInvestmentAnchorageCount?: number;
+  remarks?: string;
+  openingAnnouncementDate?: string;
+  publicDecision?: string;
+  investmentAgreement?: string;
+  // GIS fields
+  latitude?: number;
+  longitude?: number;
+  mapSymbolId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
+  coordinateSystem?: number;
+  displayRule?: number;
+  mooringWaterAreas?: MooringWaterAreaPayload[];
+  saveAction?: string;
+}
+
+export interface UpdateAnchorageRequest {
+  id: string;
+  anchorageName?: string;
+  portId?: string;
+  orgUnitId?: string;
+  navigationChannelId?: string;
+  buoyStationId?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalStatus?: string;
+  shapeDescription?: string;
+  area?: number;
+  designWaterDepth?: number;
+  currentWaterDepth?: number;
+  bottomElevationDesign?: number;
+  maxVesselDWT?: number;
+  activeAnchorageCount?: number;
+  publishedAnchorageCount?: number;
+  underInvestmentAnchorageCount?: number;
+  remarks?: string;
+  openingAnnouncementDate?: string;
+  publicDecision?: string;
+  investmentAgreement?: string;
+  saveAction?: string;
+}
+
+export interface AnchorageApprovalResponse {
+  entityType: string;
+  changeHistory: any[];
+  approvalLog: any[];
+}
+

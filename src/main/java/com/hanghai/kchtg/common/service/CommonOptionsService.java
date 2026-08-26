@@ -6,6 +6,9 @@ import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.port.dto.port.PortOptionResponse;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.service.PortCacheService;
+import com.hanghai.kchtg.common.dto.OperatingOrganizationOptionResponse;
+import com.hanghai.kchtg.common.entity.OperatingOrganization;
+import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,15 +27,18 @@ public class CommonOptionsService {
     private final OrgUnitScopeService orgUnitScopeService;
     private final PortCacheService portCacheService;
     private final PortRepository portRepository;
+    private final OperatingOrganizationRepository operatingOrganizationRepository;
 
     public CommonOptionsService(OrgUnitCacheService orgUnitCacheService,
             OrgUnitScopeService orgUnitScopeService,
             PortCacheService portCacheService,
-            PortRepository portRepository) {
+            PortRepository portRepository,
+            OperatingOrganizationRepository operatingOrganizationRepository) {
         this.orgUnitCacheService = orgUnitCacheService;
         this.orgUnitScopeService = orgUnitScopeService;
         this.portCacheService = portCacheService;
         this.portRepository = portRepository;
+        this.operatingOrganizationRepository = operatingOrganizationRepository;
     }
 
     public List<OrgUnitResponse> getOrgUnitOptions() {
@@ -55,5 +61,22 @@ public class CommonOptionsService {
             return List.of();
         }
         return portRepository.findOptionsByOrgUnitIds(scope.orgUnitIds());
+    }
+
+    public List<OperatingOrganizationOptionResponse> getOperatingOrganizationOptions(String keyword) {
+        List<OperatingOrganization> list;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            list = operatingOrganizationRepository.searchActive(keyword.trim());
+        } else {
+            list = operatingOrganizationRepository.findAllActive();
+        }
+        return list.stream()
+                .map(org -> OperatingOrganizationOptionResponse.builder()
+                        .id(org.getId())
+                        .code(org.getCode())
+                        .name(org.getName())
+                        .parentCode(org.getParentCode())
+                        .build())
+                .toList();
     }
 }

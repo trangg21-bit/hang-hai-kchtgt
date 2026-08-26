@@ -1,0 +1,63 @@
+{
+  "triage_id": "TRI-1787721779741-2e91",
+  "created_at": 1787721779741,
+  "request_summary": "3 tinh chỉnh AnchorageForm: (1) sectionTitleStyle fontSize 15→fontSizeXl 18 (label 13px #12468C vs section 18px #0E6FD6 — khác hẳn); (2) addAnchorPoint thêm guard chưa chọn Loại đối tượng → toast + return (nút đã disabled, guard phòng mọi đường); (3) bảng điểm neo: Tên điểm neo width 130→200, Vĩ độ/Kinh độ thêm width 150 mỗi cột. Import fontSizeXl.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/anchorage/AnchorageForm.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/anchorage/AnchorageForm.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Drawer con Khu nước neo buộc tàu — section Tọa độ điểm neo + nút Thêm điểm neo + bảng điểm neo",
+  "blast_radius": 1,
+  "done_oracle": "(1) Section title \"Tọa độ điểm neo\"/\"Vị trí cụ thể điểm neo\" hiển thị fontSizeXl 18px xanh #0E6FD6 — rõ khác label 13px #12468C; (2) chưa chọn Loại đối tượng → bấm \"Thêm điểm neo\" (mọi đường) đều không thêm được + toast nhắc chọn; (3) bảng điểm neo: cột Tên điểm neo rộng hơn (200), cột Vĩ độ/Kinh độ hẹp hơn (150 mỗi cột).",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht\\frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "line": 46,
+      "quote": "const sectionTitleStyle: React.CSSProperties = { color: actionPrimary, fontWeight: fontWeightBold, fontSize: fontSizeLg };",
+      "source_hash": "ec6b23ce9984cd51f1a125fb349113029be74b51991f8e2ecb43900ec46caa28",
+      "quote_hash": "2404a50dc4900cc6d751f6805485b73e42ca0f7eede16261af8ce05deef8d421",
+      "note": "Section title 15px vẫn gần label 13px — tăng lên 18px"
+    },
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "line": 372,
+      "quote": "const addAnchorPoint = () => setWaterAreaAnchorPoints(p => [...p, { name: '', latitude: null, longitude: null }]);",
+      "source_hash": "ec6b23ce9984cd51f1a125fb349113029be74b51991f8e2ecb43900ec46caa28",
+      "quote_hash": "eb92aa9e375dc9fa4fa6a6f04a37a63380cc4f1d7edad051fdd645f68a8d653b",
+      "note": "addAnchorPoint không guard — thêm chặn khi chưa chọn Loại đối tượng"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787721779998
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

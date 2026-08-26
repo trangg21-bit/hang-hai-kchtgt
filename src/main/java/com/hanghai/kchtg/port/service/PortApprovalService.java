@@ -132,7 +132,11 @@ public class PortApprovalService {
                 .remarks(entity.getRemarks()).build();
 
         if (reason == null || reason.isBlank()) {
-            approvalWorkflowService.approve(currentStatusStr, "Port", id.toString(), userId);
+            // Mô hình 2 trạng thái: Nháp → phê duyệt thẳng. Chỉ gọi workflow cũ khi
+            // đang ở PENDING_APPROVAL (legacy) vì workflow yêu cầu đúng trạng thái đó.
+            if (currentStatus == ApprovalStatus.PENDING_APPROVAL) {
+                approvalWorkflowService.approve(currentStatusStr, "Port", id.toString(), userId);
+            }
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
         } else {
             approvalWorkflowService.reject(currentStatusStr, "Port", id.toString(), userId, reason);

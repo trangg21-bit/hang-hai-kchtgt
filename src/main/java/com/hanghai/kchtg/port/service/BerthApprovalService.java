@@ -69,13 +69,9 @@ public class BerthApprovalService {
     @Transactional
     public void reject(UUID id, String reason, UUID userId) {
         Berth entity = loadForApproval(id);
-        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1) {
-            infrastructureApprovalService.approveC2(entity, InfrastructureType.PORT_TERMINAL,
-                    ApprovalStatus.REJECTED.name(), reason, userId);
-        } else {
-            infrastructureApprovalService.approveC1(entity, InfrastructureType.PORT_TERMINAL,
-                    ApprovalStatus.REJECTED.name(), reason, userId);
-        }
+        entity.setApprovalStatus(entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2
+                ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
+        entity.setRejectionReason(reason);
         berthRepository.save(entity);
     }
 
