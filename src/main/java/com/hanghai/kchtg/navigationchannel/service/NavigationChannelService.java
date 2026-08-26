@@ -18,6 +18,8 @@ import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+import com.hanghai.kchtg.common.util.ApprovalHistoryUtils;
+import com.hanghai.kchtg.common.util.EntityUpdateUtils;
 import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
@@ -38,12 +40,14 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -157,6 +161,16 @@ public class NavigationChannelService {
             nc = repo.save(nc);
         }
 
+        // F-043: ghi history CREATED sau khi create thành công (cùng transaction với toàn bộ create)
+        approvalHistoryRepo.save(ApprovalHistory.builder()
+                .refId(nc.getId())
+                .refType(InfrastructureType.NAVIGATION_CHANNEL)
+                .approvalLevel(ApprovalLevel.LEVEL_0)
+                .status(ApprovalHistoryStatus.CREATED)
+                .approvedBy(userId)
+                .reason("Tạo mới luồng hàng hải")
+                .build());
+
         return toResponse(nc);
     }
 
@@ -208,94 +222,132 @@ public class NavigationChannelService {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy luồng hàng hải với id: " + id));
 
+        // F-039 D1: guard trạng thái — chỉ cho sửa DRAFT/PENDING_APPROVAL/APPROVED_LEVEL1/REJECTED_LEVEL1/REJECTED_LEVEL2
+        ApprovalStatus currentStatus = nc.getApprovalStatus() != null ? nc.getApprovalStatus() : ApprovalStatus.DRAFT;
+        boolean editable = currentStatus == ApprovalStatus.DRAFT
+                || currentStatus == ApprovalStatus.PENDING_APPROVAL
+                || currentStatus == ApprovalStatus.APPROVED_LEVEL1
+                || currentStatus == ApprovalStatus.REJECTED_LEVEL1
+                || currentStatus == ApprovalStatus.REJECTED_LEVEL2;
+        if (!editable) {
+            if (currentStatus == ApprovalStatus.APPROVED || currentStatus == ApprovalStatus.APPROVED_LEVEL2) {
+                throw new IllegalStateException(
+                        "Hồ sơ đã được phê duyệt, không thể sửa trực tiếp. Vui lòng tạo hồ sơ mới để thay đổi.");
+            }
+            throw new IllegalStateException(
+                    "Chỉ có thể sửa hồ sơ ở trạng thái Lưu tạm, Chờ phê duyệt, Đã duyệt C1 hoặc Bị trả về. "
+                            + "Trạng thái hiện tại: " + currentStatus.getLabel());
+        }
+
         // BR-038-04: nếu đổi đơn vị quản lý phải nằm trong phạm vi được phân quyền
         if (req.getOrgUnitId() != null && !orgUnitScopeService.currentUserScope().allows(req.getOrgUnitId())) {
             throw new AccessDeniedException("Đơn vị quản lý nằm ngoài phạm vi được phân quyền");
         }
 
+        Map<String, String> previousValues = new LinkedHashMap<>();
+        Map<String, String> manualNewValues = new LinkedHashMap<>();
+
+        // F-039 D3: copy field đơn (non-null) qua EntityUpdateUtils — ignore field có xử lý riêng
+        EntityUpdateUtils.copyPropertiesIfPresent(req, nc, previousValues,
+                NavigationChannelUpdateRequest.Fields.orgUnitId,
+                NavigationChannelUpdateRequest.Fields.securityLevel,
+                NavigationChannelUpdateRequest.Fields.geometryType,
+                NavigationChannelUpdateRequest.Fields.coordinates,
+                NavigationChannelUpdateRequest.Fields.routeDetails,
+                NavigationChannelUpdateRequest.Fields.coordinateList,
+                NavigationChannelUpdateRequest.Fields.attachments);
+
+        // securityLevel + orgUnitId vẫn validate + set thủ công (giữ write-scope BR-038-04 / security guard)
         if (req.getSecurityLevel() != null) {
             RecordSecurityLevel.validateAssignment(req.getSecurityLevel(), "navigationchannel",
                     SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+            if (!Objects.equals(req.getSecurityLevel(), nc.getSecurityLevel())) {
+                previousValues.put(NavigationChannelUpdateRequest.Fields.securityLevel,
+                        nc.getSecurityLevel() != null ? String.valueOf(nc.getSecurityLevel()) : "Chưa có");
+            }
             nc.setSecurityLevel(req.getSecurityLevel());
         }
-        if (req.getChannelName() != null)
-            nc.setChannelName(trimToNull(req.getChannelName()));
-        if (req.getSeaportId() != null)
-            nc.setSeaportId(req.getSeaportId());
-        if (req.getOperatingUnitId() != null)
-            nc.setOperatingUnitId(req.getOperatingUnitId());
-        if (req.getConditionStatus() != null)
-            nc.setConditionStatus(req.getConditionStatus());
-        if (req.getDetailedLocation() != null)
-            nc.setDetailedLocation(trimToNull(req.getDetailedLocation()));
-        if (req.getManagementStation() != null)
-            nc.setManagementStation(trimToNull(req.getManagementStation()));
-        if (req.getStationCount() != null)
-            nc.setStationCount(req.getStationCount());
-        if (req.getStationStaffCount() != null)
-            nc.setStationStaffCount(req.getStationStaffCount());
-        if (req.getStationAreaSquareMeters() != null)
-            nc.setStationAreaSquareMeters(req.getStationAreaSquareMeters());
-        if (req.getLatestStationRepairMonth() != null)
-            nc.setLatestStationRepairMonth(req.getLatestStationRepairMonth());
-        if (req.getLatestMaintenanceYear() != null)
-            nc.setLatestMaintenanceYear(req.getLatestMaintenanceYear());
-        if (req.getLatestDredgingVolumeCubicMeters() != null)
-            nc.setLatestDredgingVolumeCubicMeters(req.getLatestDredgingVolumeCubicMeters());
-        if (req.getBuoyCount() != null)
-            nc.setBuoyCount(req.getBuoyCount());
-        if (req.getBeaconCount() != null)
-            nc.setBeaconCount(req.getBeaconCount());
-        if (req.getNotes() != null)
-            nc.setNotes(trimToNull(req.getNotes()));
-        if (req.getAnnouncementDecisionNumber() != null)
-            nc.setAnnouncementDecisionNumber(trimToNull(req.getAnnouncementDecisionNumber()));
-        if (req.getAnnouncementDecisionDate() != null)
-            nc.setAnnouncementDecisionDate(req.getAnnouncementDecisionDate());
-        if (req.getAnnouncementDecisionIssuer() != null)
-            nc.setAnnouncementDecisionIssuer(trimToNull(req.getAnnouncementDecisionIssuer()));
-        if (req.getProtectionScopeMeters() != null)
-            nc.setProtectionScopeMeters(req.getProtectionScopeMeters());
-        if (req.getProtectionNotes() != null)
-            nc.setProtectionNotes(trimToNull(req.getProtectionNotes()));
-        if (req.getGeometryType() != null)
-            nc.setGeometryType(req.getGeometryType());
-        if (req.getMapIconId() != null)
-            nc.setMapIconId(req.getMapIconId());
-        if (req.getCoordinateReferenceSystem() != null)
-            nc.setCoordinateReferenceSystem(trimToNull(req.getCoordinateReferenceSystem()));
-        if (req.getDisplayRule() != null)
-            nc.setDisplayRule(trimToNull(req.getDisplayRule()));
-        if (req.getProvinceId() != null)
-            nc.setProvinceId(req.getProvinceId());
-        if (req.getOrgUnitId() != null)
-            nc.setOrgUnitId(req.getOrgUnitId());
-        nc.setUpdatedBy(updatedBy);
-
-        // Bảng con #22-#38, #45, #46 — thay thế toàn bộ cùng transaction (BR-038-08)
-        if (req.getRouteDetails() != null) {
-            nc.getChannelRouteDetailList().clear();
-            List<ChannelRouteDetail> details = new ArrayList<>(req.getRouteDetails().size());
-            for (int i = 0; i < req.getRouteDetails().size(); i++) {
-                details.add(toRouteDetail(req.getRouteDetails().get(i), nc, i));
+        if (req.getOrgUnitId() != null) {
+            if (!Objects.equals(req.getOrgUnitId(), nc.getOrgUnitId())) {
+                previousValues.put(NavigationChannelUpdateRequest.Fields.orgUnitId,
+                        nc.getOrgUnitId() != null ? String.valueOf(nc.getOrgUnitId()) : "Chưa có");
             }
-            nc.getChannelRouteDetailList().addAll(details);
+            nc.setOrgUnitId(req.getOrgUnitId());
+        }
+
+        // F-039 D3: normalize trim sau reflection copy (BR-039-04)
+        if (req.getChannelName() != null)
+            nc.setChannelName(trimToNull(nc.getChannelName()));
+        if (req.getDetailedLocation() != null)
+            nc.setDetailedLocation(trimToNull(nc.getDetailedLocation()));
+        if (req.getManagementStation() != null)
+            nc.setManagementStation(trimToNull(nc.getManagementStation()));
+        if (req.getNotes() != null)
+            nc.setNotes(trimToNull(nc.getNotes()));
+        if (req.getAnnouncementDecisionNumber() != null)
+            nc.setAnnouncementDecisionNumber(trimToNull(nc.getAnnouncementDecisionNumber()));
+        if (req.getAnnouncementDecisionIssuer() != null)
+            nc.setAnnouncementDecisionIssuer(trimToNull(nc.getAnnouncementDecisionIssuer()));
+        if (req.getProtectionNotes() != null)
+            nc.setProtectionNotes(trimToNull(nc.getProtectionNotes()));
+        if (req.getCoordinateReferenceSystem() != null)
+            nc.setCoordinateReferenceSystem(trimToNull(nc.getCoordinateReferenceSystem()));
+        if (req.getDisplayRule() != null)
+            nc.setDisplayRule(trimToNull(nc.getDisplayRule()));
+
+        // Bảng con #22-#38, #45, #46 — thay thế toàn bộ cùng transaction (BR-038-08), chỉ khi thực sự đổi
+        if (req.getRouteDetails() != null) {
+            String oldRouteDetailsStr = formatRouteDetails(nc.getChannelRouteDetailList());
+            String newRouteDetailsStr = formatRouteDetails(req.getRouteDetails());
+            if (!Objects.equals(oldRouteDetailsStr, newRouteDetailsStr)) {
+                previousValues.put(NavigationChannelUpdateRequest.Fields.routeDetails, oldRouteDetailsStr);
+                manualNewValues.put(NavigationChannelUpdateRequest.Fields.routeDetails, newRouteDetailsStr);
+                nc.getChannelRouteDetailList().clear();
+                List<ChannelRouteDetail> details = new ArrayList<>(req.getRouteDetails().size());
+                for (int i = 0; i < req.getRouteDetails().size(); i++) {
+                    details.add(toRouteDetail(req.getRouteDetails().get(i), nc, i));
+                }
+                nc.getChannelRouteDetailList().addAll(details);
+            }
         }
         if (req.getCoordinateList() != null) {
-            nc.getCoordinates().clear();
-            List<NavigationChannelCoordinate> coords = req.getCoordinateList().stream()
-                    .map(c -> toCoordinate(c, nc))
-                    .collect(Collectors.toList());
-            nc.getCoordinates().addAll(coords);
+            String oldCoordinateListStr = formatCoordinateList(nc.getCoordinates());
+            String newCoordinateListStr = formatCoordinateList(req.getCoordinateList());
+            if (!Objects.equals(oldCoordinateListStr, newCoordinateListStr)) {
+                previousValues.put(NavigationChannelUpdateRequest.Fields.coordinateList, oldCoordinateListStr);
+                manualNewValues.put(NavigationChannelUpdateRequest.Fields.coordinateList, newCoordinateListStr);
+                nc.getCoordinates().clear();
+                List<NavigationChannelCoordinate> coords = req.getCoordinateList().stream()
+                        .map(c -> toCoordinate(c, nc))
+                        .collect(Collectors.toList());
+                nc.getCoordinates().addAll(coords);
+            }
         }
         if (req.getAttachments() != null) {
-            attachmentRepository.deleteByRefIdAndRefType(nc.getId(), InfrastructureType.NAVIGATION_CHANNEL);
-            saveAttachments(nc.getId(), req.getAttachments(), updatedBy);
+            String oldAttachmentsStr = attachmentRepository
+                    .findByRefIdAndRefTypeOrderByUploadedDateDesc(nc.getId(), InfrastructureType.NAVIGATION_CHANNEL)
+                    .stream()
+                    .map(a -> formatAttachment(a.getFileName(), a.getFilePath()))
+                    .collect(Collectors.joining("; "));
+            String newAttachmentsStr = req.getAttachments().stream()
+                    .map(a -> formatAttachment(a.getFileName(), a.getFilePath()))
+                    .collect(Collectors.joining("; "));
+            if (!Objects.equals(oldAttachmentsStr, newAttachmentsStr)) {
+                previousValues.put(NavigationChannelUpdateRequest.Fields.attachments,
+                        oldAttachmentsStr.isEmpty() ? "Chưa có" : oldAttachmentsStr);
+                manualNewValues.put(NavigationChannelUpdateRequest.Fields.attachments,
+                        newAttachmentsStr.isEmpty() ? "Không có" : newAttachmentsStr);
+                attachmentRepository.deleteByRefIdAndRefType(nc.getId(), InfrastructureType.NAVIGATION_CHANNEL);
+                saveAttachments(nc.getId(), req.getAttachments(), updatedBy);
+            }
         }
 
+        // GIS — chỉ ghi flag khi tọa độ thực sự đổi (tránh no-op gây reset DRAFT)
         if (req.getCoordinates() != null) {
             if (req.getCoordinates().trim().isEmpty()) {
                 if (nc.getSpatialId() != null) {
+                    previousValues.put(NavigationChannelUpdateRequest.Fields.coordinates, "Có tọa độ GIS");
+                    manualNewValues.put(NavigationChannelUpdateRequest.Fields.coordinates, "Đã xóa");
                     gisSpatialObjectService.delete(nc.getSpatialId());
                     nc.setSpatialId(null);
                 }
@@ -303,18 +355,36 @@ public class NavigationChannelService {
                 GisGeometryType geomType = req.getGeometryType() != null ? req.getGeometryType() : GisGeometryType.LINE;
                 GisSpatialObjectType objType = getSpatialObjectType(geomType);
                 UUID refId = nc.getId();
-                GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
-                        nc.getSpatialId(),
-                        nc.getChannelName(),
-                        "NC_" + nc.getId(),
-                        geomType,
-                        objType,
-                        req.getCoordinates(),
-                        refId,
-                        InfrastructureType.NAVIGATION_CHANNEL);
-                nc.setSpatialId(spatialObj.getId());
+                Optional<GisSpatialObject> existing = nc.getSpatialId() != null
+                        ? gisSpatialObjectService.findById(nc.getSpatialId())
+                        : Optional.empty();
+                boolean gisChanged = existing
+                        .map(sp -> !req.getCoordinates().trim().equals(sp.getCoordinates()))
+                        .orElse(true);
+                boolean gisNameChanged = previousValues
+                        .containsKey(NavigationChannelUpdateRequest.Fields.channelName);
+                if (gisChanged) {
+                    previousValues.put(NavigationChannelUpdateRequest.Fields.coordinates,
+                            existing.map(GisSpatialObject::getCoordinates).orElse("Chưa có"));
+                    manualNewValues.put(NavigationChannelUpdateRequest.Fields.coordinates,
+                            req.getCoordinates().trim());
+                }
+                // createOrUpdate luôn save — chỉ gọi khi tọa độ/name thực sự đổi (no-op không ghi GIS)
+                if (gisChanged || gisNameChanged) {
+                    GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                            nc.getSpatialId(),
+                            nc.getChannelName(),
+                            "NC_" + nc.getId(),
+                            geomType,
+                            objType,
+                            req.getCoordinates(),
+                            refId,
+                            InfrastructureType.NAVIGATION_CHANNEL);
+                    nc.setSpatialId(spatialObj.getId());
+                }
             }
-        } else if (nc.getSpatialId() != null && req.getChannelName() != null) {
+        } else if (nc.getSpatialId() != null && req.getChannelName() != null
+                && previousValues.containsKey(NavigationChannelUpdateRequest.Fields.channelName)) {
             gisSpatialObjectService.findById(nc.getSpatialId()).ifPresent(spatialObj -> {
                 UUID refId = nc.getId();
                 gisSpatialObjectService.createOrUpdate(
@@ -329,7 +399,41 @@ public class NavigationChannelService {
             });
         }
 
+        // F-039 D2: no-op update → trả về hồ sơ nguyên vẹn (không reset, không history, không đổi updatedBy/updatedAt)
+        boolean hasFieldChanges = !previousValues.isEmpty();
+        if (!hasFieldChanges) {
+            return toResponse(nc);
+        }
+
+        // F-039 D2: có thay đổi thật + trạng thái khác DRAFT → reset về DRAFT + xóa field workflow cũ
+        if (currentStatus != ApprovalStatus.DRAFT) {
+            nc.setApprovalStatus(ApprovalStatus.DRAFT);
+            nc.setSubmittedAt(null);
+            nc.setSubmittedBy(null);
+            nc.setApproverLevel1(null);
+            nc.setApprovedDateLevel1((LocalDateTime) null);
+            nc.setApproverLevel2(null);
+            nc.setApprovedDateLevel2((LocalDateTime) null);
+            nc.setRejectionReason(null);
+            nc.setLevel1ApprovalContent(null);
+            nc.setLevel2ApprovalContent(null);
+        }
+
+        nc.setUpdatedBy(updatedBy);
         NavigationChannel saved = repo.save(nc);
+
+        // F-039 D3: ghi history UPDATED sau save (cùng transaction)
+        approvalHistoryRepo.save(ApprovalHistory.builder()
+                .refId(saved.getId())
+                .refType(InfrastructureType.NAVIGATION_CHANNEL)
+                .approvalLevel(ApprovalLevel.LEVEL_0)
+                .status(ApprovalHistoryStatus.UPDATED)
+                .approvedBy(updatedBy)
+                .reason("Cập nhật thông tin")
+                .changedField(formatChangedFields(previousValues))
+                .previousValue(formatPreviousValues(previousValues))
+                .newValue(formatNewValues(saved, previousValues, manualNewValues))
+                .build());
         return toResponse(saved);
     }
 
@@ -347,6 +451,10 @@ public class NavigationChannelService {
             gisSpatialObjectService.delete(nc.getSpatialId());
         }
         repo.save(nc);
+
+        // F-040 D2: ghi history DELETED (caller đầu tiên của ApprovalHistoryUtils.recordSoftDelete)
+        ApprovalHistoryUtils.recordSoftDelete(approvalHistoryRepo, id,
+                InfrastructureType.NAVIGATION_CHANNEL, operatorId, "Xóa luồng hàng hải");
         log.info("Soft deleted navigation channel id={} by {}", id, operatorId);
     }
 
@@ -416,6 +524,11 @@ public class NavigationChannelService {
 
     @Transactional(readOnly = true)
     public List<HistoryEntry> getHistory(UUID id) {
+        // F-043 (QA CHANGES-REQUESTED): existence + org-unit data scope — repo.findById đi qua
+        // @Filter(orgUnitFilter) (được bật bởi @DataScope ở controller), nên hồ sơ không tồn tại /
+        // đã xóa mềm / ngoài phạm vi đơn vị → orElseThrow → 400-family thay vì trả [] (AC-043-04/06).
+        repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy luồng hàng hải với id: " + id));
         List<ApprovalHistory> history = approvalHistoryRepo
                 .findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.NAVIGATION_CHANNEL, id);
         Set<UUID> userIds = history.stream()
@@ -759,5 +872,140 @@ public class NavigationChannelService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    // ── F-039 D3: helpers định dạng diff / history UPDATED ──────────────────
+
+    private String formatRouteDetails(List<?> routeDetails) {
+        if (routeDetails == null || routeDetails.isEmpty()) {
+            return "Chưa có";
+        }
+        return routeDetails.stream().map(d -> {
+            if (d instanceof ChannelRouteDetail e) {
+                return routeDetailFields(e.getSequenceNo(), e.getRouteClassification(), e.getRouteName(),
+                        e.getRouteType(), e.getTurningBasinLocation(), e.getTurningBasinRadiusMeters(),
+                        e.getVerticalClearanceMeters(), e.getChannelLengthKilometers(),
+                        e.getMaximumDesignWidthMeters(), e.getMinimumDesignWidthMeters(), e.getDesignDepthMeters(),
+                        e.getCurrentDepthMeters(), e.getDesignSlope(), e.getMinimumCurveRadiusMeters(),
+                        e.getRouteLatestDredgingVolumeCubicMeters(), e.getRouteLatestMaintenanceYear(),
+                        e.getRouteGrade());
+            }
+            if (d instanceof ChannelRouteDetailRequest r) {
+                return routeDetailFields(r.getSequenceNo(), r.getRouteClassification(), r.getRouteName(),
+                        r.getRouteType(), r.getTurningBasinLocation(), r.getTurningBasinRadiusMeters(),
+                        r.getVerticalClearanceMeters(), r.getChannelLengthKilometers(),
+                        r.getMaximumDesignWidthMeters(), r.getMinimumDesignWidthMeters(), r.getDesignDepthMeters(),
+                        r.getCurrentDepthMeters(), r.getDesignSlope(), r.getMinimumCurveRadiusMeters(),
+                        r.getRouteLatestDredgingVolumeCubicMeters(), r.getRouteLatestMaintenanceYear(),
+                        r.getRouteGrade());
+            }
+            return String.valueOf(d);
+        }).collect(Collectors.joining("; "));
+    }
+
+    private String routeDetailFields(Integer sequenceNo, String routeClassification, String routeName,
+            Integer routeType, String turningBasinLocation, BigDecimal turningBasinRadiusMeters,
+            BigDecimal verticalClearanceMeters, BigDecimal channelLengthKilometers,
+            BigDecimal maximumDesignWidthMeters, BigDecimal minimumDesignWidthMeters, BigDecimal designDepthMeters,
+            BigDecimal currentDepthMeters, BigDecimal designSlope, BigDecimal minimumCurveRadiusMeters,
+            BigDecimal routeLatestDredgingVolumeCubicMeters, Integer routeLatestMaintenanceYear, Integer routeGrade) {
+        return String.join("|",
+                String.valueOf(sequenceNo),
+                nullToEmpty(routeClassification),
+                nullToEmpty(routeName),
+                String.valueOf(routeType),
+                nullToEmpty(turningBasinLocation),
+                String.valueOf(turningBasinRadiusMeters),
+                String.valueOf(verticalClearanceMeters),
+                String.valueOf(channelLengthKilometers),
+                String.valueOf(maximumDesignWidthMeters),
+                String.valueOf(minimumDesignWidthMeters),
+                String.valueOf(designDepthMeters),
+                String.valueOf(currentDepthMeters),
+                String.valueOf(designSlope),
+                String.valueOf(minimumCurveRadiusMeters),
+                String.valueOf(routeLatestDredgingVolumeCubicMeters),
+                String.valueOf(routeLatestMaintenanceYear),
+                String.valueOf(routeGrade));
+    }
+
+    private String formatCoordinateList(List<?> coordinateList) {
+        if (coordinateList == null || coordinateList.isEmpty()) {
+            return "Chưa có";
+        }
+        return coordinateList.stream().map(c -> {
+            if (c instanceof NavigationChannelCoordinate e) {
+                return e.getSequenceNo() + "|" + e.getLongitude() + "|" + e.getLatitude();
+            }
+            if (c instanceof NavigationChannelCoordinateRequest r) {
+                return r.getSequenceNo() + "|" + r.getLongitude() + "|" + r.getLatitude();
+            }
+            return String.valueOf(c);
+        }).collect(Collectors.joining("; "));
+    }
+
+    private String formatAttachment(String fileName, String filePath) {
+        return (fileName == null ? "" : fileName.trim()) + "|" + (filePath == null ? "" : filePath.trim());
+    }
+
+    private String nullToEmpty(Object value) {
+        return value == null ? "" : String.valueOf(value);
+    }
+
+    private String getFieldDisplayName(String field) {
+        if (field == null) return "";
+        if (NavigationChannelUpdateRequest.Fields.channelName.equals(field)) return "Tên luồng hàng hải";
+        if (NavigationChannelUpdateRequest.Fields.conditionStatus.equals(field)) return "Tình trạng";
+        if (NavigationChannelUpdateRequest.Fields.orgUnitId.equals(field)) return "Đơn vị quản lý";
+        if (NavigationChannelUpdateRequest.Fields.securityLevel.equals(field)) return "Cấp độ bảo mật";
+        if (NavigationChannelUpdateRequest.Fields.detailedLocation.equals(field)) return "Vị trí chi tiết";
+        if (NavigationChannelUpdateRequest.Fields.managementStation.equals(field)) return "Trạm quản lý";
+        if (NavigationChannelUpdateRequest.Fields.notes.equals(field)) return "Ghi chú";
+        if (NavigationChannelUpdateRequest.Fields.routeDetails.equals(field)) return "Chi tiết tuyến luồng";
+        if (NavigationChannelUpdateRequest.Fields.coordinateList.equals(field)) return "Danh sách tọa độ";
+        if (NavigationChannelUpdateRequest.Fields.attachments.equals(field)) return "Tài liệu đính kèm";
+        if (NavigationChannelUpdateRequest.Fields.coordinates.equals(field)) return "Tọa độ GIS";
+        return field;
+    }
+
+    private String formatChangedFields(Map<String, String> previousValues) {
+        return previousValues.keySet().stream()
+                .map(this::getFieldDisplayName)
+                .collect(Collectors.joining(", "));
+    }
+
+    private String formatPreviousValues(Map<String, String> previousValues) {
+        return previousValues.entrySet().stream()
+                .map(entry -> getFieldDisplayName(entry.getKey()) + "=" + entry.getValue())
+                .collect(Collectors.joining("; "));
+    }
+
+    private String formatNewValues(NavigationChannel entity, Map<String, String> previousValues,
+            Map<String, String> manualNewValues) {
+        return previousValues.keySet().stream()
+                .map(field -> getFieldDisplayName(field) + "="
+                        + (manualNewValues.containsKey(field)
+                                ? manualNewValues.get(field)
+                                : currentFieldValue(entity, field)))
+                .collect(Collectors.joining("; "));
+    }
+
+    /** Đọc giá trị hiện tại của field trên entity (sau update) — fallback "" khi không đọc được. */
+    private String currentFieldValue(NavigationChannel entity, String field) {
+        if (entity == null || field == null) return "";
+        Class<?> current = entity.getClass();
+        while (current != null && current != Object.class) {
+            try {
+                Field declared = current.getDeclaredField(field);
+                declared.setAccessible(true);
+                Object value = declared.get(entity);
+                return value != null ? String.valueOf(value) : "";
+            } catch (NoSuchFieldException e) {
+                current = current.getSuperclass();
+            } catch (IllegalAccessException e) {
+                return "";
+            }
+        }
+        return "";
     }
 }

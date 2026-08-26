@@ -54,6 +54,17 @@ const STATUS_TAB_LIST = [
   { key: 'REJECTED', label: 'Từ chối/Trả về', statuses: ['REJECTED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'] },
 ];
 
+// ── F-039/F-040 — Gating nút Sửa/Xóa theo trạng thái phê duyệt ─────────
+// F-039 (D4 design plan): chỉ hiển thị nút Sửa khi trạng thái thuộc tập cho phép
+// (không sửa trực tiếp hồ sơ đã duyệt APPROVED / APPROVED_LEVEL2).
+const EDITABLE_APPROVAL_STATUSES: ApprovalStatus[] = [
+  'DRAFT',
+  'PENDING_APPROVAL',
+  'APPROVED_LEVEL1',
+  'REJECTED_LEVEL1',
+  'REJECTED_LEVEL2',
+];
+
 const TAB_COLOR: Record<string, string> = {
   all: textSecondary,
   DRAFT: statusDraft,
@@ -320,10 +331,10 @@ export default function NavigationChannelList() {
       if (hasPerm('navigationchannel:read')) {
         actions.push({ key: 'view', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => openModal('detail', record.id) });
       }
-      if (hasPerm('navigationchannel:update')) {
+      if (hasPerm('navigationchannel:update') && EDITABLE_APPROVAL_STATUSES.includes(record.approvalStatus)) {
         actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openModal('edit', record.id) });
       }
-      if (hasPerm('navigationchannel:delete')) {
+      if (hasPerm('navigationchannel:delete') && record.approvalStatus === 'APPROVED') {
         actions.push({
           key: 'delete',
           label: 'Xóa',

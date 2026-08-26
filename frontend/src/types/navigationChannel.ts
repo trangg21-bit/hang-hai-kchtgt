@@ -228,7 +228,7 @@ export interface ApprovalResponse {
 }
 
 export interface HistoryEntry {
-  id: number;
+  id: string;
   navigationChannelId?: string;
   approvalLevel?: number;
   status: string;
