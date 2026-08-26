@@ -34,6 +34,11 @@ ALTER TABLE water_zones ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
 --   6 REJECTED        -> 8 REJECTED_LEVEL1
 -- Bản ghi đã duyệt theo cơ chế 1 cấp cũ giữ nguyên APPROVED; không suy diễn
 -- ngược người duyệt vì dữ liệu cũ không lưu thông tin đó.
+ALTER TABLE berths DROP CONSTRAINT IF EXISTS berths_approval_status_check;
+ALTER TABLE piers DROP CONSTRAINT IF EXISTS piers_approval_status_check;
+ALTER TABLE dry_ports DROP CONSTRAINT IF EXISTS dry_ports_approval_status_check;
+ALTER TABLE water_zones DROP CONSTRAINT IF EXISTS water_zones_approval_status_check;
+
 UPDATE berths      SET approval_status = 2 WHERE approval_status = 1;
 UPDATE berths      SET approval_status = 5 WHERE approval_status = 4;
 UPDATE berths      SET approval_status = 8 WHERE approval_status = 6;

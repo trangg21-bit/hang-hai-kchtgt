@@ -18,6 +18,8 @@ ALTER TABLE ports ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
 -- Bản ghi đã duyệt theo cơ chế 1 cấp cũ được coi là đã qua đủ 2 vòng: giữ
 -- nguyên trạng thái APPROVED, không suy diễn ngược người duyệt vì dữ liệu cũ
 -- không lưu thông tin đó.
+ALTER TABLE ports DROP CONSTRAINT IF EXISTS ports_approval_status_check;
+
 UPDATE ports SET approval_status = 2 WHERE approval_status = 1;
 UPDATE ports SET approval_status = 5 WHERE approval_status = 4;
 UPDATE ports SET approval_status = 8 WHERE approval_status = 6;

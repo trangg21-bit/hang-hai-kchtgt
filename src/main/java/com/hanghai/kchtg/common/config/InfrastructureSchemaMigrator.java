@@ -51,6 +51,9 @@ public class InfrastructureSchemaMigrator implements CommandLineRunner {
 
     private void patchApprovalColumns(String table, String dateType) {
         try {
+            try {
+                jdbcTemplate.execute("ALTER TABLE " + table + " DROP CONSTRAINT IF EXISTS " + table + "_approval_status_check;");
+            } catch (Exception ignored) {}
             jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS approval_status SMALLINT DEFAULT 0;");
             jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS approved_date_level1 " + dateType + ";");
             jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS approver_level1 UUID;");

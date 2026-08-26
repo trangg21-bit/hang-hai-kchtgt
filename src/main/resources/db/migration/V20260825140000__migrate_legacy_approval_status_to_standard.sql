@@ -3,6 +3,18 @@
 -- 4 (APPROVED_LEVEL2) -> 5 (APPROVED)
 -- 6 (REJECTED) -> 8 (REJECTED_LEVEL1)
 
+ALTER TABLE vts_system DROP CONSTRAINT IF EXISTS vts_system_approval_status_check;
+ALTER TABLE ais_system DROP CONSTRAINT IF EXISTS ais_system_approval_status_check;
+ALTER TABLE vts_operation_center DROP CONSTRAINT IF EXISTS vts_operation_center_approval_status_check;
+ALTER TABLE ship_repair_facility DROP CONSTRAINT IF EXISTS ship_repair_facility_approval_status_check;
+ALTER TABLE radar_station DROP CONSTRAINT IF EXISTS radar_station_approval_status_check;
+ALTER TABLE coastal_station_vts DROP CONSTRAINT IF EXISTS coastal_station_vts_approval_status_check;
+ALTER TABLE coastal_station_lrit DROP CONSTRAINT IF EXISTS coastal_station_lrit_approval_status_check;
+ALTER TABLE coastal_station_haiphong DROP CONSTRAINT IF EXISTS coastal_station_haiphong_approval_status_check;
+ALTER TABLE coastal_station_cospas_sarsat DROP CONSTRAINT IF EXISTS coastal_station_cospas_sarsat_approval_status_check;
+ALTER TABLE coastal_station_inmarsat DROP CONSTRAINT IF EXISTS coastal_station_inmarsat_approval_status_check;
+ALTER TABLE buoy_station DROP CONSTRAINT IF EXISTS buoy_station_approval_status_check;
+
 -- 1. vts_system
 UPDATE vts_system SET approval_status = 2 WHERE approval_status = 1;
 UPDATE vts_system SET approval_status = 5 WHERE approval_status = 4;

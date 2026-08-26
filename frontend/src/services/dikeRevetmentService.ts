@@ -61,6 +61,10 @@ export const dikeRevetmentCRUD = {
     return toSingle<Record<string, number>>(res.data) || {};
   },
 
+  async search(params?: any): Promise<any> {
+    return dikeRevetmentCRUD.searchPaged(params);
+  },
+
   async searchPaged(params?: ListParams): Promise<SearchResponse<DikeRevetmentResponse>> {
     const sp = buildSearchParams({
       keyword: params?.keyword,

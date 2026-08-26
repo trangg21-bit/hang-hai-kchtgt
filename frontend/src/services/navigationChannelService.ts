@@ -38,6 +38,10 @@ export const navigationChannelCRUD = {
     return toSingle<Record<string, number>>(res.data) || {};
   },
 
+  async search(params?: any): Promise<any> {
+    return navigationChannelCRUD.searchPaged(params);
+  },
+
   async searchPaged(params?: ListParams): Promise<SearchResponse<NavigationChannelResponse>> {
     const sp = buildSearchParams({
       keyword: params?.keyword,

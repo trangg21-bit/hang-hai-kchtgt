@@ -45,6 +45,10 @@ export const radarStationCRUD = {
     return toSingle<Record<string, number>>(res.data) || {};
   },
 
+  async search(params?: any): Promise<any> {
+    return radarStationCRUD.searchPaged(params);
+  },
+
   async searchPaged(params?: ListParams): Promise<SearchResponse<RadarStationResponse>> {
     const sp = buildSearchParams({
       keyword: params?.keyword,
