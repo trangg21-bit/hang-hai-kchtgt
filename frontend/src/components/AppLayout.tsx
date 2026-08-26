@@ -243,7 +243,6 @@ export default function AppLayout() {
       ].filter(Boolean),
     },
     { type: 'divider' as const },
-    /* ẨN MENU: Quản lý KCHT trên nền bản đồ (GIS)
     {
       key: 'gis',
       icon: <CompassOutlined />,
@@ -256,7 +255,6 @@ export default function AppLayout() {
         canAccessMenu('/gis/map') ? { key: '/gis/map', label: 'Quản lý thông tin KCHT hàng hải trên bản đồ' } : null,
       ].filter(Boolean),
     },
-    */
     { type: 'divider' as const },
     {
       key: 'beacon',

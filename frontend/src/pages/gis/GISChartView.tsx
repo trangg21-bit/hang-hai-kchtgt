@@ -122,6 +122,9 @@ declare global {
 
 let leafletRuntime: any;
 
+const KCHT_PANE_NAME = 'kchtPane';
+const KCHT_PANE_Z_INDEX = '575';
+
 const CELL_COORDINATES: Record<string, [number, number]> = {
   'HP': [20.80, 106.70],     // Hải Phòng
   'HG': [20.95, 107.15],     // Hạ Long
@@ -2056,6 +2059,7 @@ export default function GISChartView() {
           const coordinates = normalizePointCoordinates(feature.coordinates);
           if (!coordinates) return;
           layer = L.circleMarker([coordinates[1], coordinates[0]], {
+            pane: KCHT_PANE_NAME,
             radius: 7,
             color: '#13c2c2', // Teal-cyan for points
             fillColor: '#13c2c2',
@@ -2068,6 +2072,7 @@ export default function GISChartView() {
           if (!coordinates) return;
           const latlngs = coordinates.map((coordinate) => [coordinate[1], coordinate[0]]);
           layer = L.polyline(latlngs, {
+            pane: KCHT_PANE_NAME,
             color: '#fa8c16', // Orange for lines
             weight: 3,
             opacity: 0.9,
@@ -2078,6 +2083,7 @@ export default function GISChartView() {
           if (!coordinates) return;
           const latlngs = coordinates.map((ring) => ring.map((coordinate) => [coordinate[1], coordinate[0]]));
           layer = L.polygon(latlngs, {
+            pane: KCHT_PANE_NAME,
             color: '#1890ff', // Blue for polygons
             fillColor: '#1890ff',
             fillOpacity: 0.25,
@@ -2376,6 +2382,11 @@ export default function GISChartView() {
     // Create a high-priority pane for QHCB planning layers so they render above ENC layers
     const planningPane = map.createPane('planningPane');
     planningPane.style.zIndex = '550';
+
+    // KCHT must stay clickable when it overlaps the port-planning layer.
+    // Keep vectors above planning (550) but below Leaflet's marker pane (600).
+    const kchtPane = map.createPane(KCHT_PANE_NAME);
+    kchtPane.style.zIndex = KCHT_PANE_Z_INDEX;
 
     // Use Google Maps tile layer with Vietnamese localization (hl=vi, gl=vn)
     // Use {s} subdomain rotation (mt0-mt3) for parallel tile downloads (4x6=24 concurrent connections)
@@ -3025,6 +3036,7 @@ export default function GISChartView() {
               const geomType = record.loaiHinhHoc.toUpperCase();
               if (geomType === 'LINE' || geomType === 'POLYLINE') {
                 shapeLayer = L.polyline(shapeCoordinates, {
+                  pane: KCHT_PANE_NAME,
                   color: '#1890ff',
                   weight: 4,
                   opacity: 0.85,
@@ -3052,6 +3064,7 @@ export default function GISChartView() {
                 });
               } else if (geomType === 'POLYGON' || geomType === 'AREA') {
                 shapeLayer = L.polygon(shapeCoordinates, {
+                  pane: KCHT_PANE_NAME,
                   color: '#1890ff',
                   weight: 2,
                   fillColor: '#1890ff',
