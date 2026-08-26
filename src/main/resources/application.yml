@@ -6,11 +6,12 @@ server:
     max-swallow-size: 50MB
 
 spring:
+  # File upload (multipart) — giới hạn theo quy ước feature-brief: ≤ 20MB/file, ≤ 10 files
   servlet:
     multipart:
       enabled: true
       max-file-size: 20MB
-      max-request-size: 50MB
+      max-request-size: 200MB
   application:
     name: kchtg-m001-quan-tri-he-thong
   devtools:
@@ -37,12 +38,6 @@ spring:
     serialization:
       write-dates-as-timestamps: false
     default-property-inclusion: non_null
-
-  # File upload (multipart) — giới hạn theo quy ước feature-brief: ≤ 20MB/file, ≤ 10 files
-  servlet:
-    multipart:
-      max-file-size: 20MB
-      max-request-size: 200MB
 
   # Mail configuration (SMTP)
   mail:

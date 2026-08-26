@@ -110,14 +110,14 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Tham số '" + ex.getName() + "' không đúng định dạng mong muốn: " + ex.getValue()));
     }
 
-    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiResponse<String>> handleMaxUploadSizeExceeded(
-            org.springframework.web.multipart.MaxUploadSizeExceededException ex) {
+            MaxUploadSizeExceededException ex) {
 
         log.warn("Upload size limit exceeded: {}", ex.getMessage());
         return ResponseEntity
                 .status(HttpStatus.PAYLOAD_TOO_LARGE)
-                .body(ApiResponse.error("Dung lượng file tải lên vượt quá giới hạn cho phép (tối đa 20MB/file, tổng 50MB/bản ghi)"));
+                .body(ApiResponse.error("Dung lượng file tải lên vượt quá giới hạn cho phép (tối đa 20MB/file, tối đa 10 file mỗi lần)"));
     }
 
     /**
@@ -285,21 +285,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({ AccessDeniedException.class, AuthorizationDeniedException.class })
     public void handleAccessDenied(Exception ex) throws Exception {
         throw ex;
-    }
-
-    /**
-     * Handles multipart uploads exceeding the configured size limits
-     * (spring.servlet.multipart.max-file-size / max-request-size).
-     * Returns 413 Payload Too Large with a clear Vietnamese message.
-     */
-    @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public ResponseEntity<ApiResponse<String>> handleMaxUploadSizeExceeded(
-            MaxUploadSizeExceededException ex) {
-        log.warn("Upload size exceeded: {}", ex.getMessage());
-        return ResponseEntity
-                .status(HttpStatus.PAYLOAD_TOO_LARGE)
-                .body(ApiResponse
-                        .error("Kích thước file tải lên vượt quá giới hạn cho phép (tối đa 20MB mỗi file, tối đa 10 file mỗi lần)"));
     }
 
     /**
