@@ -52,6 +52,8 @@ import type {
   CoastalStationInmarsatHistoryResponse,
 } from '../../services/station/types';
 import { organizationService } from '../../services/organizationService';
+import { vtsSystemCRUD } from '../../services/vtsSystemService';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout, { type StatusTab } from '../../components/list-view/FilterTableLayout';
@@ -155,7 +157,9 @@ export default function SpecialStationList() {
   const [filterConditionStatus, setFilterConditionStatus] = useState<string | undefined>(undefined);
 
   // Dropdown options
-  const [operatingOrgOptions, setOperatingOrgOptions] = useState<{ value: string; label: string }[]>([]);
+  const [operatingOrgOptions, setOperatingOrgOptions] = useState<{ value: string; label: string }[]>(
+    DEFAULT_OPERATING_ORGANIZATIONS.map((o) => ({ value: o.id, label: o.name }))
+  );
   const [mapSymbolOptions, setMapSymbolOptions] = useState<{ value: string; label: string }[]>([]);
   const [orgUnitOptions, setOrgUnitOptions] = useState<OrgUnitTreeOption[]>([]);
 
@@ -191,9 +195,11 @@ export default function SpecialStationList() {
         const orgTree = await organizationService.getTree();
         setOrgUnitOptions((orgTree || []) as OrgUnitTreeOption[]);
 
-        const orgRes = await organizationService.list({ pageSize: 1000 });
-        const orgs = orgRes.data || (orgRes as any).content || [];
-        setOperatingOrgOptions(orgs.map((o: any) => ({ value: o.id, label: o.name })));
+        vtsSystemCRUD.getOperatingOrganizationOptions().then((res) => {
+          if (Array.isArray(res) && res.length > 0) {
+            setOperatingOrgOptions(res.map((o) => ({ value: o.id, label: o.name })));
+          }
+        }).catch(() => {});
 
         const symbols = await symbolService.getOptions();
         setMapSymbolOptions(symbols.map((s: any) => ({ value: s.id, label: s.name })));

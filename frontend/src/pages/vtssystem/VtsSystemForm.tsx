@@ -24,6 +24,7 @@ import dayjs from 'dayjs';
 import toast from '../../components/ToastNotification';
 import api from '../../services/api';
 import { vtsSystemCRUD, vtsSystemApproval } from '../../services/vtsSystemService';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type {
   VtsSystemResponse,
@@ -204,9 +205,10 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
   const [formError, setFormError] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [organizations, setOrganizations] = useState<any[]>([]);
-  const [operatingOrganizations, setOperatingOrganizations] = useState<Array<{ id: string; name: string; code: string }>>([]);
+  const [operatingOrganizations, setOperatingOrganizations] = useState<Array<{ id: string; name: string; code: string }>>(DEFAULT_OPERATING_ORGANIZATIONS);
   const [rawPorts, setRawPorts] = useState<any[]>([]);
   const [tabKey, setTabKey] = useState('general');
+  const [generatedCode, setGeneratedCode] = useState<string>('');
   const [zoneList, setZoneList] = useState<any[]>([]);
   const [detailSectionsLoaded, setDetailSectionsLoaded] = useState({ zones: false, attachments: false });
   const [loadingDetailSection, setLoadingDetailSection] = useState<'zones' | 'attachments' | null>(null);
@@ -340,8 +342,15 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
       setPendingFiles([]);
       setZoneList([]);
       setHasChanges(false);
+      setTabKey('general');
       vtsSystemCRUD.generateCode().then((res) => {
         if (!cancelled && res?.code) {
+          setGeneratedCode(res.code);
+          form.setFieldsValue({
+            code: res.code,
+            conditionStatus: ConditionStatus.OPERATIONAL,
+            recordSecurityLevel: RecordSecurityLevel.NORMAL,
+          });
           requestAnimationFrame(() => {
             form.setFieldsValue({
               code: res.code,
@@ -439,11 +448,11 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
         approvalStatus: targetApprovalStatus as any,
         recordSecurityLevel: values.recordSecurityLevel || RecordSecurityLevel.NORMAL,
         scope: values.scope,
-        orgUnitId: values.orgUnitId,
-        owningOrgId: values.owningOrgId,
+        orgUnitId: values.orgUnitId || values.owningOrgId,
+        owningOrgId: values.owningOrgId || values.orgUnitId,
         operatingOrgId: values.operatingOrgId,
         portId: values.portId,
-        code: values.code,
+        code: values.code || generatedCode || undefined,
         zones: zoneList,
         province: values.province,
         provinceId: values.provinceId || (values.province ? getProvinceIdByName(values.province) : undefined),
@@ -1084,8 +1093,16 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
           if (visible) {
             setTabKey('general');
             if (isCreateMode) {
-              form.resetFields();
-              setZoneList([]);
+              vtsSystemCRUD.generateCode().then((res) => {
+                if (res?.code) {
+                  setGeneratedCode(res.code);
+                  form.setFieldsValue({
+                    code: res.code,
+                    conditionStatus: ConditionStatus.OPERATIONAL,
+                    recordSecurityLevel: RecordSecurityLevel.NORMAL,
+                  });
+                }
+              });
             }
           }
         }}
@@ -1101,64 +1118,26 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
           >
             <Tabs activeKey={tabKey} onChange={setTabKey} tabBarStyle={{ marginBottom: 0, paddingTop: 0 }} items={[
               {
-                key: 'general', label: 'Thông tin chung',
-                children: <div style={{ paddingTop: spaceMd }}>
-                  <Form.Item
-                    label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị quản lý</span>}
-                    name="orgUnitId"
-                    rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
-                    style={{ marginBottom: spaceFormField }}
-                  >
-                    <OrgUnitTreeSelect
-                      organizations={organizations}
-                      placeholder="Chọn đơn vị quản lý"
-                      disabled={isEditMode}
-                      style={{ borderRadius: radiusPill, height: 40 }}
-                      onChange={(val) => {
-                        form.setFieldValue('orgUnitId', val);
-                        if (!form.getFieldValue('owningOrgId')) {
-                          form.setFieldValue('owningOrgId', val);
-                        }
-                        if (!form.getFieldValue('operatingOrgId')) {
-                          form.setFieldValue('operatingOrgId', val);
-                        }
-                        const curPort = form.getFieldValue('portId');
-                        if (curPort && !rawPorts.some((p) => p.id === curPort && String(p.orgUnitId) === String(val))) {
-                          form.setFieldValue('portId', undefined);
-                        }
-                      }}
-                    />
-                  </Form.Item>
-
-                  <Form.Item
-                    label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Ghi chú</span>}
-                    name="note"
-                    style={{ marginBottom: spaceFormField }}
-                  >
-                    <Input.TextArea rows={3} placeholder="Nhập ghi chú" showCount maxLength={2000} style={textAreaStyle} />
-                  </Form.Item>
-                </div>,
-              },
-              {
-                key: 'vts', label: 'Thông tin hệ thống VTS',
+                key: 'general', label: 'Thông tin hệ thống VTS',
                 children: <div style={{ paddingTop: spaceMd }}>
                   <Row gutter={16}>
                     <Col span={12}>
                       <Form.Item
-                        label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị chủ quản</span>}
-                        name="owningOrgId"
-                        rules={[{ required: true, message: 'Vui lòng chọn đơn vị chủ quản' }]}
+                        label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị quản lý</span>}
+                        name="orgUnitId"
+                        rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
                         style={{ marginBottom: spaceFormField }}
                       >
                         <OrgUnitTreeSelect
                           organizations={organizations}
-                          placeholder="Chọn đơn vị chủ quản"
+                          placeholder="Chọn đơn vị quản lý"
+                          disabled={isEditMode}
                           style={{ borderRadius: radiusPill, height: 40 }}
                           onChange={(val) => {
+                            form.setFieldValue('orgUnitId', val);
                             form.setFieldValue('owningOrgId', val);
                             const curPort = form.getFieldValue('portId');
-                            const targetOrg = form.getFieldValue('orgUnitId') || val;
-                            if (curPort && !rawPorts.some((p) => p.id === curPort && String(p.orgUnitId) === String(targetOrg))) {
+                            if (curPort && !rawPorts.some((p) => p.id === curPort && String(p.orgUnitId) === String(val))) {
                               form.setFieldValue('portId', undefined);
                             }
                           }}
@@ -1206,10 +1185,14 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                       <Form.Item
                         label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Mã hệ thống VTS</span>}
                         name="code"
-                        rules={[{ required: true, message: 'Vui lòng nhập mã hệ thống VTS' }]}
                         style={{ marginBottom: spaceFormField }}
                       >
-                        <Input placeholder="Mã tự sinh (VTS-xxxxxx)" disabled={true} maxLength={50} style={readonlyInputStyle} />
+                        <Input
+                          placeholder="Mã tự sinh (VTS-xxxxxx)"
+                          disabled={true}
+                          maxLength={50}
+                          style={readonlyInputStyle}
+                        />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -1297,6 +1280,15 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                           options={CONDITION_STATUS_OPTIONS}
                           style={{ borderRadius: radiusPill, height: 40 }}
                         />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item
+                        label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Ghi chú</span>}
+                        name="note"
+                        style={{ marginBottom: spaceFormField }}
+                      >
+                        <Input.TextArea rows={1} placeholder="Nhập ghi chú" showCount maxLength={2000} style={textAreaStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -1571,9 +1563,13 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
           <Form.Item
             label="Mã hệ thống VTS"
             name="code"
-            rules={[{ required: true, message: 'Vui lòng nhập mã hệ thống VTS' }]}
           >
-            <Input placeholder="Mã tự sinh (VTS-xxxxxx)" disabled={true} maxLength={50} style={readonlyInputStyle} />
+            <Input
+              placeholder="Mã tự sinh (VTS-xxxxxx)"
+              disabled={true}
+              maxLength={50}
+              style={readonlyInputStyle}
+            />
           </Form.Item>
 
           <Form.Item

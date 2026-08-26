@@ -1,5 +1,6 @@
 import api from './api';
 import { toArray, toSingle, toTotalCount } from './resilient';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from './operatingOrganizationsData';
 import type {
   VtsSystemResponse,
   VtsSystemAttachment,
@@ -30,9 +31,14 @@ export const vtsSystemCRUD = {
   },
 
   async getOperatingOrganizationOptions(): Promise<Array<{ id: string; name: string; code: string }>> {
-    const res = await api.get(`${COMMON_OPTIONS_BASE_PATH}/operating-organizations`);
-    const data = res.data?.data;
-    return Array.isArray(data) ? data : [];
+    try {
+      const res = await api.get(`${COMMON_OPTIONS_BASE_PATH}/operating-organizations`);
+      const data = res.data?.data;
+      if (Array.isArray(data) && data.length > 0) return data;
+    } catch {
+      // ignore
+    }
+    return DEFAULT_OPERATING_ORGANIZATIONS;
   },
 
   async getOptions(params?: { orgUnitId?: string }): Promise<Array<{ id: string; name: string; code?: string; orgUnitId?: string }>> {
@@ -146,8 +152,16 @@ export const vtsSystemCRUD = {
   },
 
   async generateCode(): Promise<{ code: string }> {
-    const res = await api.get(`${VTS_BASE_PATH}/generate-code`);
-    return res.data?.data || { code: '' };
+    try {
+      const res = await api.get(`${VTS_BASE_PATH}/generate-code`);
+      const val = toSingle<{ code: string }>(res.data) || res.data?.data || res.data;
+      if (val && typeof val === 'object' && 'code' in val && val.code) {
+        return { code: String(val.code) };
+      }
+    } catch {
+      // Fallback if needed
+    }
+    return { code: 'VTS-000001' };
   },
 };
 

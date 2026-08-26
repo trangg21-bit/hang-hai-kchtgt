@@ -23,6 +23,7 @@ import type {
   AisSystemAttachment,
 } from '../../types/aisSystem';
 import { UNIT_OF_MEASURE_MAP } from '../../types/aisSystem';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { aisSystemService } from '../../services/aisSystemService';
 import {
   ConditionStatus,
@@ -276,7 +277,7 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
             </div>
             <div className="detail-row">
               <span className="detail-label">Đơn vị khai thác</span>
-              <span className="detail-value">{record?.operatingOrgName || '—'}</span>
+              <span className="detail-value">{record?.operatingOrgName || DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === record?.operatingOrgId)?.name || '—'}</span>
             </div>
             <div className="detail-row">
               <span className="detail-label">Mã thiết bị</span>
