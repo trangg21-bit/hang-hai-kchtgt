@@ -27,5 +27,6 @@ public enum InfrastructureType {
     LEGAL_DOCUMENT,
     VTS_OPERATION_CENTER,
     AIS_SYSTEM,
-    CCTV
+    CCTV,
+    SCADA
 }

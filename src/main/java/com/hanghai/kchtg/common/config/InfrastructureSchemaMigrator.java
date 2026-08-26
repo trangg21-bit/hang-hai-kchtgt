@@ -25,7 +25,7 @@ public class InfrastructureSchemaMigrator implements CommandLineRunner {
             "vts_system", "vts_operation_center", "ais_system", "radar_station",
             "ship_repair_facility", "coastal_station_vts", "coastal_station_lrit",
             "coastal_station_haiphong", "coastal_station_cospas_sarsat",
-            "coastal_station_inmarsat", "buoy_station", "cctv", "beacon_station", "buoy"
+            "coastal_station_inmarsat", "buoy_station", "cctv", "scada", "beacon_station", "buoy"
     };
 
     private static final String[] DATE_INFRA_TABLES = {
