@@ -37,7 +37,6 @@ import {
   VideoCameraOutlined,
   MonitorOutlined,
   ApartmentOutlined,
-  ToolOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 import { usePermissionStore } from '../store/permissionStore';
