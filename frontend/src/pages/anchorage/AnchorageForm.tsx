@@ -22,8 +22,7 @@ import toast from '../../components/ToastNotification';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { organizationService } from '../../services/organizationService';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
-import { anchorageCRUD, portCRUD } from '../../services/portService';
-import { fetchBuoyStationList } from '../../services/buoy-station/api';
+import { anchorageCRUD, portCRUD, buoyBerthCRUD } from '../../services/portService';
 import { symbolService } from '../../services/symbolService';
 import { lineObjectService } from '../../services/lineObjectService';
 import { LineObject } from '../../types/lineObject';
@@ -226,7 +225,7 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
   useEffect(() => { symbolService.list({ page: 1, pageSize: 1000, status: 'active' }).then(r => setSymbols(r.data || [])).catch(() => {}); }, []);
   useEffect(() => { setLoadingOrgs(true); organizationService.list({ pageSize: 1000 }).then(r => setOrgUnits(r.data || [])).catch(() => {}).finally(() => setLoadingOrgs(false)); }, []);
   useEffect(() => { lineObjectService.list({ status: 'PUBLISHED', objectType: LineObject.ObjectType.WATERWAY, pageSize: 1000 }).then(r => setWaterwayOptions((r.data || []).map((l: any) => ({ value: l.id, label: l.name || l.code })))).catch(() => {}); }, []);
-  useEffect(() => { fetchBuoyStationList({ status: 'PUBLISHED' }).then(r => setBuoyStationOptions((r.content || []).map((s: any) => ({ value: s.id, label: s.name || s.code })))).catch(() => {}); }, []);
+  useEffect(() => { buoyBerthCRUD.search({ page: 1, pageSize: 1000, approvalStatus: 'APPROVED' }).then(r => setBuoyStationOptions((r.data || []).map((s: any) => ({ value: s.id, label: s.buoyBerthName || s.buoyBerthCode || s.id })))).catch(() => {}); }, []);
 
   const loadPortOptions = async (orgUnitId: string) => {
     setLoadingPorts(true);

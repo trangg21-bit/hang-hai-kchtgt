@@ -18,6 +18,7 @@ import dayjs from 'dayjs';
 import {
   stormShelterCRUD,
   portCRUD,
+  buoyBerthCRUD,
 } from '../../services/portService';
 import type { StormShelterArea } from '../../types/port';
 import { organizationService } from '../../services/organizationService';
@@ -36,7 +37,6 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import toast from '../../components/ToastNotification';
 import { lineObjectService } from '../../services/lineObjectService';
 import { LineObject } from '../../types/lineObject';
-import { fetchBuoyStationList } from '../../services/buoy-station/api';
 import StormShelterForm from './StormShelterForm';
 import StormShelterDetailContent from './StormShelterDetailContent';
 import { STORM_SHELTER_CLASSIFICATION_OPTIONS } from './StormShelterForm';
@@ -469,8 +469,8 @@ export default function StormShelterList() {
     lineObjectService.list({ status: 'PUBLISHED', objectType: LineObject.ObjectType.WATERWAY, pageSize: 1000 })
       .then(r => setWaterwayOptions((r.data || []).map((l: any) => ({ value: l.id, label: l.name || l.code }))))
       .catch(() => {});
-    fetchBuoyStationList({ status: 'PUBLISHED' })
-      .then(r => setBuoyStationOptions((r.content || []).map((s: any) => ({ value: s.id, label: s.name || s.code }))))
+    buoyBerthCRUD.search({ page: 1, pageSize: 1000, approvalStatus: 'APPROVED' })
+      .then(r => setBuoyStationOptions((r.data || []).map((s: any) => ({ value: s.id, label: s.buoyBerthName || s.buoyBerthCode || s.id }))))
       .catch(() => {});
   }, []);
 
@@ -1119,6 +1119,7 @@ export default function StormShelterList() {
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
       <Drawer
         {...drawerProps}
+        width={950}
         title={<span style={drawerTitleStyle}>Chi tiết khu tránh, trú bão{detailRecord ? ` - ${detailRecord.stormShelterName}` : ''}</span>}
         open={detailDrawerVisible}
         onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); }}

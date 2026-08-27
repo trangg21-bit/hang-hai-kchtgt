@@ -276,6 +276,27 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "stormshelter", "history", "Lịch sử phê duyệt khu tránh trú bão",
                                 "Xem lịch sử thay đổi khu tránh trú bão");
 
+                // 8.2.4 Bến phao (Buoy Berth)
+                seedPermission(definitions, "buoyberth", "read", "Xem bến phao",
+                                "Tra cứu thông tin bến phao");
+                seedPermission(definitions, "buoyberth", "read:restricted", "Xem bản ghi hạn chế bến phao",
+                                "Xem các bản ghi dữ liệu mức độ Hạn chế của bến phao");
+                seedPermission(definitions, "buoyberth", "read:confidential", "Xem bản ghi mật bến phao",
+                                "Xem các bản ghi dữ liệu mức độ Mật của bến phao");
+                seedPermission(definitions, "buoyberth", "create", "Thêm bến phao",
+                                "Tạo mới hồ sơ bến phao");
+                seedPermission(definitions, "buoyberth", "update", "Cập nhật bến phao",
+                                "Chỉnh sửa thông tin bến phao");
+                seedPermission(definitions, "buoyberth", "delete", "Xóa bến phao", "Xóa bến phao");
+                seedPermission(definitions, "buoyberth", "approve", "Phê duyệt bến phao",
+                                "Phê duyệt dữ liệu bến phao");
+                seedPermission(definitions, "buoyberth", "approvec1", "Phê duyệt C1 bến phao",
+                                "Phê duyệt cấp 1 bến phao");
+                seedPermission(definitions, "buoyberth", "approvec2", "Phê duyệt C2 bến phao",
+                                "Phê duyệt cấp 2 bến phao");
+                seedPermission(definitions, "buoyberth", "history", "Lịch sử phê duyệt bến phao",
+                                "Xem lịch sử thay đổi bến phao");
+
                 // 8.3 Cầu cảng (Pier)
                 seedPermission(definitions, "pier", "read", "Xem cầu cảng", "Tra cứu thông tin cầu cảng");
                 seedPermission(definitions, "pier", "read:restricted", "Xem bản ghi hạn chế cầu cảng",

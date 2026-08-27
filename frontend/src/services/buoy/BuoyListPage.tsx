@@ -1831,9 +1831,6 @@ export default function BuoyListPage() {
         </span>}
         open={detailDrawerOpen}
         onClose={closeDetailDrawer}
-        extra={
-          <Button type="text" onClick={closeDetailDrawer} style={drawerCloseBtnStyle}>✕</Button>
-        }
         footer={null}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
