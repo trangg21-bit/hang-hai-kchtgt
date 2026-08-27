@@ -687,3 +687,133 @@ export interface AnchorageApprovalResponse {
   approvalLog: any[];
 }
 
+// ── 7. Khu chuyển tải (Transfer Area) ──────────────────────────────
+
+export interface TransferArea {
+  id: string;
+  securityLevel?: string;
+  transferAreaCode: string;
+  transferAreaName: string;
+  portId: string;
+  portName?: string;
+  orgUnitId?: string;
+  orgUnitName?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalFunctions?: string;
+  operationalStatus?: string;
+  approvalStatus?: string;
+  // GIS fields
+  latitude?: number;
+  longitude?: number;
+  mapSymbolId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
+  coordinateSystem?: number;
+  displayRule?: number;
+  mooringWaterAreas?: MooringWaterAreaPayload[];
+  // Technical fields
+  shapeDescription?: string;
+  area?: number;
+  designWaterDepth?: number;
+  currentWaterDepth?: number;
+  bottomElevationDesign?: number;
+  maxVesselDWT?: number;
+  activeTransferCount?: number;
+  publishedTransferCount?: number;
+  underInvestmentTransferCount?: number;
+  remarks?: string;
+  // Publication fields
+  openingAnnouncementDate?: string;
+  publicDecision?: string;
+  investmentAgreement?: string;
+  // Activity period fields
+  activityStartDate?: string;
+  activityEndDate?: string;
+  // Approval tracking
+  submittedForApprovalAt?: string;
+  submittedForApprovalBy?: string;
+  portAuthorityApprovedAt?: string;
+  portAuthorityApprovedBy?: string;
+  portAuthorityApprovalContent?: string;
+  departmentApprovedAt?: string;
+  departmentApprovedBy?: string;
+  departmentApprovalContent?: string;
+  rejectionReason?: string;
+  // Audit
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateTransferAreaRequest {
+  securityLevel?: string;
+  transferAreaCode?: string;
+  transferAreaName: string;
+  portId: string;
+  orgUnitId?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalFunctions?: string;
+  operationalStatus?: string;
+  shapeDescription?: string;
+  area?: number;
+  designWaterDepth?: number;
+  currentWaterDepth?: number;
+  bottomElevationDesign?: number;
+  maxVesselDWT?: number;
+  activeTransferCount?: number;
+  publishedTransferCount?: number;
+  underInvestmentTransferCount?: number;
+  remarks?: string;
+  openingAnnouncementDate?: string;
+  publicDecision?: string;
+  investmentAgreement?: string;
+  activityStartDate?: string;
+  activityEndDate?: string;
+  // GIS fields
+  latitude?: number;
+  longitude?: number;
+  mapSymbolId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
+  coordinateSystem?: number;
+  displayRule?: number;
+  mooringWaterAreas?: MooringWaterAreaPayload[];
+  saveAction?: string;
+}
+
+export interface UpdateTransferAreaRequest {
+  id: string;
+  transferAreaName?: string;
+  portId?: string;
+  orgUnitId?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalFunctions?: string;
+  operationalStatus?: string;
+  shapeDescription?: string;
+  area?: number;
+  designWaterDepth?: number;
+  currentWaterDepth?: number;
+  bottomElevationDesign?: number;
+  maxVesselDWT?: number;
+  activeTransferCount?: number;
+  publishedTransferCount?: number;
+  underInvestmentTransferCount?: number;
+  remarks?: string;
+  openingAnnouncementDate?: string;
+  publicDecision?: string;
+  investmentAgreement?: string;
+  activityStartDate?: string;
+  activityEndDate?: string;
+  saveAction?: string;
+}
+
+export interface TransferAreaApprovalResponse {
+  entityType: string;
+  changeHistory: any[];
+  approvalLog: any[];
+}
+

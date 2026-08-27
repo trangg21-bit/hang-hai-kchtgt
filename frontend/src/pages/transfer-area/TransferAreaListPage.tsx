@@ -16,17 +16,15 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
-  anchorageCRUD,
+  transferAreaCRUD,
   portCRUD,
 } from '../../services/portService';
-import type { Anchorage } from '../../types/port';
+import type { TransferArea } from '../../types/port';
 import { organizationService } from '../../services/organizationService';
 import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
 import { symbolService } from '../../services/symbolService';
 import api from '../../services/api';
 import { userService } from '../../services/userService';
-import { lineObjectService } from '../../services/lineObjectService';
-import { LineObject } from '../../types/lineObject';
 import type { Organization } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
@@ -36,8 +34,8 @@ import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import toast from '../../components/ToastNotification';
-import AnchorageForm from './AnchorageForm';
-import AnchorageDetailContent from './AnchorageDetailContent';
+import TransferAreaForm from './TransferAreaForm';
+import TransferAreaDetailContent from './TransferAreaDetailContent';
 import {
   statusOperational,
   statusAttention,
@@ -102,6 +100,33 @@ const TAB_QUERY_MAP: Record<string, string | undefined> = {
   REJECTED_LEVEL2: 'REJECTED_LEVEL2',
 };
 
+// ── Công năng khai thác ──────────────────────────────────────────────
+
+const OPERATIONAL_FUNCTIONS_OPTIONS = [
+  { value: 'CONTAINER', label: 'Hàng Container' },
+  { value: 'GENERAL_CARGO', label: 'Hàng tổng hợp (Bách hóa)' },
+  { value: 'BULK_CARGO', label: 'Hàng chuyên dụng hàng rời, quặng' },
+  { value: 'OIL_GAS', label: 'Hàng chuyên dụng xăng dầu, khí hóa lỏng' },
+  { value: 'OTHER', label: 'Hàng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu...)' },
+  { value: 'PASSENGER', label: 'Hành khách' },
+];
+
+const OPERATIONAL_FUNCTIONS_LABEL_MAP: Record<string, string> = {
+  CONTAINER: 'Hàng Container',
+  GENERAL_CARGO: 'Hàng tổng hợp (Bách hóa)',
+  BULK_CARGO: 'Hàng chuyên dụng hàng rời, quặng',
+  OIL_GAS: 'Hàng chuyên dụng xăng dầu, khí hóa lỏng',
+  OTHER: 'Hàng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu...)',
+  PASSENGER: 'Hành khách',
+};
+
+function formatOperationalFunctions(v?: string | null): string {
+  if (!v) return '—';
+  const parts = v.split(',').map((s) => s.trim()).filter(Boolean);
+  if (parts.length === 0) return '—';
+  return parts.map((code) => OPERATIONAL_FUNCTIONS_LABEL_MAP[code] || code).join(', ');
+}
+
 // ── Helper: format date ──────────────────────────────────────────────
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -112,8 +137,8 @@ function formatDate(dateStr: string | null | undefined): string {
 // ── History helpers ───────────────────────────────────────────────────
 
 const historyFieldLabels: Record<string, string> = {
-  securityLevel: 'Cấp bảo mật', anchorageCode: 'Mã neo đậu', anchorageName: 'Tên neo đậu', portId: 'Thuộc cảng biển',
-  navigationChannelId: 'Thuộc luồng hàng hải', navigationChannel: 'Thuộc luồng hàng hải', buoyStationId: 'Thuộc trạm phao tiêu',
+  securityLevel: 'Cấp bảo mật', transferAreaCode: 'Mã khu chuyển tải', transferAreaName: 'Tên khu chuyển tải', portId: 'Thuộc cảng biển',
+  operationalFunctions: 'Công năng khai thác',
   provinceId: 'Tỉnh/Thành phố', detailedLocation: 'Địa điểm chi tiết', operationalStatus: 'Tình trạng hoạt động',
   shapeDescription: 'Mô tả hình học', area: 'Diện tích', designWaterDepth: 'Độ sâu thiết kế',
   currentWaterDepth: 'Độ sâu hiện tại', bottomElevationDesign: 'Độ sâu đáy thiết kế',
@@ -125,18 +150,16 @@ const historyFieldLabels: Record<string, string> = {
   portAuthorityApprovalContent: 'Nội dung phê duyệt Cảng vụ',
   departmentApprovedAt: 'Ngày duyệt Cục', departmentApprovedBy: 'Người duyệt Cục',
   departmentApprovalContent: 'Nội dung phê duyệt Cục', rejectionReason: 'Lý do từ chối',
-  activityStatus: 'Trạng thái hoạt động',
   'Trạng thái': 'Hành động',
 };
 
 function historyFieldName(fn: string): string { return historyFieldLabels[fn] || fn; }
 
-function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, string>, symbolMap?: Map<string, string>, portMap?: Map<string, string>, waterwayMap?: Map<string, string>): string {
+function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, string>, symbolMap?: Map<string, string>, portMap?: Map<string, string>): string {
   if (!val || val === '(null)' || val === 'null') return '(trống)';
   if (fn === 'orgUnitId' && orgMap) { const full = orgMap.get(val); return full ? full.split(' - ').pop() || full : val; }
   if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
   if (fn === 'portId' && portMap) return portMap.get(val) || val;
-  if (fn === 'navigationChannelId' && waterwayMap) return waterwayMap.get(val) || val;
   if (fn === 'approvalStatus') { const m: Record<string,string> = { NHAP:'Lưu tạm', DRAFT:'Lưu tạm', CHO_PHE_DUYET:'Chờ phê duyệt cấp Cảng vụ/Chi cục', CHO_PD_CAP_CUC:'Chờ phê duyệt cấp cục', PENDING_APPROVAL:'Chờ phê duyệt cấp Cảng vụ/Chi cục', APPROVED_LEVEL1:'Chờ phê duyệt cấp Cảng vụ/Chi cục', APPROVED_LEVEL2:'Chờ phê duyệt cấp cục', DA_PHE_DUYET:'Đã phê duyệt', APPROVED:'Đã phê duyệt', TU_CHOI:'Từ chối cấp Cảng vụ/Chi cục', REJECTED:'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL1:'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL2:'Từ chối cấp cục' }; return m[val.toUpperCase()] || val; }
   if (fn === 'operationalStatus') { const m: Record<string,string> = { OPERATIONAL:'Đang khai thác/vận hành', NOT_YET_OPERATIONAL:'Chưa khai thác/vận hành', SUSPENDED:'Dừng khai thác/vận hành', DANG_KHAI_THAC:'Đang khai thác/vận hành', CHUA_KHAI_THAC:'Chưa khai thác/vận hành', DUNG_KHAI_THAC:'Dừng khai thác/vận hành' }; return m[val.toUpperCase()] || val; }
   if (fn === 'provinceId') { const m: Record<number,string> = { 1:'Hà Nội', 2:'Hà Giang', 3:'Cao Bằng', 4:'Bắc Kạn', 5:'Lào Cai', 6:'Tuyên Quang', 7:'Lạng Sơn', 8:'Quảng Ninh', 9:'Thái Nguyên', 10:'Yên Bái', 11:'Hà Nam', 12:'Hòa Bình', 13:'Nam Định', 14:'Ninh Bình', 15:'Thanh Hóa', 16:'Nghệ An', 17:'Hà Tĩnh', 18:'Quảng Bình', 19:'Quảng Trị', 20:'Thừa Thiên Huế', 21:'Đà Nẵng', 22:'Quảng Nam', 23:'Quảng Ngãi', 24:'Bình Định', 25:'Phú Yên', 26:'Khánh Hòa', 27:'Ninh Thuận', 28:'Bình Thuận', 29:'Kon Tum', 30:'Gia Lai', 31:'Đắk Lắk', 32:'Đắk Nông', 33:'Lâm Đồng', 34:'TP. Hồ Chí Minh', 35:'Bà Rịa - Vũng Tàu', 36:'Long An', 37:'Tiền Giang', 38:'An Giang', 39:'Bến Tre', 40:'Đồng Tháp', 41:'Vĩnh Long', 42:'Trà Vinh', 43:'Hậu Giang', 44:'Sóc Trăng', 45:'Kiên Giang', 46:'Cần Thơ', 47:'Bạc Liêu', 48:'Cà Mau', 49:'Điện Biên', 50:'Lai Châu', 51:'Sơn La', 52:'Yên Bái', 53:'Hòa Bình', 54:'Thái Bình', 55:'Hải Dương', 56:'Hải Phòng', 57:' Hưng Yên', 58:'Perth', 59:'Đắk Lắk', 60:'An Giang', 61:'Bà Rịa - Vũng Tàu', 62:'Bắc Giang', 63:'Bắc Kạn', 64:'Bắc Ninh', 65:'Bến Tre', 66:'Bình Định', 67:'Bình Dương', 68:'Bình Phước', 69:'Bình Thuận', 70:'Cà Mau', 71:'Cao Bằng', 72:'Đắk Lắk', 73:'Đắk Nông', 74:'Điện Biên', 75:'Đồng Nai', 76:'Đồng Tháp', 77:'Gia Lai', 78:'Hà Giang', 79:'Hà Nam', 80:'Hà Tĩnh', 81:'Hải Dương', 82:'Hậu Giang', 83:'Hòa Bình', 84:'Hưng Yên', 85:'Khánh Hòa', 86:'Kiên Giang', 87:'Kon Tum', 88:'Lai Châu', 89:'Lâm Đồng', 90:'Lạng Sơn', 91:'Lào Cai', 92:'Long An', 93:'Nam Định', 94:'Nghệ An', 95:'Ninh Bình', 96:'Ninh Thuận', 97:'Phú Thọ', 98:'Quảng Nam', 99:'Quảng Ngãi', 100:'Quảng Ninh', 101:'Quảng Trị', 102:'Sóc Trăng', 103:'Sơn La', 104:'Thanh Hóa', 105:'Thái Bình', 106:'Thái Nguyên', 107:'TP. Hồ Chí Minh', 108:'Tiền Giang', 109:'Tây Ninh', 110:'Tin Giang', 111:'Trà Vinh', 112:'Tuyên Quang', 113:'Vĩnh Long', 114:'Vĩnh Phúc', 115:'Yên Bái' }; return m[Number(val)-1] || val; }
@@ -146,7 +169,7 @@ function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, 
 
 // ── Component ────────────────────────────────────────────────────────
 
-export default function AnchorageList() {
+export default function TransferAreaList() {
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const userPermissions = useAuthStore((s: any) => s.user?.permissions) || [];
   const isAuditViewer = userPermissions.includes('admin:manage') || userPermissions.includes('admin:operation');
@@ -158,10 +181,9 @@ export default function AnchorageList() {
   const [filterName, setFilterName] = useState('');
   const [filterCode, setFilterCode] = useState('');
   const [filterPortId, setFilterPortId] = useState<string | undefined>();
-  const [filterNavigationChannelId, setFilterNavigationChannelId] = useState<string | undefined>();
-  const [filterBuoyStationId, setFilterBuoyStationId] = useState<string | undefined>();
   const [filterProvince, setFilterProvince] = useState('');
   const [filterOperationalStatus, setFilterOperationalStatus] = useState<string | undefined>();
+  const [filterOperationalFunctions, setFilterOperationalFunctions] = useState<string[] | undefined>();
   const [filterUpdatedFrom, setFilterUpdatedFrom] = useState<string | undefined>();
   const [filterUpdatedTo, setFilterUpdatedTo] = useState<string | undefined>();
   const [activeTab, setActiveTab] = useState('all');
@@ -172,7 +194,7 @@ export default function AnchorageList() {
   const [pageSize, setPageSize] = useState(20);
 
   // ── Data ─────────────────────────────────────────────────────────
-  const [dataSource, setDataSource] = useState<Anchorage[]>([]);
+  const [dataSource, setDataSource] = useState<TransferArea[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
@@ -185,32 +207,7 @@ export default function AnchorageList() {
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [symbolMap, setSymbolMap] = useState<Map<string, string>>(new Map());
   const [symbolImageMap, setSymbolImageMap] = useState<Map<string, string>>(new Map());
-  const [waterwayMap, setWaterwayMap] = useState<Map<string, string>>(new Map());
-  const [buoyStationMap, setBuoyStationMap] = useState<Map<string, string>>(new Map());
 
-  useEffect(() => {
-    lineObjectService.list({ status: 'PUBLISHED', objectType: LineObject.ObjectType.WATERWAY, pageSize: 1000 })
-      .then((r) => {
-        const m = new Map<string, string>();
-        (r.data || []).forEach((l: any) => {
-          m.set(l.id, l.name || l.code);
-        });
-        setWaterwayMap(m);
-      })
-      .catch(() => {});
-
-    // Danh sách bến phao để lọc "Thuộc bến phao" theo đặc tả CSV.
-    api.get('/v1/buoy-station', { params: { page: 1, pageSize: 1000 } })
-      .then((res) => {
-        const rows = res.data?.data || res.data?.content || res.data || [];
-        const m = new Map<string, string>();
-        (Array.isArray(rows) ? rows : []).forEach((b: any) => {
-          m.set(b.id, b.name || b.buoyStationName || b.code || b.buoyStationCode || b.id);
-        });
-        setBuoyStationMap(m);
-      })
-      .catch(() => setBuoyStationMap(new Map()));
-  }, []);
   const orgMap = useMemo(() => {
     const map = new Map<string, string>();
     organizations.forEach((o) => {
@@ -234,45 +231,43 @@ export default function AnchorageList() {
 
   // ── Drawer state ────────────────────────────────────────────────
   const [createDrawerVisible, setCreateDrawerVisible] = useState(false);
-  const [editAnchorageId, setEditAnchorageId] = useState<string | undefined>();
-  const [editAnchorageName, setEditAnchorageName] = useState('');
+  const [editTransferAreaId, setEditTransferAreaId] = useState<string | undefined>();
+  const [editTransferAreaName, setEditTransferAreaName] = useState('');
   const [createForm] = Form.useForm();
   const [updateForm] = Form.useForm();
-  const anchorageFormRef = useRef<any>(null);
-  const editAnchorageFormRef = useRef<any>(null);
+  const transferAreaFormRef = useRef<any>(null);
+  const editTransferAreaFormRef = useRef<any>(null);
   // ── Submit loading — nút được bấm mới hiện loading tròn (tham chiếu màn Cảng biển) ──
   const [submitting, setSubmitting] = useState(false);
   const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve' | 'update'>('submit');
   const actionTypeRef = useRef<'draft' | 'submit' | 'approve' | 'update'>('submit');
   const [detailDrawerVisible, setDetailDrawerVisible] = useState(false);
-  const [detailRecord, setDetailRecord] = useState<Anchorage | null>(null);
+  const [detailRecord, setDetailRecord] = useState<TransferArea | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailFiles, setDetailFiles] = useState<any[]>([]);
 
   // ── Delete confirmation modal ───────────────────────────────────
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [deletingRecord, setDeletingRecord] = useState<Anchorage | null>(null);
+  const [deletingRecord, setDeletingRecord] = useState<TransferArea | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   // ── Reject modal ────────────────────────────────────────────────
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
-  const [rejectingRecord, setRejectingRecord] = useState<Anchorage | null>(null);
+  const [rejectingRecord, setRejectingRecord] = useState<TransferArea | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
   // ── Submit/Approve modal ────────────────────────────────────────
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
-  const [submittingRecord, setSubmittingRecord] = useState<Anchorage | null>(null);
+  const [submittingRecord, setSubmittingRecord] = useState<TransferArea | null>(null);
   const [approveModalOpen, setApproveModalOpen] = useState(false);
-  const [approvingRecord, setApprovingRecord] = useState<Anchorage | null>(null);
+  const [approvingRecord, setApprovingRecord] = useState<TransferArea | null>(null);
   const [approvalContent, setApprovalContent] = useState('');
 
   // ── History modal ───────────────────────────────────────────────
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [historyTarget, setHistoryTarget] = useState<Anchorage | null>(null);
+  const [historyTarget, setHistoryTarget] = useState<TransferArea | null>(null);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyExpanded, setHistoryExpanded] = useState<Record<number, boolean>>({});
-  const [historyVisible, setHistoryVisible] = useState(10);
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
   const [historyTo, setHistoryTo] = useState('');
@@ -282,12 +277,12 @@ export default function AnchorageList() {
 
   const historyFieldCount = useMemo(() => historyRecords.length, [historyRecords]);
 
-  const openHistory = useCallback(async (r: Anchorage) => {
+  const openHistory = useCallback(async (r: TransferArea) => {
     setHistoryTarget(r); setHistoryOpen(true); setHistoryLoading(true); setHistoryRecords([]);
-    setHistoryExpanded({}); setHistoryVisible(10); setHistorySearch(''); setHistoryFrom(''); setHistoryTo('');
+    setHistorySearch(''); setHistoryFrom(''); setHistoryTo('');
     setHistoryMode('current');
     try {
-      const res = await api.get(`/v1/anchorage/${r.id}/history`);
+      const res = await api.get(`/v1/transfer-area/${r.id}/history`);
       const d = res.data?.data;
       const ch = Array.isArray(d?.changeHistory) ? d.changeHistory : [];
       setHistoryRecords(ch);
@@ -295,9 +290,9 @@ export default function AnchorageList() {
     finally { setHistoryLoading(false); }
   }, []);
 
-  const HISTORY_FIELD_ORDER = ['orgUnitId', 'portId', 'anchorageCode', 'anchorageName', 'navigationChannelId', 'buoyStationId', 'provinceId', 'detailedLocation', 'mapSymbolId', 'area', 'designWaterDepth', 'currentWaterDepth', 'bottomElevationDesign', 'maxVesselDWT', 'remarks', 'openingAnnouncementDate', 'publicDecision', 'investmentAgreement'];
+  const HISTORY_FIELD_ORDER = ['orgUnitId', 'portId', 'transferAreaCode', 'transferAreaName', 'operationalFunctions', 'provinceId', 'detailedLocation', 'mapSymbolId', 'area', 'designWaterDepth', 'currentWaterDepth', 'bottomElevationDesign', 'maxVesselDWT', 'remarks', 'openingAnnouncementDate', 'publicDecision', 'investmentAgreement'];
 
-  const renderAnchorageHistoryTimeline = (records: any[]) => {
+  const renderTransferAreaHistoryTimeline = (records: any[]) => {
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
     const sorted = [...records].sort((a: any, b: any) => new Date(b.changedAt || b.createdAt).getTime() - new Date(a.changedAt || a.createdAt).getTime());
     const q = historySearch.toLowerCase().trim();
@@ -308,8 +303,8 @@ export default function AnchorageList() {
         const ov = (r.oldValue || '').toLowerCase();
         const nv = (r.newValue || '').toLowerCase();
         const lb = historyFieldName(r.fieldName || '').toLowerCase();
-        const od = historyFieldValue(r.fieldName, r.oldValue, orgMap, symbolMap, portMap, waterwayMap).toLowerCase();
-        const nd = historyFieldValue(r.fieldName, r.newValue, orgMap, symbolMap, portMap, waterwayMap).toLowerCase();
+        const od = historyFieldValue(r.fieldName, r.oldValue, orgMap, symbolMap, portMap).toLowerCase();
+        const nd = historyFieldValue(r.fieldName, r.newValue, orgMap, symbolMap, portMap).toLowerCase();
         if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue;
       }
       if (historyEntityFilter && r.entityId !== historyEntityFilter) continue;
@@ -358,7 +353,7 @@ export default function AnchorageList() {
             const n = Number(t);
             return Number.isInteger(n) ? String(n) : t;
           }
-          return historyFieldValue(fn, raw, orgMap, symbolMap, portMap, waterwayMap);
+          return historyFieldValue(fn, raw, orgMap, symbolMap, portMap);
         };
         if (orderedChanges.length === 0) return null;
         return (
@@ -500,8 +495,8 @@ export default function AnchorageList() {
       const results = await Promise.allSettled(
         TAB_STATUS_LIST.map((tab) =>
           tab.key === 'all'
-            ? anchorageCRUD.search({ orgUnitId: (orgId && orgId !== '__all__') ? orgId : undefined, page: 1, pageSize: 1 })
-            : anchorageCRUD.search({ approvalStatus: TAB_QUERY_MAP[tab.key], orgUnitId: (orgId && orgId !== '__all__') ? orgId : undefined, page: 1, pageSize: 1 }),
+            ? transferAreaCRUD.search({ orgUnitId: (orgId && orgId !== '__all__') ? orgId : undefined, page: 1, pageSize: 1 })
+            : transferAreaCRUD.search({ approvalStatus: TAB_QUERY_MAP[tab.key], orgUnitId: (orgId && orgId !== '__all__') ? orgId : undefined, page: 1, pageSize: 1 }),
         ),
       );
       const counts: Record<string, number> = {};
@@ -517,14 +512,13 @@ export default function AnchorageList() {
   const fetchData = useCallback(async () => {
     setIsLoading(true); setIsError(false); setError(null);
     try {
-      const res = await anchorageCRUD.search({
+      const res = await transferAreaCRUD.search({
         orgUnitId: (managingUnitId && managingUnitId !== '__all__') ? managingUnitId : undefined,
-        anchorageName: filterName.trim() || undefined,
-        anchorageCode: filterCode.trim() || undefined,
+        transferAreaName: filterName.trim() || undefined,
+        transferAreaCode: filterCode.trim() || undefined,
         portId: filterPortId,
-        navigationChannelId: filterNavigationChannelId,
-        buoyStationId: filterBuoyStationId,
         provinceId: filterProvince ? (VIETNAM_PROVINCES.indexOf(filterProvince) + 1) : undefined,
+        operationalFunctions: filterOperationalFunctions && filterOperationalFunctions.length > 0 ? filterOperationalFunctions.join(',') : undefined,
         operationalStatus: filterOperationalStatus,
         approvalStatus: TAB_QUERY_MAP[activeTab],
         updatedFrom: filterUpdatedFrom,
@@ -535,10 +529,10 @@ export default function AnchorageList() {
       setDataSource(res.data); setTotal(res.total);
     } catch (err: unknown) {
       setIsError(true);
-      setError(err instanceof Error ? err : new Error('Không thể tải danh sách khu neo đậu'));
+      setError(err instanceof Error ? err : new Error('Không thể tải danh sách khu chuyển tải'));
     } finally { setIsLoading(false); }
-  }, [managingUnitId, filterName, filterCode, filterPortId, filterNavigationChannelId,
-    filterBuoyStationId, filterProvince, filterOperationalStatus,
+  }, [managingUnitId, filterName, filterCode, filterPortId, filterOperationalFunctions,
+    filterProvince, filterOperationalStatus,
     filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
@@ -552,8 +546,8 @@ export default function AnchorageList() {
   const handleFilterReset = useCallback(() => {
     const defaultOrg = defaultOrgUnitId.current;
     setManagingUnitId(defaultOrg === '__all__' ? undefined : defaultOrg);
-    setFilterName(''); setFilterCode(''); setFilterPortId(undefined); setFilterNavigationChannelId(undefined);
-    setFilterBuoyStationId(undefined); setFilterProvince('');
+    setFilterName(''); setFilterCode(''); setFilterPortId(undefined);
+    setFilterOperationalFunctions(undefined); setFilterProvince('');
     setFilterOperationalStatus(undefined);
     setFilterUpdatedFrom(undefined); setFilterUpdatedTo(undefined);
     setActiveTab('all'); setPage(1);
@@ -564,45 +558,45 @@ export default function AnchorageList() {
   }, []);
 
   // ── Detail drawer ────────────────────────────────────────────────
-  const openDetailDrawer = useCallback(async (record: Anchorage) => {
+  const openDetailDrawer = useCallback(async (record: TransferArea) => {
     setDetailDrawerVisible(true); setDetailRecord(record); setDetailFiles([]); setDetailLoading(true);
     try {
-      const res = await api.get(`/v1/anchorage/${record.id}/attachments`, { params: { page: 0, size: 50 } });
+      const res = await api.get(`/v1/transfer-area/${record.id}/attachments`, { params: { page: 0, size: 50 } });
       setDetailFiles(res.data?.data || []);
     } catch { setDetailFiles([]); }
     try {
-      const fresh = await anchorageCRUD.findById(record.id);
+      const fresh = await transferAreaCRUD.findById(record.id);
       setDetailRecord(fresh);
     } catch { /* keep initial data */ }
     finally { setDetailLoading(false); }
   }, []);
 
   // ── Delete confirmation ─────────────────────────────────────────
-  const openDeleteModal = useCallback((record: Anchorage) => {
+  const openDeleteModal = useCallback((record: TransferArea) => {
     setDeletingRecord(record); setDeleteConfirmText(''); setDeleteModalOpen(true);
   }, []);
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingRecord) return;
-    const expectedText = (deletingRecord.anchorageName || 'XÓA').trim().toLowerCase();
+    const expectedText = (deletingRecord.transferAreaName || 'XÓA').trim().toLowerCase();
     const input = deleteConfirmText.trim().toLowerCase();
     if (input !== expectedText && input !== 'xóa') {
-      toast.error('Vui lòng nhập đúng tên neo đậu hoặc gõ "XÓA" để xác nhận'); return;
+      toast.error('Vui lòng nhập đúng tên khu chuyển tải hoặc gõ "XÓA" để xác nhận'); return;
     }
     try {
-      await anchorageCRUD.delete(deletingRecord.id);
-      toast.success('Đã xóa khu neo đậu');
+      await transferAreaCRUD.delete(deletingRecord.id);
+      toast.success('Đã xóa khu chuyển tải');
       setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText('');
       void fetchData(); void fetchCounts(managingUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Xóa thất bại'); }
   }, [deletingRecord, deleteConfirmText, fetchData, fetchCounts, managingUnitId]);
 
   // ── Approval handlers ───────────────────────────────────────────
-  const handleApprove = useCallback(async (record: Anchorage) => {
+  const handleApprove = useCallback(async (record: TransferArea) => {
     try {
       const cap = record.approvalStatus === 'APPROVED_LEVEL2' ? 'CUC' : 'CANG_VU';
-      await anchorageCRUD.approve(record.id, cap, approvalContent);
-      toast.success('Đã phê duyệt khu neo đậu');
+      await transferAreaCRUD.approve(record.id, cap, approvalContent);
+      toast.success('Đã phê duyệt khu chuyển tải');
       setApproveModalOpen(false); setApprovingRecord(null); setApprovalContent('');
       void fetchData(); void fetchCounts(managingUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại'); }
@@ -611,14 +605,14 @@ export default function AnchorageList() {
   const handleConfirmSubmit = useCallback(async () => {
     if (!submittingRecord) return;
     try {
-      await anchorageCRUD.update({ id: submittingRecord.id, saveAction: 'SUBMIT' });
-      toast.success('Đã gửi phê duyệt khu neo đậu');
+      await transferAreaCRUD.update({ id: submittingRecord.id, saveAction: 'SUBMIT' });
+      toast.success('Đã gửi phê duyệt khu chuyển tải');
       setSubmitModalOpen(false); setSubmittingRecord(null);
       void fetchData(); void fetchCounts(managingUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Gửi phê duyệt thất bại'); }
   }, [submittingRecord, fetchData, fetchCounts, managingUnitId]);
 
-  const openRejectModal = useCallback((record: Anchorage) => {
+  const openRejectModal = useCallback((record: TransferArea) => {
     setRejectingRecord(record); setRejectReason(''); setRejectModalOpen(true);
   }, []);
 
@@ -629,7 +623,7 @@ export default function AnchorageList() {
     if (reason.length < 10) { toast.error('Lý do từ chối tối thiểu 10 ký tự'); return; }
     if (reason.length > 500) { toast.error('Lý do từ chối tối đa 500 ký tự'); return; }
     try {
-      await anchorageCRUD.reject(rejectingRecord.id, rejectingRecord.approvalStatus === 'APPROVED_LEVEL2' ? 'CUC' : 'CANG_VU', reason);
+      await transferAreaCRUD.reject(rejectingRecord.id, rejectingRecord.approvalStatus === 'APPROVED_LEVEL2' ? 'CUC' : 'CANG_VU', reason);
       toast.success('Đã từ chối phê duyệt');
       setRejectModalOpen(false); setRejectingRecord(null); setRejectReason('');
       void fetchData(); void fetchCounts(managingUnitId);
@@ -640,7 +634,7 @@ export default function AnchorageList() {
   // ── Header actions ──────────────────────────────────────────────
   const headerActions = useMemo(() => {
     const actions: ScreenHeaderAction[] = [];
-    if (hasPerm('anchorage:create')) {
+    if (hasPerm('transferarea:create')) {
       actions.push({ key: 'create', label: 'Thêm mới', variant: 'primary', icon: <PlusOutlined />, onClick: () => setCreateDrawerVisible(true) });
     }
     return actions;
@@ -649,6 +643,7 @@ export default function AnchorageList() {
   // ── Filter panel content ────────────────────────────────────────
   const filterContent = (
     <>
+      <style>{`.transfer-area-filter .ant-select-selector { border-radius: 999px !important; } .transfer-area-filter .ant-select-content { flex-wrap: nowrap !important; overflow: hidden; } .transfer-area-filter .ant-select-content-item { max-width: 45% !important; } .transfer-area-filter .ant-select-selection-item { border-radius: 999px !important; }`}</style>
       {/* ── Cơ bản: ĐVQL + Tên + Tình trạng ──────────────────── */}
       <div style={{ marginBottom: 12, marginTop: spaceMd }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
@@ -667,9 +662,9 @@ export default function AnchorageList() {
       </div>
 
       <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên khu neo đậu</div>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên khu chuyển tải</div>
         <Input
-          placeholder="Tìm theo tên khu neo đậu"
+          placeholder="Tìm theo tên khu chuyển tải"
           allowClear
           value={filterName}
           onChange={(e) => { setFilterName(e.target.value); setPage(1); }}
@@ -697,9 +692,9 @@ export default function AnchorageList() {
       {/* ── Nâng cao: đúng các trường CSV đánh dấu Bộ lọc ───────── */}
       {filterCollapsed && (<>
         <div style={{ marginBottom: 12 }}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã khu neo đậu</div>
+          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã khu chuyển tải</div>
           <Input
-            placeholder="Tìm theo mã khu neo đậu"
+            placeholder="Tìm theo mã khu chuyển tải"
             allowClear
             value={filterCode}
             onChange={(e) => { setFilterCode(e.target.value); setPage(1); }}
@@ -723,29 +718,18 @@ export default function AnchorageList() {
         </div>
 
         <div style={{ marginBottom: 12 }}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc luồng hàng hải</div>
+          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Công năng khai thác</div>
           <Select
-            placeholder="Chọn luồng hàng hải"
+            mode="multiple"
+            className="transfer-area-filter"
+            placeholder="Chọn công năng khai thác"
             allowClear
             showSearch
-            optionFilterProp="label"
-            value={filterNavigationChannelId}
-            onChange={(v) => { setFilterNavigationChannelId(v); setPage(1); }}
-            options={Array.from(waterwayMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
-            style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-          />
-        </div>
-
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc bến phao</div>
-          <Select
-            placeholder="Chọn bến phao"
-            allowClear
-            showSearch
-            optionFilterProp="label"
-            value={filterBuoyStationId}
-            onChange={(v) => { setFilterBuoyStationId(v); setPage(1); }}
-            options={Array.from(buoyStationMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
+            maxTagCount={2}
+            maxTagPlaceholder={(omittedValues) => `+${omittedValues.length}`}
+            value={filterOperationalFunctions}
+            onChange={(v) => { setFilterOperationalFunctions(v); setPage(1); }}
+            options={OPERATIONAL_FUNCTIONS_OPTIONS}
             style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
           />
         </div>
@@ -785,16 +769,16 @@ export default function AnchorageList() {
 
   // ── rowActions callback ──────────────────────────────────────────
   const rowActions = useCallback(
-    (record: Anchorage) => {
+    (record: TransferArea) => {
       const actions: any[] = [
         { key: 'view', label: 'Chi tiết', icon: <EyeOutlined />, onClick: () => openDetailDrawer(record) },
       ];
       const st = record.approvalStatus || '';
-      if (hasPerm('anchorage:update')) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => { setEditAnchorageId(record.id); setEditAnchorageName(record.anchorageName || ''); } });
-      if (hasPerm('anchorage:delete') && ['DRAFT','NHAP'].includes(st)) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => openDeleteModal(record) });
-      if (['DRAFT','NHAP'].includes(st) && hasPerm('anchorage:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
-      if (hasPerm('anchorage:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) { actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setApprovingRecord(record); setApprovalContent(''); setApproveModalOpen(true); } }); actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, danger: true, onClick: () => openRejectModal(record) }); }
-      if (hasPerm('anchorage:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistory(record) });
+      if (hasPerm('transferarea:update')) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => { setEditTransferAreaId(record.id); setEditTransferAreaName(record.transferAreaName || ''); } });
+      if (hasPerm('transferarea:delete') && ['DRAFT','NHAP'].includes(st)) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => openDeleteModal(record) });
+      if (['DRAFT','NHAP'].includes(st) && hasPerm('transferarea:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
+      if (hasPerm('transferarea:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) { actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setApprovingRecord(record); setApprovalContent(''); setApproveModalOpen(true); } }); actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, danger: true, onClick: () => openRejectModal(record) }); }
+      if (hasPerm('transferarea:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistory(record) });
       return actions;
     },
     [hasPerm, openDetailDrawer, openHistory, openDeleteModal, openRejectModal],
@@ -804,8 +788,7 @@ export default function AnchorageList() {
   const getSortValue = useCallback((r: any, field: string): string | number => {
     if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(r.orgUnitId || '') || '';
     if (field === 'portId') return portOptions.find(o => o.value === r.portId)?.label ?? r.portId ?? '';
-    if (field === 'navigationChannelId') return waterwayMap.get(r.navigationChannelId) ?? r.navigationChannelId ?? '';
-    if (field === 'buoyStationId') { const id = (r as any).buoyStationId; return buoyStationMap.get(id) ?? id ?? ''; }
+    if (field === 'operationalFunctions') { const s = formatOperationalFunctions(r.operationalFunctions); return s === '—' ? '' : s; }
     if (field === 'provinceId') return r.provinceId ? VIETNAM_PROVINCES[r.provinceId - 1] ?? '' : '';
     if (field === 'operationalStatus') {
       const m: Record<string, string> = {
@@ -817,7 +800,7 @@ export default function AnchorageList() {
     }
     if (field === 'approvalStatus') return APPROVAL_STYLE_MAP[r.approvalStatus]?.label || r.approvalStatus || '';
     return r[field] ?? '';
-  }, [buoyStationMap, organizations, orgMap, portOptions, waterwayMap]);
+  }, [organizations, orgMap, portOptions]);
 
   const columns = useMemo(() => {
     const baseColumns: any[] = [
@@ -830,15 +813,15 @@ export default function AnchorageList() {
         render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + i + 1}</span>,
       },
       {
-        key: 'anchorageName',
-        label: <span>Tên/Mã khu neo đậu</span>,
-        dataIndex: 'anchorageName',
+        key: 'transferAreaName',
+        label: <span>Tên/Mã khu chuyển tải</span>,
+        dataIndex: 'transferAreaName',
         width: 220,
         fixed: 'left' as const,
         sortable: true,
         sortOrder,
         ellipsis: false,
-        render: (v: string, record: Anchorage) => (
+        render: (v: string, record: TransferArea) => (
           <div>
             <a
               title={v}
@@ -855,7 +838,7 @@ export default function AnchorageList() {
             >
               {v}
             </a>
-            <span style={{ opacity: 0.85 }}>{record.anchorageCode || '—'}</span>
+            <span style={{ opacity: 0.85 }}>{record.transferAreaCode || '—'}</span>
           </div>
         ),
       },
@@ -866,7 +849,7 @@ export default function AnchorageList() {
         width: 260,
         sortable: true,
         sortOrder,
-        render: (_v: string | null, record: Anchorage) => (
+        render: (_v: string | null, record: TransferArea) => (
           <span style={{ fontWeight: fontWeightBold }}>
             {resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || '—'}
           </span>
@@ -882,26 +865,6 @@ export default function AnchorageList() {
         render: (v: string | null) => portOptions.find(o => o.value === v)?.label || v || '—',
       },
       {
-        key: 'navigationChannelId',
-        label: 'Thuộc luồng hàng hải',
-        dataIndex: 'navigationChannelId',
-        width: 280,
-        ellipsis: true,
-        sortable: true,
-        sortOrder,
-        render: (v?: string) => (v ? (waterwayMap.get(v) || v) : '—'),
-      },
-      {
-        key: 'buoyStationId',
-        label: 'Thuộc bến phao',
-        dataIndex: 'buoyStationId',
-        width: 230,
-        ellipsis: true,
-        sortable: true,
-        sortOrder,
-        render: (v?: string) => (v ? (buoyStationMap.get(v) || v) : '—'),
-      },
-      {
         key: 'provinceId',
         label: 'Địa điểm (Tỉnh/Thành phố)',
         dataIndex: 'provinceId',
@@ -909,6 +872,20 @@ export default function AnchorageList() {
         sortable: true,
         sortOrder,
         render: (v: number | null) => (v ? VIETNAM_PROVINCES[v - 1] : '—'),
+      },
+      {
+        key: 'operationalFunctions',
+        label: 'Công năng khai thác',
+        dataIndex: 'operationalFunctions',
+        width: 260,
+        ellipsis: true,
+        sortable: true,
+        sortOrder,
+        render: (v?: string) => (
+          <span title={formatOperationalFunctions(v)} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+            {formatOperationalFunctions(v)}
+          </span>
+        ),
       },
       {
         key: 'operationalStatus',
@@ -946,28 +923,28 @@ export default function AnchorageList() {
     // Audit columns — chỉ hiển thị cho Admin Cục / admin-operation (giống Bến cảng)
     const auditColumns: any[] = isAuditViewer ? [
       { key: 'updatedAt', label: <span>Cán bộ cập nhật</span>, dataIndex: 'updatedAt', width: 200, sortable: true, sortOrder,
-        render: (v: string | null, record: Anchorage) => (
+        render: (v: string | null, record: TransferArea) => (
           <div>
             <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.updatedBy || '') || record.updatedBy || '—'}</span><br />
             <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
           </div>
         ) },
       { key: 'submittedForApprovalAt', label: <span>Cán bộ gửi Phê duyệt</span>, dataIndex: 'submittedForApprovalAt', width: 210, sortable: true, sortOrder,
-        render: (v: string | null, record: Anchorage) => (
+        render: (v: string | null, record: TransferArea) => (
           <div>
             <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.submittedForApprovalBy || '') || record.submittedForApprovalBy || '—'}</span><br />
             <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
           </div>
         ) },
       { key: 'portAuthorityApprovedAt', label: <span>Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>, dataIndex: 'portAuthorityApprovedAt', width: 340, sortable: true, sortOrder,
-        render: (v: string | null, record: Anchorage) => (
+        render: (v: string | null, record: TransferArea) => (
           <div>
             <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.portAuthorityApprovedBy || '') || record.portAuthorityApprovedBy || '—'}</span><br />
             <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
           </div>
         ) },
       { key: 'departmentApprovedAt', label: <span>Cán bộ phê duyệt cấp Cục</span>, dataIndex: 'departmentApprovedAt', width: 240, sortable: true, sortOrder,
-        render: (v: string | null, record: Anchorage) => (
+        render: (v: string | null, record: TransferArea) => (
           <div>
             <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.departmentApprovedBy || '') || record.departmentApprovedBy || '—'}</span><br />
             <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
@@ -989,7 +966,6 @@ export default function AnchorageList() {
       sortOrder: col.sortable && col.key === sortField ? sortOrder : undefined,
     }));
   }, [
-    buoyStationMap,
     openDetailDrawer,
     organizations,
     orgMap,
@@ -1000,7 +976,6 @@ export default function AnchorageList() {
     portOptions,
     sortField,
     sortOrder,
-    waterwayMap,
   ]);
 
   // ── Detail drawer content ────────────────────────────────────────
@@ -1017,7 +992,7 @@ export default function AnchorageList() {
     if (!detailRecord) return null;
     if (detailLoading) return <LoadingSkeleton rows={6} />;
     return (
-      <AnchorageDetailContent
+      <TransferAreaDetailContent
         selectedRecord={detailRecord}
         orgMap={orgMap}
         organizations={organizations}
@@ -1028,7 +1003,6 @@ export default function AnchorageList() {
         detailFiles={detailFiles}
         ddToDms={ddToDms}
         approvalStyleMap={APPROVAL_STYLE_MAP}
-        waterwayMap={waterwayMap}
         operationPlanList={(detailRecord as any)?.operationPlanList}
         maintenancePlanList={(detailRecord as any)?.maintenancePlanList}
         incidentList={(detailRecord as any)?.incidentList}
@@ -1042,7 +1016,7 @@ export default function AnchorageList() {
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <style>{`.range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }`}</style>
       <ScreenHeader
-        breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý khu neo đậu' }]}
+        breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý khu chuyển tải' }]}
         actions={headerActions}
       />
 
@@ -1061,7 +1035,7 @@ export default function AnchorageList() {
         <style>{`.list-view-table .ant-table-cell { padding-block: 9.5px !important; }`}</style>
         {isError ? null : !isLoading && dataSource.length === 0 ? (
           <DataTable dataSource={[]} rowKey="id"
-            emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>Không tìm thấy khu neo đậu nào phù hợp</div></div>}
+            emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>Không tìm thấy khu chuyển tải nào phù hợp</div></div>}
           />
         ) : !isLoading && !isError && dataSource.length > 0 ? (
           <DataTable columns={columns}
@@ -1079,16 +1053,16 @@ export default function AnchorageList() {
       {/* ── Create Drawer ──────────────────────────────────────────── */}
       <Drawer
         {...drawerProps}
-        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới Khu neo đậu</span>}
+        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới Khu chuyển tải</span>}
         open={createDrawerVisible}
         destroyOnHidden
         onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
         extra={<Button type="text" onClick={() => { setCreateDrawerVisible(false); createForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
           <div style={drawerFooterStyle}>
-            <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); anchorageFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button>
-            <Button type="primary" onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); anchorageFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>
-            <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); anchorageFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
+            <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); transferAreaFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button>
+            <Button type="primary" onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); transferAreaFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>
+            <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); transferAreaFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
           </div>
         }
         styles={{
@@ -1099,20 +1073,20 @@ export default function AnchorageList() {
       >
         <style>{requiredMarkStyle}</style>
         <Form form={createForm} layout="vertical" initialValues={{}}>
-          <AnchorageForm ref={anchorageFormRef} form={createForm} onFinish={() => { setCreateDrawerVisible(false); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
+          <TransferAreaForm ref={transferAreaFormRef} form={createForm} onFinish={() => { setCreateDrawerVisible(false); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
         </Form>
       </Drawer>
 
       {/* ── Edit Drawer ────────────────────────────────────────────── */}
       <Drawer
         {...drawerProps}
-        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin — {editAnchorageName || 'Khu neo đậu'}</span>}
-        open={!!editAnchorageId}
-        onClose={() => { setEditAnchorageId(undefined); setEditAnchorageName(''); updateForm.resetFields(); }}
-        extra={<Button type="text" onClick={() => { setEditAnchorageId(undefined); setEditAnchorageName(''); updateForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
+        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin — {editTransferAreaName || 'Khu chuyển tải'}</span>}
+        open={!!editTransferAreaId}
+        onClose={() => { setEditTransferAreaId(undefined); setEditTransferAreaName(''); updateForm.resetFields(); }}
+        extra={<Button type="text" onClick={() => { setEditTransferAreaId(undefined); setEditTransferAreaName(''); updateForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
           <div style={drawerFooterStyle}>
-            <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); editAnchorageFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
+            <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); editTransferAreaFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
           </div>
         }
         styles={{
@@ -1120,10 +1094,10 @@ export default function AnchorageList() {
           body: { padding: '0 24px 12px 24px' },
         }}
       >
-        {editAnchorageId && (<>
+        {editTransferAreaId && (<>
           <style>{requiredMarkStyle}</style>
           <Form form={updateForm} layout="vertical" initialValues={{}}>
-            <AnchorageForm ref={editAnchorageFormRef} form={updateForm} id={editAnchorageId} onFinish={() => { setEditAnchorageId(undefined); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
+            <TransferAreaForm ref={editTransferAreaFormRef} form={updateForm} id={editTransferAreaId} onFinish={() => { setEditTransferAreaId(undefined); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
           </Form>
         </>)}
       </Drawer>
@@ -1131,7 +1105,7 @@ export default function AnchorageList() {
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
       <Drawer
         {...drawerProps}
-        title={<span style={drawerTitleStyle}>Chi tiết khu neo đậu{detailRecord ? ` - ${detailRecord.anchorageName}` : ''}</span>}
+        title={<span style={drawerTitleStyle}>Chi tiết khu chuyển tải{detailRecord ? ` - ${detailRecord.transferAreaName}` : ''}</span>}
         open={detailDrawerVisible}
         onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); }}
         extra={<Button type="text" onClick={() => { setDetailDrawerVisible(false); setDetailRecord(null); }} style={drawerCloseBtnStyle}>✕</Button>}
@@ -1146,7 +1120,7 @@ export default function AnchorageList() {
 
       {/* ── Delete Confirmation Modal ────────────────────────────── */}
       <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận xóa khu neo đậu</span>}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận xóa khu chuyển tải</span>}
         open={deleteModalOpen}
         onCancel={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
         footer={[
@@ -1160,14 +1134,14 @@ export default function AnchorageList() {
           <Alert message="Hành động này không thể hoàn tác" type="warning" showIcon icon={<ExclamationCircleOutlined />}
             style={{ marginBottom: spaceFormField, borderRadius: radiusPill }} />
           <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>
-            Vui lòng nhập <strong>tên neo đậu</strong> hoặc gõ <strong>"XÓA"</strong> để xác nhận xóa.
+            Vui lòng nhập <strong>tên khu chuyển tải</strong> hoặc gõ <strong>"XÓA"</strong> để xác nhận xóa.
           </p>
           {deletingRecord && (
             <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
-              Neo đậu: <strong style={{ color: textPrimary }}>{deletingRecord.anchorageName}</strong>
+              Khu chuyển tải: <strong style={{ color: textPrimary }}>{deletingRecord.transferAreaName}</strong>
             </p>
           )}
-          <Input placeholder="Nhập tên neo đậu hoặc XÓA" value={deleteConfirmText}
+          <Input placeholder="Nhập tên khu chuyển tải hoặc XÓA" value={deleteConfirmText}
             onChange={(e) => setDeleteConfirmText(e.target.value)} onPressEnter={handleConfirmDelete}
             style={{ borderRadius: radiusPill, height: 40 }} autoFocus />
         </div>
@@ -1186,10 +1160,10 @@ export default function AnchorageList() {
         ]}
         width={480}>
         <div style={{ padding: '8px 0' }}>
-          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>Vui lòng nhập lý do từ chối cho khu neo đậu:</p>
+          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>Vui lòng nhập lý do từ chối cho khu chuyển tải:</p>
           {rejectingRecord && (
             <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
-              <strong style={{ color: textPrimary }}>{rejectingRecord.anchorageName}</strong>
+              <strong style={{ color: textPrimary }}>{rejectingRecord.transferAreaName}</strong>
             </p>
           )}
           <Input.TextArea placeholder="Nhập lý do từ chối (tối thiểu 10, tối đa 500 ký tự)..." value={rejectReason}
@@ -1212,7 +1186,7 @@ export default function AnchorageList() {
         width={480}>
         <div style={{ padding: '8px 0' }}>
           <p style={{ fontSize: fontSizeMd, color: textPrimary }}>
-            Gửi <strong>{submittingRecord?.anchorageCode} — {submittingRecord?.anchorageName}</strong> để Cảng vụ phê duyệt?
+            Gửi <strong>{submittingRecord?.transferAreaCode} — {submittingRecord?.transferAreaName}</strong> để Cảng vụ phê duyệt?
           </p>
         </div>
       </Modal>
@@ -1231,7 +1205,7 @@ export default function AnchorageList() {
         width={480}>
         <div style={{ padding: '8px 0' }}>
           <p style={{ fontSize: fontSizeMd, color: textPrimary }}>
-            {approvingRecord?.approvalStatus === 'CHO_PD_CAP_CUC' ? 'Cục' : 'Cảng vụ'} phê duyệt <strong>{approvingRecord?.anchorageCode} — {approvingRecord?.anchorageName}</strong>?
+            {approvingRecord?.approvalStatus === 'CHO_PD_CAP_CUC' ? 'Cục' : 'Cảng vụ'} phê duyệt <strong>{approvingRecord?.transferAreaCode} — {approvingRecord?.transferAreaName}</strong>?
           </p>
           <div style={{ marginTop: spaceMd }}>
             <div style={{ marginBottom: spaceXs, color: textSecondary, fontSize: fontSizeMd, fontWeight: fontWeightMedium }}>Nội dung phê duyệt</div>
@@ -1252,7 +1226,7 @@ export default function AnchorageList() {
             <Space size={spaceSm} style={{ alignItems: 'center' }}>
               <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
               <span style={drawerTitleStyle}>
-                {historyMode === 'all' ? 'Tất cả lịch sử thay đổi — Khu neo đậu' : (historyTarget ? `Lịch sử thay đổi — ${historyTarget.anchorageName}` : 'Lịch sử thay đổi')}
+                {historyMode === 'all' ? 'Tất cả lịch sử thay đổi — Khu chuyển tải' : (historyTarget ? `Lịch sử thay đổi — ${historyTarget.transferAreaName}` : 'Lịch sử thay đổi')}
               </span>
               <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyFieldCount}</span>
             </Space>
@@ -1271,7 +1245,7 @@ export default function AnchorageList() {
         {!historyLoading && (
           <div style={{ display: 'none' }}>
             <Radio.Group value={historyMode} size="middle" style={{ display: 'flex', width: '100%', borderBottom: `1px solid ${borderDefault}` }}
-              onChange={async e => { const mode = e.target.value; setHistoryMode(mode); setHistoryLoading(true); setHistoryRecords([]); if (mode === 'all') { try { const res = await api.get('/v1/anchorage/history/all'); const d = res.data?.data; setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory : []); setHistoryEntityNames(d?.entityNames || {}); } catch { toast.error('Không thể tải lịch sử'); } finally { setHistoryLoading(false); } } else { try { const res = await api.get(`/v1/anchorage/${historyTarget?.id}/history`); const d = res.data?.data; setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory : []); } catch { toast.error('Không thể tải lịch sử'); } finally { setHistoryLoading(false); } } }}>
+              onChange={async e => { const mode = e.target.value; setHistoryMode(mode); setHistoryLoading(true); setHistoryRecords([]); if (mode === 'all') { try { const res = await api.get('/v1/transfer-area/history/all'); const d = res.data?.data; setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory : []); setHistoryEntityNames(d?.entityNames || {}); } catch { toast.error('Không thể tải lịch sử'); } finally { setHistoryLoading(false); } } else { try { const res = await api.get(`/v1/transfer-area/${historyTarget?.id}/history`); const d = res.data?.data; setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory : []); } catch { toast.error('Không thể tải lịch sử'); } finally { setHistoryLoading(false); } } }}>
               <Radio.Button value="current" style={{ fontWeight: fontWeightBold, color: historyMode !== 'current' ? textSecondary : actionPrimary }}>Bản ghi hiện tại</Radio.Button>
               <Radio.Button value="all" style={{ fontWeight: fontWeightBold, color: historyMode !== 'all' ? textSecondary : actionPrimary }}>Tất cả bản ghi</Radio.Button>
             </Radio.Group>
@@ -1281,7 +1255,7 @@ export default function AnchorageList() {
           <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
             <Input placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
               onChange={e => setHistorySearch(e.target.value)} style={{ flex: 1, borderRadius: radiusPill, height: 40 }} />
-            {historyMode === 'all' && <Select placeholder="Chọn khu neo đậu" allowClear showSearch value={historyEntityFilter || undefined}
+            {historyMode === 'all' && <Select placeholder="Chọn khu chuyển tải" allowClear showSearch value={historyEntityFilter || undefined}
               onChange={v => setHistoryEntityFilter(v || '')}
               filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
               style={{ width: 200, borderRadius: radiusPill, height: 40 }}
@@ -1299,7 +1273,7 @@ export default function AnchorageList() {
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         {historyLoading ? <LoadingSkeleton rows={5} /> : historyRecords.length === 0 ? (
           <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div></div>
-        ) : renderAnchorageHistoryTimeline(historyRecords)}
+        ) : renderTransferAreaHistoryTimeline(historyRecords)}
         </div>
       </Drawer>
     </div>

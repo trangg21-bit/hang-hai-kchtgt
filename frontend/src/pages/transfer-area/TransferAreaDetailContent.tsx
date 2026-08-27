@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Tabs, Table, Space, InputNumber, Collapse, Drawer, Button, Row, Col } from 'antd';
+import { Tabs, Table, Space, InputNumber, Collapse, Drawer, Button } from 'antd';
 import { FileOutlined, EyeOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { colors } from '../../theme';
@@ -7,17 +7,17 @@ import PagedTable from '../../components/list-view/PagedTable';
 import {
   textPrimary, textSecondary, textTertiary, borderDefault, surfaceCard,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
-  spaceSm, spaceMd, spaceXs, actionPrimary, radiusMd, radiusPill,
+  spaceSm, spaceMd, actionPrimary, radiusMd,
   statusOperational, statusAttention, statusCritical,
-  drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle,
+  drawerTitleStyle, drawerCloseBtnStyle,
 } from '../../tokens';
-import type { Anchorage } from '../../types/port';
+import type { TransferArea } from '../../types/port';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { resolveOrgFullPath } from '../../components/org-unit';
 import api from '../../services/api';
 
-export interface AnchorageDetailContentProps {
-  selectedRecord: Anchorage;
+export interface TransferAreaDetailContentProps {
+  selectedRecord: TransferArea;
   orgMap: Map<string, string>;
   organizations?: Array<{ id: string; name: string; parentId?: string }>;
   symbolMap: Map<string, string>;
@@ -27,14 +27,28 @@ export interface AnchorageDetailContentProps {
   detailFiles: any[];
   ddToDms: (dd: number) => { d: number; m: number; s: number };
   approvalStyleMap: Record<string, { color: string; label: string }>;
-  waterwayMap?: Map<string, string>;
   operationPlanList?: any[];
   maintenancePlanList?: any[];
   incidentList?: any[];
 }
 
 const detailLabelStyle: React.CSSProperties = { color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd };
-const detailValueBoxStyle: React.CSSProperties = { borderBottom: `1px solid ${borderDefault}`, padding: '10px 0', fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceMd };
+
+const OPERATIONAL_FUNCTIONS_LABEL_MAP: Record<string, string> = {
+  CONTAINER: 'Hàng Container',
+  GENERAL_CARGO: 'Hàng tổng hợp (Bách hóa)',
+  BULK_CARGO: 'Hàng chuyên dụng hàng rời, quặng',
+  OIL_GAS: 'Hàng chuyên dụng xăng dầu, khí hóa lỏng',
+  OTHER: 'Hàng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu...)',
+  PASSENGER: 'Hành khách',
+};
+
+const formatOperationalFunctions = (v?: string | null): string => {
+  if (!v) return '—';
+  const parts = v.split(',').map((s) => s.trim()).filter(Boolean);
+  if (parts.length === 0) return '—';
+  return parts.map((code) => OPERATIONAL_FUNCTIONS_LABEL_MAP[code] || code).join(', ');
+};
 
 // Parse tọa độ GPS: ưu tiên WKT (coordinates) từ backend — hỗ trợ POINT/MULTIPOINT/LINESTRING/POLYGON;
 // fallback sang latitude/longitude (backend chỉ parse được cho POINT).
@@ -73,7 +87,7 @@ const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> =
 
 const fmtDateTime = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—');
 
-export default function AnchorageDetailContent({
+export default function TransferAreaDetailContent({
   selectedRecord,
   orgMap,
   organizations = [],
@@ -84,13 +98,13 @@ export default function AnchorageDetailContent({
   detailFiles,
   ddToDms,
   approvalStyleMap,
-  waterwayMap = new Map<string, string>(),
   operationPlanList = [],
   maintenancePlanList = [],
   incidentList = [],
-}: AnchorageDetailContentProps) {
+}: TransferAreaDetailContentProps) {
   const r = selectedRecord;
   const [announcementOpen, setAnnouncementOpen] = useState(true);
+  const [activityOpen, setActivityOpen] = useState(true);
   const [waterAreaOpen, setWaterAreaOpen] = useState(true);
   const [technicalOpen, setTechnicalOpen] = useState(true);
   const [operationOpen, setOperationOpen] = useState(true);
@@ -104,7 +118,7 @@ export default function AnchorageDetailContent({
   const loadDetailData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/v1/anchorage/${selectedRecord.id}/history`);
+      const res = await api.get(`/v1/transfer-area/${selectedRecord.id}/history`);
       const data = res.data?.data || res.data || {};
       setChangeHistory(data.changeHistory || []);
       setApprovalLogs(data.approvalLog || []);
@@ -143,13 +157,13 @@ export default function AnchorageDetailContent({
                     );
                   })(),],
                   ['Thuộc cảng biển', <span style={{ fontWeight: fontWeightBold }}>{portOptions.find(o => o.value === r.portId)?.label || r.portId || '—'}</span>],
-                  ['Mã khu neo đậu', <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{r.anchorageCode || '—'}</span>],
-                  ['Tên khu neo đậu', <span style={{ fontWeight: fontWeightBold }}>{r.anchorageName || '—'}</span>],
+                  ['Mã khu chuyển tải', <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{r.transferAreaCode || '—'}</span>],
+                  ['Tên khu chuyển tải', <span style={{ fontWeight: fontWeightBold }}>{r.transferAreaName || '—'}</span>],
                   ['Cấp bảo mật', r.securityLevel != null ? ({ 0: 'Công khai', 1: 'Nội bộ', 2: 'Rất bí mật' }[r.securityLevel] || '—') : '—'],
-                  ['Thuộc luồng hàng hải', waterwayMap.get(r.navigationChannelId || '') || r.navigationChannelId || '—'],
-                  ['Thuộc bến phao', r.buoyStationId || '—'],
-                  ['Địa điểm (Tỉnh/Thành Phố)', r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '—' : '—'],
+                  ['Công năng khai thác', formatOperationalFunctions(r.operationalFunctions)],
+                  ['Địa điểm (Tỉnh/Thành phố)', r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '—' : '—'],
                   ['Địa điểm chi tiết', r.detailedLocation || '—'],
+                  ['Hình dạng', r.shapeDescription || '—'],
                   ['Tình trạng', (() => { const s = r.operationalStatus; const m: Record<string,{color:string;label:string}> = { OPERATIONAL:{color:statusOperational,label:'Đang khai thác/Vận hành'}, NOT_YET_OPERATIONAL:{color:statusAttention,label:'Chưa khai thác/Vận hành'}, SUSPENDED:{color:statusCritical,label:'Dừng khai thác/Vận hành'} }; const b = s && m[s]; return b ? <span style={{ display:'inline-flex',padding:'2px 10px',borderRadius:999,fontSize:fontSizeMd,fontWeight:fontWeightMedium,background:`${b.color}15`,color:b.color }}>{b.label}</span> : '—'; })(),],
                 ].map(([label, value], i) => (
                   <div key={i} className="detail-row">
@@ -165,15 +179,14 @@ export default function AnchorageDetailContent({
               {technicalOpen && (
               <div className="detail-grid">
                 {[
-                  ['Hình dạng', r.shapeDescription || '—'],
                   ['Diện tích (ha)', r.area != null ? Number(r.area).toLocaleString('vi-VN') : '—'],
                   ['Độ sâu khu nước theo thiết kế (m)', r.designWaterDepth != null ? Number(r.designWaterDepth).toLocaleString('vi-VN') : '—'],
                   ['Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)', r.currentWaterDepth != null ? Number(r.currentWaterDepth).toLocaleString('vi-VN') : '—'],
                   ['Cao độ đáy bến thiết kế', r.bottomElevationDesign != null ? Number(r.bottomElevationDesign).toLocaleString('vi-VN') : '—'],
                   ['Cỡ tàu khai thác theo công bố (DWT)', r.maxVesselDWT != null ? Number(r.maxVesselDWT).toLocaleString('vi-VN') : '—'],
-                  ['Số lượng khu neo đậu đang khai thác', r.activeAnchorageCount || '—'],
-                  ['Số lượng khu neo đậu đã công bố', r.publishedAnchorageCount || '—'],
-                  ['Số lượng khu neo đậu đang được thỏa thuận đầu tư xây dựng', r.underInvestmentAnchorageCount || '—'],
+                  ['Số lượng khu chuyển tải đang khai thác', r.activeTransferCount || '—'],
+                  ['Số lượng khu chuyển tải đã công bố', r.publishedTransferCount || '—'],
+                  ['Số lượng khu chuyển tải đang được thỏa thuận đầu tư xây dựng', r.underInvestmentTransferCount || '—'],
                 ].map(([label, value], i) => (
                   <div key={i} className="detail-row">
                     <span className="detail-label">{label}</span>
@@ -186,8 +199,8 @@ export default function AnchorageDetailContent({
                 </div>
               </div>
               )}
-
-              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setAnnouncementOpen(!announcementOpen)}>
+              {/* ── Toggle: Thông tin công bố mở, đưa vào sử dụng (giống thêm mới) ── */}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setAnnouncementOpen(!announcementOpen)}>
                 <span style={{ color: announcementOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{announcementOpen ? '▼' : '▶'} Thông tin công bố mở, đưa vào sử dụng</span>
               </button>
               {announcementOpen && (
@@ -205,7 +218,26 @@ export default function AnchorageDetailContent({
                 </div>
               )}
 
-              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setWaterAreaOpen(!waterAreaOpen)}>
+              {/* ── Toggle: Thông tin thời gian hoạt động (giống thêm mới) ── */}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setActivityOpen(!activityOpen)}>
+                <span style={{ color: activityOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{activityOpen ? '▼' : '▶'} Thông tin thời gian hoạt động</span>
+              </button>
+              {activityOpen && (
+                <div className="detail-grid" style={{ marginTop: 4 }}>
+                  {[
+                    ['Thời gian hoạt động (Từ ngày)', fmtDateTime(r.activityStartDate)],
+                    ['Thời gian hoạt động (Đến ngày)', fmtDateTime(r.activityEndDate)],
+                  ].map(([label, value], i) => (
+                    <div key={i} className="detail-row">
+                      <span className="detail-label">{label}</span>
+                      <span className="detail-value">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Toggle: Thông tin khu nước neo buộc tàu (giống thêm mới) ── */}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setWaterAreaOpen(!waterAreaOpen)}>
                 <span style={{ color: waterAreaOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{waterAreaOpen ? '▼' : '▶'} Thông tin khu nước neo buộc tàu</span>
               </button>
               {waterAreaOpen && (

@@ -234,6 +234,27 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "anchorage", "history", "Lịch sử phê duyệt khu neo đậu",
                                 "Xem lịch sử thay đổi khu neo đậu");
 
+                // 8.2.2 Khu chuyển tải (Transfer Area)
+                seedPermission(definitions, "transferarea", "read", "Xem khu chuyển tải",
+                                "Tra cứu thông tin khu chuyển tải");
+                seedPermission(definitions, "transferarea", "read:restricted", "Xem bản ghi hạn chế khu chuyển tải",
+                                "Xem các bản ghi dữ liệu mức độ Hạn chế của khu chuyển tải");
+                seedPermission(definitions, "transferarea", "read:confidential", "Xem bản ghi mật khu chuyển tải",
+                                "Xem các bản ghi dữ liệu mức độ Mật của khu chuyển tải");
+                seedPermission(definitions, "transferarea", "create", "Thêm khu chuyển tải",
+                                "Tạo mới hồ sơ khu chuyển tải");
+                seedPermission(definitions, "transferarea", "update", "Cập nhật khu chuyển tải",
+                                "Chỉnh sửa thông tin khu chuyển tải");
+                seedPermission(definitions, "transferarea", "delete", "Xóa khu chuyển tải", "Xóa khu chuyển tải");
+                seedPermission(definitions, "transferarea", "approve", "Phê duyệt khu chuyển tải",
+                                "Phê duyệt dữ liệu khu chuyển tải");
+                seedPermission(definitions, "transferarea", "approvec1", "Phê duyệt C1 khu chuyển tải",
+                                "Phê duyệt cấp 1 khu chuyển tải");
+                seedPermission(definitions, "transferarea", "approvec2", "Phê duyệt C2 khu chuyển tải",
+                                "Phê duyệt cấp 2 khu chuyển tải");
+                seedPermission(definitions, "transferarea", "history", "Lịch sử phê duyệt khu chuyển tải",
+                                "Xem lịch sử thay đổi khu chuyển tải");
+
                 // 8.3 Cầu cảng (Pier)
                 seedPermission(definitions, "pier", "read", "Xem cầu cảng", "Tra cứu thông tin cầu cảng");
                 seedPermission(definitions, "pier", "read:restricted", "Xem bản ghi hạn chế cầu cảng",

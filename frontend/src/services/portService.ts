@@ -20,6 +20,10 @@ import type {
   CreateAnchorageRequest,
   UpdateAnchorageRequest,
   AnchorageApprovalResponse,
+  TransferArea,
+  CreateTransferAreaRequest,
+  UpdateTransferAreaRequest,
+  TransferAreaApprovalResponse,
 } from '../types/port';
 
 // ── Helper: search params builder ──────────────────────────────────
@@ -823,5 +827,129 @@ export const anchorageCRUD = {
 
   async deleteAttachment(id: string, attId: string): Promise<void> {
     await api.delete(`/v1/anchorage/${id}/attachments/${attId}`);
+  },
+};
+
+// ── Transfer Area (Khu chuyển tải) CRUD ───────────────────────────
+
+export const transferAreaCRUD = {
+  async findAll(params?: {
+    page?: number;
+    size?: number;
+    orgUnitId?: string;
+  }): Promise<PaginatedResponse<TransferArea>> {
+    const sp = buildSearchParams({
+      page: params?.page !== undefined ? params.page - 1 : undefined,
+      size: params?.size,
+      orgUnitId: params?.orgUnitId,
+    });
+    const res = await api.get(`/v1/transfer-area?${sp}`);
+    const pageData = res.data.data;
+    return {
+      data: pageData.content || [],
+      total: pageData.totalElements ?? 0,
+      page: (pageData.number ?? 0) + 1,
+      pageSize: pageData.size ?? 20,
+    };
+  },
+
+  async findById(id: string): Promise<TransferArea> {
+    const res = await api.get(`/v1/transfer-area/${id}`);
+    return res.data.data;
+  },
+
+  async search(params?: {
+    transferAreaName?: string;
+    transferAreaCode?: string;
+    portId?: string;
+    orgUnitId?: string;
+    provinceId?: number;
+    operationalFunctions?: string;
+    operationalStatus?: string;
+    approvalStatus?: string;
+    updatedFrom?: string;
+    updatedTo?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<PaginatedResponse<TransferArea>> {
+    const sp = buildSearchParams({
+      transferAreaName: params?.transferAreaName,
+      transferAreaCode: params?.transferAreaCode,
+      portId: params?.portId,
+      orgUnitId: params?.orgUnitId,
+      provinceId: params?.provinceId,
+      operationalFunctions: params?.operationalFunctions,
+      operationalStatus: params?.operationalStatus,
+      approvalStatus: params?.approvalStatus,
+      updatedFrom: params?.updatedFrom,
+      updatedTo: params?.updatedTo,
+      page: params?.page !== undefined ? params.page - 1 : undefined,
+      size: params?.pageSize,
+    });
+    const res = await api.get(`/v1/transfer-area?${sp}`);
+    const pageData = res.data.data;
+    return {
+      data: pageData.content || [],
+      total: pageData.totalElements ?? 0,
+      page: (pageData.number ?? 0) + 1,
+      pageSize: pageData.size ?? 20,
+    };
+  },
+
+  async create(payload: CreateTransferAreaRequest): Promise<TransferArea> {
+    const res = await api.post('/v1/transfer-area', payload);
+    return res.data.data;
+  },
+
+  async update(payload: UpdateTransferAreaRequest): Promise<TransferArea> {
+    const res = await api.put('/v1/transfer-area', payload);
+    return res.data.data;
+  },
+
+  async delete(id: string): Promise<void> {
+    await api.delete(`/v1/transfer-area/${id}`);
+  },
+
+  async generateCode(portId: string): Promise<{ transferAreaCode: string }> {
+    const res = await api.get(`/v1/transfer-area/generate-code?portId=${portId}`);
+    return res.data.data;
+  },
+
+  async approve(id: string, cap: string, content?: string): Promise<void> {
+    await api.post(`/v1/transfer-area/${id}/approve`, { cap, content });
+  },
+
+  async reject(id: string, cap: string, lyDo: string): Promise<void> {
+    await api.post(`/v1/transfer-area/${id}/reject`, { cap, lyDo });
+  },
+
+  async getHistory(id: string): Promise<TransferAreaApprovalResponse> {
+    const res = await api.get(`/v1/transfer-area/${id}/history`);
+    return res.data.data;
+  },
+
+  async getAllHistory(): Promise<any> {
+    const res = await api.get('/v1/transfer-area/history/all');
+    return res.data.data;
+  },
+
+  async uploadAttachments(id: string, files: File[]): Promise<any> {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('files', file);
+    }
+    const res = await api.post(`/v1/transfer-area/${id}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data.data;
+  },
+
+  async listAttachments(id: string): Promise<any> {
+    const res = await api.get(`/v1/transfer-area/${id}/attachments`);
+    return res.data.data;
+  },
+
+  async deleteAttachment(id: string, attId: string): Promise<void> {
+    await api.delete(`/v1/transfer-area/${id}/attachments/${attId}`);
   },
 };
