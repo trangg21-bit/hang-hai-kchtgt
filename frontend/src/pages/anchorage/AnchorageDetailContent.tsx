@@ -145,7 +145,6 @@ export default function AnchorageDetailContent({
                   ['Thuộc cảng biển', <span style={{ fontWeight: fontWeightBold }}>{portOptions.find(o => o.value === r.portId)?.label || r.portId || '—'}</span>],
                   ['Mã khu neo đậu', <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{r.anchorageCode || '—'}</span>],
                   ['Tên khu neo đậu', <span style={{ fontWeight: fontWeightBold }}>{r.anchorageName || '—'}</span>],
-                  ['Cấp bảo mật', r.securityLevel != null ? ({ 0: 'Công khai', 1: 'Nội bộ', 2: 'Rất bí mật' }[r.securityLevel] || '—') : '—'],
                   ['Thuộc luồng hàng hải', waterwayMap.get(r.navigationChannelId || '') || r.navigationChannelId || '—'],
                   ['Thuộc bến phao', r.buoyStationName || r.buoyStationId || '—'],
                   ['Địa điểm (Tỉnh/Thành Phố)', r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '—' : '—'],

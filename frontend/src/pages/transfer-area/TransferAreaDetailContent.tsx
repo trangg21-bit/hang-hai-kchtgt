@@ -159,7 +159,6 @@ export default function TransferAreaDetailContent({
                   ['Thuộc cảng biển', <span style={{ fontWeight: fontWeightBold }}>{portOptions.find(o => o.value === r.portId)?.label || r.portId || '—'}</span>],
                   ['Mã khu chuyển tải', <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{r.transferAreaCode || '—'}</span>],
                   ['Tên khu chuyển tải', <span style={{ fontWeight: fontWeightBold }}>{r.transferAreaName || '—'}</span>],
-                  ['Cấp bảo mật', r.securityLevel != null ? ({ 0: 'Công khai', 1: 'Nội bộ', 2: 'Rất bí mật' }[r.securityLevel] || '—') : '—'],
                   ['Công năng khai thác', formatOperationalFunctions(r.operationalFunctions)],
                   ['Địa điểm (Tỉnh/Thành phố)', r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '—' : '—'],
                   ['Địa điểm chi tiết', r.detailedLocation || '—'],
