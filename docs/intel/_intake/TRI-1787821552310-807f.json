@@ -1,0 +1,172 @@
+{
+  "triage_id": "TRI-1787821552310-807f",
+  "created_at": 1787821552311,
+  "request_summary": "Clone toàn bộ cấu trúc Khu chuyển tải/Bến phao (DB+BE+FE: bộ lọc, danh sách, thêm mới, sửa, chi tiết) sang module Quản lý cơ sở sửa chữa đóng tàu theo CSV đặc tả 45 trường.",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/App.tsx",
+      "frontend/src/components/AppLayout.tsx",
+      "frontend/src/pages/ship-repair-yard/ShipRepairYardDetailContent.tsx",
+      "frontend/src/pages/ship-repair-yard/ShipRepairYardForm.tsx",
+      "frontend/src/pages/ship-repair-yard/ShipRepairYardListPage.tsx",
+      "frontend/src/services/portService.ts",
+      "frontend/src/types/port.ts",
+      "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java",
+      "src/main/java/com/hanghai/kchtg/gis/search/dto/InfrastructureType.java",
+      "src/main/java/com/hanghai/kchtg/gis/spatial/entity/GisSpatialObjectType.java",
+      "src/main/java/com/hanghai/kchtg/gis/spatial/service/GisSpatialObjectService.java",
+      "src/main/java/com/hanghai/kchtg/port/controller/ShipRepairYardController.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/shiprepairyard/ApproveRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/shiprepairyard/AttachmentDto.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/shiprepairyard/CreateShipRepairYardRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/shiprepairyard/RejectRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/shiprepairyard/ShipRepairYardResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/shiprepairyard/UpdateShipRepairYardRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/ShipRepairYard.java",
+      "src/main/java/com/hanghai/kchtg/port/repository/ShipRepairYardRepository.java",
+      "src/main/java/com/hanghai/kchtg/port/service/ShipRepairYardApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/ShipRepairYardService.java",
+      "src/main/resources/db/migration/V20260830000000__create_ship_repair_yards.sql"
+    ],
+    "impact_files": [
+      "frontend/src/App.tsx",
+      "frontend/src/components/AppLayout.tsx",
+      "frontend/src/pages/ship-repair-yard/ShipRepairYardDetailContent.tsx",
+      "frontend/src/pages/ship-repair-yard/ShipRepairYardForm.tsx",
+      "frontend/src/pages/ship-repair-yard/ShipRepairYardListPage.tsx",
+      "frontend/src/services/portService.ts",
+      "frontend/src/types/port.ts",
+      "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java",
+      "src/main/java/com/hanghai/kchtg/gis/search/dto/InfrastructureType.java",
+      "src/main/java/com/hanghai/kchtg/gis/spatial/entity/GisSpatialObjectType.java",
+      "src/main/java/com/hanghai/kchtg/gis/spatial/service/GisSpatialObjectService.java",
+      "src/main/java/com/hanghai/kchtg/port/controller/ShipRepairYardController.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/shiprepairyard/ApproveRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/shiprepairyard/AttachmentDto.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/shiprepairyard/CreateShipRepairYardRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/shiprepairyard/RejectRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/shiprepairyard/ShipRepairYardResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/shiprepairyard/UpdateShipRepairYardRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/ShipRepairYard.java",
+      "src/main/java/com/hanghai/kchtg/port/repository/ShipRepairYardRepository.java",
+      "src/main/java/com/hanghai/kchtg/port/service/ShipRepairYardApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/ShipRepairYardService.java",
+      "src/main/resources/db/migration/V20260830000000__create_ship_repair_yards.sql"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/V20260830000000__create_ship_repair_yards.sql"
+      }
+    ],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C3: one-way door: schema:src/main/resources/db/migration/V20260830000000__create_ship_repair_yards.sql — floors at C3 regardless of size (23 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Menu AppLayout \"Quản lý cơ sở sửa chữa đóng tàu\" → route /ship-repair-yard → ShipRepairYardListPage",
+  "blast_radius": 23,
+  "done_oracle": "Màn hình \"Quản lý cơ sở sửa chữa đóng tàu\" (route /ship-repair-yard, menu + quyền shiprepairyard:*) hoạt động đầy đủ như Bến phao: bộ lọc, danh sách, thêm mới, chỉnh sửa, chi tiết theo CSV QL cơ sở sửa chữa đóng tàu (45 trường, 5 tab); BE compile pass, FE build pass.",
+  "verification_commands": [
+    {
+      "command": "mvn clean compile -q",
+      "cwd": ".",
+      "timeout_ms": 600000
+    },
+    {
+      "command": "npm run build",
+      "cwd": "frontend",
+      "timeout_ms": 600000
+    }
+  ],
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/entity/BuoyBerth.java",
+      "line": 44,
+      "quote": "public class BuoyBerth extends BaseEntity {",
+      "source_hash": "14ebce8b44bc0df9f8e17064ad71cbaa4f1b8284868a2e5a9a32af1a268b0879",
+      "quote_hash": "213353612d4d1d31115840f399e646480db3bc63cbc8d12187ebc9c258594f26",
+      "note": "Template entity chuẩn cho clone CSSCĐT — có orgUnitId/portId/provinceId/GIS/approval 2 cấp"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/BuoyBerthService.java",
+      "line": 284,
+      "quote": "public String generateBuoyBerthCode(UUID portId) {",
+      "source_hash": "215ab3d3413738deaab35995383d7e242b31cee5759f0c1e73739fce0e7d212c",
+      "quote_hash": "271350bc83ceed06e0dfa789ac3c17a710be8ef9591fe9c36db6c06f35b7a6b6",
+      "note": "Pattern sinh mã tự động {portCode}-BP-{seq} — clone thành -SCDT-"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java",
+      "line": 280,
+      "quote": "seedPermission(definitions, \"buoyberth\", \"read\", \"Xem bến phao\",",
+      "source_hash": "221289288da7077db951bebc9b2887b9b402eadee98893e37c723fa7ab427d19",
+      "quote_hash": "232a87917be0fbd4ab0b91e22d480f9067c6e8bfe16f3eaa4723dad6287e2e71",
+      "note": "Block 10 quyền buoyberth — clone thành block shiprepairyard"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/gis/spatial/entity/GisSpatialObjectType.java",
+      "line": 25,
+      "quote": "POLYGON_BUOY_BERTH(37, \"Bến phao\"),",
+      "source_hash": "b5ca29fc4126d40b8d598feb18d40595da5de051bb0358fc217c40754855ed0e",
+      "quote_hash": "67b590c35c16959ab7687f1b8e7b83dfc7635745976ffe092f25a07d34fb7326",
+      "note": "Thêm POLYGON_SHIP_REPAIR_YARD(38) cạnh các polygon hiện có"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/gis/spatial/service/GisSpatialObjectService.java",
+      "line": 45,
+      "quote": "case BUOY_BERTH -> GisSpatialObjectType.POLYGON_BUOY_BERTH;",
+      "source_hash": "a22587094cda5b7a7386fd35002d9dafb74c8e15ae71c5b1c579f51e71d4750a",
+      "quote_hash": "b52940de6f6e21c85b4522cdc0e1b1667e91c0e20f5f7328cf87ae0b0a4b5371",
+      "note": "Thêm case SHIP_REPAIR_YARD trong switch polygon"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/gis/search/dto/InfrastructureType.java",
+      "line": 17,
+      "quote": "BUOY_BERTH,\n    ANCHORAGE_AREA,\n    TRANSSHIPMENT_AREA,",
+      "source_hash": "0cd6fb5b76c09abb4e9e024f43e6beade77d17ee632df3abb8f7e25d935c6af0",
+      "quote_hash": "a1689bb5866f5c60af92ae800dd15f584e69b30abe156b1442165753474b4b04",
+      "note": "Thêm SHIP_REPAIR_YARD vào enum cạnh BUOY_BERTH (SHIP_REPAIR_FACILITY đã tồn tại cho module cũ)"
+    },
+    {
+      "file": "frontend/src/services/portService.ts",
+      "line": 1095,
+      "quote": "export const buoyBerthCRUD = {",
+      "source_hash": "cc378c1ff95253165e4c4b94a21440866527ac402962b61dbb70c8c090545c56",
+      "quote_hash": "bb41025925dc38fea7c41c17e137796dd0d74a80a88bc87d12c82354b4f72379",
+      "note": "Clone CRUD service cho shipRepairYardCRUD"
+    },
+    {
+      "file": "frontend/src/App.tsx",
+      "line": 213,
+      "quote": "<Route path=\"/buoy-berth\" element={<PermissionGuard permission=\"buoyberth:read\"><BuoyBerthList /></PermissionGuard>} />",
+      "source_hash": "7fbc600e4018ce3c716d271e5ffb84ce2904159a31f66b442e008f0c9ff3b80e",
+      "quote_hash": "dbb587e8eba6125ac247c9c56d70f8b22435ddb04355312dcba029b9a54a2f49",
+      "note": "Clone route /ship-repair-yard"
+    },
+    {
+      "file": "frontend/src/components/AppLayout.tsx",
+      "line": 333,
+      "quote": "canAccessMenu('/buoy-berth') ? { key: '/buoy-berth', label: 'Quản lý bến phao', icon: <AimOutlined /> } : null,",
+      "source_hash": "6054857392af45e0de0d5e61bfd07f0f31106fa58f0e92ced02a919a37812ee3",
+      "quote_hash": "f145c7a393573f9ee8ca353a606dbdcafbf0622bcf1510166265f7d2b14bf440",
+      "note": "Clone menu item"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "a769af941a22800177f68aaee9f2e135863eb734",
+    "dirty": true,
+    "captured_at": 1787821552690
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}
