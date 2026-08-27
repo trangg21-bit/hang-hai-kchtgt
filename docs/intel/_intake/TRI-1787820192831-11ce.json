@@ -1,0 +1,133 @@
+{
+  "triage_id": "TRI-1787820192831-11ce",
+  "created_at": 1787820192831,
+  "request_summary": "Áp dụng chuẩn cảng biển (mỗi drawer con nhỏ hơn cha 50px: 1000→950→900) cho chuỗi drawer chi tiết bến phao và 3 module khu nước; sửa lỗi 2 nút X ở drawer 'Chi tiết kết cấu hạ tầng' (bến phao) và drawer chi tiết phao tiêu",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/anchorage/AnchorageDetailContent.tsx",
+      "frontend/src/pages/anchorage/AnchorageListPage.tsx",
+      "frontend/src/pages/buoy-berth/BuoyBerthListPage.tsx",
+      "frontend/src/pages/storm-shelter/StormShelterDetailContent.tsx",
+      "frontend/src/pages/storm-shelter/StormShelterListPage.tsx",
+      "frontend/src/pages/transfer-area/TransferAreaDetailContent.tsx",
+      "frontend/src/pages/transfer-area/TransferAreaListPage.tsx",
+      "frontend/src/services/buoy/BuoyListPage.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/anchorage/AnchorageDetailContent.tsx",
+      "frontend/src/pages/anchorage/AnchorageListPage.tsx",
+      "frontend/src/pages/buoy-berth/BuoyBerthListPage.tsx",
+      "frontend/src/pages/storm-shelter/StormShelterDetailContent.tsx",
+      "frontend/src/pages/storm-shelter/StormShelterListPage.tsx",
+      "frontend/src/pages/transfer-area/TransferAreaDetailContent.tsx",
+      "frontend/src/pages/transfer-area/TransferAreaListPage.tsx",
+      "frontend/src/services/buoy/BuoyListPage.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C2: 8 edit-target files exceed the inline gate (8 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn Danh sách bến phao → Chi tiết bến phao → tab Kết cấu hạ tầng → Chi tiết kết cấu hạ tầng; Màn Danh sách khu neo đậu / khu chuyển tải / khu tránh trú bão → Chi tiết → Chi tiết thông tin khu nước neo buộc tàu",
+  "blast_radius": 8,
+  "done_oracle": "Trong chi tiết bến phao: drawer 'Chi tiết kết cấu hạ tầng' chỉ còn 1 nút X. Chuỗi kích thước drawer: chi tiết bến phao 1000px → chi tiết kết cấu hạ tầng 950px → chi tiết thông tin khu nước neo buộc tàu 900px; chi tiết khu neo đậu / khu chuyển tải / khu tránh trú bão 950px → chi tiết thông tin khu nước neo buộc tàu 900px — mỗi cấp con nhỏ hơn cha đúng 50px như cảng biển. Build frontend thành công.",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "frontend",
+      "timeout_ms": 180000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/buoy-berth/BuoyBerthListPage.tsx",
+      "line": 1147,
+      "quote": "{...drawerProps}",
+      "source_hash": "852471468c93cc6e48cae852aced14a3ef830882c72f99fafd70e76247448a69",
+      "quote_hash": "8bf6c0efbb43efc512d5bfcdbe4fbfc59325125cb30e402e3d4b2027ea871b85",
+      "note": "Drawer cha 'Chi tiết bến phao' đang width 50% — cần override width={1000} để con (950) nhỏ hơn đúng 50px"
+    },
+    {
+      "file": "frontend/src/pages/buoy-berth/BuoyBerthListPage.tsx",
+      "line": 1170,
+      "quote": "extra={<Button type=\"text\" onClick={() => setInfraDetail(null)} style={drawerCloseBtnStyle}>✕</Button>}",
+      "source_hash": "852471468c93cc6e48cae852aced14a3ef830882c72f99fafd70e76247448a69",
+      "quote_hash": "28d47b9cca14eb0ee27029ba40c54f2603d7c7385bb30f160c9ab74e92861db5",
+      "note": "AppDrawer tự render nút X — extra ✕ này tạo ra 2 nút X ở drawer 'Chi tiết kết cấu hạ tầng', cần xóa"
+    },
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageListPage.tsx",
+      "line": 1133,
+      "quote": "{...drawerProps}",
+      "source_hash": "1442ba37ea31eaece928a6899c4c03b2eb5b4f15fcabe57477c08bd79d218b3f",
+      "quote_hash": "8bf6c0efbb43efc512d5bfcdbe4fbfc59325125cb30e402e3d4b2027ea871b85",
+      "note": "Drawer cha 'Chi tiết khu neo đậu' đang 50% — override width={950} để con (khu nước 900) nhỏ hơn 50px"
+    },
+    {
+      "file": "frontend/src/pages/transfer-area/TransferAreaListPage.tsx",
+      "line": 1107,
+      "quote": "{...drawerProps}",
+      "source_hash": "22c2cfd468171054021d98f62059cbc67be3e1d879dde3e1c149a49840f9962d",
+      "quote_hash": "8bf6c0efbb43efc512d5bfcdbe4fbfc59325125cb30e402e3d4b2027ea871b85",
+      "note": "Drawer cha 'Chi tiết khu chuyển tải' đang 50% — override width={950}"
+    },
+    {
+      "file": "frontend/src/pages/storm-shelter/StormShelterListPage.tsx",
+      "line": 1121,
+      "quote": "{...drawerProps}",
+      "source_hash": "538c2ede54c1cc74ca68dde080cfd34e618118fd2aa9cd998ca9078be9c7b5e5",
+      "quote_hash": "8bf6c0efbb43efc512d5bfcdbe4fbfc59325125cb30e402e3d4b2027ea871b85",
+      "note": "Drawer cha 'Chi tiết khu tránh, trú bão' đang 50% — override width={950}"
+    },
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageDetailContent.tsx",
+      "line": 459,
+      "quote": "title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin khu nước neo buộc tàu</span>}\n        width={950}",
+      "source_hash": "ea12c0c403de66b1db0de4ef2a6a4b08ed3f61a7f2edc8ebfcfb3b124e80c889",
+      "quote_hash": "6a0179c80993bed6f1ab3504c84a1d488f157102a43c3a2a72d2c5bd1bab21fc",
+      "note": "Drawer 'Chi tiết thông tin khu nước neo buộc tàu' — revert về 900 (cấp con thứ 2, nhỏ hơn cha 950 đúng 50px)"
+    },
+    {
+      "file": "frontend/src/pages/transfer-area/TransferAreaDetailContent.tsx",
+      "line": 491,
+      "quote": "title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin khu nước neo buộc tàu</span>}\n        width={950}",
+      "source_hash": "bf49fa9d18df266aa6272bff8bdfdd00a6165dac8d8ddfd65d1f0ae977f7e16d",
+      "quote_hash": "6a0179c80993bed6f1ab3504c84a1d488f157102a43c3a2a72d2c5bd1bab21fc",
+      "note": "Revert về 900 như AnchorageDetailContent"
+    },
+    {
+      "file": "frontend/src/pages/storm-shelter/StormShelterDetailContent.tsx",
+      "line": 457,
+      "quote": "title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin khu nước neo buộc tàu</span>}\n        width={950}",
+      "source_hash": "5fa952765a01f89a9e1ae88fd6e661d0156551a15de78b3f7ef0a4fb931a2f51",
+      "quote_hash": "6a0179c80993bed6f1ab3504c84a1d488f157102a43c3a2a72d2c5bd1bab21fc",
+      "note": "Revert về 900 như AnchorageDetailContent"
+    },
+    {
+      "file": "frontend/src/services/buoy/BuoyListPage.tsx",
+      "line": 1835,
+      "quote": "<Button type=\"text\" onClick={closeDetailDrawer} style={drawerCloseBtnStyle}>✕</Button>",
+      "source_hash": "78d00856a2577ac522c657f2265c0fe5407bcf4294ce37fe614f56e728f3d748",
+      "quote_hash": "3973427f713132f9782b40250b92889a67234c0fcf47e86f61926895e8f919bf",
+      "note": "AppDrawer chi tiết phao tiêu cũng truyền extra ✕ → 2 nút X, cùng defect với bến phao"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "677ec0b84427178895ee121682574109cc925c1f",
+    "dirty": true,
+    "captured_at": 1787820193007
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

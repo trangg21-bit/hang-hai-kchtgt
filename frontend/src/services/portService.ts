@@ -28,6 +28,10 @@ import type {
   CreateStormShelterRequest,
   UpdateStormShelterRequest,
   StormShelterApprovalResponse,
+  BuoyBerth,
+  CreateBuoyBerthRequest,
+  UpdateBuoyBerthRequest,
+  BuoyBerthApprovalResponse,
 } from '../types/port';
 
 // ── Helper: search params builder ──────────────────────────────────
@@ -1083,5 +1087,131 @@ export const stormShelterCRUD = {
 
   async deleteAttachment(id: string, attId: string): Promise<void> {
     await api.delete(`/v1/storm-shelter/${id}/attachments/${attId}`);
+  },
+};
+
+// ── Buoy Berth (Bến phao) CRUD ─────────────────────────
+
+export const buoyBerthCRUD = {
+  async findAll(params?: {
+    page?: number;
+    size?: number;
+    orgUnitId?: string;
+  }): Promise<PaginatedResponse<BuoyBerth>> {
+    const sp = buildSearchParams({
+      page: params?.page !== undefined ? params.page - 1 : undefined,
+      size: params?.size,
+      orgUnitId: params?.orgUnitId,
+    });
+    const res = await api.get(`/v1/buoy-berth?${sp}`);
+    const pageData = res.data.data;
+    return {
+      data: pageData.content || [],
+      total: pageData.totalElements ?? 0,
+      page: (pageData.number ?? 0) + 1,
+      pageSize: pageData.size ?? 20,
+    };
+  },
+
+  async findById(id: string): Promise<BuoyBerth> {
+    const res = await api.get(`/v1/buoy-berth/${id}`);
+    return res.data.data;
+  },
+
+  async search(params?: {
+    buoyBerthName?: string;
+    buoyBerthCode?: string;
+    portId?: string;
+    orgUnitId?: string;
+    waterwayId?: string;
+    classification?: string;
+    provinceId?: number;
+    operationalStatus?: string;
+    approvalStatus?: string;
+    updatedFrom?: string;
+    updatedTo?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<PaginatedResponse<BuoyBerth>> {
+    const sp = buildSearchParams({
+      buoyBerthName: params?.buoyBerthName,
+      buoyBerthCode: params?.buoyBerthCode,
+      portId: params?.portId,
+      orgUnitId: params?.orgUnitId,
+      waterwayId: params?.waterwayId,
+      classification: params?.classification,
+      provinceId: params?.provinceId,
+      operationalStatus: params?.operationalStatus,
+      approvalStatus: params?.approvalStatus,
+      updatedFrom: params?.updatedFrom,
+      updatedTo: params?.updatedTo,
+      page: params?.page !== undefined ? params.page - 1 : undefined,
+      size: params?.pageSize,
+    });
+    const res = await api.get(`/v1/buoy-berth?${sp}`);
+    const pageData = res.data.data;
+    return {
+      data: pageData.content || [],
+      total: pageData.totalElements ?? 0,
+      page: (pageData.number ?? 0) + 1,
+      pageSize: pageData.size ?? 20,
+    };
+  },
+
+  async create(payload: CreateBuoyBerthRequest): Promise<BuoyBerth> {
+    const res = await api.post('/v1/buoy-berth', payload);
+    return res.data.data;
+  },
+
+  async update(payload: UpdateBuoyBerthRequest): Promise<BuoyBerth> {
+    const res = await api.put('/v1/buoy-berth', payload);
+    return res.data.data;
+  },
+
+  async delete(id: string): Promise<void> {
+    await api.delete(`/v1/buoy-berth/${id}`);
+  },
+
+  async generateCode(portId: string): Promise<{ buoyBerthCode: string }> {
+    const res = await api.get(`/v1/buoy-berth/generate-code?portId=${portId}`);
+    return res.data.data;
+  },
+
+  async approve(id: string, cap: string, content?: string): Promise<void> {
+    await api.post(`/v1/buoy-berth/${id}/approve`, { cap, content });
+  },
+
+  async reject(id: string, cap: string, lyDo: string): Promise<void> {
+    await api.post(`/v1/buoy-berth/${id}/reject`, { cap, lyDo });
+  },
+
+  async getHistory(id: string): Promise<BuoyBerthApprovalResponse> {
+    const res = await api.get(`/v1/buoy-berth/${id}/history`);
+    return res.data.data;
+  },
+
+  async getAllHistory(): Promise<any> {
+    const res = await api.get('/v1/buoy-berth/history/all');
+    return res.data.data;
+  },
+
+  async uploadAttachments(id: string, files: File[]): Promise<any> {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('files', file);
+    }
+    const res = await api.post(`/v1/buoy-berth/${id}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data.data;
+  },
+
+  async listAttachments(id: string): Promise<any> {
+    const res = await api.get(`/v1/buoy-berth/${id}/attachments`);
+    return res.data.data;
+  },
+
+  async deleteAttachment(id: string, attId: string): Promise<void> {
+    await api.delete(`/v1/buoy-berth/${id}/attachments/${attId}`);
   },
 };

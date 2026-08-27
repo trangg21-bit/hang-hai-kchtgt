@@ -113,7 +113,7 @@ function formatDate(dateStr: string | null | undefined): string {
 
 const historyFieldLabels: Record<string, string> = {
   securityLevel: 'Cấp bảo mật', anchorageCode: 'Mã neo đậu', anchorageName: 'Tên neo đậu', portId: 'Thuộc cảng biển',
-  navigationChannelId: 'Thuộc luồng hàng hải', navigationChannel: 'Thuộc luồng hàng hải', buoyStationId: 'Thuộc trạm phao tiêu',
+  navigationChannelId: 'Thuộc luồng hàng hải', navigationChannel: 'Thuộc luồng hàng hải', buoyStationId: 'Thuộc bến phao',
   provinceId: 'Tỉnh/Thành phố', detailedLocation: 'Địa điểm chi tiết', operationalStatus: 'Tình trạng hoạt động',
   shapeDescription: 'Mô tả hình học', area: 'Diện tích', designWaterDepth: 'Độ sâu thiết kế',
   currentWaterDepth: 'Độ sâu hiện tại', bottomElevationDesign: 'Độ sâu đáy thiết kế',
@@ -200,12 +200,12 @@ export default function AnchorageList() {
       .catch(() => {});
 
     // Danh sách bến phao để lọc "Thuộc bến phao" theo đặc tả CSV.
-    api.get('/v1/buoy-station', { params: { page: 1, pageSize: 1000 } })
+    api.get('/v1/buoy-berth', { params: { page: 0, size: 1000, approvalStatus: 'APPROVED' } })
       .then((res) => {
-        const rows = res.data?.data || res.data?.content || res.data || [];
+        const rows = res.data?.data?.content || res.data?.data || res.data || [];
         const m = new Map<string, string>();
         (Array.isArray(rows) ? rows : []).forEach((b: any) => {
-          m.set(b.id, b.name || b.buoyStationName || b.code || b.buoyStationCode || b.id);
+          m.set(b.id, b.buoyBerthName || b.buoyBerthCode || b.id);
         });
         setBuoyStationMap(m);
       })
@@ -1131,6 +1131,7 @@ export default function AnchorageList() {
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
       <Drawer
         {...drawerProps}
+        width={950}
         title={<span style={drawerTitleStyle}>Chi tiết khu neo đậu{detailRecord ? ` - ${detailRecord.anchorageName}` : ''}</span>}
         open={detailDrawerVisible}
         onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); }}

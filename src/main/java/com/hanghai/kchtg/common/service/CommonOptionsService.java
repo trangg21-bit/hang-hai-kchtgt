@@ -8,7 +8,9 @@ import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.service.PortCacheService;
 import com.hanghai.kchtg.common.dto.OperatingOrganizationOptionResponse;
 import com.hanghai.kchtg.common.entity.OperatingOrganization;
+import com.hanghai.kchtg.common.entity.OperatingUnit;
 import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
+import com.hanghai.kchtg.common.repository.OperatingUnitRepository;
 import com.hanghai.kchtg.mapicon.dto.MapSymbolOptionResponse;
 import com.hanghai.kchtg.mapicon.service.MapSymbolService;
 import com.hanghai.kchtg.radarstation.dto.RadarStationOptionResponse;
@@ -34,6 +36,7 @@ public class CommonOptionsService {
     private final PortCacheService portCacheService;
     private final PortRepository portRepository;
     private final OperatingOrganizationRepository operatingOrganizationRepository;
+    private final OperatingUnitRepository operatingUnitRepository;
     private final MapSymbolService mapSymbolService;
     private final RadarStationService radarStationService;
     private final VtsOperationCenterService vtsOperationCenterService;
@@ -43,6 +46,7 @@ public class CommonOptionsService {
             PortCacheService portCacheService,
             PortRepository portRepository,
             OperatingOrganizationRepository operatingOrganizationRepository,
+            OperatingUnitRepository operatingUnitRepository,
             MapSymbolService mapSymbolService,
             RadarStationService radarStationService,
             VtsOperationCenterService vtsOperationCenterService) {
@@ -51,6 +55,7 @@ public class CommonOptionsService {
         this.portCacheService = portCacheService;
         this.portRepository = portRepository;
         this.operatingOrganizationRepository = operatingOrganizationRepository;
+        this.operatingUnitRepository = operatingUnitRepository;
         this.mapSymbolService = mapSymbolService;
         this.radarStationService = radarStationService;
         this.vtsOperationCenterService = vtsOperationCenterService;
@@ -84,6 +89,23 @@ public class CommonOptionsService {
             list = operatingOrganizationRepository.searchActive(keyword.trim());
         } else {
             list = operatingOrganizationRepository.findAllActive();
+        }
+        return list.stream()
+                .map(org -> OperatingOrganizationOptionResponse.builder()
+                        .id(org.getId())
+                        .code(org.getCode())
+                        .name(org.getName())
+                        .parentCode(org.getParentCode())
+                        .build())
+                .toList();
+    }
+
+    public List<OperatingOrganizationOptionResponse> getOperatingUnitOptions(String keyword) {
+        List<OperatingUnit> list;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            list = operatingUnitRepository.searchActive(keyword.trim());
+        } else {
+            list = operatingUnitRepository.findAllActive();
         }
         return list.stream()
                 .map(org -> OperatingOrganizationOptionResponse.builder()

@@ -16,10 +16,12 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
-  transferAreaCRUD,
+  buoyBerthCRUD,
   portCRUD,
+  anchorageCRUD,
+  stormShelterCRUD,
 } from '../../services/portService';
-import type { TransferArea } from '../../types/port';
+import type { BuoyBerth } from '../../types/port';
 import { organizationService } from '../../services/organizationService';
 import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
 import { symbolService } from '../../services/symbolService';
@@ -34,8 +36,14 @@ import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import toast from '../../components/ToastNotification';
-import TransferAreaForm from './TransferAreaForm';
-import TransferAreaDetailContent from './TransferAreaDetailContent';
+import { lineObjectService } from '../../services/lineObjectService';
+import { LineObject } from '../../types/lineObject';
+import BuoyBerthForm from './BuoyBerthForm';
+import BuoyBerthDetailContent from './BuoyBerthDetailContent';
+import AnchorageDetailContent from '../anchorage/AnchorageDetailContent';
+import StormShelterDetailContent from '../storm-shelter/StormShelterDetailContent';
+import { AppDrawer } from '../../components/shared/AppDrawer';
+import { BUOY_BERTH_CLASSIFICATION_OPTIONS } from './BuoyBerthForm';
 import {
   statusOperational,
   statusAttention,
@@ -100,33 +108,6 @@ const TAB_QUERY_MAP: Record<string, string | undefined> = {
   REJECTED_LEVEL2: 'REJECTED_LEVEL2',
 };
 
-// ── Công năng khai thác ──────────────────────────────────────────────
-
-const OPERATIONAL_FUNCTIONS_OPTIONS = [
-  { value: 'CONTAINER', label: 'Hàng Container' },
-  { value: 'GENERAL_CARGO', label: 'Hàng tổng hợp (Bách hóa)' },
-  { value: 'BULK_CARGO', label: 'Hàng chuyên dụng hàng rời, quặng' },
-  { value: 'OIL_GAS', label: 'Hàng chuyên dụng xăng dầu, khí hóa lỏng' },
-  { value: 'OTHER', label: 'Hàng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu...)' },
-  { value: 'PASSENGER', label: 'Hành khách' },
-];
-
-const OPERATIONAL_FUNCTIONS_LABEL_MAP: Record<string, string> = {
-  CONTAINER: 'Hàng Container',
-  GENERAL_CARGO: 'Hàng tổng hợp (Bách hóa)',
-  BULK_CARGO: 'Hàng chuyên dụng hàng rời, quặng',
-  OIL_GAS: 'Hàng chuyên dụng xăng dầu, khí hóa lỏng',
-  OTHER: 'Hàng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu...)',
-  PASSENGER: 'Hành khách',
-};
-
-function formatOperationalFunctions(v?: string | null): string {
-  if (!v) return '—';
-  const parts = v.split(',').map((s) => s.trim()).filter(Boolean);
-  if (parts.length === 0) return '—';
-  return parts.map((code) => OPERATIONAL_FUNCTIONS_LABEL_MAP[code] || code).join(', ');
-}
-
 // ── Helper: format date ──────────────────────────────────────────────
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -137,13 +118,19 @@ function formatDate(dateStr: string | null | undefined): string {
 // ── History helpers ───────────────────────────────────────────────────
 
 const historyFieldLabels: Record<string, string> = {
-  securityLevel: 'Cấp bảo mật', transferAreaCode: 'Mã khu chuyển tải', transferAreaName: 'Tên khu chuyển tải', portId: 'Thuộc cảng biển',
-  operationalFunctions: 'Công năng khai thác',
+  securityLevel: 'Cấp bảo mật', buoyBerthCode: 'Mã bến phao', buoyBerthName: 'Tên bến phao', portId: 'Thuộc cảng biển',
+  waterwayId: 'Thuộc luồng hàng hải',
+  classification: 'Phân cấp công trình',
   provinceId: 'Tỉnh/Thành phố', detailedLocation: 'Địa điểm chi tiết', operationalStatus: 'Tình trạng hoạt động',
-  shapeDescription: 'Mô tả hình học', area: 'Diện tích', designWaterDepth: 'Độ sâu thiết kế',
-  currentWaterDepth: 'Độ sâu hiện tại', bottomElevationDesign: 'Độ sâu đáy thiết kế',
-  maxVesselDWT: 'Cỡ tàu tối đa', remarks: 'Nhận xét',
+  operatingOrgId: 'Đơn vị khai thác',
+  currentWaterDepth: 'Độ sâu khu nước hiện tại', bottomElevationDesign: 'Cao độ đáy bến thiết kế',
+  maxVesselDWT: 'Cỡ tàu khai thác theo công bố', plannedVesselDWT: 'Cỡ tàu khai thác theo quy hoạch',
+  lastInspectionDate: 'Thời điểm đăng kiểm gần nhất', nextInspectionDate: 'Thời điểm đăng kiểm tiếp theo', operationExpiryDate: 'Thời hạn khai thác',
+  designCapacity: 'Năng lực thông qua thiết kế',
+  activeBuoyBerthCount: 'Số lượng bến phao đang khai thác', publishedBuoyBerthCount: 'Số lượng bến phao đã công bố',
+  underInvestmentBuoyBerthCount: 'Số lượng bến phao đang được thỏa thuận đầu tư xây dựng', cargoThroughput: 'Sản lượng hàng thông qua',
   openingAnnouncementDate: 'Ngày công bố', publicDecision: 'Quyết định công bố', investmentAgreement: 'Thỏa thuận đầu tư',
+  mooringWaterAreaScope: 'Phạm vi khu nước neo buộc tàu',
   orgUnitId: 'Đơn vị quản lý', mapSymbolId: 'Biểu tượng', approvalStatus: 'Trạng thái',
   submittedForApprovalAt: 'Ngày gửi phê duyệt', submittedForApprovalBy: 'Người gửi phê duyệt',
   portAuthorityApprovedAt: 'Ngày duyệt Cảng vụ', portAuthorityApprovedBy: 'Người duyệt Cảng vụ',
@@ -155,21 +142,23 @@ const historyFieldLabels: Record<string, string> = {
 
 function historyFieldName(fn: string): string { return historyFieldLabels[fn] || fn; }
 
-function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, string>, symbolMap?: Map<string, string>, portMap?: Map<string, string>): string {
+function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, string>, symbolMap?: Map<string, string>, portMap?: Map<string, string>, waterwayMap?: Map<string, string>): string {
   if (!val || val === '(null)' || val === 'null') return '(trống)';
   if (fn === 'orgUnitId' && orgMap) { const full = orgMap.get(val); return full ? full.split(' - ').pop() || full : val; }
+  if (fn === 'operatingOrgId' && orgMap) { const full = orgMap.get(val); return full ? full.split(' - ').pop() || full : val; }
   if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
   if (fn === 'portId' && portMap) return portMap.get(val) || val;
+  if (fn === 'waterwayId' && waterwayMap) return waterwayMap.get(val) || val;
   if (fn === 'approvalStatus') { const m: Record<string,string> = { NHAP:'Lưu tạm', DRAFT:'Lưu tạm', CHO_PHE_DUYET:'Chờ phê duyệt cấp Cảng vụ/Chi cục', CHO_PD_CAP_CUC:'Chờ phê duyệt cấp cục', PENDING_APPROVAL:'Chờ phê duyệt cấp Cảng vụ/Chi cục', APPROVED_LEVEL1:'Chờ phê duyệt cấp Cảng vụ/Chi cục', APPROVED_LEVEL2:'Chờ phê duyệt cấp cục', DA_PHE_DUYET:'Đã phê duyệt', APPROVED:'Đã phê duyệt', TU_CHOI:'Từ chối cấp Cảng vụ/Chi cục', REJECTED:'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL1:'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL2:'Từ chối cấp cục' }; return m[val.toUpperCase()] || val; }
   if (fn === 'operationalStatus') { const m: Record<string,string> = { OPERATIONAL:'Đang khai thác/vận hành', NOT_YET_OPERATIONAL:'Chưa khai thác/vận hành', SUSPENDED:'Dừng khai thác/vận hành', DANG_KHAI_THAC:'Đang khai thác/vận hành', CHUA_KHAI_THAC:'Chưa khai thác/vận hành', DUNG_KHAI_THAC:'Dừng khai thác/vận hành' }; return m[val.toUpperCase()] || val; }
   if (fn === 'provinceId') { const m: Record<number,string> = { 1:'Hà Nội', 2:'Hà Giang', 3:'Cao Bằng', 4:'Bắc Kạn', 5:'Lào Cai', 6:'Tuyên Quang', 7:'Lạng Sơn', 8:'Quảng Ninh', 9:'Thái Nguyên', 10:'Yên Bái', 11:'Hà Nam', 12:'Hòa Bình', 13:'Nam Định', 14:'Ninh Bình', 15:'Thanh Hóa', 16:'Nghệ An', 17:'Hà Tĩnh', 18:'Quảng Bình', 19:'Quảng Trị', 20:'Thừa Thiên Huế', 21:'Đà Nẵng', 22:'Quảng Nam', 23:'Quảng Ngãi', 24:'Bình Định', 25:'Phú Yên', 26:'Khánh Hòa', 27:'Ninh Thuận', 28:'Bình Thuận', 29:'Kon Tum', 30:'Gia Lai', 31:'Đắk Lắk', 32:'Đắk Nông', 33:'Lâm Đồng', 34:'TP. Hồ Chí Minh', 35:'Bà Rịa - Vũng Tàu', 36:'Long An', 37:'Tiền Giang', 38:'An Giang', 39:'Bến Tre', 40:'Đồng Tháp', 41:'Vĩnh Long', 42:'Trà Vinh', 43:'Hậu Giang', 44:'Sóc Trăng', 45:'Kiên Giang', 46:'Cần Thơ', 47:'Bạc Liêu', 48:'Cà Mau', 49:'Điện Biên', 50:'Lai Châu', 51:'Sơn La', 52:'Yên Bái', 53:'Hòa Bình', 54:'Thái Bình', 55:'Hải Dương', 56:'Hải Phòng', 57:' Hưng Yên', 58:'Perth', 59:'Đắk Lắk', 60:'An Giang', 61:'Bà Rịa - Vũng Tàu', 62:'Bắc Giang', 63:'Bắc Kạn', 64:'Bắc Ninh', 65:'Bến Tre', 66:'Bình Định', 67:'Bình Dương', 68:'Bình Phước', 69:'Bình Thuận', 70:'Cà Mau', 71:'Cao Bằng', 72:'Đắk Lắk', 73:'Đắk Nông', 74:'Điện Biên', 75:'Đồng Nai', 76:'Đồng Tháp', 77:'Gia Lai', 78:'Hà Giang', 79:'Hà Nam', 80:'Hà Tĩnh', 81:'Hải Dương', 82:'Hậu Giang', 83:'Hòa Bình', 84:'Hưng Yên', 85:'Khánh Hòa', 86:'Kiên Giang', 87:'Kon Tum', 88:'Lai Châu', 89:'Lâm Đồng', 90:'Lạng Sơn', 91:'Lào Cai', 92:'Long An', 93:'Nam Định', 94:'Nghệ An', 95:'Ninh Bình', 96:'Ninh Thuận', 97:'Phú Thọ', 98:'Quảng Nam', 99:'Quảng Ngãi', 100:'Quảng Ninh', 101:'Quảng Trị', 102:'Sóc Trăng', 103:'Sơn La', 104:'Thanh Hóa', 105:'Thái Bình', 106:'Thái Nguyên', 107:'TP. Hồ Chí Minh', 108:'Tiền Giang', 109:'Tây Ninh', 110:'Tin Giang', 111:'Trà Vinh', 112:'Tuyên Quang', 113:'Vĩnh Long', 114:'Vĩnh Phúc', 115:'Yên Bái' }; return m[Number(val)-1] || val; }
-  if (fn === 'openingAnnouncementDate' || fn.endsWith('At')) { try { return dayjs(val).format('DD/MM/YYYY HH:mm'); } catch { return val; } }
+  if (fn === 'openingAnnouncementDate' || fn === 'lastInspectionDate' || fn === 'nextInspectionDate' || fn === 'operationExpiryDate' || fn.endsWith('At')) { try { return dayjs(val).format('DD/MM/YYYY HH:mm'); } catch { return val; } }
   return val;
 }
 
 // ── Component ────────────────────────────────────────────────────────
 
-export default function TransferAreaList() {
+export default function BuoyBerthList() {
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const userPermissions = useAuthStore((s: any) => s.user?.permissions) || [];
   const isAuditViewer = userPermissions.includes('admin:manage') || userPermissions.includes('admin:operation');
@@ -181,9 +170,10 @@ export default function TransferAreaList() {
   const [filterName, setFilterName] = useState('');
   const [filterCode, setFilterCode] = useState('');
   const [filterPortId, setFilterPortId] = useState<string | undefined>();
+  const [filterWaterwayId, setFilterWaterwayId] = useState<string | undefined>();
   const [filterProvince, setFilterProvince] = useState('');
   const [filterOperationalStatus, setFilterOperationalStatus] = useState<string | undefined>();
-  const [filterOperationalFunctions, setFilterOperationalFunctions] = useState<string[] | undefined>();
+  const [filterClassification, setFilterClassification] = useState<string | undefined>();
   const [filterUpdatedFrom, setFilterUpdatedFrom] = useState<string | undefined>();
   const [filterUpdatedTo, setFilterUpdatedTo] = useState<string | undefined>();
   const [activeTab, setActiveTab] = useState('all');
@@ -194,7 +184,7 @@ export default function TransferAreaList() {
   const [pageSize, setPageSize] = useState(20);
 
   // ── Data ─────────────────────────────────────────────────────────
-  const [dataSource, setDataSource] = useState<TransferArea[]>([]);
+  const [dataSource, setDataSource] = useState<BuoyBerth[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
@@ -226,46 +216,57 @@ export default function TransferAreaList() {
     return map;
   }, [portOptions]);
 
+  // ── Waterway options (Thuộc luồng hàng hải) ──
+  const [waterwayOptions, setWaterwayOptions] = useState<Array<{ value: string; label: string }>>([]);
+
+  const waterwayMap = useMemo(() => {
+    const map = new Map<string, string>();
+    waterwayOptions.forEach((o) => { map.set(o.value, o.label); });
+    return map;
+  }, [waterwayOptions]);
+
   // ── Tab counts ──────────────────────────────────────────────────
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
 
   // ── Drawer state ────────────────────────────────────────────────
   const [createDrawerVisible, setCreateDrawerVisible] = useState(false);
-  const [editTransferAreaId, setEditTransferAreaId] = useState<string | undefined>();
-  const [editTransferAreaName, setEditTransferAreaName] = useState('');
+  const [editBuoyBerthId, setEditBuoyBerthId] = useState<string | undefined>();
+  const [editBuoyBerthName, setEditBuoyBerthName] = useState('');
   const [createForm] = Form.useForm();
   const [updateForm] = Form.useForm();
-  const transferAreaFormRef = useRef<any>(null);
-  const editTransferAreaFormRef = useRef<any>(null);
+  const buoyBerthFormRef = useRef<any>(null);
+  const editBuoyBerthFormRef = useRef<any>(null);
   // ── Submit loading — nút được bấm mới hiện loading tròn (tham chiếu màn Cảng biển) ──
   const [submitting, setSubmitting] = useState(false);
   const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve' | 'update'>('submit');
   const actionTypeRef = useRef<'draft' | 'submit' | 'approve' | 'update'>('submit');
   const [detailDrawerVisible, setDetailDrawerVisible] = useState(false);
-  const [detailRecord, setDetailRecord] = useState<TransferArea | null>(null);
+  const [detailRecord, setDetailRecord] = useState<BuoyBerth | null>(null);
+  const [infrastructureList, setInfrastructureList] = useState<any[]>([]);
+  const [infraDetail, setInfraDetail] = useState<{ type: string; record: any } | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailFiles, setDetailFiles] = useState<any[]>([]);
 
   // ── Delete confirmation modal ───────────────────────────────────
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [deletingRecord, setDeletingRecord] = useState<TransferArea | null>(null);
+  const [deletingRecord, setDeletingRecord] = useState<BuoyBerth | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   // ── Reject modal ────────────────────────────────────────────────
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
-  const [rejectingRecord, setRejectingRecord] = useState<TransferArea | null>(null);
+  const [rejectingRecord, setRejectingRecord] = useState<BuoyBerth | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
   // ── Submit/Approve modal ────────────────────────────────────────
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
-  const [submittingRecord, setSubmittingRecord] = useState<TransferArea | null>(null);
+  const [submittingRecord, setSubmittingRecord] = useState<BuoyBerth | null>(null);
   const [approveModalOpen, setApproveModalOpen] = useState(false);
-  const [approvingRecord, setApprovingRecord] = useState<TransferArea | null>(null);
+  const [approvingRecord, setApprovingRecord] = useState<BuoyBerth | null>(null);
   const [approvalContent, setApprovalContent] = useState('');
 
   // ── History modal ───────────────────────────────────────────────
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [historyTarget, setHistoryTarget] = useState<TransferArea | null>(null);
+  const [historyTarget, setHistoryTarget] = useState<BuoyBerth | null>(null);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
@@ -277,12 +278,12 @@ export default function TransferAreaList() {
 
   const historyFieldCount = useMemo(() => historyRecords.length, [historyRecords]);
 
-  const openHistory = useCallback(async (r: TransferArea) => {
+  const openHistory = useCallback(async (r: BuoyBerth) => {
     setHistoryTarget(r); setHistoryOpen(true); setHistoryLoading(true); setHistoryRecords([]);
     setHistorySearch(''); setHistoryFrom(''); setHistoryTo('');
     setHistoryMode('current');
     try {
-      const res = await api.get(`/v1/transfer-area/${r.id}/history`);
+      const res = await api.get(`/v1/buoy-berth/${r.id}/history`);
       const d = res.data?.data;
       const ch = Array.isArray(d?.changeHistory) ? d.changeHistory : [];
       setHistoryRecords(ch);
@@ -290,9 +291,9 @@ export default function TransferAreaList() {
     finally { setHistoryLoading(false); }
   }, []);
 
-  const HISTORY_FIELD_ORDER = ['orgUnitId', 'portId', 'transferAreaCode', 'transferAreaName', 'operationalFunctions', 'provinceId', 'detailedLocation', 'mapSymbolId', 'area', 'designWaterDepth', 'currentWaterDepth', 'bottomElevationDesign', 'maxVesselDWT', 'remarks', 'openingAnnouncementDate', 'publicDecision', 'investmentAgreement'];
+  const HISTORY_FIELD_ORDER = ['orgUnitId', 'portId', 'waterwayId', 'buoyBerthCode', 'buoyBerthName', 'classification', 'provinceId', 'detailedLocation', 'operatingOrgId', 'currentWaterDepth', 'bottomElevationDesign', 'maxVesselDWT', 'plannedVesselDWT', 'lastInspectionDate', 'nextInspectionDate', 'operationExpiryDate', 'designCapacity', 'activeBuoyBerthCount', 'publishedBuoyBerthCount', 'underInvestmentBuoyBerthCount', 'cargoThroughput', 'openingAnnouncementDate', 'publicDecision', 'investmentAgreement', 'mooringWaterAreaScope', 'mapSymbolId'];
 
-  const renderTransferAreaHistoryTimeline = (records: any[]) => {
+  const renderBuoyBerthHistoryTimeline = (records: any[]) => {
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
     const sorted = [...records].sort((a: any, b: any) => new Date(b.changedAt || b.createdAt).getTime() - new Date(a.changedAt || a.createdAt).getTime());
     const q = historySearch.toLowerCase().trim();
@@ -303,8 +304,8 @@ export default function TransferAreaList() {
         const ov = (r.oldValue || '').toLowerCase();
         const nv = (r.newValue || '').toLowerCase();
         const lb = historyFieldName(r.fieldName || '').toLowerCase();
-        const od = historyFieldValue(r.fieldName, r.oldValue, orgMap, symbolMap, portMap).toLowerCase();
-        const nd = historyFieldValue(r.fieldName, r.newValue, orgMap, symbolMap, portMap).toLowerCase();
+        const od = historyFieldValue(r.fieldName, r.oldValue, orgMap, symbolMap, portMap, waterwayMap).toLowerCase();
+        const nd = historyFieldValue(r.fieldName, r.newValue, orgMap, symbolMap, portMap, waterwayMap).toLowerCase();
         if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue;
       }
       if (historyEntityFilter && r.entityId !== historyEntityFilter) continue;
@@ -353,7 +354,7 @@ export default function TransferAreaList() {
             const n = Number(t);
             return Number.isInteger(n) ? String(n) : t;
           }
-          return historyFieldValue(fn, raw, orgMap, symbolMap, portMap);
+          return historyFieldValue(fn, raw, orgMap, symbolMap, portMap, waterwayMap);
         };
         if (orderedChanges.length === 0) return null;
         return (
@@ -474,6 +475,10 @@ export default function TransferAreaList() {
         setSymbolImageMap(imgMap);
       } catch { console.error('Failed to load symbols'); }
     })();
+    // ── Thuộc luồng hàng hải (cùng nguồn options như form) ──
+    lineObjectService.list({ status: 'PUBLISHED', objectType: LineObject.ObjectType.WATERWAY, pageSize: 1000 })
+      .then(r => setWaterwayOptions((r.data || []).map((l: any) => ({ value: l.id, label: l.name || l.code }))))
+      .catch(() => {});
   }, []);
 
   // ── Load port options ──────────────────────────────────────────
@@ -495,8 +500,8 @@ export default function TransferAreaList() {
       const results = await Promise.allSettled(
         TAB_STATUS_LIST.map((tab) =>
           tab.key === 'all'
-            ? transferAreaCRUD.search({ orgUnitId: (orgId && orgId !== '__all__') ? orgId : undefined, page: 1, pageSize: 1 })
-            : transferAreaCRUD.search({ approvalStatus: TAB_QUERY_MAP[tab.key], orgUnitId: (orgId && orgId !== '__all__') ? orgId : undefined, page: 1, pageSize: 1 }),
+            ? buoyBerthCRUD.search({ orgUnitId: (orgId && orgId !== '__all__') ? orgId : undefined, page: 1, pageSize: 1 })
+            : buoyBerthCRUD.search({ approvalStatus: TAB_QUERY_MAP[tab.key], orgUnitId: (orgId && orgId !== '__all__') ? orgId : undefined, page: 1, pageSize: 1 }),
         ),
       );
       const counts: Record<string, number> = {};
@@ -512,13 +517,14 @@ export default function TransferAreaList() {
   const fetchData = useCallback(async () => {
     setIsLoading(true); setIsError(false); setError(null);
     try {
-      const res = await transferAreaCRUD.search({
+      const res = await buoyBerthCRUD.search({
         orgUnitId: (managingUnitId && managingUnitId !== '__all__') ? managingUnitId : undefined,
-        transferAreaName: filterName.trim() || undefined,
-        transferAreaCode: filterCode.trim() || undefined,
+        buoyBerthName: filterName.trim() || undefined,
+        buoyBerthCode: filterCode.trim() || undefined,
         portId: filterPortId,
+        waterwayId: filterWaterwayId,
+        classification: filterClassification,
         provinceId: filterProvince ? (VIETNAM_PROVINCES.indexOf(filterProvince) + 1) : undefined,
-        operationalFunctions: filterOperationalFunctions && filterOperationalFunctions.length > 0 ? filterOperationalFunctions.join(',') : undefined,
         operationalStatus: filterOperationalStatus,
         approvalStatus: TAB_QUERY_MAP[activeTab],
         updatedFrom: filterUpdatedFrom,
@@ -529,9 +535,10 @@ export default function TransferAreaList() {
       setDataSource(res.data); setTotal(res.total);
     } catch (err: unknown) {
       setIsError(true);
-      setError(err instanceof Error ? err : new Error('Không thể tải danh sách khu chuyển tải'));
+      setError(err instanceof Error ? err : new Error('Không thể tải danh sách bến phao'));
     } finally { setIsLoading(false); }
-  }, [managingUnitId, filterName, filterCode, filterPortId, filterOperationalFunctions,
+  }, [managingUnitId, filterName, filterCode, filterPortId, filterWaterwayId,
+    filterClassification,
     filterProvince, filterOperationalStatus,
     filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize]);
 
@@ -547,7 +554,8 @@ export default function TransferAreaList() {
     const defaultOrg = defaultOrgUnitId.current;
     setManagingUnitId(defaultOrg === '__all__' ? undefined : defaultOrg);
     setFilterName(''); setFilterCode(''); setFilterPortId(undefined);
-    setFilterOperationalFunctions(undefined); setFilterProvince('');
+    setFilterWaterwayId(undefined); setFilterClassification(undefined);
+    setFilterProvince('');
     setFilterOperationalStatus(undefined);
     setFilterUpdatedFrom(undefined); setFilterUpdatedTo(undefined);
     setActiveTab('all'); setPage(1);
@@ -558,45 +566,72 @@ export default function TransferAreaList() {
   }, []);
 
   // ── Detail drawer ────────────────────────────────────────────────
-  const openDetailDrawer = useCallback(async (record: TransferArea) => {
+  const openDetailDrawer = useCallback(async (record: BuoyBerth) => {
     setDetailDrawerVisible(true); setDetailRecord(record); setDetailFiles([]); setDetailLoading(true);
     try {
-      const res = await api.get(`/v1/transfer-area/${record.id}/attachments`, { params: { page: 0, size: 50 } });
+      const res = await api.get(`/v1/buoy-berth/${record.id}/attachments`, { params: { page: 0, size: 50 } });
       setDetailFiles(res.data?.data || []);
     } catch { setDetailFiles([]); }
     try {
-      const fresh = await transferAreaCRUD.findById(record.id);
+      const fresh = await buoyBerthCRUD.findById(record.id);
       setDetailRecord(fresh);
     } catch { /* keep initial data */ }
+    // ── Kết cấu hạ tầng thuộc bến phao: Khu neo đậu + Khu tránh, trú bão (buoyStationId = id bến phao) ──
+    try {
+      const [aRes, sRes] = await Promise.all([
+        anchorageCRUD.search({ page: 1, pageSize: 1000, buoyStationId: record.id }),
+        stormShelterCRUD.search({ page: 1, pageSize: 1000, buoyStationId: record.id }),
+      ]);
+      const list = [
+        ...(aRes.data || []).map((x: any) => ({ id: x.id, infraName: x.anchorageName || x.name || '—', infraType: 'ANCHORAGE' })),
+        ...(sRes.data || []).map((x: any) => ({ id: x.id, infraName: x.stormShelterName || x.name || '—', infraType: 'STORM_SHELTER' })),
+      ];
+      setInfrastructureList(list);
+    } catch { setInfrastructureList([]); }
     finally { setDetailLoading(false); }
   }, []);
 
+  // ── Kết cấu hạ tầng detail (giống bến cảng: mở drawer chi tiết KCHT) ──
+  const openInfraDetail = useCallback(async (id: string) => {
+    const item = infrastructureList.find(i => i.id === id);
+    if (!item) return;
+    try {
+      if (item.infraType === 'ANCHORAGE') {
+        const rec = await anchorageCRUD.findById(id);
+        setInfraDetail({ type: 'ANCHORAGE', record: rec });
+      } else {
+        const rec = await stormShelterCRUD.findById(id);
+        setInfraDetail({ type: 'STORM_SHELTER', record: rec });
+      }
+    } catch { /* noop */ }
+  }, [infrastructureList]);
+
   // ── Delete confirmation ─────────────────────────────────────────
-  const openDeleteModal = useCallback((record: TransferArea) => {
+  const openDeleteModal = useCallback((record: BuoyBerth) => {
     setDeletingRecord(record); setDeleteConfirmText(''); setDeleteModalOpen(true);
   }, []);
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingRecord) return;
-    const expectedText = (deletingRecord.transferAreaName || 'XÓA').trim().toLowerCase();
+    const expectedText = (deletingRecord.buoyBerthName || 'XÓA').trim().toLowerCase();
     const input = deleteConfirmText.trim().toLowerCase();
     if (input !== expectedText && input !== 'xóa') {
-      toast.error('Vui lòng nhập đúng tên khu chuyển tải hoặc gõ "XÓA" để xác nhận'); return;
+      toast.error('Vui lòng nhập đúng tên bến phao hoặc gõ "XÓA" để xác nhận'); return;
     }
     try {
-      await transferAreaCRUD.delete(deletingRecord.id);
-      toast.success('Đã xóa khu chuyển tải');
+      await buoyBerthCRUD.delete(deletingRecord.id);
+      toast.success('Đã xóa bến phao');
       setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText('');
       void fetchData(); void fetchCounts(managingUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Xóa thất bại'); }
   }, [deletingRecord, deleteConfirmText, fetchData, fetchCounts, managingUnitId]);
 
   // ── Approval handlers ───────────────────────────────────────────
-  const handleApprove = useCallback(async (record: TransferArea) => {
+  const handleApprove = useCallback(async (record: BuoyBerth) => {
     try {
       const cap = record.approvalStatus === 'APPROVED_LEVEL2' ? 'CUC' : 'CANG_VU';
-      await transferAreaCRUD.approve(record.id, cap, approvalContent);
-      toast.success('Đã phê duyệt khu chuyển tải');
+      await buoyBerthCRUD.approve(record.id, cap, approvalContent);
+      toast.success('Đã phê duyệt bến phao');
       setApproveModalOpen(false); setApprovingRecord(null); setApprovalContent('');
       void fetchData(); void fetchCounts(managingUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại'); }
@@ -605,14 +640,14 @@ export default function TransferAreaList() {
   const handleConfirmSubmit = useCallback(async () => {
     if (!submittingRecord) return;
     try {
-      await transferAreaCRUD.update({ id: submittingRecord.id, saveAction: 'SUBMIT' });
-      toast.success('Đã gửi phê duyệt khu chuyển tải');
+      await buoyBerthCRUD.update({ id: submittingRecord.id, saveAction: 'SUBMIT' });
+      toast.success('Đã gửi phê duyệt bến phao');
       setSubmitModalOpen(false); setSubmittingRecord(null);
       void fetchData(); void fetchCounts(managingUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Gửi phê duyệt thất bại'); }
   }, [submittingRecord, fetchData, fetchCounts, managingUnitId]);
 
-  const openRejectModal = useCallback((record: TransferArea) => {
+  const openRejectModal = useCallback((record: BuoyBerth) => {
     setRejectingRecord(record); setRejectReason(''); setRejectModalOpen(true);
   }, []);
 
@@ -623,18 +658,17 @@ export default function TransferAreaList() {
     if (reason.length < 10) { toast.error('Lý do từ chối tối thiểu 10 ký tự'); return; }
     if (reason.length > 500) { toast.error('Lý do từ chối tối đa 500 ký tự'); return; }
     try {
-      await transferAreaCRUD.reject(rejectingRecord.id, rejectingRecord.approvalStatus === 'APPROVED_LEVEL2' ? 'CUC' : 'CANG_VU', reason);
+      await buoyBerthCRUD.reject(rejectingRecord.id, rejectingRecord.approvalStatus === 'APPROVED_LEVEL2' ? 'CUC' : 'CANG_VU', reason);
       toast.success('Đã từ chối phê duyệt');
       setRejectModalOpen(false); setRejectingRecord(null); setRejectReason('');
       void fetchData(); void fetchCounts(managingUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Từ chối thất bại'); }
   }, [rejectingRecord, rejectReason, fetchData, fetchCounts, managingUnitId]);
 
-  // ── Drawer callbacks ─────────────────────────────────────────────
   // ── Header actions ──────────────────────────────────────────────
   const headerActions = useMemo(() => {
     const actions: ScreenHeaderAction[] = [];
-    if (hasPerm('transferarea:create')) {
+    if (hasPerm('buoyberth:create')) {
       actions.push({ key: 'create', label: 'Thêm mới', variant: 'primary', icon: <PlusOutlined />, onClick: () => setCreateDrawerVisible(true) });
     }
     return actions;
@@ -643,7 +677,7 @@ export default function TransferAreaList() {
   // ── Filter panel content ────────────────────────────────────────
   const filterContent = (
     <>
-      <style>{`.transfer-area-filter .ant-select-selector { border-radius: 999px !important; } .transfer-area-filter .ant-select-content { flex-wrap: nowrap !important; overflow: hidden; } .transfer-area-filter .ant-select-content-item { max-width: 45% !important; } .transfer-area-filter .ant-select-selection-item { border-radius: 999px !important; }`}</style>
+      <style>{`.buoy-berth-filter .ant-select-selector { border-radius: 999px !important; } .buoy-berth-filter .ant-select-content { flex-wrap: nowrap !important; overflow: hidden; } .buoy-berth-filter .ant-select-content-item { max-width: 45% !important; } .buoy-berth-filter .ant-select-selection-item { border-radius: 999px !important; }`}</style>
       {/* ── Cơ bản: ĐVQL + Tên + Tình trạng ──────────────────── */}
       <div style={{ marginBottom: 12, marginTop: spaceMd }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
@@ -662,9 +696,9 @@ export default function TransferAreaList() {
       </div>
 
       <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên khu chuyển tải</div>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên bến phao</div>
         <Input
-          placeholder="Tìm theo tên khu chuyển tải"
+          placeholder="Tìm theo tên bến phao"
           allowClear
           value={filterName}
           onChange={(e) => { setFilterName(e.target.value); setPage(1); }}
@@ -692,9 +726,9 @@ export default function TransferAreaList() {
       {/* ── Nâng cao: đúng các trường CSV đánh dấu Bộ lọc ───────── */}
       {filterCollapsed && (<>
         <div style={{ marginBottom: 12 }}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã khu chuyển tải</div>
+          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã bến phao</div>
           <Input
-            placeholder="Tìm theo mã khu chuyển tải"
+            placeholder="Tìm theo mã bến phao"
             allowClear
             value={filterCode}
             onChange={(e) => { setFilterCode(e.target.value); setPage(1); }}
@@ -718,18 +752,29 @@ export default function TransferAreaList() {
         </div>
 
         <div style={{ marginBottom: 12 }}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Công năng khai thác</div>
+          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc luồng hàng hải</div>
           <Select
-            mode="multiple"
-            className="transfer-area-filter"
-            placeholder="Chọn công năng khai thác"
+            placeholder="Chọn luồng hàng hải"
             allowClear
             showSearch
-            maxTagCount={2}
-            maxTagPlaceholder={(omittedValues) => `+${omittedValues.length}`}
-            value={filterOperationalFunctions}
-            onChange={(v) => { setFilterOperationalFunctions(v); setPage(1); }}
-            options={OPERATIONAL_FUNCTIONS_OPTIONS}
+            optionFilterProp="label"
+            value={filterWaterwayId}
+            onChange={(v) => { setFilterWaterwayId(v); setPage(1); }}
+            options={waterwayOptions}
+            style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+          />
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân cấp công trình</div>
+          <Select
+            placeholder="Chọn phân cấp công trình"
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            value={filterClassification}
+            onChange={(v) => { setFilterClassification(v); setPage(1); }}
+            options={BUOY_BERTH_CLASSIFICATION_OPTIONS}
             style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
           />
         </div>
@@ -769,16 +814,16 @@ export default function TransferAreaList() {
 
   // ── rowActions callback ──────────────────────────────────────────
   const rowActions = useCallback(
-    (record: TransferArea) => {
+    (record: BuoyBerth) => {
       const actions: any[] = [
         { key: 'view', label: 'Chi tiết', icon: <EyeOutlined />, onClick: () => openDetailDrawer(record) },
       ];
       const st = record.approvalStatus || '';
-      if (hasPerm('transferarea:update')) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => { setEditTransferAreaId(record.id); setEditTransferAreaName(record.transferAreaName || ''); } });
-      if (hasPerm('transferarea:delete') && ['DRAFT','NHAP'].includes(st)) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => openDeleteModal(record) });
-      if (['DRAFT','NHAP'].includes(st) && hasPerm('transferarea:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
-      if (hasPerm('transferarea:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) { actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setApprovingRecord(record); setApprovalContent(''); setApproveModalOpen(true); } }); actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, danger: true, onClick: () => openRejectModal(record) }); }
-      if (hasPerm('transferarea:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistory(record) });
+      if (hasPerm('buoyberth:update')) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => { setEditBuoyBerthId(record.id); setEditBuoyBerthName(record.buoyBerthName || ''); } });
+      if (hasPerm('buoyberth:delete') && ['DRAFT','NHAP'].includes(st)) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => openDeleteModal(record) });
+      if (['DRAFT','NHAP'].includes(st) && hasPerm('buoyberth:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
+      if (hasPerm('buoyberth:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) { actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setApprovingRecord(record); setApprovalContent(''); setApproveModalOpen(true); } }); actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, danger: true, onClick: () => openRejectModal(record) }); }
+      if (hasPerm('buoyberth:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistory(record) });
       return actions;
     },
     [hasPerm, openDetailDrawer, openHistory, openDeleteModal, openRejectModal],
@@ -788,8 +833,8 @@ export default function TransferAreaList() {
   const getSortValue = useCallback((r: any, field: string): string | number => {
     if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(r.orgUnitId || '') || '';
     if (field === 'portId') return portOptions.find(o => o.value === r.portId)?.label ?? r.portId ?? '';
-    if (field === 'operationalFunctions') { const s = formatOperationalFunctions(r.operationalFunctions); return s === '—' ? '' : s; }
     if (field === 'provinceId') return r.provinceId ? VIETNAM_PROVINCES[r.provinceId - 1] ?? '' : '';
+    if (field === 'classification') return r.classification || '';
     if (field === 'operationalStatus') {
       const m: Record<string, string> = {
         OPERATIONAL: 'Đang khai thác/vận hành',
@@ -813,15 +858,15 @@ export default function TransferAreaList() {
         render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + i + 1}</span>,
       },
       {
-        key: 'transferAreaName',
-        label: <span>Tên/Mã khu chuyển tải</span>,
-        dataIndex: 'transferAreaName',
+        key: 'buoyBerthName',
+        label: <span>Tên/Mã bến phao</span>,
+        dataIndex: 'buoyBerthName',
         width: 220,
         fixed: 'left' as const,
         sortable: true,
         sortOrder,
         ellipsis: false,
-        render: (v: string, record: TransferArea) => (
+        render: (v: string, record: BuoyBerth) => (
           <div>
             <a
               title={v}
@@ -838,7 +883,7 @@ export default function TransferAreaList() {
             >
               {v}
             </a>
-            <span style={{ opacity: 0.85 }}>{record.transferAreaCode || '—'}</span>
+            <span style={{ opacity: 0.85 }}>{record.buoyBerthCode || '—'}</span>
           </div>
         ),
       },
@@ -849,7 +894,7 @@ export default function TransferAreaList() {
         width: 260,
         sortable: true,
         sortOrder,
-        render: (_v: string | null, record: TransferArea) => (
+        render: (_v: string | null, record: BuoyBerth) => (
           <span style={{ fontWeight: fontWeightBold }}>
             {resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || '—'}
           </span>
@@ -874,18 +919,13 @@ export default function TransferAreaList() {
         render: (v: number | null) => (v ? VIETNAM_PROVINCES[v - 1] : '—'),
       },
       {
-        key: 'operationalFunctions',
-        label: 'Công năng khai thác',
-        dataIndex: 'operationalFunctions',
-        width: 260,
-        ellipsis: true,
+        key: 'classification',
+        label: 'Phân cấp công trình',
+        dataIndex: 'classification',
+        width: 200,
         sortable: true,
         sortOrder,
-        render: (v?: string) => (
-          <span title={formatOperationalFunctions(v)} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
-            {formatOperationalFunctions(v)}
-          </span>
-        ),
+        render: (v: string | null) => <span style={{ fontSize: fontSizeMd }}>{v || '—'}</span>,
       },
       {
         key: 'operationalStatus',
@@ -923,28 +963,28 @@ export default function TransferAreaList() {
     // Audit columns — chỉ hiển thị cho Admin Cục / admin-operation (giống Bến cảng)
     const auditColumns: any[] = isAuditViewer ? [
       { key: 'updatedAt', label: <span>Cán bộ cập nhật</span>, dataIndex: 'updatedAt', width: 200, sortable: true, sortOrder,
-        render: (v: string | null, record: TransferArea) => (
+        render: (v: string | null, record: BuoyBerth) => (
           <div>
             <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.updatedBy || '') || record.updatedBy || '—'}</span><br />
             <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
           </div>
         ) },
       { key: 'submittedForApprovalAt', label: <span>Cán bộ gửi Phê duyệt</span>, dataIndex: 'submittedForApprovalAt', width: 210, sortable: true, sortOrder,
-        render: (v: string | null, record: TransferArea) => (
+        render: (v: string | null, record: BuoyBerth) => (
           <div>
             <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.submittedForApprovalBy || '') || record.submittedForApprovalBy || '—'}</span><br />
             <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
           </div>
         ) },
       { key: 'portAuthorityApprovedAt', label: <span>Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>, dataIndex: 'portAuthorityApprovedAt', width: 340, sortable: true, sortOrder,
-        render: (v: string | null, record: TransferArea) => (
+        render: (v: string | null, record: BuoyBerth) => (
           <div>
             <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.portAuthorityApprovedBy || '') || record.portAuthorityApprovedBy || '—'}</span><br />
             <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
           </div>
         ) },
       { key: 'departmentApprovedAt', label: <span>Cán bộ phê duyệt cấp Cục</span>, dataIndex: 'departmentApprovedAt', width: 240, sortable: true, sortOrder,
-        render: (v: string | null, record: TransferArea) => (
+        render: (v: string | null, record: BuoyBerth) => (
           <div>
             <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.departmentApprovedBy || '') || record.departmentApprovedBy || '—'}</span><br />
             <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
@@ -992,17 +1032,20 @@ export default function TransferAreaList() {
     if (!detailRecord) return null;
     if (detailLoading) return <LoadingSkeleton rows={6} />;
     return (
-      <TransferAreaDetailContent
+      <BuoyBerthDetailContent
         selectedRecord={detailRecord}
         orgMap={orgMap}
         organizations={organizations}
         symbolMap={symbolMap}
         symbolImageMap={symbolImageMap}
         portOptions={portOptions}
+        waterwayOptions={waterwayOptions}
         userMap={userMap}
         detailFiles={detailFiles}
         ddToDms={ddToDms}
         approvalStyleMap={APPROVAL_STYLE_MAP}
+        infrastructureList={infrastructureList}
+        onViewInfraDetail={openInfraDetail}
         operationPlanList={(detailRecord as any)?.operationPlanList}
         maintenancePlanList={(detailRecord as any)?.maintenancePlanList}
         incidentList={(detailRecord as any)?.incidentList}
@@ -1016,7 +1059,7 @@ export default function TransferAreaList() {
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <style>{`.range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }`}</style>
       <ScreenHeader
-        breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý khu chuyển tải' }]}
+        breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý bến phao' }]}
         actions={headerActions}
       />
 
@@ -1035,14 +1078,14 @@ export default function TransferAreaList() {
         <style>{`.list-view-table .ant-table-cell { padding-block: 9.5px !important; }`}</style>
         {isError ? null : !isLoading && dataSource.length === 0 ? (
           <DataTable dataSource={[]} rowKey="id"
-            emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>Không tìm thấy khu chuyển tải nào phù hợp</div></div>}
+            emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>Không tìm thấy bến phao nào phù hợp</div></div>}
           />
         ) : !isLoading && !isError && dataSource.length > 0 ? (
           <DataTable columns={columns}
             dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; const aVal = getSortValue(a, sortField); const bVal = getSortValue(b, sortField); const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi'); return sortOrder === 'ascend' ? cmp : -cmp; })}
             rowKey="id" rowActions={rowActions} loading={false}
             onSort={(key: string, order: 'asc' | 'desc') => { setSortField(key); setSortOrder(order === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
-            scroll={{ x: isAuditViewer ? 2600 : 2050, y: 550 }}
+            scroll={{ x: isAuditViewer ? 2800 : 2250, y: 550 }}
           />
         ) : null}
         <Pagination total={total} current={page} pageSize={pageSize}
@@ -1053,16 +1096,16 @@ export default function TransferAreaList() {
       {/* ── Create Drawer ──────────────────────────────────────────── */}
       <Drawer
         {...drawerProps}
-        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới Khu chuyển tải</span>}
+        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới Bến phao</span>}
         open={createDrawerVisible}
         destroyOnHidden
         onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
         extra={<Button type="text" onClick={() => { setCreateDrawerVisible(false); createForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
           <div style={drawerFooterStyle}>
-            <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); transferAreaFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button>
-            <Button type="primary" onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); transferAreaFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>
-            <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); transferAreaFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
+            <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); buoyBerthFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button>
+            <Button type="primary" onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); buoyBerthFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>
+            <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); buoyBerthFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
           </div>
         }
         styles={{
@@ -1073,20 +1116,20 @@ export default function TransferAreaList() {
       >
         <style>{requiredMarkStyle}</style>
         <Form form={createForm} layout="vertical" initialValues={{}}>
-          <TransferAreaForm ref={transferAreaFormRef} form={createForm} onFinish={() => { setCreateDrawerVisible(false); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
+          <BuoyBerthForm ref={buoyBerthFormRef} form={createForm} onFinish={() => { setCreateDrawerVisible(false); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
         </Form>
       </Drawer>
 
       {/* ── Edit Drawer ────────────────────────────────────────────── */}
       <Drawer
         {...drawerProps}
-        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin — {editTransferAreaName || 'Khu chuyển tải'}</span>}
-        open={!!editTransferAreaId}
-        onClose={() => { setEditTransferAreaId(undefined); setEditTransferAreaName(''); updateForm.resetFields(); }}
-        extra={<Button type="text" onClick={() => { setEditTransferAreaId(undefined); setEditTransferAreaName(''); updateForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
+        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin — {editBuoyBerthName || 'Bến phao'}</span>}
+        open={!!editBuoyBerthId}
+        onClose={() => { setEditBuoyBerthId(undefined); setEditBuoyBerthName(''); updateForm.resetFields(); }}
+        extra={<Button type="text" onClick={() => { setEditBuoyBerthId(undefined); setEditBuoyBerthName(''); updateForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
           <div style={drawerFooterStyle}>
-            <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); editTransferAreaFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
+            <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); editBuoyBerthFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
           </div>
         }
         styles={{
@@ -1094,10 +1137,10 @@ export default function TransferAreaList() {
           body: { padding: '0 24px 12px 24px' },
         }}
       >
-        {editTransferAreaId && (<>
+        {editBuoyBerthId && (<>
           <style>{requiredMarkStyle}</style>
           <Form form={updateForm} layout="vertical" initialValues={{}}>
-            <TransferAreaForm ref={editTransferAreaFormRef} form={updateForm} id={editTransferAreaId} onFinish={() => { setEditTransferAreaId(undefined); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
+            <BuoyBerthForm ref={editBuoyBerthFormRef} form={updateForm} id={editBuoyBerthId} onFinish={() => { setEditBuoyBerthId(undefined); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
           </Form>
         </>)}
       </Drawer>
@@ -1105,10 +1148,10 @@ export default function TransferAreaList() {
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
       <Drawer
         {...drawerProps}
-        width={950}
-        title={<span style={drawerTitleStyle}>Chi tiết khu chuyển tải{detailRecord ? ` - ${detailRecord.transferAreaName}` : ''}</span>}
+        width={1000}
+        title={<span style={drawerTitleStyle}>Chi tiết bến phao{detailRecord ? ` - ${detailRecord.buoyBerthName}` : ''}</span>}
         open={detailDrawerVisible}
-        onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); }}
+        onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); setInfrastructureList([]); }}
         extra={<Button type="text" onClick={() => { setDetailDrawerVisible(false); setDetailRecord(null); }} style={drawerCloseBtnStyle}>✕</Button>}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -1119,9 +1162,57 @@ export default function TransferAreaList() {
         {renderDetailContent()}
       </Drawer>
 
+      {/* ── Kết cấu hạ tầng Detail Drawer (Khu neo đậu / Khu tránh, trú bão) — sibling size 950 như bến cảng ── */}
+      <AppDrawer
+        size={950}
+        title={<span style={drawerTitleStyle}>
+          {(() => {
+            const typeLabel = infraDetail?.type === 'ANCHORAGE' ? 'Khu neo đậu' : infraDetail?.type === 'STORM_SHELTER' ? 'Khu tránh, trú bão' : '';
+            const name = infraDetail?.record?.anchorageName || infraDetail?.record?.stormShelterName || '';
+            return infraDetail ? `Chi tiết kết cấu hạ tầng - ${typeLabel}${name ? ` - ${name}` : ''}` : 'Chi tiết kết cấu hạ tầng';
+          })()}
+        </span>}
+        open={!!infraDetail}
+        onClose={() => setInfraDetail(null)}
+        styles={{
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '0 24px 12px 24px' },
+        }}
+        footer={null}
+      >
+        {infraDetail?.type === 'ANCHORAGE' && infraDetail.record ? (
+          <AnchorageDetailContent
+            selectedRecord={infraDetail.record}
+            orgMap={orgMap}
+            organizations={organizations}
+            symbolMap={symbolMap}
+            symbolImageMap={symbolImageMap}
+            portOptions={portOptions}
+            userMap={userMap}
+            detailFiles={[]}
+            ddToDms={ddToDms}
+            approvalStyleMap={APPROVAL_STYLE_MAP}
+          />
+        ) : infraDetail?.type === 'STORM_SHELTER' && infraDetail.record ? (
+          <StormShelterDetailContent
+            selectedRecord={infraDetail.record}
+            orgMap={orgMap}
+            organizations={organizations}
+            symbolMap={symbolMap}
+            symbolImageMap={symbolImageMap}
+            portOptions={portOptions}
+            waterwayOptions={waterwayOptions}
+            userMap={userMap}
+            detailFiles={[]}
+            ddToDms={ddToDms}
+            approvalStyleMap={APPROVAL_STYLE_MAP}
+          />
+        ) : null}
+      </AppDrawer>
+
       {/* ── Delete Confirmation Modal ────────────────────────────── */}
       <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận xóa khu chuyển tải</span>}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận xóa bến phao</span>}
         open={deleteModalOpen}
         onCancel={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
         footer={[
@@ -1135,14 +1226,14 @@ export default function TransferAreaList() {
           <Alert message="Hành động này không thể hoàn tác" type="warning" showIcon icon={<ExclamationCircleOutlined />}
             style={{ marginBottom: spaceFormField, borderRadius: radiusPill }} />
           <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>
-            Vui lòng nhập <strong>tên khu chuyển tải</strong> hoặc gõ <strong>"XÓA"</strong> để xác nhận xóa.
+            Vui lòng nhập <strong>tên bến phao</strong> hoặc gõ <strong>"XÓA"</strong> để xác nhận xóa.
           </p>
           {deletingRecord && (
             <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
-              Khu chuyển tải: <strong style={{ color: textPrimary }}>{deletingRecord.transferAreaName}</strong>
+              Bến phao: <strong style={{ color: textPrimary }}>{deletingRecord.buoyBerthName}</strong>
             </p>
           )}
-          <Input placeholder="Nhập tên khu chuyển tải hoặc XÓA" value={deleteConfirmText}
+          <Input placeholder="Nhập tên bến phao hoặc XÓA" value={deleteConfirmText}
             onChange={(e) => setDeleteConfirmText(e.target.value)} onPressEnter={handleConfirmDelete}
             style={{ borderRadius: radiusPill, height: 40 }} autoFocus />
         </div>
@@ -1161,10 +1252,10 @@ export default function TransferAreaList() {
         ]}
         width={480}>
         <div style={{ padding: '8px 0' }}>
-          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>Vui lòng nhập lý do từ chối cho khu chuyển tải:</p>
+          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>Vui lòng nhập lý do từ chối cho bến phao:</p>
           {rejectingRecord && (
             <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
-              <strong style={{ color: textPrimary }}>{rejectingRecord.transferAreaName}</strong>
+              <strong style={{ color: textPrimary }}>{rejectingRecord.buoyBerthName}</strong>
             </p>
           )}
           <Input.TextArea placeholder="Nhập lý do từ chối (tối thiểu 10, tối đa 500 ký tự)..." value={rejectReason}
@@ -1187,7 +1278,7 @@ export default function TransferAreaList() {
         width={480}>
         <div style={{ padding: '8px 0' }}>
           <p style={{ fontSize: fontSizeMd, color: textPrimary }}>
-            Gửi <strong>{submittingRecord?.transferAreaCode} — {submittingRecord?.transferAreaName}</strong> để Cảng vụ phê duyệt?
+            Gửi <strong>{submittingRecord?.buoyBerthCode} — {submittingRecord?.buoyBerthName}</strong> để Cảng vụ phê duyệt?
           </p>
         </div>
       </Modal>
@@ -1206,7 +1297,7 @@ export default function TransferAreaList() {
         width={480}>
         <div style={{ padding: '8px 0' }}>
           <p style={{ fontSize: fontSizeMd, color: textPrimary }}>
-            {approvingRecord?.approvalStatus === 'CHO_PD_CAP_CUC' ? 'Cục' : 'Cảng vụ'} phê duyệt <strong>{approvingRecord?.transferAreaCode} — {approvingRecord?.transferAreaName}</strong>?
+            {approvingRecord?.approvalStatus === 'CHO_PD_CAP_CUC' ? 'Cục' : 'Cảng vụ'} phê duyệt <strong>{approvingRecord?.buoyBerthCode} — {approvingRecord?.buoyBerthName}</strong>?
           </p>
           <div style={{ marginTop: spaceMd }}>
             <div style={{ marginBottom: spaceXs, color: textSecondary, fontSize: fontSizeMd, fontWeight: fontWeightMedium }}>Nội dung phê duyệt</div>
@@ -1227,7 +1318,7 @@ export default function TransferAreaList() {
             <Space size={spaceSm} style={{ alignItems: 'center' }}>
               <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
               <span style={drawerTitleStyle}>
-                {historyMode === 'all' ? 'Tất cả lịch sử thay đổi — Khu chuyển tải' : (historyTarget ? `Lịch sử thay đổi — ${historyTarget.transferAreaName}` : 'Lịch sử thay đổi')}
+                {historyMode === 'all' ? 'Tất cả lịch sử thay đổi — Bến phao' : (historyTarget ? `Lịch sử thay đổi — ${historyTarget.buoyBerthName}` : 'Lịch sử thay đổi')}
               </span>
               <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyFieldCount}</span>
             </Space>
@@ -1246,7 +1337,7 @@ export default function TransferAreaList() {
         {!historyLoading && (
           <div style={{ display: 'none' }}>
             <Radio.Group value={historyMode} size="middle" style={{ display: 'flex', width: '100%', borderBottom: `1px solid ${borderDefault}` }}
-              onChange={async e => { const mode = e.target.value; setHistoryMode(mode); setHistoryLoading(true); setHistoryRecords([]); if (mode === 'all') { try { const res = await api.get('/v1/transfer-area/history/all'); const d = res.data?.data; setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory : []); setHistoryEntityNames(d?.entityNames || {}); } catch { toast.error('Không thể tải lịch sử'); } finally { setHistoryLoading(false); } } else { try { const res = await api.get(`/v1/transfer-area/${historyTarget?.id}/history`); const d = res.data?.data; setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory : []); } catch { toast.error('Không thể tải lịch sử'); } finally { setHistoryLoading(false); } } }}>
+              onChange={async e => { const mode = e.target.value; setHistoryMode(mode); setHistoryLoading(true); setHistoryRecords([]); if (mode === 'all') { try { const res = await api.get('/v1/buoy-berth/history/all'); const d = res.data?.data; setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory : []); setHistoryEntityNames(d?.entityNames || {}); } catch { toast.error('Không thể tải lịch sử'); } finally { setHistoryLoading(false); } } else { try { const res = await api.get(`/v1/buoy-berth/${historyTarget?.id}/history`); const d = res.data?.data; setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory : []); } catch { toast.error('Không thể tải lịch sử'); } finally { setHistoryLoading(false); } } }}>
               <Radio.Button value="current" style={{ fontWeight: fontWeightBold, color: historyMode !== 'current' ? textSecondary : actionPrimary }}>Bản ghi hiện tại</Radio.Button>
               <Radio.Button value="all" style={{ fontWeight: fontWeightBold, color: historyMode !== 'all' ? textSecondary : actionPrimary }}>Tất cả bản ghi</Radio.Button>
             </Radio.Group>
@@ -1256,7 +1347,7 @@ export default function TransferAreaList() {
           <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
             <Input placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
               onChange={e => setHistorySearch(e.target.value)} style={{ flex: 1, borderRadius: radiusPill, height: 40 }} />
-            {historyMode === 'all' && <Select placeholder="Chọn khu chuyển tải" allowClear showSearch value={historyEntityFilter || undefined}
+            {historyMode === 'all' && <Select placeholder="Chọn bến phao" allowClear showSearch value={historyEntityFilter || undefined}
               onChange={v => setHistoryEntityFilter(v || '')}
               filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
               style={{ width: 200, borderRadius: radiusPill, height: 40 }}
@@ -1274,7 +1365,7 @@ export default function TransferAreaList() {
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         {historyLoading ? <LoadingSkeleton rows={5} /> : historyRecords.length === 0 ? (
           <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div></div>
-        ) : renderTransferAreaHistoryTimeline(historyRecords)}
+        ) : renderBuoyBerthHistoryTimeline(historyRecords)}
         </div>
       </Drawer>
     </div>
