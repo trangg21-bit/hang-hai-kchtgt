@@ -26,6 +26,7 @@ public class StormShelterAreaResponse {
     private String orgUnitName;
     private UUID navigationChannelId;
     private UUID buoyStationId;
+    private String buoyStationName;
     private String classification;
     private Integer provinceId;
     private UUID mapSymbolId;

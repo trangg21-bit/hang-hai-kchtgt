@@ -562,6 +562,7 @@ export interface Anchorage {
   orgUnitName?: string;
   navigationChannelId?: string;
   buoyStationId?: string;
+  buoyStationName?: string;
   provinceId?: number;
   detailedLocation?: string;
   operationalStatus?: string;
@@ -830,6 +831,7 @@ export interface StormShelterArea {
   orgUnitName?: string;
   navigationChannelId?: string;
   buoyStationId?: string;
+  buoyStationName?: string;
   classification?: string;
   provinceId?: number;
   detailedLocation?: string;

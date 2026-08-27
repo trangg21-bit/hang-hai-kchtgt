@@ -149,7 +149,7 @@ export default function StormShelterDetailContent({
                   ['Cấp bảo mật', r.securityLevel != null ? ({ 0: 'Công khai', 1: 'Nội bộ', 2: 'Rất bí mật' }[r.securityLevel] || '—') : '—'],
                   ['Địa điểm (Tỉnh/Thành phố)', r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '—' : '—'],
                   ['Thuộc luồng hàng hải', waterwayOptions.find(o => o.value === r.navigationChannelId)?.label || r.navigationChannelId || '—'],
-                  ['Thuộc bến phao', buoyStationOptions.find(o => o.value === r.buoyStationId)?.label || r.buoyStationId || '—'],
+                  ['Thuộc bến phao', r.buoyStationName || buoyStationOptions.find(o => o.value === r.buoyStationId)?.label || r.buoyStationId || '—'],
                   ['Phân loại', r.classification || '—'],
                   ['Địa điểm chi tiết', r.detailedLocation || '—'],
                   ['Hình dạng', r.shapeDescription || '—'],
