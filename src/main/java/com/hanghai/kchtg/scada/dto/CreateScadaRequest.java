@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
 
 /**
@@ -63,6 +64,9 @@ public class CreateScadaRequest {
     private Integer coordinateSystem;
     private Integer displayRule;
     private UUID spatialId;
+
+    private GisGeometryType geometryType;
+    private String coordinates;
 
     /**
      * Hành động khi tạo: 'draft' (Lưu tạm) | 'submit' (Gửi duyệt — mặc định) | 'approve' (Lưu và phê duyệt).

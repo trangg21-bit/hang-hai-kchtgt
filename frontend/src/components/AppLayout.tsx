@@ -34,6 +34,7 @@ import {
   SwapOutlined,
   VideoCameraOutlined,
   MonitorOutlined,
+  ApartmentOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 import { usePermissionStore } from '../store/permissionStore';
@@ -77,6 +78,7 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/ais-system': 'aissystem:read',
   '/cctv': 'cctv:read',
   '/scada': 'scada:read',
+  '/transmission': 'transmission:read',
   '/station/coastal': 'coastalstation:read',
   '/station/special': 'specialstation:read',
   '/station/cospas-sarsat': 'coastalstationcospassarsat:read',
@@ -134,6 +136,7 @@ const pageTitles: Record<string, string> = {
   '/ais-system': 'Hệ thống trạm bờ AIS',
   '/cctv': 'Quản lý hệ thống CCTV',
   '/scada': 'Quản lý hệ thống SCADA',
+  '/transmission': 'Quản lý hệ thống truyền dẫn',
   '/connections': 'Liên thông dữ liệu',
   '/interconnect': 'Quản lý kết nối liên thông',
   '/reports': 'Báo cáo & Thống kê',
@@ -232,7 +235,7 @@ export default function AppLayout() {
         setOpenKeys(['asset-movement']);
       } else if (selectedKey.startsWith('/documents')) {
         setOpenKeys(['documents-incidents']);
-      } else if (['/navigation-channel', '/dike-revetment', '/ship-repair-facility', '/radar-station', '/vts-system', '/cctv', '/scada'].includes(selectedKey)) {
+      } else if (['/navigation-channel', '/dike-revetment', '/ship-repair-facility', '/radar-station', '/vts-system', '/cctv', '/scada', '/transmission'].includes(selectedKey)) {
         setOpenKeys(['khu-nuoc-vts']);
       } else if (selectedKey.startsWith('/station')) {
         setOpenKeys(['stations']);
@@ -360,6 +363,7 @@ export default function AppLayout() {
         canAccessMenu('/ais-system') ? { key: '/ais-system', label: 'Hệ thống trạm bờ AIS' } : null,
         canAccessMenu('/cctv') ? { key: '/cctv', label: 'Quản lý hệ thống CCTV', icon: <VideoCameraOutlined /> } : null,
         canAccessMenu('/scada') ? { key: '/scada', label: 'Quản lý hệ thống SCADA', icon: <MonitorOutlined /> } : null,
+        canAccessMenu('/transmission') ? { key: '/transmission', label: 'Quản lý hệ thống truyền dẫn', icon: <ApartmentOutlined /> } : null,
       ].filter(Boolean),
     },
     {

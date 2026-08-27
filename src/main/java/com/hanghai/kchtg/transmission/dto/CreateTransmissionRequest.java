@@ -1,34 +1,41 @@
-package com.hanghai.kchtg.scada.dto;
+package com.hanghai.kchtg.transmission.dto;
 
 import java.util.UUID;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
 
 /**
- * Request DTO for updating an existing SCADA system.
+ * Request DTO for creating a new transmission system.
  */
 @Data
-public class UpdateScadaRequest {
-
-    @NotNull(message = "ID không được để trống")
-    private UUID id;
+public class CreateTransmissionRequest {
 
     private RecordSecurityLevel securityLevel;
 
+    @NotBlank(message = "Mã thiết bị không được để trống")
+    @Size(max = 200, message = "Mã thiết bị tối đa 200 ký tự")
+    private String deviceCode;
+
+    @NotBlank(message = "Tên thiết bị không được để trống")
+    @Size(max = 255, message = "Tên thiết bị tối đa 255 ký tự")
     private String deviceName;
 
+    @Size(max = 500, message = "Địa điểm chi tiết tối đa 500 ký tự")
     private String detailedLocation;
 
+    @NotNull(message = "Số lượng không được để trống")
     private Integer quantity;
 
+    @Size(max = 50, message = "Hãng sản xuất tối đa 50 ký tự")
     private String manufacturer;
 
+    @Size(max = 255, message = "Model tối đa 255 ký tự")
     private String model;
 
     private UUID orgUnitId;
@@ -62,8 +69,8 @@ public class UpdateScadaRequest {
     private String coordinates;
 
     /**
-     * Trạng thái phê duyệt mới (giống màn /port): gửi 'PENDING' để chuyển bản ghi sang chờ duyệt.
-     * Khi null, bản ghi được đưa về trạng thái chờ duyệt (PENDING_APPROVAL).
+     * Hành động khi tạo: 'draft' (Lưu tạm) | 'submit' (Gửi duyệt — mặc định) | 'approve' (Lưu và phê duyệt).
+     * Cơ chế giống màn /port (CreatePortRequest.action).
      */
-    private ApprovalStatus approvalStatus;
+    private String action;
 }

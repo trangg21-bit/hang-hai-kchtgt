@@ -9,6 +9,12 @@ import com.hanghai.kchtg.port.service.PortCacheService;
 import com.hanghai.kchtg.common.dto.OperatingOrganizationOptionResponse;
 import com.hanghai.kchtg.common.entity.OperatingOrganization;
 import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
+import com.hanghai.kchtg.mapicon.dto.MapSymbolOptionResponse;
+import com.hanghai.kchtg.mapicon.service.MapSymbolService;
+import com.hanghai.kchtg.radarstation.dto.RadarStationOptionResponse;
+import com.hanghai.kchtg.radarstation.service.RadarStationService;
+import com.hanghai.kchtg.vtsoperationcenter.dto.VtsOperationCenterOptionResponse;
+import com.hanghai.kchtg.vtsoperationcenter.service.VtsOperationCenterService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,17 +34,26 @@ public class CommonOptionsService {
     private final PortCacheService portCacheService;
     private final PortRepository portRepository;
     private final OperatingOrganizationRepository operatingOrganizationRepository;
+    private final MapSymbolService mapSymbolService;
+    private final RadarStationService radarStationService;
+    private final VtsOperationCenterService vtsOperationCenterService;
 
     public CommonOptionsService(OrgUnitCacheService orgUnitCacheService,
             OrgUnitScopeService orgUnitScopeService,
             PortCacheService portCacheService,
             PortRepository portRepository,
-            OperatingOrganizationRepository operatingOrganizationRepository) {
+            OperatingOrganizationRepository operatingOrganizationRepository,
+            MapSymbolService mapSymbolService,
+            RadarStationService radarStationService,
+            VtsOperationCenterService vtsOperationCenterService) {
         this.orgUnitCacheService = orgUnitCacheService;
         this.orgUnitScopeService = orgUnitScopeService;
         this.portCacheService = portCacheService;
         this.portRepository = portRepository;
         this.operatingOrganizationRepository = operatingOrganizationRepository;
+        this.mapSymbolService = mapSymbolService;
+        this.radarStationService = radarStationService;
+        this.vtsOperationCenterService = vtsOperationCenterService;
     }
 
     public List<OrgUnitResponse> getOrgUnitOptions() {
@@ -78,5 +93,17 @@ public class CommonOptionsService {
                         .parentCode(org.getParentCode())
                         .build())
                 .toList();
+    }
+
+    public List<MapSymbolOptionResponse> getSymbolOptions() {
+        return mapSymbolService.getOptions();
+    }
+
+    public List<RadarStationOptionResponse> getRadarStationOptions() {
+        return radarStationService.getOptions(null);
+    }
+
+    public List<VtsOperationCenterOptionResponse> getVtsOperationCenterOptions() {
+        return vtsOperationCenterService.getOptions(null);
     }
 }

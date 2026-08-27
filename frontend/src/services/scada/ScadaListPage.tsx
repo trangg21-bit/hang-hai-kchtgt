@@ -1,6 +1,11 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { PERMISSIONS } from "../../constants/permissions";
 import { fmtNum, fmtInputNumber } from "../../utils/numFmt";
+import { coordinateRowsToWkt, resolveMapGeometryLocation, type EditableGeometryType } from "../../utils/gisGeometry";
+
+// Normalize form geometryType ('POINT' | 'LINE' | 'POLYGON') — fallback POINT khi chưa chọn
+const normalizeGeometryType = (value: unknown): 'POINT' | 'LINE' | 'POLYGON' =>
+  value === 'LINE' || value === 'POLYGON' ? value : 'POINT';
 import { usePermissionStore } from "../../store/permissionStore";
 import {
   Alert,
@@ -86,11 +91,7 @@ import { useAuthStore } from "../../store/authStore";
 import EmptyState from "../../components/EmptyState";
 import LoadingSkeleton from "../../components/LoadingSkeleton";
 import { VIETNAM_PROVINCES } from "../../types/common";
-import { organizationService } from "../../services/organizationService";
-import { userService } from "../../services/userService";
-import { radarStationCRUD } from "../radarStationService";
-import { vtsOperationCenterService } from "../vtsOperationCenterService";
-import { symbolService } from "../symbolService";
+import api from "../api";
 import type { Symbol as MapSymbolType } from "../symbolService";
 import {
   ScreenHeader,
@@ -718,39 +719,10 @@ const ScadaListPage = () => {
     );
   }, [filterValues.orgUnitId]);
 
-  // Org units
+  // Org units — danh sách đã được backend lọc theo phạm vi phân quyền
+  // (GET /common/options/org-units), hiển thị thẳng như màn /vts-system.
   const [orgUnits, setOrgUnits] = useState<{ id: string; name: string; parentId?: string; children?: { id: string; name: string }[] }[]>([]);
-
-  // Đơn vị của tài khoản đang đăng nhập — mặc định cho "Đơn vị quản lý"
-  const [myOrgUnitId, setMyOrgUnitId] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    userService.getMe().then((me) => {
-      if (me?.orgUnitId) setMyOrgUnitId(me.orgUnitId);
-    });
-  }, []);
-
-  // Cục (admin:all / orgunit:scope_all) xem full; đơn vị cha xem subtree;
-  // đơn vị lá khóa ở đơn vị của mình.
-  const isAdminScope = hasPerm?.("admin:all") || hasPerm?.("orgunit:scope_all");
-  const orgUnitOptions = useMemo(() => {
-    if (!orgUnits.length || !myOrgUnitId) return orgUnits;
-    if (isAdminScope) return orgUnits;
-    const userNode = orgUnits.find((o) => o.id === myOrgUnitId);
-    if (!userNode) return orgUnits;
-    const result: { id: string; name: string; parentId?: string }[] = [];
-    const queue = [userNode];
-    while (queue.length) {
-      const n = queue.shift();
-      if (!n) break;
-      result.push({ id: n.id, name: n.name, parentId: n.parentId });
-      for (const child of orgUnits) {
-        if (child.parentId === n.id) queue.push(child);
-      }
-    }
-    return result;
-  }, [orgUnits, myOrgUnitId, isAdminScope]);
-  const canSelectOrg = !!myOrgUnitId && (!!isAdminScope || orgUnitOptions.some((o) => o.parentId === myOrgUnitId));
+  const orgUnitOptions = orgUnits;
   const [loadingOrgs, setLoadingOrgs] = useState(false);
 
   // Symbols
@@ -781,9 +753,10 @@ const ScadaListPage = () => {
   const fetchRadarStations = useCallback(async () => {
     setLoadingRadars(true);
     try {
-      const result = await radarStationCRUD.searchPaged({ size: 500, page: 1 });
+      const res = await api.get("/common/options/radar-stations");
+      const items = res.data?.data;
       setRadarStationOptions(
-        result.items.map((s) => ({
+        (Array.isArray(items) ? items : []).map((s: { id: string; stationName?: string; code?: string }) => ({
           label: s.stationName || s.code || s.id,
           value: s.id,
         }))
@@ -809,9 +782,10 @@ const ScadaListPage = () => {
   const fetchVtsOperationCenters = useCallback(async () => {
     setLoadingVtsCenters(true);
     try {
-      const result = await vtsOperationCenterService.getOptions();
+      const res = await api.get("/common/options/vts-operation-centers");
+      const items = res.data?.data;
       setVtsOperationCenterOptions(
-        result.map((s) => ({
+        (Array.isArray(items) ? items : []).map((s: { id: string; name?: string; code?: string }) => ({
           label: s.name || s.code || s.id,
           value: s.id,
         }))
@@ -1663,7 +1637,14 @@ const ScadaListPage = () => {
   const fetchOrgUnits = useCallback(async () => {
     setLoadingOrgs(true);
     try {
-      const orgs = await organizationService.getTree();
+      const res = await api.get("/common/options/org-units");
+      const items = res.data?.data;
+      const orgs = (Array.isArray(items) ? items : []).map((o: { id?: string; name?: string; code?: string; parentId?: string | null }) => ({
+        id: String(o.id),
+        name: o.name || "Đơn vị",
+        code: o.code || undefined,
+        parentId: o.parentId ? String(o.parentId) : undefined,
+      }));
       setOrgUnits(orgs);
     } catch (error) {
       console.error("Lỗi tải danh sách đơn vị:", error);
@@ -1675,8 +1656,9 @@ const ScadaListPage = () => {
   const fetchSymbols = useCallback(async () => {
     setLoadingSymbols(true);
     try {
-      const syms = await symbolService.list({ pageSize: 1000 });
-      setSymbols(syms.data || []);
+      const res = await api.get("/common/options/symbols");
+      const items = res.data?.data;
+      setSymbols((Array.isArray(items) ? items : []) as MapSymbolType[]);
     } catch (error) {
       console.error("Lỗi tải biểu tượng:", error);
     } finally {
@@ -1801,16 +1783,21 @@ const ScadaListPage = () => {
     async (values: Record<string, unknown>) => {
       setCreateLoading(true);
       try {
-        // Build coordinateList from GPS state
-        const coordinateList = gpsCoordList
-          .filter(c => c.lat != null && c.lng != null && !isNaN(c.lat) && !isNaN(c.lng))
-          .map(c => ({ latitude: c.lat, longitude: c.lng }));
+        // Build WKT từ GPS state (lưu vào gis_spatial_objects qua spatial_id — chuẩn GIS dự án)
+        const createGeomType = normalizeGeometryType(values.geometryType);
+        const createWktType: EditableGeometryType =
+          createGeomType === 'LINE' ? 'LineString' : createGeomType === 'POLYGON' ? 'Polygon' : 'Point';
+        const coordinates = coordinateRowsToWkt(
+          createWktType,
+          gpsCoordList.map(c => ({ lng: c.lng, lat: c.lat }))
+        );
 
         const payload = {
           ...values,
           deviceCode: values.deviceCode || (await generateScadaCode()),
           operationalStatus: values.operationalStatus ?? 1,
-          coordinateList,
+          geometryType: createGeomType,
+          coordinates: coordinates ?? undefined,
           // Cột display_rule là INT; chuỗi 'Độ, phút, giây (DMS)' chỉ để hiển thị (giống /port, /pier)
           displayRule: values.displayRule != null ? Number(values.displayRule) || null : undefined,
         };
@@ -1853,10 +1840,14 @@ const ScadaListPage = () => {
       if (!updateTarget) return;
       setUpdateLoading(true);
       try {
-        // Build coordinateList from GPS state
-        const coordinateList = updateGpsCoordList
-          .filter(c => c.lat != null && c.lng != null && !isNaN(c.lat) && !isNaN(c.lng))
-          .map(c => ({ latitude: c.lat, longitude: c.lng }));
+        // Build WKT từ GPS state (lưu vào gis_spatial_objects qua spatial_id — chuẩn GIS dự án)
+        const updateGeomType = normalizeGeometryType(updateGeometryType);
+        const updateWktType: EditableGeometryType =
+          updateGeomType === 'LINE' ? 'LineString' : updateGeomType === 'POLYGON' ? 'Polygon' : 'Point';
+        const coordinates = coordinateRowsToWkt(
+          updateWktType,
+          updateGpsCoordList.map(c => ({ lng: c.lng, lat: c.lat }))
+        );
 
         // Chuẩn VTS: Lưu tạm (chỉ update) / Lưu và gửi phê duyệt (update + submit) /
         // Lưu và phê duyệt (update + giữ Đã duyệt — T12 backend)
@@ -1864,7 +1855,8 @@ const ScadaListPage = () => {
         await updateScada({
           id: updateTarget.id,
           ...values,
-          coordinateList,
+          geometryType: updateGeomType,
+          coordinates: coordinates ?? undefined,
           // Cột display_rule là INT; chuỗi 'Độ, phút, giây (DMS)' chỉ để hiển thị (giống /port, /pier)
           displayRule: values.displayRule != null ? Number(values.displayRule) || null : undefined,
           ...(currentAction === 'approve' ? { approvalStatus: 'APPROVED' } : {}),
@@ -1896,7 +1888,7 @@ const ScadaListPage = () => {
         setUpdateLoading(false);
       }
     },
-    [updateTarget, fetchData, fetchTabCounts, updateGpsCoordList, uploadFileList]
+    [updateTarget, fetchData, fetchTabCounts, updateGpsCoordList, uploadFileList, updateGeometryType]
   );
 
   const handleConfirmSubmit = useCallback(async () => {
@@ -1933,8 +1925,6 @@ const ScadaListPage = () => {
                 variant: "primary" as const,
                 onClick: () => {
                   setUploadFileList([]);
-                  // Mặc định Đơn vị quản lý = đơn vị của tài khoản (trừ cha/Cục được chọn con)
-                  if (myOrgUnitId) createForm.setFieldsValue({ orgUnitId: myOrgUnitId });
                   setCreateModalOpen(true);
                   // Sinh trước mã thiết bị để hiển thị preview (giống Mã cảng biển /port)
                   setDeviceCodeLoading(true);
@@ -2255,7 +2245,7 @@ const ScadaListPage = () => {
                       ].map((row) => (
                         <div key={row.label} className="detail-row" style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
                           <span className="detail-label">{row.label}</span>
-                          <span className="detail-value" style={row.bold ? { fontWeight: fontWeightBold } : undefined}>
+                          <span className="detail-value" style={{ whiteSpace: 'pre-wrap', ...(row.bold ? { fontWeight: fontWeightBold } : undefined) }}>
                             {row.badge ? (
                               <Tag color={colors.primary} style={{ borderRadius: radiusPill, margin: 0, fontWeight: fontWeightMedium }}>{row.value}</Tag>
                             ) : row.value}
@@ -2279,7 +2269,7 @@ const ScadaListPage = () => {
                       ].map(([label, value]) => (
                         <div key={label} className="detail-row" style={{ gridColumn: '1 / -1' }}>
                           <span className="detail-label">{label}</span>
-                          <span className="detail-value">{value}</span>
+                          <span className="detail-value" style={{ whiteSpace: 'pre-wrap' }}>{value}</span>
                         </div>
                       ))}
                     </div>
@@ -2306,7 +2296,10 @@ const ScadaListPage = () => {
                     </div>
                     <div style={{ marginTop: spaceSm, padding: '0 12px' }}>
                       <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS</span>
-                      <PagedTable dataSource={[]}
+                      <PagedTable dataSource={(() => {
+                        const loc = resolveMapGeometryLocation((selectedRecord as any)?.coordinates);
+                        return loc ? loc.coordinates.map(([lng, lat]) => ({ lat, lng })) : [];
+                      })()}
                         emptyText={<div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><EnvironmentOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tọa độ</span></div>}
                       >
                         <Table.Column title="Vĩ độ (N)" key="lat" align="center"
@@ -2769,7 +2762,6 @@ const ScadaListPage = () => {
                             loading={loadingOrgs}
                             showPath
                             treeDefaultExpandAll={false}
-                            disabled={!canSelectOrg}
                             style={{ ...pillStyle }}
                           />
                         </Form.Item>
@@ -3397,7 +3389,7 @@ const ScadaListPage = () => {
                             loading={loadingOrgs}
                             showPath
                             treeDefaultExpandAll={false}
-                            disabled={!canSelectOrg}
+                            disabled
                             style={{ ...pillStyle }}
                           />
                         </Form.Item>
