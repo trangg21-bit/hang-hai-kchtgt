@@ -1,11 +1,11 @@
-package com.hanghai.kchtg.cctv.service;
+package com.hanghai.kchtg.vtsassist.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
-import com.hanghai.kchtg.cctv.dto.ApprovalRequest;
-import com.hanghai.kchtg.cctv.dto.CctvResponse;
-import com.hanghai.kchtg.cctv.entity.Cctv;
-import com.hanghai.kchtg.cctv.repository.CctvRepository;
+import com.hanghai.kchtg.vtsassist.dto.ApprovalRequest;
+import com.hanghai.kchtg.vtsassist.dto.VtsAssistResponse;
+import com.hanghai.kchtg.vtsassist.entity.VtsAssist;
+import com.hanghai.kchtg.vtsassist.repository.VtsAssistRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
@@ -26,7 +26,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Approval service for CCTV entity.
+ * Approval service for VTS Assist entity.
  * Quy trình phê duyệt 2 cấp chuẩn M-1006, dùng chung
  * {@link InfrastructureApprovalService} giống module /vts-system.
  * Lịch sử đọc từ shared change_logs / approval_logs (như Port).
@@ -34,58 +34,58 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class CctvApprovalService {
+public class VtsAssistApprovalService {
 
-  private final CctvRepository cctvRepository;
+  private final VtsAssistRepository vtsAssistRepository;
   private final InfrastructureApprovalService approvalService;
-  private final CctvService cctvService;
+  private final VtsAssistService vtsAssistService;
   private final InfrastructureHistoryRepository historyRepository;
   private final ChangeLogRepository changeLogRepository;
   private final UserRepository userRepository;
 
   @Transactional
-  public CctvResponse submit(UUID id, UUID userId) {
+  public VtsAssistResponse submit(UUID id, UUID userId) {
     return submit(id, null, userId);
   }
 
   @Transactional
-  public CctvResponse submit(UUID id, String content, UUID userId) {
-    Cctv entity = cctvRepository.findById(id)
-      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống CCTV với id: " + id));
+  public VtsAssistResponse submit(UUID id, String content, UUID userId) {
+    VtsAssist entity = vtsAssistRepository.findById(id)
+      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống phụ trợ VTS với id: " + id));
 
-    approvalService.submit(entity, InfrastructureType.CCTV, userId, content);
+    approvalService.submit(entity, InfrastructureType.VTS_ASSIST, userId, content);
     // Ghi nhận thông tin gửi phê duyệt (hiển thị tại drawer chi tiết)
     entity.setSubmittedDate(LocalDateTime.now());
     entity.setSubmittedBy(userId);
     // Nội dung/ý kiến người gửi — hiển thị "Nội dung phê duyệt" (cấp 1) cho tới khi C1 ra quyết định
     entity.setApprovalContentLevel1(content != null && !content.trim().isEmpty() ? content.trim() : null);
     entity.setApprovalContentLevel2(null);
-    Cctv saved = cctvRepository.save(entity);
-    return cctvService.toResponse(saved);
+    VtsAssist saved = vtsAssistRepository.save(entity);
+    return vtsAssistService.toResponse(saved);
   }
 
   @Transactional
-  public CctvResponse approveC1(UUID id, ApprovalRequest request, UUID userId) {
+  public VtsAssistResponse approveC1(UUID id, ApprovalRequest request, UUID userId) {
     validateDecision(request);
-    Cctv entity = cctvRepository.findById(id)
-      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống CCTV với id: " + id));
+    VtsAssist entity = vtsAssistRepository.findById(id)
+      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống phụ trợ VTS với id: " + id));
 
-    approvalService.approveC1(entity, InfrastructureType.CCTV, request.getDecision(), request.getReason(), userId);
+    approvalService.approveC1(entity, InfrastructureType.VTS_ASSIST, request.getDecision(), request.getReason(), userId);
     entity.setApprovalContentLevel1(request.getReason());
-    Cctv saved = cctvRepository.save(entity);
-    return cctvService.toResponse(saved);
+    VtsAssist saved = vtsAssistRepository.save(entity);
+    return vtsAssistService.toResponse(saved);
   }
 
   @Transactional
-  public CctvResponse approveC2(UUID id, ApprovalRequest request, UUID userId) {
+  public VtsAssistResponse approveC2(UUID id, ApprovalRequest request, UUID userId) {
     validateDecision(request);
-    Cctv entity = cctvRepository.findById(id)
-      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống CCTV với id: " + id));
+    VtsAssist entity = vtsAssistRepository.findById(id)
+      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống phụ trợ VTS với id: " + id));
 
-    approvalService.approveC2(entity, InfrastructureType.CCTV, request.getDecision(), request.getReason(), userId);
+    approvalService.approveC2(entity, InfrastructureType.VTS_ASSIST, request.getDecision(), request.getReason(), userId);
     entity.setApprovalContentLevel2(request.getReason());
-    Cctv saved = cctvRepository.save(entity);
-    return cctvService.toResponse(saved);
+    VtsAssist saved = vtsAssistRepository.save(entity);
+    return vtsAssistService.toResponse(saved);
   }
 
   private void validateDecision(ApprovalRequest request) {

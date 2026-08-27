@@ -1,6 +1,6 @@
-// ── CCTV Response (matches CctvResponse.java) ────────────────────────
+// ── VtsAssist Response (matches VtsAssistResponse.java) ──────
 
-export interface CctvResponse {
+export interface VtsAssistResponse {
   id: string;
   deviceCode: string;
   deviceName: string;
@@ -51,9 +51,9 @@ export interface CctvResponse {
   updatedAt: string | null;
 }
 
-// ── CreateCctvRequest (matches CreateCctvRequest.java) ──────────────
+// ── CreateVtsAssistRequest (matches CreateVtsAssistRequest.java) ──
 
-export interface CreateCctvRequest {
+export interface CreateVtsAssistRequest {
   deviceCode?: string;
   deviceName: string;
   detailedLocation?: string | null;
@@ -63,6 +63,8 @@ export interface CreateCctvRequest {
   orgUnitId?: string | null;
   operatingUnitId?: string | null;
   provinceName?: string | null;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON' | null;
+  coordinates?: string | null;
   attachedInfrastructureType?: number | null;
   attachedInfrastructureId?: string | null;
   unitOfMeasure?: number | null;
@@ -76,13 +78,12 @@ export interface CreateCctvRequest {
   coordinateSystem?: number | null;
   displayRule?: number | null;
   spatialId?: string | null;
-  geometryType?: 'POINT' | 'LINE' | 'POLYGON' | null;
-  coordinates?: string | null;
+  action?: string;
 }
 
-// ── UpdateCctvRequest (matches UpdateCctvRequest.java) ──────────────
+// ── UpdateVtsAssistRequest (matches UpdateVtsAssistRequest.java) ──
 
-export interface UpdateCctvRequest {
+export interface UpdateVtsAssistRequest {
   id: string;
   deviceName?: string | null;
   detailedLocation?: string | null;
@@ -92,6 +93,8 @@ export interface UpdateCctvRequest {
   orgUnitId?: string | null;
   operatingUnitId?: string | null;
   provinceName?: string | null;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON' | null;
+  coordinates?: string | null;
   attachedInfrastructureType?: number | null;
   attachedInfrastructureId?: string | null;
   unitOfMeasure?: number | null;
@@ -105,8 +108,6 @@ export interface UpdateCctvRequest {
   coordinateSystem?: number | null;
   displayRule?: number | null;
   spatialId?: string | null;
-  geometryType?: 'POINT' | 'LINE' | 'POLYGON' | null;
-  coordinates?: string | null;
   approvalStatus?: string | null;
 }
 
@@ -132,7 +133,7 @@ export interface ApiResponseEnvelope<T> {
 
 // ── Option response for dropdowns ───────────────────────────────────
 
-export interface CctvOptionResponse {
+export interface VtsAssistOptionResponse {
   id: string;
   deviceCode: string;
   deviceName: string;
@@ -167,7 +168,7 @@ export interface ApprovalHistoryLine {
   createdAt: string | null;
 }
 
-export interface CctvHistoryResponse {
+export interface VtsAssistHistoryResponse {
   entityId: string;
   entityType: string;
   currentApprovalStatus: string | null;

@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { PERMISSIONS } from "../../constants/permissions";
 import { fmtNum, fmtInputNumber } from "../../utils/numFmt";
 import { coordinateRowsToWkt, resolveMapGeometryLocation, type EditableGeometryType } from "../../utils/gisGeometry";
 
@@ -13,21 +12,17 @@ import {
   Card,
   Checkbox,
   DatePicker,
-  Divider,
   Space,
   Tag,
   Row,
   Col,
   Input,
   Select,
-  Tooltip,
   Modal,
   Form,
   InputNumber,
   Typography,
-  Descriptions,
   Drawer,
-  Popconfirm,
   Table,
 } from "antd";
 import { OrgUnitTreeSelect } from "../../components/org-unit";
@@ -40,51 +35,30 @@ import {
   SendOutlined,
   EyeOutlined,
   HistoryOutlined,
-  ClockCircleOutlined,
-  ClockCircleFilled,
-  HourglassOutlined,
-  ArrowRightOutlined,
   UploadOutlined,
   ExclamationCircleOutlined,
-  DownOutlined,
-  UpOutlined,
   FileOutlined,
-  SearchOutlined,
-  FilterOutlined,
-  ReloadOutlined,
-  FileImageOutlined,
-  FilePdfOutlined,
   EnvironmentOutlined,
 } from "@ant-design/icons";
 import { Tabs, Upload } from "antd";
-import type { RcFile, UploadFile } from "antd/es/upload/interface";
+import type { RcFile } from "antd/es/upload/interface";
 import { useSearchParams } from "react-router-dom";
-import { SelectAppParams } from "../../components/SelectAppParams";
-import SelectCateOther from "../../components/SelectCateOther";
-import { LongLatTable, type CoordinateRow } from "../../components/LongLatTable";
 import {
   fetchScadaList,
   deleteScada,
   submitScada,
   approveScadaC1,
   approveScadaC2,
-  fetchScadaById,
   createScada,
   updateScada,
   generateScadaCode,
-  fetchScadaOptions,
   fetchScadaHistory,
   fetchScadaAttachments,
   uploadScadaAttachment,
   deleteScadaAttachment,
 } from "./api";
-import {
-  operationalStatusBadge,
-  OPERATIONAL_STATUS_OPTIONS,
-  APPROVAL_STATUS_OPTIONS,
-  ATTACHED_INFRA_TYPE_OPTIONS,
-} from "./schema";
-import type { ScadaResponse, ApprovalRequest } from "./types";
+import { OPERATIONAL_STATUS_OPTIONS } from "./schema";
+import type { ScadaResponse, ApprovalRequest, CreateScadaRequest } from "./types";
 import toast from "../../components/ToastNotification";
 import ApprovalModal from "../../components/shared/ApprovalModal";
 import { useAuthStore } from "../../store/authStore";
@@ -92,6 +66,7 @@ import EmptyState from "../../components/EmptyState";
 import LoadingSkeleton from "../../components/LoadingSkeleton";
 import { VIETNAM_PROVINCES } from "../../types/common";
 import api from "../api";
+import { DEFAULT_OPERATING_ORGANIZATIONS } from "../operatingOrganizationsData";
 import type { Symbol as MapSymbolType } from "../symbolService";
 import {
   ScreenHeader,
@@ -170,18 +145,13 @@ import {
   textTertiary,
   statusCritical,
   statusAttention,
-  statusWarning,
-  statusNeutral,
   statusDraft,
   statusOperational,
   actionPrimary,
-  actionHover,
   borderDefault,
   surfaceCard,
   radiusPill,
-  radiusSm,
   radiusMd,
-  radiusLg,
   fontSans,
   spaceMd,
   spaceFormField,
@@ -190,9 +160,6 @@ import {
   spaceXs,
   spaceXl,
   badgeBaseStyle,
-  cardStyle,
-  dividerStyle,
-  metaStyle,
   drawerProps,
   drawerTitleStyle,
   drawerCloseBtnStyle,
@@ -200,12 +167,11 @@ import {
   primaryButtonStyle,
   outlineButtonStyle,
   requiredMarkStyle,
-  detailSectionTitleStyle,
   uploadHintStyle,
 } from "../../tokens";
 import dayjs from "dayjs";
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 // ── Trạng thái phê duyệt 2 cấp (C1 Cảng vụ → C2 Cục) — đồng bộ /vts-system ──
 const APPROVAL_STATUS_MAP: Record<string, string> = {
@@ -227,7 +193,7 @@ const APPROVAL_COLOR: Record<string, string> = {
 };
 
 /* ── Shared list/detail UI tokens — aligned with Port list-view ───────── */
-const sectionHeader: React.CSSProperties = {
+export const sectionHeader: React.CSSProperties = {
   display: "block",
   fontSize: fontSizeMd,
   fontWeight: fontWeightBold,
@@ -297,7 +263,7 @@ function renderApprovalBadge(status: string | null | undefined) {
 }
 
 /** Stat card cho chỉ số tổng hợp */
-function ScadaStatCard({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
+export function ScadaStatCard({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
   return (
     <Card
       size="small"
@@ -480,14 +446,14 @@ const tableMetaStyle: React.CSSProperties = {
   color: textPrimary,
 };
 
-const btnStyle: React.CSSProperties = {
+export const btnStyle: React.CSSProperties = {
   ...pillStyle,
   fontWeight: fontWeightMedium,
 };
 
 // ── Build Collapse items for Detail Modal (aligned with PortDetailPage) ──
 
-function buildScadaCollapseItems(
+export function buildScadaCollapseItems(
   rec: ScadaResponse,
 ): Array<{ key: string; label: string; children: React.ReactNode }> {
   const items: Array<{ key: string; label: string; children: React.ReactNode }> = [];
@@ -526,17 +492,14 @@ function buildScadaCollapseItems(
         <DetailInfoRow
           label="Thông số kỹ thuật"
           value={rec.specifications || '—'}
-          span={12}
         />
         <DetailInfoRow
           label="Thông tin bảo trì"
           value={rec.maintenanceInformation || '—'}
-          span={12}
         />
         <DetailInfoRow
           label="Ghi chú"
           value={rec.note || '—'}
-          span={12}
         />
       </Row>
     ),
@@ -621,9 +584,9 @@ function buildScadaCollapseItems(
 
   // 7. Trạng thái
   const opStatusBadge = rec.operationalStatus != null
-    ? (rec.operationalStatus === 0 ? { color: 'orange', label: 'Chưa khai thác/vận hành' }
-      : rec.operationalStatus === 1 ? { color: 'green', label: 'Đang khai thác/vận hành' }
-      : rec.operationalStatus === 2 ? { color: 'red', label: 'Dừng khai thác/vận hành' }
+    ? (rec.operationalStatus === 'NOT_YET_OPERATIONAL' ? { color: 'orange', label: 'Chưa khai thác/vận hành' }
+      : rec.operationalStatus === 'OPERATIONAL' ? { color: 'green', label: 'Đang khai thác/vận hành' }
+      : rec.operationalStatus === 'SUSPENDED' ? { color: 'red', label: 'Dừng khai thác/vận hành' }
       : { color: textTertiary, label: String(rec.operationalStatus) })
     : { color: textTertiary, label: '—' };
   const appStatusBadge = rec.approvalStatus
@@ -651,7 +614,7 @@ function buildScadaCollapseItems(
 
 const ScadaListPage = () => {
   const [searchParams] = useSearchParams();
-  const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const currentUser = useAuthStore((s) => s.user);
   const isIframeModal = window.parent !== window.self;
   const [isLoading, setIsLoading] = useState(false);
@@ -727,7 +690,7 @@ const ScadaListPage = () => {
 
   // Symbols
   const [symbols, setSymbols] = useState<MapSymbolType[]>([]);
-  const [loadingSymbols, setLoadingSymbols] = useState(false);
+  const [, setLoadingSymbols] = useState(false);
 
   // Year options for "Năm đưa vào sử dụng" (current year - 30 to current year)
   const yearOfUseOptions = useMemo(() => {
@@ -801,6 +764,36 @@ const ScadaListPage = () => {
   useEffect(() => {
     fetchVtsOperationCenters();
   }, [fetchVtsOperationCenters]);
+
+  // Đơn vị khai thác — từ bảng operating_organizations (endpoint chung)
+  const [operatingOrganizationOptions, setOperatingOrganizationOptions] = useState<
+    { label: string; value: string }[]
+  >([]);
+  const [loadingOperatingOrgs, setLoadingOperatingOrgs] = useState(false);
+
+  const fetchOperatingOrganizations = useCallback(async () => {
+    setLoadingOperatingOrgs(true);
+    try {
+      const res = await api.get("/common/options/operating-organizations");
+      const items = res.data?.data;
+      const list: Array<{ id: string; name?: string; code?: string }> =
+        Array.isArray(items) && items.length > 0 ? items : DEFAULT_OPERATING_ORGANIZATIONS;
+      setOperatingOrganizationOptions(
+        list.map((s) => ({ label: s.name || s.code || s.id, value: s.id }))
+      );
+    } catch (error) {
+      console.error("Lỗi tải danh sách đơn vị khai thác:", error);
+      setOperatingOrganizationOptions(
+        DEFAULT_OPERATING_ORGANIZATIONS.map((s) => ({ label: s.name, value: s.id }))
+      );
+    } finally {
+      setLoadingOperatingOrgs(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchOperatingOrganizations();
+  }, [fetchOperatingOrganizations]);
 
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<ScadaResponse | null>(
@@ -903,6 +896,7 @@ const ScadaListPage = () => {
 
   // Submissions
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
+  const [submitContent, setSubmitContent] = useState("");
   const [submittingRecord, setSubmittingRecord] = useState<ScadaResponse | null>(
     null
   );
@@ -1232,23 +1226,6 @@ const ScadaListPage = () => {
     return val;
   }
 
-  function getActionLabel(items: any[]): { label: string; color: string } {
-    const fields = items.map((i: any) => i.fieldName || '');
-    const oldVals = items.map((i: any) => i.oldValue || '');
-    const newVals = items.map((i: any) => i.newValue || '');
-    if (fields.includes('deletedAt') || newVals.includes('Đã xóa'))
-      return { label: 'Xóa', color: 'red' };
-    if (fields.includes('approvalStatus')) {
-      const newStatus = newVals[fields.indexOf('approvalStatus')];
-      if (newStatus === 'APPROVED') return { label: 'Phê duyệt', color: 'green' };
-      if (newStatus === 'REJECTED') return { label: 'Từ chối', color: 'red' };
-      if (newStatus === 'PENDING') return { label: 'Gửi phê duyệt', color: 'orange' };
-    }
-    const nullCount = oldVals.filter((v) => v === '(null)' || v === 'null').length;
-    if (nullCount > items.length / 2) return { label: 'Thêm mới', color: 'blue' };
-    return { label: 'Chỉnh sửa', color: 'blue' };
-  }
-
   const HISTORY_FIELD_ORDER = [
     'orgUnitId', 'deviceCode', 'deviceName', 'manufacturer', 'model',
     'quantity', 'operatingUnitId', 'provinceName', 'detailedLocation',
@@ -1443,7 +1420,7 @@ const ScadaListPage = () => {
   // ── rowActions callback ──────────────────────────────────────────
   const rowActions = useCallback(
     (record: ScadaResponse) => {
-      const actions = [
+      const actions: Array<{ key: string; label: string; icon?: React.ReactNode; danger?: boolean; disabled?: boolean; onClick: () => void }> = [
         {
           key: "view",
           label: "Xem chi tiết",
@@ -1464,7 +1441,7 @@ const ScadaListPage = () => {
             setLoadingHistory(true);
             fetchScadaHistory(record.id, { page: 0, size: 200 })
               .then((d: any) => {
-                setHistoryRecords(d.changeHistory || []);
+                setHistoryRecords(d?.changeHistory || []);
               })
               .catch(() => console.error('Không thể tải lịch sử SCADA'))
               .finally(() => setLoadingHistory(false));
@@ -1520,6 +1497,7 @@ const ScadaListPage = () => {
           icon: <SendOutlined />,
           onClick: () => {
             setSubmittingRecord(record);
+            setSubmitContent("");
             setSubmitModalOpen(true);
           },
         });
@@ -1800,7 +1778,7 @@ const ScadaListPage = () => {
           coordinates: coordinates ?? undefined,
           // Cột display_rule là INT; chuỗi 'Độ, phút, giây (DMS)' chỉ để hiển thị (giống /port, /pier)
           displayRule: values.displayRule != null ? Number(values.displayRule) || null : undefined,
-        };
+        } as CreateScadaRequest;
         // Chuẩn VTS: tạo theo hành động footer — draft/submit/approve
         // (backend resolveCreateApprovalStatus: DRAFT / PENDING_APPROVAL / APPROVED)
         const currentAction = createActionTypeRef.current;
@@ -1895,10 +1873,11 @@ const ScadaListPage = () => {
     if (!submittingRecord) return;
     setSubmitLoading(true);
     try {
-      await submitScada(submittingRecord.id);
+      await submitScada(submittingRecord.id, submitContent.trim() || undefined);
       toast.success("Gửi phê duyệt thành công");
       setSubmitModalOpen(false);
       setSubmittingRecord(null);
+      setSubmitContent("");
       fetchData();
       fetchTabCounts();
     } catch (error: unknown) {
@@ -1906,7 +1885,7 @@ const ScadaListPage = () => {
     } finally {
       setSubmitLoading(false);
     }
-  }, [submittingRecord, fetchData, fetchTabCounts]);
+  }, [submittingRecord, submitContent, fetchData, fetchTabCounts]);
 
   return (
     <>
@@ -1935,7 +1914,7 @@ const ScadaListPage = () => {
                 },
               }
             : null,
-        ].filter(Boolean)}
+        ].filter(Boolean) as Array<{ key: string; label: string; icon?: React.ReactNode; variant?: 'primary' | 'outline' | 'subtle' | 'default'; onClick: () => void }>}
       />
 
       <FilterTableLayout
@@ -1944,7 +1923,7 @@ const ScadaListPage = () => {
         onFilterApply={handleFilterApply}
         onFilterReset={handleFilterReset}
         loading={isLoading}
-        error={isError ?? undefined}
+        error={!!isError}
         onRetry={fetchData}
         filterContent={
           <>
@@ -2022,7 +2001,7 @@ const ScadaListPage = () => {
                         ...prev,
                         attachedInfraType: val as number | undefined,
                         // Reset attachedInfraId khi đổi loại
-                        attachedInfraId: undefined,
+                        attachedInfraId: "",
                       }));
                     }}
                     options={attachedInfraTypeOptions}
@@ -2041,7 +2020,7 @@ const ScadaListPage = () => {
                     onChange={(val) =>
                       setFilterValues((prev) => ({
                         ...prev,
-                        attachedInfraId: val as string | undefined,
+                        attachedInfraId: val ?? "",
                       }))
                     }
                     options={filterValues.attachedInfraType === 1 ? vtsOperationCenterOptions : filterValues.attachedInfraType === 2 ? radarStationOptions : []}
@@ -2081,8 +2060,8 @@ const ScadaListPage = () => {
                     onChange={(dates) => {
                       setFilterValues((prev) => ({
                         ...prev,
-                        updatedFrom: dates?.[0] ? dates[0].format("YYYY-MM-DD 00:00:00") : undefined,
-                        updatedTo: dates?.[1] ? dates[1].format("YYYY-MM-DD 23:59:59") : undefined,
+                        updatedFrom: dates?.[0] ? dates[0].format("YYYY-MM-DD 00:00:00") : "",
+                        updatedTo: dates?.[1] ? dates[1].format("YYYY-MM-DD 23:59:59") : "",
                       }));
                     }}
                     style={{ width: "100%", borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} />
@@ -2180,7 +2159,7 @@ const ScadaListPage = () => {
               rowActions={rowActions}
               locale={{
                 emptyText: (
-                  <EmptyState message="Chưa có dữ liệu hệ thống SCADA" />
+                  <EmptyState description="Chưa có dữ liệu hệ thống SCADA" />
                 ),
               }}
             />
@@ -2189,13 +2168,10 @@ const ScadaListPage = () => {
               current={page + 1}
               total={total}
               pageSize={pageSize}
-              onChange={(p) => setPage(Math.max(p - 1, 0))}
-              onShowSizeChange={(sP, sS) => {
-                setPageSize(sS);
-                setPage(0);
+              onChange={(p, ps) => {
+                setPageSize(ps);
+                setPage(Math.max(p - 1, 0));
               }}
-              showSizeChanger
-              showTotal={(t) => `Tổng ${t} thiết bị`}
             />
           </div>
       </FilterTableLayout>
@@ -2227,7 +2203,7 @@ const ScadaListPage = () => {
                   <div style={{ paddingTop: 3 }}>
                     <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-label { width: 150px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; } .ant-tabs-nav{margin-bottom:0!important;padding-left:12px!important}`}</style>
                     <div className="detail-grid">
-                      {[
+                      {([
                         { label: 'Mã thiết bị', value: selectedRecord.deviceCode, badge: true },
                         { label: 'Tên thiết bị', value: selectedRecord.deviceName, bold: true },
                         { label: 'Đơn vị quản lý', value: selectedRecord.orgUnitName || '—', bold: true },
@@ -2242,7 +2218,7 @@ const ScadaListPage = () => {
                         { label: 'Model', value: selectedRecord.model || '—' },
                         { label: 'Hãng sản xuất', value: selectedRecord.manufacturer || '—' },
                         { label: 'Phê duyệt', value: renderApprovalBadge(selectedRecord.approvalStatus) },
-                      ].map((row) => (
+                      ] as Array<{ label: string; value: React.ReactNode; badge?: boolean; bold?: boolean; fullWidth?: boolean }>).map((row) => (
                         <div key={row.label} className="detail-row" style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
                           <span className="detail-label">{row.label}</span>
                           <span className="detail-value" style={{ whiteSpace: 'pre-wrap', ...(row.bold ? { fontWeight: fontWeightBold } : undefined) }}>
@@ -2282,12 +2258,12 @@ const ScadaListPage = () => {
                 children: (
                   <div style={{ paddingTop: 3 }}>
                     <div className="detail-grid">
-                      {[
+                      {([
                         ['Thuộc loại hạ tầng', selectedRecord.attachedInfrastructureName || '—'],
                         ['Biểu tượng', (() => { const sym = (symbols || []).find((s) => s.id === selectedRecord.mapSymbolId); return sym ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{sym.image ? <img src={sym.image} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}{sym.name}</span> : selectedRecord.mapSymbolName || '—'; })(),],
                         ['Hệ quy chiếu', selectedRecord.coordinateSystem === 1 ? 'WGS-84' : selectedRecord.coordinateSystem === 2 ? 'VN-2000' : (selectedRecord.coordinateSystem != null ? String(selectedRecord.coordinateSystem) : '—')],
                         ['Quy tắc hiển thị', selectedRecord.displayRule != null ? String(selectedRecord.displayRule) : '—'],
-                      ].map(([label, value]) => (
+                      ] as const).map(([label, value]) => (
                         <div key={label} className="detail-row">
                           <span className="detail-label">{label}</span>
                           <span className="detail-value">{value}</span>
@@ -2431,6 +2407,7 @@ const ScadaListPage = () => {
         open={submitModalOpen}
         onCancel={() => {
           setSubmittingRecord(null);
+          setSubmitContent("");
           setSubmitModalOpen(false);
         }}
         footer={[
@@ -2438,6 +2415,7 @@ const ScadaListPage = () => {
             key="cancel"
             onClick={() => {
               setSubmittingRecord(null);
+              setSubmitContent("");
               setSubmitModalOpen(false);
             }}
             style={outlineButtonStyle}
@@ -2464,6 +2442,15 @@ const ScadaListPage = () => {
             </strong>
             ?
           </p>
+          <Input.TextArea
+            value={submitContent}
+            onChange={(e) => setSubmitContent(e.target.value)}
+            placeholder="Nhập nội dung / ý kiến gửi phê duyệt (không bắt buộc)..."
+            rows={3}
+            maxLength={500}
+            showCount
+            style={{ marginTop: spaceSm }}
+          />
         </div>
       </Modal>
 
@@ -2820,10 +2807,15 @@ const ScadaListPage = () => {
                           {...labelProps('Đơn vị khai thác')}
                           style={{ marginBottom: spaceFormField }}
                         >
-                          <SelectCateOther
-                            category="DON_VI_KHAI_THAC"
+                          <Select
+                            showSearch
                             placeholder="Chọn đơn vị khai thác"
+                            loading={loadingOperatingOrgs}
                             style={{ width: "100%", ...pillStyle }}
+                            options={operatingOrganizationOptions}
+                            filterOption={(input: string, option: any) =>
+                              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                            }
                           />
                         </Form.Item>
                       </Col>
@@ -3176,7 +3168,7 @@ const ScadaListPage = () => {
                                   background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
                                   fontSize: fontSizeSm, color: textTertiary,
                                 }}>'</span>
-                                <InputNumber value={s.toFixed(2)} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber}
+                                <InputNumber value={Math.round(s * 100) / 100} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber}
                                   onChange={(v) => setGpsCoordList(gpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lat: d + m / 60 + (Number(v ?? 0)) / 3600 } : g))}
                                   style={{ flex: 1.2 }} controls={false} />
                                 <span style={{
@@ -3217,7 +3209,7 @@ const ScadaListPage = () => {
                                   background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
                                   fontSize: fontSizeSm, color: textTertiary,
                                 }}>'</span>
-                                <InputNumber value={s.toFixed(2)} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber}
+                                <InputNumber value={Math.round(s * 100) / 100} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber}
                                   onChange={(v) => setGpsCoordList(gpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lng: d + m / 60 + (Number(v ?? 0)) / 3600 } : g))}
                                   style={{ flex: 1.2 }} controls={false} />
                                 <span style={{
@@ -3447,10 +3439,15 @@ const ScadaListPage = () => {
                           {...labelProps('Đơn vị khai thác')}
                           style={{ marginBottom: spaceFormField }}
                         >
-                          <SelectCateOther
-                            category="DON_VI_KHAI_THAC"
+                          <Select
+                            showSearch
                             placeholder="Chọn đơn vị khai thác"
+                            loading={loadingOperatingOrgs}
                             style={{ width: "100%", ...pillStyle }}
+                            options={operatingOrganizationOptions}
+                            filterOption={(input: string, option: any) =>
+                              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                            }
                           />
                         </Form.Item>
                       </Col>
@@ -3800,7 +3797,7 @@ const ScadaListPage = () => {
                                   background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
                                   fontSize: fontSizeSm, color: textTertiary,
                                 }}>'</span>
-                                <InputNumber value={s.toFixed(2)} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber}
+                                <InputNumber value={Math.round(s * 100) / 100} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber}
                                   onChange={(v) => setUpdateGpsCoordList(updateGpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lat: d + m / 60 + (Number(v ?? 0)) / 3600 } : g))}
                                   style={{ flex: 1.2 }} controls={false} />
                                 <span style={{
@@ -3841,7 +3838,7 @@ const ScadaListPage = () => {
                                   background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
                                   fontSize: fontSizeSm, color: textTertiary,
                                 }}>'</span>
-                                <InputNumber value={s.toFixed(2)} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber}
+                                <InputNumber value={Math.round(s * 100) / 100} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber}
                                   onChange={(v) => setUpdateGpsCoordList(updateGpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lng: d + m / 60 + (Number(v ?? 0)) / 3600 } : g))}
                                   style={{ flex: 1.2 }} controls={false} />
                                 <span style={{

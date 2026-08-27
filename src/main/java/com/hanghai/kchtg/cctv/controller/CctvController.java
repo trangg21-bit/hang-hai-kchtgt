@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.common.dto.SubmitContentRequest;
 import com.hanghai.kchtg.cctv.dto.ApprovalRequest;
 import com.hanghai.kchtg.cctv.dto.CctvResponse;
 import com.hanghai.kchtg.cctv.dto.CctvOptionResponse;
@@ -126,9 +127,11 @@ public class CctvController {
 
   @PostMapping("/{id}/submit")
   @PreAuthorize("@auth.check(authentication, 'cctv:update')")
-  public ResponseEntity<ApiResponse<CctvResponse>> submit(@PathVariable UUID id) {
+  public ResponseEntity<ApiResponse<CctvResponse>> submit(@PathVariable UUID id,
+    @RequestBody(required = false) SubmitContentRequest request) {
     log.info("Submitting CCTV for approval: id={}", id);
-    CctvResponse response = cctvApprovalService.submit(id, SecurityUtils.getCurrentUserId());
+    String content = request != null ? request.getContent() : null;
+    CctvResponse response = cctvApprovalService.submit(id, content, SecurityUtils.getCurrentUserId());
     return ResponseEntity.ok(ApiResponse.success("Gửi phê duyệt thành công", response));
   }
 

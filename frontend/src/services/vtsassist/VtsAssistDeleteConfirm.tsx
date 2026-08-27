@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button, Input, Typography, Alert } from 'antd';
 import { useParams, useNavigate } from 'react-router-dom';
-import { deleteScada } from './api';
+import { deleteVtsAssist } from './api';
 import toast from '../../components/ToastNotification';
 import {
   colors,
@@ -17,7 +17,7 @@ import { ExclamationCircleOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 
-const ScadaDeleteConfirm = () => {
+const VtsAssistDeleteConfirm = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
@@ -25,14 +25,14 @@ const ScadaDeleteConfirm = () => {
   const [confirmText, setConfirmText] = useState('');
 
   if (!id) {
-    navigate('/scada');
+    navigate('/vtsassist');
     return null;
   }
 
   return (
     <div style={{ padding: spaceMd, maxWidth: 600, margin: '0 auto' }}>
       <Title level={3} style={{ color: colors.sidebarBg }}>
-        Xác nhận xóa hệ thống SCADA
+        Xác nhận xóa hệ thống phụ trợ VTS
       </Title>
 
       <Alert
@@ -44,7 +44,7 @@ const ScadaDeleteConfirm = () => {
       />
 
       <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>
-        Vui lòng nhập <strong>tên thiết bị</strong> hoặc gõ <strong>"XÓA"</strong> để xác nhận xóa.
+        Vui lòng nhập <strong>tên thiết bị</strong> hoặc gõ <strong>&quot;XÓA&quot;</strong> để xác nhận xóa.
       </p>
 
       <div style={{ marginBottom: spaceFormField }}>
@@ -63,9 +63,9 @@ const ScadaDeleteConfirm = () => {
             }
             setSubmitting(true);
             try {
-              await deleteScada(id);
-              toast.success('Xóa hệ thống SCADA thành công');
-              navigate('/scada');
+              await deleteVtsAssist(id);
+              toast.success('Xóa hệ thống phụ trợ VTS thành công');
+              navigate('/vtsassist');
             } catch (error: any) {
               toast.error(error.response?.data?.message || 'Lỗi khi xóa');
             } finally {
@@ -79,7 +79,7 @@ const ScadaDeleteConfirm = () => {
 
       <div style={{ display: 'flex', gap: spaceMd }}>
         <Button
-          onClick={() => navigate('/scada')}
+          onClick={() => navigate('/vtsassist')}
           style={{ borderRadius: radiusPill, height: 40, borderColor: borderDefault, color: textSecondary }}
         >
           Hủy
@@ -95,9 +95,9 @@ const ScadaDeleteConfirm = () => {
             }
             setSubmitting(true);
             try {
-              await deleteScada(id);
-              toast.success('Xóa hệ thống SCADA thành công');
-              navigate('/scada');
+              await deleteVtsAssist(id);
+              toast.success('Xóa hệ thống phụ trợ VTS thành công');
+              navigate('/vtsassist');
             } catch (error: any) {
               toast.error(error.response?.data?.message || 'Lỗi khi xóa');
             } finally {
@@ -114,4 +114,4 @@ const ScadaDeleteConfirm = () => {
   );
 };
 
-export default ScadaDeleteConfirm;
+export default VtsAssistDeleteConfirm;

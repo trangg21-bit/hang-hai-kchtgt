@@ -1,11 +1,11 @@
-package com.hanghai.kchtg.scada.service;
+package com.hanghai.kchtg.vtsassist.service;
 
-import com.hanghai.kchtg.scada.dto.ScadaResponse;
-import com.hanghai.kchtg.scada.dto.ScadaOptionResponse;
-import com.hanghai.kchtg.scada.dto.CreateScadaRequest;
-import com.hanghai.kchtg.scada.dto.UpdateScadaRequest;
-import com.hanghai.kchtg.scada.entity.Scada;
-import com.hanghai.kchtg.scada.repository.ScadaRepository;
+import com.hanghai.kchtg.vtsassist.dto.VtsAssistResponse;
+import com.hanghai.kchtg.vtsassist.dto.VtsAssistOptionResponse;
+import com.hanghai.kchtg.vtsassist.dto.CreateVtsAssistRequest;
+import com.hanghai.kchtg.vtsassist.dto.UpdateVtsAssistRequest;
+import com.hanghai.kchtg.vtsassist.entity.VtsAssist;
+import com.hanghai.kchtg.vtsassist.repository.VtsAssistRepository;
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
@@ -51,14 +51,14 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Service for SCADA CRUD operations.
+ * Service for VTS Assist CRUD operations.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class ScadaService {
+public class VtsAssistService {
 
-  private final ScadaRepository scadaRepository;
+  private final VtsAssistRepository vtsAssistRepository;
   private final OrgUnitCacheService orgUnitCacheService;
   private final OperatingOrganizationRepository operatingOrganizationRepository;
   private final OrgUnitScopeService orgUnitScopeService;
@@ -68,7 +68,7 @@ public class ScadaService {
   private final RadarStationRepository radarStationRepository;
   private final GisSpatialObjectService gisSpatialObjectService;
 
-  @Value("${app.upload-path:/tmp/scada-attachments}")
+  @Value("${app.upload-path:/tmp/vtsassist-attachments}")
   private String uploadPath;
 
   private final AttachmentRepository attachmentRepository;
@@ -76,29 +76,29 @@ public class ScadaService {
   private final UserRepository userRepository;
 
   /**
-   * Generate device code in format SCA-NNNNNN.
+   * Generate device code in format PTVTS-NNNNNN.
    */
-  public String generateScadaCode() {
+  public String generateVtsAssistCode() {
     // MAX theo SỐ trên mọi bản ghi (kể cả đã xóa mềm) — tránh trùng mã đang chiếm unique index
-    int sequence = scadaRepository.findMaxDeviceCodeSequence().orElse(0) + 1;
-    return String.format("SCA-%06d", sequence);
+    int sequence = vtsAssistRepository.findMaxDeviceCodeSequence().orElse(0) + 1;
+    return String.format("PTVTS-%06d", sequence);
   }
 
   /**
-   * Create a new SCADA system.
+   * Create a new VTS Assist system.
    */
   @Transactional
-  public ScadaResponse create(CreateScadaRequest request) {
+  public VtsAssistResponse create(CreateVtsAssistRequest request) {
     UUID currentUserId = SecurityUtils.getCurrentUserId();
 
     // Generate device code if not provided
     String deviceCode = request.getDeviceCode();
     if (deviceCode == null || deviceCode.isBlank()) {
-      deviceCode = generateScadaCode();
+      deviceCode = generateVtsAssistCode();
     }
 
     // Validate uniqueness — kể cả bản ghi đã xóa mềm (unique index device_code vẫn giữ)
-    if (scadaRepository.existsDeviceCodeAnyState(deviceCode)) {
+    if (vtsAssistRepository.existsDeviceCodeAnyState(deviceCode)) {
       throw new IllegalArgumentException("Mã thiết bị đã tồn tại: " + deviceCode);
     }
 
@@ -115,7 +115,7 @@ public class ScadaService {
 
     // Build entity
     ApprovalStatus targetApprovalStatus = resolveCreateApprovalStatus(request.getAction());
-    Scada entity = Scada.builder()
+    VtsAssist entity = VtsAssist.builder()
       .deviceCode(deviceCode)
       .deviceName(request.getDeviceName())
       .detailedLocation(request.getDetailedLocation())
@@ -147,20 +147,20 @@ public class ScadaService {
       .build();
 
     // Persist trước để entity.getId() có giá trị khi ghi infrastructure_history (ref_id NOT NULL).
-    Scada saved = scadaRepository.save(entity);
+    VtsAssist saved = vtsAssistRepository.save(entity);
 
     // Đồng bộ tọa độ GPS vào gis_spatial_objects (giống AIS) — lưu sau save để có entity id làm refId.
     if (request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty()) {
       UUID spatialId = gisSpatialObjectService.syncSpatialObject(
         null,
-        "Hệ thống SCADA " + saved.getDeviceName(),
+        "Hệ thống phụ trợ VTS " + saved.getDeviceName(),
         saved.getDeviceCode(),
         request.getGeometryType(),
         request.getCoordinates(),
         saved.getId(),
-        InfrastructureType.SCADA);
+        InfrastructureType.VTS_ASSIST);
       saved.setSpatialId(spatialId);
-      saved = scadaRepository.save(saved);
+      saved = vtsAssistRepository.save(saved);
     }
 
     String action = request.getAction();
@@ -168,18 +168,18 @@ public class ScadaService {
       // "Lưu và gửi phê duyệt" khi tạo mới — đi qua approvalService.submit() để áp dụng
       // Rule 14 (người gửi cấp Cục → thẳng "Chờ Cục duyệt"; cấp dưới → "Chờ Cảng vụ / Chi cục duyệt")
       // và ghi vết phê duyệt vào infrastructure_history (giống endpoint POST /{id}/submit).
-      approvalService.submit(saved, InfrastructureType.SCADA, currentUserId);
+      approvalService.submit(saved, InfrastructureType.VTS_ASSIST, currentUserId);
       saved.setSubmittedDate(java.time.LocalDateTime.now());
       saved.setSubmittedBy(currentUserId);
       saved.setApprovalContentLevel1(null);
       saved.setApprovalContentLevel2(null);
-      saved = scadaRepository.save(saved);
+      saved = vtsAssistRepository.save(saved);
     } else if ("approve".equalsIgnoreCase(action)) {
       // "Lưu và phê duyệt" khi tạo mới (T12) — ghi nhận người duyệt, ngày duyệt
       // và bản ghi lịch sử thay vì chỉ set trạng thái APPROVED.
-      approvalService.recordSaveAndApprove(saved, InfrastructureType.SCADA,
+      approvalService.recordSaveAndApprove(saved, InfrastructureType.VTS_ASSIST,
           "Tạo mới và phê duyệt", currentUserId);
-      saved = scadaRepository.save(saved);
+      saved = vtsAssistRepository.save(saved);
     }
 
     return toResponse(saved);
@@ -201,20 +201,20 @@ public class ScadaService {
   }
 
   /**
-   * Get SCADA by ID.
+   * Get VTS Assist by ID.
    */
   @Transactional(readOnly = true)
-  public ScadaResponse getById(UUID id) {
-    Scada entity = scadaRepository.findById(id)
-      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống SCADA với id: " + id));
+  public VtsAssistResponse getById(UUID id) {
+    VtsAssist entity = vtsAssistRepository.findById(id)
+      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống phụ trợ VTS với id: " + id));
     return toResponse(entity);
   }
 
   /**
-   * List all SCADA systems with filtering.
+   * List all VTS Assist systems with filtering.
    */
   @Transactional(readOnly = true)
-  public Page<ScadaResponse> findAll(
+  public Page<VtsAssistResponse> findAll(
     int page, int size,
     UUID orgUnitId,
     String deviceCode, String deviceName, String province,
@@ -247,7 +247,7 @@ public class ScadaService {
     LocalDateTime updatedFromDt = parseLocalDateTime(updatedFrom);
     LocalDateTime updatedToDt = parseLocalDateTime(updatedTo);
 
-    Page<Scada> result = scadaRepository.searchScada(
+    Page<VtsAssist> result = vtsAssistRepository.searchVtsAssist(
       includeAll, orgUnitIds,
       filterEnabled, filterOrgUnitIds,
       deviceCode, deviceName,
@@ -263,16 +263,16 @@ public class ScadaService {
   }
 
   /**
-   * Update an existing SCADA system.
+   * Update an existing VTS Assist system.
    */
   @Transactional
-  public ScadaResponse update(UpdateScadaRequest request) {
+  public VtsAssistResponse update(UpdateVtsAssistRequest request) {
     UUID currentUserId = SecurityUtils.getCurrentUserId();
-    Scada entity = scadaRepository.findById(request.getId())
-      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống SCADA với id: " + request.getId()));
+    VtsAssist entity = vtsAssistRepository.findById(request.getId())
+      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống phụ trợ VTS với id: " + request.getId()));
 
     // Capture snapshot for change history
-    Scada snapshot = Scada.builder()
+    VtsAssist snapshot = VtsAssist.builder()
       .id(entity.getId())
       .deviceCode(entity.getDeviceCode())
       .deviceName(entity.getDeviceName())
@@ -332,12 +332,12 @@ public class ScadaService {
         ? request.getGeometryType() : GisGeometryType.POINT;
       UUID spatialId = gisSpatialObjectService.syncSpatialObject(
         entity.getSpatialId(),
-        "Hệ thống SCADA " + (request.getDeviceName() != null ? request.getDeviceName() : entity.getDeviceName()),
+        "Hệ thống phụ trợ VTS " + (request.getDeviceName() != null ? request.getDeviceName() : entity.getDeviceName()),
         entity.getDeviceCode(),
         geomType,
         request.getCoordinates(),
         entity.getId(),
-        InfrastructureType.SCADA);
+        InfrastructureType.VTS_ASSIST);
       entity.setSpatialId(spatialId);
     }
 
@@ -350,7 +350,7 @@ public class ScadaService {
       // Đã duyệt (nút phía FE chỉ hiển thị cho tài khoản có quyền duyệt) và ghi nhận
       // người duyệt/ngày duyệt/lịch sử; ngoài ra phải duyệt lại.
       if (request.getApprovalStatus() == ApprovalStatus.APPROVED) {
-        approvalService.recordSaveAndApprove(entity, InfrastructureType.SCADA,
+        approvalService.recordSaveAndApprove(entity, InfrastructureType.VTS_ASSIST,
             "Cập nhật hồ sơ đã duyệt", currentUserId);
         approvedEdit = true;
       } else {
@@ -358,67 +358,67 @@ public class ScadaService {
       }
     }
 
-    Scada saved = scadaRepository.save(entity);
+    VtsAssist saved = vtsAssistRepository.save(entity);
 
     // UC-8 (tài liệu phê duyệt — Ca sử dụng 8): chỉ ghi nhật ký thay đổi khi hồ sơ
     // ĐÃ DUYỆT được chỉnh sửa thành công ("Lưu và phê duyệt") — bản nháp/lưu tạm,
     // hồ sơ đang chờ duyệt hoặc bị trả về KHÔNG ghi lịch sử.
     if (approvedEdit) {
-      changeHistoryService.recordChanges("SCADA", saved.getId().toString(), currentUserId.toString(), snapshot, saved);
+      changeHistoryService.recordChanges("VTS_ASSIST", saved.getId().toString(), currentUserId.toString(), snapshot, saved);
     }
 
     return toResponse(saved);
   }
 
   /**
-   * Soft-delete a SCADA system.
+   * Soft-delete a VTS Assist system.
    */
   @Transactional
   public void softDelete(UUID id) {
     UUID currentUserId = SecurityUtils.getCurrentUserId();
-    Scada entity = scadaRepository.findById(id)
-      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống SCADA với id: " + id));
-    approvalService.deleteDraft(entity, InfrastructureType.SCADA, currentUserId);
+    VtsAssist entity = vtsAssistRepository.findById(id)
+      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống phụ trợ VTS với id: " + id));
+    approvalService.deleteDraft(entity, InfrastructureType.VTS_ASSIST, currentUserId);
     entity.softDelete(currentUserId);
-    scadaRepository.save(entity);
-    log.info("Soft-deleted SCADA: id={}", id);
+    vtsAssistRepository.save(entity);
+    log.info("Soft-deleted VTS Assist: id={}", id);
   }
 
   /**
-   * Restore a soft-deleted SCADA system.
+   * Restore a soft-deleted VTS Assist system.
    */
   @Transactional
-  public ScadaResponse restore(UUID id) {
-    Scada entity = scadaRepository.findById(id)
-      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống SCADA với id: " + id));
+  public VtsAssistResponse restore(UUID id) {
+    VtsAssist entity = vtsAssistRepository.findById(id)
+      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống phụ trợ VTS với id: " + id));
 
-    int restored = scadaRepository.restoreScadaById(id);
+    int restored = vtsAssistRepository.restoreVtsAssistById(id);
     if (restored == 0) {
-      throw new EntityNotFoundException("Không thể khôi phục hệ thống SCADA: " + id);
+      throw new EntityNotFoundException("Không thể khôi phục hệ thống phụ trợ VTS: " + id);
     }
 
     // Reload after restore to bypass @SQLRestriction on deletedAt
-    Scada restoredEntity = scadaRepository.findById(id)
-      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống SCADA đã khôi phục: " + id));
+    VtsAssist restoredEntity = vtsAssistRepository.findById(id)
+      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống phụ trợ VTS đã khôi phục: " + id));
     return toResponse(restoredEntity);
   }
 
   /**
-   * Get SCADA options for dropdowns.
+   * Get VTS Assist options for dropdowns.
    */
   @Transactional(readOnly = true)
-  public List<ScadaOptionResponse> getOptions() {
+  public List<VtsAssistOptionResponse> getOptions() {
     OrgUnitScopeService.Scope scope = orgUnitScopeService.currentUserScope();
     if (scope.unrestricted()) {
-      return scadaRepository.findAllOptions();
+      return vtsAssistRepository.findAllOptions();
     }
-    return scadaRepository.findOptionsByOrgUnitIds(scope.orgUnitIds());
+    return vtsAssistRepository.findOptionsByOrgUnitIds(scope.orgUnitIds());
   }
 
   /**
    * Convert entity to response DTO.
    */
-  public ScadaResponse toResponse(Scada entity) {
+  public VtsAssistResponse toResponse(VtsAssist entity) {
     String orgUnitName = orgUnitCacheService.getName(entity.getOrgUnitId());
     String operatingUnitName = entity.getOperatingUnitId() != null
         ? operatingOrganizationRepository.findById(entity.getOperatingUnitId())
@@ -438,7 +438,7 @@ public class ScadaService {
       }
     }
 
-    return ScadaResponse.builder()
+    return VtsAssistResponse.builder()
       .id(entity.getId())
       .securityLevel(entity.getSecurityLevel())
       .deviceCode(entity.getDeviceCode())
@@ -492,7 +492,7 @@ public class ScadaService {
 
   // ── Helpers ───────────────────────────────────────────────────────
 
-  private String resolveAttachedInfrastructureName(Scada entity) {
+  private String resolveAttachedInfrastructureName(VtsAssist entity) {
     if (entity.getAttachedInfrastructureId() == null) return null;
     Integer type = entity.getAttachedInfrastructureType();
     if (type == null) return null;
@@ -625,7 +625,7 @@ public class ScadaService {
 
   @Transactional
   public List<AttachmentDto> uploadAttachments(UUID entityId, List<MultipartFile> files, UUID userId) {
-    final String entityType = "SCADA";
+    final String entityType = "VTS_ASSIST";
     long existingCount = attachmentRepository.countByEntityTypeAndEntityId(entityType, entityId);
     if (existingCount + files.size() > 10) {
       throw new IllegalArgumentException("Tối đa 10 file đính kèm");
@@ -657,7 +657,7 @@ public class ScadaService {
   }
 
   public List<AttachmentDto> listAttachments(UUID entityId) {
-    return attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("SCADA", entityId)
+    return attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("VTS_ASSIST", entityId)
         .stream().map(this::toAttachmentDto).toList();
   }
 
@@ -666,7 +666,7 @@ public class ScadaService {
     Attachment attachment = attachmentRepository.findById(attachmentId)
         .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
     if (!attachment.getEntityId().equals(entityId)) {
-      throw new IllegalArgumentException("File không thuộc hệ thống SCADA này");
+      throw new IllegalArgumentException("File không thuộc hệ thống phụ trợ VTS này");
     }
     try {
       java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));

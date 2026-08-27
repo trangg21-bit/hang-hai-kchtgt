@@ -1,4 +1,4 @@
-package com.hanghai.kchtg.cctv.dto;
+package com.hanghai.kchtg.vtsassist.dto;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
@@ -11,11 +11,11 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * Response DTO for CCTV entity.
+ * Response DTO for VTS Assist entity.
  */
 @Data
 @Builder
-public class CctvResponse {
+public class VtsAssistResponse {
 
     private UUID id;
     private RecordSecurityLevel securityLevel;
