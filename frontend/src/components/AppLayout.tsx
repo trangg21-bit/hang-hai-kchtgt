@@ -30,13 +30,13 @@ import {
   EnvironmentOutlined,
   TruckOutlined,
   AimOutlined,
+  ToolOutlined,
   HomeOutlined,
   ExportOutlined,
   SafetyOutlined,
   VideoCameraOutlined,
   MonitorOutlined,
   ApartmentOutlined,
-  ToolOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 import { usePermissionStore } from '../store/permissionStore';
@@ -66,6 +66,7 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/transfer-area': 'transferarea:read',
   '/storm-shelter': 'stormshelter:read',
   '/buoy-berth': 'buoyberth:read',
+  '/ship-repair-yard': 'shiprepairyard:read',
   '/pier': 'pier:read',
   '/dry-port': 'dryport:read',
   '/water-zone': 'waterarea:read',
@@ -131,6 +132,7 @@ const pageTitles: Record<string, string> = {
   '/transfer-area': 'Quản lý khu chuyển tải',
   '/storm-shelter': 'Quản lý khu tránh, trú bão',
   '/buoy-berth': 'Quản lý bến phao',
+  '/ship-repair-yard': 'Quản lý cơ sở sửa chữa, đóng tàu',
   '/pier': 'Quản lý cầu cảng',
   '/dry-port': 'Quản lý cảng cạn',
   '/water-zone': 'Quản lý vùng nước',
@@ -211,6 +213,8 @@ export default function AppLayout() {
     selectedKey = '/storm-shelter';
   } else if (pathSegments[0] === 'buoy-berth') {
     selectedKey = '/buoy-berth';
+  } else if (pathSegments[0] === 'ship-repair-yard') {
+    selectedKey = '/ship-repair-yard';
   } else if (pathSegments[0] === 'pier' || pathSegments[0] === 'dry-port' || pathSegments[0] === 'water-zone') {
     selectedKey = '/' + pathSegments[0];
   } else if (pathSegments[0] === 'navigation-channel' || pathSegments[0] === 'dike-revetment' || pathSegments[0] === 'ship-repair-facility' || pathSegments[0] === 'radar-station' || pathSegments[0] === 'vts-system') {
@@ -240,6 +244,8 @@ export default function AppLayout() {
       } else if (selectedKey === '/storm-shelter') {
         setOpenKeys(['cangben', 'port-parent']);
       } else if (selectedKey === '/buoy-berth') {
+        setOpenKeys(['cangben', 'port-parent']);
+      } else if (selectedKey === '/ship-repair-yard') {
         setOpenKeys(['cangben', 'port-parent']);
       } else if (selectedKey === 'port-parent') {
         setOpenKeys(['cangben', 'port-parent']);
@@ -333,6 +339,7 @@ export default function AppLayout() {
                 canAccessMenu('/pier') ? { key: '/pier', label: 'Quản lý cầu cảng', icon: <BuildOutlined /> } : null,
               ].filter(Boolean),
             } : null,
+            canAccessMenu('/ship-repair-yard') ? { key: '/ship-repair-yard', label: 'Quản lý cơ sở sửa chữa, đóng tàu', icon: <ToolOutlined /> } : null,
             canAccessMenu('/buoy-berth') ? { key: '/buoy-berth', label: 'Quản lý bến phao', icon: <AimOutlined /> } : null,
             canAccessMenu('/anchorage') ? { key: '/anchorage', label: 'Quản lý khu neo đậu', icon: <CompassOutlined /> } : null,
             canAccessMenu('/transfer-area') ? { key: '/transfer-area', label: 'Quản lý khu chuyển tải', icon: <ExportOutlined /> } : null,

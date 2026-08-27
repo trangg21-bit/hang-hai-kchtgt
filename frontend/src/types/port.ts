@@ -1078,3 +1078,107 @@ export interface BuoyBerthApprovalResponse {
   approvalLog: any[];
 }
 
+export interface ShipRepairYard {
+  id: string;
+  securityLevel?: string;
+  shipRepairYardCode: string;
+  shipRepairYardName: string;
+  portId: string;
+  portName?: string;
+  pierId?: string;
+  pierName?: string;
+  orgUnitId?: string;
+  orgUnitName?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalStatus?: string;
+  approvalStatus?: string;
+  // Thông tin đặc thù CSSCĐT
+  usageFunction?: string;
+  workshopArea?: number;
+  vesselType?: string;
+  vesselDwt?: string;
+  businessType?: string;
+  activity?: string;
+  slipwayCount?: number;
+  remarks?: string;
+  // GIS fields
+  latitude?: number;
+  longitude?: number;
+  mapSymbolId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
+  coordinateSystem?: number;
+  displayRule?: number;
+  // Approval tracking
+  submittedForApprovalAt?: string;
+  submittedForApprovalBy?: string;
+  portAuthorityApprovedAt?: string;
+  portAuthorityApprovedBy?: string;
+  portAuthorityApprovalContent?: string;
+  departmentApprovedAt?: string;
+  departmentApprovedBy?: string;
+  departmentApprovalContent?: string;
+  rejectionReason?: string;
+  // Audit
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateShipRepairYardRequest {
+  securityLevel?: string;
+  shipRepairYardCode?: string;
+  shipRepairYardName: string;
+  portId: string;
+  pierId?: string;
+  orgUnitId?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalStatus?: string;
+  usageFunction?: string;
+  workshopArea?: number;
+  vesselType?: string;
+  vesselDwt?: string;
+  businessType?: string;
+  activity?: string;
+  slipwayCount?: number;
+  remarks?: string;
+  // GIS fields
+  latitude?: number;
+  longitude?: number;
+  mapSymbolId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
+  coordinateSystem?: number;
+  displayRule?: number;
+  saveAction?: string;
+}
+
+export interface UpdateShipRepairYardRequest {
+  id: string;
+  shipRepairYardName?: string;
+  portId?: string;
+  pierId?: string;
+  orgUnitId?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalStatus?: string;
+  usageFunction?: string;
+  workshopArea?: number;
+  vesselType?: string;
+  vesselDwt?: string;
+  businessType?: string;
+  activity?: string;
+  slipwayCount?: number;
+  remarks?: string;
+  saveAction?: string;
+}
+
+export interface ShipRepairYardApprovalResponse {
+  entityType: string;
+  changeHistory: any[];
+  approvalLog: any[];
+}
+

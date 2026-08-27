@@ -297,6 +297,27 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "buoyberth", "history", "Lịch sử phê duyệt bến phao",
                                 "Xem lịch sử thay đổi bến phao");
 
+                // 8.2.5 Cơ sở sửa chữa, đóng tàu (Ship Repair Yard)
+                seedPermission(definitions, "shiprepairyard", "read", "Xem cơ sở sửa chữa, đóng tàu",
+                                "Tra cứu thông tin cơ sở sửa chữa, đóng tàu");
+                seedPermission(definitions, "shiprepairyard", "read:restricted", "Xem bản ghi hạn chế cơ sở sửa chữa, đóng tàu",
+                                "Xem các bản ghi dữ liệu mức độ Hạn chế của cơ sở sửa chữa, đóng tàu");
+                seedPermission(definitions, "shiprepairyard", "read:confidential", "Xem bản ghi mật cơ sở sửa chữa, đóng tàu",
+                                "Xem các bản ghi dữ liệu mức độ Mật của cơ sở sửa chữa, đóng tàu");
+                seedPermission(definitions, "shiprepairyard", "create", "Thêm cơ sở sửa chữa, đóng tàu",
+                                "Tạo mới hồ sơ cơ sở sửa chữa, đóng tàu");
+                seedPermission(definitions, "shiprepairyard", "update", "Cập nhật cơ sở sửa chữa, đóng tàu",
+                                "Chỉnh sửa thông tin cơ sở sửa chữa, đóng tàu");
+                seedPermission(definitions, "shiprepairyard", "delete", "Xóa cơ sở sửa chữa, đóng tàu", "Xóa cơ sở sửa chữa, đóng tàu");
+                seedPermission(definitions, "shiprepairyard", "approve", "Phê duyệt cơ sở sửa chữa, đóng tàu",
+                                "Phê duyệt dữ liệu cơ sở sửa chữa, đóng tàu");
+                seedPermission(definitions, "shiprepairyard", "approvec1", "Phê duyệt C1 cơ sở sửa chữa, đóng tàu",
+                                "Phê duyệt cấp 1 cơ sở sửa chữa, đóng tàu");
+                seedPermission(definitions, "shiprepairyard", "approvec2", "Phê duyệt C2 cơ sở sửa chữa, đóng tàu",
+                                "Phê duyệt cấp 2 cơ sở sửa chữa, đóng tàu");
+                seedPermission(definitions, "shiprepairyard", "history", "Lịch sử phê duyệt cơ sở sửa chữa, đóng tàu",
+                                "Xem lịch sử thay đổi cơ sở sửa chữa, đóng tàu");
+
                 // 8.3 Cầu cảng (Pier)
                 seedPermission(definitions, "pier", "read", "Xem cầu cảng", "Tra cứu thông tin cầu cảng");
                 seedPermission(definitions, "pier", "read:restricted", "Xem bản ghi hạn chế cầu cảng",

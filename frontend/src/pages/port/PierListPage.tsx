@@ -1,17 +1,19 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
-  Button, Tag, Modal, Input, Select, Alert, Divider, DatePicker,
+  Button, Modal, Input, Select, Alert, DatePicker,
   Drawer, Radio, Space, Typography, Form,
 } from 'antd';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined,
   CloseCircleOutlined, EyeOutlined, HistoryOutlined, ExclamationCircleOutlined,
-  ClockCircleFilled, UpOutlined, DownOutlined, SearchOutlined, ArrowRightOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { pierCRUD, pierApproval, berthCRUD, portCRUD } from '../../services/portService';
+import { pierCRUD, pierApproval, berthCRUD, portCRUD, shipRepairYardCRUD } from '../../services/portService';
 import { trangThaiPheDuyetBadge } from '../../services/port/schema';
 import type { Pier } from '../../types/port';
+import { AppDrawer } from '../../components/shared/AppDrawer';
+import ShipRepairYardDetailContent from '../ship-repair-yard/ShipRepairYardDetailContent';
 import { organizationService } from '../../services/organizationService';
 import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
 import { lineObjectService } from '../../services/lineObjectService';
@@ -23,7 +25,7 @@ import type { Organization } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCES } from '../../types/common';
-import { ScreenHeader, StatusTabs, DataTable } from '../../components/list-view';
+import { ScreenHeader, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
@@ -32,11 +34,10 @@ import PierForm from './PierForm';
 import PierDetailContent from './PierDetailContent';
 import {
   statusOperational, statusAttention, statusCritical, statusDraft,
-  actionPrimary, cardStyle, textPrimary, textSecondary, textTertiary,
-  borderDefault, fontSizeMd, fontSizeLg, fontSizeXl,
-  fontWeightMedium, fontWeightBold, radiusPill, radiusLg, radiusSm,
-  spaceMd, spaceSm, spaceXs, spaceLg, spaceXl, spaceFormField,
-  shadowSm, surfaceCard,
+  actionPrimary, textPrimary, textSecondary, textTertiary,
+  borderDefault, fontSizeMd, fontSizeLg,
+  fontWeightMedium, fontWeightBold, radiusPill,
+  spaceMd, spaceSm, spaceXs, spaceXl, spaceFormField,
   drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
   primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
   historyBadgeStyle, historyGroupGridStyle, historyTimeStyle, historyMetaRowStyle,
@@ -45,11 +46,6 @@ import {
   historyOldValueStyle, historyNewValueStyle, historyArrowStyle,
 } from '../../tokens';
 import { colors } from '../../theme';
-import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
-import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
-import { approvalStatusLabel } from '../../components/shared/ApprovalStatusBadge';
-import { APPROVAL_STATUS_OPTIONS } from '../../components/shared/ApprovalStatusBadge';
-import { APPROVAL_STATUS_STYLE } from '../../components/shared/ApprovalStatusBadge';
 
 const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   NHAP: { color: statusDraft, label: 'Lưu tạm' }, DRAFT: { color: statusDraft, label: 'Lưu tạm' },
@@ -136,17 +132,9 @@ function histVal(fn: string, val: string | null, orgMap?: Map<string, string>, s
   if (fn.endsWith('At') || fn.endsWith('Date')) { try { let d = dayjs(val); if (!d.isValid()) { d = dayjs((val || '').replace(/\.\d+$/, '')); } return d.isValid() ? d.format('DD/MM/YYYY HH:mm') : val; } catch { return val; } }
   return val;
 }
-function actLabel(items: any[]): { label: string; color: string } {
-  const f = items.map((i: any) => i.fieldName || ''), n = items.map((i: any) => i.newValue || '');
-  if (f.includes('deletedAt') || n.includes('Đã xóa')) return { label: 'Xóa', color: 'red' };
-  if (f.includes('approvalStatus') && n[f.indexOf('approvalStatus')] === 'APPROVED') return { label: 'Phê duyệt', color: 'green' };
-  if (f.includes('approvalStatus') && n[f.indexOf('approvalStatus')] === 'REJECTED') return { label: 'Từ chối', color: 'red' };
-  if (f.includes('approvalStatus') && n[f.indexOf('approvalStatus')] === 'PENDING') return { label: 'Gửi phê duyệt', color: 'orange' };
-  return items.filter((i: any) => i.oldValue === '(null)' || i.oldValue === 'null').length > items.length / 2 ? { label: 'Tạo mới', color: 'blue' } : { label: 'Chỉnh sửa', color: 'blue' };
-}
 
 export default function PierListPage() {
-  const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const userPermissions = useAuthStore((s) => s.user?.permissions) || [];
   const isAuditViewer = userPermissions.includes('admin:manage') || userPermissions.includes('admin:operation');
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
@@ -170,7 +158,7 @@ export default function PierListPage() {
   const [page, setPage] = useState(1); const [pageSize, setPageSize] = useState(20);
   const [dataSource, setDataSource] = useState<Pier[]>([]); const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false); const [isError, setIsError] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const [, setError] = useState<Error | null>(null);
   const [sortField, setSortField] = useState('updatedAt');
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend'>('descend');
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -190,14 +178,14 @@ export default function PierListPage() {
   const [createDrawerVisible, setCreateDrawerVisible] = useState(false);
   const [editPierId, setEditPierId] = useState<string | undefined>();
   const [createForm] = Form.useForm();
-  const [updateForm] = Form.useForm();
   const pierFormRef = useRef<any>(null);
-  const editPierFormRef = useRef<any>(null);
   const [detailDrawerVisible, setDetailDrawerVisible] = useState(false);
   const [detailRecord, setDetailRecord] = useState<Pier | null>(null);
   const [berthDetail, setBerthDetail] = useState<{ berthCode?: string; berthName?: string } | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [detailFiles, setDetailFiles] = useState<any[]>([]);
+  // ── Danh sách kết cấu hạ tầng thuộc cầu cảng (Cơ sở sửa chữa, đóng tàu) ──
+  const [infrastructureList, setInfrastructureList] = useState<any[]>([]);
+  const [infraDetail, setInfraDetail] = useState<{ type: string; record: any } | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletingRecord, setDeletingRecord] = useState<Pier | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -216,8 +204,6 @@ export default function PierListPage() {
   const [historyTarget, setHistoryTarget] = useState<Pier | null>(null);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyExpanded, setHistoryExpanded] = useState<Record<number, boolean>>({});
-  const [historyVisible, setHistoryVisible] = useState(10);
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
   const [historyTo, setHistoryTo] = useState('');
@@ -231,11 +217,13 @@ export default function PierListPage() {
   const appliedFiltersRef = useRef<{
     orgUnit?: string; search: string; pierName: string; pierCode: string; berthId?: string; portId?: string; pierType?: string;
     province?: string; operationalStatus?: string; approvalStatus?: string;
-  }>({ orgUnit: undefined, search: '', pierName: '', pierCode: '', berthId: undefined, portId: undefined, pierType: undefined, province: undefined, operationalStatus: undefined, approvalStatus: undefined });
+    waterwayId?: string; constructionGrade?: number; structureType?: number;
+    operationalFunction?: string; updatedFrom?: string; updatedTo?: string;
+  }>({ orgUnit: undefined, search: '', pierName: '', pierCode: '', berthId: undefined, portId: undefined, pierType: undefined, province: undefined, operationalStatus: undefined, approvalStatus: undefined, waterwayId: undefined, constructionGrade: undefined, structureType: undefined, operationalFunction: '', updatedFrom: undefined, updatedTo: undefined });
 
   const openHistory = useCallback(async (r: Pier) => {
     setHistoryTarget(r); setHistoryOpen(true); setHistoryLoading(true); setHistoryRecords([]);
-    setHistoryExpanded({}); setHistoryVisible(10); setHistorySearch(''); setHistoryFrom(''); setHistoryTo('');
+    setHistorySearch(''); setHistoryFrom(''); setHistoryTo('');
     setHistoryMode('current');
     try {
       const res = await api.get(`/v1/piers/${r.id}/history`);
@@ -462,10 +450,23 @@ export default function PierListPage() {
   const handleTabChange = useCallback((key: string) => { setActiveTab(key); setPage(1); }, []);
 
   const openDetailDrawer = useCallback(async (record: Pier) => {
-    setDetailDrawerVisible(true); setDetailRecord(record); setDetailFiles([]); setDetailLoading(true); setBerthDetail(null);
+    setDetailDrawerVisible(true); setDetailRecord(record); setDetailFiles([]); setBerthDetail(null); setInfrastructureList([]);
     try { const r = await api.get(`/v1/piers/${record.id}/attachments`); setDetailFiles(r.data?.data || []); } catch { setDetailFiles([]); }
-    try { setDetailRecord(await pierCRUD.findById(record.id)); } catch {} finally { setDetailLoading(false); }
+    try { setDetailRecord(await pierCRUD.findById(record.id)); } catch {}
     if (record.berthId) { try { const b = await berthCRUD.findById(record.berthId); setBerthDetail(b); } catch { setBerthDetail(null); } }
+    // ── Danh sách kết cấu hạ tầng thuộc cầu cảng: Cơ sở sửa chữa, đóng tàu (pierId) ──
+    try {
+      const r = await shipRepairYardCRUD.search({ page: 1, pageSize: 1000, pierId: record.id });
+      setInfrastructureList((r.data || []).map((x: any) => ({ id: x.id, infraName: x.shipRepairYardName || x.name || '—', infraType: 'COSO_SUACHUA' })));
+    } catch { setInfrastructureList([]); }
+  }, []);
+
+  // ── Chi tiết kết cấu hạ tầng (Cơ sở sửa chữa, đóng tàu) — drawer lồng 950 như bến phao ──
+  const openInfraDetail = useCallback(async (id: string) => {
+    try {
+      const rec = await shipRepairYardCRUD.findById(id);
+      setInfraDetail({ type: 'COSO_SUACHUA', record: rec });
+    } catch { /* noop */ }
   }, []);
 
   const dd2dms = (dd: number) => { if (dd == null || isNaN(dd)) return { d: 0, m: 0, s: 0 }; const a = Math.abs(dd); return { d: Math.floor(a), m: Math.floor((a - Math.floor(a)) * 60), s: +((a - Math.floor(a) - Math.floor((a - Math.floor(a)) * 60) / 60) * 3600).toFixed(2) }; };
@@ -724,7 +725,7 @@ export default function PierListPage() {
         {isError ? null : !isLoading && dataSource.length === 0 ? (
           <DataTable dataSource={[]} rowKey="id" emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>Không tìm thấy cầu cảng nào phù hợp</div></div>} />
         ) : !isLoading && !isError && dataSource.length > 0 ? (
-          <DataTable columns={columns} dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; if (sortField === 'stt') { const arr = [...dataSource]; return sortOrder === 'descend' ? arr.reverse() : arr; } const av = getSortValue(a, sortField); const bv = getSortValue(b, sortField); const c = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv), 'vi'); return sortOrder === 'ascend' ? c : -c; })}
+          <DataTable columns={columns} dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; if (sortField === 'stt') { const arr = [...dataSource]; return sortOrder === 'descend' ? (arr.reverse(), 0) : 0; } const av = getSortValue(a, sortField); const bv = getSortValue(b, sortField); const c = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv), 'vi'); return sortOrder === 'ascend' ? c : -c; })}
             rowKey="id" rowActions={rowActions} loading={false} onSort={(k: string, o: 'asc' | 'desc') => { setSortField(k); setSortOrder(o === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
             scroll={{ x: 1900, y: 500 }} />
         ) : null}
@@ -747,8 +748,36 @@ export default function PierListPage() {
         onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); setBerthDetail(null); }}
         extra={<Button type="text" onClick={() => { setDetailDrawerVisible(false); setDetailRecord(null); setBerthDetail(null); }} style={drawerCloseBtnStyle}>✕</Button>}
         styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }} footer={null}>
-        {detailRecord && <PierDetailContent selectedRecord={detailRecord} orgMap={orgMap} portMap={portMap} berthOptions={berthOptions} symbolMap={symbolMap} symbolImageMap={symbolImageMap} detailFiles={detailFiles} ddToDms={dd2dms} approvalStyleMap={APPROVAL_STYLE_MAP} operationalStyleMap={OPERATIONAL_STYLE_MAP} userMap={userMap} waterwayMap={waterwayMap} berthDetail={berthDetail} organizations={organizations} infrastructureList={(detailRecord as any)?.infrastructureList} operationPlanList={(detailRecord as any)?.operationPlanList} maintenancePlanList={(detailRecord as any)?.maintenancePlanList} incidentList={(detailRecord as any)?.incidentList} />}
+        {detailRecord && <PierDetailContent selectedRecord={detailRecord} orgMap={orgMap} portMap={portMap} berthOptions={berthOptions} symbolMap={symbolMap} symbolImageMap={symbolImageMap} detailFiles={detailFiles} ddToDms={dd2dms} approvalStyleMap={APPROVAL_STYLE_MAP} operationalStyleMap={OPERATIONAL_STYLE_MAP} userMap={userMap} waterwayMap={waterwayMap} berthDetail={berthDetail} organizations={organizations} infrastructureList={infrastructureList} onViewInfraDetail={openInfraDetail} operationPlanList={(detailRecord as any)?.operationPlanList} maintenancePlanList={(detailRecord as any)?.maintenancePlanList} incidentList={(detailRecord as any)?.incidentList} />}
       </Drawer>
+
+      {/* ── Chi tiết kết cấu hạ tầng (Cơ sở sửa chữa, đóng tàu) — drawer lồng 950 ── */}
+      <AppDrawer
+        size={950}
+        title={<span style={drawerTitleStyle}>Chi tiết kết cấu hạ tầng{infraDetail?.record ? ` - ${infraDetail.record.shipRepairYardName || ''}` : ''}</span>}
+        open={!!infraDetail}
+        onClose={() => setInfraDetail(null)}
+        styles={{
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '0 24px 12px 24px' },
+        }}
+        footer={null}
+      >
+        {infraDetail?.type === 'COSO_SUACHUA' && infraDetail.record ? (
+          <ShipRepairYardDetailContent
+            selectedRecord={infraDetail.record}
+            orgMap={orgMap}
+            organizations={organizations}
+            symbolMap={symbolMap}
+            symbolImageMap={symbolImageMap}
+            portOptions={portOptions}
+            userMap={userMap}
+            detailFiles={[]}
+            ddToDms={dd2dms}
+            approvalStyleMap={APPROVAL_STYLE_MAP}
+          />
+        ) : null}
+      </AppDrawer>
 
       <Modal title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận xóa cầu cảng</span>} open={deleteModalOpen}
         onCancel={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
