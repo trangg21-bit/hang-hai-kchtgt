@@ -7,7 +7,7 @@ WORKDIR /build
 
 # Copy package files for dependency caching
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
+RUN npm install --no-audit --no-fund
 
 # Copy frontend source and config files
 COPY frontend/tsconfig.json frontend/tsconfig.app.json frontend/tsconfig.node.json ./
