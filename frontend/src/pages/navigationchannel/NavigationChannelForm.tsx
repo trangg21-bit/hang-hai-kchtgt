@@ -16,6 +16,7 @@ import {
   Modal,
   Row,
   Col,
+  Tabs,
   Upload,
 } from 'antd';
 import type { UploadFile } from 'antd';
@@ -64,6 +65,9 @@ import {
   fontSizeMd,
   fontSizeLg,
   cardStyle,
+  drawerTabBarStyle,
+  drawerTabContentStyle,
+  radiusSm,
 } from '../../tokens';
 import { colors } from '../../theme';
 
@@ -78,7 +82,7 @@ export interface NavigationChannelFormProps {
 const trimString = (v: unknown): string | undefined =>
   typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined;
 
-// #25 Loại tuyến luồng — mapping có sẵn trong codebase cũ (channelRouteType 1/2)
+// Loại tuyến luồng — mapping có sẵn trong codebase cũ (channelRouteType 1/2)
 const ROUTE_TYPE_OPTIONS = [
   { value: 1, label: 'Công cộng' },
   { value: 2, label: 'Chuyên dùng' },
@@ -113,6 +117,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
   const [routeRows, setRouteRows] = useState<ChannelRouteDetailRequest[]>([]);
   const [coordRows, setCoordRows] = useState<NavigationChannelCoordinateRequest[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
+  const [activeTabKey, setActiveTabKey] = useState('basic-info');
 
   // ── Load dropdown data (org tree, seaports, symbols) ───────────────
   useEffect(() => {
@@ -797,241 +802,267 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
   // ── Create / Edit form (#1-#46) ────────────────────────────────────
   const formContent = (
     <Form form={form} layout="vertical" onFinish={handleSubmitForm} style={{ maxWidth: 1100 }}>
-      {/* Hồ sơ chính #1-#21 */}
-      <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
-        {sectionTitle('Hồ sơ chính (#1-#21)')}
-        <Row gutter={formRowGutter}>
-          <Col xs={24} md={12}>
-            <Form.Item
-              name="orgUnitId"
-              label="Đơn vị quản lý (#1)"
-              style={formFieldStyle}
-              rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}
-            >
-              <OrgUnitTreeSelect organizations={organizations} placeholder="Chọn đơn vị quản lý..." showPath treeDefaultExpandAll={false} style={selectStyle} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="seaportId" label="Thuộc cảng biển (#2)" style={formFieldStyle}>
-              <Select
-                placeholder="Chọn cảng biển"
-                allowClear
-                showSearch
-                optionFilterProp="label"
-                options={seaportOptions.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : p.portName || p.id }))}
-                style={selectStyle}
-              />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="operatingUnitId" label="Đơn vị vận hành (#3)" style={formFieldStyle}>
-              <Select
-                placeholder="Chọn đơn vị vận hành"
-                allowClear
-                showSearch
-                optionFilterProp="label"
-                options={organizations.map((org) => ({ value: org.id, label: org.code ? `${org.code} - ${org.name}` : org.name }))}
-                style={selectStyle}
-              />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="channelCode" label="Mã luồng hàng hải (#4)" style={formFieldStyle}>
-              <Input disabled placeholder="Tự sinh khi lưu (LHH...)" style={inputStyle} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item
-              name="channelName"
-              label="Tên luồng hàng hải (#5)"
-              style={formFieldStyle}
-              rules={[{ required: true, message: 'Tên luồng hàng hải là bắt buộc' }]}
-            >
-              <Input.TextArea rows={2} maxLength={100} showCount placeholder="Nhập tên luồng hàng hải" style={{ borderRadius: 4, resize: 'vertical' }} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="provinceId" label="Địa điểm (Tỉnh/TP) (#6)" style={formFieldStyle}>
-              <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch optionFilterProp="label" options={VIETNAM_PROVINCE_OPTIONS} style={selectStyle} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="detailedLocation" label="Địa điểm chi tiết (#7)" style={formFieldStyle}>
-              <Input.TextArea rows={2} maxLength={500} showCount placeholder="Nhập địa điểm chi tiết" style={{ borderRadius: 4, resize: 'vertical' }} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item
-              name="conditionStatus"
-              label="Tình trạng (#8)"
-              style={formFieldStyle}
-              rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}
-            >
-              <Select placeholder="Chọn tình trạng" options={CONDITION_STATUS_OPTIONS} style={selectStyle} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="managementStation" label="Trạm quản lý luồng (#9)" style={formFieldStyle}>
-              <Input.TextArea rows={2} maxLength={500} placeholder="Nhập trạm quản lý luồng" style={{ borderRadius: 4, resize: 'vertical' }} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="stationCount" label="Số lượng trạm (#10)" style={formFieldStyle}>
-              <InputNumber min={0} placeholder="Nhập số lượng trạm" style={{ ...inputStyle, width: '100%' }} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="stationStaffCount" label="Số lượng nhân sự tại trạm (#11)" style={formFieldStyle}>
-              <InputNumber min={0} placeholder="Nhập số lượng nhân sự" style={{ ...inputStyle, width: '100%' }} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="stationAreaSquareMeters" label="Diện tích trạm (m²) (#12)" style={formFieldStyle}>
-              <InputNumber min={0} placeholder="Nhập diện tích trạm" style={{ ...inputStyle, width: '100%' }} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="latestStationRepairMonth" label="Sửa chữa trạm gần nhất (#13)" style={formFieldStyle}>
-              <DatePicker picker="month" format="MM/YYYY" placeholder="Chọn tháng/năm" style={{ ...selectStyle, width: '100%' }} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="latestMaintenanceYear" label="Năm bảo trì gần nhất (#14)" style={formFieldStyle}>
-              <DatePicker picker="year" format="YYYY" placeholder="Chọn năm" style={{ ...selectStyle, width: '100%' }} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="latestDredgingVolumeCubicMeters" label="Khối lượng nạo vét (m³) (#15)" style={formFieldStyle}>
-              <InputNumber min={0} placeholder="Nhập khối lượng nạo vét" style={{ ...inputStyle, width: '100%' }} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="buoyCount" label="Số lượng phao (#16)" style={formFieldStyle}>
-              <InputNumber min={0} placeholder="Nhập số lượng phao" style={{ ...inputStyle, width: '100%' }} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="beaconCount" label="Số lượng tiêu (#17)" style={formFieldStyle}>
-              <InputNumber min={0} placeholder="Nhập số lượng tiêu" style={{ ...inputStyle, width: '100%' }} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="announcementDecisionNumber" label="Quyết định công bố số (#19)" style={formFieldStyle}>
-              <Input maxLength={100} placeholder="Nhập số quyết định công bố" style={inputStyle} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="announcementDecisionDate" label="Ngày ra quyết định công bố (#20)" style={formFieldStyle}>
-              <DatePicker format="DD/MM/YYYY" placeholder="Chọn ngày" style={{ ...selectStyle, width: '100%' }} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="announcementDecisionIssuer" label="Đơn vị ra quyết định công bố (#21)" style={formFieldStyle}>
-              <Input.TextArea rows={2} maxLength={500} placeholder="Nhập đơn vị ra quyết định" style={{ borderRadius: 4, resize: 'vertical' }} />
-            </Form.Item>
-          </Col>
-          <Col xs={24}>
-            <Form.Item name="notes" label="Ghi chú (#18)" style={formFieldStyle}>
-              <Input.TextArea rows={3} maxLength={500} showCount placeholder="Nhập ghi chú" style={{ borderRadius: 4, resize: 'vertical' }} />
-            </Form.Item>
-          </Col>
-        </Row>
-      </Card>
-
-      {/* Tuyến luồng #22-#38 */}
-      <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
-        {sectionTitle('Tuyến luồng (#22-#38)')}
-        <Button icon={<PlusOutlined />} onClick={addRouteRow} style={{ ...outlineButtonStyle, marginBottom: spaceSm }}>
-          Thêm tuyến luồng
-        </Button>
-        <Table
-          dataSource={routeRows}
-          columns={routeColumns}
-          rowKey={(_, index) => String(index)}
-          pagination={false}
-          size="small"
-          scroll={{ x: 'max-content' }}
-          locale={{ emptyText: 'Chưa có tuyến luồng nào' }}
-        />
-      </Card>
-
-      {/* Phạm vi bảo vệ và bản đồ #39-#44 */}
-      <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
-        {sectionTitle('Phạm vi bảo vệ và bản đồ (#39-#44)')}
-        <Row gutter={formRowGutter}>
-          <Col xs={24} md={12}>
-            <Form.Item name="protectionScopeMeters" label="Phạm vi bảo vệ luồng (m) (#39)" style={formFieldStyle}>
-              <InputNumber min={0} placeholder="Nhập phạm vi bảo vệ" style={{ ...inputStyle, width: '100%' }} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="protectionNotes" label="Ghi chú (#40)" style={formFieldStyle}>
-              <Input.TextArea rows={2} maxLength={500} placeholder="Nhập ghi chú phạm vi bảo vệ" style={{ borderRadius: 4, resize: 'vertical' }} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="geometryType" label="Loại đối tượng (#41)" style={formFieldStyle}>
-              <Select placeholder="Chọn loại đối tượng" options={GIS_GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="mapIconId" label="Biểu tượng (#42)" style={formFieldStyle}>
-              <Select placeholder="Chọn biểu tượng" allowClear showSearch optionFilterProp="label" options={symbolOptions} style={selectStyle} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="coordinateReferenceSystem" label="Hệ quy chiếu (#43)" style={formFieldStyle}>
-              <Input maxLength={50} placeholder="Ví dụ: WGS 84" style={inputStyle} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="displayRule" label="Quy tắc hiển thị (#44)" style={formFieldStyle}>
-              <Input maxLength={500} placeholder="Nhập quy tắc hiển thị" style={inputStyle} />
-            </Form.Item>
-          </Col>
-          <Col xs={24}>
-            <Form.Item name="spatialData" label="Bản đồ GIS" style={formFieldStyle}>
-              <GisLocationSelector defaultGeometryType="LINE" />
-            </Form.Item>
-          </Col>
-        </Row>
-      </Card>
-
-      {/* Tọa độ #45 */}
-      <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
-        {sectionTitle('Tọa độ (#45)')}
-        <Button icon={<PlusOutlined />} onClick={addCoordRow} style={{ ...outlineButtonStyle, marginBottom: spaceSm }}>
-          Thêm tọa độ
-        </Button>
-        <Table
-          dataSource={coordRows}
-          columns={coordColumns}
-          rowKey={(_, index) => String(index)}
-          pagination={false}
-          size="small"
-          scroll={{ x: 'max-content' }}
-          locale={{ emptyText: 'Chưa có tọa độ nào' }}
-        />
-      </Card>
-
-      {/* File đính kèm #46 */}
-      <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
-        {sectionTitle('File đính kèm (#46)')}
-        <Upload
-          multiple
-          beforeUpload={() => false}
-          fileList={uploadedFiles}
-          onChange={({ fileList }) => setUploadedFiles(fileList)}
-        >
-          <Button icon={<UploadOutlined />} style={{ ...outlineButtonStyle }}>
-            Chọn file đính kèm
-          </Button>
-        </Upload>
-        <div style={{ fontSize: fontSizeSm, color: textTertiary, marginTop: spaceXs }}>
-          Chọn file để đính kèm vào hồ sơ; file được tải lên cùng lúc lưu hồ sơ.
-        </div>
-      </Card>
-
+      <Tabs
+        activeKey={activeTabKey}
+        onChange={setActiveTabKey}
+        tabBarStyle={drawerTabBarStyle}
+        items={[
+          {
+            key: 'basic-info',
+            label: 'Thông tin cơ bản',
+            children: (
+              <div style={drawerTabContentStyle}>
+                {/* Hồ sơ chính */}
+                <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+                  {sectionTitle('Hồ sơ chính')}
+                  <Row gutter={formRowGutter}>
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        name="orgUnitId"
+                        label="Đơn vị quản lý"
+                        style={formFieldStyle}
+                        rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}
+                      >
+                        <OrgUnitTreeSelect organizations={organizations} placeholder="Chọn đơn vị quản lý..." showPath treeDefaultExpandAll={false} style={selectStyle} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="seaportId" label="Thuộc cảng biển" style={formFieldStyle}>
+                        <Select
+                          placeholder="Chọn cảng biển"
+                          allowClear
+                          showSearch
+                          optionFilterProp="label"
+                          options={seaportOptions.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : p.portName || p.id }))}
+                          style={selectStyle}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="operatingUnitId" label="Đơn vị vận hành" style={formFieldStyle}>
+                        <Select
+                          placeholder="Chọn đơn vị vận hành"
+                          allowClear
+                          showSearch
+                          optionFilterProp="label"
+                          options={organizations.map((org) => ({ value: org.id, label: org.code ? `${org.code} - ${org.name}` : org.name }))}
+                          style={selectStyle}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="channelCode" label="Mã luồng hàng hải" style={formFieldStyle}>
+                        <Input disabled placeholder="Tự sinh khi lưu (LHH...)" style={inputStyle} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        name="channelName"
+                        label="Tên luồng hàng hải"
+                        style={formFieldStyle}
+                        rules={[{ required: true, message: 'Tên luồng hàng hải là bắt buộc' }]}
+                      >
+                        <Input.TextArea rows={2} maxLength={100} showCount placeholder="Nhập tên luồng hàng hải" style={{ borderRadius: radiusSm, resize: 'vertical' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="provinceId" label="Địa điểm (Tỉnh/TP)" style={formFieldStyle}>
+                        <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch optionFilterProp="label" options={VIETNAM_PROVINCE_OPTIONS} style={selectStyle} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="detailedLocation" label="Địa điểm chi tiết" style={formFieldStyle}>
+                        <Input.TextArea rows={2} maxLength={500} showCount placeholder="Nhập địa điểm chi tiết" style={{ borderRadius: radiusSm, resize: 'vertical' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        name="conditionStatus"
+                        label="Tình trạng"
+                        style={formFieldStyle}
+                        rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}
+                      >
+                        <Select placeholder="Chọn tình trạng" options={CONDITION_STATUS_OPTIONS} style={selectStyle} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="managementStation" label="Trạm quản lý luồng" style={formFieldStyle}>
+                        <Input.TextArea rows={2} maxLength={500} placeholder="Nhập trạm quản lý luồng" style={{ borderRadius: radiusSm, resize: 'vertical' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="stationCount" label="Số lượng trạm" style={formFieldStyle}>
+                        <InputNumber min={0} placeholder="Nhập số lượng trạm" style={{ ...inputStyle, width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="stationStaffCount" label="Số lượng nhân sự tại trạm" style={formFieldStyle}>
+                        <InputNumber min={0} placeholder="Nhập số lượng nhân sự" style={{ ...inputStyle, width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="stationAreaSquareMeters" label="Diện tích trạm (m²)" style={formFieldStyle}>
+                        <InputNumber min={0} placeholder="Nhập diện tích trạm" style={{ ...inputStyle, width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="latestStationRepairMonth" label="Sửa chữa trạm gần nhất" style={formFieldStyle}>
+                        <DatePicker picker="month" format="MM/YYYY" placeholder="Chọn tháng/năm" style={{ ...selectStyle, width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="latestMaintenanceYear" label="Năm bảo trì gần nhất" style={formFieldStyle}>
+                        <DatePicker picker="year" format="YYYY" placeholder="Chọn năm" style={{ ...selectStyle, width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="latestDredgingVolumeCubicMeters" label="Khối lượng nạo vét (m³)" style={formFieldStyle}>
+                        <InputNumber min={0} placeholder="Nhập khối lượng nạo vét" style={{ ...inputStyle, width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="buoyCount" label="Số lượng phao" style={formFieldStyle}>
+                        <InputNumber min={0} placeholder="Nhập số lượng phao" style={{ ...inputStyle, width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="beaconCount" label="Số lượng tiêu" style={formFieldStyle}>
+                        <InputNumber min={0} placeholder="Nhập số lượng tiêu" style={{ ...inputStyle, width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="announcementDecisionNumber" label="Quyết định công bố số" style={formFieldStyle}>
+                        <Input maxLength={100} placeholder="Nhập số quyết định công bố" style={inputStyle} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="announcementDecisionDate" label="Ngày ra quyết định công bố" style={formFieldStyle}>
+                        <DatePicker format="DD/MM/YYYY" placeholder="Chọn ngày" style={{ ...selectStyle, width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="announcementDecisionIssuer" label="Đơn vị ra quyết định công bố" style={formFieldStyle}>
+                        <Input.TextArea rows={2} maxLength={500} placeholder="Nhập đơn vị ra quyết định" style={{ borderRadius: radiusSm, resize: 'vertical' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24}>
+                      <Form.Item name="notes" label="Ghi chú" style={formFieldStyle}>
+                        <Input.TextArea rows={3} maxLength={500} showCount placeholder="Nhập ghi chú" style={{ borderRadius: radiusSm, resize: 'vertical' }} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                </Card>
+              </div>
+            ),
+          },
+          {
+            key: 'route-map',
+            label: 'Tuyến luồng & Bản đồ',
+            children: (
+              <div style={drawerTabContentStyle}>
+                {/* Tuyến luồng */}
+                <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+                  {sectionTitle('Tuyến luồng')}
+                  <Button icon={<PlusOutlined />} onClick={addRouteRow} style={{ ...outlineButtonStyle, marginBottom: spaceSm }}>
+                    Thêm tuyến luồng
+                  </Button>
+                  <Table
+                    dataSource={routeRows}
+                    columns={routeColumns}
+                    rowKey={(_, index) => String(index)}
+                    pagination={false}
+                    size="small"
+                    scroll={{ x: 'max-content' }}
+                    locale={{ emptyText: 'Chưa có tuyến luồng nào' }}
+                  />
+                </Card>
+                {/* Phạm vi bảo vệ và bản đồ */}
+                <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+                  {sectionTitle('Phạm vi bảo vệ và bản đồ')}
+                  <Row gutter={formRowGutter}>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="protectionScopeMeters" label="Phạm vi bảo vệ luồng (m)" style={formFieldStyle}>
+                        <InputNumber min={0} placeholder="Nhập phạm vi bảo vệ" style={{ ...inputStyle, width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="protectionNotes" label="Ghi chú" style={formFieldStyle}>
+                        <Input.TextArea rows={2} maxLength={500} placeholder="Nhập ghi chú phạm vi bảo vệ" style={{ borderRadius: radiusSm, resize: 'vertical' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="geometryType" label="Loại đối tượng" style={formFieldStyle}>
+                        <Select placeholder="Chọn loại đối tượng" options={GIS_GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="mapIconId" label="Biểu tượng" style={formFieldStyle}>
+                        <Select placeholder="Chọn biểu tượng" allowClear showSearch optionFilterProp="label" options={symbolOptions} style={selectStyle} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="coordinateReferenceSystem" label="Hệ quy chiếu" style={formFieldStyle}>
+                        <Input maxLength={50} placeholder="Ví dụ: WGS 84" style={inputStyle} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="displayRule" label="Quy tắc hiển thị" style={formFieldStyle}>
+                        <Input maxLength={500} placeholder="Nhập quy tắc hiển thị" style={inputStyle} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24}>
+                      <Form.Item name="spatialData" label="Bản đồ GIS" style={formFieldStyle}>
+                        <GisLocationSelector defaultGeometryType="LINE" />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                </Card>
+                {/* Tọa độ */}
+                <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+                  {sectionTitle('Tọa độ')}
+                  <Button icon={<PlusOutlined />} onClick={addCoordRow} style={{ ...outlineButtonStyle, marginBottom: spaceSm }}>
+                    Thêm tọa độ
+                  </Button>
+                  <Table
+                    dataSource={coordRows}
+                    columns={coordColumns}
+                    rowKey={(_, index) => String(index)}
+                    pagination={false}
+                    size="small"
+                    scroll={{ x: 'max-content' }}
+                    locale={{ emptyText: 'Chưa có tọa độ nào' }}
+                  />
+                </Card>
+              </div>
+            ),
+          },
+          {
+            key: 'attachments',
+            label: 'File đính kèm',
+            children: (
+              <div style={drawerTabContentStyle}>
+                {/* File đính kèm */}
+                <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+                  {sectionTitle('File đính kèm')}
+                  <Upload
+                    multiple
+                    beforeUpload={() => false}
+                    fileList={uploadedFiles}
+                    onChange={({ fileList }) => setUploadedFiles(fileList)}
+                  >
+                    <Button icon={<UploadOutlined />} style={{ ...outlineButtonStyle }}>
+                      Chọn file đính kèm
+                    </Button>
+                  </Upload>
+                  <div style={{ fontSize: fontSizeSm, color: textTertiary, marginTop: spaceXs }}>
+                    Chọn file để đính kèm vào hồ sơ; file được tải lên cùng lúc lưu hồ sơ.
+                  </div>
+                </Card>
+              </div>
+            ),
+          },
+        ]}
+      />
       {/* Footer */}
       <div style={{ display: 'flex', justifyContent: 'center', gap: spaceSm, marginBottom: spaceMd }}>
         <Button
