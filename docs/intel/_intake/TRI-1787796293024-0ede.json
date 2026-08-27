@@ -1,0 +1,72 @@
+{
+  "triage_id": "TRI-1787796293024-0ede",
+  "created_at": 1787796293024,
+  "request_summary": "Rename migration V20260826160000__create_scada_table.sql → V20260826160001 (tăng version) để gỡ lỗi Flyway trùng version với V20260826160000__drop_stale_status_check_constraints.sql",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/resources/db/migration/V20260826160000__create_scada_table.sql",
+      "src/main/resources/db/migration/V20260826160001__create_scada_table.sql"
+    ],
+    "impact_files": [
+      "src/main/resources/db/migration/V20260826160000__create_scada_table.sql",
+      "src/main/resources/db/migration/V20260826160001__create_scada_table.sql"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/V20260826160000__create_scada_table.sql"
+      },
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/V20260826160001__create_scada_table.sql"
+      }
+    ],
+    "dev_footprint": "backend"
+  },
+  "rationale": "C3: one-way door: schema:src/main/resources/db/migration/V20260826160000__create_scada_table.sql, schema:src/main/resources/db/migration/V20260826160001__create_scada_table.sql — floors at C3 regardless of size (2 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Khởi động ứng dụng Spring Boot — Flyway migration startup",
+  "blast_radius": 2,
+  "done_oracle": "Khởi động backend không còn lỗi 'Found more than one migration with version 20260826160000'; Flyway áp dụng V20260826160001 (create scada table) sau V20260826160000 (drop stale constraints)",
+  "verification_commands": [
+    {
+      "command": "\"C:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.1.4\\plugins\\maven\\lib\\maven3\\bin\\mvn.cmd\" clean compile -q",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 480000
+    }
+  ],
+  "change_type": "hotfix",
+  "seam_claims": [
+    {
+      "file": "src/main/resources/db/migration/V20260826160000__create_scada_table.sql",
+      "line": 10,
+      "quote": "CREATE TABLE IF NOT EXISTS public.scada (",
+      "source_hash": "1548b979beec18c5d075267033664d5dd0c98182d0a9248e89eb2364f5d499c3",
+      "quote_hash": "9463d95cd4ddf9c2d1de6087bf07cd0f887b510863be4a1352a6bdd21f5b34cf",
+      "note": "File thêm sau (commit 793bd2fb 17:08) — chắc chắn chưa được Flyway áp dụng; đổi tên lên V20260826160001 để chạy mới"
+    },
+    {
+      "file": "src/main/resources/db/migration/V20260826160000__drop_stale_status_check_constraints.sql",
+      "line": 11,
+      "quote": "ALTER TABLE public.buoy_station DROP CONSTRAINT IF EXISTS buoy_station_status_check;",
+      "source_hash": "9c4051c040ef691d46efadbc199c5d6d1ecabb54272d4862be63a38234ecbb33",
+      "quote_hash": "83f3d9006461f5d6afa77b1c4a6b603deaba47431a5717170f9bc7bfe44fc8b2",
+      "note": "File thêm trước (commit eacc8f8c 15:51) — giữ nguyên version 20260826160000 (khớp flyway_schema_history nếu đã áp dụng)"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "50763663d4123d420c24071156dce1612340d6c8",
+    "dirty": true,
+    "captured_at": 1787796293279
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

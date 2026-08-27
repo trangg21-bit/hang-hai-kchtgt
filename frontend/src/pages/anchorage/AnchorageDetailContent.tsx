@@ -90,7 +90,12 @@ export default function AnchorageDetailContent({
   incidentList = [],
 }: AnchorageDetailContentProps) {
   const r = selectedRecord;
-  const [systemOpen, setSystemOpen] = useState(true);
+  const [announcementOpen, setAnnouncementOpen] = useState(true);
+  const [waterAreaOpen, setWaterAreaOpen] = useState(true);
+  const [technicalOpen, setTechnicalOpen] = useState(true);
+  const [operationOpen, setOperationOpen] = useState(true);
+  const [maintenanceOpen, setMaintenanceOpen] = useState(true);
+  const [incidentOpen, setIncidentOpen] = useState(true);
   const [approvalLogs, setApprovalLogs] = useState<any[]>([]);
   const [changeHistory, setChangeHistory] = useState<any[]>([]);
   const [viewingWaterArea, setViewingWaterArea] = useState<any | null>(null);
@@ -142,12 +147,25 @@ export default function AnchorageDetailContent({
                   ['Tên khu neo đậu', <span style={{ fontWeight: fontWeightBold }}>{r.anchorageName || '—'}</span>],
                   ['Cấp bảo mật', r.securityLevel != null ? ({ 0: 'Công khai', 1: 'Nội bộ', 2: 'Rất bí mật' }[r.securityLevel] || '—') : '—'],
                   ['Thuộc luồng hàng hải', waterwayMap.get(r.navigationChannelId || '') || r.navigationChannelId || '—'],
-                  ['Thuộc bến phao', r.buoyStationId || '—'],
+                  ['Thuộc bến phao', r.buoyStationName || r.buoyStationId || '—'],
                   ['Địa điểm (Tỉnh/Thành Phố)', r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '—' : '—'],
                   ['Địa điểm chi tiết', r.detailedLocation || '—'],
-                  ['Hình dạng', r.shapeDescription || '—'],
                   ['Tình trạng', (() => { const s = r.operationalStatus; const m: Record<string,{color:string;label:string}> = { OPERATIONAL:{color:statusOperational,label:'Đang khai thác/Vận hành'}, NOT_YET_OPERATIONAL:{color:statusAttention,label:'Chưa khai thác/Vận hành'}, SUSPENDED:{color:statusCritical,label:'Dừng khai thác/Vận hành'} }; const b = s && m[s]; return b ? <span style={{ display:'inline-flex',padding:'2px 10px',borderRadius:999,fontSize:fontSizeMd,fontWeight:fontWeightMedium,background:`${b.color}15`,color:b.color }}>{b.label}</span> : '—'; })(),],
-                  ['Trạng thái', r.approvalStatus && approvalStyleMap[r.approvalStatus] ? <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${approvalStyleMap[r.approvalStatus].color}15`, color: approvalStyleMap[r.approvalStatus].color }}>{approvalStyleMap[r.approvalStatus].label}</span> : '—'],
+                ].map(([label, value], i) => (
+                  <div key={i} className="detail-row">
+                    <span className="detail-label">{label}</span>
+                    <span className="detail-value">{value}</span>
+                  </div>
+                ))}
+              </div>
+
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setTechnicalOpen(!technicalOpen)}>
+                <span style={{ color: technicalOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{technicalOpen ? '▼' : '▶'} Thông tin kỹ thuật</span>
+              </button>
+              {technicalOpen && (
+              <div className="detail-grid">
+                {[
+                  ['Hình dạng', r.shapeDescription || '—'],
                   ['Diện tích (ha)', r.area != null ? Number(r.area).toLocaleString('vi-VN') : '—'],
                   ['Độ sâu khu nước theo thiết kế (m)', r.designWaterDepth != null ? Number(r.designWaterDepth).toLocaleString('vi-VN') : '—'],
                   ['Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)', r.currentWaterDepth != null ? Number(r.currentWaterDepth).toLocaleString('vi-VN') : '—'],
@@ -167,22 +185,17 @@ export default function AnchorageDetailContent({
                   <span className="detail-value">{r.remarks || '—'}</span>
                 </div>
               </div>
-              <div style={{ cursor: 'pointer', marginTop: 10, paddingLeft: 12 }} onClick={() => setSystemOpen(!systemOpen)}>
-                <span style={{ color: systemOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{systemOpen ? '▼' : '▶'} Thông tin hệ thống</span>
-              </div>
-              {systemOpen && (
+              )}
+
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setAnnouncementOpen(!announcementOpen)}>
+                <span style={{ color: announcementOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{announcementOpen ? '▼' : '▶'} Thông tin công bố mở, đưa vào sử dụng</span>
+              </button>
+              {announcementOpen && (
                 <div className="detail-grid" style={{ marginTop: 4 }}>
                   {[
-                    ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.updatedBy || '') || r.updatedBy || '—'}</span>],
-                    ['Ngày cập nhật', fmtDateTime(r.updatedAt)],
-                    ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.submittedForApprovalBy || '') || r.submittedForApprovalBy || '—'}</span>],
-                    ['Ngày gửi phê duyệt', fmtDateTime(r.submittedForApprovalAt)],
-                    ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.portAuthorityApprovedBy || '') || r.portAuthorityApprovedBy || '—'}</span>],
-                    ['Ngày phê duyệt cấp Cảng vụ/Chi cục', fmtDateTime(r.portAuthorityApprovedAt)],
-                    ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.departmentApprovedBy || '') || r.departmentApprovedBy || '—'}</span>],
-                    ['Ngày phê duyệt cấp Cục', fmtDateTime(r.departmentApprovedAt)],
-                    ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.portAuthorityApprovalContent || '—'],
-                    ['Nội dung phê duyệt cấp Cục', r.departmentApprovalContent || '—'],
+                    ['Thời điểm công bố mở, đưa ra sử dụng', fmtDateTime(r.openingAnnouncementDate)],
+                    ['Quyết định công bố/ Văn bản cho phép khai thác', r.publicDecision || '—'],
+                    ['Văn bản thỏa thuận đầu tư xây dựng', r.investmentAgreement || '—'],
                   ].map(([label, value], i) => (
                     <div key={i} className="detail-row">
                       <span className="detail-label">{label}</span>
@@ -191,25 +204,22 @@ export default function AnchorageDetailContent({
                   ))}
                 </div>
               )}
-            </div>
-          ),
-        },
-        {
-          key: 'announcement', label: 'Thông tin công bố',
-          children: (
-            <div style={{ paddingTop: 3 }}>
-              <div className="detail-grid">
-                {[
-                  ['Thời điểm công bố', fmtDateTime(r.openingAnnouncementDate)],
-                  ['Quyết định công bố', r.publicDecision || '—'],
-                  ['Văn bản thỏa thuận', r.investmentAgreement || '—'],
-                ].map(([label, value], i) => (
-                  <div key={i} className="detail-row">
-                    <span className="detail-label">{label}</span>
-                    <span className="detail-value">{value}</span>
+
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setWaterAreaOpen(!waterAreaOpen)}>
+                <span style={{ color: waterAreaOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{waterAreaOpen ? '▼' : '▶'} Thông tin khu nước neo buộc tàu</span>
+              </button>
+              {waterAreaOpen && (
+                <div style={{ marginTop: 4 }}>
+                  <div style={{ marginBottom: spaceMd }}>
+                    <span style={detailLabelStyle}>Danh sách khu nước neo buộc tàu</span>
                   </div>
-                ))}
-              </div>
+                  <PagedTable dataSource={(r.mooringWaterAreas || []).map((wa, i) => ({ ...wa, key: i }))} tableProps={{ scroll: { x: 600 } }}
+                    emptyText={<div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Chưa có dữ liệu</span></div>}>
+                      <Table.Column title="Phạm vi khu nước neo buộc tàu" key="description" dataIndex="description" render={(d?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{d || '—'}</span>} onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                      <Table.Column title="Thao tác" key="actions" width={100} align="center" render={(_: any, rec: any) => <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => setViewingWaterArea(rec)} />} onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
+                    </PagedTable>
+                </div>
+              )}
             </div>
           ),
         },
@@ -258,26 +268,6 @@ export default function AnchorageDetailContent({
           ),
         },
         {
-          key: 'mooring', label: 'Thông tin khu nước neo buộc tàu',
-          children: (
-            <div style={{ paddingTop: 16 }}>
-              <div style={{ marginBottom: spaceMd }}>
-                <span style={detailLabelStyle}>Thông tin khu nước neo buộc tàu</span>
-              </div>
-              {(r.mooringWaterAreas || []).length === 0 ? (
-                <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
-                  <span style={{ fontSize: fontSizeMd, color: textTertiary }}>Chưa có khu nước neo buộc tàu nào.</span>
-                </div>
-              ) : (
-                <PagedTable dataSource={(r.mooringWaterAreas || []).map((wa, i) => ({ ...wa, key: i }))} tableProps={{ scroll: { x: 600 } }}>
-                  <Table.Column title="Phạm vi khu nước neo buộc tàu" key="description" dataIndex="description" render={(d?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{d || '—'}</span>} onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Thao tác" key="actions" width={100} align="center" render={(_: any, rec: any) => <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => setViewingWaterArea(rec)} />} onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
-                </PagedTable>
-              )}
-            </div>
-          ),
-        },
-        {
           key: 'files', label: 'File đính kèm',
           children: (
             <div style={{ paddingTop: 3 }}>
@@ -300,10 +290,15 @@ export default function AnchorageDetailContent({
           ),
         },
         {
-          key: 'operation', label: 'Thông tin vận hành khai thác',
+          key: 'operationMaintenance', label: 'Vận hành & bảo trì',
           children: (
             <div style={{ paddingTop: 3 }}>
-              <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Thông tin vận hành khai thác</span>
+              <button type="button" style={{ cursor: 'pointer', marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setOperationOpen(!operationOpen)}>
+                <span style={{ color: operationOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{operationOpen ? '▼' : '▶'} Thông tin vận hành khai thác</span>
+              </button>
+              {operationOpen && (
+                <div>
+              <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách vận hành khai thác</span>
               <PagedTable dataSource={operationPlanList} emptyText={<div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Chưa có dữ liệu</span></div>}>
                 <Table.Column title="Mã kế hoạch" key="code" dataIndex="planCode" align="center"
                   render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || rec.code || '—'}</span>}
@@ -318,14 +313,14 @@ export default function AnchorageDetailContent({
                   render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{fmtDateTime(v || rec.endTime || rec.end || null)}</span>}
                   onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
               </PagedTable>
-            </div>
-          ),
-        },
-        {
-          key: 'maintenance', label: 'Thông tin bảo trì',
-          children: (
-            <div style={{ paddingTop: 3 }}>
-              <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Thông tin bảo trì</span>
+                </div>
+              )}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setMaintenanceOpen(!maintenanceOpen)}>
+                <span style={{ color: maintenanceOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{maintenanceOpen ? '▼' : '▶'} Thông tin bảo trì</span>
+              </button>
+              {maintenanceOpen && (
+                <div>
+              <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin bảo trì</span>
               <PagedTable dataSource={maintenancePlanList} emptyText={<div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Chưa có dữ liệu</span></div>}>
                 <Table.Column title="Mã kế hoạch" key="code" dataIndex="planCode" align="center"
                   render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || rec.code || '—'}</span>}
@@ -340,14 +335,14 @@ export default function AnchorageDetailContent({
                   render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{fmtDateTime(v || rec.end || rec.endDate || null)}</span>}
                   onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
               </PagedTable>
-            </div>
-          ),
-        },
-        {
-          key: 'incident', label: 'Thông tin sự cố',
-          children: (
-            <div style={{ paddingTop: 3 }}>
-              <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Thông tin sự cố</span>
+                </div>
+              )}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setIncidentOpen(!incidentOpen)}>
+                <span style={{ color: incidentOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{incidentOpen ? '▼' : '▶'} Thông tin sự cố</span>
+              </button>
+              {incidentOpen && (
+                <div>
+              <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin sự cố</span>
               <PagedTable dataSource={incidentList} emptyText={<div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Chưa có dữ liệu</span></div>}>
                 <Table.Column title="Mã sự cố" key="code" dataIndex="incidentCode" align="center"
                   render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || rec.code || '—'}</span>}
@@ -362,6 +357,35 @@ export default function AnchorageDetailContent({
                   render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{fmtDateTime(v || rec.time || null)}</span>}
                   onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
               </PagedTable>
+                </div>
+              )}
+            </div>
+          ),
+        },
+        {
+          key: 'system', label: 'Xử lý & theo dõi',
+          children: (
+            <div style={{ paddingTop: 3 }}>
+              <div className="detail-grid">
+                {[
+                  ['Trạng thái', r.approvalStatus && approvalStyleMap[r.approvalStatus] ? <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${approvalStyleMap[r.approvalStatus].color}15`, color: approvalStyleMap[r.approvalStatus].color }}>{approvalStyleMap[r.approvalStatus].label}</span> : '—'],
+                  ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.updatedBy || '') || r.updatedBy || '—'}</span>],
+                  ['Ngày cập nhật', fmtDateTime(r.updatedAt)],
+                  ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.submittedForApprovalBy || '') || r.submittedForApprovalBy || '—'}</span>],
+                  ['Ngày gửi phê duyệt', fmtDateTime(r.submittedForApprovalAt)],
+                  ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.portAuthorityApprovedBy || '') || r.portAuthorityApprovedBy || '—'}</span>],
+                  ['Ngày phê duyệt cấp Cảng vụ/Chi cục', fmtDateTime(r.portAuthorityApprovedAt)],
+                  ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.departmentApprovedBy || '') || r.departmentApprovedBy || '—'}</span>],
+                  ['Ngày phê duyệt cấp Cục', fmtDateTime(r.departmentApprovedAt)],
+                  ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.portAuthorityApprovalContent || '—'],
+                  ['Nội dung phê duyệt cấp Cục', r.departmentApprovalContent || '—'],
+                ].map(([label, value], i) => (
+                  <div key={i} className="detail-row" style={label === 'Trạng thái' ? { gridColumn: '1 / -1' } : undefined}>
+                    <span className="detail-label">{label}</span>
+                    <span className="detail-value">{value}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           ),
         },

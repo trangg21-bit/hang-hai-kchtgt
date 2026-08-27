@@ -8,7 +8,7 @@ import type { UploadFile } from 'antd';
 import { PlusOutlined, DeleteOutlined, UploadOutlined, FileOutlined, EditOutlined } from '@ant-design/icons';
 import { colors } from '../../theme';
 import {
-  textPrimary, textSecondary, textTertiary, borderDefault,
+  textPrimary, textSecondary, textTertiary, borderDefault, actionPrimary,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
   radiusPill, radiusMd, spaceSm, spaceFormField, spaceMd,
   surfaceCard, uploadHintStyle,
@@ -22,8 +22,7 @@ import toast from '../../components/ToastNotification';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { organizationService } from '../../services/organizationService';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
-import { anchorageCRUD, portCRUD } from '../../services/portService';
-import { fetchBuoyStationList } from '../../services/buoy-station/api';
+import { anchorageCRUD, portCRUD, buoyBerthCRUD } from '../../services/portService';
 import { symbolService } from '../../services/symbolService';
 import { lineObjectService } from '../../services/lineObjectService';
 import { LineObject } from '../../types/lineObject';
@@ -164,6 +163,9 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
   const isEdit = !!id;
   const [, setSubmitting] = useState(false);
   const [activeTabKey, setActiveTabKey] = useState('general');
+  const [technicalOpen, setTechnicalOpen] = useState(true);
+  const [announcementOpen, setAnnouncementOpen] = useState(true);
+  const [waterAreaOpen, setWaterAreaOpen] = useState(true);
   const [anchorageCodeLoading, setAnchorageCodeLoading] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
   const isSystemAdmin = (currentUser?.permissions?.includes('admin:all') || currentUser?.permissions?.includes('*')) ?? false;
@@ -223,7 +225,7 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
   useEffect(() => { symbolService.list({ page: 1, pageSize: 1000, status: 'active' }).then(r => setSymbols(r.data || [])).catch(() => {}); }, []);
   useEffect(() => { setLoadingOrgs(true); organizationService.list({ pageSize: 1000 }).then(r => setOrgUnits(r.data || [])).catch(() => {}).finally(() => setLoadingOrgs(false)); }, []);
   useEffect(() => { lineObjectService.list({ status: 'PUBLISHED', objectType: LineObject.ObjectType.WATERWAY, pageSize: 1000 }).then(r => setWaterwayOptions((r.data || []).map((l: any) => ({ value: l.id, label: l.name || l.code })))).catch(() => {}); }, []);
-  useEffect(() => { fetchBuoyStationList({ status: 'PUBLISHED' }).then(r => setBuoyStationOptions((r.content || []).map((s: any) => ({ value: s.id, label: s.name || s.code })))).catch(() => {}); }, []);
+  useEffect(() => { buoyBerthCRUD.search({ page: 1, pageSize: 1000, approvalStatus: 'APPROVED' }).then(r => setBuoyStationOptions((r.data || []).map((s: any) => ({ value: s.id, label: s.buoyBerthName || s.buoyBerthCode || s.id })))).catch(() => {}); }, []);
 
   const loadPortOptions = async (orgUnitId: string) => {
     setLoadingPorts(true);
@@ -546,6 +548,17 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
       </Row>
       <Row gutter={16}>
         <Col span={12}>
+          <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} required style={{ marginBottom: spaceFormField }} initialValue="NOT_YET_OPERATIONAL" rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}>
+            <Select placeholder="Chọn tình trạng" options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />
+          </Form.Item>
+        </Col>
+      </Row>
+      <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, marginBottom: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setTechnicalOpen(!technicalOpen)}>
+        <span style={{ color: technicalOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{technicalOpen ? '▼' : '▶'} Thông tin kỹ thuật</span>
+      </button>
+      {technicalOpen && (<div>
+      <Row gutter={16}>
+        <Col span={12}>
           <Form.Item name="shapeDescription" {...labelProps('Hình dạng')} style={{ marginBottom: spaceFormField }}
             validateStatus={atMax.shapeDescription ? 'error' : undefined} help={atMax.shapeDescription ? 'Đã đạt tối đa 255 ký tự' : undefined}>
             <Input placeholder="Nhập hình dạng" maxLength={255} style={inputStyle} />
@@ -607,11 +620,6 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
             <InputNumber min={0} placeholder="0" maxLength={5} style={numberInputStyle} />
           </Form.Item>
         </Col>
-        <Col span={12}>
-          <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} required style={{ marginBottom: spaceFormField }} initialValue="NOT_YET_OPERATIONAL" rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}>
-            <Select placeholder="Chọn tình trạng" options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />
-          </Form.Item>
-        </Col>
       </Row>
       <Row gutter={16}>
         <Col span={24}>
@@ -620,9 +628,11 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
           </Form.Item>
         </Col>
       </Row>
-    </div>) },
-    // Tab 2: Thông tin công bố
-    { key: 'announcement', label: 'Thông tin công bố mở, đưa vào sử dụng', children: (<div style={{ paddingTop: 16 }}>
+      </div>)}
+      <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, marginBottom: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setAnnouncementOpen(!announcementOpen)}>
+        <span style={{ color: announcementOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{announcementOpen ? '▼' : '▶'} Thông tin công bố mở, đưa vào sử dụng</span>
+      </button>
+      {announcementOpen && (<div>
       <Row gutter={16}>
         <Col span={12}>
           <Form.Item name="openingAnnouncementDate" {...labelProps('Thời điểm công bố mở, đưa ra sử dụng')} style={{ marginBottom: spaceFormField }}>
@@ -644,6 +654,41 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
           </Form.Item>
         </Col>
       </Row>
+      </div>)}
+
+      <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, marginBottom: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setWaterAreaOpen(!waterAreaOpen)}>
+        <span style={{ color: waterAreaOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{waterAreaOpen ? '▼' : '▶'} Thông tin khu nước neo buộc tàu</span>
+      </button>
+      {waterAreaOpen && (<div>
+        <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={sectionLabelStyle}>Danh sách khu nước neo buộc tàu</span>
+          {waterAreaList.length > 0 && (
+            <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={openAddWaterArea} style={{ borderRadius: radiusPill }}>Thêm mới</Button>
+          )}
+        </div>
+        {waterAreaList.length === 0 ? (
+          <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
+            <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có khu nước neo buộc tàu nào.</span>
+            <Button type="dashed" icon={<PlusOutlined />} onClick={openAddWaterArea} style={{ borderRadius: radiusPill }}>Thêm mới</Button>
+          </div>
+        ) : (
+          <PagedTable dataSource={waterAreaList.map((w, i) => ({ ...w, _idx: i }))} tableProps={{ scroll: { x: 600 } }}>
+            <Table.Column title="Phạm vi khu nước neo buộc tàu" key="description"
+              render={(_: any, record: any) => (
+                <span style={{ fontSize: fontSizeMd, color: textPrimary, cursor: 'pointer' }} onClick={() => openEditWaterArea(record._idx)}>{record.description}</span>
+              )}
+              onHeaderCell={() => ({ style: headerCellStyle })} />
+            <Table.Column title="Thao tác" key="actions" width={120} align="center"
+              render={(_: any, record: any) => (
+                <Space size={4}>
+                  <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEditWaterArea(record._idx)} />
+                  <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => removeWaterArea(record._idx)} />
+                </Space>
+              )}
+              onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
+          </PagedTable>
+        )}
+      </div>)}
     </div>) },
     // Tab 3: Thông tin vị trí (giống hệt Berth)
     { key: 'location', label: 'Thông tin vị trí', children: (<div style={{ paddingTop: 16 }}>
@@ -701,37 +746,6 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
             onHeaderCell={() => ({ style: headerCellStyle })} />
           <Table.Column title="Thao tác" key="actions" width={120} align="center"
             render={(_: any, record: any) => <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => removeCoordinate(record._idx)} />}
-            onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
-        </PagedTable>
-      )}
-    </div>) },
-    // Tab 4: Thông tin khu nước neo buộc tàu
-    { key: 'mooringWaterArea', label: 'Thông tin khu nước neo buộc tàu', children: (<div style={{ paddingTop: 16 }}>
-      <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={sectionLabelStyle}>Thông tin khu nước neo buộc tàu</span>
-        {waterAreaList.length > 0 && (
-          <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={openAddWaterArea} style={{ borderRadius: radiusPill }}>Thêm mới</Button>
-        )}
-      </div>
-      {waterAreaList.length === 0 ? (
-        <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
-          <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có khu nước neo buộc tàu nào.</span>
-          <Button type="dashed" icon={<PlusOutlined />} onClick={openAddWaterArea} style={{ borderRadius: radiusPill }}>Thêm mới</Button>
-        </div>
-      ) : (
-        <PagedTable dataSource={waterAreaList.map((w, i) => ({ ...w, _idx: i }))} tableProps={{ scroll: { x: 600 } }}>
-          <Table.Column title="Phạm vi khu nước neo buộc tàu" key="description"
-            render={(_: any, record: any) => (
-              <span style={{ fontSize: fontSizeMd, color: textPrimary, cursor: 'pointer' }} onClick={() => openEditWaterArea(record._idx)}>{record.description}</span>
-            )}
-            onHeaderCell={() => ({ style: headerCellStyle })} />
-          <Table.Column title="Thao tác" key="actions" width={120} align="center"
-            render={(_: any, record: any) => (
-              <Space size={4}>
-                <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEditWaterArea(record._idx)} />
-                <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => removeWaterArea(record._idx)} />
-              </Space>
-            )}
             onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
         </PagedTable>
       )}

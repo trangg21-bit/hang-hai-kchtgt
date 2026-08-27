@@ -1,0 +1,54 @@
+{
+  "triage_id": "TRI-1787819870658-759c",
+  "created_at": 1787819870658,
+  "request_summary": "Đồng bộ kích thước drawer con \"Chi tiết thông tin khu nước neo buộc tàu\" từ width 900px lên 950px cho đồng đều với drawer con \"Chi tiết kết cấu hạ tầng\" (chuẩn 950px) ở 3 module khu nước",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/anchorage/AnchorageDetailContent.tsx",
+      "frontend/src/pages/storm-shelter/StormShelterDetailContent.tsx",
+      "frontend/src/pages/transfer-area/TransferAreaDetailContent.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/anchorage/AnchorageDetailContent.tsx",
+      "frontend/src/pages/storm-shelter/StormShelterDetailContent.tsx",
+      "frontend/src/pages/transfer-area/TransferAreaDetailContent.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C1: 3 edit-target files in one package, no one-way door — pre-declared write scope required (3 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn chi tiết Khu neo đậu / Khu chuyển tải / Khu tránh trú bão → tab Thông tin chung → mục Thông tin khu nước neo buộc tàu → nút Xem chi tiết",
+  "blast_radius": 3,
+  "done_oracle": "Drawer \"Chi tiết thông tin khu nước neo buộc tàu\" mở với chiều rộng 950px, khớp với drawer \"Chi tiết kết cấu hạ tầng\" (bến phao/bến cảng); build frontend thành công",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "frontend",
+      "timeout_ms": 180000
+    }
+  ],
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "frontend/src/pages/anchorage/AnchorageDetailContent.tsx",
+    "frontend/src/pages/storm-shelter/StormShelterDetailContent.tsx",
+    "frontend/src/pages/transfer-area/TransferAreaDetailContent.tsx"
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "677ec0b84427178895ee121682574109cc925c1f",
+    "dirty": true,
+    "captured_at": 1787819870930
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

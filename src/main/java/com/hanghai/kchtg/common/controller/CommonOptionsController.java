@@ -45,6 +45,13 @@ public class CommonOptionsController {
         return ResponseEntity.ok(ApiResponse.success("Danh sách đơn vị vận hành và khai thác", service.getOperatingOrganizationOptions(keyword)));
     }
 
+    @GetMapping("/operating-units")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<com.hanghai.kchtg.common.dto.OperatingOrganizationOptionResponse>>> getOperatingUnitOptions(
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String keyword) {
+        return ResponseEntity.ok(ApiResponse.success("Danh sách đơn vị khai thác", service.getOperatingUnitOptions(keyword)));
+    }
+
     @GetMapping("/symbols")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<MapSymbolOptionResponse>>> getSymbolOptions() {

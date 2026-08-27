@@ -113,7 +113,7 @@ function formatDate(dateStr: string | null | undefined): string {
 
 const historyFieldLabels: Record<string, string> = {
   securityLevel: 'Cấp bảo mật', anchorageCode: 'Mã neo đậu', anchorageName: 'Tên neo đậu', portId: 'Thuộc cảng biển',
-  navigationChannelId: 'Thuộc luồng hàng hải', navigationChannel: 'Thuộc luồng hàng hải', buoyStationId: 'Thuộc trạm phao tiêu',
+  navigationChannelId: 'Thuộc luồng hàng hải', navigationChannel: 'Thuộc luồng hàng hải', buoyStationId: 'Thuộc bến phao',
   provinceId: 'Tỉnh/Thành phố', detailedLocation: 'Địa điểm chi tiết', operationalStatus: 'Tình trạng hoạt động',
   shapeDescription: 'Mô tả hình học', area: 'Diện tích', designWaterDepth: 'Độ sâu thiết kế',
   currentWaterDepth: 'Độ sâu hiện tại', bottomElevationDesign: 'Độ sâu đáy thiết kế',
@@ -200,12 +200,12 @@ export default function AnchorageList() {
       .catch(() => {});
 
     // Danh sách bến phao để lọc "Thuộc bến phao" theo đặc tả CSV.
-    api.get('/v1/buoy-station', { params: { page: 1, pageSize: 1000 } })
+    api.get('/v1/buoy-berth', { params: { page: 0, size: 1000, approvalStatus: 'APPROVED' } })
       .then((res) => {
-        const rows = res.data?.data || res.data?.content || res.data || [];
+        const rows = res.data?.data?.content || res.data?.data || res.data || [];
         const m = new Map<string, string>();
         (Array.isArray(rows) ? rows : []).forEach((b: any) => {
-          m.set(b.id, b.name || b.buoyStationName || b.code || b.buoyStationCode || b.id);
+          m.set(b.id, b.buoyBerthName || b.buoyBerthCode || b.id);
         });
         setBuoyStationMap(m);
       })
@@ -751,7 +751,7 @@ export default function AnchorageList() {
         </div>
 
         <div style={{ marginBottom: 12 }}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/TP)</div>
+          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành phố)</div>
           <Select
             placeholder="Chọn tỉnh/thành phố"
             allowClear
@@ -899,7 +899,7 @@ export default function AnchorageList() {
         ellipsis: true,
         sortable: true,
         sortOrder,
-        render: (v?: string) => (v ? (buoyStationMap.get(v) || v) : '—'),
+        render: (v?: string, r?: any) => (r?.buoyStationName || (v ? buoyStationMap.get(v) || v : '—')),
       },
       {
         key: 'provinceId',
@@ -966,8 +966,6 @@ export default function AnchorageList() {
             <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
           </div>
         ) },
-      { key: 'portAuthorityApprovalContent', label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'portAuthorityApprovalContent', width: 370, sortable: true, sortOrder,
-        render: (v: string | null) => v || '—' },
       { key: 'departmentApprovedAt', label: <span>Cán bộ phê duyệt cấp Cục</span>, dataIndex: 'departmentApprovedAt', width: 240, sortable: true, sortOrder,
         render: (v: string | null, record: Anchorage) => (
           <div>
@@ -975,8 +973,6 @@ export default function AnchorageList() {
             <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
           </div>
         ) },
-      { key: 'departmentApprovalContent', label: 'Nội dung phê duyệt cấp Cục', dataIndex: 'departmentApprovalContent', width: 280, sortable: true, sortOrder,
-        render: (v: string | null) => v || '—' },
     ] : [];
 
     const tailColumns: any[] = [
@@ -1135,6 +1131,7 @@ export default function AnchorageList() {
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
       <Drawer
         {...drawerProps}
+        width={950}
         title={<span style={drawerTitleStyle}>Chi tiết khu neo đậu{detailRecord ? ` - ${detailRecord.anchorageName}` : ''}</span>}
         open={detailDrawerVisible}
         onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); }}

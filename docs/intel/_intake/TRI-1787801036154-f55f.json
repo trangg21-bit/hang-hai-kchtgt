@@ -1,0 +1,66 @@
+{
+  "triage_id": "TRI-1787801036154-f55f",
+  "created_at": 1787801036154,
+  "request_summary": "Migration mới thêm 4 cột audit (created_by/updated_by/deleted_at/deleted_by, kiểu UUID) cho bảng transfer_area_mooring_water_area_anchor_points — entity extends BaseEntity nên INSERT đòi 4 cột này, mirror fix V20260826110000 của Anchorage",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/resources/db/migration/V20260828020000__add_transfer_area_anchor_point_audit_columns.sql"
+    ],
+    "impact_files": [
+      "src/main/resources/db/migration/V20260828020000__add_transfer_area_anchor_point_audit_columns.sql"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/V20260828020000__add_transfer_area_anchor_point_audit_columns.sql"
+      }
+    ],
+    "dev_footprint": "backend"
+  },
+  "rationale": "C3: one-way door: schema:src/main/resources/db/migration/V20260828020000__add_transfer_area_anchor_point_audit_columns.sql — floors at C3 regardless of size (1 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Form Thêm mới Khu chuyển tải — nút Lưu tạm (có điểm neo)",
+  "blast_radius": 1,
+  "done_oracle": "Khởi động backend lần tới: Flyway áp dụng V20260828020000 → bảng transfer_area_mooring_water_area_anchor_points có created_by/updated_by/deleted_at/deleted_by → lưu tạm (DRAFT) khu chuyển tải kèm điểm neo không còn lỗi 'column created_by does not exist'",
+  "verification_commands": [
+    {
+      "command": "\"C:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.1.4\\plugins\\maven\\lib\\maven3\\bin\\mvn.cmd\" clean compile -q",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 480000
+    }
+  ],
+  "change_type": "hotfix",
+  "seam_claims": [
+    {
+      "file": "src/main/resources/db/migration/V20260828010000__transfer_area_gis_mooring.sql",
+      "line": 29,
+      "quote": "CREATE TABLE IF NOT EXISTS transfer_area_mooring_water_area_anchor_points (",
+      "source_hash": "0eca46d3a85b9ad6b74f13967e12fd189b77f2022c3a20a6b03e2e5b14ec0e90",
+      "quote_hash": "5c4708869776665bb63448fca12cdfc88c9c0324b17d82f2e1a7c6db73111f8d",
+      "note": "Bảng điểm neo tạo thiếu 4 cột audit → INSERT của entity extends BaseEntity fail 'column created_by does not exist'"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/common/entity/BaseEntity.java",
+      "line": 89,
+      "quote": "@Column(name = \"created_by\")",
+      "source_hash": "7e26ff337503f6bd6a73321f8de000246d260c03cab73e7a9115e6d066bcf3aa",
+      "quote_hash": "acd29d1f49b6da47e481b94c0f594ce1f08f82c21bb707f54477bf9eb744b61d",
+      "note": "BaseEntity khai báo created_by (UUID, @JdbcTypeCode) — cột bắt buộc phải tồn tại trong mọi bảng entity"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "50763663d4123d420c24071156dce1612340d6c8",
+    "dirty": true,
+    "captured_at": 1787801036413
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

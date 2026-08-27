@@ -31,6 +31,8 @@ import {
   TruckOutlined,
   AimOutlined,
   HomeOutlined,
+  ExportOutlined,
+  SafetyOutlined,
   VideoCameraOutlined,
   MonitorOutlined,
   ApartmentOutlined,
@@ -61,6 +63,9 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/port': 'port:read',
   '/berth': 'berth:read',
   '/anchorage': 'anchorage:read',
+  '/transfer-area': 'transferarea:read',
+  '/storm-shelter': 'stormshelter:read',
+  '/buoy-berth': 'buoyberth:read',
   '/pier': 'pier:read',
   '/dry-port': 'dryport:read',
   '/water-zone': 'waterarea:read',
@@ -123,6 +128,9 @@ const pageTitles: Record<string, string> = {
   '/port': 'Quản lý cảng biển',
   '/berth': 'Quản lý bến cảng',
   '/anchorage': 'Quản lý khu neo đậu',
+  '/transfer-area': 'Quản lý khu chuyển tải',
+  '/storm-shelter': 'Quản lý khu tránh, trú bão',
+  '/buoy-berth': 'Quản lý bến phao',
   '/pier': 'Quản lý cầu cảng',
   '/dry-port': 'Quản lý cảng cạn',
   '/water-zone': 'Quản lý vùng nước',
@@ -197,6 +205,12 @@ export default function AppLayout() {
     selectedKey = 'berth-parent';
   } else if (pathSegments[0] === 'anchorage') {
     selectedKey = '/anchorage';
+  } else if (pathSegments[0] === 'transfer-area') {
+    selectedKey = '/transfer-area';
+  } else if (pathSegments[0] === 'storm-shelter') {
+    selectedKey = '/storm-shelter';
+  } else if (pathSegments[0] === 'buoy-berth') {
+    selectedKey = '/buoy-berth';
   } else if (pathSegments[0] === 'pier' || pathSegments[0] === 'dry-port' || pathSegments[0] === 'water-zone') {
     selectedKey = '/' + pathSegments[0];
   } else if (pathSegments[0] === 'navigation-channel' || pathSegments[0] === 'dike-revetment' || pathSegments[0] === 'ship-repair-facility' || pathSegments[0] === 'radar-station' || pathSegments[0] === 'vts-system') {
@@ -220,6 +234,12 @@ export default function AppLayout() {
       } else if (selectedKey === 'berth-parent') {
         setOpenKeys(['cangben', 'port-parent', 'berth-parent']);
       } else if (selectedKey === '/anchorage') {
+        setOpenKeys(['cangben', 'port-parent']);
+      } else if (selectedKey === '/transfer-area') {
+        setOpenKeys(['cangben', 'port-parent']);
+      } else if (selectedKey === '/storm-shelter') {
+        setOpenKeys(['cangben', 'port-parent']);
+      } else if (selectedKey === '/buoy-berth') {
         setOpenKeys(['cangben', 'port-parent']);
       } else if (selectedKey === 'port-parent') {
         setOpenKeys(['cangben', 'port-parent']);
@@ -313,7 +333,10 @@ export default function AppLayout() {
                 canAccessMenu('/pier') ? { key: '/pier', label: 'Quản lý cầu cảng', icon: <BuildOutlined /> } : null,
               ].filter(Boolean),
             } : null,
+            canAccessMenu('/buoy-berth') ? { key: '/buoy-berth', label: 'Quản lý bến phao', icon: <AimOutlined /> } : null,
             canAccessMenu('/anchorage') ? { key: '/anchorage', label: 'Quản lý khu neo đậu', icon: <CompassOutlined /> } : null,
+            canAccessMenu('/transfer-area') ? { key: '/transfer-area', label: 'Quản lý khu chuyển tải', icon: <ExportOutlined /> } : null,
+            canAccessMenu('/storm-shelter') ? { key: '/storm-shelter', label: 'Quản lý khu tránh, trú bão', icon: <SafetyOutlined /> } : null,
           ].filter(Boolean),
         } : null,
         canAccessMenu('/dry-port') ? { key: '/dry-port', label: 'Quản lý cảng cạn', icon: <TruckOutlined /> } : null,

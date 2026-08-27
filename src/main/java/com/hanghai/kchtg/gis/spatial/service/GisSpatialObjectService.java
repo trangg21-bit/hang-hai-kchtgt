@@ -40,7 +40,9 @@ public class GisSpatialObjectService {
             return switch (refType) {
                 case WATER_AREA -> GisSpatialObjectType.POLYGON_WATER_ZONE;
                 case ANCHORAGE_AREA -> GisSpatialObjectType.POLYGON_ANCHORAGE;
+                case TRANSSHIPMENT_AREA -> GisSpatialObjectType.POLYGON_TRANSSHIPMENT;
                 case STORM_SHELTER_AREA -> GisSpatialObjectType.POLYGON_STORM_SHELTER;
+                case BUOY_BERTH -> GisSpatialObjectType.POLYGON_BUOY_BERTH;
                 default -> GisSpatialObjectType.POLYGON_OTHER;
             };
         } else {
