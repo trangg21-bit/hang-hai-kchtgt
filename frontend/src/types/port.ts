@@ -817,3 +817,125 @@ export interface TransferAreaApprovalResponse {
   approvalLog: any[];
 }
 
+// ── 8. Khu tránh trú bão (Storm Shelter) ────────────────────────────
+
+export interface StormShelterArea {
+  id: string;
+  securityLevel?: string;
+  stormShelterCode: string;
+  stormShelterName: string;
+  portId: string;
+  portName?: string;
+  orgUnitId?: string;
+  orgUnitName?: string;
+  navigationChannelId?: string;
+  buoyStationId?: string;
+  classification?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalStatus?: string;
+  approvalStatus?: string;
+  // GIS fields
+  latitude?: number;
+  longitude?: number;
+  mapSymbolId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
+  coordinateSystem?: number;
+  displayRule?: number;
+  mooringWaterAreas?: MooringWaterAreaPayload[];
+  // Technical fields
+  shapeDescription?: string;
+  area?: number;
+  designWaterDepth?: number;
+  currentWaterDepth?: number;
+  bottomElevationDesign?: number;
+  activeStormShelterCount?: number;
+  publishedStormShelterCount?: number;
+  underInvestmentStormShelterCount?: number;
+  openingAnnouncementDate?: string;
+  publicDecision?: string;
+  investmentAgreement?: string;
+  // Approval tracking
+  submittedForApprovalAt?: string;
+  submittedForApprovalBy?: string;
+  portAuthorityApprovedAt?: string;
+  portAuthorityApprovedBy?: string;
+  portAuthorityApprovalContent?: string;
+  departmentApprovedAt?: string;
+  departmentApprovedBy?: string;
+  departmentApprovalContent?: string;
+  rejectionReason?: string;
+  // Audit
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateStormShelterRequest {
+  securityLevel?: string;
+  stormShelterCode?: string;
+  stormShelterName: string;
+  portId: string;
+  orgUnitId?: string;
+  navigationChannelId?: string;
+  buoyStationId?: string;
+  classification?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalStatus?: string;
+  shapeDescription?: string;
+  area?: number;
+  designWaterDepth?: number;
+  currentWaterDepth?: number;
+  bottomElevationDesign?: number;
+  activeStormShelterCount?: number;
+  publishedStormShelterCount?: number;
+  underInvestmentStormShelterCount?: number;
+  openingAnnouncementDate?: string;
+  publicDecision?: string;
+  investmentAgreement?: string;
+  // GIS fields
+  latitude?: number;
+  longitude?: number;
+  mapSymbolId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
+  coordinateSystem?: number;
+  displayRule?: number;
+  mooringWaterAreas?: MooringWaterAreaPayload[];
+  saveAction?: string;
+}
+
+export interface UpdateStormShelterRequest {
+  id: string;
+  stormShelterName?: string;
+  portId?: string;
+  orgUnitId?: string;
+  navigationChannelId?: string;
+  buoyStationId?: string;
+  classification?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalStatus?: string;
+  shapeDescription?: string;
+  area?: number;
+  designWaterDepth?: number;
+  currentWaterDepth?: number;
+  bottomElevationDesign?: number;
+  activeStormShelterCount?: number;
+  publishedStormShelterCount?: number;
+  underInvestmentStormShelterCount?: number;
+  openingAnnouncementDate?: string;
+  publicDecision?: string;
+  investmentAgreement?: string;
+  saveAction?: string;
+}
+
+export interface StormShelterApprovalResponse {
+  entityType: string;
+  changeHistory: any[];
+  approvalLog: any[];
+}
+

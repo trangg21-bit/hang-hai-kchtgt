@@ -24,6 +24,10 @@ import type {
   CreateTransferAreaRequest,
   UpdateTransferAreaRequest,
   TransferAreaApprovalResponse,
+  StormShelterArea,
+  CreateStormShelterRequest,
+  UpdateStormShelterRequest,
+  StormShelterApprovalResponse,
 } from '../types/port';
 
 // ── Helper: search params builder ──────────────────────────────────
@@ -951,5 +955,133 @@ export const transferAreaCRUD = {
 
   async deleteAttachment(id: string, attId: string): Promise<void> {
     await api.delete(`/v1/transfer-area/${id}/attachments/${attId}`);
+  },
+};
+
+// ── Storm Shelter (Khu tránh trú bão) CRUD ─────────────────────────
+
+export const stormShelterCRUD = {
+  async findAll(params?: {
+    page?: number;
+    size?: number;
+    orgUnitId?: string;
+  }): Promise<PaginatedResponse<StormShelterArea>> {
+    const sp = buildSearchParams({
+      page: params?.page !== undefined ? params.page - 1 : undefined,
+      size: params?.size,
+      orgUnitId: params?.orgUnitId,
+    });
+    const res = await api.get(`/v1/storm-shelter?${sp}`);
+    const pageData = res.data.data;
+    return {
+      data: pageData.content || [],
+      total: pageData.totalElements ?? 0,
+      page: (pageData.number ?? 0) + 1,
+      pageSize: pageData.size ?? 20,
+    };
+  },
+
+  async findById(id: string): Promise<StormShelterArea> {
+    const res = await api.get(`/v1/storm-shelter/${id}`);
+    return res.data.data;
+  },
+
+  async search(params?: {
+    stormShelterName?: string;
+    stormShelterCode?: string;
+    portId?: string;
+    orgUnitId?: string;
+    navigationChannelId?: string;
+    buoyStationId?: string;
+    classification?: string;
+    provinceId?: number;
+    operationalStatus?: string;
+    approvalStatus?: string;
+    updatedFrom?: string;
+    updatedTo?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<PaginatedResponse<StormShelterArea>> {
+    const sp = buildSearchParams({
+      stormShelterName: params?.stormShelterName,
+      stormShelterCode: params?.stormShelterCode,
+      portId: params?.portId,
+      orgUnitId: params?.orgUnitId,
+      navigationChannelId: params?.navigationChannelId,
+      buoyStationId: params?.buoyStationId,
+      classification: params?.classification,
+      provinceId: params?.provinceId,
+      operationalStatus: params?.operationalStatus,
+      approvalStatus: params?.approvalStatus,
+      updatedFrom: params?.updatedFrom,
+      updatedTo: params?.updatedTo,
+      page: params?.page !== undefined ? params.page - 1 : undefined,
+      size: params?.pageSize,
+    });
+    const res = await api.get(`/v1/storm-shelter?${sp}`);
+    const pageData = res.data.data;
+    return {
+      data: pageData.content || [],
+      total: pageData.totalElements ?? 0,
+      page: (pageData.number ?? 0) + 1,
+      pageSize: pageData.size ?? 20,
+    };
+  },
+
+  async create(payload: CreateStormShelterRequest): Promise<StormShelterArea> {
+    const res = await api.post('/v1/storm-shelter', payload);
+    return res.data.data;
+  },
+
+  async update(payload: UpdateStormShelterRequest): Promise<StormShelterArea> {
+    const res = await api.put('/v1/storm-shelter', payload);
+    return res.data.data;
+  },
+
+  async delete(id: string): Promise<void> {
+    await api.delete(`/v1/storm-shelter/${id}`);
+  },
+
+  async generateCode(portId: string): Promise<{ stormShelterCode: string }> {
+    const res = await api.get(`/v1/storm-shelter/generate-code?portId=${portId}`);
+    return res.data.data;
+  },
+
+  async approve(id: string, cap: string, content?: string): Promise<void> {
+    await api.post(`/v1/storm-shelter/${id}/approve`, { cap, content });
+  },
+
+  async reject(id: string, cap: string, lyDo: string): Promise<void> {
+    await api.post(`/v1/storm-shelter/${id}/reject`, { cap, lyDo });
+  },
+
+  async getHistory(id: string): Promise<StormShelterApprovalResponse> {
+    const res = await api.get(`/v1/storm-shelter/${id}/history`);
+    return res.data.data;
+  },
+
+  async getAllHistory(): Promise<any> {
+    const res = await api.get('/v1/storm-shelter/history/all');
+    return res.data.data;
+  },
+
+  async uploadAttachments(id: string, files: File[]): Promise<any> {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('files', file);
+    }
+    const res = await api.post(`/v1/storm-shelter/${id}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data.data;
+  },
+
+  async listAttachments(id: string): Promise<any> {
+    const res = await api.get(`/v1/storm-shelter/${id}/attachments`);
+    return res.data.data;
+  },
+
+  async deleteAttachment(id: string, attId: string): Promise<void> {
+    await api.delete(`/v1/storm-shelter/${id}/attachments/${attId}`);
   },
 };

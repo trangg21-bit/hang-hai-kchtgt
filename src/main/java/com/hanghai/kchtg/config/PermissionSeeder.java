@@ -255,6 +255,27 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "transferarea", "history", "Lịch sử phê duyệt khu chuyển tải",
                                 "Xem lịch sử thay đổi khu chuyển tải");
 
+                // 8.2.3 Khu tránh, trú bão (Storm Shelter Area)
+                seedPermission(definitions, "stormshelter", "read", "Xem khu tránh trú bão",
+                                "Tra cứu thông tin khu tránh trú bão");
+                seedPermission(definitions, "stormshelter", "read:restricted", "Xem bản ghi hạn chế khu tránh trú bão",
+                                "Xem các bản ghi dữ liệu mức độ Hạn chế của khu tránh trú bão");
+                seedPermission(definitions, "stormshelter", "read:confidential", "Xem bản ghi mật khu tránh trú bão",
+                                "Xem các bản ghi dữ liệu mức độ Mật của khu tránh trú bão");
+                seedPermission(definitions, "stormshelter", "create", "Thêm khu tránh trú bão",
+                                "Tạo mới hồ sơ khu tránh trú bão");
+                seedPermission(definitions, "stormshelter", "update", "Cập nhật khu tránh trú bão",
+                                "Chỉnh sửa thông tin khu tránh trú bão");
+                seedPermission(definitions, "stormshelter", "delete", "Xóa khu tránh trú bão", "Xóa khu tránh trú bão");
+                seedPermission(definitions, "stormshelter", "approve", "Phê duyệt khu tránh trú bão",
+                                "Phê duyệt dữ liệu khu tránh trú bão");
+                seedPermission(definitions, "stormshelter", "approvec1", "Phê duyệt C1 khu tránh trú bão",
+                                "Phê duyệt cấp 1 khu tránh trú bão");
+                seedPermission(definitions, "stormshelter", "approvec2", "Phê duyệt C2 khu tránh trú bão",
+                                "Phê duyệt cấp 2 khu tránh trú bão");
+                seedPermission(definitions, "stormshelter", "history", "Lịch sử phê duyệt khu tránh trú bão",
+                                "Xem lịch sử thay đổi khu tránh trú bão");
+
                 // 8.3 Cầu cảng (Pier)
                 seedPermission(definitions, "pier", "read", "Xem cầu cảng", "Tra cứu thông tin cầu cảng");
                 seedPermission(definitions, "pier", "read:restricted", "Xem bản ghi hạn chế cầu cảng",
