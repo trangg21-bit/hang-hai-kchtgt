@@ -54,7 +54,11 @@ export const createSchema = z.object({
   model: z.string().max(255, 'Model tối đa 255 ký tự').optional().or(z.literal('')),
   quantity: z.coerce.number().int().min(1, 'Số lượng phải lớn hơn 0').positive('Số lượng phải > 0'),
   orgUnitId: z.string().uuid().optional().or(z.literal('')),
-  operatingUnitId: z.string().uuid().optional().or(z.literal('')),
+  // Đơn vị khai thác BẮT BUỘC (điểm khác so với màn Truyền dẫn)
+  operatingUnitId: z
+    .string()
+    .uuid('Đơn vị khai thác không hợp lệ')
+    .min(1, 'Vui lòng chọn đơn vị khai thác'),
   provinceName: z.string().optional(),
   attachedInfrastructureType: z.coerce.number().int().optional().or(z.nan()),
   attachedInfrastructureId: z.string().uuid().optional().or(z.literal('')),
@@ -84,7 +88,11 @@ export const updateSchema = z.object({
   model: z.string().max(255, 'Model tối đa 255 ký tự').optional().or(z.literal('')),
   quantity: z.coerce.number().int().min(1, 'Số lượng phải lớn hơn 0').positive('Số lượng phải > 0'),
   orgUnitId: z.string().uuid().optional().nullable(),
-  operatingUnitId: z.string().uuid().optional().nullable(),
+  // Đơn vị khai thác BẮT BUỘC (điểm khác so với màn Truyền dẫn)
+  operatingUnitId: z
+    .string()
+    .uuid('Đơn vị khai thác không hợp lệ')
+    .min(1, 'Vui lòng chọn đơn vị khai thác'),
   provinceName: z.string().optional().nullable(),
   attachedInfrastructureType: z.coerce.number().int().optional().or(z.nan()),
   attachedInfrastructureId: z.string().uuid().optional().nullable(),

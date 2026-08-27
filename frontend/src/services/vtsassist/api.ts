@@ -1,17 +1,17 @@
 import api from '../api';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../operatingOrganizationsData';
 import type {
-  TransmissionResponse,
-  CreateTransmissionRequest,
-  UpdateTransmissionRequest,
+  VtsAssistResponse,
+  CreateVtsAssistRequest,
+  UpdateVtsAssistRequest,
   PageResponse,
-  TransmissionOptionResponse,
+  VtsAssistOptionResponse,
   ApprovalResult,
   ApprovalRequest,
-  TransmissionHistoryResponse,
+  VtsAssistHistoryResponse,
 } from './types';
 
-const BASE = '/v1/transmission';
+const BASE = '/v1/vtsassist';
 
 // ── Đơn vị khai thác (bảng operating_organizations — endpoint chung) ──
 
@@ -28,7 +28,7 @@ export async function fetchOperatingOrganizations(): Promise<Array<{ id: string;
 
 // ── CRUD ────────────────────────────────────────────────────────────
 
-export async function fetchTransmissionList(params: {
+export async function fetchVtsAssistList(params: {
   page?: number;
   size?: number;
   orgUnitId?: string;
@@ -46,7 +46,7 @@ export async function fetchTransmissionList(params: {
   updatedTo?: string;
   sortBy?: string;
   sortOrder?: string;
-}): Promise<PageResponse<TransmissionResponse>> {
+}): Promise<PageResponse<VtsAssistResponse>> {
   const sp = new URLSearchParams();
   if (params.page !== undefined) sp.set('page', String(params.page));
   if (params.size !== undefined) sp.set('size', String(params.size));
@@ -70,62 +70,62 @@ export async function fetchTransmissionList(params: {
   return res.data.data;
 }
 
-export async function fetchTransmissionById(id: string): Promise<TransmissionResponse> {
+export async function fetchVtsAssistById(id: string): Promise<VtsAssistResponse> {
   const res = await api.get(`${BASE}/${id}`);
   return res.data.data;
 }
 
-export async function createTransmission(payload: CreateTransmissionRequest): Promise<TransmissionResponse> {
+export async function createVtsAssist(payload: CreateVtsAssistRequest): Promise<VtsAssistResponse> {
   const res = await api.post(BASE, payload);
   return res.data.data;
 }
 
-export async function updateTransmission(payload: UpdateTransmissionRequest): Promise<TransmissionResponse> {
+export async function updateVtsAssist(payload: UpdateVtsAssistRequest): Promise<VtsAssistResponse> {
   const res = await api.put(BASE, payload);
   return res.data.data;
 }
 
-export async function deleteTransmission(id: string): Promise<void> {
+export async function deleteVtsAssist(id: string): Promise<void> {
   await api.delete(`${BASE}/${id}`);
 }
 
 // ── Code generation ─────────────────────────────────────────────────
 
-export async function generateTransmissionCode(): Promise<string> {
+export async function generateVtsAssistCode(): Promise<string> {
   const res = await api.get(`${BASE}/generate-code`);
   return res.data.data.deviceCode;
 }
 
 // ── Options ─────────────────────────────────────────────────────────
 
-export async function fetchTransmissionOptions(): Promise<TransmissionOptionResponse[]> {
+export async function fetchVtsAssistOptions(): Promise<VtsAssistOptionResponse[]> {
   const res = await api.get(`${BASE}/options`);
   return res.data.data;
 }
 
 // ── Approval 2 cấp (C1 Cảng vụ → C2 Cục) ───────────────────────────
 
-export async function submitTransmission(id: string, content?: string): Promise<ApprovalResult> {
+export async function submitVtsAssist(id: string, content?: string): Promise<ApprovalResult> {
   const res = await api.post(`${BASE}/${id}/submit`, { content: content ?? null });
   return res.data;
 }
 
-export async function approveTransmissionC1(id: string, data: ApprovalRequest): Promise<ApprovalResult> {
+export async function approveVtsAssistC1(id: string, data: ApprovalRequest): Promise<ApprovalResult> {
   const res = await api.post(`${BASE}/${id}/approve/c1`, data);
   return res.data;
 }
 
-export async function approveTransmissionC2(id: string, data: ApprovalRequest): Promise<ApprovalResult> {
+export async function approveVtsAssistC2(id: string, data: ApprovalRequest): Promise<ApprovalResult> {
   const res = await api.post(`${BASE}/${id}/approve/c2`, data);
   return res.data;
 }
 
 // ── History ─────────────────────────────────────────────────────────
 
-export async function fetchTransmissionHistory(
+export async function fetchVtsAssistHistory(
   id: string,
   params?: { page?: number; size?: number },
-): Promise<TransmissionHistoryResponse> {
+): Promise<VtsAssistHistoryResponse> {
   const sp = new URLSearchParams();
   if (params?.page !== undefined) sp.set('page', String(params.page));
   if (params?.size !== undefined) sp.set('size', String(params.size));
@@ -134,7 +134,7 @@ export async function fetchTransmissionHistory(
   return res.data.data;
 }
 
-export async function fetchAllTransmissionHistory(
+export async function fetchAllVtsAssistHistory(
   params?: { page?: number; size?: number },
 ): Promise<any> {
   const sp = new URLSearchParams();
@@ -146,19 +146,19 @@ export async function fetchAllTransmissionHistory(
 
 // ── Restore ─────────────────────────────────────────────────────────
 
-export async function restoreTransmission(id: string): Promise<TransmissionResponse> {
+export async function restoreVtsAssist(id: string): Promise<VtsAssistResponse> {
   const res = await api.post(`${BASE}/${id}/restore`);
   return res.data.data;
 }
 
 // ── Attachments (File đính kèm) ────────────────────────────────────
 
-export async function fetchTransmissionAttachments(id: string): Promise<any[]> {
+export async function fetchVtsAssistAttachments(id: string): Promise<any[]> {
   const res = await api.get(`${BASE}/${id}/attachments`);
   return res.data.data || [];
 }
 
-export async function uploadTransmissionAttachment(id: string, file: File): Promise<any> {
+export async function uploadVtsAssistAttachment(id: string, file: File): Promise<any> {
   const formData = new FormData();
   formData.append('files', file);
   const res = await api.post(`${BASE}/${id}/attachments`, formData, {
@@ -167,7 +167,7 @@ export async function uploadTransmissionAttachment(id: string, file: File): Prom
   return res.data;
 }
 
-export async function deleteTransmissionAttachment(id: string, attachmentId: string): Promise<any> {
+export async function deleteVtsAssistAttachment(id: string, attachmentId: string): Promise<any> {
   const res = await api.delete(`${BASE}/${id}/attachments/${attachmentId}`);
   return res.data;
 }

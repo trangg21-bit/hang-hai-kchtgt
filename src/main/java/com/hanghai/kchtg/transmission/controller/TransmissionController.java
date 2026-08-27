@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.common.dto.SubmitContentRequest;
 import com.hanghai.kchtg.transmission.dto.ApprovalRequest;
 import com.hanghai.kchtg.transmission.dto.TransmissionResponse;
 import com.hanghai.kchtg.transmission.dto.TransmissionOptionResponse;
@@ -126,9 +127,11 @@ public class TransmissionController {
 
   @PostMapping("/{id}/submit")
   @PreAuthorize("@auth.check(authentication, 'transmission:update')")
-  public ResponseEntity<ApiResponse<TransmissionResponse>> submit(@PathVariable UUID id) {
+  public ResponseEntity<ApiResponse<TransmissionResponse>> submit(@PathVariable UUID id,
+    @RequestBody(required = false) SubmitContentRequest request) {
     log.info("Submitting transmission for approval: id={}", id);
-    TransmissionResponse response = transmissionApprovalService.submit(id, SecurityUtils.getCurrentUserId());
+    String content = request != null ? request.getContent() : null;
+    TransmissionResponse response = transmissionApprovalService.submit(id, content, SecurityUtils.getCurrentUserId());
     return ResponseEntity.ok(ApiResponse.success("Gửi phê duyệt thành công", response));
   }
 

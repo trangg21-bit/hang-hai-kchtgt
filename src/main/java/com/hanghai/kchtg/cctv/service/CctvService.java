@@ -10,6 +10,8 @@ import com.hanghai.kchtg.radarstation.entity.RadarStation;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatusConverter;
+import com.hanghai.kchtg.common.entity.OperatingOrganization;
+import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
@@ -58,6 +60,7 @@ import java.util.UUID;
 public class CctvService {
 
   private final CctvRepository cctvRepository;
+  private final OperatingOrganizationRepository operatingOrganizationRepository;
   private final OrgUnitCacheService orgUnitCacheService;
   private final OrgUnitScopeService orgUnitScopeService;
   private final ChangeHistoryService changeHistoryService;
@@ -418,6 +421,11 @@ public class CctvService {
    */
   public CctvResponse toResponse(Cctv entity) {
     String orgUnitName = orgUnitCacheService.getName(entity.getOrgUnitId());
+    String operatingUnitName = entity.getOperatingUnitId() != null
+        ? operatingOrganizationRepository.findById(entity.getOperatingUnitId())
+            .map(OperatingOrganization::getName)
+            .orElseGet(() -> orgUnitCacheService.getName(entity.getOperatingUnitId()))
+        : null;
     String attachedInfrastructureName = resolveAttachedInfrastructureName(entity);
 
     // Đọc tọa độ GIS từ bảng tập trung gis_spatial_objects qua spatial_id (giống AIS / VtsOperationCenter)
@@ -443,6 +451,7 @@ public class CctvService {
       .orgUnitId(entity.getOrgUnitId())
       .orgUnitName(orgUnitName)
       .operatingUnitId(entity.getOperatingUnitId())
+      .operatingUnitName(operatingUnitName)
       .provinceName(entity.getProvinceName())
       .attachedInfrastructureType(entity.getAttachedInfrastructureType())
       .attachedInfrastructureId(entity.getAttachedInfrastructureId())

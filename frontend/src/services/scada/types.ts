@@ -11,6 +11,7 @@ export interface ScadaResponse {
   orgUnitId: string | null;
   orgUnitName: string | null;
   operatingUnitId: string | null;
+  operatingUnitName: string | null;
   provinceName: string | null;
   attachedInfrastructureType: number | null;
   attachedInfrastructureId: string | null;
@@ -77,6 +78,7 @@ export interface CreateScadaRequest {
   spatialId?: string | null;
   geometryType?: 'POINT' | 'LINE' | 'POLYGON' | null;
   coordinates?: string | null;
+  action?: string;
 }
 
 // ── UpdateScadaRequest (matches UpdateScadaRequest.java) ────────────

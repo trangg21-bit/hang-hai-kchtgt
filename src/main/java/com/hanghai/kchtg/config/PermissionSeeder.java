@@ -416,6 +416,23 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "transmission", "history", "Lịch sử phê duyệt truyền dẫn",
                                 "Xem lịch sử thay đổi và phê duyệt hệ thống truyền dẫn");
 
+                // 8.10 Hệ thống phụ trợ VTS (VTS Assist System)
+                seedPermission(definitions, "vtsassist", "read", "Xem hệ thống phụ trợ VTS", "Tra cứu thông tin hệ thống phụ trợ VTS");
+                seedPermission(definitions, "vtsassist", "read:restricted", "Xem bản ghi hạn chế phụ trợ VTS",
+                                "Xem các bản ghi dữ liệu mức độ Hạn chế của hệ thống phụ trợ VTS");
+                seedPermission(definitions, "vtsassist", "read:confidential", "Xem bản ghi mật phụ trợ VTS",
+                                "Xem các bản ghi dữ liệu mức độ Mật của hệ thống phụ trợ VTS");
+                seedPermission(definitions, "vtsassist", "create", "Thêm hệ thống phụ trợ VTS", "Tạo mới hồ sơ hệ thống phụ trợ VTS");
+                seedPermission(definitions, "vtsassist", "update", "Cập nhật hệ thống phụ trợ VTS", "Chỉnh sửa thông tin hệ thống phụ trợ VTS");
+                seedPermission(definitions, "vtsassist", "delete", "Xóa hệ thống phụ trợ VTS", "Xóa hệ thống phụ trợ VTS khỏi hệ thống");
+                seedPermission(definitions, "vtsassist", "approve", "Phê duyệt hệ thống phụ trợ VTS", "Phê duyệt dữ liệu hệ thống phụ trợ VTS");
+                seedPermission(definitions, "vtsassist", "approvec1", "Phê duyệt C1 hệ thống phụ trợ VTS",
+                                "Phê duyệt cấp 1 hệ thống phụ trợ VTS");
+                seedPermission(definitions, "vtsassist", "approvec2", "Phê duyệt C2 hệ thống phụ trợ VTS",
+                                "Phê duyệt cấp 2 hệ thống phụ trợ VTS");
+                seedPermission(definitions, "vtsassist", "history", "Lịch sử phê duyệt phụ trợ VTS",
+                                "Xem lịch sử thay đổi và phê duyệt hệ thống phụ trợ VTS");
+
                 seedPermission(definitions, "waterarea", "read", "Xem vùng nước cảng",
                                 "Tra cứu thông tin vùng nước cảng");
                 seedPermission(definitions, "waterarea", "create", "Thêm vùng nước cảng",

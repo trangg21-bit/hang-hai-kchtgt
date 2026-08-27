@@ -1,4 +1,5 @@
 import api from '../api';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../operatingOrganizationsData';
 import type {
   ScadaResponse,
   CreateScadaRequest,
@@ -12,6 +13,19 @@ import type {
 
 const BASE = '/v1/scada';
 
+// ── Đơn vị khai thác (bảng operating_organizations — endpoint chung) ──
+
+export async function fetchOperatingOrganizations(): Promise<Array<{ id: string; name: string; code: string }>> {
+  try {
+    const res = await api.get('/common/options/operating-organizations');
+    const data = res.data?.data;
+    if (Array.isArray(data) && data.length > 0) return data;
+  } catch {
+    // ignore — fall back to defaults
+  }
+  return DEFAULT_OPERATING_ORGANIZATIONS;
+}
+
 // ── CRUD ────────────────────────────────────────────────────────────
 
 export async function fetchScadaList(params: {
@@ -22,7 +36,7 @@ export async function fetchScadaList(params: {
   deviceCode?: string;
   deviceName?: string;
   province?: string;
-  operationalStatus?: string;
+  operationalStatus?: string | number;
   approvalStatus?: string;
   vtsSystemId?: string;
   attachedInfraType?: number;
@@ -91,8 +105,8 @@ export async function fetchScadaOptions(): Promise<ScadaOptionResponse[]> {
 
 // ── Approval 2 cấp (C1 Cảng vụ → C2 Cục) ───────────────────────────
 
-export async function submitScada(id: string): Promise<ApprovalResult> {
-  const res = await api.post(`${BASE}/${id}/submit`);
+export async function submitScada(id: string, content?: string): Promise<ApprovalResult> {
+  const res = await api.post(`${BASE}/${id}/submit`, { content: content ?? null });
   return res.data;
 }
 

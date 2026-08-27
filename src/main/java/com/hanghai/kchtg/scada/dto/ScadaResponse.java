@@ -28,6 +28,7 @@ public class ScadaResponse {
     private UUID orgUnitId;
     private String orgUnitName;
     private UUID operatingUnitId;
+    private String operatingUnitName;
     private String provinceName;
     private Integer attachedInfrastructureType;
     private UUID attachedInfrastructureId;
