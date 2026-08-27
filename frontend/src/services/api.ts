@@ -128,6 +128,14 @@ api.interceptors.response.use(
     const isDocumentEntityRequest = error.config?.url?.includes('/v1/documents/entity/');
     const isHistoryRequest = error.config?.url?.includes('/history');
 
+    // API danh mục nền (dropdown form): 403 do thiếu quyền module nền là trạng thái chấp nhận được
+    // (dropdown rỗng) — không spam toast lỗi mỗi lần mở màn cho user chỉ có quyền module KCHT.
+    const isSilentForbiddenPath =
+      error.config?.url?.includes('/org-units/') ||
+      error.config?.url?.includes('/api/symbols') ||
+      error.config?.url?.includes('/vts-operation-center/options') ||
+      error.config?.url?.includes('/radar-station');
+
     if (status === 401) {
       const isIntegrationRequest = error.config?.url?.includes('/v1/integration/share');
       if (!isIntegrationRequest && !isPublicAuthPage && !isAuthRequest) {
@@ -153,7 +161,7 @@ api.interceptors.response.use(
           window.location.href = '/login';
         }
       } else {
-        if (!isAuthRequest && !isDocumentEntityRequest && !isHistoryRequest) {
+        if (!isAuthRequest && !isDocumentEntityRequest && !isHistoryRequest && !isSilentForbiddenPath) {
           showUniqueError(friendlyMsg);
         }
       }

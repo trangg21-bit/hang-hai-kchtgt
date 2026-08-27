@@ -1,6 +1,6 @@
-// ── SCADA Response (matches ScadaResponse.java) ──────────────────────
+// ── Transmission Response (matches TransmissionResponse.java) ──────
 
-export interface ScadaResponse {
+export interface TransmissionResponse {
   id: string;
   deviceCode: string;
   deviceName: string;
@@ -11,6 +11,7 @@ export interface ScadaResponse {
   orgUnitId: string | null;
   orgUnitName: string | null;
   operatingUnitId: string | null;
+  operatingUnitName: string | null;
   provinceName: string | null;
   attachedInfrastructureType: number | null;
   attachedInfrastructureId: string | null;
@@ -50,9 +51,9 @@ export interface ScadaResponse {
   updatedAt: string | null;
 }
 
-// ── CreateScadaRequest (matches CreateScadaRequest.java) ────────────
+// ── CreateTransmissionRequest (matches CreateTransmissionRequest.java) ──
 
-export interface CreateScadaRequest {
+export interface CreateTransmissionRequest {
   deviceCode?: string;
   deviceName: string;
   detailedLocation?: string | null;
@@ -62,6 +63,8 @@ export interface CreateScadaRequest {
   orgUnitId?: string | null;
   operatingUnitId?: string | null;
   provinceName?: string | null;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON' | null;
+  coordinates?: string | null;
   attachedInfrastructureType?: number | null;
   attachedInfrastructureId?: string | null;
   unitOfMeasure?: number | null;
@@ -75,13 +78,12 @@ export interface CreateScadaRequest {
   coordinateSystem?: number | null;
   displayRule?: number | null;
   spatialId?: string | null;
-  geometryType?: 'POINT' | 'LINE' | 'POLYGON' | null;
-  coordinates?: string | null;
+  action?: string;
 }
 
-// ── UpdateScadaRequest (matches UpdateScadaRequest.java) ────────────
+// ── UpdateTransmissionRequest (matches UpdateTransmissionRequest.java) ──
 
-export interface UpdateScadaRequest {
+export interface UpdateTransmissionRequest {
   id: string;
   deviceName?: string | null;
   detailedLocation?: string | null;
@@ -91,6 +93,8 @@ export interface UpdateScadaRequest {
   orgUnitId?: string | null;
   operatingUnitId?: string | null;
   provinceName?: string | null;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON' | null;
+  coordinates?: string | null;
   attachedInfrastructureType?: number | null;
   attachedInfrastructureId?: string | null;
   unitOfMeasure?: number | null;
@@ -104,8 +108,6 @@ export interface UpdateScadaRequest {
   coordinateSystem?: number | null;
   displayRule?: number | null;
   spatialId?: string | null;
-  geometryType?: 'POINT' | 'LINE' | 'POLYGON' | null;
-  coordinates?: string | null;
   approvalStatus?: string | null;
 }
 
@@ -131,7 +133,7 @@ export interface ApiResponseEnvelope<T> {
 
 // ── Option response for dropdowns ───────────────────────────────────
 
-export interface ScadaOptionResponse {
+export interface TransmissionOptionResponse {
   id: string;
   deviceCode: string;
   deviceName: string;
@@ -166,7 +168,7 @@ export interface ApprovalHistoryLine {
   createdAt: string | null;
 }
 
-export interface ScadaHistoryResponse {
+export interface TransmissionHistoryResponse {
   entityId: string;
   entityType: string;
   currentApprovalStatus: string | null;

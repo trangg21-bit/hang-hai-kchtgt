@@ -40,6 +40,8 @@ export interface CctvResponse {
   coordinateSystem: number | null;
   displayRule: number | null;
   spatialId: string | null;
+  geometryType: string | null;
+  coordinates: string | null;
   createdBy: string | null;
   updatedBy: string | null;
   createdByName: string | null;
@@ -73,6 +75,8 @@ export interface CreateCctvRequest {
   coordinateSystem?: number | null;
   displayRule?: number | null;
   spatialId?: string | null;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON' | null;
+  coordinates?: string | null;
 }
 
 // ── UpdateCctvRequest (matches UpdateCctvRequest.java) ──────────────
@@ -100,6 +104,8 @@ export interface UpdateCctvRequest {
   coordinateSystem?: number | null;
   displayRule?: number | null;
   spatialId?: string | null;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON' | null;
+  coordinates?: string | null;
   approvalStatus?: string | null;
 }
 

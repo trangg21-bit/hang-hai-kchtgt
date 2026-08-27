@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Form, Input, InputNumber, Select, message, DatePicker, Upload } from 'antd';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { useNavigate } from 'react-router-dom';
+import api from '../api';
 import { createScada, updateScada, fetchScadaById } from '../api';
 import { ScadaResponse } from '../types';
 import { OPERATIONAL_STATUS_OPTIONS } from './schema';
@@ -56,8 +57,14 @@ const ScadaFormContent = ({ initialData, onSuccess }: ScadaFormProps) => {
   const loadOrgUnits = async () => {
     setLoadingOrgs(true);
     try {
-      const response = await fetch('/api/v1/org-units/tree');
-      const data = await response.json();
+      const res = await api.get('/common/options/org-units');
+      const items = res.data?.data;
+      const data = (Array.isArray(items) ? items : []).map((o: { id?: string; name?: string; code?: string; parentId?: string | null }) => ({
+        id: String(o.id),
+        name: o.name || 'Đơn vị',
+        code: o.code || undefined,
+        parentId: o.parentId ? String(o.parentId) : undefined,
+      }));
       setOrgUnits(data);
     } catch (error) {
       console.error('Lỗi tải danh sách đơn vị:', error);
