@@ -17,11 +17,13 @@ import com.hanghai.kchtg.port.dto.stormshelter.StormShelterMooringWaterAreaRespo
 import com.hanghai.kchtg.port.dto.stormshelter.StormShelterAreaResponse;
 import com.hanghai.kchtg.port.dto.stormshelter.UpdateStormShelterAreaRequest;
 import com.hanghai.kchtg.port.entity.Attachment;
+import com.hanghai.kchtg.port.entity.BuoyBerth;
 import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.port.entity.StormShelterArea;
 import com.hanghai.kchtg.port.entity.StormShelterMooringWaterArea;
 import com.hanghai.kchtg.port.entity.StormShelterMooringWaterAreaAnchorPoint;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
+import com.hanghai.kchtg.port.repository.BuoyBerthRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.repository.StormShelterMooringWaterAreaAnchorPointRepository;
 import com.hanghai.kchtg.port.repository.StormShelterMooringWaterAreaRepository;
@@ -67,6 +69,7 @@ public class StormShelterAreaService {
     private final OrgUnitScopeService orgUnitScopeService;
     private final PortCacheService portCacheService;
     private final AttachmentRepository attachmentRepository;
+    private final BuoyBerthRepository buoyBerthRepository;
     private final UserRepository userRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final StormShelterMooringWaterAreaRepository stormShelterMooringWaterAreaRepository;
@@ -269,7 +272,17 @@ public class StormShelterAreaService {
         if (!parentIds.isEmpty()) {
             portRepository.findAllById(parentIds).forEach(cb -> parentNameMap.put(cb.getId(), cb.getPortName()));
         }
-        return result.map(e -> toResponse(e, parentNameMap.get(e.getPortId())));
+        // Batch resolve tên bến phao (Thuộc bến phao) để tránh truy vấn từng bản ghi
+        java.util.List<UUID> buoyStationIds = result.getContent().stream()
+                .map(StormShelterArea::getBuoyStationId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        java.util.Map<UUID, String> buoyStationNameMap = new java.util.HashMap<>();
+        if (!buoyStationIds.isEmpty()) {
+            buoyBerthRepository.findAllById(buoyStationIds).forEach(bb -> buoyStationNameMap.put(bb.getId(), bb.getBuoyBerthName()));
+        }
+        return result.map(e -> toResponse(e, parentNameMap.get(e.getPortId()), buoyStationNameMap));
     }
 
     @Transactional
@@ -398,11 +411,24 @@ public class StormShelterAreaService {
 
     // ── Conversion ─────────────────────────────────────────────────────
 
+    private String resolveBuoyStationName(UUID buoyStationId, java.util.Map<UUID, String> nameMap) {
+        if (buoyStationId == null) return null;
+        if (nameMap != null) {
+            String name = nameMap.get(buoyStationId);
+            if (name != null) return name;
+        }
+        return buoyBerthRepository.findById(buoyStationId).map(BuoyBerth::getBuoyBerthName).orElse(null);
+    }
+
     public StormShelterAreaResponse toResponse(StormShelterArea entity) {
-        return toResponse(entity, null);
+        return toResponse(entity, null, null);
     }
 
     public StormShelterAreaResponse toResponse(StormShelterArea entity, String preResolvedPortName) {
+        return toResponse(entity, preResolvedPortName, null);
+    }
+
+    public StormShelterAreaResponse toResponse(StormShelterArea entity, String preResolvedPortName, java.util.Map<UUID, String> buoyStationNameMap) {
         if (entity == null) return null;
 
         StormShelterAreaResponse response = StormShelterAreaResponse.builder()
@@ -416,6 +442,7 @@ public class StormShelterAreaService {
                 .orgUnitName(orgUnitCacheService.getName(entity.getOrgUnitId()))
                 .navigationChannelId(entity.getNavigationChannelId())
                 .buoyStationId(entity.getBuoyStationId())
+                .buoyStationName(resolveBuoyStationName(entity.getBuoyStationId(), buoyStationNameMap))
                 .classification(entity.getClassification())
                 .provinceId(entity.getProvinceId())
                 .detailedLocation(entity.getDetailedLocation())

@@ -1,0 +1,129 @@
+{
+  "triage_id": "TRI-1787821090135-c9fa",
+  "created_at": 1787821090135,
+  "request_summary": "Trường 'Thuộc bến phao' (buoyStationId) ở Khu neo đậu + Khu tránh trú bão hiển thị UUID thay vì tên bến phao: backend response thiếu buoyStationName, frontend fallback về raw id.",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/anchorage/AnchorageDetailContent.tsx",
+      "frontend/src/pages/anchorage/AnchorageListPage.tsx",
+      "frontend/src/pages/storm-shelter/StormShelterDetailContent.tsx",
+      "frontend/src/types/port.ts",
+      "src/main/java/com/hanghai/kchtg/port/dto/anchorage/AnchorageResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/stormshelter/StormShelterAreaResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/StormShelterAreaService.java"
+    ],
+    "impact_files": [
+      "frontend/src/pages/anchorage/AnchorageDetailContent.tsx",
+      "frontend/src/pages/anchorage/AnchorageListPage.tsx",
+      "frontend/src/pages/storm-shelter/StormShelterDetailContent.tsx",
+      "frontend/src/types/port.ts",
+      "src/main/java/com/hanghai/kchtg/port/dto/anchorage/AnchorageResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/stormshelter/StormShelterAreaResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/StormShelterAreaService.java"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C2: 8 edit-target files exceed the inline gate (8 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn Quản lý khu neo đậu (/anchorage) và Quản lý khu tránh trú bão — cột/bộ lọc/chi tiết 'Thuộc bến phao'",
+  "blast_radius": 8,
+  "done_oracle": "Trong danh sách + drawer chi tiết của cả 2 màn, giá trị 'Thuộc bến phao' hiển thị TÊN bến phao (buoyBerthName) thay vì UUID; API /api/v1/anchorage và /api/v1/storm-shelter-areas trả thêm trường buoyStationName.",
+  "verification_commands": [
+    {
+      "command": "mvn -q clean compile",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 600000
+    },
+    {
+      "command": "bun run --cwd frontend build",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 600000
+    }
+  ],
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java",
+      "line": 414,
+      "quote": ".buoyStationId(entity.getBuoyStationId())",
+      "source_hash": "bc235751ae3edb0a3fcae8e66b53c6d7a874bf4829d58ac3d61f0d7daa524f67",
+      "quote_hash": "252b5a06a34f684201b6f331cb3cc9f65a1e2633ecd83587e785ad9a2d5dd5bf",
+      "note": "toResponse chỉ copy id, không resolve tên bến phao"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/StormShelterAreaService.java",
+      "line": 418,
+      "quote": ".buoyStationId(entity.getBuoyStationId())",
+      "source_hash": "9b0973ffb470feed293ea698ec40ace08ffac94c2da10d8366570fb77b667cbc",
+      "quote_hash": "252b5a06a34f684201b6f331cb3cc9f65a1e2633ecd83587e785ad9a2d5dd5bf",
+      "note": "toResponse chỉ copy id, không resolve tên bến phao"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/dto/anchorage/AnchorageResponse.java",
+      "line": 28,
+      "quote": "private UUID buoyStationId;",
+      "source_hash": "ee758d0d6a40b30ed7706f46a01e24bce7e56b083be7ab621069a07854022621",
+      "quote_hash": "25c1879d4c41c64782f5fd24bbe3c7a0bb11235f1633a7ce788fd86970f477fe",
+      "note": "DTO response thiếu trường tên"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/dto/stormshelter/StormShelterAreaResponse.java",
+      "line": 28,
+      "quote": "private UUID buoyStationId;",
+      "source_hash": "3c62809b0dacd8abb74e6f31fa4bb8e1748de57f8b1421942ab74d0896487c02",
+      "quote_hash": "25c1879d4c41c64782f5fd24bbe3c7a0bb11235f1633a7ce788fd86970f477fe",
+      "note": "DTO response thiếu trường tên"
+    },
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageListPage.tsx",
+      "line": 902,
+      "quote": "render: (v?: string) => (v ? (buoyStationMap.get(v) || v) : '—'),",
+      "source_hash": "4f2ec77a69c85668087a15a210d4a14c5f59cf3f058c742004a3c39afb1941e5",
+      "quote_hash": "e1d72d92d92e4d07453033befb4ffb6203e66670529ced6d3e744aab7f54e730",
+      "note": "Column 'Thuộc bến phao' fallback về raw id khi map miss"
+    },
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageDetailContent.tsx",
+      "line": 150,
+      "quote": "['Thuộc bến phao', r.buoyStationId || '—'],",
+      "source_hash": "bd49fe8df8b972aa3be7612efb199442687a213c4d25d227ef0f93b6493a0d6c",
+      "quote_hash": "023c862f46f16519eff207a28b277d0bfe46f8a953fed4c223ee3df643cf5644",
+      "note": "Detail hiển thị thẳng raw UUID, không map tên"
+    },
+    {
+      "file": "frontend/src/pages/storm-shelter/StormShelterDetailContent.tsx",
+      "line": 152,
+      "quote": "['Thuộc bến phao', buoyStationOptions.find(o => o.value === r.buoyStationId)?.label || r.buoyStationId || '—'],",
+      "source_hash": "abae5842a2061386129b3871087325946f80e1ea622414aa005ef93413358e67",
+      "quote_hash": "33589ac7eacefedb491cf9a40d89d316e46affb2428d1d0dfcf9752ec69a25d2",
+      "note": "Detail fallback raw UUID khi không có trong options APPROVED"
+    },
+    {
+      "file": "frontend/src/types/port.ts",
+      "line": 564,
+      "quote": "buoyStationId?: string;",
+      "source_hash": "c9d1e4022b8ca43fc34139dbdee293c54b2b72e2995f411a75a5dae89e066af0",
+      "quote_hash": "f0450233ab8f2510722120c7414832e2aad0b09e5643f0688b35f8525326a36f",
+      "note": "Interface Anchorage thiếu buoyStationName"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "a769af941a22800177f68aaee9f2e135863eb734",
+    "dirty": false,
+    "captured_at": 1787821090661
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

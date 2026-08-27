@@ -26,6 +26,7 @@ public class AnchorageResponse {
     private String orgUnitName;
     private UUID navigationChannelId;
     private UUID buoyStationId;
+    private String buoyStationName;
     private Integer provinceId;
     private UUID mapSymbolId;
     private Integer coordinateSystem;

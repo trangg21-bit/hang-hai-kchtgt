@@ -899,7 +899,7 @@ export default function AnchorageList() {
         ellipsis: true,
         sortable: true,
         sortOrder,
-        render: (v?: string) => (v ? (buoyStationMap.get(v) || v) : '—'),
+        render: (v?: string, r?: any) => (r?.buoyStationName || (v ? buoyStationMap.get(v) || v : '—')),
       },
       {
         key: 'provinceId',

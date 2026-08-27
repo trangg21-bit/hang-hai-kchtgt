@@ -147,7 +147,7 @@ export default function AnchorageDetailContent({
                   ['Tên khu neo đậu', <span style={{ fontWeight: fontWeightBold }}>{r.anchorageName || '—'}</span>],
                   ['Cấp bảo mật', r.securityLevel != null ? ({ 0: 'Công khai', 1: 'Nội bộ', 2: 'Rất bí mật' }[r.securityLevel] || '—') : '—'],
                   ['Thuộc luồng hàng hải', waterwayMap.get(r.navigationChannelId || '') || r.navigationChannelId || '—'],
-                  ['Thuộc bến phao', r.buoyStationId || '—'],
+                  ['Thuộc bến phao', r.buoyStationName || r.buoyStationId || '—'],
                   ['Địa điểm (Tỉnh/Thành Phố)', r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '—' : '—'],
                   ['Địa điểm chi tiết', r.detailedLocation || '—'],
                   ['Tình trạng', (() => { const s = r.operationalStatus; const m: Record<string,{color:string;label:string}> = { OPERATIONAL:{color:statusOperational,label:'Đang khai thác/Vận hành'}, NOT_YET_OPERATIONAL:{color:statusAttention,label:'Chưa khai thác/Vận hành'}, SUSPENDED:{color:statusCritical,label:'Dừng khai thác/Vận hành'} }; const b = s && m[s]; return b ? <span style={{ display:'inline-flex',padding:'2px 10px',borderRadius:999,fontSize:fontSizeMd,fontWeight:fontWeightMedium,background:`${b.color}15`,color:b.color }}>{b.label}</span> : '—'; })(),],
