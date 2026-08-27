@@ -2,8 +2,11 @@ package com.hanghai.kchtg.common.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.common.service.CommonOptionsService;
+import com.hanghai.kchtg.mapicon.dto.MapSymbolOptionResponse;
 import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
 import com.hanghai.kchtg.port.dto.port.PortOptionResponse;
+import com.hanghai.kchtg.radarstation.dto.RadarStationOptionResponse;
+import com.hanghai.kchtg.vtsoperationcenter.dto.VtsOperationCenterOptionResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,5 +43,23 @@ public class CommonOptionsController {
     public ResponseEntity<ApiResponse<List<com.hanghai.kchtg.common.dto.OperatingOrganizationOptionResponse>>> getOperatingOrganizationOptions(
             @org.springframework.web.bind.annotation.RequestParam(required = false) String keyword) {
         return ResponseEntity.ok(ApiResponse.success("Danh sách đơn vị vận hành và khai thác", service.getOperatingOrganizationOptions(keyword)));
+    }
+
+    @GetMapping("/symbols")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<MapSymbolOptionResponse>>> getSymbolOptions() {
+        return ResponseEntity.ok(ApiResponse.success("Danh sách ký hiệu bản đồ", service.getSymbolOptions()));
+    }
+
+    @GetMapping("/radar-stations")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<RadarStationOptionResponse>>> getRadarStationOptions() {
+        return ResponseEntity.ok(ApiResponse.success("Danh sách trạm radar", service.getRadarStationOptions()));
+    }
+
+    @GetMapping("/vts-operation-centers")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<VtsOperationCenterOptionResponse>>> getVtsOperationCenterOptions() {
+        return ResponseEntity.ok(ApiResponse.success("Danh sách trung tâm điều hành VTS", service.getVtsOperationCenterOptions()));
     }
 }

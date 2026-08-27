@@ -1,11 +1,11 @@
-package com.hanghai.kchtg.cctv.service;
+package com.hanghai.kchtg.transmission.service;
 
-import com.hanghai.kchtg.cctv.dto.CctvResponse;
-import com.hanghai.kchtg.cctv.dto.CctvOptionResponse;
-import com.hanghai.kchtg.cctv.dto.CreateCctvRequest;
-import com.hanghai.kchtg.cctv.dto.UpdateCctvRequest;
-import com.hanghai.kchtg.cctv.entity.Cctv;
-import com.hanghai.kchtg.cctv.repository.CctvRepository;
+import com.hanghai.kchtg.transmission.dto.TransmissionResponse;
+import com.hanghai.kchtg.transmission.dto.TransmissionOptionResponse;
+import com.hanghai.kchtg.transmission.dto.CreateTransmissionRequest;
+import com.hanghai.kchtg.transmission.dto.UpdateTransmissionRequest;
+import com.hanghai.kchtg.transmission.entity.Transmission;
+import com.hanghai.kchtg.transmission.repository.TransmissionRepository;
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
@@ -50,14 +50,14 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Service for CCTV CRUD operations.
+ * Service for transmission CRUD operations.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class CctvService {
+public class TransmissionService {
 
-  private final CctvRepository cctvRepository;
+  private final TransmissionRepository transmissionRepository;
   private final OrgUnitCacheService orgUnitCacheService;
   private final OrgUnitScopeService orgUnitScopeService;
   private final ChangeHistoryService changeHistoryService;
@@ -66,7 +66,7 @@ public class CctvService {
   private final RadarStationRepository radarStationRepository;
   private final GisSpatialObjectService gisSpatialObjectService;
 
-  @Value("${app.upload-path:/tmp/cctv-attachments}")
+  @Value("${app.upload-path:/tmp/transmission-attachments}")
   private String uploadPath;
 
   private final AttachmentRepository attachmentRepository;
@@ -74,29 +74,29 @@ public class CctvService {
   private final UserRepository userRepository;
 
   /**
-   * Generate device code in format CCTV-NNNNNN.
+   * Generate device code in format TRD-NNNNNN.
    */
-  public String generateCctvCode() {
+  public String generateTransmissionCode() {
     // MAX theo SỐ trên mọi bản ghi (kể cả đã xóa mềm) — tránh trùng mã đang chiếm unique index
-    int sequence = cctvRepository.findMaxDeviceCodeSequence().orElse(0) + 1;
-    return String.format("CCTV-%06d", sequence);
+    int sequence = transmissionRepository.findMaxDeviceCodeSequence().orElse(0) + 1;
+    return String.format("TRD-%06d", sequence);
   }
 
   /**
-   * Create a new CCTV system.
+   * Create a new transmission system.
    */
   @Transactional
-  public CctvResponse create(CreateCctvRequest request) {
+  public TransmissionResponse create(CreateTransmissionRequest request) {
     UUID currentUserId = SecurityUtils.getCurrentUserId();
 
     // Generate device code if not provided
     String deviceCode = request.getDeviceCode();
     if (deviceCode == null || deviceCode.isBlank()) {
-      deviceCode = generateCctvCode();
+      deviceCode = generateTransmissionCode();
     }
 
     // Validate uniqueness — kể cả bản ghi đã xóa mềm (unique index device_code vẫn giữ)
-    if (cctvRepository.existsDeviceCodeAnyState(deviceCode)) {
+    if (transmissionRepository.existsDeviceCodeAnyState(deviceCode)) {
       throw new IllegalArgumentException("Mã thiết bị đã tồn tại: " + deviceCode);
     }
 
@@ -113,7 +113,7 @@ public class CctvService {
 
     // Build entity
     ApprovalStatus targetApprovalStatus = resolveCreateApprovalStatus(request.getAction());
-    Cctv entity = Cctv.builder()
+    Transmission entity = Transmission.builder()
       .deviceCode(deviceCode)
       .deviceName(request.getDeviceName())
       .detailedLocation(request.getDetailedLocation())
@@ -145,20 +145,20 @@ public class CctvService {
       .build();
 
     // Persist trước để entity.getId() có giá trị khi ghi infrastructure_history (ref_id NOT NULL).
-    Cctv saved = cctvRepository.save(entity);
+    Transmission saved = transmissionRepository.save(entity);
 
     // Đồng bộ tọa độ GPS vào gis_spatial_objects (giống AIS) — lưu sau save để có entity id làm refId.
     if (request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty()) {
       UUID spatialId = gisSpatialObjectService.syncSpatialObject(
         null,
-        "Hệ thống CCTV " + saved.getDeviceName(),
+        "Hệ thống truyền dẫn " + saved.getDeviceName(),
         saved.getDeviceCode(),
         request.getGeometryType(),
         request.getCoordinates(),
         saved.getId(),
-        InfrastructureType.CCTV);
+        InfrastructureType.TRANSMISSION);
       saved.setSpatialId(spatialId);
-      saved = cctvRepository.save(saved);
+      saved = transmissionRepository.save(saved);
     }
 
     String action = request.getAction();
@@ -166,18 +166,18 @@ public class CctvService {
       // "Lưu và gửi phê duyệt" khi tạo mới — đi qua approvalService.submit() để áp dụng
       // Rule 14 (người gửi cấp Cục → thẳng "Chờ Cục duyệt"; cấp dưới → "Chờ Cảng vụ / Chi cục duyệt")
       // và ghi vết phê duyệt vào infrastructure_history (giống endpoint POST /{id}/submit).
-      approvalService.submit(saved, InfrastructureType.CCTV, currentUserId);
+      approvalService.submit(saved, InfrastructureType.TRANSMISSION, currentUserId);
       saved.setSubmittedDate(java.time.LocalDateTime.now());
       saved.setSubmittedBy(currentUserId);
       saved.setApprovalContentLevel1(null);
       saved.setApprovalContentLevel2(null);
-      saved = cctvRepository.save(saved);
+      saved = transmissionRepository.save(saved);
     } else if ("approve".equalsIgnoreCase(action)) {
       // "Lưu và phê duyệt" khi tạo mới (T12) — ghi nhận người duyệt, ngày duyệt
       // và bản ghi lịch sử thay vì chỉ set trạng thái APPROVED.
-      approvalService.recordSaveAndApprove(saved, InfrastructureType.CCTV,
+      approvalService.recordSaveAndApprove(saved, InfrastructureType.TRANSMISSION,
           "Tạo mới và phê duyệt", currentUserId);
-      saved = cctvRepository.save(saved);
+      saved = transmissionRepository.save(saved);
     }
 
     return toResponse(saved);
@@ -199,20 +199,20 @@ public class CctvService {
   }
 
   /**
-   * Get CCTV by ID.
+   * Get transmission by ID.
    */
   @Transactional(readOnly = true)
-  public CctvResponse getById(UUID id) {
-    Cctv entity = cctvRepository.findById(id)
-      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống CCTV với id: " + id));
+  public TransmissionResponse getById(UUID id) {
+    Transmission entity = transmissionRepository.findById(id)
+      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống truyền dẫn với id: " + id));
     return toResponse(entity);
   }
 
   /**
-   * List all CCTV systems with filtering.
+   * List all transmission systems with filtering.
    */
   @Transactional(readOnly = true)
-  public Page<CctvResponse> findAll(
+  public Page<TransmissionResponse> findAll(
     int page, int size,
     UUID orgUnitId,
     String deviceCode, String deviceName, String province,
@@ -245,7 +245,7 @@ public class CctvService {
     LocalDateTime updatedFromDt = parseLocalDateTime(updatedFrom);
     LocalDateTime updatedToDt = parseLocalDateTime(updatedTo);
 
-    Page<Cctv> result = cctvRepository.searchCctv(
+    Page<Transmission> result = transmissionRepository.searchTransmission(
       includeAll, orgUnitIds,
       filterEnabled, filterOrgUnitIds,
       deviceCode, deviceName,
@@ -261,16 +261,16 @@ public class CctvService {
   }
 
   /**
-   * Update an existing CCTV system.
+   * Update an existing transmission system.
    */
   @Transactional
-  public CctvResponse update(UpdateCctvRequest request) {
+  public TransmissionResponse update(UpdateTransmissionRequest request) {
     UUID currentUserId = SecurityUtils.getCurrentUserId();
-    Cctv entity = cctvRepository.findById(request.getId())
-      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống CCTV với id: " + request.getId()));
+    Transmission entity = transmissionRepository.findById(request.getId())
+      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống truyền dẫn với id: " + request.getId()));
 
     // Capture snapshot for change history
-    Cctv snapshot = Cctv.builder()
+    Transmission snapshot = Transmission.builder()
       .id(entity.getId())
       .deviceCode(entity.getDeviceCode())
       .deviceName(entity.getDeviceName())
@@ -330,12 +330,12 @@ public class CctvService {
         ? request.getGeometryType() : GisGeometryType.POINT;
       UUID spatialId = gisSpatialObjectService.syncSpatialObject(
         entity.getSpatialId(),
-        "Hệ thống CCTV " + (request.getDeviceName() != null ? request.getDeviceName() : entity.getDeviceName()),
+        "Hệ thống truyền dẫn " + (request.getDeviceName() != null ? request.getDeviceName() : entity.getDeviceName()),
         entity.getDeviceCode(),
         geomType,
         request.getCoordinates(),
         entity.getId(),
-        InfrastructureType.CCTV);
+        InfrastructureType.TRANSMISSION);
       entity.setSpatialId(spatialId);
     }
 
@@ -348,7 +348,7 @@ public class CctvService {
       // Đã duyệt (nút phía FE chỉ hiển thị cho tài khoản có quyền duyệt) và ghi nhận
       // người duyệt/ngày duyệt/lịch sử; ngoài ra phải duyệt lại.
       if (request.getApprovalStatus() == ApprovalStatus.APPROVED) {
-        approvalService.recordSaveAndApprove(entity, InfrastructureType.CCTV,
+        approvalService.recordSaveAndApprove(entity, InfrastructureType.TRANSMISSION,
             "Cập nhật hồ sơ đã duyệt", currentUserId);
         approvedEdit = true;
       } else {
@@ -356,67 +356,67 @@ public class CctvService {
       }
     }
 
-    Cctv saved = cctvRepository.save(entity);
+    Transmission saved = transmissionRepository.save(entity);
 
     // UC-8 (tài liệu phê duyệt — Ca sử dụng 8): chỉ ghi nhật ký thay đổi khi hồ sơ
     // ĐÃ DUYỆT được chỉnh sửa thành công ("Lưu và phê duyệt") — bản nháp/lưu tạm,
     // hồ sơ đang chờ duyệt hoặc bị trả về KHÔNG ghi lịch sử.
     if (approvedEdit) {
-      changeHistoryService.recordChanges("CCTV", saved.getId().toString(), currentUserId.toString(), snapshot, saved);
+      changeHistoryService.recordChanges("TRANSMISSION", saved.getId().toString(), currentUserId.toString(), snapshot, saved);
     }
 
     return toResponse(saved);
   }
 
   /**
-   * Soft-delete a CCTV system.
+   * Soft-delete a transmission system.
    */
   @Transactional
   public void softDelete(UUID id) {
     UUID currentUserId = SecurityUtils.getCurrentUserId();
-    Cctv entity = cctvRepository.findById(id)
-      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống CCTV với id: " + id));
-    approvalService.deleteDraft(entity, InfrastructureType.CCTV, currentUserId);
+    Transmission entity = transmissionRepository.findById(id)
+      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống truyền dẫn với id: " + id));
+    approvalService.deleteDraft(entity, InfrastructureType.TRANSMISSION, currentUserId);
     entity.softDelete(currentUserId);
-    cctvRepository.save(entity);
-    log.info("Soft-deleted CCTV: id={}", id);
+    transmissionRepository.save(entity);
+    log.info("Soft-deleted transmission: id={}", id);
   }
 
   /**
-   * Restore a soft-deleted CCTV system.
+   * Restore a soft-deleted transmission system.
    */
   @Transactional
-  public CctvResponse restore(UUID id) {
-    Cctv entity = cctvRepository.findById(id)
-      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống CCTV với id: " + id));
+  public TransmissionResponse restore(UUID id) {
+    Transmission entity = transmissionRepository.findById(id)
+      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống truyền dẫn với id: " + id));
 
-    int restored = cctvRepository.restoreCctvById(id);
+    int restored = transmissionRepository.restoreTransmissionById(id);
     if (restored == 0) {
-      throw new EntityNotFoundException("Không thể khôi phục hệ thống CCTV: " + id);
+      throw new EntityNotFoundException("Không thể khôi phục hệ thống truyền dẫn: " + id);
     }
 
     // Reload after restore to bypass @SQLRestriction on deletedAt
-    Cctv restoredEntity = cctvRepository.findById(id)
-      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống CCTV đã khôi phục: " + id));
+    Transmission restoredEntity = transmissionRepository.findById(id)
+      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống truyền dẫn đã khôi phục: " + id));
     return toResponse(restoredEntity);
   }
 
   /**
-   * Get CCTV options for dropdowns.
+   * Get transmission options for dropdowns.
    */
   @Transactional(readOnly = true)
-  public List<CctvOptionResponse> getOptions() {
+  public List<TransmissionOptionResponse> getOptions() {
     OrgUnitScopeService.Scope scope = orgUnitScopeService.currentUserScope();
     if (scope.unrestricted()) {
-      return cctvRepository.findAllOptions();
+      return transmissionRepository.findAllOptions();
     }
-    return cctvRepository.findOptionsByOrgUnitIds(scope.orgUnitIds());
+    return transmissionRepository.findOptionsByOrgUnitIds(scope.orgUnitIds());
   }
 
   /**
    * Convert entity to response DTO.
    */
-  public CctvResponse toResponse(Cctv entity) {
+  public TransmissionResponse toResponse(Transmission entity) {
     String orgUnitName = orgUnitCacheService.getName(entity.getOrgUnitId());
     String attachedInfrastructureName = resolveAttachedInfrastructureName(entity);
 
@@ -431,7 +431,7 @@ public class CctvService {
       }
     }
 
-    return CctvResponse.builder()
+    return TransmissionResponse.builder()
       .id(entity.getId())
       .securityLevel(entity.getSecurityLevel())
       .deviceCode(entity.getDeviceCode())
@@ -447,6 +447,8 @@ public class CctvService {
       .attachedInfrastructureType(entity.getAttachedInfrastructureType())
       .attachedInfrastructureId(entity.getAttachedInfrastructureId())
       .attachedInfrastructureName(attachedInfrastructureName)
+      .geometryType(geometryType)
+      .coordinates(coordinates)
       .unitOfMeasure(entity.getUnitOfMeasure())
       .yearOfUse(entity.getYearOfUse())
       .operationalStatus(entity.getOperationalStatus())
@@ -471,8 +473,6 @@ public class CctvService {
       .coordinateSystem(entity.getCoordinateSystem())
       .displayRule(entity.getDisplayRule())
       .spatialId(entity.getSpatialId())
-      .geometryType(geometryType)
-      .coordinates(coordinates)
       .createdBy(entity.getCreatedBy())
       .updatedBy(entity.getUpdatedBy())
       .createdByName(userResolverService.resolveName(entity.getCreatedBy()))
@@ -484,7 +484,7 @@ public class CctvService {
 
   // ── Helpers ───────────────────────────────────────────────────────
 
-  private String resolveAttachedInfrastructureName(Cctv entity) {
+  private String resolveAttachedInfrastructureName(Transmission entity) {
     if (entity.getAttachedInfrastructureId() == null) return null;
     Integer type = entity.getAttachedInfrastructureType();
     if (type == null) return null;
@@ -626,7 +626,7 @@ public class CctvService {
 
   @Transactional
   public List<AttachmentDto> uploadAttachments(UUID entityId, List<MultipartFile> files, UUID userId) {
-    final String entityType = "CCTV";
+    final String entityType = "TRANSMISSION";
     long existingCount = attachmentRepository.countByEntityTypeAndEntityId(entityType, entityId);
     if (existingCount + files.size() > 10) {
       throw new IllegalArgumentException("Tối đa 10 file đính kèm");
@@ -658,7 +658,7 @@ public class CctvService {
   }
 
   public List<AttachmentDto> listAttachments(UUID entityId) {
-    return attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("CCTV", entityId)
+    return attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("TRANSMISSION", entityId)
         .stream().map(this::toAttachmentDto).toList();
   }
 
@@ -667,7 +667,7 @@ public class CctvService {
     Attachment attachment = attachmentRepository.findById(attachmentId)
         .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
     if (!attachment.getEntityId().equals(entityId)) {
-      throw new IllegalArgumentException("File không thuộc hệ thống CCTV này");
+      throw new IllegalArgumentException("File không thuộc hệ thống truyền dẫn này");
     }
     try {
       java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));

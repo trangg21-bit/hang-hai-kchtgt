@@ -24,6 +24,9 @@ import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import org.springframework.web.multipart.MultipartFile;
@@ -60,6 +63,7 @@ public class ScadaService {
   private final UserResolverService userResolverService;
   private final VtsOperationCenterRepository vtsOperationCenterRepository;
   private final RadarStationRepository radarStationRepository;
+  private final GisSpatialObjectService gisSpatialObjectService;
 
   @Value("${app.upload-path:/tmp/scada-attachments}")
   private String uploadPath;
@@ -141,6 +145,20 @@ public class ScadaService {
 
     // Persist trước để entity.getId() có giá trị khi ghi infrastructure_history (ref_id NOT NULL).
     Scada saved = scadaRepository.save(entity);
+
+    // Đồng bộ tọa độ GPS vào gis_spatial_objects (giống AIS) — lưu sau save để có entity id làm refId.
+    if (request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty()) {
+      UUID spatialId = gisSpatialObjectService.syncSpatialObject(
+        null,
+        "Hệ thống SCADA " + saved.getDeviceName(),
+        saved.getDeviceCode(),
+        request.getGeometryType(),
+        request.getCoordinates(),
+        saved.getId(),
+        InfrastructureType.SCADA);
+      saved.setSpatialId(spatialId);
+      saved = scadaRepository.save(saved);
+    }
 
     String action = request.getAction();
     if ("submit".equalsIgnoreCase(action)) {
@@ -304,6 +322,22 @@ public class ScadaService {
     if (request.getDisplayRule() != null) entity.setDisplayRule(request.getDisplayRule());
     if (request.getSpatialId() != null) entity.setSpatialId(request.getSpatialId());
 
+    // Đồng bộ tọa độ GPS vào gis_spatial_objects (giống AIS): coordinates != null → upsert;
+    // chuỗi rỗng → xóa spatial cũ (trả null). Không gửi coordinates → giữ nguyên spatial hiện tại.
+    if (request.getCoordinates() != null) {
+      GisGeometryType geomType = request.getGeometryType() != null
+        ? request.getGeometryType() : GisGeometryType.POINT;
+      UUID spatialId = gisSpatialObjectService.syncSpatialObject(
+        entity.getSpatialId(),
+        "Hệ thống SCADA " + (request.getDeviceName() != null ? request.getDeviceName() : entity.getDeviceName()),
+        entity.getDeviceCode(),
+        geomType,
+        request.getCoordinates(),
+        entity.getId(),
+        InfrastructureType.SCADA);
+      entity.setSpatialId(spatialId);
+    }
+
     // Cho phép cập nhật bất kể trạng thái phê duyệt (yêu cầu nghiệp vụ 2026-08-26):
     // hồ sơ đang chờ duyệt được sửa và giữ nguyên trạng thái chờ duyệt.
     ApprovalStatus currentStatus = entity.getApprovalStatus();
@@ -385,6 +419,17 @@ public class ScadaService {
     String orgUnitName = orgUnitCacheService.getName(entity.getOrgUnitId());
     String attachedInfrastructureName = resolveAttachedInfrastructureName(entity);
 
+    // Đọc tọa độ GIS từ bảng tập trung gis_spatial_objects qua spatial_id (giống AIS / VtsOperationCenter)
+    String coordinates = null;
+    GisGeometryType geometryType = null;
+    if (entity.getSpatialId() != null) {
+      Optional<GisSpatialObject> spatialOpt = gisSpatialObjectService.findById(entity.getSpatialId());
+      if (spatialOpt.isPresent()) {
+        coordinates = spatialOpt.get().getCoordinates();
+        geometryType = spatialOpt.get().getGeometryType();
+      }
+    }
+
     return ScadaResponse.builder()
       .id(entity.getId())
       .securityLevel(entity.getSecurityLevel())
@@ -425,6 +470,8 @@ public class ScadaService {
       .coordinateSystem(entity.getCoordinateSystem())
       .displayRule(entity.getDisplayRule())
       .spatialId(entity.getSpatialId())
+      .geometryType(geometryType)
+      .coordinates(coordinates)
       .createdBy(entity.getCreatedBy())
       .updatedBy(entity.getUpdatedBy())
       .createdByName(userResolverService.resolveName(entity.getCreatedBy()))

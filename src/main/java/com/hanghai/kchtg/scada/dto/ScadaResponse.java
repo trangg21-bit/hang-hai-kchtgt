@@ -2,6 +2,7 @@ package com.hanghai.kchtg.scada.dto;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.Builder;
 import lombok.Data;
@@ -56,6 +57,8 @@ public class ScadaResponse {
     private Integer coordinateSystem;
     private Integer displayRule;
     private UUID spatialId;
+    private GisGeometryType geometryType;
+    private String coordinates;
     private UUID createdBy;
     private UUID updatedBy;
     private String createdByName;

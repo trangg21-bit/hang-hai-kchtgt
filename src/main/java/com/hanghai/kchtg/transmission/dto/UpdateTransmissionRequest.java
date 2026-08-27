@@ -1,4 +1,4 @@
-package com.hanghai.kchtg.scada.dto;
+package com.hanghai.kchtg.transmission.dto;
 
 import java.util.UUID;
 
@@ -11,10 +11,10 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
 
 /**
- * Request DTO for updating an existing SCADA system.
+ * Request DTO for updating an existing transmission system.
  */
 @Data
-public class UpdateScadaRequest {
+public class UpdateTransmissionRequest {
 
     @NotNull(message = "ID không được để trống")
     private UUID id;

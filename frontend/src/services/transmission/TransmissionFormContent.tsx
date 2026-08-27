@@ -1,16 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Form, Input, InputNumber, Select, message, DatePicker, Upload } from 'antd';
+import { Form, Input, InputNumber, Select } from 'antd';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
-import { createCctv, updateCctv, fetchCctvById } from '../api';
-import { CctvResponse } from '../types';
+import { createTransmission, updateTransmission, fetchTransmissionById } from './api';
+import type { TransmissionResponse } from './types';
 import { OPERATIONAL_STATUS_OPTIONS } from './schema';
-import toast, { modal } from '../../components/ToastNotification';
+import toast from '../../components/ToastNotification';
 import {
-  fontSizeMd,
-  fontSizeLg,
-  fontWeightBold,
   colors,
   actionPrimary,
   borderDefault,
@@ -18,20 +15,19 @@ import {
   spaceFormField,
   spaceMd,
 } from '../../tokens';
-import dayjs from 'dayjs';
 
-interface CctvFormProps {
-  initialData?: CctvResponse;
+interface TransmissionFormProps {
+  initialData?: TransmissionResponse;
   onSuccess?: () => void;
 }
 
-const CctvFormContent = ({ initialData, onSuccess }: CctvFormProps) => {
+const TransmissionFormContent = ({ initialData, onSuccess }: TransmissionFormProps) => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const [isEdit, setIsEdit] = useState(!!initialData);
   const [submitting, setSubmitting] = useState(false);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
-  const [loadingData, setLoadingData] = useState(false);
+  const [, setLoadingData] = useState(false);
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
 
   useEffect(() => {
@@ -39,10 +35,10 @@ const CctvFormContent = ({ initialData, onSuccess }: CctvFormProps) => {
       if (initialData) {
         setLoadingData(true);
         try {
-          const data = await fetchCctvById(initialData.id);
+          const data = await fetchTransmissionById(initialData.id);
           form.setFieldsValue(data);
           setIsEdit(true);
-        } catch (error) {
+        } catch {
           toast.error('Không thể tải dữ liệu');
           navigate(-1);
         } finally {
@@ -82,20 +78,20 @@ const CctvFormContent = ({ initialData, onSuccess }: CctvFormProps) => {
           ...values,
           orgUnitId: values.orgUnitId || null,
         };
-        await updateCctv(payload);
-        toast.success('Cập nhật hệ thống CCTV thành công');
+        await updateTransmission(payload);
+        toast.success('Cập nhật hệ thống truyền dẫn thành công');
       } else {
         const payload = {
           ...values,
           orgUnitId: values.orgUnitId || null,
         };
-        await createCctv(payload);
-        toast.success('Tạo mới hệ thống CCTV thành công');
+        await createTransmission(payload);
+        toast.success('Tạo mới hệ thống truyền dẫn thành công');
       }
       if (onSuccess) {
         onSuccess();
       } else {
-        navigate('/cctv');
+        navigate('/transmission');
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Lỗi khi lưu');
@@ -117,6 +113,7 @@ const CctvFormContent = ({ initialData, onSuccess }: CctvFormProps) => {
       <Form.Item
         name="deviceCode"
         label="Mã thiết bị"
+        style={{ marginBottom: spaceFormField }}
         rules={[{ required: true, message: 'Vui lòng nhập mã thiết bị' }]}
       >
         <Input placeholder="Mã tự động" disabled={isEdit} style={{ borderRadius: radiusPill, height: 40 }} />
@@ -125,34 +122,37 @@ const CctvFormContent = ({ initialData, onSuccess }: CctvFormProps) => {
       <Form.Item
         name="deviceName"
         label="Tên thiết bị"
+        style={{ marginBottom: spaceFormField }}
         rules={[{ required: true, message: 'Vui lòng nhập tên thiết bị' }]}
       >
         <Input placeholder="Nhập tên thiết bị..." style={{ borderRadius: radiusPill, height: 40 }} />
       </Form.Item>
 
-      <Form.Item name="model" label="Model">
+      <Form.Item name="model" label="Model" style={{ marginBottom: spaceFormField }}>
         <Input placeholder="Nhập model..." style={{ borderRadius: radiusPill, height: 40 }} />
       </Form.Item>
 
-      <Form.Item name="manufacturer" label="Hãng sản xuất" rules={[{ max: 50, message: 'Tối đa 50 ký tự' }]}>
+      <Form.Item name="manufacturer" label="Hãng sản xuất" style={{ marginBottom: spaceFormField }} rules={[{ max: 50, message: 'Tối đa 50 ký tự' }]}>
         <Input placeholder="Nhập hãng..." style={{ borderRadius: radiusPill, height: 40 }} />
       </Form.Item>
 
       <Form.Item
         name="quantity"
         label="Số lượng"
+        style={{ marginBottom: spaceFormField }}
         rules={[{ required: true, message: 'Vui lòng nhập số lượng' }]}
       >
         <InputNumber min={1} style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
       </Form.Item>
 
-      <Form.Item name="yearOfUse" label="Năm đưa vào sử dụng">
+      <Form.Item name="yearOfUse" label="Năm đưa vào sử dụng" style={{ marginBottom: spaceFormField }}>
         <InputNumber min={1900} max={2100} style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
       </Form.Item>
 
       <Form.Item
         name="orgUnitId"
         label="Đơn vị quản lý"
+        style={{ marginBottom: spaceFormField }}
         rules={[{ required: !isEdit, message: 'Vui lòng chọn đơn vị quản lý' }]}
       >
         <OrgUnitTreeSelect
@@ -165,34 +165,34 @@ const CctvFormContent = ({ initialData, onSuccess }: CctvFormProps) => {
         />
       </Form.Item>
 
-      <Form.Item name="operationalStatus" label="Tình trạng">
+      <Form.Item name="operationalStatus" label="Tình trạng" style={{ marginBottom: spaceFormField }}>
         <Select
           options={OPERATIONAL_STATUS_OPTIONS}
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
         />
       </Form.Item>
 
-      <Form.Item name="detailedLocation" label="Địa điểm chi tiết" rules={[{ max: 500 }]}>
+      <Form.Item name="detailedLocation" label="Địa điểm chi tiết" style={{ marginBottom: spaceFormField }} rules={[{ max: 500 }]}>
         <Input placeholder="Nhập địa điểm..." style={{ borderRadius: radiusPill, height: 40 }} />
       </Form.Item>
 
-      <Form.Item name="specifications" label="Thông số kỹ thuật" rules={[{ max: 2000 }]}>
+      <Form.Item name="specifications" label="Thông số kỹ thuật" style={{ marginBottom: spaceFormField }} rules={[{ max: 2000 }]}>
         <Input.TextArea rows={3} placeholder="Nhập thông số kỹ thuật..." style={{ borderRadius: radiusPill }} />
       </Form.Item>
 
-      <Form.Item name="maintenanceInformation" label="Thông tin bảo trì" rules={[{ max: 2000 }]}>
+      <Form.Item name="maintenanceInformation" label="Thông tin bảo trì" style={{ marginBottom: spaceFormField }} rules={[{ max: 2000 }]}>
         <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì..." style={{ borderRadius: radiusPill }} />
       </Form.Item>
 
-      <Form.Item name="note" label="Ghi chú" rules={[{ max: 2000 }]}>
+      <Form.Item name="note" label="Ghi chú" style={{ marginBottom: spaceFormField }} rules={[{ max: 2000 }]}>
         <Input.TextArea rows={2} placeholder="Nhập ghi chú..." style={{ borderRadius: radiusPill }} />
       </Form.Item>
 
       <div style={{ textAlign: 'right', marginTop: spaceMd }}>
-        <Form.Item>
+        <Form.Item style={{ marginBottom: spaceFormField }}>
           <button
             type="button"
-            onClick={() => navigate('/cctv')}
+            onClick={() => navigate('/transmission')}
             style={{
               borderRadius: radiusPill,
               height: 40,
@@ -206,7 +206,7 @@ const CctvFormContent = ({ initialData, onSuccess }: CctvFormProps) => {
             Hủy
           </button>
           <Form.Item shouldUpdate noStyle>
-            {({ getFieldValue }) => (
+            {() => (
               <button
                 type="submit"
                 disabled={submitting}
@@ -229,4 +229,4 @@ const CctvFormContent = ({ initialData, onSuccess }: CctvFormProps) => {
   );
 };
 
-export default CctvFormContent;
+export default TransmissionFormContent;

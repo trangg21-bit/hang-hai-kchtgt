@@ -315,6 +315,23 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "scada", "history", "Lịch sử phê duyệt SCADA",
                                 "Xem lịch sử thay đổi và phê duyệt hệ thống SCADA");
 
+                // 8.9 Hệ thống truyền dẫn (Transmission System)
+                seedPermission(definitions, "transmission", "read", "Xem hệ thống truyền dẫn", "Tra cứu thông tin hệ thống truyền dẫn");
+                seedPermission(definitions, "transmission", "read:restricted", "Xem bản ghi hạn chế truyền dẫn",
+                                "Xem các bản ghi dữ liệu mức độ Hạn chế của hệ thống truyền dẫn");
+                seedPermission(definitions, "transmission", "read:confidential", "Xem bản ghi mật truyền dẫn",
+                                "Xem các bản ghi dữ liệu mức độ Mật của hệ thống truyền dẫn");
+                seedPermission(definitions, "transmission", "create", "Thêm hệ thống truyền dẫn", "Tạo mới hồ sơ hệ thống truyền dẫn");
+                seedPermission(definitions, "transmission", "update", "Cập nhật hệ thống truyền dẫn", "Chỉnh sửa thông tin hệ thống truyền dẫn");
+                seedPermission(definitions, "transmission", "delete", "Xóa hệ thống truyền dẫn", "Xóa hệ thống truyền dẫn khỏi hệ thống");
+                seedPermission(definitions, "transmission", "approve", "Phê duyệt hệ thống truyền dẫn", "Phê duyệt dữ liệu hệ thống truyền dẫn");
+                seedPermission(definitions, "transmission", "approvec1", "Phê duyệt C1 hệ thống truyền dẫn",
+                                "Phê duyệt cấp 1 hệ thống truyền dẫn");
+                seedPermission(definitions, "transmission", "approvec2", "Phê duyệt C2 hệ thống truyền dẫn",
+                                "Phê duyệt cấp 2 hệ thống truyền dẫn");
+                seedPermission(definitions, "transmission", "history", "Lịch sử phê duyệt truyền dẫn",
+                                "Xem lịch sử thay đổi và phê duyệt hệ thống truyền dẫn");
+
                 seedPermission(definitions, "waterarea", "read", "Xem vùng nước cảng",
                                 "Tra cứu thông tin vùng nước cảng");
                 seedPermission(definitions, "waterarea", "create", "Thêm vùng nước cảng",
