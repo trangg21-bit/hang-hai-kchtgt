@@ -1,0 +1,16 @@
+{
+  "route_id": "LANE-1787822126205-0a39",
+  "created_at": 1787822126205,
+  "lane": "test-campaign",
+  "owner": "pmo-test-manager",
+  "dispatch_target": "pmo-test-manager",
+  "routing_mode": "dispatch",
+  "request_summary": "Tạo bộ kịch bản test case manual cho module Luồng hàng hải M-003/F-038..F-043: đọc feature-brief + lean-spec + ma trận 71 trường, sinh test cases dạng manual (bước/dữ liệu/mong đợi) validate đủ mọi trường + business rules + phê duyệt C1/C2.",
+  "reason": "Sinh kịch bản test case MANUAL cho module Luồng hàng hải (F-038..F-043) theo tài liệu — validate đầy đủ 71 trường, business rules, luồng phê duyệt — thuộc test manager (test case generation theo tài liệu).",
+  "signals": [
+    "User yêu cầu kịch bản test manual theo tài liệu",
+    "F-038..F-043 feature-briefs + ba/00-lean-spec.md tồn tại",
+    "Ma trận 71 trường (Excel) có trong tài liệu nguồn",
+    "Test Studio + suite.json đã có sẵn"
+  ]
+}

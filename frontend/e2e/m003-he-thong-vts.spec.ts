@@ -7,14 +7,14 @@
  */
 import { test, expect, Page } from '@playwright/test';
 
-const LIST_URL = '/he-thong-vts';
-const CREATE_URL = '/he-thong-vts/create';
-const DETAIL_URL = '/he-thong-vts/1';
+const LIST_URL = '/vts-system';
+const CREATE_URL = '/vts-system/create';
+const DETAIL_URL = '/vts-system/1';
 
 async function login(page: Page) {
   await page.goto('/login');
   await page.getByLabel('Tài khoản').fill('admin');
-  await page.getByLabel('Mật khẩu').fill('admin123');
+  await page.getByLabel('Mật khẩu').fill('Asdqwe@123');
   await page.getByRole('button', { name: /đăng nhập/i }).click();
   await page.waitForURL((url) => !/\/login/.test(url.pathname), { timeout: 15000 });
 }

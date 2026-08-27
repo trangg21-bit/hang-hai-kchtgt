@@ -1,0 +1,16 @@
+{
+  "route_id": "LANE-1787798846556-3c9d",
+  "created_at": 1787798846556,
+  "lane": "test-campaign",
+  "owner": "pmo-test-manager",
+  "dispatch_target": "pmo-test-manager",
+  "routing_mode": "dispatch",
+  "request_summary": "Chạy test campaign cho M-003: backend (Maven scoop, ~20 test classes) + frontend vitest + Playwright E2E, ghi kết quả Test Studio.",
+  "reason": "Test campaign mở rộng sang M-003 (Luồng hàng hải F-038..F-043 + cctv/vtsoperationcenter/aissystem WIP) — chạy backend tests qua Maven thật + frontend vitest + Playwright E2E, ghi kết quả Test Studio.",
+  "signals": [
+    "Test Studio đã có suite + results",
+    "Maven 3.9.16 verify được tại scoop (lần trước test manager bỏ sót)",
+    "Playwright browsers đã tải (chromium-1234)",
+    "M-003 in_development — WIP cctv/vtsoperationcenter/aissystem có 173 lỗi TS"
+  ]
+}

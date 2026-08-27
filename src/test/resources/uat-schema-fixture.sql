@@ -545,3 +545,27 @@ CREATE TABLE water_zones (
     updated_at TIMESTAMP
 );
 
+-- === Planning GIS source schema (qhcb_all) ===
+-- V20260825113000 does unguarded ALTER TABLE on qhcb_all.area/line/point
+-- (ALTER COLUMN schema_name/table_name/fid SET NOT NULL + unique index +
+-- REPLICA IDENTITY USING INDEX). The fixture must provide the schema and the
+-- three tables with those columns left NULLABLE so the SET NOT NULL succeeds
+-- on the empty tables. V72's column renames are below the test baseline (81)
+-- and never run here, so no other columns are needed. Test-only shape.
+CREATE SCHEMA IF NOT EXISTS qhcb_all;
+CREATE TABLE IF NOT EXISTS qhcb_all.area (
+    schema_name VARCHAR(255),
+    table_name  VARCHAR(255),
+    fid         BIGINT
+);
+CREATE TABLE IF NOT EXISTS qhcb_all.line (
+    schema_name VARCHAR(255),
+    table_name  VARCHAR(255),
+    fid         BIGINT
+);
+CREATE TABLE IF NOT EXISTS qhcb_all.point (
+    schema_name VARCHAR(255),
+    table_name  VARCHAR(255),
+    fid         BIGINT
+);
+

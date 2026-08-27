@@ -13,7 +13,7 @@ const DETAIL_URL = '/dike-revetment/1';
 async function login(page: Page) {
   await page.goto('/login');
   await page.getByLabel('Tài khoản').fill('admin');
-  await page.getByLabel('Mật khẩu').fill('admin123');
+  await page.getByLabel('Mật khẩu').fill('Asdqwe@123');
   await page.getByRole('button', { name: /đăng nhập/i }).click();
   await page.waitForURL((url) => !/\/login/.test(url.pathname), { timeout: 15000 });
 }
