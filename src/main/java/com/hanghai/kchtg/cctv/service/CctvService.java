@@ -10,6 +10,8 @@ import com.hanghai.kchtg.radarstation.entity.RadarStation;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatusConverter;
+import com.hanghai.kchtg.common.entity.OperatingOrganization;
+import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
@@ -24,6 +26,9 @@ import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import org.springframework.web.multipart.MultipartFile;
@@ -55,12 +60,14 @@ import java.util.UUID;
 public class CctvService {
 
   private final CctvRepository cctvRepository;
+  private final OperatingOrganizationRepository operatingOrganizationRepository;
   private final OrgUnitCacheService orgUnitCacheService;
   private final OrgUnitScopeService orgUnitScopeService;
   private final ChangeHistoryService changeHistoryService;
   private final UserResolverService userResolverService;
   private final VtsOperationCenterRepository vtsOperationCenterRepository;
   private final RadarStationRepository radarStationRepository;
+  private final GisSpatialObjectService gisSpatialObjectService;
 
   @Value("${app.upload-path:/tmp/cctv-attachments}")
   private String uploadPath;
@@ -139,6 +146,20 @@ public class CctvService {
 
     // Persist trước để entity.getId() có giá trị khi ghi infrastructure_history (ref_id NOT NULL).
     Cctv saved = cctvRepository.save(entity);
+
+    // Đồng bộ tọa độ GPS vào gis_spatial_objects (giống AIS) — lưu sau save để có entity id làm refId.
+    if (request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty()) {
+      UUID spatialId = gisSpatialObjectService.syncSpatialObject(
+        null,
+        "Hệ thống CCTV " + saved.getDeviceName(),
+        saved.getDeviceCode(),
+        request.getGeometryType(),
+        request.getCoordinates(),
+        saved.getId(),
+        InfrastructureType.CCTV);
+      saved.setSpatialId(spatialId);
+      saved = cctvRepository.save(saved);
+    }
 
     String action = request.getAction();
     if ("submit".equalsIgnoreCase(action)) {
@@ -302,6 +323,22 @@ public class CctvService {
     if (request.getDisplayRule() != null) entity.setDisplayRule(request.getDisplayRule());
     if (request.getSpatialId() != null) entity.setSpatialId(request.getSpatialId());
 
+    // Đồng bộ tọa độ GPS vào gis_spatial_objects (giống AIS): coordinates != null → upsert;
+    // chuỗi rỗng → xóa spatial cũ (trả null). Không gửi coordinates → giữ nguyên spatial hiện tại.
+    if (request.getCoordinates() != null) {
+      GisGeometryType geomType = request.getGeometryType() != null
+        ? request.getGeometryType() : GisGeometryType.POINT;
+      UUID spatialId = gisSpatialObjectService.syncSpatialObject(
+        entity.getSpatialId(),
+        "Hệ thống CCTV " + (request.getDeviceName() != null ? request.getDeviceName() : entity.getDeviceName()),
+        entity.getDeviceCode(),
+        geomType,
+        request.getCoordinates(),
+        entity.getId(),
+        InfrastructureType.CCTV);
+      entity.setSpatialId(spatialId);
+    }
+
     // Cho phép cập nhật bất kể trạng thái phê duyệt (yêu cầu nghiệp vụ 2026-08-26):
     // hồ sơ đang chờ duyệt được sửa và giữ nguyên trạng thái chờ duyệt.
     ApprovalStatus currentStatus = entity.getApprovalStatus();
@@ -381,7 +418,23 @@ public class CctvService {
    */
   public CctvResponse toResponse(Cctv entity) {
     String orgUnitName = orgUnitCacheService.getName(entity.getOrgUnitId());
+    String operatingUnitName = entity.getOperatingUnitId() != null
+        ? operatingOrganizationRepository.findById(entity.getOperatingUnitId())
+            .map(OperatingOrganization::getName)
+            .orElseGet(() -> orgUnitCacheService.getName(entity.getOperatingUnitId()))
+        : null;
     String attachedInfrastructureName = resolveAttachedInfrastructureName(entity);
+
+    // Đọc tọa độ GIS từ bảng tập trung gis_spatial_objects qua spatial_id (giống AIS / VtsOperationCenter)
+    String coordinates = null;
+    GisGeometryType geometryType = null;
+    if (entity.getSpatialId() != null) {
+      Optional<GisSpatialObject> spatialOpt = gisSpatialObjectService.findById(entity.getSpatialId());
+      if (spatialOpt.isPresent()) {
+        coordinates = spatialOpt.get().getCoordinates();
+        geometryType = spatialOpt.get().getGeometryType();
+      }
+    }
 
     return CctvResponse.builder()
       .id(entity.getId())
@@ -394,6 +447,7 @@ public class CctvService {
       .orgUnitId(entity.getOrgUnitId())
       .orgUnitName(orgUnitName)
       .operatingUnitId(entity.getOperatingUnitId())
+      .operatingUnitName(operatingUnitName)
       .provinceName(entity.getProvinceName())
       .attachedInfrastructureType(entity.getAttachedInfrastructureType())
       .attachedInfrastructureId(entity.getAttachedInfrastructureId())
@@ -422,6 +476,8 @@ public class CctvService {
       .coordinateSystem(entity.getCoordinateSystem())
       .displayRule(entity.getDisplayRule())
       .spatialId(entity.getSpatialId())
+      .geometryType(geometryType)
+      .coordinates(coordinates)
       .createdBy(entity.getCreatedBy())
       .updatedBy(entity.getUpdatedBy())
       .createdByName(userResolverService.resolveName(entity.getCreatedBy()))

@@ -15,6 +15,7 @@ public enum InfrastructureType {
     RADAR_STATION_LEGACY,
     RADAR_STATION,
     BUOY_BERTH,
+    SHIP_REPAIR_YARD,
     ANCHORAGE_AREA,
     TRANSSHIPMENT_AREA,
     STORM_SHELTER_AREA,
@@ -27,5 +28,8 @@ public enum InfrastructureType {
     LEGAL_DOCUMENT,
     VTS_OPERATION_CENTER,
     AIS_SYSTEM,
-    CCTV
+    CCTV,
+    SCADA,
+    TRANSMISSION,
+    VTS_ASSIST
 }

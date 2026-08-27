@@ -1,0 +1,102 @@
+{
+  "triage_id": "TRI-1787729984933-422e",
+  "created_at": 1787729984933,
+  "request_summary": "Đồng bộ Nhà trạm phao tiêu + Quản lý phao tiêu theo đúng chuẩn Bến cảng: 7 tab trạng thái (nhãn 'Lưu tạm'/'Chờ phê duyệt cấp Cảng vụ-Chi cục'/'Chờ phê duyệt cấp cục'/'Đã phê duyệt'/'Từ chối cấp...'), bổ sung REJECTED_L1/REJECTED_L2 vào APPROVAL_STYLE_MAP + guard thao tác gửi lại/xóa, gỡ nguồn buoyStatusBadge trùng (BuoyListPage local vs buoy/schema).",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/services/buoy-station/BuoyStationListPage.tsx",
+      "frontend/src/services/buoy-station/schema.ts",
+      "frontend/src/services/buoy/BuoyListPage.tsx",
+      "frontend/src/services/buoy/schema.ts"
+    ],
+    "impact_files": [
+      "frontend/src/services/buoy-station/BuoyStationListPage.tsx",
+      "frontend/src/services/buoy-station/schema.ts",
+      "frontend/src/services/buoy/BuoyListPage.tsx",
+      "frontend/src/services/buoy/schema.ts"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "frontend/src/services/buoy-station/schema.ts"
+      },
+      {
+        "group": "schema",
+        "path": "frontend/src/services/buoy/schema.ts"
+      }
+    ],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C3: one-way door: schema:frontend/src/services/buoy-station/schema.ts, schema:frontend/src/services/buoy/schema.ts — floors at C3 regardless of size (4 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn Nhà trạm phao tiêu (/buoy-station) và Quản lý phao tiêu (/buoy) — StatusTabs trên trang danh sách + badge cột Trạng thái.",
+  "blast_radius": 4,
+  "done_oracle": "Nhà trạm phao tiêu hiển thị 7 tab trạng thái giống hệt Bến cảng (cùng nhãn, cùng màu token); bản ghi REJECTED_L1/REJECTED_L2 hiện đúng nhãn 'Từ chối...' và có nút Gửi phê duyệt/Xóa; Quản lý phao tiêu dùng chung một nguồn buoyStatusBadge/TAB_STATUS_LIST từ buoy/schema (không còn định nghĩa cục bộ trùng); tsc --noEmit pass.",
+  "verification_commands": [
+    {
+      "command": "npx tsc --noEmit",
+      "cwd": "frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/services/buoy-station/schema.ts",
+      "line": 64,
+      "quote": "export const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {",
+      "source_hash": "faca9db0af4e11b2468c2e91cb82621293014f66868d405a06704acae6a0e049",
+      "quote_hash": "c8fc69a183a821ef07177d15c9925d33bb5324da7ee9e55fcccf98cc507eea53",
+      "note": "Map nhãn/màu trạng thái Nhà trạm — nguồn hiển thị badge list + detail"
+    },
+    {
+      "file": "frontend/src/services/buoy-station/BuoyStationListPage.tsx",
+      "line": 856,
+      "quote": "if ((hasPerm('buoystation:delete') || hasPerm('data:delete') || hasPerm('admin:manage')) && (r.status === 'DRAFT' || r.status === 'REJECTED')) a.push({ key: 'del', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => openDelete(r), danger: true });",
+      "source_hash": "31273d3a93a3f65f8e85967fe55ee1bc163a3b1c9f7e7bc56a5b940ac78371ee",
+      "quote_hash": "f6897ea07f7201799aeb38a5dca87d0597749b57b946b10547b0520077f1c3e6",
+      "note": "Guard Xóa chỉ nhận DRAFT/REJECTED — thiếu REJECTED_L1/REJECTED_L2 backend sinh ra"
+    },
+    {
+      "file": "frontend/src/services/buoy-station/BuoyStationListPage.tsx",
+      "line": 857,
+      "quote": "if ((hasPerm('buoystation:create') || hasPerm('buoystation:update') || hasPerm('data:create') || hasPerm('data:update') || hasPerm('admin:manage')) && (r.status === 'DRAFT' || r.status === 'REJECTED')) a.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => openSubmit(r) });",
+      "source_hash": "31273d3a93a3f65f8e85967fe55ee1bc163a3b1c9f7e7bc56a5b940ac78371ee",
+      "quote_hash": "8785fd9b974070dfc98c1e47dcf9be49e036af6cda993eeb8ddbb777398c51e5",
+      "note": "Guard Gửi phê duyệt chỉ nhận DRAFT/REJECTED — bản ghi bị từ chối cấp 1/2 không gửi lại được"
+    },
+    {
+      "file": "frontend/src/services/buoy/schema.ts",
+      "line": 24,
+      "quote": "const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {",
+      "source_hash": "22734bb2ed5c4a41e94c7a95fdae646227ca608bade8487df53022e6acf8c033",
+      "quote_hash": "f8f7d63d10f18b0e7f2ef40e23e8dccab1e2cab4d3de73cdca608484b89c4750",
+      "note": "Map badge phao tiêu (shared, thiếu APPROVED_L2/DELETED so với bản local BuoyListPage)"
+    },
+    {
+      "file": "frontend/src/services/buoy/BuoyListPage.tsx",
+      "line": 180,
+      "quote": "function buoyStatusBadge(status: string | null | undefined): { color: string; label: string } {",
+      "source_hash": "6699d86a45cba7ee8243fd03be14df73fc9d18878b4061cf16ca69071388215b",
+      "quote_hash": "89004ca74107317a5bfd306ace986ea55adb1a6cce97186d7ba94787969d9ad1",
+      "note": "Định nghĩa cục bộ trùng với buoy/schema.ts — nguồn drift"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787729985150
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

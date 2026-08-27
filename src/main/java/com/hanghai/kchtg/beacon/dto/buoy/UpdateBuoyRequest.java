@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.beacon.dto.buoy;
 
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Size;
@@ -24,6 +23,8 @@ import java.time.LocalDate;
 @Builder
 public class UpdateBuoyRequest {
 
+    /** "draft" | "submit" | "approved" — hành động lưu (mirror CreateBuoyRequest.action). */
+    private String action;
     @Size(max = 50)
     private String code;
 

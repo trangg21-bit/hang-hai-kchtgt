@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
 
 /**
@@ -54,6 +55,9 @@ public class UpdateCctvRequest {
     private Integer coordinateSystem;
     private Integer displayRule;
     private UUID spatialId;
+
+    private GisGeometryType geometryType;
+    private String coordinates;
 
     /**
      * Trạng thái phê duyệt mới (giống màn /port): gửi 'PENDING' để chuyển bản ghi sang chờ duyệt.

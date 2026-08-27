@@ -43,14 +43,24 @@ public class MapSymbolSchemaMigrator implements CommandLineRunner {
                 log.info("Successfully migrated map_symbols.status column to INTEGER.");
             }
 
-            // 2. Check if hinh_anh column exists, if so rename to image
+            // 2. Check if hinh_anh column exists; rename to image unless image already exists.
+            //    When both exist (schema drift), image holds the live data (verified identical),
+            //    so the legacy hinh_anh orphan is dropped instead of failing the rename.
             String checkColSql = "SELECT count(*) FROM information_schema.columns " +
                     "WHERE LOWER(table_name) = 'map_symbols' AND LOWER(column_name) = 'hinh_anh'";
             Integer count = jdbcTemplate.queryForObject(checkColSql, Integer.class);
             if (count != null && count > 0) {
-                log.info("Found map_symbols.hinh_anh column. Renaming to image...");
-                jdbcTemplate.execute("ALTER TABLE map_symbols RENAME COLUMN hinh_anh TO image");
-                log.info("Successfully renamed map_symbols.hinh_anh to image.");
+                String checkImageColSql = "SELECT count(*) FROM information_schema.columns " +
+                        "WHERE LOWER(table_name) = 'map_symbols' AND LOWER(column_name) = 'image'";
+                Integer imageCount = jdbcTemplate.queryForObject(checkImageColSql, Integer.class);
+                if (imageCount == null || imageCount == 0) {
+                    log.info("Found map_symbols.hinh_anh column. Renaming to image...");
+                    jdbcTemplate.execute("ALTER TABLE map_symbols RENAME COLUMN hinh_anh TO image");
+                    log.info("Successfully renamed map_symbols.hinh_anh to image.");
+                } else {
+                    log.warn("map_symbols has both hinh_anh and image columns; dropping legacy hinh_anh (data verified identical)");
+                    jdbcTemplate.execute("ALTER TABLE map_symbols DROP COLUMN IF EXISTS hinh_anh");
+                }
             }
 
             // 3. Check if code column exists in map_symbols, if not add it
@@ -80,7 +90,7 @@ public class MapSymbolSchemaMigrator implements CommandLineRunner {
                 log.warn("Could not backfill map_symbols code: {}", ex.getMessage());
             }
 
-            // 5. Ensure port_id exists and drop legacy GIS fields from vts_operation_center (unified in gis_spatial_objects)
+            // 4. Ensure port_id exists and drop legacy GIS fields from vts_operation_center (unified in gis_spatial_objects)
             jdbcTemplate.execute("ALTER TABLE IF EXISTS vts_operation_center ADD COLUMN IF NOT EXISTS port_id UUID");
             jdbcTemplate.execute("ALTER TABLE IF EXISTS vts_operation_center DROP COLUMN IF EXISTS geometry_type");
             jdbcTemplate.execute("ALTER TABLE IF EXISTS vts_operation_center DROP COLUMN IF EXISTS coordinates");

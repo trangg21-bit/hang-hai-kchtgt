@@ -48,7 +48,7 @@ import {
   BUOY_TYPE_OPTIONS, APPROVAL_STYLE_MAP, TAB_STATUS_LIST, STATION_FIELD_MAP,
   COLOR_MAP, SHAPE_MAP, LIGHT_MAP, GEO_MAP, COORD_MAP,
 } from './schema';
-import { CONDITION_OPTIONS, CLASSIFICATION_OPTIONS, CLASSIFICATION_BUOY_OPTIONS, CLASSIFICATION_MARK_OPTIONS } from '../buoy/schema';
+import { CONDITION_OPTIONS, CLASSIFICATION_OPTIONS, CLASSIFICATION_BUOY_OPTIONS } from '../buoy/schema';
 import BuoyStationFormContent from './BuoyStationFormContent';
 import type { ExistingFile, BuoyStationFormContentHandle } from './BuoyStationFormContent';
 import BuoyStationDetailContent from './BuoyStationDetailContent';
@@ -95,6 +95,7 @@ import {
   historyNewValueStyle,
   historyArrowStyle,
   historyBadgeStyle,
+  drawerFooterStyle,
 } from '../../tokens';
 import { colors } from '../../theme';
 import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
@@ -184,7 +185,6 @@ export default function BuoyStationListPage() {
   const [filterName, setFilterName] = useState('');
   const [filterCode, setFilterCode] = useState('');
   const [filterProvince, setFilterProvince] = useState<string | undefined>();
-  const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [filterPortId, setFilterPortId] = useState<string | undefined>();
   const [filterWaterwayId, setFilterWaterwayId] = useState<string | undefined>();
   const [filterCondition, setFilterCondition] = useState<string | undefined>();
@@ -378,7 +378,6 @@ export default function BuoyStationListPage() {
         name: filterName || undefined,
         code: filterCode || undefined,
         province: filterProvince || undefined,
-        status: filterStatus || undefined,
         portId: filterPortId || undefined,
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
@@ -400,7 +399,7 @@ export default function BuoyStationListPage() {
       setAllData(filtered); setTotal(filtered.length);
     } catch { setIsError(true); }
     finally { setIsLoading(false); }
-  }, [filterName, filterCode, managingUnitId, organizations, filterProvince, filterStatus, filterPortId, filterWaterwayId, filterCondition, filterClassification, filterClassificationBuoy, filterClassificationMark, filterUpdatedFrom, filterUpdatedTo, activeTab, stationBuoys]);
+  }, [filterName, filterCode, managingUnitId, organizations, filterProvince, filterPortId, filterWaterwayId, filterCondition, filterClassification, filterClassificationBuoy, filterClassificationMark, filterUpdatedFrom, filterUpdatedTo, activeTab, stationBuoys]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
 
@@ -459,7 +458,6 @@ export default function BuoyStationListPage() {
     setFilterName((filterValues.name || '').trim());
     setFilterCode((filterValues.code || '').trim());
     setFilterProvince(filterValues.province || undefined);
-    setFilterStatus(filterValues.status || undefined);
     setFilterPortId(filterValues.portId || undefined);
     setFilterWaterwayId(filterValues.waterwayId || undefined);
     setFilterCondition(filterValues.condition || undefined);
@@ -478,7 +476,7 @@ export default function BuoyStationListPage() {
     setFilterName('');
     setFilterCode('');
     setFilterProvince(undefined);
-    setFilterStatus(undefined); setFilterPortId(undefined);
+    setFilterPortId(undefined);
     setFilterWaterwayId(undefined); setFilterCondition(undefined);
     setFilterClassification(undefined); setFilterClassificationBuoy(undefined); setFilterClassificationMark(undefined);
     setFilterUpdatedFrom(undefined); setFilterUpdatedTo(undefined);
@@ -554,7 +552,7 @@ export default function BuoyStationListPage() {
     if (fn === 'type') { const o = BUOY_TYPE_OPTIONS.find((x) => x.value === val); return o?.label || val; }
     if (fn === 'status') { const s = APPROVAL_STYLE_MAP[val]; return s?.label || val; }
     if (fn === 'approvalStatus') {
-      const m: Record<string, string> = { PROPOSED: 'Đề xuất', APPROVED_LEVEL1: 'Đã duyệt cấp 1', APPROVED: 'Đã duyệt', REJECTED: 'Từ chối' };
+      const m: Record<string, string> = { DRAFT: 'Lưu tạm', PROPOSED: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', APPROVED: 'Đã phê duyệt', REJECTED: 'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL2: 'Từ chối cấp cục' };
       return m[val] || val;
     }
     if (fn === 'approvalLevel') return val === 'LEVEL_1' ? 'Cấp Cảng vụ/Chi cục' : val === 'LEVEL_2' ? 'Cấp Cục' : val;
@@ -845,7 +843,7 @@ export default function BuoyStationListPage() {
       render: (v: string) => (v ? (waterwayMap.get(v) || v) : '—'),
     },
     {
-      key: 'province', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'province', width: 200, sortable: true,
+      key: 'province', label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'province', width: 250, sortable: true,
       render: (v: string) => (v || '—'),
     },
     {
@@ -853,8 +851,12 @@ export default function BuoyStationListPage() {
       render: (v: string) => { const s = CONDITION_STYLE[v || ''] || { color: textTertiary, label: v || '—' }; return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>; },
     },
     {
-      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 220, sortable: true,
-      render: (s: string) => <ApprovalStatusBadge status={s} />,
+      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 260, sortable: true,
+      render: (s: string) => {
+        if (!s) return <span style={{ color: textTertiary }}>—</span>;
+        const m = APPROVAL_STYLE_MAP[s] || { color: textTertiary, label: s };
+        return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${m.color}15`, color: m.color }}>{m.label}</span>;
+      },
     },
     {
       key: 'updatedAt', label: 'Cán bộ cập nhật', dataIndex: 'updatedAt', width: 200, ellipsis: true, sortable: true,
@@ -891,8 +893,8 @@ export default function BuoyStationListPage() {
     // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
     if (canEditApprovalRecord(r.status, { hasPerm, resource: 'buoystation', extraUpdatePerms: ['data:update', 'admin:manage'], extraApprovePerms: ['admin:manage'] })) a.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => void openEdit(r) });
     if (r.latitude != null && r.longitude != null) a.push({ key: 'loc', label: 'Xem vị trí', icon: <EnvironmentOutlined />, onClick: () => window.open(`https://www.google.com/maps?q=${r.latitude},${r.longitude}`, '_blank') });
-    a.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => void openHistoryDrawer(r) });
-    if ((hasPerm('buoystation:create') || hasPerm('buoystation:update') || hasPerm('data:create') || hasPerm('data:update') || hasPerm('admin:manage')) && (r.status === 'DRAFT' || r.status === 'REJECTED')) a.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => openSubmit(r) });
+    if ((hasPerm('buoystation:delete') || hasPerm('data:delete') || hasPerm('admin:manage')) && (r.status === 'DRAFT' || r.status === 'REJECTED' || r.status === 'REJECTED_L1' || r.status === 'REJECTED_L2')) a.push({ key: 'del', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => openDelete(r), danger: true });
+    if ((hasPerm('buoystation:create') || hasPerm('buoystation:update') || hasPerm('data:create') || hasPerm('data:update') || hasPerm('admin:manage')) && (r.status === 'DRAFT' || r.status === 'REJECTED' || r.status === 'REJECTED_L1' || r.status === 'REJECTED_L2')) a.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => openSubmit(r) });
     const canApproveL1 = hasPerm('buoystation:approvec1') || hasPerm('buoystation:approvel1') || hasPerm('data:approvec1') || hasPerm('data:approvel1') || hasPerm('admin:manage');
     const canApproveL2 = hasPerm('buoystation:approvec2') || hasPerm('buoystation:approvel2') || hasPerm('data:approvec2') || hasPerm('data:approvel2') || hasPerm('admin:manage');
     if (canApproveL1 && r.status === 'PENDING_APPROVAL') {
@@ -903,7 +905,7 @@ export default function BuoyStationListPage() {
       a.push({ key: 'appL2', label: 'Cục phê duyệt', icon: <CheckCircleOutlined />, onClick: () => openApprove(r, 'L2') });
       a.push({ key: 'rej', label: 'Từ chối', icon: <CloseCircleOutlined />, onClick: () => openReject(r), danger: true });
     }
-    if ((hasPerm('buoystation:delete') || hasPerm('data:delete') || hasPerm('admin:manage')) && (r.status === 'DRAFT' || r.status === 'REJECTED')) a.push({ key: 'del', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => openDelete(r), danger: true });
+    a.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => void openHistoryDrawer(r) });
     return a;
   }, [hasPerm, openEdit, openDetail, openHistoryDrawer, openSubmit, openApprove, openReject, openDelete]);
 
@@ -944,14 +946,6 @@ export default function BuoyStationListPage() {
               onChange={(e) => setFilterValues((prev) => ({ ...prev, name: e.target.value }))}
               onPressEnter={handleFilterApply}
               style={{ borderRadius: radiusPill, height: 40 }} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
-            <Select placeholder="Tất cả" allowClear
-              value={filterValues.status || undefined}
-              onChange={(val) => setFilterValues((prev) => ({ ...prev, status: val }))}
-              options={APPROVAL_STATUS_OPTIONS}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
           </div>
           {filterCollapsed && (<>
             <div style={{ marginBottom: 12 }}>
@@ -996,16 +990,6 @@ export default function BuoyStationListPage() {
                 value={filterValues.classificationBuoy || undefined}
                 onChange={(val) => setFilterValues((prev) => ({ ...prev, classificationBuoy: val }))}
                 options={CLASSIFICATION_BUOY_OPTIONS}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân loại tiêu</div>
-              <Select mode="multiple" className="buoy-station-filter" placeholder="Tìm kiếm phân loại tiêu..." allowClear showSearch
-                maxTagCount={2}
-                maxTagPlaceholder={(omittedValues) => `+${omittedValues.length}`}
-                value={filterValues.classificationMark || undefined}
-                onChange={(val) => setFilterValues((prev) => ({ ...prev, classificationMark: val }))}
-                options={CLASSIFICATION_MARK_OPTIONS}
                 style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
             </div>
             <div style={{ marginBottom: 12 }}>
@@ -1292,7 +1276,9 @@ export default function BuoyStationListPage() {
         open={editOpen}
         onClose={() => { setEditOpen(false); setEditRecord(null); setEditUploaded([]); setEditExisting([]); editForm.resetFields(); }}
         footer={
-          <Button type="primary" onClick={() => editFormRef.current?.submit('UPDATE')} style={primaryButtonStyle}>Cập nhật</Button>
+          <div style={drawerFooterStyle}>
+            <Button type="primary" onClick={() => editFormRef.current?.submit('APPROVED')} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
+          </div>
         }
       >
         <style>{requiredMarkStyle}</style>

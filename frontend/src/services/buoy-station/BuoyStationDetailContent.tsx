@@ -213,7 +213,7 @@ export default function BuoyStationDetailContent({
                 ['Thuộc cảng biển', r.portId ? (portMap.get(r.portId) || r.portId) : '—'],
                 ['Thuộc luồng hàng hải', r.waterwayId ? (waterwayMap.get(r.waterwayId) || r.waterwayId) : '—'],
                 ['Tuyến luồng hàng hải', r.waterwayRouteId ? (routeMap.get(r.waterwayRouteId) || r.waterwayRouteId) : '—'],
-                ['Địa điểm (Tỉnh/Thành phố)', r.province || '—'],
+                ['Địa điểm (Tỉnh/Thành Phố)', r.province || '—'],
                 ['Địa điểm chi tiết', r.address || '—'],
                 ['Thời điểm xây dựng', formatDate(r.constructionDate)],
                 ['Tổng diện tích (m²)', r.totalArea != null ? r.totalArea : '—'],

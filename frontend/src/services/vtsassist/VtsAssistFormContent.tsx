@@ -1,0 +1,262 @@
+import { useState, useEffect } from 'react';
+import { Form, Input, InputNumber, Select } from 'antd';
+import { OrgUnitTreeSelect } from '../../components/org-unit';
+import { useNavigate } from 'react-router-dom';
+import api from '../api';
+import { createVtsAssist, updateVtsAssist, fetchVtsAssistById, fetchOperatingOrganizations } from './api';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../operatingOrganizationsData';
+import type { VtsAssistResponse } from './types';
+import { OPERATIONAL_STATUS_OPTIONS } from './schema';
+import toast from '../../components/ToastNotification';
+import {
+  colors,
+  actionPrimary,
+  borderDefault,
+  radiusPill,
+  spaceFormField,
+  spaceMd,
+} from '../../tokens';
+
+interface VtsAssistFormProps {
+  initialData?: VtsAssistResponse;
+  onSuccess?: () => void;
+}
+
+const VtsAssistFormContent = ({ initialData, onSuccess }: VtsAssistFormProps) => {
+  const navigate = useNavigate();
+  const [form] = Form.useForm();
+  const [isEdit, setIsEdit] = useState(!!initialData);
+  const [submitting, setSubmitting] = useState(false);
+  const [loadingOrgs, setLoadingOrgs] = useState(false);
+  const [, setLoadingData] = useState(false);
+  const [orgUnits, setOrgUnits] = useState<any[]>([]);
+  const [operatingOrganizations, setOperatingOrganizations] = useState<any[]>(DEFAULT_OPERATING_ORGANIZATIONS);
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (initialData) {
+        setLoadingData(true);
+        try {
+          const data = await fetchVtsAssistById(initialData.id);
+          form.setFieldsValue(data);
+          setIsEdit(true);
+        } catch {
+          toast.error('Không thể tải dữ liệu');
+          navigate(-1);
+        } finally {
+          setLoadingData(false);
+        }
+      }
+    };
+    loadData();
+    loadOrgUnits();
+    loadOperatingOrganizations();
+  }, [initialData]);
+
+  const loadOrgUnits = async () => {
+    setLoadingOrgs(true);
+    try {
+      const res = await api.get('/common/options/org-units');
+      const items = res.data?.data;
+      const data = (Array.isArray(items) ? items : []).map((o: { id?: string; name?: string; code?: string; parentId?: string | null }) => ({
+        id: String(o.id),
+        name: o.name || 'Đơn vị',
+        code: o.code || undefined,
+        parentId: o.parentId ? String(o.parentId) : undefined,
+      }));
+      setOrgUnits(data);
+    } catch (error) {
+      console.error('Lỗi tải danh sách đơn vị:', error);
+    } finally {
+      setLoadingOrgs(false);
+    }
+  };
+
+  const loadOperatingOrganizations = async () => {
+    try {
+      const data = await fetchOperatingOrganizations();
+      setOperatingOrganizations(data);
+    } catch (error) {
+      console.error('Lỗi tải danh sách đơn vị khai thác:', error);
+    }
+  };
+
+  const handleSubmit = async (values: any) => {
+    setSubmitting(true);
+    try {
+      if (isEdit && initialData) {
+        const payload = {
+          id: initialData.id,
+          ...values,
+          orgUnitId: values.orgUnitId || null,
+        };
+        await updateVtsAssist(payload);
+        toast.success('Cập nhật hệ thống phụ trợ VTS thành công');
+      } else {
+        const payload = {
+          ...values,
+          orgUnitId: values.orgUnitId || null,
+        };
+        await createVtsAssist(payload);
+        toast.success('Tạo mới hệ thống phụ trợ VTS thành công');
+      }
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        navigate('/vtsassist');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Lỗi khi lưu');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Form
+      form={form}
+      layout="vertical"
+      onFinish={handleSubmit}
+      initialValues={{
+        operationalStatus: 1,
+        ...initialData,
+      }}
+    >
+      <Form.Item
+        name="deviceCode"
+        label="Mã thiết bị"
+        style={{ marginBottom: spaceFormField }}
+        rules={[{ required: true, message: 'Vui lòng nhập mã thiết bị' }]}
+      >
+        <Input placeholder="Mã tự động" disabled={isEdit} style={{ borderRadius: radiusPill, height: 40 }} />
+      </Form.Item>
+
+      <Form.Item
+        name="deviceName"
+        label="Tên thiết bị"
+        style={{ marginBottom: spaceFormField }}
+        rules={[{ required: true, message: 'Vui lòng nhập tên thiết bị' }]}
+      >
+        <Input placeholder="Nhập tên thiết bị..." style={{ borderRadius: radiusPill, height: 40 }} />
+      </Form.Item>
+
+      <Form.Item name="model" label="Model" style={{ marginBottom: spaceFormField }}>
+        <Input placeholder="Nhập model..." style={{ borderRadius: radiusPill, height: 40 }} />
+      </Form.Item>
+
+      <Form.Item name="manufacturer" label="Hãng sản xuất" style={{ marginBottom: spaceFormField }} rules={[{ max: 50, message: 'Tối đa 50 ký tự' }]}>
+        <Input placeholder="Nhập hãng..." style={{ borderRadius: radiusPill, height: 40 }} />
+      </Form.Item>
+
+      <Form.Item
+        name="quantity"
+        label="Số lượng"
+        style={{ marginBottom: spaceFormField }}
+        rules={[{ required: true, message: 'Vui lòng nhập số lượng' }]}
+      >
+        <InputNumber min={1} style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+      </Form.Item>
+
+      <Form.Item name="yearOfUse" label="Năm đưa vào sử dụng" style={{ marginBottom: spaceFormField }}>
+        <InputNumber min={1900} max={2100} style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+      </Form.Item>
+
+      <Form.Item
+        name="orgUnitId"
+        label="Đơn vị quản lý"
+        style={{ marginBottom: spaceFormField }}
+        rules={[{ required: !isEdit, message: 'Vui lòng chọn đơn vị quản lý' }]}
+      >
+        <OrgUnitTreeSelect
+          organizations={orgUnits}
+          placeholder="Chọn đơn vị..."
+          loading={loadingOrgs}
+          showPath
+          treeDefaultExpandAll={false}
+          style={{ borderRadius: radiusPill, height: 40 }}
+        />
+      </Form.Item>
+
+      {/* Đơn vị khai thác — BẮT BUỘC (điểm khác so với màn Truyền dẫn) */}
+      <Form.Item
+        name="operatingUnitId"
+        label="Đơn vị khai thác"
+        style={{ marginBottom: spaceFormField }}
+        rules={[{ required: true, message: 'Vui lòng chọn đơn vị khai thác' }]}
+      >
+        <Select
+          showSearch
+          placeholder="Chọn đơn vị khai thác..."
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+          options={operatingOrganizations.map((o: any) => ({ value: o.id, label: o.name }))}
+          filterOption={(input: string, option: any) =>
+            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+          }
+        />
+      </Form.Item>
+
+      <Form.Item name="operationalStatus" label="Tình trạng" style={{ marginBottom: spaceFormField }}>
+        <Select
+          options={OPERATIONAL_STATUS_OPTIONS}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+        />
+      </Form.Item>
+
+      <Form.Item name="detailedLocation" label="Địa điểm chi tiết" style={{ marginBottom: spaceFormField }} rules={[{ max: 500 }]}>
+        <Input placeholder="Nhập địa điểm..." style={{ borderRadius: radiusPill, height: 40 }} />
+      </Form.Item>
+
+      <Form.Item name="specifications" label="Thông số kỹ thuật" style={{ marginBottom: spaceFormField }} rules={[{ max: 2000 }]}>
+        <Input.TextArea rows={3} placeholder="Nhập thông số kỹ thuật..." style={{ borderRadius: radiusPill }} />
+      </Form.Item>
+
+      <Form.Item name="maintenanceInformation" label="Thông tin bảo trì" style={{ marginBottom: spaceFormField }} rules={[{ max: 2000 }]}>
+        <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì..." style={{ borderRadius: radiusPill }} />
+      </Form.Item>
+
+      <Form.Item name="note" label="Ghi chú" style={{ marginBottom: spaceFormField }} rules={[{ max: 2000 }]}>
+        <Input.TextArea rows={2} placeholder="Nhập ghi chú..." style={{ borderRadius: radiusPill }} />
+      </Form.Item>
+
+      <div style={{ textAlign: 'right', marginTop: spaceMd }}>
+        <Form.Item style={{ marginBottom: spaceFormField }}>
+          <button
+            type="button"
+            onClick={() => navigate('/vtsassist')}
+            style={{
+              borderRadius: radiusPill,
+              height: 40,
+              marginRight: spaceMd,
+              padding: '0 24px',
+              border: `1px solid ${borderDefault}`,
+              background: 'transparent',
+              color: colors.textSecondary,
+            }}
+          >
+            Hủy
+          </button>
+          <Form.Item shouldUpdate noStyle>
+            {() => (
+              <button
+                type="submit"
+                disabled={submitting}
+                style={{
+                  borderRadius: radiusPill,
+                  height: 40,
+                  padding: '0 24px',
+                  background: actionPrimary,
+                  border: `1px solid ${actionPrimary}`,
+                  color: 'white',
+                }}
+              >
+                {submitting ? 'Đang lưu...' : isEdit ? 'Cập nhật' : 'Tạo mới'}
+              </button>
+            )}
+          </Form.Item>
+        </Form.Item>
+      </div>
+    </Form>
+  );
+};
+
+export default VtsAssistFormContent;

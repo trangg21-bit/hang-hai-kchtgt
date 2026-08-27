@@ -1,0 +1,63 @@
+{
+  "triage_id": "TRI-1787724026928-7334",
+  "created_at": 1787724026928,
+  "request_summary": "User: cột \"Thao tác\" trong form Thêm mới/Chỉnh sửa bị cắt \"...\". Header \"THAO TÁC\" uppercase 13px bold + padding cần ~90px, hiện width 80/100/80/70 — tăng 4 cột lên 120px.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/anchorage/AnchorageForm.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/anchorage/AnchorageForm.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Form Thêm mới/Chỉnh sửa Khu neo đậu — cột Thao tác (4 bảng)",
+  "blast_radius": 1,
+  "done_oracle": "4 cột \"Thao tác\" trong AnchorageForm (GPS, Thông tin khu nước neo buộc tàu, File đính kèm, Tọa độ điểm neo) rộng 120px — header \"THAO TÁC\" hiển thị đầy đủ, không còn \"...\".",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht\\frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "line": 720,
+      "quote": "<Table.Column title=\"Thao tác\" key=\"actions\" width={100} align=\"center\"",
+      "source_hash": "ed41283b9997f3aef39d667d4e3bdb690a3e4d65343118cb15b20ff16399bf02",
+      "quote_hash": "aac5ab9ef882187834147b3c206258a5056631f8e05f5a1f5be6ea10abf748d1",
+      "note": "Cột Thao tác bảng khu nước neo buộc — 100px hẹp"
+    },
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "line": 866,
+      "quote": "<Table.Column title=\"Thao tác\" key=\"actions\" width={70} align=\"center\"",
+      "source_hash": "ed41283b9997f3aef39d667d4e3bdb690a3e4d65343118cb15b20ff16399bf02",
+      "quote_hash": "2c264eccdfc78c8e56cfa75b2822a6ca00fd344f920e1f719bb33ad8376ff749",
+      "note": "Cột Thao tác bảng Tọa độ điểm neo — 70px hẹp nhất"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787724027231
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

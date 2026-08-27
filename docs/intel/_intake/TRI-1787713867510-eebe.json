@@ -1,0 +1,74 @@
+{
+  "triage_id": "TRI-1787713867510-eebe",
+  "created_at": 1787713867510,
+  "request_summary": "Sửa lỗi tạo mới Khu neo đậu (relation change_logs does not exist): migration V20260825162500 đã DROP change_logs/approval_logs để gộp vào infrastructure_history nhưng code ChangeHistoryService + các ApprovalService vẫn ghi/đọc 2 bảng này → thêm migration tái tạo 2 bảng (IF NOT EXISTS) đúng schema entity.",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/resources/db/migration/V20260826120000__recreate_change_logs_and_approval_logs.sql"
+    ],
+    "impact_files": [
+      "src/main/resources/db/migration/V20260826120000__recreate_change_logs_and_approval_logs.sql"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/V20260826120000__recreate_change_logs_and_approval_logs.sql"
+      }
+    ],
+    "dev_footprint": "backend"
+  },
+  "rationale": "C3: one-way door: schema:src/main/resources/db/migration/V20260826120000__recreate_change_logs_and_approval_logs.sql — floors at C3 regardless of size (1 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Thêm mới Khu neo đậu — POST /api/v1/anchorage (AnchorageForm → AnchorageService.create)",
+  "blast_radius": 1,
+  "done_oracle": "POST /api/v1/anchorage trả 200 không còn lỗi 'relation change_logs does not exist'; bản ghi tạo mới có approvalStatus đúng (DRAFT/APPROVED_LEVEL1/APPROVED theo nút bấm); approve/reject khu neo đậu không lỗi approval_logs.",
+  "verification_commands": [
+    {
+      "command": "\"C:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.1.4\\plugins\\maven\\lib\\maven3\\bin\\mvn.cmd\" clean compile -q",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "hotfix",
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java",
+      "line": 131,
+      "quote": "changeHistoryService.recordChanges(\"Anchorage\", saved.getId().toString(), \"system\", new Anchorage(), saved);",
+      "source_hash": "20e1917137e62a562a2626acee8f06009cc201b812287361d94197f8fb2a8dad",
+      "quote_hash": "5f427949328aaae0cc92be4f830d4a697490ccaa40686ba52d6102094e7d833e",
+      "note": "AnchorageService.create ghi lịch sử vào change_logs — bảng đã bị migration unify drop"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/shared/ChangeHistoryService.java",
+      "line": 140,
+      "quote": "changeLogRepository.save(history);",
+      "source_hash": "1efaa7895b7bdf6b8593003a04014ca26eea9b6cf048a127fa683efc5f7eb360",
+      "quote_hash": "931beb18067fe0b2e356ba011d286a66bb62f070fe88de80c710cbef342ed7e5",
+      "note": "ChangeHistoryService.recordChanges ghi ChangeLog vào bảng change_logs (merge → SELECT by id → lỗi relation không tồn tại)"
+    },
+    {
+      "file": "src/main/resources/db/migration/V20260825162500__unify_all_history_to_infrastructure_history.sql",
+      "line": 28,
+      "quote": "DROP TABLE IF EXISTS change_logs CASCADE;",
+      "source_hash": "fcbd22efcdfeabb59eee7c145698ff77e2489b1cd446a69454a2efe73f4d03fb",
+      "quote_hash": "727b592ebe55203e974a9488fa95a8dae9481005b4548f608b04a3ee9c2ba71b",
+      "note": "Migration unify (25/08) cố tình drop change_logs + approval_logs nhưng code vẫn dùng — nguyên nhân gốc"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787713867716
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

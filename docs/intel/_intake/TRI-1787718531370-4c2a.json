@@ -1,0 +1,55 @@
+{
+  "triage_id": "TRI-1787718531370-4c2a",
+  "created_at": 1787718531370,
+  "request_summary": "User: tiêu đề \"Vị trí cụ thể điểm neo\" trong Drawer con có khoảng cách phía trên quá lớn so với label \"Phạm vi khu nước neo buộc tàu\" (div wrapper dùng marginTop: spaceMd=12 cộng marginBottom Form.Item spaceFormField=12 → tổng 24px, trong khi label→input chỉ 8px) — làm chữ trông to và tách biệt hơn. Sửa AnchorageForm:800: bỏ marginTop, giữ marginBottom: spaceFormField (khớp nhịp Form.Item). Footer/nút Lưu đã giống hệt form cập nhật cha (cùng drawerFooterStyle + primaryButtonStyle + padding antd mặc định 4px 16px) — không đổi.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/anchorage/AnchorageForm.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/anchorage/AnchorageForm.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Drawer con \"Thêm mới/Chỉnh sửa khu nước neo buộc tàu\" — section Vị trí cụ thể điểm neo",
+  "blast_radius": 1,
+  "done_oracle": "Trong Drawer con \"Khu nước neo buộc tàu\": tiêu đề \"Vị trí cụ thể điểm neo\" có khoảng cách phía trên bằng đúng nhịp form (không còn 24px), cùng kích thước chữ với label \"Phạm vi khu nước neo buộc tàu\"; footer chứa nút Lưu cùng chiều cao/vị trí với footer form cập nhật cha.",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht\\frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "line": 800,
+      "quote": "<div style={{ marginBottom: spaceMd, marginTop: spaceMd }}>",
+      "source_hash": "be27d161eebd81513d68a62239a57211a51d3f3cf6cbf0cec5fb33348cadbf57",
+      "quote_hash": "1955d4f809f19eb4f303464277f7f2b00f5cd0f4892423cc3f2c17b742b89fc7",
+      "note": "marginTop: spaceMd tạo khoảng trống 24px trên tiêu đề — bỏ để khớp nhịp form"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787718531565
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

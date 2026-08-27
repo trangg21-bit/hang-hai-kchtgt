@@ -45,14 +45,20 @@ public class CctvApprovalService {
 
   @Transactional
   public CctvResponse submit(UUID id, UUID userId) {
+    return submit(id, null, userId);
+  }
+
+  @Transactional
+  public CctvResponse submit(UUID id, String content, UUID userId) {
     Cctv entity = cctvRepository.findById(id)
       .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống CCTV với id: " + id));
 
-    approvalService.submit(entity, InfrastructureType.CCTV, userId);
+    approvalService.submit(entity, InfrastructureType.CCTV, userId, content);
     // Ghi nhận thông tin gửi phê duyệt (hiển thị tại drawer chi tiết)
     entity.setSubmittedDate(LocalDateTime.now());
     entity.setSubmittedBy(userId);
-    entity.setApprovalContentLevel1(null);
+    // Nội dung/ý kiến người gửi — hiển thị "Nội dung phê duyệt" (cấp 1) cho tới khi C1 ra quyết định
+    entity.setApprovalContentLevel1(content != null && !content.trim().isEmpty() ? content.trim() : null);
     entity.setApprovalContentLevel2(null);
     Cctv saved = cctvRepository.save(entity);
     return cctvService.toResponse(saved);
@@ -94,31 +100,10 @@ public class CctvApprovalService {
     }
   }
 
-  @Transactional(readOnly = true)
   public Map<String, Object> getHistory(UUID id) {
-    Cctv entity = cctvRepository.findById(id)
-      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống CCTV với id: " + id));
-
-    String entityId = id.toString();
-    String entityType = "CCTV";
-
-    // Vết phê duyệt: InfrastructureApprovalService ghi vào infrastructure_history
-    // (chuẩn /vts-system) — gửi duyệt, duyệt C1/C2, từ chối, xóa, lưu và phê duyệt.
-    List<Map<String, Object>> approvalHistory = historyRepository
-      .findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.CCTV, id)
-      .stream()
-      .map(this::toApprovalHistoryView)
-      .toList();
-    // Nhật ký thay đổi: chỉ ghi khi "Lưu và phê duyệt" hồ sơ ĐÃ DUYỆT (change_logs dùng chung).
-    List<ChangeLog> changeLog = changeLogRepository.findByEntityTypeAndEntityId(entityType, entityId);
-
-    return Map.of(
-      "entityId", entityId,
-      "entityType", entityType,
-      "currentApprovalStatus", entity.getApprovalStatus(),
-      "approvalHistory", approvalHistory,
-      "changeHistory", changeLog
-    );
+    // Tạm thời trả null sạch theo yêu cầu — bảng change_logs chưa tồn tại trong DB (chờ fix gốc).
+    // Không chạy query để tránh log lỗi SQL từ Hibernate.
+    return null;
   }
 
   private Map<String, Object> toApprovalHistoryView(InfrastructureHistory h) {
@@ -152,25 +137,8 @@ public class CctvApprovalService {
     return null;
   }
 
-  @Transactional(readOnly = true)
   public Map<String, Object> getAllHistory() {
-    String entityType = "CCTV";
-    List<ChangeLog> changeLog = changeLogRepository.findByEntityType(entityType);
-    List<InfrastructureHistory> list = historyRepository.findAll();
-    Map<String, String> entityNames = new HashMap<>();
-    for (InfrastructureHistory logItem : list) {
-      if (logItem.getRefId() != null) {
-        String refIdStr = logItem.getRefId().toString();
-        if (!entityNames.containsKey(refIdStr)) {
-          try {
-            cctvRepository.findById(logItem.getRefId())
-              .ifPresent(c -> entityNames.put(refIdStr, c.getDeviceName()));
-          } catch (Exception e) {
-            entityNames.put(refIdStr, refIdStr);
-          }
-        }
-      }
-    }
-    return Map.of("entityType", entityType, "changeHistory", changeLog, "entityNames", entityNames);
+    // Tạm thời trả null sạch theo yêu cầu — bảng change_logs chưa tồn tại trong DB (chờ fix gốc).
+    return null;
   }
 }

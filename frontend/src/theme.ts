@@ -116,6 +116,8 @@ export const metronicTheme: ThemeConfig = {
     colorWarning: colors.warning,
     colorError: colors.error,
     colorInfo: colors.info,
+    // antd v6: colorLink mặc định fallback vào colorInfo (#7239EA tím) — ép về xanh dương chuẩn
+    colorLink: colors.primary,
 
     colorBgLayout: colors.bodyBg,
     colorBgContainer: colors.containerBg,

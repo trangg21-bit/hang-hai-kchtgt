@@ -16,6 +16,26 @@ import type {
   WaterZone,
   CreateWaterZoneRequest,
   UpdateWaterZoneRequest,
+  Anchorage,
+  CreateAnchorageRequest,
+  UpdateAnchorageRequest,
+  AnchorageApprovalResponse,
+  TransferArea,
+  CreateTransferAreaRequest,
+  UpdateTransferAreaRequest,
+  TransferAreaApprovalResponse,
+  StormShelterArea,
+  CreateStormShelterRequest,
+  UpdateStormShelterRequest,
+  StormShelterApprovalResponse,
+  BuoyBerth,
+  CreateBuoyBerthRequest,
+  UpdateBuoyBerthRequest,
+  BuoyBerthApprovalResponse,
+  ShipRepairYard,
+  CreateShipRepairYardRequest,
+  UpdateShipRepairYardRequest,
+  ShipRepairYardApprovalResponse,
 } from '../types/port';
 
 // ── Helper: search params builder ──────────────────────────────────
@@ -693,5 +713,631 @@ export const waterZoneHistory = {
       page: (pageData.number ?? 0) + 1,
       pageSize: pageData.size ?? 20,
     };
+  },
+};
+
+// ── Anchorage CRUD ──────────────────────────────────────────────────
+
+export const anchorageCRUD = {
+  async findAll(params?: {
+    page?: number;
+    size?: number;
+    orgUnitId?: string;
+  }): Promise<PaginatedResponse<Anchorage>> {
+    const sp = buildSearchParams({
+      page: params?.page !== undefined ? params.page - 1 : undefined,
+      size: params?.size,
+      orgUnitId: params?.orgUnitId,
+    });
+    const res = await api.get(`/v1/anchorage?${sp}`);
+    const pageData = res.data.data;
+    return {
+      data: pageData.content || [],
+      total: pageData.totalElements ?? 0,
+      page: (pageData.number ?? 0) + 1,
+      pageSize: pageData.size ?? 20,
+    };
+  },
+
+  async findById(id: string): Promise<Anchorage> {
+    const res = await api.get(`/v1/anchorage/${id}`);
+    return res.data.data;
+  },
+
+  async search(params?: {
+    anchorageName?: string;
+    anchorageCode?: string;
+    portId?: string;
+    orgUnitId?: string;
+    navigationChannelId?: string;
+    buoyStationId?: string;
+    provinceId?: number;
+    operationalStatus?: string;
+    approvalStatus?: string;
+    updatedFrom?: string;
+    updatedTo?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<PaginatedResponse<Anchorage>> {
+    const sp = buildSearchParams({
+      anchorageName: params?.anchorageName,
+      anchorageCode: params?.anchorageCode,
+      portId: params?.portId,
+      orgUnitId: params?.orgUnitId,
+      navigationChannelId: params?.navigationChannelId,
+      buoyStationId: params?.buoyStationId,
+      provinceId: params?.provinceId,
+      operationalStatus: params?.operationalStatus,
+      approvalStatus: params?.approvalStatus,
+      updatedFrom: params?.updatedFrom,
+      updatedTo: params?.updatedTo,
+      page: params?.page !== undefined ? params.page - 1 : undefined,
+      size: params?.pageSize,
+    });
+    const res = await api.get(`/v1/anchorage?${sp}`);
+    const pageData = res.data.data;
+    return {
+      data: pageData.content || [],
+      total: pageData.totalElements ?? 0,
+      page: (pageData.number ?? 0) + 1,
+      pageSize: pageData.size ?? 20,
+    };
+  },
+
+  async create(payload: CreateAnchorageRequest): Promise<Anchorage> {
+    const res = await api.post('/v1/anchorage', payload);
+    return res.data.data;
+  },
+
+  async update(payload: UpdateAnchorageRequest): Promise<Anchorage> {
+    const res = await api.put('/v1/anchorage', payload);
+    return res.data.data;
+  },
+
+  async delete(id: string): Promise<void> {
+    await api.delete(`/v1/anchorage/${id}`);
+  },
+
+  async generateCode(portId: string): Promise<{ anchorageCode: string }> {
+    const res = await api.get(`/v1/anchorage/generate-code?portId=${portId}`);
+    return res.data.data;
+  },
+
+  async approve(id: string, cap: string, content?: string): Promise<void> {
+    await api.post(`/v1/anchorage/${id}/approve`, { cap, content });
+  },
+
+  async reject(id: string, cap: string, lyDo: string): Promise<void> {
+    await api.post(`/v1/anchorage/${id}/reject`, { cap, lyDo });
+  },
+
+  async getHistory(id: string): Promise<AnchorageApprovalResponse> {
+    const res = await api.get(`/v1/anchorage/${id}/history`);
+    return res.data.data;
+  },
+
+  async getAllHistory(): Promise<any> {
+    const res = await api.get('/v1/anchorage/history/all');
+    return res.data.data;
+  },
+
+  async uploadAttachments(id: string, files: File[]): Promise<any> {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('files', file);
+    }
+    const res = await api.post(`/v1/anchorage/${id}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data.data;
+  },
+
+  async listAttachments(id: string): Promise<any> {
+    const res = await api.get(`/v1/anchorage/${id}/attachments`);
+    return res.data.data;
+  },
+
+  async deleteAttachment(id: string, attId: string): Promise<void> {
+    await api.delete(`/v1/anchorage/${id}/attachments/${attId}`);
+  },
+};
+
+// ── Transfer Area (Khu chuyển tải) CRUD ───────────────────────────
+
+export const transferAreaCRUD = {
+  async findAll(params?: {
+    page?: number;
+    size?: number;
+    orgUnitId?: string;
+  }): Promise<PaginatedResponse<TransferArea>> {
+    const sp = buildSearchParams({
+      page: params?.page !== undefined ? params.page - 1 : undefined,
+      size: params?.size,
+      orgUnitId: params?.orgUnitId,
+    });
+    const res = await api.get(`/v1/transfer-area?${sp}`);
+    const pageData = res.data.data;
+    return {
+      data: pageData.content || [],
+      total: pageData.totalElements ?? 0,
+      page: (pageData.number ?? 0) + 1,
+      pageSize: pageData.size ?? 20,
+    };
+  },
+
+  async findById(id: string): Promise<TransferArea> {
+    const res = await api.get(`/v1/transfer-area/${id}`);
+    return res.data.data;
+  },
+
+  async search(params?: {
+    transferAreaName?: string;
+    transferAreaCode?: string;
+    portId?: string;
+    orgUnitId?: string;
+    provinceId?: number;
+    operationalFunctions?: string;
+    operationalStatus?: string;
+    approvalStatus?: string;
+    updatedFrom?: string;
+    updatedTo?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<PaginatedResponse<TransferArea>> {
+    const sp = buildSearchParams({
+      transferAreaName: params?.transferAreaName,
+      transferAreaCode: params?.transferAreaCode,
+      portId: params?.portId,
+      orgUnitId: params?.orgUnitId,
+      provinceId: params?.provinceId,
+      operationalFunctions: params?.operationalFunctions,
+      operationalStatus: params?.operationalStatus,
+      approvalStatus: params?.approvalStatus,
+      updatedFrom: params?.updatedFrom,
+      updatedTo: params?.updatedTo,
+      page: params?.page !== undefined ? params.page - 1 : undefined,
+      size: params?.pageSize,
+    });
+    const res = await api.get(`/v1/transfer-area?${sp}`);
+    const pageData = res.data.data;
+    return {
+      data: pageData.content || [],
+      total: pageData.totalElements ?? 0,
+      page: (pageData.number ?? 0) + 1,
+      pageSize: pageData.size ?? 20,
+    };
+  },
+
+  async create(payload: CreateTransferAreaRequest): Promise<TransferArea> {
+    const res = await api.post('/v1/transfer-area', payload);
+    return res.data.data;
+  },
+
+  async update(payload: UpdateTransferAreaRequest): Promise<TransferArea> {
+    const res = await api.put('/v1/transfer-area', payload);
+    return res.data.data;
+  },
+
+  async delete(id: string): Promise<void> {
+    await api.delete(`/v1/transfer-area/${id}`);
+  },
+
+  async generateCode(portId: string): Promise<{ transferAreaCode: string }> {
+    const res = await api.get(`/v1/transfer-area/generate-code?portId=${portId}`);
+    return res.data.data;
+  },
+
+  async approve(id: string, cap: string, content?: string): Promise<void> {
+    await api.post(`/v1/transfer-area/${id}/approve`, { cap, content });
+  },
+
+  async reject(id: string, cap: string, lyDo: string): Promise<void> {
+    await api.post(`/v1/transfer-area/${id}/reject`, { cap, lyDo });
+  },
+
+  async getHistory(id: string): Promise<TransferAreaApprovalResponse> {
+    const res = await api.get(`/v1/transfer-area/${id}/history`);
+    return res.data.data;
+  },
+
+  async getAllHistory(): Promise<any> {
+    const res = await api.get('/v1/transfer-area/history/all');
+    return res.data.data;
+  },
+
+  async uploadAttachments(id: string, files: File[]): Promise<any> {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('files', file);
+    }
+    const res = await api.post(`/v1/transfer-area/${id}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data.data;
+  },
+
+  async listAttachments(id: string): Promise<any> {
+    const res = await api.get(`/v1/transfer-area/${id}/attachments`);
+    return res.data.data;
+  },
+
+  async deleteAttachment(id: string, attId: string): Promise<void> {
+    await api.delete(`/v1/transfer-area/${id}/attachments/${attId}`);
+  },
+};
+
+// ── Storm Shelter (Khu tránh trú bão) CRUD ─────────────────────────
+
+export const stormShelterCRUD = {
+  async findAll(params?: {
+    page?: number;
+    size?: number;
+    orgUnitId?: string;
+  }): Promise<PaginatedResponse<StormShelterArea>> {
+    const sp = buildSearchParams({
+      page: params?.page !== undefined ? params.page - 1 : undefined,
+      size: params?.size,
+      orgUnitId: params?.orgUnitId,
+    });
+    const res = await api.get(`/v1/storm-shelter?${sp}`);
+    const pageData = res.data.data;
+    return {
+      data: pageData.content || [],
+      total: pageData.totalElements ?? 0,
+      page: (pageData.number ?? 0) + 1,
+      pageSize: pageData.size ?? 20,
+    };
+  },
+
+  async findById(id: string): Promise<StormShelterArea> {
+    const res = await api.get(`/v1/storm-shelter/${id}`);
+    return res.data.data;
+  },
+
+  async search(params?: {
+    stormShelterName?: string;
+    stormShelterCode?: string;
+    portId?: string;
+    orgUnitId?: string;
+    navigationChannelId?: string;
+    buoyStationId?: string;
+    classification?: string;
+    provinceId?: number;
+    operationalStatus?: string;
+    approvalStatus?: string;
+    updatedFrom?: string;
+    updatedTo?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<PaginatedResponse<StormShelterArea>> {
+    const sp = buildSearchParams({
+      stormShelterName: params?.stormShelterName,
+      stormShelterCode: params?.stormShelterCode,
+      portId: params?.portId,
+      orgUnitId: params?.orgUnitId,
+      navigationChannelId: params?.navigationChannelId,
+      buoyStationId: params?.buoyStationId,
+      classification: params?.classification,
+      provinceId: params?.provinceId,
+      operationalStatus: params?.operationalStatus,
+      approvalStatus: params?.approvalStatus,
+      updatedFrom: params?.updatedFrom,
+      updatedTo: params?.updatedTo,
+      page: params?.page !== undefined ? params.page - 1 : undefined,
+      size: params?.pageSize,
+    });
+    const res = await api.get(`/v1/storm-shelter?${sp}`);
+    const pageData = res.data.data;
+    return {
+      data: pageData.content || [],
+      total: pageData.totalElements ?? 0,
+      page: (pageData.number ?? 0) + 1,
+      pageSize: pageData.size ?? 20,
+    };
+  },
+
+  async create(payload: CreateStormShelterRequest): Promise<StormShelterArea> {
+    const res = await api.post('/v1/storm-shelter', payload);
+    return res.data.data;
+  },
+
+  async update(payload: UpdateStormShelterRequest): Promise<StormShelterArea> {
+    const res = await api.put('/v1/storm-shelter', payload);
+    return res.data.data;
+  },
+
+  async delete(id: string): Promise<void> {
+    await api.delete(`/v1/storm-shelter/${id}`);
+  },
+
+  async generateCode(portId: string): Promise<{ stormShelterCode: string }> {
+    const res = await api.get(`/v1/storm-shelter/generate-code?portId=${portId}`);
+    return res.data.data;
+  },
+
+  async approve(id: string, cap: string, content?: string): Promise<void> {
+    await api.post(`/v1/storm-shelter/${id}/approve`, { cap, content });
+  },
+
+  async reject(id: string, cap: string, lyDo: string): Promise<void> {
+    await api.post(`/v1/storm-shelter/${id}/reject`, { cap, lyDo });
+  },
+
+  async getHistory(id: string): Promise<StormShelterApprovalResponse> {
+    const res = await api.get(`/v1/storm-shelter/${id}/history`);
+    return res.data.data;
+  },
+
+  async getAllHistory(): Promise<any> {
+    const res = await api.get('/v1/storm-shelter/history/all');
+    return res.data.data;
+  },
+
+  async uploadAttachments(id: string, files: File[]): Promise<any> {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('files', file);
+    }
+    const res = await api.post(`/v1/storm-shelter/${id}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data.data;
+  },
+
+  async listAttachments(id: string): Promise<any> {
+    const res = await api.get(`/v1/storm-shelter/${id}/attachments`);
+    return res.data.data;
+  },
+
+  async deleteAttachment(id: string, attId: string): Promise<void> {
+    await api.delete(`/v1/storm-shelter/${id}/attachments/${attId}`);
+  },
+};
+
+// ── Buoy Berth (Bến phao) CRUD ─────────────────────────
+
+export const buoyBerthCRUD = {
+  async findAll(params?: {
+    page?: number;
+    size?: number;
+    orgUnitId?: string;
+  }): Promise<PaginatedResponse<BuoyBerth>> {
+    const sp = buildSearchParams({
+      page: params?.page !== undefined ? params.page - 1 : undefined,
+      size: params?.size,
+      orgUnitId: params?.orgUnitId,
+    });
+    const res = await api.get(`/v1/buoy-berth?${sp}`);
+    const pageData = res.data.data;
+    return {
+      data: pageData.content || [],
+      total: pageData.totalElements ?? 0,
+      page: (pageData.number ?? 0) + 1,
+      pageSize: pageData.size ?? 20,
+    };
+  },
+
+  async findById(id: string): Promise<BuoyBerth> {
+    const res = await api.get(`/v1/buoy-berth/${id}`);
+    return res.data.data;
+  },
+
+  async search(params?: {
+    buoyBerthName?: string;
+    buoyBerthCode?: string;
+    portId?: string;
+    orgUnitId?: string;
+    waterwayId?: string;
+    classification?: string;
+    provinceId?: number;
+    operationalStatus?: string;
+    approvalStatus?: string;
+    updatedFrom?: string;
+    updatedTo?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<PaginatedResponse<BuoyBerth>> {
+    const sp = buildSearchParams({
+      buoyBerthName: params?.buoyBerthName,
+      buoyBerthCode: params?.buoyBerthCode,
+      portId: params?.portId,
+      orgUnitId: params?.orgUnitId,
+      waterwayId: params?.waterwayId,
+      classification: params?.classification,
+      provinceId: params?.provinceId,
+      operationalStatus: params?.operationalStatus,
+      approvalStatus: params?.approvalStatus,
+      updatedFrom: params?.updatedFrom,
+      updatedTo: params?.updatedTo,
+      page: params?.page !== undefined ? params.page - 1 : undefined,
+      size: params?.pageSize,
+    });
+    const res = await api.get(`/v1/buoy-berth?${sp}`);
+    const pageData = res.data.data;
+    return {
+      data: pageData.content || [],
+      total: pageData.totalElements ?? 0,
+      page: (pageData.number ?? 0) + 1,
+      pageSize: pageData.size ?? 20,
+    };
+  },
+
+  async create(payload: CreateBuoyBerthRequest): Promise<BuoyBerth> {
+    const res = await api.post('/v1/buoy-berth', payload);
+    return res.data.data;
+  },
+
+  async update(payload: UpdateBuoyBerthRequest): Promise<BuoyBerth> {
+    const res = await api.put('/v1/buoy-berth', payload);
+    return res.data.data;
+  },
+
+  async delete(id: string): Promise<void> {
+    await api.delete(`/v1/buoy-berth/${id}`);
+  },
+
+  async generateCode(portId: string): Promise<{ buoyBerthCode: string }> {
+    const res = await api.get(`/v1/buoy-berth/generate-code?portId=${portId}`);
+    return res.data.data;
+  },
+
+  async approve(id: string, cap: string, content?: string): Promise<void> {
+    await api.post(`/v1/buoy-berth/${id}/approve`, { cap, content });
+  },
+
+  async reject(id: string, cap: string, lyDo: string): Promise<void> {
+    await api.post(`/v1/buoy-berth/${id}/reject`, { cap, lyDo });
+  },
+
+  async getHistory(id: string): Promise<BuoyBerthApprovalResponse> {
+    const res = await api.get(`/v1/buoy-berth/${id}/history`);
+    return res.data.data;
+  },
+
+  async getAllHistory(): Promise<any> {
+    const res = await api.get('/v1/buoy-berth/history/all');
+    return res.data.data;
+  },
+
+  async uploadAttachments(id: string, files: File[]): Promise<any> {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('files', file);
+    }
+    const res = await api.post(`/v1/buoy-berth/${id}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data.data;
+  },
+
+  async listAttachments(id: string): Promise<any> {
+    const res = await api.get(`/v1/buoy-berth/${id}/attachments`);
+    return res.data.data;
+  },
+
+  async deleteAttachment(id: string, attId: string): Promise<void> {
+    await api.delete(`/v1/buoy-berth/${id}/attachments/${attId}`);
+  },
+};
+
+export const shipRepairYardCRUD = {
+  async findAll(params?: {
+    page?: number;
+    size?: number;
+    orgUnitId?: string;
+  }): Promise<PaginatedResponse<ShipRepairYard>> {
+    const sp = buildSearchParams({
+      page: params?.page !== undefined ? params.page - 1 : undefined,
+      size: params?.size,
+      orgUnitId: params?.orgUnitId,
+    });
+    const res = await api.get(`/v1/ship-repair-yard?${sp}`);
+    const pageData = res.data.data;
+    return {
+      data: pageData.content || [],
+      total: pageData.totalElements ?? 0,
+      page: (pageData.number ?? 0) + 1,
+      pageSize: pageData.size ?? 20,
+    };
+  },
+
+  async findById(id: string): Promise<ShipRepairYard> {
+    const res = await api.get(`/v1/ship-repair-yard/${id}`);
+    return res.data.data;
+  },
+
+  async search(params?: {
+    shipRepairYardName?: string;
+    shipRepairYardCode?: string;
+    portId?: string;
+    pierId?: string;
+    orgUnitId?: string;
+    provinceId?: number;
+    operationalStatus?: string;
+    approvalStatus?: string;
+    updatedFrom?: string;
+    updatedTo?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<PaginatedResponse<ShipRepairYard>> {
+    const sp = buildSearchParams({
+      shipRepairYardName: params?.shipRepairYardName,
+      shipRepairYardCode: params?.shipRepairYardCode,
+      portId: params?.portId,
+      pierId: params?.pierId,
+      orgUnitId: params?.orgUnitId,
+      provinceId: params?.provinceId,
+      operationalStatus: params?.operationalStatus,
+      approvalStatus: params?.approvalStatus,
+      updatedFrom: params?.updatedFrom,
+      updatedTo: params?.updatedTo,
+      page: params?.page !== undefined ? params.page - 1 : undefined,
+      size: params?.pageSize,
+    });
+    const res = await api.get(`/v1/ship-repair-yard?${sp}`);
+    const pageData = res.data.data;
+    return {
+      data: pageData.content || [],
+      total: pageData.totalElements ?? 0,
+      page: (pageData.number ?? 0) + 1,
+      pageSize: pageData.size ?? 20,
+    };
+  },
+
+  async create(payload: CreateShipRepairYardRequest): Promise<ShipRepairYard> {
+    const res = await api.post('/v1/ship-repair-yard', payload);
+    return res.data.data;
+  },
+
+  async update(payload: UpdateShipRepairYardRequest): Promise<ShipRepairYard> {
+    const res = await api.put('/v1/ship-repair-yard', payload);
+    return res.data.data;
+  },
+
+  async delete(id: string): Promise<void> {
+    await api.delete(`/v1/ship-repair-yard/${id}`);
+  },
+
+  async generateCode(portId: string): Promise<{ shipRepairYardCode: string }> {
+    const res = await api.get(`/v1/ship-repair-yard/generate-code?portId=${portId}`);
+    return res.data.data;
+  },
+
+  async approve(id: string, cap: string, content?: string): Promise<void> {
+    await api.post(`/v1/ship-repair-yard/${id}/approve`, { cap, content });
+  },
+
+  async reject(id: string, cap: string, lyDo: string): Promise<void> {
+    await api.post(`/v1/ship-repair-yard/${id}/reject`, { cap, lyDo });
+  },
+
+  async getHistory(id: string): Promise<ShipRepairYardApprovalResponse> {
+    const res = await api.get(`/v1/ship-repair-yard/${id}/history`);
+    return res.data.data;
+  },
+
+  async getAllHistory(): Promise<any> {
+    const res = await api.get('/v1/ship-repair-yard/history/all');
+    return res.data.data;
+  },
+
+  async uploadAttachments(id: string, files: File[]): Promise<any> {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('files', file);
+    }
+    const res = await api.post(`/v1/ship-repair-yard/${id}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data.data;
+  },
+
+  async listAttachments(id: string): Promise<any> {
+    const res = await api.get(`/v1/ship-repair-yard/${id}/attachments`);
+    return res.data.data;
+  },
+
+  async deleteAttachment(id: string, attId: string): Promise<void> {
+    await api.delete(`/v1/ship-repair-yard/${id}/attachments/${attId}`);
   },
 };

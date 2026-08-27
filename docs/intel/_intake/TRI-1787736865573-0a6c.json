@@ -1,0 +1,69 @@
+{
+  "triage_id": "TRI-1787736865573-0a6c",
+  "created_at": 1787736865573,
+  "request_summary": "Thêm mapping GET /generate-code còn thiếu vào BuoyStationController: frontend gọi /api/v1/buoy-station/generate-code?portId= (api.ts:80) nhưng controller chỉ có GET /{id} UUID nên request bị bắt nhầm vào path variable → lỗi \"Tham số 'id' không đúng định dạng mong muốn: generate-code\". Service BuoyStationService.generateCode(UUID) đã tồn tại.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/java/com/hanghai/kchtg/station/controller/BuoyStationController.java"
+    ],
+    "impact_files": [
+      "src/main/java/com/hanghai/kchtg/station/controller/BuoyStationController.java"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "backend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn Nhà trạm quản lý vận hành phao, tiêu → nút Thêm mới → chọn cảng biển (BuoyStationFormContent auto-generate code)",
+  "blast_radius": 1,
+  "done_oracle": "GET /api/v1/buoy-station/generate-code?portId=<uuid> trả 200 data.code = \"NT-x\"; mở Thêm mới nhà trạm phao tiêu, chọn cảng biển → ô Mã tự điền NT-x không còn lỗi \"Tham số 'id' không đúng định dạng\"",
+  "verification_commands": [
+    {
+      "command": "mvn clean compile -q",
+      "cwd": "C:/Users/manhhv1/Desktop/Source/bxd.hh.kcht",
+      "timeout_ms": 600000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/station/controller/BuoyStationController.java",
+      "line": 38,
+      "quote": "@GetMapping(\"/{id}\")",
+      "source_hash": "8990b6b646f43808f19e9bd78d641a5a0927319fedacd3f57072a82dbf42b27a",
+      "quote_hash": "389f31aa7db853a42452a573de38b77c4e736452b218463bfa8c0c08fbc5ac4e",
+      "note": "mapping catch-all duy nhất cho GET — bắt nhầm literal /generate-code vào path variable UUID"
+    },
+    {
+      "file": "frontend/src/services/buoy-station/api.ts",
+      "line": 80,
+      "quote": "const res = await api.get(`${BASE}/generate-code`, { params: { portId } });",
+      "source_hash": "9cfcde48edaa15795c16928e7cd67c996a122cb99a3262e17028bf9cb01b1fec",
+      "quote_hash": "39a686d9e5fe7d6c80b0f12a608edfd5102c6e762d66892040dd0f04762a9d0b",
+      "note": "frontend gọi endpoint chưa tồn tại ở backend, đọc response data.code"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/station/service/BuoyStationService.java",
+      "line": 111,
+      "quote": "public String generateCode(UUID portId) {",
+      "source_hash": "9e36d1a0e380c3222a92297a8b1ff8944ad464b0555f217fd5f6dcd076becad0",
+      "quote_hash": "fab54ba4deb2145c27a9606ea3d749a26091f16a6cdcd5a3c36d1c082f1698a2",
+      "note": "service method đã có, chấp nhận portId null, trả mã NT-{seq}"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "97a62a2e50b49584125f39dc663894b8a59ad2ac",
+    "dirty": true,
+    "captured_at": 1787736865862
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "triage_id": "TRI-1787732089549-feba",
+  "created_at": 1787732089549,
+  "request_summary": "Comment tạm dòng historyRepo.save(entry) trong logHistory (BuoyService + BeaconStationService) vì DB đang chạy chưa có bảng beacon_history (migration V20260803370000 chưa áp dụng) gây 500 khi lưu phao tiêu/đèn biển",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/java/com/hanghai/kchtg/beacon/service/BeaconStationService.java",
+      "src/main/java/com/hanghai/kchtg/beacon/service/BuoyService.java"
+    ],
+    "impact_files": [
+      "src/main/java/com/hanghai/kchtg/beacon/service/BeaconStationService.java",
+      "src/main/java/com/hanghai/kchtg/beacon/service/BuoyService.java"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "backend"
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Thêm mới / Chỉnh sửa / Xóa / Duyệt phao tiêu hoặc đèn biển (ghi beacon_history thất bại -> 500)",
+  "blast_radius": 2,
+  "done_oracle": "Lưu phao tiêu / đèn biển không còn lỗi relation beacon_history does not exist; mvn clean compile pass",
+  "verification_commands": [
+    {
+      "command": "mvn clean compile -q",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 600000
+    }
+  ],
+  "change_type": "implementation",
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787732089786
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

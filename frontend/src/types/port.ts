@@ -549,3 +549,636 @@ export type UpdatePierRequest = UpdateCauCangRequest;
 export type CreateWaterZoneRequest = CreateVungNuocRequest;
 export type UpdateWaterZoneRequest = UpdateVungNuocRequest;
 
+// ── 6. Khu neo đậu (Anchorage) ──────────────────────────────────────
+
+export interface Anchorage {
+  id: string;
+  securityLevel?: string;
+  anchorageCode: string;
+  anchorageName: string;
+  portId: string;
+  portName?: string;
+  orgUnitId?: string;
+  orgUnitName?: string;
+  navigationChannelId?: string;
+  buoyStationId?: string;
+  buoyStationName?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalStatus?: string;
+  approvalStatus?: string;
+  // GIS fields
+  latitude?: number;
+  longitude?: number;
+  mapSymbolId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
+  coordinateSystem?: number;
+  displayRule?: number;
+  mooringWaterAreas?: MooringWaterAreaPayload[];
+  // Technical fields
+  shapeDescription?: string;
+  area?: number;
+  designWaterDepth?: number;
+  currentWaterDepth?: number;
+  bottomElevationDesign?: number;
+  maxVesselDWT?: number;
+  activeAnchorageCount?: number;
+  publishedAnchorageCount?: number;
+  underInvestmentAnchorageCount?: number;
+  remarks?: string;
+  // Publication fields
+  openingAnnouncementDate?: string;
+  publicDecision?: string;
+  investmentAgreement?: string;
+  // Approval tracking
+  activityStatus?: string;
+  submittedForApprovalAt?: string;
+  submittedForApprovalBy?: string;
+  portAuthorityApprovedAt?: string;
+  portAuthorityApprovedBy?: string;
+  portAuthorityApprovalContent?: string;
+  departmentApprovedAt?: string;
+  departmentApprovedBy?: string;
+  departmentApprovalContent?: string;
+  rejectionReason?: string;
+  // Audit
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AnchorPointPayload { name?: string; latitude?: number; longitude?: number; }
+
+export interface MooringWaterAreaPayload {
+  description: string;
+  geometryType?: string;
+  mapSymbolId?: string;
+  coordinateSystem?: number;
+  displayRule?: string;
+  anchorPoints?: AnchorPointPayload[];
+}
+
+export interface CreateAnchorageRequest {
+  securityLevel?: string;
+  anchorageCode?: string;
+  anchorageName: string;
+  portId: string;
+  orgUnitId?: string;
+  navigationChannelId?: string;
+  buoyStationId?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalStatus?: string;
+  shapeDescription?: string;
+  area?: number;
+  designWaterDepth?: number;
+  currentWaterDepth?: number;
+  bottomElevationDesign?: number;
+  maxVesselDWT?: number;
+  activeAnchorageCount?: number;
+  publishedAnchorageCount?: number;
+  underInvestmentAnchorageCount?: number;
+  remarks?: string;
+  openingAnnouncementDate?: string;
+  publicDecision?: string;
+  investmentAgreement?: string;
+  // GIS fields
+  latitude?: number;
+  longitude?: number;
+  mapSymbolId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
+  coordinateSystem?: number;
+  displayRule?: number;
+  mooringWaterAreas?: MooringWaterAreaPayload[];
+  saveAction?: string;
+}
+
+export interface UpdateAnchorageRequest {
+  id: string;
+  anchorageName?: string;
+  portId?: string;
+  orgUnitId?: string;
+  navigationChannelId?: string;
+  buoyStationId?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalStatus?: string;
+  shapeDescription?: string;
+  area?: number;
+  designWaterDepth?: number;
+  currentWaterDepth?: number;
+  bottomElevationDesign?: number;
+  maxVesselDWT?: number;
+  activeAnchorageCount?: number;
+  publishedAnchorageCount?: number;
+  underInvestmentAnchorageCount?: number;
+  remarks?: string;
+  openingAnnouncementDate?: string;
+  publicDecision?: string;
+  investmentAgreement?: string;
+  saveAction?: string;
+}
+
+export interface AnchorageApprovalResponse {
+  entityType: string;
+  changeHistory: any[];
+  approvalLog: any[];
+}
+
+// ── 7. Khu chuyển tải (Transfer Area) ──────────────────────────────
+
+export interface TransferArea {
+  id: string;
+  securityLevel?: string;
+  transferAreaCode: string;
+  transferAreaName: string;
+  portId: string;
+  portName?: string;
+  orgUnitId?: string;
+  orgUnitName?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalFunctions?: string;
+  operationalStatus?: string;
+  approvalStatus?: string;
+  // GIS fields
+  latitude?: number;
+  longitude?: number;
+  mapSymbolId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
+  coordinateSystem?: number;
+  displayRule?: number;
+  mooringWaterAreas?: MooringWaterAreaPayload[];
+  // Technical fields
+  shapeDescription?: string;
+  area?: number;
+  designWaterDepth?: number;
+  currentWaterDepth?: number;
+  bottomElevationDesign?: number;
+  maxVesselDWT?: number;
+  activeTransferCount?: number;
+  publishedTransferCount?: number;
+  underInvestmentTransferCount?: number;
+  remarks?: string;
+  // Publication fields
+  openingAnnouncementDate?: string;
+  publicDecision?: string;
+  investmentAgreement?: string;
+  // Activity period fields
+  activityStartDate?: string;
+  activityEndDate?: string;
+  // Approval tracking
+  submittedForApprovalAt?: string;
+  submittedForApprovalBy?: string;
+  portAuthorityApprovedAt?: string;
+  portAuthorityApprovedBy?: string;
+  portAuthorityApprovalContent?: string;
+  departmentApprovedAt?: string;
+  departmentApprovedBy?: string;
+  departmentApprovalContent?: string;
+  rejectionReason?: string;
+  // Audit
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateTransferAreaRequest {
+  securityLevel?: string;
+  transferAreaCode?: string;
+  transferAreaName: string;
+  portId: string;
+  orgUnitId?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalFunctions?: string;
+  operationalStatus?: string;
+  shapeDescription?: string;
+  area?: number;
+  designWaterDepth?: number;
+  currentWaterDepth?: number;
+  bottomElevationDesign?: number;
+  maxVesselDWT?: number;
+  activeTransferCount?: number;
+  publishedTransferCount?: number;
+  underInvestmentTransferCount?: number;
+  remarks?: string;
+  openingAnnouncementDate?: string;
+  publicDecision?: string;
+  investmentAgreement?: string;
+  activityStartDate?: string;
+  activityEndDate?: string;
+  // GIS fields
+  latitude?: number;
+  longitude?: number;
+  mapSymbolId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
+  coordinateSystem?: number;
+  displayRule?: number;
+  mooringWaterAreas?: MooringWaterAreaPayload[];
+  saveAction?: string;
+}
+
+export interface UpdateTransferAreaRequest {
+  id: string;
+  transferAreaName?: string;
+  portId?: string;
+  orgUnitId?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalFunctions?: string;
+  operationalStatus?: string;
+  shapeDescription?: string;
+  area?: number;
+  designWaterDepth?: number;
+  currentWaterDepth?: number;
+  bottomElevationDesign?: number;
+  maxVesselDWT?: number;
+  activeTransferCount?: number;
+  publishedTransferCount?: number;
+  underInvestmentTransferCount?: number;
+  remarks?: string;
+  openingAnnouncementDate?: string;
+  publicDecision?: string;
+  investmentAgreement?: string;
+  activityStartDate?: string;
+  activityEndDate?: string;
+  saveAction?: string;
+}
+
+export interface TransferAreaApprovalResponse {
+  entityType: string;
+  changeHistory: any[];
+  approvalLog: any[];
+}
+
+// ── 8. Khu tránh trú bão (Storm Shelter) ────────────────────────────
+
+export interface StormShelterArea {
+  id: string;
+  securityLevel?: string;
+  stormShelterCode: string;
+  stormShelterName: string;
+  portId: string;
+  portName?: string;
+  orgUnitId?: string;
+  orgUnitName?: string;
+  navigationChannelId?: string;
+  buoyStationId?: string;
+  buoyStationName?: string;
+  classification?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalStatus?: string;
+  approvalStatus?: string;
+  // GIS fields
+  latitude?: number;
+  longitude?: number;
+  mapSymbolId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
+  coordinateSystem?: number;
+  displayRule?: number;
+  mooringWaterAreas?: MooringWaterAreaPayload[];
+  // Technical fields
+  shapeDescription?: string;
+  area?: number;
+  designWaterDepth?: number;
+  currentWaterDepth?: number;
+  bottomElevationDesign?: number;
+  activeStormShelterCount?: number;
+  publishedStormShelterCount?: number;
+  underInvestmentStormShelterCount?: number;
+  openingAnnouncementDate?: string;
+  publicDecision?: string;
+  investmentAgreement?: string;
+  // Approval tracking
+  submittedForApprovalAt?: string;
+  submittedForApprovalBy?: string;
+  portAuthorityApprovedAt?: string;
+  portAuthorityApprovedBy?: string;
+  portAuthorityApprovalContent?: string;
+  departmentApprovedAt?: string;
+  departmentApprovedBy?: string;
+  departmentApprovalContent?: string;
+  rejectionReason?: string;
+  // Audit
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateStormShelterRequest {
+  securityLevel?: string;
+  stormShelterCode?: string;
+  stormShelterName: string;
+  portId: string;
+  orgUnitId?: string;
+  navigationChannelId?: string;
+  buoyStationId?: string;
+  classification?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalStatus?: string;
+  shapeDescription?: string;
+  area?: number;
+  designWaterDepth?: number;
+  currentWaterDepth?: number;
+  bottomElevationDesign?: number;
+  activeStormShelterCount?: number;
+  publishedStormShelterCount?: number;
+  underInvestmentStormShelterCount?: number;
+  openingAnnouncementDate?: string;
+  publicDecision?: string;
+  investmentAgreement?: string;
+  // GIS fields
+  latitude?: number;
+  longitude?: number;
+  mapSymbolId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
+  coordinateSystem?: number;
+  displayRule?: number;
+  mooringWaterAreas?: MooringWaterAreaPayload[];
+  saveAction?: string;
+}
+
+export interface UpdateStormShelterRequest {
+  id: string;
+  stormShelterName?: string;
+  portId?: string;
+  orgUnitId?: string;
+  navigationChannelId?: string;
+  buoyStationId?: string;
+  classification?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalStatus?: string;
+  shapeDescription?: string;
+  area?: number;
+  designWaterDepth?: number;
+  currentWaterDepth?: number;
+  bottomElevationDesign?: number;
+  activeStormShelterCount?: number;
+  publishedStormShelterCount?: number;
+  underInvestmentStormShelterCount?: number;
+  openingAnnouncementDate?: string;
+  publicDecision?: string;
+  investmentAgreement?: string;
+  saveAction?: string;
+}
+
+export interface StormShelterApprovalResponse {
+  entityType: string;
+  changeHistory: any[];
+  approvalLog: any[];
+}
+
+// ── 9. Bến phao (Buoy Berth) ────────────────────────────
+
+export interface BuoyBerth {
+  id: string;
+  securityLevel?: string;
+  buoyBerthCode: string;
+  buoyBerthName: string;
+  portId: string;
+  portName?: string;
+  orgUnitId?: string;
+  orgUnitName?: string;
+  waterwayId?: string;
+  operatingOrgId?: string;
+  classification?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalStatus?: string;
+  approvalStatus?: string;
+  // GIS fields
+  latitude?: number;
+  longitude?: number;
+  mapSymbolId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
+  coordinateSystem?: number;
+  displayRule?: number;
+  // Technical & inspection fields
+  currentWaterDepth?: number;
+  bottomElevationDesign?: number;
+  maxVesselDWT?: number;
+  plannedVesselDWT?: number;
+  lastInspectionDate?: string;
+  nextInspectionDate?: string;
+  operationExpiryDate?: string;
+  designCapacity?: number;
+  activeBuoyBerthCount?: number;
+  publishedBuoyBerthCount?: number;
+  underInvestmentBuoyBerthCount?: number;
+  cargoThroughput?: number;
+  // Publication fields
+  openingAnnouncementDate?: string;
+  publicDecision?: string;
+  investmentAgreement?: string;
+  // Mooring water area scope
+  mooringWaterAreaScope?: string;
+  // Approval tracking
+  submittedForApprovalAt?: string;
+  submittedForApprovalBy?: string;
+  portAuthorityApprovedAt?: string;
+  portAuthorityApprovedBy?: string;
+  portAuthorityApprovalContent?: string;
+  departmentApprovedAt?: string;
+  departmentApprovedBy?: string;
+  departmentApprovalContent?: string;
+  rejectionReason?: string;
+  // Audit
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateBuoyBerthRequest {
+  securityLevel?: string;
+  buoyBerthCode?: string;
+  buoyBerthName: string;
+  portId: string;
+  orgUnitId?: string;
+  waterwayId?: string;
+  operatingOrgId?: string;
+  classification?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalStatus?: string;
+  currentWaterDepth?: number;
+  bottomElevationDesign?: number;
+  maxVesselDWT?: number;
+  plannedVesselDWT?: number;
+  lastInspectionDate?: string;
+  nextInspectionDate?: string;
+  operationExpiryDate?: string;
+  designCapacity?: number;
+  activeBuoyBerthCount?: number;
+  publishedBuoyBerthCount?: number;
+  underInvestmentBuoyBerthCount?: number;
+  cargoThroughput?: number;
+  openingAnnouncementDate?: string;
+  publicDecision?: string;
+  investmentAgreement?: string;
+  mooringWaterAreaScope?: string;
+  // GIS fields
+  latitude?: number;
+  longitude?: number;
+  mapSymbolId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
+  coordinateSystem?: number;
+  displayRule?: number;
+  saveAction?: string;
+}
+
+export interface UpdateBuoyBerthRequest {
+  id: string;
+  buoyBerthName?: string;
+  portId?: string;
+  orgUnitId?: string;
+  waterwayId?: string;
+  operatingOrgId?: string;
+  classification?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalStatus?: string;
+  currentWaterDepth?: number;
+  bottomElevationDesign?: number;
+  maxVesselDWT?: number;
+  plannedVesselDWT?: number;
+  lastInspectionDate?: string;
+  nextInspectionDate?: string;
+  operationExpiryDate?: string;
+  designCapacity?: number;
+  activeBuoyBerthCount?: number;
+  publishedBuoyBerthCount?: number;
+  underInvestmentBuoyBerthCount?: number;
+  cargoThroughput?: number;
+  openingAnnouncementDate?: string;
+  publicDecision?: string;
+  investmentAgreement?: string;
+  mooringWaterAreaScope?: string;
+  saveAction?: string;
+}
+
+export interface BuoyBerthApprovalResponse {
+  entityType: string;
+  changeHistory: any[];
+  approvalLog: any[];
+}
+
+export interface ShipRepairYard {
+  id: string;
+  securityLevel?: string;
+  shipRepairYardCode: string;
+  shipRepairYardName: string;
+  portId: string;
+  portName?: string;
+  pierId?: string;
+  pierName?: string;
+  orgUnitId?: string;
+  orgUnitName?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalStatus?: string;
+  approvalStatus?: string;
+  // Thông tin đặc thù CSSCĐT
+  usageFunction?: string;
+  workshopArea?: number;
+  vesselType?: string;
+  vesselDwt?: string;
+  businessType?: string;
+  activity?: string;
+  slipwayCount?: number;
+  remarks?: string;
+  // GIS fields
+  latitude?: number;
+  longitude?: number;
+  mapSymbolId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
+  coordinateSystem?: number;
+  displayRule?: number;
+  // Approval tracking
+  submittedForApprovalAt?: string;
+  submittedForApprovalBy?: string;
+  portAuthorityApprovedAt?: string;
+  portAuthorityApprovedBy?: string;
+  portAuthorityApprovalContent?: string;
+  departmentApprovedAt?: string;
+  departmentApprovedBy?: string;
+  departmentApprovalContent?: string;
+  rejectionReason?: string;
+  // Audit
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateShipRepairYardRequest {
+  securityLevel?: string;
+  shipRepairYardCode?: string;
+  shipRepairYardName: string;
+  portId: string;
+  pierId?: string;
+  orgUnitId?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalStatus?: string;
+  usageFunction?: string;
+  workshopArea?: number;
+  vesselType?: string;
+  vesselDwt?: string;
+  businessType?: string;
+  activity?: string;
+  slipwayCount?: number;
+  remarks?: string;
+  // GIS fields
+  latitude?: number;
+  longitude?: number;
+  mapSymbolId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
+  coordinateSystem?: number;
+  displayRule?: number;
+  saveAction?: string;
+}
+
+export interface UpdateShipRepairYardRequest {
+  id: string;
+  shipRepairYardName?: string;
+  portId?: string;
+  pierId?: string;
+  orgUnitId?: string;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalStatus?: string;
+  usageFunction?: string;
+  workshopArea?: number;
+  vesselType?: string;
+  vesselDwt?: string;
+  businessType?: string;
+  activity?: string;
+  slipwayCount?: number;
+  remarks?: string;
+  saveAction?: string;
+}
+
+export interface ShipRepairYardApprovalResponse {
+  entityType: string;
+  changeHistory: any[];
+  approvalLog: any[];
+}
+

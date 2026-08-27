@@ -213,6 +213,111 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "berth", "history", "Lịch sử phê duyệt bến cảng",
                                 "Xem lịch sử thay đổi bến cảng");
 
+                // 8.2.1 Khu neo đậu (Anchorage)
+                seedPermission(definitions, "anchorage", "read", "Xem khu neo đậu",
+                                "Tra cứu thông tin khu neo đậu");
+                seedPermission(definitions, "anchorage", "read:restricted", "Xem bản ghi hạn chế khu neo đậu",
+                                "Xem các bản ghi dữ liệu mức độ Hạn chế của khu neo đậu");
+                seedPermission(definitions, "anchorage", "read:confidential", "Xem bản ghi mật khu neo đậu",
+                                "Xem các bản ghi dữ liệu mức độ Mật của khu neo đậu");
+                seedPermission(definitions, "anchorage", "create", "Thêm khu neo đậu",
+                                "Tạo mới hồ sơ khu neo đậu");
+                seedPermission(definitions, "anchorage", "update", "Cập nhật khu neo đậu",
+                                "Chỉnh sửa thông tin khu neo đậu");
+                seedPermission(definitions, "anchorage", "delete", "Xóa khu neo đậu", "Xóa khu neo đậu");
+                seedPermission(definitions, "anchorage", "approve", "Phê duyệt khu neo đậu",
+                                "Phê duyệt dữ liệu khu neo đậu");
+                seedPermission(definitions, "anchorage", "approvec1", "Phê duyệt C1 khu neo đậu",
+                                "Phê duyệt cấp 1 khu neo đậu");
+                seedPermission(definitions, "anchorage", "approvec2", "Phê duyệt C2 khu neo đậu",
+                                "Phê duyệt cấp 2 khu neo đậu");
+                seedPermission(definitions, "anchorage", "history", "Lịch sử phê duyệt khu neo đậu",
+                                "Xem lịch sử thay đổi khu neo đậu");
+
+                // 8.2.2 Khu chuyển tải (Transfer Area)
+                seedPermission(definitions, "transferarea", "read", "Xem khu chuyển tải",
+                                "Tra cứu thông tin khu chuyển tải");
+                seedPermission(definitions, "transferarea", "read:restricted", "Xem bản ghi hạn chế khu chuyển tải",
+                                "Xem các bản ghi dữ liệu mức độ Hạn chế của khu chuyển tải");
+                seedPermission(definitions, "transferarea", "read:confidential", "Xem bản ghi mật khu chuyển tải",
+                                "Xem các bản ghi dữ liệu mức độ Mật của khu chuyển tải");
+                seedPermission(definitions, "transferarea", "create", "Thêm khu chuyển tải",
+                                "Tạo mới hồ sơ khu chuyển tải");
+                seedPermission(definitions, "transferarea", "update", "Cập nhật khu chuyển tải",
+                                "Chỉnh sửa thông tin khu chuyển tải");
+                seedPermission(definitions, "transferarea", "delete", "Xóa khu chuyển tải", "Xóa khu chuyển tải");
+                seedPermission(definitions, "transferarea", "approve", "Phê duyệt khu chuyển tải",
+                                "Phê duyệt dữ liệu khu chuyển tải");
+                seedPermission(definitions, "transferarea", "approvec1", "Phê duyệt C1 khu chuyển tải",
+                                "Phê duyệt cấp 1 khu chuyển tải");
+                seedPermission(definitions, "transferarea", "approvec2", "Phê duyệt C2 khu chuyển tải",
+                                "Phê duyệt cấp 2 khu chuyển tải");
+                seedPermission(definitions, "transferarea", "history", "Lịch sử phê duyệt khu chuyển tải",
+                                "Xem lịch sử thay đổi khu chuyển tải");
+
+                // 8.2.3 Khu tránh, trú bão (Storm Shelter Area)
+                seedPermission(definitions, "stormshelter", "read", "Xem khu tránh trú bão",
+                                "Tra cứu thông tin khu tránh trú bão");
+                seedPermission(definitions, "stormshelter", "read:restricted", "Xem bản ghi hạn chế khu tránh trú bão",
+                                "Xem các bản ghi dữ liệu mức độ Hạn chế của khu tránh trú bão");
+                seedPermission(definitions, "stormshelter", "read:confidential", "Xem bản ghi mật khu tránh trú bão",
+                                "Xem các bản ghi dữ liệu mức độ Mật của khu tránh trú bão");
+                seedPermission(definitions, "stormshelter", "create", "Thêm khu tránh trú bão",
+                                "Tạo mới hồ sơ khu tránh trú bão");
+                seedPermission(definitions, "stormshelter", "update", "Cập nhật khu tránh trú bão",
+                                "Chỉnh sửa thông tin khu tránh trú bão");
+                seedPermission(definitions, "stormshelter", "delete", "Xóa khu tránh trú bão", "Xóa khu tránh trú bão");
+                seedPermission(definitions, "stormshelter", "approve", "Phê duyệt khu tránh trú bão",
+                                "Phê duyệt dữ liệu khu tránh trú bão");
+                seedPermission(definitions, "stormshelter", "approvec1", "Phê duyệt C1 khu tránh trú bão",
+                                "Phê duyệt cấp 1 khu tránh trú bão");
+                seedPermission(definitions, "stormshelter", "approvec2", "Phê duyệt C2 khu tránh trú bão",
+                                "Phê duyệt cấp 2 khu tránh trú bão");
+                seedPermission(definitions, "stormshelter", "history", "Lịch sử phê duyệt khu tránh trú bão",
+                                "Xem lịch sử thay đổi khu tránh trú bão");
+
+                // 8.2.4 Bến phao (Buoy Berth)
+                seedPermission(definitions, "buoyberth", "read", "Xem bến phao",
+                                "Tra cứu thông tin bến phao");
+                seedPermission(definitions, "buoyberth", "read:restricted", "Xem bản ghi hạn chế bến phao",
+                                "Xem các bản ghi dữ liệu mức độ Hạn chế của bến phao");
+                seedPermission(definitions, "buoyberth", "read:confidential", "Xem bản ghi mật bến phao",
+                                "Xem các bản ghi dữ liệu mức độ Mật của bến phao");
+                seedPermission(definitions, "buoyberth", "create", "Thêm bến phao",
+                                "Tạo mới hồ sơ bến phao");
+                seedPermission(definitions, "buoyberth", "update", "Cập nhật bến phao",
+                                "Chỉnh sửa thông tin bến phao");
+                seedPermission(definitions, "buoyberth", "delete", "Xóa bến phao", "Xóa bến phao");
+                seedPermission(definitions, "buoyberth", "approve", "Phê duyệt bến phao",
+                                "Phê duyệt dữ liệu bến phao");
+                seedPermission(definitions, "buoyberth", "approvec1", "Phê duyệt C1 bến phao",
+                                "Phê duyệt cấp 1 bến phao");
+                seedPermission(definitions, "buoyberth", "approvec2", "Phê duyệt C2 bến phao",
+                                "Phê duyệt cấp 2 bến phao");
+                seedPermission(definitions, "buoyberth", "history", "Lịch sử phê duyệt bến phao",
+                                "Xem lịch sử thay đổi bến phao");
+
+                // 8.2.5 Cơ sở sửa chữa, đóng tàu (Ship Repair Yard)
+                seedPermission(definitions, "shiprepairyard", "read", "Xem cơ sở sửa chữa, đóng tàu",
+                                "Tra cứu thông tin cơ sở sửa chữa, đóng tàu");
+                seedPermission(definitions, "shiprepairyard", "read:restricted", "Xem bản ghi hạn chế cơ sở sửa chữa, đóng tàu",
+                                "Xem các bản ghi dữ liệu mức độ Hạn chế của cơ sở sửa chữa, đóng tàu");
+                seedPermission(definitions, "shiprepairyard", "read:confidential", "Xem bản ghi mật cơ sở sửa chữa, đóng tàu",
+                                "Xem các bản ghi dữ liệu mức độ Mật của cơ sở sửa chữa, đóng tàu");
+                seedPermission(definitions, "shiprepairyard", "create", "Thêm cơ sở sửa chữa, đóng tàu",
+                                "Tạo mới hồ sơ cơ sở sửa chữa, đóng tàu");
+                seedPermission(definitions, "shiprepairyard", "update", "Cập nhật cơ sở sửa chữa, đóng tàu",
+                                "Chỉnh sửa thông tin cơ sở sửa chữa, đóng tàu");
+                seedPermission(definitions, "shiprepairyard", "delete", "Xóa cơ sở sửa chữa, đóng tàu", "Xóa cơ sở sửa chữa, đóng tàu");
+                seedPermission(definitions, "shiprepairyard", "approve", "Phê duyệt cơ sở sửa chữa, đóng tàu",
+                                "Phê duyệt dữ liệu cơ sở sửa chữa, đóng tàu");
+                seedPermission(definitions, "shiprepairyard", "approvec1", "Phê duyệt C1 cơ sở sửa chữa, đóng tàu",
+                                "Phê duyệt cấp 1 cơ sở sửa chữa, đóng tàu");
+                seedPermission(definitions, "shiprepairyard", "approvec2", "Phê duyệt C2 cơ sở sửa chữa, đóng tàu",
+                                "Phê duyệt cấp 2 cơ sở sửa chữa, đóng tàu");
+                seedPermission(definitions, "shiprepairyard", "history", "Lịch sử phê duyệt cơ sở sửa chữa, đóng tàu",
+                                "Xem lịch sử thay đổi cơ sở sửa chữa, đóng tàu");
+
                 // 8.3 Cầu cảng (Pier)
                 seedPermission(definitions, "pier", "read", "Xem cầu cảng", "Tra cứu thông tin cầu cảng");
                 seedPermission(definitions, "pier", "read:restricted", "Xem bản ghi hạn chế cầu cảng",
@@ -276,6 +381,57 @@ public class PermissionSeeder implements CommandLineRunner {
                                 "Phê duyệt cấp 2 hệ thống CCTV");
                 seedPermission(definitions, "cctv", "history", "Lịch sử phê duyệt CCTV",
                                 "Xem lịch sử thay đổi và phê duyệt hệ thống CCTV");
+
+                // 8.8 Hệ thống SCADA (SCADA System)
+                seedPermission(definitions, "scada", "read", "Xem hệ thống SCADA", "Tra cứu thông tin hệ thống SCADA");
+                seedPermission(definitions, "scada", "read:restricted", "Xem bản ghi hạn chế SCADA",
+                                "Xem các bản ghi dữ liệu mức độ Hạn chế của hệ thống SCADA");
+                seedPermission(definitions, "scada", "read:confidential", "Xem bản ghi mật SCADA",
+                                "Xem các bản ghi dữ liệu mức độ Mật của hệ thống SCADA");
+                seedPermission(definitions, "scada", "create", "Thêm hệ thống SCADA", "Tạo mới hồ sơ hệ thống SCADA");
+                seedPermission(definitions, "scada", "update", "Cập nhật hệ thống SCADA", "Chỉnh sửa thông tin hệ thống SCADA");
+                seedPermission(definitions, "scada", "delete", "Xóa hệ thống SCADA", "Xóa hệ thống SCADA khỏi hệ thống");
+                seedPermission(definitions, "scada", "approve", "Phê duyệt hệ thống SCADA", "Phê duyệt dữ liệu hệ thống SCADA");
+                seedPermission(definitions, "scada", "approvec1", "Phê duyệt C1 hệ thống SCADA",
+                                "Phê duyệt cấp 1 hệ thống SCADA");
+                seedPermission(definitions, "scada", "approvec2", "Phê duyệt C2 hệ thống SCADA",
+                                "Phê duyệt cấp 2 hệ thống SCADA");
+                seedPermission(definitions, "scada", "history", "Lịch sử phê duyệt SCADA",
+                                "Xem lịch sử thay đổi và phê duyệt hệ thống SCADA");
+
+                // 8.9 Hệ thống truyền dẫn (Transmission System)
+                seedPermission(definitions, "transmission", "read", "Xem hệ thống truyền dẫn", "Tra cứu thông tin hệ thống truyền dẫn");
+                seedPermission(definitions, "transmission", "read:restricted", "Xem bản ghi hạn chế truyền dẫn",
+                                "Xem các bản ghi dữ liệu mức độ Hạn chế của hệ thống truyền dẫn");
+                seedPermission(definitions, "transmission", "read:confidential", "Xem bản ghi mật truyền dẫn",
+                                "Xem các bản ghi dữ liệu mức độ Mật của hệ thống truyền dẫn");
+                seedPermission(definitions, "transmission", "create", "Thêm hệ thống truyền dẫn", "Tạo mới hồ sơ hệ thống truyền dẫn");
+                seedPermission(definitions, "transmission", "update", "Cập nhật hệ thống truyền dẫn", "Chỉnh sửa thông tin hệ thống truyền dẫn");
+                seedPermission(definitions, "transmission", "delete", "Xóa hệ thống truyền dẫn", "Xóa hệ thống truyền dẫn khỏi hệ thống");
+                seedPermission(definitions, "transmission", "approve", "Phê duyệt hệ thống truyền dẫn", "Phê duyệt dữ liệu hệ thống truyền dẫn");
+                seedPermission(definitions, "transmission", "approvec1", "Phê duyệt C1 hệ thống truyền dẫn",
+                                "Phê duyệt cấp 1 hệ thống truyền dẫn");
+                seedPermission(definitions, "transmission", "approvec2", "Phê duyệt C2 hệ thống truyền dẫn",
+                                "Phê duyệt cấp 2 hệ thống truyền dẫn");
+                seedPermission(definitions, "transmission", "history", "Lịch sử phê duyệt truyền dẫn",
+                                "Xem lịch sử thay đổi và phê duyệt hệ thống truyền dẫn");
+
+                // 8.10 Hệ thống phụ trợ VTS (VTS Assist System)
+                seedPermission(definitions, "vtsassist", "read", "Xem hệ thống phụ trợ VTS", "Tra cứu thông tin hệ thống phụ trợ VTS");
+                seedPermission(definitions, "vtsassist", "read:restricted", "Xem bản ghi hạn chế phụ trợ VTS",
+                                "Xem các bản ghi dữ liệu mức độ Hạn chế của hệ thống phụ trợ VTS");
+                seedPermission(definitions, "vtsassist", "read:confidential", "Xem bản ghi mật phụ trợ VTS",
+                                "Xem các bản ghi dữ liệu mức độ Mật của hệ thống phụ trợ VTS");
+                seedPermission(definitions, "vtsassist", "create", "Thêm hệ thống phụ trợ VTS", "Tạo mới hồ sơ hệ thống phụ trợ VTS");
+                seedPermission(definitions, "vtsassist", "update", "Cập nhật hệ thống phụ trợ VTS", "Chỉnh sửa thông tin hệ thống phụ trợ VTS");
+                seedPermission(definitions, "vtsassist", "delete", "Xóa hệ thống phụ trợ VTS", "Xóa hệ thống phụ trợ VTS khỏi hệ thống");
+                seedPermission(definitions, "vtsassist", "approve", "Phê duyệt hệ thống phụ trợ VTS", "Phê duyệt dữ liệu hệ thống phụ trợ VTS");
+                seedPermission(definitions, "vtsassist", "approvec1", "Phê duyệt C1 hệ thống phụ trợ VTS",
+                                "Phê duyệt cấp 1 hệ thống phụ trợ VTS");
+                seedPermission(definitions, "vtsassist", "approvec2", "Phê duyệt C2 hệ thống phụ trợ VTS",
+                                "Phê duyệt cấp 2 hệ thống phụ trợ VTS");
+                seedPermission(definitions, "vtsassist", "history", "Lịch sử phê duyệt phụ trợ VTS",
+                                "Xem lịch sử thay đổi và phê duyệt hệ thống phụ trợ VTS");
 
                 seedPermission(definitions, "waterarea", "read", "Xem vùng nước cảng",
                                 "Tra cứu thông tin vùng nước cảng");

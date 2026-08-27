@@ -52,11 +52,11 @@ class CctvControllerTest {
 
     @Test
     void testSubmit() {
-        when(cctvApprovalService.submit(eq(TEST_ID), any())).thenReturn(response);
-        ResponseEntity<?> result = controller.submit(TEST_ID);
+        when(cctvApprovalService.submit(eq(TEST_ID), any(), any())).thenReturn(response);
+        ResponseEntity<?> result = controller.submit(TEST_ID, null);
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertNotNull(result.getBody());
-        verify(cctvApprovalService).submit(eq(TEST_ID), any());
+        verify(cctvApprovalService).submit(eq(TEST_ID), any(), any());
     }
 
     @Test

@@ -1,0 +1,153 @@
+{
+  "triage_id": "TRI-1787805644906-f706",
+  "created_at": 1787805644906,
+  "request_summary": "Clone module Khu chuyển tải (TransferArea, DB+BE+FE) sang Khu tránh trú bão (StormShelterArea) theo CSV đặc tả: thêm navigationChannelId/buoyStationId/classification, bỏ operationalFunctions/activityStartDate/activityEndDate, mã {portCode}-TTB-{seq}, endpoint /api/v1/storm-shelter.",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/App.tsx",
+      "frontend/src/components/AppLayout.tsx",
+      "frontend/src/pages/storm-shelter/StormShelterDetailContent.tsx",
+      "frontend/src/pages/storm-shelter/StormShelterForm.tsx",
+      "frontend/src/pages/storm-shelter/StormShelterListPage.tsx",
+      "frontend/src/services/portService.ts",
+      "frontend/src/types/port.ts",
+      "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java",
+      "src/main/java/com/hanghai/kchtg/port/controller/StormShelterAreaController.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/stormshelter/ApproveRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/stormshelter/AttachmentDto.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/stormshelter/CreateStormShelterAreaRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/stormshelter/RejectRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/stormshelter/StormShelterAreaResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/stormshelter/StormShelterMooringWaterAreaAnchorPointRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/stormshelter/StormShelterMooringWaterAreaAnchorPointResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/stormshelter/StormShelterMooringWaterAreaRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/stormshelter/StormShelterMooringWaterAreaResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/stormshelter/UpdateStormShelterAreaRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/StormShelterArea.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/StormShelterMooringWaterArea.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/StormShelterMooringWaterAreaAnchorPoint.java",
+      "src/main/java/com/hanghai/kchtg/port/repository/StormShelterAreaRepository.java",
+      "src/main/java/com/hanghai/kchtg/port/repository/StormShelterMooringWaterAreaAnchorPointRepository.java",
+      "src/main/java/com/hanghai/kchtg/port/repository/StormShelterMooringWaterAreaRepository.java",
+      "src/main/java/com/hanghai/kchtg/port/service/StormShelterAreaApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/StormShelterAreaService.java",
+      "src/main/resources/db/migration/V20260829000000__create_storm_shelter_areas.sql",
+      "src/main/resources/db/migration/V20260829010000__storm_shelter_gis_mooring.sql",
+      "src/main/resources/db/migration/V20260829020000__add_storm_shelter_anchor_point_audit_columns.sql",
+      "src/main/resources/db/migration/V20260829030000__convert_storm_shelter_mooring_audit_to_uuid.sql"
+    ],
+    "impact_files": [
+      "frontend/src/App.tsx",
+      "frontend/src/components/AppLayout.tsx",
+      "frontend/src/pages/storm-shelter/StormShelterDetailContent.tsx",
+      "frontend/src/pages/storm-shelter/StormShelterForm.tsx",
+      "frontend/src/pages/storm-shelter/StormShelterListPage.tsx",
+      "frontend/src/services/portService.ts",
+      "frontend/src/types/port.ts",
+      "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java",
+      "src/main/java/com/hanghai/kchtg/port/controller/StormShelterAreaController.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/stormshelter/ApproveRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/stormshelter/AttachmentDto.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/stormshelter/CreateStormShelterAreaRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/stormshelter/RejectRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/stormshelter/StormShelterAreaResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/stormshelter/StormShelterMooringWaterAreaAnchorPointRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/stormshelter/StormShelterMooringWaterAreaAnchorPointResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/stormshelter/StormShelterMooringWaterAreaRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/stormshelter/StormShelterMooringWaterAreaResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/stormshelter/UpdateStormShelterAreaRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/StormShelterArea.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/StormShelterMooringWaterArea.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/StormShelterMooringWaterAreaAnchorPoint.java",
+      "src/main/java/com/hanghai/kchtg/port/repository/StormShelterAreaRepository.java",
+      "src/main/java/com/hanghai/kchtg/port/repository/StormShelterMooringWaterAreaAnchorPointRepository.java",
+      "src/main/java/com/hanghai/kchtg/port/repository/StormShelterMooringWaterAreaRepository.java",
+      "src/main/java/com/hanghai/kchtg/port/service/StormShelterAreaApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/StormShelterAreaService.java",
+      "src/main/resources/db/migration/V20260829000000__create_storm_shelter_areas.sql",
+      "src/main/resources/db/migration/V20260829010000__storm_shelter_gis_mooring.sql",
+      "src/main/resources/db/migration/V20260829020000__add_storm_shelter_anchor_point_audit_columns.sql",
+      "src/main/resources/db/migration/V20260829030000__convert_storm_shelter_mooring_audit_to_uuid.sql"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/V20260829000000__create_storm_shelter_areas.sql"
+      },
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/V20260829010000__storm_shelter_gis_mooring.sql"
+      },
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/V20260829020000__add_storm_shelter_anchor_point_audit_columns.sql"
+      },
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/V20260829030000__convert_storm_shelter_mooring_audit_to_uuid.sql"
+      }
+    ],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C3: one-way door: schema:src/main/resources/db/migration/V20260829000000__create_storm_shelter_areas.sql, schema:src/main/resources/db/migration/V20260829010000__storm_shelter_gis_mooring.sql, schema:src/main/resources/db/migration/V20260829020000__add_storm_shelter_anchor_point_audit_columns.sql +1 more — floors at C3 regardless of size (31 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Menu \"Quản lý khu tránh trú bão\" (AppLayout) → route /storm-shelter → màn danh sách + popup thêm/sửa/chi tiết",
+  "blast_radius": 31,
+  "done_oracle": "Màn Quản lý khu tránh trú bão có đủ bộ lọc (mã/tên/ĐVQL/cảng/TỉnhTP/luồng hàng hải/bến phao/phân loại/tình trạng), danh sách, thêm mới, chỉnh sửa, chi tiết 5 tab; BE /api/v1/storm-shelter đủ CRUD + duyệt 2 cấp + attachment; mã tự sinh {portCode}-TTB-{seq}; mvn clean compile PASS và npm run build PASS.",
+  "verification_commands": [
+    {
+      "command": "\"C:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.1.4\\plugins\\maven\\lib\\maven3\\bin\\mvn.cmd\" clean compile -q",
+      "cwd": ".",
+      "timeout_ms": 600000
+    },
+    {
+      "command": "npm run build",
+      "cwd": "frontend",
+      "timeout_ms": 600000
+    }
+  ],
+  "change_type": "architecture",
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/entity/TransferArea.java",
+      "line": 43,
+      "quote": "@Column(name = \"transfer_area_code\", nullable = false, unique = true, length = 50)",
+      "source_hash": "578f223855d93eb307da11d259b7a919125a2acd1b0f9d1d59dbe527695ecba3",
+      "quote_hash": "7d8f88d06823a007c522021209c73613b5e247e3f28c1e962b56274609339519",
+      "note": "Entity mẫu đang clone sang StormShelterArea"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/controller/TransferAreaController.java",
+      "line": 30,
+      "quote": "@RequestMapping(\"/api/v1/transfer-area\")",
+      "source_hash": "20130df0c4ec2b16a3b314b12d025a7eb8f3d3131b93b4a2f92c85d0774ac93f",
+      "quote_hash": "f9155e5b0f575956ed64d612359862290d817b9c010b4bd36cfd20471b52eb89",
+      "note": "Endpoint mẫu clone sang /api/v1/storm-shelter"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java",
+      "line": 238,
+      "quote": "seedPermission(definitions, \"transferarea\", \"read\", \"Xem khu chuyển tải\",",
+      "source_hash": "cf527024772058042931d1e2b3bb20afe2e50cf81a056d3ee06aca60c8efeae0",
+      "quote_hash": "5797898385086ee78bd21b3fe1a849bc9f2f6b4733b9444b03ccb80d11dfd4ca",
+      "note": "Nơi thêm block seedPermission stormshelter:*"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "c98f66d0a0133da7d7cd158b82bc438e41f86357",
+    "dirty": true,
+    "captured_at": 1787805645135
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

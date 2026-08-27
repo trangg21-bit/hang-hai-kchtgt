@@ -48,6 +48,10 @@ public class ChangeHistoryService {
             case "VTSOPERATIONCENTER", "VTS_OPERATION_CENTER" -> InfrastructureType.VTS_OPERATION_CENTER;
             case "RADARSTATION", "RADAR_STATION" -> InfrastructureType.RADAR_STATION;
             case "AISSYSTEM", "AIS_SYSTEM" -> InfrastructureType.AIS_SYSTEM;
+            case "CCTV" -> InfrastructureType.CCTV;
+            case "SCADA" -> InfrastructureType.SCADA;
+            case "TRANSMISSION" -> InfrastructureType.TRANSMISSION;
+            case "VTS_ASSIST", "VTSASSIST", "PHU_TRO" -> InfrastructureType.VTS_ASSIST;
             case "BEACONSTATION", "BEACON_STATION", "DEN_BIEN" -> InfrastructureType.LIGHTHOUSE;
             case "SHIPREPAIRFACILITY", "SHIP_REPAIR_FACILITY" -> InfrastructureType.SHIP_REPAIR_FACILITY;
             default -> InfrastructureType.SEAPORT;
@@ -121,6 +125,7 @@ public class ChangeHistoryService {
                                 .newValue(newValueStr)
                                 .build());
                     }
+
                     changedFields.add(fieldName);
                 }
             } catch (IllegalAccessException e) {

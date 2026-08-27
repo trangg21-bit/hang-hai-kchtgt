@@ -1,0 +1,63 @@
+{
+  "triage_id": "TRI-1787715357227-cbaf",
+  "created_at": 1787715357227,
+  "request_summary": "Khi vào trang /anchorage, menu item \"Quản lý khu neo đậu\" (key '/anchorage') không được highlight trắng như \"Quản lý bến cảng\" (key 'berth-parent') vì AppLayout.tsx:189 set selectedKey = 'port-parent' thay vì '/anchorage' (Menu dùng selectedKeys={[selectedKey]}). Sửa: selectedKey = '/anchorage' + nhánh openKeys tương ứng.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/components/AppLayout.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/components/AppLayout.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Sidebar menu — item \"Quản lý khu neo đậu\" (AppLayout)",
+  "blast_radius": 1,
+  "done_oracle": "Click menu \"Quản lý khu neo đậu\" → vào trang list /anchorage, item menu \"Quản lý khu neo đậu\" được highlight trắng (selected) giống \"Quản lý bến cảng\" khi ở /berth; submenu cha \"Quản lý cảng biển\" + \"Quản lý KCHT Hàng Hải\" giữ mở.",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht\\frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/components/AppLayout.tsx",
+      "line": 189,
+      "quote": "selectedKey = 'port-parent';",
+      "source_hash": "5e938fc715a10439f3b45d6b95ea8be49869fa5e9aad050c0691ffb949f1181f",
+      "quote_hash": "e223e5494f9ed8f05b5e92d8e09480833dc7ea7d0123781459a63270e0019b96",
+      "note": "Nhánh /anchorage set selectedKey='port-parent' → highlight rơi vào submenu cha, item /anchorage không sáng"
+    },
+    {
+      "file": "frontend/src/components/AppLayout.tsx",
+      "line": 212,
+      "quote": "} else if (selectedKey === 'anchorage') {",
+      "source_hash": "5e938fc715a10439f3b45d6b95ea8be49869fa5e9aad050c0691ffb949f1181f",
+      "quote_hash": "77e7c6d76d3628e23c81c823b92a6bced59cd5f3b5e1834ab1f2397267d9e1ae",
+      "note": "Nhánh openKeys dùng selectedKey === 'anchorage' — phải đổi theo key mới '/anchorage'"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787715357475
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}
