@@ -1,0 +1,71 @@
+STT,Tên trường,Loại điều khiển,Danh sách,Bộ lọc,Xem chi tiết,Tạo mới,Sửa
+TAB 1,Thông tin chung,,FALSE,FALSE,FALSE,FALSE,FALSE
+1,Mã khu tránh trú bão,"Input (disabled, tự sinh {mã cảng biển}-TTB-{seq})",TRUE,TRUE,FALSE,TRUE,TRUE
+2,Tên khu tránh trú bão (bắt buộc),InputTextArea,TRUE,TRUE,FALSE,TRUE,TRUE
+3,Đơn vị quản lý (bắt buộc),SelectOrgCode,TRUE,TRUE,FALSE,TRUE,TRUE
+4,Thuộc cảng biển (bắt buộc khi tạo),SelectKcht (CB),TRUE,TRUE,FALSE,TRUE,TRUE
+5,Địa điểm (Tỉnh/TP) (bắt buộc),SelectCateOther,TRUE,TRUE,FALSE,TRUE,TRUE
+6,Thuộc luồng hàng hải,Select,FALSE,TRUE,FALSE,TRUE,TRUE
+7,Thuộc bến phao,Select,FALSE,TRUE,FALSE,TRUE,TRUE
+8,Phân loại,Select,FALSE,TRUE,FALSE,TRUE,TRUE
+9,Địa điểm chi tiết,InputTextArea,FALSE,FALSE,FALSE,TRUE,TRUE
+10,Tình trạng (bắt buộc),SelectAppParams,TRUE,TRUE,FALSE,TRUE,TRUE
+,Thông tin kỹ thuật,,FALSE,FALSE,FALSE,TRUE,TRUE
+11,Hình dạng,InputTextArea,FALSE,FALSE,FALSE,TRUE,TRUE
+12,Diện tích (ha),InputDecimal,FALSE,FALSE,FALSE,TRUE,TRUE
+13,Độ sâu khu nước theo thiết kế (m),Input,FALSE,FALSE,FALSE,TRUE,TRUE
+14,Độ sâu khu nước hiện tại (m),Input,FALSE,FALSE,FALSE,TRUE,TRUE
+15,Cao độ đáy bến thiết kế,Input,FALSE,FALSE,FALSE,TRUE,TRUE
+16,Cỡ tàu khai thác theo công bố (DWT),Input,FALSE,FALSE,FALSE,FALSE,FALSE
+17,Số lượng khu tránh trú bão đang khai thác,Input,FALSE,FALSE,FALSE,TRUE,TRUE
+18,Số lượng khu tránh trú bão đã công bố,Input,FALSE,FALSE,FALSE,TRUE,TRUE
+19,Số lượng khu tránh trú bão đang được thỏa thuận đầu tư XD,Input,FALSE,FALSE,FALSE,TRUE,TRUE
+20,Ghi chú,InputTextArea,FALSE,FALSE,FALSE,FALSE,FALSE
+,"Thông tin công bố mở, đưa vào sử dụng",,FALSE,FALSE,FALSE,TRUE,TRUE
+21,"Thời điểm công bố mở, đưa ra sử dụng",DatePicker,FALSE,FALSE,FALSE,TRUE,TRUE
+22,Quyết định công bố / VB cho phép khai thác,InputTextArea,FALSE,FALSE,FALSE,TRUE,TRUE
+23,Văn bản thỏa thuận đầu tư xây dựng,InputTextArea,FALSE,FALSE,FALSE,TRUE,TRUE
+,Danh sách khu nước neo buộc tàu (bảng con),,FALSE,FALSE,TRUE,TRUE,TRUE
+24,Phạm vi khu nước neo buộc tàu,Text,FALSE,FALSE,TRUE,TRUE,TRUE
+,Vị trí cụ thể điểm neo (hiển thị khi thêm mới thông tin khu nước neo buộc tàu):,,FALSE,FALSE,TRUE,TRUE,TRUE
+25,Loại đối tượng,Select (Điểm/Đường/Vùng),FALSE,FALSE,TRUE,TRUE,TRUE
+26,Biểu tượng,Select,FALSE,FALSE,TRUE,TRUE,TRUE
+27,Hệ quy chiếu,Text,FALSE,FALSE,TRUE,TRUE,TRUE
+28,Quy tắc hiển thị,Text,FALSE,FALSE,TRUE,TRUE,TRUE
+29,Điểm neo (hiển thị khi thêm mới thông tin khu nước neo buộc tàu):,"Bảng con (Tên điểm neo, tọa độ GIS)",FALSE,FALSE,TRUE,TRUE,TRUE
+TAB 2,Vị trí (GIS),,FALSE,FALSE,TRUE,TRUE,TRUE
+28,Loại đối tượng,Select (Điểm/Đường/Vùng),FALSE,FALSE,TRUE,TRUE,TRUE
+29,Biểu tượng,Select,FALSE,FALSE,TRUE,TRUE,TRUE
+30,Hệ quy chiếu,Text,FALSE,FALSE,TRUE,TRUE,TRUE
+31,Quy tắc hiển thị,Text,FALSE,FALSE,TRUE,TRUE,TRUE
+32,Tọa độ,LongLatTable,FALSE,FALSE,TRUE,TRUE,TRUE
+TAB 3,File đính kèm,,FALSE,FALSE,FALSE,FALSE,FALSE
+35,File đính kèm,UploadFileTable,FALSE,FALSE,TRUE,TRUE,TRUE
+TAB 4,Vận hành & bảo trì,,FALSE,FALSE,FALSE,FALSE,FALSE
+,Thông tin vận hành khai thác,,FALSE,FALSE,TRUE,FALSE,FALSE
+34,Mã kế hoạch,Text (read-only),FALSE,FALSE,TRUE,FALSE,FALSE
+35,Tên kế hoạch,Text (read-only),FALSE,FALSE,TRUE,FALSE,FALSE
+36,Ngày bắt đầu,Text (read-only),FALSE,FALSE,TRUE,FALSE,FALSE
+37,Ngày kết thúc,Text (read-only),FALSE,FALSE,TRUE,FALSE,FALSE
+,Thông tin bảo trì,,FALSE,FALSE,TRUE,FALSE,FALSE
+38,Mã kế hoạch,Text (read-only),FALSE,FALSE,TRUE,FALSE,FALSE
+39,Tên kế hoạch,Text (read-only),FALSE,FALSE,TRUE,FALSE,FALSE
+40,Thời gian bắt đầu,Text (read-only),FALSE,FALSE,TRUE,FALSE,FALSE
+41,Thời gian kết thúc,Text (read-only),FALSE,FALSE,TRUE,FALSE,FALSE
+,Thông tin sự cố,,FALSE,FALSE,TRUE,FALSE,FALSE
+42,Mã sự cố,Text (read-only),FALSE,FALSE,TRUE,FALSE,FALSE
+43,Loại sự cố,Text (read-only),FALSE,FALSE,TRUE,FALSE,FALSE
+44,Địa điểm,Text (read-only),FALSE,FALSE,TRUE,FALSE,FALSE
+45,Thời gian,Text (read-only),FALSE,FALSE,TRUE,FALSE,FALSE
+TAB 5,Xử lý & theo dõi (chỉ ở trang Chi tiết/Danh sách),,FALSE,FALSE,FALSE,FALSE,FALSE
+48,Trạng thái,Badge (read-only),TRUE,TRUE,TRUE,FALSE,FALSE
+49,Ngày cập nhật,Text (read-only),TRUE,TRUE,TRUE,FALSE,FALSE
+50,Cán bộ cập nhật,Text (read-only),TRUE,FALSE,TRUE,FALSE,FALSE
+51,Ngày gửi phê duyệt,Text (read-only),TRUE,FALSE,TRUE,FALSE,FALSE
+52,Cán bộ gửi phê duyệt,Text (read-only),TRUE,FALSE,TRUE,FALSE,FALSE
+53,Ngày phê duyệt cấp Cảng vụ/Chi cục,Text (read-only),TRUE,FALSE,TRUE,FALSE,FALSE
+54,Cán bộ phê duyệt cấp Cảng vụ/Chi cục,Text (read-only),TRUE,FALSE,TRUE,FALSE,FALSE
+55,Nội dung phê duyệt,Text (read-only),FALSE,FALSE,TRUE,FALSE,FALSE
+56,Ngày phê duyệt cấp Cục,Text (read-only),TRUE,FALSE,TRUE,FALSE,FALSE
+57,Cán bộ phê duyệt cấp Cục,Text (read-only),TRUE,FALSE,TRUE,FALSE,FALSE
+58,Nội dung phê duyệt,Text (read-only),FALSE,FALSE,TRUE,FALSE,FALSE

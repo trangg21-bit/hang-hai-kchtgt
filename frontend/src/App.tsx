@@ -56,6 +56,7 @@ const TransmissionListPage = lazy(() => import('./services/transmission/Transmis
 const BerthList = lazy(() => import('./pages/port/BerthListPage'));
 const AnchorageList = lazy(() => import('./pages/anchorage/AnchorageListPage'));
 const TransferAreaList = lazy(() => import('./pages/transfer-area/TransferAreaListPage'));
+const StormShelterList = lazy(() => import('./pages/storm-shelter/StormShelterListPage'));
 
 const PierListPage = lazy(() => import('./pages/port/PierListPage'));
 
@@ -205,6 +206,8 @@ export default function App() {
                 <Route path="/anchorage" element={<PermissionGuard permission="anchorage:read"><AnchorageList /></PermissionGuard>} />
 
                 <Route path="/transfer-area" element={<PermissionGuard permission="transferarea:read"><TransferAreaList /></PermissionGuard>} />
+
+                <Route path="/storm-shelter" element={<PermissionGuard permission="stormshelter:read"><StormShelterList /></PermissionGuard>} />
 
                 <Route path="/pier" element={<PermissionGuard permission="pier:read"><PierListPage /></PermissionGuard>} />
 
