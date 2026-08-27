@@ -53,7 +53,7 @@ const STATUS_TAB_LIST = [
   { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', statuses: ['PENDING_APPROVAL'] },
   { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', statuses: ['APPROVED_LEVEL1'] },
   { key: 'APPROVED', label: 'Đã duyệt', statuses: ['APPROVED'] },
-  { key: 'REJECTED', label: 'Bị trả về', statuses: ['REJECTED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'] },
+  { key: 'REJECTED', label: 'Từ chối', statuses: ['REJECTED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'] },
 ];
 
 // ── F-039/F-040 — Gating nút Sửa theo trạng thái phê duyệt ─────────────
@@ -251,7 +251,7 @@ export default function NavigationChannelList() {
       },
       {
         key: 'channelName',
-        label: 'Tên luồng hàng hải (#5)',
+        label: 'Tên luồng hàng hải',
         dataIndex: 'channelName',
         width: 220,
         sortable: true,
@@ -260,7 +260,7 @@ export default function NavigationChannelList() {
       },
       {
         key: 'channelCode',
-        label: 'Mã luồng (#4)',
+        label: 'Mã luồng',
         dataIndex: 'channelCode',
         width: 130,
         type: 'mono' as const,
@@ -268,7 +268,7 @@ export default function NavigationChannelList() {
       },
       {
         key: 'seaportId',
-        label: 'Thuộc cảng biển (#2)',
+        label: 'Thuộc cảng biển',
         dataIndex: 'seaportId',
         width: 180,
         ellipsis: true,
@@ -276,7 +276,7 @@ export default function NavigationChannelList() {
       },
       {
         key: 'orgUnitId',
-        label: 'Đơn vị quản lý (#1)',
+        label: 'Đơn vị quản lý',
         dataIndex: 'orgUnitId',
         width: 200,
         ellipsis: true,
@@ -286,14 +286,14 @@ export default function NavigationChannelList() {
       },
       {
         key: 'provinceId',
-        label: 'Địa điểm Tỉnh/TP (#6)',
+        label: 'Địa điểm Tỉnh/TP',
         dataIndex: 'provinceId',
         width: 150,
         render: (v: number | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{provinceLabel(v)}</span>,
       },
       {
         key: 'conditionStatus',
-        label: 'Tình trạng (#8)',
+        label: 'Tình trạng',
         dataIndex: 'conditionStatus',
         width: 150,
         sortable: true,
@@ -305,14 +305,14 @@ export default function NavigationChannelList() {
       },
       {
         key: 'approvalStatus',
-        label: 'Trạng thái (#47)',
+        label: 'Trạng thái',
         dataIndex: 'approvalStatus',
         width: 160,
         render: (v: ApprovalStatus) => (v ? <ApprovalStatusBadge status={v} /> : '—'),
       },
       {
         key: 'updatedAt',
-        label: 'Ngày cập nhật (#48)',
+        label: 'Ngày cập nhật',
         dataIndex: 'updatedAt',
         width: 150,
         sortable: true,
@@ -360,7 +360,7 @@ export default function NavigationChannelList() {
   const filterContent = (
     <>
       <div style={{ marginBottom: spaceFormField, marginTop: 16 }}>
-        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Đơn vị quản lý (#1)</div>
+        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Đơn vị quản lý</div>
         <OrgUnitTreeSelect
           organizations={organizations}
           placeholder="Chọn đơn vị..."
@@ -372,7 +372,7 @@ export default function NavigationChannelList() {
         />
       </div>
       <div style={{ marginBottom: spaceFormField }}>
-        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Thuộc cảng biển (#2)</div>
+        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Thuộc cảng biển</div>
         <Select
           placeholder="Chọn cảng biển..."
           allowClear
@@ -385,7 +385,7 @@ export default function NavigationChannelList() {
         />
       </div>
       <div style={{ marginBottom: spaceFormField }}>
-        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Tên luồng (#5)</div>
+        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Tên luồng</div>
         <Input
           placeholder="Tìm theo tên luồng..."
           allowClear
@@ -399,7 +399,7 @@ export default function NavigationChannelList() {
       {filterCollapsed && (
         <>
           <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Mã luồng (#4)</div>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Mã luồng</div>
             <Input
               placeholder="Nhập mã luồng..."
               allowClear
@@ -410,7 +410,7 @@ export default function NavigationChannelList() {
             />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Địa điểm Tỉnh/TP (#6)</div>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Địa điểm Tỉnh/TP</div>
             <Select
               placeholder="Chọn tỉnh/thành phố..."
               allowClear
@@ -423,7 +423,7 @@ export default function NavigationChannelList() {
             />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Tình trạng (#8)</div>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Tình trạng</div>
             <Select
               placeholder="Chọn tình trạng"
               allowClear
@@ -434,7 +434,7 @@ export default function NavigationChannelList() {
             />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Cán bộ cập nhật (#49)</div>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Cán bộ cập nhật</div>
             <Select
               placeholder="Chọn cán bộ cập nhật"
               allowClear
@@ -446,7 +446,7 @@ export default function NavigationChannelList() {
             />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Ngày cập nhật (#48)</div>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Ngày cập nhật</div>
             <DatePicker.RangePicker
               placeholder={['Từ ngày', 'Đến ngày']}
               format="DD/MM/YYYY"

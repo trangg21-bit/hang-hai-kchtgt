@@ -272,7 +272,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         render: (_: any, __: any, index: number) => <span style={{ color: textSecondary, fontSize: fontSizeMd }}>{index + 1}</span>,
       },
       {
-        title: 'Phân loại (#22)',
+        title: 'Phân loại',
         dataIndex: 'routeClassification',
         width: 110,
         render: (text: string, _: any, index: number) => (
@@ -280,7 +280,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         ),
       },
       {
-        title: 'Mã (#23)',
+        title: 'Mã',
         dataIndex: 'routeCode',
         width: 120,
         render: (text: string) => (
@@ -288,7 +288,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         ),
       },
       {
-        title: 'Tên (#24)',
+        title: 'Tên',
         dataIndex: 'routeName',
         width: 160,
         render: (text: string, _: any, index: number) => (
@@ -296,7 +296,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         ),
       },
       {
-        title: 'Loại tuyến (#25)',
+        title: 'Loại tuyến',
         dataIndex: 'routeType',
         width: 130,
         render: (value: number | undefined, _: any, index: number) => (
@@ -304,7 +304,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         ),
       },
       {
-        title: 'Vị trí vũng quay tàu (#26)',
+        title: 'Vị trí vũng quay tàu',
         dataIndex: 'turningBasinLocation',
         width: 150,
         render: (text: string, _: any, index: number) => (
@@ -312,7 +312,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         ),
       },
       {
-        title: 'Bán kính vũng quay (m) (#27)',
+        title: 'Bán kính vũng quay (m)',
         dataIndex: 'turningBasinRadiusMeters',
         width: 140,
         render: (value: number | undefined, _: any, index: number) => (
@@ -320,7 +320,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         ),
       },
       {
-        title: 'Chiều cao tĩnh không (m) (#28)',
+        title: 'Chiều cao tĩnh không (m)',
         dataIndex: 'verticalClearanceMeters',
         width: 150,
         render: (value: number | undefined, _: any, index: number) => (
@@ -328,7 +328,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         ),
       },
       {
-        title: 'Chiều dài (km) (#29)',
+        title: 'Chiều dài (km)',
         dataIndex: 'channelLengthKilometers',
         width: 130,
         render: (value: number | undefined, _: any, index: number) => (
@@ -336,7 +336,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         ),
       },
       {
-        title: 'Rộng TK lớn nhất (m) (#30)',
+        title: 'Rộng TK lớn nhất (m)',
         dataIndex: 'maximumDesignWidthMeters',
         width: 140,
         render: (value: number | undefined, _: any, index: number) => (
@@ -344,7 +344,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         ),
       },
       {
-        title: 'Rộng TK nhỏ nhất (m) (#31)',
+        title: 'Rộng TK nhỏ nhất (m)',
         dataIndex: 'minimumDesignWidthMeters',
         width: 140,
         render: (value: number | undefined, _: any, index: number) => (
@@ -352,7 +352,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         ),
       },
       {
-        title: 'Độ sâu TK (m) (#32)',
+        title: 'Độ sâu TK (m)',
         dataIndex: 'designDepthMeters',
         width: 130,
         render: (value: number | undefined, _: any, index: number) => (
@@ -360,7 +360,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         ),
       },
       {
-        title: 'Độ sâu hiện tại (m) (#33)',
+        title: 'Độ sâu hiện tại (m)',
         dataIndex: 'currentDepthMeters',
         width: 140,
         render: (value: number | undefined, _: any, index: number) => (
@@ -368,7 +368,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         ),
       },
       {
-        title: 'Mái dốc TK (#34)',
+        title: 'Mái dốc TK',
         dataIndex: 'designSlope',
         width: 110,
         render: (value: number | undefined, _: any, index: number) => (
@@ -376,7 +376,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         ),
       },
       {
-        title: 'Bán kính cong NN (m) (#35)',
+        title: 'Bán kính cong NN (m)',
         dataIndex: 'minimumCurveRadiusMeters',
         width: 140,
         render: (value: number | undefined, _: any, index: number) => (
@@ -384,7 +384,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         ),
       },
       {
-        title: 'KL nạo vét (m³) (#36)',
+        title: 'KL nạo vét (m³)',
         dataIndex: 'routeLatestDredgingVolumeCubicMeters',
         width: 130,
         render: (value: number | undefined, _: any, index: number) => (
@@ -392,7 +392,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         ),
       },
       {
-        title: 'Năm bảo trì (#37)',
+        title: 'Năm bảo trì',
         dataIndex: 'routeLatestMaintenanceYear',
         width: 110,
         render: (value: number | undefined, _: any, index: number) => (
@@ -400,7 +400,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         ),
       },
       {
-        title: 'Phân cấp (#38)',
+        title: 'Phân cấp',
         dataIndex: 'routeGrade',
         width: 100,
         render: (value: number | undefined, _: any, index: number) => (
@@ -614,47 +614,47 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
               <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
                 {sectionTitle('Hồ sơ chính')}
                 <Descriptions bordered size="small" column={2} labelStyle={{ width: 180 }}>
-                  <Descriptions.Item label="Đơn vị quản lý (#1)">{record.orgUnitName || record.orgUnitId || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Thuộc cảng biển (#2)">{record.seaportName || record.seaportId || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Đơn vị vận hành (#3)">{record.operatingUnitId || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Mã luồng hàng hải (#4)">{record.channelCode || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Tên luồng hàng hải (#5)">{record.channelName || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Địa điểm (Tỉnh/TP) (#6)">{record.provinceId != null ? String(record.provinceId) : '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Địa điểm chi tiết (#7)">{record.detailedLocation || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Tình trạng (#8)">
+                  <Descriptions.Item label="Đơn vị quản lý">{record.orgUnitName || record.orgUnitId || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Thuộc cảng biển">{record.seaportName || record.seaportId || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Đơn vị vận hành">{record.operatingUnitId || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Mã luồng hàng hải">{record.channelCode || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Tên luồng hàng hải">{record.channelName || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Địa điểm (Tỉnh/TP)">{record.provinceId != null ? String(record.provinceId) : '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Địa điểm chi tiết">{record.detailedLocation || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Tình trạng">
                     {record.conditionStatus ? <ApprovalStatusBadge status={record.conditionStatus} size="small" /> : '—'}
                   </Descriptions.Item>
-                  <Descriptions.Item label="Trạm quản lý luồng (#9)">{record.managementStation || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Số lượng trạm (#10)">{record.stationCount ?? '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Số lượng nhân sự tại trạm (#11)">{record.stationStaffCount ?? '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Diện tích trạm m² (#12)">{record.stationAreaSquareMeters ?? '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Sửa chữa trạm gần nhất (#13)">{fmtDate(record.latestStationRepairMonth)}</Descriptions.Item>
-                  <Descriptions.Item label="Năm bảo trì gần nhất (#14)">{record.latestMaintenanceYear ?? '—'}</Descriptions.Item>
-                  <Descriptions.Item label="KL nạo vét m³ (#15)">{record.latestDredgingVolumeCubicMeters ?? '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Số lượng phao (#16)">{record.buoyCount ?? '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Số lượng tiêu (#17)">{record.beaconCount ?? '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Quyết định công bố số (#19)">{record.announcementDecisionNumber || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Ngày ra quyết định (#20)">{fmtDate(record.announcementDecisionDate)}</Descriptions.Item>
-                  <Descriptions.Item label="Đơn vị ra quyết định (#21)" span={2}>{record.announcementDecisionIssuer || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Ghi chú (#18)" span={2}>{record.notes || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Trạm quản lý luồng">{record.managementStation || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Số lượng trạm">{record.stationCount ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Số lượng nhân sự tại trạm">{record.stationStaffCount ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Diện tích trạm m²">{record.stationAreaSquareMeters ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Sửa chữa trạm gần nhất">{fmtDate(record.latestStationRepairMonth)}</Descriptions.Item>
+                  <Descriptions.Item label="Năm bảo trì gần nhất">{record.latestMaintenanceYear ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label="KL nạo vét m³">{record.latestDredgingVolumeCubicMeters ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Số lượng phao">{record.buoyCount ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Số lượng tiêu">{record.beaconCount ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Quyết định công bố số">{record.announcementDecisionNumber || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Ngày ra quyết định">{fmtDate(record.announcementDecisionDate)}</Descriptions.Item>
+                  <Descriptions.Item label="Đơn vị ra quyết định" span={2}>{record.announcementDecisionIssuer || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Ghi chú" span={2}>{record.notes || '—'}</Descriptions.Item>
                 </Descriptions>
               </Card>
 
               <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
-                {sectionTitle('Phạm vi bảo vệ và bản đồ (#39-#44)')}
+                {sectionTitle('Phạm vi bảo vệ và bản đồ')}
                 <Descriptions bordered size="small" column={2} labelStyle={{ width: 180 }}>
-                  <Descriptions.Item label="Phạm vi bảo vệ luồng (m) (#39)">{record.protectionScopeMeters ?? '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Ghi chú (#40)">{record.protectionNotes || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Loại đối tượng (#41)">{record.geometryType || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Biểu tượng (#42)">{record.mapIconId || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Hệ quy chiếu (#43)">{record.coordinateReferenceSystem || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Quy tắc hiển thị (#44)">{record.displayRule || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Phạm vi bảo vệ luồng (m)">{record.protectionScopeMeters ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Ghi chú">{record.protectionNotes || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Loại đối tượng">{record.geometryType || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Biểu tượng">{record.mapIconId || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Hệ quy chiếu">{record.coordinateReferenceSystem || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Quy tắc hiển thị">{record.displayRule || '—'}</Descriptions.Item>
                 </Descriptions>
               </Card>
 
               {record.routeDetails && record.routeDetails.length > 0 && (
                 <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
-                  {sectionTitle('Tuyến luồng (#22-#38)')}
+                  {sectionTitle('Tuyến luồng')}
                   <Table
                     dataSource={record.routeDetails}
                     rowKey={(row, index) => row.id || String(index)}
@@ -687,7 +687,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
 
               {record.coordinates && record.coordinates.length > 0 && (
                 <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
-                  {sectionTitle('Tọa độ (#45)')}
+                  {sectionTitle('Tọa độ')}
                   <Table
                     dataSource={record.coordinates}
                     rowKey={(row, index) => row.id || String(index)}
@@ -705,7 +705,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
 
               {record.attachments && record.attachments.length > 0 && (
                 <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
-                  {sectionTitle('File đính kèm (#46)')}
+                  {sectionTitle('File đính kèm')}
                   <AttachmentList
                     attachments={(record.attachments || []).map((a) => ({
                       id: a.id || '',
@@ -718,41 +718,41 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
               )}
 
               <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
-                {sectionTitle('Trạng thái và phê duyệt (#47-#57)')}
+                {sectionTitle('Trạng thái và phê duyệt')}
                 <Descriptions bordered size="small" column={2} labelStyle={{ width: 180 }}>
-                  <Descriptions.Item label="Trạng thái (#47)">
+                  <Descriptions.Item label="Trạng thái">
                     <ApprovalStatusBadge status={record.approvalStatus} />
                   </Descriptions.Item>
-                  <Descriptions.Item label="Ngày cập nhật (#48)">{fmtDateTime(record.updatedAt)}</Descriptions.Item>
-                  <Descriptions.Item label="Cán bộ cập nhật (#49)">{record.updatedBy || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Ngày gửi phê duyệt (#50)">{fmtDateTime(record.submittedAt)}</Descriptions.Item>
-                  <Descriptions.Item label="Cán bộ gửi phê duyệt (#51)">{record.submittedBy || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Ngày duyệt cấp Cảng vụ/Chi cục (#52)">{fmtDateTime(record.level1ApprovedAt)}</Descriptions.Item>
-                  <Descriptions.Item label="Cán bộ duyệt cấp Cảng vụ/Chi cục (#53)">{record.level1ApprovedBy || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Nội dung duyệt cấp 1 (#54)">{record.level1ApprovalContent || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Ngày duyệt cấp Cục (#55)">{fmtDateTime(record.level2ApprovedAt)}</Descriptions.Item>
-                  <Descriptions.Item label="Cán bộ duyệt cấp Cục (#56)">{record.level2ApprovedBy || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Nội dung duyệt cấp 2 (#57)">{record.level2ApprovalContent || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Ngày cập nhật">{fmtDateTime(record.updatedAt)}</Descriptions.Item>
+                  <Descriptions.Item label="Cán bộ cập nhật">{record.updatedBy || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Ngày gửi phê duyệt">{fmtDateTime(record.submittedAt)}</Descriptions.Item>
+                  <Descriptions.Item label="Cán bộ gửi phê duyệt">{record.submittedBy || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Ngày duyệt cấp Cảng vụ/Chi cục">{fmtDateTime(record.level1ApprovedAt)}</Descriptions.Item>
+                  <Descriptions.Item label="Cán bộ duyệt cấp Cảng vụ/Chi cục">{record.level1ApprovedBy || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Nội dung duyệt cấp 1">{record.level1ApprovalContent || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Ngày duyệt cấp Cục">{fmtDateTime(record.level2ApprovedAt)}</Descriptions.Item>
+                  <Descriptions.Item label="Cán bộ duyệt cấp Cục">{record.level2ApprovedBy || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Nội dung duyệt cấp 2">{record.level2ApprovalContent || '—'}</Descriptions.Item>
                 </Descriptions>
               </Card>
 
               <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
-                {sectionTitle('Thông tin liên quan (#58-#71)')}
+                {sectionTitle('Thông tin liên quan')}
                 <Descriptions bordered size="small" column={2} labelStyle={{ width: 180 }}>
-                  <Descriptions.Item label="Tên KCHT (#58)">{record.relatedInfrastructureName || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Loại KCHT (#59)">{record.relatedInfrastructureType || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Mã kế hoạch vận hành (#60)">{record.operationPlanCode || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Tên kế hoạch vận hành (#61)">{record.operationPlanName || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Ngày bắt đầu vận hành (#62)">{fmtDate(record.operationStartDate)}</Descriptions.Item>
-                  <Descriptions.Item label="Ngày kết thúc vận hành (#63)">{fmtDate(record.operationEndDate)}</Descriptions.Item>
-                  <Descriptions.Item label="Mã kế hoạch bảo trì (#64)">{record.maintenancePlanCode || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Tên kế hoạch bảo trì (#65)">{record.maintenancePlanName || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Bảo trì bắt đầu (#66)">{record.maintenanceStartTime || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Bảo trì kết thúc (#67)">{record.maintenanceEndTime || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Mã sự cố (#68)">{record.incidentCode || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Loại sự cố (#69)">{record.incidentType || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Địa điểm sự cố (#70)">{record.incidentLocation || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Thời gian sự cố (#71)">{fmtDateTime(record.incidentTime)}</Descriptions.Item>
+                  <Descriptions.Item label="Tên KCHT">{record.relatedInfrastructureName || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Loại KCHT">{record.relatedInfrastructureType || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Mã kế hoạch vận hành">{record.operationPlanCode || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Tên kế hoạch vận hành">{record.operationPlanName || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Ngày bắt đầu vận hành">{fmtDate(record.operationStartDate)}</Descriptions.Item>
+                  <Descriptions.Item label="Ngày kết thúc vận hành">{fmtDate(record.operationEndDate)}</Descriptions.Item>
+                  <Descriptions.Item label="Mã kế hoạch bảo trì">{record.maintenancePlanCode || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Tên kế hoạch bảo trì">{record.maintenancePlanName || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Bảo trì bắt đầu">{record.maintenanceStartTime || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Bảo trì kết thúc">{record.maintenanceEndTime || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Mã sự cố">{record.incidentCode || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Loại sự cố">{record.incidentType || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Địa điểm sự cố">{record.incidentLocation || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Thời gian sự cố">{fmtDateTime(record.incidentTime)}</Descriptions.Item>
                 </Descriptions>
               </Card>
 
