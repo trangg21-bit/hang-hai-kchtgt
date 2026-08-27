@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.common.dto.SubmitContentRequest;
 import com.hanghai.kchtg.scada.dto.ApprovalRequest;
 import com.hanghai.kchtg.scada.dto.ScadaResponse;
 import com.hanghai.kchtg.scada.dto.ScadaOptionResponse;
@@ -126,9 +127,11 @@ public class ScadaController {
 
   @PostMapping("/{id}/submit")
   @PreAuthorize("@auth.check(authentication, 'scada:update')")
-  public ResponseEntity<ApiResponse<ScadaResponse>> submit(@PathVariable UUID id) {
+  public ResponseEntity<ApiResponse<ScadaResponse>> submit(@PathVariable UUID id,
+    @RequestBody(required = false) SubmitContentRequest request) {
     log.info("Submitting SCADA for approval: id={}", id);
-    ScadaResponse response = scadaApprovalService.submit(id, SecurityUtils.getCurrentUserId());
+    String content = request != null ? request.getContent() : null;
+    ScadaResponse response = scadaApprovalService.submit(id, content, SecurityUtils.getCurrentUserId());
     return ResponseEntity.ok(ApiResponse.success("Gửi phê duyệt thành công", response));
   }
 

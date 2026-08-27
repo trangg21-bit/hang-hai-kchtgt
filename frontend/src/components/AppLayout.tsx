@@ -34,6 +34,7 @@ import {
   VideoCameraOutlined,
   MonitorOutlined,
   ApartmentOutlined,
+  ToolOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 import { usePermissionStore } from '../store/permissionStore';
@@ -77,6 +78,7 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/cctv': 'cctv:read',
   '/scada': 'scada:read',
   '/transmission': 'transmission:read',
+  '/vts-assist': 'vtsassist:read',
   '/station/coastal': 'coastalstation:read',
   '/station/special': 'specialstation:read',
   '/station/cospas-sarsat': 'coastalstationcospassarsat:read',
@@ -134,6 +136,7 @@ const pageTitles: Record<string, string> = {
   '/cctv': 'Quản lý hệ thống CCTV',
   '/scada': 'Quản lý hệ thống SCADA',
   '/transmission': 'Quản lý hệ thống truyền dẫn',
+  '/vts-assist': 'Quản lý hệ thống phụ trợ VTS',
   '/connections': 'Liên thông dữ liệu',
   '/interconnect': 'Quản lý kết nối liên thông',
   '/reports': 'Báo cáo & Thống kê',
@@ -228,7 +231,7 @@ export default function AppLayout() {
         setOpenKeys(['asset-movement']);
       } else if (selectedKey.startsWith('/documents')) {
         setOpenKeys(['documents-incidents']);
-      } else if (['/navigation-channel', '/dike-revetment', '/ship-repair-facility', '/radar-station', '/vts-system', '/cctv', '/scada', '/transmission'].includes(selectedKey)) {
+      } else if (['/navigation-channel', '/dike-revetment', '/ship-repair-facility', '/radar-station', '/vts-system', '/cctv', '/scada', '/transmission', '/vts-assist'].includes(selectedKey)) {
         setOpenKeys(['khu-nuoc-vts']);
       } else if (selectedKey.startsWith('/station')) {
         setOpenKeys(['stations']);
@@ -356,6 +359,7 @@ export default function AppLayout() {
         canAccessMenu('/cctv') ? { key: '/cctv', label: 'Quản lý hệ thống CCTV', icon: <VideoCameraOutlined /> } : null,
         canAccessMenu('/scada') ? { key: '/scada', label: 'Quản lý hệ thống SCADA', icon: <MonitorOutlined /> } : null,
         canAccessMenu('/transmission') ? { key: '/transmission', label: 'Quản lý hệ thống truyền dẫn', icon: <ApartmentOutlined /> } : null,
+        canAccessMenu('/vts-assist') ? { key: '/vts-assist', label: 'Quản lý hệ thống phụ trợ VTS', icon: <ToolOutlined /> } : null,
       ].filter(Boolean),
     },
     {

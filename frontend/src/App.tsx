@@ -53,6 +53,8 @@ const CctvListPage = lazy(() => import('./services/cctv/CctvListPage'));
 const ScadaListPage = lazy(() => import('./services/scada/ScadaListPage'));
 // M-NEW: Transmission Management
 const TransmissionListPage = lazy(() => import('./services/transmission/TransmissionListPage'));
+// M-NEW: VTS Assist Management
+const VtsAssistListPage = lazy(() => import('./services/vtsassist/VtsAssistListPage'));
 const BerthList = lazy(() => import('./pages/port/BerthListPage'));
 const AnchorageList = lazy(() => import('./pages/anchorage/AnchorageListPage'));
 
@@ -199,6 +201,7 @@ export default function App() {
                 <Route path="/cctv" element={<PermissionGuard permission="cctv:read"><CctvListPage /></PermissionGuard>} />
                 <Route path="/scada" element={<PermissionGuard permission="scada:read"><ScadaListPage /></PermissionGuard>} />
                 <Route path="/transmission" element={<PermissionGuard permission="transmission:read"><TransmissionListPage /></PermissionGuard>} />
+                <Route path="/vts-assist" element={<PermissionGuard permission="vtsassist:read"><VtsAssistListPage /></PermissionGuard>} />
                 <Route path="/berth" element={<PermissionGuard permission="berth:read"><BerthList /></PermissionGuard>} />
 
                 <Route path="/anchorage" element={<PermissionGuard permission="anchorage:read"><AnchorageList /></PermissionGuard>} />

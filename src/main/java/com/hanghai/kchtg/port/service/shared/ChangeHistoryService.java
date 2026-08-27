@@ -51,6 +51,7 @@ public class ChangeHistoryService {
             case "CCTV" -> InfrastructureType.CCTV;
             case "SCADA" -> InfrastructureType.SCADA;
             case "TRANSMISSION" -> InfrastructureType.TRANSMISSION;
+            case "VTS_ASSIST", "VTSASSIST", "PHU_TRO" -> InfrastructureType.VTS_ASSIST;
             case "BEACONSTATION", "BEACON_STATION", "DEN_BIEN" -> InfrastructureType.LIGHTHOUSE;
             case "SHIPREPAIRFACILITY", "SHIP_REPAIR_FACILITY" -> InfrastructureType.SHIP_REPAIR_FACILITY;
             default -> InfrastructureType.SEAPORT;

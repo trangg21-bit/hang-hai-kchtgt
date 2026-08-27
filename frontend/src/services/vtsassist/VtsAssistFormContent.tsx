@@ -3,8 +3,9 @@ import { Form, Input, InputNumber, Select } from 'antd';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
-import { createScada, updateScada, fetchScadaById } from './api';
-import type { ScadaResponse } from './types';
+import { createVtsAssist, updateVtsAssist, fetchVtsAssistById, fetchOperatingOrganizations } from './api';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../operatingOrganizationsData';
+import type { VtsAssistResponse } from './types';
 import { OPERATIONAL_STATUS_OPTIONS } from './schema';
 import toast from '../../components/ToastNotification';
 import {
@@ -12,15 +13,16 @@ import {
   actionPrimary,
   borderDefault,
   radiusPill,
+  spaceFormField,
   spaceMd,
 } from '../../tokens';
 
-interface ScadaFormProps {
-  initialData?: ScadaResponse;
+interface VtsAssistFormProps {
+  initialData?: VtsAssistResponse;
   onSuccess?: () => void;
 }
 
-const ScadaFormContent = ({ initialData, onSuccess }: ScadaFormProps) => {
+const VtsAssistFormContent = ({ initialData, onSuccess }: VtsAssistFormProps) => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const [isEdit, setIsEdit] = useState(!!initialData);
@@ -28,16 +30,17 @@ const ScadaFormContent = ({ initialData, onSuccess }: ScadaFormProps) => {
   const [loadingOrgs, setLoadingOrgs] = useState(false);
   const [, setLoadingData] = useState(false);
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
+  const [operatingOrganizations, setOperatingOrganizations] = useState<any[]>(DEFAULT_OPERATING_ORGANIZATIONS);
 
   useEffect(() => {
     const loadData = async () => {
       if (initialData) {
         setLoadingData(true);
         try {
-          const data = await fetchScadaById(initialData.id);
+          const data = await fetchVtsAssistById(initialData.id);
           form.setFieldsValue(data);
           setIsEdit(true);
-        } catch (error) {
+        } catch {
           toast.error('Không thể tải dữ liệu');
           navigate(-1);
         } finally {
@@ -47,6 +50,7 @@ const ScadaFormContent = ({ initialData, onSuccess }: ScadaFormProps) => {
     };
     loadData();
     loadOrgUnits();
+    loadOperatingOrganizations();
   }, [initialData]);
 
   const loadOrgUnits = async () => {
@@ -68,6 +72,15 @@ const ScadaFormContent = ({ initialData, onSuccess }: ScadaFormProps) => {
     }
   };
 
+  const loadOperatingOrganizations = async () => {
+    try {
+      const data = await fetchOperatingOrganizations();
+      setOperatingOrganizations(data);
+    } catch (error) {
+      console.error('Lỗi tải danh sách đơn vị khai thác:', error);
+    }
+  };
+
   const handleSubmit = async (values: any) => {
     setSubmitting(true);
     try {
@@ -77,20 +90,20 @@ const ScadaFormContent = ({ initialData, onSuccess }: ScadaFormProps) => {
           ...values,
           orgUnitId: values.orgUnitId || null,
         };
-        await updateScada(payload);
-        toast.success('Cập nhật hệ thống SCADA thành công');
+        await updateVtsAssist(payload);
+        toast.success('Cập nhật hệ thống phụ trợ VTS thành công');
       } else {
         const payload = {
           ...values,
           orgUnitId: values.orgUnitId || null,
         };
-        await createScada(payload);
-        toast.success('Tạo mới hệ thống SCADA thành công');
+        await createVtsAssist(payload);
+        toast.success('Tạo mới hệ thống phụ trợ VTS thành công');
       }
       if (onSuccess) {
         onSuccess();
       } else {
-        navigate('/scada');
+        navigate('/vtsassist');
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Lỗi khi lưu');
@@ -112,6 +125,7 @@ const ScadaFormContent = ({ initialData, onSuccess }: ScadaFormProps) => {
       <Form.Item
         name="deviceCode"
         label="Mã thiết bị"
+        style={{ marginBottom: spaceFormField }}
         rules={[{ required: true, message: 'Vui lòng nhập mã thiết bị' }]}
       >
         <Input placeholder="Mã tự động" disabled={isEdit} style={{ borderRadius: radiusPill, height: 40 }} />
@@ -120,34 +134,37 @@ const ScadaFormContent = ({ initialData, onSuccess }: ScadaFormProps) => {
       <Form.Item
         name="deviceName"
         label="Tên thiết bị"
+        style={{ marginBottom: spaceFormField }}
         rules={[{ required: true, message: 'Vui lòng nhập tên thiết bị' }]}
       >
         <Input placeholder="Nhập tên thiết bị..." style={{ borderRadius: radiusPill, height: 40 }} />
       </Form.Item>
 
-      <Form.Item name="model" label="Model">
+      <Form.Item name="model" label="Model" style={{ marginBottom: spaceFormField }}>
         <Input placeholder="Nhập model..." style={{ borderRadius: radiusPill, height: 40 }} />
       </Form.Item>
 
-      <Form.Item name="manufacturer" label="Hãng sản xuất" rules={[{ max: 50, message: 'Tối đa 50 ký tự' }]}>
+      <Form.Item name="manufacturer" label="Hãng sản xuất" style={{ marginBottom: spaceFormField }} rules={[{ max: 50, message: 'Tối đa 50 ký tự' }]}>
         <Input placeholder="Nhập hãng..." style={{ borderRadius: radiusPill, height: 40 }} />
       </Form.Item>
 
       <Form.Item
         name="quantity"
         label="Số lượng"
+        style={{ marginBottom: spaceFormField }}
         rules={[{ required: true, message: 'Vui lòng nhập số lượng' }]}
       >
         <InputNumber min={1} style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
       </Form.Item>
 
-      <Form.Item name="yearOfUse" label="Năm đưa vào sử dụng">
+      <Form.Item name="yearOfUse" label="Năm đưa vào sử dụng" style={{ marginBottom: spaceFormField }}>
         <InputNumber min={1900} max={2100} style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
       </Form.Item>
 
       <Form.Item
         name="orgUnitId"
         label="Đơn vị quản lý"
+        style={{ marginBottom: spaceFormField }}
         rules={[{ required: !isEdit, message: 'Vui lòng chọn đơn vị quản lý' }]}
       >
         <OrgUnitTreeSelect
@@ -160,35 +177,52 @@ const ScadaFormContent = ({ initialData, onSuccess }: ScadaFormProps) => {
         />
       </Form.Item>
 
-      <Form.Item name="operationalStatus" label="Tình trạng">
+      {/* Đơn vị khai thác — BẮT BUỘC (điểm khác so với màn Truyền dẫn) */}
+      <Form.Item
+        name="operatingUnitId"
+        label="Đơn vị khai thác"
+        style={{ marginBottom: spaceFormField }}
+        rules={[{ required: true, message: 'Vui lòng chọn đơn vị khai thác' }]}
+      >
+        <Select
+          showSearch
+          placeholder="Chọn đơn vị khai thác..."
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+          options={operatingOrganizations.map((o: any) => ({ value: o.id, label: o.name }))}
+          filterOption={(input: string, option: any) =>
+            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+          }
+        />
+      </Form.Item>
+
+      <Form.Item name="operationalStatus" label="Tình trạng" style={{ marginBottom: spaceFormField }}>
         <Select
           options={OPERATIONAL_STATUS_OPTIONS}
-          disabled={isEdit}
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
         />
       </Form.Item>
 
-      <Form.Item name="detailedLocation" label="Địa điểm chi tiết" rules={[{ max: 500 }]}>
+      <Form.Item name="detailedLocation" label="Địa điểm chi tiết" style={{ marginBottom: spaceFormField }} rules={[{ max: 500 }]}>
         <Input placeholder="Nhập địa điểm..." style={{ borderRadius: radiusPill, height: 40 }} />
       </Form.Item>
 
-      <Form.Item name="specifications" label="Thông số kỹ thuật" rules={[{ max: 2000 }]}>
-        <Input placeholder="Nhập thông số kỹ thuật..." style={{ borderRadius: radiusPill, height: 40 }} />
+      <Form.Item name="specifications" label="Thông số kỹ thuật" style={{ marginBottom: spaceFormField }} rules={[{ max: 2000 }]}>
+        <Input.TextArea rows={3} placeholder="Nhập thông số kỹ thuật..." style={{ borderRadius: radiusPill }} />
       </Form.Item>
 
-      <Form.Item name="maintenanceInformation" label="Thông tin bảo trì" rules={[{ max: 2000 }]}>
+      <Form.Item name="maintenanceInformation" label="Thông tin bảo trì" style={{ marginBottom: spaceFormField }} rules={[{ max: 2000 }]}>
         <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì..." style={{ borderRadius: radiusPill }} />
       </Form.Item>
 
-      <Form.Item name="note" label="Ghi chú" rules={[{ max: 2000 }]}>
+      <Form.Item name="note" label="Ghi chú" style={{ marginBottom: spaceFormField }} rules={[{ max: 2000 }]}>
         <Input.TextArea rows={2} placeholder="Nhập ghi chú..." style={{ borderRadius: radiusPill }} />
       </Form.Item>
 
       <div style={{ textAlign: 'right', marginTop: spaceMd }}>
-        <Form.Item>
+        <Form.Item style={{ marginBottom: spaceFormField }}>
           <button
             type="button"
-            onClick={() => navigate('/scada')}
+            onClick={() => navigate('/vtsassist')}
             style={{
               borderRadius: radiusPill,
               height: 40,
@@ -225,4 +259,4 @@ const ScadaFormContent = ({ initialData, onSuccess }: ScadaFormProps) => {
   );
 };
 
-export default ScadaFormContent;
+export default VtsAssistFormContent;

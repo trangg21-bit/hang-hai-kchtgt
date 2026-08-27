@@ -38,6 +38,15 @@ public class InfrastructureApprovalService {
      */
     @Transactional
     public void submit(ApprovableEntity entity, InfrastructureType refType, UUID userId) {
+        submit(entity, refType, userId, null);
+    }
+
+    /**
+     * Gửi duyệt kèm nội dung/ý kiến của người gửi (lưu vào approvalContentLevel1 — #54).
+     * Content có thể null (gửi duyệt không kèm nội dung).
+     */
+    @Transactional
+    public void submit(ApprovableEntity entity, InfrastructureType refType, UUID userId, String content) {
         if (entity == null) {
             throw new IllegalArgumentException("Dữ liệu hồ sơ không được để trống");
         }
@@ -78,6 +87,11 @@ public class InfrastructureApprovalService {
         entity.setSubmittedAt(LocalDateTime.now());
         entity.setSubmittedBy(userId);
 
+        // Nội dung/ý kiến người gửi khi gửi duyệt — lưu vào approvalContentLevel1 (#54)
+        if (content != null && !content.trim().isEmpty()) {
+            entity.setLevel1ApprovalContent(content.trim());
+        }
+
         // Reset approver level nếu gửi lại từ đầu
         if (nextStatus == ApprovalStatus.PENDING_APPROVAL) {
             entity.setApproverLevel1(null);
@@ -88,7 +102,7 @@ public class InfrastructureApprovalService {
 
         // Ghi lịch sử phê duyệt
         recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_0,
-                InfrastructureHistoryStatus.PROPOSED, userId, null,
+                InfrastructureHistoryStatus.PROPOSED, userId, content,
                 "Trạng thái phê duyệt", currentStatus.getLabel(), nextStatus.getLabel());
     }
 

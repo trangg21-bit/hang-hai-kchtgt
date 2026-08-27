@@ -40,23 +40,23 @@ import type { RcFile } from "antd/es/upload/interface";
 import { useSearchParams } from "react-router-dom";
 import { DEFAULT_OPERATING_ORGANIZATIONS } from "../operatingOrganizationsData";
 import {
-  fetchTransmissionList,
-  deleteTransmission,
-  submitTransmission,
-  approveTransmissionC1,
-  approveTransmissionC2,
-  createTransmission,
-  updateTransmission,
-  generateTransmissionCode,
-  fetchTransmissionHistory,
-  fetchTransmissionAttachments,
-  uploadTransmissionAttachment,
-  deleteTransmissionAttachment,
+  fetchVtsAssistList,
+  deleteVtsAssist,
+  submitVtsAssist,
+  approveVtsAssistC1,
+  approveVtsAssistC2,
+  createVtsAssist,
+  updateVtsAssist,
+  generateVtsAssistCode,
+  fetchVtsAssistHistory,
+  fetchVtsAssistAttachments,
+  uploadVtsAssistAttachment,
+  deleteVtsAssistAttachment,
 } from "./api";
 import {
   OPERATIONAL_STATUS_OPTIONS,
 } from "./schema";
-import type { TransmissionResponse, ApprovalRequest, CreateTransmissionRequest } from "./types";
+import type { VtsAssistResponse, ApprovalRequest, CreateVtsAssistRequest } from "./types";
 import toast from "../../components/ToastNotification";
 import ApprovalModal from "../../components/shared/ApprovalModal";
 import { useAuthStore } from "../../store/authStore";
@@ -205,7 +205,7 @@ function formatDate(dateStr: string | null): string {
 }
 
 /** Badge hiển thị giống chuẩn bến cảng: span pill + semantic token */
-function renderTransmissionStatusBadge(b: { color: string; label: string }) {
+function renderVtsAssistStatusBadge(b: { color: string; label: string }) {
   let c = textTertiary;
   if (b.color === 'green') c = statusOperational;
   else if (b.color === 'red') c = statusCritical;
@@ -241,14 +241,14 @@ function renderApprovalBadge(status: string | null | undefined) {
 
 /* Bảng tham chiếu (Vận hành khai thác / Bảo trì / Sự cố) — placeholder theo chuẩn
    PortRefTable của /port; bảng rỗng chờ tích hợp dữ liệu kế hoạch/sự cố sau này */
-const TRANSMISSION_TAB_PAGE_SIZE = 20;
-function TransmissionRefTable({ title, emptyText, columns, dataSource = [] }: { title: string; emptyText: string; columns: Array<{ title: string; dataIndex?: string; width?: number }>; dataSource?: any[] }) {
+const VTS_ASSIST_TAB_PAGE_SIZE = 20;
+function VtsAssistRefTable({ title, emptyText, columns, dataSource = [] }: { title: string; emptyText: string; columns: Array<{ title: string; dataIndex?: string; width?: number }>; dataSource?: any[] }) {
   const [page, setPage] = useState(1);
-  const maxPage = Math.max(1, Math.ceil(dataSource.length / TRANSMISSION_TAB_PAGE_SIZE));
+  const maxPage = Math.max(1, Math.ceil(dataSource.length / VTS_ASSIST_TAB_PAGE_SIZE));
   const cur = Math.min(page, maxPage);
   const rows = dataSource
     .map((row, idx) => ({ ...row, key: row?.key ?? idx, __index: idx + 1 }))
-    .slice((cur - 1) * TRANSMISSION_TAB_PAGE_SIZE, cur * TRANSMISSION_TAB_PAGE_SIZE);
+    .slice((cur - 1) * VTS_ASSIST_TAB_PAGE_SIZE, cur * VTS_ASSIST_TAB_PAGE_SIZE);
   const refHdr = () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } });
   return (
     <div style={{ paddingTop: 3 }}>
@@ -275,7 +275,7 @@ function TransmissionRefTable({ title, emptyText, columns, dataSource = [] }: { 
           onHeaderCell={refHdr} />
       </Table>
       <div style={{ margin: '0 12px' }}>
-        <Pagination total={dataSource.length} current={cur} pageSize={TRANSMISSION_TAB_PAGE_SIZE} pageSizeOptions={[10, 20, 50]} onChange={setPage} />
+        <Pagination total={dataSource.length} current={cur} pageSize={VTS_ASSIST_TAB_PAGE_SIZE} pageSizeOptions={[10, 20, 50]} onChange={setPage} />
       </div>
     </div>
   );
@@ -283,7 +283,7 @@ function TransmissionRefTable({ title, emptyText, columns, dataSource = [] }: { 
 
 /* Tab File đính kèm (Tạo mới/Cập nhật) — format theo chuẩn Port: label + nút Thêm file,
    empty state, danh sách file cục bộ (upload thực hiện lúc submit) */
-function TransmissionFilesTab({ uploadFileList, setUploadFileList, entityId }: { uploadFileList: any[]; setUploadFileList: React.Dispatch<React.SetStateAction<any[]>>; entityId?: string }) {
+function VtsAssistFilesTab({ uploadFileList, setUploadFileList, entityId }: { uploadFileList: any[]; setUploadFileList: React.Dispatch<React.SetStateAction<any[]>>; entityId?: string }) {
   const beforeUpload = (file: RcFile): boolean => {
     if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB'); return false; }
     const ext = file.name.split('.').pop()?.toLowerCase();
@@ -352,7 +352,7 @@ function TransmissionFilesTab({ uploadFileList, setUploadFileList, entityId }: {
                 onClick={() => {
                   const uid = record.uid;
                   if (entityId && typeof uid === 'string' && uid.includes('-')) {
-                    void deleteTransmissionAttachment(entityId, uid).catch(() => { /* ignore */ });
+                    void deleteVtsAssistAttachment(entityId, uid).catch(() => { /* ignore */ });
                   }
                   setUploadFileList(uploadFileList.filter((_, idx) => idx !== record._idx));
                 }} />
@@ -391,14 +391,14 @@ const tableMetaStyle: React.CSSProperties = {
 const normalizeGeometryType = (value: unknown): 'POINT' | 'LINE' | 'POLYGON' =>
   value === 'LINE' || value === 'POLYGON' ? value : 'POINT';
 
-const TransmissionListPage = () => {
+const VtsAssistListPage = () => {
   const [searchParams] = useSearchParams();
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const currentUser = useAuthStore((s) => s.user);
   const isIframeModal = window.parent !== window.self;
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState<string | null>(null);
-  const [data, setData] = useState<TransmissionResponse[]>([]);
+  const [data, setData] = useState<VtsAssistResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(() => {
     const p = parseInt(searchParams.get("page") || "0", 10);
@@ -437,7 +437,7 @@ const TransmissionListPage = () => {
     ];
     const results = await Promise.allSettled(
       statuses.map((s) =>
-        fetchTransmissionList({
+        fetchVtsAssistList({
           page: 0,
           size: 1,
           orgUnitId: filterValues.orgUnitId || undefined,
@@ -576,25 +576,25 @@ const TransmissionListPage = () => {
 
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [detailFiles, setDetailFiles] = useState<Array<{ id: string; fileName?: string; fileSize?: number }>>([]);
-  const [selectedRecord, setSelectedRecord] = useState<TransmissionResponse | null>(
+  const [selectedRecord, setSelectedRecord] = useState<VtsAssistResponse | null>(
     null
   );
 
   // Approve modal
   const [approveModalOpen, setApproveModalOpen] = useState(false);
-  const [approveTarget, setApproveTarget] = useState<TransmissionResponse | null>(null);
+  const [approveTarget, setApproveTarget] = useState<VtsAssistResponse | null>(null);
   const [approveLoading, setApproveLoading] = useState(false);
   const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c1');
 
   // Reject modal
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
-  const [rejectTarget, setRejectTarget] = useState<TransmissionResponse | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<VtsAssistResponse | null>(null);
   const [rejectForm] = Form.useForm();
   const [rejectLoading, setRejectLoading] = useState(false);
   const [rejectLevel, setRejectLevel] = useState<'c1' | 'c2'>('c1');
 
   // Delete
-  const [deleteTarget, setDeleteTarget] = useState<TransmissionResponse | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<VtsAssistResponse | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
@@ -617,7 +617,7 @@ const TransmissionListPage = () => {
 
   // Update modal
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
-  const [updateTarget, setUpdateTarget] = useState<TransmissionResponse | null>(null);
+  const [updateTarget, setUpdateTarget] = useState<VtsAssistResponse | null>(null);
   const [updateForm] = Form.useForm();
   const [updateLoading, setUpdateLoading] = useState(false);
   // Hành động footer update (chuẩn VTS): Lưu tạm / Lưu và gửi phê duyệt / Lưu và phê duyệt
@@ -625,7 +625,7 @@ const TransmissionListPage = () => {
   const updateActionTypeRef = useRef<'draft' | 'submit' | 'approve'>('draft');
 
   // "Lưu và phê duyệt" chỉ dành cho tài khoản có quyền duyệt cấp Cục (chuẩn VTS).
-  const canSaveAndApprove = !!hasPerm?.("transmission:approvec2");
+  const canSaveAndApprove = !!hasPerm?.("vtsassist:approvec2");
 
   // Reactive watch for attached infrastructure dropdown
   const updateAttachedType = Form.useWatch('attachedInfrastructureType', updateForm);
@@ -650,7 +650,7 @@ const TransmissionListPage = () => {
   }, [createGeometryType, GEOMETRY_POINT_COUNT, createForm]);
 
   // Chỉ reset Hệ quy chiếu/Quy tắc hiển thị khi NGƯỜI DÙNG xóa lựa chọn Loại đối tượng,
-  // không reset khi mở modal edit (TransmissionResponse không trả geometryType → watch luôn undefined khi mở)
+  // không reset khi mở modal edit (VtsAssistResponse không trả geometryType → watch luôn undefined khi mở)
   const prevUpdateGeometryType = useRef<string | null>(null);
   useEffect(() => {
     const hadSelection = prevUpdateGeometryType.current != null;
@@ -677,7 +677,7 @@ const TransmissionListPage = () => {
   // Submissions
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
   const [submitContent, setSubmitContent] = useState("");
-  const [submittingRecord, setSubmittingRecord] = useState<TransmissionResponse | null>(
+  const [submittingRecord, setSubmittingRecord] = useState<VtsAssistResponse | null>(
     null
   );
   const [submitLoading, setSubmitLoading] = useState(false);
@@ -748,7 +748,7 @@ const TransmissionListPage = () => {
         type: "mono" as const,
         align: "center" as const,
         fixed: "left" as const,
-        render: (_: unknown, __: TransmissionResponse, index: number) => (
+        render: (_: unknown, __: VtsAssistResponse, index: number) => (
           <span style={{ ...tableMetaStyle, fontWeight: fontWeightMedium }}>
             {page * pageSize + index + 1}
           </span>
@@ -763,7 +763,7 @@ const TransmissionListPage = () => {
         sortable: true,
         sortOrder: sortField === "deviceName" ? sortOrder : null,
         ellipsis: false,
-        render: (val: string, record: TransmissionResponse) => (
+        render: (val: string, record: VtsAssistResponse) => (
           <div style={{ minWidth: 0 }}>
             <button
               type="button"
@@ -858,28 +858,28 @@ const TransmissionListPage = () => {
         width: 200,
         sortable: true,
         sortOrder: sortField === "updatedAt" || sortField === "updatedByName" ? sortOrder : null,
-        render: (_: unknown, record: TransmissionResponse) => renderInfoStack(record.updatedByName, record.updatedAt),
+        render: (_: unknown, record: VtsAssistResponse) => renderInfoStack(record.updatedByName, record.updatedAt),
       },
       {
         key: "submittedInfo",
         label: "Cán bộ gửi phê duyệt",
         dataIndex: "submittedByName",
         width: 200,
-        render: (_: unknown, record: TransmissionResponse) => renderInfoStack(record.submittedByName, record.submittedDate),
+        render: (_: unknown, record: VtsAssistResponse) => renderInfoStack(record.submittedByName, record.submittedDate),
       },
       {
         key: "approvedLevel1Info",
         label: "Cán bộ phê duyệt cấp Cảng vụ/Chi cục",
         dataIndex: "approverLevel1Name",
         width: 200,
-        render: (_: unknown, record: TransmissionResponse) => renderInfoStack(record.approverLevel1Name, record.approvedDateLevel1),
+        render: (_: unknown, record: VtsAssistResponse) => renderInfoStack(record.approverLevel1Name, record.approvedDateLevel1),
       },
       {
         key: "approvedLevel2Info",
         label: "Cán bộ phê duyệt cấp Cục",
         dataIndex: "approverLevel2Name",
         width: 200,
-        render: (_: unknown, record: TransmissionResponse) => renderInfoStack(record.approverLevel2Name, record.approvedDateLevel2),
+        render: (_: unknown, record: VtsAssistResponse) => renderInfoStack(record.approverLevel2Name, record.approvedDateLevel2),
       },
       {
         key: "operationalStatus",
@@ -1017,7 +1017,7 @@ const TransmissionListPage = () => {
 
   const historyFieldCount = useMemo(() => historyRecords.length, [historyRecords]);
 
-  const renderTransmissionHistoryTimeline = (records: any[]) => {
+  const renderVtsAssistHistoryTimeline = (records: any[]) => {
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
     const sorted = [...records].sort(
       (a: any, b: any) =>
@@ -1199,7 +1199,7 @@ const TransmissionListPage = () => {
 
   // ── rowActions callback ──────────────────────────────────────────
   const rowActions = useCallback(
-    (record: TransmissionResponse) => {
+    (record: VtsAssistResponse) => {
       const actions: Array<{ key: string; label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }> = [
         {
           key: "view",
@@ -1208,7 +1208,7 @@ const TransmissionListPage = () => {
           onClick: () => {
             setSelectedRecord(record);
             setDetailDrawerOpen(true);
-            void fetchTransmissionAttachments(record.id).then((list: any[]) => {
+            void fetchVtsAssistAttachments(record.id).then((list: any[]) => {
               setDetailFiles(Array.isArray(list) ? list : []);
             }).catch(() => setDetailFiles([]));
           },
@@ -1222,11 +1222,11 @@ const TransmissionListPage = () => {
             setHistoryModalVisible(true);
             setHistoryRecords([]);
             setLoadingHistory(true);
-            fetchTransmissionHistory(record.id, { page: 0, size: 200 })
+            fetchVtsAssistHistory(record.id, { page: 0, size: 200 })
               .then((d: any) => {
                 setHistoryRecords(d?.changeHistory || []);
               })
-              .catch(() => console.error('Không thể tải lịch sử truyền dẫn'))
+              .catch(() => console.error('Không thể tải lịch sử phụ trợ VTS'))
               .finally(() => setLoadingHistory(false));
           },
         },
@@ -1241,7 +1241,7 @@ const TransmissionListPage = () => {
           onClick: () => {
             setUpdateTarget(record);
             setUploadFileList([]);
-            void fetchTransmissionAttachments(record.id).then((list: any[]) => {
+            void fetchVtsAssistAttachments(record.id).then((list: any[]) => {
               setUploadFileList(list.map((a: any) => ({ uid: a.id, name: a.fileName, size: a.fileSize, status: 'done' as const })));
             }).catch(() => { /* ignore */ });
             // Convert operationalStatus từ string enum (backend @JsonValue) sang số (frontend dropdown)
@@ -1267,9 +1267,9 @@ const TransmissionListPage = () => {
         });
       }
 
-      // DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2 + transmission:update → Gửi phê duyệt (submitTransmission)
+      // DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2 + vtsassist:update → Gửi phê duyệt (submitVtsAssist)
       if (
-        hasPerm?.("transmission:update") &&
+        hasPerm?.("vtsassist:update") &&
         (record.approvalStatus === "DRAFT" ||
           record.approvalStatus === "REJECTED_LEVEL1" ||
           record.approvalStatus === "REJECTED_LEVEL2")
@@ -1286,8 +1286,8 @@ const TransmissionListPage = () => {
         });
       }
 
-      // PENDING_APPROVAL + transmission:approvec1 → Phê duyệt / Từ chối cấp Cảng vụ (C1)
-      if (hasPerm?.("transmission:approvec1") && record.approvalStatus === "PENDING_APPROVAL") {
+      // PENDING_APPROVAL + vtsassist:approvec1 → Phê duyệt / Từ chối cấp Cảng vụ (C1)
+      if (hasPerm?.("vtsassist:approvec1") && record.approvalStatus === "PENDING_APPROVAL") {
         actions.push({
           key: "approveC1",
           label: "Phê duyệt cấp Cảng vụ",
@@ -1311,9 +1311,9 @@ const TransmissionListPage = () => {
         });
       }
 
-      // APPROVED_LEVEL1 + transmission:approvec2 → Phê duyệt / Từ chối cấp Cục (C2)
+      // APPROVED_LEVEL1 + vtsassist:approvec2 → Phê duyệt / Từ chối cấp Cục (C2)
       // Nguyên tắc 4 mắt: người đã phê duyệt C1 không được tự duyệt tiếp ở C2.
-      if (hasPerm?.("transmission:approvec2") && record.approvalStatus === "APPROVED_LEVEL1") {
+      if (hasPerm?.("vtsassist:approvec2") && record.approvalStatus === "APPROVED_LEVEL1") {
         const isSelfApproval = Boolean(currentUser?.userId && record.approverLevel1 === currentUser.userId);
         actions.push({
           key: "approveC2",
@@ -1341,7 +1341,7 @@ const TransmissionListPage = () => {
       }
 
       // Chỉ hồ sơ "Lưu tạm" mới được xóa (phê duyệt 2 cấp — như /vts-system)
-      if (hasPerm?.("transmission:delete") && record.approvalStatus === "DRAFT") {
+      if (hasPerm?.("vtsassist:delete") && record.approvalStatus === "DRAFT") {
         actions.push({
           key: "delete",
           label: "Xóa",
@@ -1365,7 +1365,7 @@ const TransmissionListPage = () => {
     try {
       const safePage = Math.max(page, 0);
       const safeSize = Math.max(1, Math.min(pageSize, 100));
-      const result = await fetchTransmissionList({
+      const result = await fetchVtsAssistList({
         page: safePage,
         size: safeSize,
         orgUnitId: filterValues.orgUnitId || undefined,
@@ -1474,14 +1474,14 @@ const TransmissionListPage = () => {
     }
     setDeleteLoading(true);
     try {
-      await deleteTransmission(deleteTarget.id);
-      toast.success("Xóa hệ thống truyền dẫn thành công");
+      await deleteVtsAssist(deleteTarget.id);
+      toast.success("Xóa hệ thống phụ trợ VTS thành công");
       setDeleteTarget(null);
       setDeleteConfirmText("");
       fetchData();
       fetchTabCounts();
     } catch (error: unknown) {
-      console.error("[transmission] delete error", error); // toast toàn cục đã xử lý ở interceptor api.ts
+      console.error("[vtsassist] delete error", error); // toast toàn cục đã xử lý ở interceptor api.ts
     } finally {
       setDeleteLoading(false);
     }
@@ -1494,10 +1494,10 @@ const TransmissionListPage = () => {
       try {
         const payload: ApprovalRequest = { decision: "APPROVED", reason: content };
         if (approveLevel === "c1") {
-          await approveTransmissionC1(approveTarget.id, payload);
+          await approveVtsAssistC1(approveTarget.id, payload);
           toast.success("Phê duyệt cấp 1 thành công");
         } else {
-          await approveTransmissionC2(approveTarget.id, payload);
+          await approveVtsAssistC2(approveTarget.id, payload);
           toast.success("Phê duyệt cấp 2 thành công");
         }
         setApproveTarget(null);
@@ -1505,7 +1505,7 @@ const TransmissionListPage = () => {
         fetchData();
         fetchTabCounts();
       } catch (error: unknown) {
-        console.error("[transmission] approve error", error); // toast toàn cục đã xử lý ở interceptor api.ts
+        console.error("[vtsassist] approve error", error); // toast toàn cục đã xử lý ở interceptor api.ts
       } finally {
         setApproveLoading(false);
       }
@@ -1525,8 +1525,8 @@ const TransmissionListPage = () => {
     setRejectLoading(true);
     try {
       const payload: ApprovalRequest = { decision: "REJECTED", reason: String(reason || "").trim() };
-      if (rejectLevel === "c1") await approveTransmissionC1(rejectTarget.id, payload);
-      else await approveTransmissionC2(rejectTarget.id, payload);
+      if (rejectLevel === "c1") await approveVtsAssistC1(rejectTarget.id, payload);
+      else await approveVtsAssistC2(rejectTarget.id, payload);
       toast.success("Từ chối thành công");
       setRejectTarget(null);
       setRejectModalOpen(false);
@@ -1534,7 +1534,7 @@ const TransmissionListPage = () => {
       fetchData();
       fetchTabCounts();
     } catch (error: unknown) {
-      console.error("[transmission] reject error", error); // toast toàn cục đã xử lý ở interceptor api.ts
+      console.error("[vtsassist] reject error", error); // toast toàn cục đã xử lý ở interceptor api.ts
     } finally {
       setRejectLoading(false);
     }
@@ -1555,28 +1555,28 @@ const TransmissionListPage = () => {
 
         const payload = {
           ...values,
-          deviceCode: values.deviceCode || (await generateTransmissionCode()),
+          deviceCode: values.deviceCode || (await generateVtsAssistCode()),
           operationalStatus: values.operationalStatus ?? 1,
           geometryType: createGeomType,
           coordinates: coordinates ?? undefined,
           // Cột display_rule là INT; chuỗi 'Độ, phút, giây (DMS)' chỉ để hiển thị (giống /port, /pier)
           displayRule: values.displayRule != null ? Number(values.displayRule) || null : undefined,
-        } as CreateTransmissionRequest;
+        } as CreateVtsAssistRequest;
         // Chuẩn VTS: tạo theo hành động footer — draft/submit/approve
         // (backend resolveCreateApprovalStatus: DRAFT / PENDING_APPROVAL / APPROVED)
         const currentAction = createActionTypeRef.current;
-        const created = await createTransmission({
+        const created = await createVtsAssist({
           ...payload,
           action: currentAction === 'draft' ? 'draft' : currentAction === 'submit' ? 'submit' : 'approve',
         });
         if (created?.id && uploadFileList.length > 0) {
           for (const f of uploadFileList) {
-            if (f.originFileObj) await uploadTransmissionAttachment(created.id, f.originFileObj);
+            if (f.originFileObj) await uploadVtsAssistAttachment(created.id, f.originFileObj);
           }
         }
         toast.success(
           currentAction === 'draft'
-            ? 'Lưu tạm hệ thống truyền dẫn thành công'
+            ? 'Lưu tạm hệ thống phụ trợ VTS thành công'
             : currentAction === 'submit'
               ? 'Lưu và gửi phê duyệt thành công'
               : 'Lưu và phê duyệt thành công'
@@ -1588,7 +1588,7 @@ const TransmissionListPage = () => {
         fetchData();
         fetchTabCounts();
       } catch (error: unknown) {
-        console.error("[transmission] create error", error); // toast toàn cục đã xử lý ở interceptor api.ts
+        console.error("[vtsassist] create error", error); // toast toàn cục đã xử lý ở interceptor api.ts
       } finally {
         setCreateLoading(false);
       }
@@ -1613,7 +1613,7 @@ const TransmissionListPage = () => {
         // Chuẩn VTS: Lưu tạm (chỉ update) / Lưu và gửi phê duyệt (update + submit) /
         // Lưu và phê duyệt (update + giữ Đã duyệt — T12 backend)
         const currentAction = updateActionTypeRef.current;
-        await updateTransmission({
+        await updateVtsAssist({
           id: updateTarget.id,
           ...values,
           geometryType: updateGeomType,
@@ -1624,15 +1624,15 @@ const TransmissionListPage = () => {
         });
         if (uploadFileList.length > 0) {
           for (const f of uploadFileList) {
-            if (f.originFileObj) await uploadTransmissionAttachment(updateTarget.id, f.originFileObj);
+            if (f.originFileObj) await uploadVtsAssistAttachment(updateTarget.id, f.originFileObj);
           }
         }
         if (currentAction === 'submit') {
-          await submitTransmission(updateTarget.id);
+          await submitVtsAssist(updateTarget.id);
         }
         toast.success(
           currentAction === 'draft'
-            ? 'Lưu tạm hệ thống truyền dẫn thành công'
+            ? 'Lưu tạm hệ thống phụ trợ VTS thành công'
             : currentAction === 'submit'
               ? 'Lưu và gửi phê duyệt thành công'
               : 'Lưu và phê duyệt thành công'
@@ -1644,7 +1644,7 @@ const TransmissionListPage = () => {
         fetchData();
         fetchTabCounts();
       } catch (error: unknown) {
-        console.error("[transmission] update error", error); // toast toàn cục đã xử lý ở interceptor api.ts
+        console.error("[vtsassist] update error", error); // toast toàn cục đã xử lý ở interceptor api.ts
       } finally {
         setUpdateLoading(false);
       }
@@ -1656,7 +1656,7 @@ const TransmissionListPage = () => {
     if (!submittingRecord) return;
     setSubmitLoading(true);
     try {
-      await submitTransmission(submittingRecord.id, submitContent.trim() || undefined);
+      await submitVtsAssist(submittingRecord.id, submitContent.trim() || undefined);
       toast.success("Gửi phê duyệt thành công");
       setSubmitModalOpen(false);
       setSubmittingRecord(null);
@@ -1664,7 +1664,7 @@ const TransmissionListPage = () => {
       fetchData();
       fetchTabCounts();
     } catch (error: unknown) {
-      console.error("[transmission] submit error", error); // toast toàn cục đã xử lý ở interceptor api.ts
+      console.error("[vtsassist] submit error", error); // toast toàn cục đã xử lý ở interceptor api.ts
     } finally {
       setSubmitLoading(false);
     }
@@ -1676,10 +1676,10 @@ const TransmissionListPage = () => {
       <ScreenHeader
         breadcrumb={[
           { label: "Trang chủ", path: "/" },
-          { label: "Quản lý hệ thống truyền dẫn", path: "/transmission" },
+          { label: "Quản lý hệ thống phụ trợ VTS", path: "/vtsassist" },
         ]}
         actions={[
-          hasPerm?.("transmission:create")
+          hasPerm?.("vtsassist:create")
             ? {
                 key: "create",
                 label: "Thêm mới",
@@ -1690,7 +1690,7 @@ const TransmissionListPage = () => {
                   setCreateModalOpen(true);
                   // Sinh trước mã thiết bị để hiển thị preview (giống Mã cảng biển /port)
                   setDeviceCodeLoading(true);
-                  generateTransmissionCode()
+                  generateVtsAssistCode()
                     .then((code) => { if (code) createForm.setFieldsValue({ deviceCode: code }); })
                     .catch(() => { createForm.setFieldsValue({ deviceCode: '' }); /* Backend tự sinh khi lưu */ })
                     .finally(() => setDeviceCodeLoading(false));
@@ -1943,7 +1943,7 @@ const TransmissionListPage = () => {
               rowActions={rowActions}
               locale={{
                 emptyText: (
-                  <EmptyState description="Chưa có dữ liệu hệ thống truyền dẫn" />
+                  <EmptyState description="Chưa có dữ liệu hệ thống phụ trợ VTS" />
                 ),
               }}
             />
@@ -1964,7 +1964,7 @@ const TransmissionListPage = () => {
       {/* Detail Drawer */}
       <Drawer
         {...drawerProps}
-        title={<span style={drawerTitleStyle}>Chi tiết hệ thống truyền dẫn{selectedRecord ? ` - ${selectedRecord.deviceName || selectedRecord.deviceCode || ''}` : ''}</span>}
+        title={<span style={drawerTitleStyle}>Chi tiết hệ thống phụ trợ VTS{selectedRecord ? ` - ${selectedRecord.deviceName || selectedRecord.deviceCode || ''}` : ''}</span>}
         open={detailDrawerOpen}
         onClose={() => setDetailDrawerOpen(false)}
         extra={<Button type="text" onClick={() => setDetailDrawerOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
@@ -1998,7 +1998,7 @@ const TransmissionListPage = () => {
                         { label: 'Đơn vị tính', value: formatUnitOfMeasure(selectedRecord.unitOfMeasure) },
                         { label: 'Số lượng', value: <span style={{ color: textPrimary, fontSize: fontSizeMd }}>{fmtNum(selectedRecord.quantity)}</span> },
                         { label: 'Năm đưa vào sử dụng', value: selectedRecord.yearOfUse ? String(selectedRecord.yearOfUse) : '—' },
-                        { label: 'Tình trạng', value: (() => { const stMap: Record<string, { color: string; label: string }> = { 'NOT_YET_OPERATIONAL': { color: 'orange', label: 'Chưa khai thác/vận hành' }, 'OPERATIONAL': { color: 'green', label: 'Đang khai thác/vận hành' }, 'SUSPENDED': { color: 'red', label: 'Dừng khai thác/vận hành' } }; const st = stMap[String(selectedRecord.operationalStatus || '').toUpperCase()] || { color: textTertiary, label: String(selectedRecord.operationalStatus || '—') }; return renderTransmissionStatusBadge(st); })() },
+                        { label: 'Tình trạng', value: (() => { const stMap: Record<string, { color: string; label: string }> = { 'NOT_YET_OPERATIONAL': { color: 'orange', label: 'Chưa khai thác/vận hành' }, 'OPERATIONAL': { color: 'green', label: 'Đang khai thác/vận hành' }, 'SUSPENDED': { color: 'red', label: 'Dừng khai thác/vận hành' } }; const st = stMap[String(selectedRecord.operationalStatus || '').toUpperCase()] || { color: textTertiary, label: String(selectedRecord.operationalStatus || '—') }; return renderVtsAssistStatusBadge(st); })() },
                         { label: 'Model', value: selectedRecord.model || '—' },
                         { label: 'Hãng sản xuất', value: selectedRecord.manufacturer || '—' },
                         { label: 'Phê duyệt', value: renderApprovalBadge(selectedRecord.approvalStatus) },
@@ -2108,19 +2108,19 @@ const TransmissionListPage = () => {
                 label: "Vận hành & bảo trì",
                 children: (
                   <div>
-                    <TransmissionRefTable title="Thông tin vận hành khai thác" emptyText="Chưa có dữ liệu" columns={[
+                    <VtsAssistRefTable title="Thông tin vận hành khai thác" emptyText="Chưa có dữ liệu" columns={[
                       { title: 'Mã kế hoạch', dataIndex: 'opPlanCode', width: 180 },
                       { title: 'Tên kế hoạch', dataIndex: 'opPlanName', width: 220 },
                       { title: 'Ngày bắt đầu', dataIndex: 'opStartDate', width: 200 },
                       { title: 'Ngày kết thúc', dataIndex: 'opEndDate', width: 200 },
                     ]} />
-                    <TransmissionRefTable title="Thông tin bảo trì" emptyText="Chưa có dữ liệu" columns={[
+                    <VtsAssistRefTable title="Thông tin bảo trì" emptyText="Chưa có dữ liệu" columns={[
                       { title: 'Mã kế hoạch', dataIndex: 'maintCode', width: 180 },
                       { title: 'Tên kế hoạch', dataIndex: 'maintName', width: 220 },
                       { title: 'Thời gian bắt đầu', dataIndex: 'maintStart', width: 200 },
                       { title: 'Thời gian kết thúc', dataIndex: 'maintEnd', width: 200 },
                     ]} />
-                    <TransmissionRefTable title="Thông tin sự cố" emptyText="Chưa có dữ liệu" columns={[
+                    <VtsAssistRefTable title="Thông tin sự cố" emptyText="Chưa có dữ liệu" columns={[
                       { title: 'Mã sự cố', dataIndex: 'incidentCode', width: 150 },
                       { title: 'Loại sự cố', dataIndex: 'incidentType', width: 150 },
                       { title: 'Địa điểm', dataIndex: 'incidentLocation', width: 200 },
@@ -2307,7 +2307,7 @@ const TransmissionListPage = () => {
           >
             <Checkbox>
               <Text style={{ color: statusCritical }}>
-                Tôi xác nhận từ chối hệ thống truyền dẫn này
+                Tôi xác nhận từ chối hệ thống phụ trợ VTS này
               </Text>
             </Checkbox>
           </Form.Item>
@@ -2433,7 +2433,7 @@ const TransmissionListPage = () => {
         {...drawerProps}
         title={
           <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
-            Thêm mới hệ thống truyền dẫn
+            Thêm mới hệ thống phụ trợ VTS
           </span>
         }
         open={createModalOpen}
@@ -2611,6 +2611,9 @@ const TransmissionListPage = () => {
                         <Form.Item
                           name="operatingUnitId"
                           {...labelProps('Đơn vị khai thác')}
+                          rules={[
+                            { required: true, message: "Vui lòng chọn đơn vị khai thác" },
+                          ]}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
@@ -3052,7 +3055,7 @@ const TransmissionListPage = () => {
                 key: 'attachments',
                 label: 'File đính kèm',
                 children: (
-                  <TransmissionFilesTab uploadFileList={uploadFileList} setUploadFileList={setUploadFileList} entityId={updateTarget?.id} />
+                  <VtsAssistFilesTab uploadFileList={uploadFileList} setUploadFileList={setUploadFileList} entityId={updateTarget?.id} />
                 ),
               },
             ]}
@@ -3243,6 +3246,9 @@ const TransmissionListPage = () => {
                         <Form.Item
                           name="operatingUnitId"
                           {...labelProps('Đơn vị khai thác')}
+                          rules={[
+                            { required: true, message: "Vui lòng chọn đơn vị khai thác" },
+                          ]}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
@@ -3681,7 +3687,7 @@ const TransmissionListPage = () => {
                 key: 'attachments',
                 label: 'File đính kèm',
                 children: (
-                  <TransmissionFilesTab uploadFileList={uploadFileList} setUploadFileList={setUploadFileList} entityId={updateTarget?.id} />
+                  <VtsAssistFilesTab uploadFileList={uploadFileList} setUploadFileList={setUploadFileList} entityId={updateTarget?.id} />
                 ),
               },
             ]}
@@ -3716,11 +3722,11 @@ const TransmissionListPage = () => {
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
           {loadingHistory ? <LoadingSkeleton rows={5} /> : historyRecords.length === 0 ? (
             <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div></div>
-          ) : renderTransmissionHistoryTimeline(historyRecords)}
+          ) : renderVtsAssistHistoryTimeline(historyRecords)}
         </div>
       </Drawer>
     </>
   );
 };
 
-export default TransmissionListPage;
+export default VtsAssistListPage;

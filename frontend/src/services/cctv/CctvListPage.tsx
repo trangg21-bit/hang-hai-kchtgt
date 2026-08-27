@@ -60,7 +60,6 @@ import { Tabs, Upload } from "antd";
 import type { RcFile, UploadFile } from "antd/es/upload/interface";
 import { useSearchParams } from "react-router-dom";
 import { SelectAppParams } from "../../components/SelectAppParams";
-import SelectCateOther from "../../components/SelectCateOther";
 import { LongLatTable, type CoordinateRow } from "../../components/LongLatTable";
 import {
   fetchCctvList,
@@ -92,6 +91,7 @@ import EmptyState from "../../components/EmptyState";
 import LoadingSkeleton from "../../components/LoadingSkeleton";
 import { VIETNAM_PROVINCES } from "../../types/common";
 import api from "../api";
+import { DEFAULT_OPERATING_ORGANIZATIONS } from "../operatingOrganizationsData";
 import type { Symbol as MapSymbolType } from "../symbolService";
 import {
   ScreenHeader,
@@ -802,6 +802,36 @@ const CctvListPage = () => {
     fetchVtsOperationCenters();
   }, [fetchVtsOperationCenters]);
 
+  // Đơn vị khai thác — từ bảng operating_organizations (endpoint chung)
+  const [operatingOrganizationOptions, setOperatingOrganizationOptions] = useState<
+    { label: string; value: string }[]
+  >([]);
+  const [loadingOperatingOrgs, setLoadingOperatingOrgs] = useState(false);
+
+  const fetchOperatingOrganizations = useCallback(async () => {
+    setLoadingOperatingOrgs(true);
+    try {
+      const res = await api.get("/common/options/operating-organizations");
+      const items = res.data?.data;
+      const list: Array<{ id: string; name?: string; code?: string }> =
+        Array.isArray(items) && items.length > 0 ? items : DEFAULT_OPERATING_ORGANIZATIONS;
+      setOperatingOrganizationOptions(
+        list.map((s) => ({ label: s.name || s.code || s.id, value: s.id }))
+      );
+    } catch (error) {
+      console.error("Lỗi tải danh sách đơn vị khai thác:", error);
+      setOperatingOrganizationOptions(
+        DEFAULT_OPERATING_ORGANIZATIONS.map((s) => ({ label: s.name, value: s.id }))
+      );
+    } finally {
+      setLoadingOperatingOrgs(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchOperatingOrganizations();
+  }, [fetchOperatingOrganizations]);
+
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<CctvResponse | null>(
     null
@@ -903,6 +933,7 @@ const CctvListPage = () => {
 
   // Submissions
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
+  const [submitContent, setSubmitContent] = useState("");
   const [submittingRecord, setSubmittingRecord] = useState<CctvResponse | null>(
     null
   );
@@ -1464,7 +1495,7 @@ const CctvListPage = () => {
             setLoadingHistory(true);
             fetchCctvHistory(record.id, { page: 0, size: 200 })
               .then((d: any) => {
-                setHistoryRecords(d.changeHistory || []);
+                setHistoryRecords(d?.changeHistory || []);
               })
               .catch(() => console.error('Không thể tải lịch sử CCTV'))
               .finally(() => setLoadingHistory(false));
@@ -1520,6 +1551,7 @@ const CctvListPage = () => {
           icon: <SendOutlined />,
           onClick: () => {
             setSubmittingRecord(record);
+            setSubmitContent("");
             setSubmitModalOpen(true);
           },
         });
@@ -1895,10 +1927,11 @@ const CctvListPage = () => {
     if (!submittingRecord) return;
     setSubmitLoading(true);
     try {
-      await submitCctv(submittingRecord.id);
+      await submitCctv(submittingRecord.id, submitContent.trim() || undefined);
       toast.success("Gửi phê duyệt thành công");
       setSubmitModalOpen(false);
       setSubmittingRecord(null);
+      setSubmitContent("");
       fetchData();
       fetchTabCounts();
     } catch (error: unknown) {
@@ -1906,7 +1939,7 @@ const CctvListPage = () => {
     } finally {
       setSubmitLoading(false);
     }
-  }, [submittingRecord, fetchData, fetchTabCounts]);
+  }, [submittingRecord, submitContent, fetchData, fetchTabCounts]);
 
   return (
     <>
@@ -2431,6 +2464,7 @@ const CctvListPage = () => {
         open={submitModalOpen}
         onCancel={() => {
           setSubmittingRecord(null);
+          setSubmitContent("");
           setSubmitModalOpen(false);
         }}
         footer={[
@@ -2438,6 +2472,7 @@ const CctvListPage = () => {
             key="cancel"
             onClick={() => {
               setSubmittingRecord(null);
+              setSubmitContent("");
               setSubmitModalOpen(false);
             }}
             style={outlineButtonStyle}
@@ -2464,6 +2499,15 @@ const CctvListPage = () => {
             </strong>
             ?
           </p>
+          <Input.TextArea
+            value={submitContent}
+            onChange={(e) => setSubmitContent(e.target.value)}
+            placeholder="Nhập nội dung / ý kiến gửi phê duyệt (không bắt buộc)..."
+            rows={3}
+            maxLength={500}
+            showCount
+            style={{ marginTop: spaceSm }}
+          />
         </div>
       </Modal>
 
@@ -2820,10 +2864,15 @@ const CctvListPage = () => {
                           {...labelProps('Đơn vị khai thác')}
                           style={{ marginBottom: spaceFormField }}
                         >
-                          <SelectCateOther
-                            category="DON_VI_KHAI_THAC"
+                          <Select
+                            showSearch
                             placeholder="Chọn đơn vị khai thác"
+                            loading={loadingOperatingOrgs}
                             style={{ width: "100%", ...pillStyle }}
+                            options={operatingOrganizationOptions}
+                            filterOption={(input: string, option: any) =>
+                              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                            }
                           />
                         </Form.Item>
                       </Col>
@@ -3447,10 +3496,15 @@ const CctvListPage = () => {
                           {...labelProps('Đơn vị khai thác')}
                           style={{ marginBottom: spaceFormField }}
                         >
-                          <SelectCateOther
-                            category="DON_VI_KHAI_THAC"
+                          <Select
+                            showSearch
                             placeholder="Chọn đơn vị khai thác"
+                            loading={loadingOperatingOrgs}
                             style={{ width: "100%", ...pillStyle }}
+                            options={operatingOrganizationOptions}
+                            filterOption={(input: string, option: any) =>
+                              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                            }
                           />
                         </Form.Item>
                       </Col>
