@@ -143,6 +143,54 @@ const pageTitles: Record<string, string> = {
   '/asset/exploitation': 'Khai thác tài sản',
 };
 
+function filterEmptyChildren(items: MenuProps['items']): MenuProps['items'] {
+  if (!items) return [];
+  return items
+    .map((item: any) => {
+      if (!item) return null;
+      if (item.children) {
+        const validChildren = filterEmptyChildren(item.children);
+        if (validChildren.length === 0) return null;
+        return { ...item, children: validChildren };
+      }
+      return item;
+    })
+    .filter(Boolean)
+    .reduce((acc: any[], item: any, idx: number, arr: any[]) => {
+      if (item.type === 'divider') {
+        if (acc.length === 0) return acc;
+        if (acc[acc.length - 1]?.type === 'divider') return acc;
+        if (idx === arr.length - 1) return acc;
+      }
+      acc.push(item);
+      return acc;
+    }, []);
+}
+
+export function filterMenuByQuery(items: MenuProps['items'], query: string): MenuProps['items'] {
+  const q = query.trim().toLowerCase();
+  if (!q) return items;
+  const keepMatching = (nodes: MenuProps['items']): MenuProps['items'] =>
+    (nodes ?? []).map((node: any) => {
+      if (!node) return null;
+      if (node.type === 'divider') return node;
+      if (node.children) return { ...node, children: keepMatching(node.children) };
+      const labelMatches = typeof node.label === 'string' && node.label.toLowerCase().includes(q);
+      return labelMatches ? node : null;
+    });
+  return filterEmptyChildren(keepMatching(items));
+}
+
+export function collectOpenableKeys(items: MenuProps['items']): string[] {
+  return (items ?? []).reduce<string[]>((acc, node: any) => {
+    if (node?.children?.length) {
+      acc.push(node.key as string);
+      acc.push(...collectOpenableKeys(node.children));
+    }
+    return acc;
+  }, []);
+}
+
 export default function AppLayout() {
   const isInIframe = window.self !== window.top;
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -150,6 +198,7 @@ export default function AppLayout() {
   const [sidebarHidden, setSidebarHidden] = useState(false);
   const [isMenuFullScreen, setIsMenuFullScreen] = useState(false);
   const [openKeys, setOpenKeys] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
@@ -471,31 +520,12 @@ export default function AppLayout() {
     canAccessMenu('/settings') ? { key: '/settings', icon: <SettingOutlined />, label: 'Cấu hình hệ thống' } : null,
   ].filter(Boolean) as MenuProps['items'];
 
-  const filterEmptyChildren = (items: MenuProps['items']): MenuProps['items'] => {
-    if (!items) return [];
-    return items
-      .map((item: any) => {
-        if (!item) return null;
-        if (item.children) {
-          const validChildren = filterEmptyChildren(item.children);
-          if (validChildren.length === 0) return null;
-          return { ...item, children: validChildren };
-        }
-        return item;
-      })
-      .filter(Boolean)
-      .reduce((acc: any[], item: any, idx: number, arr: any[]) => {
-        if (item.type === 'divider') {
-          if (acc.length === 0) return acc;
-          if (acc[acc.length - 1]?.type === 'divider') return acc;
-          if (idx === arr.length - 1) return acc;
-        }
-        acc.push(item);
-        return acc;
-      }, []);
-  };
-
   const menuItems = filterEmptyChildren(rawMenuItems);
+
+  const trimmedSearchQuery = searchQuery.trim();
+  const isSearching = trimmedSearchQuery.length > 0;
+  const displayedItems = isSearching ? filterMenuByQuery(menuItems, trimmedSearchQuery) : menuItems;
+  const effectiveOpenKeys = isSearching ? collectOpenableKeys(displayedItems) : openKeys;
 
   // Keep the responsive mode aligned with Sider's `lg` breakpoint. Using
   // `md` here left a 272px layout offset while AntD had already collapsed the
@@ -562,7 +592,11 @@ export default function AppLayout() {
       {!collapsed && !isMenuFullScreen && (
         <div className="sidebar-search">
           <SearchOutlined />
-          <input placeholder="Tìm kiếm" />
+          <input
+            placeholder="Tìm kiếm"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
       )}
 
@@ -572,9 +606,9 @@ export default function AppLayout() {
           mode="inline"
           inlineCollapsed={collapsed}
           selectedKeys={[selectedKey]}
-          openKeys={openKeys}
+          openKeys={effectiveOpenKeys}
           onOpenChange={setOpenKeys}
-          items={menuItems}
+          items={displayedItems}
           onClick={handleMenuClick}
           inlineIndent={12}
           style={{ borderInlineEnd: 'none', paddingTop: 4 }}
