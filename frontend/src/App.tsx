@@ -55,6 +55,7 @@ const ScadaListPage = lazy(() => import('./services/scada/ScadaListPage'));
 const TransmissionListPage = lazy(() => import('./services/transmission/TransmissionListPage'));
 const BerthList = lazy(() => import('./pages/port/BerthListPage'));
 const AnchorageList = lazy(() => import('./pages/anchorage/AnchorageListPage'));
+const TransferAreaList = lazy(() => import('./pages/transfer-area/TransferAreaListPage'));
 
 const PierListPage = lazy(() => import('./pages/port/PierListPage'));
 
@@ -202,6 +203,8 @@ export default function App() {
                 <Route path="/berth" element={<PermissionGuard permission="berth:read"><BerthList /></PermissionGuard>} />
 
                 <Route path="/anchorage" element={<PermissionGuard permission="anchorage:read"><AnchorageList /></PermissionGuard>} />
+
+                <Route path="/transfer-area" element={<PermissionGuard permission="transferarea:read"><TransferAreaList /></PermissionGuard>} />
 
                 <Route path="/pier" element={<PermissionGuard permission="pier:read"><PierListPage /></PermissionGuard>} />
 

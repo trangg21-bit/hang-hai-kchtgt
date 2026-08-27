@@ -9,8 +9,8 @@ import { PlusOutlined, DeleteOutlined, UploadOutlined, FileOutlined, EditOutline
 import { colors } from '../../theme';
 import {
   textPrimary, textSecondary, textTertiary, borderDefault, actionPrimary,
-  fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
-  radiusPill, radiusMd, spaceSm, spaceFormField, spaceMd,
+  fontSizeSm, fontSizeMd, fontWeightMedium, fontWeightBold,
+  radiusPill, radiusMd, spaceSm, spaceFormField,
   surfaceCard, uploadHintStyle,
   drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle,
 } from '../../tokens';
@@ -22,11 +22,8 @@ import toast from '../../components/ToastNotification';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { organizationService } from '../../services/organizationService';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
-import { anchorageCRUD, portCRUD } from '../../services/portService';
-import { fetchBuoyStationList } from '../../services/buoy-station/api';
+import { transferAreaCRUD, portCRUD } from '../../services/portService';
 import { symbolService } from '../../services/symbolService';
-import { lineObjectService } from '../../services/lineObjectService';
-import { LineObject } from '../../types/lineObject';
 import type { Symbol as IconSymbol } from '../../services/symbolService';
 import { useAuthStore } from '../../store/authStore';
 
@@ -49,6 +46,15 @@ const OPERATIONAL_STATUS_OPTIONS = [
   { value: 'OPERATIONAL', label: 'Đang khai thác/vận hành' },
   { value: 'NOT_YET_OPERATIONAL', label: 'Chưa khai thác/vận hành' },
   { value: 'SUSPENDED', label: 'Dừng khai thác/vận hành' },
+];
+
+const OPERATIONAL_FUNCTIONS_OPTIONS = [
+  { value: 'CONTAINER', label: 'Hàng Container' },
+  { value: 'GENERAL_CARGO', label: 'Hàng tổng hợp (Bách hóa)' },
+  { value: 'BULK_CARGO', label: 'Hàng chuyên dụng hàng rời, quặng' },
+  { value: 'OIL_GAS', label: 'Hàng chuyên dụng xăng dầu, khí hóa lỏng' },
+  { value: 'OTHER', label: 'Hàng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu...)' },
+  { value: 'PASSENGER', label: 'Hành khách' },
 ];
 
 const GEOMETRY_TYPE_OPTIONS = [
@@ -84,8 +90,8 @@ function ddToDms(dd: number | null | undefined): { d: number | null; m: number |
   return { d: d === 0 ? null : d, m: m === 0 ? null : m, s: s === 0 ? null : s };
 }
 
-const dmsUnitStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary };
-const dmsUnitEndStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary };
+const dmsUnitStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary };
+const dmsUnitEndStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary };
 
 /** Nhóm 3 ô nhập Độ/Phút/Giây dùng chung cho các bảng tọa độ (GPS chính & điểm neo trong Drawer). */
 const renderDmsGroup = (
@@ -100,7 +106,7 @@ const renderDmsGroup = (
       <span style={dmsUnitStyle}>°</span>
       <InputNumber value={dms.m} min={0} max={59} placeholder="Phút" onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(dms.d, v ?? 0, dms.s)} style={{ flex: 1, minWidth: 0 }} controls={false} />
       <span style={dmsUnitStyle}>'</span>
-      <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber} onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(dms.d, dms.m, v ?? 0)} style={{ flex: 1.2, minWidth: 0 }} controls={false} />
+      <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber} onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(dms.d, dms.m, v ?? 0)} style={{ flex: 1, minWidth: 0 }} controls={false} />
       <span style={dmsUnitEndStyle}>"</span>
     </Space.Compact>
   );
@@ -121,29 +127,30 @@ export interface MooringWaterAreaField {
   anchorPoints?: AnchorPointField[];
 }
 
-export interface AnchorageFormFields {
+export interface TransferAreaFormFields {
   orgUnitId?: string;
   portId?: string;
-  navigationChannelId?: string;
-  buoyStationId?: string;
-  anchorageCode?: string;
-  anchorageName?: string;
+  transferAreaCode?: string;
+  transferAreaName?: string;
   provinceId?: number;
   detailedLocation?: string;
+  operationalFunctions?: string[];
   shapeDescription?: string;
   area?: number;
   designWaterDepth?: number;
   currentWaterDepth?: number;
   bottomElevationDesign?: number;
   maxVesselDWT?: number;
-  activeAnchorageCount?: number;
-  publishedAnchorageCount?: number;
-  underInvestmentAnchorageCount?: number;
+  activeTransferCount?: number;
+  publishedTransferCount?: number;
+  underInvestmentTransferCount?: number;
   operationalStatus?: string;
   remarks?: string;
   openingAnnouncementDate?: string;
   publicDecision?: string;
   investmentAgreement?: string;
+  activityStartDate?: string;
+  activityEndDate?: string;
   coordinates?: Array<{ latitude: number; longitude: number }>;
   geometryType?: string;
   coordinateSystem?: number;
@@ -152,7 +159,7 @@ export interface AnchorageFormFields {
   mooringWaterAreas?: MooringWaterAreaField[];
 }
 
-export interface AnchorageFormProps {
+export interface TransferAreaFormProps {
   form: any;
   id?: string;
   onFinish: (saved: boolean) => void;
@@ -160,14 +167,15 @@ export interface AnchorageFormProps {
   onSubmittingChange?: (submitting: boolean) => void;
 }
 
-export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmittingChange }: AnchorageFormProps, ref) {
+export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubmittingChange }: TransferAreaFormProps, ref) {
   const isEdit = !!id;
   const [, setSubmitting] = useState(false);
   const [activeTabKey, setActiveTabKey] = useState('general');
-  const [technicalOpen, setTechnicalOpen] = useState(true);
   const [announcementOpen, setAnnouncementOpen] = useState(true);
+  const [activityOpen, setActivityOpen] = useState(true);
   const [waterAreaOpen, setWaterAreaOpen] = useState(true);
-  const [anchorageCodeLoading, setAnchorageCodeLoading] = useState(false);
+  const [technicalOpen, setTechnicalOpen] = useState(true);
+  const [transferAreaCodeLoading, setTransferAreaCodeLoading] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
   const isSystemAdmin = (currentUser?.permissions?.includes('admin:all') || currentUser?.permissions?.includes('*')) ?? false;
   const editPortIdRef = useRef<string | undefined>(undefined);
@@ -183,7 +191,7 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
     return len >= max;
   };
   const atMax = {
-    anchorageName: useMaxReached('anchorageName', 255),
+    transferAreaName: useMaxReached('transferAreaName', 255),
     detailedLocation: useMaxReached('detailedLocation', 500),
     shapeDescription: useMaxReached('shapeDescription', 255),
     area: useMaxReached('area', 20),
@@ -191,9 +199,9 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
     currentWaterDepth: useMaxReached('currentWaterDepth', 20),
     bottomElevationDesign: useMaxReached('bottomElevationDesign', 20),
     maxVesselDWT: useMaxReached('maxVesselDWT', 20),
-    activeAnchorageCount: useMaxReached('activeAnchorageCount', 5),
-    publishedAnchorageCount: useMaxReached('publishedAnchorageCount', 5),
-    underInvestmentAnchorageCount: useMaxReached('underInvestmentAnchorageCount', 5),
+    activeTransferCount: useMaxReached('activeTransferCount', 5),
+    publishedTransferCount: useMaxReached('publishedTransferCount', 5),
+    underInvestmentTransferCount: useMaxReached('underInvestmentTransferCount', 5),
     publicDecision: useMaxReached('publicDecision', 2000),
     investmentAgreement: useMaxReached('investmentAgreement', 2000),
   };
@@ -202,8 +210,6 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
   const [loadingOrgs, setLoadingOrgs] = useState(false);
   const [portOptions, setPortOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [loadingPorts, setLoadingPorts] = useState(false);
-  const [waterwayOptions, setWaterwayOptions] = useState<Array<{ value: string; label: string }>>([]);
-  const [buoyStationOptions, setBuoyStationOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [symbols, setSymbols] = useState<IconSymbol[]>([]);
   const [coordinateList, setCoordinateList] = useState<Array<{ latitude: number | null; longitude: number | null }>>([]);
   const [gpsError, setGpsError] = useState<string | null>(null);
@@ -225,8 +231,6 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
 
   useEffect(() => { symbolService.list({ page: 1, pageSize: 1000, status: 'active' }).then(r => setSymbols(r.data || [])).catch(() => {}); }, []);
   useEffect(() => { setLoadingOrgs(true); organizationService.list({ pageSize: 1000 }).then(r => setOrgUnits(r.data || [])).catch(() => {}).finally(() => setLoadingOrgs(false)); }, []);
-  useEffect(() => { lineObjectService.list({ status: 'PUBLISHED', objectType: LineObject.ObjectType.WATERWAY, pageSize: 1000 }).then(r => setWaterwayOptions((r.data || []).map((l: any) => ({ value: l.id, label: l.name || l.code })))).catch(() => {}); }, []);
-  useEffect(() => { fetchBuoyStationList({ status: 'PUBLISHED' }).then(r => setBuoyStationOptions((r.content || []).map((s: any) => ({ value: s.id, label: s.name || s.code })))).catch(() => {}); }, []);
 
   const loadPortOptions = async (orgUnitId: string) => {
     setLoadingPorts(true);
@@ -241,15 +245,15 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
     finally { setLoadingPorts(false); }
   };
 
-  useEffect(() => { if (watchedOrgUnitId) { if (!isEdit || !form.getFieldValue('portId')) form.setFieldsValue({ portId: undefined, anchorageCode: undefined }); loadPortOptions(watchedOrgUnitId); } }, [watchedOrgUnitId]);
+  useEffect(() => { if (watchedOrgUnitId) { if (!isEdit || !form.getFieldValue('portId')) form.setFieldsValue({ portId: undefined, transferAreaCode: undefined }); loadPortOptions(watchedOrgUnitId); } }, [watchedOrgUnitId]);
 
   useEffect(() => {
     if (!watchedPortId || (isEdit && editPortIdRef.current === watchedPortId)) return;
-    setAnchorageCodeLoading(true);
-    anchorageCRUD.generateCode(watchedPortId)
-      .then((res: any) => { if (res?.anchorageCode) form.setFieldsValue({ anchorageCode: res.anchorageCode }); })
+    setTransferAreaCodeLoading(true);
+    transferAreaCRUD.generateCode(watchedPortId)
+      .then((res: any) => { if (res?.transferAreaCode) form.setFieldsValue({ transferAreaCode: res.transferAreaCode }); })
       .catch(() => {})
-      .finally(() => setAnchorageCodeLoading(false));
+      .finally(() => setTransferAreaCodeLoading(false));
   }, [watchedPortId]);
 
   useEffect(() => { if (!isSystemAdmin && !isEdit) { api.get('/users/me').then(r => { const p = r.data?.data ?? r.data; if (p?.orgUnitId) form.setFieldsValue({ orgUnitId: p.orgUnitId }); }).catch(() => {}); } }, []);
@@ -272,10 +276,17 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
   }, [watchedGeometryType]);
 
   // Khi chọn loại đối tượng cho khu nước neo buộc tàu (trong Drawer) → tự set hệ quy chiếu & quy tắc hiển thị
+  // + tự thêm dòng tọa độ điểm neo trống cho đủ tối thiểu theo loại: Điểm→1, Đường→2, Vùng→3
   useEffect(() => {
     if (!waterAreaGeometryType) return;
     setWaterAreaCoordinateSystem(1);
     setWaterAreaDisplayRule('Độ, phút, giây (DMS)');
+    const count = GEOMETRY_POINT_COUNT[waterAreaGeometryType] ?? 1;
+    setWaterAreaAnchorPoints((prev) => {
+      if (prev.length >= count) return prev;
+      const added = Array.from({ length: count - prev.length }, () => ({ name: '', latitude: null, longitude: null }));
+      return [...prev, ...added];
+    });
   }, [waterAreaGeometryType]);
 
   // Edit mode: load existing
@@ -283,7 +294,7 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
     if (!isEdit || !id) return;
     (async () => {
       try {
-        const data: any = await anchorageCRUD.findById(id);
+        const data: any = await transferAreaCRUD.findById(id);
         const ec = data.coordinates ? parseGisCoordinates({ geometryType: data.geometryType, coordinates: data.coordinates }) : [];
         setCoordinateList(ec.length > 0 ? ec.map(c => ({ latitude: c.latitude, longitude: c.longitude })) : data.latitude != null ? [{ latitude: data.latitude, longitude: data.longitude }] : []);
         setWaterAreaList(Array.isArray(data.mooringWaterAreas) && data.mooringWaterAreas.length > 0
@@ -300,27 +311,30 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
           : []);
         if (data.orgUnitId) await loadPortOptions(data.orgUnitId);
         try {
-          const fr = await api.get(`/v1/anchorage/${id}/attachments`, { params: { page: 0, size: 50 } });
+          const fr = await api.get(`/v1/transfer-area/${id}/attachments`, { params: { page: 0, size: 50 } });
           const files = fr.data?.data || [];
           setExistingFiles(files);
           setUploadedFiles(files.map((a: any) => ({ uid: a.id, name: a.fileName || a.name, size: a.fileSize, status: 'done' as const })));
         } catch { setExistingFiles([]); }
         editPortIdRef.current = data.portId;
         form.setFieldsValue({
-          orgUnitId: data.orgUnitId, portId: data.portId, navigationChannelId: data.navigationChannelId, buoyStationId: data.buoyStationId,
-          anchorageCode: data.anchorageCode, anchorageName: data.anchorageName,
+          orgUnitId: data.orgUnitId, portId: data.portId,
+          transferAreaCode: data.transferAreaCode, transferAreaName: data.transferAreaName,
           provinceId: data.provinceId ? VIETNAM_PROVINCES[data.provinceId - 1] ?? undefined : undefined,
           detailedLocation: data.detailedLocation, shapeDescription: data.shapeDescription,
           area: data.area, designWaterDepth: data.designWaterDepth, currentWaterDepth: data.currentWaterDepth,
           bottomElevationDesign: data.bottomElevationDesign, maxVesselDWT: data.maxVesselDWT,
-          activeAnchorageCount: data.activeAnchorageCount, publishedAnchorageCount: data.publishedAnchorageCount,
-          underInvestmentAnchorageCount: data.underInvestmentAnchorageCount,
+          activeTransferCount: data.activeTransferCount, publishedTransferCount: data.publishedTransferCount,
+          underInvestmentTransferCount: data.underInvestmentTransferCount,
+          operationalFunctions: data.operationalFunctions ? data.operationalFunctions.split(',').map((s: string) => s.trim()).filter(Boolean) : undefined,
           operationalStatus: data.operationalStatus || undefined, remarks: data.remarks,
           openingAnnouncementDate: data.openingAnnouncementDate ? dayjs(data.openingAnnouncementDate) : undefined,
+          activityStartDate: data.activityStartDate ? dayjs(data.activityStartDate) : undefined,
+          activityEndDate: data.activityEndDate ? dayjs(data.activityEndDate) : undefined,
           publicDecision: data.publicDecision, investmentAgreement: data.investmentAgreement,
           geometryType: data.geometryType || undefined, mapSymbolId: data.mapSymbolId, coordinateSystem: data.coordinateSystem, displayRule: data.displayRule,
         });
-      } catch { toast.error('Không thể tải thông tin khu neo đậu'); }
+      } catch { toast.error('Không thể tải thông tin khu chuyển tải'); }
     })();
   }, [isEdit, id]);
 
@@ -383,6 +397,14 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
 
   const saveWaterArea = () => {
     if (!waterAreaDescription.trim()) { toast.error('Phạm vi khu nước neo buộc tàu không được để trống'); return; }
+    if (waterAreaGeometryType) {
+      const minCount = GEOMETRY_POINT_COUNT[waterAreaGeometryType] ?? 1;
+      const validPoints = waterAreaAnchorPoints.filter(p => p.latitude != null && p.longitude != null && !isNaN(Number(p.latitude)) && !isNaN(Number(p.longitude)));
+      if (validPoints.length < minCount) {
+        toast.error(waterAreaGeometryType === 'POLYGON' ? 'Đối tượng vùng cần ít nhất 3 tọa độ điểm neo hợp lệ' : waterAreaGeometryType === 'LINE' ? 'Đối tượng đường cần ít nhất 2 tọa độ điểm neo hợp lệ' : 'Đối tượng điểm cần ít nhất 1 tọa độ điểm neo hợp lệ');
+        return;
+      }
+    }
     setWaterAreaSaving(true);
     const item: MooringWaterAreaField = {
       description: waterAreaDescription.trim(),
@@ -400,13 +422,13 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
     setWaterAreaSaving(false);
   };
 
-  const handleOrgUnitChange = () => { form.setFieldsValue({ portId: undefined, anchorageCode: undefined }); setCoordinateList([]); };
+  const handleOrgUnitChange = () => { form.setFieldsValue({ portId: undefined, transferAreaCode: undefined }); setCoordinateList([]); };
 
   const handleSave = useCallback(async (saveAction: SaveAction) => {
     const values = form.getFieldsValue();
     try { await form.validateFields(); } catch (e: any) {
       const errFields: Array<{ name: Array<string | number> }> = e?.errorFields ?? [];
-      if (errFields.some((f) => f.name[0] === 'orgUnitId' || f.name[0] === 'portId' || f.name[0] === 'anchorageName')) setActiveTabKey('general');
+      if (errFields.some((f) => f.name[0] === 'orgUnitId' || f.name[0] === 'portId' || f.name[0] === 'transferAreaName')) setActiveTabKey('general');
       else if (errFields.some((f) => f.name[0] === 'mapSymbolId' || f.name[0] === 'coordinateSystem' || f.name[0] === 'displayRule' || f.name[0] === 'geometryType')) setActiveTabKey('location');
       return false;
     }
@@ -440,8 +462,7 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
     try {
       const payload: Record<string, unknown> = {
         orgUnitId: values.orgUnitId, portId: values.portId,
-        navigationChannelId: values.navigationChannelId || undefined, buoyStationId: values.buoyStationId || undefined,
-        anchorageCode: String(values.anchorageCode || '').trim() || undefined, anchorageName: String(values.anchorageName || '').trim(),
+        transferAreaCode: String(values.transferAreaCode || '').trim() || undefined, transferAreaName: String(values.transferAreaName || '').trim(),
         provinceId: values.provinceId ? VIETNAM_PROVINCES.indexOf(values.provinceId) + 1 : undefined,
         detailedLocation: values.detailedLocation || undefined, shapeDescription: values.shapeDescription || undefined,
         area: values.area != null && !isNaN(Number(values.area)) ? Number(values.area) : undefined,
@@ -449,11 +470,14 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
         currentWaterDepth: values.currentWaterDepth != null && !isNaN(Number(values.currentWaterDepth)) ? Number(values.currentWaterDepth) : undefined,
         bottomElevationDesign: values.bottomElevationDesign != null && !isNaN(Number(values.bottomElevationDesign)) ? Number(values.bottomElevationDesign) : undefined,
         maxVesselDWT: values.maxVesselDWT != null && !isNaN(Number(values.maxVesselDWT)) ? Number(values.maxVesselDWT) : undefined,
-        activeAnchorageCount: values.activeAnchorageCount != null && !isNaN(Number(values.activeAnchorageCount)) ? Number(values.activeAnchorageCount) : undefined,
-        publishedAnchorageCount: values.publishedAnchorageCount != null && !isNaN(Number(values.publishedAnchorageCount)) ? Number(values.publishedAnchorageCount) : undefined,
-        underInvestmentAnchorageCount: values.underInvestmentAnchorageCount != null && !isNaN(Number(values.underInvestmentAnchorageCount)) ? Number(values.underInvestmentAnchorageCount) : undefined,
+        activeTransferCount: values.activeTransferCount != null && !isNaN(Number(values.activeTransferCount)) ? Number(values.activeTransferCount) : undefined,
+        publishedTransferCount: values.publishedTransferCount != null && !isNaN(Number(values.publishedTransferCount)) ? Number(values.publishedTransferCount) : undefined,
+        underInvestmentTransferCount: values.underInvestmentTransferCount != null && !isNaN(Number(values.underInvestmentTransferCount)) ? Number(values.underInvestmentTransferCount) : undefined,
+        operationalFunctions: values.operationalFunctions && values.operationalFunctions.length > 0 ? values.operationalFunctions.join(',') : undefined,
         operationalStatus: values.operationalStatus || undefined, remarks: values.remarks || undefined,
         openingAnnouncementDate: values.openingAnnouncementDate ? (typeof values.openingAnnouncementDate === 'string' ? values.openingAnnouncementDate : values.openingAnnouncementDate.format('YYYY-MM-DD') + 'T00:00:00') : undefined,
+        activityStartDate: values.activityStartDate ? (typeof values.activityStartDate === 'string' ? values.activityStartDate : values.activityStartDate.format('YYYY-MM-DD') + 'T00:00:00') : undefined,
+        activityEndDate: values.activityEndDate ? (typeof values.activityEndDate === 'string' ? values.activityEndDate : values.activityEndDate.format('YYYY-MM-DD') + 'T00:00:00') : undefined,
         publicDecision: values.publicDecision || undefined, investmentAgreement: values.investmentAgreement || undefined,
         latitude: manualCoords.length > 0 ? manualCoords[0].latitude : undefined,
         longitude: manualCoords.length > 0 ? manualCoords[0].longitude : undefined,
@@ -465,16 +489,16 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
       };
       if (saveAction !== 'UPDATE') (payload as any).saveAction = saveAction;
       Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
-      let createdAnchorageId: string | undefined;
-      if (isEdit && id) { await anchorageCRUD.update({ ...payload, id } as any); createdAnchorageId = id; }
-      else { const res: any = await anchorageCRUD.create(payload as any); createdAnchorageId = res?.id ?? res?.data?.id; }
-      if (createdAnchorageId && uploadedFiles.length > 0) {
+      let createdTransferAreaId: string | undefined;
+      if (isEdit && id) { await transferAreaCRUD.update({ ...payload, id } as any); createdTransferAreaId = id; }
+      else { const res: any = await transferAreaCRUD.create(payload as any); createdTransferAreaId = res?.id ?? res?.data?.id; }
+      if (createdTransferAreaId && uploadedFiles.length > 0) {
         for (const fi of uploadedFiles) {
           const of = fi.originFileObj as File;
           if (!of) continue;
           const fd = new FormData();
           fd.append('files', of);
-          await api.post(`/v1/anchorage/${createdAnchorageId}/attachments`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).catch(() => {});
+          await api.post(`/v1/transfer-area/${createdTransferAreaId}/attachments`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).catch(() => {});
         }
       }
       toast.success(saveAction === 'DRAFT' ? 'Lưu tạm thành công' : saveAction === 'APPROVED' ? 'Phê duyệt thành công' : saveAction === 'UPDATE' ? 'Cập nhật thành công' : 'Gửi phê duyệt thành công');
@@ -508,33 +532,21 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
       </Row>
       <Row gutter={16}>
         <Col span={12}>
-          <Form.Item name="navigationChannelId" {...labelProps('Thuộc luồng hàng hải')} style={{ marginBottom: spaceFormField }}>
-            <Select placeholder="Chọn luồng hàng hải..." options={waterwayOptions} showSearch allowClear optionFilterProp="label" style={selectStyle} />
+          <Form.Item name="transferAreaCode" {...labelProps('Mã khu chuyển tải')} style={{ marginBottom: spaceFormField }} tooltip="Mã khu chuyển tải được sinh tự động">
+            <Input disabled placeholder={transferAreaCodeLoading ? 'Đang sinh mã...' : watchedPortId ? 'Mã tự động' : 'Chọn Cảng biển để sinh mã'} style={{ ...inputStyle, color: '#8c8c8c', cursor: 'not-allowed' }} />
           </Form.Item>
         </Col>
         <Col span={12}>
-          <Form.Item name="buoyStationId" {...labelProps('Thuộc bến phao')} style={{ marginBottom: spaceFormField }}>
-            <Select placeholder="Chọn bến phao..." options={buoyStationOptions} showSearch allowClear optionFilterProp="label" style={selectStyle} />
-          </Form.Item>
-        </Col>
-      </Row>
-      <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item name="anchorageCode" {...labelProps('Mã khu neo đậu')} style={{ marginBottom: spaceFormField }} tooltip="Mã khu neo đậu được sinh tự động">
-            <Input disabled placeholder={anchorageCodeLoading ? 'Đang sinh mã...' : watchedPortId ? 'Mã tự động' : 'Chọn Cảng biển để sinh mã'} style={{ ...inputStyle, color: '#8c8c8c', cursor: 'not-allowed' }} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="anchorageName" {...labelProps('Tên khu neo đậu')} style={{ marginBottom: spaceFormField }}
-            rules={[{ required: true, message: 'Tên khu neo đậu không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}
-            validateStatus={atMax.anchorageName ? 'error' : undefined} help={atMax.anchorageName ? 'Đã đạt tối đa 255 ký tự' : undefined}>
-            <Input placeholder="Nhập tên khu neo đậu" maxLength={255} style={inputStyle} />
+          <Form.Item name="transferAreaName" {...labelProps('Tên khu chuyển tải')} style={{ marginBottom: spaceFormField }}
+            rules={[{ required: true, message: 'Tên khu chuyển tải không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}
+            validateStatus={atMax.transferAreaName ? 'error' : undefined} help={atMax.transferAreaName ? 'Đã đạt tối đa 255 ký tự' : undefined}>
+            <Input placeholder="Nhập tên khu chuyển tải" maxLength={255} style={inputStyle} />
           </Form.Item>
         </Col>
       </Row>
       <Row gutter={16}>
         <Col span={12}>
-          <Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành Phố)')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Địa điểm (Tỉnh/Thành phố) là bắt buộc' }]}>
+          <Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành phố)')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Địa điểm (Tỉnh/Thành phố) là bắt buộc' }]}>
             <Select placeholder="Chọn địa điểm" showSearch optionFilterProp="label"
               filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
               options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))} style={selectStyle} />
@@ -548,6 +560,15 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
         </Col>
       </Row>
       <Row gutter={16}>
+        <Col span={12}>
+          <Form.Item name="operationalFunctions" {...labelProps('Công năng khai thác')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Công năng khai thác không được để trống' }]}>
+            <Select mode="multiple" className="transfer-area-filter" placeholder="Chọn công năng khai thác" allowClear showSearch
+              maxTagCount={2}
+              maxTagPlaceholder={(omittedValues) => `+${omittedValues.length}`}
+              options={OPERATIONAL_FUNCTIONS_OPTIONS}
+              style={selectStyle} />
+          </Form.Item>
+        </Col>
         <Col span={12}>
           <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} required style={{ marginBottom: spaceFormField }} initialValue="NOT_YET_OPERATIONAL" rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}>
             <Select placeholder="Chọn tình trạng" options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />
@@ -602,22 +623,22 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
       </Row>
       <Row gutter={16}>
         <Col span={12}>
-          <Form.Item name="activeAnchorageCount" {...labelProps('Số lượng khu neo đậu đang khai thác')} style={{ marginBottom: spaceFormField }}
-            validateStatus={atMax.activeAnchorageCount ? 'error' : undefined} help={atMax.activeAnchorageCount ? 'Đã đạt tối đa 5 ký tự' : undefined}>
+          <Form.Item name="activeTransferCount" {...labelProps('Số lượng khu chuyển tải đang khai thác')} style={{ marginBottom: spaceFormField }}
+            validateStatus={atMax.activeTransferCount ? 'error' : undefined} help={atMax.activeTransferCount ? 'Đã đạt tối đa 5 ký tự' : undefined}>
             <InputNumber min={0} placeholder="0" maxLength={5} style={numberInputStyle} />
           </Form.Item>
         </Col>
         <Col span={12}>
-          <Form.Item name="publishedAnchorageCount" {...labelProps('Số lượng khu neo đậu đã công bố')} style={{ marginBottom: spaceFormField }}
-            validateStatus={atMax.publishedAnchorageCount ? 'error' : undefined} help={atMax.publishedAnchorageCount ? 'Đã đạt tối đa 5 ký tự' : undefined}>
+          <Form.Item name="publishedTransferCount" {...labelProps('Số lượng khu chuyển tải đã công bố')} style={{ marginBottom: spaceFormField }}
+            validateStatus={atMax.publishedTransferCount ? 'error' : undefined} help={atMax.publishedTransferCount ? 'Đã đạt tối đa 5 ký tự' : undefined}>
             <InputNumber min={0} placeholder="0" maxLength={5} style={numberInputStyle} />
           </Form.Item>
         </Col>
       </Row>
       <Row gutter={16}>
         <Col span={12}>
-          <Form.Item name="underInvestmentAnchorageCount" {...labelProps('Số lượng khu neo đậu đang được thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }}
-            validateStatus={atMax.underInvestmentAnchorageCount ? 'error' : undefined} help={atMax.underInvestmentAnchorageCount ? 'Đã đạt tối đa 5 ký tự' : undefined}>
+          <Form.Item name="underInvestmentTransferCount" {...labelProps('Số lượng khu chuyển tải đang được thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }}
+            validateStatus={atMax.underInvestmentTransferCount ? 'error' : undefined} help={atMax.underInvestmentTransferCount ? 'Đã đạt tối đa 5 ký tự' : undefined}>
             <InputNumber min={0} placeholder="0" maxLength={5} style={numberInputStyle} />
           </Form.Item>
         </Col>
@@ -630,37 +651,57 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
         </Col>
       </Row>
       </div>)}
-      <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, marginBottom: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setAnnouncementOpen(!announcementOpen)}>
+      {/* ── Toggle: Thông tin công bố mở, đưa vào sử dụng (gom vào tab Thông tin chung) ── */}
+      <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setAnnouncementOpen(!announcementOpen)}>
         <span style={{ color: announcementOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{announcementOpen ? '▼' : '▶'} Thông tin công bố mở, đưa vào sử dụng</span>
       </button>
-      {announcementOpen && (<div>
-      <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item name="openingAnnouncementDate" {...labelProps('Thời điểm công bố mở, đưa ra sử dụng')} style={{ marginBottom: spaceFormField }}>
-            <DatePicker placeholder="Chọn thời điểm..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="publicDecision" {...labelProps('Quyết định công bố/ Văn bản cho phép khai thác')} style={{ marginBottom: spaceFormField }}
-            validateStatus={atMax.publicDecision ? 'error' : undefined} help={atMax.publicDecision ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
-            <Input placeholder="Nhập quyết định công bố" maxLength={2000} style={{ borderRadius: radiusPill, height: 40 }} />
-          </Form.Item>
-        </Col>
-      </Row>
-      <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item name="investmentAgreement" {...labelProps('Văn bản thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }}
-            validateStatus={atMax.investmentAgreement ? 'error' : undefined} help={atMax.investmentAgreement ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
-            <Input placeholder="Nhập văn bản thỏa thuận" maxLength={2000} style={{ borderRadius: radiusPill, height: 40 }} />
-          </Form.Item>
-        </Col>
-      </Row>
+      {announcementOpen && (<div style={{ marginTop: spaceFormField }}>
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item name="openingAnnouncementDate" {...labelProps('Thời điểm công bố mở, đưa ra sử dụng')} style={{ marginBottom: spaceFormField }}>
+              <DatePicker placeholder="Chọn thời điểm..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="publicDecision" {...labelProps('Quyết định công bố/ Văn bản cho phép khai thác')} style={{ marginBottom: spaceFormField }}
+              validateStatus={atMax.publicDecision ? 'error' : undefined} help={atMax.publicDecision ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
+              <Input placeholder="Nhập quyết định công bố" maxLength={2000} style={{ borderRadius: radiusPill, height: 40 }} />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item name="investmentAgreement" {...labelProps('Văn bản thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }}
+              validateStatus={atMax.investmentAgreement ? 'error' : undefined} help={atMax.investmentAgreement ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
+              <Input placeholder="Nhập văn bản thỏa thuận" maxLength={2000} style={{ borderRadius: radiusPill, height: 40 }} />
+            </Form.Item>
+          </Col>
+        </Row>
       </div>)}
 
-      <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, marginBottom: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setWaterAreaOpen(!waterAreaOpen)}>
+      {/* ── Toggle: Thông tin thời gian hoạt động (gom vào tab Thông tin chung) ── */}
+      <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setActivityOpen(!activityOpen)}>
+        <span style={{ color: activityOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{activityOpen ? '▼' : '▶'} Thông tin thời gian hoạt động</span>
+      </button>
+      {activityOpen && (<div style={{ marginTop: spaceFormField }}>
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item name="activityStartDate" {...labelProps('Thời gian hoạt động (Từ ngày)')} style={{ marginBottom: spaceFormField }}>
+              <DatePicker placeholder="Chọn ngày bắt đầu" format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="activityEndDate" {...labelProps('Thời gian hoạt động (Đến ngày)')} style={{ marginBottom: spaceFormField }}>
+              <DatePicker placeholder="Chọn ngày kết thúc" format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </Form.Item>
+          </Col>
+        </Row>
+      </div>)}
+      {/* ── Toggle: Thông tin khu nước neo buộc tàu (gom vào tab Thông tin chung) ── */}
+      <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setWaterAreaOpen(!waterAreaOpen)}>
         <span style={{ color: waterAreaOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{waterAreaOpen ? '▼' : '▶'} Thông tin khu nước neo buộc tàu</span>
       </button>
-      {waterAreaOpen && (<div>
+      {waterAreaOpen && (<div style={{ marginTop: spaceFormField }}>
         <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={sectionLabelStyle}>Danh sách khu nước neo buộc tàu</span>
           {waterAreaList.length > 0 && (
@@ -795,6 +836,7 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
 
   return (
     <>
+      <style>{`.transfer-area-filter .ant-select-selector { border-radius: 999px !important; } .transfer-area-filter .ant-select-content { flex-wrap: nowrap !important; overflow: hidden; } .transfer-area-filter .ant-select-content-item { max-width: 45% !important; } .transfer-area-filter .ant-select-selection-item { border-radius: 999px !important; }`}</style>
       <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }} items={tabItems} />
 
       <Drawer
