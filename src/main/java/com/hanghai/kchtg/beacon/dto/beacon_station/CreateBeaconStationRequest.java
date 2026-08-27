@@ -19,8 +19,6 @@ import java.time.LocalDate;
 @Builder
 public class CreateBeaconStationRequest {
 
-    private RecordSecurityLevel securityLevel;
-
     @NotBlank(message = "Mã đèn biển không được để trống")
     @Size(max = 50)
     private String code;

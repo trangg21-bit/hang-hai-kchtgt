@@ -135,9 +135,6 @@ public class CctvService {
       .coordinateSystem(request.getCoordinateSystem())
       .displayRule(request.getDisplayRule())
       .spatialId(request.getSpatialId())
-      .securityLevel(request.getSecurityLevel() != null
-        ? request.getSecurityLevel()
-        : RecordSecurityLevel.NORMAL)
       .build();
 
     // Persist trước để entity.getId() có giá trị khi ghi infrastructure_history (ref_id NOT NULL).
@@ -388,7 +385,6 @@ public class CctvService {
 
     return CctvResponse.builder()
       .id(entity.getId())
-      .securityLevel(entity.getSecurityLevel())
       .deviceCode(entity.getDeviceCode())
       .deviceName(entity.getDeviceName())
       .detailedLocation(entity.getDetailedLocation())

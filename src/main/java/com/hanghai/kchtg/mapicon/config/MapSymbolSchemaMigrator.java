@@ -80,10 +80,6 @@ public class MapSymbolSchemaMigrator implements CommandLineRunner {
                 log.warn("Could not backfill map_symbols code: {}", ex.getMessage());
             }
 
-            // 4. Ensure security_level is removed from vts_operation_center and ais_system if present
-            jdbcTemplate.execute("ALTER TABLE IF EXISTS vts_operation_center DROP COLUMN IF EXISTS security_level");
-            jdbcTemplate.execute("ALTER TABLE IF EXISTS ais_system DROP COLUMN IF EXISTS security_level");
-
             // 5. Ensure port_id exists and drop legacy GIS fields from vts_operation_center (unified in gis_spatial_objects)
             jdbcTemplate.execute("ALTER TABLE IF EXISTS vts_operation_center ADD COLUMN IF NOT EXISTS port_id UUID");
             jdbcTemplate.execute("ALTER TABLE IF EXISTS vts_operation_center DROP COLUMN IF EXISTS geometry_type");

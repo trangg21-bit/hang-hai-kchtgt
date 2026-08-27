@@ -46,8 +46,74 @@ public class InfrastructureSchemaMigrator implements CommandLineRunner {
 
         patchInfrastructureHistoryTable();
         patchCctvTable();
+        patchCoastalStationsTables();
+        patchAisSystemTable();
 
         log.info("InfrastructureSchemaMigrator finished successfully.");
+    }
+
+    private void patchAisSystemTable() {
+        try {
+            jdbcTemplate.execute("ALTER TABLE ais_system ADD COLUMN IF NOT EXISTS radar_station_id UUID;");
+            jdbcTemplate.execute("ALTER TABLE ais_system ALTER COLUMN vts_operation_center_id DROP NOT NULL;");
+        } catch (Exception e) {
+            log.warn("Could not patch ais_system table: {}", e.getMessage());
+        }
+    }
+
+    private void patchCoastalStationsTables() {
+        try {
+            // coastal_station_lrit
+            jdbcTemplate.execute("ALTER TABLE coastal_station_lrit ADD COLUMN IF NOT EXISTS station_code VARCHAR(50);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_lrit ADD COLUMN IF NOT EXISTS station_name VARCHAR(255);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_lrit ADD COLUMN IF NOT EXISTS geometry_type VARCHAR(50) DEFAULT 'POINT';");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_lrit ADD COLUMN IF NOT EXISTS symbol VARCHAR(100);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_lrit ADD COLUMN IF NOT EXISTS coordinate_system VARCHAR(50) DEFAULT 'WGS84';");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_lrit ADD COLUMN IF NOT EXISTS display_rule VARCHAR(500);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_lrit ADD COLUMN IF NOT EXISTS location_address VARCHAR(1000);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_lrit ADD COLUMN IF NOT EXISTS spatial_id UUID;");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_lrit ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_lrit ADD COLUMN IF NOT EXISTS contact_person VARCHAR(255);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_lrit ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(50);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_lrit ADD COLUMN IF NOT EXISTS terminal_id VARCHAR(255);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_lrit ADD COLUMN IF NOT EXISTS imo_number VARCHAR(100);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_lrit ADD COLUMN IF NOT EXISTS reporting_interval INTEGER;");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_lrit ADD COLUMN IF NOT EXISTS antenna_height DOUBLE PRECISION;");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_lrit ADD COLUMN IF NOT EXISTS power_output DOUBLE PRECISION;");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_lrit ADD COLUMN IF NOT EXISTS antenna_type VARCHAR(255);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_lrit ADD COLUMN IF NOT EXISTS data_format VARCHAR(255);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_lrit ADD COLUMN IF NOT EXISTS communication_channel VARCHAR(255);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_lrit ADD COLUMN IF NOT EXISTS coverage_area VARCHAR(1000);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_lrit ADD COLUMN IF NOT EXISTS services_provided VARCHAR(1000);");
+
+            // coastal_station_haiphong
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS station_code VARCHAR(50);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS station_name VARCHAR(255);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS geometry_type VARCHAR(50) DEFAULT 'POINT';");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS symbol VARCHAR(100);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS coordinate_system VARCHAR(50) DEFAULT 'WGS84';");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS display_rule VARCHAR(500);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS location_address VARCHAR(1000);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS spatial_id UUID;");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS contact_person VARCHAR(255);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(50);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS port_name VARCHAR(255);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS district VARCHAR(255);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS ward VARCHAR(255);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS operational_license VARCHAR(255);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS license_expiry VARCHAR(255);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS inspector_name VARCHAR(255);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS inspector_phone VARCHAR(50);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS last_inspection_date VARCHAR(255);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS next_inspection_date VARCHAR(255);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS coverage_area VARCHAR(1000);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS equipment_type VARCHAR(255);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS communication_frequency VARCHAR(255);");
+            jdbcTemplate.execute("ALTER TABLE coastal_station_haiphong ADD COLUMN IF NOT EXISTS services_provided VARCHAR(1000);");
+        } catch (Exception e) {
+            log.warn("Could not patch coastal stations tables: {}", e.getMessage());
+        }
     }
 
     private void patchApprovalColumns(String table, String dateType) {
@@ -63,9 +129,6 @@ public class InfrastructureSchemaMigrator implements CommandLineRunner {
             jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS rejection_reason TEXT;");
             jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS submitted_at " + dateType + ";");
             jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS submitted_by UUID;");
-            // Ba cột dưới đây thuộc BaseApprovableEntity; loại KCHT nào chuyển sang kế thừa
-            // lớp cha đó mà thiếu cột sẽ lỗi "Column SECURITY_LEVEL not found" khi khởi động.
-            jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS security_level SMALLINT DEFAULT 0;");
             jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS level1_approval_content VARCHAR(2000);");
             jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS level2_approval_content VARCHAR(2000);");
             jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;");
@@ -130,7 +193,6 @@ public class InfrastructureSchemaMigrator implements CommandLineRunner {
                     "created_by UUID, " +
                     "deleted_by UUID, " +
                     "updated_by UUID, " +
-                    "security_level SMALLINT NOT NULL DEFAULT 0, " +
                     "org_unit_id UUID, " +
                     "attached_infrastructure_type INT2, " +
                     "attached_infrastructure_id UUID, " +

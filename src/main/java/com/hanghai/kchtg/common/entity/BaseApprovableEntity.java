@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.common.entity;
 
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.persistence.Column;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -20,8 +19,7 @@ import java.util.UUID;
 
 /**
  * Lớp thực thể cơ sở chuẩn cho toàn bộ các công trình Kết cấu hạ tầng hàng hải (KCHT)
- * hỗ trợ phân quyền theo đơn vị (org_unit_id), cấp độ bảo mật (security_level),
- * không gian GIS (spatial_id), tỉnh thành (province_id),
+ * hỗ trợ phân quyền theo đơn vị (org_unit_id), không gian GIS (spatial_id), tỉnh thành (province_id),
  * và quy trình phê duyệt 2 cấp theo M-1006.
  */
 @Getter
@@ -33,11 +31,6 @@ import java.util.UUID;
 @FieldNameConstants
 @EqualsAndHashCode(callSuper = false)
 public abstract class BaseApprovableEntity extends BaseEntity implements ApprovableEntity {
-
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
-    @Builder.Default
-    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
 
     @Column(name = "province_id")
     private Integer provinceId;
@@ -81,9 +74,6 @@ public abstract class BaseApprovableEntity extends BaseEntity implements Approva
 
     @PrePersist
     protected void onBaseApprovablePrePersist() {
-        if (this.securityLevel == null) {
-            this.securityLevel = RecordSecurityLevel.NORMAL;
-        }
         if (this.approvalStatus == null) {
             this.approvalStatus = ApprovalStatus.DRAFT;
         }

@@ -41,7 +41,8 @@ public class RadarStationController {
 
     @PreAuthorize("@auth.check(authentication, 'radarstation:create')")
     @PostMapping
-    public ResponseEntity<ApiResponse<RadarStationResponse>> create(@Valid @RequestBody RadarStationCreateRequest request, Authentication authentication) {
+    public ResponseEntity<ApiResponse<RadarStationResponse>> create(
+            @Valid @RequestBody RadarStationCreateRequest request, Authentication authentication) {
         try {
             RadarStationResponse response = service.create(request, getUserId(authentication));
             return ResponseEntity.ok(ApiResponse.success("Tạo mới thành công", response));
@@ -154,8 +155,8 @@ public class RadarStationController {
     @PreAuthorize("@auth.check(authentication, 'radarstation:update')")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<RadarStationResponse>> update(@PathVariable UUID id,
-                                    @Valid @RequestBody RadarStationUpdateRequest request,
-                                    Authentication authentication) {
+            @Valid @RequestBody RadarStationUpdateRequest request,
+            Authentication authentication) {
         try {
             RadarStationResponse response = service.update(id, request, getUserId(authentication));
             return ResponseEntity.ok(ApiResponse.success("Cập nhật thành công", response));
@@ -178,8 +179,9 @@ public class RadarStationController {
     }
 
     @PreAuthorize("@auth.check(authentication, 'radarstation:create') or @auth.check(authentication, 'radarstation:update')")
-    @PostMapping(value = {"/{id}/submit", "/{id}/submit-approval"})
-    public ResponseEntity<ApiResponse<RadarStationResponse>> submitForApproval(@PathVariable UUID id, Authentication authentication) {
+    @PostMapping(value = { "/{id}/submit", "/{id}/submit-approval" })
+    public ResponseEntity<ApiResponse<RadarStationResponse>> submitForApproval(@PathVariable UUID id,
+            Authentication authentication) {
         try {
             RadarStationResponse response = service.submitForApproval(id, getUserId(authentication));
             return ResponseEntity.ok(ApiResponse.success("Đã gửi phê duyệt", response));
@@ -190,7 +192,7 @@ public class RadarStationController {
     }
 
     @PreAuthorize("@auth.check(authentication, 'radarstation:approvec1')")
-    @PostMapping(value = {"/{id}/approvec1", "/{id}/approve-l1"})
+    @PostMapping(value = { "/{id}/approvec1", "/{id}/approve-l1" })
     public ResponseEntity<ApiResponse<RadarStationResponse>> approveLevel1(
             @PathVariable UUID id,
             @RequestParam(required = false) String note,
@@ -220,7 +222,7 @@ public class RadarStationController {
     }
 
     @PreAuthorize("@auth.check(authentication, 'radarstation:approvec1')")
-    @PostMapping(value = {"/{id}/rejectc1", "/{id}/reject"})
+    @PostMapping(value = { "/{id}/rejectc1", "/{id}/reject" })
     public ResponseEntity<ApiResponse<RadarStationResponse>> rejectLevel1(
             @PathVariable UUID id,
             @RequestParam(required = false) String reason,
@@ -304,7 +306,8 @@ public class RadarStationController {
             if (files == null || files.isEmpty()) {
                 return ResponseEntity.badRequest().body(ApiResponse.error("Không có file nào được chọn để tải lên"));
             }
-            List<RadarStationAttachmentResponse> responses = service.uploadAttachments(id, files, getUserId(authentication));
+            List<RadarStationAttachmentResponse> responses = service.uploadAttachments(id, files,
+                    getUserId(authentication));
             return ResponseEntity.ok(ApiResponse.success("Tải lên tệp đính kèm thành công", responses));
         } catch (Exception e) {
             log.warn("Lỗi khi tải lên attachment trạm radar id {}: {}", id, e.getMessage());
@@ -340,7 +343,8 @@ public class RadarStationController {
     }
 
     private LocalDateTime parseLocalDateTime(String dateStr) {
-        if (dateStr == null || dateStr.trim().isEmpty()) return null;
+        if (dateStr == null || dateStr.trim().isEmpty())
+            return null;
         try {
             return LocalDateTime.parse(dateStr, DateTimeFormatter.ISO_DATE_TIME);
         } catch (Exception e) {

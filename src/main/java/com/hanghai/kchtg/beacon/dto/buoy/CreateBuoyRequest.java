@@ -19,8 +19,6 @@ import java.time.LocalDate;
 @Builder
 public class CreateBuoyRequest {
 
-    private RecordSecurityLevel securityLevel;
-
     @Size(max = 50)
     private String code;
 

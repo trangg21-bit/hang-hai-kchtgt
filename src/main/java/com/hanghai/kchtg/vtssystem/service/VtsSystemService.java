@@ -168,7 +168,6 @@ public class VtsSystemService {
         VtsSystem entity = VtsSystem.builder()
                 .systemName(request.getSystemName())
                 .conditionStatus(request.getConditionStatus())
-                .securityLevel(RecordSecurityLevel.normalize(request.getRecordSecurityLevel()))
                 .orgUnitId(request.getOrgUnitId())
                 .owningOrgId(request.getOwningOrgId())
                 .operatingOrgId(request.getOperatingOrgId())
@@ -283,7 +282,6 @@ public class VtsSystemService {
         if (request.getConditionStatus() == null) {
             throw new IllegalArgumentException("Tình trạng không được để trống");
         }
-        validateRequestedSecurityLevel(request.getRecordSecurityLevel());
         validateReferenceScope(resolveDataScope(), request.getOrgUnitId(), request.getOwningOrgId(),
                 request.getOperatingOrgId(), request.getPortId());
     }
@@ -320,8 +318,6 @@ public class VtsSystemService {
             FieldVisibilityContext.assertWritable(VtsSystem.Fields.systemName);
         if (request.getConditionStatus() != null)
             FieldVisibilityContext.assertWritable(VtsSystem.Fields.conditionStatus);
-        if (request.getRecordSecurityLevel() != null)
-            FieldVisibilityContext.assertWritable(BaseApprovableEntity.Fields.securityLevel);
         if (request.getOwningOrgId() != null)
             FieldVisibilityContext.assertWritable(VtsSystem.Fields.owningOrgId);
         if (request.getOperatingOrgId() != null)
@@ -349,8 +345,6 @@ public class VtsSystemService {
             FieldVisibilityContext.assertWritable(VtsSystem.Fields.systemName);
         if (request.getConditionStatus() != null)
             FieldVisibilityContext.assertWritable(VtsSystem.Fields.conditionStatus);
-        if (request.getRecordSecurityLevel() != null)
-            FieldVisibilityContext.assertWritable(BaseApprovableEntity.Fields.securityLevel);
         if (request.getOwningOrgId() != null)
             FieldVisibilityContext.assertWritable(VtsSystem.Fields.owningOrgId);
         if (request.getOperatingOrgId() != null)
@@ -369,17 +363,6 @@ public class VtsSystemService {
             FieldVisibilityContext.assertWritable(VtsSystem.Fields.maritimeNotice);
         if (request.getOperationStartDate() != null)
             FieldVisibilityContext.assertWritable(VtsSystem.Fields.operationStartDate);
-    }
-
-    private void validateRequestedSecurityLevel(RecordSecurityLevel requestedLevel) {
-        RecordSecurityLevel normalized = RecordSecurityLevel.normalize(requestedLevel);
-        User currentUser = resolveCurrentUser();
-        Set<String> permissions = permissionCacheService == null
-                ? (currentUser == null ? Set.of() : currentUser.getAllPermissions())
-                : permissionCacheService.getEffectivePermissions(currentUser);
-        if (!RecordSecurityLevel.isAllowed(normalized, permissions, isElevatedAdministrator())) {
-            throw new IllegalArgumentException("Tài khoản không có quyền gán mức bảo mật " + normalized.name());
-        }
     }
 
     private User resolveCurrentUser() {
@@ -474,15 +457,27 @@ public class VtsSystemService {
      * cố tình không đưa vào danh sách này, và giao diện cũng không bật sắp xếp
      * cho chúng.
      */
-    private static final Map<String, String> SORTABLE_LIST_FIELDS = Map.of(
-            "systemName", VtsSystem.Fields.systemName,
-            "code", VtsSystem.Fields.code,
-            "address", VtsSystem.Fields.address,
-            "operationStartDate", VtsSystem.Fields.operationStartDate,
-            "conditionStatus", VtsSystem.Fields.conditionStatus,
-            "approvalStatus", BaseApprovableEntity.Fields.approvalStatus,
-            "updatedDate", EntityFields.UPDATED_AT,
-            "createdAt", EntityFields.CREATED_AT);
+    private static final Map<String, String> SORTABLE_LIST_FIELDS = Map.ofEntries(
+            Map.entry("systemName", "t.systemName"),
+            Map.entry("code", "t.code"),
+            Map.entry("address", "t.address"),
+            Map.entry("operationStartDate", "t.operationStartDate"),
+            Map.entry("conditionStatus", "t.conditionStatus"),
+            Map.entry("approvalStatus", "t.approvalStatus"),
+            Map.entry("rejectionReason", "t.rejectionReason"),
+            Map.entry("orgUnitName", "o.name"),
+            Map.entry("orgUnitId", "t.orgUnitId"),
+            Map.entry("owningOrgName", "own.name"),
+            Map.entry("owningOrgId", "t.owningOrgId"),
+            Map.entry("operatingOrgName", "op.name"),
+            Map.entry("operatingOrgId", "t.operatingOrgId"),
+            Map.entry("portName", "p.portName"),
+            Map.entry("portId", "t.portId"),
+            Map.entry("updatedByName", "t.updatedAt"),
+            Map.entry("updatedBy", "t.updatedBy"),
+            Map.entry("updatedDate", "t.updatedAt"),
+            Map.entry("updatedAt", "t.updatedAt"),
+            Map.entry("createdAt", "t.createdAt"));
 
     /**
      * Chuyển tham số {@code sort=<field>,<asc|desc>} thành {@link Sort}. Tên cột
@@ -490,7 +485,7 @@ public class VtsSystemService {
      * vì ném lỗi, để một tham số lạ không làm hỏng cả màn danh sách.
      */
     private static Sort resolveListSort(String sort) {
-        Sort defaultSort = Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT);
+        Sort defaultSort = Sort.by(Sort.Direction.DESC, "t.createdAt");
         if (sort == null || sort.isBlank()) {
             return defaultSort;
         }
@@ -640,9 +635,6 @@ public class VtsSystemService {
                 request.getPortId() != null ? request.getPortId() : entity.getPortId());
 
         validateWriteGuard(request);
-        if (request.getRecordSecurityLevel() != null) {
-            validateRequestedSecurityLevel(request.getRecordSecurityLevel());
-        }
 
         ApprovalStatus previousApprovalStatus = entity.getApprovalStatus();
         Map<String, String> previousValues = new LinkedHashMap<>();
@@ -1130,7 +1122,6 @@ public class VtsSystemService {
                 .code(entity.getCode())
                 .systemName(entity.getSystemName())
                 .conditionStatus(entity.getConditionStatus())
-                .recordSecurityLevel(RecordSecurityLevel.normalize(entity.getSecurityLevel()))
                 .zones(zones)
                 .orgUnitId(entity.getOrgUnitId())
                 .orgUnitName(orgUnitCacheService.getName(entity.getOrgUnitId()))
@@ -1722,13 +1713,6 @@ public class VtsSystemService {
                     : List.of(orgUnitId);
         }
 
-        // Dropdown chỉ được liệt kê những bản ghi tài khoản có quyền nhìn thấy:
-        // ngoài phạm vi đơn vị còn phải chặn theo mức bảo mật bản ghi, nếu không
-        // tên hồ sơ mật vẫn lộ ra qua danh sách lựa chọn.
-        List<RecordSecurityLevel> allowedSecurityLevels = RecordSecurityLevel.allowedLevels(
-                SecurityUtils.getCurrentUserPermissions(), "vts", SecurityUtils.isElevatedAdministrator());
-
-        return repository.findOptions(scopeEnabled, scopeOrgUnitIds, orgFiltered, targetOrgUnitIds,
-                allowedSecurityLevels);
+        return repository.findOptions(scopeEnabled, scopeOrgUnitIds, orgFiltered, targetOrgUnitIds);
     }
 }

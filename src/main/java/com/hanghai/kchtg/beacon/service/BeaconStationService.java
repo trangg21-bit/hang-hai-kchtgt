@@ -153,13 +153,7 @@ public class BeaconStationService {
 
         validateMaintenanceDates(request.getLastRepairDate(), request.getCommissionedDate());
 
-        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
-                : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "beaconstation", SecurityUtils.getCurrentUserPermissions(),
-                SecurityUtils.isElevatedAdministrator());
-
         BeaconStation entity = BeaconStation.builder()
-                .securityLevel(secLevel)
                 .code(request.getCode())
                 .name(request.getName())
                 .type(request.getType())
@@ -276,11 +270,6 @@ public class BeaconStationService {
             wkt = "POINT(" + currentLon + " " + currentLat + ")";
         }
 
-        if (request.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "beaconstation",
-                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-            entity.setSecurityLevel(request.getSecurityLevel());
-        }
         if (request.getTowerColor() != null)
             entity.setTowerColor(request.getTowerColor());
         if (request.getPrimaryLightModel() != null) {
@@ -606,7 +595,6 @@ public class BeaconStationService {
 
         return BeaconStationResponse.builder()
                 .id(entity.getId())
-                .securityLevel(entity.getSecurityLevel())
                 .code(entity.getCode())
                 .name(entity.getName())
                 .type(entity.getType())

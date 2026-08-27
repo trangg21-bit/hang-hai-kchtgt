@@ -129,13 +129,7 @@ public class DryPortService {
             throw new IllegalArgumentException("Mã " + dryPortCode + " đã tồn tại");
         }
 
-        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
-                : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "dryport", SecurityUtils.getCurrentUserPermissions(),
-                SecurityUtils.isElevatedAdministrator());
-
         DryPort entity = DryPort.builder()
-                .securityLevel(secLevel)
                 .dryPortCode(dryPortCode)
                 .dryPortName(request.getDryPortName())
                 .provinceId(request.getProvinceId())
@@ -324,11 +318,6 @@ public class DryPortService {
         log.info("DryPort update: snapshot captured for id={}, name={}", entity.getId(), entity.getDryPortName());
 
         // Update mutable fields — code is immutable
-        if (request.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "dryport",
-                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-            entity.setSecurityLevel(request.getSecurityLevel());
-        }
         if (request.getDryPortName() != null)
             entity.setDryPortName(request.getDryPortName());
         if (request.getProvinceId() != null)
@@ -538,7 +527,6 @@ public class DryPortService {
 
     private DryPort captureSnapshot(DryPort e) {
         return DryPort.builder()
-                .securityLevel(e.getSecurityLevel())
                 .dryPortCode(e.getDryPortCode()).dryPortName(e.getDryPortName())
                 .provinceId(e.getProvinceId()).orgUnitId(e.getOrgUnitId())
                 .operatingUnit(e.getOperatingUnit()).region(e.getRegion())
@@ -569,7 +557,6 @@ public class DryPortService {
 
         DryPortResponse.DryPortResponseBuilder builder = DryPortResponse.builder()
                 .id(e.getId())
-                .securityLevel(e.getSecurityLevel())
                 .dryPortCode(e.getDryPortCode()).dryPortName(e.getDryPortName())
                 .provinceId(e.getProvinceId()).orgUnitId(e.getOrgUnitId())
                 .orgUnitName(orgUnitCacheService.getName(e.getOrgUnitId()))

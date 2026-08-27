@@ -21,13 +21,18 @@ function buildSearchParams(params: Record<string, string | number | undefined>) 
 
 export interface AisSystemListParams {
   keyword?: string;
+  name?: string;
+  code?: string;
   orgUnitId?: string;
   vtsOperationCenterId?: string;
+  radarStationId?: string;
   operatingOrgId?: string;
   provinceId?: number;
   conditionStatus?: number | string;
   approvalStatus?: number | string;
   commissioningYear?: number;
+  updatedFrom?: string;
+  updatedTo?: string;
   page?: number;
   size?: number;
   sortBy?: string;
@@ -51,13 +56,18 @@ export const aisSystemService = {
   async search(params?: AisSystemListParams): Promise<AisSystemSearchResponse> {
     const sp = buildSearchParams({
       keyword: params?.keyword,
+      name: params?.name,
+      code: params?.code,
       orgUnitId: params?.orgUnitId,
       vtsOperationCenterId: params?.vtsOperationCenterId,
+      radarStationId: params?.radarStationId,
       operatingOrgId: params?.operatingOrgId,
       provinceId: params?.provinceId,
       conditionStatus: params?.conditionStatus,
       approvalStatus: params?.approvalStatus,
       commissioningYear: params?.commissioningYear,
+      updatedFrom: params?.updatedFrom,
+      updatedTo: params?.updatedTo,
       page: params?.page !== undefined ? Math.max(0, params.page > 0 ? params.page - 1 : 0) : 0,
       size: params?.size || 20,
       sortBy: params?.sortBy,

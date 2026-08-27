@@ -263,7 +263,7 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
   const tabItems = [
     {
       key: 'basic',
-      label: 'Thông tin cơ bản',
+      label: 'Thông tin chung',
       children: (
         <div style={{ paddingTop: 16 }}>
           <div className="detail-grid">
@@ -273,7 +273,7 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
             </div>
             <div className="detail-row">
               <span className="detail-label">Thuộc TTDH VTS / Trạm Radar</span>
-              <span className="detail-value">{record?.vtsOperationCenterName || '—'}</span>
+              <span className="detail-value">{record?.attachedLocationName || record?.vtsOperationCenterName || record?.radarStationName || '—'}</span>
             </div>
             <div className="detail-row">
               <span className="detail-label">Đơn vị khai thác</span>

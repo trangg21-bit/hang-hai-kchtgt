@@ -29,7 +29,6 @@ public class VtsSystemCreateRequest {
 
     @NotNull(message = "Tình trạng không được để trống")
     private ConditionStatus conditionStatus;
-    private RecordSecurityLevel recordSecurityLevel;
 
     @NotNull(message = "Đơn vị quản lý không được để trống")
     private UUID orgUnitId;

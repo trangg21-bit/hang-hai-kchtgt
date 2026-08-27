@@ -95,27 +95,9 @@ public class DataScopeAspect {
                     "Không tìm thấy thông tin người dùng thực hiện truy vấn");
         }
 
-        // Record-level security is independent from the organisational scope.
-        // It must also apply to nationwide users; nationwide only removes the
-        // organisation predicate and must not grant access to sensitive rows.
         Set<String> effectivePermissions = permissionCacheService == null
                 ? currentUser.getAllPermissions()
                 : permissionCacheService.getEffectivePermissions(currentUser);
-        try {
-            Session session = entityManager.unwrap(Session.class);
-            var securityFilter = session.enableFilter("recordSecurityLevelFilter");
-            if (securityFilter != null) {
-                boolean elevatedAdministrator = auth.getAuthorities().stream()
-                        .anyMatch(authority -> "ROLE_SYSTEM_ADMIN".equalsIgnoreCase(authority.getAuthority())
-                                || "ROLE_SUPER_ADMIN".equalsIgnoreCase(authority.getAuthority()));
-                securityFilter.setParameter("maxSecurityLevel",
-                        RecordSecurityLevel.maxAllowed(effectivePermissions, elevatedAdministrator).ordinal());
-            }
-        } catch (Exception ex) {
-            log.warn("[DataScopeAspect] Failed to enable recordSecurityLevelFilter: {}", ex.getMessage());
-            throw new org.springframework.security.access.AccessDeniedException(
-                    "Không thể xác định phạm vi bảo mật của bản ghi");
-        }
 
         // Kiểm tra xem user có mang vai trò tra cứu toàn quốc hay không
         boolean isNationwide = effectivePermissions.contains(NATIONWIDE_PERMISSION)

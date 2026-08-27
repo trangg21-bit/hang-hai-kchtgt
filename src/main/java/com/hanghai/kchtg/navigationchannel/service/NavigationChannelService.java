@@ -93,13 +93,7 @@ public class NavigationChannelService {
             throw new IllegalArgumentException("Không tìm thấy đơn vị với id: " + req.getOrgUnitId());
         }
 
-        RecordSecurityLevel secLevel = req.getSecurityLevel() != null ? req.getSecurityLevel()
-                : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "navigationchannel", SecurityUtils.getCurrentUserPermissions(),
-                SecurityUtils.isElevatedAdministrator());
-
         NavigationChannel nc = NavigationChannel.builder()
-                .securityLevel(secLevel)
                 .channelName(trimToNull(req.getChannelName()))
                 .seaportId(req.getSeaportId())
                 .operatingUnitId(req.getOperatingUnitId())
@@ -242,23 +236,12 @@ public class NavigationChannelService {
         // F-039 D3: copy field đơn (non-null) qua EntityUpdateUtils — ignore field có xử lý riêng
         EntityUpdateUtils.copyPropertiesIfPresent(req, nc, previousValues,
                 NavigationChannelUpdateRequest.Fields.orgUnitId,
-                NavigationChannelUpdateRequest.Fields.securityLevel,
                 NavigationChannelUpdateRequest.Fields.geometryType,
                 NavigationChannelUpdateRequest.Fields.coordinates,
                 NavigationChannelUpdateRequest.Fields.routeDetails,
                 NavigationChannelUpdateRequest.Fields.coordinateList,
                 NavigationChannelUpdateRequest.Fields.attachments);
 
-        // securityLevel + orgUnitId vẫn validate + set thủ công (giữ write-scope BR-038-04 / security guard)
-        if (req.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(req.getSecurityLevel(), "navigationchannel",
-                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-            if (!Objects.equals(req.getSecurityLevel(), nc.getSecurityLevel())) {
-                previousValues.put(NavigationChannelUpdateRequest.Fields.securityLevel,
-                        nc.getSecurityLevel() != null ? String.valueOf(nc.getSecurityLevel()) : "Chưa có");
-            }
-            nc.setSecurityLevel(req.getSecurityLevel());
-        }
         if (req.getOrgUnitId() != null) {
             if (!Objects.equals(req.getOrgUnitId(), nc.getOrgUnitId())) {
                 previousValues.put(NavigationChannelUpdateRequest.Fields.orgUnitId,
@@ -695,7 +678,6 @@ public class NavigationChannelService {
 
         return NavigationChannelResponse.builder()
                 .id(nc.getId())
-                .securityLevel(nc.getSecurityLevel())
                 .channelName(nc.getChannelName())
                 .channelCode(nc.getChannelCode())
                 .seaportId(nc.getSeaportId())
@@ -961,7 +943,6 @@ public class NavigationChannelService {
         if (NavigationChannelUpdateRequest.Fields.channelName.equals(field)) return "Tên luồng hàng hải";
         if (NavigationChannelUpdateRequest.Fields.conditionStatus.equals(field)) return "Tình trạng";
         if (NavigationChannelUpdateRequest.Fields.orgUnitId.equals(field)) return "Đơn vị quản lý";
-        if (NavigationChannelUpdateRequest.Fields.securityLevel.equals(field)) return "Cấp độ bảo mật";
         if (NavigationChannelUpdateRequest.Fields.detailedLocation.equals(field)) return "Vị trí chi tiết";
         if (NavigationChannelUpdateRequest.Fields.managementStation.equals(field)) return "Trạm quản lý";
         if (NavigationChannelUpdateRequest.Fields.notes.equals(field)) return "Ghi chú";

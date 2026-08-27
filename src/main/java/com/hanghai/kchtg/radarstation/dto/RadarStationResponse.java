@@ -20,7 +20,6 @@ import java.util.UUID;
 public class RadarStationResponse {
     private UUID id;
     private String code;
-    private RecordSecurityLevel securityLevel;
     private String stationName;
     private String location;
     private BigDecimal longitude;

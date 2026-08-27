@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { TreeSelect } from 'antd';
 import type { TreeSelectProps } from 'antd';
-import { MinusSquareOutlined, PlusSquareOutlined } from '@ant-design/icons';
-import { actionPrimary, radiusPill } from '../../tokens';
+import { DownOutlined, RightOutlined } from '@ant-design/icons';
+import { useThemeToken } from '../../context/ThemeTokenContext';
 
 /** Dữ liệu tối thiểu để hiển thị một đơn vị trong cây. */
 export interface OrgUnitTreeOption {
@@ -168,12 +168,16 @@ export default function OrgUnitTreeSelect({
   style,
   showSearch = true,
   treeDefaultExpandAll = true,
-  treeLine = true,
+  treeLine = false,
   treeNodeFilterProp = 'title',
   showPath = false,
   allLabel,
+  dropdownStyle,
+  popupMatchSelectWidth = false,
+  listHeight = 300,
   ...props
 }: OrgUnitTreeSelectProps) {
+  const { radiusPill, controlHeight, radiusMd } = useThemeToken();
   const treeData = useMemo(() => {
     const list = Array.isArray(organizations) ? organizations : [];
     const built = buildOrgUnitTreeData(list);
@@ -210,19 +214,29 @@ export default function OrgUnitTreeSelect({
   return (
     <TreeSelect
       {...props}
+      treeData={treeData}
       showSearch={showSearch}
       treeDefaultExpandAll={treeDefaultExpandAll}
       treeLine={treeLine}
       treeNodeFilterProp={treeNodeFilterProp}
       treeNodeLabelProp={showPath ? 'label' : undefined}
       filterTreeNode={(input, node) => normalizeSearchText(node?.title).includes(normalizeSearchText(input))}
-      treeData={treeData}
-      switcherIcon={(nodeProps) => {
-        if (nodeProps.isLeaf) return null;
-        const Icon = nodeProps.expanded ? MinusSquareOutlined : PlusSquareOutlined;
-        return <Icon style={{ color: actionPrimary }} />;
+      listHeight={listHeight}
+      popupMatchSelectWidth={popupMatchSelectWidth}
+      dropdownStyle={{
+        minWidth: 380,
+        maxWidth: 520,
+        maxHeight: 320,
+        borderRadius: radiusMd || 10,
+        padding: '6px',
+        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',
+        ...dropdownStyle,
       }}
-      style={{ width: '100%', height: 40, borderRadius: radiusPill, ...style }}
+      switcherIcon={(nodeProps: any) => {
+        if (nodeProps.isLeaf) return null;
+        return <DownOutlined style={{ fontSize: 10, color: '#7e8299' }} />;
+      }}
+      style={{ width: '100%', height: controlHeight, borderRadius: radiusPill, ...style }}
     />
   );
 }

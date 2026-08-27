@@ -16,8 +16,6 @@ import java.util.UUID;
 @Data
 public class UpdateBerthRequest {
 
-    private RecordSecurityLevel securityLevel;
-
     @NotNull(message = "ID không được để trống")
     private UUID id;
 

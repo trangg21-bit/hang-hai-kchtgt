@@ -18,8 +18,6 @@ public class UpdateCctvRequest {
     @NotNull(message = "ID không được để trống")
     private UUID id;
 
-    private RecordSecurityLevel securityLevel;
-
     private String deviceName;
 
     private String detailedLocation;

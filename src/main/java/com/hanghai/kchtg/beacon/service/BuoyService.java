@@ -171,13 +171,7 @@ public class BuoyService {
 
         validateInspectionDates(request.getLastInspectionDate(), request.getNextInspectionDate());
 
-        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
-                : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "buoy", SecurityUtils.getCurrentUserPermissions(),
-                SecurityUtils.isElevatedAdministrator());
-
         Buoy entity = Buoy.builder()
-                .securityLevel(secLevel)
                 .code(code)
                 .name(request.getName())
                 .type(request.getType())
@@ -394,11 +388,6 @@ public class BuoyService {
         }
         String wkt = buildBuoyWkt(request.getCoordinates(), currentLon, currentLat);
 
-        if (request.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "buoy",
-                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-            entity.setSecurityLevel(request.getSecurityLevel());
-        }
         if (request.getColor() != null)
             entity.setColor(request.getColor());
         if (request.getShape() != null)
@@ -767,7 +756,6 @@ public class BuoyService {
 
         return BuoyResponse.builder()
                 .id(entity.getId())
-                .securityLevel(entity.getSecurityLevel())
                 .code(entity.getCode())
                 .name(entity.getName())
                 .type(entity.getType())

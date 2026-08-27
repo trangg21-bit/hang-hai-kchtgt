@@ -17,8 +17,6 @@ import java.util.UUID;
 @Data
 public class CreateBerthRequest {
 
-    private RecordSecurityLevel securityLevel;
-
     @Size(max = 50)
     private String berthCode;
 

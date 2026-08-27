@@ -21,7 +21,6 @@ import java.util.UUID;
 public class CoastalStationVTSResponse {
 
     private UUID id;
-    private RecordSecurityLevel securityLevel;
     private String stationCode;
     private String stationName;    private String frequencyBand;
     private Double transmitPower;

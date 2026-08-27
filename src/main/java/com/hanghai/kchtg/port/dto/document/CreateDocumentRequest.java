@@ -16,8 +16,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CreateDocumentRequest {
 
-    private RecordSecurityLevel securityLevel;
-
     @NotBlank(message = "entityType không được để trống")
     private String entityType;
 

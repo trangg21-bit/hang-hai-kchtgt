@@ -44,6 +44,7 @@ import type {
 import type { HistoryEntry } from '../../types/radarStation';
 import { aisSystemService } from '../../services/aisSystemService';
 import { vtsOperationCenterService } from '../../services/vtsOperationCenterService';
+import { radarStationService } from '../../services/radarStationService';
 import { organizationService } from '../../services/organizationService';
 import { AisSystemFormModal } from './AisSystemFormModal';
 import { AisSystemDetailDrawer } from './AisSystemDetailDrawer';
@@ -76,6 +77,7 @@ import {
   radiusSm,
   radiusMd,
   primaryButtonStyle,
+  textAreaStyle,
   drawerTitleStyle,
   drawerCloseBtnStyle,
   borderDefault,
@@ -83,6 +85,15 @@ import {
 import { colors } from '../../theme';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+
+const APPROVAL_STATUS_FILTER_OPTIONS = [
+  { value: ApprovalStatus.DRAFT, label: 'Lưu tạm' },
+  { value: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ Cảng vụ duyệt' },
+  { value: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ Cục duyệt' },
+  { value: ApprovalStatus.APPROVED, label: 'Đã duyệt' },
+  { value: ApprovalStatus.REJECTED_LEVEL1, label: 'Bị Cảng vụ trả về' },
+  { value: ApprovalStatus.REJECTED_LEVEL2, label: 'Bị Cục trả về' },
+];
 
 const HISTORY_FIELD_ORDER = [
   'orgUnitId',
@@ -436,30 +447,30 @@ export const AisSystemList: React.FC = () => {
   const [pageSize, setPageSize] = useState(20);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [activeTab, setActiveTab] = useState<string>('ALL');
-  // Sắp xếp phía server; antd chỉ nhìn thấy trang hiện tại nên không tự sắp được.
   const [sortField, setSortField] = useState<string | undefined>();
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
-  // Filter sidebar states
   const [filterCollapsed, setFilterCollapsed] = useState(false);
   const [keyword, setKeyword] = useState<string>('');
+  const [name, setName] = useState<string>('');
+  const [code, setCode] = useState<string>('');
   const [orgUnitId, setOrgUnitId] = useState<string | undefined>();
+  const [filterApprovalStatus, setFilterApprovalStatus] = useState<string | undefined>();
   const [vtsOperationCenterId, setVtsOperationCenterId] = useState<string | undefined>();
   const [provinceId, setProvinceId] = useState<number | undefined>();
   const [commissioningYear, setCommissioningYear] = useState<number | undefined>();
   const [conditionStatus, setConditionStatus] = useState<number | undefined>();
+  const [updatedRange, setUpdatedRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
 
-  // Reference data
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
   const [opCenters, setOpCenters] = useState<{ id: string; name: string; orgUnitId?: string }[]>([]);
+  const [radarStations, setRadarStations] = useState<{ id: string; name: string; orgUnitId?: string }[]>([]);
 
-  // Modals & Drawers
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState<AisSystemResponse | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [drawerItem, setDrawerItem] = useState<AisSystemResponse | null>(null);
 
-  // History Drawer
   const [historyDrawerVisible, setHistoryDrawerVisible] = useState(false);
   const [historyTargetRecord, setHistoryTargetRecord] = useState<AisSystemListItem | null>(null);
   const [historyRecords, setHistoryRecords] = useState<HistoryEntry[]>([]);
@@ -468,7 +479,6 @@ export const AisSystemList: React.FC = () => {
   const [historyDateFrom, setHistoryDateFrom] = useState('');
   const [historyDateTo, setHistoryDateTo] = useState('');
 
-  // Approval Modals
   const [approveModalVisible, setApproveModalVisible] = useState(false);
   const [approveLevel, setApproveLevel] = useState<'C1' | 'C2'>('C1');
   const [approveTargetId, setApproveTargetId] = useState<string>('');
@@ -491,15 +501,19 @@ export const AisSystemList: React.FC = () => {
 
   const loadReferenceData = useCallback(async () => {
     try {
-      const [orgRes, opRes] = await Promise.allSettled([
+      const [orgRes, opRes, radarRes] = await Promise.allSettled([
         organizationService.list({ pageSize: 1000 }),
         vtsOperationCenterService.getOptions(),
+        radarStationService.getOptions(),
       ]);
       if (orgRes.status === 'fulfilled' && orgRes.value && Array.isArray(orgRes.value.data)) {
         setOrgUnits(orgRes.value.data);
       }
       if (opRes.status === 'fulfilled' && Array.isArray(opRes.value)) {
         setOpCenters(opRes.value.map((c: any) => ({ id: c.id, name: c.name, orgUnitId: c.orgUnitId })));
+      }
+      if (radarRes.status === 'fulfilled' && Array.isArray(radarRes.value)) {
+        setRadarStations(radarRes.value.map((r: any) => ({ id: r.id, name: r.stationName || r.code || r.id, orgUnitId: r.orgUnitId })));
       }
     } catch {
       // ignore
@@ -512,11 +526,30 @@ export const AisSystemList: React.FC = () => {
     return opCenters.filter((c) => !c.orgUnitId || allowedIds.has(c.orgUnitId));
   }, [opCenters, orgUnitId, orgUnits]);
 
+  const filteredRadarStations = useMemo(() => {
+    if (!orgUnitId) return radarStations;
+    const allowedIds = resolveOrgSubtreeIds(orgUnits, orgUnitId);
+    return radarStations.filter((r) => !r.orgUnitId || allowedIds.has(r.orgUnitId));
+  }, [radarStations, orgUnitId, orgUnits]);
+
+  const combinedLocationOptions = useMemo(() => [
+    {
+      label: 'Trung tâm điều hành VTS',
+      options: filteredOpCenters.map((c) => ({ value: c.id, label: c.name })),
+    },
+    {
+      label: 'Trạm Radar',
+      options: filteredRadarStations.map((r) => ({ value: r.id, label: r.name })),
+    },
+  ], [filteredOpCenters, filteredRadarStations]);
+
   const handleOrgUnitChange = (val?: string) => {
     setOrgUnitId(val);
     if (val) {
       const allowedIds = resolveOrgSubtreeIds(orgUnits, val);
-      if (vtsOperationCenterId && !opCenters.some((c) => c.id === vtsOperationCenterId && (!c.orgUnitId || allowedIds.has(c.orgUnitId)))) {
+      const inOpCenters = opCenters.some((c) => c.id === vtsOperationCenterId && (!c.orgUnitId || allowedIds.has(c.orgUnitId)));
+      const inRadars = radarStations.some((r) => r.id === vtsOperationCenterId && (!r.orgUnitId || allowedIds.has(r.orgUnitId)));
+      if (vtsOperationCenterId && !inOpCenters && !inRadars) {
         setVtsOperationCenterId(undefined);
       }
     }
@@ -527,16 +560,42 @@ export const AisSystemList: React.FC = () => {
       setLoading(true);
       setIsError(false);
 
-      const effectiveApprovalStatus = activeTab === 'ALL' ? undefined : activeTab;
+      const effectiveApprovalStatus = filterApprovalStatus || (activeTab === 'ALL' ? undefined : activeTab);
+
+      let updatedFrom: string | undefined = undefined;
+      let updatedTo: string | undefined = undefined;
+      if (updatedRange && updatedRange[0]) {
+        updatedFrom = updatedRange[0].startOf('day').format('YYYY-MM-DDTHH:mm:ss');
+      }
+      if (updatedRange && updatedRange[1]) {
+        updatedTo = updatedRange[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss');
+      }
+
+      let filterOpCenterId: string | undefined = undefined;
+      let filterRadarStationId: string | undefined = undefined;
+      if (vtsOperationCenterId) {
+        if (opCenters.some((c) => c.id === vtsOperationCenterId)) {
+          filterOpCenterId = vtsOperationCenterId;
+        } else if (radarStations.some((r) => r.id === vtsOperationCenterId)) {
+          filterRadarStationId = vtsOperationCenterId;
+        } else {
+          filterOpCenterId = vtsOperationCenterId;
+        }
+      }
 
       const res = await aisSystemService.search({
         keyword: keyword.trim() || undefined,
+        name: name.trim() || undefined,
+        code: code.trim() || undefined,
         orgUnitId: orgUnitId || undefined,
-        vtsOperationCenterId: vtsOperationCenterId || undefined,
+        vtsOperationCenterId: filterOpCenterId,
+        radarStationId: filterRadarStationId,
         provinceId: provinceId !== undefined ? provinceId : undefined,
         commissioningYear: commissioningYear !== undefined ? commissioningYear : undefined,
         conditionStatus: conditionStatus !== undefined ? conditionStatus : undefined,
         approvalStatus: effectiveApprovalStatus || undefined,
+        updatedFrom,
+        updatedTo,
         page,
         size: pageSize,
         // Sắp xếp chạy ở server để áp dụng cho toàn bộ kết quả, không chỉ trang
@@ -558,11 +617,15 @@ export const AisSystemList: React.FC = () => {
     page,
     pageSize,
     keyword,
+    name,
+    code,
     orgUnitId,
+    filterApprovalStatus,
     vtsOperationCenterId,
     provinceId,
     commissioningYear,
     conditionStatus,
+    updatedRange,
     activeTab,
     sortField,
     sortDirection,
@@ -589,11 +652,15 @@ export const AisSystemList: React.FC = () => {
 
   const handleReset = () => {
     setKeyword('');
+    setName('');
+    setCode('');
     setOrgUnitId(undefined);
+    setFilterApprovalStatus(undefined);
     setVtsOperationCenterId(undefined);
     setProvinceId(undefined);
     setCommissioningYear(undefined);
     setConditionStatus(undefined);
+    setUpdatedRange(null);
     setActiveTab('ALL');
     setPage(1);
   };
@@ -781,7 +848,7 @@ export const AisSystemList: React.FC = () => {
       dataIndex: 'vtsOperationCenterName',
       width: 260,
       ellipsis: false,
-      render: (cName: string) => cName || '—',
+      render: (_: string, record: AisSystemListItem) => record.attachedLocationName || record.vtsOperationCenterName || record.radarStationName || '—',
     },
     {
       key: 'operatingOrgName',
@@ -885,6 +952,69 @@ export const AisSystemList: React.FC = () => {
         // `updatedBy`/`createdBy` vì đó là UUID, tuyệt đối không đưa ra giao diện.
         const name = record.updatedByName || record.createdByName || '—';
         const date = record.updatedAt || record.createdAt;
+        return (
+          <div style={{ lineHeight: '1.35' }}>
+            <div style={{ fontWeight: fontWeightBold, color: '#0F172A', fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {name}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'createdByName',
+      label: 'Cán bộ gửi phê duyệt',
+      dataIndex: 'createdByName',
+      width: 220,
+      ellipsis: false,
+      render: (_: string, record: AisSystemListItem) => {
+        const name = record.createdByName || '—';
+        const date = record.createdAt;
+        return (
+          <div style={{ lineHeight: '1.35' }}>
+            <div style={{ fontWeight: fontWeightBold, color: '#0F172A', fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {name}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'approverLevel1Name',
+      label: 'Phê duyệt cấp Cảng vụ/Chi cục',
+      dataIndex: 'approverLevel1Name',
+      width: 240,
+      ellipsis: false,
+      render: (_: string, record: AisSystemListItem) => {
+        const name = record.approverLevel1Name || '—';
+        const date = record.approvedDateLevel1;
+        return (
+          <div style={{ lineHeight: '1.35' }}>
+            <div style={{ fontWeight: fontWeightBold, color: '#0F172A', fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {name}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'approverLevel2Name',
+      label: 'Phê duyệt cấp Cục',
+      dataIndex: 'approverLevel2Name',
+      width: 220,
+      ellipsis: false,
+      render: (_: string, record: AisSystemListItem) => {
+        const name = record.approverLevel2Name || '—';
+        const date = record.approvedDateLevel2;
         return (
           <div style={{ lineHeight: '1.35' }}>
             <div style={{ fontWeight: fontWeightBold, color: '#0F172A', fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -1247,6 +1377,7 @@ export const AisSystemList: React.FC = () => {
         onRetry={fetchData}
         filterContent={
           <>
+            {/* ── BỘ LỌC THƯỜNG (Cơ bản - Luôn hiển thị) ──────────────── */}
             <div style={{ marginBottom: 12, marginTop: spaceMd }}>
               <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
                 Đơn vị quản lý
@@ -1255,90 +1386,157 @@ export const AisSystemList: React.FC = () => {
                 organizations={orgUnits}
                 placeholder="Tất cả"
                 allowClear
+                treeDefaultExpandAll={true}
                 listHeight={256}
                 value={orgUnitId}
                 onChange={handleOrgUnitChange}
                 style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
               />
             </div>
+
             <div style={{ marginBottom: 12 }}>
               <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                Thuộc TTDH VTS / Trạm Radar
-              </div>
-              <Select
-                placeholder="Tất cả"
-                allowClear
-                showSearch
-                filterOption={(input, option) =>
-                  normalizeSearchText(option?.label).includes(normalizeSearchText(input))
-                }
-                value={vtsOperationCenterId}
-                onChange={setVtsOperationCenterId}
-                options={filteredOpCenters.map((c) => ({ value: c.id, label: c.name }))}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-              />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                Từ khóa tìm kiếm
+                Tên thiết bị
               </div>
               <Input
-                placeholder="Tìm theo mã, tên thiết bị..."
+                placeholder="Tìm theo tên thiết bị..."
                 allowClear
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 onPressEnter={handleSearch}
                 style={{ borderRadius: radiusPill, height: 40 }}
               />
             </div>
+
             <div style={{ marginBottom: 12 }}>
               <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                Địa điểm (Tỉnh/TP)
+                Trạng thái
               </div>
               <Select
                 placeholder="Tất cả"
                 allowClear
-                showSearch
-                filterOption={(input, option) =>
-                  normalizeSearchText(option?.label).includes(normalizeSearchText(input))
-                }
-                value={provinceId}
-                onChange={setProvinceId}
-                options={VIETNAM_PROVINCE_OPTIONS}
+                value={filterApprovalStatus}
+                onChange={(val) => {
+                  setFilterApprovalStatus(val);
+                  if (val) {
+                    if (val === ApprovalStatus.REJECTED_LEVEL1 || val === ApprovalStatus.REJECTED_LEVEL2) {
+                      setActiveTab('REJECTED_LEVEL1');
+                    } else {
+                      setActiveTab(val);
+                    }
+                  } else {
+                    setActiveTab('ALL');
+                  }
+                  setPage(1);
+                }}
+                options={APPROVAL_STATUS_FILTER_OPTIONS}
                 style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
               />
             </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                Năm đưa vào sử dụng
-              </div>
-              <DatePicker
-                picker="year"
-                placeholder="Chọn năm"
-                value={commissioningYear ? dayjs(String(commissioningYear), 'YYYY') : null}
-                onChange={(d) => setCommissioningYear(d ? d.year() : undefined)}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-              />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                Tình trạng
-              </div>
-              <Select
-                placeholder="Tất cả"
-                allowClear
-                value={conditionStatus}
-                onChange={setConditionStatus}
-                options={CONDITION_STATUS_OPTIONS}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-              />
-            </div>
+
+            {/* ── BỘ LỌC NÂNG CAO (Mở rộng khi filterCollapsed === true) ── */}
+            {filterCollapsed && (
+              <>
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+                    Thuộc TTDH VTS / Trạm Radar
+                  </div>
+                  <Select
+                    placeholder="Tất cả"
+                    allowClear
+                    showSearch
+                    filterOption={(input, option) =>
+                      normalizeSearchText(option?.label).includes(normalizeSearchText(input))
+                    }
+                    value={vtsOperationCenterId}
+                    onChange={setVtsOperationCenterId}
+                    options={combinedLocationOptions}
+                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+                    Mã thiết bị
+                  </div>
+                  <Input
+                    placeholder="Tìm theo mã thiết bị..."
+                    allowClear
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    onPressEnter={handleSearch}
+                    style={{ borderRadius: radiusPill, height: 40 }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+                    Tình trạng
+                  </div>
+                  <Select
+                    placeholder="Tất cả"
+                    allowClear
+                    value={conditionStatus}
+                    onChange={setConditionStatus}
+                    options={CONDITION_STATUS_OPTIONS}
+                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+                    Năm đưa vào sử dụng
+                  </div>
+                  <DatePicker
+                    picker="year"
+                    placeholder="Chọn năm"
+                    allowClear
+                    value={commissioningYear ? dayjs(String(commissioningYear), 'YYYY') : null}
+                    onChange={(d) => setCommissioningYear(d ? d.year() : undefined)}
+                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+                    Khoảng ngày cập nhật
+                  </div>
+                  <DatePicker.RangePicker
+                    format="DD/MM/YYYY"
+                    placeholder={['Từ ngày', 'Đến ngày']}
+                    allowClear
+                    value={updatedRange}
+                    onChange={(range) => setUpdatedRange(range as [dayjs.Dayjs | null, dayjs.Dayjs | null] | null)}
+                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+                    Địa điểm (Tỉnh/TP)
+                  </div>
+                  <Select
+                    placeholder="Tất cả"
+                    allowClear
+                    showSearch
+                    filterOption={(input, option) =>
+                      normalizeSearchText(option?.label).includes(normalizeSearchText(input))
+                    }
+                    value={provinceId}
+                    onChange={setProvinceId}
+                    options={VIETNAM_PROVINCE_OPTIONS}
+                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                  />
+                </div>
+              </>
+            )}
           </>
         }
-        hideFilterToggle={true}
+        hideFilterToggle={false}
         statusTabs={statusTabsItems}
         onStatusTabChange={(key) => {
           setActiveTab(key);
+          setFilterApprovalStatus(undefined);
           setPage(1);
         }}
       >
@@ -1510,7 +1708,7 @@ export const AisSystemList: React.FC = () => {
             placeholder="Nhập ý kiến phê duyệt nếu có..."
             maxLength={1000}
             showCount
-            style={{ borderRadius: radiusMd }}
+            style={{ ...textAreaStyle, padding: '10px 16px' }}
           />
         </div>
       </Modal>
@@ -1537,7 +1735,7 @@ export const AisSystemList: React.FC = () => {
             placeholder="Nhập lý do từ chối phê duyệt..."
             maxLength={1000}
             showCount
-            style={{ borderRadius: radiusMd }}
+            style={{ ...textAreaStyle, padding: '10px 16px' }}
           />
         </div>
       </Modal>

@@ -136,7 +136,6 @@ class VtsOperationCenterServiceTest {
         assertEquals("TT-000001", response.getCode());
         assertEquals("Trung tâm VTS Hải Phòng", response.getName());
         verify(repository).save(any(VtsOperationCenter.class));
-        verify(historyRepository).save(any());
     }
 
     @Test

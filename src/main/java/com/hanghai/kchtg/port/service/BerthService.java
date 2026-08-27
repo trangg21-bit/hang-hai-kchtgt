@@ -83,14 +83,8 @@ public class BerthService {
                     "Không thể tạo bến cảng: cảng biển cha phải ở trạng thái được phê duyệt");
         }
 
-        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
-                : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "berth", SecurityUtils.getCurrentUserPermissions(),
-                SecurityUtils.isElevatedAdministrator());
-
         String code = generateBerthCode(request.getPortId());
         Berth entity = Berth.builder()
-                .securityLevel(secLevel)
                 .berthCode(code).berthName(request.getBerthName())
                 .portId(request.getPortId()).waterway(request.getWaterway())
                 .waterwayId(request.getWaterwayId())
@@ -276,7 +270,6 @@ public class BerthService {
         }
 
         Berth snapshot = Berth.builder()
-                .securityLevel(entity.getSecurityLevel())
                 .berthCode(entity.getBerthCode())
                 .berthName(entity.getBerthName()).portId(entity.getPortId())
                 .waterway(entity.getWaterway())
@@ -316,11 +309,6 @@ public class BerthService {
                 .activityStatus(entity.getActivityStatus())
                 .build();
 
-        if (request.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "berth",
-                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-            entity.setSecurityLevel(request.getSecurityLevel());
-        }
         if (request.getBerthName() != null)
             entity.setBerthName(request.getBerthName());
         if (request.getPortId() != null) {
@@ -521,7 +509,6 @@ public class BerthService {
 
         BerthResponse.BerthResponseBuilder builder = BerthResponse.builder()
                 .id(e.getId())
-                .securityLevel(e.getSecurityLevel())
                 .berthCode(e.getBerthCode())
                 .berthName(e.getBerthName())
                 .portId(e.getPortId())

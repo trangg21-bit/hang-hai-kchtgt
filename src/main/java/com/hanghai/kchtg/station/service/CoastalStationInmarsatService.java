@@ -187,11 +187,6 @@ public class CoastalStationInmarsatService {
 
         validateCoordinates(request.getLongitude(), request.getLatitude());
 
-        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
-                : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "coastalstationinmarsat",
-                SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-
         CoastalStationInmarsat entity = new CoastalStationInmarsat();
         entity.setCode(effectiveCode);
         entity.setDeviceCode(effectiveCode);
@@ -228,20 +223,11 @@ public class CoastalStationInmarsatService {
         entity.setDisplayRule(request.getDisplayRule());
         entity.setLatitude(request.getLatitude());
         entity.setLongitude(request.getLongitude());
-        entity.setSecurityLevel(secLevel);
 
-        // Mặc định tạo mới là DRAFT (Lưu tạm)
+        // Mặc định tạo mới là DRAFT (Lưu tạm) - chưa ghi lịch sử biến động cho hồ sơ nháp
         entity.setApprovalStatus(ApprovalStatus.DRAFT);
 
-        CoastalStationInmarsat saved = repository.save(entity);
-        historyService.recordHistory(
-                InfrastructureType.INMARSAT_STATION,
-                saved.getId(),
-                StationHistoryActionType.CREATE,
-                null,
-                "Tạo mới đài Inmarsat (Lưu tạm)",
-                SecurityUtils.getCurrentUserId());
-        return saved;
+        return repository.save(entity);
     }
 
     public CoastalStationInmarsat updateStation(UUID id, CoastalStationInmarsatUpdateRequest request) {
@@ -306,20 +292,16 @@ public class CoastalStationInmarsatService {
         if (request.getLatitude() != null) entity.setLatitude(request.getLatitude());
         if (request.getLongitude() != null) entity.setLongitude(request.getLongitude());
 
-        if (request.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "coastalstationinmarsat",
-                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-            entity.setSecurityLevel(request.getSecurityLevel());
-        }
-
         CoastalStationInmarsat saved = repository.save(entity);
-        historyService.recordHistory(
-                InfrastructureType.INMARSAT_STATION,
-                saved.getId(),
-                StationHistoryActionType.UPDATE,
-                null,
-                "Cập nhật thông tin đài Inmarsat",
-                SecurityUtils.getCurrentUserId());
+        if (saved.getApprovalStatus() == ApprovalStatus.APPROVED) {
+            historyService.recordHistory(
+                    InfrastructureType.INMARSAT_STATION,
+                    saved.getId(),
+                    StationHistoryActionType.UPDATE,
+                    null,
+                    "Cập nhật thông tin đài Inmarsat",
+                    SecurityUtils.getCurrentUserId());
+        }
         return saved;
     }
 
@@ -418,7 +400,15 @@ public class CoastalStationInmarsatService {
         entity.setApprovedBy(currentUserId);
         entity.setApprovedDate(LocalDateTime.now());
         syncStationStatus(entity);
-        return repository.save(entity);
+        CoastalStationInmarsat saved = repository.save(entity);
+        historyService.recordHistory(
+                InfrastructureType.INMARSAT_STATION,
+                saved.getId(),
+                StationHistoryActionType.APPROVE_L2,
+                null,
+                "Phê duyệt chính thức đài Inmarsat (Cục HH)",
+                currentUserId);
+        return saved;
     }
 
     public CoastalStationInmarsat reject(UUID id, String rejectionReason) {
@@ -548,7 +538,6 @@ public class CoastalStationInmarsatService {
 
         return CoastalStationInmarsatResponse.builder()
                 .id(entity.getId())
-                .securityLevel(entity.getSecurityLevel())
                 .orgUnitId(effectiveOrgUnitId)
                 .orgUnitName(orgUnitName)
                 .operatingOrgId(entity.getOperatingOrgId())

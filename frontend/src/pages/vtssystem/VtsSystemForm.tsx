@@ -32,7 +32,7 @@ import type {
   UpdateVtsSystemRequest,
   ApprovalRequest,
 } from '../../types/vtsSystem';
-import { ApprovalStatus, ConditionStatus, RecordSecurityLevel, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/vtsSystem';
+import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/vtsSystem';
 import { drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, requiredMarkStyle, spaceFormField, radiusPill, radiusMd, sidebarBg, fontWeightBold, fontWeightMedium, spaceMd, spaceSm, fontSizeMd, fontSizeSm, textSecondary, textTertiary, textPrimary, borderDefault, surfaceCard, uploadHintStyle, statusCritical, statusAttention, statusOperational, actionPrimary, textAreaStyle, readonlyInputStyle } from '../../tokens';
 import { colors } from '../../theme';
 import { VIETNAM_PROVINCES, getProvinceIdByName, getProvinceNameById } from '../../types/common';
@@ -226,7 +226,6 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
 
   const formInitialValues = useRef({
     conditionStatus: ConditionStatus.OPERATIONAL,
-    recordSecurityLevel: RecordSecurityLevel.NORMAL,
   });
   // Thanh phê duyệt trong drawer chi tiết (F-065 §1: duyệt được từ Form chi tiết
   // hoặc menu ngữ cảnh trên danh sách).
@@ -296,7 +295,6 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
               systemName: data.systemName,
               location: data.address || data.province || '',
               conditionStatus: data.conditionStatus || ConditionStatus.OPERATIONAL,
-              recordSecurityLevel: data.recordSecurityLevel || RecordSecurityLevel.NORMAL,
               scope: data.scope,
               note: data.note,
               orgUnitId: data.orgUnitId,
@@ -349,13 +347,11 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
           form.setFieldsValue({
             code: res.code,
             conditionStatus: ConditionStatus.OPERATIONAL,
-            recordSecurityLevel: RecordSecurityLevel.NORMAL,
           });
           requestAnimationFrame(() => {
             form.setFieldsValue({
               code: res.code,
               conditionStatus: ConditionStatus.OPERATIONAL,
-              recordSecurityLevel: RecordSecurityLevel.NORMAL,
             });
           });
         }
@@ -363,7 +359,6 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
         requestAnimationFrame(() => {
           form.setFieldsValue({
             conditionStatus: ConditionStatus.OPERATIONAL,
-            recordSecurityLevel: RecordSecurityLevel.NORMAL,
           });
         });
       });
@@ -446,7 +441,6 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
         systemName: values.systemName,
         conditionStatus: values.conditionStatus,
         approvalStatus: targetApprovalStatus as any,
-        recordSecurityLevel: values.recordSecurityLevel || RecordSecurityLevel.NORMAL,
         scope: values.scope,
         orgUnitId: values.orgUnitId || values.owningOrgId,
         owningOrgId: values.owningOrgId || values.orgUnitId,
@@ -1099,7 +1093,6 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                   form.setFieldsValue({
                     code: res.code,
                     conditionStatus: ConditionStatus.OPERATIONAL,
-                    recordSecurityLevel: RecordSecurityLevel.NORMAL,
                   });
                 }
               });

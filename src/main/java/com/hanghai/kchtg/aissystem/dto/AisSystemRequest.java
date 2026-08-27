@@ -31,8 +31,9 @@ public class AisSystemRequest {
     @Size(max = 255, message = "Tên thiết bị tối đa 255 ký tự")
     private String name;
 
-    @NotNull(message = "Thuộc trung tâm điều hành VTS không được để trống")
     private UUID vtsOperationCenterId;
+
+    private UUID radarStationId;
 
     @NotNull(message = "Đơn vị khai thác không được để trống")
     private UUID operatingOrgId;

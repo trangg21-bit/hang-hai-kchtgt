@@ -17,7 +17,6 @@ import java.util.UUID;
 public class CctvResponse {
 
     private UUID id;
-    private RecordSecurityLevel securityLevel;
     private String deviceCode;
     private String deviceName;
     private String detailedLocation;

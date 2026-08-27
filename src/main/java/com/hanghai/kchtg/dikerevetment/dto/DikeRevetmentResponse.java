@@ -24,7 +24,6 @@ import java.util.UUID;
 @Builder
 public class DikeRevetmentResponse {
     private UUID id;
-    private RecordSecurityLevel securityLevel;
     private DikeRevetmentType dikeRevetmentType;
     private String location;
     private String dikeRevetmentName;

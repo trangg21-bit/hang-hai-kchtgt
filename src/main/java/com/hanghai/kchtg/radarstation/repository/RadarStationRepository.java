@@ -11,10 +11,13 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface RadarStationRepository extends JpaRepository<RadarStation, UUID> {
+
+    Optional<RadarStation> findByIdAndDeletedAtIsNull(UUID id);
 
     boolean existsByCode(String code);
 

@@ -1,6 +1,10 @@
 package com.hanghai.kchtg.vtssystem.repository;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.dto.OperatingOrganizationOptionResponse;
+import com.hanghai.kchtg.common.entity.OperatingOrganization;
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
+import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.vtssystem.dto.VtsSystemOptionResponse;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
@@ -28,15 +32,13 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
           AND (v.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR v.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
           AND (:scopeEnabled = false OR v.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgFiltered = false OR v.orgUnitId IS NULL OR v.orgUnitId IN :targetOrgUnitIds)
-          AND (v.securityLevel IS NULL OR v.securityLevel IN :allowedSecurityLevels)
         ORDER BY LOWER(v.systemName) ASC
     """)
     List<VtsSystemOptionResponse> findOptions(
         @Param("scopeEnabled") boolean scopeEnabled,
         @Param("scopeOrgUnitIds") Collection<UUID> scopeOrgUnitIds,
         @Param("orgFiltered") boolean orgFiltered,
-        @Param("targetOrgUnitIds") Collection<UUID> targetOrgUnitIds,
-        @Param("allowedSecurityLevels") Collection<RecordSecurityLevel> allowedSecurityLevels
+        @Param("targetOrgUnitIds") Collection<UUID> targetOrgUnitIds
     );
 
     @Query("SELECT t FROM VtsSystem t WHERE t.approvalStatus = :approvalStatus AND t.deletedAt IS NULL")
@@ -156,6 +158,10 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
                t.provinceId AS provinceId,
                t.operationStartDate AS operationStartDate
         FROM VtsSystem t
+        LEFT JOIN OrgUnit o ON o.id = t.orgUnitId
+        LEFT JOIN OrgUnit own ON own.id = t.owningOrgId
+        LEFT JOIN OperatingOrganization op ON op.id = t.operatingOrgId
+        LEFT JOIN Port p ON p.id = t.portId
         WHERE t.deletedAt IS NULL
           AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
           AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)

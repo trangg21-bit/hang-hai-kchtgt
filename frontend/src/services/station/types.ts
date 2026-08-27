@@ -81,14 +81,12 @@ export interface CoastalStationInmarsatRequest {
   displayRule?: string;
   latitude?: number;
   longitude?: number;
-  securityLevel?: number;
 }
 
 export interface CoastalStationInmarsatUpdateRequest extends CoastalStationInmarsatRequest {}
 
 export interface CoastalStationInmarsatResponse {
   id: string;
-  securityLevel?: number;
   orgUnitId?: string;
   orgUnitName?: string;
   operatingOrgId?: string;

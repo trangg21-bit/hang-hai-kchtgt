@@ -15,9 +15,7 @@ import com.hanghai.kchtg.security.RecordSecurityLevel;
 @Data
 public class CreateCctvRequest {
 
-    private RecordSecurityLevel securityLevel;
-
-    @NotBlank(message = "Mã thiết bị không được để trống")
+    @NotBlank(message = "Mã thiết bị CCTV không được để trống")
     @Size(max = 200, message = "Mã thiết bị tối đa 200 ký tự")
     private String deviceCode;
 

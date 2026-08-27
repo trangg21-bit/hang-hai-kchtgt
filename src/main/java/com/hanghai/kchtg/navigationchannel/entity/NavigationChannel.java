@@ -26,7 +26,6 @@ import java.util.UUID;
 @Entity
 @Table(name = "navigation_channel")
 @Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
-@Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

@@ -15,8 +15,6 @@ import java.util.UUID;
 @Data
 public class CreateWaterZoneRequest {
 
-    private RecordSecurityLevel securityLevel;
-
     @NotBlank(message = "Mã vùng nước không được để trống")
     @Size(max = 50)
     private String waterZoneCode;

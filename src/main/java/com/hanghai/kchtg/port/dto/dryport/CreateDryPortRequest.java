@@ -18,8 +18,6 @@ import java.time.LocalDateTime;
 @Data
 public class CreateDryPortRequest {
 
-    private RecordSecurityLevel securityLevel;
-
     /**
      * Action: draft (Lưu tạm), submit (Gửi phê duyệt), approve (Lưu và phê duyệt).
      * Default: submit.

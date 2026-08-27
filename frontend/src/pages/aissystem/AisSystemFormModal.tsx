@@ -35,6 +35,7 @@ import type {
 } from '../../types/aisSystem';
 import { aisSystemService } from '../../services/aisSystemService';
 import { vtsOperationCenterService } from '../../services/vtsOperationCenterService';
+import { radarStationService } from '../../services/radarStationService';
 import { organizationService } from '../../services/organizationService';
 import { vtsSystemCRUD } from '../../services/vtsSystemService';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
@@ -43,6 +44,7 @@ import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import toast from '../../components/ToastNotification';
 import { useAuthStore } from '../../store/authStore';
 import { AppDrawer } from '../../components/shared/AppDrawer';
+import { useLocation } from 'react-router-dom';
 import { colors } from '../../theme';
 import {
   spaceFormField,
@@ -54,12 +56,14 @@ import {
   radiusMd,
   inputStyle,
   selectStyle,
+  textAreaStyle,
   readonlyInputStyle,
   formTreeSelectStyle,
   drawerTabsStyle,
   drawerTabBarStyle,
   drawerTabContentStyle,
   ATTACHMENT_HELPER_TEXT,
+  uploadHintStyle,
   borderDefault,
   surfaceCard,
   textTertiary,
@@ -147,25 +151,23 @@ const serializeCoordinatesToWkt = (coords: CoordinateItem[], geomType: string): 
 interface AisSystemFormModalProps {
   visible: boolean;
   item?: AisSystemResponse | null;
-  onCancel: () => void;
-  onSuccess: () => void;
   orgUnits?: any[];
   opCenters?: { id: string; name: string; orgUnitId?: string }[];
+  onCancel: () => void;
+  onSuccess: () => void;
 }
 
 export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
   visible,
   item,
-  onCancel,
-  onSuccess,
   orgUnits: propOrgUnits,
   opCenters: propOpCenters,
+  onCancel,
+  onSuccess,
 }) => {
   const [form] = Form.useForm();
-
-  // "Lưu và phê duyệt" bỏ qua cả 2 vòng duyệt nên chỉ dành cho tài khoản cấp Cục.
-  // Frontend dùng quyền duyệt cấp Cục làm dấu hiệu; backend mới là nơi kiểm tra
-  // thật theo cấp đơn vị của tài khoản.
+  const location = useLocation();
+  const isViewMode = location.pathname.endsWith('/view') || (!location.pathname.endsWith('/edit') && !!item && location.pathname.includes('/detail'));
   const currentUser = useAuthStore((s) => s.user);
   const canSaveAndApprove = (currentUser?.permissions || []).includes('aissystem:approvec2');
 
@@ -175,6 +177,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
   const [orgUnits, setOrgUnits] = useState<any[]>(propOrgUnits || []);
   const [operatingOrganizations, setOperatingOrganizations] = useState(DEFAULT_OPERATING_ORGANIZATIONS);
   const [opCenters, setOpCenters] = useState<{ id: string; name: string; orgUnitId?: string }[]>(propOpCenters || []);
+  const [radarStations, setRadarStations] = useState<{ id: string; name: string; orgUnitId?: string }[]>([]);
   const [symbols, setSymbols] = useState<GisSymbol[]>([]);
   const [coordinateList, setCoordinateList] = useState<CoordinateItem[]>([{ latitude: null, longitude: null }]);
   const [mapModalOpen, setMapModalOpen] = useState(false);
@@ -195,6 +198,23 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
     const allowedIds = resolveOrgSubtreeIds(orgUnits, formOrgUnitId);
     return opCenters.filter((c) => !c.orgUnitId || allowedIds.has(c.orgUnitId));
   }, [opCenters, formOrgUnitId, orgUnits]);
+
+  const filteredRadarStations = useMemo(() => {
+    if (!formOrgUnitId) return radarStations;
+    const allowedIds = resolveOrgSubtreeIds(orgUnits, formOrgUnitId);
+    return radarStations.filter((r) => !r.orgUnitId || allowedIds.has(r.orgUnitId));
+  }, [radarStations, formOrgUnitId, orgUnits]);
+
+  const combinedLocationOptions = useMemo(() => [
+    {
+      label: 'Trung tâm điều hành VTS',
+      options: filteredOpCenters.map((c) => ({ value: c.id, label: c.name })),
+    },
+    {
+      label: 'Trạm Radar',
+      options: filteredRadarStations.map((r) => ({ value: r.id, label: r.name })),
+    },
+  ], [filteredOpCenters, filteredRadarStations]);
 
   useEffect(() => {
     if (visible) {
@@ -218,6 +238,13 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
         }).catch(() => {});
       }
 
+      // 2a. Load Radar Stations for dropdown
+      radarStationService.getOptions().then((res) => {
+        if (Array.isArray(res)) {
+          setRadarStations(res.map((r) => ({ id: r.id, name: r.stationName || r.code || r.id, orgUnitId: r.orgUnitId })));
+        }
+      }).catch(() => {});
+
       // 2b. Load Operating Organizations
       vtsSystemCRUD.getOperatingOrganizationOptions().then((res) => {
         if (Array.isArray(res) && res.length > 0) {
@@ -231,10 +258,13 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
       }).catch(() => {});
 
       if (item) {
+        const initialLocId = item.vtsOperationCenterId || item.radarStationId;
         form.setFieldsValue({
           code: item.code,
           name: item.name,
+          locationId: initialLocId,
           vtsOperationCenterId: item.vtsOperationCenterId,
+          radarStationId: item.radarStationId,
           operatingOrgId: item.operatingOrgId,
           orgUnitId: item.orgUnitId,
           provinceId: item.provinceId,
@@ -395,10 +425,25 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
             ? 'PENDING_APPROVAL'
             : 'APPROVED';
 
+      const selectedLocationId = values.locationId;
+      let vtsOpCenterId: string | undefined = undefined;
+      let radarStId: string | undefined = undefined;
+
+      if (selectedLocationId) {
+        if (opCenters.some((c) => c.id === selectedLocationId)) {
+          vtsOpCenterId = selectedLocationId;
+        } else if (radarStations.some((r) => r.id === selectedLocationId)) {
+          radarStId = selectedLocationId;
+        } else {
+          vtsOpCenterId = selectedLocationId;
+        }
+      }
+
       const payload: CreateAisSystemRequest = {
         code: values.code?.trim(),
         name: values.name?.trim(),
-        vtsOperationCenterId: values.vtsOperationCenterId,
+        vtsOperationCenterId: vtsOpCenterId,
+        radarStationId: radarStId,
         operatingOrgId: values.operatingOrgId,
         orgUnitId: values.orgUnitId,
         provinceId: values.provinceId,
@@ -478,9 +523,12 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                   style={formTreeSelectStyle}
                   onChange={(val) => {
                     form.setFieldValue('orgUnitId', val);
-                    const curOp = form.getFieldValue('vtsOperationCenterId');
-                    if (curOp && !opCenters.some((c) => c.id === curOp && c.orgUnitId === val)) {
-                      form.setFieldValue('vtsOperationCenterId', undefined);
+                    const curLoc = form.getFieldValue('locationId');
+                    const allowedIds = resolveOrgSubtreeIds(orgUnits, val);
+                    const inOpCenters = opCenters.some((c) => c.id === curLoc && (!c.orgUnitId || allowedIds.has(c.orgUnitId)));
+                    const inRadars = radarStations.some((r) => r.id === curLoc && (!r.orgUnitId || allowedIds.has(r.orgUnitId)));
+                    if (curLoc && !inOpCenters && !inRadars) {
+                      form.setFieldValue('locationId', undefined);
                     }
                   }}
                 />
@@ -488,20 +536,20 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
             </Col>
             <Col span={12}>
               <Form.Item
-                name="vtsOperationCenterId"
+                name="locationId"
                 label="Thuộc TTDH VTS / Trạm Radar"
                 rules={[{ required: true, message: 'Vui lòng chọn TTDH VTS / Trạm Radar' }]}
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <Select
                   placeholder={formOrgUnitId ? 'Chọn TTDH VTS / Trạm Radar' : 'Vui lòng chọn đơn vị quản lý trước'}
                   disabled={!formOrgUnitId}
-                  options={filteredOpCenters.map((c) => ({ value: c.id, label: c.name }))}
+                  options={combinedLocationOptions}
                   style={selectStyle}
                   showSearch
                   allowClear
                   filterOption={(input, option) =>
-                    normalizeSearchText(option?.label).includes(normalizeSearchText(input))
+                    normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
                   }
                 />
               </Form.Item>
@@ -522,7 +570,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                   placeholder="Chọn đơn vị khai thác"
                   filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
                   options={operatingOrganizations.map((o) => ({ value: o.id, label: o.name }))}
-                  style={{ borderRadius: radiusPill, height: 40 }}
+                  style={selectStyle}
                 />
               </Form.Item>
             </Col>
@@ -530,18 +578,18 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
               <Form.Item
                 name="code"
                 label="Mã thiết bị"
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <Input
                   placeholder="Mã thiết bị tự sinh (AIS-xxxxxx)"
                   disabled={true}
-                  style={{ ...inputStyle, borderRadius: radiusPill, height: 40, backgroundColor: '#f5f5f5' }}
+                  style={readonlyInputStyle}
                 />
               </Form.Item>
             </Col>
           </Row>
 
-          <Row gutter={16}>
+          <Row gutter={formRowGutter}>
             <Col span={12}>
               <Form.Item
                 name="name"
@@ -550,9 +598,9 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                   { required: true, message: 'Vui lòng nhập tên thiết bị' },
                   { max: 255, message: 'Tên thiết bị tối đa 255 ký tự' },
                 ]}
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
-                <Input placeholder="Nhập tên thiết bị AIS" maxLength={255} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                <Input placeholder="Nhập tên thiết bị AIS" maxLength={255} showCount style={inputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -560,12 +608,12 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                 name="provinceId"
                 label="Địa điểm (Tỉnh/TP)"
                 rules={[{ required: true, message: 'Vui lòng chọn Tỉnh/Thành phố' }]}
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <Select
                   placeholder="Chọn Tỉnh/Thành phố"
                   options={VIETNAM_PROVINCE_OPTIONS}
-                  style={{ ...selectStyle, borderRadius: radiusPill, height: 40 }}
+                  style={selectStyle}
                   showSearch
                   filterOption={(input, option) =>
                     normalizeSearchText(option?.label).includes(normalizeSearchText(input))
@@ -576,15 +624,15 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
             </Col>
           </Row>
 
-          <Row gutter={16}>
+          <Row gutter={formRowGutter}>
             <Col span={12}>
               <Form.Item
                 name="detailedLocation"
                 label="Địa điểm chi tiết"
                 rules={[{ max: 500, message: 'Địa điểm chi tiết tối đa 500 ký tự' }]}
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
-                <Input placeholder="Nhập địa điểm chi tiết (số nhà, đường, xã/phường...)" maxLength={500} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                <Input placeholder="Nhập địa điểm chi tiết (số nhà, đường, xã/phường...)" maxLength={500} showCount style={inputStyle} />
               </Form.Item>
             </Col>
             <Col span={6}>
@@ -592,12 +640,12 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                 name="unitOfMeasure"
                 label="Đơn vị tính"
                 rules={[{ required: true, message: 'Vui lòng chọn đơn vị tính' }]}
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <Select
                   placeholder="Chọn ĐVT"
                   options={UNIT_OF_MEASURE_OPTIONS}
-                  style={{ ...selectStyle, borderRadius: radiusPill, height: 40 }}
+                  style={selectStyle}
                 />
               </Form.Item>
             </Col>
@@ -606,7 +654,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                 name="quantity"
                 label="Số lượng"
                 rules={[{ required: true, message: 'Vui lòng nhập số lượng' }]}
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <InputNumber
                   min={1}
@@ -617,9 +665,9 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
             </Col>
           </Row>
 
-          <Row gutter={16}>
+          <Row gutter={formRowGutter}>
             <Col span={12}>
-              <Form.Item name="commissioningYear" label="Năm đưa vào sử dụng" style={{ marginBottom: spaceFormField }}>
+              <Form.Item name="commissioningYear" label="Năm đưa vào sử dụng" style={formFieldStyle}>
                 <DatePicker
                   picker="year"
                   placeholder="Chọn năm sử dụng"
@@ -632,12 +680,12 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                 name="conditionStatus"
                 label="Tình trạng"
                 rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <Select
                   placeholder="Chọn tình trạng"
                   options={CONDITION_STATUS_OPTIONS}
-                  style={{ ...selectStyle, borderRadius: radiusPill, height: 40 }}
+                  style={selectStyle}
                 />
               </Form.Item>
             </Col>
@@ -678,10 +726,10 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
               <Form.Item
                 name="specifications"
                 label="Thông số kỹ thuật"
-                rules={[{ max: 1000, message: 'Thông số kỹ thuật tối đa 1000 ký tự' }]}
+                rules={[{ max: 2000, message: 'Thông số kỹ thuật tối đa 2000 ký tự' }]}
                 style={formFieldStyle}
               >
-                <Input.TextArea rows={3} placeholder="Nhập thông số kỹ thuật" maxLength={1000} showCount style={{ borderRadius: radiusMd }} />
+                <Input.TextArea rows={3} placeholder="Nhập thông số kỹ thuật" maxLength={2000} showCount style={{ ...textAreaStyle, padding: '10px 16px' }} />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -691,7 +739,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                 rules={[{ max: 2000, message: 'Thông tin bảo trì tối đa 2000 ký tự' }]}
                 style={formFieldStyle}
               >
-                <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì" maxLength={2000} showCount style={{ borderRadius: radiusMd }} />
+                <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì" maxLength={2000} showCount style={{ ...textAreaStyle, padding: '10px 16px' }} />
               </Form.Item>
             </Col>
           </Row>
@@ -702,7 +750,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
             rules={[{ max: 2000, message: 'Ghi chú tối đa 2000 ký tự' }]}
             style={formFieldStyle}
           >
-            <Input.TextArea rows={3} placeholder="Nhập ghi chú (nếu có)" maxLength={2000} showCount style={{ borderRadius: radiusMd }} />
+            <Input.TextArea rows={3} placeholder="Nhập ghi chú (nếu có)" maxLength={2000} showCount style={{ ...textAreaStyle, padding: '10px 16px' }} />
           </Form.Item>
         </div>
       ),
@@ -849,7 +897,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
           </div>
 
           {coordinateList.length === 0 ? (
-            <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
+            <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: 20, background: surfaceCard }}>
               <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có tọa độ nào.</span>
               <Button
                 type="dashed"
@@ -923,7 +971,18 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
           <div style={{ marginBottom: spaceMd }}>
             <Upload.Dragger
               fileList={fileList}
-              beforeUpload={() => false}
+              beforeUpload={(file) => {
+                if (file.size > 20 * 1024 * 1024) {
+                  toast.error('File vượt quá 20MB');
+                  return false;
+                }
+                const ext = file.name.split('.').pop()?.toLowerCase();
+                if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif', 'dwg'].includes(ext)) {
+                  toast.error('Định dạng file không hỗ trợ');
+                  return false;
+                }
+                return false;
+              }}
               onChange={({ fileList }) => setFileList(fileList)}
               multiple
               showUploadList={false}
@@ -932,17 +991,17 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                 background: '#fafbfc',
                 border: `1px dashed ${borderDefault}`,
                 borderRadius: radiusMd,
-                padding: '24px 16px',
+                padding: '40px 16px',
               }}
             >
-              <p style={{ marginBottom: 8 }}>
-                <InboxOutlined style={{ fontSize: 44, color: actionPrimary }} />
+              <p style={{ marginBottom: 12 }}>
+                <InboxOutlined style={{ fontSize: 48, color: actionPrimary }} />
               </p>
-              <p style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: textPrimary, marginBottom: 4 }}>
+              <p style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: textPrimary, marginBottom: 6 }}>
                 Kéo thả tệp vào đây hoặc nhấp để chọn tệp tải lên
               </p>
               <p style={{ fontSize: fontSizeSm, color: textTertiary, margin: 0 }}>
-                {ATTACHMENT_HELPER_TEXT}
+                Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤20MB.
               </p>
             </Upload.Dragger>
           </div>
@@ -950,9 +1009,10 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
           {existingAttachments.length > 0 && (
             <div style={{ marginBottom: spaceMd }}>
               <div style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                Tệp đính kèm hiện có ({existingAttachments.length})
+                Danh sách tệp đính kèm ({existingAttachments.length})
               </div>
               <Table
+                className="list-view-table"
                 dataSource={existingAttachments}
                 rowKey="id"
                 pagination={false}
@@ -964,16 +1024,34 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                     width: 50,
                     align: 'center' as const,
                     render: (_: any, __: any, idx: number) => idx + 1,
+                    onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } }),
                   },
                   {
                     title: 'Tên tệp',
                     dataIndex: 'fileName',
-                    render: (t: string) => (
-                      <Space>
-                        <FileOutlined style={{ color: colors.sidebarBg }} />
+                    render: (t: string, row: AisSystemAttachment) => (
+                      <a
+                        style={{
+                          fontSize: fontSizeMd,
+                          color: actionPrimary,
+                          cursor: row.filePath ? 'pointer' : 'default',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: spaceSm,
+                        }}
+                        onClick={async (e) => {
+                          if (row.filePath && item?.id) {
+                            e.preventDefault();
+                            await aisSystemService.downloadAttachment(item.id, row.id, row.fileName);
+                          }
+                        }}
+                        title={row.filePath ? 'Nhấn để tải tệp xuống' : undefined}
+                      >
+                        <FileOutlined style={{ color: actionPrimary }} />
                         <span>{t}</span>
-                      </Space>
+                      </a>
                     ),
+                    onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } }),
                   },
                   {
                     title: 'Dung lượng',
@@ -985,6 +1063,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                       if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
                       return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
                     },
+                    onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } }),
                   },
                   {
                     title: 'Thao tác',
@@ -999,6 +1078,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                         title="Xóa tệp"
                       />
                     ),
+                    onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } }),
                   },
                 ]}
               />
@@ -1008,9 +1088,10 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
           {fileList.length > 0 && (
             <div style={{ marginBottom: spaceMd }}>
               <div style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                Tệp mới chọn ({fileList.length})
+                Danh sách tệp mới chọn ({fileList.length})
               </div>
               <Table
+                className="list-view-table"
                 dataSource={fileList}
                 rowKey={(f) => f.uid}
                 pagination={false}
@@ -1022,6 +1103,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                     width: 50,
                     align: 'center' as const,
                     render: (_: any, __: any, idx: number) => idx + 1,
+                    onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } }),
                   },
                   {
                     title: 'Tên tệp',
@@ -1032,6 +1114,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                         <span>{t}</span>
                       </Space>
                     ),
+                    onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } }),
                   },
                   {
                     title: 'Dung lượng',
@@ -1043,6 +1126,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                       if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
                       return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
                     },
+                    onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } }),
                   },
                   {
                     title: 'Thao tác',
@@ -1057,11 +1141,18 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                         title="Hủy chọn tệp"
                       />
                     ),
+                    onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } }),
                   },
                 ]}
               />
             </div>
           )}
+
+          <div style={{ marginTop: spaceSm }}>
+            <span style={uploadHintStyle}>
+              Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤20MB.
+            </span>
+          </div>
         </div>
       ),
     },
@@ -1155,7 +1246,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
         ]}
       >
         <GisLocationSelector
-          inline={true}
+          height={550}
           value={{
             geometryType: watchedGeom,
             coordinates: serializeCoordinatesToWkt(coordinateList, watchedGeom),

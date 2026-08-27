@@ -2168,6 +2168,158 @@ textarea::placeholder,
   to { transform: rotate(360deg); }
 }
 
+/* --- Drawer & Detail Table Card Standard (Khóa cứng phân trang cố định đáy, đỉnh bảng đồng đều) --- */
+.ant-drawer .ant-drawer-body {
+  overflow-x: hidden !important;
+  overflow-y: scroll !important;
+  scrollbar-gutter: stable !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: #cbd5e1 transparent !important;
+}
+.ant-drawer .ant-drawer-body::-webkit-scrollbar {
+  width: 6px !important;
+  display: block !important;
+}
+.ant-drawer .ant-drawer-body::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1 !important;
+  border-radius: 4px !important;
+}
+.ant-drawer .ant-drawer-body::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+.ant-drawer .chk-detail-table-card,
+.chk-detail-table-card {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+.ant-drawer .ant-table-wrapper {
+  margin-top: 0 !important;
+}
+.ant-drawer .ant-table-wrapper .ant-spin-container {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+}
+.ant-drawer .ant-table-wrapper .ant-table {
+  flex: 0 0 auto !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+.ant-drawer .ant-table table {
+  table-layout: fixed !important;
+}
+.ant-drawer .ant-table-thead > tr > th {
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  padding: 8px 12px !important;
+}
+.ant-drawer .ant-table-tbody > tr:not(.ant-table-measure-row) > td {
+  padding: 6px 12px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+.ant-drawer .ant-table-tbody > tr:not(.ant-table-measure-row) > td:has(.ant-tag),
+.ant-drawer .ant-table-tbody > tr:not(.ant-table-measure-row) > td:has(span[style*="999px"]),
+.ant-drawer .ant-table-tbody > tr:not(.ant-table-measure-row) > td:has(span[style*="borderRadius: 999px"]),
+.ant-drawer .ant-table-tbody > tr:not(.ant-table-measure-row) > td:has(span[style*="border-radius: 999px"]),
+.ant-drawer .ant-table-tbody > tr:not(.ant-table-measure-row) > td.chk-col-status {
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+.ant-drawer .ant-table-thead > tr > th.ant-table-cell-align-right,
+.ant-drawer .ant-table-tbody > tr > td.ant-table-cell-align-right {
+  padding-right: 18px !important;
+}
+.ant-drawer .ant-table-tbody > tr.ant-table-measure-row,
+.ant-drawer .ant-table-tbody > tr.ant-table-measure-row > td {
+  padding: 0 !important;
+  height: 0 !important;
+  border: 0 !important;
+  line-height: 0 !important;
+  font-size: 0 !important;
+}
+.ant-drawer .ant-table-wrapper .ant-table-pagination.ant-pagination {
+  flex: 0 0 auto !important;
+  margin-top: 12px !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  align-self: flex-end !important;
+}
+
+/* --- Chi tiết 2 cột trong Drawer/Modal chuẩn --- */
+.chk-detail-grid {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  column-gap: 24px !important;
+  row-gap: 0 !important;
+}
+.chk-detail-row {
+  display: flex !important;
+  align-items: flex-start !important;
+  min-height: 38px !important;
+  padding: 8px 0 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  line-height: 1.5 !important;
+}
+.chk-detail-row--full {
+  grid-column: 1 / -1 !important;
+}
+.chk-detail-label {
+  width: 190px !important;
+  flex-shrink: 0 !important;
+  color: #12468C !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  text-align: left !important;
+  line-height: 1.5 !important;
+}
+.chk-detail-label::after {
+  content: ':' !important;
+  margin-left: 1px !important;
+}
+.chk-detail-value {
+  color: #1e293b !important;
+  font-size: 13px !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+  text-align: left !important;
+  line-height: 1.5 !important;
+  overflow-wrap: anywhere !important;
+}
+
+/* --- Tabs thanh cuộn ngang mượt mà, sticky cố định trên đầu khi scroll --- */
+.ant-drawer .ant-tabs-nav,
+.ant-tabs-nav {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 50 !important;
+  background: #ffffff !important;
+  margin: 0 0 12px 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+.ant-drawer .ant-tabs-content-holder,
+.ant-tabs-content-holder {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.ant-tabs-tabpane,
+.ant-drawer .ant-tabs-tabpane {
+  animation: none !important;
+  transition: none !important;
+}
+.ant-tabs-content,
+.ant-drawer .ant-tabs-content {
+  transition: none !important;
+}
+.ant-drawer .ant-tabs-nav-list,
+.ant-tabs-nav-list {
+  transition: none !important;
+}
+
 `;
 
 // ============================================================

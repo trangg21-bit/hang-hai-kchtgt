@@ -100,7 +100,6 @@ class VtsSystemServiceTest {
         saved.setId(TEST_ID);
 
         when(repository.save(any())).thenReturn(saved);
-        when(historyRepository.save(any())).thenReturn(mock(InfrastructureHistory.class));
 
         VtsSystemResponse response = service.create(createRequest, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertNotNull(response);
@@ -139,7 +138,6 @@ class VtsSystemServiceTest {
             passedEntity.setId(TEST_ID);
             return passedEntity;
         });
-        when(historyRepository.save(any())).thenReturn(mock(InfrastructureHistory.class));
 
         VtsSystemResponse res = service.create(reqWithZones, UUID.randomUUID());
         assertNotNull(res);
@@ -544,7 +542,6 @@ class VtsSystemServiceTest {
         saved.setId(TEST_ID);
 
         when(repository.save(any())).thenReturn(saved);
-        when(historyRepository.save(any())).thenReturn(mock(InfrastructureHistory.class));
 
         VtsSystemResponse response = service.create(req, UUID.randomUUID());
         assertNotNull(response);
@@ -569,7 +566,6 @@ class VtsSystemServiceTest {
         saved.setId(TEST_ID);
 
         when(repository.save(any())).thenReturn(saved);
-        when(historyRepository.save(any())).thenReturn(mock(InfrastructureHistory.class));
 
         VtsSystemResponse response = service.create(req, UUID.randomUUID());
         assertNotNull(response);

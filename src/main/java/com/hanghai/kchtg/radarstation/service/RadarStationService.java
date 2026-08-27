@@ -537,7 +537,6 @@ public class RadarStationService {
         RadarStationResponse.RadarStationResponseBuilder builder = RadarStationResponse.builder()
                 .id(entity.getId())
                 .code(entity.getCode())
-                .securityLevel(entity.getSecurityLevel())
                 .stationName(entity.getStationName())
                 .location(entity.getLocation())
                 .stationType(entity.getStationType())

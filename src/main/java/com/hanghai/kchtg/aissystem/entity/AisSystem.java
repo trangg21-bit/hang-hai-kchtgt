@@ -5,6 +5,7 @@ import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.common.enums.UnitOfMeasure;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
+import com.hanghai.kchtg.radarstation.entity.RadarStation;
 import com.hanghai.kchtg.vtsoperationcenter.entity.VtsOperationCenter;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import jakarta.persistence.*;
@@ -36,12 +37,19 @@ public class AisSystem extends BaseEntity implements ApprovableEntity {
     @Column(name = "name", nullable = false, length = 255)
     private String name;
 
-    @Column(name = "vts_operation_center_id", nullable = false)
+    @Column(name = "vts_operation_center_id")
     private UUID vtsOperationCenterId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "vts_operation_center_id", insertable = false, updatable = false)
     private VtsOperationCenter vtsOperationCenter;
+
+    @Column(name = "radar_station_id")
+    private UUID radarStationId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "radar_station_id", insertable = false, updatable = false)
+    private RadarStation radarStation;
 
     @Column(name = "operating_org_id", nullable = false)
     private UUID operatingOrgId;

@@ -172,3 +172,6 @@ export const radarStationAttachment = {
     return this.delete(id, attachmentId);
   },
 };
+
+export const radarStationService = radarStationCRUD;
+export default radarStationCRUD;

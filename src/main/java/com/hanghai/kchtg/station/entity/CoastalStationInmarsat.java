@@ -30,12 +30,7 @@ import java.util.UUID;
 @FieldNameConstants
 @SQLRestriction("deleted_at IS NULL")
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
-@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 public class CoastalStationInmarsat extends BaseEntity implements ApprovableEntity {
-
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
-    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
 
     @Column(name = "org_unit_id")
     private UUID orgUnitId;
@@ -201,9 +196,6 @@ public class CoastalStationInmarsat extends BaseEntity implements ApprovableEnti
         }
         if (this.status == null) {
             this.status = StationStatus.DRAFT;
-        }
-        if (this.securityLevel == null) {
-            this.securityLevel = RecordSecurityLevel.NORMAL;
         }
         if (this.conditionStatus == null) {
             this.conditionStatus = "OPERATIONAL";

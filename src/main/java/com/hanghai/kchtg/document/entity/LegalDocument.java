@@ -23,7 +23,6 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "legal_documents")
-@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 @Data
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
@@ -31,11 +30,6 @@ import java.util.UUID;
 @SuperBuilder
 @FieldNameConstants
 public class LegalDocument extends BaseEntity {
-
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "security_level", nullable = false)
-    @Builder.Default
-    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
 
     @Column(name = "document_name", nullable = false, length = 200)
     private String documentName;

@@ -1,5 +1,14 @@
 import { Modal, Form, Input } from 'antd';
 import { useState, useEffect } from 'react';
+import {
+  sidebarBg,
+  fontWeightBold,
+  fontSizeLg,
+  fontSizeMd,
+  primaryButtonStyle,
+  outlineButtonStyle,
+  textAreaStyle,
+} from '../../themetokenchk';
 
 interface ApprovalModalProps {
   visible: boolean;
@@ -37,28 +46,35 @@ export default function ApprovalModal({
     onCancel();
   };
 
-  const title = level === 'c1' ? 'Phê duyệt cấp 1 (Cảng vụ/Chi cục)' : 'Phê duyệt cấp 2 (Cục)';
+  const title = level === 'c1' ? 'Phê duyệt cấp Cảng vụ/Chi cục' : 'Phê duyệt cấp Cục';
 
   return (
     <Modal
-      title={title}
+      title={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{title}</span>}
       open={visible}
       onCancel={handleCancel}
       okText="Xác nhận phê duyệt"
       cancelText="Hủy"
-      okButtonProps={{ type: 'primary', loading }}
+      width={520}
+      style={{ top: 120 }}
+      okButtonProps={{ style: { ...primaryButtonStyle, height: 38, padding: '0 20px' }, loading }}
+      cancelButtonProps={{ style: { ...outlineButtonStyle, height: 38, padding: '0 20px' } }}
       onOk={handleConfirm}
     >
       <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
-        <Form.Item label="Nội dung / Ý kiến phê duyệt">
+        <Form.Item
+          label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Nội dung / Ý kiến phê duyệt</span>}
+          style={{ marginBottom: 0 }}
+        >
           <Input.TextArea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Nhập nội dung / ý kiến phê duyệt..."
-            rows={4}
+            rows={3}
             maxLength={500}
             autoFocus
             showCount
+            style={textAreaStyle}
           />
         </Form.Item>
       </Form>

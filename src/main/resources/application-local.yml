@@ -1,5 +1,5 @@
 server:
-  port: 8081
+  port: 8080
   max-http-header-size: 2MB
   max-http-request-header-size: 2MB
   tomcat:

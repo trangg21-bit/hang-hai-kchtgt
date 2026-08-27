@@ -19,6 +19,7 @@ public class AisSystemOptionResponse {
     private String name;
     private UUID orgUnitId;
     private UUID vtsOperationCenterId;
+    private UUID radarStationId;
 
     public AisSystemOptionResponse(UUID id, String code, String name, UUID orgUnitId) {
         this.id = id;

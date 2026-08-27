@@ -39,13 +39,7 @@ import lombok.experimental.FieldNameConstants;
 @AllArgsConstructor
 @SuperBuilder
 @FieldNameConstants
-@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 public class Document extends BaseEntity {
-
-    @Enumerated(jakarta.persistence.EnumType.ORDINAL)
-    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
-    @Builder.Default
-    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
 
     /**
      * Entity type that this document is attached to.

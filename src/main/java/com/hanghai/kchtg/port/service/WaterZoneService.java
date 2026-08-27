@@ -81,14 +81,8 @@ public class WaterZoneService {
             spatialId = spatialObj.getId();
         }
 
-        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
-                : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "waterzone", SecurityUtils.getCurrentUserPermissions(),
-                SecurityUtils.isElevatedAdministrator());
-
         WaterZone entity = WaterZone.builder()
                 .id(waterZoneId)
-                .securityLevel(secLevel)
                 .waterZoneCode(request.getWaterZoneCode()).waterZoneName(request.getWaterZoneName())
                 .portId(request.getPortId()).area(request.getArea())
                 .maxDepth(request.getMaxDepth()).avgDepth(request.getAvgDepth())
@@ -204,7 +198,6 @@ public class WaterZoneService {
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy vùng nước với id: " + request.getId()));
 
         WaterZone snapshot = WaterZone.builder()
-                .securityLevel(entity.getSecurityLevel())
                 .waterZoneCode(entity.getWaterZoneCode())
                 .waterZoneName(entity.getWaterZoneName()).portId(entity.getPortId())
                 .area(entity.getArea()).maxDepth(entity.getMaxDepth())
@@ -214,11 +207,6 @@ public class WaterZoneService {
                 .mapSymbolId(entity.getMapSymbolId())
                 .build();
 
-        if (request.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "waterzone",
-                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-            entity.setSecurityLevel(request.getSecurityLevel());
-        }
         if (request.getWaterZoneName() != null)
             entity.setWaterZoneName(request.getWaterZoneName());
         if (request.getPortId() != null) {
@@ -349,7 +337,6 @@ public class WaterZoneService {
 
         return WaterZoneResponse.builder()
                 .id(e.getId())
-                .securityLevel(e.getSecurityLevel())
                 .waterZoneCode(e.getWaterZoneCode()).waterZoneName(e.getWaterZoneName())
                 .portId(e.getPortId())
                 .portName(portName)

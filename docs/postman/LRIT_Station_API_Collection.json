@@ -1,0 +1,251 @@
+{
+  "info": {
+    "_postman_id": "a9e8b7c6-1d2e-3f4a-5b6c-250ad82b4980",
+    "name": "KCHTGT - Quan Ly Dai LRIT",
+    "description": "Postman Collection mô tả đầy đủ các thao tác của người dùng tạo dữ liệu cho màn hình Quản lý Đài LRIT (http://localhost:3001/station/lrit)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "createdLritId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "1.1 Đăng nhập lấy Token (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.accessToken) {",
+                  "    pm.collectionVariables.set('authToken', jsonData.data.accessToken);",
+                  "    console.log('Access token saved');",
+                  "} else if (jsonData.accessToken) {",
+                  "    pm.collectionVariables.set('authToken', jsonData.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"Password@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Nghiệp vụ Đài LRIT",
+      "item": [
+        {
+          "name": "2.1 Lấy danh sách phân trang và thống kê StatusTabs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stations/lrit?page=0&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["stations", "lrit"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.2 Lấy thống kê số lượng bản ghi các Tab",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stations/lrit/counts",
+              "host": ["{{baseUrl}}"],
+              "path": ["stations", "lrit", "counts"]
+            }
+          }
+        },
+        {
+          "name": "2.3 Tạo mới Đài LRIT (Lưu tạm - DRAFT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.id) {",
+                  "    pm.collectionVariables.set('createdLritId', jsonData.data.id);",
+                  "    console.log('Saved createdLritId: ' + jsonData.data.id);",
+                  "} else if (jsonData.id) {",
+                  "    pm.collectionVariables.set('createdLritId', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Đài thông tin LRIT Thí nghiệm Đồ Sơn\",\n  \"provinceId\": 31,\n  \"locationAddress\": \"Khu du lịch Đồ Sơn, TP. Hải Phòng\",\n  \"conditionStatus\": \"OPERATIONAL\",\n  \"terminalId\": \"TERM-LRIT-DS-01\",\n  \"imoNumber\": \"IMO-9998881\",\n  \"reportingInterval\": 15,\n  \"antennaHeight\": 42.5,\n  \"powerOutput\": 50.0,\n  \"antennaType\": \"Omnidirectional Satellite Antenna\",\n  \"dataFormat\": \"LRIT Protocol v2.0 / XML\",\n  \"communicationChannel\": \"Inmarsat-C / Iridium\",\n  \"coverageArea\": \"Vùng biển Vịnh Bắc Bộ\",\n  \"servicesProvided\": \"LRIT, DSC, MSI NAVTEX\",\n  \"description\": \"Đài thử nghiệm nhận dạng tầm xa tàu biển\",\n  \"contactPerson\": \"Nguyễn Văn Thử\",\n  \"contactPhone\": \"0988112233\",\n  \"geometryType\": \"POINT\",\n  \"coordinateSystem\": \"WGS84\",\n  \"latitude\": 20.7125,\n  \"longitude\": 106.7915,\n  \"coordinates\": \"POINT(106.7915 20.7125)\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/stations/lrit?action=DRAFT",
+              "host": ["{{baseUrl}}"],
+              "path": ["stations", "lrit"],
+              "query": [
+                { "key": "action", "value": "DRAFT" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.4 Gửi phê duyệt Đài LRIT (PENDING_APPROVAL)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stations/lrit/{{createdLritId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["stations", "lrit", "{{createdLritId}}", "submit"]
+            }
+          }
+        },
+        {
+          "name": "2.5 Phê duyệt Vòng 1 Cấp Cảng vụ (APPROVED_LEVEL1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stations/lrit/{{createdLritId}}/approve-c1",
+              "host": ["{{baseUrl}}"],
+              "path": ["stations", "lrit", "{{createdLritId}}", "approve-c1"]
+            }
+          }
+        },
+        {
+          "name": "2.6 Phê duyệt Vòng 2 Cấp Cục Hàng hải (APPROVED)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stations/lrit/{{createdLritId}}/approve-c2",
+              "host": ["{{baseUrl}}"],
+              "path": ["stations", "lrit", "{{createdLritId}}", "approve-c2"]
+            }
+          }
+        },
+        {
+          "name": "2.7 Từ chối phê duyệt hồ sơ Đài LRIT",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Yêu cầu kiểm tra lại công suất phát và giấy phép tần số\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/stations/lrit/{{createdLritId}}/reject",
+              "host": ["{{baseUrl}}"],
+              "path": ["stations", "lrit", "{{createdLritId}}", "reject"]
+            }
+          }
+        },
+        {
+          "name": "2.8 Xem chi tiết Đài LRIT",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stations/lrit/{{createdLritId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["stations", "lrit", "{{createdLritId}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

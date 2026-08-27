@@ -141,13 +141,7 @@ public class BuoyStationService {
 
         validateInspectionDates(request.getLastInspectionDate(), request.getNextInspectionDate());
 
-        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
-                : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "buoystation", SecurityUtils.getCurrentUserPermissions(),
-                SecurityUtils.isElevatedAdministrator());
-
         BuoyStation entity = BuoyStation.builder()
-                .securityLevel(secLevel)
                 .code(request.getCode())
                 .name(request.getName())
                 .type(request.getType())
@@ -275,11 +269,6 @@ public class BuoyStationService {
                 .rejectionReason(entity.getRejectionReason())
                 .build();
 
-        if (request.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "buoystation",
-                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-            entity.setSecurityLevel(request.getSecurityLevel());
-        }
         if (request.getName() != null)
             entity.setName(request.getName());
 
@@ -581,7 +570,6 @@ public class BuoyStationService {
     private BuoyStationResponse toResponse(BuoyStation entity) {
         BuoyStationResponse.BuoyStationResponseBuilder builder = BuoyStationResponse.builder()
                 .id(entity.getId())
-                .securityLevel(entity.getSecurityLevel())
                 .code(entity.getCode())
                 .name(entity.getName())
                 .type(entity.getType())

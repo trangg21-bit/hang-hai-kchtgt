@@ -78,9 +78,6 @@ public class DikeRevetmentService {
     @Transactional
     public DikeRevetmentResponse create(DikeRevetmentCreateRequest req, UUID userId) {
         FieldWriteGuard.validateObject(req);
-        RecordSecurityLevel secLevel = req.getSecurityLevel() != null ? req.getSecurityLevel() : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "dikerevetment", SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-
         validateAllowedOrgUnit(req.getOrgUnitId());
 
         String code = req.getCode() != null && !req.getCode().trim().isEmpty()
@@ -88,7 +85,6 @@ public class DikeRevetmentService {
                 : generateDikeRevetmentCode();
 
         DikeRevetment dr = DikeRevetment.builder()
-                .securityLevel(secLevel)
                 .dikeRevetmentType(req.getDikeRevetmentType())
                 .location(req.getLocation())
                 .dikeRevetmentName(req.getDikeRevetmentName())
@@ -254,9 +250,6 @@ public class DikeRevetmentService {
         if (req.getStatus() != null) {
             dr.setStatus(req.getStatus());
         }
-        if (req.getSecurityLevel() != null) {
-            dr.setSecurityLevel(req.getSecurityLevel());
-        }
 
         dr.setUpdatedBy(userId);
         DikeRevetment saved = repo.save(dr);
@@ -399,7 +392,6 @@ public class DikeRevetmentService {
 
         return DikeRevetmentResponse.builder()
                 .id(dr.getId())
-                .securityLevel(dr.getSecurityLevel())
                 .dikeRevetmentType(dr.getDikeRevetmentType())
                 .location(dr.getLocation())
                 .dikeRevetmentName(dr.getDikeRevetmentName())

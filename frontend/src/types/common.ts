@@ -111,8 +111,9 @@ export const getProvinceIdByName = (name?: string): number | undefined => {
   return idx !== -1 ? VIETNAM_PROVINCE_IDS[idx] : undefined;
 };
 
-export const getProvinceNameById = (id?: number): string | undefined => {
-  if (!id) return undefined;
-  const idx = VIETNAM_PROVINCE_IDS.indexOf(id as any);
+export const getProvinceNameById = (id?: number | string): string | undefined => {
+  if (id === undefined || id === null || id === '') return undefined;
+  const numId = Number(id);
+  const idx = VIETNAM_PROVINCE_IDS.indexOf(numId as any);
   return idx !== -1 ? VIETNAM_PROVINCES[idx] : undefined;
 };

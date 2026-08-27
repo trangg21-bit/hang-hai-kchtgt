@@ -6,6 +6,54 @@
 -- audit columns as text holding usernames.
 
 -- === Station tables ===
+CREATE TABLE org_units (
+    id UUID PRIMARY KEY,
+    name VARCHAR(200),
+    code VARCHAR(50),
+    parent_id UUID,
+    type SMALLINT,
+    description VARCHAR(1000),
+    province VARCHAR(100),
+    address VARCHAR(500),
+    operational_status SMALLINT DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+
+INSERT INTO org_units (id, code, name) VALUES ('11111111-1111-1111-1111-111111111111', 'CVHH_HP', 'Cảng vụ Hàng hải Hải Phòng');
+INSERT INTO org_units (id, code, name) VALUES ('22222222-2222-2222-2222-222222222222', 'CVHH_DN', 'Cảng vụ Hàng hải Đà Nẵng');
+INSERT INTO org_units (id, code, name) VALUES ('33333333-3333-3333-3333-333333333333', 'CVHH_HCM', 'Cảng vụ Hàng hải TP. Hồ Chí Minh');
+
+CREATE TABLE users (
+    id UUID PRIMARY KEY,
+    username VARCHAR(100),
+    email VARCHAR(150),
+    full_name VARCHAR(100),
+    password VARCHAR(255),
+    status SMALLINT DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+
+INSERT INTO users (id, username, email, full_name, password)
+VALUES ('99999999-9999-9999-9999-999999999999', 'admin', 'admin@hh.gov.vn', 'Admin User', '$2a$10$7EqJtq98hPqEX7fNZaFWoOhi5Vq7kUjXzN1h8j/uBf3p4KzX4J1bS');
+
+CREATE TABLE app_users (
+    id UUID PRIMARY KEY,
+    username VARCHAR(100),
+    email VARCHAR(150),
+    full_name VARCHAR(100),
+    password VARCHAR(255),
+    status SMALLINT DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+INSERT INTO app_users (id, username, email, full_name, password)
+VALUES ('99999999-9999-9999-9999-999999999999', 'admin', 'admin@hh.gov.vn', 'Admin User', '$2a$10$7EqJtq98hPqEX7fNZaFWoOhi5Vq7kUjXzN1h8j/uBf3p4KzX4J1bS');
+
 CREATE TABLE buoy_station (
     id              UUID PRIMARY KEY,
     latitude        DOUBLE PRECISION,
@@ -414,22 +462,6 @@ CREATE TABLE group_members (
     deleted_at TIMESTAMP
 );
 
-CREATE TABLE app_users (
-    id UUID PRIMARY KEY,
-    username VARCHAR(100),
-    password VARCHAR(255),
-    email VARCHAR(150),
-    status VARCHAR(50),
-    deleted_at TIMESTAMP
-);
-
-CREATE TABLE public.org_units (
-    id UUID PRIMARY KEY,
-    status VARCHAR(50),
-    unit_type VARCHAR(50),
-    type VARCHAR(50)
-);
-
 -- === Tables needed by V106 dashboard indexes (non-duplicate tables only) ===
 CREATE TABLE ports (
     id UUID PRIMARY KEY,
@@ -488,7 +520,10 @@ CREATE TABLE navigation_channel (
     approval_status VARCHAR(50),
     deleted_at TIMESTAMP,
     created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    updated_at TIMESTAMP,
+    created_by VARCHAR(100),
+    updated_by VARCHAR(100),
+    deleted_by VARCHAR(100)
 );
 
 CREATE TABLE dike_revetment (
@@ -499,7 +534,10 @@ CREATE TABLE dike_revetment (
     approval_status VARCHAR(50),
     deleted_at TIMESTAMP,
     created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    updated_at TIMESTAMP,
+    created_by VARCHAR(100),
+    updated_by VARCHAR(100),
+    deleted_by VARCHAR(100)
 );
 
 CREATE TABLE radar_station (
@@ -510,18 +548,27 @@ CREATE TABLE radar_station (
     approval_status VARCHAR(50),
     deleted_at TIMESTAMP,
     created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    updated_at TIMESTAMP,
+    created_by VARCHAR(100),
+    updated_by VARCHAR(100),
+    deleted_by VARCHAR(100)
 );
 
 CREATE TABLE vts_system (
     id UUID PRIMARY KEY,
     ma_he_thong VARCHAR(50),
+    code VARCHAR(50),
     system_name VARCHAR(255),
+    org_unit_id UUID,
     operational_status VARCHAR(50),
     approval_status VARCHAR(50),
+    condition_status VARCHAR(50),
     deleted_at TIMESTAMP,
     created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    updated_at TIMESTAMP,
+    created_by VARCHAR(100),
+    updated_by VARCHAR(100),
+    deleted_by VARCHAR(100)
 );
 
 CREATE TABLE ship_repair_facility (
@@ -532,7 +579,10 @@ CREATE TABLE ship_repair_facility (
     approval_status VARCHAR(50),
     deleted_at TIMESTAMP,
     created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    updated_at TIMESTAMP,
+    created_by VARCHAR(100),
+    updated_by VARCHAR(100),
+    deleted_by VARCHAR(100)
 );
 
 CREATE TABLE water_zones (
@@ -542,6 +592,10 @@ CREATE TABLE water_zones (
     water_zone_type VARCHAR(50),
     deleted_at TIMESTAMP,
     created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    updated_at TIMESTAMP,
+    created_by VARCHAR(100),
+    updated_by VARCHAR(100),
+    deleted_by VARCHAR(100)
 );
+
 

@@ -59,7 +59,7 @@ class DataScopeRealDatabaseIntegrationTest {
         unitAId = UUID.randomUUID();
         unitBId = UUID.randomUUID();
 
-        // 1. Persist VTS System for Unit A (Level: NORMAL / 1)
+        // 1. Persist VTS System for Unit A
         vtsA = VtsSystem.builder()
                 .systemName("VTS Cảng vụ Hải Phòng (Unit A)")
                 .code("VTS-HP-01")
@@ -69,11 +69,10 @@ class DataScopeRealDatabaseIntegrationTest {
                 .provinceId(1)
                 .conditionStatus(ConditionStatus.OPERATIONAL)
                 .approvalStatus(ApprovalStatus.APPROVED)
-                .securityLevel(RecordSecurityLevel.NORMAL)
                 .build();
         vtsA = entityManager.persistAndFlush(vtsA);
 
-        // 2. Persist VTS System for Unit B (Level: NORMAL / 1)
+        // 2. Persist VTS System for Unit B
         vtsB = VtsSystem.builder()
                 .systemName("VTS Cảng vụ TP.HCM (Unit B)")
                 .code("VTS-SG-01")
@@ -83,21 +82,19 @@ class DataScopeRealDatabaseIntegrationTest {
                 .provinceId(2)
                 .conditionStatus(ConditionStatus.OPERATIONAL)
                 .approvalStatus(ApprovalStatus.APPROVED)
-                .securityLevel(RecordSecurityLevel.NORMAL)
                 .build();
         vtsB = entityManager.persistAndFlush(vtsB);
 
-        // 3. Persist VTS System for Unit A with RESTRICTED Security Level (Level: RESTRICTED / 3)
+        // 3. Persist second VTS System for Unit A
         vtsA_Restricted = VtsSystem.builder()
-                .systemName("VTS Khu quân sự bảo mật (Unit A - Restricted)")
-                .code("VTS-HP-SEC")
+                .systemName("VTS Cảng vụ Hải Phòng #2 (Unit A)")
+                .code("VTS-HP-02")
                 .orgUnitId(unitAId)
                 .owningOrgId(unitAId)
                 .operatingOrgId(unitAId)
                 .provinceId(1)
                 .conditionStatus(ConditionStatus.OPERATIONAL)
                 .approvalStatus(ApprovalStatus.APPROVED)
-                .securityLevel(RecordSecurityLevel.RESTRICTED)
                 .build();
         vtsA_Restricted = entityManager.persistAndFlush(vtsA_Restricted);
 
@@ -109,7 +106,6 @@ class DataScopeRealDatabaseIntegrationTest {
                 .provinceId(1)
                 .range(5.0)
                 .approvalStatus(ApprovalStatus.APPROVED)
-                .securityLevel(RecordSecurityLevel.NORMAL)
                 .build();
         buoyA = entityManager.persistAndFlush(buoyA);
 
@@ -120,7 +116,6 @@ class DataScopeRealDatabaseIntegrationTest {
                 .provinceId(2)
                 .range(5.0)
                 .approvalStatus(ApprovalStatus.APPROVED)
-                .securityLevel(RecordSecurityLevel.NORMAL)
                 .build();
         buoyB = entityManager.persistAndFlush(buoyB);
 
@@ -166,40 +161,7 @@ class DataScopeRealDatabaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("3. Real DB Security Level Filter: recordSecurityLevelFilter omits higher classified records")
-    void recordSecurityLevelFilter_whenMaxLevelIsNormal_shouldFilterOutRestrictedRecords() {
-        Session session = entityManager.getEntityManager().unwrap(Session.class);
-        // Level 1 = NORMAL (so level 2 CONFIDENTIAL and level 3 RESTRICTED are excluded)
-        session.enableFilter("recordSecurityLevelFilter").setParameter("maxSecurityLevel", RecordSecurityLevel.NORMAL.ordinal());
-
-        List<VtsSystem> vtsList = vtsRepository.findAll();
-
-        // vtsA (level 1) and vtsB (level 1) should be present; vtsA_Restricted (level 3) must be excluded
-        assertEquals(2, vtsList.size());
-        assertFalse(vtsList.stream().anyMatch(v -> v.getSecurityLevel() == RecordSecurityLevel.RESTRICTED));
-        assertTrue(vtsList.stream().anyMatch(v -> v.getId().equals(vtsA.getId())));
-        assertTrue(vtsList.stream().anyMatch(v -> v.getId().equals(vtsB.getId())));
-    }
-
-    @Test
-    @DisplayName("4. Real DB Combined Filters: Both orgUnitFilter and recordSecurityLevelFilter active simultaneously")
-    void combinedFilters_whenBothOrgUnitAndSecurityLevelFiltersEnabled_shouldEnforceBothDimensions() {
-        Session session = entityManager.getEntityManager().unwrap(Session.class);
-        session.enableFilter("orgUnitFilter").setParameterList("orgUnitIds", List.of(unitAId));
-        session.enableFilter("recordSecurityLevelFilter").setParameter("maxSecurityLevel", RecordSecurityLevel.NORMAL.ordinal());
-
-        List<VtsSystem> vtsList = vtsRepository.findAll();
-
-        // Must ONLY return vtsA (belongs to Unit A AND security level <= NORMAL)
-        // vtsB excluded due to unit mismatch; vtsA_Restricted excluded due to security level
-        assertEquals(1, vtsList.size());
-        assertEquals(vtsA.getId(), vtsList.get(0).getId());
-        assertEquals(unitAId, vtsList.get(0).getOrgUnitId());
-        assertEquals(RecordSecurityLevel.NORMAL, vtsList.get(0).getSecurityLevel());
-    }
-
-    @Test
-    @DisplayName("5. Real DB Repository Query: scopeEnabled=true isolates Unit A data, scopeEnabled=false returns all")
+    @DisplayName("3. Real DB Repository Query: scopeEnabled=true isolates Unit A data, scopeEnabled=false returns all")
     void repositorySearchQuery_withScopeParameters_shouldIsolateDataCorrectlyInRealDatabase() {
         // When scope is ENABLED for Unit A
         Page<VtsSystem> scopedResult = vtsRepository.search(

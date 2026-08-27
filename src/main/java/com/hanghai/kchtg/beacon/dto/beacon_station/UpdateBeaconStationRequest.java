@@ -22,8 +22,6 @@ import java.time.LocalDate;
 @Builder
 public class UpdateBeaconStationRequest {
 
-    private RecordSecurityLevel securityLevel;
-
     @Size(max = 200)
     private String name;
 

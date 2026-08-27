@@ -24,8 +24,6 @@ import java.time.LocalDate;
 @Builder
 public class UpdateBuoyRequest {
 
-    private RecordSecurityLevel securityLevel;
-
     @Size(max = 50)
     private String code;
 

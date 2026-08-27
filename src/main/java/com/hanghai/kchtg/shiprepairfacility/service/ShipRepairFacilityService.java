@@ -48,13 +48,8 @@ public class ShipRepairFacilityService {
 
     public ShipRepairFacilityResponse create(ShipRepairFacilityCreateRequest request, UUID createdBy) {
         FieldWriteGuard.validateObject(request);
-        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
-                : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "shiprepairfacility",
-                SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
 
         ShipRepairFacility entity = ShipRepairFacility.builder()
-                .securityLevel(secLevel)
                 .facilityName(request.getFacilityName())
                 .address(request.getAddress())
                 .provinceId(request.getProvinceId())
@@ -163,11 +158,6 @@ public class ShipRepairFacilityService {
         if (request.getOrgUnitId() != null && !java.util.Objects.equals(request.getOrgUnitId(), entity.getOrgUnitId()))
             previousValues.put("orgUnitId", String.valueOf(entity.getOrgUnitId()));
 
-        if (request.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "shiprepairfacility",
-                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-            entity.setSecurityLevel(request.getSecurityLevel());
-        }
         if (request.getFacilityName() != null)
             entity.setFacilityName(request.getFacilityName());
         if (request.getAddress() != null)
@@ -461,7 +451,6 @@ public class ShipRepairFacilityService {
 
         return ShipRepairFacilityResponse.builder()
                 .id(entity.getId())
-                .securityLevel(entity.getSecurityLevel())
                 .facilityName(entity.getFacilityName())
                 .address(entity.getAddress())
                 .provinceId(entity.getProvinceId())

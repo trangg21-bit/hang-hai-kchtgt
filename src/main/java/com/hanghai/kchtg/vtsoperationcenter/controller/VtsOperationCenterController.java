@@ -70,15 +70,22 @@ public class VtsOperationCenterController {
      * trắng: tên thuộc tính lạ sẽ làm truy vấn ném lỗi 500, và các cột hiển thị
      * tên (đơn vị, cán bộ) được resolve sau truy vấn nên không sắp xếp được ở DB.
      */
-    private static final Map<String, String> SORTABLE_LIST_FIELDS = Map.of(
-            "name", "name",
-            "code", "code",
-            "detailedLocation", "detailedLocation",
-            "conditionStatus", "conditionStatus",
-            "approvalStatus", "approvalStatus",
-            "provinceId", "provinceId",
-            "updatedDate", "updatedAt",
-            "createdAt", "createdAt");
+    private static final Map<String, String> SORTABLE_LIST_FIELDS = Map.ofEntries(
+            Map.entry("name", "name"),
+            Map.entry("code", "code"),
+            Map.entry("vtsSystemId", "vtsSystemId"),
+            Map.entry("vtsSystemName", "vtsSystemId"),
+            Map.entry("portId", "portId"),
+            Map.entry("portName", "portId"),
+            Map.entry("orgUnitId", "orgUnitId"),
+            Map.entry("orgUnitName", "orgUnitId"),
+            Map.entry("detailedLocation", "detailedLocation"),
+            Map.entry("conditionStatus", "conditionStatus"),
+            Map.entry("approvalStatus", "approvalStatus"),
+            Map.entry("provinceId", "provinceId"),
+            Map.entry("updatedAt", "updatedAt"),
+            Map.entry("updatedDate", "updatedAt"),
+            Map.entry("createdAt", "createdAt"));
 
     private static Sort resolveListSort(String sortBy, String sortDir) {
         Sort defaultSort = Sort.by(Sort.Direction.DESC, "createdAt");

@@ -45,6 +45,7 @@ import {
   outlineButtonStyle,
   primaryButtonStyle,
   spaceMd,
+  uploadHintStyle,
   actionPrimary,
 } from '../../tokens';
 
@@ -969,6 +970,12 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
               </Table>
             </div>
           )}
+
+          <div style={{ marginTop: spaceSm }}>
+            <span style={uploadHintStyle}>
+              Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤20MB.
+            </span>
+          </div>
         </div>
       ),
     },

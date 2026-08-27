@@ -37,13 +37,7 @@ public class CoastalStationCospasSarsatService {
             throw new IllegalArgumentException("Mã đã tồn tại: " + request.getStationCode());
         }
 
-        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
-                : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "coastalstationcospassarsat",
-                SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-
         CoastalStationCospasSarsat entity = new CoastalStationCospasSarsat();
-        entity.setSecurityLevel(secLevel);
         entity.setCode(request.getStationCode());
         entity.setName(request.getStationName());
         entity.setFrequency(request.getFrequency());
@@ -82,11 +76,6 @@ public class CoastalStationCospasSarsatService {
         boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
                 || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
 
-        if (request.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "coastalstationcospassarsat",
-                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-            entity.setSecurityLevel(request.getSecurityLevel());
-        }
         if (request.getStationName() != null)
             entity.setName(request.getStationName());
         if (request.getFrequency() != null)
@@ -297,7 +286,6 @@ public class CoastalStationCospasSarsatService {
     public CoastalStationCospasSarsatResponse buildResponse(CoastalStationCospasSarsat entity) {
         return CoastalStationCospasSarsatResponse.builder()
                 .id(entity.getId())
-                .securityLevel(entity.getSecurityLevel())
                 .stationCode(entity.getCode())
                 .stationName(entity.getName())
                 .frequency(entity.getFrequency())

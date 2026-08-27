@@ -1,0 +1,27 @@
+-- Drop security_level column from all infrastructure and related tables
+
+ALTER TABLE IF EXISTS ais_system DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS vts_system DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS vts_operation_center DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS radar_station DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS coastal_station_lrit DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS coastal_station_haiphong DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS coastal_station_inmarsat DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS coastal_station_vts DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS coastal_station_cospas_sarsat DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS buoy_station DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS buoy DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS beacon_station DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS cctv DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS port DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS pier DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS berth DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS water_zone DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS dry_port DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS navigation_channel DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS dike_revetment DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS ship_repair_facility DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS legal_document DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS managed_asset DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS documents DROP COLUMN IF EXISTS security_level;
+ALTER TABLE IF EXISTS infrastructure_history DROP COLUMN IF EXISTS security_level;

@@ -24,8 +24,6 @@ import java.util.UUID;
 @Builder
 public class UpdateBuoyStationRequest {
 
-    private RecordSecurityLevel securityLevel;
-
     @Size(max = 255, message = "Tên nhà trạm không được vượt quá 255 ký tự")
     private String name;
 

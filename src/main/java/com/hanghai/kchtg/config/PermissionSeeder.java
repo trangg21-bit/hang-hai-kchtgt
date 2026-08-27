@@ -606,6 +606,26 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "coastalstationcospassarsat", "reject", "Từ chối đài Cospas-Sarsat",
                                 "Từ chối phê duyệt đài Cospas-Sarsat");
 
+                // 10.5 Đài thông tin LRIT (Coastal Station LRIT - M-004: F-110..F-115)
+                seedPermission(definitions, "coastalstationlrit", "read", "Xem đài LRIT", "Xem danh sách và chi tiết đài LRIT");
+                seedPermission(definitions, "coastalstationlrit", "create", "Thêm đài LRIT", "Tạo mới đài LRIT");
+                seedPermission(definitions, "coastalstationlrit", "update", "Cập nhật đài LRIT", "Chỉnh sửa đài LRIT");
+                seedPermission(definitions, "coastalstationlrit", "delete", "Xóa đài LRIT", "Xóa đài LRIT");
+                seedPermission(definitions, "coastalstationlrit", "approve", "Phê duyệt đài LRIT", "Phê duyệt đài LRIT");
+                seedPermission(definitions, "coastalstationlrit", "approvec1", "Phê duyệt C1 đài LRIT", "Phê duyệt cấp 1 đài LRIT");
+                seedPermission(definitions, "coastalstationlrit", "approvec2", "Phê duyệt C2 đài LRIT", "Phê duyệt cấp 2 đài LRIT");
+                seedPermission(definitions, "coastalstationlrit", "reject", "Từ chối đài LRIT", "Từ chối phê duyệt đài LRIT");
+
+                // 10.6 Đài TTXLTT Hà Nội / Hải Phòng (Coastal Station Haiphong/Hanoi - M-004: F-116..F-121)
+                seedPermission(definitions, "coastalstationhaiphong", "read", "Xem đài TTXLTT Hà Nội", "Xem danh sách và chi tiết đài TTXLTT");
+                seedPermission(definitions, "coastalstationhaiphong", "create", "Thêm đài TTXLTT Hà Nội", "Tạo mới đài TTXLTT");
+                seedPermission(definitions, "coastalstationhaiphong", "update", "Cập nhật đài TTXLTT Hà Nội", "Chỉnh sửa đài TTXLTT");
+                seedPermission(definitions, "coastalstationhaiphong", "delete", "Xóa đài TTXLTT Hà Nội", "Xóa đài TTXLTT");
+                seedPermission(definitions, "coastalstationhaiphong", "approve", "Phê duyệt đài TTXLTT Hà Nội", "Phê duyệt đài TTXLTT");
+                seedPermission(definitions, "coastalstationhaiphong", "approvec1", "Phê duyệt C1 đài TTXLTT Hà Nội", "Phê duyệt cấp 1 đài TTXLTT");
+                seedPermission(definitions, "coastalstationhaiphong", "approvec2", "Phê duyệt C2 đài TTXLTT Hà Nội", "Phê duyệt cấp 2 đài TTXLTT");
+                seedPermission(definitions, "coastalstationhaiphong", "reject", "Từ chối đài TTXLTT Hà Nội", "Từ chối phê duyệt đài TTXLTT");
+
                 // 11. Quản lý tài sản kết cấu hạ tầng, Điều chuyển, Kiểm kê & Bảo trì (Asset
                 // Management & Operations)
                 seedPermission(definitions, "movementrequest", "manage", "Quản lý yêu cầu điều chuyển",

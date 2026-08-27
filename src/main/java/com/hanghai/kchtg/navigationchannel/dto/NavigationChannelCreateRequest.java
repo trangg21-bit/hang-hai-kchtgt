@@ -28,9 +28,6 @@ import java.util.UUID;
 @FieldNameConstants
 public class NavigationChannelCreateRequest {
 
-    /** Infra field (not part of the 71 Excel fields) — security level of the record. */
-    private RecordSecurityLevel securityLevel;
-
     @NotNull(message = "Đơn vị quản lý là bắt buộc")
     private UUID orgUnitId;
 

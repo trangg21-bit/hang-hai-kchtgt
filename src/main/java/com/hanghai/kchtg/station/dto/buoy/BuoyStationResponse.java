@@ -22,7 +22,6 @@ import java.util.UUID;
 public class BuoyStationResponse {
 
     private UUID id;
-    private RecordSecurityLevel securityLevel;
     private String code;
     private String name;
     private String type;    private String color;

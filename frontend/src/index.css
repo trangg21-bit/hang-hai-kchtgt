@@ -17,10 +17,78 @@ body {
 }
 
 /* ---- Scrollbar ---- */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #a1a1a1; }
-::-webkit-scrollbar-track { background: transparent; }
+*,
+*::before,
+*::after {
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(0, 0, 0, 0.12) transparent !important;
+}
+
+::-webkit-scrollbar,
+*::-webkit-scrollbar,
+.ant-select-dropdown ::-webkit-scrollbar,
+.ant-select-tree-dropdown ::-webkit-scrollbar,
+.ant-tree-select-dropdown ::-webkit-scrollbar,
+.ant-picker-dropdown ::-webkit-scrollbar,
+.ant-drawer-body ::-webkit-scrollbar,
+.ant-modal-body ::-webkit-scrollbar,
+.rc-virtual-list-holder ::-webkit-scrollbar,
+.ant-select-tree-list-holder ::-webkit-scrollbar {
+  width: 3px !important;
+  height: 3px !important;
+}
+
+::-webkit-scrollbar-button,
+*::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+::-webkit-scrollbar-thumb,
+*::-webkit-scrollbar-thumb,
+.ant-select-dropdown ::-webkit-scrollbar-thumb,
+.ant-select-tree-dropdown ::-webkit-scrollbar-thumb,
+.ant-tree-select-dropdown ::-webkit-scrollbar-thumb,
+.ant-picker-dropdown ::-webkit-scrollbar-thumb,
+.ant-drawer-body ::-webkit-scrollbar-thumb,
+.ant-modal-body ::-webkit-scrollbar-thumb,
+.rc-virtual-list-holder ::-webkit-scrollbar-thumb,
+.ant-select-tree-list-holder ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12) !important;
+  border-radius: 999px !important;
+  border: none !important;
+}
+
+::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:hover,
+.ant-select-dropdown ::-webkit-scrollbar-thumb:hover,
+.ant-select-tree-dropdown ::-webkit-scrollbar-thumb:hover,
+.ant-tree-select-dropdown ::-webkit-scrollbar-thumb:hover,
+.ant-picker-dropdown ::-webkit-scrollbar-thumb:hover,
+.ant-drawer-body ::-webkit-scrollbar-thumb:hover,
+.ant-modal-body ::-webkit-scrollbar-thumb:hover,
+.rc-virtual-list-holder ::-webkit-scrollbar-thumb:hover,
+.ant-select-tree-list-holder ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25) !important;
+}
+
+::-webkit-scrollbar-track,
+*::-webkit-scrollbar-track,
+.ant-select-dropdown ::-webkit-scrollbar-track,
+.ant-select-tree-dropdown ::-webkit-scrollbar-track,
+.ant-tree-select-dropdown ::-webkit-scrollbar-track,
+.rc-virtual-list-holder ::-webkit-scrollbar-track,
+.ant-select-tree-list-holder ::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+::-webkit-scrollbar-corner,
+*::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+
+
 
 .vts-list-content {
   scrollbar-width: none;

@@ -36,10 +36,14 @@ export interface AisSystemResponse {
   id: string;
   code: string;
   name: string;
-  vtsOperationCenterId: string;
+  vtsOperationCenterId?: string;
   vtsOperationCenterName?: string;
   vtsSystemId?: string;
   vtsSystemName?: string;
+  radarStationId?: string;
+  radarStationName?: string;
+  locationTypeName?: string;
+  attachedLocationName?: string;
   operatingOrgId: string;
   operatingOrgName?: string;
   orgUnitId: string;
@@ -84,10 +88,14 @@ export interface AisSystemListItem {
   id: string;
   code: string;
   name: string;
-  vtsOperationCenterId: string;
+  vtsOperationCenterId?: string;
   vtsOperationCenterName?: string;
   vtsSystemId?: string;
   vtsSystemName?: string;
+  radarStationId?: string;
+  radarStationName?: string;
+  locationTypeName?: string;
+  attachedLocationName?: string;
   operatingOrgId: string;
   operatingOrgName?: string;
   orgUnitId: string;
@@ -121,7 +129,8 @@ export interface AisSystemListItem {
 export interface CreateAisSystemRequest {
   code: string;
   name: string;
-  vtsOperationCenterId: string;
+  vtsOperationCenterId?: string;
+  radarStationId?: string;
   operatingOrgId: string;
   orgUnitId: string;
   provinceId?: number;

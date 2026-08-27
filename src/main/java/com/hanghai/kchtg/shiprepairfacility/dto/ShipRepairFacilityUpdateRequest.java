@@ -17,8 +17,6 @@ import java.util.UUID;
 @Builder
 public class ShipRepairFacilityUpdateRequest {
 
-    private RecordSecurityLevel securityLevel;
-
     @Size(max = 255)
     private String facilityName;
 

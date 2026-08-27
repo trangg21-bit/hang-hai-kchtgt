@@ -121,14 +121,8 @@ public class PierService {
         // Default conditionStatus to 1 (Sử dụng) if not provided
         Integer conditionStatus = request.getConditionStatus() != null ? request.getConditionStatus() : 1;
 
-        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
-                : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "pier", SecurityUtils.getCurrentUserPermissions(),
-                SecurityUtils.isElevatedAdministrator());
-
         Pier entity = Pier.builder()
                 .id(pierId)
-                .securityLevel(secLevel)
                 .pierCode(request.getPierCode()).pierName(request.getPierName())
                 .berthId(request.getBerthId()).length(request.getLength())
                 .designLoad(request.getDesignLoad()).pierType(request.getPierType())
@@ -360,11 +354,6 @@ public class PierService {
                 .departmentApprovalContent(entity.getDepartmentApprovalContent())
                 .build();
 
-        if (request.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "pier",
-                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-            entity.setSecurityLevel(request.getSecurityLevel());
-        }
         if (request.getPierName() != null)
             entity.setPierName(request.getPierName());
         if (request.getBerthId() != null) {
@@ -611,7 +600,6 @@ public class PierService {
 
         return PierResponse.builder()
                 .id(e.getId())
-                .securityLevel(e.getSecurityLevel())
                 .pierCode(e.getPierCode()).pierName(e.getPierName())
                 .berthId(e.getBerthId())
                 .berthName(berthName)

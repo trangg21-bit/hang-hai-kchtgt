@@ -17,7 +17,6 @@ import java.util.UUID;
 @Builder
 public class PierResponse {
     private UUID id;
-    private RecordSecurityLevel securityLevel;
     private String pierCode;
     private String pierName;
     private UUID berthId;

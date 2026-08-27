@@ -1,15 +1,7 @@
 import React from 'react';
 import { Drawer, Button, Grid } from 'antd';
 import type { DrawerProps } from 'antd';
-import {
-  drawerProps,
-  drawerTitleStyle,
-  drawerCloseBtnStyle,
-  drawerFooterStyle,
-  radiusPill,
-  primaryButtonStyle,
-  outlineButtonStyle,
-} from '../../tokens';
+import { useThemeToken } from '../../context/ThemeTokenContext';
 
 const { useBreakpoint } = Grid;
 
@@ -63,6 +55,15 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
   ...rest
 }) => {
   const screens = useBreakpoint();
+  const {
+    drawerProps,
+    drawerTitleStyle,
+    drawerCloseBtnStyle,
+    drawerFooterStyle,
+    buttonRadius,
+    primaryButtonStyle,
+    outlineButtonStyle,
+  } = useThemeToken();
 
   // Tính toán responsive size theo tỉ lệ % màn hình hoặc giá trị trực tiếp
   const getResponsiveSize = (): string | number => {
@@ -126,7 +127,7 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
     renderedFooter = (
       <div style={drawerFooterStyle}>
         <Button
-          style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
+          style={{ ...outlineButtonStyle, borderRadius: buttonRadius, height: 40 }}
           onClick={onClose}
         >
           {cancelText}
@@ -134,7 +135,7 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
         <Button
           type="primary"
           loading={okLoading}
-          style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
+          style={{ ...primaryButtonStyle, borderRadius: buttonRadius, height: 40 }}
           onClick={onOk}
         >
           {okText}

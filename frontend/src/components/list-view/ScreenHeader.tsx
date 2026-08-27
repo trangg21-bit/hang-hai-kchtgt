@@ -1,11 +1,6 @@
 import React from 'react';
 import { Button, Breadcrumb } from 'antd';
-import {
-  textSecondary, textTertiary, fontWeightBold, fontWeightMedium,
-  fontSizeLg, fontSizeXl, fontSizeMd, spaceSm, actionPrimary, borderDefault,
-  radiusPill,
-} from '../../tokens';
-import { colors } from '../../theme';
+import { useThemeToken } from '../../context/ThemeTokenContext';
 
 export interface ScreenHeaderAction {
   key: string;
@@ -24,26 +19,34 @@ export interface ScreenHeaderProps {
   actions?: React.ReactNode | ScreenHeaderAction[];
 }
 
-const variantStyles: Record<string, React.CSSProperties> = {
-  primary: { background: actionPrimary, color: '#FFFFFF', borderRadius: radiusPill, border: 'none', fontWeight: fontWeightMedium, height: 40, fontSize: fontSizeMd },
-  outline: { background: 'transparent', color: actionPrimary, border: `1px solid ${actionPrimary}`, borderRadius: radiusPill, fontWeight: fontWeightMedium, height: 40, fontSize: fontSizeMd },
-  subtle: { background: 'transparent', color: textSecondary, border: `1px solid ${borderDefault}`, borderRadius: radiusPill, fontWeight: fontWeightMedium, height: 40, fontSize: fontSizeMd },
-  default: { background: 'transparent', color: textSecondary, border: `1px solid ${borderDefault}`, borderRadius: radiusPill, fontWeight: fontWeightMedium, height: 40, fontSize: fontSizeMd },
-};
-
 const ScreenHeader: React.FC<ScreenHeaderProps> = ({ breadcrumb, breadcrumbs, actions }) => {
+  const t = useThemeToken();
   const items = breadcrumbs || breadcrumb || [];
+
+  const base: React.CSSProperties = {
+    borderRadius: t.buttonRadius,
+    fontWeight: t.fontWeightMedium,
+    height: 40,
+    fontSize: t.fontSizeMd,
+  };
+  const variantStyles: Record<string, React.CSSProperties> = {
+    primary: { ...base, background: t.actionPrimary, color: '#FFFFFF', border: 'none' },
+    outline: { ...base, background: 'transparent', color: t.actionPrimary, border: `1px solid ${t.actionPrimary}` },
+    subtle: { ...base, background: 'transparent', color: t.textSecondary, border: `1px solid ${t.borderDefault}` },
+    default: { ...base, background: 'transparent', color: t.textSecondary, border: `1px solid ${t.borderDefault}` },
+  };
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
       {items.length > 0 && (
         <Breadcrumb
-          separator={<span style={{ color: textTertiary }}>&gt;</span>}
+          separator={<span style={{ color: t.textTertiary }}>&gt;</span>}
           items={items.map((item, idx) => ({
             title: (
               <span style={{
-                color: idx === items.length - 1 ? colors.sidebarBg : textSecondary,
-                fontWeight: idx === items.length - 1 ? fontWeightBold : fontWeightMedium,
-                fontSize: idx === items.length - 1 ? 16 : 14,
+                color: idx === items.length - 1 ? t.colors.sidebarBg : t.textSecondary,
+                fontWeight: idx === items.length - 1 ? t.fontWeightBold : t.fontWeightMedium,
+                fontSize: idx === items.length - 1 ? t.fontSizeBreadcrumbLast : t.fontSizeBreadcrumb,
                 lineHeight: '20px',
               }}>
                 {item.label}
@@ -54,7 +57,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({ breadcrumb, breadcrumbs, ac
       )}
       {actions && (
         Array.isArray(actions) ? (
-          <div style={{ display: 'flex', gap: spaceSm, flexShrink: 0, marginLeft: 'auto' }}>
+          <div style={{ display: 'flex', gap: t.spaceSm, flexShrink: 0, marginLeft: 'auto' }}>
             {actions.map((action: any) => (
               <Button key={action.key} icon={action.icon} onClick={action.onClick}
                 style={{ ...variantStyles[action.variant], ...(action.borderColor ? { borderColor: action.borderColor } : {}), ...(action.color ? { color: action.color } : {}) }}

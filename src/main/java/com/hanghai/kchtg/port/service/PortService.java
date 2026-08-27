@@ -143,11 +143,7 @@ public class PortService {
             log.info("Auto-generated port code: {}", portCode);
         }
 
-        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel() : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "port", SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-
         Port entity = Port.builder()
-                .securityLevel(secLevel)
                 .portCode(portCode)
                 .portName(request.getPortName())
                 .province(request.getProvince())
@@ -427,10 +423,6 @@ public class PortService {
                 .build();
 
         // Update mutable fields — code (portCode) is immutable
-        if (request.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "port", SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-            entity.setSecurityLevel(request.getSecurityLevel());
-        }
         if (request.getPortName() != null) entity.setPortName(request.getPortName());
         if (request.getProvince() != null) entity.setProvince(request.getProvince());
 
@@ -691,7 +683,6 @@ public class PortService {
 
         PortResponse.PortResponseBuilder builder = PortResponse.builder()
                 .id(entity.getId())
-                .securityLevel(entity.getSecurityLevel())
                 .portCode(entity.getPortCode())
                 .portName(entity.getPortName())
                 .province(entity.getProvince())
