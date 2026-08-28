@@ -48,6 +48,7 @@ public class BuoyStationResponse {
     private String displayFormat;
     private LocalDate lastInspectionDate;
     private LocalDate nextInspectionDate;
+    private LocalDate lastRepairDate;
     private Double latitude;
     private Double longitude;
 

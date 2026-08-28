@@ -74,6 +74,7 @@ public class DryPortApprovalService {
         DryPort entity = loadForApproval(id);
         entity.setApprovalStatus(entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2
                 ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
+        entity.setRejectionReason(reason);
         dryPortRepository.save(entity);
     }
 
