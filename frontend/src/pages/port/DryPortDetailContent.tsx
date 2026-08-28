@@ -148,7 +148,7 @@ export default function DryPortDetailContent({
                     ['Mã cảng cạn', <span key="dryPortCode" style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${colors.primary}15`, color: colors.primary }}>{r.dryPortCode || '—'}</span>],
                     ['Tên cảng cạn', r.dryPortName || '—', true],
                     ['Khu vực', r.region || '—'],
-                    ['Địa điểm (Tỉnh/Thành phố)', provinceName(r.provinceId)],
+                    ['Địa điểm (Tỉnh/Thành Phố)', provinceName(r.provinceId)],
                     ['Địa điểm chi tiết', r.detailedLocation || '—'],
                     ['Hành lang vận tải', r.transportCorridor || '—'],
                     ['Phương thức kết nối giao thông với cảng', r.connectionMode || '—'],
@@ -184,7 +184,7 @@ export default function DryPortDetailContent({
                       {[
                         ['Người tạo', userMap.get(r.createdBy || '') || r.createdBy || '—', true],
                         ['Ngày tạo', r.createdAt ? dayjs(r.createdAt).format('DD/MM/YYYY HH:mm:ss') : '—'],
-                        ['Người cập nhật', userMap.get(r.updatedBy || '') || r.updatedBy || '—', true],
+                        ['Cán bộ cập nhật', userMap.get(r.updatedBy || '') || r.updatedBy || '—', true],
                         ['Ngày cập nhật', r.updatedAt ? dayjs(r.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '—'],
                       ].map(([label, value, bold], i) => (
                         <div key={i} className="detail-row">

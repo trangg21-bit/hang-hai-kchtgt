@@ -16,7 +16,6 @@ import java.util.UUID;
 @Builder
 public class WaterZoneResponse {
     private UUID id;
-    private RecordSecurityLevel securityLevel;
     private String waterZoneCode;
     private String waterZoneName;
     private UUID portId;

@@ -16,7 +16,6 @@ import java.util.UUID;
 @Builder
 public class DryPortResponse {
     private UUID id;
-    private RecordSecurityLevel securityLevel;
     private String dryPortCode;
     private String dryPortName;
     private Integer provinceId;

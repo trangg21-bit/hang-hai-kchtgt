@@ -22,8 +22,6 @@ import com.hanghai.kchtg.security.RecordSecurityLevel;
 @Data
 public class UpdatePortRequest {
 
-    private RecordSecurityLevel securityLevel;
-
     @NotNull(message = "ID không được để trống")
     private UUID id;
 

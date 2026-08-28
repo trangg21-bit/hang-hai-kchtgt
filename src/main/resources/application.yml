@@ -6,11 +6,12 @@ server:
     max-swallow-size: 50MB
 
 spring:
+  # File upload (multipart) — giới hạn theo quy ước feature-brief: ≤ 20MB/file, ≤ 10 files
   servlet:
     multipart:
       enabled: true
       max-file-size: 20MB
-      max-request-size: 50MB
+      max-request-size: 200MB
   application:
     name: kchtg-m001-quan-tri-he-thong
   devtools:
@@ -130,12 +131,14 @@ spring:
       enabled: true
       path: /h2-console
   jpa:
+    hibernate:
+      ddl-auto: update
     database-platform: org.hibernate.dialect.H2Dialect
     show-sql: false
     defer-datasource-initialization: true
   sql:
     init:
-      mode: always
+      mode: never
       encoding: UTF-8
 
 server:

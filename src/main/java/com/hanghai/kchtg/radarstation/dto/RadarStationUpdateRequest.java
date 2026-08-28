@@ -17,8 +17,6 @@ import java.util.UUID;
 @AllArgsConstructor
 public class RadarStationUpdateRequest {
 
-    private RecordSecurityLevel securityLevel;
-
     @Size(max = 255, message = "Tên trạm không được vượt quá 255 ký tự")
     private String stationName;
 

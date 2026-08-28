@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.station.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
@@ -41,6 +42,7 @@ import java.util.*;
 public class CoastalStationInmarsatService {
 
     private final CoastalStationInmarsatRepository repository;
+    private final InfrastructureApprovalService approvalService;
     private final HistoryService historyService;
     private final OrgUnitScopeService orgUnitScopeService;
     private final OrgUnitCacheService orgUnitCacheService;
@@ -185,11 +187,6 @@ public class CoastalStationInmarsatService {
 
         validateCoordinates(request.getLongitude(), request.getLatitude());
 
-        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
-                : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "coastalstationinmarsat",
-                SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-
         CoastalStationInmarsat entity = new CoastalStationInmarsat();
         entity.setCode(effectiveCode);
         entity.setDeviceCode(effectiveCode);
@@ -226,20 +223,11 @@ public class CoastalStationInmarsatService {
         entity.setDisplayRule(request.getDisplayRule());
         entity.setLatitude(request.getLatitude());
         entity.setLongitude(request.getLongitude());
-        entity.setSecurityLevel(secLevel);
 
-        // Mặc định tạo mới là DRAFT (Lưu tạm)
+        // Mặc định tạo mới là DRAFT (Lưu tạm) - chưa ghi lịch sử biến động cho hồ sơ nháp
         entity.setApprovalStatus(ApprovalStatus.DRAFT);
 
-        CoastalStationInmarsat saved = repository.save(entity);
-        historyService.recordHistory(
-                InfrastructureType.INMARSAT_STATION,
-                saved.getId(),
-                StationHistoryActionType.CREATE,
-                null,
-                "Tạo mới đài Inmarsat (Lưu tạm)",
-                SecurityUtils.getCurrentUserId());
-        return saved;
+        return repository.save(entity);
     }
 
     public CoastalStationInmarsat updateStation(UUID id, CoastalStationInmarsatUpdateRequest request) {
@@ -304,20 +292,16 @@ public class CoastalStationInmarsatService {
         if (request.getLatitude() != null) entity.setLatitude(request.getLatitude());
         if (request.getLongitude() != null) entity.setLongitude(request.getLongitude());
 
-        if (request.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "coastalstationinmarsat",
-                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-            entity.setSecurityLevel(request.getSecurityLevel());
-        }
-
         CoastalStationInmarsat saved = repository.save(entity);
-        historyService.recordHistory(
-                InfrastructureType.INMARSAT_STATION,
-                saved.getId(),
-                StationHistoryActionType.UPDATE,
-                null,
-                "Cập nhật thông tin đài Inmarsat",
-                SecurityUtils.getCurrentUserId());
+        if (saved.getApprovalStatus() == ApprovalStatus.APPROVED) {
+            historyService.recordHistory(
+                    InfrastructureType.INMARSAT_STATION,
+                    saved.getId(),
+                    StationHistoryActionType.UPDATE,
+                    null,
+                    "Cập nhật thông tin đài Inmarsat",
+                    SecurityUtils.getCurrentUserId());
+        }
         return saved;
     }
 
@@ -387,123 +371,99 @@ public class CoastalStationInmarsatService {
 
     public CoastalStationInmarsat submit(UUID id) {
         CoastalStationInmarsat entity = getStationById(id);
-        if (entity.getApprovalStatus() != ApprovalStatus.DRAFT &&
-            entity.getApprovalStatus() != ApprovalStatus.REJECTED_LEVEL1 &&
-            entity.getApprovalStatus() != ApprovalStatus.REJECTED_LEVEL2) {
-            throw new IllegalStateException("Chỉ bản ghi ở trạng thái Lưu tạm hoặc Bị trả về mới được gửi phê duyệt");
-        }
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
 
-        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
-        entity.setStatus(StationStatus.PENDING_APPROVAL);
+        // Quy tắc 14: người gửi thuộc cấp Cục -> bỏ qua vòng 1, vào thẳng "Chờ Cục duyệt".
+        // Kiểm tra trạng thái hợp lệ và ghi nhật ký do service dùng chung đảm nhiệm.
+        approvalService.submit(entity, InfrastructureType.INMARSAT_STATION, currentUserId);
+
         entity.setSubmittedAt(LocalDateTime.now());
-        entity.setSubmittedBy(SecurityUtils.getCurrentUserId());
+        entity.setSubmittedBy(currentUserId);
         entity.setRejectionReason(null);
-
-        historyService.recordHistory(
-                InfrastructureType.INMARSAT_STATION,
-                entity.getId(),
-                StationHistoryActionType.UPDATE,
-                "Lưu tạm",
-                "Gửi phê duyệt cấp Cảng vụ/Chi cục",
-                SecurityUtils.getCurrentUserId());
-
+        syncStationStatus(entity);
         return repository.save(entity);
     }
 
     public CoastalStationInmarsat approveLevel1(UUID id) {
         CoastalStationInmarsat entity = getStationById(id);
-        if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
-            throw new IllegalStateException("Bản ghi không ở trạng thái Chờ duyệt cấp Cảng vụ/Chi cục");
-        }
-
         UUID currentUserId = SecurityUtils.getCurrentUserId();
-        validateNotSelfApproval(entity.getCreatedBy(), currentUserId);
-
-        entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
-        entity.setStatus(StationStatus.APPROVED_L1);
-        entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
-        entity.setApproverLevel1(currentUserId);
-        entity.setApprovedDateLevel1(LocalDateTime.now());
-        entity.setRejectionReason(null);
-
-        historyService.recordHistory(
-                InfrastructureType.INMARSAT_STATION,
-                entity.getId(),
-                StationHistoryActionType.APPROVE_L1,
-                "Chờ duyệt C1",
-                "Phê duyệt cấp 1 (Cảng vụ/Chi cục)",
-                currentUserId);
-
+        // Chống tự duyệt 4 mắt (quy tắc 8) do service dùng chung đảm nhiệm.
+        approvalService.approveC1(entity, InfrastructureType.INMARSAT_STATION, "APPROVED", null, currentUserId);
+        syncStationStatus(entity);
         return repository.save(entity);
     }
 
     public CoastalStationInmarsat approveLevel2(UUID id) {
         CoastalStationInmarsat entity = getStationById(id);
-        if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1) {
-            throw new IllegalStateException("Bản ghi không ở trạng thái Chờ duyệt cấp Cục");
-        }
-
         UUID currentUserId = SecurityUtils.getCurrentUserId();
-        validateNotSelfApproval(entity.getCreatedBy(), currentUserId);
-        // BR-015/BR-065-02 (4 mắt): người đã duyệt vòng 1 không được duyệt tiếp
-        // vòng 2. Trước đây chỉ chặn người tạo nên một người vẫn qua được cả hai vòng.
-        if (entity.getApproverLevel1() != null && entity.getApproverLevel1().equals(currentUserId)) {
-            throw new IllegalStateException(
-                    "Người phê duyệt cấp Cục không được trùng với người phê duyệt cấp Cảng vụ / Chi cục");
-        }
-
-        entity.setApprovalStatus(ApprovalStatus.APPROVED);
-        entity.setStatus(StationStatus.APPROVED_L2);
-        entity.setApprovalLevel(ApprovalLevel.LEVEL_2);
-        entity.setApproverLevel2(currentUserId);
-        entity.setApprovedDateLevel2(LocalDateTime.now());
+        approvalService.approveC2(entity, InfrastructureType.INMARSAT_STATION, "APPROVED", null, currentUserId);
         entity.setApprovedBy(currentUserId);
         entity.setApprovedDate(LocalDateTime.now());
-        entity.setRejectionReason(null);
-
+        syncStationStatus(entity);
+        CoastalStationInmarsat saved = repository.save(entity);
         historyService.recordHistory(
                 InfrastructureType.INMARSAT_STATION,
-                entity.getId(),
+                saved.getId(),
                 StationHistoryActionType.APPROVE_L2,
-                "Chờ duyệt C2",
-                "Phê duyệt cấp 2 (Cục Hàng hải Việt Nam) - Ban hành chính thức",
+                null,
+                "Phê duyệt chính thức đài Inmarsat (Cục HH)",
                 currentUserId);
-
-        return repository.save(entity);
+        return saved;
     }
 
     public CoastalStationInmarsat reject(UUID id, String rejectionReason) {
         CoastalStationInmarsat entity = getStationById(id);
-        if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL &&
-            entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1) {
-            throw new IllegalStateException("Bản ghi không ở trạng thái Chờ duyệt để từ chối");
-        }
-
+        // Quy tắc 5: từ chối ở bất kỳ vòng nào đều bắt buộc lý do tối thiểu 10 ký tự
         if (rejectionReason == null || rejectionReason.trim().length() < 10) {
             throw new IllegalArgumentException("Lý do từ chối phải có ít nhất 10 ký tự");
         }
 
         UUID currentUserId = SecurityUtils.getCurrentUserId();
-        validateNotSelfApproval(entity.getCreatedBy(), currentUserId);
-
-        ApprovalStatus nextStatus = (entity.getApprovalStatus() == ApprovalStatus.PENDING_APPROVAL)
-                ? ApprovalStatus.REJECTED_LEVEL1
-                : ApprovalStatus.REJECTED_LEVEL2;
-
-        entity.setApprovalStatus(nextStatus);
-        entity.setStatus(StationStatus.REJECTED);
-        entity.setRejectionReason(rejectionReason.trim());
-
-        historyService.recordHistory(
-                InfrastructureType.INMARSAT_STATION,
-                entity.getId(),
-                StationHistoryActionType.REJECT,
-                "Chờ duyệt",
-                "Từ chối phê duyệt: " + rejectionReason.trim(),
-                currentUserId);
-
+        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1) {
+            approvalService.approveC2(entity, InfrastructureType.INMARSAT_STATION, "REJECTED",
+                    rejectionReason.trim(), currentUserId);
+        } else {
+            approvalService.approveC1(entity, InfrastructureType.INMARSAT_STATION, "REJECTED",
+                    rejectionReason.trim(), currentUserId);
+        }
+        syncStationStatus(entity);
         return repository.save(entity);
     }
+
+    /**
+     * Đồng bộ các trường hiển thị riêng của họ nhà trạm ({@code status}, {@code approvalLevel})
+     * theo trạng thái phê duyệt chuẩn do service dùng chung đặt.
+     */
+    private void syncStationStatus(CoastalStationInmarsat entity) {
+        ApprovalStatus st = entity.getApprovalStatus();
+        if (st == null) {
+            return;
+        }
+        switch (st) {
+            case DRAFT, PROPOSED -> {
+                entity.setStatus(StationStatus.DRAFT);
+                entity.setApprovalLevel(ApprovalLevel.LEVEL_0);
+            }
+            case PENDING_APPROVAL -> {
+                entity.setStatus(StationStatus.PENDING_APPROVAL);
+                entity.setApprovalLevel(ApprovalLevel.LEVEL_0);
+            }
+            case APPROVED_LEVEL1 -> {
+                entity.setStatus(StationStatus.APPROVED_L1);
+                entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
+            }
+            case APPROVED, APPROVED_LEVEL2 -> {
+                entity.setStatus(StationStatus.APPROVED_L2);
+                entity.setApprovalLevel(ApprovalLevel.LEVEL_2);
+            }
+            case REJECTED_LEVEL1, REJECTED_LEVEL2, REJECTED -> {
+                entity.setStatus(StationStatus.REJECTED);
+            }
+            case ARCHIVED -> entity.setStatus(StationStatus.DELETED);
+            default -> { }
+        }
+    }
+
 
     // Tương thích ngược phương thức cũ
     public CoastalStationInmarsat approveStation(UUID id, boolean approved, Long userId) {
@@ -578,7 +538,6 @@ public class CoastalStationInmarsatService {
 
         return CoastalStationInmarsatResponse.builder()
                 .id(entity.getId())
-                .securityLevel(entity.getSecurityLevel())
                 .orgUnitId(effectiveOrgUnitId)
                 .orgUnitName(orgUnitName)
                 .operatingOrgId(entity.getOperatingOrgId())

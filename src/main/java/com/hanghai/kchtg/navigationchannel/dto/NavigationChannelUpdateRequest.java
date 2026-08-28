@@ -25,8 +25,6 @@ import java.util.UUID;
 @FieldNameConstants
 public class NavigationChannelUpdateRequest {
 
-    private RecordSecurityLevel securityLevel;
-
     private UUID orgUnitId;
 
     private UUID seaportId;

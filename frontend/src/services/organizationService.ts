@@ -210,6 +210,14 @@ let inFlightOrgsPromise: Promise<Organization[]> | null = null;
 
 export const organizationService = {
   /**
+   * Helper to get all organizations as a flat array.
+   */
+  async getAll(): Promise<Organization[]> {
+    const res = await this.list({ pageSize: 1000 });
+    return res?.data || [];
+  },
+
+  /**
    * GET /api/common/options/org-units for the authenticated user's directory list, or the
    * paginated endpoint when filters are supplied. Frontend applies pagination
    * client-side for the cached directory list.
@@ -552,11 +560,15 @@ export const organizationService = {
       provinceName: item.provinceId != null ? getProvinceNameById(Number(item.provinceId)) : undefined,
       detailAddress: item.detailAddress ?? payload.detailAddress,
       phone: item.phone ?? payload.phone,
-      operationalStatus: fromApiOperationalStatus(item.operationalStatus ?? payload.operationalStatus),
+      operationalStatus: fromApiOperationalStatus(payload.operationalStatus ?? item.operationalStatus),
       rank: item.rank as OrgUnitRankName | undefined,
       childCount: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(), updatedBy: undefined,
+      createdAt: item.createdAt
+        ? new Date(item.createdAt).toISOString()
+        : "",
+      updatedAt: item.updatedAt
+        ? new Date(item.updatedAt).toISOString()
+        : "",
     };
   },
 
@@ -567,16 +579,14 @@ export const organizationService = {
     id: string,
     payload: UpdateOrganizationPayload
   ): Promise<Organization> {
-    const body: Record<string, any> = {
+    const body: any = {
       name: payload.name,
       type: payload.type,
       description: payload.description,
       provinceId: payload.provinceId,
       detailAddress: payload.detailAddress,
       phone: payload.phone,
-      operationalStatus: payload.operationalStatus
-        ? toApiOperationalStatus(payload.operationalStatus)
-        : undefined,
+      operationalStatus: toApiOperationalStatus(payload.operationalStatus),
       rank: payload.rank,
     };
     if (payload.parentId !== undefined) {

@@ -19,8 +19,6 @@ import java.util.UUID;
 @Data
 public class CreatePierRequest {
 
-    private RecordSecurityLevel securityLevel;
-
     @NotBlank(message = "Mã cầu không được để trống")
     @Size(max = 50)
     private String pierCode;

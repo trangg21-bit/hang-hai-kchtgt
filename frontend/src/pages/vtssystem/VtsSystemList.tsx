@@ -35,8 +35,8 @@ import {
 } from '../../tokens';
 import { colors } from '../../theme';
 import dayjs from 'dayjs';
-import { getProvinceNameById } from '../../types/common';
-import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
+import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
+import { OrgUnitTreeSelect, normalizeSearchText, type OrgUnitTreeOption } from '../../components/org-unit';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 
@@ -385,8 +385,15 @@ export default function VtsSystemList() {
   const [filterConditionStatus, setFilterConditionStatus] = useState<ConditionStatus | undefined>();
   const [filterApprovalStatus, setFilterApprovalStatus] = useState<ApprovalStatus | undefined>();
   const [filterOrgUnitId, setFilterOrgUnitId] = useState<string | undefined>();
+  const [filterPortId, setFilterPortId] = useState<string | undefined>();
+  const [filterProvinceId, setFilterProvinceId] = useState<number | undefined>();
+  const [filterOperationStartDateFrom, setFilterOperationStartDateFrom] = useState<string | undefined>();
+  const [filterOperationStartDateTo, setFilterOperationStartDateTo] = useState<string | undefined>();
+  const [filterUpdatedFrom, setFilterUpdatedFrom] = useState<string | undefined>();
+  const [filterUpdatedTo, setFilterUpdatedTo] = useState<string | undefined>();
   const [filterYear, setFilterYear] = useState<number | undefined>();
   const [orgUnitOptions, setOrgUnitOptions] = useState<OrgUnitTreeOption[]>([]);
+  const [portOptions, setPortOptions] = useState<Array<{ id: string; portName?: string; portCode?: string; orgUnitId?: string }>>([]);
   const [filterCollapsed, setFilterCollapsed] = useState(false);
   const [filterValues, setFilterValues] = useState<Record<string, any>>({});
   // Sắp xếp chạy ở server để áp dụng cho toàn bộ kết quả; nếu để antd tự sắp thì
@@ -454,8 +461,11 @@ export default function VtsSystemList() {
   useEffect(() => {
     (async () => {
       try {
-        const list = await vtsSystemCRUD.getScopedOrgUnitOptions();
-        setOrgUnitOptions(list.map((o: any) => {
+        const [orgs, ports] = await Promise.all([
+          vtsSystemCRUD.getScopedOrgUnitOptions(),
+          vtsSystemCRUD.getScopedPortOptions(),
+        ]);
+        setOrgUnitOptions(orgs.map((o: any) => {
           const code = o.code || o.maDonVi;
           const name = o.name || o.unitName || o.tenDonVi || 'Đơn vị';
           return {
@@ -465,9 +475,15 @@ export default function VtsSystemList() {
             parentId: o.parentId ? String(o.parentId) : undefined,
           };
         }));
-      } catch (e) { console.error('Failed to fetch org units for filter', e); }
+        setPortOptions(ports || []);
+      } catch (e) { console.error('Failed to fetch org units / ports for filter', e); }
     })();
   }, []);
+
+  const filteredPortOptions = useMemo(() => {
+    if (!filterValues.orgUnitId) return portOptions;
+    return portOptions.filter((p) => !p.orgUnitId || p.orgUnitId === filterValues.orgUnitId);
+  }, [portOptions, filterValues.orgUnitId]);
 
   const fetchData = useCallback(async () => {
     const requestId = ++listRequestId.current;
@@ -477,7 +493,8 @@ export default function VtsSystemList() {
       const currentStatusCountFilterKey = JSON.stringify([
         // Counts are for all approval statuses. Changing the active status tab
         // must not change the scope used to calculate the tab counts.
-        filterKeyword, filterConditionStatus, filterOrgUnitId, filterYear,
+        filterKeyword, filterConditionStatus, filterOrgUnitId, filterPortId, filterProvinceId,
+        filterOperationStartDateFrom, filterOperationStartDateTo, filterUpdatedFrom, filterUpdatedTo, filterYear,
       ]);
       const shouldIncludeCounts = statusCountFilterKey.current !== currentStatusCountFilterKey;
       const params: ListParams & { includeCounts: boolean; sort?: string } = {
@@ -486,6 +503,12 @@ export default function VtsSystemList() {
         conditionStatus: filterConditionStatus,
         approvalStatus: filterApprovalStatus,
         orgUnitId: filterOrgUnitId || undefined,
+        portId: filterPortId || undefined,
+        provinceId: filterProvinceId,
+        operationStartDateFrom: filterOperationStartDateFrom,
+        operationStartDateTo: filterOperationStartDateTo,
+        updatedFrom: filterUpdatedFrom,
+        updatedTo: filterUpdatedTo,
         year: filterYear,
         includeCounts: shouldIncludeCounts,
         sort: sortField ? `${sortField},${sortDirection}` : undefined,
@@ -513,7 +536,8 @@ export default function VtsSystemList() {
     } finally {
       if (requestId === listRequestId.current) setLoading(false);
     }
-  }, [page, pageSize, filterKeyword, filterConditionStatus, filterApprovalStatus, filterOrgUnitId, filterYear,
+  }, [page, pageSize, filterKeyword, filterConditionStatus, filterApprovalStatus, filterOrgUnitId, filterPortId, filterProvinceId,
+    filterOperationStartDateFrom, filterOperationStartDateTo, filterUpdatedFrom, filterUpdatedTo, filterYear,
     sortField, sortDirection]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -937,19 +961,44 @@ export default function VtsSystemList() {
   const handleFilterSearch = useCallback((values: Record<string, any>) => {
     setFilterKeyword(values.keyword?.trim() || '');
     setFilterOrgUnitId(values.orgUnitId || undefined);
+    setFilterPortId(values.portId || undefined);
+    setFilterProvinceId(values.provinceId !== undefined ? Number(values.provinceId) : undefined);
     setFilterConditionStatus(values.conditionStatus || undefined);
     setFilterApprovalStatus(values.approvalStatus || undefined);
     setFilterYear(values.year ? Number(values.year) : undefined);
+
+    if (values.operationDateRange && values.operationDateRange[0] && values.operationDateRange[1]) {
+      setFilterOperationStartDateFrom(values.operationDateRange[0].format('YYYY-MM-DD'));
+      setFilterOperationStartDateTo(values.operationDateRange[1].format('YYYY-MM-DD'));
+    } else {
+      setFilterOperationStartDateFrom(undefined);
+      setFilterOperationStartDateTo(undefined);
+    }
+
+    if (values.updateDateRange && values.updateDateRange[0] && values.updateDateRange[1]) {
+      setFilterUpdatedFrom(values.updateDateRange[0].startOf('day').toISOString());
+      setFilterUpdatedTo(values.updateDateRange[1].endOf('day').toISOString());
+    } else {
+      setFilterUpdatedFrom(undefined);
+      setFilterUpdatedTo(undefined);
+    }
+
     setPage(1);
   }, []);
 
   const handleFilterReset = useCallback(() => {
     setFilterKeyword('');
     setFilterOrgUnitId(undefined);
+    setFilterPortId(undefined);
+    setFilterProvinceId(undefined);
     setFilterConditionStatus(undefined);
     setFilterApprovalStatus(undefined);
     setFilterYear(undefined);
-    setFilterValues({ keyword: undefined, orgUnitId: undefined, conditionStatus: undefined, approvalStatus: undefined, year: undefined });
+    setFilterOperationStartDateFrom(undefined);
+    setFilterOperationStartDateTo(undefined);
+    setFilterUpdatedFrom(undefined);
+    setFilterUpdatedTo(undefined);
+    setFilterValues({});
     setPage(1);
   }, []);
 
@@ -971,14 +1020,17 @@ export default function VtsSystemList() {
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
     const sorted = [...records].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
     const q = historySearch.toLowerCase().trim();
-    const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
+    const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
     for (const r of sorted) {
       const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
       const prev = groups[groups.length - 1];
       const actor = historyActor(r);
-      if (prev && prev.tsSec === sec && prev.actor === actor) prev.items.push(r);
-      else groups.push({ tsSec: sec, ts, actor, items: [r] });
+      if (prev && prev.tsSec === sec && prev.actor === actor && prev.status === r.status && prev.approvalLevel === r.approvalLevel) {
+        prev.items.push(r);
+      } else {
+        groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
+      }
     }
     if (groups.length === 0) return (
       <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
@@ -1137,6 +1189,7 @@ export default function VtsSystemList() {
         onStatusTabChange={handleTabChange}
         filterContent={
           <>
+            {/* ── BỘ LỌC THƯỜNG (CƠ BẢN) ── */}
             <div style={{ marginBottom: spaceFormField, marginTop: spaceMd }}>
               <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Đơn vị quản lý</div>
               <OrgUnitTreeSelect
@@ -1146,10 +1199,32 @@ export default function VtsSystemList() {
                 treeDefaultExpandAll={true}
                 listHeight={256}
                 value={filterValues.orgUnitId}
-                onChange={(value) => setFilterValues((prev) => ({ ...prev, orgUnitId: value }))}
+                onChange={(value) => {
+                  setFilterValues((prev) => ({ ...prev, orgUnitId: value, portId: undefined }));
+                }}
                 style={{ ...selectStyle, width: '100%' }}
               />
             </div>
+
+            <div style={{ marginBottom: spaceFormField }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Thuộc cảng biển</div>
+              <Select
+                placeholder="Tất cả cảng biển"
+                allowClear
+                showSearch
+                filterOption={(input, option) =>
+                  normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
+                }
+                value={filterValues.portId}
+                onChange={(value) => setFilterValues((prev) => ({ ...prev, portId: value }))}
+                options={filteredPortOptions.map((p) => ({
+                  value: p.id,
+                  label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id),
+                }))}
+                style={{ ...selectStyle, width: '100%' }}
+              />
+            </div>
+
             <div style={{ marginBottom: spaceFormField }}>
               <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Tìm kiếm</div>
               <Input
@@ -1161,51 +1236,68 @@ export default function VtsSystemList() {
                 style={{ borderRadius: radiusPill, height: 40 }}
               />
             </div>
-            <div style={{ marginBottom: spaceFormField }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>
-                Năm đưa vào hoạt động
-              </div>
-              <DatePicker
-                picker="year"
-                placeholder="Chọn năm"
-                value={filterValues.year ? dayjs(String(filterValues.year), 'YYYY') : null}
-                onChange={(d) => setFilterValues((prev) => ({ ...prev, year: d ? d.year() : undefined }))}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-              />
-            </div>
-            <div style={{ marginBottom: spaceFormField }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Tình trạng</div>
-              <Select
-                placeholder="Tất cả"
-                allowClear
-                value={filterValues.conditionStatus}
-                onChange={(value) => setFilterValues((prev) => ({ ...prev, conditionStatus: value }))}
-                options={CONDITION_STATUS_OPTIONS}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-              />
-            </div>
+
+            {/* ── BỘ LỌC NÂNG CAO ── */}
             {filterCollapsed && (
-              <div style={{ marginBottom: spaceFormField }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Trạng thái phê duyệt</div>
-                <Select
-                  placeholder="Tất cả"
-                  allowClear
-                  value={filterValues.approvalStatus}
-                  onChange={(value) => setFilterValues((prev) => ({ ...prev, approvalStatus: value }))}
-                  options={[
-                    { value: ApprovalStatus.DRAFT, label: 'Lưu tạm' },
-                    { value: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ Cảng vụ duyệt' },
-                    { value: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ Cục duyệt' },
-                    { value: ApprovalStatus.APPROVED, label: 'Đã duyệt' },
-                    { value: ApprovalStatus.REJECTED_LEVEL1, label: 'Từ chối' },
-                  ]}
-                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                />
-              </div>
+              <>
+                <div style={{ marginBottom: spaceFormField }}>
+                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Tình trạng</div>
+                  <Select
+                    placeholder="Tất cả"
+                    allowClear
+                    value={filterValues.conditionStatus}
+                    onChange={(value) => setFilterValues((prev) => ({ ...prev, conditionStatus: value }))}
+                    options={CONDITION_STATUS_OPTIONS}
+                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: spaceFormField }}>
+                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>
+                    Thời gian bắt đầu hoạt động
+                  </div>
+                  <DatePicker.RangePicker
+                    format="DD/MM/YYYY"
+                    placeholder={['Từ ngày', 'Đến ngày']}
+                    value={filterValues.operationDateRange}
+                    onChange={(dates) => setFilterValues((prev) => ({ ...prev, operationDateRange: dates }))}
+                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: spaceFormField }}>
+                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>
+                    Ngày cập nhật
+                  </div>
+                  <DatePicker.RangePicker
+                    format="DD/MM/YYYY"
+                    placeholder={['Từ ngày', 'Đến ngày']}
+                    value={filterValues.updateDateRange}
+                    onChange={(dates) => setFilterValues((prev) => ({ ...prev, updateDateRange: dates }))}
+                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: spaceFormField }}>
+                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Địa điểm (Tỉnh / TP)</div>
+                  <Select
+                    placeholder="Tất cả tỉnh thành"
+                    allowClear
+                    showSearch
+                    filterOption={(input, option) =>
+                      normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
+                    }
+                    value={filterValues.provinceId}
+                    onChange={(value) => setFilterValues((prev) => ({ ...prev, provinceId: value }))}
+                    options={VIETNAM_PROVINCE_OPTIONS}
+                    style={{ ...selectStyle, width: '100%' }}
+                  />
+                </div>
+              </>
             )}
           </>
         }
-        hideFilterToggle={true}
+        hideFilterToggle={false}
       >
         <DataTable
           columns={columns}

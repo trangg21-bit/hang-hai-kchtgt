@@ -24,7 +24,6 @@ public class VtsSystemUpdateRequest {
     private String systemName;
     private ApprovalStatus approvalStatus;
     private ConditionStatus conditionStatus;
-    private RecordSecurityLevel recordSecurityLevel;
     private UUID orgUnitId;
     private UUID owningOrgId;
     private UUID operatingOrgId;

@@ -8,6 +8,8 @@ import { setStaticMessage, setStaticModal } from './components/ToastNotification
 import { useAuthStore } from './store/authStore';
 import AppLayout from './components/AppLayout';
 import { Spin } from 'antd';
+import PermissionGuard from './components/PermissionGuard';
+
 const UsersPage = lazy(() => import('./pages/UsersPage'));
 const PointObjectList = lazy(() => import('./pages/gis/PointObjectList'));
 const PointObjectForm = lazy(() => import('./pages/gis/PointObjectForm'));
@@ -41,7 +43,6 @@ const BuoyListPage = lazy(() => import('./services/buoy/BuoyListPage'));
 const BeaconHistoryList = lazy(() => import('./pages/history/BeaconHistoryList'));
 const SymbolList = lazy(() => import('./pages/symbols/SymbolList'));
 const HomePage = lazy(() => import('./pages/Home'));
-import PermissionGuard from './components/PermissionGuard';
 const PasswordResetPage = lazy(() => import('./pages/PasswordResetPage'));
 const PortList = lazy(() => import('./services/port/PortListPage'));
 const PortApprovePage = lazy(() => import('./services/port/PortApprovePage'));
@@ -49,15 +50,22 @@ const PortDeleteConfirm = lazy(() => import('./services/port/PortDeleteConfirm')
 
 // M-NEW: CCTV Management
 const CctvListPage = lazy(() => import('./services/cctv/CctvListPage'));
-
+// M-NEW: SCADA Management
+const ScadaListPage = lazy(() => import('./services/scada/ScadaListPage'));
+// M-NEW: Transmission Management
+const TransmissionListPage = lazy(() => import('./services/transmission/TransmissionListPage'));
+// M-NEW: VTS Assist Management
+const VtsAssistListPage = lazy(() => import('./services/vtsassist/VtsAssistListPage'));
 const BerthList = lazy(() => import('./pages/port/BerthListPage'));
+const AnchorageList = lazy(() => import('./pages/anchorage/AnchorageListPage'));
+const TransferAreaList = lazy(() => import('./pages/transfer-area/TransferAreaListPage'));
+const StormShelterList = lazy(() => import('./pages/storm-shelter/StormShelterListPage'));
+const BuoyBerthList = lazy(() => import('./pages/buoy-berth/BuoyBerthListPage'));
+const ShipRepairYardList = lazy(() => import('./pages/ship-repair-yard/ShipRepairYardListPage'));
 
 const PierListPage = lazy(() => import('./pages/port/PierListPage'));
-
 const DryPortListPage = lazy(() => import('./pages/port/DryPortListPage'));
-
 const WaterZoneListPage = lazy(() => import('./app/waterzone/WaterZoneListPage'));
-
 const DocumentUploadPage = lazy(() => import('./app/document/DocumentUploadPage'));
 
 // M-003: Khu nước & VTS — Quản lý tàu bè
@@ -71,8 +79,11 @@ const RadarStationList = lazy(() => import('./pages/radarstation/RadarStationLis
 const RadarStationForm = lazy(() => import('./pages/radarstation/RadarStationForm'));
 const VtsSystemList = lazy(() => import('./pages/vtssystem/VtsSystemList'));
 const VtsSystemForm = lazy(() => import('./pages/vtssystem/VtsSystemForm'));
+const VtsSystemChkList = lazy(() => import('./pages/vtssystemchk/VtsSystemChkList'));
 const VtsOperationCenterList = lazy(() => import('./pages/vtsoperationcenter/VtsOperationCenterList'));
+const VtsOperationCenterChkList = lazy(() => import('./pages/vtsoperationcenterchk/VtsOperationCenterChkList'));
 const AisSystemList = lazy(() => import('./pages/aissystem/AisSystemList'));
+const AisSystemChkList = lazy(() => import('./pages/aissystemchk/AisSystemChkList'));
 
 // M-005 & M-006: Biến động tài sản & Văn bản pháp lý
 const AssetIncreaseList = lazy(() => import('./pages/assetmovement/AssetIncreaseList'));
@@ -86,10 +97,11 @@ const PortPlanningList = lazy(() => import('./pages/document/PortPlanningList'))
 // M-014: Quản lý Nhà trạm phao tiêu
 // M-015: Đài duyên hải
 const BuoyStationListPage = lazy(() => import('./services/buoy-station/BuoyStationListPage'));
-
 const CoastalStationList = lazy(() => import('./pages/station/CoastalStationList'));
 const SpecialStationList = lazy(() => import('./pages/station/SpecialStationList'));
 const CospasSarsatStationList = lazy(() => import('./pages/station/CospasSarsatStationList'));
+const LritStationList = lazy(() => import('./pages/station/lrit/LritStationList'));
+const HanoiStationList = lazy(() => import('./pages/station/hanoi/HanoiStationList'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -193,8 +205,20 @@ export default function App() {
                 <Route path="/port/:id/delete" element={<PermissionGuard permission="port:delete"><PortDeleteConfirm /></PermissionGuard>} />
 
                 <Route path="/cctv" element={<PermissionGuard permission="cctv:read"><CctvListPage /></PermissionGuard>} />
-
+                <Route path="/scada" element={<PermissionGuard permission="scada:read"><ScadaListPage /></PermissionGuard>} />
+                <Route path="/transmission" element={<PermissionGuard permission="transmission:read"><TransmissionListPage /></PermissionGuard>} />
+                <Route path="/vts-assist" element={<PermissionGuard permission="vtsassist:read"><VtsAssistListPage /></PermissionGuard>} />
                 <Route path="/berth" element={<PermissionGuard permission="berth:read"><BerthList /></PermissionGuard>} />
+
+                <Route path="/anchorage" element={<PermissionGuard permission="anchorage:read"><AnchorageList /></PermissionGuard>} />
+
+                <Route path="/transfer-area" element={<PermissionGuard permission="transferarea:read"><TransferAreaList /></PermissionGuard>} />
+
+                <Route path="/storm-shelter" element={<PermissionGuard permission="stormshelter:read"><StormShelterList /></PermissionGuard>} />
+
+                <Route path="/buoy-berth" element={<PermissionGuard permission="buoyberth:read"><BuoyBerthList /></PermissionGuard>} />
+
+                <Route path="/ship-repair-yard" element={<PermissionGuard permission="shiprepairyard:read"><ShipRepairYardList /></PermissionGuard>} />
 
                 <Route path="/pier" element={<PermissionGuard permission="pier:read"><PierListPage /></PermissionGuard>} />
 
@@ -235,11 +259,18 @@ export default function App() {
                 <Route path="/vts-system/create" element={<PermissionGuard permission="vts:create"><VtsSystemForm /></PermissionGuard>} />
                 <Route path="/vts-system/:id" element={<PermissionGuard permission="vts:read"><VtsSystemForm /></PermissionGuard>} />
 
+                {/* Hệ thống VTS CHK */}
+                <Route path="/vts-system-chk" element={<PermissionGuard permission="vts:read"><VtsSystemChkList /></PermissionGuard>} />
+
                 {/* Trung tâm điều hành VTS */}
                 <Route path="/vts-operation-center" element={<PermissionGuard permission="vtsoperationcenter:read"><VtsOperationCenterList /></PermissionGuard>} />
 
+                {/* Trung tâm điều hành CHK */}
+                <Route path="/vts-operation-center-chk" element={<PermissionGuard permission="vtsoperationcenter:read"><VtsOperationCenterChkList /></PermissionGuard>} />
+
                 {/* Hệ thống trạm bờ AIS */}
                 <Route path="/ais-system" element={<PermissionGuard permission="aissystem:read"><AisSystemList /></PermissionGuard>} />
+                <Route path="/ais-system-chk" element={<PermissionGuard permission="aissystem:read"><AisSystemChkList /></PermissionGuard>} />
 
                 {/* M-005: Biến động tài sản */}
                 <Route path="/asset/increase" element={<PermissionGuard permission="assetincrease:manage"><AssetIncreaseList /></PermissionGuard>} />
@@ -259,6 +290,8 @@ export default function App() {
                 <Route path="/station/coastal" element={<PermissionGuard permission="coastalstation:read"><CoastalStationList /></PermissionGuard>} />
                 <Route path="/station/special" element={<PermissionGuard permission="specialstation:read"><SpecialStationList /></PermissionGuard>} />
                 <Route path="/station/cospas-sarsat" element={<PermissionGuard permission="coastalstationcospassarsat:read"><CospasSarsatStationList /></PermissionGuard>} />
+                <Route path="/station/lrit" element={<PermissionGuard permission="coastalstationlrit:read"><LritStationList /></PermissionGuard>} />
+                <Route path="/station/hanoi" element={<PermissionGuard permission="coastalstationhaiphong:read"><HanoiStationList /></PermissionGuard>} />
 
                 {/* Symbols — Biểu tượng bản đồ */}
                 <Route path="/symbols" element={<PermissionGuard permission="data:read"><SymbolList /></PermissionGuard>} />
@@ -270,10 +303,7 @@ export default function App() {
                 <Route path="/settings" element={<PermissionGuard permission="admin:manage"><SettingsPage /></PermissionGuard>} />
               </Route>
 
-              {/* Catch-all. Sending everyone to /login made any unknown path look
-                  like a session expiry — clicking a menu item whose route was
-                  missing appeared to log the user out. Only anonymous visitors
-                  belong at /login; a signed-in user goes back to the dashboard. */}
+              {/* Catch-all */}
               <Route path="*" element={<UnknownRouteRedirect />} />
               </Routes>
             </Suspense>

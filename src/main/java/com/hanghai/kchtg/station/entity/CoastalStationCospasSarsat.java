@@ -27,12 +27,7 @@ import java.util.UUID;
 @FieldNameConstants
 @SQLRestriction("deleted_at IS NULL")
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "unit_id IN (:orgUnitIds)")
-@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 public class CoastalStationCospasSarsat extends BaseEntity implements com.hanghai.kchtg.common.entity.ApprovableEntity {
-
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
-    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
 
     @Column(name = "province_id")
     private Integer provinceId;

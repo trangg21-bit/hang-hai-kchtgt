@@ -1,10 +1,6 @@
 import React from 'react';
 import { Button } from 'antd';
-import {
-  primaryButtonStyle,
-  outlineButtonStyle,
-  statusOperational,
-} from '../../tokens';
+import { useThemeToken } from '../../context/ThemeTokenContext';
 
 export type FormSaveAction = 'draft' | 'submit' | 'approve';
 
@@ -45,6 +41,7 @@ export default function FormSaveFooter({
   extraLeft,
   disabled = false,
 }: FormSaveFooterProps) {
+  const { primaryButtonStyle, outlineButtonStyle, statusOperational } = useThemeToken();
   const busy = loadingAction !== null;
 
   // Không tự bọc `drawerFooterStyle`: AppDrawer đã bọc sẵn cho phần footer.

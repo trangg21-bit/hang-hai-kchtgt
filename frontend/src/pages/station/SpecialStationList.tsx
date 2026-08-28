@@ -9,13 +9,13 @@ import {
   Select,
   Typography,
   Form,
-  DatePicker,
   Row,
   Col,
   Upload,
   Tabs,
   Tooltip,
   Table,
+  DatePicker,
 } from 'antd';
 import toast, { modal } from '../../components/ToastNotification';
 import {
@@ -30,6 +30,7 @@ import {
   UploadOutlined,
   FileOutlined,
   ExclamationCircleOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import type { UploadFile } from 'antd';
@@ -53,6 +54,8 @@ import type {
   CoastalStationInmarsatHistoryResponse,
 } from '../../services/station/types';
 import { organizationService } from '../../services/organizationService';
+import { vtsSystemCRUD } from '../../services/vtsSystemService';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout, { type StatusTab } from '../../components/list-view/FilterTableLayout';
@@ -66,12 +69,12 @@ import { AppDrawer } from '../../components/shared/AppDrawer';
 import FormSaveFooter, { type FormSaveAction } from '../../components/shared/FormSaveFooter';
 import { FORM_TAB_LABEL } from '../../components/shared/formTabs';
 import { symbolService } from '../../services/symbolService';
-import { userService } from '../../services/userService';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
 import { colors } from '../../theme';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import { formLabelProps } from '../../components/shared/formLabel';
 import {
   statusOperational,
   statusAttention,
@@ -107,7 +110,6 @@ import {
   drawerCloseBtnStyle,
 } from '../../tokens';
 
-const { RangePicker } = DatePicker;
 const { TextArea } = Input;
 const { Text } = Typography;
 
@@ -155,14 +157,14 @@ export default function SpecialStationList() {
   const [filterProvinceId, setFilterProvinceId] = useState<number | undefined>(undefined);
   const [filterKeyword, setFilterKeyword] = useState<string>('');
   const [filterConditionStatus, setFilterConditionStatus] = useState<string | undefined>(undefined);
+  const [filterCollapsed, setFilterCollapsed] = useState<boolean>(false);
   const [filterDateRange, setFilterDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
-  const [filterUpdatedBy, setFilterUpdatedBy] = useState<string | undefined>(undefined);
-  const [filterCollapsed, setFilterCollapsed] = useState(false);
 
   // Dropdown options
-  const [operatingOrgOptions, setOperatingOrgOptions] = useState<{ value: string; label: string }[]>([]);
+  const [operatingOrgOptions, setOperatingOrgOptions] = useState<{ value: string; label: string }[]>(
+    DEFAULT_OPERATING_ORGANIZATIONS.map((o) => ({ value: o.id, label: o.name }))
+  );
   const [mapSymbolOptions, setMapSymbolOptions] = useState<{ value: string; label: string }[]>([]);
-  const [userOptions, setUserOptions] = useState<{ value: string; label: string }[]>([]);
   const [orgUnitOptions, setOrgUnitOptions] = useState<OrgUnitTreeOption[]>([]);
 
   // Drawer States
@@ -179,7 +181,23 @@ export default function SpecialStationList() {
   // History & Attachments
   const [historyList, setHistoryList] = useState<CoastalStationInmarsatHistoryResponse[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyModalVisible, setHistoryModalVisible] = useState(false);
+  const [historyTargetRecord, setHistoryTargetRecord] = useState<CoastalStationInmarsatResponse | null>(null);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
+
+  const handleOpenHistoryModal = useCallback(async (record: CoastalStationInmarsatResponse) => {
+    setHistoryTargetRecord(record);
+    setHistoryModalVisible(true);
+    setHistoryLoading(true);
+    try {
+      const hist = await fetchInmarsatHistory(record.id);
+      setHistoryList(hist || []);
+    } catch (err: any) {
+      toast.error(err.message || 'Không thể tải lịch sử biến động');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
 
   // Modal Rejection
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
@@ -197,16 +215,14 @@ export default function SpecialStationList() {
         const orgTree = await organizationService.getTree();
         setOrgUnitOptions((orgTree || []) as OrgUnitTreeOption[]);
 
-        const orgRes = await organizationService.list({ pageSize: 1000 });
-        const orgs = orgRes.data || (orgRes as any).content || [];
-        setOperatingOrgOptions(orgs.map((o: any) => ({ value: o.id, label: o.name })));
+        vtsSystemCRUD.getOperatingOrganizationOptions().then((res) => {
+          if (Array.isArray(res) && res.length > 0) {
+            setOperatingOrgOptions(res.map((o) => ({ value: o.id, label: o.name })));
+          }
+        }).catch(() => {});
 
         const symbols = await symbolService.getOptions();
         setMapSymbolOptions(symbols.map((s: any) => ({ value: s.id, label: s.name })));
-
-        const userRes = await userService.list({ pageSize: 1000 });
-        const users = userRes.data || (userRes as any).content || [];
-        setUserOptions(users.map((u: any) => ({ value: u.id, label: u.fullName || u.username || u.id })));
       } catch (e) {
         console.error('Failed to load lookup options', e);
       }
@@ -217,9 +233,8 @@ export default function SpecialStationList() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [fromStr, toStr] = filterDateRange && filterDateRange[0] && filterDateRange[1]
-        ? [filterDateRange[0].startOf('day').toISOString(), filterDateRange[1].endOf('day').toISOString()]
-        : [undefined, undefined];
+      const updatedFrom = filterDateRange?.[0] ? filterDateRange[0].startOf('day').toISOString() : undefined;
+      const updatedTo = filterDateRange?.[1] ? filterDateRange[1].endOf('day').toISOString() : undefined;
 
       const res = await fetchInmarsatList({
         page: page - 1,
@@ -230,9 +245,8 @@ export default function SpecialStationList() {
         keyword: filterKeyword ? filterKeyword.trim() : undefined,
         conditionStatus: filterConditionStatus,
         approvalStatus: activeTab === 'ALL' ? undefined : activeTab,
-        updatedBy: filterUpdatedBy,
-        updatedFrom: fromStr,
-        updatedTo: toStr,
+        updatedFrom,
+        updatedTo,
       });
 
       setData(res.content || []);
@@ -260,7 +274,6 @@ export default function SpecialStationList() {
     filterKeyword,
     filterConditionStatus,
     filterDateRange,
-    filterUpdatedBy,
   ]);
 
   useEffect(() => {
@@ -278,12 +291,12 @@ export default function SpecialStationList() {
   };
 
   const statusTabs: StatusTab[] = useMemo(() => [
-    { key: 'ALL', label: 'Tất cả', count: getTabCount('ALL'), active: activeTab === 'ALL' },
-    { key: 'DRAFT', label: 'Lưu tạm', count: getTabCount('DRAFT'), active: activeTab === 'DRAFT' },
-    { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', count: getTabCount('PENDING_APPROVAL'), active: activeTab === 'PENDING_APPROVAL' },
-    { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', count: getTabCount('APPROVED_LEVEL1'), active: activeTab === 'APPROVED_LEVEL1' },
-    { key: 'APPROVED', label: 'Đã duyệt', count: getTabCount('APPROVED'), active: activeTab === 'APPROVED' },
-    { key: 'REJECTED', label: 'Bị trả về', count: getTabCount('REJECTED'), active: activeTab === 'REJECTED' },
+    { key: 'ALL', label: 'Tất cả', count: getTabCount('ALL'), color: actionPrimary, active: activeTab === 'ALL' },
+    { key: 'DRAFT', label: 'Lưu tạm', count: getTabCount('DRAFT'), color: statusDraft, active: activeTab === 'DRAFT' },
+    { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', count: getTabCount('PENDING_APPROVAL'), color: statusAttention, active: activeTab === 'PENDING_APPROVAL' },
+    { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', count: getTabCount('APPROVED_LEVEL1'), color: '#0284C7', active: activeTab === 'APPROVED_LEVEL1' },
+    { key: 'APPROVED', label: 'Đã duyệt', count: getTabCount('APPROVED'), color: statusOperational, active: activeTab === 'APPROVED' },
+    { key: 'REJECTED', label: 'Từ chối', count: getTabCount('REJECTED'), color: statusCritical, active: activeTab === 'REJECTED' },
   ], [statusCounts, activeTab]);
 
   // Reset filter
@@ -294,7 +307,7 @@ export default function SpecialStationList() {
     setFilterKeyword('');
     setFilterConditionStatus(undefined);
     setFilterDateRange(null);
-    setFilterUpdatedBy(undefined);
+    setActiveTab('ALL');
     setPage(1);
   };
 
@@ -328,21 +341,15 @@ export default function SpecialStationList() {
           services: parsedServices,
           code: detail.code || detail.deviceCode,
           name: detail.name || detail.stationName,
+          provinceId: detail.provinceId != null ? String(detail.provinceId) : undefined,
           notes: detail.notes || detail.description,
           coverageZone: detail.coverageZone || detail.coverageArea,
           locationAddress: detail.locationAddress || detail.locationDetail,
           conditionStatus: detail.conditionStatus || 'OPERATIONAL',
           coordinateSystem: detail.coordinateSystem || 'WGS84',
         });
-
-        // Load history
-        setHistoryLoading(true);
-        const hist = await fetchInmarsatHistory(record.id);
-        setHistoryList(hist || []);
       } catch (err: any) {
         toast.error(err.message || 'Lỗi khi tải chi tiết Đài Inmarsat');
-      } finally {
-          setHistoryLoading(false);
       }
     } else {
       // Create mode default values
@@ -354,7 +361,8 @@ export default function SpecialStationList() {
     }
   };
 
-  // Submit Drawer Form — 'draft' chỉ lưu, 'submit' lưu rồi gửi phê duyệt
+  // Submit Drawer Form — 'draft' chỉ lưu; 'submit' lưu rồi gửi phê duyệt;
+  // 'approve' lưu, gửi duyệt rồi duyệt luôn (dành cho người có quyền duyệt cấp Cục).
   const handleDrawerSubmit = async (action: FormSaveAction = 'draft') => {
     try {
       const values = await form.validateFields();
@@ -362,6 +370,7 @@ export default function SpecialStationList() {
 
       const payload: CoastalStationInmarsatRequest = {
         ...values,
+        provinceId: values.provinceId != null ? Number(values.provinceId) : undefined,
         services: Array.isArray(values.services) ? JSON.stringify(values.services) : values.services,
       };
 
@@ -378,6 +387,14 @@ export default function SpecialStationList() {
       if (action === 'submit' && recordId) {
         await submitInmarsat(recordId);
         toast.success('Đã gửi phê duyệt lên cấp Cảng vụ/Chi cục');
+      }
+
+      if (action === 'approve' && recordId) {
+        // Quy tắc 14: người gửi thuộc cấp Cục thì submit đưa hồ sơ thẳng vào "Chờ Cục duyệt",
+        // nên chỉ cần duyệt vòng 2 là hồ sơ có hiệu lực ngay.
+        await submitInmarsat(recordId);
+        await approveInmarsatL2(recordId);
+        toast.success('Đã lưu và phê duyệt Đài Inmarsat');
       }
 
       setDrawerOpen(false);
@@ -661,6 +678,12 @@ export default function SpecialStationList() {
         icon: <EyeOutlined />,
         onClick: () => handleOpenDrawer(record, 'view'),
       },
+      {
+        key: 'history',
+        label: 'Lịch sử',
+        icon: <HistoryOutlined />,
+        onClick: () => handleOpenHistoryModal(record),
+      },
       // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
       ...(canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'coastalstationinmarsat' }) ? [{
         key: 'edit',
@@ -710,11 +733,15 @@ export default function SpecialStationList() {
   // Sidebar Filter Component
   const sidebarFilterContent = (
     <>
+      {/* ── BỘ LỌC THƯỜNG (LUÔN HIỂN THỊ) ── */}
       <SidebarFilterField label="Đơn vị quản lý" style={{ marginTop: spaceMd }}>
         <OrgUnitTreeSelect
           organizations={orgUnitOptions}
           value={filterOrgUnitId}
-          onChange={(val) => setFilterOrgUnitId(val)}
+          onChange={(val) => {
+            setFilterOrgUnitId(val);
+            setFilterOperatingOrgId(undefined);
+          }}
           placeholder="Tất cả"
           allowClear
           treeDefaultExpandAll={true}
@@ -723,61 +750,49 @@ export default function SpecialStationList() {
         />
       </SidebarFilterField>
 
-      <SidebarFilterField label="Tỉnh / Thành phố">
-        <Select
-          value={filterProvinceId}
-          onChange={(val) => setFilterProvinceId(val)}
-          options={VIETNAM_PROVINCE_OPTIONS}
-          placeholder="Tất cả tỉnh thành"
-          allowClear
-          showSearch
-          filterOption={(input, option) =>
-            normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
-          }
-          style={{ ...selectStyle, width: '100%' }}
-        />
-      </SidebarFilterField>
-
-      <SidebarFilterField label="Tìm kiếm từ khóa">
+      <SidebarFilterField label="Tìm kiếm">
         <Input
           value={filterKeyword}
           onChange={(e) => setFilterKeyword(e.target.value)}
           onPressEnter={() => { setPage(1); loadData(); }}
-          placeholder="Mã, tên đài, địa chỉ..."
+          placeholder="Tìm kiếm"
           allowClear
+          prefix={<SearchOutlined style={{ color: textTertiary }} />}
           style={{ ...inputStyle, width: '100%' }}
         />
       </SidebarFilterField>
 
-      <SidebarFilterField label="Tình trạng hoạt động">
-        <Select
-          value={filterConditionStatus}
-          onChange={(val) => setFilterConditionStatus(val)}
-          options={CONDITION_STATUS_OPTIONS}
-          placeholder="Tất cả tình trạng"
-          allowClear
-          style={{ ...selectStyle, width: '100%' }}
-        />
-      </SidebarFilterField>
-
-      <SidebarFilterField label="Khoảng ngày cập nhật">
-        <RangePicker
-          value={filterDateRange}
-          onChange={(dates) => setFilterDateRange(dates as any)}
-          placeholder={['Từ ngày', 'Đến ngày']}
-          format="DD/MM/YYYY"
-          style={{ ...filterInputStyle, width: '100%' }}
-        />
-      </SidebarFilterField>
-
+      {/* ── BỘ LỌC NÂNG CAO (KHI MỞ RỘNG) ── */}
       {filterCollapsed && (
         <>
-          <SidebarFilterField label="Đơn vị khai thác">
+          <SidebarFilterField label="Tình trạng">
             <Select
-              value={filterOperatingOrgId}
-              onChange={(val) => setFilterOperatingOrgId(val)}
-              options={operatingOrgOptions}
-              placeholder="Tất cả đơn vị khai thác"
+              value={filterConditionStatus}
+              onChange={(val) => setFilterConditionStatus(val)}
+              options={CONDITION_STATUS_OPTIONS}
+              placeholder="Tất cả tình trạng"
+              allowClear
+              style={{ ...selectStyle, width: '100%' }}
+            />
+          </SidebarFilterField>
+
+          <SidebarFilterField label="Ngày cập nhật">
+            <DatePicker.RangePicker
+              value={filterDateRange}
+              onChange={(dates) => setFilterDateRange(dates as [Dayjs | null, Dayjs | null])}
+              format="DD/MM/YYYY"
+              placeholder={['Từ ngày', 'Đến ngày']}
+              allowClear
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+            />
+          </SidebarFilterField>
+
+          <SidebarFilterField label="Địa điểm (Tỉnh/Thành phố)">
+            <Select
+              value={filterProvinceId}
+              onChange={(val) => setFilterProvinceId(val)}
+              options={VIETNAM_PROVINCE_OPTIONS}
+              placeholder="Tất cả tỉnh thành"
               allowClear
               showSearch
               filterOption={(input, option) =>
@@ -787,12 +802,12 @@ export default function SpecialStationList() {
             />
           </SidebarFilterField>
 
-          <SidebarFilterField label="Cán bộ cập nhật">
+          <SidebarFilterField label="Đơn vị khai thác">
             <Select
-              value={filterUpdatedBy}
-              onChange={(val) => setFilterUpdatedBy(val)}
-              options={userOptions}
-              placeholder="Tất cả cán bộ"
+              value={filterOperatingOrgId}
+              onChange={(val) => setFilterOperatingOrgId(val)}
+              options={operatingOrgOptions}
+              placeholder="Tất cả đơn vị khai thác"
               allowClear
               showSearch
               filterOption={(input, option) =>
@@ -835,7 +850,7 @@ export default function SpecialStationList() {
         }}
         onFilterReset={handleResetFilter}
         filterCollapsed={filterCollapsed}
-        onToggleCollapse={() => setFilterCollapsed((prev) => !prev)}
+        onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
       >
         <DataTable
           loading={loading}
@@ -880,6 +895,7 @@ export default function SpecialStationList() {
             onAction={handleDrawerSubmit}
             loadingAction={savingAction}
             canSubmitForApproval={hasPerm('coastalstationinmarsat:create') || hasPerm('coastalstationinmarsat:update')}
+            canApprove={hasPerm('coastalstationinmarsat:approvec2') || hasPerm('coastalstationinmarsat:approve')}
             draftLabel={drawerMode === 'create' ? 'Lưu tạm' : 'Lưu thay đổi'}
           />
         )}
@@ -907,7 +923,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="orgUnitId"
-                          label="Đơn vị quản lý"
+                          {...formLabelProps('Đơn vị quản lý')}
                           rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
                           style={{ marginBottom: spaceFormField }}
                         >
@@ -927,7 +943,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="operatingOrgId"
-                          label="Đơn vị khai thác"
+                          {...formLabelProps('Đơn vị khai thác')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
@@ -945,10 +961,10 @@ export default function SpecialStationList() {
                     </Row>
 
                     <Row gutter={formRowGutter}>
-                      <Col span={8}>
+                      <Col span={12}>
                         <Form.Item
                           name="code"
-                          label="Mã đài (Tự sinh)"
+                          {...formLabelProps('Mã đài (Tự sinh)')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input
@@ -958,10 +974,10 @@ export default function SpecialStationList() {
                           />
                         </Form.Item>
                       </Col>
-                      <Col span={16}>
+                      <Col span={12}>
                         <Form.Item
                           name="name"
-                          label="Tên đài Inmarsat"
+                          {...formLabelProps('Tên đài Inmarsat')}
                           rules={[{ required: true, message: 'Vui lòng nhập tên đài' }]}
                           style={{ marginBottom: spaceFormField }}
                         >
@@ -974,7 +990,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="provinceId"
-                          label="Địa điểm (Tỉnh/Thành phố)"
+                          {...formLabelProps('Địa điểm (Tỉnh/Thành phố)')}
                           rules={[{ required: true, message: 'Vui lòng chọn Tỉnh/Thành phố' }]}
                           style={{ marginBottom: spaceFormField }}
                         >
@@ -993,7 +1009,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="conditionStatus"
-                          label="Tình trạng hoạt động"
+                          {...formLabelProps('Tình trạng hoạt động')}
                           rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
                           style={{ marginBottom: spaceFormField }}
                         >
@@ -1008,11 +1024,11 @@ export default function SpecialStationList() {
 
                     <Form.Item
                       name="locationAddress"
-                      label="Địa điểm chi tiết"
+                      {...formLabelProps('Địa điểm chi tiết')}
                       rules={[{ required: true, message: 'Vui lòng nhập địa điểm chi tiết' }]}
                       style={{ marginBottom: spaceFormField }}
                     >
-                      <TextArea rows={2} placeholder="Nhập địa chỉ, vị trí chi tiết của đài..." style={{ borderRadius: radiusMd }} />
+                      <TextArea rows={2} placeholder="Nhập địa chỉ, vị trí chi tiết của đài..." style={{ borderRadius: 20, padding: '10px 16px' }} />
                     </Form.Item>
                   </div>
                 ),
@@ -1026,7 +1042,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="services"
-                          label="Dịch vụ cung cấp (Multi-select)"
+                          {...formLabelProps('Dịch vụ cung cấp (Multi-select)')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
@@ -1045,7 +1061,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="modemType"
-                          label="Loại Modem / Thiết bị"
+                          {...formLabelProps('Loại Modem / Thiết bị')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input placeholder="VD: Capsat, Sailor 6006..." style={inputStyle} />
@@ -1057,7 +1073,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="frequency"
-                          label="Tần số liên lạc"
+                          {...formLabelProps('Tần số liên lạc')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input placeholder="VD: 1.6 GHz, L-Band..." style={inputStyle} />
@@ -1066,7 +1082,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="sarCode"
-                          label="Mã SAR (Tìm kiếm cứu nạn)"
+                          {...formLabelProps('Mã SAR (Tìm kiếm cứu nạn)')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input placeholder="VD: SAR-INM-VN01..." style={inputStyle} />
@@ -1076,17 +1092,17 @@ export default function SpecialStationList() {
 
                     <Form.Item
                       name="coverageZone"
-                      label="Vùng phủ sóng"
+                      {...formLabelProps('Vùng phủ sóng')}
                       style={{ marginBottom: spaceFormField }}
                     >
-                      <TextArea rows={2} placeholder="Mô tả phạm vi, vùng biển và vệ tinh phủ sóng..." style={{ borderRadius: radiusMd }} />
+                      <TextArea rows={2} placeholder="Mô tả phạm vi, vùng biển và vệ tinh phủ sóng..." style={{ borderRadius: 20, padding: '10px 16px' }} />
                     </Form.Item>
 
                     <Row gutter={formRowGutter}>
                       <Col span={12}>
                         <Form.Item
                           name="contactPerson"
-                          label="Người liên hệ / Trực ban"
+                          {...formLabelProps('Người liên hệ / Trực ban')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input placeholder="Họ và tên cán bộ quản trị trạm..." style={inputStyle} />
@@ -1095,7 +1111,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="contactPhone"
-                          label="Số điện thoại liên hệ"
+                          {...formLabelProps('Số điện thoại liên hệ')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input placeholder="Số điện thoại trực ban / hotline..." style={inputStyle} />
@@ -1105,10 +1121,10 @@ export default function SpecialStationList() {
 
                     <Form.Item
                       name="notes"
-                      label="Ghi chú kỹ thuật"
+                      {...formLabelProps('Ghi chú kỹ thuật')}
                       style={{ marginBottom: spaceFormField }}
                     >
-                      <TextArea rows={3} placeholder="Ghi chú bổ sung về vận hành, kỹ thuật..." style={{ borderRadius: radiusMd }} />
+                      <TextArea rows={3} placeholder="Ghi chú bổ sung về vận hành, kỹ thuật..." style={{ borderRadius: 20, padding: '10px 16px' }} />
                     </Form.Item>
                   </div>
                 ),
@@ -1122,7 +1138,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="objectType"
-                          label="Loại đối tượng GIS"
+                          {...formLabelProps('Loại đối tượng GIS')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select options={OBJECT_TYPE_OPTIONS} style={{ ...selectStyle, width: '100%' }} />
@@ -1131,7 +1147,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="symbol"
-                          label="Biểu tượng bản đồ"
+                          {...formLabelProps('Biểu tượng bản đồ')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
@@ -1152,7 +1168,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="coordinateSystem"
-                          label="Hệ quy chiếu"
+                          {...formLabelProps('Hệ quy chiếu')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input disabled style={{ ...inputStyle, backgroundColor: '#f5f5f5' }} />
@@ -1161,7 +1177,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="displayRule"
-                          label="Quy tắc hiển thị"
+                          {...formLabelProps('Quy tắc hiển thị')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input placeholder="VD: ZoomLevel 8-18..." style={inputStyle} />
@@ -1173,7 +1189,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="latitude"
-                          label="Vĩ độ (Latitude WGS84)"
+                          {...formLabelProps('Vĩ độ (Latitude WGS84)')}
                           rules={[
                             { type: 'number', min: -90, max: 90, message: 'Vĩ độ trong khoảng -90 đến 90' },
                           ]}
@@ -1185,7 +1201,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="longitude"
-                          label="Kinh độ (Longitude WGS84)"
+                          {...formLabelProps('Kinh độ (Longitude WGS84)')}
                           rules={[
                             { type: 'number', min: -180, max: 180, message: 'Kinh độ trong khoảng -180 đến 180' },
                           ]}
@@ -1219,81 +1235,82 @@ export default function SpecialStationList() {
                   </div>
                 ),
               },
-              {
-                key: '5',
-                label: FORM_TAB_LABEL.HISTORY,
-                children: (
-                  <div>
-                    {selectedRecord && (
-                      <div style={{ marginBottom: spaceLg, padding: spaceMd, backgroundColor: '#fcfcfc', border: `1px solid ${borderDefault}`, borderRadius: radiusMd }}>
-                        <Text style={{ fontWeight: fontWeightBold, fontSize: fontSizeMd, color: colors.sidebarBg }}>
-                          Thông tin tiến trình phê duyệt 2 cấp (M-1006):
-                        </Text>
-                        <Row gutter={[16, 8]} style={{ marginTop: spaceSm }}>
-                          <Col span={12}><Text type="secondary">Người tạo:</Text> <b>{selectedRecord.createdByName || '-'}</b></Col>
-                          <Col span={12}><Text type="secondary">Ngày tạo:</Text> <b>{selectedRecord.createdAt ? dayjs(selectedRecord.createdAt).format('DD/MM/YYYY HH:mm') : '-'}</b></Col>
-                          <Col span={12}><Text type="secondary">Người gửi duyệt:</Text> <b>{selectedRecord.submittedByName || '-'}</b></Col>
-                          <Col span={12}><Text type="secondary">Ngày gửi duyệt:</Text> <b>{selectedRecord.submittedAt ? dayjs(selectedRecord.submittedAt).format('DD/MM/YYYY HH:mm') : '-'}</b></Col>
-                          <Col span={12}><Text type="secondary">Phê duyệt C1 (Cảng vụ):</Text> <b>{selectedRecord.approverNameLevel1 || '-'}</b></Col>
-                          <Col span={12}><Text type="secondary">Ngày duyệt C1:</Text> <b>{selectedRecord.approvedDateLevel1 ? dayjs(selectedRecord.approvedDateLevel1).format('DD/MM/YYYY HH:mm') : '-'}</b></Col>
-                          <Col span={12}><Text type="secondary">Phê duyệt C2 (Cục HH):</Text> <b>{selectedRecord.approverNameLevel2 || selectedRecord.approvedByName || '-'}</b></Col>
-                          <Col span={12}><Text type="secondary">Ngày duyệt C2:</Text> <b>{selectedRecord.approvedDateLevel2 || selectedRecord.approvedDate ? dayjs(selectedRecord.approvedDateLevel2 || selectedRecord.approvedDate).format('DD/MM/YYYY HH:mm') : '-'}</b></Col>
-                        </Row>
-
-                        {selectedRecord.rejectionReason && (
-                          <div style={{ marginTop: spaceSm, padding: spaceSm, backgroundColor: '#fff2f0', border: '1px solid #ffccc7', borderRadius: radiusSm }}>
-                            <Text type="danger" style={{ fontWeight: fontWeightBold }}>Lý do từ chối gần nhất:</Text>
-                            <div style={{ color: statusCritical, marginTop: 4 }}>{selectedRecord.rejectionReason}</div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <Text style={{ fontWeight: fontWeightBold, fontSize: fontSizeMd, color: colors.sidebarBg }}>
-                      Nhật ký biến động dữ liệu:
-                    </Text>
-                    <Table
-                      dataSource={historyList}
-                      rowKey="id"
-                      loading={historyLoading}
-                      pagination={false}
-                      size="small"
-                      style={{ marginTop: spaceSm }}
-                      columns={[
-                        {
-                          title: 'Thời gian',
-                          dataIndex: 'changedAt',
-                          key: 'changedAt',
-                          width: 140,
-                          render: (val: string) => val ? dayjs(val).format('DD/MM/YYYY HH:mm') : '-',
-                        },
-                        {
-                          title: 'Hành động',
-                          dataIndex: 'actionType',
-                          key: 'actionType',
-                          width: 130,
-                          render: (val: string) => <Tag color="blue">{val}</Tag>,
-                        },
-                        {
-                          title: 'Nội dung thay đổi',
-                          dataIndex: 'newValue',
-                          key: 'newValue',
-                          ellipsis: false,
-                        },
-                        {
-                          title: 'Cán bộ thực hiện',
-                          dataIndex: 'changedBy',
-                          key: 'changedBy',
-                          width: 130,
-                        },
-                      ]}
-                    />
-                  </div>
-                ),
-              },
             ]}
           />
         </Form>
+      </AppDrawer>
+
+      {/* DRAWER / MODAL LỊCH SỬ BIẾN ĐỘNG (AUDIT TRAIL RIÊNG BIỆT) */}
+      <AppDrawer
+        open={historyModalVisible}
+        onClose={() => setHistoryModalVisible(false)}
+        title={`Lịch sử biến động: ${historyTargetRecord?.name || historyTargetRecord?.stationName || historyTargetRecord?.code || ''}`}
+        size="large"
+      >
+        {historyTargetRecord && (
+          <div style={{ marginBottom: spaceLg, padding: spaceMd, backgroundColor: '#fcfcfc', border: `1px solid ${borderDefault}`, borderRadius: radiusMd }}>
+            <Text style={{ fontWeight: fontWeightBold, fontSize: fontSizeMd, color: colors.sidebarBg }}>
+              Thông tin tiến trình phê duyệt 2 cấp (M-1006):
+            </Text>
+            <Row gutter={[16, 8]} style={{ marginTop: spaceSm }}>
+              <Col span={12}><Text type="secondary">Người tạo:</Text> <b>{historyTargetRecord.createdByName || '-'}</b></Col>
+              <Col span={12}><Text type="secondary">Ngày tạo:</Text> <b>{historyTargetRecord.createdAt ? dayjs(historyTargetRecord.createdAt).format('DD/MM/YYYY HH:mm') : '-'}</b></Col>
+              <Col span={12}><Text type="secondary">Người gửi duyệt:</Text> <b>{historyTargetRecord.submittedByName || '-'}</b></Col>
+              <Col span={12}><Text type="secondary">Ngày gửi duyệt:</Text> <b>{historyTargetRecord.submittedAt ? dayjs(historyTargetRecord.submittedAt).format('DD/MM/YYYY HH:mm') : '-'}</b></Col>
+              <Col span={12}><Text type="secondary">Phê duyệt C1 (Cảng vụ):</Text> <b>{historyTargetRecord.approverNameLevel1 || '-'}</b></Col>
+              <Col span={12}><Text type="secondary">Ngày duyệt C1:</Text> <b>{historyTargetRecord.approvedDateLevel1 ? dayjs(historyTargetRecord.approvedDateLevel1).format('DD/MM/YYYY HH:mm') : '-'}</b></Col>
+              <Col span={12}><Text type="secondary">Phê duyệt C2 (Cục HH):</Text> <b>{historyTargetRecord.approverNameLevel2 || historyTargetRecord.approvedByName || '-'}</b></Col>
+              <Col span={12}><Text type="secondary">Ngày duyệt C2:</Text> <b>{historyTargetRecord.approvedDateLevel2 || historyTargetRecord.approvedDate ? dayjs(historyTargetRecord.approvedDateLevel2 || historyTargetRecord.approvedDate).format('DD/MM/YYYY HH:mm') : '-'}</b></Col>
+            </Row>
+
+            {historyTargetRecord.rejectionReason && (
+              <div style={{ marginTop: spaceSm, padding: spaceSm, backgroundColor: '#fff2f0', border: '1px solid #ffccc7', borderRadius: radiusSm }}>
+                <Text type="danger" style={{ fontWeight: fontWeightBold }}>Lý do từ chối gần nhất:</Text>
+                <div style={{ color: statusCritical, marginTop: 4 }}>{historyTargetRecord.rejectionReason}</div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <Text style={{ fontWeight: fontWeightBold, fontSize: fontSizeMd, color: colors.sidebarBg }}>
+          Nhật ký biến động dữ liệu:
+        </Text>
+        <Table
+          dataSource={historyList}
+          rowKey="id"
+          loading={historyLoading}
+          pagination={false}
+          size="small"
+          style={{ marginTop: spaceSm }}
+          columns={[
+            {
+              title: 'Thời gian',
+              dataIndex: 'changedAt',
+              key: 'changedAt',
+              width: 150,
+              render: (val: string) => val ? dayjs(val).format('DD/MM/YYYY HH:mm:ss') : '-',
+            },
+            {
+              title: 'Hành động',
+              dataIndex: 'actionType',
+              key: 'actionType',
+              width: 140,
+              render: (val: string) => <Tag color="blue">{val}</Tag>,
+            },
+            {
+              title: 'Nội dung thay đổi',
+              dataIndex: 'newValue',
+              key: 'newValue',
+              ellipsis: false,
+            },
+            {
+              title: 'Cán bộ thực hiện',
+              dataIndex: 'changedBy',
+              key: 'changedBy',
+              width: 140,
+            },
+          ]}
+        />
       </AppDrawer>
 
       {/* MODAL NHẬP LÝ DO TỪ CHỐI */}
@@ -1317,7 +1334,7 @@ export default function SpecialStationList() {
           value={rejectReason}
           onChange={(e) => setRejectReason(e.target.value)}
           placeholder="Nhập lý do từ chối chi tiết (tối thiểu 10 ký tự)..."
-          style={{ borderRadius: radiusMd }}
+          style={{ borderRadius: 20, padding: '10px 16px' }}
         />
       </Modal>
     </ListPageContainer>

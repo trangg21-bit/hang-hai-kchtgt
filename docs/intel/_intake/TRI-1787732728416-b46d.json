@@ -1,0 +1,110 @@
+{
+  "triage_id": "TRI-1787732728416-b46d",
+  "created_at": 1787732728416,
+  "request_summary": "Sửa luồng \"Lưu và phê duyệt\" trong form chỉnh sửa Buoy + BuoyStation theo chuẩn Berth: backend update xử lý action (submit/approved) y như create (BuoyService, BuoyStationService + DTO thêm field action; BuoyStation create thêm nhánh approved); frontend BuoyListPage edit gửi action='approved' thay vì gọi approveBuoyL2; BuoyStationFormContent gửi action thay vì chain submit→approveL1→approveL2.",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/services/buoy-station/BuoyStationFormContent.tsx",
+      "frontend/src/services/buoy/BuoyListPage.tsx",
+      "src/main/java/com/hanghai/kchtg/beacon/dto/Buoy/UpdateBuoyRequest.java",
+      "src/main/java/com/hanghai/kchtg/beacon/service/BuoyService.java",
+      "src/main/java/com/hanghai/kchtg/station/dto/buoy/UpdateBuoyStationRequest.java",
+      "src/main/java/com/hanghai/kchtg/station/service/BuoyStationService.java"
+    ],
+    "impact_files": [
+      "frontend/src/services/buoy-station/BuoyStationFormContent.tsx",
+      "frontend/src/services/buoy/BuoyListPage.tsx",
+      "src/main/java/com/hanghai/kchtg/beacon/dto/Buoy/UpdateBuoyRequest.java",
+      "src/main/java/com/hanghai/kchtg/beacon/service/BuoyService.java",
+      "src/main/java/com/hanghai/kchtg/station/dto/buoy/UpdateBuoyStationRequest.java",
+      "src/main/java/com/hanghai/kchtg/station/service/BuoyStationService.java"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C2: 6 edit-target files exceed the inline gate (6 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Nút \"Lưu và phê duyệt\" trong drawer Chỉnh sửa của màn Quản lý phao tiêu (/buoy) và Nhà trạm phao tiêu (/buoy-station) — hiện đang tắc (Buoy chỉ gọi approveBuoyL2; BuoyStation chain submit→L1→L2 fail khi đang APPROVED_L1).",
+  "blast_radius": 6,
+  "done_oracle": "Nút \"Lưu và phê duyệt\" trong form CHỈNH SỬA của Quản lý phao tiêu và Nhà trạm phao tiêu hoạt động đúng chuẩn Berth: frontend gửi action='approved' trong update payload; backend BuoyService.update + BuoyStationService.update (và create của BuoyStation) xử lý action (submit/approved) như Berth applySaveAction — bản ghi DRAFT/REJECTED/PENDING_APPROVAL/APPROVED_L1 đều duyệt thẳng tới PUBLISHED + đủ audit fields. tsc --noEmit + mvn clean compile pass.",
+  "verification_commands": [
+    {
+      "command": "mvn clean compile -q",
+      "cwd": "C:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.1.4\\plugins\\maven\\lib\\maven3\\bin",
+      "timeout_ms": 600000
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "cwd": "frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/services/buoy/BuoyListPage.tsx",
+      "line": 950,
+      "quote": "      if (actionTypeRef.current === 'approved') {",
+      "source_hash": "f36e14e68df51c1f1042956a9149d1e7a46f08ff73e1621e9c80355e8a24edf0",
+      "quote_hash": "99836776fa5721742bfa1e6c6a4538912504ed6971c96b15c58c544490d9721f",
+      "note": "Chuỗi gây tắc: sau update chỉ gọi approveBuoyL2 (đòi status APPROVED_L1)"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/beacon/service/BuoyService.java",
+      "line": 487,
+      "quote": "        boolean wasApproved = isApprovedStatus(entity.getStatus())",
+      "source_hash": "0ef5f5f94978b02ac0b51e0b0c937e29599329458001cc78b00856b3dcde2814",
+      "quote_hash": "09ca5e132217e50a9ce983f5278829fcd6860af48a99a7c838c846e61125f8fc",
+      "note": "Update không xử lý action — chỉ có wasApproved; create đã xử lý action ở :230-238"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/station/service/BuoyStationService.java",
+      "line": 355,
+      "quote": "        boolean wasApproved = isApprovedStatus(entity.getStatus())",
+      "source_hash": "6565fd7380e05c6141d2cf88825b2df0d9771d7dcc5cba5cdecd433d6ae76544",
+      "quote_hash": "09ca5e132217e50a9ce983f5278829fcd6860af48a99a7c838c846e61125f8fc",
+      "note": "Update không xử lý action — chỉ wasApproved; create xử lý submit ở :192"
+    },
+    {
+      "file": "frontend/src/services/buoy-station/BuoyStationFormContent.tsx",
+      "line": 317,
+      "quote": "        if (saveAction === 'SUBMIT' || saveAction === 'APPROVED') await submitBuoyStationForApproval(entityData.id);",
+      "source_hash": "15b9516e3dbc5d177e6921dd5c7b364ffe97b401c412acf3c8468ba787df2365",
+      "quote_hash": "7802035a2b0d8811ccf2ea55fa8adc659e28447bbb48f69a041a98d2055c427d",
+      "note": "Edit SUBMIT/APPROVED gọi submitForApproval — chặn khi đang APPROVED_L1"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/station/service/BuoyStationService.java",
+      "line": 192,
+      "quote": "        if (\"submit\".equals(request.getAction())) {",
+      "source_hash": "6565fd7380e05c6141d2cf88825b2df0d9771d7dcc5cba5cdecd433d6ae76544",
+      "quote_hash": "35489ecb8e7fa978dd314002efe86c0d05c8642f1edb1cc07bfc58e35d9dc424",
+      "note": "Create chỉ xử lý action submit — thêm nhánh approved để bỏ chain frontend"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/beacon/dto/Buoy/UpdateBuoyRequest.java",
+      "line": 32,
+      "quote": "    private RecordSecurityLevel securityLevel;",
+      "source_hash": "65df2ed720f3602aca180fba9c209a265e825af1e5ad41fbc6e60abd55093db9",
+      "quote_hash": "f6298112d1d824565bcf5b6093b69b4f3f76b763d51ab09dd38ec87e38ff637d",
+      "note": "UpdateBuoyRequest chưa có field action"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787732728696
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

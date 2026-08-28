@@ -21,10 +21,6 @@ import java.util.UUID;
 @SQLRestriction("deleted_at IS NULL")
 public abstract class BaseStation {
 
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
-    protected RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
-
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     protected UUID id;

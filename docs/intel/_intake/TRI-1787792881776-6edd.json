@@ -1,0 +1,185 @@
+{
+  "triage_id": "TRI-1787792881776-6edd",
+  "created_at": 1787792881776,
+  "request_summary": "Clone toàn bộ cấu trúc Khu neo đậu (DB + BE + FE: bộ lọc/danh sách/thêm mới/chỉnh sửa/chi tiết) sang tính năng Quản lý Khu chuyển tải theo CSV đặc tả 58 trường",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/inputs/HH_Tính năng & danh sách các trường thông tin(Khu chuyển tải).csv",
+      "docs/intel/transfer-area-module-plan.md",
+      "frontend/src/App.tsx",
+      "frontend/src/components/AppLayout.tsx",
+      "frontend/src/pages/transfer-area/TransferAreaDetailContent.tsx",
+      "frontend/src/pages/transfer-area/TransferAreaForm.tsx",
+      "frontend/src/pages/transfer-area/TransferAreaListPage.tsx",
+      "frontend/src/services/portService.ts",
+      "frontend/src/types/port.ts",
+      "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java",
+      "src/main/java/com/hanghai/kchtg/gis/spatial/entity/GisSpatialObjectType.java",
+      "src/main/java/com/hanghai/kchtg/gis/spatial/service/GisSpatialObjectService.java",
+      "src/main/java/com/hanghai/kchtg/port/controller/TransferAreaController.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/transferarea/ApproveRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/transferarea/AttachmentDto.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/transferarea/CreateTransferAreaRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/transferarea/RejectRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/transferarea/TransferAreaMooringWaterAreaAnchorPointRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/transferarea/TransferAreaMooringWaterAreaAnchorPointResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/transferarea/TransferAreaMooringWaterAreaRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/transferarea/TransferAreaMooringWaterAreaResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/transferarea/TransferAreaResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/transferarea/UpdateTransferAreaRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/TransferArea.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/TransferAreaMooringWaterArea.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/TransferAreaMooringWaterAreaAnchorPoint.java",
+      "src/main/java/com/hanghai/kchtg/port/repository/TransferAreaMooringWaterAreaAnchorPointRepository.java",
+      "src/main/java/com/hanghai/kchtg/port/repository/TransferAreaMooringWaterAreaRepository.java",
+      "src/main/java/com/hanghai/kchtg/port/repository/TransferAreaRepository.java",
+      "src/main/java/com/hanghai/kchtg/port/service/TransferAreaApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/TransferAreaService.java",
+      "src/main/resources/db/migration/V20260827100000__create_transfer_areas.sql",
+      "src/main/resources/db/migration/V20260827110000__transfer_area_gis_mooring.sql"
+    ],
+    "impact_files": [
+      "docs/inputs/HH_Tính năng & danh sách các trường thông tin(Khu chuyển tải).csv",
+      "docs/intel/transfer-area-module-plan.md",
+      "frontend/src/App.tsx",
+      "frontend/src/components/AppLayout.tsx",
+      "frontend/src/pages/transfer-area/TransferAreaDetailContent.tsx",
+      "frontend/src/pages/transfer-area/TransferAreaForm.tsx",
+      "frontend/src/pages/transfer-area/TransferAreaListPage.tsx",
+      "frontend/src/services/portService.ts",
+      "frontend/src/types/port.ts",
+      "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java",
+      "src/main/java/com/hanghai/kchtg/gis/spatial/entity/GisSpatialObjectType.java",
+      "src/main/java/com/hanghai/kchtg/gis/spatial/service/GisSpatialObjectService.java",
+      "src/main/java/com/hanghai/kchtg/port/controller/TransferAreaController.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/transferarea/ApproveRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/transferarea/AttachmentDto.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/transferarea/CreateTransferAreaRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/transferarea/RejectRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/transferarea/TransferAreaMooringWaterAreaAnchorPointRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/transferarea/TransferAreaMooringWaterAreaAnchorPointResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/transferarea/TransferAreaMooringWaterAreaRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/transferarea/TransferAreaMooringWaterAreaResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/transferarea/TransferAreaResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/transferarea/UpdateTransferAreaRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/TransferArea.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/TransferAreaMooringWaterArea.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/TransferAreaMooringWaterAreaAnchorPoint.java",
+      "src/main/java/com/hanghai/kchtg/port/repository/TransferAreaMooringWaterAreaAnchorPointRepository.java",
+      "src/main/java/com/hanghai/kchtg/port/repository/TransferAreaMooringWaterAreaRepository.java",
+      "src/main/java/com/hanghai/kchtg/port/repository/TransferAreaRepository.java",
+      "src/main/java/com/hanghai/kchtg/port/service/TransferAreaApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/TransferAreaService.java",
+      "src/main/resources/db/migration/V20260827100000__create_transfer_areas.sql",
+      "src/main/resources/db/migration/V20260827110000__transfer_area_gis_mooring.sql"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/V20260827100000__create_transfer_areas.sql"
+      },
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/V20260827110000__transfer_area_gis_mooring.sql"
+      }
+    ],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C3: one-way door: schema:src/main/resources/db/migration/V20260827100000__create_transfer_areas.sql, schema:src/main/resources/db/migration/V20260827110000__transfer_area_gis_mooring.sql — floors at C3 regardless of size (33 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Menu quản lý tài sản KCHTGT khu nước → mục 'Quản lý khu chuyển tải' (route /transfer-area), cạnh Khu neo đậu",
+  "blast_radius": 33,
+  "done_oracle": "Màn hình Quản lý khu chuyển tải (route /transfer-area, menu 'Quản lý khu chuyển tải') có đủ bộ lọc, danh sách, thêm mới, chỉnh sửa, chi tiết (form 5 tab: thông tin chung, GIS, file đính kèm, vận hành & bảo trì, xử lý & theo dõi) + phê duyệt 2 cấp + mã tự sinh {mã cảng biển}-CT-{seq}; mvn clean compile pass; npx tsc --noEmit -p frontend/tsconfig.app.json pass.",
+  "verification_commands": [
+    {
+      "command": "mvn clean compile -q",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 480000
+    },
+    {
+      "command": "npx tsc --noEmit -p tsconfig.app.json",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht\\frontend",
+      "timeout_ms": 240000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java",
+      "line": 217,
+      "quote": "seedPermission(definitions, \"anchorage\", \"read\", \"Xem khu neo đậu\",",
+      "source_hash": "ccfd770257f1bb1963016b263ff3bb7c169b1469fa5a5a515306b9424eb0c982",
+      "quote_hash": "6f0467ce9f48750f296cbc6d01d108f7e048d364d962a5f173d326bd6a2dd8b8",
+      "note": "Seam: block permission Khu neo đậu — clone sang resource transferarea"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/gis/spatial/service/GisSpatialObjectService.java",
+      "line": 42,
+      "quote": "case ANCHORAGE_AREA -> GisSpatialObjectType.POLYGON_ANCHORAGE;",
+      "source_hash": "87fd983f58bbde6d3c3251e590c4d43454dafdd220cc5d1167e436399b9be2b6",
+      "quote_hash": "61abfc5c763c1c0d356b53a0ba196044d7621faa7d0886e5793a1e26c51ded3e",
+      "note": "Seam: mapping InfrastructureType→GisSpatialObjectType; thêm TRANSSHIPMENT_AREA"
+    },
+    {
+      "file": "frontend/src/App.tsx",
+      "line": 201,
+      "quote": "<Route path=\"/anchorage\" element={<PermissionGuard permission=\"anchorage:read\"><AnchorageList /></PermissionGuard>} />",
+      "source_hash": "dfb601d65269344ea1071bf897aa8a290810a64413b4be1366c6debacc5917d0",
+      "quote_hash": "02b6649004eb6c07ce7e1b4a84d6627db9d0b86d40b0902b2e23e8466138f21b",
+      "note": "Seam: route FE — clone sang /transfer-area"
+    },
+    {
+      "file": "frontend/src/components/AppLayout.tsx",
+      "line": 310,
+      "quote": "canAccessMenu('/anchorage') ? { key: '/anchorage', label: 'Quản lý khu neo đậu', icon: <CompassOutlined /> } : null,",
+      "source_hash": "7f489ba3e00f77f3bc1716c46bd8a3def767c2a128fefba632e64492b9321ff2",
+      "quote_hash": "d13c1cda14b1b737a08c681754d86c283d5334101f97b6b11ab2f76c265caa15",
+      "note": "Seam: menu item FE — thêm mục Khu chuyển tải cạnh đó"
+    },
+    {
+      "file": "frontend/src/services/portService.ts",
+      "line": 705,
+      "quote": "export const anchorageCRUD = {",
+      "source_hash": "8c97f2250381a62c339a9ffa6a7c23e199cb7fe329690be92a3acb773547d0fc",
+      "quote_hash": "67fb3f96e8ffa29ad4932f7034cf294de23a9702dd947adc6b0f94498306969f",
+      "note": "Seam: API client — clone sang transferAreaCRUD"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/entity/Anchorage.java",
+      "line": 37,
+      "quote": "@org.hibernate.annotations.Filter(name = \"orgUnitFilter\", condition = \"org_unit_id IN (:orgUnitIds)\")",
+      "source_hash": "ee4706b7c07ab38d5f0265f0393c6c028281e9e79c85a2f0de5d2c14acdd537d",
+      "quote_hash": "7824d04546c8d497e97182a99f2183037bf7426a8fd5e3de0050f3f4cb47b11b",
+      "note": "Seam: entity pattern — DataScope/orgUnitFilter cho entity mới"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java",
+      "line": 302,
+      "quote": "String prefix = portCode + \"-ND-\";",
+      "source_hash": "bc235751ae3edb0a3fcae8e66b53c6d7a874bf4829d58ac3d61f0d7daa524f67",
+      "quote_hash": "cceaa54f6141b9b8fd5b4028dd75b32d1b8453f3bddc3b0c82679e497375f59c",
+      "note": "Seam: sinh mã tự động — Khu chuyển tải dùng prefix -CT-"
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "AUTO-C0-1787792828644",
+    "breach_kind": "loc_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "50763663d4123d420c24071156dce1612340d6c8",
+    "dirty": true,
+    "captured_at": 1787792881998
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

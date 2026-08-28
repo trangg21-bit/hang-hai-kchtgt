@@ -1,26 +1,28 @@
 import React from 'react';
 import { Select } from 'antd';
 import { LeftOutlined, RightOutlined, DoubleLeftOutlined, DoubleRightOutlined } from '@ant-design/icons';
-import {
-  textSecondary, fontSizeMd, fontWeightBold, fontWeightMedium,
-  borderDefault, spaceSm, radiusPill, dataSea1,
-} from '../../tokens';
+import { useThemeToken } from '../../context/ThemeTokenContext';
 
 export interface PaginationProps {
   total: number; current: number; pageSize: number;
   pageSizeOptions?: number[]; onChange: (page: number, pageSize: number) => void;
 }
 
-const btnBase: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-  width: 32, height: 32, border: `1px solid ${borderDefault}`, borderRadius: '50%',
-  cursor: 'pointer', fontWeight: fontWeightMedium, fontSize: fontSizeMd,
-  color: textSecondary, transition: 'background 0.15s, color 0.15s',
-};
-
 const Pagination: React.FC<PaginationProps> = ({
   total, current, pageSize, pageSizeOptions = [10, 20, 50, 100], onChange,
 }) => {
+  const {
+    textSecondary, fontSizeMd, fontWeightBold, fontWeightMedium,
+    borderDefault, spaceSm, radiusPill, paginationSizeSelectStyle, dataSea1,
+  } = useThemeToken();
+
+  const btnBase: React.CSSProperties = {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    width: 32, height: 32, border: `1px solid ${borderDefault}`, borderRadius: '50%',
+    cursor: 'pointer', fontWeight: fontWeightMedium, fontSize: fontSizeMd,
+    color: textSecondary, transition: 'background 0.15s, color 0.15s',
+  };
+
   const totalPages = Math.ceil(total / pageSize);
   const isFirst = current <= 1;
   const isLast = current >= totalPages;
@@ -86,8 +88,8 @@ const Pagination: React.FC<PaginationProps> = ({
           <DoubleRightOutlined />
         </button>
         <Select className="page-size-select" value={pageSize} onChange={(val) => onChange(1, val)}
-          options={pageSizeOptions.map((n) => ({ value: n, label: `${n}` }))}
-          style={{ width: 72, borderRadius: radiusPill, height: 32, fontSize: fontSizeMd }}
+          options={pageSizeOptions.map((n) => ({ value: n, label: `${n} / trang` }))}
+          style={{ ...paginationSizeSelectStyle, width: 110, height: 32, fontSize: fontSizeMd }}
           popupMatchSelectWidth={false}
         />
       </div>

@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
 
 /**
@@ -15,9 +16,7 @@ import com.hanghai.kchtg.security.RecordSecurityLevel;
 @Data
 public class CreateCctvRequest {
 
-    private RecordSecurityLevel securityLevel;
-
-    @NotBlank(message = "Mã thiết bị không được để trống")
+    @NotBlank(message = "Mã thiết bị CCTV không được để trống")
     @Size(max = 200, message = "Mã thiết bị tối đa 200 ký tự")
     private String deviceCode;
 
@@ -38,8 +37,8 @@ public class CreateCctvRequest {
     private String model;
 
     private UUID orgUnitId;
-    private String operatingUnitId;
-    private UUID provinceId;
+    private UUID operatingUnitId;
+    private String provinceName;
 
     private Integer attachedInfrastructureType;
     private UUID attachedInfrastructureId;
@@ -63,4 +62,13 @@ public class CreateCctvRequest {
     private Integer coordinateSystem;
     private Integer displayRule;
     private UUID spatialId;
+
+    private GisGeometryType geometryType;
+    private String coordinates;
+
+    /**
+     * Hành động khi tạo: 'draft' (Lưu tạm) | 'submit' (Gửi duyệt — mặc định) | 'approve' (Lưu và phê duyệt).
+     * Cơ chế giống màn /port (CreatePortRequest.action).
+     */
+    private String action;
 }

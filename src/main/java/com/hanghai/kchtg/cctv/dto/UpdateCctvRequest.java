@@ -5,7 +5,9 @@ import java.util.UUID;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
 
 /**
@@ -16,8 +18,6 @@ public class UpdateCctvRequest {
 
     @NotNull(message = "ID không được để trống")
     private UUID id;
-
-    private RecordSecurityLevel securityLevel;
 
     private String deviceName;
 
@@ -30,8 +30,8 @@ public class UpdateCctvRequest {
     private String model;
 
     private UUID orgUnitId;
-    private String operatingUnitId;
-    private UUID provinceId;
+    private UUID operatingUnitId;
+    private String provinceName;
 
     private Integer attachedInfrastructureType;
     private UUID attachedInfrastructureId;
@@ -55,4 +55,13 @@ public class UpdateCctvRequest {
     private Integer coordinateSystem;
     private Integer displayRule;
     private UUID spatialId;
+
+    private GisGeometryType geometryType;
+    private String coordinates;
+
+    /**
+     * Trạng thái phê duyệt mới (giống màn /port): gửi 'PENDING' để chuyển bản ghi sang chờ duyệt.
+     * Khi null, bản ghi được đưa về trạng thái chờ duyệt (PENDING_APPROVAL).
+     */
+    private ApprovalStatus approvalStatus;
 }

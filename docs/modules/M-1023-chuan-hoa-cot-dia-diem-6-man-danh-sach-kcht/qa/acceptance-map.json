@@ -1,0 +1,61 @@
+{
+  "module_id": "M-1023-chuan-hoa-cot-dia-diem-6-man-danh-sach-kcht",
+  "triage_id": "TRI-1787725751075-1001",
+  "change_class": "C2",
+  "oracle_version": "user-final-decision-lowercase-pho-width-250",
+  "width_standard": 250,
+  "criteria": [
+    {
+      "id": 1,
+      "criterion": "6 DataTable province/provinceId columns have label exactly 'Địa điểm (Tỉnh/Thành phố)' (lowercase 'phố') and width 250.",
+      "file": [
+        "frontend/src/services/port/PortListPage.tsx",
+        "frontend/src/pages/port/BerthListPage.tsx",
+        "frontend/src/pages/port/PierListPage.tsx",
+        "frontend/src/pages/anchorage/AnchorageListPage.tsx",
+        "frontend/src/services/buoy-station/BuoyStationListPage.tsx",
+        "frontend/src/services/buoy/BuoyListPage.tsx"
+      ],
+      "test_name": "grep \"label: 'Địa điểm (Tỉnh/Thành phố)'\" in each of the 6 files (PortListPage.tsx:1710, BerthListPage.tsx:859, PierListPage.tsx:675, AnchorageListPage.tsx:906, BuoyStationListPage.tsx:807, BuoyListPage.tsx:1329) and read each column object to confirm 'width: 250' on the SAME object as the label (PortListPage.tsx:1712, AnchorageListPage.tsx:908, BuoyListPage.tsx:1331; inline for Berth/Pier/BuoyStation); grep \"Địa điểm (Tỉnh/Thành Phố)\" across frontend/ expects ZERO matches in these 6 files; grep width 280 expects zero on the 6 province columns."
+    },
+    {
+      "id": 2,
+      "criterion": "PortListPage portClass column ('Phân cấp cảng biển') width equals 250.",
+      "file": [
+        "frontend/src/services/port/PortListPage.tsx"
+      ],
+      "test_name": "read the portClass column object at PortListPage.tsx:1699-1707: key 'portClass', label 'Phân cấp cảng biển', 'width: 250' at line 1703."
+    },
+    {
+      "id": 3,
+      "criterion": "DryPortListPage.tsx, backend, and AnchorageListPage history-drawer are untouched.",
+      "file": [
+        "docs/intel/_intake/TRI-1787725751075-1001.json",
+        "frontend/src/pages/port/DryPortListPage.tsx",
+        "frontend/src/pages/anchorage/AnchorageListPage.tsx"
+      ],
+      "test_name": "triage evidence block: packages=[\"frontend\"], edit_target_files == impact_files == exactly the 6 frontend .tsx files (no backend paths); grep DryPortListPage.tsx expects capital-P 'Địa điểm (Tỉnh/Thành Phố)' still at :814 with NO width property (never converted); read AnchorageListPage historyFieldLabels map (:114-117): province renders as 'Tỉnh/Thành phố' at :117, not the column label (history-drawer strings unconverted)."
+    },
+    {
+      "id": 4,
+      "criterion": "Out-of-scope UI text (filter section headers 'Địa điểm (Tỉnh/TP)' / 'Địa điểm' / 'Tỉnh/Thành phố', form labelProps, detail labels) is present and NOT changed to the column label.",
+      "file": [
+        "frontend/src/services/port/PortListPage.tsx",
+        "frontend/src/pages/port/BerthListPage.tsx",
+        "frontend/src/pages/port/PierListPage.tsx",
+        "frontend/src/pages/anchorage/AnchorageListPage.tsx",
+        "frontend/src/services/buoy-station/BuoyStationListPage.tsx",
+        "frontend/src/services/buoy/BuoyListPage.tsx"
+      ],
+      "test_name": "grep filter section headers present in original form: PortListPage.tsx:2020 'Tỉnh/Thành phố', BerthListPage.tsx:789 / AnchorageListPage.tsx:754 / BuoyListPage.tsx:1598 'Địa điểm (Tỉnh/TP)', PierListPage.tsx:586 / BuoyStationListPage.tsx:966 'Địa điểm'; grep \"Địa điểm (Tỉnh/Thành Phố)\" (capital-P) across frontend/src expects matches ONLY in out-of-scope form/detail files, proving they were not normalized: AnchorageForm.tsx:526, BerthForm.tsx:278, PierForm.tsx:199, BuoyFormContent.tsx:269-270, BuoyStationFormContent.tsx:358, PortFormContent.tsx:122, AnchorageDetailContent.tsx:146, BerthDetailContent.tsx:188, PierDetailContent.tsx:155, BuoyDetailContent.tsx:194, BuoyStationDetailContent.tsx:216, DryPortDetailContent.tsx:151."
+    },
+    {
+      "id": 5,
+      "criterion": "'npm run build && npx tsc --noEmit' in frontend/ exits 0.",
+      "file": [
+        "docs/modules/M-1023-chuan-hoa-cot-dia-diem-6-man-danh-sach-kcht/qa/07-qa-report-w2.md"
+      ],
+      "test_name": "execute `npm run build && npx tsc --noEmit` (cwd frontend/) — expect exit code 0, vite build 'transforming...✓ 4065 modules transformed.' and '✓ built in', tsc with no diagnostics; verbatim output captured in QA report sections 6, 6b and 6c (re-validated on the 250px width-correction state: exit 0, 4065 modules transformed, tsc clean, only non-blocking chunk-size advisory on stderr)."
+    }
+  ]
+}

@@ -5,11 +5,7 @@ import type { RcFile, UploadProps } from 'antd/es/upload';
 import type { UploadFile } from 'antd/es/upload/interface';
 import { message } from '../ToastNotification';
 import api from '../../services/api';
-import {
-  actionPrimary, textPrimary, textSecondary, textTertiary,
-  spaceSm, fontSizeMd, fontWeightMedium, fontWeightBold,
-} from '../../tokens';
-import { colors } from '../../theme';
+import { useThemeToken } from '../../context/ThemeTokenContext';
 
 export interface Attachment {
   id: string;
@@ -45,6 +41,10 @@ export default function AttachmentList({
   onUpload,
   onDelete,
 }: AttachmentListProps) {
+  const {
+    actionPrimary, textPrimary, textSecondary, textTertiary,
+    spaceSm, fontSizeMd, fontWeightMedium,
+  } = useThemeToken();
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);

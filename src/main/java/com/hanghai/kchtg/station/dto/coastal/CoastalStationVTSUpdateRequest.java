@@ -11,7 +11,6 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CoastalStationVTSUpdateRequest {
-    private RecordSecurityLevel securityLevel;
     private Double latitude;
     private Double longitude;
 

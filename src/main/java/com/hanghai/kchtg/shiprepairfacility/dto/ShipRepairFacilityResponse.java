@@ -20,7 +20,6 @@ import java.util.UUID;
 public class ShipRepairFacilityResponse {
 
     private UUID id;
-    private RecordSecurityLevel securityLevel;
     private String facilityName;
     private String address;
     private Integer provinceId;

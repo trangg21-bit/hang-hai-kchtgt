@@ -1,0 +1,55 @@
+{
+  "triage_id": "TRI-1787721628503-c2a7",
+  "created_at": 1787721628503,
+  "request_summary": "User: title \"Điểm neo\" nhìn cùng màu/kích thước với label \"Hệ quy chiếu\" — yêu cầu đổi tên thành \"Thông tin điểm neo\" (giữ sectionTitleStyle xanh dương actionPrimary #0E6FD6 + fontSizeLg 15px đã áp dụng, khác label). Sửa 1 dòng: đổi text span line 840.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/anchorage/AnchorageForm.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/anchorage/AnchorageForm.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Drawer con Khu nước neo buộc tàu — section \"Điểm neo\"",
+  "blast_radius": 1,
+  "done_oracle": "Trong Drawer con, section title đổi tên thành \"Thông tin điểm neo\" hiển thị màu xanh dương #0E6FD6 15px (sectionTitleStyle) — khác biệt rõ với label \"Hệ quy chiếu\" (tối 13px).",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht\\frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "line": 840,
+      "quote": "<span style={sectionTitleStyle}>Điểm neo</span>",
+      "source_hash": "6123bd6a8e3f60da57d6de06ede72c15622b8c6db640fc5592fbd3e3c0bd1b8c",
+      "quote_hash": "0397fee65280936390c9b54cae3c4f5d780ea6a7baddde057d6282ff2eef5b56",
+      "note": "Đổi nhãn section 'Điểm neo' → 'Thông tin điểm neo'"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787721628813
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

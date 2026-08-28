@@ -1,0 +1,105 @@
+{
+  "triage_id": "TRI-1787725751075-1001",
+  "created_at": 1787725751075,
+  "request_summary": "Đổi label cột 'Địa điểm (Tỉnh/TP)' thành 'Địa điểm (Tỉnh/Thành Phố)' và tăng width cột để header hiển thị đủ chữ ở 6 màn danh sách KCHT",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/anchorage/AnchorageListPage.tsx",
+      "frontend/src/pages/port/BerthListPage.tsx",
+      "frontend/src/pages/port/PierListPage.tsx",
+      "frontend/src/services/buoy-station/BuoyStationListPage.tsx",
+      "frontend/src/services/buoy/BuoyListPage.tsx",
+      "frontend/src/services/port/PortListPage.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/anchorage/AnchorageListPage.tsx",
+      "frontend/src/pages/port/BerthListPage.tsx",
+      "frontend/src/pages/port/PierListPage.tsx",
+      "frontend/src/services/buoy-station/BuoyStationListPage.tsx",
+      "frontend/src/services/buoy/BuoyListPage.tsx",
+      "frontend/src/services/port/PortListPage.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C2: 6 edit-target files exceed the inline gate (6 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Cột 'Địa điểm (Tỉnh/TP)' trên 6 màn danh sách: Quản lý cảng biển, bến cảng, cầu cảng, khu neo đậu, nhà trạm phao tiêu, phao tiêu",
+  "blast_radius": 6,
+  "done_oracle": "Header cột hiển thị đầy đủ 'ĐỊA ĐIỂM (TỈNH/THÀNH PHỐ)' không bị cắt chữ/ba chấm trên cả 6 màn; npm run build và npx tsc --noEmit exit 0",
+  "verification_commands": [
+    {
+      "command": "npm run build && npx tsc --noEmit",
+      "cwd": "frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/services/port/PortListPage.tsx",
+      "line": 1709,
+      "quote": "        label: 'Địa điểm (Tỉnh/Thành phố)',",
+      "source_hash": "02341a1c2140abff263a1bc20978a0fb0c8a148f7c9f952a16d2daf3c621c177",
+      "quote_hash": "4ae5163ace2220f4fe577751994b296498c1cb03b921591e1128dc42e6d40715",
+      "note": "Label cột province màn Cảng biển — đổi chuẩn 'Địa điểm (Tỉnh/Thành Phố)' + width 220→280"
+    },
+    {
+      "file": "frontend/src/pages/port/BerthListPage.tsx",
+      "line": 859,
+      "quote": "      { key: 'provinceId', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'provinceId', width: 250, sortable: true, sortOrder,",
+      "source_hash": "659a45e9523f6c58ab7a6cb320a98dc70befe7d6ac82f56af0f5dd3559c469ad",
+      "quote_hash": "aaa321a014f8de72f078996fb2bdb0f90240c76293fef703f82850ec09c85636",
+      "note": "Label cột provinceId màn Bến cảng — đổi label + width 250→280"
+    },
+    {
+      "file": "frontend/src/pages/port/PierListPage.tsx",
+      "line": 675,
+      "quote": "    { label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'province', key: 'province', width: 250, sortable: true,",
+      "source_hash": "7856aeca59ee0222958a6fe8dcd507f5c1926ca5acb500d9bbae1e1266d5c5d3",
+      "quote_hash": "c1c0899f856894be43a6672c713a376ce5d50656abf5cb6c8b8d76082c135946",
+      "note": "Label cột province màn Cầu cảng — đổi label + width 250→280"
+    },
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageListPage.tsx",
+      "line": 906,
+      "quote": "        label: 'Địa điểm (Tỉnh/TP)',",
+      "source_hash": "a1e68675952c5c82decec0af3791c4093f4a32343e898e0bf37e286c45b46844",
+      "quote_hash": "e051024869aa9cf2afa24cb506fc08b50e738cd2579209028116057bc22452ba",
+      "note": "Label cột provinceId màn Khu neo đậu — đổi label + width 220→280"
+    },
+    {
+      "file": "frontend/src/services/buoy-station/BuoyStationListPage.tsx",
+      "line": 807,
+      "quote": "      key: 'province', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'province', width: 200, sortable: true,",
+      "source_hash": "190e587951bc5713caa037fd15b596feb140e02c6511637bec40bacc2a76fae7",
+      "quote_hash": "6d2057809f863d67920d0ccaaf2699e04dec6bbbd093af23f312548ca6c60835",
+      "note": "Label cột province màn Nhà trạm phao tiêu — đổi label + width 200→280"
+    },
+    {
+      "file": "frontend/src/services/buoy/BuoyListPage.tsx",
+      "line": 1329,
+      "quote": "      label: 'Địa điểm (Tỉnh/TP)',",
+      "source_hash": "35568d47e813ae032cf802b921fffce3366ab792d75c963ae75e6992e5b40dad",
+      "quote_hash": "e051024869aa9cf2afa24cb506fc08b50e738cd2579209028116057bc22452ba",
+      "note": "Label cột provinceId màn Phao tiêu — đổi label + width 200→280"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787725751309
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

@@ -1,0 +1,295 @@
+{
+  "info": {
+    "_postman_id": "8f8b3c1a-7b24-4f4a-9b1e-250ad82b4980",
+    "name": "KCHTGT - Quan Ly He Thong AIS",
+    "description": "Postman Collection tạo đầy đủ các trường hợp dữ liệu cho màn hình Quản lý Hệ thống AIS (http://localhost:3001/ais-system)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "createdAisId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "1.1 Đăng nhập lấy Token (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.accessToken) {",
+                  "    pm.collectionVariables.set('authToken', jsonData.data.accessToken);",
+                  "    console.log('Access token saved successfully');",
+                  "} else if (jsonData.accessToken) {",
+                  "    pm.collectionVariables.set('authToken', jsonData.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"Password@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "1.2 Lấy danh mục Đơn vị quản lý (Org Units)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/org-units?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["org-units"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "1.3 Lấy danh mục TTDH VTS Options",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/vts-operation-center/options",
+              "host": ["{{baseUrl}}"],
+              "path": ["vts-operation-center", "options"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Tạo dữ liệu AIS System",
+      "item": [
+        {
+          "name": "2.1 Tạo mới Lưu tạm (DRAFT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var res = pm.response.json();",
+                  "if (res.data && res.data.id) {",
+                  "    pm.collectionVariables.set('createdAisId', res.data.id);",
+                  "} else if (res.id) {",
+                  "    pm.collectionVariables.set('createdAisId', res.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Trạm AIS Cảng Chùa Vẽ - Hải Phòng\",\n  \"vtsOperationCenterId\": \"d0421cdd-82f3-434f-bd25-c05fd725832e\",\n  \"operatingOrgId\": \"d0421cdd-82f3-434f-bd25-c05fd725832e\",\n  \"orgUnitId\": \"d0421cdd-82f3-434f-bd25-c05fd725832e\",\n  \"provinceId\": 31,\n  \"detailedLocation\": \"Cảng Chùa Vẽ, Quận Hải An, TP. Hải Phòng\",\n  \"unitOfMeasure\": \"SET\",\n  \"quantity\": 1,\n  \"model\": \"Furuno FA-170 AIS\",\n  \"specifications\": \"Màn hình màu LCD 4.3 inch, tích hợp GPS/VHF đạt chuẩn IMO\",\n  \"manufacturer\": \"Furuno Electric Co., Ltd. (Nhật Bản)\",\n  \"commissioningYear\": 2025,\n  \"conditionStatus\": \"OPERATIONAL\",\n  \"maintenanceInfo\": \"Lắp đặt mới tháng 01/2025\",\n  \"note\": \"Hồ sơ soạn thảo lưu tạm bởi chuyên viên\",\n  \"geometryType\": \"POINT\",\n  \"coordinates\": \"POINT(106.71234 20.86543)\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ais-system?action=DRAFT",
+              "host": ["{{baseUrl}}"],
+              "path": ["ais-system"],
+              "query": [
+                { "key": "action", "value": "DRAFT" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.2 Tạo mới và Gửi duyệt Vòng 1 (PENDING_APPROVAL)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var res = pm.response.json();",
+                  "if (res.data && res.data.id) {",
+                  "    pm.collectionVariables.set('createdAisId', res.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Trạm phát AIS Luồng Hàng hải Sài Gòn - Vũng Tàu\",\n  \"vtsOperationCenterId\": \"d0421cdd-82f3-434f-bd25-c05fd725832e\",\n  \"operatingOrgId\": \"d0421cdd-82f3-434f-bd25-c05fd725832e\",\n  \"orgUnitId\": \"d0421cdd-82f3-434f-bd25-c05fd725832e\",\n  \"provinceId\": 79,\n  \"detailedLocation\": \"Mũi Đèn Đỏ, Phường Phú Thuận, Quận 7, TP. Hồ Chí Minh\",\n  \"unitOfMeasure\": \"SET\",\n  \"quantity\": 1,\n  \"model\": \"AIS Base Station Transceiver T300\",\n  \"specifications\": \"Bộ thu phát AIS công suất 12.5W, dải nhiệt độ -25°C đến +55°C\",\n  \"manufacturer\": \"Saab TransponderTech AB\",\n  \"commissioningYear\": 2024,\n  \"conditionStatus\": \"OPERATIONAL\",\n  \"maintenanceInfo\": \"Bảo dưỡng quý 4/2025\",\n  \"note\": \"Chuyên viên trình Cảng vụ phê duyệt Vòng 1\",\n  \"geometryType\": \"POINT\",\n  \"coordinates\": \"POINT(106.78912 10.74567)\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ais-system?action=SUBMIT",
+              "host": ["{{baseUrl}}"],
+              "path": ["ais-system"],
+              "query": [
+                { "key": "action", "value": "SUBMIT" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.3 Phê duyệt C1 - Cảng vụ duyệt (APPROVED_LEVEL1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"Cảng vụ đã thẩm tra hồ sơ kỹ thuật, đồng ý trình Cục Hàng hải phê duyệt.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ais-system/{{createdAisId}}/approve-c1",
+              "host": ["{{baseUrl}}"],
+              "path": ["ais-system", "{{createdAisId}}", "approve-c1"]
+            }
+          }
+        },
+        {
+          "name": "2.4 Phê duyệt C2 - Cục duyệt chính thức (APPROVED)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"Cục Hàng hải phê duyệt ban hành đưa vào khai thác sử dụng chính thức.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ais-system/{{createdAisId}}/approve-c2",
+              "host": ["{{baseUrl}}"],
+              "path": ["ais-system", "{{createdAisId}}", "approve-c2"]
+            }
+          }
+        },
+        {
+          "name": "2.5 Từ chối / Trả về hồ sơ (REJECT)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Thiếu phiếu kiểm định thông số kỹ thuật công suất phát và anten dự phòng.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ais-system/{{createdAisId}}/reject",
+              "host": ["{{baseUrl}}"],
+              "path": ["ais-system", "{{createdAisId}}", "reject"]
+            }
+          }
+        },
+        {
+          "name": "2.6 Lấy danh sách AIS System kèm bộ lọc",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ais-system?page=0&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["ais-system"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

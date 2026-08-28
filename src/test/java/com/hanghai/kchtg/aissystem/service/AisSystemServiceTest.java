@@ -19,6 +19,11 @@ import com.hanghai.kchtg.vtsoperationcenter.repository.VtsOperationCenterReposit
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
+import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.port.service.PortCacheService;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,6 +59,9 @@ class AisSystemServiceTest {
     private VtsOperationCenterRepository vtsOperationCenterRepository;
 
     @Mock
+    private RadarStationRepository radarStationRepository;
+
+    @Mock
     private VtsSystemRepository vtsSystemRepository;
 
     @Mock
@@ -75,14 +83,20 @@ class AisSystemServiceTest {
     private OrgUnitScopeService orgUnitScopeService;
 
     @Mock
+    private OperatingOrganizationRepository operatingOrganizationRepository;
+
+    @Mock
     private GisSpatialObjectService gisSpatialObjectService;
 
     // toResponse lấy tên đơn vị từ cache dùng chung thay vì truy vấn riêng.
     @Mock
-    private com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService;
+    private OrgUnitCacheService orgUnitCacheService;
 
     @Mock
-    private com.hanghai.kchtg.port.service.PortCacheService portCacheService;
+    private PortCacheService portCacheService;
+
+    @Mock
+    private JdbcTemplate jdbcTemplate;
 
     @InjectMocks
     private AisSystemService service;
@@ -145,6 +159,67 @@ class AisSystemServiceTest {
         assertEquals("Thiết bị AIS Bờ Hải Phòng", response.getName());
         verify(repository).save(any(AisSystem.class));
         verify(historyRepository).save(any());
+    }
+
+    @Test
+    void testCreateWithRadarStationSuccess() {
+        UUID radarId = UUID.randomUUID();
+        when(repository.existsByCodeAndDeletedAtIsNull("AIS-000002")).thenReturn(false);
+        when(radarStationRepository.findByIdAndDeletedAtIsNull(radarId)).thenReturn(Optional.of(
+                com.hanghai.kchtg.radarstation.entity.RadarStation.builder().id(radarId).stationName("Trạm Radar Hòn Dấu").build()
+        ));
+
+        AisSystem radarEntity = AisSystem.builder()
+                .id(UUID.randomUUID())
+                .code("AIS-000002")
+                .name("Thiết bị AIS Radar Hòn Dấu")
+                .radarStationId(radarId)
+                .operatingOrgId(OPERATING_ORG_ID)
+                .orgUnitId(ORG_UNIT_ID)
+                .build();
+        when(repository.save(any())).thenReturn(radarEntity);
+
+        AisSystemRequest radarReq = AisSystemRequest.builder()
+                .code("AIS-000002")
+                .name("Thiết bị AIS Radar Hòn Dấu")
+                .radarStationId(radarId)
+                .operatingOrgId(OPERATING_ORG_ID)
+                .orgUnitId(ORG_UNIT_ID)
+                .build();
+
+        AisSystemResponse response = service.create(radarReq, USER_ID);
+
+        assertNotNull(response);
+        assertEquals("AIS-000002", response.getCode());
+        verify(repository).save(any(AisSystem.class));
+    }
+
+    @Test
+    void testCreateWithNeitherLocationThrowsException() {
+        AisSystemRequest invalidReq = AisSystemRequest.builder()
+                .code("AIS-000003")
+                .name("Thiết bị AIS Thiếu Location")
+                .operatingOrgId(OPERATING_ORG_ID)
+                .orgUnitId(ORG_UNIT_ID)
+                .build();
+
+        assertThrows(IllegalArgumentException.class, () -> service.create(invalidReq, USER_ID));
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void testCreateWithBothLocationsThrowsException() {
+        AisSystemRequest invalidReq = AisSystemRequest.builder()
+                .code("AIS-000004")
+                .name("Thiết bị AIS Cả 2 Location")
+                .vtsOperationCenterId(CENTER_ID)
+                .radarStationId(UUID.randomUUID())
+                .operatingOrgId(OPERATING_ORG_ID)
+                .orgUnitId(ORG_UNIT_ID)
+                .build();
+
+        assertThrows(IllegalArgumentException.class, () -> service.create(invalidReq, USER_ID));
+        verify(repository, never()).save(any());
     }
 
     @Test
@@ -234,7 +309,7 @@ class AisSystemServiceTest {
     @Test
     void testSearch() {
         Page<AisSystem> page = new PageImpl<>(List.of(entity));
-        when(repository.search(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(repository.search(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(page);
 
         Page<?> result = service.search("Hải Phòng", ORG_UNIT_ID, CENTER_ID, OPERATING_ORG_ID, 1, ConditionStatus.OPERATIONAL, null, ApprovalStatus.DRAFT, PageRequest.of(0, 20));

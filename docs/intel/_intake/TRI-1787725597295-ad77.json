@@ -1,0 +1,59 @@
+{
+  "triage_id": "TRI-1787725597295-ad77",
+  "created_at": 1787725597295,
+  "request_summary": "Escalation từ tripwire (lần 3, vượt LOC): drawer trong detail — thêm detailValueBoxStyle (khung viền pill 40px như input form) cho các field; bỏ flex space-between header (nút Thêm mới thừa); bảng điểm neo đổi sang PagedTable + ô DMS InputNumber readOnly/pointerEvents:none giống bảng Tọa độ GPS. 1 file.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/anchorage/AnchorageDetailContent.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/anchorage/AnchorageDetailContent.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Drawer trong (bấm mắt) tab Thông tin khu nước neo buộc tàu",
+  "blast_radius": 1,
+  "done_oracle": "Drawer trong của tab Thông tin khu nước neo buộc tàu: các field có khung viền (như input form), bỏ vị trí nút Thêm mới thừa, bảng Tọa độ điểm neo hiển thị DMS bằng ô InputNumber readOnly giống bảng Tọa độ GPS. Build exit 0.",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht\\frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageDetailContent.tsx",
+      "line": 33,
+      "quote": "const detailValueBoxStyle: React.CSSProperties = { border: `1px solid ${borderDefault}`, borderRadius: radiusPill, padding: '0 12px', height: 40, display: 'flex', alignItems: 'center', fontSize: fontSizeMd, color: textPrimary, background: '#fff', marginBottom: spaceMd };",
+      "source_hash": "39ddabef016a54072e777dc79927a77fe149768ae2dd499c05c232ec2df624c6",
+      "quote_hash": "795b7b3ad62ead405010e9cbffbe2ab5a8f245ab7052e773e3e5a0b44fb3d856",
+      "note": "detailValueBoxStyle mới — khung viền cho field read-only"
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1787725125860-02a6",
+    "breach_kind": "loc_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787725597480
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

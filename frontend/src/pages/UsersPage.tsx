@@ -19,6 +19,7 @@ import { statusAttention, statusCritical, statusDraft, actionPrimary, textSecond
 import { colors } from '../theme';
 import toast, { modal } from '../components/ToastNotification';
 import ManagementDrawer from '../components/management/ManagementDrawer';
+import { formLabelProps as labelProps } from '../components/shared/formLabel';
 const { confirm } = modal;
 
 const STATUS_LABEL: Record<string, string> = {
@@ -45,8 +46,6 @@ function getStatusBadgeClass(status: string): string {
     default: return '';
   }
 }
-
-const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
 
 const PermissionSearchBar: FC<{ onSearch: (val: string) => void }> = memo(({ onSearch }) => {
   const [value, setValue] = useState('');

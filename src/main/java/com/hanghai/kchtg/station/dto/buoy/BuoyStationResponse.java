@@ -22,7 +22,6 @@ import java.util.UUID;
 public class BuoyStationResponse {
 
     private UUID id;
-    private RecordSecurityLevel securityLevel;
     private String code;
     private String name;
     private String type;    private String color;
@@ -49,6 +48,7 @@ public class BuoyStationResponse {
     private String displayFormat;
     private LocalDate lastInspectionDate;
     private LocalDate nextInspectionDate;
+    private LocalDate lastRepairDate;
     private Double latitude;
     private Double longitude;
 

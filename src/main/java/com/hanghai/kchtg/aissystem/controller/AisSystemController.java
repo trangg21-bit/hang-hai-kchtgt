@@ -28,6 +28,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.springframework.format.annotation.DateTimeFormat;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -108,13 +110,18 @@ public class AisSystemController {
     @GetMapping
     public ResponseEntity<ApiResponse<Map<String, Object>>> search(
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String code,
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) UUID vtsOperationCenterId,
+            @RequestParam(required = false) UUID radarStationId,
             @RequestParam(required = false) UUID operatingOrgId,
             @RequestParam(required = false) Integer provinceId,
             @RequestParam(required = false) ConditionStatus conditionStatus,
             @RequestParam(required = false) Integer commissioningYear,
             @RequestParam(required = false) ApprovalStatus approvalStatus,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime updatedFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime updatedTo,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
@@ -122,8 +129,14 @@ public class AisSystemController {
 
         PageRequest pageRequest = PageRequest.of(page, size, resolveListSort(sortBy, sortDir));
 
-        Page<AisSystemListItem> resultPage = service.search(keyword, orgUnitId, vtsOperationCenterId, operatingOrgId, provinceId, conditionStatus, commissioningYear, approvalStatus, pageRequest);
-        Map<String, Long> statusCounts = service.countByStatus(keyword, orgUnitId, vtsOperationCenterId, operatingOrgId, provinceId, conditionStatus, commissioningYear);
+        Page<AisSystemListItem> resultPage = service.search(
+                keyword, name, code, orgUnitId, vtsOperationCenterId, radarStationId, operatingOrgId,
+                provinceId, conditionStatus, commissioningYear, approvalStatus,
+                updatedFrom, updatedTo, pageRequest);
+        Map<String, Long> statusCounts = service.countByStatus(
+                keyword, name, code, orgUnitId, vtsOperationCenterId, radarStationId, operatingOrgId,
+                provinceId, conditionStatus, commissioningYear,
+                updatedFrom, updatedTo);
 
         Map<String, Object> data = new HashMap<>();
         data.put("content", resultPage.getContent());

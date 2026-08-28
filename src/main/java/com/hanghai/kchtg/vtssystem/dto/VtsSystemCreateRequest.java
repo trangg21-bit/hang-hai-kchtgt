@@ -29,7 +29,6 @@ public class VtsSystemCreateRequest {
 
     @NotNull(message = "Tình trạng không được để trống")
     private ConditionStatus conditionStatus;
-    private RecordSecurityLevel recordSecurityLevel;
 
     @NotNull(message = "Đơn vị quản lý không được để trống")
     private UUID orgUnitId;
@@ -44,7 +43,7 @@ public class VtsSystemCreateRequest {
 
     private List<VtsZoneDto> zones;
 
-    @NotBlank(message = "Mã hệ thống VTS không được để trống")
+    @jakarta.validation.constraints.Size(max = 50, message = "Mã hệ thống VTS tối đa 50 ký tự")
     private String code;
 
     @NotNull(message = "Địa điểm (Tỉnh/TP) không được để trống")

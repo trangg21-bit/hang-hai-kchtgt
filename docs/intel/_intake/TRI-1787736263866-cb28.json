@@ -1,0 +1,99 @@
+{
+  "triage_id": "TRI-1787736263866-cb28",
+  "created_at": 1787736263867,
+  "request_summary": "Sửa 5 lỗi runtime-blocking ReferenceError còn lại ở 4 màn FE (cùng pattern đã sửa ở PortListPage/BerthForm): thiếu import drawerFooterStyle (BerthListPage, BuoyStationListPage), fontWeightMedium (DryPortListPage), trangThaiPheDuyetBadge (PierListPage), và call setFilterStatus không tồn tại (BuoyStationListPage — xóa code chết)",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/port/BerthListPage.tsx",
+      "frontend/src/pages/port/DryPortListPage.tsx",
+      "frontend/src/pages/port/PierListPage.tsx",
+      "frontend/src/services/buoy-station/BuoyStationListPage.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/port/BerthListPage.tsx",
+      "frontend/src/pages/port/DryPortListPage.tsx",
+      "frontend/src/pages/port/PierListPage.tsx",
+      "frontend/src/services/buoy-station/BuoyStationListPage.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C1: 4 edit-target files in one package, no one-way door — pre-declared write scope required (4 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "4 màn FE: Bến cảng (BerthListPage), Cảng cạn (DryPortListPage), Cầu cảng (PierListPage), Nhà trạm phao tiêu (BuoyStationListPage)",
+  "blast_radius": 4,
+  "done_oracle": "5 lỗi runtime-blocking hết: mở 4 màn Bến cảng/Cảng cạn/Cầu cảng/Nhà trạm phao tiêu trên dev server localhost:3001 không còn ReferenceError (drawerFooterStyle x2, fontWeightMedium, trangThaiPheDuyetBadge, setFilterStatus). tsc scoped không còn TS2304/TS2552 cho 5 identifier này.",
+  "verification_commands": [
+    {
+      "command": "npx tsc --noEmit -p \"C:\\Users\\manhhv1\\AppData\\Local\\Temp\\ai-studio\\tsconfig.port-check.json\" --pretty false",
+      "cwd": "C:/Users/manhhv1/Desktop/Source/bxd.hh.kcht/frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "frontend/src/pages/port/BerthListPage.tsx",
+    "frontend/src/pages/port/DryPortListPage.tsx",
+    "frontend/src/pages/port/PierListPage.tsx",
+    "frontend/src/services/buoy-station/BuoyStationListPage.tsx"
+  ],
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/port/BerthListPage.tsx",
+      "line": 1093,
+      "quote": "<div style={drawerFooterStyle}>",
+      "source_hash": "6c406550e66bf07468484d41684cbfc63f2f79e2dfa4255de0d836f16e058c90",
+      "quote_hash": "246595bd0e0e5a60406b777c05fc94e57cea2e784c955465c98395f34e21cac4",
+      "note": "dùng drawerFooterStyle trong footer Drawer nhưng không import từ tokens — ReferenceError"
+    },
+    {
+      "file": "frontend/src/pages/port/DryPortListPage.tsx",
+      "line": 1088,
+      "quote": "fontWeight: fontWeightMedium",
+      "source_hash": "dea986ccd7d0a6e44c277c2b11f872456a10c48f5d42dbd6b6e1083c4dc25ae6",
+      "quote_hash": "5f5d64149ae8b120f94127ff73b036019d72b0f4b4cc748974fb23e3b3db13e1",
+      "note": "dùng fontWeightMedium trong badge trạng thái nhưng không import — ReferenceError"
+    },
+    {
+      "file": "frontend/src/pages/port/PierListPage.tsx",
+      "line": 689,
+      "quote": "const badge = v ? trangThaiPheDuyetBadge(v) : null;",
+      "source_hash": "d77f5e3298a910666b98c3ec77f4a3a9caea4984830d0a0ef4624e58be7227b5",
+      "quote_hash": "51ca3a7ce1dda991cf4720b0994202f075a39249e471d643a65fa3627ece4271",
+      "note": "dùng trangThaiPheDuyetBadge (định nghĩa tại services/port/schema.ts:188) nhưng không import — ReferenceError"
+    },
+    {
+      "file": "frontend/src/services/buoy-station/BuoyStationListPage.tsx",
+      "line": 478,
+      "quote": "setFilterStatus(undefined); setFilterPortId(undefined);",
+      "source_hash": "52665a1d01712c75c2b03f588df5455415e77063e2d41fafe277acbf76d74053",
+      "quote_hash": "3d54b1e96e4595d245db63b67d57ededc8aceb3d84fe936702963a5b996bfbb9",
+      "note": "setFilterStatus không tồn tại (state filter đã đổi tên, chỉ còn filterValues + các setter riêng) — ReferenceError khi reset filter"
+    },
+    {
+      "file": "frontend/src/services/buoy-station/BuoyStationListPage.tsx",
+      "line": 1278,
+      "quote": "<div style={drawerFooterStyle}>",
+      "source_hash": "52665a1d01712c75c2b03f588df5455415e77063e2d41fafe277acbf76d74053",
+      "quote_hash": "246595bd0e0e5a60406b777c05fc94e57cea2e784c955465c98395f34e21cac4",
+      "note": "dùng drawerFooterStyle trong footer Drawer nhưng không import từ tokens — ReferenceError"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "97a62a2e50b49584125f39dc663894b8a59ad2ac",
+    "dirty": true,
+    "captured_at": 1787736264098
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

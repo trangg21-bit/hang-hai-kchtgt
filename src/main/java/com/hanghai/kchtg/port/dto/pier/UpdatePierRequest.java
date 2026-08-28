@@ -17,8 +17,6 @@ import java.util.UUID;
 @Data
 public class UpdatePierRequest {
 
-    private RecordSecurityLevel securityLevel;
-
     @NotNull(message = "ID không được để trống")
     private UUID id;
 

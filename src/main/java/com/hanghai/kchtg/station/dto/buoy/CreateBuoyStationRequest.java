@@ -20,8 +20,7 @@ import java.util.UUID;
 @Builder
 public class CreateBuoyStationRequest {
 
-    private RecordSecurityLevel securityLevel;
-
+    @NotBlank(message = "Mã nhà trạm không được để trống")
     @Size(max = 50)
     private String code;
 

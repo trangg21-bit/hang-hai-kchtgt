@@ -1,5 +1,5 @@
 import React from 'react';
-import { filterLabelStyle, spaceFormField, spaceXs } from '../../tokens';
+import { useThemeToken } from '../../context/ThemeTokenContext';
 
 export interface SidebarFilterFieldProps {
   /** Nhãn trường lọc — hiển thị theo `filterLabelStyle` (navy, đậm, 13px). */
@@ -17,6 +17,7 @@ export interface SidebarFilterFieldProps {
  * rồi trôi dạt sang `fontSizeSm` / `textSecondary` / `spaceMd` khác nhau.
  */
 export default function SidebarFilterField({ label, children, style }: SidebarFilterFieldProps) {
+  const { filterLabelStyle, spaceFormField, spaceXs } = useThemeToken();
   return (
     <div style={{ marginBottom: spaceFormField, ...style }}>
       <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>{label}</div>

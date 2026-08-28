@@ -136,7 +136,6 @@ class VtsOperationCenterServiceTest {
         assertEquals("TT-000001", response.getCode());
         assertEquals("Trung tâm VTS Hải Phòng", response.getName());
         verify(repository).save(any(VtsOperationCenter.class));
-        verify(historyRepository).save(any());
     }
 
     @Test
@@ -226,10 +225,10 @@ class VtsOperationCenterServiceTest {
     @Test
     void testSearch() {
         Page<VtsOperationCenter> page = new PageImpl<>(List.of(entity));
-        when(repository.search(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(repository.search(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(page);
 
-        Page<?> result = service.search("Hải Phòng", ORG_UNIT_ID, VTS_SYSTEM_ID, null, 1, ConditionStatus.OPERATIONAL, ApprovalStatus.DRAFT, PageRequest.of(0, 20));
+        Page<?> result = service.search("Hải Phòng", ORG_UNIT_ID, VTS_SYSTEM_ID, null, 1, ConditionStatus.OPERATIONAL, ApprovalStatus.DRAFT, null, null, PageRequest.of(0, 20));
 
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());

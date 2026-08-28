@@ -3,15 +3,40 @@ import { Table, Empty, Dropdown, Button, Tooltip } from 'antd';
 import { MoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
-import {
-  textPrimary, textSecondary, textTertiary, fontWeightMedium, fontSizeSm, fontSizeMd, fontWeightBold,
-  statusOperational, statusCritical, statusDraft, statusAttention,
-  radiusPill, borderDefault,
-} from '../../tokens';
-import { colors, layout } from '../../theme';
+import { layout } from '../../theme';
+import { useThemeToken, THEME_SCOPE_CLASS, type ThemeToken } from '../../context/ThemeTokenContext';
 
-const tableHeaderBg = colors.bodyBg;
 const ACTION_COLUMN_WIDTH = 60;
+
+/**
+ * Bề rộng tối thiểu để tiêu đề một cột hiển thị đủ chữ, không bị cắt "...".
+ *
+ * Tiêu đề render ở `fontSizeMd` (13px), `fontWeightBold`, `textTransform: uppercase`.
+ * Chữ hoa đậm 13px rộng trung bình ~8.8px (đã tính biên an toàn); dấu tiếng Việt không làm chữ rộng thêm.
+ * Cộng padding ngang của ô tiêu đề (12px mỗi bên) và chỗ cho mũi tên sắp xếp.
+ *
+ * Có helper này thì màn hình không phải tự canh `width` cho vừa nhãn: cột luôn được nới
+ * đủ rộng, nên bỏ được `textOverflow: 'ellipsis'` ở ô tiêu đề.
+ */
+const HEADER_CHAR_WIDTH = 8.8;
+const HEADER_HORIZONTAL_PADDING = 24;
+const HEADER_SORTER_WIDTH = 22;
+
+function headerMinWidth(column: any): number {
+  const label = typeof column?.label === 'string'
+    ? column.label
+    : typeof column?.title === 'string' ? column.title : '';
+  if (!label) return 0;
+  const sorterSpace = (column.sortable || column.sorter) ? HEADER_SORTER_WIDTH : 0;
+  return Math.ceil(label.length * HEADER_CHAR_WIDTH) + HEADER_HORIZONTAL_PADDING + sorterSpace;
+}
+
+/** Nới `width` của cột lên tối thiểu bằng bề rộng tiêu đề của chính nó. */
+function withHeaderSafeWidth(column: any): any {
+  if (typeof column?.width !== 'number') return column;
+  const required = headerMinWidth(column);
+  return required > column.width ? { ...column, width: required } : column;
+}
 
 const actionColumnCellStyle: React.CSSProperties = {
   width: ACTION_COLUMN_WIDTH,
@@ -24,28 +49,15 @@ const actionColumnCellStyle: React.CSSProperties = {
   zIndex: 10,
 };
 
-// Header cột action phải có cùng nền với header cột dữ liệu (tableHeaderBg).
-const actionColumnHeaderCellStyle: React.CSSProperties = {
+// Header cột action phải có cùng nền với header cột dữ liệu (t.tableHeaderBg).
+const actionColumnHeaderCellStyleFor = (t: ThemeToken): React.CSSProperties => ({
   ...actionColumnCellStyle,
-  background: tableHeaderBg,
+  background: t.tableHeaderBg,
   zIndex: 10,
-};
+});
 
 
-// Stable, order-insensitive fingerprint of the rows currently shown. It lets the
-// scroll-reset effect tell a real data change (new page / filter / reload) apart
-// from a client-side re-sort, so sorting no longer snaps the horizontal scroll
-// back to the first column while the user is scrolled right.
-function computeRowSetSignature(dataSource: any[], rowKey: string | ((record: any) => string)): string {
-  return dataSource
-    .map((record) => {
-      if (typeof rowKey === 'function') return String(rowKey(record));
-      const v = record?.[rowKey];
-      return v != null ? String(v) : '';
-    })
-    .sort()
-    .join('|');
-}
+
 
 export interface DataTableColumn {
   key?: string;
@@ -64,6 +76,12 @@ export interface DataTableColumn {
   fixed?: 'left' | 'right';
   /** Mặc định true (cắt chữ "..."); đặt false để header/cell wrap hiển thị đủ chữ. */
   ellipsis?: boolean;
+  /**
+   * Đặt true để bỏ cột khỏi bảng. Dùng khi bộ cột thay đổi theo ngữ cảnh — ví dụ
+   * màn CHK ẩn cột "Trạng thái" ở mọi tab trừ tab "Tất cả". Cột bị ẩn không tính
+   * vào tổng bề rộng nên scroll ngang vẫn khớp.
+   */
+  hidden?: boolean;
 }
 
 export interface DataTableProps {
@@ -81,18 +99,19 @@ export interface DataTableProps {
   [key: string]: any;
 }
 
-const STATUS_COLOR_MAP: Record<string, string> = {
-  active: statusOperational,
-  operational: statusOperational,
-  locked: statusCritical,
-  rejected: statusCritical,
-  inactive: statusDraft,
-  draft: statusDraft,
-  pending: statusAttention,
-};
+const statusColorMapFor = (t: ThemeToken): Record<string, string> => ({
+  active: t.statusOperational,
+  operational: t.statusOperational,
+  locked: t.statusCritical,
+  rejected: t.statusCritical,
+  inactive: t.statusDraft,
+  draft: t.statusDraft,
+  pending: t.statusAttention,
+});
 
 // Auto-close the row action menu when the page or the table body scrolls.
 const RowActionDropdown: React.FC<{ items: MenuProps['items'] }> = ({ items }) => {
+  const { rowActionButtonStyle } = useThemeToken();
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -105,18 +124,27 @@ const RowActionDropdown: React.FC<{ items: MenuProps['items'] }> = ({ items }) =
     return () => document.removeEventListener('scroll', closeOnScroll, true);
   }, [open]);
   return (
-    <Dropdown menu={{ items }} trigger={['click']} open={open} onOpenChange={setOpen}>
+    <Dropdown menu={{ items }} trigger={['click']} open={open} onOpenChange={setOpen}
+      rootClassName={THEME_SCOPE_CLASS}>
       <Button icon={<MoreOutlined />} onClick={(e) => e.stopPropagation()}
-        style={{ color: textSecondary, borderColor: borderDefault, borderRadius: radiusPill, height: 28, width: 28, fontSize: fontSizeMd }} />
+        style={rowActionButtonStyle} />
     </Dropdown>
   );
 };
 
 const DataTable: React.FC<DataTableProps> = ({
-  columns, dataSource = [], rowKey = 'id', loading, emptyState, fill = true, dense, onSort, rowActions, children, scroll, ...rest
+  columns: rawColumns, dataSource = [], rowKey = 'id', loading, emptyState, fill = true, dense, onSort, rowActions, children, scroll, ...rest
 }) => {
+  const t = useThemeToken();
+  const {
+    textPrimary, textSecondary, textTertiary, fontWeightMedium, fontSizeSm, fontSizeMd, fontWeightBold,
+    tableHeaderBg, tableHeaderColor, tableHeaderPadding, tableCellPadding, tableRowStripeBg,
+    tableSortableByDefault, tableSortIcon, tableEmptyState,
+  } = t;
+  const STATUS_COLOR_MAP = statusColorMapFor(t);
+  const actionColumnHeaderCellStyle = actionColumnHeaderCellStyleFor(t);
+
   const tableShellRef = useRef<HTMLDivElement>(null);
-  const dataSignatureRef = useRef<string | null>(null);
   const [measuredTableWidth, setMeasuredTableWidth] = useState<number>();
   const resolvedScroll = scroll;
 
@@ -140,22 +168,6 @@ const DataTable: React.FC<DataTableProps> = ({
   }, []);
 
   useLayoutEffect(() => {
-    const signature = computeRowSetSignature(dataSource, rowKey);
-    if (dataSignatureRef.current !== null && signature === dataSignatureRef.current) {
-      return;
-    }
-    dataSignatureRef.current = signature;
-
-    resetHorizontalScroll();
-    const frameId = window.requestAnimationFrame(resetHorizontalScroll);
-    const timer = setTimeout(resetHorizontalScroll, 50);
-    return () => {
-      window.cancelAnimationFrame(frameId);
-      clearTimeout(timer);
-    };
-  }, [dataSource, rowKey]);
-
-  useLayoutEffect(() => {
     const shell = tableShellRef.current;
     if (!shell) return;
 
@@ -171,6 +183,12 @@ const DataTable: React.FC<DataTableProps> = ({
     resizeObserver.observe(shell);
     return () => resizeObserver.disconnect();
   }, []);
+
+  // Nới bề rộng cột cho vừa tiêu đề TRƯỚC mọi phép tính bề rộng phía dưới, để tổng bề
+  // rộng bảng và scroll ngang khớp với bề rộng cột thực tế.
+  const columns = (rawColumns as any[] | undefined)
+    ?.filter((column) => !column?.hidden)
+    .map(withHeaderSafeWidth) as typeof rawColumns;
 
   const hasFixedColumns = Boolean(columns?.some((c: any) => c.fixed));
   const hasGeneratedActionColumn = Boolean(
@@ -200,6 +218,7 @@ const DataTable: React.FC<DataTableProps> = ({
         : (scroll?.x ?? ((hasFixedColumns || hasGeneratedActionColumn) ? Math.max(totalDeclaredWidth, layout.listTableMinWidth) : undefined));
 
   const tableScroll = {
+    ...scroll,
     x: resolvedScrollX,
   };
   const tableLayout = 'fixed' as const;
@@ -207,13 +226,21 @@ const DataTable: React.FC<DataTableProps> = ({
   if (children) {
     return (
       <div ref={tableShellRef} className="list-view-table-shell" style={{ width: '100%', minWidth: 0, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      {tableRowStripeBg !== 'transparent' && (
+        <style>{`
+          .list-view-row-stripe > td { background: ${tableRowStripeBg}; }
+          .list-view-row-stripe > td.ant-table-cell-fix-left,
+          .list-view-row-stripe > td.ant-table-cell-fix-right { background: ${tableRowStripeBg} !important; }
+        `}</style>
+      )}
         <Table dataSource={dataSource} rowKey={rowKey} loading={loading}
+          rowClassName={(_: any, index: number) => (index % 2 === 1 ? 'list-view-row-stripe' : '')}
           className="list-view-table"
           pagination={false}
           tableLayout={tableLayout}
           scroll={resolvedScroll}
           style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
-          locale={{ emptyText: emptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
+          locale={{ emptyText: emptyState || tableEmptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
           {...rest}>{children}</Table>
       </div>
     );
@@ -246,7 +273,9 @@ const DataTable: React.FC<DataTableProps> = ({
 
   const antdColumns: ColumnsType<any> | undefined = cols.map((col: any) => {
     const dataKey = col.dataIndex || col.key;
-    const isSortable = Boolean(col.sortable || col.sorter);
+    // Theme quyết định có bật sắp xếp sẵn hay không. Chỉ áp cho cột có
+    // `dataIndex` — STT và cột thao tác không có nên luôn nằm ngoài, đúng như chk.
+    const isSortable = col.sortable ?? Boolean(col.sorter || (tableSortableByDefault && col.dataIndex));
     const sorterFn = typeof col.sorter === 'function'
       ? col.sorter
       : isSortable
@@ -266,6 +295,7 @@ const DataTable: React.FC<DataTableProps> = ({
         : (col.key === explicitStretchColumn?.key ? explicitStretchColumnWidth : col.width),
       sorter: sorterFn,
       sortDirections: ['ascend', 'descend'],
+      ...(tableSortIcon ? { sortIcon: tableSortIcon } : null),
       showSorterTooltip: false,
       align: col.align,
       fixed: col.fixed,
@@ -288,39 +318,37 @@ const DataTable: React.FC<DataTableProps> = ({
                 }
               : undefined,
       onHeaderCell: () => ({
+        className: isSortable ? (col.sortOrder ? 'ant-table-column-has-sorters ant-table-column-sort' : 'ant-table-column-has-sorters') : undefined,
         style: {
-          background: tableHeaderBg,
-          color: colors.sidebarBg,
           fontWeight: fontWeightBold,
-          fontSize: fontSizeMd,
           textTransform: 'uppercase',
-          padding: '10px 12px',
-          cursor: col.sortable ? 'pointer' : undefined,
+          padding: col.key === 'stt' ? '10px 4px' : tableHeaderPadding,
+          cursor: isSortable ? 'pointer' : undefined,
+          // Tiêu đề cột BẮT BUỘC hiển thị đủ chữ, không cắt "..." — bề rộng cột đã được nới
+          // tối thiểu bằng `headerMinWidth()` nên chữ không tràn sang cột bên cạnh.
           whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
+          overflow: 'visible',
           zIndex: col.fixed ? 10 : undefined,
+          background: col.fixed ? (tableHeaderBg || '#f8fafc') : undefined,
           textAlign: col.align || 'left',
+          userSelect: 'none',
         },
-        onClick: col.sortable ? () => {
+        onClick: isSortable ? () => {
           if (onSort && dataKey) {
             const nextOrder = col.sortOrder === 'ascend' ? 'desc' : 'asc';
             onSort(dataKey, nextOrder);
           }
         } : undefined,
       }),
-      title: col.sortable ? (
-        <Tooltip title={<span style={{ fontSize: 12 }}>{col.sortOrder === 'ascend' ? 'Nhấn để sắp xếp giảm dần' : 'Nhấn để sắp xếp tăng dần'}</span>}>
-          <span style={{ whiteSpace: 'nowrap' }}>{(col as any).title ?? col.label}</span>
-        </Tooltip>
-      ) : <span style={{ whiteSpace: 'nowrap' }}>{((col as any).title ?? col.label)}</span>,
+      title: <span style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>{((col as any).title ?? col.label)}</span>,
       onCell: () => ({
         style: {
           fontSize: dense ? fontSizeSm : fontSizeMd,
           color: textPrimary,
+          padding: col.key === 'stt' ? '8px 4px' : (tableCellPadding || undefined),
           whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: col.ellipsis === false ? 'clip' : 'ellipsis',
+          overflow: col.key === 'stt' ? 'visible' : 'hidden',
+          textOverflow: (col.key === 'stt' || col.ellipsis === false) ? 'clip' : 'ellipsis',
           background: col.fixed ? '#ffffff' : undefined,
           zIndex: col.fixed ? 9 : undefined,
         },
@@ -363,13 +391,6 @@ const DataTable: React.FC<DataTableProps> = ({
   }
 
   const handleTableChange = (pagination: any, filters: any, sorter: any, extra: any) => {
-    // Một lần click header phát `onSort` hai lần: một từ `onHeaderCell.onClick`,
-    // một từ đây. Chu kỳ nội bộ của antd là ascend → descend → không sắp xếp, nên
-    // phải quy "không sắp xếp" về `asc` thì hai đường mới ra cùng kết quả ở mọi
-    // bước; nếu quy về `desc` thì lần click thứ ba bị kẹt ở giảm dần.
-    if (onSort && sorter.field) {
-      onSort(sorter.field as string, sorter.order === 'descend' ? 'desc' : 'asc');
-    }
     if (rest.onChange) {
       rest.onChange(pagination, filters, sorter, extra);
     }
@@ -377,11 +398,19 @@ const DataTable: React.FC<DataTableProps> = ({
 
   return (
     <div ref={tableShellRef} className="list-view-table-shell" style={{ width: '100%', minWidth: 0, minHeight: 0, flex: 1, display: 'flex', flexDirection: 'column' }}>
+      {tableRowStripeBg !== 'transparent' && (
+        <style>{`
+          .list-view-row-stripe > td { background: ${tableRowStripeBg}; }
+          .list-view-row-stripe > td.ant-table-cell-fix-left,
+          .list-view-row-stripe > td.ant-table-cell-fix-right { background: ${tableRowStripeBg} !important; }
+        `}</style>
+      )}
       <Table columns={antdColumns} dataSource={dataSource} rowKey={rowKey} loading={loading}
+        rowClassName={(_: any, index: number) => (index % 2 === 1 ? 'list-view-row-stripe' : '')}
         className="list-view-table"
         pagination={false}
         tableLayout={tableLayout}
-        locale={{ emptyText: emptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
+        locale={{ emptyText: emptyState || tableEmptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
         onChange={handleTableChange}
         scroll={tableScroll}
         style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1, height: '100%' }}

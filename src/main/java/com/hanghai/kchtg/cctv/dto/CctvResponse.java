@@ -2,6 +2,7 @@ package com.hanghai.kchtg.cctv.dto;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.Builder;
 import lombok.Data;
@@ -17,7 +18,6 @@ import java.util.UUID;
 public class CctvResponse {
 
     private UUID id;
-    private RecordSecurityLevel securityLevel;
     private String deviceCode;
     private String deviceName;
     private String detailedLocation;
@@ -26,8 +26,9 @@ public class CctvResponse {
     private String model;
     private UUID orgUnitId;
     private String orgUnitName;
-    private String operatingUnitId;
-    private UUID provinceId;
+    private UUID operatingUnitId;
+    private String operatingUnitName;
+    private String provinceName;
     private Integer attachedInfrastructureType;
     private UUID attachedInfrastructureId;
     private String attachedInfrastructureName;
@@ -35,6 +36,18 @@ public class CctvResponse {
     private Integer yearOfUse;
     private OperationalStatus operationalStatus;
     private ApprovalStatus approvalStatus;
+    private UUID approverLevel1;
+    private String approverLevel1Name;
+    private LocalDateTime approvedDateLevel1;
+    private UUID approverLevel2;
+    private String approverLevel2Name;
+    private LocalDateTime approvedDateLevel2;
+    private String rejectionReason;
+    private LocalDateTime submittedDate;
+    private UUID submittedBy;
+    private String submittedByName;
+    private String approvalContentLevel1;
+    private String approvalContentLevel2;
     private String specifications;
     private String maintenanceInformation;
     private String note;
@@ -44,6 +57,8 @@ public class CctvResponse {
     private Integer coordinateSystem;
     private Integer displayRule;
     private UUID spatialId;
+    private GisGeometryType geometryType;
+    private String coordinates;
     private UUID createdBy;
     private UUID updatedBy;
     private String createdByName;

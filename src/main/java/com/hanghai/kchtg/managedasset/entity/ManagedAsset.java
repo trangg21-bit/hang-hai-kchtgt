@@ -24,7 +24,6 @@ import lombok.experimental.FieldNameConstants;
 @Entity
 @Table(name = "ts_ql")
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
-@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -33,11 +32,6 @@ import lombok.experimental.FieldNameConstants;
 @FieldNameConstants
 @EntityListeners(AuditingEntityListener.class)
 public class ManagedAsset {
-
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
-    @Builder.Default
-    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

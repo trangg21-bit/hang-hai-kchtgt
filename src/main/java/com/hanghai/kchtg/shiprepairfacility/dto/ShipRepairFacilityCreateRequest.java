@@ -19,8 +19,6 @@ import java.util.UUID;
 @Builder
 public class ShipRepairFacilityCreateRequest {
 
-    private RecordSecurityLevel securityLevel;
-
     @NotBlank(message = "facilityName is required")
     @Size(max = 255)
     private String facilityName;

@@ -4,15 +4,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
-import com.hanghai.kchtg.station.entity.StationHistoryActionType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
+import com.hanghai.kchtg.port.repository.ChangeLogRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.station.dto.buoy.BuoyStationResponse;
@@ -44,12 +43,12 @@ import java.util.*;
 public class BuoyStationService {
 
     private final BuoyStationRepository phaoRepo;
-    private final HistoryService historyService;
     private final PointObjectSyncService pointObjectSyncService;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final ChangeHistoryService changeHistoryService;
+    private final ChangeLogRepository changeLogRepository;
     private final PortRepository portRepository;
     private final UserRepository userRepository;
     private final BuoyRepository buoyRepository;
@@ -141,13 +140,7 @@ public class BuoyStationService {
 
         validateInspectionDates(request.getLastInspectionDate(), request.getNextInspectionDate());
 
-        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
-                : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "buoystation", SecurityUtils.getCurrentUserPermissions(),
-                SecurityUtils.isElevatedAdministrator());
-
         BuoyStation entity = BuoyStation.builder()
-                .securityLevel(secLevel)
                 .code(request.getCode())
                 .name(request.getName())
                 .type(request.getType())
@@ -179,7 +172,7 @@ public class BuoyStationService {
                 .condition(request.getCondition())
                 .isActive(request.getIsActive())
                 .status(StationStatus.DRAFT)
-                .approvalStatus(ApprovalStatus.PROPOSED)
+                .approvalStatus(ApprovalStatus.DRAFT)
                 .build();
 
         if (entity.getUnitId() == null) {
@@ -188,10 +181,25 @@ public class BuoyStationService {
 
         if ("submit".equals(request.getAction())) {
             entity.setStatus(StationStatus.PENDING_APPROVAL);
+            entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
             entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
             UUID currentUserId = SecurityUtils.getCurrentUserId();
             entity.setSentApprovedBy(currentUserId);
             entity.setSentApprovedDate(LocalDateTime.now());
+        } else if ("approved".equals(request.getAction())) {
+            // "Lưu và phê duyệt" — duyệt thẳng
+            entity.setStatus(StationStatus.PUBLISHED);
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            entity.setApprovalLevel(ApprovalLevel.LEVEL_2);
+            UUID uid = SecurityUtils.getCurrentUserId();
+            entity.setSentApprovedBy(uid);
+            entity.setSentApprovedDate(LocalDateTime.now());
+            entity.setApprovedBy(uid);
+            entity.setApprovedDate(LocalDateTime.now());
+            entity.setLevel1ApprovedBy(uid);
+            entity.setLevel1ApprovedDate(LocalDateTime.now());
+            entity.setLevel2ApprovedBy(uid);
+            entity.setLevel2ApprovedDate(LocalDateTime.now());
         }
 
         entity = phaoRepo.save(entity);
@@ -217,20 +225,9 @@ public class BuoyStationService {
                     refId,
                     InfrastructureType.BUOY);
             entity.setSpatialId(spatialObj.getId());
-            if (geomType == GisGeometryType.POINT) {
-                try {
-                    String clean = coordinates.replace("POINT", "").replace("(", "").replace(")", "").trim();
-                    String[] parts = clean.split("\\s+");
-                    if (parts.length == 2) {
-                    }
-                } catch (Exception e) {
-                    // ignore
-                }
-            }
             entity = phaoRepo.save(entity);
         }
 
-        logHistory(entity, "CREATE", null, null, toJson(entity));
         changeHistoryService.recordChanges("BuoyStation", entity.getId().toString(),
                 entity.getCreatedBy() != null ? entity.getCreatedBy().toString() : "system",
                 new BuoyStation(), entity);
@@ -252,9 +249,6 @@ public class BuoyStationService {
             throw new EntityNotFoundException("Nhà trạm phao đã bị xóa");
         }
 
-        String oldJson = toJson(entity);
-
-        // Create snapshot for ChangeLog before modifications
         BuoyStation snapshot = BuoyStation.builder()
                 .code(entity.getCode()).name(entity.getName()).type(entity.getType())
                 .color(entity.getColor()).shape(entity.getShape())
@@ -269,93 +263,47 @@ public class BuoyStationService {
                 .objectType(entity.getObjectType()).icon(entity.getIcon())
                 .coordinateSystem(entity.getCoordinateSystem()).displayFormat(entity.getDisplayFormat())
                 .lastInspectionDate(entity.getLastInspectionDate()).nextInspectionDate(entity.getNextInspectionDate())
+                .lastRepairDate(entity.getLastRepairDate())
                 .condition(entity.getCondition()).isActive(entity.getIsActive()).status(entity.getStatus())
                 .approvalStatus(entity.getApprovalStatus()).approvalLevel(entity.getApprovalLevel())
                 .spatialId(entity.getSpatialId()).provinceId(entity.getProvinceId())
                 .rejectionReason(entity.getRejectionReason())
                 .build();
 
-        if (request.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "buoystation",
-                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-            entity.setSecurityLevel(request.getSecurityLevel());
-        }
-        if (request.getName() != null)
-            entity.setName(request.getName());
-
-        if (request.getType() != null && !request.getType().equals(entity.getType())) {
+        if (request.getName() != null) entity.setName(request.getName());
+        if (request.getType() != null) {
             if (isApprovedStatus(entity.getStatus())) {
-                throw new IllegalArgumentException(
-                        "Loại nhà trạm phao không thể thay đổi khi đã được phê duyệt.");
+                throw new IllegalArgumentException("Loại nhà trạm phao không thể thay đổi khi đã được phê duyệt.");
             }
             entity.setType(request.getType());
         }
-
-        if (request.getColor() != null)
-            entity.setColor(request.getColor());
-        if (request.getShape() != null)
-            entity.setShape(request.getShape());
-        if (request.getLightCharacteristic() != null) {
-            entity.setLightCharacteristic(request.getLightCharacteristic());
-        }
-        if (request.getRange() != null)
-            entity.setRange(request.getRange());
-        if (request.getDescription() != null)
-            entity.setDescription(request.getDescription());
-        if (request.getUnitId() != null)
-            entity.setUnitId(request.getUnitId());
-        if (request.getOperatingOrgId() != null)
-            entity.setOperatingOrgId(request.getOperatingOrgId());
-        if (request.getPortId() != null)
-            entity.setPortId(request.getPortId());
-        if (request.getWaterwayId() != null)
-            entity.setWaterwayId(request.getWaterwayId());
-        if (request.getWaterwayRouteId() != null)
-            entity.setWaterwayRouteId(request.getWaterwayRouteId());
-        if (request.getProvince() != null)
-            entity.setProvince(request.getProvince());
-        if (request.getAddress() != null)
-            entity.setAddress(request.getAddress());
-        if (request.getConstructionDate() != null)
-            entity.setConstructionDate(request.getConstructionDate());
-        if (request.getTotalArea() != null)
-            entity.setTotalArea(request.getTotalArea());
-        if (request.getUsableArea() != null)
-            entity.setUsableArea(request.getUsableArea());
-        if (request.getStaffCount() != null)
-            entity.setStaffCount(request.getStaffCount());
-        if (request.getLastMaintenanceYear() != null)
-            entity.setLastMaintenanceYear(request.getLastMaintenanceYear());
-        if (request.getNote() != null)
-            entity.setNote(request.getNote());
-        if (request.getObjectType() != null)
-            entity.setObjectType(request.getObjectType());
-        if (request.getIcon() != null)
-            entity.setIcon(request.getIcon());
-        if (request.getCoordinateSystem() != null)
-            entity.setCoordinateSystem(request.getCoordinateSystem());
-        if (request.getDisplayFormat() != null)
-            entity.setDisplayFormat(request.getDisplayFormat());
-        if (request.getLastInspectionDate() != null) {
-            entity.setLastInspectionDate(request.getLastInspectionDate());
-        }
-        if (request.getNextInspectionDate() != null) {
-            entity.setNextInspectionDate(request.getNextInspectionDate());
-        }
-        if (request.getLastRepairDate() != null) {
-            entity.setLastRepairDate(request.getLastRepairDate());
-        }
+        if (request.getColor() != null) entity.setColor(request.getColor());
+        if (request.getShape() != null) entity.setShape(request.getShape());
+        if (request.getLightCharacteristic() != null) entity.setLightCharacteristic(request.getLightCharacteristic());
+        if (request.getRange() != null) entity.setRange(request.getRange());
+        if (request.getDescription() != null) entity.setDescription(request.getDescription());
+        if (request.getUnitId() != null) entity.setUnitId(request.getUnitId());
+        if (request.getOperatingOrgId() != null) entity.setOperatingOrgId(request.getOperatingOrgId());
+        if (request.getPortId() != null) entity.setPortId(request.getPortId());
+        if (request.getWaterwayId() != null) entity.setWaterwayId(request.getWaterwayId());
+        if (request.getWaterwayRouteId() != null) entity.setWaterwayRouteId(request.getWaterwayRouteId());
+        if (request.getProvince() != null) entity.setProvince(request.getProvince());
+        if (request.getAddress() != null) entity.setAddress(request.getAddress());
+        if (request.getConstructionDate() != null) entity.setConstructionDate(request.getConstructionDate());
+        if (request.getTotalArea() != null) entity.setTotalArea(request.getTotalArea());
+        if (request.getUsableArea() != null) entity.setUsableArea(request.getUsableArea());
+        if (request.getStaffCount() != null) entity.setStaffCount(request.getStaffCount());
+        if (request.getLastMaintenanceYear() != null) entity.setLastMaintenanceYear(request.getLastMaintenanceYear());
+        if (request.getNote() != null) entity.setNote(request.getNote());
+        if (request.getObjectType() != null) entity.setObjectType(request.getObjectType());
+        if (request.getIcon() != null) entity.setIcon(request.getIcon());
+        if (request.getCoordinateSystem() != null) entity.setCoordinateSystem(request.getCoordinateSystem());
+        if (request.getDisplayFormat() != null) entity.setDisplayFormat(request.getDisplayFormat());
+        if (request.getLastInspectionDate() != null) entity.setLastInspectionDate(request.getLastInspectionDate());
+        if (request.getNextInspectionDate() != null) entity.setNextInspectionDate(request.getNextInspectionDate());
+        if (request.getLastRepairDate() != null) entity.setLastRepairDate(request.getLastRepairDate());
         if (request.getCondition() != null) entity.setCondition(request.getCondition());
         if (request.getIsActive() != null) entity.setIsActive(request.getIsActive());
-
-        boolean wasApproved = isApprovedStatus(entity.getStatus())
-                || entity.getApprovalStatus() == ApprovalStatus.APPROVED
-                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
-
-        if (wasApproved) {
-            entity.setStatus(StationStatus.APPROVED_L2);
-            entity.setApprovalStatus(ApprovalStatus.APPROVED);
-        }
 
         phaoRepo.save(entity);
 
@@ -382,13 +330,10 @@ public class BuoyStationService {
             entity.setSpatialId(spatialObj.getId());
         }
 
-        String newJson = toJson(entity);
-        if (wasApproved && !compareJsonNodes(oldJson, newJson)) {
-            logHistory(entity, "UPDATE",
-                    getChangedFields(oldJson, newJson), oldJson, newJson);
-            changeHistoryService.recordChanges("BuoyStation", entity.getId().toString(),
-                    "system", snapshot, entity);
-        }
+        changeHistoryService.recordChanges("BuoyStation", entity.getId().toString(),
+                SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : "system",
+                snapshot, entity);
+
         return toResponse(entity);
     }
 
@@ -400,7 +345,7 @@ public class BuoyStationService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Nhà trạm phao không tìm thấy: " + id));
 
-        if ("DELETED".equals(entity.getStatus())) {
+        if (StationStatus.DELETED.equals(entity.getStatus())) {
             throw new IllegalArgumentException("Nhà trạm phao này đã bị xóa trước đó");
         }
 
@@ -416,8 +361,8 @@ public class BuoyStationService {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
 
-        logHistory(entity, "SOFT_DELETE", null, null, toJson(entity));
-        changeHistoryService.insertChangeRecord("BuoyStation", entity.getId(), "Trạng thái", null, "Đã xóa", "system");
+        changeHistoryService.insertChangeRecord("BuoyStation", entity.getId(), "Trạng thái", null, "Đã xóa",
+                SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : "system");
 
         pointObjectSyncService.hideFromMapPhao(entity);
     }
@@ -430,14 +375,13 @@ public class BuoyStationService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Nhà trạm phao không tìm thấy: " + id));
 
-        if (!StationStatus.DRAFT.equals(entity.getStatus()) && !StationStatus.REJECTED.equals(entity.getStatus())
-                && !StationStatus.PENDING_APPROVAL.equals(entity.getStatus())) {
+        if (!StationStatus.DRAFT.equals(entity.getStatus()) && !StationStatus.REJECTED.equals(entity.getStatus())) {
             throw new IllegalStateException(
-                    "Chỉ có thể gửi phê duyệt khi status = DRAFT, REJECTED hoặc PENDING_APPROVAL");
+                    "Chỉ có thể gửi phê duyệt khi status = DRAFT hoặc REJECTED");
         }
 
         entity.setStatus(StationStatus.PENDING_APPROVAL);
-        entity.setApprovalStatus(ApprovalStatus.PROPOSED);
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         entity.setSentApprovedBy(currentUserId);
@@ -448,7 +392,7 @@ public class BuoyStationService {
     }
 
     @Transactional
-    public BuoyStationResponse approveL1(UUID id, java.util.UUID approverId, String content) {
+    public BuoyStationResponse approveL1(UUID id, UUID approverId, String content) {
         BuoyStation entity = phaoRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Nhà trạm phao không tìm thấy: " + id));
@@ -467,14 +411,13 @@ public class BuoyStationService {
         if (content != null && !content.isBlank()) entity.setLevel1ApprovalContent(content.trim());
         phaoRepo.save(entity);
 
-        logHistory(entity, "APPROVE_L1", null, null, null);
         notificationService.sendL2ApprovalNotificationPhao(entity);
 
         return toResponse(entity);
     }
 
     @Transactional
-    public BuoyStationResponse approveL2(UUID id, java.util.UUID approverId, String content) {
+    public BuoyStationResponse approveL2(UUID id, UUID approverId, String content) {
         BuoyStation entity = phaoRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Nhà trạm phao không tìm thấy: " + id));
@@ -485,7 +428,7 @@ public class BuoyStationService {
         }
 
         entity.setStatus(StationStatus.PUBLISHED);
-        entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
         entity.setApprovedBy(approverId);
         entity.setApprovedDate(LocalDateTime.now());
         entity.setLevel2ApprovedBy(approverId);
@@ -493,15 +436,13 @@ public class BuoyStationService {
         if (content != null && !content.isBlank()) entity.setLevel2ApprovalContent(content.trim());
         phaoRepo.save(entity);
 
-        logHistory(entity, "APPROVE_L2", null, null, null);
-
         pointObjectSyncService.syncToMapPhao(entity);
 
         return toResponse(entity);
     }
 
     @Transactional
-    public BuoyStationResponse reject(UUID id, String rejectReason, java.util.UUID approverId) {
+    public BuoyStationResponse reject(UUID id, String rejectReason, UUID approverId) {
         BuoyStation entity = phaoRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Nhà trạm phao không tìm thấy: " + id));
@@ -512,31 +453,16 @@ public class BuoyStationService {
         }
 
         entity.setStatus(StationStatus.REJECTED);
-        entity.setApprovalStatus(ApprovalStatus.REJECTED);
+        entity.setApprovalStatus(ApprovalStatus.REJECTED_LEVEL1);
         entity.setRejectionReason(rejectReason);
         phaoRepo.save(entity);
 
-        logHistory(entity, "REJECT", null, null, rejectReason);
         notificationService.sendRejectionNotificationPhao(entity, rejectReason);
 
         return toResponse(entity);
     }
 
     // -- HELPERS --
-
-    private void validateCoordinates(Double longitude, Double latitude) {
-        if (longitude == null || latitude == null) {
-            throw new IllegalArgumentException("Tọa độ không được để trống");
-        }
-        if (longitude < -180.0 || longitude > 180.0) {
-            throw new IllegalArgumentException(
-                    "Kinh độ phải trong khoảng -180~180 (WGS84)");
-        }
-        if (latitude < -90.0 || latitude > 90.0) {
-            throw new IllegalArgumentException(
-                    "Vĩ độ phải trong khoảng -90~90 (WGS84)");
-        }
-    }
 
     private void validateInspectionDates(LocalDate last, LocalDate next) {
         if (last != null && last.isAfter(LocalDate.now())) {
@@ -549,39 +475,9 @@ public class BuoyStationService {
         }
     }
 
-    private void logHistory(BuoyStation entity,
-            String action, String fields, String previousJson, String newJson) {
-        String newValue = newJson != null ? newJson : ("REJECT".equals(action) ? "REJECTED" : null);
-        if (fields != null && !fields.isBlank()) {
-            newValue = newValue == null ? fields : (fields + " — " + newValue);
-        }
-        historyService.recordHistory(
-                InfrastructureType.BUOY_STATION,
-                entity.getId(),
-                toActionType(action),
-                previousJson,
-                newValue,
-                SecurityUtils.getCurrentUserId());
-    }
-
-    private StationHistoryActionType toActionType(String action) {
-        if (action == null) {
-            return StationHistoryActionType.UPDATE;
-        }
-        return switch (action) {
-            case "CREATE" -> StationHistoryActionType.CREATE;
-            case "SOFT_DELETE", "DELETE" -> StationHistoryActionType.DELETE;
-            case "APPROVE_L1" -> StationHistoryActionType.APPROVE_L1;
-            case "APPROVE_L2" -> StationHistoryActionType.APPROVE_L2;
-            case "REJECT" -> StationHistoryActionType.REJECT;
-            default -> StationHistoryActionType.UPDATE;
-        };
-    }
-
     private BuoyStationResponse toResponse(BuoyStation entity) {
         BuoyStationResponse.BuoyStationResponseBuilder builder = BuoyStationResponse.builder()
                 .id(entity.getId())
-                .securityLevel(entity.getSecurityLevel())
                 .code(entity.getCode())
                 .name(entity.getName())
                 .type(entity.getType())
@@ -609,6 +505,7 @@ public class BuoyStationService {
                 .displayFormat(entity.getDisplayFormat())
                 .lastInspectionDate(entity.getLastInspectionDate())
                 .nextInspectionDate(entity.getNextInspectionDate())
+                .lastRepairDate(entity.getLastRepairDate())
                 .condition(entity.getCondition())
                 .isActive(entity.getIsActive())
                 .status(entity.getStatus() != null ? entity.getStatus().name() : null)
@@ -680,7 +577,7 @@ public class BuoyStationService {
         return "PENDING_APPROVAL".equals(name);
     }
 
-    private java.util.UUID getCurrentUserUnitId() {
+    private UUID getCurrentUserUnitId() {
         return null;
     }
 
@@ -692,14 +589,6 @@ public class BuoyStationService {
     }
 
     // -- JSON Comparison --
-
-    private String toJson(BuoyStation entity) {
-        try {
-            return objectMapper.writeValueAsString(toResponse(entity));
-        } catch (Exception e) {
-            return "{}";
-        }
-    }
 
     private boolean compareJsonNodes(String json1, String json2) {
         try {

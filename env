@@ -21,3 +21,4 @@ DB_PORT=5432
 DB_NAME=vmd_csdl_v2
 DB_USER=vmd_mtis_geo
 DB_PASS=VmdMtisPostgis@123
+

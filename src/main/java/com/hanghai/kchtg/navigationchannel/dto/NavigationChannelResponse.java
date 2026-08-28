@@ -28,7 +28,6 @@ import java.util.UUID;
 public class NavigationChannelResponse {
 
     private UUID id;
-    private RecordSecurityLevel securityLevel;
     private String channelName;
     private String channelCode;
     private UUID seaportId;

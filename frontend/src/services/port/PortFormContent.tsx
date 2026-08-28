@@ -15,10 +15,7 @@ import {
 } from '../../tokens';
 import PagedTable from '../../components/list-view/PagedTable';
 import { normalizeSearchText } from '../../components/org-unit';
-
-const labelProps = (text: string) => ({
-  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
-});
+import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 
 const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
@@ -119,7 +116,7 @@ export default function PortFormContent({
           </Row>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="province" {...labelProps('Địa điểm (Tỉnh/Thành phố)')} required style={{ marginBottom: spaceFormField }}>
+              <Form.Item name="province" {...labelProps('Địa điểm (Tỉnh/Thành Phố)')} required style={{ marginBottom: spaceFormField }}>
                 <Select showSearch placeholder="Chọn tỉnh/thành phố..."
                   filterOption={(input: string, option: any) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
                   options={provinces.map((p: string) => ({ value: p, label: p }))} style={selectStyle} />
@@ -290,7 +287,6 @@ export default function PortFormContent({
           <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>
               <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS</span>
-              <span style={{ color: colors.error, marginLeft: 4, fontSize: fontSizeMd }}>*</span>
             </span>
             {gpsCoordList.length > 0 && (
               <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addGpsPoint} style={{ borderRadius: radiusPill }}>

@@ -1,5 +1,6 @@
 import api from './api';
 import { toArray, toSingle, toTotalCount } from './resilient';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from './operatingOrganizationsData';
 import type {
   VtsSystemResponse,
   VtsSystemAttachment,
@@ -13,20 +14,38 @@ import type {
   VtsZoneDto,
 } from '../types/vtsSystem';
 
+import { organizationService } from './organizationService';
+import { MOCK_ORGANIZATIONS } from './mockData';
+
 const VTS_BASE_PATH = '/v1/vts-system';
 const COMMON_OPTIONS_BASE_PATH = '/common/options';
 
 export const vtsSystemCRUD = {
   async getScopedOrgUnitOptions(): Promise<Array<{ id: string; name: string; code?: string; path?: string; parentId?: string }>> {
-    const res = await api.get(`${COMMON_OPTIONS_BASE_PATH}/org-units`);
-    const data = res.data?.data;
-    return Array.isArray(data) ? data : [];
+    try {
+      const orgs = await organizationService.getAll();
+      if (Array.isArray(orgs) && orgs.length > 0) return orgs;
+    } catch {
+      // ignore
+    }
+    return MOCK_ORGANIZATIONS;
   },
 
   async getScopedPortOptions(): Promise<Array<{ id: string; portCode?: string; portName?: string; orgUnitId?: string }>> {
     const res = await api.get(`${COMMON_OPTIONS_BASE_PATH}/ports`);
     const data = res.data?.data;
     return Array.isArray(data) ? data : [];
+  },
+
+  async getOperatingOrganizationOptions(): Promise<Array<{ id: string; name: string; code: string }>> {
+    try {
+      const res = await api.get(`${COMMON_OPTIONS_BASE_PATH}/operating-organizations`);
+      const data = res.data?.data;
+      if (Array.isArray(data) && data.length > 0) return data;
+    } catch {
+      // ignore
+    }
+    return DEFAULT_OPERATING_ORGANIZATIONS;
   },
 
   async getOptions(params?: { orgUnitId?: string }): Promise<Array<{ id: string; name: string; code?: string; orgUnitId?: string }>> {
@@ -54,12 +73,18 @@ export const vtsSystemCRUD = {
     const res = await api.get(VTS_BASE_PATH, {
       params: {
         orgUnitId: params?.orgUnitId,
+        portId: params?.portId,
+        provinceId: params?.provinceId,
         page: params?.page || 0,
         size: params?.size || 20,
         keyword: params?.keyword,
         conditionStatus: params?.conditionStatus,
         approvalStatus: params?.approvalStatus,
         year: params?.year,
+        operationStartDateFrom: params?.operationStartDateFrom,
+        operationStartDateTo: params?.operationStartDateTo,
+        updatedFrom: params?.updatedFrom,
+        updatedTo: params?.updatedTo,
         includeCounts: params?.includeCounts ?? true,
         // `<field>,<asc|desc>` — sắp xếp thực hiện ở server để áp dụng cho toàn bộ
         // kết quả, không chỉ trang đang hiển thị.
@@ -131,6 +156,19 @@ export const vtsSystemCRUD = {
   async getByStatus(status: string): Promise<VtsSystemResponse[]> {
     const res = await api.get(`${VTS_BASE_PATH}/approval-status/${status}`);
     return toArray<VtsSystemResponse>(res.data);
+  },
+
+  async generateCode(): Promise<{ code: string }> {
+    try {
+      const res = await api.get(`${VTS_BASE_PATH}/generate-code`);
+      const val = toSingle<{ code: string }>(res.data) || res.data?.data || res.data;
+      if (val && typeof val === 'object' && 'code' in val && val.code) {
+        return { code: String(val.code) };
+      }
+    } catch {
+      // Fallback if needed
+    }
+    return { code: 'VTS-000001' };
   },
 };
 

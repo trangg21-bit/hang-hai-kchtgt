@@ -1,0 +1,71 @@
+{
+  "triage_id": "TRI-1787721994057-ce85",
+  "created_at": 1787721994057,
+  "request_summary": "User yêu cầu đảo style section: (1) \"Thông tin khu nước neo buộc tàu\" + \"Tọa độ điểm neo\" giảm về 13px #12468C (labelStyle — giống label \"Hệ quy chiếu\"); (2) \"Vị trí cụ thể điểm neo\" 16px = title drawer (drawerTitleStyle + fontSize 16). Thêm const sectionLabelStyle và đổi 3 span tương ứng.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/anchorage/AnchorageForm.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/anchorage/AnchorageForm.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Form/ Drawer con Khu nước neo buộc tàu — 3 section title",
+  "blast_radius": 1,
+  "done_oracle": "Trong form Khu neo đậu: section \"Thông tin khu nước neo buộc tàu\" và \"Tọa độ điểm neo\" hiển thị 13px #12468C (giống label \"Hệ quy chiếu\"); \"Vị trí cụ thể điểm neo\" 16px (bằng title drawer \"Thêm mới thông tin khu nước neo buộc tàu\").",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht\\frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "line": 702,
+      "quote": "<span style={sectionTitleStyle}>Thông tin khu nước neo buộc tàu</span>",
+      "source_hash": "b331c372a62e837c0043c381d16ddc4c39bd41cb44c0e8c8393b90aeea7379f1",
+      "quote_hash": "bf47604e64e8217cf9642f686c971edde36d7f6d02c78ef3949e6f1efb739612",
+      "note": "Đổi sang label style"
+    },
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "line": 801,
+      "quote": "<span style={sectionTitleStyle}>Vị trí cụ thể điểm neo</span>",
+      "source_hash": "b331c372a62e837c0043c381d16ddc4c39bd41cb44c0e8c8393b90aeea7379f1",
+      "quote_hash": "67671622c396a83693f3c4d9db7fcc5c7cc806e2322980b05c33b397ce8bcfae",
+      "note": "Đổi sang 16px như title drawer"
+    },
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "line": 840,
+      "quote": "<span style={sectionTitleStyle}>Tọa độ điểm neo</span>",
+      "source_hash": "b331c372a62e837c0043c381d16ddc4c39bd41cb44c0e8c8393b90aeea7379f1",
+      "quote_hash": "7deb89682bbbc5ee56de2808cf85e83b20a2b5391000bc71109efabfc86fd7f4",
+      "note": "Đổi sang label style"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787721994320
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

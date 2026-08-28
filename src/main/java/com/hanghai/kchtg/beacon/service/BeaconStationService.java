@@ -153,13 +153,7 @@ public class BeaconStationService {
 
         validateMaintenanceDates(request.getLastRepairDate(), request.getCommissionedDate());
 
-        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
-                : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "beaconstation", SecurityUtils.getCurrentUserPermissions(),
-                SecurityUtils.isElevatedAdministrator());
-
         BeaconStation entity = BeaconStation.builder()
-                .securityLevel(secLevel)
                 .code(request.getCode())
                 .name(request.getName())
                 .type(request.getType())
@@ -276,11 +270,6 @@ public class BeaconStationService {
             wkt = "POINT(" + currentLon + " " + currentLat + ")";
         }
 
-        if (request.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "beaconstation",
-                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-            entity.setSecurityLevel(request.getSecurityLevel());
-        }
         if (request.getTowerColor() != null)
             entity.setTowerColor(request.getTowerColor());
         if (request.getPrimaryLightModel() != null) {
@@ -550,9 +539,12 @@ public class BeaconStationService {
                 .changedAt(LocalDateTime.now())
                 .reason(action == BeaconHistoryActionType.REJECT ? newJson : null)
                 .build();
-        if (historyRepo != null) {
-            historyRepo.save(entry);
-        }
+        // TODO (2026-08-26): tạm ẩn ghi beacon_history — DB đang chạy chưa có bảng này
+        // (ERROR: relation "beacon_history" does not exist; migration
+        // V20260803370000__repair_all_schema_types_and_columns.sql chưa được áp dụng).
+        // if (historyRepo != null) {
+        //     historyRepo.save(entry);
+        // }
 
         if (infraHistoryRepo != null && entity.getId() != null) {
             InfrastructureHistoryStatus status = switch (action) {
@@ -606,7 +598,6 @@ public class BeaconStationService {
 
         return BeaconStationResponse.builder()
                 .id(entity.getId())
-                .securityLevel(entity.getSecurityLevel())
                 .code(entity.getCode())
                 .name(entity.getName())
                 .type(entity.getType())

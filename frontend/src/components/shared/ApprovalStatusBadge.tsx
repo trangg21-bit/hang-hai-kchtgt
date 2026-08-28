@@ -4,9 +4,9 @@ import {
   statusCritical,
   statusDraft,
   textTertiary,
-  radiusPill,
 } from '../../tokens';
 import { normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { useThemeToken } from '../../context/ThemeTokenContext';
 
 export type ApprovalStatusType = 'PROPOSED' | 'PENDING' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | string;
 
@@ -56,26 +56,34 @@ export const APPROVAL_STATUS_OPTIONS = [
   'REJECTED_LEVEL2',
 ].map((value) => ({ value, label: APPROVAL_STATUS_STYLE[value].label }));
 
+/** Trạng thái → tên token màu, để badge đổi theo bộ theme đang áp. */
+const STATUS_COLOR_TOKEN: Record<string, 'statusDraft' | 'statusAttention' | 'statusInfo' | 'statusCritical' | 'statusOperational' | 'textTertiary'> = {
+  DRAFT: 'statusDraft',
+  PENDING_APPROVAL: 'statusAttention',
+  APPROVED_LEVEL1: 'statusInfo',
+  REJECTED_LEVEL1: 'statusCritical',
+  REJECTED_LEVEL2: 'statusCritical',
+  APPROVED: 'statusOperational',
+  ARCHIVED: 'textTertiary',
+};
+
 export default function ApprovalStatusBadge({ status, size = 'default' }: ApprovalStatusBadgeProps) {
+  const t = useThemeToken();
   // Chuẩn hóa mã legacy (PROPOSED, PUBLISHED, APPROVED_L1, NHAP, CHO_PHE_DUYET...)
   // trước khi tra nhãn, để không màn nào hiển thị ra mã thô.
   const normalized = normalizeApprovalStatus(status);
-  const config = APPROVAL_STATUS_STYLE[normalized] || { label: status || '—', color: textTertiary };
+  const base = APPROVAL_STATUS_STYLE[normalized];
+  // Nhãn vẫn lấy từ bảng chuẩn dùng chung; riêng MÀU đi qua theme đang áp.
+  const config = {
+    label: base?.label ?? (status || '—'),
+    color: t[STATUS_COLOR_TOKEN[normalized] ?? 'textTertiary'],
+  };
 
   return (
     <span
       style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        padding: size === 'small' ? '1px 8px' : '2px 10px',
-        borderRadius: radiusPill,
-        fontSize: size === 'small' ? '12px' : '13px',
-        fontWeight: 500,
-        background: `${config.color}15`,
-        color: config.color,
-        border: `1px solid ${config.color}40`,
-        marginLeft: -6,
+        ...t.statusBadgeStyle(config.color),
+        ...(size === 'small' ? { padding: '1px 8px', fontSize: t.fontSizeMd - 1 } : null),
       }}
     >
       {config.label}

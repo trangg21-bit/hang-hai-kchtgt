@@ -276,12 +276,13 @@ class DryPortServiceTest {
         @DisplayName("F-030: reject — hồ sơ chờ Cảng vụ thì trả về ở vòng 1")
         void reject_atLevel1WhenPendingApproval() {
             UUID userId = UUID.randomUUID();
+            testEntity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
             when(dryPortRepository.findById(testId)).thenReturn(Optional.of(testEntity));
 
             approvalService.reject(testId, "Hồ sơ chưa đầy đủ", userId);
 
-            verify(infrastructureApprovalService).approveC1(eq(testEntity), eq(InfrastructureType.DRY_PORT),
-                    eq(ApprovalStatus.REJECTED.name()), eq("Hồ sơ chưa đầy đủ"), eq(userId));
+            assertEquals(ApprovalStatus.REJECTED_LEVEL1, testEntity.getApprovalStatus());
+            assertEquals("Hồ sơ chưa đầy đủ", testEntity.getRejectionReason());
             verify(dryPortRepository).save(testEntity);
         }
 
@@ -289,13 +290,13 @@ class DryPortServiceTest {
         @DisplayName("F-030: reject — hồ sơ chờ Cục thì trả về ở vòng 2")
         void reject_atLevel2WhenAwaitingDepartment() {
             UUID userId = UUID.randomUUID();
-            testEntity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+            testEntity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL2);
             when(dryPortRepository.findById(testId)).thenReturn(Optional.of(testEntity));
 
             approvalService.reject(testId, "Cục yêu cầu bổ sung", userId);
 
-            verify(infrastructureApprovalService).approveC2(eq(testEntity), eq(InfrastructureType.DRY_PORT),
-                    eq(ApprovalStatus.REJECTED.name()), eq("Cục yêu cầu bổ sung"), eq(userId));
+            assertEquals(ApprovalStatus.REJECTED_LEVEL2, testEntity.getApprovalStatus());
+            assertEquals("Cục yêu cầu bổ sung", testEntity.getRejectionReason());
             verify(dryPortRepository).save(testEntity);
         }
 

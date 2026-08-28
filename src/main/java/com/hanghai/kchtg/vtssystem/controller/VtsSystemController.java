@@ -24,6 +24,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -47,22 +49,43 @@ public class VtsSystemController {
         return ResponseEntity.ok(ApiResponse.success("Tạo mới thành công", response));
     }
 
+    @PreAuthorize("@auth.check(authentication, 'vts:create')")
+    @GetMapping("/generate-code")
+    public ResponseEntity<ApiResponse<java.util.Map<String, String>>> generateCode() {
+        String code = service.generateCode();
+        return ResponseEntity.ok(ApiResponse.success("Sinh mã thành công", java.util.Map.of("code", code)));
+    }
+
     @PreAuthorize("@auth.check(authentication, 'vts:read')")
     @DataScope
     @GetMapping
     public ResponseEntity<ApiResponse<VtsSystemListResponse>> findAll(
             @RequestParam(required = false) UUID orgUnitId,
+            @RequestParam(required = false) UUID portId,
+            @RequestParam(required = false) Integer provinceId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) ConditionStatus conditionStatus,
             @RequestParam(required = false) ApprovalStatus approvalStatus,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate operationStartDateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate operationStartDateTo,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime updatedFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime updatedTo,
             @RequestParam(required = false) Integer year,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "true") boolean includeCounts,
             @RequestParam(required = false) String sort) {
         VtsSystemListResponse responses = service.findAllWithSearchAndCounts(
-                orgUnitId, keyword, conditionStatus, approvalStatus, year, page, size, includeCounts, sort);
+                orgUnitId, portId, provinceId, keyword, conditionStatus, approvalStatus,
+                operationStartDateFrom, operationStartDateTo, updatedFrom, updatedTo,
+                year, page, size, includeCounts, sort);
         return ResponseEntity.ok(ApiResponse.success("Danh sách hệ thống VTS", responses));
+    }
+
+    public ResponseEntity<ApiResponse<VtsSystemListResponse>> findAll(
+            UUID orgUnitId, String keyword, ConditionStatus conditionStatus, ApprovalStatus approvalStatus,
+            Integer year, int page, int size, boolean includeCounts, String sort) {
+        return findAll(orgUnitId, null, null, keyword, conditionStatus, approvalStatus, null, null, null, null, year, page, size, includeCounts, sort);
     }
 
     @PreAuthorize("isAuthenticated()")

@@ -21,7 +21,6 @@ import java.util.UUID;
 public class PortResponse {
 
     private UUID id;
-    private RecordSecurityLevel securityLevel;
     private String portCode;
     private String portName;
     private Integer provinceId;

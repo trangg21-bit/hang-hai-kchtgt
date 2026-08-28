@@ -10,16 +10,13 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.FieldNameConstants;
 import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
-
-import com.hanghai.kchtg.security.RecordSecurityLevel;
-import lombok.Builder;
-import lombok.experimental.FieldNameConstants;
 
 /**
  * Entity representing an inland port / dry port (Cảng cạn) — independent, no
@@ -35,13 +32,7 @@ import lombok.experimental.FieldNameConstants;
 @SuperBuilder
 @FieldNameConstants
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
-@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 public class DryPort extends BaseEntity implements ApprovableEntity {
-
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
-    @Builder.Default
-    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
 
     @Column(name = "dry_port_code", nullable = false, unique = true, length = 50)
     private String dryPortCode;

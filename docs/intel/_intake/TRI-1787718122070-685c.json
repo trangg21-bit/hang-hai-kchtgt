@@ -1,0 +1,71 @@
+{
+  "triage_id": "TRI-1787718122070-685c",
+  "created_at": 1787718122070,
+  "request_summary": "Bảng \"Thông tin khu nước neo buộc tàu\" (AnchorageForm:714) và bảng \"Điểm neo\" (AnchorageForm:857) hiển thị 2 cột STT vì PagedTable (list-view/PagedTable.tsx) TỰ ĐỘNG thêm cột STT (dataIndex __stt) trước children, còn 2 bảng này lại khai thêm Table.Column STT trong children. Sửa: xóa Table.Column STT trùng trong 2 bảng (giữ mapping _idx cho các cột khác).",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/anchorage/AnchorageForm.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/anchorage/AnchorageForm.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Form Thêm mới/Chỉnh sửa Khu neo đậu — bảng khu nước neo buộc tàu + bảng điểm neo",
+  "blast_radius": 1,
+  "done_oracle": "Bảng \"Thông tin khu nước neo buộc tàu\" và bảng \"Điểm neo\" trong Drawer con hiển thị ĐÚNG 1 cột STT (do PagedTable tự thêm), không còn 2 cột STT chồng nhau.",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht\\frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "line": 714,
+      "quote": "<Table.Column title=\"STT\" key=\"stt\" width={60} align=\"center\"",
+      "source_hash": "2fe4db37abb820956cafc250ab2a97e2ab5a8c47bebfe25fb48c3d4e5ac834f2",
+      "quote_hash": "11e4ca794ed538cf9d87f24d88512dd29fe184903b687c1712352bd03778dc08",
+      "note": "STT trùng — PagedTable đã tự thêm cột STT"
+    },
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "line": 857,
+      "quote": "<Table.Column title=\"STT\" key=\"stt\" width={50} align=\"center\"",
+      "source_hash": "2fe4db37abb820956cafc250ab2a97e2ab5a8c47bebfe25fb48c3d4e5ac834f2",
+      "quote_hash": "28865935b7b0dca1565df4907d502d4491ec35dbb2945c3f4132bd686a529d5e",
+      "note": "STT trùng trong bảng Điểm neo"
+    },
+    {
+      "file": "frontend/src/components/list-view/PagedTable.tsx",
+      "line": 51,
+      "quote": "<Table.Column title=\"STT\" key=\"stt\" dataIndex=\"__stt\" width={60} align=\"center\"",
+      "source_hash": "e5902dc41e7ec9da8c68a41635c8a20d8fc4a257ad7d9f63024bcb8fa6e6d9db",
+      "quote_hash": "ba153936b880c55047b6c99d1224524ece7f37ffd6e4d7ea6eab3cc9e93ecf55",
+      "note": "PagedTable tự thêm cột STT dùng __stt — bảng con không được khai STT nữa"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787718122454
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

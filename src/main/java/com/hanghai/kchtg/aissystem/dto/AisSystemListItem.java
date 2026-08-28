@@ -25,6 +25,10 @@ public class AisSystemListItem {
     private String vtsOperationCenterName;
     private UUID vtsSystemId;
     private String vtsSystemName;
+    private UUID radarStationId;
+    private String radarStationName;
+    private String locationTypeName;
+    private String attachedLocationName;
     private UUID operatingOrgId;
     private String operatingOrgName;
     private UUID orgUnitId;

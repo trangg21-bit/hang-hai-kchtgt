@@ -16,7 +16,6 @@ import java.util.UUID;
 @Builder
 public class BerthResponse {
     private UUID id;
-    private RecordSecurityLevel securityLevel;
     private String berthCode;
     private String berthName;
     private UUID portId;

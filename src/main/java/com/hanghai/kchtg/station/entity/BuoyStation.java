@@ -32,13 +32,7 @@ import lombok.experimental.FieldNameConstants;
 @FieldNameConstants
 @SQLRestriction("deleted_at IS NULL")
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "unit_id IN (:orgUnitIds)")
-@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 public class BuoyStation extends BaseEntity {
-
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
-    @Builder.Default
-    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
 
     @Column(name = "province_id")
     private Integer provinceId;

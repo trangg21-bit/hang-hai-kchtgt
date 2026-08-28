@@ -1,0 +1,251 @@
+{
+  "info": {
+    "_postman_id": "b8d7c6a5-2e3f-4a5b-6c7d-250ad82b4980",
+    "name": "KCHTGT - Quan Ly Dai TTXLTT Ha Noi",
+    "description": "Postman Collection mô tả đầy đủ các thao tác của người dùng tạo dữ liệu cho màn hình Quản lý Đài TTXLTT Hà Nội (http://localhost:3001/station/hanoi)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "createdHanoiId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "1.1 Đăng nhập lấy Token (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.accessToken) {",
+                  "    pm.collectionVariables.set('authToken', jsonData.data.accessToken);",
+                  "    console.log('Access token saved');",
+                  "} else if (jsonData.accessToken) {",
+                  "    pm.collectionVariables.set('authToken', jsonData.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"Password@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Nghiệp vụ Đài TTXLTT Hà Nội",
+      "item": [
+        {
+          "name": "2.1 Lấy danh sách phân trang và thống kê StatusTabs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stations/haiphong?page=0&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["stations", "haiphong"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.2 Lấy thống kê số lượng bản ghi các Tab",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stations/haiphong/counts",
+              "host": ["{{baseUrl}}"],
+              "path": ["stations", "haiphong", "counts"]
+            }
+          }
+        },
+        {
+          "name": "2.3 Tạo mới Đài TTXLTT (Lưu tạm - DRAFT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.id) {",
+                  "    pm.collectionVariables.set('createdHanoiId', jsonData.data.id);",
+                  "    console.log('Saved createdHanoiId: ' + jsonData.data.id);",
+                  "} else if (jsonData.id) {",
+                  "    pm.collectionVariables.set('createdHanoiId', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Đài TTXLTT Hàng hải Dự phòng Hòa Lạc\",\n  \"provinceId\": 1,\n  \"locationAddress\": \"Khu công nghệ cao Hòa Lạc, Huyện Thạch Thất, TP. Hà Nội\",\n  \"conditionStatus\": \"OPERATIONAL\",\n  \"portName\": \"Toàn quốc\",\n  \"district\": \"Thạch Thất\",\n  \"ward\": \"Tân Xã\",\n  \"operationalLicense\": \"GP-TTXLTT-HL-2026/06\",\n  \"licenseExpiry\": \"31/12/2030\",\n  \"inspectorName\": \"Trần Quốc Toản\",\n  \"inspectorPhone\": \"0911223344\",\n  \"lastInspectionDate\": \"2026-01-10\",\n  \"nextInspectionDate\": \"2027-01-10\",\n  \"coverageArea\": \"Toàn bộ vùng biển và hải phận Việt Nam\",\n  \"equipmentType\": \"Hệ thống máy chủ xử lý dữ liệu viễn thông hàng hải dự phòng thảm họa\",\n  \"communicationFrequency\": \"VHF CH16, CH70 DSC, MF/HF, Inmarsat, Cospas\",\n  \"servicesProvided\": \"INMARSAT, COSPAS-SARSAT, DSC, RTP, MSI RTP, MSI NAVTEX, LRIT\",\n  \"description\": \"Trung tâm dự phòng thảm họa đảm bảo thông tin liên lạc hàng hải liên tục 24/7\",\n  \"contactPerson\": \"Lê Hoàng Nam\",\n  \"contactPhone\": \"0988776655\",\n  \"geometryType\": \"POINT\",\n  \"coordinateSystem\": \"WGS84\",\n  \"latitude\": 21.0125,\n  \"longitude\": 105.5342,\n  \"coordinates\": \"POINT(105.5342 21.0125)\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/stations/haiphong?action=DRAFT",
+              "host": ["{{baseUrl}}"],
+              "path": ["stations", "haiphong"],
+              "query": [
+                { "key": "action", "value": "DRAFT" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.4 Gửi phê duyệt Đài TTXLTT (PENDING_APPROVAL)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stations/haiphong/{{createdHanoiId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["stations", "haiphong", "{{createdHanoiId}}", "submit"]
+            }
+          }
+        },
+        {
+          "name": "2.5 Phê duyệt Vòng 1 Cấp Cảng vụ (APPROVED_LEVEL1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stations/haiphong/{{createdHanoiId}}/approve-c1",
+              "host": ["{{baseUrl}}"],
+              "path": ["stations", "haiphong", "{{createdHanoiId}}", "approve-c1"]
+            }
+          }
+        },
+        {
+          "name": "2.6 Phê duyệt Vòng 2 Cấp Cục Hàng hải (APPROVED)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stations/haiphong/{{createdHanoiId}}/approve-c2",
+              "host": ["{{baseUrl}}"],
+              "path": ["stations", "haiphong", "{{createdHanoiId}}", "approve-c2"]
+            }
+          }
+        },
+        {
+          "name": "2.7 Từ chối phê duyệt hồ sơ Đài TTXLTT",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Yêu cầu kiểm tra bổ sung phương án kết nối truyền dẫn cáp quang dự phòng\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/stations/haiphong/{{createdHanoiId}}/reject",
+              "host": ["{{baseUrl}}"],
+              "path": ["stations", "haiphong", "{{createdHanoiId}}", "reject"]
+            }
+          }
+        },
+        {
+          "name": "2.8 Xem chi tiết Đài TTXLTT",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stations/haiphong/{{createdHanoiId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["stations", "haiphong", "{{createdHanoiId}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,16 +1,7 @@
 import type { ReactNode } from 'react';
 import { Button, Drawer } from 'antd';
 import type { DrawerProps } from 'antd';
-import {
-  borderDefault,
-  controlHeight,
-  drawerCloseBtnStyle,
-  drawerFooterStyle,
-  drawerProps,
-  drawerTitleStyle,
-  spaceMd,
-  spaceLg,
-} from '../../tokens';
+import { useThemeToken } from '../../context/ThemeTokenContext';
 
 export interface ManagementDrawerProps extends Omit<DrawerProps, 'title' | 'open' | 'onClose' | 'footer'> {
   title: ReactNode;
@@ -32,6 +23,16 @@ export default function ManagementDrawer({
   styles,
   ...props
 }: ManagementDrawerProps) {
+  const {
+    borderDefault,
+    controlHeight,
+    drawerCloseBtnStyle,
+    drawerFooterStyle,
+    drawerProps,
+    drawerTitleStyle,
+    spaceMd,
+    spaceLg,
+  } = useThemeToken();
   return (
     <Drawer
       {...drawerProps}

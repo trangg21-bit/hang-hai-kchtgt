@@ -1,0 +1,55 @@
+{
+  "triage_id": "TRI-1787723878736-5bd6",
+  "created_at": 1787723878736,
+  "request_summary": "Icon bút chỉnh sửa (Button type=link + EditOutlined) đang màu TÍM. Nguyên nhân gốc: antd v6 tính colorLink = seed.colorLink || seed.colorInfo (antd/es/theme/themes/shared/genColorMapToken.js:23), app set colorInfo=colors.info #7239EA (tím) nên mọi nút link tím. Fix: thêm colorLink: colors.primary (#1B84FF xanh) vào metronicTheme.token — toàn bộ nút link chuyển xanh dương (đúng thiết kế v5).",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/theme.ts"
+    ],
+    "impact_files": [
+      "frontend/src/theme.ts"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Form Khu neo đậu — nút bút chỉnh sửa (type=link) trong bảng Thông tin khu nước neo buộc tàu",
+  "blast_radius": 1,
+  "done_oracle": "Nút link (icon bút chỉnh sửa) trong \"Thông tin khu nước neo buộc tàu\" và mọi nút link khác hiển thị MÀU XANH DƯƠNG (#1B84FF) thay vì tím — do ConfigProvider có colorLink: colors.primary.",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht\\frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/theme.ts",
+      "line": 118,
+      "quote": "colorInfo: colors.info,",
+      "source_hash": "5861622038992030ac970057013352ea3b1ce9150e6b77fb8d3d1beaad28edea",
+      "quote_hash": "b58119286126a7450a79bf528e3b0cb84785eb3bbb9a8ba36065df3dbcf59fe5",
+      "note": "colorInfo=#7239EA (tím) — antd v6 link button fallback vào colorInfo; thêm colorLink xanh"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787723878973
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

@@ -12,7 +12,6 @@ import lombok.Setter;
 @AllArgsConstructor
 public class CoastalStationCospasSarsatUpdateRequest {
 
-    private RecordSecurityLevel securityLevel;
     private String stationCode;
     private String stationName;
     private String frequency;

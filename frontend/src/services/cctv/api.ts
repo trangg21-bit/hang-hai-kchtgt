@@ -1,4 +1,5 @@
 import api from '../api';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../operatingOrganizationsData';
 import type {
   CctvResponse,
   CreateCctvRequest,
@@ -6,10 +7,24 @@ import type {
   PageResponse,
   CctvOptionResponse,
   ApprovalResult,
+  ApprovalRequest,
   CctvHistoryResponse,
 } from './types';
 
 const BASE = '/v1/cctv';
+
+// ── Đơn vị khai thác (bảng operating_organizations — endpoint chung) ──
+
+export async function fetchOperatingOrganizations(): Promise<Array<{ id: string; name: string; code: string }>> {
+  try {
+    const res = await api.get('/common/options/operating-organizations');
+    const data = res.data?.data;
+    if (Array.isArray(data) && data.length > 0) return data;
+  } catch {
+    // ignore — fall back to defaults
+  }
+  return DEFAULT_OPERATING_ORGANIZATIONS;
+}
 
 // ── CRUD ────────────────────────────────────────────────────────────
 
@@ -40,11 +55,11 @@ export async function fetchCctvList(params: {
   if (params.deviceCode) sp.set('deviceCode', params.deviceCode);
   if (params.deviceName) sp.set('deviceName', params.deviceName);
   if (params.province) sp.set('province', params.province);
-  if (params.operationalStatus) sp.set('operationalStatus', params.operationalStatus);
+  if (params.operationalStatus !== undefined && params.operationalStatus !== '') sp.set('operatingStatus', String(params.operationalStatus));
   if (params.approvalStatus) sp.set('approvalStatus', params.approvalStatus);
   if (params.vtsSystemId) sp.set('vtsSystemId', params.vtsSystemId);
-  if (params.attachedInfraType !== undefined) sp.set('attachedInfraType', String(params.attachedInfraType));
-  if (params.attachedInfraId) sp.set('attachedInfraId', params.attachedInfraId);
+  if (params.attachedInfraType !== undefined) sp.set('attachedInfrastructureType', String(params.attachedInfraType));
+  if (params.attachedInfraId) sp.set('attachedInfrastructureId', params.attachedInfraId);
   if (params.yearOfUse !== undefined) sp.set('yearOfUse', String(params.yearOfUse));
   if (params.updatedFrom) sp.set('updatedFrom', params.updatedFrom);
   if (params.updatedTo) sp.set('updatedTo', params.updatedTo);
@@ -88,15 +103,20 @@ export async function fetchCctvOptions(): Promise<CctvOptionResponse[]> {
   return res.data.data;
 }
 
-// ── Approval ────────────────────────────────────────────────────────
+// ── Approval 2 cấp (C1 Cảng vụ → C2 Cục) ───────────────────────────
 
-export async function approveCctv(id: string): Promise<ApprovalResult> {
-  const res = await api.post(`${BASE}/${id}/approve`);
+export async function submitCctv(id: string, content?: string): Promise<ApprovalResult> {
+  const res = await api.post(`${BASE}/${id}/submit`, { content: content ?? null });
   return res.data;
 }
 
-export async function rejectCctv(id: string, reason: string): Promise<ApprovalResult> {
-  const res = await api.post(`${BASE}/${id}/reject`, null, { params: { reason } });
+export async function approveCctvC1(id: string, data: ApprovalRequest): Promise<ApprovalResult> {
+  const res = await api.post(`${BASE}/${id}/approve/c1`, data);
+  return res.data;
+}
+
+export async function approveCctvC2(id: string, data: ApprovalRequest): Promise<ApprovalResult> {
+  const res = await api.post(`${BASE}/${id}/approve/c2`, data);
   return res.data;
 }
 
@@ -114,9 +134,40 @@ export async function fetchCctvHistory(
   return res.data.data;
 }
 
+export async function fetchAllCctvHistory(
+  params?: { page?: number; size?: number },
+): Promise<any> {
+  const sp = new URLSearchParams();
+  if (params?.page !== undefined) sp.set('page', String(params.page));
+  if (params?.size !== undefined) sp.set('size', String(params.size));
+  const res = await api.get(`${BASE}/history/all?${sp}`);
+  return res.data.data;
+}
+
 // ── Restore ─────────────────────────────────────────────────────────
 
 export async function restoreCctv(id: string): Promise<CctvResponse> {
   const res = await api.post(`${BASE}/${id}/restore`);
   return res.data.data;
+}
+
+// ── Attachments (File đính kèm) ────────────────────────────────────
+
+export async function fetchCctvAttachments(id: string): Promise<any[]> {
+  const res = await api.get(`${BASE}/${id}/attachments`);
+  return res.data.data || [];
+}
+
+export async function uploadCctvAttachment(id: string, file: File): Promise<any> {
+  const formData = new FormData();
+  formData.append('files', file);
+  const res = await api.post(`${BASE}/${id}/attachments`, formData, {
+    headers: { 'Content-Type': undefined },
+  });
+  return res.data;
+}
+
+export async function deleteCctvAttachment(id: string, attachmentId: string): Promise<any> {
+  const res = await api.delete(`${BASE}/${id}/attachments/${attachmentId}`);
+  return res.data;
 }

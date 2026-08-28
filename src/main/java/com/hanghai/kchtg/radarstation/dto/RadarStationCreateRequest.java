@@ -23,9 +23,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class RadarStationCreateRequest {
 
-    private RecordSecurityLevel securityLevel;
-
-    @NotBlank(message = "Tên trạm không được để trống")
+    @NotBlank(message = "Tên trạm Radar không được để trống")
     @Size(max = 255, message = "Tên trạm không được vượt quá 255 ký tự")
     private String stationName;
 

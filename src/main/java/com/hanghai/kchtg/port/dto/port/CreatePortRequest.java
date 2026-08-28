@@ -22,8 +22,6 @@ import com.hanghai.kchtg.security.RecordSecurityLevel;
 @Data
 public class CreatePortRequest {
 
-    private RecordSecurityLevel securityLevel;
-
     @NotBlank(message = "Mã cảng không được để trống")
     @Size(max = 50, message = "Mã cảng tối đa 50 ký tự")
     private String portCode;

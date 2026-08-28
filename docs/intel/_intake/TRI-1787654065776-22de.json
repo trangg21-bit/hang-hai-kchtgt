@@ -1,0 +1,80 @@
+{
+  "triage_id": "TRI-1787654065776-22de",
+  "created_at": 1787654065776,
+  "request_summary": "Refactor Khu neo đậu (Anchorage) theo chuẩn Bến cảng (Berth): ghi lịch sử create/update, soft-delete có audit, bộ lọc danh sách navigationChannelId/buoyStationId, sửa bug hoán vị tham số status filter",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/java/com/hanghai/kchtg/port/controller/AnchorageController.java",
+      "src/main/java/com/hanghai/kchtg/port/repository/AnchorageRepository.java",
+      "src/main/java/com/hanghai/kchtg/port/repository/MooringWaterAreaRepository.java",
+      "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java"
+    ],
+    "impact_files": [
+      "src/main/java/com/hanghai/kchtg/port/controller/AnchorageController.java",
+      "src/main/java/com/hanghai/kchtg/port/repository/AnchorageRepository.java",
+      "src/main/java/com/hanghai/kchtg/port/repository/MooringWaterAreaRepository.java",
+      "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "backend"
+  },
+  "rationale": "C1: 4 edit-target files in one package, no one-way door — pre-declared write scope required (4 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn hình Quản lý khu neo đậu (AnchorageListPage + AnchorageForm) — các nút Thêm mới/Sửa/Xóa/Lịch sử và bộ lọc danh sách",
+  "blast_radius": 4,
+  "done_oracle": "Tạo/sửa khu neo đậu hiển thị đầy đủ lịch sử thay đổi (ChangeLog) như Bến cảng; xóa là xóa mềm có ghi lịch sử; filter theo Luồng hàng hải (navigationChannelId) và Trạm phao (buoyStationId) lọc đúng; filter trạng thái hoạt động/phê duyệt hoạt động đúng",
+  "verification_commands": [
+    {
+      "command": "mvn clean compile -q",
+      "cwd": ".",
+      "timeout_ms": 600000
+    }
+  ],
+  "declared_write_scope": [
+    "src/main/java/com/hanghai/kchtg/port/controller/AnchorageController.java",
+    "src/main/java/com/hanghai/kchtg/port/repository/AnchorageRepository.java",
+    "src/main/java/com/hanghai/kchtg/port/repository/MooringWaterAreaRepository.java",
+    "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java"
+  ],
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java",
+      "line": 149,
+      "quote": "entity.setOrgUnitId(request.getOrgUnitId());",
+      "source_hash": "3c6ceea87a78a925d261156b8e4ab6770941d128c66327f71d80d4e813187b13",
+      "quote_hash": "a8dc3d671ed319ad33f1e639a9137378f353ae06de2f85af94461ec541557671",
+      "note": "update gán orgUnitId thẳng từ request thay vì derive từ port cha (BerthService.java:301-320) — lỗ hổng phạm vi đơn vị"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java",
+      "line": 216,
+      "quote": "anchorageRepository.delete(entity);",
+      "source_hash": "3c6ceea87a78a925d261156b8e4ab6770941d128c66327f71d80d4e813187b13",
+      "quote_hash": "798313ccee15c4a36924ee0d7cfb1a01a60074e4e72429f266f634aefb82672f",
+      "note": "softDelete đang xóa cứng không ghi audit/lịch sử — BerthService.softDelete dùng entity.softDelete(userId) + recordChanges"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/repository/AnchorageRepository.java",
+      "line": 70,
+      "quote": "Page<Anchorage> searchAnchorages(",
+      "source_hash": "25314d8a04902b6b5cda731da33cdcdac0a1dd514c58c2818aa46d9419fa72f9",
+      "quote_hash": "f628134c5ace9f7ae002de7351990bf3a284232b10129576af970e281bb25535",
+      "note": "search thiếu filter navigationChannelId/buoyStationId mà FE anchorageCRUD.search đang gửi (portService.ts:687-688)"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "9b1b3d651330307588d9cfb59316b68c7975bc12",
+    "dirty": true,
+    "captured_at": 1787654065943
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

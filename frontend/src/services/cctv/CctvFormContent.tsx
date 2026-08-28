@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { Form, Input, InputNumber, Select, message, DatePicker, Upload } from 'antd';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { useNavigate } from 'react-router-dom';
+import api from '../api';
 import { createCctv, updateCctv, fetchCctvById } from '../api';
 import { CctvResponse } from '../types';
-import { TRANG_THAI_HOAT_DONG_OPTIONS } from './schema';
+import { OPERATIONAL_STATUS_OPTIONS } from './schema';
 import toast, { modal } from '../../components/ToastNotification';
 import {
   fontSizeMd,
@@ -56,8 +57,14 @@ const CctvFormContent = ({ initialData, onSuccess }: CctvFormProps) => {
   const loadOrgUnits = async () => {
     setLoadingOrgs(true);
     try {
-      const response = await fetch('/api/v1/org-units/tree');
-      const data = await response.json();
+      const res = await api.get('/common/options/org-units');
+      const items = res.data?.data;
+      const data = (Array.isArray(items) ? items : []).map((o: { id?: string; name?: string; code?: string; parentId?: string | null }) => ({
+        id: String(o.id),
+        name: o.name || 'Đơn vị',
+        code: o.code || undefined,
+        parentId: o.parentId ? String(o.parentId) : undefined,
+      }));
       setOrgUnits(data);
     } catch (error) {
       console.error('Lỗi tải danh sách đơn vị:', error);
@@ -112,7 +119,7 @@ const CctvFormContent = ({ initialData, onSuccess }: CctvFormProps) => {
         label="Mã thiết bị"
         rules={[{ required: true, message: 'Vui lòng nhập mã thiết bị' }]}
       >
-        <Input placeholder="Tự sinh nếu để trống" disabled={isEdit} style={{ borderRadius: radiusPill, height: 40 }} />
+        <Input placeholder="Mã tự động" disabled={isEdit} style={{ borderRadius: radiusPill, height: 40 }} />
       </Form.Item>
 
       <Form.Item
@@ -160,7 +167,7 @@ const CctvFormContent = ({ initialData, onSuccess }: CctvFormProps) => {
 
       <Form.Item name="operationalStatus" label="Tình trạng">
         <Select
-          options={TRANG_THAI_HOAT_DONG_OPTIONS}
+          options={OPERATIONAL_STATUS_OPTIONS}
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
         />
       </Form.Item>

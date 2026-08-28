@@ -7,20 +7,6 @@ export const ConditionStatus = {
 
 export type ConditionStatus = typeof ConditionStatus[keyof typeof ConditionStatus];
 
-export const RecordSecurityLevel = {
-  NORMAL: 'NORMAL',
-  RESTRICTED: 'RESTRICTED',
-  CONFIDENTIAL: 'CONFIDENTIAL',
-} as const;
-
-export type RecordSecurityLevel = typeof RecordSecurityLevel[keyof typeof RecordSecurityLevel];
-
-export const RECORD_SECURITY_LEVEL_OPTIONS = [
-  { value: RecordSecurityLevel.NORMAL, label: 'Thông thường' },
-  { value: RecordSecurityLevel.RESTRICTED, label: 'Hạn chế' },
-  { value: RecordSecurityLevel.CONFIDENTIAL, label: 'Mật' },
-];
-
 export const ApprovalStatus = {
   DRAFT: 'DRAFT',
   PENDING_APPROVAL: 'PENDING_APPROVAL',
@@ -44,7 +30,6 @@ export interface VtsSystemResponse {
   zones?: VtsZoneDto[];
   systemName?: string;
   conditionStatus?: ConditionStatus;
-  recordSecurityLevel?: RecordSecurityLevel;
   code?: string;
   province?: string;
   provinceId?: number;
@@ -92,7 +77,6 @@ export interface VtsSystemListItem {
   systemName: string;
   address?: string;
   conditionStatus?: ConditionStatus;
-  recordSecurityLevel?: RecordSecurityLevel;
   orgUnitId?: string;
   orgUnitName?: string;
   owningOrgId?: string;
@@ -130,7 +114,6 @@ export interface CreateVtsSystemRequest {
   maritimeNotice?: string;
   operationStartDate?: string;
   conditionStatus: ConditionStatus;
-  recordSecurityLevel?: RecordSecurityLevel;
   approvalStatus?: ApprovalStatus;
   note?: string;
   zones?: VtsZoneDto[];
@@ -169,7 +152,12 @@ export interface ListParams {
   approvalStatus?: ApprovalStatus;
   orgUnitId?: string;
   portId?: string;
+  provinceId?: number;
   year?: number;
+  operationStartDateFrom?: string;
+  operationStartDateTo?: string;
+  updatedFrom?: string;
+  updatedTo?: string;
 }
 
 export interface SearchResponse<T> {

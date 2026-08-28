@@ -7,13 +7,12 @@ import type { CreateGroupPayload, UpdateGroupPayload } from '../../services/grou
 import { actionPrimary, textSecondary, fontSizeMd, fontSizeLg, fontWeightBold, fontWeightMedium, radiusPill, borderDefault, spaceFormField, spaceSm, spaceLg, cardStyle } from '../../tokens';
 import { colors } from '../../theme';
 import toast from '../../components/ToastNotification';
+import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 
 const STATUS_OPTIONS = [
   { value: 'active', label: 'Hoạt động' },
   { value: 'inactive', label: 'Không hoạt động' },
 ];
-
-const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
 
 export default function GroupForm() {
   const navigate = useNavigate();

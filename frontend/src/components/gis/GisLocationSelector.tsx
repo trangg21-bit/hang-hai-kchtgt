@@ -15,6 +15,7 @@ interface GisLocationSelectorProps {
   defaultGeometryType?: 'POINT' | 'LINE' | 'POLYGON';
   height?: number;
   disabled?: boolean;
+  inline?: boolean;
 }
 
 // Global script loading helper to avoid duplicates
@@ -90,8 +91,8 @@ function DmsInput({ value, onChange, placeholderPrefix }: DmsInputProps) {
   };
 
   return (
-    <div style={{ display: 'flex', gap: '2px', width: '255px', minWidth: '255px', alignItems: 'center' }}>
-      <Space.Compact size="small" style={{ width: '75px' }}>
+    <div style={{ display: 'flex', gap: '6px', width: '260px', minWidth: '260px', alignItems: 'center' }}>
+      <Space.Compact size="small" style={{ width: '74px' }}>
         <InputNumber
           value={d}
           onChange={handleDChange}
@@ -101,15 +102,16 @@ function DmsInput({ value, onChange, placeholderPrefix }: DmsInputProps) {
         />
         <div style={{
           padding: '0 6px',
-          background: '#f5f5f5',
+          background: '#f8fafc',
           border: '1px solid #d9d9d9',
           borderLeft: 'none',
           display: 'flex',
           alignItems: 'center',
-          color: 'rgba(0, 0, 0, 0.45)'
+          color: '#64748b',
+          fontWeight: 600,
         }}>°</div>
       </Space.Compact>
-      <Space.Compact size="small" style={{ width: '75px' }}>
+      <Space.Compact size="small" style={{ width: '74px' }}>
         <InputNumber
           value={m}
           onChange={handleMChange}
@@ -121,15 +123,16 @@ function DmsInput({ value, onChange, placeholderPrefix }: DmsInputProps) {
         />
         <div style={{
           padding: '0 6px',
-          background: '#f5f5f5',
+          background: '#f8fafc',
           border: '1px solid #d9d9d9',
           borderLeft: 'none',
           display: 'flex',
           alignItems: 'center',
-          color: 'rgba(0, 0, 0, 0.45)'
+          color: '#64748b',
+          fontWeight: 600,
         }}>'</div>
       </Space.Compact>
-      <Space.Compact size="small" style={{ width: '90px' }}>
+      <Space.Compact size="small" style={{ width: '92px' }}>
         <InputNumber
           value={s}
           onChange={handleSChange}
@@ -142,12 +145,13 @@ function DmsInput({ value, onChange, placeholderPrefix }: DmsInputProps) {
         />
         <div style={{
           padding: '0 6px',
-          background: '#f5f5f5',
+          background: '#f8fafc',
           border: '1px solid #d9d9d9',
           borderLeft: 'none',
           display: 'flex',
           alignItems: 'center',
-          color: 'rgba(0, 0, 0, 0.45)'
+          color: '#64748b',
+          fontWeight: 600,
         }}>"</div>
       </Space.Compact>
     </div>
@@ -160,6 +164,7 @@ export default function GisLocationSelector({
   defaultGeometryType,
   height = 550,
   disabled,
+  inline = false,
 }: GisLocationSelectorProps) {
   const [leafletLoaded, setLeafletLoaded] = useState(false);
   const [vertices, setVertices] = useState<{ lng: number; lat: number }[]>([]);
@@ -181,16 +186,16 @@ export default function GisLocationSelector({
     internalBieuTuongRef.current = internalBieuTuong;
   }, [internalGeom, internalBieuTuong]);
 
-  // Auto trigger map resize when modal opens to prevent grey area issues
+  // Auto trigger map resize when modal opens or inline mounted to prevent grey area issues
   useEffect(() => {
-    if (modalOpen && mapRef.current) {
+    if ((modalOpen || inline) && mapRef.current) {
       setTimeout(() => {
         if (mapRef.current) {
           mapRef.current.invalidateSize();
         }
       }, 300);
     }
-  }, [modalOpen]);
+  }, [modalOpen, inline]);
 
   // Sync internal state with incoming props value
   useEffect(() => {
@@ -367,11 +372,15 @@ export default function GisLocationSelector({
         layer.addTo(mapRef.current);
         drawnLayerRef.current = layer;
 
-        // Auto center map on the shape
+        // Giữ nguyên mức zoom hiện tại của người dùng, tuyệt đối không tự ý zoom in làm mất ngữ cảnh
+        const currentZoom = mapRef.current.getZoom?.() ?? 6;
         if (internalGeom === 'POINT' && validVertices.length === 1) {
-          mapRef.current.setView([validVertices[0].lat, validVertices[0].lng], 15);
-        } else {
-          mapRef.current.fitBounds(layer.getBounds(), { padding: [20, 20] });
+          mapRef.current.panTo([validVertices[0].lat, validVertices[0].lng]);
+        } else if (layer.getBounds) {
+          const bounds = layer.getBounds();
+          if (bounds && bounds.isValid && bounds.isValid()) {
+            mapRef.current.panTo(bounds.getCenter());
+          }
         }
 
         // Bind update listeners
@@ -591,6 +600,184 @@ export default function GisLocationSelector({
 
   const pointsCount = vertices.length;
 
+  const mapContent = (
+    <div style={{ padding: inline ? 0 : '12px 0 0 0' }}>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={14}>
+          <div style={{ position: 'relative' }}>
+            <div
+              ref={mapContainerRef}
+              style={{
+                height,
+                width: '100%',
+                borderRadius: 8,
+                border: `1px solid ${colors.borderBase}`,
+                overflow: 'hidden',
+                zIndex: 1,
+              }}
+            />
+            {!leafletLoaded && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: 'rgba(255, 255, 255, 0.8)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 2,
+                  borderRadius: 8,
+                }}
+              >
+                <Space>
+                  <CompassOutlined spin style={{ fontSize: 24, color: colors.primary }} />
+                  <Typography.Text type="secondary">Đang tải bản đồ không gian...</Typography.Text>
+                </Space>
+              </div>
+            )}
+          </div>
+        </Col>
+
+        <Col xs={24} md={10}>
+          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Typography.Text strong style={{ fontSize: 13 }}>
+                  TỌA ĐỘ CÁC ĐIỂM ĐỈNH ({vertices.length})
+                </Typography.Text>
+                {internalGeom !== 'POINT' && (
+                  <Button
+                    type="dashed"
+                    size="small"
+                    icon={<PlusOutlined />}
+                    onClick={addVertex}
+                  >
+                    Thêm điểm
+                  </Button>
+                )}
+              </div>
+
+              {vertices.length === 0 ? (
+                <div
+                  style={{
+                    padding: '24px 0',
+                    textAlign: 'center',
+                    border: `1px dashed ${colors.borderBase}`,
+                    borderRadius: 8,
+                  }}
+                >
+                  <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                    Chưa có tọa độ nào. Nhấp vào bản đồ hoặc nút "Thêm điểm" để bắt đầu.
+                  </Typography.Text>
+                </div>
+              ) : (
+                <Table
+                  dataSource={vertices.map((v, i) => ({ key: i, ...v }))}
+                  pagination={false}
+                  size="small"
+                  bordered
+                  tableLayout="fixed"
+                  scroll={{ x: 620, y: height - 80 }}
+                  onRow={(_, index) => ({
+                    draggable: internalGeom !== 'POINT',
+                    style: { cursor: internalGeom !== 'POINT' ? 'grab' : 'default' },
+                    onDragStart: (e) => {
+                      e.dataTransfer.setData('text/plain', index!.toString());
+                    },
+                    onDragOver: (e) => {
+                      e.preventDefault();
+                    },
+                    onDrop: (e) => {
+                      e.preventDefault();
+                      const dragIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                      const hoverIndex = index!;
+                      if (isNaN(dragIndex) || dragIndex === hoverIndex) return;
+
+                      const newPts = [...vertices];
+                      const temp = newPts[dragIndex];
+                      newPts[dragIndex] = newPts[hoverIndex];
+                      newPts[hoverIndex] = temp;
+                      setVertices(newPts);
+
+                      const newWkt = serializeVerticesToWkt(newPts, internalGeom);
+                      setInternalToaDo(newWkt);
+                      triggerChange(internalGeom, newWkt, internalBieuTuong);
+                    }
+                  })}
+                  columns={[
+                    {
+                      title: 'STT',
+                      key: 'index',
+                      width: 50,
+                      align: 'center',
+                      render: (_, __, i) => (
+                        <Space size={4}>
+                          {internalGeom !== 'POINT' && (
+                            <HolderOutlined style={{ cursor: 'grab', color: '#bfbfbf' }} />
+                          )}
+                          <span>{i + 1}</span>
+                        </Space>
+                      ),
+                    },
+                    {
+                      title: 'Vĩ độ (N) *',
+                      dataIndex: 'lat',
+                      key: 'lat',
+                      width: 275,
+                      render: (val, _, i) => (
+                        <DmsInput
+                          value={val}
+                          onChange={(v) => handleVertexChange(i, 'lat', v)}
+                          placeholderPrefix="Vĩ độ"
+                        />
+                      ),
+                    },
+                    {
+                      title: 'Kinh độ (E) *',
+                      dataIndex: 'lng',
+                      key: 'lng',
+                      width: 275,
+                      render: (val, _, i) => (
+                        <DmsInput
+                          value={val}
+                          onChange={(v) => handleVertexChange(i, 'lng', v)}
+                          placeholderPrefix="Kinh độ"
+                        />
+                      ),
+                    },
+                    {
+                      title: '',
+                      key: 'actions',
+                      width: 50,
+                      align: 'center',
+                      render: (_, __, i) =>
+                        internalGeom !== 'POINT' ? (
+                          <Button
+                            type="text"
+                            danger
+                            size="small"
+                            icon={<DeleteOutlined />}
+                            onClick={() => removeVertex(i)}
+                          />
+                        ) : null,
+                    },
+                  ]}
+                />
+              )}
+            </div>
+          </Space>
+        </Col>
+      </Row>
+    </div>
+  );
+
+  if (inline) {
+    return mapContent;
+  }
+
   return (
     <>
       <Card styles={{ body: { padding: 12 } }} style={{ border: `1px solid ${colors.borderBase}` }}>
@@ -638,179 +825,7 @@ export default function GisLocationSelector({
           </Button>
         ]}
       >
-        <div style={{ padding: '12px 0 0 0' }}>
-          <Row gutter={[16, 16]}>
-            <Col xs={24} md={14}>
-              <div style={{ position: 'relative' }}>
-                <div
-                  ref={mapContainerRef}
-                  style={{
-                    height,
-                    width: '100%',
-                    borderRadius: 8,
-                    border: `1px solid ${colors.borderBase}`,
-                    overflow: 'hidden',
-                    zIndex: 1,
-                  }}
-                />
-                {!leafletLoaded && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      background: 'rgba(255, 255, 255, 0.8)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      zIndex: 2,
-                      borderRadius: 8,
-                    }}
-                  >
-                    <Space>
-                      <CompassOutlined spin style={{ fontSize: 24, color: colors.primary }} />
-                      <Typography.Text type="secondary">Đang tải bản đồ không gian...</Typography.Text>
-                    </Space>
-                  </div>
-                )}
-              </div>
-            </Col>
-
-            <Col xs={24} md={10}>
-              <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-
-
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <Typography.Text strong style={{ fontSize: 13 }}>
-                      TỌA ĐỘ CÁC ĐIỂM ĐỈNH
-                    </Typography.Text>
-                    {internalGeom !== 'POINT' && (
-                      <Button
-                        type="dashed"
-                        size="small"
-                        icon={<PlusOutlined />}
-                        onClick={addVertex}
-                      >
-                        Thêm điểm
-                      </Button>
-                    )}
-                  </div>
-
-                  {vertices.length === 0 ? (
-                    <div
-                      style={{
-                        padding: '24px 0',
-                        textAlign: 'center',
-                        border: `1px dashed ${colors.borderBase}`,
-                        borderRadius: 8,
-                      }}
-                    >
-                      <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                        Chưa có tọa độ nào. Nhấp vào bản đồ hoặc nút "Thêm điểm" để bắt đầu.
-                      </Typography.Text>
-                    </div>
-                  ) : (
-                    <Table
-                      dataSource={vertices.map((v, i) => ({ key: i, ...v }))}
-                      pagination={false}
-                      size="small"
-                      bordered
-                      tableLayout="fixed"
-                      scroll={{ x: 680, y: 220 }}
-                      onRow={(_, index) => ({
-                        draggable: internalGeom !== 'POINT',
-                        style: { cursor: internalGeom !== 'POINT' ? 'grab' : 'default' },
-                        onDragStart: (e) => {
-                          e.dataTransfer.setData('text/plain', index!.toString());
-                        },
-                        onDragOver: (e) => {
-                          e.preventDefault();
-                        },
-                        onDrop: (e) => {
-                          e.preventDefault();
-                          const dragIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
-                          const hoverIndex = index!;
-                          if (isNaN(dragIndex) || dragIndex === hoverIndex) return;
-
-                          const newPts = [...vertices];
-                          const temp = newPts[dragIndex];
-                          newPts[dragIndex] = newPts[hoverIndex];
-                          newPts[hoverIndex] = temp;
-                          setVertices(newPts);
-
-                          const newWkt = serializeVerticesToWkt(newPts, internalGeom);
-                          setInternalToaDo(newWkt);
-                          triggerChange(internalGeom, newWkt, internalBieuTuong);
-                        }
-                      })}
-                      columns={[
-                        {
-                          title: 'STT',
-                          key: 'index',
-                          width: 70,
-                          align: 'center',
-                          render: (_, __, i) => (
-                            <Space size={4}>
-                              {internalGeom !== 'POINT' && (
-                                <HolderOutlined style={{ cursor: 'grab', color: '#bfbfbf' }} />
-                              )}
-                              <span>{i + 1}</span>
-                            </Space>
-                          ),
-                        },
-                        {
-                          title: 'Vĩ độ (N) *',
-                          dataIndex: 'lat',
-                          key: 'lat',
-                          width: 280,
-                          render: (val, _, i) => (
-                            <DmsInput
-                              value={val}
-                              onChange={(v) => handleVertexChange(i, 'lat', v)}
-                              placeholderPrefix="Vĩ độ"
-                            />
-                          ),
-                        },
-                        {
-                          title: 'Kinh độ (E) *',
-                          dataIndex: 'lng',
-                          key: 'lng',
-                          width: 280,
-                          render: (val, _, i) => (
-                            <DmsInput
-                              value={val}
-                              onChange={(v) => handleVertexChange(i, 'lng', v)}
-                              placeholderPrefix="Kinh độ"
-                            />
-                          ),
-                        },
-                        {
-                          title: '',
-                          key: 'actions',
-                          width: 50,
-                          align: 'center',
-                          render: (_, __, i) =>
-                            internalGeom !== 'POINT' ? (
-                              <Button
-                                type="text"
-                                danger
-                                size="small"
-                                icon={<DeleteOutlined />}
-                                onClick={() => removeVertex(i)}
-                              />
-                            ) : null,
-                        },
-                      ]}
-                    />
-                  )}
-                </div>
-              </Space>
-            </Col>
-          </Row>
-        </div>
+        {mapContent}
       </Modal>
     </>
   );

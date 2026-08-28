@@ -20,7 +20,10 @@ public enum GisSpatialObjectType {
     // Polygon types (30-35)
     POLYGON_WATER_ZONE(30, "Vùng nước cảng biển"),
     POLYGON_ANCHORAGE(31, "Khu neo đậu"),
+    POLYGON_TRANSSHIPMENT(36, "Khu chuyển tải"),
     POLYGON_STORM_SHELTER(32, "Khu tránh trú bão"),
+    POLYGON_BUOY_BERTH(37, "Bến phao"),
+    POLYGON_SHIP_REPAIR_YARD(38, "Cơ sở sửa chữa, đóng tàu"),
     POLYGON_RESTRICTED_AREA(33, "Vùng cấm/Hạn chế"),
     POLYGON_LIMITED_ZONE(34, "Khu vực giới hạn"),
     POLYGON_OTHER(35, "Vùng khác");

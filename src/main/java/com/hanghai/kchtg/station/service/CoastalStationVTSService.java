@@ -39,13 +39,7 @@ public class CoastalStationVTSService {
 
         validateCoordinates(request.getLongitude(), request.getLatitude());
 
-        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
-                : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "coastalstationvts", SecurityUtils.getCurrentUserPermissions(),
-                SecurityUtils.isElevatedAdministrator());
-
         CoastalStationVTS entity = new CoastalStationVTS();
-        entity.setSecurityLevel(secLevel);
         entity.setCode(request.getStationCode());
         entity.setName(request.getStationName());
         entity.setFrequencyBand(request.getFrequencyBand());
@@ -82,12 +76,6 @@ public class CoastalStationVTSService {
         String previousCode = entity.getCode();
 
         validateCoordinates(request.getLongitude(), request.getLatitude());
-
-        if (request.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "coastalstationvts",
-                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-            entity.setSecurityLevel(request.getSecurityLevel());
-        }
 
         if (request.getStationName() != null)
             entity.setName(request.getStationName());
@@ -289,7 +277,6 @@ public class CoastalStationVTSService {
     public CoastalStationVTSResponse buildResponse(CoastalStationVTS entity) {
         return CoastalStationVTSResponse.builder()
                 .id(entity.getId())
-                .securityLevel(entity.getSecurityLevel())
                 .stationCode(entity.getCode())
                 .stationName(entity.getName())
                 .frequencyBand(entity.getFrequencyBand())

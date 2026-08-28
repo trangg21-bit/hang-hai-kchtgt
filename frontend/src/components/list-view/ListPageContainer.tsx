@@ -1,5 +1,5 @@
 import React from 'react';
-import { listPageContainerStyle } from '../../tokens';
+import { useThemeToken } from '../../context/ThemeTokenContext';
 
 export interface ListPageContainerProps {
   children: React.ReactNode;
@@ -18,5 +18,6 @@ export interface ListPageContainerProps {
  * còn một nguồn duy nhất.
  */
 export default function ListPageContainer({ children, style }: ListPageContainerProps) {
+  const { listPageContainerStyle } = useThemeToken();
   return <div style={{ ...listPageContainerStyle, ...style }}>{children}</div>;
 }

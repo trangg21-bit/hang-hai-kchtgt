@@ -5,7 +5,7 @@
 import { z } from 'zod';
 import { BUOY_TYPE_OPTIONS, BUOY_TYPE_MAP } from '../../types/beacon';
 import {
-  statusOperational, statusAttention, statusCritical, statusDraft, actionPrimary,
+  statusOperational, statusAttention, statusCritical, statusDraft, actionPrimary, textTertiary,
 } from '../../tokens';
 
 export { BUOY_TYPE_OPTIONS, BUOY_TYPE_MAP };
@@ -62,28 +62,35 @@ export const COORD_MAP: Record<string, string> = { WGS84: 'WGS-84', VN2000: 'VN-
 // ── Trạng thái phê duyệt (cùng quy ước Quản lý phao tiêu) ─────────────
 
 export const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  DRAFT: { color: statusDraft, label: 'Nháp' },
-  PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ Cảng vụ duyệt' },
-  APPROVED_L1: { color: statusAttention, label: 'Chờ Cục duyệt' },
+  DRAFT: { color: statusDraft, label: 'Lưu tạm' },
+  PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  APPROVED_L1: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
+  APPROVED_L2: { color: statusAttention, label: 'Đã phê duyệt' },
   PUBLISHED: { color: statusOperational, label: 'Đã phê duyệt' },
-  REJECTED: { color: statusCritical, label: 'Từ chối' },
+  REJECTED: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  REJECTED_L1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  REJECTED_L2: { color: statusCritical, label: 'Từ chối cấp cục' },
+  DELETED: { color: textTertiary, label: 'Đã xóa' },
 };
 
 export const APPROVAL_STATUS_OPTIONS = [
-  { value: 'DRAFT', label: 'Nháp' },
-  { value: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt' },
-  { value: 'APPROVED_L1', label: 'Chờ Cục duyệt' },
+  { value: 'DRAFT', label: 'Lưu tạm' },
+  { value: 'PENDING_APPROVAL', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  { value: 'APPROVED_L1', label: 'Chờ phê duyệt cấp cục' },
   { value: 'PUBLISHED', label: 'Đã phê duyệt' },
-  { value: 'REJECTED', label: 'Từ chối' },
+  { value: 'REJECTED', label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  { value: 'REJECTED_L1', label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  { value: 'REJECTED_L2', label: 'Từ chối cấp cục' },
 ];
 
 export const TAB_STATUS_LIST = [
   { key: 'all', label: 'Tất cả', color: actionPrimary },
-  { key: 'DRAFT', label: 'Nháp', color: statusDraft },
-  { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', color: actionPrimary },
-  { key: 'APPROVED_L1', label: 'Chờ Cục duyệt', color: statusAttention },
+  { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
+  { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
+  { key: 'APPROVED_L1', label: 'Chờ phê duyệt cấp cục', color: statusAttention },
   { key: 'PUBLISHED', label: 'Đã phê duyệt', color: statusOperational },
-  { key: 'REJECTED', label: 'Từ chối', color: statusCritical },
+  { key: 'REJECTED_L1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
+  { key: 'REJECTED_L2', label: 'Từ chối cấp cục', color: statusCritical },
 ];
 
 // ── Nhãn trường cho lịch sử thay đổi ──────────────────────────────────

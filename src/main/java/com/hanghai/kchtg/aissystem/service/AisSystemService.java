@@ -20,6 +20,8 @@ import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.common.util.EntityUpdateUtils;
 import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
+import com.hanghai.kchtg.common.entity.OperatingOrganization;
+import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
@@ -30,6 +32,8 @@ import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService.Scope;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.radarstation.entity.RadarStation;
+import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
 import com.hanghai.kchtg.vtsoperationcenter.entity.VtsOperationCenter;
 import com.hanghai.kchtg.vtsoperationcenter.repository.VtsOperationCenterRepository;
 import com.hanghai.kchtg.vtssystem.dto.VtsSystemAttachmentResponse;
@@ -69,6 +73,7 @@ public class AisSystemService {
 
     private final AisSystemRepository repository;
     private final VtsOperationCenterRepository vtsOperationCenterRepository;
+    private final RadarStationRepository radarStationRepository;
     private final VtsSystemRepository vtsSystemRepository;
     private final OrgUnitRepository orgUnitRepository;
     private final InfrastructureAttachmentRepository attachmentRepository;
@@ -78,6 +83,7 @@ public class AisSystemService {
     private final OrgUnitScopeService orgUnitScopeService;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final OrgUnitCacheService orgUnitCacheService;
+    private final OperatingOrganizationRepository operatingOrganizationRepository;
     private final PortCacheService portCacheService;
     private final JdbcTemplate jdbcTemplate;
 
@@ -131,11 +137,38 @@ public class AisSystemService {
                             + "các đơn vị khác phải gửi hồ sơ qua quy trình phê duyệt 2 cấp");
         }
 
-        VtsOperationCenter opCenter = vtsOperationCenterRepository.findByIdAndDeletedAtIsNull(request.getVtsOperationCenterId())
-                .orElseThrow(() -> new IllegalArgumentException("Trung tâm điều hành VTS không tồn tại"));
+        if (request.getVtsOperationCenterId() == null && request.getRadarStationId() == null) {
+            throw new IllegalArgumentException("Vui lòng chọn Trung tâm điều hành VTS hoặc Trạm Radar");
+        }
+        if (request.getVtsOperationCenterId() != null && request.getRadarStationId() != null) {
+            throw new IllegalArgumentException("Chỉ được chọn 1 trong 2: Trung tâm điều hành VTS hoặc Trạm Radar");
+        }
 
-        OrgUnit operatingOrg = orgUnitRepository.findById(request.getOperatingOrgId())
-                .orElseThrow(() -> new IllegalArgumentException("Đơn vị khai thác không tồn tại"));
+        UUID vtsOpCenterId = null;
+        UUID radarStId = null;
+
+        if (request.getVtsOperationCenterId() != null) {
+            boolean existsCenter = vtsOperationCenterRepository.findByIdAndDeletedAtIsNull(request.getVtsOperationCenterId()).isPresent();
+            if (!existsCenter) {
+                if (radarStationRepository.findByIdAndDeletedAtIsNull(request.getVtsOperationCenterId()).isPresent()) {
+                    radarStId = request.getVtsOperationCenterId();
+                } else {
+                    throw new IllegalArgumentException("Trung tâm điều hành VTS không tồn tại");
+                }
+            } else {
+                vtsOpCenterId = request.getVtsOperationCenterId();
+            }
+        } else if (request.getRadarStationId() != null) {
+            boolean existsRadar = radarStationRepository.findByIdAndDeletedAtIsNull(request.getRadarStationId()).isPresent();
+            if (!existsRadar) {
+                throw new IllegalArgumentException("Trạm Radar không tồn tại");
+            }
+            radarStId = request.getRadarStationId();
+        }
+
+        if (request.getOperatingOrgId() == null) {
+            throw new IllegalArgumentException("Vui lòng chọn đơn vị khai thác");
+        }
 
         OrgUnit orgUnit = orgUnitRepository.findById(request.getOrgUnitId())
                 .orElseThrow(() -> new IllegalArgumentException("Đơn vị quản lý không tồn tại"));
@@ -143,8 +176,9 @@ public class AisSystemService {
         AisSystem entity = AisSystem.builder()
                 .code(request.getCode().trim())
                 .name(request.getName().trim())
-                .vtsOperationCenterId(opCenter.getId())
-                .operatingOrgId(operatingOrg.getId())
+                .vtsOperationCenterId(vtsOpCenterId)
+                .radarStationId(radarStId)
+                .operatingOrgId(request.getOperatingOrgId())
                 .orgUnitId(orgUnit.getId())
                 .provinceId(request.getProvinceId())
                 .detailedLocation(request.getDetailedLocation())
@@ -209,19 +243,38 @@ public class AisSystemService {
             throw new IllegalArgumentException("Mã thiết bị AIS '" + request.getCode() + "' đã được sử dụng");
         }
 
-        if (request.getVtsOperationCenterId() != null) {
-            vtsOperationCenterRepository.findByIdAndDeletedAtIsNull(request.getVtsOperationCenterId())
-                    .orElseThrow(() -> new IllegalArgumentException("Trung tâm điều hành VTS không tồn tại"));
-        }
-
-        if (request.getOperatingOrgId() != null) {
-            orgUnitRepository.findById(request.getOperatingOrgId())
-                    .orElseThrow(() -> new IllegalArgumentException("Đơn vị khai thác không tồn tại"));
+        if (request.getVtsOperationCenterId() != null || request.getRadarStationId() != null) {
+            if (request.getVtsOperationCenterId() != null && request.getRadarStationId() != null) {
+                throw new IllegalArgumentException("Chỉ được chọn 1 trong 2: Trung tâm điều hành VTS hoặc Trạm Radar");
+            }
+            if (request.getVtsOperationCenterId() != null) {
+                boolean existsCenter = vtsOperationCenterRepository.findByIdAndDeletedAtIsNull(request.getVtsOperationCenterId()).isPresent();
+                if (!existsCenter) {
+                    if (radarStationRepository.findByIdAndDeletedAtIsNull(request.getVtsOperationCenterId()).isPresent()) {
+                        entity.setRadarStationId(request.getVtsOperationCenterId());
+                        entity.setVtsOperationCenterId(null);
+                    } else {
+                        throw new IllegalArgumentException("Trung tâm điều hành VTS không tồn tại");
+                    }
+                } else {
+                    entity.setVtsOperationCenterId(request.getVtsOperationCenterId());
+                    entity.setRadarStationId(null);
+                }
+            } else if (request.getRadarStationId() != null) {
+                boolean existsRadar = radarStationRepository.findByIdAndDeletedAtIsNull(request.getRadarStationId()).isPresent();
+                if (!existsRadar) {
+                    throw new IllegalArgumentException("Trạm Radar không tồn tại");
+                }
+                entity.setRadarStationId(request.getRadarStationId());
+                entity.setVtsOperationCenterId(null);
+            }
         }
 
         Map<String, String> previousValues = new LinkedHashMap<>();
         EntityUpdateUtils.copyPropertiesIfPresent(request, entity, previousValues,
-                AisSystemRequest.Fields.geometryType);
+                AisSystemRequest.Fields.geometryType,
+                AisSystemRequest.Fields.vtsOperationCenterId,
+                AisSystemRequest.Fields.radarStationId);
 
         if (request.getCoordinates() != null) {
             GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
@@ -287,6 +340,7 @@ public class AisSystemService {
         if (fieldName.equals(AisSystem.Fields.name)) return entity.getName();
         if (fieldName.equals(AisSystem.Fields.code)) return entity.getCode();
         if (fieldName.equals(AisSystem.Fields.vtsOperationCenterId)) return entity.getVtsOperationCenterId();
+        if (fieldName.equals(AisSystem.Fields.radarStationId)) return entity.getRadarStationId();
         if (fieldName.equals(AisSystem.Fields.operatingOrgId)) return entity.getOperatingOrgId();
         if (fieldName.equals(BaseApprovableEntity.Fields.orgUnitId)) return entity.getOrgUnitId();
         if (fieldName.equals(BaseApprovableEntity.Fields.provinceId)) return entity.getProvinceId();
@@ -343,13 +397,18 @@ public class AisSystemService {
     @Transactional(readOnly = true)
     public Page<AisSystemListItem> search(
             String keyword,
+            String name,
+            String code,
             UUID orgUnitId,
             UUID vtsOperationCenterId,
+            UUID radarStationId,
             UUID operatingOrgId,
             Integer provinceId,
             ConditionStatus conditionStatus,
             Integer commissioningYear,
             ApprovalStatus approvalStatus,
+            LocalDateTime updatedFrom,
+            LocalDateTime updatedTo,
             Pageable pageable) {
 
         Scope scope = resolveEffectiveScope(orgUnitId);
@@ -358,19 +417,40 @@ public class AisSystemService {
         }
 
         String kw = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
-        Page<AisSystem> page = commissioningYear == null
-                ? repository.search(!scope.unrestricted(), scope.orgUnitIds(), null, vtsOperationCenterId, operatingOrgId, provinceId, conditionStatus, approvalStatus, kw, pageable)
-                : repository.searchWithYear(!scope.unrestricted(), scope.orgUnitIds(), null, vtsOperationCenterId, operatingOrgId, provinceId, conditionStatus, commissioningYear, approvalStatus, kw, pageable);
+        String n = (name != null && !name.trim().isEmpty()) ? "%" + name.trim().toLowerCase() + "%" : null;
+        String c = (code != null && !code.trim().isEmpty()) ? "%" + code.trim().toLowerCase() + "%" : null;
+
+        Page<AisSystem> page = repository.search(
+                !scope.unrestricted(),
+                scope.orgUnitIds(),
+                null,
+                vtsOperationCenterId,
+                radarStationId,
+                operatingOrgId,
+                provinceId,
+                conditionStatus,
+                commissioningYear,
+                approvalStatus,
+                kw,
+                n,
+                c,
+                updatedFrom,
+                updatedTo,
+                pageable);
 
         List<AisSystem> content = page.getContent();
         if (content.isEmpty()) {
             return new PageImpl<>(List.of(), pageable, page.getTotalElements());
         }
 
-        // Batch pre-fetch all relations for the page in 4 fast batch queries instead of 120 N+1 queries
+        // Batch pre-fetch all relations for the page in batch queries instead of N+1 queries
         Set<UUID> opCenterIds = content.stream().map(AisSystem::getVtsOperationCenterId).filter(Objects::nonNull).collect(Collectors.toSet());
         Map<UUID, VtsOperationCenter> opCenterMap = opCenterIds.isEmpty() ? Map.of() :
                 vtsOperationCenterRepository.findAllById(opCenterIds).stream().collect(Collectors.toMap(VtsOperationCenter::getId, o -> o, (a, b) -> a));
+
+        Set<UUID> radarStationIds = content.stream().map(AisSystem::getRadarStationId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<UUID, RadarStation> radarStationMap = radarStationIds.isEmpty() ? Map.of() :
+                radarStationRepository.findAllById(radarStationIds).stream().collect(Collectors.toMap(RadarStation::getId, r -> r, (a, b) -> a));
 
         Set<UUID> vtsSystemIds = opCenterMap.values().stream().map(VtsOperationCenter::getVtsSystemId).filter(Objects::nonNull).collect(Collectors.toSet());
         Map<UUID, String> vtsSystemMap = vtsSystemIds.isEmpty() ? Map.of() :
@@ -393,10 +473,42 @@ public class AisSystemService {
                 userRepository.findAllById(userIds).stream().collect(Collectors.toMap(User::getId, u -> (u.getFullName() != null && !u.getFullName().isBlank()) ? u.getFullName() : u.getUsername(), (a, b) -> a));
 
         List<AisSystemListItem> items = content.stream()
-                .map(e -> toListItem(e, opCenterMap, vtsSystemMap, orgUnitMap, userMap))
+                .map(e -> toListItem(e, opCenterMap, radarStationMap, vtsSystemMap, orgUnitMap, userMap))
                 .collect(Collectors.toList());
 
         return new PageImpl<>(items, pageable, page.getTotalElements());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AisSystemListItem> search(
+            String keyword,
+            String name,
+            String code,
+            UUID orgUnitId,
+            UUID vtsOperationCenterId,
+            UUID operatingOrgId,
+            Integer provinceId,
+            ConditionStatus conditionStatus,
+            Integer commissioningYear,
+            ApprovalStatus approvalStatus,
+            LocalDateTime updatedFrom,
+            LocalDateTime updatedTo,
+            Pageable pageable) {
+        return search(keyword, name, code, orgUnitId, vtsOperationCenterId, null, operatingOrgId, provinceId, conditionStatus, commissioningYear, approvalStatus, updatedFrom, updatedTo, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AisSystemListItem> search(
+            String keyword,
+            UUID orgUnitId,
+            UUID vtsOperationCenterId,
+            UUID operatingOrgId,
+            Integer provinceId,
+            ConditionStatus conditionStatus,
+            Integer commissioningYear,
+            ApprovalStatus approvalStatus,
+            Pageable pageable) {
+        return search(keyword, null, null, orgUnitId, vtsOperationCenterId, null, operatingOrgId, provinceId, conditionStatus, commissioningYear, approvalStatus, null, null, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -409,29 +521,23 @@ public class AisSystemService {
             ConditionStatus conditionStatus,
             ApprovalStatus approvalStatus,
             Pageable pageable) {
-        return search(keyword, orgUnitId, vtsOperationCenterId, operatingOrgId, provinceId, conditionStatus, null, approvalStatus, pageable);
+        return search(keyword, null, null, orgUnitId, vtsOperationCenterId, null, operatingOrgId, provinceId, conditionStatus, null, approvalStatus, null, null, pageable);
     }
 
     @Transactional(readOnly = true)
     public Map<String, Long> countByStatus(
             String keyword,
+            String name,
+            String code,
             UUID orgUnitId,
             UUID vtsOperationCenterId,
-            UUID operatingOrgId,
-            Integer provinceId,
-            ConditionStatus conditionStatus) {
-        return countByStatus(keyword, orgUnitId, vtsOperationCenterId, operatingOrgId, provinceId, conditionStatus, null);
-    }
-
-    @Transactional(readOnly = true)
-    public Map<String, Long> countByStatus(
-            String keyword,
-            UUID orgUnitId,
-            UUID vtsOperationCenterId,
+            UUID radarStationId,
             UUID operatingOrgId,
             Integer provinceId,
             ConditionStatus conditionStatus,
-            Integer commissioningYear) {
+            Integer commissioningYear,
+            LocalDateTime updatedFrom,
+            LocalDateTime updatedTo) {
 
         Scope scope = resolveEffectiveScope(orgUnitId);
         if (!scope.unrestricted() && scope.orgUnitIds().isEmpty()) {
@@ -444,9 +550,24 @@ public class AisSystemService {
         }
 
         String kw = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
-        List<Object[]> rows = commissioningYear == null
-                ? repository.countByApprovalStatus(!scope.unrestricted(), scope.orgUnitIds(), null, vtsOperationCenterId, operatingOrgId, provinceId, conditionStatus, kw)
-                : repository.countByApprovalStatusWithYear(!scope.unrestricted(), scope.orgUnitIds(), null, vtsOperationCenterId, operatingOrgId, provinceId, conditionStatus, commissioningYear, kw);
+        String n = (name != null && !name.trim().isEmpty()) ? "%" + name.trim().toLowerCase() + "%" : null;
+        String c = (code != null && !code.trim().isEmpty()) ? "%" + code.trim().toLowerCase() + "%" : null;
+
+        List<Object[]> rows = repository.countByApprovalStatus(
+                !scope.unrestricted(),
+                scope.orgUnitIds(),
+                null,
+                vtsOperationCenterId,
+                radarStationId,
+                operatingOrgId,
+                provinceId,
+                conditionStatus,
+                commissioningYear,
+                kw,
+                n,
+                c,
+                updatedFrom,
+                updatedTo);
 
         Map<String, Long> counts = new HashMap<>();
         counts.put("ALL", 0L);
@@ -465,6 +586,45 @@ public class AisSystemService {
         }
         counts.put("ALL", total);
         return counts;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> countByStatus(
+            String keyword,
+            String name,
+            String code,
+            UUID orgUnitId,
+            UUID vtsOperationCenterId,
+            UUID operatingOrgId,
+            Integer provinceId,
+            ConditionStatus conditionStatus,
+            Integer commissioningYear,
+            LocalDateTime updatedFrom,
+            LocalDateTime updatedTo) {
+        return countByStatus(keyword, name, code, orgUnitId, vtsOperationCenterId, null, operatingOrgId, provinceId, conditionStatus, commissioningYear, updatedFrom, updatedTo);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> countByStatus(
+            String keyword,
+            UUID orgUnitId,
+            UUID vtsOperationCenterId,
+            UUID operatingOrgId,
+            Integer provinceId,
+            ConditionStatus conditionStatus) {
+        return countByStatus(keyword, null, null, orgUnitId, vtsOperationCenterId, null, operatingOrgId, provinceId, conditionStatus, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> countByStatus(
+            String keyword,
+            UUID orgUnitId,
+            UUID vtsOperationCenterId,
+            UUID operatingOrgId,
+            Integer provinceId,
+            ConditionStatus conditionStatus,
+            Integer commissioningYear) {
+        return countByStatus(keyword, null, null, orgUnitId, vtsOperationCenterId, null, operatingOrgId, provinceId, conditionStatus, commissioningYear, null, null);
     }
 
     @Transactional
@@ -729,6 +889,7 @@ public class AisSystemService {
         if (AisSystem.Fields.name.equals(field)) return "Tên thiết bị";
         if (AisSystem.Fields.code.equals(field)) return "Mã thiết bị";
         if (AisSystem.Fields.vtsOperationCenterId.equals(field)) return "Thuộc trung tâm điều hành VTS";
+        if (AisSystem.Fields.radarStationId.equals(field)) return "Thuộc trạm Radar";
         if (AisSystem.Fields.operatingOrgId.equals(field)) return "Đơn vị khai thác";
         if (BaseApprovableEntity.Fields.orgUnitId.equals(field)) return "Đơn vị quản lý";
         if (BaseApprovableEntity.Fields.provinceId.equals(field)) return "Địa điểm (Tỉnh/TP)";
@@ -768,6 +929,16 @@ public class AisSystemService {
             try {
                 return vtsOperationCenterRepository.findById(UUID.fromString(rawValue))
                         .map(VtsOperationCenter::getName)
+                        .orElse(rawValue);
+            } catch (Exception e) {
+                return rawValue;
+            }
+        }
+        if (AisSystem.Fields.radarStationId.equals(field)
+                || getFieldDisplayName(AisSystem.Fields.radarStationId).equals(field)) {
+            try {
+                return radarStationRepository.findById(UUID.fromString(rawValue))
+                        .map(RadarStation::getStationName)
                         .orElse(rawValue);
             } catch (Exception e) {
                 return rawValue;
@@ -849,21 +1020,37 @@ public class AisSystemService {
         String vtsOpCenterName = null;
         UUID vtsSystemId = null;
         String vtsSystemName = null;
+        String radarStationName = null;
+        String locationTypeName = null;
+        String attachedLocationName = null;
 
         if (entity.getVtsOperationCenterId() != null) {
             Optional<VtsOperationCenter> opCenterOpt = vtsOperationCenterRepository.findById(entity.getVtsOperationCenterId());
             if (opCenterOpt.isPresent()) {
                 VtsOperationCenter opCenter = opCenterOpt.get();
                 vtsOpCenterName = opCenter.getName();
+                attachedLocationName = opCenter.getName();
+                locationTypeName = "Trung tâm điều hành VTS";
                 vtsSystemId = opCenter.getVtsSystemId();
                 if (vtsSystemId != null) {
                     vtsSystemName = vtsSystemRepository.findById(vtsSystemId).map(VtsSystem::getSystemName).orElse(null);
                 }
             }
+        } else if (entity.getRadarStationId() != null) {
+            Optional<RadarStation> radarOpt = radarStationRepository.findById(entity.getRadarStationId());
+            if (radarOpt.isPresent()) {
+                radarStationName = radarOpt.get().getStationName();
+                attachedLocationName = radarStationName;
+                locationTypeName = "Trạm Radar";
+            }
         }
 
-        // Tên đơn vị lấy từ cache dùng chung thay vì mỗi trường một truy vấn.
-        String operatingOrgName = orgUnitCacheService.getName(entity.getOperatingOrgId());
+        // Tên đơn vị lấy từ cache/repository dùng chung
+        String operatingOrgName = entity.getOperatingOrgId() != null
+                ? operatingOrganizationRepository.findById(entity.getOperatingOrgId())
+                        .map(OperatingOrganization::getName)
+                        .orElseGet(() -> orgUnitCacheService.getName(entity.getOperatingOrgId()))
+                : null;
         String orgUnitName = orgUnitCacheService.getName(entity.getOrgUnitId());
 
         // Gom 4 người dùng (tạo / sửa / duyệt C1 / duyệt C2) vào một truy vấn.
@@ -908,6 +1095,10 @@ public class AisSystemService {
                 .vtsOperationCenterName(vtsOpCenterName)
                 .vtsSystemId(vtsSystemId)
                 .vtsSystemName(vtsSystemName)
+                .radarStationId(entity.getRadarStationId())
+                .radarStationName(radarStationName)
+                .locationTypeName(locationTypeName)
+                .attachedLocationName(attachedLocationName)
                 .operatingOrgId(entity.getOperatingOrgId())
                 .operatingOrgName(operatingOrgName)
                 .orgUnitId(entity.getOrgUnitId())
@@ -949,12 +1140,13 @@ public class AisSystemService {
     }
 
     public AisSystemListItem toListItem(AisSystem entity) {
-        return toListItem(entity, Map.of(), Map.of(), Map.of(), Map.of());
+        return toListItem(entity, Map.of(), Map.of(), Map.of(), Map.of(), Map.of());
     }
 
     public AisSystemListItem toListItem(
             AisSystem entity,
             Map<UUID, VtsOperationCenter> opCenterMap,
+            Map<UUID, RadarStation> radarStationMap,
             Map<UUID, String> vtsSystemMap,
             Map<UUID, String> orgUnitMap,
             Map<UUID, String> userMap) {
@@ -962,6 +1154,9 @@ public class AisSystemService {
         String vtsOpCenterName = null;
         UUID vtsSystemId = null;
         String vtsSystemName = null;
+        String radarStationName = null;
+        String locationTypeName = null;
+        String attachedLocationName = null;
 
         if (entity.getVtsOperationCenterId() != null) {
             VtsOperationCenter opCenter = opCenterMap.containsKey(entity.getVtsOperationCenterId())
@@ -969,6 +1164,8 @@ public class AisSystemService {
                     : vtsOperationCenterRepository.findById(entity.getVtsOperationCenterId()).orElse(null);
             if (opCenter != null) {
                 vtsOpCenterName = opCenter.getName();
+                attachedLocationName = opCenter.getName();
+                locationTypeName = "Trung tâm điều hành VTS";
                 vtsSystemId = opCenter.getVtsSystemId();
                 if (vtsSystemId != null) {
                     vtsSystemName = vtsSystemMap.containsKey(vtsSystemId)
@@ -976,13 +1173,24 @@ public class AisSystemService {
                             : vtsSystemRepository.findById(vtsSystemId).map(VtsSystem::getSystemName).orElse(null);
                 }
             }
+        } else if (entity.getRadarStationId() != null) {
+            RadarStation radar = radarStationMap.containsKey(entity.getRadarStationId())
+                    ? radarStationMap.get(entity.getRadarStationId())
+                    : radarStationRepository.findById(entity.getRadarStationId()).orElse(null);
+            if (radar != null) {
+                radarStationName = radar.getStationName();
+                attachedLocationName = radarStationName;
+                locationTypeName = "Trạm Radar";
+            }
         }
 
         String operatingOrgName = null;
         if (entity.getOperatingOrgId() != null) {
-            operatingOrgName = orgUnitMap.containsKey(entity.getOperatingOrgId())
-                    ? orgUnitMap.get(entity.getOperatingOrgId())
-                    : orgUnitRepository.findById(entity.getOperatingOrgId()).map(OrgUnit::getName).orElse(null);
+            operatingOrgName = operatingOrganizationRepository.findById(entity.getOperatingOrgId())
+                    .map(OperatingOrganization::getName)
+                    .orElseGet(() -> orgUnitMap.containsKey(entity.getOperatingOrgId())
+                            ? orgUnitMap.get(entity.getOperatingOrgId())
+                            : orgUnitRepository.findById(entity.getOperatingOrgId()).map(OrgUnit::getName).orElse(null));
         }
 
         String orgUnitName = null;
@@ -1013,6 +1221,10 @@ public class AisSystemService {
                 .vtsOperationCenterName(vtsOpCenterName)
                 .vtsSystemId(vtsSystemId)
                 .vtsSystemName(vtsSystemName)
+                .radarStationId(entity.getRadarStationId())
+                .radarStationName(radarStationName)
+                .locationTypeName(locationTypeName)
+                .attachedLocationName(attachedLocationName)
                 .operatingOrgId(entity.getOperatingOrgId())
                 .operatingOrgName(operatingOrgName)
                 .orgUnitId(entity.getOrgUnitId())

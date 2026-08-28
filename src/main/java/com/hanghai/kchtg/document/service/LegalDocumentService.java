@@ -80,13 +80,8 @@ public class LegalDocumentService {
         }
 
         boolean draft = Boolean.TRUE.equals(request.getDraft());
-        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
-                : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "legaldocument", SecurityUtils.getCurrentUserPermissions(),
-                SecurityUtils.isElevatedAdministrator());
 
         LegalDocument vb = LegalDocument.builder()
-                .securityLevel(secLevel)
                 .documentName(request.getDocumentName())
                 .documentNumber(request.getDocumentNumber())
                 .issuingAuthority(request.getIssuingAuthority())
@@ -142,12 +137,6 @@ public class LegalDocumentService {
         }
 
         List<String> changes = new ArrayList<>();
-        if (request.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "legaldocument",
-                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-            vb.setSecurityLevel(request.getSecurityLevel());
-            changes.add("Mức độ bảo mật");
-        }
         if (request.getDocumentName() != null && !request.getDocumentName().equals(vb.getDocumentName())) {
             changes.add("Tên văn bản");
             vb.setDocumentName(request.getDocumentName());
@@ -412,7 +401,6 @@ public class LegalDocumentService {
         }
         return LegalDocumentResponse.builder()
                 .id(vb.getId())
-                .securityLevel(vb.getSecurityLevel())
                 .documentName(vb.getDocumentName())
                 .documentNumber(vb.getDocumentNumber())
                 .issuingAuthority(vb.getIssuingAuthority())

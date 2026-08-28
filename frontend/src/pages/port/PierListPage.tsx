@@ -1,16 +1,19 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
-  Button, Tag, Modal, Input, Select, Alert, Divider, DatePicker,
+  Button, Modal, Input, Select, Alert, DatePicker,
   Drawer, Radio, Space, Typography, Form,
 } from 'antd';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined,
   CloseCircleOutlined, EyeOutlined, HistoryOutlined, ExclamationCircleOutlined,
-  ClockCircleFilled, UpOutlined, DownOutlined, SearchOutlined, ArrowRightOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { pierCRUD, pierApproval, berthCRUD, portCRUD } from '../../services/portService';
+import { pierCRUD, pierApproval, berthCRUD, portCRUD, shipRepairYardCRUD } from '../../services/portService';
+import { trangThaiPheDuyetBadge } from '../../services/port/schema';
 import type { Pier } from '../../types/port';
+import { AppDrawer } from '../../components/shared/AppDrawer';
+import ShipRepairYardDetailContent from '../ship-repair-yard/ShipRepairYardDetailContent';
 import { organizationService } from '../../services/organizationService';
 import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
 import { lineObjectService } from '../../services/lineObjectService';
@@ -22,7 +25,7 @@ import type { Organization } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCES } from '../../types/common';
-import { ScreenHeader, StatusTabs, DataTable } from '../../components/list-view';
+import { ScreenHeader, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
@@ -31,11 +34,10 @@ import PierForm from './PierForm';
 import PierDetailContent from './PierDetailContent';
 import {
   statusOperational, statusAttention, statusCritical, statusDraft,
-  actionPrimary, cardStyle, textPrimary, textSecondary, textTertiary,
-  borderDefault, fontSizeMd, fontSizeLg, fontSizeXl,
-  fontWeightMedium, fontWeightBold, radiusPill, radiusLg, radiusSm,
-  spaceMd, spaceSm, spaceXs, spaceLg, spaceXl, spaceFormField,
-  shadowSm, surfaceCard,
+  actionPrimary, textPrimary, textSecondary, textTertiary,
+  borderDefault, fontSizeMd, fontSizeLg,
+  fontWeightMedium, fontWeightBold, radiusPill,
+  spaceMd, spaceSm, spaceXs, spaceXl, spaceFormField,
   drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
   primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
   historyBadgeStyle, historyGroupGridStyle, historyTimeStyle, historyMetaRowStyle,
@@ -44,15 +46,21 @@ import {
   historyOldValueStyle, historyNewValueStyle, historyArrowStyle,
 } from '../../tokens';
 import { colors } from '../../theme';
-import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
-import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
-import { approvalStatusLabel } from '../../components/shared/ApprovalStatusBadge';
-import { APPROVAL_STATUS_OPTIONS } from '../../components/shared/ApprovalStatusBadge';
-import { APPROVAL_STATUS_STYLE } from '../../components/shared/ApprovalStatusBadge';
 
-// Nhãn + màu trạng thái lấy từ nguồn chung (approval-2-level-spec.md mục 3.1),
-// không khai lại map riêng để tránh lệch nhãn giữa các màn.
-const APPROVAL_STYLE_MAP = APPROVAL_STATUS_STYLE;
+const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
+  NHAP: { color: statusDraft, label: 'Lưu tạm' }, DRAFT: { color: statusDraft, label: 'Lưu tạm' },
+  PENDING: { color: statusAttention, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  CHO_PHE_DUYET: { color: statusAttention, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  PENDING_APPROVAL: { color: statusAttention, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  APPROVED_LEVEL1: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
+  APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
+  DA_PHE_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
+  REJECTED: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  TU_CHOI: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  REJECTED_LEVEL1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp cục' },
+};
 const OPERATIONAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/vận hành' },
   NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
@@ -60,18 +68,16 @@ const OPERATIONAL_STYLE_MAP: Record<string, { color: string; label: string }> = 
 };
 const TAB_STATUS_LIST = [
   { key: 'all', label: 'Tất cả', color: actionPrimary },
-  // 7 trạng thái chuẩn — approval-2-level-spec.md mục 3.1.
-  // Trước đây tab "Chờ Cảng vụ duyệt" lại truy vấn APPROVED_LEVEL1 (hồ sơ đã qua vòng 1)
-  // và thiếu hẳn tab cho hồ sơ đang chờ vòng 1.
   { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
-  { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', color: statusAttention },
-  { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', color: '#0284C7' },
-  { key: 'APPROVED', label: 'Đã duyệt', color: statusOperational },
-  { key: 'REJECTED_LEVEL1', label: 'Bị trả về', color: statusCritical },
+  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
+  { key: 'APPROVED_LEVEL2', label: 'Chờ phê duyệt cấp cục', color: statusAttention },
+  { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
+  { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
+  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
 ];
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
-  all: undefined, DRAFT: 'DRAFT', PENDING_APPROVAL: 'PENDING_APPROVAL',
-  APPROVED_LEVEL1: 'APPROVED_LEVEL1', APPROVED: 'APPROVED', REJECTED_LEVEL1: 'REJECTED_LEVEL1',
+  all: undefined, DRAFT: 'DRAFT', APPROVED_LEVEL1: 'APPROVED_LEVEL1',
+  APPROVED_LEVEL2: 'APPROVED_LEVEL2', APPROVED: 'APPROVED', REJECTED_LEVEL1: 'REJECTED_LEVEL1', REJECTED_LEVEL2: 'REJECTED_LEVEL2',
 };
 
 const STRUCTURE_TYPE_OPTIONS = [
@@ -117,7 +123,7 @@ function histVal(fn: string, val: string | null, orgMap?: Map<string, string>, s
   if (fn === 'navigationChannelId' && waterwayMap) return waterwayMap.get(val) || val;
   if (fn === 'structureType') { const m: Record<string,string> = { '1':'Kết cấu bệ cọc cao', '2':'Kết cấu cường từ', '3':'Kết cấu trọng lực', '4':'Kết cấu khác' }; return m[val] || val; }
   if (fn === 'constructionGrade') { const m: Record<string,string> = { '1':'Cấp đặc biệt', '2':'Cấp 1', '3':'Cấp 2', '4':'Cấp 3', '5':'Cấp 4' }; return m[val] || val; }
-  if (fn === 'approvalStatus') return approvalStatusLabel(val);
+  if (fn === 'approvalStatus') { const m: Record<string,string> = { DRAFT:'Lưu tạm', PENDING:'Chờ phê duyệt cấp Cảng vụ/Chi cục', PENDING_APPROVAL:'Chờ phê duyệt cấp Cảng vụ/Chi cục', APPROVED_LEVEL1:'Chờ phê duyệt cấp cục', APPROVED_LEVEL2:'Chờ phê duyệt cấp cục', APPROVED:'Đã phê duyệt', REJECTED:'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL1:'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL2:'Từ chối cấp cục' }; return m[val?.toUpperCase()] || val; }
   if (fn === 'operationalStatus') { const m: Record<string,string> = { OPERATIONAL:'Đang khai thác/vận hành', NOT_YET_OPERATIONAL:'Chưa khai thác/vận hành', SUSPENDED:'Dừng khai thác/vận hành', HIEN_HANH:'Hiện hành', TAM_NGUNG:'Tạm ngừng', DANG_KHAI_THAC:'Đang khai thác/vận hành', CHUA_KHAI_THAC:'Chưa khai thác/vận hành', DUNG_KHAI_THAC:'Dừng khai thác/vận hành' }; return m[val?.toUpperCase()] || val; }
   if (fn === 'pierType') { const m: Record<string,string> = { CONTAINER:'Container', TONG_HOP:'Tổng hợp', HANH_KHACH:'Hành khách', CHUYEN_DUNG_XANG_DAU:'Chuyên dùng xăng dầu', CHUYEN_DUNG_ROI_QUANG:'Chuyên dùng rời/quặng', KHAC:'Khác' }; return m[val?.toUpperCase()] || val; }
   if (fn === 'province') return VIETNAM_PROVINCES[Number(val)-1] || val;
@@ -126,17 +132,9 @@ function histVal(fn: string, val: string | null, orgMap?: Map<string, string>, s
   if (fn.endsWith('At') || fn.endsWith('Date')) { try { let d = dayjs(val); if (!d.isValid()) { d = dayjs((val || '').replace(/\.\d+$/, '')); } return d.isValid() ? d.format('DD/MM/YYYY HH:mm') : val; } catch { return val; } }
   return val;
 }
-function actLabel(items: any[]): { label: string; color: string } {
-  const f = items.map((i: any) => i.fieldName || ''), n = items.map((i: any) => i.newValue || '');
-  if (f.includes('deletedAt') || n.includes('Đã xóa')) return { label: 'Xóa', color: 'red' };
-  if (f.includes('approvalStatus') && n[f.indexOf('approvalStatus')] === 'APPROVED') return { label: 'Phê duyệt', color: 'green' };
-  if (f.includes('approvalStatus') && n[f.indexOf('approvalStatus')] === 'REJECTED') return { label: 'Từ chối', color: 'red' };
-  if (f.includes('approvalStatus') && n[f.indexOf('approvalStatus')] === 'PENDING') return { label: 'Gửi phê duyệt', color: 'orange' };
-  return items.filter((i: any) => i.oldValue === '(null)' || i.oldValue === 'null').length > items.length / 2 ? { label: 'Tạo mới', color: 'blue' } : { label: 'Chỉnh sửa', color: 'blue' };
-}
 
 export default function PierListPage() {
-  const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const userPermissions = useAuthStore((s) => s.user?.permissions) || [];
   const isAuditViewer = userPermissions.includes('admin:manage') || userPermissions.includes('admin:operation');
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
@@ -149,7 +147,6 @@ export default function PierListPage() {
   const [portOptions, setPortOptions] = useState<{ value: string; label: string }[]>([]);
   const [filterProvince, setFilterProvince] = useState<string | undefined>();
   const [filterOperationalStatus, setFilterOperationalStatus] = useState<string | undefined>();
-  const [filterApprovalStatus, setFilterApprovalStatus] = useState<string | undefined>();
   const [filterWaterwayId, setFilterWaterwayId] = useState<string | undefined>();
   const [filterConstructionGrade, setFilterConstructionGrade] = useState<number | undefined>();
   const [filterStructureType, setFilterStructureType] = useState<number | undefined>();
@@ -161,7 +158,7 @@ export default function PierListPage() {
   const [page, setPage] = useState(1); const [pageSize, setPageSize] = useState(20);
   const [dataSource, setDataSource] = useState<Pier[]>([]); const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false); const [isError, setIsError] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const [, setError] = useState<Error | null>(null);
   const [sortField, setSortField] = useState('updatedAt');
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend'>('descend');
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -181,14 +178,14 @@ export default function PierListPage() {
   const [createDrawerVisible, setCreateDrawerVisible] = useState(false);
   const [editPierId, setEditPierId] = useState<string | undefined>();
   const [createForm] = Form.useForm();
-  const [updateForm] = Form.useForm();
   const pierFormRef = useRef<any>(null);
-  const editPierFormRef = useRef<any>(null);
   const [detailDrawerVisible, setDetailDrawerVisible] = useState(false);
   const [detailRecord, setDetailRecord] = useState<Pier | null>(null);
   const [berthDetail, setBerthDetail] = useState<{ berthCode?: string; berthName?: string } | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [detailFiles, setDetailFiles] = useState<any[]>([]);
+  // ── Danh sách kết cấu hạ tầng thuộc cầu cảng (Cơ sở sửa chữa, đóng tàu) ──
+  const [infrastructureList, setInfrastructureList] = useState<any[]>([]);
+  const [infraDetail, setInfraDetail] = useState<{ type: string; record: any } | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletingRecord, setDeletingRecord] = useState<Pier | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -207,8 +204,6 @@ export default function PierListPage() {
   const [historyTarget, setHistoryTarget] = useState<Pier | null>(null);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyExpanded, setHistoryExpanded] = useState<Record<number, boolean>>({});
-  const [historyVisible, setHistoryVisible] = useState(10);
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
   const [historyTo, setHistoryTo] = useState('');
@@ -222,11 +217,13 @@ export default function PierListPage() {
   const appliedFiltersRef = useRef<{
     orgUnit?: string; search: string; pierName: string; pierCode: string; berthId?: string; portId?: string; pierType?: string;
     province?: string; operationalStatus?: string; approvalStatus?: string;
-  }>({ orgUnit: undefined, search: '', pierName: '', pierCode: '', berthId: undefined, portId: undefined, pierType: undefined, province: undefined, operationalStatus: undefined, approvalStatus: undefined });
+    waterwayId?: string; constructionGrade?: number; structureType?: number;
+    operationalFunction?: string; updatedFrom?: string; updatedTo?: string;
+  }>({ orgUnit: undefined, search: '', pierName: '', pierCode: '', berthId: undefined, portId: undefined, pierType: undefined, province: undefined, operationalStatus: undefined, approvalStatus: undefined, waterwayId: undefined, constructionGrade: undefined, structureType: undefined, operationalFunction: '', updatedFrom: undefined, updatedTo: undefined });
 
   const openHistory = useCallback(async (r: Pier) => {
     setHistoryTarget(r); setHistoryOpen(true); setHistoryLoading(true); setHistoryRecords([]);
-    setHistoryExpanded({}); setHistoryVisible(10); setHistorySearch(''); setHistoryFrom(''); setHistoryTo('');
+    setHistorySearch(''); setHistoryFrom(''); setHistoryTo('');
     setHistoryMode('current');
     try {
       const res = await api.get(`/v1/piers/${r.id}/history`);
@@ -412,7 +409,7 @@ export default function PierListPage() {
         pierType: f.pierType,
         province: f.province || undefined,
         status: f.operationalStatus,
-        approvalStatus: f.approvalStatus || TAB_QUERY_MAP[activeTab],
+        approvalStatus: TAB_QUERY_MAP[activeTab],
         navigationChannelId: f.waterwayId,
         constructionGrade: f.constructionGrade,
         structureType: f.structureType,
@@ -432,31 +429,44 @@ export default function PierListPage() {
   const handleFilterApply = useCallback(() => {
     appliedFiltersRef.current = {
       orgUnit, search: '', pierName: pierNameInput, pierCode: pierCodeInput, berthId: filterBerthId, portId: filterPortId, pierType: filterPierType,
-      province: filterProvince, operationalStatus: filterOperationalStatus, approvalStatus: filterApprovalStatus,
+      province: filterProvince, operationalStatus: filterOperationalStatus,
       waterwayId: filterWaterwayId, constructionGrade: filterConstructionGrade, structureType: filterStructureType,
       operationalFunction: filterOperationalFunction, updatedFrom: filterUpdatedFrom, updatedTo: filterUpdatedTo,
     };
     setPage(1);
     setRefreshKey(k => k + 1);
-  }, [pierNameInput, pierCodeInput, orgUnit, filterBerthId, filterPortId, filterPierType, filterProvince, filterOperationalStatus, filterApprovalStatus,
+  }, [pierNameInput, pierCodeInput, orgUnit, filterBerthId, filterPortId, filterPierType, filterProvince, filterOperationalStatus,
     filterWaterwayId, filterConstructionGrade, filterStructureType, filterOperationalFunction, filterUpdatedFrom, filterUpdatedTo]);
   const handleFilterReset = useCallback(() => {
     const oid = defaultOrgUnitRef.current || '__all__';
-    appliedFiltersRef.current = { orgUnit: oid, search: '', pierName: '', pierCode: '', berthId: undefined, portId: undefined, pierType: undefined, province: undefined, operationalStatus: undefined, approvalStatus: undefined, waterwayId: undefined, constructionGrade: undefined, structureType: undefined, operationalFunction: '', updatedFrom: undefined, updatedTo: undefined };
+    appliedFiltersRef.current = { orgUnit: oid, search: '', pierName: '', pierCode: '', berthId: undefined, portId: undefined, pierType: undefined, province: undefined, operationalStatus: undefined, waterwayId: undefined, constructionGrade: undefined, structureType: undefined, operationalFunction: '', updatedFrom: undefined, updatedTo: undefined };
     setOrgUnit(oid); setPierNameInput(''); setPierCodeInput('');
     setFilterPortId(undefined); setFilterBerthId(undefined); setFilterPierType(undefined);
-    setFilterProvince(undefined); setFilterOperationalStatus(undefined); setFilterApprovalStatus(undefined);
+    setFilterProvince(undefined); setFilterOperationalStatus(undefined);
     setFilterWaterwayId(undefined); setFilterConstructionGrade(undefined); setFilterStructureType(undefined);
     setFilterOperationalFunction(''); setFilterUpdatedFrom(undefined); setFilterUpdatedTo(undefined);
     setActiveTab('all'); setPage(1); setRefreshKey(k => k + 1);
   }, []);
-  const handleTabChange = useCallback((key: string) => { setActiveTab(key); setFilterApprovalStatus(undefined); appliedFiltersRef.current.approvalStatus = undefined; setPage(1); }, []);
+  const handleTabChange = useCallback((key: string) => { setActiveTab(key); setPage(1); }, []);
 
   const openDetailDrawer = useCallback(async (record: Pier) => {
-    setDetailDrawerVisible(true); setDetailRecord(record); setDetailFiles([]); setDetailLoading(true); setBerthDetail(null);
+    setDetailDrawerVisible(true); setDetailRecord(record); setDetailFiles([]); setBerthDetail(null); setInfrastructureList([]);
     try { const r = await api.get(`/v1/piers/${record.id}/attachments`); setDetailFiles(r.data?.data || []); } catch { setDetailFiles([]); }
-    try { setDetailRecord(await pierCRUD.findById(record.id)); } catch {} finally { setDetailLoading(false); }
+    try { setDetailRecord(await pierCRUD.findById(record.id)); } catch {}
     if (record.berthId) { try { const b = await berthCRUD.findById(record.berthId); setBerthDetail(b); } catch { setBerthDetail(null); } }
+    // ── Danh sách kết cấu hạ tầng thuộc cầu cảng: Cơ sở sửa chữa, đóng tàu (pierId) ──
+    try {
+      const r = await shipRepairYardCRUD.search({ page: 1, pageSize: 1000, pierId: record.id });
+      setInfrastructureList((r.data || []).map((x: any) => ({ id: x.id, infraName: x.shipRepairYardName || x.name || '—', infraType: 'COSO_SUACHUA' })));
+    } catch { setInfrastructureList([]); }
+  }, []);
+
+  // ── Chi tiết kết cấu hạ tầng (Cơ sở sửa chữa, đóng tàu) — drawer lồng 950 như bến phao ──
+  const openInfraDetail = useCallback(async (id: string) => {
+    try {
+      const rec = await shipRepairYardCRUD.findById(id);
+      setInfraDetail({ type: 'COSO_SUACHUA', record: rec });
+    } catch { /* noop */ }
   }, []);
 
   const dd2dms = (dd: number) => { if (dd == null || isNaN(dd)) return { d: 0, m: 0, s: 0 }; const a = Math.abs(dd); return { d: Math.floor(a), m: Math.floor((a - Math.floor(a)) * 60), s: +((a - Math.floor(a) - Math.floor((a - Math.floor(a)) * 60) / 60) * 3600).toFixed(2) }; };
@@ -592,12 +602,6 @@ export default function PierListPage() {
             onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined); }}
             style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
         </div>
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
-          <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Tất cả" allowClear
-            value={filterApprovalStatus} onChange={v => { setFilterApprovalStatus(v); setActiveTab('all'); }}
-            options={APPROVAL_STATUS_OPTIONS} />
-        </div>
       </>)}
     </>
   );
@@ -605,15 +609,14 @@ export default function PierListPage() {
   const rowActions = useCallback((record: Pier) => {
     const actions: any[] = [{ key: 'view', label: 'Chi tiết', icon: <EyeOutlined />, onClick: () => openDetailDrawer(record) }];
     const st = record.approvalStatus || '';
-    // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
-    if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'pier' })) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => { setEditPierId(record.id); setCreateDrawerVisible(true); } });
-    if (hasPerm('pier:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistory(record) });
+    if (hasPerm('pier:update')) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => { setEditPierId(record.id); setCreateDrawerVisible(true); } });
+    if (hasPerm('pier:delete') && ['DRAFT','NHAP'].includes(st)) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => openDeleteModal(record) });
     if (['DRAFT','NHAP'].includes(st) && hasPerm('pier:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => handleSubmitApproval(record) });
     if (hasPerm('pier:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) {
       actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setApprovingRecord(record); setApprovalContent(''); setApproveModalOpen(true); } });
       actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, danger: true, onClick: () => openRejectModal(record) });
     }
-    if (hasPerm('pier:delete') && ['DRAFT','NHAP'].includes(st)) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => openDeleteModal(record) });
+    if (hasPerm('pier:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistory(record) });
     return actions;
   }, [hasPerm, openDetailDrawer, openHistory, handleSubmitApproval, openRejectModal, openDeleteModal]);
 
@@ -675,7 +678,7 @@ export default function PierListPage() {
       render: (v: string, r: Pier) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || r.tenBenCang || berthOptions.find(b => b.value === r.berthId)?.label || r.berthId || '—'}</span> },
     { label: 'Thuộc luồng hàng hải', dataIndex: 'navigationChannelId', key: 'navigationChannelId', width: 280, ellipsis: true, sortable: true,
       render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v ? (waterwayMap.get(v) || v) : '—'}</span> },
-    { label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'province', key: 'province', width: 250, sortable: true,
+    { label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'province', key: 'province', width: 250, sortable: true,
       render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
     { label: 'Phân cấp công trình', dataIndex: 'constructionGrade', key: 'constructionGrade', width: 220, sortable: true,
       render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v != null ? (CONSTRUCTION_GRADE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : '—'}</span> },
@@ -683,8 +686,13 @@ export default function PierListPage() {
       render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
     { label: 'Tình trạng', dataIndex: 'operationalStatus', key: 'operationalStatus', width: 190, sortable: true,
       render: (v: string) => { const b = v && OPERATIONAL_STYLE_MAP[v]; return b ? <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${b.color}15`, color: b.color }}>{b.label}</span> : <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>; } },
-    { label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 180, sortable: true,
-      render: (v: string) => <ApprovalStatusBadge status={v} /> },
+    { label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 260, sortable: true,
+      render: (v: string) => {
+        const badge = v ? trangThaiPheDuyetBadge(v) : null;
+        if (!badge || badge.color === 'default') { const s = v && APPROVAL_STYLE_MAP[v]; return s ? <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span> : <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>; }
+        const bc = badge.color === 'green' ? statusOperational : badge.color === 'red' ? statusCritical : badge.color === 'orange' ? statusAttention : textTertiary;
+        return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${bc}15`, color: bc }}>{badge.label}</span>;
+      } },
     { label: 'Cán bộ cập nhật', dataIndex: 'updatedAt', key: 'updatedAt', width: 200, sortable: true,
       render: (v: string, record: Pier) => (
         <div>
@@ -717,7 +725,7 @@ export default function PierListPage() {
         {isError ? null : !isLoading && dataSource.length === 0 ? (
           <DataTable dataSource={[]} rowKey="id" emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>Không tìm thấy cầu cảng nào phù hợp</div></div>} />
         ) : !isLoading && !isError && dataSource.length > 0 ? (
-          <DataTable columns={columns} dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; if (sortField === 'stt') { const arr = [...dataSource]; return sortOrder === 'descend' ? arr.reverse() : arr; } const av = getSortValue(a, sortField); const bv = getSortValue(b, sortField); const c = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv), 'vi'); return sortOrder === 'ascend' ? c : -c; })}
+          <DataTable columns={columns} dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; if (sortField === 'stt') { const arr = [...dataSource]; return sortOrder === 'descend' ? (arr.reverse(), 0) : 0; } const av = getSortValue(a, sortField); const bv = getSortValue(b, sortField); const c = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv), 'vi'); return sortOrder === 'ascend' ? c : -c; })}
             rowKey="id" rowActions={rowActions} loading={false} onSort={(k: string, o: 'asc' | 'desc') => { setSortField(k); setSortOrder(o === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
             scroll={{ x: 1900, y: 500 }} />
         ) : null}
@@ -728,7 +736,7 @@ export default function PierListPage() {
         onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
         afterOpenChange={(open) => { if (!open) setEditPierId(undefined); }}
         extra={<Button type="text" onClick={() => { setCreateDrawerVisible(false); createForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
-        footer={<div style={drawerFooterStyle}>{editPierId ? <Button htmlType="button" type="primary" onClick={() => { setActionType('update'); pierFormRef.current?.submit('UPDATE'); }} loading={submitting && actionType === 'update'} style={primaryButtonStyle}>Cập nhật</Button> : <><Button htmlType="button" onClick={() => { setActionType('draft'); pierFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button><Button htmlType="button" type="primary" onClick={() => { setActionType('submit'); pierFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button><Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); pierFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button></>}</div>}
+        footer={<div style={drawerFooterStyle}>{editPierId ? <Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); pierFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button> : <><Button htmlType="button" onClick={() => { setActionType('draft'); pierFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button><Button htmlType="button" type="primary" onClick={() => { setActionType('submit'); pierFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button><Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); pierFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button></>}</div>}
         styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }}>
         <Form form={createForm} layout="vertical">
           <style>{requiredMarkStyle}</style>
@@ -740,8 +748,36 @@ export default function PierListPage() {
         onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); setBerthDetail(null); }}
         extra={<Button type="text" onClick={() => { setDetailDrawerVisible(false); setDetailRecord(null); setBerthDetail(null); }} style={drawerCloseBtnStyle}>✕</Button>}
         styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }} footer={null}>
-        {detailRecord && <PierDetailContent selectedRecord={detailRecord} orgMap={orgMap} portMap={portMap} berthOptions={berthOptions} symbolMap={symbolMap} symbolImageMap={symbolImageMap} detailFiles={detailFiles} ddToDms={dd2dms} approvalStyleMap={APPROVAL_STYLE_MAP} operationalStyleMap={OPERATIONAL_STYLE_MAP} userMap={userMap} waterwayMap={waterwayMap} berthDetail={berthDetail} organizations={organizations} infrastructureList={(detailRecord as any)?.infrastructureList} operationPlanList={(detailRecord as any)?.operationPlanList} maintenancePlanList={(detailRecord as any)?.maintenancePlanList} incidentList={(detailRecord as any)?.incidentList} />}
+        {detailRecord && <PierDetailContent selectedRecord={detailRecord} orgMap={orgMap} portMap={portMap} berthOptions={berthOptions} symbolMap={symbolMap} symbolImageMap={symbolImageMap} detailFiles={detailFiles} ddToDms={dd2dms} approvalStyleMap={APPROVAL_STYLE_MAP} operationalStyleMap={OPERATIONAL_STYLE_MAP} userMap={userMap} waterwayMap={waterwayMap} berthDetail={berthDetail} organizations={organizations} infrastructureList={infrastructureList} onViewInfraDetail={openInfraDetail} operationPlanList={(detailRecord as any)?.operationPlanList} maintenancePlanList={(detailRecord as any)?.maintenancePlanList} incidentList={(detailRecord as any)?.incidentList} />}
       </Drawer>
+
+      {/* ── Chi tiết kết cấu hạ tầng (Cơ sở sửa chữa, đóng tàu) — drawer lồng 950 ── */}
+      <AppDrawer
+        size={950}
+        title={<span style={drawerTitleStyle}>Chi tiết kết cấu hạ tầng{infraDetail?.record ? ` - ${infraDetail.record.shipRepairYardName || ''}` : ''}</span>}
+        open={!!infraDetail}
+        onClose={() => setInfraDetail(null)}
+        styles={{
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '0 24px 12px 24px' },
+        }}
+        footer={null}
+      >
+        {infraDetail?.type === 'COSO_SUACHUA' && infraDetail.record ? (
+          <ShipRepairYardDetailContent
+            selectedRecord={infraDetail.record}
+            orgMap={orgMap}
+            organizations={organizations}
+            symbolMap={symbolMap}
+            symbolImageMap={symbolImageMap}
+            portOptions={portOptions}
+            userMap={userMap}
+            detailFiles={[]}
+            ddToDms={dd2dms}
+            approvalStyleMap={APPROVAL_STYLE_MAP}
+          />
+        ) : null}
+      </AppDrawer>
 
       <Modal title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận xóa cầu cảng</span>} open={deleteModalOpen}
         onCancel={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}

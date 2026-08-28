@@ -1,8 +1,7 @@
 import React from 'react';
 import { Button, Spin } from 'antd';
 import { SearchOutlined, ReloadOutlined, FilterOutlined } from '@ant-design/icons';
-import { cardStyle, borderDefault, textSecondary, actionPrimary, radiusPill, fontSizeMd } from '../../tokens';
-import { colors } from '../../theme';
+import { useThemeToken } from '../../context/ThemeTokenContext';
 import StatusTabs, { type StatusTab } from './StatusTabs';
 export type { StatusTab };
 
@@ -57,6 +56,7 @@ export default function FilterTableLayout({
   onRetry,
   children,
 }: FilterTableLayoutProps) {
+  const { cardStyle, borderDefault, textSecondary, actionPrimary, buttonRadius, fontSizeMd, statusTabsPadding } = useThemeToken();
   return (
     <div style={{ display: 'flex', gap: 5, alignItems: 'stretch', flex: 1, minHeight: 0 }}>
       {/* ── Left: Vertical Filter Panel ── */}
@@ -88,7 +88,7 @@ export default function FilterTableLayout({
             type="primary"
             icon={<SearchOutlined />}
             onClick={onFilterApply}
-            style={{ background: actionPrimary, borderColor: actionPrimary, borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, padding: '0 14px' }}
+            style={{ background: actionPrimary, borderColor: actionPrimary, borderRadius: buttonRadius, height: 40, fontSize: fontSizeMd, padding: '0 14px' }}
           >
             Tìm kiếm
           </Button>
@@ -115,7 +115,7 @@ export default function FilterTableLayout({
       <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         {/* StatusTabs */}
         {!hideStatusTabs && (
-          <div style={{ ...cardStyle, marginBottom: 5, padding: '7px 16px', flexShrink: 0 }}>
+          <div style={{ ...cardStyle, marginBottom: 5, padding: statusTabsPadding, flexShrink: 0 }}>
             <StatusTabs tabs={statusTabs} onChange={onStatusTabChange} />
           </div>
         )}

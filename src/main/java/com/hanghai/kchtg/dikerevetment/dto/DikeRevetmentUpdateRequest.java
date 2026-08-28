@@ -21,8 +21,6 @@ import java.util.UUID;
 @Builder
 public class DikeRevetmentUpdateRequest {
 
-    private RecordSecurityLevel securityLevel;
-
     private DikeRevetmentType dikeRevetmentType;
     private String location;
     private String dikeRevetmentName;

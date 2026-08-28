@@ -24,7 +24,6 @@ public class VtsSystemResponse {
 
 
     private ConditionStatus conditionStatus;
-    private RecordSecurityLevel recordSecurityLevel;
     private UUID orgUnitId;
     private String orgUnitName;
     private UUID owningOrgId;

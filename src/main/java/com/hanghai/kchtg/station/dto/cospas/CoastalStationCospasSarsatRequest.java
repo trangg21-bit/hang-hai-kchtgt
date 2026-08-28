@@ -1,6 +1,6 @@
 package com.hanghai.kchtg.station.dto.cospas;
 
-import com.hanghai.kchtg.security.RecordSecurityLevel;
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,7 +12,7 @@ import lombok.Setter;
 @AllArgsConstructor
 public class CoastalStationCospasSarsatRequest {
 
-    private RecordSecurityLevel securityLevel;
+    @NotBlank(message = "Mã đài không được để trống")
     private String stationCode;
     private String stationName;
     private String frequency;

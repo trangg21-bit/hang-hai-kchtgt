@@ -748,6 +748,11 @@ public class UserService {
             return user;
         }
         user.setStatus(status);
+        if (status == UserStatus.ACTIVE) {
+            user.setAccountLockedUntil(null);
+            user.setFailedLoginCount(0);
+            user.setFailedTotpCount(0);
+        }
         User saved = userRepository.save(user);
         permissionCacheService.invalidateCache(saved.getId());
 
