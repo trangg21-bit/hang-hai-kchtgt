@@ -1078,6 +1078,95 @@ export interface BuoyBerthApprovalResponse {
   approvalLog: any[];
 }
 
+// ── 9. Đài TTDH (Đài Thông tin Duyên hải) ────────────────────────────
+
+export interface DaiTtdh {
+  id: string;
+  securityLevel?: string;
+  daiTtdhCode: string;
+  daiTtdhName: string;
+  orgUnitId?: string;
+  orgUnitName?: string;
+  operatingUnitId?: string;
+  operatingUnitName?: string;
+  stationLevel?: number;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalStatus?: string;
+  approvalStatus?: string;
+  coverageArea?: string;
+  servicesProvided?: string;
+  remarks?: string;
+  // GIS fields
+  latitude?: number;
+  longitude?: number;
+  mapSymbolId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
+  coordinateSystem?: number;
+  displayRule?: number;
+  // Approval tracking
+  submittedForApprovalAt?: string;
+  submittedForApprovalBy?: string;
+  portAuthorityApprovedAt?: string;
+  portAuthorityApprovedBy?: string;
+  portAuthorityApprovalContent?: string;
+  departmentApprovedAt?: string;
+  departmentApprovedBy?: string;
+  departmentApprovalContent?: string;
+  rejectionReason?: string;
+  // Audit
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateDaiTtdhRequest {
+  securityLevel?: string;
+  daiTtdhCode?: string;
+  daiTtdhName: string;
+  orgUnitId: string;
+  operatingUnitId?: string;
+  stationLevel: number;
+  provinceId: number;
+  detailedLocation: string;
+  operationalStatus?: string;
+  coverageArea?: string;
+  servicesProvided?: string;
+  remarks?: string;
+  // GIS fields
+  latitude?: number;
+  longitude?: number;
+  mapSymbolId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
+  coordinateSystem?: number;
+  displayRule?: number;
+  saveAction?: string;
+}
+
+export interface UpdateDaiTtdhRequest {
+  id: string;
+  daiTtdhName?: string;
+  orgUnitId?: string;
+  operatingUnitId?: string;
+  stationLevel?: number;
+  provinceId?: number;
+  detailedLocation?: string;
+  operationalStatus?: string;
+  coverageArea?: string;
+  servicesProvided?: string;
+  remarks?: string;
+  saveAction?: string;
+}
+
+export interface DaiTtdhApprovalResponse {
+  entityType: string;
+  changeHistory: any[];
+  approvalLog: any[];
+}
+
 export interface ShipRepairYard {
   id: string;
   securityLevel?: string;
