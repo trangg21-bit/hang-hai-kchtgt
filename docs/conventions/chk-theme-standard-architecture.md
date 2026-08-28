@@ -10,11 +10,11 @@ Tài liệu quy định kiến trúc giao diện chuẩn theo **Phong cách Cụ
 | :--- | :--- | :--- | :--- |
 | 1 | **Màu chủ đạo (Action Primary)** | `#0E6FD6` (Xanh sáng) | `#273e7c` (Xanh Navy đậm trang trọng, uy quyền) |
 | 2 | **Màu nền trang (Page Bg)** | `#f0f2f5` | `#eef0f8` (Xám ánh xanh Metronic 8) |
-| 3 | **Bo góc Controls (Input/Button/Select)** | `radiusPill: 999px` (Viên thuốc) | `radiusSm: 6px` (Chữ nhật bo nhẹ 5-6px) |
+| 3 | **Bo góc Controls (Input/Button/Select)** | `radiusPill: 999px` (Viên thuốc) | `radiusPill: 999px` (Giữ viên thuốc — `.form-control`/`.btn` của Metronic) |
 | 4 | **Bo góc Card/Drawer/Modal** | `radiusMd: 8px` | `radiusLg: 10px` (Khung sắc nét, gọn gàng) |
 | 5 | **Bảng dữ liệu (DataTable)** | Header trắng/xanh nhạt | Header xám `#e4e4e4` + chữ navy `#273e7c` 600 + sọc ngựa vằn `#f9fafb` |
-| 6 | **Badge Trạng thái** | Viên thuốc có viền | Badge pastel không viền `--kt-*-light` (`statusBadgeStyle`) |
-| 7 | **Thanh cuộn (Scrollbar)** | Dày 8px | Mảnh 4px (`scrollbarSize: 4`) tinh tế |
+| 6 | **Badge Trạng thái** | Viên thuốc có viền | Pill Badge pastel viền nhạt (`statusBadgeStyle`: nền `color 15`, viền 1px `color 40`) — giữ chuẩn Pill Badge toàn hệ thống |
+| 7 | **Thanh cuộn (Scrollbar)** | Dày 8px | Mảnh 3px (`scrollbarSize: 3`) tinh tế |
 
 ---
 
@@ -57,7 +57,7 @@ return (
 
 ### 3.2. Bộ lọc Sidebar (Filter Sidebar)
 - Tiêu đề nhóm lọc: `color: colors.sidebarBg`, `fontWeight: fontWeightBold`, `fontSize: fontSizeMd`.
-- Các trường nhập liệu (`Input`, `Select`, `OrgUnitTreeSelect`, `DatePicker.RangePicker`): Dùng `inputStyle` hoặc `selectStyle` (chiều cao 40px, bo góc 6px, viền `#e4e4e4`).
+- Các trường nhập liệu (`Input`, `Select`, `OrgUnitTreeSelect`, `DatePicker.RangePicker`): Dùng `inputStyle` hoặc `selectStyle` (chiều cao 40px, bo tròn viên thuốc `radiusPill` 999px, viền `#e4e4e4`).
 - Chân trang Sidebar: Chỉ giữ 2 nút **Làm mới** (`outlineButtonStyle`) và **Tìm kiếm** (`primaryButtonStyle`).
 
 ### 3.3. Form Drawer (Tạo mới / Xem chi tiết / Chỉnh sửa)
@@ -73,6 +73,6 @@ return (
 
 ## 4. Màn hình Tham chiếu Chuẩn (Reference Screen)
 
-- Danh sách: [`frontend/src/pages/vtssystemchk/VtsSystemChkList.tsx`](file:///D:/project/hang-hai-kchtgt/frontend/src/pages/vtssystemchk/VtsSystemChkList.tsx)
-- Form Drawer: [`frontend/src/pages/vtssystemchk/VtsSystemChkForm.tsx`](file:///D:/project/hang-hai-kchtgt/frontend/src/pages/vtssystemchk/VtsSystemChkForm.tsx)
-- Bộ Theme Tokens: [`frontend/src/themetokenchk.ts`](file:///D:/project/hang-hai-kchtgt/frontend/src/themetokenchk.ts)
+- Danh sách: [`frontend/src/pages/vtssystemchk/VtsSystemChkList.tsx`](frontend/src/pages/vtssystemchk/VtsSystemChkList.tsx)
+- Form Drawer: [`frontend/src/pages/vtssystemchk/VtsSystemChkForm.tsx`](frontend/src/pages/vtssystemchk/VtsSystemChkForm.tsx)
+- Bộ Theme Tokens: [`frontend/src/themetokenchk.ts`](frontend/src/themetokenchk.ts)

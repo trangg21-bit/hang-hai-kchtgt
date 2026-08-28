@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Input, Select, DatePicker } from 'antd';
-import { PlusOutlined, EyeOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { message } from '../../components/ToastNotification';
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
@@ -26,13 +26,19 @@ import {
   textSecondary,
   textTertiary,
   fontSizeMd,
-  fontWeightMedium,
-  badgeBaseStyle,
+  fontSizeSm,
+  fontWeightBold,
+  statusBadgeStyle,
+  cellTitleStyle,
+  cellSubtitleStyle,
+  icons,
   filterInputStyle,
   filterLabelStyle,
   spaceFormField,
   spaceXs,
-} from '../../tokens';
+} from '../../themetokenchk';
+import * as themeTokenChk from '../../themetokenchk';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import NavigationChannelForm from './NavigationChannelForm';
 import { canDeleteApprovalRecord, canEditApprovalRecord } from '../../utils/approvalEditPolicy';
@@ -69,8 +75,6 @@ const TAB_COLOR: Record<string, string> = {
   APPROVED: statusOperational,
   REJECTED: statusCritical,
 };
-
-const formatDate = (v?: string) => (v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—');
 
 export default function NavigationChannelList() {
   const isInIframe = window.self !== window.top;
@@ -231,6 +235,13 @@ export default function NavigationChannelList() {
     setIsModalOpen(true);
   }, []);
 
+  // Map user id → tên hiển thị cho cột "Cán bộ cập nhật" (backend NavigationChannel chưa trả updatedByName như các module khác)
+  const userMap = useMemo(() => {
+    const m = new Map<string, string>();
+    userOptions.forEach((o) => { m.set(o.value, o.label); });
+    return m;
+  }, [userOptions]);
+
   // ── Columns (DS scope: #5/#4/#2/#1/#6/#8/#47/#48) ───────────────────
   const columns = useMemo(() => {
     const orgLabel = (orgUnitId?: string) => orgUnitId || '—';
@@ -247,24 +258,31 @@ export default function NavigationChannelList() {
         label: 'STT',
         width: 60,
         align: 'center' as const,
+        fixed: 'left' as const,
         render: (_: unknown, __: unknown, idx?: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + (idx ?? 0) + 1}</span>,
       },
       {
         key: 'channelName',
-        label: 'Tên luồng hàng hải',
+        label: 'Tên/Mã luồng hàng hải',
         dataIndex: 'channelName',
-        width: 220,
+        width: 260,
+        fixed: 'left' as const,
         sortable: true,
         ellipsis: false,
-        render: (v: string | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightMedium }}>{v || '—'}</span>,
-      },
-      {
-        key: 'channelCode',
-        label: 'Mã luồng',
-        dataIndex: 'channelCode',
-        width: 130,
-        type: 'mono' as const,
-        render: (v: string | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>,
+        render: (v: string | undefined, record: NavigationChannelResponse) => (
+          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <a
+              title={v || ''}
+              onClick={() => openModal('detail', record.id)}
+              style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {v || '—'}
+            </a>
+            <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {record.channelCode || '—'}
+            </span>
+          </div>
+        ),
       },
       {
         key: 'seaportId',
@@ -300,7 +318,7 @@ export default function NavigationChannelList() {
         render: (v: string | undefined) => {
           if (!v) return <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>;
           const s = CONDITION_STATUS_STYLE_MAP[v] || { label: CONDITION_STATUS_MAP[v as keyof typeof CONDITION_STATUS_MAP] || v, color: textTertiary };
-          return <span style={{ ...badgeBaseStyle, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
+          return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
         },
       },
       {
@@ -312,23 +330,34 @@ export default function NavigationChannelList() {
       },
       {
         key: 'updatedAt',
-        label: 'Ngày cập nhật',
+        label: 'Cán bộ cập nhật',
         dataIndex: 'updatedAt',
-        width: 150,
+        width: 220,
         sortable: true,
-        render: (v: string | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{formatDate(v)}</span>,
+        ellipsis: false,
+        render: (v: string | undefined, record: NavigationChannelResponse) => {
+          const name = record.updatedBy ? userMap.get(record.updatedBy) : undefined;
+          return (
+            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name || record.updatedBy || ''}>
+              <div style={{ fontWeight: fontWeightBold, fontSize: fontSizeMd, color: textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {name || record.updatedBy || '—'}
+              </div>
+              <div style={{ fontSize: fontSizeSm, color: textTertiary }}>{v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—'}</div>
+            </div>
+          );
+        },
       },
     ];
-  }, [page, pageSize, seaportOptions]);
+  }, [page, pageSize, seaportOptions, openModal, userMap]);
 
   const rowActions = useCallback(
     (record: NavigationChannelResponse) => {
       const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];
       if (hasPerm('navigationchannel:read')) {
-        actions.push({ key: 'view', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => openModal('detail', record.id) });
+        actions.push({ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openModal('detail', record.id) });
       }
       if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'navigationchannel' })) {
-        actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openModal('edit', record.id) });
+        actions.push({ key: 'edit', label: 'Sửa', icon: icons.edit, onClick: () => openModal('edit', record.id) });
       }
       // Quy tắc 11 (approval-2-level-spec.md mục 3.6): chỉ xóa được hồ sơ Lưu tạm.
       // Trước đây gating ngược — chỉ hiện nút Xóa khi hồ sơ đã `APPROVED`.
@@ -336,7 +365,7 @@ export default function NavigationChannelList() {
         actions.push({
           key: 'delete',
           label: 'Xóa',
-          icon: <DeleteOutlined />,
+          icon: icons.delete,
           danger: true,
           onClick: () => {
             void (async () => {
@@ -486,6 +515,7 @@ export default function NavigationChannelList() {
   );
 
   return (
+    <ThemeTokenProvider tokens={themeTokenChk}>
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader
         breadcrumb={[{ label: 'KCHT hàng hải' }, { label: 'Luồng hàng hải' }]}
@@ -539,5 +569,6 @@ export default function NavigationChannelList() {
         }}
       />
     </div>
+    </ThemeTokenProvider>
   );
 }

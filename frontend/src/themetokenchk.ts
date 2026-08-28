@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  EyeOutlined, EditOutlined, DeleteOutlined, HistoryOutlined, SendOutlined,
+  DeleteOutlined, HistoryOutlined, SendOutlined,
   CheckOutlined, CloseOutlined, PlusOutlined, SearchOutlined, ReloadOutlined,
   EnvironmentOutlined,
 } from '@ant-design/icons';
@@ -17,9 +17,10 @@ import { colors as baseColors } from './theme';
 //   <ThemeTokenProvider tokens={themeTokenChk}>     // cho component dùng chung
 //
 // Ba khác biệt tạo nên "chất CHK", áp dụng xuyên suốt file:
-//   1. Bo góc chữ nhật nhẹ (5–10px) thay cho viên thuốc (radiusPill 999).
-//   2. Xanh navy đậm #273e7c làm màu hành động, thay xanh sáng #0E6FD6.
-//   3. Bảng có đường kẻ rõ: header nền xám #e4e4e4, hàng chẵn sọc #f9fafb.
+//   1. Xanh navy đậm #273e7c làm màu hành động, thay xanh sáng #0E6FD6.
+//   2. Bảng có đường kẻ rõ: header nền xám #e4e4e4, chữ navy IN HOA 600, hàng chẵn sọc #f9fafb.
+//   3. Bề mặt phẳng kiểu Metronic: nền trang #eef0f8, text thang xám gray-800/600/500,
+//      shadow rất nhẹ — control GIỮ NGUYÊN bo viên thuốc (radiusPill 999) như chuẩn hệ thống.
 //
 // Nguồn đối chiếu trong project chk:
 //   angular/src/assets/metronic/themes/default/css/custom-style.css
@@ -1416,6 +1417,8 @@ export const drawerProps = {
   width: '50%',
   placement: 'right' as const,
   closable: false,
+  // Chống Drawer con đẩy Drawer cha (antd v6 mặc định push {distance:180} khi lồng nhau)
+  push: false,
   styles: {
     header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
     body: { padding: '0 24px 12px 24px' },

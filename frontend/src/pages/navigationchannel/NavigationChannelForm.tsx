@@ -68,8 +68,10 @@ import {
   drawerTabBarStyle,
   drawerTabContentStyle,
   radiusSm,
-} from '../../tokens';
-import { colors } from '../../theme';
+} from '../../themetokenchk';
+import { colors } from '../../themetokenchk';
+import * as themeTokenChk from '../../themetokenchk';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 
 export interface NavigationChannelFormProps {
   open?: boolean;
@@ -89,6 +91,14 @@ const ROUTE_TYPE_OPTIONS = [
 ];
 
 export default function NavigationChannelForm({ open, editId, mode, onCancel, onSuccess }: NavigationChannelFormProps = {}) {
+  return (
+    <ThemeTokenProvider tokens={themeTokenChk}>
+      <NavigationChannelFormInner open={open} editId={editId} mode={mode} onCancel={onCancel} onSuccess={onSuccess} />
+    </ThemeTokenProvider>
+  );
+}
+
+function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }: NavigationChannelFormProps = {}) {
   const navigate = useNavigate();
   const routeParams = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
