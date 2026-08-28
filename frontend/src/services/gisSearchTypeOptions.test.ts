@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   getKchtGisCategoryId,
   getKchtGisTypeByCategoryId,
+  KCHT_DRAW_TYPE_OPTIONS,
   KCHT_GIS_TYPE_OPTIONS,
+  normalizeKchtGisDrawType,
   normalizeKchtGisType,
 } from '../types/gisSearch';
 
@@ -25,6 +27,18 @@ describe('danh mục loại KCHT GIS', () => {
       const categoryId = getKchtGisCategoryId(option.value);
       expect(categoryId).toBeDefined();
       expect(getKchtGisTypeByCategoryId(categoryId)).toBe(option.value);
+    }
+  });
+
+  it('popup vẽ dùng đủ 28 loại từ danh mục LOAI_KCHT của hệ thống nguồn', () => {
+    expect(KCHT_DRAW_TYPE_OPTIONS).toHaveLength(28);
+    expect(new Set(KCHT_DRAW_TYPE_OPTIONS.map((option) => option.value)).size).toBe(28);
+
+    for (const option of KCHT_DRAW_TYPE_OPTIONS) {
+      const categoryId = getKchtGisCategoryId(option.value);
+      expect(categoryId).toBeDefined();
+      expect(getKchtGisTypeByCategoryId(categoryId)).toBe(option.value);
+      expect(normalizeKchtGisDrawType(option.value)).toBe(option.value);
     }
   });
 });

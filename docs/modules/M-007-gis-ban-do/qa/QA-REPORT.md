@@ -75,3 +75,37 @@ Execute unit tests and E2E validation for all 5 features of the GIS/Bản đồ 
   <requested_specialists/>
   <completed_features><feature><id>M-007</id><status>closed</status></feature></completed_features>
 </verdict_envelope>
+
+---
+
+## Regression 2026-08-28 — GitLab #84, #85
+
+### Hành vi đã đồng bộ
+
+- Theo phản hồi kiểm thử mới nhất, bảng tra cứu khôi phục 6 cột của phiên bản trước: STT, Đơn vị quản lý, Loại KCHT, Tỉnh/Thành phố, Địa điểm chi tiết, Kết cấu hạ tầng; dùng thanh cuộn ngang khi tổng bề rộng vượt panel.
+- Tra cứu với "Tất cả đơn vị" không gửi tham số loại KCHT rỗng; truy vấn tổng hợp chỉ lấy bản ghi đã duyệt và không loại nhầm bản ghi theo tình trạng vận hành. Mỗi loại giới hạn tối đa 1.000 bản ghi nguồn trước khi phân trang kết quả.
+- Tra cứu Bến cảng trả đủ các bản ghi đã duyệt, kể cả khi tình trạng vận hành chưa được khai báo hoặc không phải `OPERATIONAL`.
+- Quản lý lớp bản đồ bổ sung nhóm Bản đồ nền Google M/Y/P và đồng bộ 30 nhãn lớp ENC theo hệ thống nguồn.
+- Drawer Quản lý lớp bản đồ rộng 420px trên desktop thay vì preset 50% màn hình; mobile giữ toàn màn hình. Kiểm tra trực tiếp xác nhận danh sách lớp cuộn dọc và bản đồ vẫn còn vùng quan sát.
+- Panel tra cứu rộng 560px trên desktop và toàn màn hình trên mobile. Hàng thao tác đồng bộ mẫu Buoy Station: Đặt lại dạng nút tròn, Tìm kiếm co theo nội dung, Bộ lọc nâng cao dạng nút tròn với icon phễu và màu active; cả cụm căn giữa. Kiểm tra trong panel 560px: hai nút tròn cao 38px, nút Tìm kiếm khoảng 104px và trạng thái mở bộ lọc dùng màu `actionPrimary`.
+- Khởi tạo Leaflet dùng cùng một instance toàn cục cho MarkerCluster và Geoman, tránh lỗi plugin làm hiện thông báo "Không thể khởi tạo bản đồ" trong Vite dev mode.
+- Popup Lưu KCHT dùng đủ 28 giá trị danh mục `LOAI_KCHT`; danh sách Thuộc cảng biển lấy từ API option, chỉ gồm cảng đã duyệt và được lọc theo đơn vị đã chọn cùng cây đơn vị con; Tình trạng gồm Sử dụng và Không sử dụng.
+
+### Kiểm thử hồi quy
+
+| Phạm vi | Kết quả |
+|---|---|
+| `KchtGis155ServiceTest` | 4/4 pass, gồm trường hợp 3 Bến cảng đã duyệt có tình trạng vận hành khác nhau |
+| `CommonOptionsServiceTest` | 2/2 pass cho phạm vi toàn hệ thống và phạm vi đơn vị |
+| `gisSearchTypeOptions.test.ts` | 4/4 pass, xác nhận đủ 28 loại KCHT và ánh xạ category hai chiều |
+| Vite production build | Pass, 4.118 module được biên dịch |
+
+### Bổ sung sau kiểm tra local
+
+- Truy vấn thực tế với `page=0&size=20` phát hiện schema PostgreSQL thiếu `latitude`/`longitude` ở `coastal_station_lrit`; `coastal_station_haiphong` có cùng độ lệch giữa entity và schema.
+- Migration `V20260830010000__add_missing_lrit_haiphong_coordinates.sql` bổ sung bốn cột nullable và backfill dữ liệu POINT từ `gis_spatial_objects` qua `spatial_id`/`ref_id`.
+- Flyway đã áp dụng thành công migration trên PostgreSQL local, schema đạt version `20260830010000`.
+- Gọi đúng API tra cứu "Tất cả" qua frontend proxy trả HTTP 200, `success=true`, tổng 31 bản ghi và 20 bản ghi ở trang đầu.
+- Kiểm tra trực tiếp tại `/gis/map`: bảng hiển thị 20 dòng, phân trang 2 trang, tổng cộng 31; không còn trạng thái "Đã xảy ra lỗi".
+- Cột checkbox chọn dòng được cấp đủ chiều rộng; kiểm tra trực tiếp xác nhận header không còn sinh dấu `…` thừa cạnh checkbox.
+- Bộ lọc Đơn vị quản lý khóa cả grid item, form và TreeSelect theo chiều rộng panel. Kiểm tra trực tiếp ở breakpoint desktop 560px xác nhận đường dẫn dài được rút gọn bằng `…`; icon xổ xuống và toàn bộ hàng nút vẫn nằm trong panel. Thuộc tính hover giữ toàn bộ đường dẫn đơn vị.

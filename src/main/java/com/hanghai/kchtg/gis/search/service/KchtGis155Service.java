@@ -46,6 +46,7 @@ import java.util.regex.Pattern;
 public class KchtGis155Service {
 
     private static final int MAX_PAGE_SIZE = 100;
+    private static final int MAX_FETCH_SIZE = 1000;
     private static final Pattern WKT_COORDINATE_PATTERN = Pattern.compile(
             "(-?\\d+(?:\\.\\d+)?)\\s+(-?\\d+(?:\\.\\d+)?)");
     private static final List<InfrastructureType> SEARCHABLE_TYPES = List.of(
@@ -434,8 +435,8 @@ public class KchtGis155Service {
                 case SEAPORT:
                     List<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of();
                     List<Port> ports = portRepository.searchPorts(
-                            orgUnitId == null, orgUnitIds, null, null, provinceLocal, OperationalStatus.OPERATIONAL,
-                            ApprovalStatus.APPROVED, null, null, null, null, searchLower, PageRequest.of(0, 10000)).getContent();
+                            orgUnitId == null, orgUnitIds, null, null, provinceLocal, null,
+                            ApprovalStatus.APPROVED, null, null, null, null, searchLower, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
                     Map<UUID, GisSpatialObject> cbSpatialMap = new HashMap<>();
                     if (!ports.isEmpty()) {
                         List<UUID> cbIds = ports.stream().map(Port::getId).collect(Collectors.toList());
@@ -472,8 +473,8 @@ public class KchtGis155Service {
 
                 case PORT_TERMINAL:
                     List<Berth> berths = berthRepository.searchBerths(
-                            orgUnitId, searchLower, null, null, null, null, null, OperationalStatus.OPERATIONAL,
-                            ApprovalStatus.APPROVED, PageRequest.of(0, 10000)).getContent();
+                            orgUnitId, searchLower, null, null, null, null, null, null,
+                            ApprovalStatus.APPROVED, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
                     List<UUID> cbIds = berths.stream().map(Berth::getPortId).filter(Objects::nonNull).distinct()
                             .collect(Collectors.toList());
                     Map<UUID, Port> bcPortMap = new HashMap<>();
@@ -521,8 +522,8 @@ public class KchtGis155Service {
 
                 case PIER:
                     List<Pier> piers = pierRepository.searchPiers(
-                            orgUnitId, searchLower, null, null, OperationalStatus.OPERATIONAL,
-                            ApprovalStatus.APPROVED, PageRequest.of(0, 10000)).getContent();
+                            orgUnitId, searchLower, null, null, null,
+                            ApprovalStatus.APPROVED, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
                     List<UUID> parentBerthIds = piers.stream().map(Pier::getBerthId).filter(Objects::nonNull).distinct()
                             .collect(Collectors.toList());
                     Map<UUID, Berth> berthMap = new HashMap<>();
@@ -594,8 +595,8 @@ public class KchtGis155Service {
 
                 case DRY_PORT:
                     List<DryPort> cangCans = dryPortRepository.searchDryPorts(
-                            orgUnitId, null, searchLower, OperationalStatus.OPERATIONAL, ApprovalStatus.APPROVED,
-                            PageRequest.of(0, 10000)).getContent();
+                            orgUnitId, null, searchLower, null, ApprovalStatus.APPROVED,
+                            PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
                     Map<UUID, GisSpatialObject> ccSpatialMap = new HashMap<>();
                     if (!cangCans.isEmpty()) {
                         List<UUID> ccIds = cangCans.stream().map(DryPort::getId).collect(Collectors.toList());
@@ -633,8 +634,8 @@ public class KchtGis155Service {
 
                 case WATER_AREA:
                     List<WaterZone> waterZones = waterZoneRepository.searchWaterZones(
-                            orgUnitId, null, searchLower, null, OperationalStatus.OPERATIONAL,
-                            ApprovalStatus.APPROVED, PageRequest.of(0, 10000)).getContent();
+                            orgUnitId, null, searchLower, null, null,
+                            ApprovalStatus.APPROVED, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
                     List<UUID> vnCbIds = waterZones.stream().map(WaterZone::getPortId).filter(Objects::nonNull)
                             .distinct().collect(Collectors.toList());
                     Map<UUID, Port> vnPortMap = new HashMap<>();
@@ -732,7 +733,7 @@ public class KchtGis155Service {
 
                 case DIKE_REVETMENT:
                     List<DikeRevetment> dikeRevList = dikeRevetmentRepository.searchDocuments(
-                            orgUnitId, searchLower, null, null, ApprovalStatus.APPROVED, PageRequest.of(0, 10000))
+                            orgUnitId, searchLower, null, null, ApprovalStatus.APPROVED, PageRequest.of(0, MAX_FETCH_SIZE))
                             .getContent();
                     Map<UUID, GisSpatialObject> dikeRevSpatialMap = new HashMap<>();
                     if (!dikeRevList.isEmpty()) {
@@ -1213,8 +1214,8 @@ public class KchtGis155Service {
 
                 case BUOY_BERTH:
                     List<WaterZone> benPhaos = waterZoneRepository.searchWaterZones(
-                            orgUnitId, null, searchLower, WaterZoneType.MOORING_BUOY, OperationalStatus.OPERATIONAL,
-                            ApprovalStatus.APPROVED, PageRequest.of(0, 10000)).getContent();
+                            orgUnitId, null, searchLower, WaterZoneType.MOORING_BUOY, null,
+                            ApprovalStatus.APPROVED, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
                     List<UUID> bpCbIds = benPhaos.stream().map(WaterZone::getPortId).filter(Objects::nonNull).distinct()
                             .collect(Collectors.toList());
                     Map<UUID, Port> bpPortMap = new HashMap<>();
@@ -1267,8 +1268,8 @@ public class KchtGis155Service {
 
                 case ANCHORAGE_AREA:
                     List<WaterZone> anchorages = waterZoneRepository.searchWaterZones(
-                            orgUnitId, null, searchLower, WaterZoneType.ANCHORAGE, OperationalStatus.OPERATIONAL,
-                            ApprovalStatus.APPROVED, PageRequest.of(0, 10000)).getContent();
+                            orgUnitId, null, searchLower, WaterZoneType.ANCHORAGE, null,
+                            ApprovalStatus.APPROVED, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
                     List<UUID> knCbIds = anchorages.stream().map(WaterZone::getPortId).filter(Objects::nonNull)
                             .distinct().collect(Collectors.toList());
                     Map<UUID, Port> knPortMap = new HashMap<>();
@@ -1321,8 +1322,8 @@ public class KchtGis155Service {
 
                 case TRANSSHIPMENT_AREA:
                     List<WaterZone> khuChuyens = waterZoneRepository.searchWaterZones(
-                            orgUnitId, null, searchLower, WaterZoneType.TRANSSHIPMENT, OperationalStatus.OPERATIONAL,
-                            ApprovalStatus.APPROVED, PageRequest.of(0, 10000)).getContent();
+                            orgUnitId, null, searchLower, WaterZoneType.TRANSSHIPMENT, null,
+                            ApprovalStatus.APPROVED, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
                     List<UUID> kcCbIds = khuChuyens.stream().map(WaterZone::getPortId).filter(Objects::nonNull)
                             .distinct().collect(Collectors.toList());
                     Map<UUID, Port> kcPortMap = new HashMap<>();
@@ -1375,8 +1376,8 @@ public class KchtGis155Service {
 
                 case STORM_SHELTER_AREA:
                     List<WaterZone> khuTranhs = waterZoneRepository.searchWaterZones(
-                            orgUnitId, null, searchLower, WaterZoneType.STORM_SHELTER, OperationalStatus.OPERATIONAL,
-                            ApprovalStatus.APPROVED, PageRequest.of(0, 10000)).getContent();
+                            orgUnitId, null, searchLower, WaterZoneType.STORM_SHELTER, null,
+                            ApprovalStatus.APPROVED, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
                     List<UUID> ktCbIds = khuTranhs.stream().map(WaterZone::getPortId).filter(Objects::nonNull)
                             .distinct().collect(Collectors.toList());
                     Map<UUID, Port> ktPortMap = new HashMap<>();

@@ -7,6 +7,7 @@ import com.hanghai.kchtg.port.dto.port.PortOptionResponse;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.service.PortCacheService;
 import com.hanghai.kchtg.common.dto.OperatingOrganizationOptionResponse;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperatingOrganization;
 import com.hanghai.kchtg.common.entity.OperatingUnit;
 import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
@@ -72,15 +73,19 @@ public class CommonOptionsService {
                 .toList();
     }
 
-    public List<PortOptionResponse> getPortOptions() {
+    public List<PortOptionResponse> getPortOptions(ApprovalStatus approvalStatus) {
         OrgUnitScopeService.Scope scope = orgUnitScopeService.currentUserScope();
         if (scope.unrestricted()) {
-            return portCacheService.getOptions();
+            return approvalStatus == null
+                    ? portCacheService.getOptions()
+                    : portRepository.findOptionsByApprovalStatus(approvalStatus);
         }
         if (scope.orgUnitIds().isEmpty()) {
             return List.of();
         }
-        return portRepository.findOptionsByOrgUnitIds(scope.orgUnitIds());
+        return approvalStatus == null
+                ? portRepository.findOptionsByOrgUnitIds(scope.orgUnitIds())
+                : portRepository.findOptionsByOrgUnitIdsAndApprovalStatus(scope.orgUnitIds(), approvalStatus);
     }
 
     public List<OperatingOrganizationOptionResponse> getOperatingOrganizationOptions(String keyword) {

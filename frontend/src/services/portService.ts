@@ -60,19 +60,17 @@ const clearPortOptionsCache = () => {
 // ── Port CRUD ───────────────────────────────────────────────────
 
 export const portCRUD = {
-  async getOptions(): Promise<{ id: string; portCode?: string; portName?: string; orgUnitId?: string }[]> {
+  async getOptions(params?: { approvalStatus?: string }): Promise<{ id: string; portCode?: string; portName?: string; orgUnitId?: string }[]> {
     const getWin = () => (window.top || window) as any;
-    if (getWin().__portOptionsCache) {
-      return getWin().__portOptionsCache;
+    const cacheKey = params?.approvalStatus || '__all__';
+    const cache = getWin().__portOptionsCache as Record<string, unknown> | null;
+    if (cache?.[cacheKey]) {
+      return cache[cacheKey] as { id: string; portCode?: string; portName?: string; orgUnitId?: string }[];
     }
-    try {
-      const res = await api.get('/common/options/ports');
-      const list = res.data.data || [];
-      getWin().__portOptionsCache = list;
-      return list;
-    } catch {
-      return [];
-    }
+    const res = await api.get('/common/options/ports', { params });
+    const list = res.data.data || [];
+    getWin().__portOptionsCache = { ...(cache || {}), [cacheKey]: list };
+    return list;
   },
 
   async findAll(params?: {
