@@ -6,54 +6,6 @@
 -- audit columns as text holding usernames.
 
 -- === Station tables ===
-CREATE TABLE org_units (
-    id UUID PRIMARY KEY,
-    name VARCHAR(200),
-    code VARCHAR(50),
-    parent_id UUID,
-    type SMALLINT,
-    description VARCHAR(1000),
-    province VARCHAR(100),
-    address VARCHAR(500),
-    operational_status SMALLINT DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP
-);
-
-INSERT INTO org_units (id, code, name) VALUES ('11111111-1111-1111-1111-111111111111', 'CVHH_HP', 'Cảng vụ Hàng hải Hải Phòng');
-INSERT INTO org_units (id, code, name) VALUES ('22222222-2222-2222-2222-222222222222', 'CVHH_DN', 'Cảng vụ Hàng hải Đà Nẵng');
-INSERT INTO org_units (id, code, name) VALUES ('33333333-3333-3333-3333-333333333333', 'CVHH_HCM', 'Cảng vụ Hàng hải TP. Hồ Chí Minh');
-
-CREATE TABLE users (
-    id UUID PRIMARY KEY,
-    username VARCHAR(100),
-    email VARCHAR(150),
-    full_name VARCHAR(100),
-    password VARCHAR(255),
-    status SMALLINT DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP
-);
-
-INSERT INTO users (id, username, email, full_name, password)
-VALUES ('99999999-9999-9999-9999-999999999999', 'admin', 'admin@hh.gov.vn', 'Admin User', '$2a$10$7EqJtq98hPqEX7fNZaFWoOhi5Vq7kUjXzN1h8j/uBf3p4KzX4J1bS');
-
-CREATE TABLE app_users (
-    id UUID PRIMARY KEY,
-    username VARCHAR(100),
-    email VARCHAR(150),
-    full_name VARCHAR(100),
-    password VARCHAR(255),
-    status SMALLINT DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP
-);
-INSERT INTO app_users (id, username, email, full_name, password)
-VALUES ('99999999-9999-9999-9999-999999999999', 'admin', 'admin@hh.gov.vn', 'Admin User', '$2a$10$7EqJtq98hPqEX7fNZaFWoOhi5Vq7kUjXzN1h8j/uBf3p4KzX4J1bS');
-
 CREATE TABLE buoy_station (
     id              UUID PRIMARY KEY,
     latitude        DOUBLE PRECISION,
@@ -462,6 +414,22 @@ CREATE TABLE group_members (
     deleted_at TIMESTAMP
 );
 
+CREATE TABLE app_users (
+    id UUID PRIMARY KEY,
+    username VARCHAR(100),
+    password VARCHAR(255),
+    email VARCHAR(150),
+    status VARCHAR(50),
+    deleted_at TIMESTAMP
+);
+
+CREATE TABLE public.org_units (
+    id UUID PRIMARY KEY,
+    status VARCHAR(50),
+    unit_type VARCHAR(50),
+    type VARCHAR(50)
+);
+
 -- === Tables needed by V106 dashboard indexes (non-duplicate tables only) ===
 CREATE TABLE ports (
     id UUID PRIMARY KEY,
@@ -520,10 +488,7 @@ CREATE TABLE navigation_channel (
     approval_status VARCHAR(50),
     deleted_at TIMESTAMP,
     created_at TIMESTAMP,
-    updated_at TIMESTAMP,
-    created_by VARCHAR(100),
-    updated_by VARCHAR(100),
-    deleted_by VARCHAR(100)
+    updated_at TIMESTAMP
 );
 
 CREATE TABLE dike_revetment (
@@ -534,10 +499,7 @@ CREATE TABLE dike_revetment (
     approval_status VARCHAR(50),
     deleted_at TIMESTAMP,
     created_at TIMESTAMP,
-    updated_at TIMESTAMP,
-    created_by VARCHAR(100),
-    updated_by VARCHAR(100),
-    deleted_by VARCHAR(100)
+    updated_at TIMESTAMP
 );
 
 CREATE TABLE radar_station (
@@ -548,10 +510,7 @@ CREATE TABLE radar_station (
     approval_status VARCHAR(50),
     deleted_at TIMESTAMP,
     created_at TIMESTAMP,
-    updated_at TIMESTAMP,
-    created_by VARCHAR(100),
-    updated_by VARCHAR(100),
-    deleted_by VARCHAR(100)
+    updated_at TIMESTAMP
 );
 
 CREATE TABLE vts_system (
@@ -561,8 +520,8 @@ CREATE TABLE vts_system (
     system_name VARCHAR(255),
     org_unit_id UUID,
     operational_status VARCHAR(50),
+    condition_status SMALLINT DEFAULT 0,
     approval_status VARCHAR(50),
-    condition_status VARCHAR(50),
     deleted_at TIMESTAMP,
     created_at TIMESTAMP,
     updated_at TIMESTAMP,
@@ -570,6 +529,16 @@ CREATE TABLE vts_system (
     updated_by VARCHAR(100),
     deleted_by VARCHAR(100)
 );
+
+-- === org_units ===
+-- org_units is created above (id/status/unit_type/type) with NO rows; its data
+-- seeders V19/V27 are below the test baseline (81) and never run. Merged
+-- migration V20260826180900 resolves org ids from org_units and falls back to
+-- gen_random_uuid(), which violates the org_unit FKs of vts_operation_center /
+-- ais_system — so the fixture provides one real row (the seed's LIMIT 1
+-- fallback then satisfies every org FK).
+INSERT INTO org_units (id)
+VALUES ('00000000-0000-0000-0000-0000000000f1');
 
 CREATE TABLE ship_repair_facility (
     id UUID PRIMARY KEY,
@@ -579,10 +548,7 @@ CREATE TABLE ship_repair_facility (
     approval_status VARCHAR(50),
     deleted_at TIMESTAMP,
     created_at TIMESTAMP,
-    updated_at TIMESTAMP,
-    created_by VARCHAR(100),
-    updated_by VARCHAR(100),
-    deleted_by VARCHAR(100)
+    updated_at TIMESTAMP
 );
 
 CREATE TABLE water_zones (
@@ -592,10 +558,30 @@ CREATE TABLE water_zones (
     water_zone_type VARCHAR(50),
     deleted_at TIMESTAMP,
     created_at TIMESTAMP,
-    updated_at TIMESTAMP,
-    created_by VARCHAR(100),
-    updated_by VARCHAR(100),
-    deleted_by VARCHAR(100)
+    updated_at TIMESTAMP
 );
 
+-- === Planning GIS source schema (qhcb_all) ===
+-- V20260825113000 does unguarded ALTER TABLE on qhcb_all.area/line/point
+-- (ALTER COLUMN schema_name/table_name/fid SET NOT NULL + unique index +
+-- REPLICA IDENTITY USING INDEX). The fixture must provide the schema and the
+-- three tables with those columns left NULLABLE so the SET NOT NULL succeeds
+-- on the empty tables. V72's column renames are below the test baseline (81)
+-- and never run here, so no other columns are needed. Test-only shape.
+CREATE SCHEMA IF NOT EXISTS qhcb_all;
+CREATE TABLE IF NOT EXISTS qhcb_all.area (
+    schema_name VARCHAR(255),
+    table_name  VARCHAR(255),
+    fid         BIGINT
+);
+CREATE TABLE IF NOT EXISTS qhcb_all.line (
+    schema_name VARCHAR(255),
+    table_name  VARCHAR(255),
+    fid         BIGINT
+);
+CREATE TABLE IF NOT EXISTS qhcb_all.point (
+    schema_name VARCHAR(255),
+    table_name  VARCHAR(255),
+    fid         BIGINT
+);
 

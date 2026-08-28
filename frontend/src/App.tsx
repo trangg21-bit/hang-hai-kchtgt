@@ -237,6 +237,10 @@ export default function App() {
                 <Route path="/navigation-channel" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelList /></PermissionGuard>} />
                 <Route path="/navigation-channel/create" element={<PermissionGuard permission="navigationchannel:create"><NavigationChannelForm /></PermissionGuard>} />
                 <Route path="/navigation-channel/:id" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelForm /></PermissionGuard>} />
+                {/* Alias tiếng Việt — E2E + sidebar dùng /luong-hang-hai */}
+                <Route path="/luong-hang-hai" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelList /></PermissionGuard>} />
+                <Route path="/luong-hang-hai/create" element={<PermissionGuard permission="navigationchannel:create"><NavigationChannelForm /></PermissionGuard>} />
+                <Route path="/luong-hang-hai/:id" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelForm /></PermissionGuard>} />
 
                 {/* Đê/kè */}
                 <Route path="/dike-revetment" element={<PermissionGuard permission="dikerevetment:read"><DikeRevetmentList /></PermissionGuard>} />

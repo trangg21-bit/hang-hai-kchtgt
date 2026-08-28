@@ -6,14 +6,14 @@
  */
 import { test, expect, Page } from '@playwright/test';
 
-const LIST_URL = '/tram-radar';
-const CREATE_URL = '/tram-radar/create';
-const DETAIL_URL = '/tram-radar/1';
+const LIST_URL = '/radar-station';
+const CREATE_URL = '/radar-station/create';
+const DETAIL_URL = '/radar-station/1';
 
 async function login(page: Page) {
   await page.goto('/login');
   await page.getByLabel('Tài khoản').fill('admin');
-  await page.getByLabel('Mật khẩu').fill('admin123');
+  await page.getByLabel('Mật khẩu').fill('Asdqwe@123');
   await page.getByRole('button', { name: /đăng nhập/i }).click();
   await page.waitForURL((url) => !/\/login/.test(url.pathname), { timeout: 15000 });
 }

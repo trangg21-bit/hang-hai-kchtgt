@@ -2,11 +2,11 @@
 feature-id: M-024
 feature-name: Tái cấu trúc Menu & Navigation
 pipeline-type: sdlc
-status: proposed
+status: in-progress
 depends-on: []
 blocked-by: []
 created: 2026-08-25T07:34:20.884Z
-last-updated: 2026-08-26T03:06:56Z
+last-updated: 2026-08-27T11:00:17Z
 current-stage: closed
 output-mode: lean
 repo-type: mini
@@ -20,43 +20,39 @@ completed-stages:
     verdict: Pass
     artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/ba/00-lean-spec.md
     performed: dispatched
-    completed-at: 2026-08-25
+    completed-at: 2026-08-27
   engineering-solution-designer:
     verdict: Pass
     artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/design/00-design-plan.md
     performed: dispatched
-    completed-at: 2026-08-25
+    completed-at: 2026-08-27
   engineering-qa-engineer-wave-1:
     verdict: Pass
     artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/qa/07-qa-report-w1.md
     performed: dispatched
-    completed-at: 2026-08-25
-  engineering-backend-developer-wave-1:
-    verdict: Pass
-    artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/dev/05-dev-w1-verify-permission-coverage.md
-    performed: dispatched
-    completed-at: 2026-08-26
+    completed-at: 2026-08-27
   engineering-frontend-developer-wave-1:
     verdict: Pass
-    artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/dev/05-fe-dev-w1-menu-navigation-restructure.md
+    artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/dev/05-fe-dev-w1-sidebar-menu-search-filter.md
     performed: dispatched
-    completed-at: 2026-08-26
+    completed-at: 2026-08-27
   engineering-qa-engineer-wave-2:
     verdict: Pass
     artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/qa/07-qa-report-w2.md
     performed: dispatched
-    completed-at: 2026-08-26
+    completed-at: 2026-08-27
   engineering-code-reviewer:
     verdict: Pass
     artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/reviewer/08-review-report.md
     performed: dispatched
-    completed-at: 2026-08-26
+    completed-at: 2026-08-27
 kpi:
   tokens-total: 0
   cycle-time-start: 2026-08-25T07:34:20.885Z
   tokens-by-stage: {}
   tokens-by-feature: {}
-rework-count: {}
+rework-count:
+  engineering-business-analyst: 1
 locked-fields: []
 version: 1
 finalizers: []
@@ -64,7 +60,9 @@ children-close-policy: TERMINATE
 child-events: []
 partial-redo: []
 agent-flags: {}
-triage-id: TRI-1787631386205-0f2e
+triage-id: TRI-1787823566528-bb3e
+reopened-at: 2026-08-27T09:41:18Z
+reopened-reason: "Change request (TRI-1787823566528-bb3e, C1 scope_expansion): implement real sidebar menu search (currently dead input AppLayout.tsx:561-566), user requires BA analysis first"
 released: true
 ---
 # Pipeline State: Tái cấu trúc Menu & Navigation (M-024)
@@ -77,13 +75,12 @@ Tái cấu trúc toàn bộ hệ thống menu và giao diện điều hướng, 
 
 | # | Stage | Agent | Verdict | Artifact | Date |
 |---|---|---|---|---|---|
-| 1 | engineering-business-analyst | engineering-business-analyst | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/ba/00-lean-spec.md | 2026-08-25 |
-| 2 | engineering-solution-designer | engineering-solution-designer | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/design/00-design-plan.md | 2026-08-25 |
-| 3 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/qa/07-qa-report-w1.md | 2026-08-25 |
-| 4 | engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/dev/05-dev-w1-verify-permission-coverage.md | 2026-08-26 |
-| 5 | engineering-frontend-developer-wave-1 | engineering-frontend-developer-wave-1 | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/dev/05-fe-dev-w1-menu-navigation-restructure.md | 2026-08-26 |
-| 6 | engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/qa/07-qa-report-w2.md | 2026-08-26 |
-| 7 | engineering-code-reviewer | engineering-code-reviewer | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/reviewer/08-review-report.md | 2026-08-26 |
+| 1 | engineering-business-analyst | engineering-business-analyst | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/ba/00-lean-spec.md | 2026-08-27 |
+| 2 | engineering-solution-designer | engineering-solution-designer | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/design/00-design-plan.md | 2026-08-27 |
+| 3 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/qa/07-qa-report-w1.md | 2026-08-27 |
+| 4 | engineering-frontend-developer-wave-1 | engineering-frontend-developer-wave-1 | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/dev/05-fe-dev-w1-sidebar-menu-search-filter.md | 2026-08-27 |
+| 5 | engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/qa/07-qa-report-w2.md | 2026-08-27 |
+| 6 | engineering-code-reviewer | engineering-code-reviewer | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/reviewer/08-review-report.md | 2026-08-27 |
 
 ## Current Stage
 

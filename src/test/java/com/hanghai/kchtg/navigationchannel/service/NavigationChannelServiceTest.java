@@ -2,6 +2,7 @@ package com.hanghai.kchtg.navigationchannel.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
@@ -20,11 +21,13 @@ import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
@@ -119,6 +122,144 @@ class NavigationChannelServiceTest {
         NavigationChannelResponse r = service.update(TEST_ID, updateReq, UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertThat(r).isNotNull();
         verify(repo, times(1)).save(any());
+    }
+
+    @Test
+    void update_approved_shouldReject() {
+        // BR-039-08 (chốt TRI-1787825767692-3dab): hồ sơ Đã duyệt là bất biến qua update —
+        // fail-fast trước MỌI mutation, không để lại side effect nào.
+        testEntity.setApprovalStatus(ApprovalStatus.APPROVED);
+        NavigationChannelUpdateRequest updateReq = NavigationChannelUpdateRequest.builder()
+                .channelName("Luong Cai Lan Moi")
+                .build();
+        when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
+
+        assertThatThrownBy(() -> service.update(TEST_ID, updateReq, UUID.fromString("00000000-0000-0000-0000-000000000001")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Không thể sửa hồ sơ đã duyệt");
+        assertThat(testEntity.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED);
+        assertThat(testEntity.getChannelName()).isEqualTo("Luong Hon Gai - Cai Lan");
+        verify(repo, never()).save(any());
+        verify(approvalHistoryRepo, never()).save(any());
+    }
+
+    @Test
+    void update_approvedLevel2_shouldReject() {
+        // BR-039-08: APPROVED_LEVEL2 (Đã duyệt cấp 2) cũng bị chặn như APPROVED.
+        testEntity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL2);
+        NavigationChannelUpdateRequest updateReq = NavigationChannelUpdateRequest.builder()
+                .channelName("Luong Cai Lan Moi")
+                .build();
+        when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
+
+        assertThatThrownBy(() -> service.update(TEST_ID, updateReq, UUID.fromString("00000000-0000-0000-0000-000000000001")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Không thể sửa hồ sơ đã duyệt");
+        assertThat(testEntity.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED_LEVEL2);
+        assertThat(testEntity.getChannelName()).isEqualTo("Luong Hon Gai - Cai Lan");
+        verify(repo, never()).save(any());
+        verify(approvalHistoryRepo, never()).save(any());
+    }
+
+    @Test
+    void update_rejectedWithRealChange_shouldResetToDraftAndClearWorkflow() {
+        // BR-039-08: hồ sơ bị trả về (REJECTED) sửa thật → quay về Lưu tạm + xóa sạch 9 trường workflow.
+        UUID updatedBy = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        UUID approver = UUID.fromString("00000000-0000-0000-0000-000000000009");
+        testEntity.setApprovalStatus(ApprovalStatus.REJECTED);
+        testEntity.setSubmittedAt(LocalDateTime.of(2026, 8, 1, 10, 0));
+        testEntity.setSubmittedBy(approver);
+        testEntity.setApproverLevel1(approver);
+        testEntity.setApprovedDateLevel1(LocalDateTime.of(2026, 8, 2, 9, 0));
+        testEntity.setApproverLevel2(approver);
+        testEntity.setApprovedDateLevel2(LocalDateTime.of(2026, 8, 3, 9, 0));
+        testEntity.setRejectionReason("Lý do từ chối cấp 1");
+        testEntity.setLevel1ApprovalContent("Nội dung duyệt cấp 1");
+        testEntity.setLevel2ApprovalContent("Nội dung duyệt cấp 2");
+
+        NavigationChannelUpdateRequest updateReq = NavigationChannelUpdateRequest.builder()
+                .channelName("Luong Cai Lan Moi")
+                .build();
+        when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
+        when(repo.save(any())).thenReturn(testEntity);
+
+        service.update(TEST_ID, updateReq, updatedBy);
+
+        assertThat(testEntity.getApprovalStatus()).isEqualTo(ApprovalStatus.DRAFT);
+        assertThat(testEntity.getSubmittedAt()).isNull();
+        assertThat(testEntity.getSubmittedBy()).isNull();
+        assertThat(testEntity.getApproverLevel1()).isNull();
+        assertThat(testEntity.getApprovedDateLevel1()).isNull();
+        assertThat(testEntity.getApproverLevel2()).isNull();
+        assertThat(testEntity.getApprovedDateLevel2()).isNull();
+        assertThat(testEntity.getRejectionReason()).isNull();
+        assertThat(testEntity.getLevel1ApprovalContent()).isNull();
+        assertThat(testEntity.getLevel2ApprovalContent()).isNull();
+        assertThat(testEntity.getUpdatedBy()).isEqualTo(updatedBy);
+
+        ArgumentCaptor<InfrastructureHistory> historyCaptor = ArgumentCaptor.forClass(InfrastructureHistory.class);
+        verify(approvalHistoryRepo, times(1)).save(historyCaptor.capture());
+        InfrastructureHistory history = historyCaptor.getValue();
+        assertThat(history.getStatus()).isEqualTo(InfrastructureHistoryStatus.UPDATED);
+        assertThat(history.getChangedField()).isNotBlank();
+    }
+
+    @Test
+    void update_identicalPayload_shouldBeNoOp() {
+        // BR-039-08: payload giống hệt giá trị đang lưu → giữ trạng thái, không history,
+        // không đổi updatedAt (kể cả khi hồ sơ đang REJECTED — không reset về DRAFT).
+        testEntity.setApprovalStatus(ApprovalStatus.REJECTED);
+        testEntity.setUpdatedAt(LocalDateTime.of(2026, 8, 1, 10, 0));
+        NavigationChannelUpdateRequest updateReq = NavigationChannelUpdateRequest.builder()
+                .channelName("Luong Hon Gai - Cai Lan")
+                .build();
+        when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
+
+        service.update(TEST_ID, updateReq, UUID.fromString("00000000-0000-0000-0000-000000000001"));
+
+        assertThat(testEntity.getApprovalStatus()).isEqualTo(ApprovalStatus.REJECTED);
+        assertThat(testEntity.getUpdatedAt()).isEqualTo(LocalDateTime.of(2026, 8, 1, 10, 0));
+        verify(repo, never()).save(any());
+        verify(approvalHistoryRepo, never()).save(any());
+    }
+
+    @Test
+    void update_whitespaceOnlyEdit_shouldBeNoOp() {
+        // BR-039-08: payload chỉ khác khoảng trắng thừa (channelName bọc spaces) → sau trim
+        // bằng giá trị đang lưu → no-op: giữ trạng thái, không history, không đổi updatedAt.
+        testEntity.setApprovalStatus(ApprovalStatus.REJECTED);
+        testEntity.setUpdatedAt(LocalDateTime.of(2026, 8, 1, 10, 0));
+        NavigationChannelUpdateRequest updateReq = NavigationChannelUpdateRequest.builder()
+                .channelName("   Luong Hon Gai - Cai Lan   ")
+                .build();
+        when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
+
+        service.update(TEST_ID, updateReq, UUID.fromString("00000000-0000-0000-0000-000000000001"));
+
+        assertThat(testEntity.getApprovalStatus()).isEqualTo(ApprovalStatus.REJECTED);
+        assertThat(testEntity.getChannelName()).isEqualTo("Luong Hon Gai - Cai Lan");
+        assertThat(testEntity.getUpdatedAt()).isEqualTo(LocalDateTime.of(2026, 8, 1, 10, 0));
+        verify(repo, never()).save(any());
+        verify(approvalHistoryRepo, never()).save(any());
+    }
+
+    @Test
+    void update_draftWithRealChange_shouldPartialUpdateAndSetUpdatedBy() {
+        // Boundary (WO-3 case 6): DRAFT + thay đổi thật → partial update bình thường, updatedBy từ session.
+        UUID updatedBy = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        testEntity.setApprovalStatus(ApprovalStatus.DRAFT);
+        NavigationChannelUpdateRequest updateReq = NavigationChannelUpdateRequest.builder()
+                .channelName("Luong Cai Lan Moi")
+                .build();
+        when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
+        when(repo.save(any())).thenReturn(testEntity);
+
+        service.update(TEST_ID, updateReq, updatedBy);
+
+        assertThat(testEntity.getChannelName()).isEqualTo("Luong Cai Lan Moi");
+        assertThat(testEntity.getUpdatedBy()).isEqualTo(updatedBy);
+        verify(repo, times(1)).save(any());
+        verify(approvalHistoryRepo, times(1)).save(any());
     }
 
     @Test

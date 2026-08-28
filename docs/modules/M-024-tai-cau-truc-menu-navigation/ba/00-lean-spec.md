@@ -2,7 +2,7 @@
 feature-id: M-024
 document: lean-spec
 output-mode: lean
-last-updated: 2026-08-25
+last-updated: 2026-08-27
 ---
 
 # M-024 Tái cấu trúc Menu & Navigation — Lean Spec (BA)
@@ -11,6 +11,7 @@ last-updated: 2026-08-25
 > - `HH_Menu_21-08-2026.xlsx` — cây menu mục tiêu: 7 nhóm cấp 1 (I–VII), cấp 2–4.
 > - `SO-DO-VA-MA-TRAN-CHA-CON-KCHT.md` — ma trận cha–con 28 loại KCHT (3–4 lớp).
 > - Triage `docs/intel/_intake/TRI-1787631386205-0f2e.json` — done-oracle, edit-target files.
+> - Triage `docs/intel/_intake/TRI-1787823566528-bb3e.json` — scope_expansion (C1): chức năng thật cho ô tìm kiếm menu sidebar (input chết `AppLayout.tsx:561–567`, input tại dòng 565).
 > - Code hiện tại: `frontend/src/components/AppLayout.tsx`, `frontend/src/store/authStore.ts`, `frontend/src/store/permissionStore.ts`, `src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java`.
 
 ---
@@ -19,9 +20,10 @@ last-updated: 2026-08-25
 
 Tái cấu trúc toàn bộ menu & điều hướng hệ thống theo 2 mô hình:
 **(a) Dashboard Grid 6 khối** — trang chủ sau đăng nhập hiển thị đúng 6 khối chức năng, mỗi khối là cổng vào một nhóm nghiệp vụ;
-**(b) Sidebar PMS Model (phân cấp)** — thanh menu trái tổ chức theo cây phân cấp 7 nhóm cấp 1, trong đó nhánh "Quản lý cảng biển" hiển thị đúng **13 thực thể KCHT** theo ma trận cha–con (Cảng biển → Bến cảng → Cầu cảng; Luồng hàng hải → Bến phao / Đèn biển / Đê kè / Nhà trạm → Phao tiêu; Cảng biển → Khu neo đậu / Khu chuyển tải / Khu tránh trú bão / CS sửa chữa đóng tàu).
+**(b) Sidebar PMS Model (phân cấp)** — thanh menu trái tổ chức theo cây phân cấp 7 nhóm cấp 1, trong đó nhánh "Quản lý cảng biển" hiển thị đúng **13 thực thể KCHT** theo ma trận cha–con (Cảng biển → Bến cảng → Cầu cảng; Luồng hàng hải → Bến phao / Đèn biển / Đê kè / Nhà trạm → Phao tiêu; Cảng biển → Khu neo đậu / Khu chuyển tải / Khu tránh trú bão / CS sửa chữa đóng tàu);
+**(c) Tìm kiếm menu sidebar** — ô tìm kiếm ngay dưới header sidebar (`AppLayout.tsx` dòng 561–567, input tại dòng 565 — hiện là input chết, TRI-1787823566528-bb3e) lọc nhanh các mục menu theo `label` tiếng Việt; chuỗi được `.trim()` trước khi so khớp (VAL-024-06); xóa chuỗi → menu khôi phục đầy đủ; chỉ thu hẹp hiển thị, không navigate.
 
-Không tạo entity nghiệp vụ mới, không đổi schema; phạm vi thay đổi nằm trong 4 edit-target files (triage): `AppLayout.tsx`, `authStore.ts`, `permissionStore.ts`, `PermissionSeeder.java`.
+Không tạo entity nghiệp vụ mới, không đổi schema; phạm vi thay đổi của đợt tái cấu trúc nằm trong 4 edit-target files (triage): `AppLayout.tsx`, `authStore.ts`, `permissionStore.ts`, `PermissionSeeder.java`. Đợt bổ sung tìm kiếm menu (TRI-1787823566528-bb3e) giới hạn trong 3 edit-target files: `feature-brief.md`, `AppLayout.tsx`, `AppLayout.test.tsx` — **không** sửa `theme.ts`/`tokens.ts`.
 
 ---
 
@@ -35,6 +37,7 @@ Không tạo entity nghiệp vụ mới, không đổi schema; phạm vi thay đ
 | `canAccessMenu(path)` | `AppLayout.tsx` dòng 86–97 | Gọi `usePermissionStore.hasPermission / hasAnyPermission` để lọc item |
 | `rawMenuItems` | `AppLayout.tsx` dòng 222–490 | Cấu trúc menu thủ công (AntD `MenuProps['items']`), label tiếng Việt, key tiếng Anh |
 | `filterEmptyChildren` | `AppLayout.tsx` (hàm, sau dòng 490) | Loại submenu rỗng + divider thừa |
+| Ô tìm kiếm menu | `AppLayout.tsx` dòng 561–567 (input tại dòng 565) | Input chết: `<input placeholder="Tìm kiếm" />` không có `value`/`onChange`/state/handler — gõ phím không lọc gì; render khi `!collapsed && !isMenuFullScreen` (`collapsed = false` hardcode dòng 149; `isMenuFullScreen` dòng 151 không bao giờ set true) → luôn hiển thị khi sidebar mở; CSS `.sidebar-search` đã có sẵn (`theme.ts` dòng 412–435) |
 | `normalizePermissionKey` | `permissionStore.ts` dòng 20–52 | Chuẩn hóa key quyền (dot-notation → `<resource>:<action>`) |
 | `.map((permission) => normalizePermissionKey(permission.trim()))` | `permissionStore.ts` dòng 61 | Build `Set` quyền; hỗ trợ `*`, `admin:all`, `resource:manage`, `resource:*`, `resource:write` |
 | `hasPermissionFromList` | `permissionStore.ts` dòng 55–95 | Logic bypass quyền (quản trị) |
@@ -72,17 +75,24 @@ Không tạo entity nghiệp vụ mới, không đổi schema; phạm vi thay đ
 | D11 | **`/water-zone` (Quản lý vùng nước) không có trong target** | Target tách 3 Khu (neo đậu/chuyển tải/tránh trú bão) thành mục riêng; `/water-zone` giữ hay bỏ do SA chốt (D-1) |
 | D12 | **Menu phụ sinh tồn** | `Trang chủ` (`/`), `Cấu hình hệ thống` (`/settings`) không nằm trong 7 nhóm xlsx — đề xuất giữ là item tiện ích ngoài 7 nhóm (D-3) |
 
+### 2.4 Ô tìm kiếm menu (hiện trạng — input chết)
+
+- `AppLayout.tsx` dòng 561–567: ô tìm kiếm dạng pill hiển thị ngay dưới header sidebar, chỉ chứa icon `SearchOutlined` + `<input placeholder="Tìm kiếm" />` (dòng 565) — **không có `value`/`onChange`/state/handler** → gõ phím không lọc gì (input chết; xác nhận bởi triage TRI-1787823566528-bb3e seam_claims dòng 562/565).
+- Điều kiện render `{!collapsed && !isMenuFullScreen && (...)}` (dòng 562): `collapsed` hardcode `false` (dòng 149), `isMenuFullScreen` khai báo (dòng 151) nhưng không bao giờ set `true` → ô tìm kiếm **luôn hiển thị** khi sidebar mở.
+- CSS `.sidebar-search` **đã tồn tại** (`theme.ts` dòng 412–435, dùng token `--sidebar-search-bg`) — không cần thay đổi `theme.ts`/`tokens.ts`.
+- Điểm chèn bộ lọc: `AppLayout.tsx` dòng 498 `const menuItems = filterEmptyChildren(rawMenuItems);` — lọc tại đây (sau gating quyền, trước khi render `<Menu items={menuItems}>`).
+
 ---
 
 ## 3. Actors, trigger, preconditions
 
 | Actor | Mô tả |
 |---|---|
-| Người dùng đã đăng nhập (các vai trò/phân quyền động theo nhóm & tài khoản) | Duyệt menu, điều hướng chức năng |
+| Người dùng đã đăng nhập (các vai trò/phân quyền động theo nhóm & tài khoản) | Duyệt menu, điều hướng chức năng, gõ tìm kiếm menu |
 | Quản trị hệ thống (`ROLE_SYSTEM_ADMIN`, `admin:all`, `*`) | Thấy toàn bộ menu (bypass qua `hasPermissionFromList`) |
 | Admin Cục | Full quyền theo tài liệu nền mục 3.8 — thấy toàn bộ menu nghiệp vụ |
 
-- **Trigger:** user đăng nhập thành công → vào Dashboard Grid 6 khối; user click khối hoặc mở sidebar → duyệt cây menu.
+- **Trigger:** user đăng nhập thành công → vào Dashboard Grid 6 khối; user click khối hoặc mở sidebar → duyệt cây menu; **user gõ chuỗi vào ô tìm kiếm menu → lọc nhanh mục menu theo `label` (UC-024-09)**.
 - **Preconditions:** user có token hợp lệ (JWT chứa `permissions` — `authStore.ts` `parseJwt`); `permissionStore` đã đồng bộ quyền (subscribe `useAuthStore`); quyền được seed trong DB qua `PermissionSeeder.run()`.
 
 ---
@@ -99,6 +109,8 @@ Không tạo entity nghiệp vụ mới, không đổi schema; phạm vi thay đ
 | UC-024-06 | Quản trị thấy toàn bộ | User có `admin:all`/`*` → thấy mọi item bất kể quyền chi tiết (`hasPermissionFromList` dòng 55–95) |
 | UC-024-07 | Item chưa có màn hình | Item thuộc target (xlsx) nhưng chưa có route/màn hình → hiển thị trạng thái "chưa triển khai" (disabled + tooltip), KHÔNG navigate tới route giả (D-1) |
 | UC-024-08 | Deep link không hợp lệ | User truy cập trực tiếp URL thiếu quyền → backend trả 403 (không phụ thuộc việc ẩn menu frontend) |
+| UC-024-09 | Tìm kiếm menu sidebar | User gõ chuỗi vào ô tìm kiếm (`AppLayout.tsx` dòng 565) → chuỗi được `.trim()` (VAL-024-06) → menu lọc theo `label` tiếng Việt chứa chuỗi (so khớp chuỗi con, không phân biệt hoa/thường); item không khớp ẩn; submenu hết con khớp → ẩn nhánh (thống nhất BR-024-04); không navigate, không gọi API |
+| UC-024-10 | Khôi phục menu khi xóa chuỗi tìm kiếm | User xóa toàn bộ chuỗi (hoặc chuỗi chỉ gồm khoảng trắng — sau `.trim()` rỗng) → menu khôi phục đầy đủ theo quyền như trước khi tìm kiếm (đúng 7 nhóm cấp 1 + item tiện ích); không có side effect điều hướng |
 
 ---
 
@@ -118,6 +130,9 @@ Không tạo entity nghiệp vụ mới, không đổi schema; phạm vi thay đ
 | BR-024-10 | Định danh kỹ thuật (key, route, resource) bằng tiếng Anh chuẩn; label/message/tooltip bằng tiếng Việt có dấu; không hardcode màu/spacing/font-size — UI theo `theme.ts` + `tokens.ts` | Naming |
 | BR-024-11 | Module này KHÔNG tạo entity nghiệp vụ mới → không phát sinh `orgUnitId` / `@Filter(orgUnitFilter)` / `@DataScope`; menu không lọc theo đơn vị, không phải dữ liệu nghiệp vụ có scope | Data scope |
 | BR-024-12 | An ninh điều hướng không chỉ dựa vào ẩn menu: route trực tiếp (deep link) vẫn bị backend chặn 403 khi thiếu quyền | Security |
+| BR-024-13 | Ô tìm kiếm menu chỉ **lọc hiển thị** trên cây menu đã gating quyền (`menuItems` tại `AppLayout.tsx` dòng 498) — không navigate, không gọi API, không đổi dữ liệu; chuỗi nhập phải `.trim()` trước khi so khớp (VAL-024-06) | Search |
+| BR-024-14 | Item được giữ khi `label` (tiếng Việt) chứa chuỗi tìm kiếm sau `.trim()` (so khớp chuỗi con, không phân biệt hoa/thường); submenu giữ nguyên nếu có ≥ 1 con được giữ, hết con khớp → ẩn nhánh (thống nhất BR-024-04); chuỗi rỗng/whitespace → hiển thị toàn bộ menu (khôi phục). **Đề xuất BA — xác nhận hành vi cha/con tại D-5 (SA chốt)** | Search |
+| BR-024-15 | Tìm kiếm **không bypass quyền**: chỉ lọc trên tập item đã qua `canAccessMenu`/`filterEmptyChildren` — user không bao giờ thấy item ngoài quyền qua tìm kiếm | Search / Permission |
 
 ---
 
@@ -219,6 +234,7 @@ Bảng ánh xạ route/quyền hiện có (đề xuất BA — SA chốt):
 
 - **Không cần entity mới** (BR-024-11): module là tái cấu trúc menu/điều hướng, không quản lý dữ liệu nghiệp vụ → không phát sinh `orgUnitId`, `@Filter(orgUnitFilter)`, `@DataScope`, không có chiều ghi dữ liệu, không có migration/backfill.
 - Menu KHÔNG lọc theo đơn vị; phân cấp menu theo ma trận cha–con KCHT là **cấu trúc hiển thị**, không phải data scope.
+- **Ô tìm kiếm menu** là lọc client-side trên cấu trúc menu hiển thị — không phải dữ liệu nghiệp vụ, không phát sinh trường đơn vị / chiều ghi / ngoại lệ data scope (thống nhất BR-024-11; khai báo mục 5 dòng 3 của F-292).
 - Phân quyền menu: dynamic theo nhóm/tài khoản (quyền từ JWT → `permissionStore`); mọi permission mới seed qua `seedPermission` trong `run()` (BR-024-09). Module này dự kiến KHÔNG cần permission mới (dùng lại `resource:read` hiện có); nếu SA chốt thêm `menu:view` thì bắt buộc seed — xem Decision Point D-4.
 
 ---
@@ -231,6 +247,7 @@ Bảng ánh xạ route/quyền hiện có (đề xuất BA — SA chốt):
 | D-2 | Ánh xạ 6 khối Dashboard | Đề xuất: nhóm I–VI; TÍCH HỢP chỉ ở sidebar. Cần đối chiếu `docs/inputs/photo_2026-07-09_15-47-20.jpg` (file ảnh — session này không đọc được nội dung hình, chỉ nhận base64) | PMO |
 | D-3 | Vị trí item tiện ích (`Trang chủ`, `Cấu hình hệ thống`) | Giữ ngoài 7 nhóm (đầu/cuối sidebar) — không đổi tên nhóm xlsx | SA |
 | D-4 | Có cần permission `menu:view` mới không | Đề xuất KHÔNG — dùng quyền nghiệp vụ hiện có để gating; tránh phình cây quyền. Nếu cần, seed qua `seedPermission` | SA + PMO |
+| D-5 | Tìm kiếm menu: item cha không khớp từ khóa nhưng có ≥ 1 con khớp — giữ hay ẩn? | (a) Giữ item cha để con khớp còn đường điều hướng (submenu thu hẹp theo các con khớp) — **đề xuất (a)**, thống nhất BR-024-04; (b) chỉ giữ item tự khớp → con mồ côi, không truy cập được qua tìm kiếm | SA |
 
 ---
 
@@ -248,6 +265,9 @@ Bảng ánh xạ route/quyền hiện có (đề xuất BA — SA chốt):
 | AC-024-08 | — | Kiểm tra tĩnh | Key/route/resource tiếng Anh chuẩn; label tiếng Việt có dấu; không hardcode hex/spacing/font-size trong menu |
 | AC-024-09 | — | Chạy verification | `cd frontend && npx tsc --noEmit` pass; `mvn compile -DskipTests` pass (theo triage) |
 | AC-024-10 | Permission mới được thêm (nếu D-4 = có) | Khởi động backend | Permission xuất hiện trong DB qua `seedPermission` trong `run()`; không gán role |
+| AC-024-11 | Menu hiển thị theo quyền user (vd user có `port:read`, `navigationchannel:read`) | Gõ ` cảng ` (kèm khoảng trắng thừa) vào ô tìm kiếm menu | Chỉ các item có `label` chứa "cảng" sau `.trim()` hiển thị (so khớp chuỗi con, không phân biệt hoa/thường — BR-024-14); item không khớp ẩn; submenu hết con khớp → ẩn nhánh; không item nào ngoài quyền hiển thị (BR-024-15) |
+| AC-024-12 | User đang xem menu đã bị lọc bởi từ khóa | Xóa toàn bộ chuỗi (hoặc chuỗi chỉ gồm khoảng trắng) | Menu khôi phục đầy đủ như trước khi tìm kiếm: đúng 7 nhóm cấp 1 + item tiện ích theo quyền (đếm nhóm = 7) |
+| AC-024-13 | User gõ từ khóa bất kỳ | Gõ từ khóa + nhấn Enter (hoặc click item khớp) | Tìm kiếm không gây điều hướng ngoài ý muốn (chỉ click item lá navigate như AC-024-06); không phát sinh request API tìm kiếm |
 
 ---
 
@@ -255,5 +275,5 @@ Bảng ánh xạ route/quyền hiện có (đề xuất BA — SA chốt):
 
 - KHÔNG sửa màn hình nghiệp vụ các module khác (PortPage, BerthPage, ...) — chỉ 4 edit-target files.
 - KHÔNG tạo entity/bảng/migration mới.
-- KHÔNG thiết kế lại visual theme (giữ `theme.ts`/`tokens.ts` hiện tại).
+- KHÔNG thiết kế lại visual theme (giữ `theme.ts`/`tokens.ts` hiện tại) — CSS `.sidebar-search` đã có (dòng 412–435).
 - KHÔNG thêm test scenario ở đây (thuộc QA stage).
