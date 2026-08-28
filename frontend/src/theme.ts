@@ -47,7 +47,7 @@ export const colors = {
   // Nền
   bodyBg: '#F5F8FA',         // nền layout tổng (xám rất nhạt đặc trưng Metronic)
   containerBg: '#FFFFFF',
-  sidebarBg: '#12468C',      // nền sidebar xanh dương đồng nhất (v3)
+  sidebarBg: '#1a3f83',      // nền sidebar navy CHK — đồng nhất themetokenchk.sidebarBg
   sidebarActiveBg: '#1B84FF', // pill active màu xanh dương sáng
   sidebarSearchBg: 'rgba(255, 255, 255, 0.12)', // nền ô tìm kiếm trong sidebar
 
@@ -366,7 +366,7 @@ export const globalCssVars = `
 }
 
 /* ---------- Sidebar: 1 MÀU XANH DƯƠNG ĐỒNG NHẤT (Rule 8 v3) ---------- */
-/* Header, Menu, Footer đều chung nền xanh #12468C — active item là PILL, không border-left. */
+/* Header, Menu, Footer đều chung nền navy CHK #1a3f83 — active item là PILL, không border-left. */
 
 /* --- Brand zone (BLUE — đồng nhất với menu) --- */
 .sidebar-header {
@@ -615,7 +615,7 @@ export const globalCssVars = `
   font-size: 13px !important;
   font-weight: 600 !important;
   text-transform: uppercase !important;
-  color: var(--bg-sidebar, #12468C) !important;
+  color: var(--bg-sidebar, #1a3f83) !important;
 }
 .list-view-table .ant-table-cell {
   white-space: nowrap !important;
@@ -1001,9 +1001,9 @@ textarea::placeholder,
   font-size: 13px !important;
 }
 
-/* ---------- Form Item Label chuẩn Cảng biển: Xanh Navy #12468C, Bold 600, 13px ---------- */
+/* ---------- Form Item Label chuẩn Cảng biển: Navy CHK #1a3f83, Bold 600, 13px ---------- */
 .ant-form-item-label > label {
-  color: var(--bg-sidebar, #12468C) !important;
+  color: var(--bg-sidebar, #1a3f83) !important;
   font-weight: 600 !important;
   font-size: 13px !important;
 }
@@ -2272,7 +2272,7 @@ textarea::placeholder,
 .chk-detail-label {
   width: 190px !important;
   flex-shrink: 0 !important;
-  color: #12468C !important;
+  color: #273e7c !important;
   font-weight: 700 !important;
   font-size: 13px !important;
   text-align: left !important;
@@ -2353,7 +2353,7 @@ textarea::placeholder,
  * 7. Toàn bộ 22 module phải import `metronicTheme` gián tiếp qua ConfigProvider ở root,
  *    KHÔNG được wrap thêm ConfigProvider theme khác ở cấp module (tránh theme bị override lệch nhau).
  *
- * 8. Sidebar: 1 MÀU XANH DƯƠNG ĐỒNG NHẤT (#12468C) cho header, menu, footer.
+ * 8. Sidebar: 1 MÀU NAVY ĐỒNG NHẤT (#1a3f83 — chuẩn CHK) cho header, menu, footer.
  *    Active menu item là PILL màu xanh dương sáng (#1B84FF), KHÔNG có border-left.
  *
  * 9. MỌI cột "Trạng thái" trong MỌI bảng dữ liệu (Table) của 22 module phải dùng class

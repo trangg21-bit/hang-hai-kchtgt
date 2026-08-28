@@ -75,9 +75,10 @@ interface DmsInputProps {
   value: number;
   onChange: (val: number) => void;
   placeholderPrefix: string;
+  disabled?: boolean;
 }
 
-function DmsInput({ value, onChange, placeholderPrefix }: DmsInputProps) {
+function DmsInput({ value, onChange, placeholderPrefix, disabled = false }: DmsInputProps) {
   const { d, m, s } = DDToDMS(value);
 
   const handleDChange = (newD: number | null) => {
@@ -99,6 +100,7 @@ function DmsInput({ value, onChange, placeholderPrefix }: DmsInputProps) {
           placeholder="Độ"
           style={{ width: '100%' }}
           controls={false}
+          disabled={disabled}
         />
         <div style={{
           padding: '0 6px',
@@ -120,6 +122,7 @@ function DmsInput({ value, onChange, placeholderPrefix }: DmsInputProps) {
           placeholder="Phút"
           style={{ width: '100%' }}
           controls={false}
+          disabled={disabled}
         />
         <div style={{
           padding: '0 6px',
@@ -142,6 +145,7 @@ function DmsInput({ value, onChange, placeholderPrefix }: DmsInputProps) {
           placeholder="Giây"
           style={{ width: '100%' }}
           controls={false}
+          disabled={disabled}
         />
         <div style={{
           padding: '0 6px',
@@ -246,7 +250,8 @@ export default function GisLocationSelector({
       const type = geomType.toUpperCase();
       if (type === 'POINT') {
         if (wkt.startsWith('MULTIPOINT(')) {
-          const match = wkt.match(/MULTIPOINT\(([^)]+)\)/);
+          // Regex phải vượt qua cả dấu ) bên trong từng cặp (lng lat) — nếu dùng [^)]+ đơn thuần sẽ chỉ bắt được điểm ĐẦU TIÊN
+          const match = wkt.match(/MULTIPOINT\(((?:\([^)]*\),?)+)\)/);
           if (match) {
             return match[1].split('),(').map((pt) => {
               const parts = pt.replace(/[()]/g, '').trim().split(/\s+/);
@@ -352,12 +357,9 @@ export default function GisLocationSelector({
       let layer: any;
 
       if (internalGeom === 'POINT') {
+        // POINT mode: LUÔN dùng LayerGroup để hỗ trợ chọn NHIỀU tọa độ trên bản đồ (không ghi đè marker cũ)
         const coords = validVertices.map((v) => [v.lat, v.lng]);
-        if (coords.length === 1) {
-          layer = L.marker(coords[0]);
-        } else {
-          layer = L.layerGroup(coords.map((c: [number, number]) => L.marker(c)));
-        }
+        layer = L.layerGroup(coords.map((c: [number, number]) => L.marker(c)));
       } else if (internalGeom === 'LINE') {
         if (validVertices.length < 2) return; // Polyline needs at least 2 points to draw
         const coords = validVertices.map((v) => [v.lat, v.lng]);
@@ -384,8 +386,15 @@ export default function GisLocationSelector({
         }
 
         // Bind update listeners
-        layer.on('pm:edit', () => syncLayerToWkt(layer));
-        layer.on('pm:dragend', () => syncLayerToWkt(layer));
+        if (internalGeom === 'POINT') {
+          (layer.getLayers?.() || []).forEach((m: any) => {
+            m.on('pm:edit', syncMarkerGroupToWkt);
+            m.on('pm:dragend', syncMarkerGroupToWkt);
+          });
+        } else {
+          layer.on('pm:edit', () => syncLayerToWkt(layer));
+          layer.on('pm:dragend', () => syncLayerToWkt(layer));
+        }
       }
     } catch (err) {
       console.warn('Lỗi vẽ đè hình học lên bản đồ:', err);
@@ -416,8 +425,23 @@ export default function GisLocationSelector({
     // Handle drawing lifecycle events
     mapRef.current.on('pm:create', (e: any) => {
       const layer = e.layer;
+      const L = (window as any).L;
 
-      // Remove old drawn layer
+      // POINT mode: TÍCH LŨY nhiều marker — mỗi lần vẽ THÊM một tọa độ, KHÔNG ghi đè tọa độ cũ
+      if (layer instanceof L.Marker) {
+        let group = drawnLayerRef.current;
+        if (!group || typeof group.getLayers !== 'function') {
+          group = L.layerGroup().addTo(mapRef.current);
+          drawnLayerRef.current = group;
+        }
+        layer.addTo(group);
+        layer.on('pm:edit', syncMarkerGroupToWkt);
+        layer.on('pm:dragend', syncMarkerGroupToWkt);
+        syncMarkerGroupToWkt();
+        return;
+      }
+
+      // LINE / POLYGON: thay thế đối tượng vẽ cũ
       if (drawnLayerRef.current) {
         mapRef.current.removeLayer(drawnLayerRef.current);
       }
@@ -433,7 +457,22 @@ export default function GisLocationSelector({
     if (mapRef.current.pm) {
       mapRef.current.pm.reenableMode = false;
     }
-    mapRef.current.on('pm:remove', () => {
+    mapRef.current.on('pm:remove', (e: any) => {
+      const removedLayer = e?.layer;
+      const group = drawnLayerRef.current;
+      if (removedLayer && group && typeof group.getLayers === 'function' && group.hasLayer?.(removedLayer)) {
+        group.removeLayer(removedLayer);
+        if ((group.getLayers() as any[]).length > 0) {
+          syncMarkerGroupToWkt();
+          return;
+        }
+        mapRef.current.removeLayer(group);
+        drawnLayerRef.current = null;
+        setVertices([]);
+        setInternalToaDo('');
+        triggerChange(internalGeomRef.current, '', internalBieuTuongRef.current);
+        return;
+      }
       drawnLayerRef.current = null;
       setVertices([]);
       setInternalToaDo('');
@@ -457,9 +496,9 @@ export default function GisLocationSelector({
     }
   }, [initMap]);
 
-  // Cleanup map when modal is closed
+  // Cleanup map when modal is closed (chỉ khi dùng Modal riêng — KHÔNG phá map khi inline)
   useEffect(() => {
-    if (!modalOpen) {
+    if (!modalOpen && !inline) {
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
@@ -467,7 +506,7 @@ export default function GisLocationSelector({
       }
       setMapReady(false);
     }
-  }, [modalOpen]);
+  }, [modalOpen, inline]);
 
   // Synchronize Leaflet Map drawn shapes with WKT coordinates
   const syncLayerToWkt = (layer: any) => {
@@ -510,6 +549,32 @@ export default function GisLocationSelector({
     isUpdatingFromMap.current = false;
   };
 
+  // Đồng bộ TOÀN BỘ marker trong nhóm (POINT mode chọn nhiều tọa độ) sang WKT
+  const syncMarkerGroupToWkt = () => {
+    if (isUpdatingFromMap.current) return;
+    isUpdatingFromMap.current = true;
+    try {
+      const group = drawnLayerRef.current;
+      const pts: { lng: number; lat: number }[] = [];
+      if (group && typeof group.getLayers === 'function') {
+        (group.getLayers() as any[]).forEach((m: any) => {
+          const ll = m.getLatLng?.();
+          if (ll && !isNaN(ll.lng) && !isNaN(ll.lat)) pts.push({ lng: ll.lng, lat: ll.lat });
+        });
+      } else if (group && typeof group.getLatLng === 'function') {
+        const ll = group.getLatLng();
+        if (ll && !isNaN(ll.lng) && !isNaN(ll.lat)) pts.push({ lng: ll.lng, lat: ll.lat });
+      }
+      const newWkt = serializeVerticesToWkt(pts, 'POINT');
+      setVertices(pts);
+      setInternalToaDo(newWkt);
+      triggerChange('POINT', newWkt, internalBieuTuongRef.current);
+    } catch (e) {
+      console.error('Lỗi đồng bộ nhóm marker:', e);
+    }
+    isUpdatingFromMap.current = false;
+  };
+
   // Synchronize WKT coordinates back to Leaflet Map layer
   useEffect(() => {
     drawExistingShape();
@@ -528,6 +593,9 @@ export default function GisLocationSelector({
           console.error(e);
         }
       }
+      if (disabled) {
+        return;
+      }
       pm.addControls({
         position: 'topleft',
         drawMarker: internalGeom === 'POINT',
@@ -544,7 +612,7 @@ export default function GisLocationSelector({
         rotateMode: false,
       });
     }
-  }, [leafletLoaded, mapReady, internalGeom, modalOpen]);
+  }, [leafletLoaded, mapReady, internalGeom, modalOpen, disabled]);
 
   // Handle manual additions and updates to the vertices grid
   const handleVertexChange = (index: number, field: 'lng' | 'lat', val: number | null) => {
@@ -648,7 +716,7 @@ export default function GisLocationSelector({
                 <Typography.Text strong style={{ fontSize: 13 }}>
                   TỌA ĐỘ CÁC ĐIỂM ĐỈNH ({vertices.length})
                 </Typography.Text>
-                {internalGeom !== 'POINT' && (
+                {internalGeom === 'LINE' && !disabled && (
                   <Button
                     type="dashed"
                     size="small"
@@ -670,7 +738,7 @@ export default function GisLocationSelector({
                   }}
                 >
                   <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                    Chưa có tọa độ nào. Nhấp vào bản đồ hoặc nút "Thêm điểm" để bắt đầu.
+                    {disabled ? 'Chưa có tọa độ nào.' : 'Chưa có tọa độ nào. Nhấp vào bản đồ hoặc nút "Thêm điểm" để bắt đầu.'}
                   </Typography.Text>
                 </div>
               ) : (
@@ -682,8 +750,8 @@ export default function GisLocationSelector({
                   tableLayout="fixed"
                   scroll={{ x: 620, y: height - 80 }}
                   onRow={(_, index) => ({
-                    draggable: internalGeom !== 'POINT',
-                    style: { cursor: internalGeom !== 'POINT' ? 'grab' : 'default' },
+                    draggable: internalGeom !== 'POINT' && !disabled,
+                    style: { cursor: internalGeom !== 'POINT' && !disabled ? 'grab' : 'default' },
                     onDragStart: (e) => {
                       e.dataTransfer.setData('text/plain', index!.toString());
                     },
@@ -715,7 +783,7 @@ export default function GisLocationSelector({
                       align: 'center',
                       render: (_, __, i) => (
                         <Space size={4}>
-                          {internalGeom !== 'POINT' && (
+                          {internalGeom !== 'POINT' && !disabled && (
                             <HolderOutlined style={{ cursor: 'grab', color: '#bfbfbf' }} />
                           )}
                           <span>{i + 1}</span>
@@ -732,6 +800,7 @@ export default function GisLocationSelector({
                           value={val}
                           onChange={(v) => handleVertexChange(i, 'lat', v)}
                           placeholderPrefix="Vĩ độ"
+                          disabled={disabled}
                         />
                       ),
                     },
@@ -745,6 +814,7 @@ export default function GisLocationSelector({
                           value={val}
                           onChange={(v) => handleVertexChange(i, 'lng', v)}
                           placeholderPrefix="Kinh độ"
+                          disabled={disabled}
                         />
                       ),
                     },
@@ -754,7 +824,7 @@ export default function GisLocationSelector({
                       width: 50,
                       align: 'center',
                       render: (_, __, i) =>
-                        internalGeom !== 'POINT' ? (
+                        internalGeom !== 'POINT' && !disabled ? (
                           <Button
                             type="text"
                             danger

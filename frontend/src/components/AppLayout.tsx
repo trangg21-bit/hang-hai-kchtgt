@@ -76,6 +76,7 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/asset/inventory': 'data:read',
   '/asset/exploitation': 'data:read',
   '/navigation-channel': 'navigationchannel:read',
+  '/navigation-channel-chk': 'navigationchannel:read',
   '/dike-revetment': 'dikerevetment:read',
   '/ship-repair-facility': 'shiprepair:read',
   '/radar-station': 'radarstation:read',
@@ -144,6 +145,7 @@ const pageTitles: Record<string, string> = {
   '/dry-port': 'Quản lý cảng cạn',
   '/water-zone': 'Quản lý vùng nước',
   '/navigation-channel': 'Luồng hàng hải',
+  '/navigation-channel-chk': 'Luồng hàng hải CHK',
   '/dike-revetment': 'Quản lý đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ',
   '/ship-repair-facility': 'Cơ sở sửa chữa & đóng tàu',
   '/radar-station': 'Trạm Radar',
@@ -270,7 +272,7 @@ export default function AppLayout() {
     selectedKey = '/' + pathSegments[0];
   } else if (['pier', 'dry-port', 'water-zone'].includes(pathSegments[0])) {
     selectedKey = '/' + pathSegments[0];
-  } else if (['navigation-channel', 'dike-revetment', 'ship-repair-facility', 'radar-station', 'vts-system', 'vts-system-chk', 'vts-operation-center', 'vts-operation-center-chk', 'ais-system', 'ais-system-chk', 'cctv', 'scada', 'transmission', 'vts-assist'].includes(pathSegments[0])) {
+  } else if (['navigation-channel', 'navigation-channel-chk', 'dike-revetment', 'ship-repair-facility', 'radar-station', 'vts-system', 'vts-system-chk', 'vts-operation-center', 'vts-operation-center-chk', 'ais-system', 'ais-system-chk', 'cctv', 'scada', 'transmission', 'vts-assist'].includes(pathSegments[0])) {
     selectedKey = '/' + pathSegments[0];
   } else if (pathSegments[0] === 'reports') {
     selectedKey = location.pathname;
@@ -297,7 +299,7 @@ export default function AppLayout() {
         setOpenKeys(['asset-movement']);
       } else if (selectedKey.startsWith('/documents')) {
         setOpenKeys(['documents-incidents']);
-      } else if (['/navigation-channel', '/dike-revetment', '/ship-repair-facility', '/radar-station', '/vts-system', '/vts-system-chk', '/vts-operation-center', '/vts-operation-center-chk', '/ais-system', '/ais-system-chk', '/cctv', '/scada', '/transmission', '/vts-assist'].includes(selectedKey)) {
+      } else if (['/navigation-channel', '/navigation-channel-chk', '/dike-revetment', '/ship-repair-facility', '/radar-station', '/vts-system', '/vts-system-chk', '/vts-operation-center', '/vts-operation-center-chk', '/ais-system', '/ais-system-chk', '/cctv', '/scada', '/transmission', '/vts-assist'].includes(selectedKey)) {
         setOpenKeys(['khu-nuoc-vts']);
       } else if (selectedKey.startsWith('/station')) {
         setOpenKeys(['stations']);
@@ -429,6 +431,7 @@ export default function AppLayout() {
       label: 'Khu nước & VTS',
       children: [
         canAccessMenu('/navigation-channel') ? { key: '/navigation-channel', label: 'Luồng hàng hải' } : null,
+        canAccessMenu('/navigation-channel-chk') ? { key: '/navigation-channel-chk', label: 'Luồng hàng hải CHK' } : null,
         canAccessMenu('/dike-revetment') ? { key: '/dike-revetment', label: 'Quản lý đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ', icon: <BlockOutlined /> } : null,
         canAccessMenu('/ship-repair-facility') ? { key: '/ship-repair-facility', label: 'Cơ sở sửa chữa & đóng tàu' } : null,
         canAccessMenu('/radar-station') ? { key: '/radar-station', label: 'Trạm Radar' } : null,
@@ -637,7 +640,7 @@ export default function AppLayout() {
           <img src="/images/logo-vinamarine.png" alt="Logo" style={{ maxHeight: '56px' }} />
         </div>
         {isMenuFullScreen && (
-          <Typography.Title level={5} style={{ margin: 0, color: '#12468C', textAlign: 'center', fontWeight: 600, fontSize: '15px' }}>
+          <Typography.Title level={5} style={{ margin: 0, color: '#273e7c', textAlign: 'center', fontWeight: 600, fontSize: '15px' }}>
             HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI
           </Typography.Title>
         )}
@@ -790,7 +793,7 @@ export default function AppLayout() {
             height: '100vh',
             overflowY: 'auto',
             zIndex: isMenuFullScreen ? 9999 : 1000,
-            background: isMenuFullScreen ? '#fff' : 'var(--bg-sidebar, #1E2129)',
+            background: isMenuFullScreen ? '#fff' : 'var(--bg-sidebar, #1a3f83)',
           }}
           breakpoint="lg"
         >
@@ -804,7 +807,7 @@ export default function AppLayout() {
           placement="left"
           open={mobileDrawerOpen}
           onClose={() => setMobileDrawerOpen(false)}
-          styles={{ body: { padding: 0, background: 'var(--bg-sidebar, #1E2129)' }, wrapper: { width: 260 } }}
+          styles={{ body: { padding: 0, background: 'var(--bg-sidebar, #1a3f83)' }, wrapper: { width: 260 } }}
         >
           {sidebarContent}
         </Drawer>
@@ -870,7 +873,7 @@ export default function AppLayout() {
                 title={sidebarHidden ? "Mở menu" : "Thu gọn menu"}
               />
             )}
-            <Typography.Title level={5} style={{ margin: 0, color: '#12468C' }}>
+            <Typography.Title level={5} style={{ margin: 0, color: '#273e7c' }}>
               HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI
             </Typography.Title>
           </Space>

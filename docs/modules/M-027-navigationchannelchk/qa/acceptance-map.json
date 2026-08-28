@@ -1,0 +1,58 @@
+{
+  "module_id": "M-027-navigationchannelchk",
+  "stage": "engineering-qa-engineer-wave-1",
+  "generated_from": "docs/modules/M-027-navigationchannelchk/ba/00-lean-spec.md (AC-1..AC-5 oracle table) + docs/modules/M-027-navigationchannelchk/design/00-design-plan.md (WO-1..WO-4)",
+  "last_updated": "2026-08-28",
+  "execution_note": "Wave-2 executes these checks. Each test_name is a bounded, runnable check: bounded grep on named files, `npm run build` in frontend/, or git-diff scope check. QA does not modify any source file.",
+  "criteria": [
+    {
+      "id": "AC-1",
+      "spec_ref": "lean-spec section 6 AC-1 -> WO-1; design-plan WO-1 (2 page files + RENAME MAP)",
+      "criterion": "2 new pages exist as faithful CHK clones: NavigationChannelChkList/NavigationChannelChkForm import themetokenchk (ThemeTokenProvider, THEME_SCOPE_CLASS) and contain ZERO leftover base identifiers (NavigationChannelList/NavigationChannelForm) or base route/label strings.",
+      "file": [
+        "frontend/src/pages/navigationchannelchk/NavigationChannelChkList.tsx",
+        "frontend/src/pages/navigationchannelchk/NavigationChannelChkForm.tsx"
+      ],
+      "test_name": "grep -nE 'NavigationChannelChk(List|Form)' on both files -> expect >=6 matches incl. NavigationChannelChkList.tsx:79 (default export) and NavigationChannelChkForm.tsx:93/101 (default export + inner component); grep -nE 'themetokenchk|ThemeTokenProvider|THEME_SCOPE_CLASS' on both files -> expect >=6 matches (NavigationChannelChkList.tsx:39-41,518,572; NavigationChannelChkForm.tsx:71-74,95,97,1105); NEGATIVE: grep -nE 'NavigationChannel(List|Form)' on both files | grep -vE 'NavigationChannelChk' -> expect ZERO output lines (no leftover base identifiers)."
+    },
+    {
+      "id": "AC-2",
+      "spec_ref": "lean-spec section 6 AC-2 -> WO-2; design-plan WO-2 (App.tsx 2 lazy imports + 6 routes)",
+      "criterion": "frontend/src/App.tsx registers exactly 2 lazy imports for the chk pages and exactly 6 routes under /navigation-channel-chk + /luong-hang-hai-chk (each prefix: list, create, :id), all guarded by PermissionGuard with navigationchannel:read or navigationchannel:create and rendering the Chk components.",
+      "file": [
+        "frontend/src/App.tsx"
+      ],
+      "test_name": "grep -n \"lazy(() => import('./pages/navigationchannelchk/\" frontend/src/App.tsx -> exactly 2 matches (L74-75: NavigationChannelChkList, NavigationChannelChkForm); grep -nE 'path=\"/(navigation-channel-chk|luong-hang-hai-chk)' frontend/src/App.tsx -> exactly 6 matches (L245-251); grep -E 'path=\"/(navigation-channel-chk|luong-hang-hai-chk)' frontend/src/App.tsx | grep -cE 'PermissionGuard permission=\"navigationchannel:(read|create)\"' -> exactly 6; grep -E 'path=\"/(navigation-channel-chk|luong-hang-hai-chk)' frontend/src/App.tsx | grep -cE 'NavigationChannelChk(List|Form)' -> exactly 6 (no chk route renders a base component)."
+    },
+    {
+      "id": "AC-3",
+      "spec_ref": "lean-spec section 6 AC-3 -> WO-3; design-plan WO-3 (AppLayout 5 mirror spots labeled 'Luồng hàng hải CHK')",
+      "criterion": "frontend/src/components/AppLayout.tsx contains exactly 5 mirror entries for the chk menu (permission map, breadcrumb/title map, menu-highlight array, selectedKey array, menu item), with the display label 'Luồng hàng hải CHK' on breadcrumb/title and menu item.",
+      "file": [
+        "frontend/src/components/AppLayout.tsx"
+      ],
+      "test_name": "grep -n 'navigation-channel-chk' frontend/src/components/AppLayout.tsx -> exactly 5 matches at L78 (permission map 'navigationchannel:read'), L146 (title map value 'Luồng hàng hải CHK'), L273 (menu-highlight segment array), L300 (selectedKey array), L423 (menu item { key: '/navigation-channel-chk', label: 'Luồng hàng hải CHK' }); grep -c 'Luồng hàng hải CHK' frontend/src/components/AppLayout.tsx -> exactly 2 (L146, L423)."
+    },
+    {
+      "id": "AC-4",
+      "spec_ref": "lean-spec section 6 AC-4 -> WO-4.1; design-plan WO-4 step 1",
+      "criterion": "Production build of the frontend succeeds: `npm run build` from frontend/ exits 0.",
+      "file": [
+        "frontend/package.json"
+      ],
+      "test_name": "execute `npm run build` (cwd frontend/) -> expect exit code 0 with vite output '✓ built in' (wave-1 precedent: vite v8.1.5, 4120 modules transformed, built in 1.17s)."
+    },
+    {
+      "id": "AC-5",
+      "spec_ref": "lean-spec section 6 AC-5 -> WO-4.2; design-plan WO-4 step 2 (git-diff scope)",
+      "criterion": "Git scope is exactly the 4 allowed paths: 2 new pages under frontend/src/pages/navigationchannelchk/ + edited frontend/src/App.tsx + frontend/src/components/AppLayout.tsx. ZERO changes under frontend/src/pages/navigationchannel/ (base, READ-ONLY), frontend/src/tokens.ts, frontend/src/themetokenchk.ts, frontend/src/theme.ts, src/main/** (Java), src/main/resources/db/** (migration), PermissionSeeder.java.",
+      "file": [
+        "frontend/src/pages/navigationchannelchk/NavigationChannelChkList.tsx",
+        "frontend/src/pages/navigationchannelchk/NavigationChannelChkForm.tsx",
+        "frontend/src/App.tsx",
+        "frontend/src/components/AppLayout.tsx"
+      ],
+      "test_name": "from repo root: git status --porcelain + git diff --name-only HEAD -> assert the M-027 footprint is present: untracked dir frontend/src/pages/navigationchannelchk/ containing EXACTLY 2 files (NavigationChannelChkList.tsx, NavigationChannelChkForm.tsx) and frontend/src/App.tsx + frontend/src/components/AppLayout.tsx modified; NEGATIVE: ZERO status entries under frontend/src/pages/navigationchannel/ (base READ-ONLY), frontend/src/tokens.ts, frontend/src/themetokenchk.ts, src/main/ (Java), src/main/resources/db/ (migration), PermissionSeeder.java. NOTE (workspace is a shared dirty tree): frontend/src/theme.ts IS modified in the tree but by the CONCURRENT M-024 theme-chk docs-sync pipeline, NOT by M-027 — attribution evidence: git diff frontend/src/theme.ts shows sidebarBg '#12468C'->'#1a3f83' + chk-detail-label '#273e7c' (CHK navy standardization), matching M-024's qa/acceptance-map.json AC-1..AC-3 evidence verbatim; M-027's own content-level footprint is proven by the AC-2/AC-3 greps on the modified files."
+    }
+  ]
+}

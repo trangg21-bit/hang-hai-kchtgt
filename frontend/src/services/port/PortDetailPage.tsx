@@ -1,12 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
-  Card, Button, Space, Tag, Typography, Row, Col, Popconfirm, Table,
-  Tabs, Breadcrumb, Spin, Divider, Descriptions, Modal, Collapse,
+  Card, Button, Space, Tag, Typography, Row, Col, Table,
+  Breadcrumb, Spin, Divider, Modal, Collapse,
 } from 'antd';
 import {
-  UploadOutlined, DownloadOutlined, ArrowLeftOutlined,
-  EditOutlined, DeleteOutlined, CheckCircleOutlined,
-  CloseCircleOutlined, HistoryOutlined,
+  UploadOutlined, DownloadOutlined,
+  EditOutlined, DeleteOutlined,
   EnvironmentOutlined, ApartmentOutlined, FileOutlined,
   InfoCircleOutlined, AimOutlined,
 } from '@ant-design/icons';
@@ -27,16 +26,16 @@ import { symbolService } from '../symbolService';
 import type { Symbol } from '../symbolService';
 import {
   textPrimary, textSecondary, textTertiary,
-  statusOperational, statusAttention, statusCritical, statusDraft,
-  actionPrimary, actionHover,
-  borderDefault, surfaceCard, surfacePage,
-  spaceMd, spaceSm, spaceXs, spaceLg, spaceXl, spaceFormField,
+  statusOperational, statusAttention, statusCritical,
+  actionPrimary,
+  borderDefault, surfaceCard,
+  spaceMd, spaceSm, spaceXs, spaceLg, spaceXl,
   fontSizeSm, fontSizeMd, fontSizeLg, fontSizeXl,
   fontWeightNormal, fontWeightMedium, fontWeightBold,
-  radiusPill, radiusLg, radiusMd,
-  cardStyle, dividerStyle, metaStyle,
-} from '../../tokens';
-import { colors } from '../../theme';
+  radiusPill, radiusMd,
+  dividerStyle, metaStyle, statusBadgeStyle,
+} from '../../themetokenchk';
+import { colors } from '../../themetokenchk';
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -57,17 +56,12 @@ function renderStatusBadge(b: { color: string; label: string }) {
   else if (b.color === 'red') c = statusCritical;
   else if (b.color === 'orange') c = statusAttention;
   else if (b.color === 'blue') c = actionPrimary;
-  return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${c}15`, color: c }}>{b.label}</span>;
+  return <span style={statusBadgeStyle(c)}>{b.label}</span>;
 }
 
 function formatNumber(val: number | null | undefined): string {
   if (val == null || Number.isNaN(val)) return '—';
   return val.toLocaleString('vi-VN');
-}
-
-function formatArea(val: number | null | undefined): string {
-  if (val == null || Number.isNaN(val)) return '—';
-  return `${val.toLocaleString('vi-VN')} m²`;
 }
 
 function formatLength(val: number | null | undefined): string {
@@ -78,12 +72,6 @@ function formatLength(val: number | null | undefined): string {
 const STATUS_OPERATIONAL_LABEL: Record<string, { color: string; label: string }> = {
   HIEN_HANH: { color: statusOperational, label: 'Hiện hành' },
   TAM_NGUNG: { color: statusAttention, label: 'Tạm ngừng' },
-};
-
-const STATUS_APPROVAL_LABEL: Record<string, { color: string; label: string }> = {
-  CHO_PHE_DUYET: { color: statusAttention, label: 'Chờ phê duyệt' },
-  DUOC_PHE_DUYET: { color: statusOperational, label: 'Được phê duyệt' },
-  TU_CHOI: { color: statusCritical, label: 'Từ chối' },
 };
 
 const GIS_OBJECT_TYPE_LABEL: Record<string, string> = {
@@ -106,18 +94,6 @@ const valueStyle: React.CSSProperties = {
   color: textPrimary,
   fontSize: fontSizeMd,
   fontWeight: fontWeightNormal,
-};
-
-const groupTitleStyle: React.CSSProperties = {
-  color: colors.sidebarBg,
-  fontSize: fontSizeLg,
-  fontWeight: fontWeightBold,
-  marginBottom: spaceMd,
-  paddingBottom: spaceSm,
-  borderBottom: `1px solid ${borderDefault}`,
-  display: 'flex',
-  alignItems: 'center',
-  gap: spaceSm,
 };
 
 // ── Stat card for summary numbers ───────────────────────────────────
@@ -145,19 +121,6 @@ function StatCard({ label, value, icon }: { label: string; value: string; icon?:
   );
 }
 
-// ── Section group wrapper ───────────────────────────────────────────
-
-function SectionGroup({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: spaceLg }}>
-      <Typography.Text style={groupTitleStyle}>{title}</Typography.Text>
-      <div style={{ padding: `0 ${spaceSm}px` }}>
-        {children}
-      </div>
-    </div>
-  );
-}
-
 // ── Info row for label+value pairs ──────────────────────────────────
 
 function InfoRow({ label, value, span }: { label: string; value: React.ReactNode; span?: number }) {
@@ -171,35 +134,18 @@ function InfoRow({ label, value, span }: { label: string; value: React.ReactNode
   );
 }
 
-// ── Placeholder tab content ─────────────────────────────────────────
-
-function PlaceholderTab({ tabName }: { tabName: string }) {
-  return (
-    <Card style={{ textAlign: 'center', padding: spaceXl * 2 }}>
-      <InfoCircleOutlined style={{ fontSize: 48, color: textTertiary, marginBottom: spaceMd }} />
-      <Typography.Title level={4} style={{ color: textSecondary, marginTop: spaceMd }}>
-        {tabName}
-      </Typography.Title>
-      <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>
-        Tính năng đang được phát triển. Vui lòng quay lại sau.
-      </Typography.Text>
-    </Card>
-  );
-}
-
 // ── Main component ──────────────────────────────────────────────────
 
 export default function PortDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const hasPermission = usePermissionStore((s) => s.hasPermission);
+  const hasPermission = usePermissionStore((s: any) => s.hasPermission);
 
   const [data, setData] = useState<CangBienResponse | null>(null);
   const [files, setFiles] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
-  const [activeTab, setActiveTab] = useState('general');
-  const [orgUnits, setOrgUnits] = useState<any[]>([]);
+  const [, setOrgUnits] = useState<any[]>([]);
   const [symbols, setSymbols] = useState<Symbol[]>([]);
 
   // ── Load main data + attachments ──────────────────────────────────
@@ -298,15 +244,6 @@ export default function PortDetailPage() {
 
   const canEdit = hasPermission('port:update');
   const canDelete = hasPermission('port:delete');
-  const canApprove = hasPermission('port:approve');
-  const canViewHistory = hasPermission('port:read');
-
-  // ── Breadcrumb items ──────────────────────────────────────────────
-
-  const breadcrumbItems = [
-    { title: <Link to="/Port">Quản lý cảng biển</Link> },
-    { title: `Chi tiết cảng ${data.portCode}` },
-  ];
 
   const getSymbolName = (sid: string | null) => {
     if (!sid) return '—';
@@ -499,8 +436,8 @@ function renderGeneralTab(
       label: '4. Tọa độ GPS',
       children: ((data as any).coordinateList && (data as any).coordinateList.length > 0) ? (
         <Table
-          dataSource={(data as any).coordinateList}
-          rowKey={(r: any, i: number) => `${i}`}
+          dataSource={((data as any).coordinateList || []).map((c: any, i: number) => ({ ...c, key: i }))}
+          rowKey="key"
           pagination={false}
           size="small"
           columns={[

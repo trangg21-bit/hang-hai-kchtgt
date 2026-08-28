@@ -2,8 +2,12 @@ package com.hanghai.kchtg.port.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.EntityFields;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.OperatingUnit;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.repository.OperatingUnitRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
@@ -41,7 +45,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -63,6 +70,7 @@ public class BuoyBerthService {
     private final UserRepository userRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final ChangeHistoryService changeHistoryService;
+    private final InfrastructureHistoryRepository historyRepository;
     private final OperatingUnitRepository operatingUnitRepository;
 
     @Value("${app.upload.attachment-path:uploads/attachments}")
@@ -123,7 +131,7 @@ public class BuoyBerthService {
         BuoyBerth saved = buoyBerthRepository.save(entity);
         persistGis(saved, request.getGeometryType(), request.getCoordinates(),
                 request.getLongitude(), request.getLatitude());
-        // [TẠM TẮT GHI LỊCH SỬ] Bảng change_logs đã bị V20260825162500 drop; không ghi lịch sử (chuẩn Khu neo đậu)
+        // Chỉ CHỈNH SỬA mới ghi lịch sử — tạo mới không ghi (quyết định nghiệp vụ 2026-08-28)
         evictAfterCommit();
 
         return toResponse(saved);
@@ -139,6 +147,38 @@ public class BuoyBerthService {
                 && request.getLatitude() != null) {
             coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
+
+        Map<String, String> previousValues = new HashMap<>();
+        Map<String, String> newValues = new HashMap<>();
+        String prevApprovalLabel = approvalLabel(entity.getApprovalStatus());
+        captureChange(previousValues, newValues, "securityLevel", entity.getSecurityLevel(), request.getSecurityLevel());
+        captureChange(previousValues, newValues, "buoyBerthName", entity.getBuoyBerthName(), request.getBuoyBerthName());
+        captureChange(previousValues, newValues, "portId", entity.getPortId(), request.getPortId());
+        captureChange(previousValues, newValues, "waterwayId", entity.getWaterwayId(), request.getWaterwayId());
+        captureChange(previousValues, newValues, "classification", entity.getClassification(), request.getClassification());
+        captureChange(previousValues, newValues, "provinceId", entity.getProvinceId(), request.getProvinceId());
+        captureChange(previousValues, newValues, "detailedLocation", entity.getDetailedLocation(), request.getDetailedLocation());
+        captureChange(previousValues, newValues, "operationalStatus", entity.getOperationalStatus(), request.getOperationalStatus());
+        captureChange(previousValues, newValues, "operatingOrgId", entity.getOperatingOrgId(), request.getOperatingOrgId());
+        captureChange(previousValues, newValues, "currentWaterDepth", entity.getCurrentWaterDepth(), request.getCurrentWaterDepth());
+        captureChange(previousValues, newValues, "bottomElevationDesign", entity.getBottomElevationDesign(), request.getBottomElevationDesign());
+        captureChange(previousValues, newValues, "maxVesselDWT", entity.getMaxVesselDWT(), request.getMaxVesselDWT());
+        captureChange(previousValues, newValues, "plannedVesselDWT", entity.getPlannedVesselDWT(), request.getPlannedVesselDWT());
+        captureChange(previousValues, newValues, "lastInspectionDate", entity.getLastInspectionDate(), request.getLastInspectionDate());
+        captureChange(previousValues, newValues, "nextInspectionDate", entity.getNextInspectionDate(), request.getNextInspectionDate());
+        captureChange(previousValues, newValues, "operationExpiryDate", entity.getOperationExpiryDate(), request.getOperationExpiryDate());
+        captureChange(previousValues, newValues, "designCapacity", entity.getDesignCapacity(), request.getDesignCapacity());
+        captureChange(previousValues, newValues, "activeBuoyBerthCount", entity.getActiveBuoyBerthCount(), request.getActiveBuoyBerthCount());
+        captureChange(previousValues, newValues, "publishedBuoyBerthCount", entity.getPublishedBuoyBerthCount(), request.getPublishedBuoyBerthCount());
+        captureChange(previousValues, newValues, "underInvestmentBuoyBerthCount", entity.getUnderInvestmentBuoyBerthCount(), request.getUnderInvestmentBuoyBerthCount());
+        captureChange(previousValues, newValues, "cargoThroughput", entity.getCargoThroughput(), request.getCargoThroughput());
+        captureChange(previousValues, newValues, "openingAnnouncementDate", entity.getOpeningAnnouncementDate(), request.getOpeningAnnouncementDate());
+        captureChange(previousValues, newValues, "publicDecision", entity.getPublicDecision(), request.getPublicDecision());
+        captureChange(previousValues, newValues, "investmentAgreement", entity.getInvestmentAgreement(), request.getInvestmentAgreement());
+        captureChange(previousValues, newValues, "mooringWaterAreaScope", entity.getMooringWaterAreaScope(), request.getMooringWaterAreaScope());
+        captureChange(previousValues, newValues, "mapSymbolId", entity.getMapSymbolId(), request.getMapSymbolId());
+        captureChange(previousValues, newValues, "coordinateSystem", entity.getCoordinateSystem(), request.getCoordinateSystem());
+        captureChange(previousValues, newValues, "displayRule", entity.getDisplayRule(), request.getDisplayRule());
 
         if (request.getSecurityLevel() != null) {
             RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "buoyberth",
@@ -215,6 +255,31 @@ public class BuoyBerthService {
         BuoyBerth saved = buoyBerthRepository.save(entity);
         persistGis(saved, request.getGeometryType(), coordinates,
                 request.getLongitude(), request.getLatitude());
+        String newApprovalLabel = approvalLabel(saved.getApprovalStatus());
+        if (!Objects.equals(prevApprovalLabel, newApprovalLabel)) {
+            previousValues.put("approvalStatus", prevApprovalLabel);
+            newValues.put("approvalStatus", newApprovalLabel);
+        }
+        if (!previousValues.isEmpty()) {
+            InfrastructureHistoryStatus histStatus = InfrastructureHistoryStatus.UPDATED;
+            if (previousValues.size() == 1 && previousValues.containsKey("approvalStatus")) {
+                if (saved.getApprovalStatus() == ApprovalStatus.APPROVED) histStatus = InfrastructureHistoryStatus.APPROVED;
+                else if (saved.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1) histStatus = InfrastructureHistoryStatus.PROPOSED;
+                else if (saved.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2) histStatus = InfrastructureHistoryStatus.UNDER_REVIEW;
+                else if (saved.getApprovalStatus() == ApprovalStatus.DRAFT) histStatus = InfrastructureHistoryStatus.DRAFT_SAVED;
+            }
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(saved.getId())
+                    .refType(InfrastructureType.BUOY_BERTH)
+                    .approvalLevel(ApprovalLevel.LEVEL_0)
+                    .status(histStatus)
+                    .approvedBy(SecurityUtils.getCurrentUserId())
+                    .reason("Cập nhật thông tin bến phao")
+                    .changedField(String.join(", ", previousValues.keySet()))
+                    .previousValue(formatHistoryPairs(previousValues))
+                    .newValue(formatHistoryPairs(newValues))
+                    .build());
+        }
         evictAfterCommit();
 
         return toResponse(saved);
@@ -275,6 +340,16 @@ public class BuoyBerthService {
         }
         entity.softDelete(SecurityUtils.getCurrentUserId());
         buoyBerthRepository.save(entity);
+        historyRepository.save(InfrastructureHistory.builder()
+                .refId(entity.getId())
+                .refType(InfrastructureType.BUOY_BERTH)
+                .approvalLevel(ApprovalLevel.LEVEL_0)
+                .status(InfrastructureHistoryStatus.DELETED)
+                .approvedBy(SecurityUtils.getCurrentUserId())
+                .reason("Xóa bến phao")
+                .changedField("Trạng thái phê duyệt")
+                .newValue("Trạng thái phê duyệt=Đã xóa")
+                .build());
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
@@ -307,10 +382,6 @@ public class BuoyBerthService {
     public List<AttachmentDto> uploadAttachments(String entityType, UUID entityId, List<MultipartFile> files, UUID userId) {
         if (files == null || files.isEmpty()) {
             throw new IllegalArgumentException("Không có file nào được chọn để tải lên");
-        }
-        long existingCount = attachmentRepository.countByEntityTypeAndEntityId(entityType, entityId);
-        if (existingCount + files.size() > 10) {
-            throw new IllegalArgumentException("Tối đa 10 file đính kèm");
         }
 
         java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath).toAbsolutePath().normalize();
@@ -518,6 +589,35 @@ public class BuoyBerthService {
             default:
                 entity.setApprovalStatus(ApprovalStatus.DRAFT);
         }
+    }
+
+    private static String approvalLabel(ApprovalStatus st) {
+        if (st == null) return "";
+        return switch (st) {
+            case APPROVED_LEVEL1 -> "Chờ phê duyệt cấp Cảng vụ/Chi cục";
+            case APPROVED_LEVEL2 -> "Chờ phê duyệt cấp cục";
+            case APPROVED -> "Đã phê duyệt";
+            case REJECTED_LEVEL1 -> "Từ chối cấp Cảng vụ/Chi cục";
+            case REJECTED_LEVEL2 -> "Từ chối cấp cục";
+            case DRAFT -> "Lưu tạm";
+            default -> st.getLabel();
+        };
+    }
+
+    private static void captureChange(Map<String, String> prev, Map<String, String> next,
+                                      String field, Object oldVal, Object newVal) {
+        if (newVal == null) return;
+        String o = oldVal == null ? "(null)" : String.valueOf(oldVal);
+        String n = String.valueOf(newVal);
+        if (Objects.equals(o, n)) return;
+        prev.put(field, o);
+        next.put(field, n);
+    }
+
+    private static String formatHistoryPairs(Map<String, String> m) {
+        return m.entrySet().stream()
+                .map(e -> e.getKey() + "=" + e.getValue())
+                .collect(Collectors.joining("; "));
     }
 
     public void evictAfterCommit() {

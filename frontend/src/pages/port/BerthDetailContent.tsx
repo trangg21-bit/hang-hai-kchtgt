@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Tabs, Table, Space, InputNumber, Select, Button, Tooltip } from 'antd';
-import { FileOutlined, EyeOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import { Tabs, Select, Tooltip, Button, Modal } from 'antd';
+import { FileOutlined, EnvironmentOutlined, EyeOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { colors } from '../../theme';
+import { colors } from '../../themetokenchk';
+import DetailTable from '../../components/shared/DetailTable';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import {
-  textPrimary, textSecondary, textTertiary, borderDefault, surfaceCard,
+  textPrimary, textSecondary, textTertiary, surfaceCard,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
-  spaceSm, actionPrimary, radiusPill,
+  spaceSm, spaceMd, spaceFormField, actionPrimary, outlineButtonStyle, primaryButtonStyle, statusBadgeStyle,
   statusOperational, statusAttention, statusCritical,
-} from '../../tokens';
+} from '../../themetokenchk';
 import type { Berth } from '../../types/port';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { resolveOrgFullPath } from '../../components/org-unit';
-import Pagination from '../../components/list-view/Pagination';
-import PagedTable from '../../components/list-view/PagedTable';
 import { pierCRUD } from '../../services/portService';
 
 export interface BerthDetailContentProps {
@@ -38,43 +38,6 @@ export interface BerthDetailContentProps {
 
 const detailLabelStyle: React.CSSProperties = { color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd };
 
-// Loại kết cấu hạ tầng thuộc bến cảng: bến cảng chỉ có 1 loại KCHT con — cầu cảng
-const BERTH_INFRA_TYPE_OPTIONS = [{ value: 'Pier', label: 'Cầu cảng' }];
-const TAB_PAGE_SIZE = 20;
-
-// Bảng con trong tab chi tiết: thanh phân trang dùng chung (luôn hiển thị, kể cả khi chưa có dữ liệu)
-function PagedTabTable({ title, dataSource, columns, emptyText }: {
-  title: React.ReactNode;
-  dataSource: any[];
-  columns: React.ReactNode;
-  emptyText: React.ReactNode;
-}) {
-  const [page, setPage] = useState(1);
-  const maxPage = Math.max(1, Math.ceil(dataSource.length / TAB_PAGE_SIZE));
-  const cur = Math.min(page, maxPage);
-  const rows = dataSource
-    .map((row, idx) => ({ ...row, key: row?.key ?? idx, __stt: idx + 1 }))
-    .slice((cur - 1) * TAB_PAGE_SIZE, cur * TAB_PAGE_SIZE);
-  return (
-    <div style={{ paddingTop: 3 }}>
-      <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>{title}</div>
-      <Table className="list-view-table" dataSource={rows} pagination={false} size="middle" bordered
-        style={{ marginLeft: 12, marginRight: 12 }} locale={{ emptyText }}>
-        <Table.Column title="STT" key="stt" dataIndex="__stt" width={60} align="center"
-          render={(v: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{v}</span>}
-          onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-        {columns}
-      </Table>
-      <div style={{ margin: '0 12px' }}>
-        <Pagination total={dataSource.length} current={cur} pageSize={TAB_PAGE_SIZE}
-          pageSizeOptions={[10, 20, 50]} onChange={setPage} />
-      </div>
-    </div>
-  );
-}
-
-const fmtDateTime = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—');
-
 // Parse tọa độ GPS: ưu tiên WKT (coordinates) từ backend — hỗ trợ POINT/MULTIPOINT/LINESTRING/POLYGON;
 // fallback sang latitude/longitude (backend chỉ parse được cho POINT).
 const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> => {
@@ -95,7 +58,7 @@ const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> =
         }
       }
       if (out.length === 0) {
-        const mm = wkt.match(/MULTIPOINT\s*\(([^)]+(?:\),[^)]+)*)/);
+        const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/);
         if (mm) mm[1].split('),(').forEach((pt: string) => { const [lng, lat] = pt.replace(/[()]/g, '').trim().split(/\s+/); if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) }); });
       }
       if (out.length === 0) {
@@ -109,6 +72,8 @@ const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> =
   }
   return out;
 };
+
+const fmtDateTime = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—');
 
 export default function BerthDetailContent({
   selectedRecord,
@@ -133,6 +98,7 @@ export default function BerthDetailContent({
   const [systemOpen, setSystemOpen] = useState(true);
   const [infraTypeFilter, setInfraTypeFilter] = useState<string>('');
   const [loadedInfra, setLoadedInfra] = useState<any[]>([]);
+  const [gisModalOpen, setGisModalOpen] = useState(false);
 
   // Tải danh sách KCHT khác thuộc bến cảng (cầu cảng) — logic giống mẫu Cảng biển: tải theo cha qua API
   useEffect(() => {
@@ -157,6 +123,7 @@ export default function BerthDetailContent({
     if (t === undefined || t === null || t === '') return true;
     return String(t).toUpperCase() === infraTypeFilter.toUpperCase();
   });
+
   return (
     <>
     <Tabs defaultActiveKey="general" tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }}
@@ -165,8 +132,7 @@ export default function BerthDetailContent({
           key: 'general', label: 'Thông tin chung',
           children: (
             <div style={{ paddingTop: 3 }}>
-              <style>{`.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}.detail-row{display:flex;padding:10px 12px;border-bottom:1px solid ${borderDefault}}.detail-label{width:200px;flex-shrink:0;color:${colors.sidebarBg};font-weight:${fontWeightBold};font-size:${fontSizeMd}px}.detail-label::after{content:':';margin-left:2px}.detail-value{color:${textPrimary};font-size:${fontSizeMd}px;flex:1}.detail-value .ant-tag{margin-left:-6px!important}.system-collapse .ant-collapse-header{gap:0!important;padding:4px 0!important}.system-collapse .ant-collapse-content-box{padding:0!important}.ant-tabs-content-holder{padding-top:0!important}.ant-tabs-tabpane{padding-top:0!important}.ant-tabs-nav{margin-bottom:0!important;padding-left:12px!important}`}</style>
-              <div className="detail-grid">
+              <div className="chk-detail-grid">
                 {[
                   ['Đơn vị quản lý', (() => {
                     const orgPathNames = resolveOrgFullPath(organizations, r.orgUnitId);
@@ -181,7 +147,7 @@ export default function BerthDetailContent({
                     );
                   })(),],
                   ['Thuộc cảng biển', <span style={{ fontWeight: fontWeightBold }}>{portOptions.find(o => o.value === r.portId)?.label || r.portId || '—'}</span>],
-                  ['Mã bến cảng', <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{r.berthCode || '—'}</span>],
+                  ['Mã bến cảng', <span style={statusBadgeStyle(actionPrimary)}>{r.berthCode || '—'}</span>],
                   ['Tên bến cảng', <span style={{ fontWeight: fontWeightBold }}>{r.berthName || '—'}</span>],
                   ['Thuộc luồng hàng hải', waterwayMap.get(r.waterwayId || '') || r.waterwayId || '—'],
                   ['Đơn vị khai thác', r.operator || '—'],
@@ -195,20 +161,20 @@ export default function BerthDetailContent({
                   ['Quy hoạch năng lực thông qua', r.plannedThroughput != null ? `${r.plannedThroughput} tấn/năm` : '—'],
                   ['Sản lượng thực tế năm gần nhất', r.latestCargoVolume != null ? `${r.latestCargoVolume} tấn/năm` : '—'],
                   ['Cỡ tàu tiếp nhận lớn nhất (DWT)', r.maxVesselSize != null ? r.maxVesselSize : '—'],
-                  ['Tình trạng', (() => { const s = r.operationalStatus; const m: Record<string,{color:string;label:string}> = { OPERATIONAL:{color:statusOperational,label:'Đang khai thác/Vận hành'}, NOT_YET_OPERATIONAL:{color:statusAttention,label:'Chưa khai thác/Vận hành'}, SUSPENDED:{color:statusCritical,label:'Dừng khai thác/Vận hành'} }; const b = s && m[s]; return b ? <span style={{ display:'inline-flex',padding:'2px 10px',borderRadius:999,fontSize:fontSizeMd,fontWeight:fontWeightMedium,background:`${b.color}15`,color:b.color }}>{b.label}</span> : '—'; })(),],
-                  ['Trạng thái phê duyệt', r.approvalStatus && approvalStyleMap[r.approvalStatus] ? <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${approvalStyleMap[r.approvalStatus].color}15`, color: approvalStyleMap[r.approvalStatus].color }}>{approvalStyleMap[r.approvalStatus].label}</span> : '—'],
+                  ['Tình trạng', (() => { const s = r.operationalStatus; const m: Record<string,{color:string;label:string}> = { OPERATIONAL:{color:statusOperational,label:'Đang khai thác/Vận hành'}, NOT_YET_OPERATIONAL:{color:statusAttention,label:'Chưa khai thác/Vận hành'}, SUSPENDED:{color:statusCritical,label:'Dừng khai thác/Vận hành'} }; const b = s && m[s]; return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : '—'; })(),],
+                  ['Trạng thái phê duyệt', r.approvalStatus && approvalStyleMap[r.approvalStatus] ? <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>{approvalStyleMap[r.approvalStatus].label}</span> : '—'],
                 ].map(([label, value], i) => (
-                  <div key={i} className="detail-row">
-                    <span className="detail-label">{label}</span>
-                    <span className="detail-value">{value}</span>
+                  <div key={i} className="chk-detail-row">
+                    <span className="chk-detail-label">{label}</span>
+                    <span className="chk-detail-value">{value}</span>
                   </div>
                 ))}
               </div>
-              <div style={{ cursor: 'pointer', marginTop: 10, paddingLeft: 12 }} onClick={() => setSystemOpen(!systemOpen)}>
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setSystemOpen(!systemOpen)}>
                 <span style={{ color: systemOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{systemOpen ? '▼' : '▶'} Thông tin hệ thống</span>
-              </div>
+              </button>
               {systemOpen && (
-                <div className="detail-grid" style={{ marginTop: 4 }}>
+                <div className="chk-detail-grid" style={{ marginTop: 4 }}>
                   {[
                     ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.updatedBy || '') || r.updatedBy || '—'}</span>],
                     ['Ngày cập nhật', fmtDateTime(r.updatedAt)],
@@ -221,9 +187,9 @@ export default function BerthDetailContent({
                     ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.portAuthorityApprovalContent || '—'],
                     ['Nội dung phê duyệt cấp Cục', r.departmentApprovalContent || '—'],
                   ].map(([label, value], i) => (
-                    <div key={i} className="detail-row">
-                      <span className="detail-label">{label}</span>
-                      <span className="detail-value">{value}</span>
+                    <div key={i} className="chk-detail-row">
+                      <span className="chk-detail-label">{label}</span>
+                      <span className="chk-detail-value">{value}</span>
                     </div>
                   ))}
                 </div>
@@ -235,15 +201,15 @@ export default function BerthDetailContent({
           key: 'announcement', label: 'Thông tin công bố',
           children: (
             <div style={{ paddingTop: 3 }}>
-              <div className="detail-grid">
+              <div className="chk-detail-grid">
                 {[
                   ['Thời điểm công bố', fmtDateTime(r.openingAnnouncementDate)],
                   ['Quyết định công bố', r.openingDecision || '—'],
                   ['Văn bản thỏa thuận', r.investmentAgreement || '—'],
                 ].map(([label, value], i) => (
-                  <div key={i} className="detail-row">
-                    <span className="detail-label">{label}</span>
-                    <span className="detail-value">{value}</span>
+                  <div key={i} className="chk-detail-row">
+                    <span className="chk-detail-label">{label}</span>
+                    <span className="chk-detail-value">{value}</span>
                   </div>
                 ))}
               </div>
@@ -251,43 +217,47 @@ export default function BerthDetailContent({
           ),
         },
         {
-          key: 'gis', label: 'Thông tin vị trí',
+          key: 'gis', label: `Thông tin vị trí (${parseGisCoordinates(r).length})`,
           children: (
             <div style={{ paddingTop: 3 }}>
-              <div className="detail-grid">
+              <div className="chk-detail-grid">
                 {[
                   ['Loại đối tượng', ({ POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' } as Record<string, string>)[(r as any).geometryType || ''] || (r as any).geometryType || '—'],
                   ['Biểu tượng', (() => { const symId = r.mapSymbolId || ''; const symName = symbolMap.get(symId) || symId || '—'; const symImg = symbolImageMap.get(symId); return <span style={{ display:'inline-flex',alignItems:'center',gap:8 }}>{symImg ? <img src={symImg} alt="" style={{ width:24,height:24,objectFit:'contain' }} /> : null}{symName}</span>; })(),],
                   ['Hệ quy chiếu', r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : r.coordinateSystem || '—'],
                   ['Quy tắc hiển thị', ((r as any).geometryType || (r as any).coordinates || (r as any).latitude != null || (r as any).longitude != null) ? 'Độ, phút, giây (DMS)' : '—'],
                 ].map(([label, value], i) => (
-                  <div key={i} className="detail-row">
-                    <span className="detail-label">{label}</span>
-                    <span className="detail-value">{value}</span>
+                  <div key={i} className="chk-detail-row">
+                    <span className="chk-detail-label">{label}</span>
+                    <span className="chk-detail-value">{value}</span>
                   </div>
                 ))}
               </div>
-              <div style={{ marginTop: spaceSm, padding: '0 12px' }}>
-                <span style={detailLabelStyle}>Tọa độ GPS</span>
+              <div style={{ marginTop: spaceMd }}>
+                <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+                  <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
+                    Tọa độ GPS ({parseGisCoordinates(r).length})
+                  </span>
+                  <Button
+                    icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+                    onClick={() => setGisModalOpen(true)}
+                    style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  >
+                    Xem vị trí trên bản đồ
+                  </Button>
+                </div>
                 {(() => {
                   const pts = parseGisCoordinates(r);
                   return (
-                    <PagedTable dataSource={pts.map((p) => ({ ...p }))}
-                      emptyText={<div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><EnvironmentOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tọa độ</span></div>}
-                    >
-                      <Table.Column title="Vĩ độ (N)" key="lat" align="center"
-                        render={(_: any, rec: any) => {
-                          const dms = ddToDms(rec.lat);
-                          return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly tabIndex={-1} style={{ flex: 1.2, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
-                        }}
-                        onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                      <Table.Column title="Kinh độ (E)" key="lng" align="center"
-                        render={(_: any, rec: any) => {
-                          const dms = ddToDms(rec.lng);
-                          return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly tabIndex={-1} style={{ flex: 1.2, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
-                        }}
-                        onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                    </PagedTable>
+                    <DetailTable
+                      dataSource={pts.map((p) => ({ ...p }))}
+                      emptyText="Chưa có tọa độ GPS nào"
+                      columns={[
+                        { title: 'STT', width: 50 },
+                        { title: 'Vĩ độ (Latitude - N)', key: 'lat', render: (_v: any, rec: any) => { const dms = ddToDms(rec.lat); return `${dms.d}° ${dms.m}' ${dms.s}" N`; } },
+                        { title: 'Kinh độ (Longitude - E)', key: 'lng', render: (_v: any, rec: any) => { const dms = ddToDms(rec.lng); return `${dms.d}° ${dms.m}' ${dms.s}" E`; } },
+                      ]}
+                    />
                   );
                 })()}
               </div>
@@ -295,168 +265,202 @@ export default function BerthDetailContent({
           ),
         },
         {
-          key: 'files', label: 'File đính kèm',
+          key: 'files', label: `File đính kèm (${detailFiles.length})`,
           children: (
             <div style={{ paddingTop: 3 }}>
               <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
                 <span style={detailLabelStyle}>File đính kèm</span>
               </div>
-              <PagedTable dataSource={detailFiles.map((f) => ({ ...f }))}
-                emptyText={(
-                  <div style={{ padding: '32px 0', textAlign: 'center' }}>
-                    <div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div>
-                    <span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tài liệu đính kèm</span>
-                  </div>
-                )}
-              >
-                <Table.Column title="Tên file" key="name" dataIndex="fileName" align="center"
-                  render={(name: string) => <div style={{ textAlign: 'left', fontSize: fontSizeMd, color: textPrimary }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}</div>}
-                  onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-              </PagedTable>
+              <DetailTable
+                dataSource={detailFiles.map((f) => ({ ...f }))}
+                emptyText="Chưa có tài liệu đính kèm"
+                columns={[
+                  { title: 'STT', width: 50 },
+                  { title: 'Tên tài liệu', dataIndex: 'fileName', key: 'fileName', render: (v: string) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{v || '—'}</span> },
+                  { title: 'Dung lượng', dataIndex: 'fileSize', key: 'fileSize', width: 120, align: 'right' as const, render: (v: number) => v ? (v > 1024 * 1024 ? `${(v / (1024 * 1024)).toFixed(2)} MB` : `${(v / 1024).toFixed(1)} KB`) : '—' },
+                  { title: 'Người tải lên', dataIndex: 'uploadedBy', key: 'uploadedBy', width: 180, render: (v: string) => userMap.get(v) || v || '—' },
+                  { title: 'Ngày tải lên', dataIndex: 'uploadedAt', key: 'uploadedAt', width: 135, align: 'center' as const, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—' },
+                ]}
+              />
             </div>
           ),
         },
         {
           key: 'infra', label: 'Danh sách kết cấu hạ tầng khác thuộc bến cảng',
           children: (
-            <PagedTabTable
-              title={(
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                  <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Loại kết cấu hạ tầng</span>
-                  <Select allowClear placeholder="Chọn loại kết cấu hạ tầng" value={infraTypeFilter || undefined}
-                    onChange={(v: string | undefined) => setInfraTypeFilter(v || '')}
-                    options={BERTH_INFRA_TYPE_OPTIONS} style={{ width: 360, borderRadius: radiusPill, height: 40 }} />
-                </div>
-              )}
-              dataSource={infraRows}
-              emptyText={(
-                <div style={{ padding: '32px 0', textAlign: 'center' }}>
-                  <div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div>
-                  <span style={{ color: textTertiary, fontSize: fontSizeLg }}>Chưa có dữ liệu</span>
-                </div>
-              )}
-              columns={(
-                <>
-                  <Table.Column title="Tên kết cấu hạ tầng" key="name" dataIndex="infraName" align="center"
-                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: actionPrimary, cursor: 'pointer', fontWeight: fontWeightBold }} onClick={() => onViewPierDetail?.(rec.id)}>{v || rec.name || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Thao tác" key="actions" width={100} align="center"
-                    render={(_: any, rec: any) => (
-                      <Tooltip title="Xem chi tiết">
-                        <Button type="text" size="small" icon={<EyeOutlined />} style={{ color: actionPrimary, fontSize: fontSizeMd }}
-                          onClick={() => onViewPierDetail?.(rec.id)} />
-                      </Tooltip>
-                    )}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                </>
-              )}
-            />
+            <div style={{ paddingTop: 3 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: spaceSm }}>
+                <span style={{ ...detailLabelStyle, display: 'inline-block' }}>Loại kết cấu hạ tầng</span>
+                <Select allowClear placeholder="Chọn loại kết cấu hạ tầng" value={infraTypeFilter || undefined}
+                  onChange={(v: string | undefined) => setInfraTypeFilter(v || '')}
+                  options={[{ value: 'Pier', label: 'Cầu cảng' }]} style={{ width: 260, borderRadius: 999, height: 40 }} />
+              </div>
+              <DetailTable
+                dataSource={infraRows}
+                emptyText="Chưa có dữ liệu"
+                rowKey={(r: any) => r.id || r.infraName || r.name}
+                columns={[
+                  { title: 'STT', width: 50 },
+                  { title: 'Loại kết cấu hạ tầng', dataIndex: 'infraType', key: 'type', render: (_v: string, rec: any) => <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{rec.infraType === 'Pier' ? 'Cầu cảng' : rec.infraType || '—'}</span> },
+                  { title: 'Tên kết cấu hạ tầng', dataIndex: 'infraName', key: 'name', render: (v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: actionPrimary, cursor: 'pointer', fontWeight: fontWeightBold }} onClick={() => onViewPierDetail?.(rec.id)}>{v || rec.name || '—'}</span> },
+                  { title: 'Thao tác', key: 'actions', width: 100, align: 'center' as const, render: (_v: any, rec: any) => (
+                    <Tooltip title="Xem chi tiết">
+                      <Button type="text" size="small" icon={<EyeOutlined />} style={{ color: actionPrimary, fontSize: fontSizeMd }}
+                        onClick={() => onViewPierDetail?.(rec.id)} />
+                    </Tooltip>
+                  ) },
+                ]}
+              />
+            </div>
           ),
         },
         {
           key: 'operation', label: 'Thông tin vận hành khai thác',
           children: (
-            <PagedTabTable
-              title={<span style={detailLabelStyle}>Thông tin vận hành khai thác</span>}
-              dataSource={operationPlanList}
-              emptyText={(
-                <div style={{ padding: '32px 0', textAlign: 'center' }}>
-                  <div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div>
-                  <span style={{ color: textTertiary, fontSize: fontSizeLg }}>Chưa có dữ liệu</span>
-                </div>
-              )}
-              columns={(
-                <>
-                  <Table.Column title="Mã kế hoạch" key="code" dataIndex="planCode"
-                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || rec.code || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Tên kế hoạch" key="name" dataIndex="planName"
-                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || rec.name || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Ngày bắt đầu" key="start" dataIndex="startDate"
-                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{fmtDateTime(v || rec.startTime || rec.start || null)}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Ngày kết thúc" key="end" dataIndex="endDate"
-                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{fmtDateTime(v || rec.endTime || rec.end || null)}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Thao tác" key="actions" width={100} align="center"
-                    render={() => <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                </>
-              )}
-            />
+            <div style={{ paddingTop: 3 }}>
+              <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
+                <span style={detailLabelStyle}>Thông tin vận hành khai thác</span>
+              </div>
+              <DetailTable
+                dataSource={operationPlanList}
+                emptyText="Chưa có dữ liệu"
+                rowKey={(r: any) => r.id || r.planCode || r.code}
+                columns={[
+                  { title: 'STT', width: 50 },
+                  { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '—' },
+                  { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '—' },
+                  { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'start', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.startTime || rec.start || null) },
+                  { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'end', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.endTime || rec.end || null) },
+                ]}
+              />
+            </div>
           ),
         },
         {
           key: 'maintenance', label: 'Thông tin bảo trì',
           children: (
-            <PagedTabTable
-              title={<span style={detailLabelStyle}>Thông tin bảo trì</span>}
-              dataSource={maintenancePlanList}
-              emptyText={(
-                <div style={{ padding: '32px 0', textAlign: 'center' }}>
-                  <div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div>
-                  <span style={{ color: textTertiary, fontSize: fontSizeLg }}>Chưa có dữ liệu</span>
-                </div>
-              )}
-              columns={(
-                <>
-                  <Table.Column title="Mã kế hoạch" key="code" dataIndex="planCode"
-                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || rec.code || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Tên kế hoạch" key="name" dataIndex="planName"
-                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || rec.name || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Thời gian bắt đầu" key="start" dataIndex="startTime"
-                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{fmtDateTime(v || rec.start || rec.startDate || null)}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Thời gian kết thúc" key="end" dataIndex="endTime"
-                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{fmtDateTime(v || rec.end || rec.endDate || null)}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Thao tác" key="actions" width={100} align="center"
-                    render={() => <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                </>
-              )}
-            />
+            <div style={{ paddingTop: 3 }}>
+              <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
+                <span style={detailLabelStyle}>Thông tin bảo trì</span>
+              </div>
+              <DetailTable
+                dataSource={maintenancePlanList}
+                emptyText="Chưa có dữ liệu"
+                rowKey={(r: any) => r.id || r.planCode || r.code}
+                columns={[
+                  { title: 'STT', width: 50 },
+                  { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '—' },
+                  { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '—' },
+                  { title: 'Thời gian bắt đầu', dataIndex: 'startTime', key: 'start', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.start || rec.startDate || null) },
+                  { title: 'Thời gian kết thúc', dataIndex: 'endTime', key: 'end', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.end || rec.endDate || null) },
+                ]}
+              />
+            </div>
           ),
         },
         {
           key: 'incident', label: 'Thông tin sự cố',
           children: (
-            <PagedTabTable
-              title={<span style={detailLabelStyle}>Thông tin sự cố</span>}
-              dataSource={incidentList}
-              emptyText={(
-                <div style={{ padding: '32px 0', textAlign: 'center' }}>
-                  <div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div>
-                  <span style={{ color: textTertiary, fontSize: fontSizeLg }}>Chưa có dữ liệu</span>
-                </div>
-              )}
-              columns={(
-                <>
-                  <Table.Column title="Mã sự cố" key="code" dataIndex="incidentCode"
-                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || rec.code || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Loại sự cố" key="type" dataIndex="incidentType"
-                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || rec.type || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Địa điểm" key="location" dataIndex="location"
-                    render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Thời gian" key="time" dataIndex="incidentTime"
-                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{fmtDateTime(v || rec.time || null)}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Thao tác" key="actions" width={100} align="center"
-                    render={() => <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                </>
-              )}
-            />
+            <div style={{ paddingTop: 3 }}>
+              <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
+                <span style={detailLabelStyle}>Thông tin sự cố</span>
+              </div>
+              <DetailTable
+                dataSource={incidentList}
+                emptyText="Chưa có dữ liệu"
+                rowKey={(r: any) => r.id || r.incidentCode || r.code}
+                columns={[
+                  { title: 'STT', width: 50 },
+                  { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '—' },
+                  { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'type', render: (v: string, rec: any) => v || rec.type || '—' },
+                  { title: 'Địa điểm', dataIndex: 'location', key: 'location', render: (v: string) => v || '—' },
+                  { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.time || null) },
+                ]}
+              />
+            </div>
+          ),
+        },
+        {
+          key: 'system', label: 'Xử lý & theo dõi',
+          children: (
+            <div style={{ paddingTop: 3 }}>
+              <div className="chk-detail-grid">
+                {[
+                  ['Trạng thái', r.approvalStatus && approvalStyleMap[r.approvalStatus] ? <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>{approvalStyleMap[r.approvalStatus].label}</span> : '—'],
+                  ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.updatedBy || '') || r.updatedBy || '—'}</span>],
+                  ['Ngày cập nhật', fmtDateTime(r.updatedAt)],
+                  ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.submittedForApprovalBy || '') || r.submittedForApprovalBy || '—'}</span>],
+                  ['Ngày gửi phê duyệt', fmtDateTime(r.submittedForApprovalAt)],
+                  ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.portAuthorityApprovedBy || '') || r.portAuthorityApprovedBy || '—'}</span>],
+                  ['Ngày phê duyệt cấp Cảng vụ/Chi cục', fmtDateTime(r.portAuthorityApprovedAt)],
+                  ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.departmentApprovedBy || '') || r.departmentApprovedBy || '—'}</span>],
+                  ['Ngày phê duyệt cấp Cục', fmtDateTime(r.departmentApprovedAt)],
+                  ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.portAuthorityApprovalContent || '—'],
+                  ['Nội dung phê duyệt cấp Cục', r.departmentApprovalContent || '—'],
+                ].map(([label, value], i) => (
+                  <div key={i} className="chk-detail-row" style={label === 'Trạng thái' ? { gridColumn: '1 / -1' } : undefined}>
+                    <span className="chk-detail-label">{label}</span>
+                    <span className="chk-detail-value">{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           ),
         },
       ]}
     />
+
+    {/* GIS Location Selector Modal — xem vị trí trên bản đồ chuyên dụng (chuẩn VTS CHK) */}
+    <Modal
+      title={
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <EnvironmentOutlined style={{ color: actionPrimary }} />
+          <span style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: fontSizeLg }}>
+            Xem vị trí trên bản đồ chuyên dụng
+          </span>
+        </div>
+      }
+      open={gisModalOpen}
+      onCancel={() => setGisModalOpen(false)}
+      destroyOnClose
+      width="94vw"
+      style={{ top: 20, maxWidth: '1400px' }}
+      footer={[
+        <Button key="close" type="primary" onClick={() => setGisModalOpen(false)} style={{ ...primaryButtonStyle, height: 36 }}>
+          Đóng
+        </Button>,
+      ]}
+    >
+      <div style={{ padding: '8px 0' }}>
+        <GisLocationSelector
+          inline={true}
+          defaultGeometryType="POINT"
+          disabled
+          height={520}
+          value={(() => {
+            const pts = parseGisCoordinates(r);
+            if (pts.length > 0) {
+              const rawWkt = (r as any).coordinates || '';
+              let geom: 'POINT' | 'LINE' | 'POLYGON' = 'POINT';
+              let wkt = '';
+              if (rawWkt.startsWith('LINESTRING')) {
+                geom = 'LINE';
+                wkt = `LINESTRING(${pts.map(p => `${p.lng} ${p.lat}`).join(', ')})`;
+              } else if (rawWkt.startsWith('POLYGON')) {
+                geom = 'POLYGON';
+                wkt = `POLYGON((${pts.map(p => `${p.lng} ${p.lat}`).join(', ')}))`;
+              } else if (pts.length > 1) {
+                wkt = `MULTIPOINT(${pts.map(p => `(${p.lng} ${p.lat})`).join(',')})`;
+              } else {
+                wkt = `POINT(${pts[0].lng} ${pts[0].lat})`;
+              }
+              return { geometryType: geom, coordinates: wkt };
+            }
+            return undefined;
+          })()}
+        />
+      </div>
+    </Modal>
     </>
   );
 }

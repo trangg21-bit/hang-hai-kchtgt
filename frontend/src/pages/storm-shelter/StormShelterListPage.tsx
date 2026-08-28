@@ -4,12 +4,6 @@ import {
   Drawer, Radio, Space, Typography, Form,
 } from 'antd';
 import {
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  EyeOutlined,
   HistoryOutlined,
   ExclamationCircleOutlined,
   SearchOutlined,
@@ -52,6 +46,7 @@ import {
   borderDefault,
   fontSizeMd,
   fontSizeLg,
+  fontSizeSm,
   fontWeightMedium,
   fontWeightBold,
   radiusPill,
@@ -62,12 +57,17 @@ import {
   spaceFormField,
   drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
   primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
-  historyBadgeStyle, historyGroupGridStyle, historyTimeStyle, historyMetaRowStyle,
+  historyGroupGridStyle, historyTimeStyle, historyMetaRowStyle,
   historyInfoCardStyle, historyAccentBarStyle, historyInfoTitleStyle,
   historyChangeRowStyle, historyCreateRowStyle, historyFieldLabelStyle,
   historyOldValueStyle, historyNewValueStyle, historyArrowStyle,
-} from '../../tokens';
-import { colors } from '../../theme';
+  icons, statusBadgeStyle, cellTitleStyle, cellSubtitleStyle,
+} from '../../themetokenchk';
+import { colors } from '../../themetokenchk';
+import * as themeTokenChk from '../../themetokenchk';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
+import ApprovalModal from '../../components/shared/ApprovalModal';
 
 // ── Constants ────────────────────────────────────────────────────────
 
@@ -144,6 +144,100 @@ function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, 
   if (fn === 'provinceId') { const m: Record<number,string> = { 1:'Hà Nội', 2:'Hà Giang', 3:'Cao Bằng', 4:'Bắc Kạn', 5:'Lào Cai', 6:'Tuyên Quang', 7:'Lạng Sơn', 8:'Quảng Ninh', 9:'Thái Nguyên', 10:'Yên Bái', 11:'Hà Nam', 12:'Hòa Bình', 13:'Nam Định', 14:'Ninh Bình', 15:'Thanh Hóa', 16:'Nghệ An', 17:'Hà Tĩnh', 18:'Quảng Bình', 19:'Quảng Trị', 20:'Thừa Thiên Huế', 21:'Đà Nẵng', 22:'Quảng Nam', 23:'Quảng Ngãi', 24:'Bình Định', 25:'Phú Yên', 26:'Khánh Hòa', 27:'Ninh Thuận', 28:'Bình Thuận', 29:'Kon Tum', 30:'Gia Lai', 31:'Đắk Lắk', 32:'Đắk Nông', 33:'Lâm Đồng', 34:'TP. Hồ Chí Minh', 35:'Bà Rịa - Vũng Tàu', 36:'Long An', 37:'Tiền Giang', 38:'An Giang', 39:'Bến Tre', 40:'Đồng Tháp', 41:'Vĩnh Long', 42:'Trà Vinh', 43:'Hậu Giang', 44:'Sóc Trăng', 45:'Kiên Giang', 46:'Cần Thơ', 47:'Bạc Liêu', 48:'Cà Mau', 49:'Điện Biên', 50:'Lai Châu', 51:'Sơn La', 52:'Yên Bái', 53:'Hòa Bình', 54:'Thái Bình', 55:'Hải Dương', 56:'Hải Phòng', 57:' Hưng Yên', 58:'Perth', 59:'Đắk Lắk', 60:'An Giang', 61:'Bà Rịa - Vũng Tàu', 62:'Bắc Giang', 63:'Bắc Kạn', 64:'Bắc Ninh', 65:'Bến Tre', 66:'Bình Định', 67:'Bình Dương', 68:'Bình Phước', 69:'Bình Thuận', 70:'Cà Mau', 71:'Cao Bằng', 72:'Đắk Lắk', 73:'Đắk Nông', 74:'Điện Biên', 75:'Đồng Nai', 76:'Đồng Tháp', 77:'Gia Lai', 78:'Hà Giang', 79:'Hà Nam', 80:'Hà Tĩnh', 81:'Hải Dương', 82:'Hậu Giang', 83:'Hòa Bình', 84:'Hưng Yên', 85:'Khánh Hòa', 86:'Kiên Giang', 87:'Kon Tum', 88:'Lai Châu', 89:'Lâm Đồng', 90:'Lạng Sơn', 91:'Lào Cai', 92:'Long An', 93:'Nam Định', 94:'Nghệ An', 95:'Ninh Bình', 96:'Ninh Thuận', 97:'Phú Thọ', 98:'Quảng Nam', 99:'Quảng Ngãi', 100:'Quảng Ninh', 101:'Quảng Trị', 102:'Sóc Trăng', 103:'Sơn La', 104:'Thanh Hóa', 105:'Thái Bình', 106:'Thái Nguyên', 107:'TP. Hồ Chí Minh', 108:'Tiền Giang', 109:'Tây Ninh', 110:'Tin Giang', 111:'Trà Vinh', 112:'Tuyên Quang', 113:'Vĩnh Long', 114:'Vĩnh Phúc', 115:'Yên Bái' }; return m[Number(val)-1] || val; }
   if (fn === 'openingAnnouncementDate' || fn.endsWith('At')) { try { return dayjs(val).format('DD/MM/YYYY HH:mm'); } catch { return val; } }
   return val;
+}
+
+function normalizeHistoryKey(value: string): string {
+  return String(value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+}
+
+/** Badge thao tác cho lịch sử (chuẩn VTS CHK): phân biệt Thêm mới / Cập nhật / Phê duyệt / Từ chối / Trình duyệt. */
+function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; color: string; bg: string } {
+  const item = group.items?.[0] || {};
+  const rawStatus = String(item.status ?? item.action ?? '').toUpperCase();
+  const rawReason = String(item.reason ?? item.ghiChu ?? item.note ?? '').toLowerCase();
+  const level = Number(item.approvalLevel || 0);
+
+  if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
+    return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
+  }
+
+  // Tải lên / xóa tệp đính kèm
+  if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || item.changedField?.includes('đính kèm')) {
+    return { label: 'Tải lên tệp', color: '#0284c7', bg: '#0284c718' };
+  }
+  if (rawStatus === 'ATTACHMENT_DELETED' || rawReason.includes('xóa tài liệu') || rawReason.includes('xóa tệp') || rawReason.includes('xoa tep')) {
+    return { label: 'Xóa tệp', color: '#ea580c', bg: '#ea580c18' };
+  }
+
+  // Cập nhật thông tin
+  if (rawStatus === 'UPDATED' || rawStatus === 'UPDATE' || rawStatus === 'EDIT' || rawReason.includes('cập nhật') || rawReason.includes('chỉnh sửa')) {
+    return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
+  }
+
+  // Ưu tiên lý do ghi sẵn cho hành động duyệt/từ chối (chuẩn VTS CHK)
+  if (rawReason.includes('phê duyệt cấp cảng vụ') || rawReason.includes('phe duyet cap cang vu')) {
+    return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
+  }
+  if (rawReason.includes('phê duyệt cấp cục') || rawReason.includes('phe duyet cap cuc')) {
+    return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
+  }
+  if (rawReason.includes('từ chối cấp cảng vụ') || rawReason.includes('tu choi cap cang vu')) {
+    return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
+  }
+  if (rawReason.includes('từ chối cấp cục') || rawReason.includes('tu choi cap cuc')) {
+    return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
+  }
+
+  const approvalChange = changes.find((c: any) => {
+    const k = normalizeHistoryKey(c.field);
+    return k === 'approvalstatus' || k === 'trang thai phe duyet';
+  });
+
+  if (approvalChange) {
+    const nv = normalizeHistoryKey(approvalChange.newValue || '');
+    if (nv.includes('cang vu tra ve') || nv.includes('rejected_level1') || (nv.includes('tra ve') && nv.includes('cang vu'))) {
+      return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
+    }
+    if (nv.includes('cuc tra ve') || nv.includes('rejected_level2') || (nv.includes('tra ve') && nv.includes('cuc'))) {
+      return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
+    }
+    if (nv === 'cho cuc duyet' || nv.includes('da phe duyet cap 1') || nv.includes('approved_level1') || nv.includes('cuc duyet')) {
+      return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
+    }
+    if (nv === 'da duyet' || nv.includes('da phe duyet') || nv.includes('approved')) {
+      return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
+    }
+    if (nv.includes('tu choi') || nv.includes('rejected') || nv.includes('tra ve')) {
+      return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
+    }
+    if (nv.includes('cho cang vu duyet') || nv.includes('cho phe duyet') || nv.includes('pending') || nv.includes('proposed') || nv.includes('luu tam') || nv.includes('nhap')) {
+      return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
+    }
+  }
+
+  if (level === 1 || String(item.approvalLevel).includes('LEVEL_1') || rawReason.includes('cấp 1') || rawReason.includes('cap 1') || rawStatus === 'UNDER_REVIEW') {
+    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
+      return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
+    }
+    return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
+  }
+  if (level === 2 || String(item.approvalLevel).includes('LEVEL_2') || rawReason.includes('cấp 2') || rawReason.includes('cap 2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
+    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
+      return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
+    }
+    return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
+  }
+  if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi')) {
+    return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
+  }
+  if (rawStatus === 'SUBMITTED' || rawStatus === 'PENDING' || rawReason.includes('trình duyệt') || rawReason.includes('trinh duyet')) {
+    return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
+  }
+  if (rawStatus === 'DELETED' || rawStatus === 'DELETE' || rawStatus === 'SOFT_DELETE' || rawReason.includes('xóa') || rawReason.includes('xoa')) {
+    return { label: 'Xóa', color: '#64748b', bg: '#64748b18' };
+  }
+
+  return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
 }
 
 // ── Component ────────────────────────────────────────────────────────
@@ -252,7 +346,6 @@ export default function StormShelterList() {
   const [submittingRecord, setSubmittingRecord] = useState<StormShelterArea | null>(null);
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [approvingRecord, setApprovingRecord] = useState<StormShelterArea | null>(null);
-  const [approvalContent, setApprovalContent] = useState('');
 
   // ── History modal ───────────────────────────────────────────────
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -284,10 +377,11 @@ export default function StormShelterList() {
   const HISTORY_FIELD_ORDER = ['orgUnitId', 'portId', 'stormShelterCode', 'stormShelterName', 'navigationChannelId', 'buoyStationId', 'classification', 'provinceId', 'detailedLocation', 'mapSymbolId', 'area', 'designWaterDepth', 'currentWaterDepth', 'bottomElevationDesign', 'openingAnnouncementDate', 'publicDecision', 'investmentAgreement'];
 
   const renderStormShelterHistoryTimeline = (records: any[]) => {
+    const safeRecords = Array.isArray(records) ? records : [];
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...records].sort((a: any, b: any) => new Date(b.changedAt || b.createdAt).getTime() - new Date(a.changedAt || a.createdAt).getTime());
+    const sorted = [...safeRecords].sort((a: any, b: any) => new Date(b.changedAt || b.createdAt).getTime() - new Date(a.changedAt || a.createdAt).getTime());
     const q = historySearch.toLowerCase().trim();
-    const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
+    const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
     for (const r of sorted) {
       if (q) {
         const fn = (r.fieldName || '').toLowerCase();
@@ -307,8 +401,8 @@ export default function StormShelterList() {
       const ts = r.changedAt || r.createdAt || '';
       const sec = ts ? toSec(ts) : 0;
       const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === (r.changedBy || '')) prev.items.push(r);
-      else groups.push({ tsSec: sec, ts, actor: r.changedBy || '', items: [r] });
+      if (prev && prev.tsSec === sec && prev.actor === (r.changedBy || '') && prev.status === r.status && prev.approvalLevel === r.approvalLevel) prev.items.push(r);
+      else groups.push({ tsSec: sec, ts, actor: r.changedBy || '', status: r.status, approvalLevel: r.approvalLevel, items: [r] });
     }
     if (groups.length === 0) return (
       <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
@@ -323,9 +417,10 @@ export default function StormShelterList() {
         const orgId = rec0.orgUnitId || historyTarget?.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
         const unitName = (orgName ? (orgName.split(' - ').pop() || orgName) : (rec0.orgUnitName || rec0.unitName)) || '—';
-        const barColor = actionPrimary;
         const changes = g.items.map((item: any) => ({ field: item.fieldName || '—', oldValue: item.oldValue ?? null, newValue: item.newValue ?? null }));
         const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
+        const actionMeta = resolveHistoryActionMeta(g, changes);
+        const barColor = actionMeta.color;
         const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
         const orderedChanges = [...changes].sort((a: any, b: any) => {
           const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
@@ -355,8 +450,7 @@ export default function StormShelterList() {
                   {g.ts ? fmtTime(g.ts) : '—'}
                 </Typography.Text>
                 <span style={{ flexShrink: 0 }}>
-                {isCreate && <span style={historyBadgeStyle(statusOperational)}>Thêm mới</span>}
-                {!isCreate && <span style={historyBadgeStyle(actionPrimary)}>Chỉnh sửa</span>}
+                  <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: actionMeta.bg, color: actionMeta.color, whiteSpace: 'nowrap' }}>{actionMeta.label}</span>
                 </span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
@@ -594,15 +688,15 @@ export default function StormShelterList() {
   }, [deletingRecord, deleteConfirmText, fetchData, fetchCounts, managingUnitId]);
 
   // ── Approval handlers ───────────────────────────────────────────
-  const handleApprove = useCallback(async (record: StormShelterArea) => {
+  const handleApprove = useCallback(async (record: StormShelterArea, content: string) => {
     try {
       const cap = record.approvalStatus === 'APPROVED_LEVEL2' ? 'CUC' : 'CANG_VU';
-      await stormShelterCRUD.approve(record.id, cap, approvalContent);
+      await stormShelterCRUD.approve(record.id, cap, content);
       toast.success('Đã phê duyệt khu tránh, trú bão');
-      setApproveModalOpen(false); setApprovingRecord(null); setApprovalContent('');
+      setApproveModalOpen(false); setApprovingRecord(null);
       void fetchData(); void fetchCounts(managingUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại'); }
-  }, [fetchData, fetchCounts, managingUnitId, approvalContent]);
+  }, [fetchData, fetchCounts, managingUnitId]);
 
   const handleConfirmSubmit = useCallback(async () => {
     if (!submittingRecord) return;
@@ -637,7 +731,7 @@ export default function StormShelterList() {
   const headerActions = useMemo(() => {
     const actions: ScreenHeaderAction[] = [];
     if (hasPerm('stormshelter:create')) {
-      actions.push({ key: 'create', label: 'Thêm mới', variant: 'primary', icon: <PlusOutlined />, onClick: () => setCreateDrawerVisible(true) });
+      actions.push({ key: 'create', label: 'Thêm mới', variant: 'primary', icon: icons.create, onClick: () => setCreateDrawerVisible(true) });
     }
     return actions;
   }, [hasPerm]);
@@ -798,14 +892,15 @@ export default function StormShelterList() {
   const rowActions = useCallback(
     (record: StormShelterArea) => {
       const actions: any[] = [
-        { key: 'view', label: 'Chi tiết', icon: <EyeOutlined />, onClick: () => openDetailDrawer(record) },
+        { key: 'view', label: 'Chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) },
       ];
       const st = record.approvalStatus || '';
-      if (hasPerm('stormshelter:update')) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => { setEditStormShelterId(record.id); setEditStormShelterName(record.stormShelterName || ''); } });
-      if (hasPerm('stormshelter:delete') && ['DRAFT','NHAP'].includes(st)) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => openDeleteModal(record) });
-      if (['DRAFT','NHAP'].includes(st) && hasPerm('stormshelter:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
-      if (hasPerm('stormshelter:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) { actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setApprovingRecord(record); setApprovalContent(''); setApproveModalOpen(true); } }); actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, danger: true, onClick: () => openRejectModal(record) }); }
-      if (hasPerm('stormshelter:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistory(record) });
+      // Chỉnh sửa chỉ áp dụng cho Lưu tạm (DRAFT/Bị trả về) và Đã phê duyệt (APPROVED) — chuẩn VTS CHK
+      if (canEditApprovalRecord(st, { hasPerm, resource: 'stormshelter', extraUpdatePerms: ['stormshelter:update'], extraApprovePerms: ['stormshelter:approve'] })) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => { setEditStormShelterId(record.id); setEditStormShelterName(record.stormShelterName || ''); } });
+      if (canDeleteApprovalRecord(st, { hasPerm, resource: 'stormshelter', extraDeletePerms: ['stormshelter:delete'] })) actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => openDeleteModal(record) });
+      if (['DRAFT','NHAP'].includes(st) && hasPerm('stormshelter:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
+      if (hasPerm('stormshelter:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) { actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } }); actions.push({ key: 'reject', label: 'Từ chối', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) }); }
+      if (hasPerm('stormshelter:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
       return actions;
     },
     [hasPerm, openDetailDrawer, openHistory, openDeleteModal, openRejectModal],
@@ -852,19 +947,13 @@ export default function StormShelterList() {
             <a
               title={v}
               onClick={() => openDetailDrawer(record)}
-              style={{
-                fontWeight: fontWeightBold,
-                color: actionPrimary,
-                cursor: 'pointer',
-                display: 'block',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
+              style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
             >
               {v}
             </a>
-            <span style={{ opacity: 0.85 }}>{record.stormShelterCode || '—'}</span>
+            <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {record.stormShelterCode || '—'}
+            </span>
           </div>
         ),
       },
@@ -913,21 +1002,7 @@ export default function StormShelterList() {
             SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
           };
           const s = m[v || ''] || { color: textTertiary, label: v || '—' };
-          return (
-            <span
-              style={{
-                display: 'inline-flex',
-                padding: '2px 10px',
-                borderRadius: 999,
-                fontSize: fontSizeMd,
-                fontWeight: fontWeightMedium,
-                background: `${s.color}15`,
-                color: s.color,
-              }}
-            >
-              {s.label}
-            </span>
-          );
+          return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
         },
       },
     ];
@@ -968,7 +1043,7 @@ export default function StormShelterList() {
       { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 260, sortable: true, sortOrder,
         render: (v: string) => {
           const s = APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v?.toUpperCase()] || { color: textTertiary, label: v || '—' };
-          return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
+          return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
         } },
     ];
 
@@ -1027,6 +1102,7 @@ export default function StormShelterList() {
   // ── JSX ─────────────────────────────────────────────────────────
 
   return (
+    <ThemeTokenProvider tokens={themeTokenChk}>
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <style>{`.range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }`}</style>
       <ScreenHeader
@@ -1046,19 +1122,12 @@ export default function StormShelterList() {
         error={isError}
         onRetry={() => void fetchData()}
       >
-        <style>{`.list-view-table .ant-table-cell { padding-block: 9.5px !important; }`}</style>
-        {isError ? null : !isLoading && dataSource.length === 0 ? (
-          <DataTable dataSource={[]} rowKey="id"
-            emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>Không tìm thấy khu tránh, trú bão nào phù hợp</div></div>}
-          />
-        ) : !isLoading && !isError && dataSource.length > 0 ? (
-          <DataTable columns={columns}
-            dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; const aVal = getSortValue(a, sortField); const bVal = getSortValue(b, sortField); const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi'); return sortOrder === 'ascend' ? cmp : -cmp; })}
-            rowKey="id" rowActions={rowActions} loading={false}
-            onSort={(key: string, order: 'asc' | 'desc') => { setSortField(key); setSortOrder(order === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
-            scroll={{ x: isAuditViewer ? 2600 : 2050, y: 550 }}
-          />
-        ) : null}
+        <DataTable columns={columns}
+          dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; const aVal = getSortValue(a, sortField); const bVal = getSortValue(b, sortField); const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi'); return sortOrder === 'ascend' ? cmp : -cmp; })}
+          rowKey="id" rowActions={rowActions} loading={false}
+          onSort={(key: string, order: 'asc' | 'desc') => { setSortField(key); setSortOrder(order === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
+          scroll={{ x: 'max-content' }}
+        />
         <Pagination total={total} current={page} pageSize={pageSize}
           onChange={(p, ps) => { setPage(p); setPageSize(ps); }}
         />
@@ -1206,30 +1275,13 @@ export default function StormShelterList() {
         </div>
       </Modal>
 
-      {/* ── Approve Modal ─────────────────────────────────────────── */}
-      <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{approvingRecord?.approvalStatus === 'CHO_PD_CAP_CUC' ? 'Xác nhận Cục phê duyệt' : 'Xác nhận Cảng vụ phê duyệt'}</span>}
-        open={approveModalOpen}
+      {/* ── Approve Modal (chuẩn VTS CHK) ─────────────────────────── */}
+      <ApprovalModal
+        visible={approveModalOpen}
+        level={approvingRecord?.approvalStatus === 'APPROVED_LEVEL2' || approvingRecord?.approvalStatus === 'CHO_PD_CAP_CUC' ? 'c2' : 'c1'}
+        onConfirm={(content) => { if (approvingRecord) handleApprove(approvingRecord, content); }}
         onCancel={() => { setApproveModalOpen(false); setApprovingRecord(null); }}
-        footer={[
-          <Button key="cancel" onClick={() => { setApproveModalOpen(false); setApprovingRecord(null); }}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
-          <Button key="approve" type="primary" onClick={() => approvingRecord && handleApprove(approvingRecord)}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: approvingRecord?.approvalStatus === 'CHO_PD_CAP_CUC' ? statusOperational : statusAttention, borderColor: approvingRecord?.approvalStatus === 'CHO_PD_CAP_CUC' ? statusOperational : statusAttention }}>Xác nhận</Button>,
-        ]}
-        width={480}>
-        <div style={{ padding: '8px 0' }}>
-          <p style={{ fontSize: fontSizeMd, color: textPrimary }}>
-            {approvingRecord?.approvalStatus === 'CHO_PD_CAP_CUC' ? 'Cục' : 'Cảng vụ'} phê duyệt <strong>{approvingRecord?.stormShelterCode} — {approvingRecord?.stormShelterName}</strong>?
-          </p>
-          <div style={{ marginTop: spaceMd }}>
-            <div style={{ marginBottom: spaceXs, color: textSecondary, fontSize: fontSizeMd, fontWeight: fontWeightMedium }}>Nội dung phê duyệt</div>
-            <Input.TextArea rows={3} placeholder="Nhập nội dung phê duyệt (không bắt buộc)..." value={approvalContent}
-              onChange={(e) => setApprovalContent(e.target.value)}
-              style={{ fontSize: fontSizeMd }} />
-          </div>
-        </div>
-      </Modal>
+      />
 
       {/* ── History Drawer ──────────────────────────────────────── */}
       <Drawer
@@ -1292,5 +1344,6 @@ export default function StormShelterList() {
         </div>
       </Drawer>
     </div>
+    </ThemeTokenProvider>
   );
 }

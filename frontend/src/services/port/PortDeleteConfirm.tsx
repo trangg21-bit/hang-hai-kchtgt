@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Card, Button, Input, Space, Typography, Tag, Row, Col } from 'antd';
 import toast from '../../components/ToastNotification';
-import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
-import { borderDefault, statusAttention, spaceMd } from '../../tokens';
+import { borderDefault, statusAttention, spaceMd } from '../../themetokenchk';
 import api from '../../services/api';
 import { fetchCangBienById, deleteCangBien } from './api';
 import type { CangBienResponse } from './types';
