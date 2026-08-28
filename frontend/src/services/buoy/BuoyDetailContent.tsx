@@ -116,6 +116,9 @@ export default function BuoyDetailContent({
   const [maintenanceOpen, setMaintenanceOpen] = useState(true);
   const [incidentOpen, setIncidentOpen] = useState(true);
   const [gisModalOpen, setGisModalOpen] = useState(false);
+  const [indicatorOpen, setIndicatorOpen] = useState(true);
+  const [timingOpen, setTimingOpen] = useState(true);
+  const [lightCharOpen, setLightCharOpen] = useState(true);
   const userName = (id: number | string | undefined | null) =>
     id != null ? (userMap.get(String(id)) || String(id)) : '—';
   const provinceName = (id: number | undefined | null) =>
@@ -129,17 +132,6 @@ export default function BuoyDetailContent({
     const dms = ddToDms(dd);
     return `${dms.d ?? 0}° ${dms.m ?? 0}' ${dms.s ?? 0}" ${suffix}`;
   };
-
-  const renderDetailRows = (rows: Array<[string, React.ReactNode]>) => (
-    <div className="chk-detail-grid">
-      {rows.map(([label, value], i) => (
-        <div key={i} className="chk-detail-row">
-          <span className="chk-detail-label">{label}</span>
-          <span className="chk-detail-value">{value}</span>
-        </div>
-      ))}
-    </div>
-  );
 
   return (
     <>
@@ -163,20 +155,6 @@ export default function BuoyDetailContent({
                   ['Phân loại tiêu', r.classificationMark || '—'],
                   ['Địa điểm (Tỉnh/Thành Phố)', provinceName(r.provinceId)],
                   ['Địa điểm chi tiết', r.locationDetail || '—'],
-                  ['Hình dáng', r.shape ? (SHAPE_LABEL_MAP[r.shape] || r.shape) : '—'],
-                  ['Kết cấu', r.structure || '—'],
-                  ['Diện tích (m²)', r.area != null ? r.area : '—'],
-                  ['Chiều cao thân phao (m)', r.bodyHeight != null ? r.bodyHeight : '—'],
-                  ['Đường kính phao (m)', r.diameter != null ? r.diameter : '—'],
-                  ['Đèn biển', r.beaconLight || '—'],
-                  ['Chiều cao tháp đèn', r.towerHeight != null ? r.towerHeight : '—'],
-                  ['Chiều cao tâm sáng (hải đồ)', r.lightHeight != null ? r.lightHeight : '—'],
-                  ['Chủng loại đèn (Thiết bị báo hiệu)', r.lightModel || '—'],
-                  ['Màu sắc bên ngoài của tháp đèn', r.towerColor || '—'],
-                  ['Nguồn cung cấp năng lượng cho đèn', r.powerSupply || '—'],
-                  ['Phạm vi chiếu sáng', r.range != null ? `${r.range} hải lý` : '—'],
-                  ['Thời điểm đưa vào sử dụng', formatDateOnly(r.commissionedDate)],
-                  ['Thời điểm sửa chữa gần nhất', formatDateOnly(r.lastRepairDate)],
                   ['Tình trạng', (() => { const s = CONDITION_STYLE[r.condition || ''] || { color: textTertiary, label: r.condition || '—' }; return <span style={statusBadgeStyle(s.color)}>{s.label}</span>; })()],
                 ].map(([label, value], i) => (
                   <div key={i} className="chk-detail-row">
@@ -185,18 +163,71 @@ export default function BuoyDetailContent({
                   </div>
                 ))}
               </div>
-            </div>
-          ),
-        },
-        {
-          key: 'light', label: 'Đặc tính ánh sáng',
-          children: (
-            <div style={{ paddingTop: 3 }}>
-              {renderDetailRows([
-                ['Màu sắc', r.lightColor || r.color || '—'],
-                ['Kiểu chớp', r.flashType || '—'],
-                ['Chu kỳ', r.period || '—'],
-              ])}
+
+              {/* ── Toggle: Chỉ số tổng hợp (giống bến phao) ── */}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setIndicatorOpen(!indicatorOpen)}>
+                <span style={{ color: indicatorOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{indicatorOpen ? '▼' : '▶'} Chỉ số tổng hợp</span>
+              </button>
+              {indicatorOpen && (
+                <div className="chk-detail-grid">
+                  {[
+                    ['Hình dạng', r.shape ? (SHAPE_LABEL_MAP[r.shape] || r.shape) : '—'],
+                    ['Kết cấu', r.structure || '—'],
+                    ['Diện tích m²', r.area != null ? r.area : '—'],
+                    ['Chiều cao thân phao m', r.bodyHeight != null ? r.bodyHeight : '—'],
+                    ['Đường kính phao m', r.diameter != null ? r.diameter : '—'],
+                    ['Đèn biển', r.beaconLight || '—'],
+                    ['Chiều cao tháp đèn', r.towerHeight != null ? r.towerHeight : '—'],
+                    ['Chiều cao tâm sáng', r.lightHeight != null ? r.lightHeight : '—'],
+                    ['Chủng loại đèn', r.lightModel || '—'],
+                    ['Màu sắc bên ngoài tháp đèn', r.towerColor || '—'],
+                    ['Nguồn cung cấp năng lượng', r.powerSupply || '—'],
+                    ['Phạm vi chiếu sáng', r.range != null ? `${r.range} hải lý` : '—'],
+                  ].map(([label, value], i) => (
+                    <div key={i} className="chk-detail-row">
+                      <span className="chk-detail-label">{label}</span>
+                      <span className="chk-detail-value">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Toggle: Thời điểm ── */}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setTimingOpen(!timingOpen)}>
+                <span style={{ color: timingOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{timingOpen ? '▼' : '▶'} Thời điểm</span>
+              </button>
+              {timingOpen && (
+                <div className="chk-detail-grid" style={{ marginTop: 4 }}>
+                  {[
+                    ['Thời điểm đưa vào sử dụng', formatDateOnly(r.commissionedDate)],
+                    ['Thời điểm sửa chữa gần nhất', formatDateOnly(r.lastRepairDate)],
+                  ].map(([label, value], i) => (
+                    <div key={i} className="chk-detail-row">
+                      <span className="chk-detail-label">{label}</span>
+                      <span className="chk-detail-value">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Toggle: Đặc tính ánh sáng ── */}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setLightCharOpen(!lightCharOpen)}>
+                <span style={{ color: lightCharOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{lightCharOpen ? '▼' : '▶'} Đặc tính ánh sáng</span>
+              </button>
+              {lightCharOpen && (
+                <div className="chk-detail-grid" style={{ marginTop: 4 }}>
+                  {[
+                    ['Màu sắc', r.lightColor || r.color || '—'],
+                    ['Kiểu chớp', r.flashType || '—'],
+                    ['Chu kỳ', r.period || '—'],
+                  ].map(([label, value], i) => (
+                    <div key={i} className="chk-detail-row">
+                      <span className="chk-detail-label">{label}</span>
+                      <span className="chk-detail-value">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ),
         },

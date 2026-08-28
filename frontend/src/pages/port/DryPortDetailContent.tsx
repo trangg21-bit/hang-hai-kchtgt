@@ -102,6 +102,8 @@ export default function DryPortDetailContent({
   const [operationOpen, setOperationOpen] = useState(true);
   const [maintenanceOpen, setMaintenanceOpen] = useState(true);
   const [incidentOpen, setIncidentOpen] = useState(true);
+  // Toggle cụm 'Thông tin công bố' trong tab Thông tin chung (mặc định MỞ — giống Bến phao)
+  const [announcementOpen, setAnnouncementOpen] = useState(true);
   const approvalLabel = approvalStyleMap[r.approvalStatus || '']?.label || r.approvalStatus || '—';
 
   // Bản đồ orgUnitId → tên đơn vị (pattern Bến phao: hiển thị tên đơn vị trực tiếp, không dựng path nhiều cấp)
@@ -156,25 +158,25 @@ export default function DryPortDetailContent({
                   </div>
                 ))}
               </div>
-            </div>
-          ),
-        },
-        {
-          key: 'announcement', label: 'Thời điểm công bố đưa vào sử dụng',
-          children: (
-            <div style={{ paddingTop: 3 }}>
-              <div className="chk-detail-grid">
-                {[
-                  ['Quyết định công bố số', r.announcementDecisionNumber || '—'],
-                  ['Ngày ra quyết định công bố', r.announcementDecisionDate ? dayjs(r.announcementDecisionDate).format('DD/MM/YYYY') : '—'],
-                  ['Đơn vị ra quyết định công bố', r.announcementOrg || '—'],
-                ].map(([label, value], i) => (
-                  <div key={i} className="chk-detail-row">
-                    <span className="chk-detail-label">{label}</span>
-                    <span className="chk-detail-value">{value}</span>
-                  </div>
-                ))}
-              </div>
+
+              {/* ── Toggle: Thông tin công bố (gom vào tab Thông tin chung — giống Bến phao / Bến cảng) ── */}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setAnnouncementOpen(!announcementOpen)}>
+                <span style={{ color: announcementOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{announcementOpen ? '▼' : '▶'} Thông tin công bố</span>
+              </button>
+              {announcementOpen && (
+                <div className="chk-detail-grid" style={{ marginTop: 4 }}>
+                  {[
+                    ['Quyết định công bố số', r.announcementDecisionNumber || '—'],
+                    ['Ngày ra quyết định công bố', r.announcementDecisionDate ? dayjs(r.announcementDecisionDate).format('DD/MM/YYYY') : '—'],
+                    ['Đơn vị ra quyết định công bố', r.announcementOrg || '—'],
+                  ].map(([label, value], i) => (
+                    <div key={i} className="chk-detail-row">
+                      <span className="chk-detail-label">{label}</span>
+                      <span className="chk-detail-value">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ),
         },
@@ -251,7 +253,7 @@ export default function DryPortDetailContent({
         },
         {
           key: 'plan', label: 'Thông tin quy hoạch',
-          children: <DryPortRefTable title="Thông tin quy hoạch" emptyText="Chưa có thông tin quy hoạch" columns={[
+          children: <DryPortRefTable title="Danh sách thông tin quy hoạch" emptyText="Chưa có thông tin quy hoạch" columns={[
             { title: 'Số quyết định quy hoạch', dataIndex: 'planDecisionNo', width: 200 },
             { title: 'Ngày quyết định quy hoạch', dataIndex: 'planDecisionDate', width: 180 },
           ]} />,
@@ -333,15 +335,10 @@ export default function DryPortDetailContent({
               <div className="chk-detail-grid">
                 {([
                   ['Trạng thái', r.approvalStatus && approvalStyleMap[r.approvalStatus] ? <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>{approvalStyleMap[r.approvalStatus].label}</span> : approvalLabel, true],
-                  ['Cán bộ cập nhật', <span key="updBy" style={{ fontWeight: fontWeightBold }}>{userMap.get(r.updatedBy || '') || r.updatedBy || '—'}</span>],
-                  ['Ngày cập nhật', r.updatedAt ? dayjs(r.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '—'],
                   ['Người tạo', <span key="createdBy" style={{ fontWeight: fontWeightBold }}>{userMap.get(r.createdBy || '') || r.createdBy || '—'}</span>],
                   ['Ngày tạo', r.createdAt ? dayjs(r.createdAt).format('DD/MM/YYYY HH:mm:ss') : '—'],
-                  ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span key="apv1" style={{ fontWeight: fontWeightBold }}>{(() => { const v = (r as any).approverLevel1; return v ? (userMap.get(String(v)) || String(v)) : '—'; })()}</span>],
-                  ['Ngày phê duyệt cấp Cảng vụ/Chi cục', (() => { const v = (r as any).approvedDateLevel1; return v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—'; })()],
-                  ['Cán bộ phê duyệt cấp Cục', <span key="apv2" style={{ fontWeight: fontWeightBold }}>{(() => { const v = (r as any).approverLevel2; return v ? (userMap.get(String(v)) || String(v)) : '—'; })()}</span>],
-                  ['Ngày phê duyệt cấp Cục', (() => { const v = (r as any).approvedDateLevel2; return v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—'; })()],
-                  ['Lý do từ chối', (r as any).rejectionReason || '—'],
+                  ['Cán bộ cập nhật', <span key="updBy" style={{ fontWeight: fontWeightBold }}>{userMap.get(r.updatedBy || '') || r.updatedBy || '—'}</span>],
+                  ['Ngày cập nhật', r.updatedAt ? dayjs(r.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '—'],
                 ] as any[]).map(([label, value, fullWidth], i) => (
                   <div key={i} className="chk-detail-row" style={fullWidth ? { gridColumn: '1 / -1' } : undefined}>
                     <span className="chk-detail-label">{label}</span>

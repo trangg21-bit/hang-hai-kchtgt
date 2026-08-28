@@ -138,6 +138,7 @@ export default function BuoyStationDetailContent({
   const [operationOpen, setOperationOpen] = useState(true);
   const [maintenanceOpen, setMaintenanceOpen] = useState(true);
   const [incidentOpen, setIncidentOpen] = useState(true);
+  const [indexOpen, setIndexOpen] = useState(true);
 
   const orgName = (id: string | undefined) => (id ? (orgUnits.find((o) => o.id === id)?.name || id) : '—');
   const userName = (id: string | number | undefined | null) =>
@@ -188,12 +189,18 @@ export default function BuoyStationDetailContent({
                 ['Địa điểm (Tỉnh/Thành Phố)', r.province || '—'],
                 ['Địa điểm chi tiết', r.address || '—'],
                 ['Thời điểm xây dựng', formatDate(r.constructionDate)],
+                ['Tình trạng', (() => { const s = CONDITION_STYLE[r.condition || ''] || { color: textTertiary, label: r.condition || '—' }; return <span style={statusBadgeStyle(s.color)}>{s.label}</span>; })()],
+              ])}
+              {/* ── Toggle: Chỉ số tổng hợp (giống bến phao — BuoyBerthDetailContent) ── */}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setIndexOpen(!indexOpen)}>
+                <span style={{ color: indexOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{indexOpen ? '▼' : '▶'} Chỉ số tổng hợp</span>
+              </button>
+              {indexOpen && gridRows([
                 ['Tổng diện tích (m²)', r.totalArea != null ? r.totalArea : '—'],
                 ['Diện tích sử dụng (m²)', r.usableArea != null ? r.usableArea : '—'],
                 ['Số lượng nhân sự bố trí', r.staffCount != null ? r.staffCount : '—'],
                 ['Năm bảo trì gần nhất', r.lastMaintenanceYear != null ? r.lastMaintenanceYear : '—'],
                 ['Ghi chú', r.note || '—'],
-                ['Tình trạng', (() => { const s = CONDITION_STYLE[r.condition || ''] || { color: textTertiary, label: r.condition || '—' }; return <span style={statusBadgeStyle(s.color)}>{s.label}</span>; })()],
               ])}
             </div>
           ),
