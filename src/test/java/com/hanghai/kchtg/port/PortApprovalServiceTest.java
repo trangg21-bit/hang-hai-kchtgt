@@ -15,6 +15,7 @@ import com.hanghai.kchtg.port.repository.ChangeLogRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.port.service.PortApprovalService;
+import com.hanghai.kchtg.vtssystem.dto.HistoryEntry;
 import com.hanghai.kchtg.port.service.shared.ApprovalWorkflowService;
 import com.hanghai.kchtg.port.service.shared.PortNotificationService;
 import jakarta.persistence.EntityNotFoundException;
@@ -184,25 +185,18 @@ class PortApprovalServiceTest {
         when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SEAPORT, testId))
                 .thenReturn(List.of(changeRow, approvalRow));
 
-        Map<String, Object> result = approvalService.getHistory(testId);
+        List<HistoryEntry> result = approvalService.getHistory(testId);
 
         assertNotNull(result);
-        assertEquals(testId.toString(), result.get("entityId"));
-        assertEquals("Port", result.get("entityType"));
-        assertEquals(ApprovalStatus.PENDING_APPROVAL.name(), result.get("currentApprovalStatus"));
-
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> history = (List<Map<String, Object>>) result.get("changeHistory");
-        assertEquals(1, history.size());
-        assertEquals("portName", history.get(0).get("fieldName"));
-        assertEquals("Cũ", history.get(0).get("oldValue"));
-        assertEquals("Mới", history.get(0).get("newValue"));
-
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> logs = (List<Map<String, Object>>) result.get("approvalLog");
-        assertEquals(1, logs.size());
-        assertEquals(InfrastructureHistoryStatus.APPROVED.name(), logs.get(0).get("decision"));
-        assertEquals(ApprovalLevel.LEVEL_2.name(), logs.get(0).get("cap"));
+        assertEquals(2, result.size());
+        HistoryEntry change = result.stream().filter(e -> "portName".equals(e.getChangedField())).findFirst().orElse(null);
+        assertNotNull(change);
+        assertEquals("Cũ", change.getPreviousValue());
+        assertEquals("Mới", change.getNewValue());
+        HistoryEntry approve = result.stream().filter(e -> e.getChangedField() == null).findFirst().orElse(null);
+        assertNotNull(approve);
+        assertEquals(InfrastructureHistoryStatus.APPROVED.name(), approve.getStatus());
+        assertEquals(ApprovalLevel.LEVEL_2, approve.getApprovalLevel());
     }
 
     @Test
@@ -212,14 +206,9 @@ class PortApprovalServiceTest {
         when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SEAPORT, testId))
                 .thenReturn(List.of());
 
-        Map<String, Object> result = approvalService.getHistory(testId);
-
-        @SuppressWarnings("unchecked")
-        List<?> history = (List<?>) result.get("changeHistory");
-        @SuppressWarnings("unchecked")
-        List<?> logs = (List<?>) result.get("approvalLog");
-        assertTrue(history.isEmpty());
-        assertTrue(logs.isEmpty());
+        List<HistoryEntry> result = approvalService.getHistory(testId);
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
     }
 
     @Test

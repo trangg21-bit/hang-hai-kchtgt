@@ -3,6 +3,7 @@ package com.hanghai.kchtg.radarstation.controller;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.radarstation.dto.*;
+import com.hanghai.kchtg.vtssystem.dto.HistoryEntry;
 import com.hanghai.kchtg.radarstation.service.RadarStationService;
 import com.hanghai.kchtg.user.entity.User;
 import jakarta.validation.Valid;
@@ -11,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -255,14 +257,24 @@ public class RadarStationController {
 
     @PreAuthorize("@auth.check(authentication, 'radarstation:history')")
     @GetMapping("/{id}/history")
-    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
+            @PathVariable UUID id,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "pageSize", required = false) Integer pageSize,
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "fromDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+            @RequestParam(value = "toDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate) {
         try {
-            List<HistoryEntry> history = service.getHistory(id);
+            List<HistoryEntry> history = service.getHistory(id, page, pageSize, keyword, fromDate, toDate);
             return ResponseEntity.ok(ApiResponse.success("Lịch sử phê duyệt thành công", history));
         } catch (Exception e) {
             log.warn("Lỗi khi lấy lịch sử trạm radar id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
+    }
+
+    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(UUID id) {
+        return getHistory(id, null, null, null, null, null);
     }
 
     @PreAuthorize("@auth.check(authentication, 'radarstation:read')")

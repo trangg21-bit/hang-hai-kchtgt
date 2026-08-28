@@ -14,6 +14,7 @@ import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentAttachment;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
 import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentAttachmentRepository;
 import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentRepository;
+import com.hanghai.kchtg.vtssystem.dto.HistoryEntry;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
@@ -36,6 +37,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -359,18 +361,58 @@ public class DikeRevetmentService {
 
     @Transactional(readOnly = true)
     public List<HistoryEntry> getHistory(UUID id) {
-        List<InfrastructureHistory> historyList = approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(
-                InfrastructureType.DIKE_REVETMENT, id);
+        return getHistory(id, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize) {
+        return getHistory(id, page, pageSize, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize, String keyword,
+            LocalDateTime fromDate, LocalDateTime toDate) {
+        List<InfrastructureHistory> historyList;
+        if (page != null && pageSize != null && pageSize > 0) {
+            Pageable pageable = PageRequest.of(page, pageSize);
+            String normalizedKeyword = normalizeSearchKeyword(keyword);
+            if (normalizedKeyword == null && fromDate == null && toDate == null) {
+                historyList = approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+                        InfrastructureType.DIKE_REVETMENT, id, pageable);
+            } else {
+                historyList = approvalHistoryRepo.searchHistory(InfrastructureType.DIKE_REVETMENT, id, normalizedKeyword,
+                        fromDate, toDate, pageable);
+            }
+        } else {
+            historyList = approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+                    InfrastructureType.DIKE_REVETMENT, id);
+        }
+        Map<UUID, String> userNameMap = new HashMap<>();
+        for (InfrastructureHistory h : historyList) {
+            if (h.getApprovedBy() != null) {
+                userNameMap.putIfAbsent(h.getApprovedBy(), userResolverService.resolveName(h.getApprovedBy()));
+            }
+        }
         return historyList.stream().map(h -> HistoryEntry.builder()
                 .id(h.getId())
-                .dikeRevetmentId(h.getRefId())
                 .approvalLevel(h.getApprovalLevel())
-                .status(h.getStatus() != null ? h.getStatus().name() : null)
-                .approver(h.getApprovedBy() != null ? userResolverService.resolveName(h.getApprovedBy()) : null)
-                .approvalDate(h.getApprovedDate() != null ? h.getApprovedDate().toLocalDate() : null)
+                .status(h.getStatus() != null ? h.getStatus().getCode() : null)
+                .approvedBy(h.getApprovedBy() != null ? userNameMap.get(h.getApprovedBy()) : null)
+                .orgUnitName(null)
+                .approvedDate(h.getApprovedDate())
                 .reason(h.getReason())
+                .changedField(h.getChangedField())
+                .previousValue(h.getPreviousValue())
+                .newValue(h.getNewValue())
                 .build())
                 .toList();
+    }
+
+    private static String normalizeSearchKeyword(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) return null;
+        return Normalizer.normalize(keyword.trim().toLowerCase(java.util.Locale.ROOT), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('đ', 'd');
     }
 
     private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {

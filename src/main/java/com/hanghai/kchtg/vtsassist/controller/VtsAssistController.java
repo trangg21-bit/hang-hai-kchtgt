@@ -3,6 +3,9 @@ package com.hanghai.kchtg.vtsassist.controller;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.time.LocalDateTime;
+import com.hanghai.kchtg.vtssystem.dto.HistoryEntry;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.common.dto.SubmitContentRequest;
@@ -157,11 +160,20 @@ public class VtsAssistController {
 
   @GetMapping("/{id}/history")
   @PreAuthorize("@auth.check(authentication, 'vtsassist:history')")
-  public ResponseEntity<ApiResponse<Map<String, Object>>> getHistory(
-    @PathVariable UUID id) {
+  public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
+    @PathVariable UUID id,
+    @RequestParam(value = "page", required = false) Integer page,
+    @RequestParam(value = "pageSize", required = false) Integer pageSize,
+    @RequestParam(value = "keyword", required = false) String keyword,
+    @RequestParam(value = "fromDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+    @RequestParam(value = "toDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate) {
     log.info("Getting VTS Assist history: id={}", id);
-    Map<String, Object> history = vtsAssistApprovalService.getHistory(id);
+    List<HistoryEntry> history = vtsAssistApprovalService.getHistory(id, page, pageSize, keyword, fromDate, toDate);
     return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử hệ thống phụ trợ VTS thành công", history));
+  }
+
+  public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(UUID id) {
+    return getHistory(id, null, null, null, null, null);
   }
 
   @GetMapping("/history/all")

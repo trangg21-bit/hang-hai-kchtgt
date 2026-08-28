@@ -8,6 +8,7 @@ import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.port.controller.PortController;
 import com.hanghai.kchtg.port.dto.port.PortResponse;
 import com.hanghai.kchtg.port.service.PortApprovalService;
+import com.hanghai.kchtg.vtssystem.dto.HistoryEntry;
 import com.hanghai.kchtg.port.service.PortService;
 import com.hanghai.kchtg.security.JwtUtil;
 import com.hanghai.kchtg.security.service.JwtSessionService;
@@ -314,10 +315,7 @@ class PortControllerTest {
     @DisplayName("GET /api/v1/ports/{id}/history — returns 200 with history map")
     void getHistory_returns200() throws Exception {
         UUID id = UUID.randomUUID();
-        when(portApprovalService.getHistory(id))
-                .thenReturn(Map.of("entityId", id.toString(), "changeHistory", List.of(),
-                        "approvalLog", List.of(), "currentApprovalStatus", "PENDING",
-                        "entityType", "Port"));
+        when(portApprovalService.getHistory(id)).thenReturn(List.of());
 
         mockMvc.perform(get("/api/v1/ports/{id}/history", id))
                 .andExpect(status().isOk())

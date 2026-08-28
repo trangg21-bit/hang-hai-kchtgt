@@ -109,6 +109,30 @@ public class BeaconStation extends BaseEntity {
     @Column(name = "rejection_reason", length = 500)
     private String rejectionReason;
 
+    @Column(name = "submitted_by")
+    private java.util.UUID submittedBy;
+
+    @Column(name = "submitted_at")
+    private java.time.LocalDateTime submittedAt;
+
+    @Column(name = "approver_level1")
+    private java.util.UUID approverLevel1;
+
+    @Column(name = "approved_date_level1")
+    private java.time.LocalDateTime approvedDateLevel1;
+
+    @Column(name = "approval_content_level1", length = 500)
+    private String approvalContentLevel1;
+
+    @Column(name = "approver_level2")
+    private java.util.UUID approverLevel2;
+
+    @Column(name = "approved_date_level2")
+    private java.time.LocalDateTime approvedDateLevel2;
+
+    @Column(name = "approval_content_level2", length = 500)
+    private String approvalContentLevel2;
+
     @Column(name = "spatial_id")
     private java.util.UUID spatialId;
 

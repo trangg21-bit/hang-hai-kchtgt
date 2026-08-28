@@ -26,10 +26,12 @@ import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
+import com.hanghai.kchtg.vtssystem.dto.HistoryEntry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -40,6 +42,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.text.Normalizer;
 
 @Service
 @RequiredArgsConstructor
@@ -416,8 +419,32 @@ public class RadarStationService {
 
     @Transactional(readOnly = true)
     public List<HistoryEntry> getHistory(UUID radarStationId) {
-        List<InfrastructureHistory> historyList = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
-                InfrastructureType.RADAR_STATION, radarStationId);
+        return getHistory(radarStationId, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<HistoryEntry> getHistory(UUID radarStationId, Integer page, Integer pageSize) {
+        return getHistory(radarStationId, page, pageSize, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<HistoryEntry> getHistory(UUID radarStationId, Integer page, Integer pageSize, String keyword,
+            LocalDateTime fromDate, LocalDateTime toDate) {
+        List<InfrastructureHistory> historyList;
+        if (page != null && pageSize != null && pageSize > 0) {
+            Pageable pageable = PageRequest.of(page, pageSize);
+            String normalizedKeyword = normalizeSearchKeyword(keyword);
+            if (normalizedKeyword == null && fromDate == null && toDate == null) {
+                historyList = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+                        InfrastructureType.RADAR_STATION, radarStationId, pageable);
+            } else {
+                historyList = historyRepository.searchHistory(InfrastructureType.RADAR_STATION, radarStationId, normalizedKeyword,
+                        fromDate, toDate, pageable);
+            }
+        } else {
+            historyList = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+                    InfrastructureType.RADAR_STATION, radarStationId);
+        }
         Set<UUID> userIds = historyList.stream()
                 .map(InfrastructureHistory::getApprovedBy)
                 .filter(Objects::nonNull)
@@ -429,9 +456,20 @@ public class RadarStationService {
                 .approvalLevel(h.getApprovalLevel())
                 .status(h.getStatus() != null ? h.getStatus().getCode() : null)
                 .approvedBy(h.getApprovedBy() != null ? userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : null)
+                .orgUnitName(null)
                 .approvedDate(h.getApprovedDate())
                 .reason(h.getReason())
+                .changedField(h.getChangedField())
+                .previousValue(h.getPreviousValue())
+                .newValue(h.getNewValue())
                 .build()).toList();
+    }
+
+    private static String normalizeSearchKeyword(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) return null;
+        return Normalizer.normalize(keyword.trim().toLowerCase(java.util.Locale.ROOT), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('đ', 'd');
     }
 
     private Map<UUID, String> resolveUserNames(Collection<UUID> userIds) {

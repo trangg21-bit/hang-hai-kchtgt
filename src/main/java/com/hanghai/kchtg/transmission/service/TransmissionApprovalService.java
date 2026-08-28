@@ -20,10 +20,21 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.text.Normalizer;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import com.hanghai.kchtg.vtssystem.dto.HistoryEntry;
 
 /**
  * Approval service for transmission entity.
@@ -100,30 +111,81 @@ public class TransmissionApprovalService {
     }
   }
 
-  public Map<String, Object> getHistory(UUID id) {
-    // Tạm thời trả null sạch theo yêu cầu — bảng change_logs chưa tồn tại trong DB (chờ fix gốc).
-    // Không chạy query để tránh log lỗi SQL từ Hibernate.
-    return null;
+  public List<HistoryEntry> getHistory(UUID id) {
+    return getHistory(id, null, null);
   }
 
-  private Map<String, Object> toApprovalHistoryView(InfrastructureHistory h) {
-    Map<String, Object> m = new HashMap<>();
-    m.put("id", h.getId());
-    m.put("approvalLevel", h.getApprovalLevel() != null ? h.getApprovalLevel().name() : null);
-    m.put("status", h.getStatus() != null ? h.getStatus().name() : null);
-    m.put("approvedBy", h.getApprovedBy());
-    m.put("approvedByName", resolveUserName(h.getApprovedBy()));
-    m.put("approvedDate", h.getApprovedDate());
-    m.put("reason", h.getReason());
-    m.put("changedField", h.getChangedField());
-    m.put("previousValue", h.getPreviousValue());
-    m.put("newValue", h.getNewValue());
-    return m;
+  public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize) {
+    return getHistory(id, page, pageSize, null, null, null);
   }
 
-  private String resolveUserName(UUID userId) {
-    if (userId == null) return null;
-    return userRepository.findById(userId).map(this::formatUserIdentity).orElse(null);
+  public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize, String keyword,
+      LocalDateTime fromDate, LocalDateTime toDate) {
+    ensureExists(id);
+    List<InfrastructureHistory> list;
+    if (page != null && pageSize != null && pageSize > 0) {
+      Pageable pageable = PageRequest.of(page, pageSize);
+      String normalizedKeyword = normalizeSearchKeyword(keyword);
+      if (normalizedKeyword == null && fromDate == null && toDate == null) {
+        list = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+            InfrastructureType.TRANSMISSION, id, pageable);
+      } else {
+        list = historyRepository.searchHistory(InfrastructureType.TRANSMISSION, id, normalizedKeyword,
+            fromDate, toDate, pageable);
+      }
+    } else {
+      list = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.TRANSMISSION, id);
+    }
+    Set<UUID> userIds = list.stream()
+        .map(InfrastructureHistory::getApprovedBy)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toSet());
+    Map<UUID, User> userMap = resolveUsers(userIds);
+    Map<UUID, String> userNameMap = new HashMap<>();
+    userMap.forEach((userId, user) -> userNameMap.put(userId, formatUserIdentity(user)));
+
+    return list.stream()
+        .map(h -> HistoryEntry.builder()
+            .id(h.getId())
+            .approvalLevel(h.getApprovalLevel())
+            .status(h.getStatus() != null ? h.getStatus().getCode() : null)
+            .approvedBy(h.getApprovedBy() != null ? userNameMap.get(h.getApprovedBy()) : null)
+            .orgUnitName(h.getApprovedBy() != null && userMap.get(h.getApprovedBy()) != null
+                && userMap.get(h.getApprovedBy()).getOrgUnit() != null
+                    ? userMap.get(h.getApprovedBy()).getOrgUnit().getName()
+                    : null)
+            .approvedDate(h.getApprovedDate())
+            .reason(h.getReason())
+            .changedField(h.getChangedField())
+            .previousValue(h.getPreviousValue())
+            .newValue(h.getNewValue())
+            .build())
+        .collect(Collectors.toList());
+  }
+
+  private void ensureExists(UUID id) {
+    if (!transmissionRepository.existsById(id)) {
+      throw new EntityNotFoundException("Không tìm thấy hệ thống truyền dẫn với id: " + id);
+    }
+  }
+
+  private static String normalizeSearchKeyword(String keyword) {
+    if (keyword == null || keyword.trim().isEmpty()) {
+      return null;
+    }
+    return Normalizer.normalize(keyword.trim().toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
+        .replaceAll("\\p{M}+", "")
+        .replace('đ', 'd');
+  }
+
+  private Map<UUID, User> resolveUsers(Collection<UUID> userIds) {
+    if (userIds == null || userIds.isEmpty())
+      return Collections.emptyMap();
+    Set<UUID> nonNullIds = userIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+    if (nonNullIds.isEmpty())
+      return Collections.emptyMap();
+    return userRepository.findAllByIdInWithOrgUnit(nonNullIds).stream()
+        .collect(Collectors.toMap(User::getId, user -> user, (first, second) -> first));
   }
 
   private String formatUserIdentity(User user) {

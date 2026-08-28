@@ -40,6 +40,17 @@ public class BeaconStationResponse {
     private UUID approvedBy;
     private LocalDateTime approvedDate;
     private String rejectionReason;
+    private UUID submittedBy;
+    private LocalDateTime submittedAt;
+    private String submittedByName;
+    private UUID approverLevel1;
+    private String approverLevel1Name;
+    private LocalDateTime approvedDateLevel1;
+    private String approvalContentLevel1;
+    private UUID approverLevel2;
+    private String approverLevel2Name;
+    private LocalDateTime approvedDateLevel2;
+    private String approvalContentLevel2;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private UUID updatedBy;

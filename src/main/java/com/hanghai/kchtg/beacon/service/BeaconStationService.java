@@ -30,6 +30,7 @@ import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.user.entity.User;
 import org.springframework.security.access.AccessDeniedException;
 import jakarta.persistence.EntityNotFoundException;
@@ -63,6 +64,7 @@ public class BeaconStationService {
     private final OrgUnitCacheService orgUnitCacheService;
     private final OrgUnitScopeService orgUnitScopeService;
     private final AttachmentRepository attachmentRepository;
+    private final UserResolverService userResolverService;
 
     @Value("${app.upload.attachment-path:uploads/attachments}")
     private String attachmentPath;
@@ -414,13 +416,15 @@ public class BeaconStationService {
         entity.setStatus("PENDING_APPROVAL");
         entity.setApprovalStatus(ApprovalStatus.PROPOSED);
         entity.setApprovalLevel(1);
+        entity.setSubmittedBy(SecurityUtils.getCurrentUserId());
+        entity.setSubmittedAt(LocalDateTime.now());
         beaconStationRepo.save(entity);
 
         notificationService.sendApprovalNotification(entity);
     }
 
     @Transactional
-    public BeaconStationResponse approveL1(UUID id, java.util.UUID approverId) {
+    public BeaconStationResponse approveL1(UUID id, java.util.UUID approverId, String note) {
         BeaconStation entity = beaconStationRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Đèn biển không tìm thấy: " + id));
@@ -436,13 +440,45 @@ public class BeaconStationService {
                     "Bạn không thể phê duyệt bản do chính mình gửi");
         }
 
-        entity.setStatus("APPROVED");
-        entity.setApprovalStatus(ApprovalStatus.APPROVED);
-        entity.setApprovedBy(approverId);
-        entity.setApprovedDate(LocalDateTime.now());
+        entity.setStatus("APPROVED_LEVEL1");
+        entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+        entity.setApprovalLevel(1);
+        entity.setApproverLevel1(approverId);
+        entity.setApprovedDateLevel1(LocalDateTime.now());
+        entity.setApprovalContentLevel1(note);
         beaconStationRepo.save(entity);
 
         logHistory(entity, BeaconHistoryActionType.APPROVE_L1, null, null, null);
+
+        return toResponse(entity);
+    }
+
+    @Transactional
+    public BeaconStationResponse approveL2(UUID id, java.util.UUID approverId, String note) {
+        BeaconStation entity = beaconStationRepo.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Đèn biển không tìm thấy: " + id));
+
+        if (!"APPROVED_LEVEL1".equals(entity.getStatus())) {
+            throw new IllegalStateException(
+                    "Không ở trạng thái chờ phê duyệt L2");
+        }
+
+        java.util.UUID creatorId = resolveCreatedBy(entity);
+        if (creatorId != null && creatorId.equals(approverId)) {
+            throw new IllegalStateException(
+                    "Bạn không thể phê duyệt bản do chính mình gửi");
+        }
+
+        entity.setStatus("APPROVED");
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        entity.setApprovalLevel(2);
+        entity.setApproverLevel2(approverId);
+        entity.setApprovedDateLevel2(LocalDateTime.now());
+        entity.setApprovalContentLevel2(note);
+        beaconStationRepo.save(entity);
+
+        logHistory(entity, BeaconHistoryActionType.APPROVE_L2, null, null, null);
 
         return toResponse(entity);
     }
@@ -458,8 +494,9 @@ public class BeaconStationService {
                     "Lý do từ chối phải có ít nhất 10 ký tự");
         }
 
+        boolean atLevel2 = "APPROVED_LEVEL1".equals(entity.getStatus());
         entity.setStatus("DRAFT");
-        entity.setApprovalStatus(ApprovalStatus.REJECTED);
+        entity.setApprovalStatus(atLevel2 ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
         entity.setRejectionReason(rejectReason);
         beaconStationRepo.save(entity);
 
@@ -618,6 +655,17 @@ public class BeaconStationService {
                 .approvedBy(entity.getApprovedBy())
                 .approvedDate(entity.getApprovedDate())
                 .rejectionReason(entity.getRejectionReason())
+                .submittedBy(entity.getSubmittedBy())
+                .submittedAt(entity.getSubmittedAt())
+                .submittedByName(userResolverService.resolveName(entity.getSubmittedBy()))
+                .approverLevel1(entity.getApproverLevel1())
+                .approverLevel1Name(userResolverService.resolveName(entity.getApproverLevel1()))
+                .approvedDateLevel1(entity.getApprovedDateLevel1())
+                .approvalContentLevel1(entity.getApprovalContentLevel1())
+                .approverLevel2(entity.getApproverLevel2())
+                .approverLevel2Name(userResolverService.resolveName(entity.getApproverLevel2()))
+                .approvedDateLevel2(entity.getApprovedDateLevel2())
+                .approvalContentLevel2(entity.getApprovalContentLevel2())
                 .shape(entity.getShape())
                 .structure(entity.getStructure())
                 .towerHeight(entity.getTowerHeight())

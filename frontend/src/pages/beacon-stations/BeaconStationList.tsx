@@ -9,6 +9,7 @@ import {
   Radio,
   Space,
   Typography,
+  Checkbox,
   Form,
   DatePicker,
   Row,
@@ -90,6 +91,7 @@ import {
   radiusSm,
   radiusMd,
   radiusPill,
+  fontSizeLg,
   surfaceCard,
   borderDefault,
   spaceXs,
@@ -111,7 +113,6 @@ import {
   filterLabelStyle,
   filterInputStyle,
   confirmModalBodyStyle,
-  rejectReasonStyle,
   detailRowStyle,
   detailLabelColStyle,
   detailValueStyle,
@@ -162,6 +163,8 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 const historyFieldName = (fn: string): string => FIELD_LABELS[fn] || fn;
+
+const pillStyle = { borderRadius: radiusPill, height: 40 };
 
 // ── Constants ────────────────────────────────────────────────────────
 
@@ -342,7 +345,9 @@ export default function BeaconStationList() {
   const [approvingRecord, setApprovingRecord] = useState<BeaconStation | null>(null);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectingRecord, setRejectingRecord] = useState<BeaconStation | null>(null);
-  const [rejectReason, setRejectReason] = useState('');
+  const [rejectForm] = Form.useForm();
+  const [rejectLoading, setRejectLoading] = useState(false);
+  const [approveNote, setApproveNote] = useState('');
 
   // ── History state ────────────────────────────────────────────────
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -626,37 +631,50 @@ export default function BeaconStationList() {
   }, [submittingRecord, fetchData, fetchCounts, closeDrawer]);
 
   // ── Approve L1 / L2 ─────────────────────────────────────────────
-  const openApproveModal = useCallback((record: BeaconStation) => { setApprovingRecord(record); setApproveModalOpen(true); }, []);
+  const openApproveModal = useCallback((record: BeaconStation) => { setApprovingRecord(record); setApproveNote(''); setApproveModalOpen(true); }, []);
 
   const confirmApprove = useCallback(async () => {
     if (!approvingRecord) return;
     const approverId = useAuthStore.getState().user?.userId || 'system';
+    const isL2 = approvingRecord.status === 'APPROVED_LEVEL1';
     try {
-      await approval.approveL1(approvingRecord.id, approverId);
+      if (isL2) {
+        await approval.approveL2(approvingRecord.id, approverId, approveNote || undefined);
+      } else {
+        await approval.approveL1(approvingRecord.id, approverId, approveNote || undefined);
+      }
       toast.success('Đã phê duyệt');
-      setApproveModalOpen(false); setApprovingRecord(null); closeDrawer();
-      void fetchData(); void fetchCounts();
+      setApproveModalOpen(false); setApprovingRecord(null); setApproveNote('');
+      closeDrawer(); void fetchData(); void fetchCounts();
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại'); }
-  }, [approvingRecord, fetchData, fetchCounts, closeDrawer]);
+  }, [approvingRecord, approveNote, fetchData, fetchCounts, closeDrawer]);
 
   // ── Reject ──────────────────────────────────────────────────────
   const openRejectModal = useCallback((record: BeaconStation) => {
-    setRejectingRecord(record); setRejectReason(''); setRejectModalOpen(true);
+    setRejectingRecord(record); setRejectModalOpen(true);
   }, []);
 
-  const confirmReject = useCallback(async () => {
+  const handleReject = useCallback(async () => {
     if (!rejectingRecord) return;
-    const reason = rejectReason.trim();
-    if (!reason) { toast.error('Vui lòng nhập lý do từ chối'); return; }
-    if (reason.length < 10) { toast.error('Lý do từ chối tối thiểu 10 ký tự'); return; }
-    if (reason.length > 500) { toast.error('Lý do từ chối tối đa 500 ký tự'); return; }
+    let reason: string;
     try {
-      await approval.reject(rejectingRecord.id, reason, useAuthStore.getState().user?.userId || 'system');
+      ({ reason } = await rejectForm.validateFields());
+    } catch {
+      return; // Form rules đã hiển thị lỗi inline
+    }
+    setRejectLoading(true);
+    try {
+      await approval.reject(rejectingRecord.id, String(reason || '').trim(), useAuthStore.getState().user?.userId || 'system');
       toast.success('Đã từ chối phê duyệt');
-      setRejectModalOpen(false); setRejectingRecord(null); setRejectReason('');
+      setRejectModalOpen(false); setRejectingRecord(null);
+      rejectForm.resetFields();
       closeDrawer(); void fetchData(); void fetchCounts();
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Từ chối thất bại'); }
-  }, [rejectingRecord, rejectReason, fetchData, fetchCounts, closeDrawer]);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Từ chối thất bại');
+    } finally {
+      setRejectLoading(false);
+    }
+  }, [rejectingRecord, rejectForm, fetchData, fetchCounts, closeDrawer]);
 
   // ── Submit form (create / update) ───────────────────────────────
   const handleSubmit = useCallback(async () => {
@@ -758,6 +776,10 @@ export default function BeaconStationList() {
       actions.push({ key: 'approve', label: 'Phê duyệt', icon: <CheckCircleOutlined />, onClick: () => openApproveModal(record) });
       actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, danger: true, onClick: () => openRejectModal(record) });
     }
+    if (st === 'APPROVED_LEVEL1') {
+      actions.push({ key: 'approve-c2', label: 'Phê duyệt', icon: <CheckCircleOutlined />, onClick: () => openApproveModal(record) });
+      actions.push({ key: 'reject-c2', label: 'Từ chối', icon: <CloseCircleOutlined />, danger: true, onClick: () => openRejectModal(record) });
+    }
     actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistory(record) });
     if (st === 'DRAFT' || st === 'REJECTED') {
       actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => openDeleteConfirm(record) });
@@ -826,6 +848,18 @@ export default function BeaconStationList() {
         const s = BEACON_STATUS_STYLE_MAP[status] || { color: textTertiary, label: status || '—' };
         return <span style={{ ...badgeBaseStyle, fontSize: fontSizeMd, padding: '2px 10px', display: 'inline-flex', background: `${s.color}15`, color: s.color }}>{s.label}</span>;
       },
+    },
+    {
+      key: 'submittedByName', label: 'Cán bộ gửi phê duyệt', dataIndex: 'submittedByName', width: 170,
+      render: (v: string, r: any) => <span>{v || '—'}{r.submittedAt ? ' · ' + formatDate(r.submittedAt) : ''}</span>,
+    },
+    {
+      key: 'approverLevel1Name', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'approverLevel1Name', width: 190,
+      render: (v: string, r: any) => <span>{v || '—'}{r.approvedDateLevel1 ? ' · ' + formatDate(r.approvedDateLevel1) : ''}</span>,
+    },
+    {
+      key: 'approverLevel2Name', label: 'Cán bộ phê duyệt cấp Cục', dataIndex: 'approverLevel2Name', width: 170,
+      render: (v: string, r: any) => <span>{v || '—'}{r.approvedDateLevel2 ? ' · ' + formatDate(r.approvedDateLevel2) : ''}</span>,
     },
   ], [page, pageSize, openDetailDrawer, seaports]);
 
@@ -1049,14 +1083,14 @@ export default function BeaconStationList() {
   // Tab 6 — Thông tin log cập nhật (read-only)
   const detailLogRows: DetailRow[] = detailRecord
     ? [
-        { label: 'Ngày gửi duyệt', value: '—' },
-        { label: 'Cán bộ gửi duyệt', value: '—' },
-        { label: 'Ngày phê duyệt Cảng vụ', value: '—' },
-        { label: 'Cán bộ phê duyệt Cảng vụ', value: '—' },
-        { label: 'Nội dung Cảng vụ/Chi cục phê duyệt', value: '—', span: true },
-        { label: 'Ngày phê duyệt Chi cục', value: '—' },
-        { label: 'Cán bộ phê duyệt Chi cục', value: '—' },
-        { label: 'Nội dung Cục phê duyệt', value: '—', span: true },
+        { label: 'Ngày gửi phê duyệt', value: formatDate(detailRecord.submittedAt) },
+        { label: 'Cán bộ gửi phê duyệt', value: detailRecord.submittedByName || '—' },
+        { label: 'Nội dung phê duyệt', value: detailRecord.approvalContentLevel1 || '—', span: true },
+        { label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', value: formatDate(detailRecord.approvedDateLevel1) },
+        { label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: detailRecord.approverLevel1Name || '—' },
+        { label: 'Nội dung phê duyệt', value: detailRecord.approvalContentLevel2 || '—', span: true },
+        { label: 'Ngày phê duyệt cấp Cục', value: formatDate(detailRecord.approvedDateLevel2) },
+        { label: 'Cán bộ phê duyệt cấp Cục', value: detailRecord.approverLevel2Name || '—' },
         {
           label: 'Trạng thái',
           value: (() => {
@@ -1704,29 +1738,59 @@ export default function BeaconStationList() {
           <p>
             Phê duyệt <strong>{approvingRecord?.name}</strong>?
           </p>
+          <Input.TextArea placeholder="Nội dung phê duyệt (không bắt buộc)..." value={approveNote}
+            onChange={(e) => setApproveNote(e.target.value)} rows={2} maxLength={500} showCount
+            style={{ marginTop: spaceFormField }} />
         </div>
       </Modal>
 
       {/* ── Reject Modal ─────────────────────────────────────────── */}
       <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Từ chối phê duyệt</span>}
+        title={
+          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>
+            Từ chối phê duyệt
+          </span>
+        }
         open={rejectModalOpen}
-        onCancel={() => { setRejectModalOpen(false); setRejectingRecord(null); setRejectReason(''); }}
-        footer={[
-          <Button key="cancel" onClick={() => { setRejectModalOpen(false); setRejectingRecord(null); setRejectReason(''); }}
-            style={outlineButtonStyle}>Hủy</Button>,
-          <Button key="reject" type="primary" danger onClick={confirmReject} style={dangerButtonStyle}>Xác nhận từ chối</Button>,
-        ]}
+        onCancel={() => { setRejectModalOpen(false); setRejectingRecord(null); rejectForm.resetFields(); }}
+        footer={null}
         width={480}
       >
-        <div style={confirmModalBodyStyle}>
-          <p style={{ marginBottom: spaceFormField }}>
-            Vui lòng nhập lý do từ chối cho <strong>{rejectingRecord?.name}</strong>:
-          </p>
-          <Input.TextArea placeholder="Nhập lý do từ chối (tối thiểu 10, tối đa 500 ký tự)..." value={rejectReason}
-            onChange={(e) => setRejectReason(e.target.value)} rows={3} maxLength={500} showCount
-            style={rejectReasonStyle} />
-        </div>
+        <Form form={rejectForm} layout="vertical">
+          <Form.Item
+            name="reason"
+            label="Lý do từ chối"
+            rules={[
+              { required: true, message: 'Lý do từ chối không được để trống' },
+              { min: 10, message: 'Lý do từ chối tối thiểu 10 ký tự' },
+              { max: 500, message: 'Lý do từ chối tối đa 500 ký tự' },
+            ]}
+          >
+            <Input.TextArea rows={4} placeholder="Nhập lý do từ chối..." style={{ borderRadius: radiusPill }} />
+          </Form.Item>
+          <Form.Item
+            name="confirmed"
+            valuePropName="checked"
+            rules={[{ required: true, message: 'Bạn cần xác nhận hành động này' }]}
+          >
+            <Checkbox>
+              <Typography.Text style={{ color: statusCritical }}>
+                Tôi xác nhận từ chối đèn biển này
+              </Typography.Text>
+            </Checkbox>
+          </Form.Item>
+          <div style={{ textAlign: 'right', marginTop: spaceMd }}>
+            <Button
+              onClick={() => { setRejectModalOpen(false); setRejectingRecord(null); rejectForm.resetFields(); }}
+              style={{ borderRadius: radiusPill, height: 40, marginRight: spaceSm }}
+            >
+              Hủy
+            </Button>
+            <Button type="primary" danger loading={rejectLoading} onClick={handleReject} style={pillStyle}>
+              Từ chối
+            </Button>
+          </div>
+        </Form>
       </Modal>
 
       {/* ── History Modal ────────────────────────────────────────── */}

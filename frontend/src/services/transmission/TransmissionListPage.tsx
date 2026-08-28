@@ -687,6 +687,13 @@ const TransmissionListPage = () => {
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [historyEntityName, setHistoryEntityName] = useState('');
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
+  const [hasMoreHistory, setHasMoreHistory] = useState(true);
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyDateFrom, setHistoryDateFrom] = useState<string>('');
+  const [historyDateTo, setHistoryDateTo] = useState<string>('');
+  const [historyPage, setHistoryPage] = useState(0);
+  const [historyReloadToken, setHistoryReloadToken] = useState(0);
 
   // ── History map helpers ────────────────────────────────────────
   const symbolMap = useMemo(() => {
@@ -1006,6 +1013,110 @@ const TransmissionListPage = () => {
     return val;
   }
 
+  const HISTORY_PAGE_SIZE = 20;
+
+  const historyTimestamp = (item: any): string =>
+    item.approvedDate || item.changedAt || item.createdAt || '';
+
+  const historyField = (item: any): string =>
+    item.changedField || item.fieldName || '';
+
+  const historyOldValue = (item: any): string | null =>
+    item.previousValue ?? item.oldValue ?? null;
+
+  const historyNewValue = (item: any): string | null =>
+    item.newValue ?? null;
+
+  const historyActor = (item: any): string => {
+    const raw = item?.approvedBy || item?.changedBy || '';
+    return raw || '—';
+  };
+
+  const resolveHistoryActionMeta = (item: any): { label: string; color: string } => {
+    const rawStatus = String(item?.status ?? item?.action ?? '').toUpperCase();
+    const rawReason = String(item?.reason ?? '').toLowerCase();
+    const rawField = String(item?.changedField ?? item?.fieldName ?? '').toLowerCase();
+    if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
+      return { label: 'Thêm mới', color: statusOperational };
+    }
+    if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || (rawField.includes('đính kèm') && rawReason.includes('tải'))) {
+      return { label: 'Tải lên tệp', color: '#0284c7' };
+    }
+    if (rawStatus === 'ATTACHMENT_DELETED' || rawReason.includes('xóa tài liệu') || rawReason.includes('xoa tai lieu') || rawReason.includes('xóa tệp')) {
+      return { label: 'Xóa tệp', color: '#ea580c' };
+    }
+    if (rawStatus === 'APPROVED' || rawStatus === 'APPROVED_LEVEL2') {
+      return { label: 'Phê duyệt', color: statusOperational };
+    }
+    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT') {
+      return { label: 'Từ chối', color: '#E34948' };
+    }
+    if (rawStatus === 'PROPOSED' || rawStatus === 'PENDING_APPROVAL' || rawReason.includes('gửi phê duyệt') || rawReason.includes('gui phe duyet')) {
+      return { label: 'Gửi phê duyệt', color: '#EDA100' };
+    }
+    return { label: 'Chỉnh sửa', color: actionPrimary };
+  };
+
+  useEffect(() => {
+    if (!historyModalVisible || !selectedRecord) return;
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setLoadingHistory(true);
+      setLoadingMoreHistory(false);
+      setHasMoreHistory(true);
+      setHistoryRecords([]);
+      setHistoryPage(0);
+      try {
+        const history = await fetchTransmissionHistory(selectedRecord.id, 0, HISTORY_PAGE_SIZE, {
+          keyword: historySearch,
+          fromDate: historyDateFrom,
+          toDate: historyDateTo,
+        });
+        if (cancelled) return;
+        const items = history || [];
+        setHistoryRecords(items);
+        setHasMoreHistory(items.length === HISTORY_PAGE_SIZE);
+      } catch {
+        if (!cancelled) toast.error('Không thể tải lịch sử');
+      } finally {
+        if (!cancelled) setLoadingHistory(false);
+      }
+    }, historySearch.trim() ? 300 : 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [historyModalVisible, selectedRecord?.id, historySearch, historyDateFrom, historyDateTo, historyReloadToken]);
+
+  const loadMoreHistory = async () => {
+    if (!selectedRecord || loadingHistory || loadingMoreHistory || !hasMoreHistory) return;
+    setLoadingMoreHistory(true);
+    try {
+      const nextPage = historyPage + 1;
+      const history = await fetchTransmissionHistory(selectedRecord.id, nextPage, HISTORY_PAGE_SIZE, {
+        keyword: historySearch,
+        fromDate: historyDateFrom,
+        toDate: historyDateTo,
+      });
+      if (history && history.length > 0) {
+        setHistoryRecords((prev) => [...prev, ...history]);
+      }
+      setHistoryPage(nextPage);
+      setHasMoreHistory((history || []).length === HISTORY_PAGE_SIZE);
+    } catch {
+      /* ignore */
+    } finally {
+      setLoadingMoreHistory(false);
+    }
+  };
+
+  const handleHistoryScroll = (e: any) => {
+    const el = e.currentTarget;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) {
+      loadMoreHistory();
+    }
+  };
+
   const HISTORY_FIELD_ORDER = [
     'orgUnitId', 'deviceCode', 'deviceName', 'manufacturer', 'model',
     'quantity', 'operatingUnitId', 'provinceName', 'detailedLocation',
@@ -1021,18 +1132,18 @@ const TransmissionListPage = () => {
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
     const sorted = [...records].sort(
       (a: any, b: any) =>
-        new Date(b.changedAt || b.createdAt).getTime() -
-        new Date(a.changedAt || a.createdAt).getTime()
+        new Date(historyTimestamp(b) || 0).getTime() -
+        new Date(historyTimestamp(a) || 0).getTime()
     );
-    const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
+    const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
 
     for (const r of sorted) {
-      const ts = r.changedAt || r.createdAt || '';
+      const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
       const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === (r.changedBy || ''))
+      if (prev && prev.tsSec === sec && prev.actor === historyActor(r) && prev.status === r.status && prev.approvalLevel === r.approvalLevel)
         prev.items.push(r);
-      else groups.push({ tsSec: sec, ts, actor: r.changedBy || '', items: [r] });
+      else groups.push({ tsSec: sec, ts, actor: historyActor(r), status: r.status, approvalLevel: r.approvalLevel, items: [r] });
     }
 
     if (groups.length === 0)
@@ -1055,14 +1166,18 @@ const TransmissionListPage = () => {
           const orgId = rec0.orgUnitId || selectedRecord?.orgUnitId;
           const orgName = orgId ? orgMap.get(orgId) : undefined;
           const unitName =
-            (orgName ? orgName.split(' - ').pop() || orgName : rec0.orgUnitName || rec0.unitName || selectedRecord?.orgUnitName) ||
+            rec0.orgUnitName ||
+            (orgName ? orgName.split(' - ').pop() || orgName : undefined) ||
+            rec0.unitName ||
+            selectedRecord?.orgUnitName ||
             '—';
           const barColor = actionPrimary;
           const changes = g.items.map((item: any) => ({
-            field: item.fieldName || '—',
-            oldValue: item.oldValue ?? null,
-            newValue: item.newValue ?? null,
+            field: historyField(item) || '—',
+            oldValue: historyOldValue(item),
+            newValue: historyNewValue(item),
           }));
+          const actionMeta = resolveHistoryActionMeta(g.items[0] || {});
           const isCreate = changes.every(
             (c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === ''
           );
@@ -1106,8 +1221,7 @@ const TransmissionListPage = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
                   <Typography.Text style={historyTimeStyle}>{g.ts ? fmtTime(g.ts) : '—'}</Typography.Text>
                   <span style={{ flexShrink: 0 }}>
-                    {isCreate && <span style={historyBadgeStyle(statusOperational)}>Thêm mới</span>}
-                    {!isCreate && <span style={historyBadgeStyle(actionPrimary)}>Chỉnh sửa</span>}
+                    <span style={historyBadgeStyle(actionMeta.color)}>{actionMeta.label}</span>
                   </span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
@@ -1218,16 +1332,17 @@ const TransmissionListPage = () => {
           label: "Lịch sử",
           icon: <HistoryOutlined />,
           onClick: () => {
+            setSelectedRecord(record);
             setHistoryEntityName(record.deviceName || '');
             setHistoryModalVisible(true);
             setHistoryRecords([]);
-            setLoadingHistory(true);
-            fetchTransmissionHistory(record.id, { page: 0, size: 200 })
-              .then((d: any) => {
-                setHistoryRecords(d?.changeHistory || []);
-              })
-              .catch(() => console.error('Không thể tải lịch sử truyền dẫn'))
-              .finally(() => setLoadingHistory(false));
+            setLoadingHistory(false);
+            setLoadingMoreHistory(false);
+            setHasMoreHistory(true);
+            setHistorySearch('');
+            setHistoryDateFrom('');
+            setHistoryDateTo('');
+            setHistoryPage(0);
           },
         },
       ];
@@ -1287,11 +1402,14 @@ const TransmissionListPage = () => {
       }
 
       // PENDING_APPROVAL + transmission:approvec1 → Phê duyệt / Từ chối cấp Cảng vụ (C1)
+      // Nguyên tắc 4 mắt: người tạo không được tự duyệt hồ sơ do mình tạo (back-end chặn, FE disable).
       if (hasPerm?.("transmission:approvec1") && record.approvalStatus === "PENDING_APPROVAL") {
+        const isCreatorSelfApprove = Boolean(currentUser?.userId && record.createdBy === currentUser.userId);
         actions.push({
           key: "approveC1",
-          label: "Phê duyệt cấp Cảng vụ",
+          label: isCreatorSelfApprove ? "Phê duyệt cấp Cảng vụ (không thể tự duyệt)" : "Phê duyệt cấp Cảng vụ",
           icon: <CheckCircleOutlined />,
+          disabled: isCreatorSelfApprove,
           onClick: () => {
             setApproveTarget(record);
             setApproveLevel("c1");
@@ -1300,9 +1418,10 @@ const TransmissionListPage = () => {
         });
         actions.push({
           key: "rejectC1",
-          label: "Từ chối cấp Cảng vụ",
+          label: isCreatorSelfApprove ? "Từ chối cấp Cảng vụ (không thể tự duyệt)" : "Từ chối cấp Cảng vụ",
           icon: <CloseCircleOutlined />,
           danger: true,
+          disabled: isCreatorSelfApprove,
           onClick: () => {
             setRejectTarget(record);
             setRejectLevel("c1");
@@ -3701,7 +3820,7 @@ const TransmissionListPage = () => {
               <span style={drawerTitleStyle}>
                 {historyEntityName ? `Lịch sử thay đổi — ${historyEntityName}` : 'Lịch sử thay đổi'}
               </span>
-              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyFieldCount}</span>
+              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>{hasMoreHistory ? `Đã tải ${historyFieldCount}+` : `Tổng cộng ${historyFieldCount}`}</span>
             </Space>
           </div>
         }
@@ -3713,10 +3832,26 @@ const TransmissionListPage = () => {
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
           body: { padding: '12px 24px 12px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
         }}>
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-          {loadingHistory ? <LoadingSkeleton rows={5} /> : historyRecords.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div></div>
-          ) : renderTransmissionHistoryTimeline(historyRecords)}
+        <div style={{ display: 'flex', gap: spaceSm, alignItems: 'center', paddingBottom: spaceMd }}>
+          <Input placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
+            onChange={(e) => setHistorySearch(e.target.value)} style={{ flex: 1 }} />
+          <DatePicker placeholder="Từ ngày" value={historyDateFrom ? dayjs(historyDateFrom) : null}
+            onChange={(d) => setHistoryDateFrom(d ? d.startOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
+            style={{ width: 170 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
+          <DatePicker placeholder="Đến ngày" value={historyDateTo ? dayjs(historyDateTo) : null}
+            onChange={(d) => setHistoryDateTo(d ? d.endOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
+            style={{ width: 170 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
+          <Button type="primary" loading={loadingHistory} onClick={() => setHistoryReloadToken((t) => t + 1)}>Tìm kiếm</Button>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>
+          {loadingHistory && historyRecords.length === 0 ? <LoadingSkeleton rows={5} /> : historyRecords.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>{historySearch || historyDateFrom || historyDateTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div></div>
+          ) : (
+            <>
+              {renderTransmissionHistoryTimeline(historyRecords)}
+              {loadingMoreHistory && <div style={{ textAlign: 'center', padding: `${spaceMd}px 0`, color: textTertiary, fontSize: fontSizeMd }}>Đang tải thêm...</div>}
+            </>
+          )}
         </div>
       </Drawer>
     </>

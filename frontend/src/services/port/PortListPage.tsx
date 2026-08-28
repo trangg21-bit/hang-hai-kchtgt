@@ -555,6 +555,10 @@ export default function PortListPage() {
   const [historyEntityNames, setHistoryEntityNames] = useState<Record<string, string>>({});
   const [historyEntityId, setHistoryEntityId] = useState('');
   const [historyEntityFilter, setHistoryEntityFilter] = useState('');
+  const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
+  const [hasMoreHistory, setHasMoreHistory] = useState(true);
+  const [historyPage, setHistoryPage] = useState(0);
+  const [historyReloadToken, setHistoryReloadToken] = useState(0);
 
   // Reject modal
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
@@ -1326,7 +1330,7 @@ export default function PortListPage() {
 
   const historyHandler = useCallback(async (record: CangBienResponse) => {
     try {
-      setLoadingHistory(true);
+      setLoadingHistory(false);
       setSelectedRecord(record);
       setHistoryModalVisible(true);
       setHistorySearch('');
@@ -1334,9 +1338,10 @@ export default function PortListPage() {
       setHistoryDateFrom('');
       setHistoryDateTo('');
       setHistoryEntityId(record.id);
-      const { fetchportHistory } = await import('./api');
-      const histData = await fetchportHistory(record.id, { page: 0, size: 200 });
-      setHistoryRecords(histData.changeHistory || []);
+      setHistoryRecords([]);
+      setLoadingMoreHistory(false);
+      setHasMoreHistory(true);
+      setHistoryPage(0);
     } catch (err) {
       toast.error('Không thể tải lịch sử thay đổi');
     } finally {
@@ -1658,36 +1663,131 @@ export default function PortListPage() {
   const HISTORY_FIELD_ORDER = ['orgUnitId', 'portGroup', 'portCode', 'portName', 'province', 'detailedLocation', 'portClass', 'waterAreaScope', 'totalBerths', 'totalAnchoragesTransshipment', 'totalPublicChannels', 'totalDedicatedChannels', 'totalPublicChannelLength', 'totalDedicatedChannelLength', 'totalBuoysBeacons', 'totalDikes', 'totalDikeLength', 'totalLighthouses', 'buoyBerthCount', 'anchorageCount', 'transshipmentCount', 'otherWaterAreas', 'remarks', 'geometryType', 'mapSymbolId', 'coordinateSystem', 'displayRule'];
 
   // Tổng số trường thay đổi = số bản ghi changeHistory (backend ghi 1 dòng/trường thay đổi)
+  const HISTORY_PAGE_SIZE = 20;
+
+  useEffect(() => {
+    if (!historyModalVisible || !selectedRecord) return;
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setLoadingHistory(true);
+      setLoadingMoreHistory(false);
+      setHasMoreHistory(true);
+      setHistoryRecords([]);
+      setHistoryPage(0);
+      try {
+        const { fetchportHistory } = await import('./api');
+        const history = await fetchportHistory(selectedRecord.id, 0, HISTORY_PAGE_SIZE, {
+          keyword: historySearch,
+          fromDate: historyDateFrom,
+          toDate: historyDateTo,
+        });
+        if (cancelled) return;
+        const items = history || [];
+        setHistoryRecords(items);
+        setHasMoreHistory(items.length === HISTORY_PAGE_SIZE);
+      } catch {
+        if (!cancelled) toast.error('Không thể tải lịch sử');
+      } finally {
+        if (!cancelled) setLoadingHistory(false);
+      }
+    }, isIframeModal ? 0 : (historySearch.trim() ? 300 : 0));
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [historyModalVisible, selectedRecord?.id, historySearch, historyDateFrom, historyDateTo, historyReloadToken]);
+
+  const loadMoreHistory = async () => {
+    if (!selectedRecord || loadingHistory || loadingMoreHistory || !hasMoreHistory) return;
+    setLoadingMoreHistory(true);
+    try {
+      const nextPage = historyPage + 1;
+      const { fetchportHistory } = await import('./api');
+      const history = await fetchportHistory(selectedRecord.id, nextPage, HISTORY_PAGE_SIZE, {
+        keyword: historySearch,
+        fromDate: historyDateFrom,
+        toDate: historyDateTo,
+      });
+      if (history && history.length > 0) {
+        setHistoryRecords((prev) => [...prev, ...history]);
+      }
+      setHistoryPage(nextPage);
+      setHasMoreHistory((history || []).length === HISTORY_PAGE_SIZE);
+    } catch {
+      /* ignore */
+    } finally {
+      setLoadingMoreHistory(false);
+    }
+  };
+
+  const handleHistoryScroll = (e: any) => {
+    const el = e.currentTarget;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) {
+      loadMoreHistory();
+    }
+  };
+
+  function historyTimestamp(item: any): string {
+    return item.approvedDate || item.changedAt || item.createdAt || '';
+  }
+
+  function historyField(item: any): string {
+    return item.changedField || item.fieldName || '';
+  }
+
+  function historyOldValue(item: any): string | null {
+    return item.previousValue ?? item.oldValue ?? null;
+  }
+
+  function historyNewValue(item: any): string | null {
+    return item.newValue ?? null;
+  }
+
+  function historyActor(item: any): string {
+    const raw = item?.approvedBy || item?.changedBy || '';
+    return raw || '—';
+  }
+
+  function resolveHistoryActionMeta(item: any): { label: string; color: string } {
+    const rawStatus = String(item?.status ?? item?.action ?? '').toUpperCase();
+    const rawReason = String(item?.reason ?? '').toLowerCase();
+    const rawField = String(item?.changedField ?? item?.fieldName ?? '').toLowerCase();
+    if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
+      return { label: 'Thêm mới', color: statusOperational };
+    }
+    if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || (rawField.includes('đính kèm') && rawReason.includes('tải'))) {
+      return { label: 'Tải lên tệp', color: '#0284c7' };
+    }
+    if (rawStatus === 'ATTACHMENT_DELETED' || rawReason.includes('xóa tài liệu') || rawReason.includes('xoa tai lieu') || rawReason.includes('xóa tệp')) {
+      return { label: 'Xóa tệp', color: '#ea580c' };
+    }
+    if (rawStatus === 'APPROVED' || rawStatus === 'APPROVED_LEVEL2') {
+      return { label: 'Phê duyệt', color: statusOperational };
+    }
+    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT') {
+      return { label: 'Từ chối', color: '#E34948' };
+    }
+    if (rawStatus === 'PROPOSED' || rawStatus === 'PENDING_APPROVAL' || rawReason.includes('gửi phê duyệt') || rawReason.includes('gui phe duyet')) {
+      return { label: 'Gửi phê duyệt', color: '#EDA100' };
+    }
+    return { label: 'Chỉnh sửa', color: actionPrimary };
+  }
+
   const historyFieldCount = useMemo(() => historyRecords.length, [historyRecords]);
 
   // ── Render lịch sử theo chuẩn Hệ thống VTS ─────────────────────────
   const renderPortHistoryTimeline = (records: any[]) => {
     const safeRecords = Array.isArray(records) ? records : [];
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...safeRecords].sort((a: any, b: any) => new Date(b.changedAt || b.createdAt).getTime() - new Date(a.changedAt || a.createdAt).getTime());
+    const sorted = [...safeRecords].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
     const q = historySearch.toLowerCase().trim();
-    const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
+    const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
     for (const r of sorted) {
-      if (q) {
-        const fn = (r.fieldName || '').toLowerCase();
-        const ov = (r.oldValue || '').toLowerCase();
-        const nv = (r.newValue || '').toLowerCase();
-        const lb = historyFieldName(r.fieldName || '').toLowerCase();
-        const od = historyFieldValue(r.fieldName, r.oldValue, orgMap, symbolMap).toLowerCase();
-        const nd = historyFieldValue(r.fieldName, r.newValue, orgMap, symbolMap).toLowerCase();
-        if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue;
-      }
-      if (historyEntityFilter && r.entityId !== historyEntityFilter) continue;
-      if (historyDateFrom || historyDateTo) {
-        const cd = (r.changedAt || r.createdAt || '').substring(0, 16);
-        if (historyDateFrom && cd < historyDateFrom.replace(' ', 'T')) continue;
-        if (historyDateTo && cd > historyDateTo.replace(' ', 'T') + ':59') continue;
-      }
-      const ts = r.changedAt || r.createdAt || '';
+      const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
       const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === (r.changedBy || '')) prev.items.push(r);
-      else groups.push({ tsSec: sec, ts, actor: r.changedBy || '', items: [r] });
+      if (prev && prev.tsSec === sec && prev.actor === historyActor(r) && prev.status === r.status && prev.approvalLevel === r.approvalLevel) prev.items.push(r);
+      else groups.push({ tsSec: sec, ts, actor: historyActor(r), status: r.status, approvalLevel: r.approvalLevel, items: [r] });
     }
     if (groups.length === 0) return (
       <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
@@ -1703,7 +1803,8 @@ export default function PortListPage() {
         const orgName = orgId ? orgMap.get(orgId) : undefined;
         const unitName = (orgName ? (orgName.split(' - ').pop() || orgName) : (rec0.orgUnitName || rec0.unitName || selectedRecord?.orgUnitName)) || '—';
         const barColor = actionPrimary;
-        const changes = g.items.map((item: any) => ({ field: item.fieldName || '—', oldValue: item.oldValue ?? null, newValue: item.newValue ?? null }));
+        const changes = g.items.map((item: any) => ({ field: historyField(item) || '—', oldValue: historyOldValue(item), newValue: historyNewValue(item) }));
+        const actionMeta = resolveHistoryActionMeta(g.items[0] || {});
         const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
         const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
         const orderedChanges = [...changes].sort((a: any, b: any) => {
@@ -1734,8 +1835,7 @@ export default function PortListPage() {
                   {g.ts ? fmtTime(g.ts) : '—'}
                 </Typography.Text>
                 <span style={{ flexShrink: 0 }}>
-                  {isCreate && <span style={historyBadgeStyle(statusOperational)}>Thêm mới</span>}
-                  {!isCreate && <span style={historyBadgeStyle(actionPrimary)}>Chỉnh sửa</span>}
+                  <span style={historyBadgeStyle(actionMeta.color)}>{actionMeta.label}</span>
                 </span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
@@ -3821,15 +3921,19 @@ export default function PortListPage() {
               <DatePicker placeholder="Đến ngày" classNames={{ popup: { root: 'history-dt-popup' } }} value={historyDateTo ? dayjs(historyDateTo) : null}
                 onChange={d => setHistoryDateTo(d ? d.format('YYYY-MM-DD HH:mm') : '')}
                 style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
-              <Button type="primary" icon={<SearchOutlined />} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Tìm kiếm</Button>
+              <Button type="primary" icon={<SearchOutlined />} onClick={() => setHistoryReloadToken((t) => t + 1)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Tìm kiếm</Button>
             </div>
           )}
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>
           {loadingHistory ? <LoadingSkeleton rows={5} /> : historyRecords.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div></div>
-          ) : renderPortHistoryTimeline(historyRecords) /* STALE_RENDER const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000); const sorted = [...historyRecords].sort((a: any, b: any) => new Date(b.changedAt || b.createdAt).getTime() - new Date(a.changedAt || a.createdAt).getTime()); const q = historySearch.toLowerCase().trim(); const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = []; for (const r of sorted) { if (q) { const fn = (r.fieldName || '').toLowerCase(); const ov = (r.oldValue || '').toLowerCase(); const nv = (r.newValue || '').toLowerCase(); const lb = historyFieldName(r.fieldName || '').toLowerCase(); const od = historyFieldValue(r.fieldName, r.oldValue, orgMap, symbolMap).toLowerCase(); const nd = historyFieldValue(r.fieldName, r.newValue, orgMap, symbolMap).toLowerCase(); if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue; } if (historyEntityFilter && r.entityId !== historyEntityFilter) continue; if (historyDateFrom || historyDateTo) { const cd = (r.changedAt || r.createdAt || '').substring(0, 16); if (historyDateFrom && cd < historyDateFrom.replace(' ', 'T')) continue; if (historyDateTo && cd > historyDateTo.replace(' ', 'T') + ':59') continue; } const ts = r.changedAt || r.createdAt || ''; const sec = ts ? toSec(ts) : 0; const prev = groups[groups.length - 1]; if (prev && prev.tsSec === sec && prev.actor === (r.changedBy || '')) prev.items.push(r); else groups.push({ tsSec: sec, ts, actor: r.changedBy || '', items: [r] }); } if (groups.length === 0) return (<div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>{q || historyDateFrom || historyDateTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div></div>); const fmtTime = (ts: string) => { const d = new Date(ts); return `${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}  ·  ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`; }; if (historySearchRef.current === 'initial') { historySearchRef.current = ''; const init: Record<number, boolean> = {}; groups.forEach((_, i) => { init[i] = true; }); setTimeout(() => setHistoryExpanded(init), 0); } else if (q.length > 0 && historySearchRef.current !== q) { historySearchRef.current = q; const init: Record<number, boolean> = {}; groups.forEach((_, i) => { init[i] = true; }); setTimeout(() => setHistoryExpanded(init), 0); } else if (q.length === 0 && historySearchRef.current !== '') { historySearchRef.current = ''; const init: Record<number, boolean> = {}; groups.forEach((_, i) => { init[i] = false; }); setTimeout(() => setHistoryExpanded(init), 0); } return (<div>{groups.map((g, gi) => (<div key={gi} style={{ display: 'flex', gap: spaceSm, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}><div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 24, flexShrink: 0 }}><div style={{ width: 24, height: 24, borderRadius: '50%', background: surfaceCard, border: `1px solid ${actionPrimary}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ClockCircleFilled style={{ color: actionPrimary, fontSize: 14 }} /></div>{gi < groups.length - 1 && (<div style={{ width: 1, flex: 1, minHeight: 24, background: borderDefault, marginTop: spaceXs }} />)}</div><div style={{ ...cardStyle, flex: 1, padding: `${spaceSm}px ${spaceFormField}px`, marginBottom: 0, borderRadius: radiusLg, boxShadow: shadowSm }}><div onClick={() => setHistoryExpanded(prev => ({ ...prev, [gi]: !prev[gi] }))} style={{ display: 'flex', alignItems: 'center', gap: spaceSm, cursor: 'pointer' }}><Typography.Text style={{ fontSize: fontSizeLg, color: textPrimary, fontWeight: fontWeightBold }}>{g.ts ? fmtTime(g.ts) : '—'}</Typography.Text>{g.actor && (<Typography.Text style={{ fontSize: fontSizeMd, color: textSecondary }}>— {g.actor}</Typography.Text>)}{(() => { const a = getActionLabel(g.items); return <Tag color={a.color} style={{ fontSize: 11, marginLeft: spaceSm, borderRadius: radiusPill }}>{a.label}</Tag>; })()}<span style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: actionPrimary, background: `${actionPrimary}12`, borderRadius: radiusPill, padding: '2px 10px', marginLeft: 'auto' }}>{g.items.length}</span>{historyExpanded[gi] === false ? (<DownOutlined style={{ fontSize: 12, color: textTertiary }} />) : (<UpOutlined style={{ fontSize: 12, color: textTertiary }} />)}</div>{historyExpanded[gi] !== false && (<><Divider style={{ margin: `${spaceSm}px 0`, borderColor: borderDefault }} /><table style={{ width: '100%', borderCollapse: 'collapse' }}><tbody>{g.items.map((r: any, ri: number) => { const fn = r.fieldName || ''; const ov = r.oldValue !== undefined && r.oldValue != null ? historyFieldValue(fn, r.oldValue, orgMap, symbolMap) : null; const nv = r.newValue !== undefined && r.newValue != null ? historyFieldValue(fn, r.newValue, orgMap, symbolMap) : null; return (<tr key={r.id || ri}><td style={{ padding: `${spaceXs}px ${spaceSm}px ${spaceXs}px 0`, fontSize: fontSizeMd, fontWeight: fontWeightMedium, color: textPrimary, whiteSpace: 'nowrap', verticalAlign: 'middle', width: 1 }}>{historyMode === 'all' ? (<><Tag color="blue" style={{ marginRight: spaceXs, fontSize: fontSizeSm, cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); setHistoryEntityId(r.entityId); setHistoryMode('current'); setLoadingHistory(true); setHistoryRecords([]); import('./api').then(m => m.fetchportHistory(r.entityId, { page: 0, size: 200 })).then((d: any) => setHistoryRecords(d.changeHistory || [])).catch(() => toast.error('Không thể tải lịch sử')).finally(() => setLoadingHistory(false)); }} onClick={async (e) => { e.stopPropagation(); setHistoryEntityId(r.entityId); setHistoryEntityName(historyEntityNames[r.entityId] || ''); setHistoryMode('current'); setLoadingHistory(true); setHistoryRecords([]); historySearchRef.current = 'initial'; const { fetchportHistory } = await import('./api'); fetchportHistory(r.entityId, { page: 0, size: 200 }).then((d: any) => setHistoryRecords(d.changeHistory || [])).catch(() => toast.error('Không thể tải lịch sử')).finally(() => setLoadingHistory(false)); }}>{historyEntityNames[r.entityId] || r.entityId?.substring(0,8)}</Tag> </>) : null}{fn ? historyFieldName(fn) : '—'}</td><td style={{ padding: `${spaceXs}px 0`, verticalAlign: 'middle' }}><Space size={spaceXs}>{ov ? (<Typography.Text delete style={{ fontSize: fontSizeMd, color: statusCritical }}>{ov}</Typography.Text>) : (<span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>)}<ArrowRightOutlined style={{ fontSize: 10, cursor: 'pointer', color: textTertiary }} />{nv ? (<Typography.Text strong style={{ fontSize: fontSizeMd, color: statusOperational }}>{nv}</Typography.Text>) : (<span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>)}</Space></td></tr>); })}</tbody></table></>)}</div></div>))}</div>); })()}
-        */}
+            <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>{historySearch || historyDateFrom || historyDateTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div></div>
+          ) : (
+            <>
+              {renderPortHistoryTimeline(historyRecords)}
+              {loadingMoreHistory && <div style={{ textAlign: 'center', padding: `${spaceMd}px 0`, color: textTertiary, fontSize: fontSizeMd }}>Đang tải thêm...</div>}
+            </>
+          )}
         </div>
       </AppDrawer>
 

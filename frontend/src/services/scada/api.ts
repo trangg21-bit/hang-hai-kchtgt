@@ -8,8 +8,8 @@ import type {
   ScadaOptionResponse,
   ApprovalResult,
   ApprovalRequest,
-  ScadaHistoryResponse,
 } from './types';
+import type { HistoryEntry } from '../../types/vtsSystem';
 
 const BASE = '/v1/scada';
 
@@ -124,14 +124,19 @@ export async function approveScadaC2(id: string, data: ApprovalRequest): Promise
 
 export async function fetchScadaHistory(
   id: string,
-  params?: { page?: number; size?: number },
-): Promise<ScadaHistoryResponse> {
+  page?: number,
+  pageSize?: number,
+  filters?: { keyword?: string; fromDate?: string; toDate?: string },
+): Promise<HistoryEntry[]> {
   const sp = new URLSearchParams();
-  if (params?.page !== undefined) sp.set('page', String(params.page));
-  if (params?.size !== undefined) sp.set('size', String(params.size));
-
-  const res = await api.get(`${BASE}/${id}/history?${sp}`);
-  return res.data.data;
+  if (page !== undefined && page !== null) sp.set('page', String(page));
+  if (pageSize !== undefined && pageSize !== null) sp.set('pageSize', String(pageSize));
+  if (filters?.keyword?.trim()) sp.set('keyword', filters.keyword.trim());
+  if (filters?.fromDate) sp.set('fromDate', filters.fromDate);
+  if (filters?.toDate) sp.set('toDate', filters.toDate);
+  const query = sp.toString() ? `?${sp.toString()}` : '';
+  const res = await api.get(`${BASE}/${id}/history${query}`);
+  return res.data?.data || [];
 }
 
 export async function fetchAllScadaHistory(
