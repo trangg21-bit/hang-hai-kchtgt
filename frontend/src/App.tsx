@@ -71,6 +71,8 @@ const DocumentUploadPage = lazy(() => import('./app/document/DocumentUploadPage'
 // M-003: Khu nước & VTS — Quản lý tàu bè
 const NavigationChannelList = lazy(() => import('./pages/navigationchannel/NavigationChannelList'));
 const NavigationChannelForm = lazy(() => import('./pages/navigationchannel/NavigationChannelForm'));
+const NavigationChannelChkList = lazy(() => import('./pages/navigationchannelchk/NavigationChannelChkList'));
+const NavigationChannelChkForm = lazy(() => import('./pages/navigationchannelchk/NavigationChannelChkForm'));
 const DikeRevetmentList = lazy(() => import('./pages/dikerevetment/DikeRevetmentList'));
 const DikeRevetmentForm = lazy(() => import('./pages/dikerevetment/DikeRevetmentForm'));
 const ShipRepairFacilityList = lazy(() => import('./pages/shiprepair/ShipRepairFacilityList'));
@@ -238,6 +240,15 @@ export default function App() {
                 <Route path="/luong-hang-hai" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelList /></PermissionGuard>} />
                 <Route path="/luong-hang-hai/create" element={<PermissionGuard permission="navigationchannel:create"><NavigationChannelForm /></PermissionGuard>} />
                 <Route path="/luong-hang-hai/:id" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelForm /></PermissionGuard>} />
+
+                {/* Luồng hàng hải CHK (M-027) */}
+                <Route path="/navigation-channel-chk" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelChkList /></PermissionGuard>} />
+                <Route path="/navigation-channel-chk/create" element={<PermissionGuard permission="navigationchannel:create"><NavigationChannelChkForm /></PermissionGuard>} />
+                <Route path="/navigation-channel-chk/:id" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelChkForm /></PermissionGuard>} />
+                {/* Alias tiếng Việt — E2E */}
+                <Route path="/luong-hang-hai-chk" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelChkList /></PermissionGuard>} />
+                <Route path="/luong-hang-hai-chk/create" element={<PermissionGuard permission="navigationchannel:create"><NavigationChannelChkForm /></PermissionGuard>} />
+                <Route path="/luong-hang-hai-chk/:id" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelChkForm /></PermissionGuard>} />
 
                 {/* Đê/kè */}
                 <Route path="/dike-revetment" element={<PermissionGuard permission="dikerevetment:read"><DikeRevetmentList /></PermissionGuard>} />
