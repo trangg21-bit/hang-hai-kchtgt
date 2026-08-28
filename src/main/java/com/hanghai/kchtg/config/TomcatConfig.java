@@ -26,8 +26,11 @@ public class TomcatConfig {
 
     private static final Logger log = LoggerFactory.getLogger(TomcatConfig.class);
 
-    /** 32 KB — enough for JWT tokens with ~200 permissions */
-    private static final int MAX_HTTP_HEADER_SIZE = 32768;
+    /** 2 MB — phải khớp server.max-http-header-size trong application.yml.
+     *  Access token nhúng toàn bộ danh sách quyền (frontend đọc claim 'permissions'
+     *  từ JWT để gate UI); khi token đó được ghi vào header X-New-Token, tập quyền
+     *  lớn (>200 quyền) vượt 32KB -> phải tăng giới hạn này để hết HeadersTooLargeException. */
+    private static final int MAX_HTTP_HEADER_SIZE = 2097152;
 
     @Bean
     public WebServerFactoryCustomizer<TomcatServletWebServerFactory> tomcatHeaderSizeCustomizer() {

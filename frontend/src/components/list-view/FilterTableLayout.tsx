@@ -22,6 +22,8 @@ export interface FilterTableLayoutProps {
   onToggleCollapse?: () => void;
   /** Hide the filter-toggle button in the sidebar footer */
   hideFilterToggle?: boolean;
+  /** Đẩy vùng field filter xuống thêm (px) để input đầu (vd 'Tên kết nối') thẳng hàng cạnh trên DataTable */
+  filterTopOffset?: number;
   /** Hide the StatusTabs row above the table */
   hideStatusTabs?: boolean;
   /** Whether table is loading */
@@ -49,6 +51,7 @@ export default function FilterTableLayout({
   filterCollapsed = false,
   onToggleCollapse = () => {},
   hideFilterToggle = false,
+  filterTopOffset = 0,
   hideStatusTabs = false,
   loading,
   error,
@@ -72,7 +75,7 @@ export default function FilterTableLayout({
         }}
       >
         {/* Scrollable filter fields */}
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '12px 16px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '12px 16px', paddingTop: filterTopOffset ? 12 + filterTopOffset : undefined }}>
           {filterContent}
         </div>
 

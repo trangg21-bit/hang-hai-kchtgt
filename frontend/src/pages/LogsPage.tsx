@@ -16,8 +16,10 @@ import {
   fontWeightBold,
   fontMono, borderDefault, radiusLg, controlHeight,
   drawerProps, drawerTitleStyle, drawerCloseBtnStyle,
-} from '../tokens';
-import { colors } from '../theme';
+} from '../themetokenchk';
+import { colors } from '../themetokenchk';
+import * as themeTokenChk from '../themetokenchk';
+import { ThemeTokenProvider } from '../context/ThemeTokenContext';
 import { logService, type AccessLogEntry } from '../services/logService';
 import api from '../services/api';
 import { OrgUnitTreeSelect } from '../components/org-unit';
@@ -378,7 +380,7 @@ export default function LogsPage() {
       key: '_rowIndex',
       label: 'STT',
       dataIndex: '_rowIndex',
-      width: 60,
+      width: 72,
       fixed: 'left' as const,
       type: 'mono' as const,
       align: 'center',
@@ -391,6 +393,7 @@ export default function LogsPage() {
       label: 'Email',
       dataIndex: 'email',
       width: 260,
+      fixed: 'left' as const,
       render: (val: any) =>
         val ? (
           <span style={{ color: textPrimary, fontSize: fontSizeMd }} title={val}>{val}</span>
@@ -500,7 +503,8 @@ export default function LogsPage() {
 
   // ---- Render ----
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+    <ThemeTokenProvider tokens={themeTokenChk}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       {/* 1. ScreenHeader */}
       <ScreenHeader
         breadcrumb={[
@@ -512,6 +516,7 @@ export default function LogsPage() {
       {/* 2. FilterTableLayout — filter panel dọc trái + bảng (chuẩn màn /port) */}
       <FilterTableLayout
         hideFilterToggle
+        filterTopOffset={-2}
         onFilterApply={() => handleSearch(filterValues)}
         onFilterReset={handleReset}
         loading={loading}
@@ -644,6 +649,7 @@ export default function LogsPage() {
           </div>
         ) : null}
       </Drawer>
-    </div>
+      </div>
+    </ThemeTokenProvider>
   );
 }
