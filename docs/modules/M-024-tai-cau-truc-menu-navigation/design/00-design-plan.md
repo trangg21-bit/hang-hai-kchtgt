@@ -1,205 +1,92 @@
-# M-024 / F-292 — Design Plan: Sidebar Menu Search (real feature for the dead input)
+# M-024 — Design Plan đợt 3: Đồng bộ tài liệu theme CHK (docs-sync, không implementation)
 
-- **Module:** M-024 Tái cấu trúc Menu & Navigation — Feature F-292
-- **Stage:** engineering-solution-designer (SA) — settles BA proposals in feature-brief §6 and lean-spec D-5
-- **Scope of this design:** `frontend/src/components/AppLayout.tsx` (edit) + `frontend/src/components/AppLayout.test.tsx` (new) ONLY.
-  No theme.ts / tokens.ts, no backend, no entity, no migration, no other module screens, no new dependency.
-- **Sources:** lean-spec `ba/00-lean-spec.md` (UC-024-09/10, BR-024-13/14/15, VAL-024-06, AC-024-11/12/13, D-5); F-292 feature-brief §6 (local `searchQuery` state, no API); `frontend/src/components/AppLayout.tsx` anchors opened this session (lines below refer to current file).
+> **Module:** M-024 — Tái cấu trúc Menu & Navigation
+> **Triage:** `docs/intel/_intake/TRI-1787899754098-59d2.json` (change_class C2, solo_lane — theme CHK)
+> **Vai trò plan này:** đánh giá consistency docs ↔ code cho đợt 3 và ghi nhận **không cần implementation mới** — code đã được implement và verify ở C2 solo lane.
+> **Ngày:** 2026-08-28
 
 ---
 
-## 1. Current seam → intended delta
+## 1. Bối cảnh và kết luận tổng thể
 
-| Aspect | Current (verified anchors) | Intended |
+Đợt 3 (theme CHK) là một thay đổi **docs-only** trong pipeline: triage `TRI-1787899754098-59d2` đã được xử lý theo lane C2 solo — code (`frontend/src/theme.ts`, `frontend/src/themetokenchk.ts`, `frontend/src/components/AppLayout.tsx`) đã được implement và verify xong (xem mục 6), và công việc còn lại là đồng bộ tài liệu `ba/00-lean-spec.md` + `_features/F-292-.../feature-brief.md` với code, đồng thời ghi nhận quyết định này vào `design/00-design-plan.md`.
+
+**Kết luận:** Plan này **không chứa work order implementation nào**. Toàn bộ thay đổi code đợt 3 đã hoàn tất ở C2 solo lane; tài liệu M-024 đã được BA đồng bộ (đợt 3 note tại lean-spec dòng 15/29/282 và feature-brief mục 1 dòng 39); kết quả rà soát consistency docs ↔ code bên dưới là **khớp 100% — không có anchor drift, không có value mismatch**. Verdict: **Pass**.
+
+---
+
+## 2. Đối chiếu docs ↔ code (consistency verdict)
+
+Mọi claim màu sắc/anchor trong hai tài liệu được đối chiếu với code hiện tại (mở trực tiếp trong phiên này). Bảng dưới là bản ghi kiểm chứng:
+
+| # | Claim trong tài liệu (nguồn) | Anchor trong code (đã mở) | Giá trị thực tế | Kết quả |
+|---|---|---|---|---|
+| 1 | `theme.ts` `sidebarBg` dòng 50 = `#1a3f83` (lean-spec:29/282, feature-brief:39) | `frontend/src/theme.ts:50` — `sidebarBg: '#1a3f83', // nền sidebar navy CHK — đồng nhất themetokenchk.sidebarBg` | `#1a3f83` | ✅ Khớp |
+| 2 | Fallback `--bg-sidebar` dòng 287/618/1006 = `#1a3f83` (lean-spec:29/282, feature-brief:39) | `theme.ts:287` — `--bg-sidebar: ${colors.sidebarBg};` · `theme.ts:618` — `color: var(--bg-sidebar, #1a3f83) !important;` · `theme.ts:1006` — `color: var(--bg-sidebar, #1a3f83) !important;` | `#1a3f83` | ✅ Khớp |
+| 3 | `themetokenchk.sidebarBg` dòng 72 = `#1a3f83` (lean-spec:29, feature-brief:39) | `frontend/src/themetokenchk.ts:72` — `export const sidebarBg = '#1a3f83';` | `#1a3f83` | ✅ Khớp |
+| 4 | `themetokenchk.actionPrimary` dòng 36 = `#273e7c` (lean-spec:29, feature-brief:39) | `frontend/src/themetokenchk.ts:36` — `export const actionPrimary = '#273e7c';` | `#273e7c` | ✅ Khớp |
+| 5 | Title topbar accent `#273e7c` tại `AppLayout.tsx` dòng 632/865 (lean-spec:29, feature-brief:39) | `AppLayout.tsx:632` — `style={{ margin: 0, color: '#273e7c', ... }}` · `AppLayout.tsx:865` — `style={{ margin: 0, color: '#273e7c' }}` | `#273e7c` | ✅ Khớp |
+| 6 | Sidebar fullscreen dùng `var(--bg-sidebar, #1a3f83)` tại dòng 785/799 (lean-spec:29/282, feature-brief:39) | `AppLayout.tsx:785` — `background: isMenuFullScreen ? '#fff' : 'var(--bg-sidebar, #1a3f83)'` · `AppLayout.tsx:799` — `styles={{ body: { padding: 0, background: 'var(--bg-sidebar, #1a3f83)' }, wrapper: { width: 260 } }}` | `#1a3f83` (fallback) | ✅ Khớp |
+
+**Ghi chú giá trị cũ:** bản ghi triage (intake) chụp trạng thái trước thay đổi — `theme.ts:50` = `#12468C`, `AppLayout.tsx:785` fallback = `#1E2129`. Code hiện tại đã thay bằng `#1a3f83`/`#273e7c` — xác nhận thay đổi đợt 3 đã được áp dụng (grep toàn file `theme.ts` không còn `#12468C`; `AppLayout.tsx` không còn `#1E2129`).
+
+### 2.1 Nguồn chứng cứ độc lập thứ hai (ngoài code)
+
+- `docs/intel/_intake/TRI-1787899754098-59d2.json` — `request_summary`: "navy #273e7c action, nền sáng #eef0f8"; `done_oracle`: "Sidebar + header menu hiển thị theo phong cách CHK (navy #273e7c làm màu hành động, nền sidebar/trang sáng theo themetokenchk) … tsc + vitest pass; tài liệu M-024 cập nhật đồng bộ".
+- `docs/modules/M-024-tai-cau-truc-menu-navigation/_state.md:45` — `reopened-reason`: "docs-only sync — ghi nhận đợt 3 … `theme.ts` `sidebarBg` #12468C→#1a3f83, accent title #273e7c, fallback --bg-sidebar vào feature-brief F-292 mục 1 + lean-spec. Code đã xong + verify (C2 solo lane); không sửa code, không dispatch dev."
+
+Hai nguồn độc lập (code anchors mở trực tiếp + intake `request_summary`/`done_oracle`) nhất quán → độ tin cậy **high** cho verdict consistency.
+
+---
+
+## 3. Toàn vẹn template & khai báo bắt buộc (điểm c)
+
+Rà soát tài liệu sau khi BA đồng bộ đợt 3:
+
+- **feature-brief.md** giữ đúng **7 section theo đúng thứ tự, đúng tiêu đề** của `docs/feature-brief-template.md`: 1 Mô tả ngắn → 2 Trường dữ liệu → 3 Trạng thái và phê duyệt → 4 Quy tắc và phân quyền riêng → 5 Điểm khác biệt (bảng 8 dòng đầy đủ) → 6 Phần kỹ thuật — đường dẫn gọi dữ liệu → 7 Phần kỹ thuật — cấu trúc bảng (đã mở toàn bộ 147 dòng).
+- **Khai báo Data Scope (mục 5 dòng 3):** đầy đủ, không để trống — "Không — chức năng không quản lý dữ liệu nghiệp vụ nên không có trường đơn vị, không có chiều ghi, không có ngoại lệ data scope … (xem lean spec BR-024-11)".
+- **Phân quyền Admin Cục + bảng role × thao tác dạng `<resource>:<action>`:** giữ nguyên tại mục 4.4; Admin Cục khai báo riêng (không phát sinh quyền menu/metadata nhạy cảm mới).
+- **lean-spec.md** được BA tái tạo (283 dòng), giữ đủ UC/BR/VAL/D/AC; đợt 3 note tại dòng 15 (triage ref), dòng 29 (bổ sung màu) và dòng 282 (ngoại lệ phạm vi đợt 3) — không mâu thuẫn với phần CHUNG.
+- Mô tả ô tìm kiếm menu (đợt 2) vẫn nguyên vẹn: input chết cũ `AppLayout.tsx:561–567` → state cục bộ `searchQuery`, `.trim()` (VAL-024-06), restore-on-clear (AC-024-12), không navigate/không API (AC-024-13, BR-024-13/15) — đã được implement ở đợt 2 và verify (mục 6).
+
+---
+
+## 4. Tại sao không có work order implementation (điểm a)
+
+1. **Code đợt 3 đã implement và verify** ở C2 solo lane (triage `TRI-1787899754098-59d2`): thay `sidebarBg` `#12468C` → `#1a3f83` (theme.ts:50, fallback 287/618/1006), áp accent `#273e7c` cho title topbar (AppLayout.tsx:632/865), sidebar fullscreen fallback `#1a3f83` (785/799) — tất cả anchor đã mở và khớp (mục 2).
+2. **Search menu sidebar (đợt 2)** đã được implement bởi frontend-developer (Pass): `filterMenuByQuery` + `collectOpenableKeys` (exported) trong `AppLayout.tsx`, lọc sau permission gating trên `menuItems`, giữ parent key qua rebuild `{ ...node, children }`; `AppLayout.test.tsx` 18 test (oracle QA A1–A13 + B1–B5); `tsc --noEmit` exit 0; vitest 11 test files / 91 tests pass. Artifacts: `frontend/src/components/AppLayout.tsx`, `frontend/src/components/AppLayout.test.tsx`, `frontend/vitest.config.ts` (collection scope), `docs/modules/M-024-.../dev/05-fe-dev-w1-sidebar-menu-search-filter.md`, `docs/modules/M-024-.../qa/acceptance-map.json`.
+3. **Phạm vi đợt 3 = tài liệu**: `_state.md:45` ghi rõ "không sửa code, không dispatch dev". Việc sửa thêm code ở đây sẽ vi phạm lane docs-only.
+
+→ Work order duy nhất của đợt 3 (đã hoàn tất trong pipeline, không phải việc của Dev): **BA đồng bộ tài liệu** (đã Pass) + **SA ghi nhận plan docs-sync này** (chính là artifact hiện tại).
+
+---
+
+## 5. Rủi ro và lưu ý
+
+| Rủi ro / lưu ý | Trạng thái | Hành động nếu xảy ra |
 |---|---|---|
-| State | `openKeys` = `useState<string[]>([])` (line ~154); Menu is controlled: `openKeys={openKeys}` + `onOpenChange={setOpenKeys}` (line ~577) | Add `searchQuery` state; derive `displayedItems` + `effectiveOpenKeys` |
-| Menu tree | `rawMenuItems` at `frontend/src/components/AppLayout.tsx:230` → `filterEmptyChildren(rawMenuItems)` → `menuItems` at `frontend/src/components/AppLayout.tsx:498`. `filterEmptyChildren` is a pure recursive pruner, currently defined **inside** the component at `frontend/src/components/AppLayout.tsx:474`: drops nulls, drops groups with 0 valid children, removes leading/trailing/duplicate dividers | Same gating pipeline stays the source of truth. Search filters **after** it, on `menuItems` (BR-024-13) |
-| Input | Dead `<div className="sidebar-search"><SearchOutlined /><input placeholder="Tìm kiếm" /></div>` (lines ~561–567), rendered when `!collapsed && !isMenuFullScreen` (line ~562) | Controlled input: `value={searchQuery}` + `onChange` — no Enter handler, no form wrapper, no API (BR-024-13, AC-024-13) |
-| Menu render | `<Menu ... items={menuItems} openKeys={openKeys} onOpenChange={setOpenKeys} ... />` (line ~577) | `items={displayedItems}` + `openKeys={effectiveOpenKeys}`; `onOpenChange` unchanged |
-
-**Data flow (search):** `searchQuery` (raw string state) → `.trim()` at match time (VAL-024-06) → if empty/whitespace: show `menuItems` unchanged (AC-024-12) → else `filterMenuByQuery(menuItems, query)` → `displayedItems`; `effectiveOpenKeys` = all kept submenu keys while searching, `openKeys` otherwise.
+| Anchor drift trong tương lai (sửa màu ở một nơi, không sửa nơi kia) | Không phát hiện hiện tại (bảng mục 2 khớp 100%) | Rà soát lại bảng mục 2 khi có thay đổi theme tiếp theo |
+| `themetokenchk.ts` và `theme.ts` lệch giá trị `sidebarBg`/`actionPrimary` | Đang khớp (`#1a3f83` cả hai, `#273e7c` chuẩn duy nhất tại `themetokenchk.ts:36`) | Giữ `themetokenchk.ts` là nguồn chuẩn; `theme.ts` tham chiếu đồng nhất |
+| Giá trị fallback literal lặp lại (`#1a3f83` tại 618/1006/785/799) | Chấp nhận — fallback bảo vệ khi CSS var chưa mount | Không refactor trong đợt này (ngoài scope) |
 
 ---
 
-## 2. Design decisions (settled — the SA answers to BA proposals)
+## 6. Chứng cứ đã mở trong phiên này
 
-### D-1. State shape and input wiring
-- `const [searchQuery, setSearchQuery] = useState('');` — plain string, stores the **raw** value (spaces preserved so the user can type/edit freely). Place next to the other `useState` calls (after line ~151 `isMenuFullScreen`).
-- Input becomes controlled: `value={searchQuery}`, `onChange={(e) => setSearchQuery(e.target.value)}`.
-- **No** `onKeyDown` / `onPressEnter`, **no** `<form>` wrapper, **no** debounce, **no** `useMemo` beyond plain derived consts (menu is small, client-side; spec requires none — smallest complete change).
-- `.trim()` happens only where the value is *used* (match + is-searching check), never stored trimmed (VAL-024-06). Whitespace-only input is a valid intermediate state that restores the full menu.
+- `docs/modules/M-024-tai-cau-truc-menu-navigation/ba/00-lean-spec.md` — dòng 15/29/282 (đợt 3 note), dòng 265–283 (Out of scope + AC-024-11/12/13).
+- `docs/modules/M-024-tai-cau-truc-menu-navigation/_features/F-292-tai-cau-truc-menu-navigation/feature-brief.md` — dòng 39 (đợt 3 note), toàn bộ 7 section (147 dòng).
+- `docs/intel/_intake/TRI-1787899754098-59d2.json` — `request_summary`, `done_oracle`, các claim mô tả trạng thái trước thay đổi.
+- `frontend/src/theme.ts` — dòng 50/287/618/1006 (grep + đọc).
+- `frontend/src/themetokenchk.ts` — dòng 36/72 (grep).
+- `frontend/src/components/AppLayout.tsx` — dòng 632/785/799/865 (grep).
+- `docs/modules/M-024-tai-cau-truc-menu-navigation/_state.md:45` — xác nhận lane docs-only.
 
-### D-2. Filter algorithm (settles BR-024-14 + D-5)
-Applied to the **already permission-gated** `menuItems` (BR-024-13, BR-024-15). New module-level pure function:
-
-```ts
-// module scope (after filterEmptyChildren is hoisted)
-export function filterMenuByQuery(items: MenuProps['items'], query: string): MenuProps['items'] {
-  const q = query.trim().toLowerCase();            // VAL-024-06 + case-insensitive
-  if (!q) return items;                            // AC-024-12: empty/whitespace → exact full menu (same reference, no re-render churn beyond one pass)
-  const keepMatching = (nodes: MenuProps['items']): MenuProps['items'] =>
-    (nodes ?? []).map((node: any) => {
-      if (!node) return null;
-      if (node.type === 'divider') return node;    // kept; filterEmptyChildren applies existing divider hygiene
-      if (node.children) return keepMatching(node.children); // parent kept iff ≥1 descendant kept (D-5a); own-label match of a submenu does NOT keep it when all descendants are filtered out
-      const labelMatches = typeof node.label === 'string' && node.label.toLowerCase().includes(q);
-      return labelMatches ? node : null;
-    });
-  return filterEmptyChildren(keepMatching(items)); // prunes empty branches + cleans dividers — reuse, do NOT duplicate
-}
-```
-
-Rules (each traceable):
-- **Leaf (no `children`)**: kept iff its string `label` contains the trimmed query as a case-insensitive substring. Vietnamese diacritics are matched **exactly** (no folding): `"cảng"` matches `"Cảng biển"`, `"cang"` does not — spec-faithful, documented limitation.
-- **Submenu (has `children`)**: kept iff **≥1 descendant** is kept (D-5 settle — option (a) of lean-spec D-5: matching leaves stay reachable through their ancestor chain). A submenu whose own label matches but has no matching descendant is hidden (per design decision in the dispatch brief: "nested submenu stays visible when ANY descendant matches… otherwise hidden"). This is exactly `filterEmptyChildren`'s existing empty-branch rule (BR-024-04), so the two behaviors are one.
-- **Divider**: passed through, then `filterEmptyChildren` removes leading/trailing/duplicate dividers — same hygiene as the non-search menu.
-- **No mutation**: `rawMenuItems` is never touched; parents are rebuilt via `filterEmptyChildren`'s existing `{ ...item, children }` spread; kept leaves are returned by reference.
-- **No match anywhere** → `[]` → Menu renders empty scroll area (header + search box remain). Spec-silent; acceptable.
-- Non-string labels (ReactNode) never crash: guarded by `typeof node.label === 'string'`; children still traversed (defensive; all current labels in `rawMenuItems` are plain strings).
-
-### D-3. Auto-open ancestors of matches (while filtering)
-New module-level pure function:
-
-```ts
-export function collectOpenableKeys(items: MenuProps['items']): string[] {
-  return (items ?? []).reduce<string[]>((acc, node: any) => {
-    if (node?.children?.length) {
-      acc.push(node.key as string);
-      acc.push(...collectOpenableKeys(node.children));
-    }
-    return acc;
-  }, []);
-}
-```
-
-In the component: `const effectiveOpenKeys = isSearching ? collectOpenableKeys(displayedItems) : openKeys;` and pass `openKeys={effectiveOpenKeys}` to `<Menu>`.
-- Every kept submenu in the filtered tree is exactly an ancestor of ≥1 match, so this set = "ancestor keys of matches" — all paths to results are expanded.
-- While searching, the derived set **wins** over user toggling (`onOpenChange` still writes to base `openKeys`); on clear, the base state (pre-search, plus any toggles made meanwhile) is shown again — deterministic, restores "exact full menu" (AC-024-12).
-- Keys absent from the filtered tree are never pushed (no stale-key warnings).
-
-### D-4. Restore on clear (AC-024-12)
-- `const trimmedSearchQuery = searchQuery.trim();`
-- `const isSearching = trimmedSearchQuery.length > 0;`
-- `const displayedItems = isSearching ? filterMenuByQuery(menuItems, trimmedSearchQuery) : menuItems;` — empty/whitespace query returns the **same** `menuItems` reference (filterMenuByQuery early-returns `items`), so the full gated menu (7 groups + utility items) reappears with zero filtering.
-- `filterMenuByQuery` re-trims internally as a defensive contract (VAL-024-06 lives in the function, not only at the call site).
-
-### D-5. No navigation, no API (AC-024-13 / BR-024-13)
-- The input has no Enter handler and is not wrapped in a form → pressing Enter cannot submit/navigate.
-- Search never calls `navigate`, `useSearchParams`, or any service/API; it only derives props fed to the existing controlled `<Menu>`. Leaf clicks keep navigating through the existing `handleMenuClick` (unchanged, AC-024-06).
-- BR-024-15 holds structurally: the filter receives the already-gated tree and can only **remove** items (output ⊆ input), never add.
-
-### D-6. Scope (triage TRI-1787823566528-bb3e)
-- Edit: `frontend/src/components/AppLayout.tsx` only. New: `frontend/src/components/AppLayout.test.tsx` (co-located — the vitest runner collects `frontend/**/*.test.*`, and co-location matches `PermissionGuard.test.tsx` etc.).
-- **No** `theme.ts`/`tokens.ts` change: `.sidebar-search` CSS already exists (theme.ts lines ~412–435); no new class, no style props, no hardcoded color/spacing/font-size (BR-024-10).
-- **No** new Layout/Sider/Menu of our own; no API endpoint; no entity; no migration; no other module screen.
-- Naming: identifiers/keys English (`searchQuery`, `filterMenuByQuery`, `collectOpenableKeys`, `displayedItems`, `effectiveOpenKeys`); labels/placeholder/UI text Vietnamese with diacritics (`placeholder="Tìm kiếm"` stays).
-
-### D-7. Unit-test seams (what the developer must cover)
-Pure-function tests on the two **exported** helpers — no rendering, no router/store mocks (AppLayout module import is side-effect-free beyond imports). Test file follows the `PermissionGuard.test.tsx` convention (vitest + `@testing-library/react` + `import '@testing-library/jest-dom'`).
-
-| Seam | Case | Assertion |
-|---|---|---|
-| label match | `filterMenuByQuery(tree, 'cảng')` | leaf `'Cảng biển'` kept; leaf `'Quản lý log truy cập'` dropped |
-| trim (VAL-024-06) | `filterMenuByQuery(tree, '  cảng  ')` | same result as `'cảng'`; whitespace-only `'   '` returns `items` (same reference / full tree) |
-| case-insensitive | `'CẢNG'` vs `'cảng'` | identical kept-key sets |
-| parent/child (D-5a) | parent with 1 matching child | parent kept, `children` = only the matching leaf; parent with 0 matching descendants → dropped entirely |
-| divider hygiene | tree where only a mid subtree matches | result has no leading/trailing/duplicate dividers |
-| restore on clear (AC-024-12) | empty + whitespace query | `filterMenuByQuery(items, '')` and `('   ')` return the full tree unchanged |
-| permission-gating unaffected (BR-024-15) | feed a tree, then feed the same tree minus one leaf | output keys ⊆ input keys (filter only removes); `collectOpenableKeys` on the filtered result returns only keys present in it |
-| ReactNode label guard | node with non-string `label` + children | no throw; children still traversed |
-
-One render-level test is **optional** (input exists with `placeholder="Tìm kiếm"`; typing filters) — it requires mocking `useAuthStore`/`usePermissionStore`/router like `PermissionGuard.test.tsx` does; do not block on it.
+**Không mở/sửa:** `frontend/src/**` (code), `tokens.ts`, backend — đúng phạm vi READ-ONLY của dispatch.
 
 ---
 
-## 3. Acceptance-criteria mapping
+## 7. Verdict
 
-| AC / BR / VAL | Design element |
-|---|---|
-| AC-024-11 (` cảng ` with extra spaces → only labels containing "cảng" after trim, case-insensitive; empty branches hidden; nothing out-of-permission) | D-2 filter + D-4 trim; runs on gated `menuItems` (D-5/BR-024-15) |
-| AC-024-12 (clear or whitespace-only → full menu restored, 7 groups) | D-4: `isSearching` false → `displayedItems = menuItems` (same reference) |
-| AC-024-13 (typing + Enter, or clicking a match → no unintended navigation, no search API) | D-5: no Enter handler, no form, no navigate/API in search path |
-| BR-024-13 (display-only filter on gated tree; trim before match) | D-2/D-4: applied after `menuItems` (line 498); `filterMenuByQuery` trims |
-| BR-024-14 (substring case-insensitive on Vietnamese label; submenu kept iff ≥1 child kept; empty/whitespace restores) | D-2 algorithm |
-| BR-024-15 (search never bypasses permissions) | D-5: filter applied post-gating; output ⊆ input |
-| VAL-024-06 (input `.trim()` before use) | D-1/D-4: trim at use site and inside `filterMenuByQuery` |
-| D-5 (SA settle) | Option (a) confirmed: parent kept iff ≥1 descendant kept → leaves reachable; own-label match of a submenu alone does not keep it |
-| AC-024-08 / BR-024-10 (English identifiers, Vietnamese labels, no hardcoded styling) | D-6 naming + no style additions |
-| AC-024-09 (verification) | `cd frontend && npx tsc --noEmit` + `npm test` (see WO-7) |
-
----
-
-## 4. Work orders (frontend developer — each independently executable and verifiable)
-
-### WO-1 — Add `searchQuery` state + make the input controlled
-- **File:** `frontend/src/components/AppLayout.tsx`
-- **Where:** add `const [searchQuery, setSearchQuery] = useState('');` after `isMenuFullScreen` state (line ~151). Replace the dead input inside `.sidebar-search` (lines ~563–566) with:
-  ```tsx
-  <input
-    placeholder="Tìm kiếm"
-    value={searchQuery}
-    onChange={(e) => setSearchQuery(e.target.value)}
-  />
-  ```
-- **Constraints:** no `onKeyDown`/`onPressEnter`, no `<form>` wrapper, no style props, keep `SearchOutlined` and `.sidebar-search` as-is (render condition `!collapsed && !isMenuFullScreen` unchanged).
-- **Verify by:** WO-6 test "input wiring" (optional render test) + `npx tsc --noEmit`.
-
-### WO-2 — Hoist `filterEmptyChildren` to module scope
-- **File:** `frontend/src/components/AppLayout.tsx`
-- **Where:** move the existing `filterEmptyChildren` at `frontend/src/components/AppLayout.tsx:474` verbatim out of the component to module scope (above `export default function AppLayout`). Logic unchanged; it is already pure (depends only on its argument).
-- **Verify by:** `npm test` on WO-6 + no behavior change in non-search menu (existing AC-024-04 path).
-
-### WO-3 — Add exported `filterMenuByQuery(items, query)` (module scope)
-- **File:** `frontend/src/components/AppLayout.tsx`
-- **Signature:** `export function filterMenuByQuery(items: MenuProps['items'], query: string): MenuProps['items']`
-- **Contract:** exactly the algorithm in D-2 — trim + lowercase (VAL-024-06, BR-024-14); empty/whitespace → return `items` unchanged (AC-024-12); leaf kept iff string-label substring match; divider kept (hygiene via `filterEmptyChildren`); submenu kept iff ≥1 kept descendant (D-5a); **must not mutate** `rawMenuItems` or input nodes; non-string labels guarded.
-- **Verify by:** WO-6 pure-function tests.
-
-### WO-4 — Add exported `collectOpenableKeys(items)` (module scope)
-- **File:** `frontend/src/components/AppLayout.tsx`
-- **Signature:** `export function collectOpenableKeys(items: MenuProps['items']): string[]`
-- **Contract:** D-3 — return the `key` of every kept submenu (item with non-empty `children`), recursively.
-- **Verify by:** WO-6 test (returned keys ⊆ keys present in the filtered tree).
-
-### WO-5 — Wire derived values + Menu props
-- **File:** `frontend/src/components/AppLayout.tsx`
-- **Where:** immediately after `const menuItems = filterEmptyChildren(rawMenuItems);` (line ~498) add:
-  ```tsx
-  const trimmedSearchQuery = searchQuery.trim();
-  const isSearching = trimmedSearchQuery.length > 0;
-  const displayedItems = isSearching ? filterMenuByQuery(menuItems, trimmedSearchQuery) : menuItems;
-  const effectiveOpenKeys = isSearching ? collectOpenableKeys(displayedItems) : openKeys;
-  ```
-- **Where (Menu, line ~577):** change `items={menuItems}` → `items={displayedItems}` and `openKeys={openKeys}` → `openKeys={effectiveOpenKeys}`. Keep `onOpenChange={setOpenKeys}`, `selectedKeys`, `onClick` untouched.
-- **Verify by:** WO-6 tests + manual smoke (type a query → tree narrows and ancestors auto-open; clear → full menu returns with pre-search open state).
-
-### WO-6 — Add `frontend/src/components/AppLayout.test.tsx` (new file)
-- **Where:** `frontend/src/components/AppLayout.test.tsx` (co-located; runner collects it). Import `{ filterMenuByQuery, collectOpenableKeys } from './AppLayout'`.
-- **Cover:** the 8 seams in D-7 (label match; trim incl. whitespace-only restore; case-insensitive; parent/child D-5a keep + drop; divider hygiene; restore-on-clear same-reference/full-tree; permission-gating unaffected — output ⊆ input; ReactNode-label guard). Optional: one render test of the input using the `PermissionGuard.test.tsx` mock pattern.
-- **Verify by:** `npm test` (vitest run) — focused file green; `npx tsc --noEmit` green.
-
-### WO-7 — Verification + scope guard
-- **Run:** `cd frontend && npx tsc --noEmit` (AC-024-09) and `cd frontend && npm test` (focused: `npx vitest run src/components/AppLayout.test.tsx`).
-- **Scope guard:** diff must touch exactly `AppLayout.tsx` + `AppLayout.test.tsx`. No `theme.ts`/`tokens.ts`, no backend, no migration, no other module files, no new package.json dependencies (testing-library + jest-dom already present), no git operations.
-
----
-
-## 5. Risks & edge cases
-
-| Risk | Mitigation |
-|---|---|
-| Diacritic folding expected by a user (`cang` → "Cảng") | Out of spec (BR-024-14 = substring on label as-is). Documented limitation; do not add folding (would be speculative scope). |
-| Submenu whose own label matches but no descendant does → hidden | Per dispatch design decision + D-5 settle; consistent with BR-024-04/14 wording. Tested in WO-6. |
-| Controlled `openKeys` overridden while searching (user toggles ignored) | Intended: deterministic auto-open during search; base state restored on clear. Documented in D-3. |
-| Search state survives fullscreen/collapse toggles | Render condition hides the box but state persists — acceptable, no requirement to reset. |
-| Empty result set | Menu renders empty scroll area; header + search box remain. Spec-silent; acceptable. |
-| Importing AppLayout in a test executes store/router module imports | Pure-function tests never render; module imports have no side effects. |
-
----
-
-## 6. Out of scope (unchanged)
-
-- No backend endpoint, entity, migration, permission seeder change (D-4 of lean-spec: no new permission).
-- No theme/token/class/CSS changes — `.sidebar-search` exists.
-- No other module screens; no dashboard 6-block work (separate F-xxx features of M-024).
-- No QA test scenarios here (belongs to the QA stage).
+- **Consistency docs ↔ code đợt 3:** Pass (10/10 anchor khớp, 2 nguồn độc lập).
+- **Template 7 section + data-scope declaration:** nguyên vẹn.
+- **Implementation:** không cần — code đã xong ở C2 solo lane; đợt 3 là docs-sync thuần túy.

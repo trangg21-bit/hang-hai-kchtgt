@@ -1,66 +1,198 @@
 {
   "module": "M-024",
   "feature": "F-292",
-  "feature_name": "Tái cấu trúc menu & điều hướng",
-  "source": "ba/00-lean-spec.md (AC-024-11..13, VAL-024-06, BR-024-15 — menu search scope, TRI-1787823566528-bb3e); oracle qa/07-qa-report-w1.md (A1..A13, B1..B5); execution qa/07-qa-report-w2.md",
-  "executed_on": "2026-08-27 (wave-2, scope-expansion run)",
-  "acceptance_map": [
-    {
-      "ac_id": "AC-024-11",
-      "ac_summary": "Filter by Vietnamese label: query ' cảng ' (extra spaces) -> only items whose label contains 'cảng' after .trim() show (case-insensitive substring, BR-024-14); non-matches hidden; submenu with 0 matching children hidden; nothing out-of-permission (BR-024-15)",
-      "test_name": "A1 (label match), A2 (trim), A4 (case-insensitive), A5 (parent/child keep), A6 (parent/child drop), A8 (divider hygiene), A10 (output subset)",
-      "file": "frontend/src/components/AppLayout.test.tsx",
-      "status": "pass",
-      "evidence": "7 tests green in AppLayout.test.tsx (18/18 suite); filterMenuByQuery AppLayout.tsx:170 (query.trim().toLowerCase(); leaf kept iff typeof label==='string' && label.toLowerCase().includes(q); submenu kept iff >=1 kept descendant); filter applied on gated menuItems :522 -> displayedItems :527",
-      "proving_check": "npx vitest run (exit 0 — 11 files / 91 tests, AppLayout.test.tsx 18/18); npx tsc --noEmit (exit 0)",
-      "note": "Diacritic folding ('cang' -> 'Cảng') ngoài spec BR-024-14 — A4 asserts the negative"
+  "stage": "engineering-qa-engineer-wave-2",
+  "generated_from": "docs/modules/M-024-tai-cau-truc-menu-navigation/qa/07-qa-report-w1.md",
+  "last_updated": "2026-08-28",
+  "acceptance_map": {
+    "AC-1": {
+      "spec_ref": "lean-spec:29/282, feature-brief:39 (doct 3 docs-sync TRI-1787899754098-59d2)",
+      "description": "Tai lieu state sidebarBg = #1a3f83, khong phai #12468C",
+      "verification_method": "grep/read code: theme.ts:50 (sidebarBg), themetokenchk.ts:72 (sidebarBg)",
+      "pass_state": "pass",
+      "evidence": "grep wave-2: theme.ts:50 sidebarBg '#1a3f83'; themetokenchk.ts:72 sidebarBg '#1a3f83'; #12468C trong theme.ts: 0 match"
     },
-    {
-      "ac_id": "AC-024-12",
-      "ac_summary": "Clear (or whitespace-only) input -> full menu restored as before search (7 level-1 groups + utility items per permission)",
-      "test_name": "A3 (same-reference restore), A9 (full-tree restore)",
-      "file": "frontend/src/components/AppLayout.test.tsx",
-      "status": "pass",
-      "evidence": "A3 asserts filterMenuByQuery(gatedMenu,'') and ('   ') toBe(gatedMenu) (same reference); A9 asserts toEqual(gatedMenu) + full key set; displayedItems = isSearching ? filterMenuByQuery(menuItems, trimmedSearchQuery) : menuItems (AppLayout.tsx:527) — empty/whitespace returns menuItems unchanged",
-      "proving_check": "npx vitest run (exit 0 — 11 files / 91 tests, AppLayout.test.tsx 18/18); npx tsc --noEmit (exit 0)"
+    "AC-2": {
+      "spec_ref": "lean-spec:29/282, feature-brief:39",
+      "description": "Tai lieu state accent tieu de = #273e7c",
+      "verification_method": "grep/read code: themetokenchk.ts:36 (actionPrimary), AppLayout.tsx:632/865 (title color)",
+      "pass_state": "pass",
+      "evidence": "grep wave-2: themetokenchk.ts:36 actionPrimary '#273e7c'; AppLayout.tsx:632 va :865 color '#273e7c'; docs anchors da sua thanh 632/865"
     },
-    {
-      "ac_id": "AC-024-13",
-      "ac_summary": "Search never navigates and never calls an API: typing + Enter is a no-op (no form submit, no route change); only clicking a leaf navigates (AC-024-06); no search API request",
-      "test_name": "Static: bare controlled input AppLayout.tsx ~593-600 (no onKeyDown/onPressEnter, no <form>, no navigate/fetch in search path) + A13 empty-result no-crash",
-      "file": "frontend/src/components/AppLayout.tsx; frontend/src/components/AppLayout.test.tsx",
-      "status": "static-evidence",
-      "evidence": "Input :596-600 has only value={searchQuery} + onChange, no key handler and not wrapped in a form; search path (state :201 -> trim :525 -> filterMenuByQuery :527) contains no navigate/useSearchParams/fetch; Menu onClick=handleMenuClick unchanged :613 (leaf navigation only, AC-024-06); A13 unit: no-match query returns [] without throwing",
-      "proving_check": "npx tsc --noEmit (exit 0) — config typecheck; code inspection bằng read/grep wave-2; npx vitest run (exit 0 — 11 files / 91 tests)",
-      "note": "Enter-key runtime probe (network tab) chưa chạy — không có browser trong môi trường QA; deferral ghi ở qa/07-qa-report-w2.md §4 (C4)"
+    "AC-3": {
+      "spec_ref": "lean-spec:29/282, feature-brief:39",
+      "description": "Tai lieu state fallback --bg-sidebar = #1a3f83",
+      "verification_method": "grep/read code: theme.ts:287 (--bg-sidebar: ${colors.sidebarBg}), theme.ts:618/1006 (var(--bg-sidebar, #1a3f83)), AppLayout.tsx:785/799",
+      "pass_state": "pass",
+      "evidence": "grep wave-2: theme.ts:618/1006 var(--bg-sidebar, #1a3f83); AppLayout.tsx:785/799 var(--bg-sidebar, #1a3f83); theme.ts:287 xac nhan gian tiep (2 nguon: design-plan muc 2 + intake seam_claims); #1E2129 trong AppLayout.tsx: 0 match"
     },
-    {
-      "ac_id": "VAL-024-06",
-      "ac_summary": "Input string must be .trim() before matching",
-      "test_name": "A2 (padded query key-set identical to trimmed query)",
-      "file": "frontend/src/components/AppLayout.test.tsx",
-      "status": "pass",
-      "evidence": "A2 asserts collectKeys(filterMenuByQuery(gatedMenu,'  cảng  ')) toEqual collectKeys(filterMenuByQuery(gatedMenu,'cảng')); trim at use site AppLayout.tsx:525 (trimmedSearchQuery = searchQuery.trim()) and inside filterMenuByQuery :170 (query.trim().toLowerCase()) — defensive contract per design D-4",
-      "proving_check": "npx vitest run (exit 0 — 11 files / 91 tests, AppLayout.test.tsx 18/18); npx tsc --noEmit (exit 0)"
+    "AC-4": {
+      "spec_ref": "doct 3 docs-only; design-plan muc 1/4; _state.md:45",
+      "description": "Khong file code/theme/token/test nao bi sua boi pipeline docs-sync nay",
+      "verification_method": "ORCHESTRATOR ran `git status --porcelain` + `git diff --name-only HEAD` in unrestricted scope (QA session git bi policy chan: 'Effective denying pattern(s): git *')",
+      "pass_state": "pass",
+      "evidence": "Orchestrator: workspace la shared dirty tree (pre-existing doct 3 C2-solo + menu-search changes + concurrent M-026/M-027 frontend touches); cac seat pipeline (BA/SA/FE-dev) moi seat bao 0 code write; +3 anchor drift = concurrent external interference, khong phai pipeline nay; QA session nay chi ghi qa/*"
     },
-    {
-      "ac_id": "BR-024-15",
-      "ac_summary": "Search never bypasses permissions: filter only removes items from the already-gated set — user never sees an out-of-permission item via search",
-      "test_name": "A10 (output keys ⊆ input keys; removed leaf cannot reappear)",
-      "file": "frontend/src/components/AppLayout.test.tsx",
-      "status": "pass",
-      "evidence": "A10 asserts for 5 queries every output key is in the input key universe, and a tree without /pier never yields /pier for a matching query; structural: filterMenuByQuery receives menuItems (post canAccessMenu + filterEmptyChildren, AppLayout.tsx:522) not rawMenuItems — output ⊆ input by construction",
-      "proving_check": "npx vitest run (exit 0 — 11 files / 91 tests, AppLayout.test.tsx 18/18); npx tsc --noEmit (exit 0)"
+    "AC-5": {
+      "spec_ref": "feature-brief template 7 section; lean-spec:15/29/282",
+      "description": "feature-brief giu dung 7 section theo dung thu tu/tieu de; lean-spec het mau thuan (stale 'KHONG sua theme.ts' da reconciled)",
+      "verification_method": "grep '^## ' feature-brief.md + read lean-spec:29/282",
+      "pass_state": "pass",
+      "evidence": "7 headings dung thu tu (1 Mo ta ngan -> 7 Phan ky thuat - cau truc bang); lean-spec:29/282 ghi ro doct 3 DA thay doi theme.ts + AppLayout.tsx (gia tri #1a3f83/#273e7c, anchor 632/865/785/799)"
     },
-    {
-      "ac_id": "AC-024-09",
-      "ac_summary": "Build/verification gates: npx tsc --noEmit pass; npx vitest run pass with AppLayout.test.tsx collected",
-      "test_name": "V-1/V-2 build gates — 2 lệnh exit 0",
-      "file": "npx tsc --noEmit (frontend); npx vitest run (frontend)",
-      "status": "pass",
-      "evidence": "tsc exit 0 (no violations); vitest exit 0 — 11 test files / 91 tests / 0 failures (10 pre-existing suites 73 tests unregressed + src/components/AppLayout.test.tsx 18 tests collected)",
-      "proving_check": "executed wave-2 2026-08-27: npx tsc --noEmit; npx vitest run — cả 2 exit 0 (verbatim output qa/07-qa-report-w2.md §1)",
-      "note": "Scope-expansion này là frontend-only (AppLayout.tsx + AppLayout.test.tsx + vitest.config.ts) — không có thay đổi Java nên mvn compile không chạy lại; AC-024-09 triage yêu cầu tsc + vitest cho đợt này"
+    "AC-6": {
+      "spec_ref": "lean-spec toan bo",
+      "description": "lean-spec bao toan moi UC/BR/VAL/D/AC truoc do (khong regression)",
+      "verification_method": "grep inventory UC-024-/BR-024-/VAL-024-/AC-024-/D-",
+      "pass_state": "pass",
+      "evidence": "UC-024-09; BR-024-04/08/09/10/11/12/13/14/15; VAL-024-01..06; AC-024-02/10/11/12/13; D-1/D-2/D-5 hien dien, noi dung khong doi"
+    },
+    "A1": {
+      "spec_ref": "AC-024-11, BR-024-14",
+      "description": "filterMenuByQuery: label match substring tieng Viet co dau",
+      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+      "pass_state": "pass",
+      "evidence": "vitest run: 18/18 passed (A1-A13 + B1-B5), exit 0"
+    },
+    "A2": {
+      "spec_ref": "AC-024-11, VAL-024-06",
+      "description": "filterMenuByQuery: .trim() - query co khoang trang thua 2 dau cho ket qua bang",
+      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+      "pass_state": "pass",
+      "evidence": "vitest run: 18/18 passed"
+    },
+    "A3": {
+      "spec_ref": "AC-024-12, VAL-024-06",
+      "description": "filterMenuByQuery: whitespace-only query tra ve full tree",
+      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+      "pass_state": "pass",
+      "evidence": "vitest run: 18/18 passed"
+    },
+    "A4": {
+      "spec_ref": "AC-024-11",
+      "description": "filterMenuByQuery: case-insensitive (CANG vs cang)",
+      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+      "pass_state": "pass",
+      "evidence": "vitest run: 18/18 passed"
+    },
+    "A5": {
+      "spec_ref": "AC-024-11 (boundary am)",
+      "description": "filterMenuByQuery: khong fold dau tieng Viet (cang vs cang) - khong match",
+      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+      "pass_state": "pass",
+      "evidence": "vitest run: 18/18 passed"
+    },
+    "A6": {
+      "spec_ref": "BR-024-14, D-5a",
+      "description": "filterMenuByQuery: parent/child keep+drop - parent giu qua rebuild {...node, children}, sibling khong match bi drop",
+      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+      "pass_state": "pass",
+      "evidence": "vitest run: 18/18 passed"
+    },
+    "A7": {
+      "spec_ref": "BR-024-14, BR-024-13",
+      "description": "filterMenuByQuery: parent het con khop -> an nhanh (filterEmptyChildren)",
+      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+      "pass_state": "pass",
+      "evidence": "vitest run: 18/18 passed"
+    },
+    "A8": {
+      "spec_ref": "BR-024-13, AC-024-11",
+      "description": "filterMenuByQuery: divider hygiene - khong divider lien tiep, khong sinh divider moi",
+      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+      "pass_state": "pass",
+      "evidence": "vitest run: 18/18 passed"
+    },
+    "A9": {
+      "spec_ref": "AC-024-12",
+      "description": "filterMenuByQuery: restore-on-clear (query '') tra ve full tree deep-equal",
+      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+      "pass_state": "pass",
+      "evidence": "vitest run: 18/18 passed"
+    },
+    "A10": {
+      "spec_ref": "BR-024-15",
+      "description": "filterMenuByQuery: permission gating - output key-set la subset cua input (khong bypass quyen)",
+      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+      "pass_state": "pass",
+      "evidence": "vitest run: 18/18 passed"
+    },
+    "A11": {
+      "spec_ref": "BR-024-13, AC-024-11",
+      "description": "filterMenuByQuery: non-string ReactNode label guard - khong throw, khong match theo label",
+      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+      "pass_state": "pass",
+      "evidence": "vitest run: 18/18 passed"
+    },
+    "A12": {
+      "spec_ref": "AC-024-11 (boundary am)",
+      "description": "filterMenuByQuery: no match -> []",
+      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+      "pass_state": "pass",
+      "evidence": "vitest run: 18/18 passed"
+    },
+    "A13": {
+      "spec_ref": "AC-024-13, BR-024-13",
+      "description": "filterMenuByQuery: no navigation, no API - ham thuan, khong doi location, khong goi fetch/navigate",
+      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx + static review than ham AppLayout.tsx:202-213",
+      "pass_state": "pass",
+      "evidence": "vitest run: 18/18 passed; than ham khong import/goi router hay API"
+    },
+    "B1": {
+      "spec_ref": "BR-024-14, D-5a, AC-024-11",
+      "description": "collectOpenableKeys: auto-open path - tra ve key moi ancestor cua node khop",
+      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+      "pass_state": "pass",
+      "evidence": "vitest run: 18/18 passed"
+    },
+    "B2": {
+      "spec_ref": "AC-024-11",
+      "description": "collectOpenableKeys: no match -> []",
+      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+      "pass_state": "pass",
+      "evidence": "vitest run: 18/18 passed"
+    },
+    "B3": {
+      "spec_ref": "BR-024-14",
+      "description": "collectOpenableKeys: deterministic, khong trung key, thu tu on dinh",
+      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+      "pass_state": "pass",
+      "evidence": "vitest run: 18/18 passed"
+    },
+    "B4": {
+      "spec_ref": "AC-024-12",
+      "description": "collectOpenableKeys wiring: clear/whitespace -> effectiveOpenKeys = openKeys (khong ep open)",
+      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+      "pass_state": "pass",
+      "evidence": "vitest run: 18/18 passed"
+    },
+    "B5": {
+      "spec_ref": "BR-024-13",
+      "description": "collectOpenableKeys: moi key la string",
+      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+      "pass_state": "pass",
+      "evidence": "vitest run: 18/18 passed"
+    },
+    "C1": {
+      "spec_ref": "AC-024-11",
+      "description": "Manual smoke: go query -> cay menu thu hep + ancestors auto-open",
+      "verification_method": "manual UI smoke (browser/dev server) - chua thuc thi trong pipeline (khong co browser)",
+      "pass_state": "pending_manual",
+      "evidence": "Phan tu dong hoa da cover qua A1-A13/B1-B5 (18/18 pass); smoke C1 dang cho UAT/manual"
+    },
+    "C2": {
+      "spec_ref": "AC-024-12",
+      "description": "Manual smoke: clear -> full menu khoi phuc (7 nhom cap 1)",
+      "verification_method": "manual UI smoke (browser) - chua thuc thi trong pipeline",
+      "pass_state": "pending_manual",
+      "evidence": "Phan tu dong hoa cover qua A3/A9/B4 (18/18 pass); smoke C2 dang cho UAT/manual"
+    },
+    "C3": {
+      "spec_ref": "AC-024-13",
+      "description": "Manual smoke: go + Enter khong navigate, khong request API tim kiem",
+      "verification_method": "manual UI smoke (browser + DevTools Network) - chua thuc thi trong pipeline",
+      "pass_state": "pending_manual",
+      "evidence": "Phan tu dong hoa cover qua A13 (18/18 pass); smoke C3 dang cho UAT/manual"
     }
-  ]
+  }
 }
