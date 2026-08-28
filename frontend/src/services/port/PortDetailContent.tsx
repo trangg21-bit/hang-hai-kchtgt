@@ -1,20 +1,21 @@
 import { useState } from 'react';
-import { Table, Select, Pagination, Tabs } from 'antd';
+import { Select, Tabs, Modal, Button, Tooltip } from 'antd';
 import {
-  EnvironmentOutlined, ApartmentOutlined, FileOutlined, EyeOutlined,
+  EnvironmentOutlined, FileOutlined, EyeOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
-  colors, actionPrimary, textPrimary, textSecondary, textTertiary,
-  surfaceCard, spaceSm,
-  fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
-  radiusPill, statusBadgeStyle,
+  colors, actionPrimary, textTertiary,
+  surfaceCard, spaceSm, spaceMd, spaceFormField,
+  fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
+  statusBadgeStyle, outlineButtonStyle, primaryButtonStyle,
   statusOperational, statusAttention, statusCritical,
 } from '../../themetokenchk';
 import type { CangBienResponse } from './types';
-import { trangThaiHoatDongBadge, trangThaiPheDuyetBadge } from './schema';
+import { trangThaiPheDuyetBadge } from './schema';
 import { fmtNum } from '../../utils/numFmt';
-import PagedTable from '../../components/list-view/PagedTable';
+import DetailTable from '../../components/shared/DetailTable';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type { Symbol } from '../symbolService';
 
 // ── Helpers (module-level, đồng bộ PortListPage) ───────────────────
@@ -26,48 +27,46 @@ const KCHT_TYPE_OPTIONS = [
   'Khu tránh, trú bão', 'Trung tâm điều hành VTS', 'Hệ thống thông tin liên lạc VHF', 'Hệ thống VTS',
 ].map((label) => ({ value: label, label }));
 
-const hdrCell = () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px', whiteSpace: 'nowrap' as const } });
+const detailLabelStyle: React.CSSProperties = { color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd };
 
-// Bảng tham chiếu (Thông tin quy hoạch / Vận hành khai thác / Bảo trì / Sự cố)
-const TAB_PAGE_SIZE = 20;
-function PortRefTable({ title, emptyText, columns, dataSource = [] }: { title: string; emptyText: string; columns: Array<{ title: string; dataIndex?: string; width?: number }>; dataSource?: any[] }) {
-  const [page, setPage] = useState(1);
-  const maxPage = Math.max(1, Math.ceil(dataSource.length / TAB_PAGE_SIZE));
-  const cur = Math.min(page, maxPage);
-  const rows = dataSource
-    .map((row, idx) => ({ ...row, key: row?.key ?? idx, __stt: idx + 1 }))
-    .slice((cur - 1) * TAB_PAGE_SIZE, cur * TAB_PAGE_SIZE);
-  return (
-    <div style={{ paddingTop: 3 }}>
-      <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
-        <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{title}</span>
-      </div>
-      <Table
-        className="list-view-table"
-        dataSource={rows}
-        pagination={false} size="middle" bordered
-        style={{ marginLeft: 12, marginRight: 12 }}
-        locale={{ emptyText: <div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>{emptyText}</span></div> }}
-      >
-        <Table.Column title="STT" key="stt" dataIndex="__stt" width={60} align="center"
-          render={(v: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{v}</span>}
-          onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-        {columns.map((c) => (
-          <Table.Column key={c.title} title={c.title} dataIndex={c.dataIndex} width={c.width} align="center"
-            render={(v: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
-            onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-        ))}
-        <Table.Column title="Thao tác" key="actions" width={100} align="center"
-          render={() => <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>}
-          onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-      </Table>
-      <div style={{ margin: '0 12px' }}>
-        <Pagination total={dataSource.length} current={cur} pageSize={TAB_PAGE_SIZE}
-          pageSizeOptions={[10, 20, 50]} onChange={setPage} />
-      </div>
-    </div>
-  );
-}
+// Parse tọa độ GPS: ưu tiên coordinateList (array) → WKT (coordinates) → latitude/longitude (POINT).
+const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> => {
+  const out: Array<{ lat: number; lng: number }> = [];
+  const arr = record?.coordinateList;
+  if (Array.isArray(arr) && arr.length > 0) {
+    arr.forEach((c: any) => { const lat = Number(c.latitude ?? c.lat); const lng = Number(c.longitude ?? c.lng); if (!isNaN(lat) && !isNaN(lng)) out.push({ lat, lng }); });
+    return out;
+  }
+  const wkt = record?.coordinates;
+  if (wkt && typeof wkt === 'string' && wkt.trim()) {
+    try {
+      if (wkt.startsWith('LINESTRING(')) {
+        const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/);
+        if (m) m[1].split(',').forEach((p: string) => { const [lng, lat] = p.trim().split(/\s+/); if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) }); });
+      }
+      if (out.length === 0 && wkt.startsWith('POLYGON((')) {
+        const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/);
+        if (m) {
+          const pts = m[1].split(',').map((p: string) => { const [lng, lat] = p.trim().split(/\s+/); return { lng: Number(lng), lat: Number(lat) }; }).filter(c => !isNaN(c.lat));
+          if (pts.length > 1 && pts[0].lng === pts[pts.length - 1].lng) pts.pop();
+          pts.forEach(p => { out.push(p); });
+        }
+      }
+      if (out.length === 0) {
+        const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/);
+        if (mm) mm[1].split('),(').forEach((pt: string) => { const [lng, lat] = pt.replace(/[()]/g, '').trim().split(/\s+/); if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) }); });
+      }
+      if (out.length === 0) {
+        const pm = wkt.match(/POINT\s*\(([\d.\-]+)\s+([\d.\-]+)\)/);
+        if (pm) out.push({ lng: Number(pm[1]), lat: Number(pm[2]) });
+      }
+    } catch { /* ignore */ }
+  }
+  if (out.length === 0 && record?.latitude != null && record?.longitude != null) {
+    out.push({ lat: Number(record.latitude), lng: Number(record.longitude) });
+  }
+  return out;
+};
 
 // ── Props ───────────────────────────────────────────────────────────
 
@@ -99,14 +98,17 @@ export default function PortDetailContent({
   otherInfra,
   infraFilter,
   setInfraFilter,
-  infraPage,
-  setInfraPage,
-  infraPageSize,
-  setInfraPageSize,
   openKchtDetail,
   ddToDms,
 }: PortDetailContentProps) {
+  const [gisModalOpen, setGisModalOpen] = useState(false);
+  const [indexOpen, setIndexOpen] = useState(true);
+  const [operationOpen, setOperationOpen] = useState(true);
+  const [maintenanceOpen, setMaintenanceOpen] = useState(true);
+  const [incidentOpen, setIncidentOpen] = useState(true);
+
   return (
+    <>
     <Tabs
       defaultActiveKey="general"
       className="port-detail-tabs"
@@ -119,31 +121,16 @@ export default function PortDetailContent({
               <style>{`.ant-tabs-nav{margin-bottom:0!important;padding-left:12px!important}`}</style>
               <div className="chk-detail-grid">
                 {[
-                  { label: 'Đơn vị quản lý', value: orgLevel2Map.get(selectedRecord.orgUnitId || '') || selectedRecord.orgUnitName || '—', bold: true },
-                  { label: 'Nhóm cảng biển', value: selectedRecord.portGroup ? 'Nhóm ' + selectedRecord.portGroup : '—', bold: true },
                   { label: 'Mã cảng biển', value: selectedRecord.portCode, badge: true },
                   { label: 'Tên cảng biển', value: selectedRecord.portName, bold: true },
+                  { label: 'Nhóm cảng biển', value: selectedRecord.portGroup ? 'Nhóm ' + selectedRecord.portGroup : '—', bold: true },
                   { label: 'Phân cấp cảng biển', value: selectedRecord.portClass != null ? (selectedRecord.portClass === 5 ? 'Cấp đặc biệt' : `Cấp ${selectedRecord.portClass}`) : '—' },
+                  { label: 'Đơn vị quản lý', value: orgLevel2Map.get(selectedRecord.orgUnitId || '') || selectedRecord.orgUnitName || '—', bold: true },
                   { label: 'Địa điểm (Tỉnh/Thành phố)', value: selectedRecord.province || '—' },
                   { label: 'Địa điểm chi tiết', value: selectedRecord.detailedLocation || '—' },
                   { label: 'Phạm vi vùng nước cảng biển', value: selectedRecord.waterAreaScope || '—' },
-                  { label: 'Tổng số bến cảng', value: selectedRecord.totalBerths ?? '—' },
-                  { label: 'Tổng số khu neo đậu, khu chuyển tải', value: selectedRecord.totalAnchoragesTransshipment ?? '—' },
-                  { label: 'Tổng số tuyến luồng hàng hải công cộng', value: selectedRecord.totalPublicChannels ?? '—' },
-                  { label: 'Tổng số tuyến luồng hàng hải chuyên dùng', value: selectedRecord.totalDedicatedChannels ?? '—' },
-                  { label: 'Tổng chiều dài luồng hàng hải công cộng (km)', value: selectedRecord.totalPublicChannelLength != null ? fmtNum(selectedRecord.totalPublicChannelLength) : '—' },
-                  { label: 'Tổng chiều dài luồng hàng hải chuyên dùng (km)', value: selectedRecord.totalDedicatedChannelLength != null ? fmtNum(selectedRecord.totalDedicatedChannelLength) : '—' },
-                  { label: 'Tổng số phao tiêu, báo hiệu hàng hải trên luồng', value: selectedRecord.totalBuoysBeacons ?? '—' },
-                  { label: 'Tổng số đê, kè', value: selectedRecord.totalDikes ?? '—' },
-                  { label: 'Tổng chiều dài hệ thống đê, kè (km)', value: selectedRecord.totalDikeLength != null ? fmtNum(selectedRecord.totalDikeLength) : '—' },
-                  { label: 'Tổng số đèn biển, đăng, tiêu độc lập', value: selectedRecord.totalLighthouses ?? '—' },
-                  { label: 'Số lượng bến phao', value: selectedRecord.buoyBerthCount ?? '—' },
-                  { label: 'Số lượng khu neo đậu', value: selectedRecord.anchorageCount ?? '—' },
-                  { label: 'Số lượng khu chuyển tải', value: selectedRecord.transshipmentCount ?? '—' },
-                  { label: 'Các khu nước, vùng nước khác', value: selectedRecord.otherWaterAreas || '—', fullWidth: true },
-                  { label: 'Ghi chú', value: selectedRecord.remarks || '—', fullWidth: true },
                 ].map((row, i) => (
-                  <div key={i} className="chk-detail-row" style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
+                  <div key={i} className="chk-detail-row">
                     <span className="chk-detail-label">{row.label}</span>
                     <span className="chk-detail-value" style={row.bold ? { fontWeight: fontWeightBold } : undefined}>
                       {row.badge ? (
@@ -153,11 +140,42 @@ export default function PortDetailContent({
                   </div>
                 ))}
               </div>
+
+              {/* ── Toggle: Chỉ số tổng hợp (giống thêm mới) ── */}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setIndexOpen(!indexOpen)}>
+                <span style={{ color: indexOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{indexOpen ? '▼' : '▶'} Chỉ số tổng hợp</span>
+              </button>
+              {indexOpen && (
+                <div className="chk-detail-grid" style={{ marginTop: 4 }}>
+                  {[
+                    { label: 'Tổng số bến cảng', value: selectedRecord.totalBerths ?? '—' },
+                    { label: 'Tổng số khu neo đậu, khu chuyển tải', value: selectedRecord.totalAnchoragesTransshipment ?? '—' },
+                    { label: 'Tổng số tuyến luồng hàng hải công cộng', value: selectedRecord.totalPublicChannels ?? '—' },
+                    { label: 'Tổng số tuyến luồng hàng hải chuyên dùng', value: selectedRecord.totalDedicatedChannels ?? '—' },
+                    { label: 'Tổng chiều dài luồng hàng hải công cộng (km)', value: selectedRecord.totalPublicChannelLength != null ? fmtNum(selectedRecord.totalPublicChannelLength) : '—' },
+                    { label: 'Tổng chiều dài luồng hàng hải chuyên dùng (km)', value: selectedRecord.totalDedicatedChannelLength != null ? fmtNum(selectedRecord.totalDedicatedChannelLength) : '—' },
+                    { label: 'Tổng số phao tiêu, báo hiệu hàng hải trên luồng', value: selectedRecord.totalBuoysBeacons ?? '—' },
+                    { label: 'Tổng số đê, kè', value: selectedRecord.totalDikes ?? '—' },
+                    { label: 'Tổng chiều dài hệ thống đê, kè (km)', value: selectedRecord.totalDikeLength != null ? fmtNum(selectedRecord.totalDikeLength) : '—' },
+                    { label: 'Tổng số đèn biển, đăng, tiêu độc lập', value: selectedRecord.totalLighthouses ?? '—' },
+                    { label: 'Số lượng bến phao', value: selectedRecord.buoyBerthCount ?? '—' },
+                    { label: 'Số lượng khu neo đậu', value: selectedRecord.anchorageCount ?? '—' },
+                    { label: 'Số lượng khu chuyển tải', value: selectedRecord.transshipmentCount ?? '—' },
+                    { label: 'Các khu nước, vùng nước khác', value: selectedRecord.otherWaterAreas || '—', fullWidth: true },
+                    { label: 'Ghi chú', value: selectedRecord.remarks || '—', fullWidth: true },
+                  ].map((row, i) => (
+                    <div key={i} className="chk-detail-row" style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
+                      <span className="chk-detail-label">{row.label}</span>
+                      <span className="chk-detail-value">{row.value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ),
         },
         {
-          key: 'gis', label: `Thông tin vị trí (${(() => { const wkt = (selectedRecord as any)?.coordinates || ''; const arr = (selectedRecord as any)?.coordinateList; if (Array.isArray(arr) && arr.length) return arr.length; const mm = typeof wkt === 'string' ? wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/) : null; if (mm) return mm[1].split('),(').length; return typeof wkt === 'string' && /POINT\s*\(/.test(wkt) ? 1 : 0; })()})`,
+          key: 'gis', label: `Thông tin vị trí (${parseGisCoordinates(selectedRecord).length})`,
           children: (
             <div style={{ paddingTop: 3 }}>
               <div className="chk-detail-grid">
@@ -173,48 +191,28 @@ export default function PortDetailContent({
                   </div>
                 ))}
               </div>
-              {/* GPS Coordinates table */}
-              <div style={{ marginTop: spaceSm, padding: '0 12px' }}>
-                <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS</span>
-                {(() => {
-                  const wkt = (selectedRecord as any).coordinates || '';
-                  const arr = (selectedRecord as any).coordinateList;
-                  const pts: Array<{ lat: number; lng: number }> = [];
-                  if (arr && Array.isArray(arr) && arr.length > 0) {
-                    pts.push(...arr.map((c: any) => ({ lat: c.latitude ?? c.lat, lng: c.longitude ?? c.lng })));
-                  } else if (wkt) {
-                    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/);
-                    if (mm) {
-                      mm[1].split('),(').forEach((pt: string) => {
-                        const parts = pt.replace(/[()]/g, '').trim().split(/\s+/);
-                        pts.push({ lat: Number(parts[1]), lng: Number(parts[0]) });
-                      });
-                    } else {
-                      const m = wkt.match(/POINT\s*\(([-\d.]+)\s+([-\d.]+)\)/);
-                      if (m) pts.push({ lat: Number(m[2]), lng: Number(m[1]) });
-                    }
-                  } else if (selectedRecord.latitude != null && selectedRecord.longitude != null) {
-                    pts.push({ lat: selectedRecord.latitude, lng: selectedRecord.longitude });
-                  }
-                  return (
-                    <PagedTable dataSource={pts.map((p) => ({ ...p }))}
-                      emptyText={<div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><EnvironmentOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tọa độ</span></div>}
-                    >
-                      <Table.Column title="Vĩ độ (N)" key="lat" align="center"
-                        render={(_: any, record: any) => {
-                          const dms = ddToDms(record.lat);
-                          return <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{dms.d !== null ? `${dms.d}° ${dms.m ?? 0}' ${dms.s ?? 0}"` : '—'}</span>;
-                        }}
-                        onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                      <Table.Column title="Kinh độ (E)" key="lng" align="center"
-                        render={(_: any, record: any) => {
-                          const dms = ddToDms(record.lng);
-                          return <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{dms.d !== null ? `${dms.d}° ${dms.m ?? 0}' ${dms.s ?? 0}"` : '—'}</span>;
-                        }}
-                        onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                    </PagedTable>
-                  );
-                })()}
+              <div style={{ marginTop: spaceMd }}>
+                <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+                  <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
+                    Tọa độ GPS ({parseGisCoordinates(selectedRecord).length})
+                  </span>
+                  <Button
+                    icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+                    onClick={() => setGisModalOpen(true)}
+                    style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  >
+                    Xem vị trí trên bản đồ
+                  </Button>
+                </div>
+                <DetailTable
+                  dataSource={parseGisCoordinates(selectedRecord).map((p) => ({ ...p }))}
+                  emptyText="Chưa có tọa độ GPS nào"
+                  columns={[
+                    { title: 'STT', width: 50 },
+                    { title: 'Vĩ độ (Latitude - N)', key: 'lat', render: (_v: any, rec: any) => { const dms = ddToDms(rec.lat); return dms.d !== null ? `${dms.d}° ${dms.m ?? 0}' ${dms.s ?? 0}" N` : '—'; } },
+                    { title: 'Kinh độ (Longitude - E)', key: 'lng', render: (_v: any, rec: any) => { const dms = ddToDms(rec.lng); return dms.d !== null ? `${dms.d}° ${dms.m ?? 0}' ${dms.s ?? 0}" E` : '—'; } },
+                  ]}
+                />
               </div>
             </div>
           ),
@@ -223,17 +221,16 @@ export default function PortDetailContent({
           key: 'infra', label: 'Công trình KCHT trực thuộc',
           children: (
             <div style={{ paddingTop: 3 }}>
-              <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
-                <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Công trình KCHT trực thuộc</span>
-              </div>
-              <PagedTable dataSource={((selectedRecord as any).infrastructureList || []).map((i: any) => ({ ...i }))}
-                emptyText={<div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><ApartmentOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có công trình KCHT</span></div>}
-              >
-                  <Table.Column title="Tên Công Trình" dataIndex="infraName" key="name" align="center"
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Số Lượng" dataIndex="quantity" key="qty" width={100} align="center"
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-              </PagedTable>
+              <DetailTable
+                dataSource={((selectedRecord as any).infrastructureList || []).map((i: any) => ({ ...i }))}
+                emptyText="Chưa có dữ liệu"
+                rowKey={(r: any) => r.stt ?? r.infraName ?? r.name}
+                columns={[
+                  { title: 'STT', width: 50 },
+                  { title: 'Tên công trình', dataIndex: 'infraName', key: 'name', render: (v: string, rec: any) => v || rec.name || '—' },
+                  { title: 'Số lượng', dataIndex: 'quantity', key: 'qty', width: 100, align: 'center' as const, render: (v: number) => v ?? '—' },
+                ]}
+              />
             </div>
           ),
         },
@@ -244,18 +241,17 @@ export default function PortDetailContent({
               <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
                 <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
               </div>
-              <PagedTable dataSource={detailFiles.map((f) => ({ ...f }))}
-                emptyText={(
-                  <div style={{ padding: '32px 0', textAlign: 'center' }}>
-                    <div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div>
-                    <span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tài liệu đính kèm</span>
-                  </div>
-                )}
-              >
-                <Table.Column title="Tên file" key="name" dataIndex="fileName" align="center"
-                  render={(name: string) => <div style={{ textAlign: 'left', fontSize: fontSizeMd, color: textPrimary }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}</div>}
-                  onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-              </PagedTable>
+              <DetailTable
+                dataSource={detailFiles.map((f) => ({ ...f }))}
+                emptyText="Chưa có tài liệu đính kèm"
+                columns={[
+                  { title: 'STT', width: 50 },
+                  { title: 'Tên tài liệu', dataIndex: 'fileName', key: 'fileName', render: (v: string) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{v || '—'}</span> },
+                  { title: 'Dung lượng', dataIndex: 'fileSize', key: 'fileSize', width: 120, align: 'right' as const, render: (v: number) => v ? (v > 1024 * 1024 ? `${(v / (1024 * 1024)).toFixed(2)} MB` : `${(v / 1024).toFixed(1)} KB`) : '—' },
+                  { title: 'Người tải lên', dataIndex: 'uploadedBy', key: 'uploadedBy', width: 180, render: (v: string) => userMap.get(v) || v || '—' },
+                  { title: 'Ngày tải lên', dataIndex: 'uploadedAt', key: 'uploadedAt', width: 135, align: 'center' as const, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—' },
+                ]}
+              />
             </div>
           ),
         },
@@ -263,74 +259,113 @@ export default function PortDetailContent({
           key: 'infraOther', label: 'Danh sách kết cấu hạ tầng khác',
           children: (
             <div style={{ paddingTop: 3 }}>
-              <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Loại kết cấu hạ tầng</span>
-                <Select
-                  allowClear
-                  showSearch
-                  placeholder="Chọn loại kết cấu hạ tầng"
-                  value={infraFilter}
-                  onChange={(v: string | undefined) => { setInfraFilter(v || undefined); setInfraPage(1); }}
-                  style={{ width: 360, borderRadius: radiusPill, height: 40 }}
-                  options={KCHT_TYPE_OPTIONS}
-                />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: spaceSm }}>
+                <span style={{ ...detailLabelStyle, display: 'inline-block' }}>Loại kết cấu hạ tầng</span>
+                <Select allowClear showSearch placeholder="Chọn loại kết cấu hạ tầng" value={infraFilter || undefined}
+                  onChange={(v: string | undefined) => setInfraFilter(v || undefined)}
+                  options={KCHT_TYPE_OPTIONS} style={{ width: 260, borderRadius: 999, height: 40 }} />
               </div>
-              <Table
-                className="list-view-table"
-                rowKey="id"
-                dataSource={otherInfra.filter((r) => !infraFilter || r.typeLabel === infraFilter).slice((infraPage - 1) * infraPageSize, infraPage * infraPageSize)}
-                pagination={false} size="middle" bordered
-                scroll={{ x: 'max-content' }}
-                style={{ marginLeft: 12, marginRight: 12 }}
-                locale={{ emptyText: <div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><ApartmentOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có kết cấu hạ tầng khác</span></div> }}
-              >
-                <Table.Column title="STT" key="stt" width={60} align="center" fixed="left" render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(infraPage - 1) * infraPageSize + i + 1}</span>} onHeaderCell={hdrCell} />
-                <Table.Column title="Tên kết cấu hạ tầng" key="name" dataIndex="name" align="center"
-                  render={(_: any, r: any) => <span style={{ color: actionPrimary, cursor: 'pointer', fontWeight: fontWeightBold }} onClick={() => openKchtDetail(r.kchtType, r.id)}>{r.name}</span>}
-                  onHeaderCell={hdrCell} />
-                <Table.Column title="Thao tác" key="actions" width={120} align="center" fixed="right"
-                  render={(_: any, r: any) => <EyeOutlined style={{ color: actionPrimary, cursor: 'pointer', fontSize: fontSizeMd + 2 }} onClick={() => openKchtDetail(r.kchtType, r.id)} />}
-                  onHeaderCell={hdrCell} />
-              </Table>
-              <div style={{ marginRight: 12 }}>
-                <Pagination
-                  total={otherInfra.filter((r) => !infraFilter || r.typeLabel === infraFilter).length}
-                  current={infraPage} pageSize={infraPageSize}
-                  onChange={(p, ps) => { setInfraPage(p); setInfraPageSize(ps); }}
-                />
-              </div>
+              <DetailTable
+                dataSource={otherInfra.filter((r) => !infraFilter || r.typeLabel === infraFilter)}
+                emptyText="Chưa có dữ liệu"
+                rowKey={(r: any) => r.id || r.name}
+                columns={[
+                  { title: 'STT', width: 50 },
+                  { title: 'Loại kết cấu hạ tầng', dataIndex: 'typeLabel', key: 'type', render: (v: string, rec: any) => <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{rec.typeLabel || v || '—'}</span> },
+                  { title: 'Tên kết cấu hạ tầng', dataIndex: 'name', key: 'name', render: (v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: actionPrimary, cursor: 'pointer', fontWeight: fontWeightBold }} onClick={() => openKchtDetail(rec.kchtType, rec.id)}>{v || '—'}</span> },
+                  { title: 'Thao tác', key: 'actions', width: 100, align: 'center' as const, render: (_v: any, rec: any) => (
+                    <Tooltip title="Xem chi tiết">
+                      <Button type="text" size="small" icon={<EyeOutlined />} style={{ color: actionPrimary, fontSize: fontSizeMd }}
+                        onClick={() => openKchtDetail(rec.kchtType, rec.id)} />
+                    </Tooltip>
+                  ) },
+                ]}
+              />
             </div>
           ),
         },
         {
           key: 'plan', label: 'Thông tin quy hoạch',
-          children: <PortRefTable title="Thông tin quy hoạch" emptyText="Chưa có thông tin quy hoạch" columns={[
-            { title: 'Số quyết định quy hoạch', dataIndex: 'planDecisionNo', width: 200 },
-            { title: 'Ngày quyết định quy hoạch', dataIndex: 'planDecisionDate', width: 180 },
-          ]} />,
+          children: (
+            <div style={{ paddingTop: 3 }}>
+              <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin quy hoạch</span>
+              <DetailTable
+                dataSource={(selectedRecord as any)?.planList || []}
+                emptyText="Chưa có thông tin quy hoạch"
+                rowKey={(r: any) => r?.id || r?.planDecisionNo || 'row'}
+                columns={[
+                  { title: 'STT', width: 50 },
+                  { title: 'Số quyết định quy hoạch', dataIndex: 'planDecisionNo', key: 'planNo', render: (v: string) => v || '—' },
+                  { title: 'Ngày quyết định quy hoạch', dataIndex: 'planDecisionDate', key: 'planDate', width: 160, align: 'center' as const, render: (v: string) => (v ? dayjs(v).format('DD/MM/YYYY') : '—') },
+                ]}
+              />
+            </div>
+          ),
         },
         {
           key: 'operation', label: 'Vận hành & bảo trì',
           children: (
             <div style={{ paddingTop: 3 }}>
-              <PortRefTable title="Thông tin vận hành khai thác" emptyText="Chưa có dữ liệu vận hành khai thác" dataSource={(selectedRecord as any)?.operationPlanList} columns={[
-                { title: 'Mã kế hoạch', dataIndex: 'opPlanCode', width: 180 },
-                { title: 'Tên kế hoạch', dataIndex: 'opPlanName', width: 220 },
-                { title: 'Ngày bắt đầu', dataIndex: 'opStartDate', width: 200 },
-                { title: 'Ngày kết thúc', dataIndex: 'opEndDate', width: 200 },
-              ]} />
-              <PortRefTable title="Thông tin bảo trì" emptyText="Chưa có dữ liệu bảo trì" dataSource={(selectedRecord as any)?.maintenancePlanList} columns={[
-                { title: 'Mã kế hoạch', dataIndex: 'maintCode', width: 180 },
-                { title: 'Tên kế hoạch', dataIndex: 'maintName', width: 220 },
-                { title: 'Thời gian bắt đầu', dataIndex: 'maintStart', width: 200 },
-                { title: 'Thời gian kết thúc', dataIndex: 'maintEnd', width: 200 },
-              ]} />
-              <PortRefTable title="Thông tin sự cố" emptyText="Chưa có dữ liệu sự cố" dataSource={(selectedRecord as any)?.incidentList} columns={[
-                { title: 'Mã sự cố', dataIndex: 'incidentCode', width: 150 },
-                { title: 'Loại sự cố', dataIndex: 'incidentType', width: 150 },
-                { title: 'Địa điểm', dataIndex: 'incidentLocation', width: 200 },
-                { title: 'Thời gian', dataIndex: 'incidentTime', width: 180 },
-              ]} />
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setOperationOpen(!operationOpen)}>
+                <span style={{ color: operationOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{operationOpen ? '▼' : '▶'} Thông tin vận hành khai thác</span>
+              </button>
+              {operationOpen && (
+                <div>
+                  <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách vận hành khai thác</span>
+                  <DetailTable
+                    dataSource={(selectedRecord as any)?.operationPlanList || []}
+                    emptyText="Chưa có dữ liệu"
+                    rowKey={(r: any) => r?.id || r?.opPlanCode || 'row'}
+                    columns={[
+                      { title: 'STT', width: 50 },
+                      { title: 'Mã kế hoạch', dataIndex: 'opPlanCode', key: 'code', render: (v: string) => v || '—' },
+                      { title: 'Tên kế hoạch', dataIndex: 'opPlanName', key: 'name', render: (v: string) => v || '—' },
+                      { title: 'Ngày bắt đầu', dataIndex: 'opStartDate', key: 'start', width: 150, align: 'center' as const, render: (v: string) => (v ? dayjs(v).format('DD/MM/YYYY') : '—') },
+                      { title: 'Ngày kết thúc', dataIndex: 'opEndDate', key: 'end', width: 150, align: 'center' as const, render: (v: string) => (v ? dayjs(v).format('DD/MM/YYYY') : '—') },
+                    ]}
+                  />
+                </div>
+              )}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setMaintenanceOpen(!maintenanceOpen)}>
+                <span style={{ color: maintenanceOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{maintenanceOpen ? '▼' : '▶'} Thông tin bảo trì</span>
+              </button>
+              {maintenanceOpen && (
+                <div>
+                  <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin bảo trì</span>
+                  <DetailTable
+                    dataSource={(selectedRecord as any)?.maintenancePlanList || []}
+                    emptyText="Chưa có dữ liệu"
+                    rowKey={(r: any) => r?.id || r?.maintCode || 'row'}
+                    columns={[
+                      { title: 'STT', width: 50 },
+                      { title: 'Mã kế hoạch', dataIndex: 'maintCode', key: 'code', render: (v: string) => v || '—' },
+                      { title: 'Tên kế hoạch', dataIndex: 'maintName', key: 'name', render: (v: string) => v || '—' },
+                      { title: 'Thời gian bắt đầu', dataIndex: 'maintStart', key: 'start', width: 150, align: 'center' as const, render: (v: string) => (v ? dayjs(v).format('DD/MM/YYYY') : '—') },
+                      { title: 'Thời gian kết thúc', dataIndex: 'maintEnd', key: 'end', width: 150, align: 'center' as const, render: (v: string) => (v ? dayjs(v).format('DD/MM/YYYY') : '—') },
+                    ]}
+                  />
+                </div>
+              )}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setIncidentOpen(!incidentOpen)}>
+                <span style={{ color: incidentOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{incidentOpen ? '▼' : '▶'} Thông tin sự cố</span>
+              </button>
+              {incidentOpen && (
+                <div>
+                  <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin sự cố</span>
+                  <DetailTable
+                    dataSource={(selectedRecord as any)?.incidentList || []}
+                    emptyText="Chưa có dữ liệu"
+                    rowKey={(r: any) => r?.id || r?.incidentCode || 'row'}
+                    columns={[
+                      { title: 'STT', width: 50 },
+                      { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'code', render: (v: string) => v || '—' },
+                      { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'type', render: (v: string) => v || '—' },
+                      { title: 'Địa điểm', dataIndex: 'incidentLocation', key: 'location', render: (v: string) => v || '—' },
+                      { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 150, align: 'center' as const, render: (v: string) => (v ? dayjs(v).format('DD/MM/YYYY') : '—') },
+                    ]}
+                  />
+                </div>
+              )}
             </div>
           ),
         },
@@ -340,23 +375,15 @@ export default function PortDetailContent({
             <div style={{ paddingTop: 3 }}>
               <div className="chk-detail-grid">
                 {[
-                  ['Trạng thái phê duyệt', (() => { const b = trangThaiPheDuyetBadge(selectedRecord.approvalStatus || ''); let c = textTertiary; if (b.color === 'green') c = statusOperational; else if (b.color === 'red') c = statusCritical; else if (b.color === 'orange') c = statusAttention; else if (b.color === 'blue') c = actionPrimary; return <span style={statusBadgeStyle(c)}>{b.label}</span>; })()],
-                  ['Tình trạng hoạt động', (() => { const b = trangThaiHoatDongBadge(selectedRecord.operationalStatus || ''); let c = textTertiary; if (b.color === 'green') c = statusOperational; else if (b.color === 'red') c = statusCritical; else if (b.color === 'orange') c = statusAttention; else if (b.color === 'blue') c = actionPrimary; return <span style={statusBadgeStyle(c)}>{b.label}</span>; })()],
+                  ['Trạng thái', (() => { const b = trangThaiPheDuyetBadge(selectedRecord.approvalStatus || ''); let c = textTertiary; if (b.color === 'green') c = statusOperational; else if (b.color === 'red') c = statusCritical; else if (b.color === 'orange') c = statusAttention; else if (b.color === 'blue') c = actionPrimary; return <span style={statusBadgeStyle(c)}>{b.label}</span>; })()],
                   ['Người tạo', selectedRecord.createdByName || selectedRecord.createdBy || '—'],
                   ['Ngày tạo', selectedRecord.createdAt ? dayjs(selectedRecord.createdAt).format('DD/MM/YYYY HH:mm:ss') : '—'],
-                  ['Người cập nhật', selectedRecord.updatedByName || selectedRecord.updatedBy || '—'],
+                  ['Cán bộ cập nhật', selectedRecord.updatedByName || selectedRecord.updatedBy || '—'],
                   ['Ngày cập nhật', selectedRecord.updatedAt ? dayjs(selectedRecord.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '—'],
-                  ['Ngày gửi phê duyệt', (selectedRecord as any).submittedForApprovalAt ? dayjs((selectedRecord as any).submittedForApprovalAt).format('DD/MM/YYYY HH:mm:ss') : '—'],
-                  ['Người gửi phê duyệt', userMap.get((selectedRecord as any).submittedForApprovalBy || '') || (selectedRecord as any).submittedForApprovalBy || '—'],
-                  ['Phê duyệt cấp Cảng vụ', (selectedRecord as any).portAuthorityApprovedAt ? `${userMap.get((selectedRecord as any).portAuthorityApprovedBy || '') || (selectedRecord as any).portAuthorityApprovedBy || '—'} — ${dayjs((selectedRecord as any).portAuthorityApprovedAt).format('DD/MM/YYYY HH:mm:ss')}` : '—'],
-                  ['Nội dung phê duyệt Cảng vụ', (selectedRecord as any).portAuthorityApprovalContent || '—'],
-                  ['Phê duyệt cấp Cục', (selectedRecord as any).departmentApprovedAt ? `${userMap.get((selectedRecord as any).departmentApprovedBy || '') || (selectedRecord as any).departmentApprovedBy || '—'} — ${dayjs((selectedRecord as any).departmentApprovedAt).format('DD/MM/YYYY HH:mm:ss')}` : '—'],
-                  ['Nội dung phê duyệt Cục', (selectedRecord as any).departmentApprovalContent || '—'],
-                  ['Lý do từ chối', (selectedRecord as any).rejectionReason || '—'],
                 ].map(([label, value], i) => (
-                  <div key={i} className="chk-detail-row" style={label === 'Nội dung phê duyệt Cảng vụ' || label === 'Nội dung phê duyệt Cục' || label === 'Lý do từ chối' ? { gridColumn: '1 / -1' } : undefined}>
+                  <div key={i} className="chk-detail-row" style={label === 'Trạng thái' ? { gridColumn: '1 / -1' } : undefined}>
                     <span className="chk-detail-label">{label}</span>
-                    <span className="chk-detail-value" style={{ fontWeight: fontWeightBold }}>{value}</span>
+                    <span className="chk-detail-value" style={label === 'Người tạo' || label === 'Cán bộ cập nhật' ? { fontWeight: fontWeightBold } : undefined}>{value}</span>
                   </div>
                 ))}
               </div>
@@ -365,5 +392,58 @@ export default function PortDetailContent({
         },
       ]}
     />
+
+      {/* GIS Location Selector Modal — xem vị trí trên bản đồ chuyên dụng (chuẩn VTS CHK) */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <EnvironmentOutlined style={{ color: actionPrimary }} />
+            <span style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: fontSizeLg }}>
+              Xem vị trí trên bản đồ chuyên dụng
+            </span>
+          </div>
+        }
+        open={gisModalOpen}
+        onCancel={() => setGisModalOpen(false)}
+        destroyOnClose
+        width="94vw"
+        style={{ top: 20, maxWidth: '1400px' }}
+        footer={[
+          <Button key="close" type="primary" onClick={() => setGisModalOpen(false)} style={{ ...primaryButtonStyle, height: 36 }}>
+            Đóng
+          </Button>,
+        ]}
+      >
+        <div style={{ padding: '8px 0' }}>
+          <GisLocationSelector
+            inline={true}
+            defaultGeometryType="POINT"
+            disabled
+            height={520}
+            value={(() => {
+              const pts = parseGisCoordinates(selectedRecord);
+              if (pts.length > 0) {
+                const rawWkt = (selectedRecord as any).coordinates || '';
+                let geom: 'POINT' | 'LINE' | 'POLYGON' = 'POINT';
+                let wkt = '';
+                if (rawWkt.startsWith('LINESTRING')) {
+                  geom = 'LINE';
+                  wkt = `LINESTRING(${pts.map(p => `${p.lng} ${p.lat}`).join(', ')})`;
+                } else if (rawWkt.startsWith('POLYGON')) {
+                  geom = 'POLYGON';
+                  wkt = `POLYGON((${pts.map(p => `${p.lng} ${p.lat}`).join(', ')}))`;
+                } else if (pts.length > 1) {
+                  wkt = `MULTIPOINT(${pts.map(p => `(${p.lng} ${p.lat})`).join(',')})`;
+                } else {
+                  wkt = `POINT(${pts[0].lng} ${pts[0].lat})`;
+                }
+                return { geometryType: geom, coordinates: wkt };
+              }
+              return undefined;
+            })()}
+          />
+        </div>
+      </Modal>
+    </>
   );
 }

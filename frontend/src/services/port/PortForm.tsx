@@ -1,19 +1,21 @@
 import { useState } from 'react';
-import { Row, Col, Form, Input, Select, InputNumber, Tabs, Button, Upload, Space, Table } from 'antd';
-import { PlusOutlined, DeleteOutlined, FileOutlined, InboxOutlined } from '@ant-design/icons';
-import { message } from '../../components/ToastNotification';
+import { Row, Col, Form, Input, Select, InputNumber, Tabs, Button, Upload, Space, Table, Modal } from 'antd';
+import { PlusOutlined, DeleteOutlined, FileOutlined, InboxOutlined, DownloadOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
+import toast, { message } from '../../components/ToastNotification';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import {
   colors, textPrimary, textTertiary, borderDefault, statusCritical,
-  fontSizeSm, fontSizeMd, fontWeightBold,
+  fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
   radiusPill, radiusMd, spaceSm, spaceMd, spaceFormField, surfaceCard,
   readonlyInputStyle, actionPrimary, sidebarBg,
-  drawerTabBarStyle, drawerTabContentStyle,
+  drawerTabBarStyle, drawerTabContentStyle, outlineButtonStyle, primaryButtonStyle,
 } from '../../themetokenchk';
 import { fmtInputNumber } from '../../utils/numFmt';
-import PagedTable from '../../components/list-view/PagedTable';
 import { formLabelProps as labelProps } from '../../components/shared/formLabel';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import { useAuthStore } from '../../store/authStore';
 
 // ── Styles ──────────────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
@@ -42,6 +44,33 @@ const renderDmsGroup = (
   );
 };
 
+/** Parse tọa độ từ WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — dùng chung cho GisLocationSelector. */
+const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
+  const wkt = gisLocation?.coordinates;
+  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
+  try {
+    if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
+    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude) pts.pop(); return pts; } }
+    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
+    const pm = wkt.match(/POINT\s*\(([\d.\-]+)\s+([\d.\-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
+  } catch { /* ignore */ }
+  return [];
+};
+
+function ddToDms(dd: number | null | undefined): { d: number | null; m: number | null; s: number | null } {
+  if (dd == null || isNaN(dd)) return { d: null, m: null, s: null };
+  let abs = Math.abs(dd);
+  let d = Math.floor(abs);
+  let mFloat = (abs - d) * 60;
+  if (mFloat > 59.999999999) { d += 1; mFloat = 0; }
+  let m = Math.floor(mFloat);
+  let sFloat = (mFloat - m) * 60;
+  if (sFloat > 59.999999999) { m += 1; sFloat = 0; if (m >= 60) { m = 0; d += 1; } }
+  let s = Math.round(sFloat * 100) / 100;
+  if (s >= 60) { s = 0; m += 1; if (m >= 60) { m = 0; d += 1; } }
+  return { d: d === 0 ? null : d, m: m === 0 ? null : m, s: s === 0 ? null : s };
+}
+
 // ── Types ───────────────────────────────────────────────────────────
 export interface GpsCoordPoint {
   latD: number | null;
@@ -69,12 +98,14 @@ export interface PortFormProps {
   addGpsPoint: () => void;
   removeGpsPoint: (index: number) => void;
   updateGpsPoint: (index: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => void;
-  /** Giữ prop để tương thích PortListPage (input Công trình KCHT đã chuyển sang tab chi tiết, không còn ở form) */
-  infraList?: Array<{ stt: number; infraName: string; quantity: number | null }>;
-  addInfra?: () => void;
-  removeInfra?: (index: number) => void;
-  updateInfraName?: (index: number, value: string) => void;
-  updateInfraQty?: (index: number, value: number | null) => void;
+  /** Đổ tọa độ chọn trên bản đồ (GisLocationSelector) vào gpsCoordList */
+  setGpsCoordList?: (list: GpsCoordPoint[]) => void;
+  /** Danh sách công trình KCHT trực thuộc (tab 4) */
+  infraList: Array<{ stt: number; infraName: string; quantity: number | null }>;
+  addInfra: () => void;
+  removeInfra: (index: number) => void;
+  updateInfraName: (index: number, value: string) => void;
+  updateInfraQty: (index: number, value: number | null) => void;
   uploadFileList: any[];
   setUploadFileList: (files: any[]) => void;
   onFinish: (values: Record<string, unknown>) => void;
@@ -99,6 +130,12 @@ export default function PortForm({
   addGpsPoint,
   removeGpsPoint,
   updateGpsPoint,
+  setGpsCoordList,
+  infraList,
+  addInfra,
+  removeInfra,
+  updateInfraName,
+  updateInfraQty,
   uploadFileList,
   setUploadFileList,
   onFinish,
@@ -107,6 +144,9 @@ export default function PortForm({
   const isCreate = mode === 'create';
   // Toggle cụm "Chỉ số tổng hợp" trong tab Thông tin chung (mặc định MỞ)
   const [indexOpen, setIndexOpen] = useState(true);
+  const [gisModalOpen, setGisModalOpen] = useState(false);
+  const [filePage, setFilePage] = useState(1);
+  const currentUser = useAuthStore((s: any) => s.user);
 
   const tabItems = [
     // ── Tab 1: Thông tin chung ──
@@ -510,15 +550,29 @@ export default function PortForm({
           </Col>
         </Row>
         {/* GPS Coordinates (DMS) */}
-        <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>
-            <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS{geometryType && <span style={{ color: colors.error, marginLeft: 4, fontSize: fontSizeMd }}>*</span>}</span>
+        <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+          <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
+            Tọa độ GPS ({gpsCoordList.length})
           </span>
-          {gpsCoordList.length > 0 && (
-            <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!geometryType} style={{ borderRadius: radiusPill }}>
+          <Space size={8}>
+            <Button
+              icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+              onClick={() => setGisModalOpen(true)}
+              disabled={!geometryType}
+              style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            >
+              Chọn tọa độ trên bản đồ
+            </Button>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={addGpsPoint}
+              disabled={!geometryType}
+              style={{ ...primaryButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            >
               Thêm tọa độ
             </Button>
-          )}
+          </Space>
         </div>
         {gpsCoordList.length === 0 ? (
           <div style={{
@@ -598,7 +652,7 @@ export default function PortForm({
               const ext = file.name.split('.').pop()?.toLowerCase();
               if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) { message.error('Định dạng không hỗ trợ'); return false; }
               if (uploadFileList.length >= 10) { message.error('Tối đa 10 file'); return false; }
-              setUploadFileList([...uploadFileList, { uid: `${Date.now()}`, name: file.name, status: 'done', originFileObj: file }]);
+              setUploadFileList([...uploadFileList, { uid: `${Date.now()}`, name: file.name, size: file.size, status: 'done', originFileObj: file }]);
               return false;
             }}
             showUploadList={false}
@@ -617,64 +671,232 @@ export default function PortForm({
             </p>
           </Upload.Dragger>
         </div>
-        {uploadFileList.length > 0 && (
-          <>
-            <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-              <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
-                Danh sách tệp đính kèm ({uploadFileList.length})
-              </span>
-            </div>
-            <PagedTable
-              dataSource={uploadFileList.map((f, i) => ({ ...f, _idx: i }))}
-              tableProps={{ scroll: { x: 400 } }}
-            >
-              <Table.Column
-                title="Tên file"
-                key="name"
-                dataIndex="name"
-                render={(name: string) => (
-                  <span style={{ fontSize: fontSizeMd, color: textPrimary }}>
-                    <FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />
-                    {name}
-                  </span>
-                )}
-                onHeaderCell={() => ({
-                  style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' },
-                })}
-              />
-              <Table.Column
-                title=""
-                key="actions"
-                width={44}
-                align="center"
-                render={(_: any, record: any) => (
-                  <Button type="link" danger size="small" icon={<DeleteOutlined />}
-                    onClick={() => setUploadFileList(uploadFileList.filter(x => x.uid !== record.uid))} />
-                )}
-                onHeaderCell={() => ({
-                  style: { background: colors.bodyBg, padding: '12px 6px' },
-                })}
-              />
-            </PagedTable>
-          </>
+        <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+          <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
+            Danh sách tệp đính kèm ({uploadFileList.length})
+          </span>
+        </div>
+        <Table
+          size="small"
+          pagination={uploadFileList.length > 10 ? {
+            current: filePage,
+            pageSize: 10,
+            total: uploadFileList.length,
+            onChange: (p) => setFilePage(p),
+            showSizeChanger: false,
+            size: 'small',
+          } : false}
+          dataSource={uploadFileList.map((f, i) => ({ ...f, key: f.uid, _idx: i, name: f.name }))}
+          rowKey={(r) => r.uid || r._idx}
+          locale={{ emptyText: 'Chưa có tài liệu đính kèm nào' }}
+          scroll={{ x: 720 }}
+          columns={[
+            {
+              title: 'STT',
+              width: 60,
+              align: 'center',
+              render: (_v, _r, idx) => (filePage - 1) * 10 + idx + 1,
+            },
+            {
+              title: 'Tên tài liệu',
+              key: 'name',
+              dataIndex: 'name',
+              render: (name: string) => (
+                <a
+                  onClick={() => toast.info(`Đang tải xuống tệp: ${name}`)}
+                  style={{ fontSize: fontSizeMd, color: actionPrimary, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontWeight: fontWeightMedium, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
+                >
+                  <FileOutlined />
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                </a>
+              ),
+            },
+            {
+              title: 'Dung lượng',
+              key: 'size',
+              width: 120,
+              align: 'right' as const,
+              render: (_v, rec: any) => rec.size ? (rec.size > 1024 * 1024 ? `${(rec.size / (1024 * 1024)).toFixed(2)} MB` : `${(rec.size / 1024).toFixed(1)} KB`) : '—',
+            },
+            {
+              title: 'Người tải lên',
+              key: 'uploadedBy',
+              width: 180,
+              render: () => currentUser?.fullName || currentUser?.username || '—',
+            },
+            {
+              title: 'Ngày tải lên',
+              key: 'uploadedDate',
+              width: 160,
+              align: 'center' as const,
+              render: (_v, rec: any) => rec.uploadedDate ? dayjs(rec.uploadedDate).format('DD/MM/YYYY HH:mm') : '—',
+            },
+            {
+              title: '',
+              key: 'actions',
+              width: 80,
+              align: 'center',
+              render: (_v, record: any) => (
+                <Space size={4}>
+                  <Button type="text" icon={<DownloadOutlined style={{ color: actionPrimary }} />} onClick={() => toast.info(`Đang tải xuống tệp: ${record.name}`)} />
+                  <Button type="text" danger icon={<DeleteOutlined />} onClick={() => setUploadFileList(uploadFileList.filter(x => x.uid !== record.uid))} />
+                </Space>
+              ),
+            },
+          ]}
+        />
+      </div>),
+    },
+    // ── Tab 4: Công trình KCHT trực thuộc ──
+    {
+      key: 'infra', label: 'Công trình KCHT trực thuộc',
+      children: (<div style={drawerTabContentStyle}>
+        <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+          <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
+            Công trình KCHT trực thuộc
+          </span>
+          <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addInfra} style={{ borderRadius: radiusPill }}>
+            Thêm
+          </Button>
+        </div>
+        {infraList.length === 0 ? (
+          <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
+            <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có công trình nào.</span>
+            <Button type="dashed" icon={<PlusOutlined />} onClick={addInfra} style={{ borderRadius: radiusPill }}>Thêm</Button>
+          </div>
+        ) : (
+          <Table
+            size="small"
+            pagination={false}
+            dataSource={infraList.map((inf, i) => ({ ...inf, _idx: i }))}
+            rowKey={(r: any) => r._idx}
+            locale={{ emptyText: 'Chưa có công trình nào' }}
+            scroll={{ x: 600 }}
+            columns={[
+              {
+                title: 'STT',
+                width: 60,
+                align: 'center' as const,
+                render: (_v: any, _r: any, idx: number) => idx + 1,
+              },
+              {
+                title: 'Tên',
+                key: 'name',
+                render: (_v: any, record: any) => (
+                  <Input
+                    value={record.infraName}
+                    onChange={(e) => updateInfraName(record._idx, e.target.value)}
+                    placeholder="Nhập tên công trình"
+                    maxLength={500}
+                    showCount
+                    style={{ borderRadius: radiusPill, height: 40 }}
+                  />
+                ),
+              },
+              {
+                title: 'Số lượng',
+                key: 'quantity',
+                width: 120,
+                align: 'center' as const,
+                render: (_v: any, record: any) => (
+                  <InputNumber
+                    value={record.quantity}
+                    onChange={(v) => updateInfraQty(record._idx, v)}
+                    placeholder="1-5"
+                    min={0}
+                    max={5}
+                    style={{ width: '100%', borderRadius: radiusPill }}
+                  />
+                ),
+              },
+              {
+                title: '',
+                key: 'actions',
+                width: 50,
+                align: 'center' as const,
+                render: (_v: any, record: any) => (
+                  <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeInfra(record._idx)} />
+                ),
+              },
+            ]}
+          />
         )}
       </div>),
     },
   ];
 
   return (
-    <Form
-      form={form}
-      layout="vertical"
-      onFinish={onFinish}
-      onFinishFailed={onFinishFailed}
-      initialValues={isCreate ? { approvalStatus: 'APPROVED' } : undefined}
-    >
-      <Tabs
-        {...(isCreate ? { activeKey: activeTabKey, onChange: onTabChange } : { defaultActiveKey: 'general' })}
-        tabBarStyle={drawerTabBarStyle}
-        items={tabItems}
-      />
-    </Form>
+    <>
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={onFinish}
+        onFinishFailed={onFinishFailed}
+        initialValues={isCreate ? { approvalStatus: 'APPROVED' } : undefined}
+      >
+        <Tabs
+          {...(isCreate ? { activeKey: activeTabKey, onChange: onTabChange } : { defaultActiveKey: 'general' })}
+          tabBarStyle={drawerTabBarStyle}
+          items={tabItems}
+        />
+      </Form>
+
+      {/* GIS Location Selector Modal — chọn tọa độ trên bản đồ chuyên dụng (chuẩn VTS CHK) */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <EnvironmentOutlined style={{ color: actionPrimary }} />
+            <span style={{ fontWeight: fontWeightBold, color: sidebarBg, fontSize: fontSizeLg }}>
+              Chọn vị trí & tọa độ trên bản đồ chuyên dụng
+            </span>
+          </div>
+        }
+        open={gisModalOpen}
+        onCancel={() => setGisModalOpen(false)}
+        destroyOnClose
+        width="94vw"
+        style={{ top: 20, maxWidth: '1400px' }}
+        footer={[
+          <Button key="cancel" onClick={() => setGisModalOpen(false)} style={{ ...outlineButtonStyle, height: 36, borderRadius: radiusPill }}>
+            Hủy
+          </Button>,
+          <Button
+            key="ok"
+            type="primary"
+            onClick={() => setGisModalOpen(false)}
+            style={{ ...primaryButtonStyle, height: 36 }}
+          >
+            Xác nhận tọa độ
+          </Button>,
+        ]}
+      >
+        <div style={{ padding: '8px 0' }}>
+          <GisLocationSelector
+            inline={true}
+            defaultGeometryType="POINT"
+            height={520}
+            onChange={(val) => {
+              if (val?.coordinates && setGpsCoordList) {
+                // Nhận mọi dạng WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — chọn NHIỀU tọa độ trên bản đồ
+                const points = parseGisCoordinates({ geometryType: val.geometryType, coordinates: val.coordinates });
+                if (points.length > 0) {
+                  const existing = gpsCoordList || [];
+                  const key = (p: { latitude: number; longitude: number }) => `${Math.round(p.latitude * 1e5)}_${Math.round(p.longitude * 1e5)}`;
+                  const existingKeys = new Set(existing
+                    .filter(c => c.latD != null && c.lngD != null)
+                    .map(c => key({ latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600, longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600 })));
+                  const toAdd = points.filter(p => !existingKeys.has(key(p))).map(p => {
+                    const latDms = ddToDms(p.latitude);
+                    const lngDms = ddToDms(p.longitude);
+                    return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
+                  });
+                  if (toAdd.length > 0) setGpsCoordList([...existing, ...toAdd]);
+                }
+              }
+            }}
+          />
+        </div>
+      </Modal>
+    </>
   );
 }

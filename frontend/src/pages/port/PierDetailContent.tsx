@@ -99,6 +99,10 @@ export default function PierDetailContent({
   const [operationOpen, setOperationOpen] = useState(true);
   const [maintenanceOpen, setMaintenanceOpen] = useState(true);
   const [incidentOpen, setIncidentOpen] = useState(true);
+  const [summaryOpen, setSummaryOpen] = useState(true);
+  const [athhPlanOpen, setAthhPlanOpen] = useState(true);
+  const [announcementOpen, setAnnouncementOpen] = useState(true);
+  const [mooringScopeOpen, setMooringScopeOpen] = useState(true);
   const [infraTypeFilter, setInfraTypeFilter] = useState<string>('');
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const infraRows = [...infrastructureList].filter((it: any) => {
@@ -136,23 +140,10 @@ export default function PierDetailContent({
                   ['Thuộc luồng hàng hải', waterwayMap?.get(r.navigationChannelId || '') || r.navigationChannelId || '—'],
                   ['Địa điểm (Tỉnh/Thành Phố)', r.province || '—'],
                   ['Địa điểm chi tiết', r.detailedLocation || '—'],
-                  ['Chiều dài (m)', r.length != null ? r.length : '—'],
-                  ['Chiều rộng (m)', r.width != null ? r.width : '—'],
                   ['Phân cấp công trình', r.constructionGrade != null ? (r.constructionGrade === 1 ? 'Cấp đặc biệt' : r.constructionGrade === 2 ? 'Cấp 1' : r.constructionGrade === 3 ? 'Cấp 2' : r.constructionGrade === 4 ? 'Cấp 3' : r.constructionGrade === 5 ? 'Cấp 4' : String(r.constructionGrade)) : '—'],
                   ['Loại kết cấu cầu cảng', r.structureType != null ? (r.structureType === 1 ? 'Kết cấu bệ cọc cao' : r.structureType === 2 ? 'Kết cấu cường từ' : r.structureType === 3 ? 'Kết cấu trọng lực' : r.structureType === 4 ? 'Kết cấu khác' : String(r.structureType)) : '—'],
                   ['Công năng khai thác', r.operationalFunction || '—'],
                   ['Tình trạng', (() => { const s = r.operationalStatus; const b = s && operationalStyleMap[s]; return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : '—'; })(),],
-                  ['Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)', r.currentWaterDepth || '—'],
-                  ['Cao độ đáy bến thiết kế', r.designBedElevation || '—'],
-                  ['Cỡ tàu khai thác theo công bố (DWT)', r.publishedVesselDWT || '—'],
-                  ['Số lượng cầu cảng đang khai thác', r.operatingPierCount != null ? r.operatingPierCount : '—'],
-                  ['Số lượng cầu cảng đã công bố', r.publishedPierCount != null ? r.publishedPierCount : '—'],
-                  ['Số lượng cầu cảng đang được thỏa thuận đầu tư xây dựng', r.investmentAgreementPierCount != null ? r.investmentAgreementPierCount : '—'],
-                  ['Sản lượng hàng thông qua', r.cargoThroughput != null ? `${r.cargoThroughput} tấn` : '—'],
-                  ['Tiếp nhận tàu có trọng tải lớn hơn thông số tại quyết định công bố', r.receivesLargeVessel ? 'Có' : 'Không'],
-                  ['Thời điểm phê duyệt quy trình bảo trì công trình', r.maintenanceApprovalDate || '—'],
-                  ['Thời điểm được chấp thuận hồ sơ báo cáo đánh giá ATCT (gần nhất)', r.safetyAssessmentDate || '—'],
-                  ['Thời điểm kiểm định gần nhất', r.lastInspectionDate || '—'],
                 ].map(([label, value], i) => (
                   <div key={i} className="chk-detail-row">
                     <span className="chk-detail-label">{label}</span>
@@ -160,28 +151,89 @@ export default function PierDetailContent({
                   </div>
                 ))}
               </div>
-            </div>
-          ),
-        },
-        {
-          key: 'announcement', label: 'Thông tin phương án, công bố & phạm vi khu nước',
-          children: (
-            <div style={{ paddingTop: 3 }}>
-              <div className="chk-detail-grid">
-                {[
-                  ['Số văn bản', r.documentNumber || '—'],
-                  ['Ngày văn bản', formatDateOnly(r.documentDate)],
-                  ['Thời điểm công bố mở, đưa vào sử dụng', formatDateOnly(r.openingAnnouncementDate)],
-                  ['Quyết định công bố/ Văn bản cho phép khai thác', r.openingDecision || '—'],
-                  ['Văn bản thỏa thuận đầu tư xây dựng', r.investmentAgreementDoc || '—'],
-                  ['Phạm vi khu nước neo buộc tàu', r.waterAreaNeutralScope || '—'],
-                ].map(([label, value], i) => (
-                  <div key={i} className="chk-detail-row">
-                    <span className="chk-detail-label">{label}</span>
-                    <span className="chk-detail-value">{value}</span>
-                  </div>
-                ))}
-              </div>
+
+              {/* ── Toggle: Chỉ số tổng hợp ── */}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setSummaryOpen(!summaryOpen)}>
+                <span style={{ color: summaryOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{summaryOpen ? '▼' : '▶'} Chỉ số tổng hợp</span>
+              </button>
+              {summaryOpen && (
+                <div className="chk-detail-grid" style={{ marginTop: 4 }}>
+                  {[
+                    ['Chiều dài (m)', r.length != null ? r.length : '—'],
+                    ['Chiều rộng (m)', r.width != null ? r.width : '—'],
+                    ['Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)', r.currentWaterDepth || '—'],
+                    ['Cao độ đáy bến thiết kế', r.designBedElevation || '—'],
+                    ['Cỡ tàu khai thác theo công bố (DWT)', r.publishedVesselDWT || '—'],
+                    ['Thời điểm phê duyệt quy trình bảo trì công trình', r.maintenanceApprovalDate || '—'],
+                    ['Thời điểm được chấp thuận hồ sơ báo cáo đánh giá ATCT (gần nhất)', r.safetyAssessmentDate || '—'],
+                    ['Thời điểm kiểm định gần nhất', r.lastInspectionDate || '—'],
+                    ['Số lượng cầu cảng đang khai thác', r.operatingPierCount != null ? r.operatingPierCount : '—'],
+                    ['Số lượng cầu cảng đã công bố', r.publishedPierCount != null ? r.publishedPierCount : '—'],
+                    ['Số lượng cầu cảng đang được thỏa thuận đầu tư xây dựng', r.investmentAgreementPierCount != null ? r.investmentAgreementPierCount : '—'],
+                    ['Sản lượng hàng thông qua', r.cargoThroughput != null ? `${r.cargoThroughput} tấn` : '—'],
+                    ['Tiếp nhận tàu có trọng tải lớn hơn thông số tại quyết định công bố', r.receivesLargeVessel ? 'Có' : 'Không'],
+                  ].map(([label, value], i) => (
+                    <div key={i} className="chk-detail-row">
+                      <span className="chk-detail-label">{label}</span>
+                      <span className="chk-detail-value">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Toggle: Thông tin phương án bảo đảm ATHH đã duyệt ── */}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setAthhPlanOpen(!athhPlanOpen)}>
+                <span style={{ color: athhPlanOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{athhPlanOpen ? '▼' : '▶'} Thông tin phương án bảo đảm ATHH đã duyệt</span>
+              </button>
+              {athhPlanOpen && (
+                <div className="chk-detail-grid" style={{ marginTop: 4 }}>
+                  {[
+                    ['Số văn bản', r.documentNumber || '—'],
+                    ['Ngày văn bản', formatDateOnly(r.documentDate)],
+                  ].map(([label, value], i) => (
+                    <div key={i} className="chk-detail-row">
+                      <span className="chk-detail-label">{label}</span>
+                      <span className="chk-detail-value">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Toggle: Thông tin công bố mở, đưa vào sử dụng ── */}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setAnnouncementOpen(!announcementOpen)}>
+                <span style={{ color: announcementOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{announcementOpen ? '▼' : '▶'} Thông tin công bố mở, đưa vào sử dụng</span>
+              </button>
+              {announcementOpen && (
+                <div className="chk-detail-grid" style={{ marginTop: 4 }}>
+                  {[
+                    ['Thời điểm công bố mở, đưa vào sử dụng', formatDateOnly(r.openingAnnouncementDate)],
+                    ['Quyết định công bố/ Văn bản cho phép khai thác', r.openingDecision || '—'],
+                    ['Văn bản thỏa thuận đầu tư xây dựng', r.investmentAgreementDoc || '—'],
+                  ].map(([label, value], i) => (
+                    <div key={i} className="chk-detail-row">
+                      <span className="chk-detail-label">{label}</span>
+                      <span className="chk-detail-value">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Toggle: Phạm vi khu nước neo buộc tàu ── */}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setMooringScopeOpen(!mooringScopeOpen)}>
+                <span style={{ color: mooringScopeOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{mooringScopeOpen ? '▼' : '▶'} Phạm vi khu nước neo buộc tàu</span>
+              </button>
+              {mooringScopeOpen && (
+                <div className="chk-detail-grid" style={{ marginTop: 4 }}>
+                  {[
+                    ['Phạm vi khu nước neo buộc tàu', <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{r.waterAreaNeutralScope || '—'}</span>],
+                  ].map(([label, value], i) => (
+                    <div key={i} className="chk-detail-row" style={{ gridColumn: '1 / -1' }}>
+                      <span className="chk-detail-label">{label}</span>
+                      <span className="chk-detail-value">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ),
         },

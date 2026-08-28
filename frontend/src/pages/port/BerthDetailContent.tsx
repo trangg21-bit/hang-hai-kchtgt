@@ -73,6 +73,7 @@ const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> =
 };
 
 const fmtDateTime = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—');
+const fmtDate = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY') : '—');
 
 export default function BerthDetailContent({
   selectedRecord,
@@ -99,6 +100,7 @@ export default function BerthDetailContent({
   const [operationOpen, setOperationOpen] = useState(true);
   const [maintenanceOpen, setMaintenanceOpen] = useState(true);
   const [incidentOpen, setIncidentOpen] = useState(true);
+  const [announcementOpen, setAnnouncementOpen] = useState(true);
 
   // Tải danh sách KCHT khác thuộc bến cảng (cầu cảng) — logic giống mẫu Cảng biển: tải theo cha qua API
   useEffect(() => {
@@ -161,25 +163,25 @@ export default function BerthDetailContent({
                   </div>
                 ))}
               </div>
-            </div>
-          ),
-        },
-        {
-          key: 'announcement', label: 'Thông tin công bố',
-          children: (
-            <div style={{ paddingTop: 3 }}>
-              <div className="chk-detail-grid">
-                {[
-                  ['Thời điểm công bố', fmtDateTime(r.openingAnnouncementDate)],
-                  ['Quyết định công bố', r.openingDecision || '—'],
-                  ['Văn bản thỏa thuận', r.investmentAgreement || '—'],
-                ].map(([label, value], i) => (
-                  <div key={i} className="chk-detail-row">
-                    <span className="chk-detail-label">{label}</span>
-                    <span className="chk-detail-value">{value}</span>
-                  </div>
-                ))}
-              </div>
+
+              {/* ── Toggle: Thông tin công bố mở, đưa vào sử dụng (gom vào tab Thông tin chung — giống BẾN PHAO) ── */}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setAnnouncementOpen(!announcementOpen)}>
+                <span style={{ color: announcementOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{announcementOpen ? '▼' : '▶'} Thông tin công bố mở, đưa vào sử dụng</span>
+              </button>
+              {announcementOpen && (
+                <div className="chk-detail-grid" style={{ marginTop: 4 }}>
+                  {[
+                    ['Thời điểm công bố, đưa vào sử dụng', fmtDate(r.openingAnnouncementDate)],
+                    ['Quyết định công bố/ Văn bản cho phép khai thác', r.openingDecision || '—'],
+                    ['Văn bản thỏa thuận đầu tư xây dựng', r.investmentAgreement || '—'],
+                  ].map(([label, value], i) => (
+                    <div key={i} className="chk-detail-row">
+                      <span className="chk-detail-label">{label}</span>
+                      <span className="chk-detail-value">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ),
         },
