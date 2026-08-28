@@ -236,7 +236,15 @@ export default function OrgUnitTreeSelect({
         if (nodeProps.isLeaf) return null;
         return <DownOutlined style={{ fontSize: 10, color: '#7e8299' }} />;
       }}
-      style={{ width: '100%', height: controlHeight, borderRadius: radiusPill, ...style }}
+      style={{
+        width: '100%',
+        maxWidth: '100%',
+        minWidth: 0,
+        overflow: 'hidden',
+        height: controlHeight,
+        borderRadius: radiusPill,
+        ...style,
+      }}
     />
   );
 }

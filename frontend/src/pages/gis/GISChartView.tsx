@@ -14,12 +14,13 @@ import {
   List,
   Drawer,
   Checkbox,
+  Radio,
   Modal,
 } from 'antd';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   InfoCircleOutlined,
-  SlidersOutlined,
+  FilterOutlined,
   AppstoreOutlined,
   SearchOutlined,
   ReloadOutlined,
@@ -63,26 +64,54 @@ import { DataTable, Pagination } from '../../components/list-view';
 import type { DataTableColumn } from '../../components/list-view/DataTable';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import {
+  actionPrimary,
+  actionHover,
+  statusOperational,
+  statusAttention,
+  statusCritical,
+  statusDraft,
+  borderDefault,
+  sidebarBg,
+  radiusSm,
+  radiusMd,
+  radiusLg,
+  radiusPill,
+  spaceXs,
+  spaceSm,
+  spaceMd,
+  spaceFormField,
+  spaceLg,
+  spaceXl,
+  fontSizeSm,
+  fontSizeMd,
+  fontSizeLg,
+  fontSizeXl,
+  fontSizeHeading,
+  fontWeightNormal,
+  fontWeightMedium,
+  fontWeightBold,
   cardStyle,
   controlHeight,
+  drawerProps,
   drawerCloseBtnStyle,
   drawerTitleStyle,
+  drawerFooterStyle,
   filterLabelStyle,
-  fontSizeSm,
   formFieldStyle,
   inputStyle,
-  outlineButtonStyle,
   primaryButtonStyle,
   selectStyle,
+  shadowSm,
   shadowMd,
-  spaceLg,
-  spaceMd,
-  spaceSm,
+  shadowLg,
   surfaceCard,
   surfacePage,
-  shadowLg,
+  textPrimary,
+  textSecondary,
   textTertiary,
+  fontSans,
 } from '../../tokens';
+import { colors } from '../../theme';
 import Flatbush from 'flatbush';
 import MapToolbar from '../../components/gis/MapToolbar';
 import DrawSaveModal from '../../components/gis/DrawSaveModal';
@@ -108,7 +137,7 @@ import {
   PLANNING_STATUS_COLORS,
   shouldRenderPlanningFeature,
 } from '../../utils/planningGis';
-import * as Leaflet from 'leaflet';
+import Leaflet from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
@@ -292,6 +321,60 @@ const FEATURE_NAMES_VI: Record<string, string> = {
   'OFSPLF': 'Giàn khoan ngoài khơi',
   'ZONEEX': 'Vùng đặc quyền kinh tế / đặc biệt',
 };
+
+const ENC_LAYER_DETAILS = [
+  { code: 'ACHARE', label: 'Vùng neo đậu (ACHARE)', icon: '⚓' },
+  { code: 'ACHBRT', label: 'Vùng cập tàu (ACHBRT)', icon: '⛵' },
+  { code: 'BRIDGE', label: 'Cầu (BRIDGE)', icon: '🌉' },
+  { code: 'CTNARE', label: 'Vùng Container (CTNARE)', icon: '📦' },
+  { code: 'DEPARE', label: 'Vùng độ sâu (DEPARE)', icon: '🌊' },
+  { code: 'FAIRWY', label: 'Luồng hàng hải (FAIRWY)', icon: '🛣️' },
+  { code: 'M_COVR', label: 'Vùng phủ bản đồ (M_COVR)', icon: '🗺️' },
+  { code: 'MARCUL', label: 'Vùng nuôi trồng thủy sản (MARCUL)', icon: '🐟' },
+  { code: 'OBSTRN', label: 'Vật chướng ngại (OBSTRN)', icon: '⚠️' },
+  { code: 'OFSPLF', label: 'Giàn khoan ngoài khơi (OFSPLF)', icon: '🏗️' },
+  { code: 'PILBOP', label: 'Trạm hoa tiêu (PILBOP)', icon: '🧭' },
+  { code: 'SLCONS', label: 'Công trình bờ biển (SLCONS)', icon: '🧱' },
+  { code: 'RESARE', label: 'Vùng hạn chế (RESARE)', icon: '🚫' },
+  { code: 'WRECKS', label: 'Xác tàu đắm (WRECKS)', icon: '☠️' },
+  { code: 'CBLOHD', label: 'Cáp treo trên cao (CBLOHD)', icon: '⚡' },
+  { code: 'CBLSUB', label: 'Cáp ngầm dưới biển (CBLSUB)', icon: '🔌' },
+  { code: 'DEPCNT', label: 'Đường đẳng sâu (DEPCNT)', icon: '〰️' },
+  { code: 'FSHFAC', label: 'Công trình đánh bắt cá (FSHFAC)', icon: '🎣' },
+  { code: 'NAVLNE', label: 'Tuyến hàng hải (NAVLNE)', icon: '🚢' },
+  { code: 'BOYCAR', label: 'Phao phương vị (BOYCAR)', icon: '🧭' },
+  { code: 'BOYLAT', label: 'Phao bên - Lateral (BOYLAT)', icon: '🔴' },
+  { code: 'BOYSAW', label: 'Phao nước an toàn (BOYSAW)', icon: '⚪' },
+  { code: 'BOYSPP', label: 'Phao đặc biệt (BOYSPP)', icon: '🟡' },
+  { code: 'LNDMRK', label: 'Vật định hướng trên đất (LNDMRK)', icon: '🏢' },
+  { code: 'MORFAC', label: 'Công trình neo buộc (MORFAC)', icon: '⚓' },
+  { code: 'PILPNT', label: 'Trạm hoa tiêu điểm (PILPNT)', icon: '☸️' },
+  { code: 'TOPMAR', label: 'Tiêu đỉnh (TOPMAR)', icon: '🚩' },
+  { code: 'BCNLAT', label: 'Tiêu bên (VIEW_BCNLAT)', icon: '🔺' },
+  { code: 'BCNSPP', label: 'Tiêu đặc biệt (VIEW_BCNSPP)', icon: '📍' },
+  { code: 'LIGHTS', label: 'Đèn báo hiệu (VIEW_LIGHTS)', icon: '💡' },
+] as const;
+
+const BASE_MAP_OPTIONS = [
+  {
+    value: 'google-m',
+    label: 'Bản đồ nền Google Map (Online) M',
+    icon: '🗺️',
+    url: 'https://mt{s}.google.com/vt/lyrs=m&hl=vi&gl=vn&x={x}&y={y}&z={z}',
+  },
+  {
+    value: 'google-y',
+    label: 'Bản đồ nền Google Map (Online) Y',
+    icon: '🛰️',
+    url: 'https://mt{s}.google.com/vt/lyrs=y&hl=vi&gl=vn&x={x}&y={y}&z={z}',
+  },
+  {
+    value: 'google-p',
+    label: 'Bản đồ nền Google Map (Online) P',
+    icon: '⛰️',
+    url: 'https://mt{s}.google.com/vt/lyrs=p&hl=vi&gl=vn&x={x}&y={y}&z={z}',
+  },
+] as const;
 
 const LAYER_ICONS: Record<string, string> = {
   'ACHARE': '⚓',
@@ -680,18 +763,18 @@ const fetchAndFormatPopupDetails = async (record: any) => {
   const id = record.id;
   
   const headerHtml = `
-    <div style="font-family: 'Segoe UI', Roboto, sans-serif; min-width: 450px; padding: 4px;">
+    <div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 450px; padding: 4px;">
       <div style="max-height: 450px; overflow-y: auto; padding-right: 6px;">
-        <table style="width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13px; line-height: 1.5; color: #333;">
+        <table style="width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13px; line-height: 1.5; color: #0c2438;">
           <thead>
-            <tr style="border-bottom: 1px solid #ccc;">
-              <th style="text-align: left; padding: 10px 8px; font-weight: 600; width: 40%; color: #262626;">Thông tin</th>
-              <th style="text-align: left; padding: 10px 8px; font-weight: 600; width: 60%; color: #262626;">
+            <tr style="border-bottom: 1px solid rgba(11,46,79,0.09);">
+              <th style="text-align: left; padding: 10px 8px; font-weight: 600; width: 40%; color: #12468C;">Thông tin</th>
+              <th style="text-align: left; padding: 10px 8px; font-weight: 600; width: 60%; color: #12468C;">
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                   <span>Giá trị</span>
                   <div style="display: inline-flex; gap: 12px; align-items: center;">
                     <button onclick="window.handleKchtAction('${id}', '${type}', 'view')" title="Xem chi tiết" style="border: none; background: none; padding: 2px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; outline: none;">
-                      <svg viewBox="0 0 24 24" width="16px" height="16px" fill="none" stroke="#722ed1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle;">
+                      <svg viewBox="0 0 24 24" width="16px" height="16px" fill="none" stroke="#0E6FD6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle;">
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                         <circle cx="12" cy="12" r="3"></circle>
                       </svg>
@@ -772,8 +855,8 @@ const fetchAndFormatPopupDetails = async (record: any) => {
     return String(val);
   };
 
-  const tdLabelStyle = 'padding: 8px; border: 1px solid #f0f0f0; font-weight: 500; background: #fafafa; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;';
-  const tdValStyle = 'padding: 8px; border: 1px solid #f0f0f0; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;';
+  const tdLabelStyle = 'padding: 8px; border: 1px solid rgba(11,46,79,0.09); font-weight: 500; background: #f8fafc; color: #566a7c; font-size: 13px; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;';
+  const tdValStyle = 'padding: 8px; border: 1px solid rgba(11,46,79,0.09); color: #0c2438; font-size: 13px; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;';
 
   const KEY_LABELS: Record<string, string> = {
     // Common
@@ -1328,7 +1411,7 @@ function getFeatureIcon(featureCode: string, fillColor: string, strokeColor: str
 
 export default function GISChartView() {
   const screens = Grid.useBreakpoint();
-  const searchPanelWidth = screens.md ? 500 : '100%';
+  const searchPanelWidth = screens.md ? 560 : '100%';
   const navigate = useNavigate();
   const [activeModalUrl, setActiveModalUrl] = useState<string | null>(null);
 
@@ -1471,10 +1554,10 @@ export default function GISChartView() {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [visibleLayers, setVisibleLayers] = useState<Record<string, boolean>>({});
   const [showChart, setShowChart] = useState(false);
+  const [activeBaseMap, setActiveBaseMap] = useState<(typeof BASE_MAP_OPTIONS)[number]['value']>('google-m');
 
-  // Get static S-57 feature codes from translation map dictionary keys
   const uniqueFeatureCodes = useMemo(() => {
-    return Object.keys(FEATURE_NAMES_VI).sort();
+    return ENC_LAYER_DETAILS.map((detail) => detail.code);
   }, []);
 
   // Initialize visibleLayers when uniqueFeatureCodes is loaded/updated
@@ -1627,7 +1710,7 @@ export default function GISChartView() {
       const res = await api.get('/v1/kchtgis/kchtgis_155/search', {
         params: {
           orgUnitId,
-          kchtType: kchtTypes.join(','),
+          kchtType: kchtTypes.length > 0 ? kchtTypes.join(',') : undefined,
           provinceId,
           province,
           search,
@@ -1748,6 +1831,7 @@ export default function GISChartView() {
   const mapRef = useRef<any>(null);
   const [mapInstance, setMapInstance] = useState<any>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const baseMapLayerRef = useRef<any>(null);
   const geoJsonGroupRef = useRef<any>(null);
   const searchMarkersGroupRef = useRef<any>(null);
   const searchVertexMarkersGroupRef = useRef<any>(null);
@@ -1777,7 +1861,7 @@ export default function GISChartView() {
     let active = true;
 
     const loadLeafletPlugins = async () => {
-      window.L = { ...Leaflet };
+      window.L = Leaflet;
 
       try {
         await import('leaflet.markercluster');
@@ -2060,8 +2144,8 @@ export default function GISChartView() {
           interactionPosition = [coordinates[1], coordinates[0]];
           layer = L.circleMarker([coordinates[1], coordinates[0]], {
             radius: 7,
-            color: '#13c2c2', // Teal-cyan for points
-            fillColor: '#13c2c2',
+            color: actionPrimary,
+            fillColor: actionPrimary,
             fillOpacity: 0.85,
             pane: GIS_LAYER_INTERACTION_POLICY.kchtGeometryPane,
             weight: 2,
@@ -2074,7 +2158,7 @@ export default function GISChartView() {
           const center = L.latLngBounds(latlngs).getCenter();
           interactionPosition = [center.lat, center.lng];
           layer = L.polyline(latlngs, {
-            color: '#fa8c16', // Orange for lines
+            color: statusAttention,
             weight: 3,
             opacity: 0.9,
             pane: GIS_LAYER_INTERACTION_POLICY.kchtGeometryPane,
@@ -2087,8 +2171,8 @@ export default function GISChartView() {
           const center = L.latLngBounds(latlngs.flat()).getCenter();
           interactionPosition = [center.lat, center.lng];
           layer = L.polygon(latlngs, {
-            color: '#1890ff', // Blue for polygons
-            fillColor: '#1890ff',
+            color: actionPrimary,
+            fillColor: actionPrimary,
             fillOpacity: 0.25,
             pane: GIS_LAYER_INTERACTION_POLICY.kchtGeometryPane,
             weight: 2,
@@ -2122,14 +2206,14 @@ export default function GISChartView() {
           ));
 
           const getPopupHtml = (portName: string) => `
-            <div style="min-width: 250px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 4px;">
+            <div style="min-width: 250px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 4px;">
               <!-- Header -->
-              <div style="font-size: 14px; font-weight: bold; color: #1890ff; border-bottom: 1px solid #e8e8e8; padding-bottom: 6px; margin-bottom: 8px; word-break: break-all;">
+              <div style="font-size: 14px; font-weight: 600; color: ${colors.sidebarBg}; border-bottom: 1px solid rgba(11,46,79,0.09); padding-bottom: 6px; margin-bottom: 8px; word-break: break-all;">
                 ${feature.name}
               </div>
 
               <!-- Fields table -->
-              <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #555;">
+              <div style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #566a7c;">
                 <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f9f9f9; padding-bottom: 4px;">
                   <span style="font-weight: 600; color: #888;">Mã:</span>
                   <span style="color: #222;">${feature.code}</span>
@@ -2164,10 +2248,10 @@ export default function GISChartView() {
 
               <!-- Action Buttons -->
               <div style="margin-top: 14px; display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid #f0f0f0; padding-top: 10px;">
-                <button class="btn-delete-custom-gis" data-id="${feature.id}" data-type="${feature.type}" data-name="${feature.name}" style="font-size: 11px; border-radius: 4px; padding: 4px 10px; cursor: pointer; border: 1px solid #ff4d4f; background: #ff4d4f; color: white; font-weight: 500; outline: none; transition: background 0.2s;">
+                <button class="btn-delete-custom-gis" data-id="${feature.id}" data-type="${feature.type}" data-name="${feature.name}" style="font-size: 13px; border-radius: 4px; padding: 4px 10px; cursor: pointer; border: 1px solid #E34948; background: #E34948; color: white; font-weight: 500; outline: none; transition: background 0.2s;">
                   Xóa
                 </button>
-                <button class="btn-edit-custom-gis" data-id="${feature.id}" data-type="${feature.type}" data-name="${feature.name}" style="font-size: 11px; border-radius: 4px; padding: 4px 10px; cursor: pointer; border: 1px solid #1890ff; background: transparent; color: #1890ff; font-weight: 500; outline: none; transition: background 0.2s;">
+                <button class="btn-edit-custom-gis" data-id="${feature.id}" data-type="${feature.type}" data-name="${feature.name}" style="font-size: 13px; border-radius: 4px; padding: 4px 10px; cursor: pointer; border: 1px solid #0E6FD6; background: transparent; color: #0E6FD6; font-weight: 500; outline: none; transition: background 0.2s;">
                   Chỉnh sửa
                 </button>
               </div>
@@ -2299,20 +2383,20 @@ export default function GISChartView() {
                   <div class="planning-status-option ${isActive ? 'active-opt' : ''}"
                        data-status="${option.status}" data-color="${option.color}" data-fid="${feat.fid}" data-geomtype="${feat.geomType}"
                        data-schema="${feat.schemaName || ''}" data-table="${feat.tableName || ''}"
-                       style="cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: 1px solid ${isActive ? '#1890ff' : '#d9d9d9'}; background-color: ${isActive ? '#e6f7ff' : '#fff'}; border-radius: 6px; transition: all 0.2s;">
-                    <div style="width: 16px; height: 16px; border-radius: 3px; background-color: ${option.swatchColor}; border: 1px solid #d9d9d9; flex-shrink: 0;"></div>
+                       style="cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: 1px solid ${isActive ? '#0E6FD6' : 'rgba(11,46,79,0.09)'}; background-color: ${isActive ? 'rgba(14,111,214,0.1)' : '#ffffff'}; border-radius: 4px; transition: all 0.2s;">
+                    <div style="width: 16px; height: 16px; border-radius: 4px; background-color: ${option.swatchColor}; border: 1px solid rgba(11,46,79,0.09); flex-shrink: 0;"></div>
                     <span style="font-size: 13px; font-weight: ${isActive ? '600' : 'normal'};">${option.label}</span>
                   </div>
                 `;
               }).join('');
 
               return `
-                <div style="border-left: 3px solid #1890ff; padding-left: 12px; margin-bottom: ${idx === featuresAtPoint.length - 1 ? '0' : '20px'}; position: relative;">
+                <div style="border-left: 3px solid #0E6FD6; padding-left: 12px; margin-bottom: ${idx === featuresAtPoint.length - 1 ? '0' : '20px'}; position: relative;">
                   <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
-                    <span style="border: 1px solid #1890ff; background-color: #e6f7ff; color: #1890ff; padding: 4px 10px; border-radius: 4px; font-weight: 600; font-size: 13px; max-width: 190px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${feat.name || 'Đối tượng quy hoạch'}">
+                    <span style="border: 1px solid rgba(14,111,214,0.3); background-color: rgba(14,111,214,0.1); color: #0E6FD6; padding: 4px 10px; border-radius: 999px; font-weight: 500; font-size: 13px; max-width: 190px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${feat.name || 'Đối tượng quy hoạch'}">
                       ${feat.name || 'Đối tượng quy hoạch'}
                     </span>
-                    <span style="background-color: #f5f5f5; border: 1px solid #d9d9d9; padding: 3px 8px; border-radius: 4px; font-size: 11px; color: #666; font-weight: 500;">
+                    <span style="background-color: #f8fafc; border: 1px solid rgba(11,46,79,0.09); padding: 2px 8px; border-radius: 999px; font-size: 10px; color: #566a7c; font-weight: 500;">
                       ${feat.geomType === 'AREA' ? 'Quy hoạch' : 'Hiện trạng'}
                     </span>
                   </div>
@@ -2341,7 +2425,7 @@ export default function GISChartView() {
                   ${statusOptionsHtml ? `
                     <div style="border-top: 1px dashed #d9d9d9; margin: 12px 0;"></div>
 
-                    <div style="font-size: 11px; font-weight: bold; color: #8c8c8c; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <div style="font-size: 10px; font-weight: 600; color: #12468C; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
                       CẬP NHẬT TRẠNG THÁI QUY HOẠCH
                     </div>
 
@@ -2354,7 +2438,7 @@ export default function GISChartView() {
             }).join('');
 
             const aggregatedContent = `
-              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 4px; width: 330px; color: #333; max-height: 380px; overflow-y: auto; padding-right: 6px;">
+              <div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 4px; width: 330px; color: #0c2438; max-height: 380px; overflow-y: auto; padding-right: 6px;">
                 ${itemsHtml}
               </div>
             `;
@@ -2397,24 +2481,17 @@ export default function GISChartView() {
 
     const L = leafletRuntime;
     // Create map centered on Vietnam (incorporating East Sea / Sovereignty area)
-    const map = L.map(mapContainerRef.current, { preferCanvas: true, attributionControl: false }).setView([16.0, 108.0], 5);
+    const map = L.map(mapContainerRef.current, {
+      preferCanvas: true,
+      attributionControl: false,
+      maxZoom: 20,
+    }).setView([16.0, 108.0], 5);
     mapRef.current = map;
     setMapInstance(map);
 
     // Create a high-priority pane for QHCB planning layers so they render above ENC layers
     const planningPane = map.createPane(GIS_LAYER_INTERACTION_POLICY.planningPane);
     planningPane.style.zIndex = String(GIS_LAYER_INTERACTION_POLICY.planningPaneZIndex);
-
-    // Use Google Maps tile layer with Vietnamese localization (hl=vi, gl=vn)
-    // Use {s} subdomain rotation (mt0-mt3) for parallel tile downloads (4x6=24 concurrent connections)
-    L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&hl=vi&gl=vn&x={x}&y={y}&z={z}', {
-      maxZoom: 20,
-      subdomains: '0123',
-      attribution: '© Google Maps',
-      keepBuffer: 4,               // Cache 4 screen-widths of tiles offscreen
-      updateWhenZooming: false,     // Don't load new tiles mid-zoom animation
-      updateWhenIdle: true,         // Only load tiles after movement stops
-    }).addTo(map);
 
     // Track map zoom and move events for viewport filtering with 300ms debounce
     map.on('moveend', () => {
@@ -2609,9 +2686,28 @@ export default function GISChartView() {
         mapRef.current.off('moveend');
         mapRef.current.remove();
         mapRef.current = null;
+        baseMapLayerRef.current = null;
       }
     };
   }, [leafletLoaded]);
+
+  useEffect(() => {
+    if (!leafletLoaded || !mapInstance || !leafletRuntime) return;
+    const selectedBaseMap = BASE_MAP_OPTIONS.find((option) => option.value === activeBaseMap)
+      || BASE_MAP_OPTIONS[0];
+    if (baseMapLayerRef.current) {
+      mapInstance.removeLayer(baseMapLayerRef.current);
+    }
+    baseMapLayerRef.current = leafletRuntime.tileLayer(selectedBaseMap.url, {
+      maxZoom: 20,
+      subdomains: '0123',
+      attribution: '© Google Maps',
+      keepBuffer: 4,
+      updateWhenZooming: false,
+      updateWhenIdle: true,
+    }).addTo(mapInstance);
+    baseMapLayerRef.current.bringToBack?.();
+  }, [activeBaseMap, leafletLoaded, mapInstance]);
 
   // 3.1 Initialize Geoman Drawing Controls when map is ready and Leaflet loads
   useEffect(() => {
@@ -3544,17 +3640,17 @@ export default function GISChartView() {
                   {legendOpen && (
                     <div
                       style={{
-                        background: 'rgba(255, 255, 255, 0.98)',
-                        borderRadius: '8px',
-                        boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-                        border: '1px solid rgba(0,0,0,0.06)',
-                        padding: '16px',
+                        background: surfaceCard,
+                        borderRadius: radiusMd,
+                        boxShadow: shadowLg,
+                        border: `1px solid ${borderDefault}`,
+                        padding: spaceMd,
                         width: '320px',
-                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                        fontFamily: fontSans,
                       }}
                       onMouseDown={(e) => e.stopPropagation()}
                     >
-                      <div style={{ fontWeight: 700, fontSize: '13px', color: '#333', letterSpacing: '0.5px', borderBottom: '1px solid #f0f0f0', paddingBottom: '8px', marginBottom: '12px' }}>
+                      <div style={{ fontWeight: fontWeightBold, fontSize: fontSizeMd, color: colors.sidebarBg, letterSpacing: '0.5px', borderBottom: `1px solid ${borderDefault}`, paddingBottom: spaceSm, marginBottom: spaceMd }}>
                         GHI CHÚ QUY HOẠCH:
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -3612,18 +3708,18 @@ export default function GISChartView() {
                   <Button
                     type={legendOpen ? 'primary' : 'default'}
                     shape="circle"
-                    icon={<InfoCircleOutlined style={{ fontSize: '18px' }} />}
+                    icon={<InfoCircleOutlined style={{ fontSize: fontSizeLg }} />}
                     onClick={() => setLegendOpen(!legendOpen)}
                     style={{
-                      width: '40px',
-                      height: '40px',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                      width: controlHeight,
+                      height: controlHeight,
+                      boxShadow: shadowMd,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      backgroundColor: legendOpen ? '#1890ff' : '#ffffff',
-                      color: legendOpen ? '#ffffff' : '#1890ff',
-                      border: 'none',
+                      backgroundColor: legendOpen ? actionPrimary : surfaceCard,
+                      color: legendOpen ? surfaceCard : actionPrimary,
+                      border: `1px solid ${borderDefault}`,
                     }}
                   />
                 </div>
@@ -3676,19 +3772,21 @@ export default function GISChartView() {
               {/* Overlay Grid Button (AppstoreOutlined) */}
               <Button
                 type="primary"
-                icon={<AppstoreOutlined style={{ fontSize: '18px' }} />}
+                icon={<AppstoreOutlined style={{ fontSize: fontSizeLg }} />}
                 onClick={() => setDrawerVisible(true)}
                 style={{
                   position: 'absolute',
-                  top: '10px',
-                  right: '10px',
+                  top: spaceSm,
+                  right: spaceSm,
                   zIndex: 1000,
-                  width: '40px',
-                  height: '40px',
+                  width: controlHeight,
+                  height: controlHeight,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                  boxShadow: shadowMd,
+                  backgroundColor: actionPrimary,
+                  borderRadius: radiusMd,
                 }}
               />
               {/* Floating Search Button when panel is hidden */}
@@ -3738,7 +3836,15 @@ export default function GISChartView() {
                       maxWidth: '100%',
                       minWidth: 0,
                     }}>
-                      <div style={{ flexShrink: 0, padding: spaceMd }}>
+                      <div style={{
+                        flexShrink: 0,
+                        width: '100%',
+                        maxWidth: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
+                        overflow: 'hidden',
+                        padding: spaceMd,
+                      }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spaceMd }}>
                         <Typography.Title level={4} style={{ ...drawerTitleStyle, margin: 0 }}>
                           Tra cứu thông tin kết cấu hạ tầng hàng hải trên bản đồ
@@ -3751,7 +3857,13 @@ export default function GISChartView() {
                           title="Đóng"
                         />
                       </div>
-                      <Form form={searchForm} layout="vertical" onFinish={() => void handleSearchInfrastructure(1, searchPageSize)} initialValues={{ orgUnitId: '__all__', kchtType: urlKchtType, province: urlProvince || undefined, search: urlSearch, objectType: undefined }}>
+                      <Form
+                        form={searchForm}
+                        layout="vertical"
+                        onFinish={() => void handleSearchInfrastructure(1, searchPageSize)}
+                        initialValues={{ orgUnitId: '__all__', kchtType: urlKchtType, province: urlProvince || undefined, search: urlSearch, objectType: undefined }}
+                        style={{ width: '100%', maxWidth: '100%', minWidth: 0, overflow: 'hidden' }}
+                      >
                         <Form.Item name="orgUnitId" label={<span style={filterLabelStyle}>Đơn vị quản lý</span>} style={formFieldStyle}>
                         <OrgUnitTreeSelect
                           organizations={orgUnits}
@@ -3816,17 +3928,8 @@ export default function GISChartView() {
                         </Form.Item>
                       </div>
 
-                      <div style={{ display: 'flex', gap: spaceSm, justifyContent: 'flex-end', marginTop: spaceMd }}>
-                        <Button 
-                          type="primary" 
-                          htmlType="submit" 
-                          icon={<SearchOutlined />}
-                          loading={searchingInfrastructure}
-                          style={{ ...primaryButtonStyle, flex: 1 }}
-                        >
-                          Tìm kiếm
-                        </Button>
-                        <Button 
+                      <div style={{ display: 'flex', gap: spaceSm, justifyContent: 'center', alignItems: 'center', marginTop: spaceMd }}>
+                        <Button
                           icon={<ReloadOutlined />}
                           onClick={() => {
                             hasSearchedRef.current = false;
@@ -3844,14 +3947,45 @@ export default function GISChartView() {
                               searchVertexMarkersGroupRef.current.clearLayers();
                             }
                           }}
-                          style={outlineButtonStyle}
+                          shape="circle"
+                          title="Đặt lại bộ lọc"
+                          aria-label="Đặt lại bộ lọc"
+                          style={{
+                            color: textSecondary,
+                            borderColor: borderDefault,
+                            width: 38,
+                            height: 38,
+                            fontSize: fontSizeMd,
+                            flexShrink: 0,
+                          }}
+                        />
+                        <Button
+                          type="primary"
+                          htmlType="submit"
+                          icon={<SearchOutlined />}
+                          loading={searchingInfrastructure}
+                          style={{
+                            ...primaryButtonStyle,
+                            flex: '0 0 auto',
+                            paddingInline: spaceMd,
+                          }}
                         >
-                          Đặt lại
+                          Tìm kiếm
                         </Button>
                         <Button 
-                          icon={<SlidersOutlined />} 
+                          icon={<FilterOutlined />}
                           onClick={() => setShowAdvancedSearch(prev => !prev)}
-                          style={outlineButtonStyle}
+                          shape="circle"
+                          title={showAdvancedSearch ? 'Thu gọn bộ lọc nâng cao' : 'Mở rộng bộ lọc nâng cao'}
+                          aria-label={showAdvancedSearch ? 'Thu gọn bộ lọc nâng cao' : 'Mở rộng bộ lọc nâng cao'}
+                          style={{
+                            color: showAdvancedSearch ? actionPrimary : textSecondary,
+                            borderColor: showAdvancedSearch ? actionPrimary : borderDefault,
+                            width: 38,
+                            height: 38,
+                            fontSize: fontSizeMd,
+                            flexShrink: 0,
+                          }}
                         />
                       </div>
                     </Form>
@@ -3884,6 +4018,7 @@ export default function GISChartView() {
                               scroll={{ x: 'max-content', y: tableHeight }}
                               emptyState={<EmptyState description={hasSearched ? 'Không tìm thấy kết cấu hạ tầng phù hợp' : 'Nhập điều kiện và chọn Tìm kiếm'} />}
                               rowSelection={{
+                                columnWidth: 44,
                                 selectedRowKeys,
                                 onChange: (keys: React.Key[]) => {
                                   const hasNewSelection = keys.some((key) => !selectedRowKeys.includes(key));
@@ -4052,19 +4187,51 @@ export default function GISChartView() {
 
       {/* Drawer for Map Layer Management */}
       <Drawer
-        title="Quản lý lớp bản đồ"
+        closable={drawerProps.closable}
+        push={drawerProps.push}
+        styles={drawerProps.styles}
+        size={screens.md ? 420 : '100%'}
+        title={
+          <span style={drawerTitleStyle}>
+            Quản lý lớp bản đồ
+          </span>
+        }
         placement="right"
         onClose={() => setDrawerVisible(false)}
         open={drawerVisible}
-        size="default"
+        extra={
+          <Button type="text" onClick={() => setDrawerVisible(false)} style={drawerCloseBtnStyle}>
+            ✕
+          </Button>
+        }
       >
-        <Space orientation="vertical" style={{ width: '100%' }} size={16}>
+        <Space direction="vertical" style={{ width: '100%' }} size={spaceMd}>
           <div>
-            <Typography.Text type="secondary" strong style={{ display: 'block', marginBottom: '12px', fontSize: '13px' }}>
+            <Typography.Text style={{ display: 'block', marginBottom: spaceSm, fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg }}>
+              Bản đồ nền
+            </Typography.Text>
+            <Radio.Group
+              value={activeBaseMap}
+              onChange={(event) => setActiveBaseMap(event.target.value)}
+              style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}
+            >
+              {BASE_MAP_OPTIONS.map((option) => (
+                <Radio key={option.value} value={option.value}>
+                  <Space size={spaceSm} style={{ fontSize: fontSizeMd, color: textPrimary }}>
+                    <span>{option.icon}</span>
+                    <span>{option.label}</span>
+                  </Space>
+                </Radio>
+              ))}
+            </Radio.Group>
+          </div>
+
+          <div>
+            <Typography.Text style={{ display: 'block', marginBottom: spaceSm, fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg }}>
               Lớp dữ liệu (Overlay)
             </Typography.Text>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}>
               <Checkbox 
                 checked={showChart}
                 onChange={(e) => {
@@ -4077,7 +4244,7 @@ export default function GISChartView() {
                   setVisibleLayers(next);
                 }}
               >
-                <Space size={6}>
+                <Space size={spaceXs} style={{ fontSize: fontSizeMd, color: textPrimary }}>
                   <span>🗺️</span>
                   <span>ENC - Hải đồ điện tử</span>
                 </Space>
@@ -4087,7 +4254,7 @@ export default function GISChartView() {
                 checked={showPlanning}
                 onChange={(e) => setShowPlanning(e.target.checked)}
               >
-                <Space size={6}>
+                <Space size={spaceXs} style={{ fontSize: fontSizeMd, color: textPrimary }}>
                   <span>🏢</span>
                   <span>QHCB - Quy hoạch cảng biển</span>
                 </Space>
@@ -4095,18 +4262,16 @@ export default function GISChartView() {
             </div>
           </div>
 
-          <Typography.Text type="secondary" strong>
+          <Typography.Text style={{ display: 'block', fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg }}>
             Chi tiết Hải đồ (Lọc theo lớp)
           </Typography.Text>
 
           <div style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
-            {uniqueFeatureCodes.map(code => {
-              const label = getFeatureNameVi(code);
-              const icon = LAYER_ICONS[code] || '🌐';
+            {ENC_LAYER_DETAILS.map(({ code, label, icon }) => {
               const isChecked = visibleLayers[code] ?? false;
 
               return (
-                <div key={code} style={{ padding: '6px 0', display: 'flex', alignItems: 'center' }}>
+                <div key={code} style={{ padding: `${spaceXs}px 0`, display: 'flex', alignItems: 'center' }}>
                   <Checkbox 
                     checked={isChecked}
                     onChange={(e) => {
@@ -4117,7 +4282,7 @@ export default function GISChartView() {
                       }
                     }}
                   >
-                    <Space size={8}>
+                    <Space size={spaceSm} style={{ fontSize: fontSizeMd, color: textPrimary }}>
                       <span>{icon}</span>
                       <span>{label}</span>
                     </Space>
@@ -4193,33 +4358,46 @@ function DescriptionsPanel({ feature }: { feature: ChartFeature }) {
   const { featureName, featureCode, geometryType, coordinates, attributes } = feature;
   return (
     <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
-      <Typography.Paragraph style={{ marginBottom: 4 }}>
-        <strong>Tên:</strong> {getFeatureNameVi(featureCode, featureName)}
+      <Typography.Paragraph style={{ marginBottom: spaceXs, color: textPrimary, fontSize: fontSizeMd }}>
+        <strong style={{ color: colors.sidebarBg }}>Tên:</strong> {getFeatureNameVi(featureCode, featureName)}
       </Typography.Paragraph>
-      <Typography.Paragraph style={{ marginBottom: 4 }}>
-        <strong>Mã đối tượng:</strong> <Tag color="orange">{featureCode}</Tag>
+      <Typography.Paragraph style={{ marginBottom: spaceXs, color: textPrimary, fontSize: fontSizeMd }}>
+        <strong style={{ color: colors.sidebarBg }}>Mã đối tượng:</strong>{' '}
+        <span style={{
+          display: 'inline-flex',
+          padding: `${spaceXs}px ${spaceSm}px`,
+          border: `1px solid ${actionPrimary}40`,
+          borderRadius: radiusPill,
+          fontSize: fontSizeSm,
+          fontWeight: fontWeightMedium,
+          background: `${actionPrimary}15`,
+          color: actionPrimary,
+        }}>{featureCode}</span>
       </Typography.Paragraph>
-      <Typography.Paragraph style={{ marginBottom: 4 }}>
-        <strong>Kiểu hình học:</strong> <code>{geometryType}</code>
+      <Typography.Paragraph style={{ marginBottom: spaceXs, color: textPrimary, fontSize: fontSizeMd }}>
+        <strong style={{ color: colors.sidebarBg }}>Kiểu hình học:</strong> <code>{geometryType}</code>
       </Typography.Paragraph>
-      <Typography.Paragraph style={{ marginBottom: 12, fontSize: '11px', color: '#888' }}>
-        <strong>Tọa độ:</strong> <code>{coordinates.length > 50 ? `${coordinates.substring(0, 50)}...` : coordinates}</code>
+      <Typography.Paragraph style={{ marginBottom: spaceSm, fontSize: fontSizeSm, color: textTertiary }}>
+        <strong style={{ color: textSecondary }}>Tọa độ:</strong> <code>{coordinates.length > 50 ? `${coordinates.substring(0, 50)}...` : coordinates}</code>
       </Typography.Paragraph>
 
-      <Typography.Text strong style={{ display: 'block', marginBottom: 6 }}>Thuộc tính S-57:</Typography.Text>
+      <Typography.Text strong style={{ display: 'block', marginBottom: spaceXs, color: colors.sidebarBg, fontSize: fontSizeMd }}>
+        Thuộc tính S-57:
+      </Typography.Text>
       {attributes && Object.keys(attributes).length > 0 ? (
         <List
           size="small"
           bordered
+          style={{ borderColor: borderDefault, borderRadius: radiusSm }}
           dataSource={Object.entries(attributes)}
           renderItem={([key, val]) => (
-            <List.Item style={{ padding: '4px 8px', fontSize: '12px' }}>
-              <strong style={{ color: '#555' }}>{key}:</strong> <span>{String(val)}</span>
+            <List.Item style={{ padding: `${spaceXs}px ${spaceSm}px`, fontSize: fontSizeSm, borderColor: borderDefault }}>
+              <strong style={{ color: textSecondary }}>{key}:</strong> <span style={{ color: textPrimary }}>{String(val)}</span>
             </List.Item>
           )}
         />
       ) : (
-        <Typography.Text type="secondary" italic style={{ fontSize: '12px' }}>Không có thuộc tính</Typography.Text>
+        <Typography.Text type="secondary" italic style={{ fontSize: fontSizeSm, color: textTertiary }}>Không có thuộc tính</Typography.Text>
       )}
     </div>
   );

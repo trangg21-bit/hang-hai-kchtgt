@@ -1,12 +1,12 @@
 import { Button, Col, Form, Input, Modal, Row, Select, Tag } from 'antd';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  actionPrimary, actionHover, textPrimary, textSecondary, textTertiary,
-  statusCritical, surfaceCard, borderDefault,
-  fontSizeSm, fontSizeMd, fontSizeLg,
-  fontWeightNormal, fontWeightMedium, fontWeightBold,
-  radiusSm, radiusMd, radiusLg, radiusPill,
-  spaceXs, spaceSm, spaceFormField, spaceMd, spaceLg,
+  textPrimary, textSecondary, surfaceCard, borderDefault,
+  fontSizeSm, fontSizeMd,
+  fontWeightMedium,
+  radiusMd,
+  spaceXs, spaceSm, spaceFormField, spaceMd,
+  inputStyle, selectStyle, outlineButtonStyle, primaryButtonStyle,
 } from '../../tokens';
 import { organizationService } from '../../services/organizationService';
 import type { Organization } from '../../services/organizationService';
@@ -18,8 +18,8 @@ import { polygonObjectService } from '../../services/polygonObjectService';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import {
   getKchtGisCategoryId,
-  KCHT_GIS_TYPE_OPTIONS,
-  normalizeKchtGisType,
+  KCHT_DRAW_TYPE_OPTIONS,
+  normalizeKchtGisDrawType,
 } from '../../types/gisSearch';
 import toast from '../../components/ToastNotification';
 import {
@@ -65,9 +65,8 @@ const GEOM_TYPE_LABELS: Record<string, string> = {
   'draw-polygon': '△ Vùng đa giác',
 };
 
-const INPUT_STYLE: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
-const SELECT_STYLE: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
-const BTN_STYLE: React.CSSProperties = { borderRadius: radiusPill, height: 40, fontWeight: fontWeightMedium, fontSize: fontSizeMd };
+const INPUT_STYLE: React.CSSProperties = inputStyle;
+const SELECT_STYLE: React.CSSProperties = { ...selectStyle, width: '100%' };
 
 const mapToPointObjectType = (val: string): string => {
   if (val === 'SEAPORT') return 'PORT';
@@ -90,9 +89,31 @@ const mapToPolygonObjectType = (val: string): string => {
 };
 
 const TRANG_THAI_OPTIONS = [
-  { label: 'Bản nháp', value: 'DRAFT' },
   { label: 'Sử dụng', value: 'PUBLISHED' },
+  { label: 'Không sử dụng', value: 'DELETED' },
 ];
+
+type PortOption = {
+  id: string;
+  portName?: string;
+  portCode?: string;
+  orgUnitId?: string;
+};
+
+const resolveOrganizationSubtree = (organizations: Organization[], rootId: string): Set<string> => {
+  const ids = new Set<string>([rootId]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    organizations.forEach((organization) => {
+      if (organization.parentId && ids.has(organization.parentId) && !ids.has(organization.id)) {
+        ids.add(organization.id);
+        changed = true;
+      }
+    });
+  }
+  return ids;
+};
 
 const coordinateRule = (label: string, min: number, max: number) => ({
   validator: (_rule: unknown, value: unknown) => {
@@ -131,17 +152,21 @@ export default function DrawSaveModal({
   const [loading, setLoading] = useState(false);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loadingOrganizations, setLoadingOrganizations] = useState(false);
-  const [seaPortList, setSeaPortList] = useState<any[]>([]);
-  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
-  const [portsPage, setPortsPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [fetchingMore, setFetchingMore] = useState(false);
+  const [approvedPorts, setApprovedPorts] = useState<PortOption[]>([]);
+  const [loadingPorts, setLoadingPorts] = useState(false);
+  const selectedOrgId = Form.useWatch('donViQuanLy', form) as string | undefined;
+
+  const seaPortList = useMemo(() => {
+    if (!selectedOrgId) return [];
+    const scopedIds = resolveOrganizationSubtree(organizations, selectedOrgId);
+    return approvedPorts.filter((port) => port.orgUnitId && scopedIds.has(port.orgUnitId));
+  }, [approvedPorts, organizations, selectedOrgId]);
 
   // Fetch organizations tree on mount when opened
   useEffect(() => {
     if (!open) return;
 
-    const loadData = async () => {
+    const loadOrganizations = async () => {
       setLoadingOrganizations(true);
       try {
         const response = await organizationService.list({ pageSize: 1000 });
@@ -155,60 +180,25 @@ export default function DrawSaveModal({
       }
     };
 
-    void loadData();
-    setSeaPortList([]);
-    setSelectedOrgId(editRecord?.unitId || null);
-    setPortsPage(1);
-    setHasMore(true);
-  }, [open, editRecord?.unitId]);
-
-  // Load seaports page by page
-  const loadPorts = async (orgId: string, pageNum: number, append: boolean) => {
-    try {
-      setFetchingMore(true);
-      const size = 20;
-      const res = await portCRUD.findAll({ orgUnitId: orgId, page: pageNum, size });
-      
-      const newPorts = res.data || [];
-      if (append) {
-        setSeaPortList((prev) => [...prev, ...newPorts]);
-      } else {
-        setSeaPortList(newPorts);
+    const loadApprovedPorts = async () => {
+      setLoadingPorts(true);
+      try {
+        setApprovedPorts(await portCRUD.getOptions({ approvalStatus: 'APPROVED' }));
+      } catch (err) {
+        setApprovedPorts([]);
+        console.error('Không thể tải danh sách cảng biển đã duyệt:', err);
+        toast.error('Không thể tải danh sách cảng biển đã duyệt');
+      } finally {
+        setLoadingPorts(false);
       }
-      
-      const total = res.total ?? 0;
-      const loadedCount = append ? seaPortList.length + newPorts.length : newPorts.length;
-      setHasMore(loadedCount < total);
-      setPortsPage(pageNum);
-    } catch (err) {
-      console.error('Failed to load seaports page:', err);
-    } finally {
-      setFetchingMore(false);
-    }
-  };
+    };
 
-  // Load seaports dynamically based on selected managing unit (matching the original project)
-  const handleOrgChange = async (value?: string) => {
+    void loadOrganizations();
+    void loadApprovedPorts();
+  }, [open]);
+
+  const handleOrgChange = () => {
     form.setFieldValue('Port', undefined);
-    setSelectedOrgId(value || null);
-    setSeaPortList([]);
-    setPortsPage(1);
-    setHasMore(true);
-    if (!value) return;
-    
-    await loadPorts(value, 1, false);
-  };
-
-  const loadMorePorts = async () => {
-    if (!selectedOrgId || fetchingMore || !hasMore) return;
-    await loadPorts(selectedOrgId, portsPage + 1, true);
-  };
-
-  const handlePopupScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const target = e.currentTarget;
-    if (target.scrollTop + target.clientHeight >= target.scrollHeight - 10) {
-      void loadMorePorts();
-    }
   };
 
   // Set default/editing values when opened
@@ -218,7 +208,7 @@ export default function DrawSaveModal({
         form.setFieldsValue({
           name: editRecord.name,
           code: editRecord.code,
-          loaiKcht: normalizeKchtGisType(editRecord.loaiKcht),
+          loaiKcht: normalizeKchtGisDrawType(editRecord.loaiKcht),
           donViQuanLy: editRecord.unitId,
           Port: editRecord.Port,
           location: editRecord.location,
@@ -227,11 +217,6 @@ export default function DrawSaveModal({
           trangThai: editRecord.status,
           _coords: geometryCoordinatesToRows(editRecord.type, editRecord.coordinates),
         });
-
-        if (editRecord.unitId) {
-          setSelectedOrgId(editRecord.unitId);
-          void loadPorts(editRecord.unitId, 1, false);
-        }
       } else if (drawResult) {
         const geom = drawResult.geojson?.geometry;
         form.setFieldsValue({
@@ -389,7 +374,7 @@ export default function DrawSaveModal({
         footer: 'gis-edit-modal__footer',
       }}
       title={
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: spaceSm }}>
           <span>{editRecord ? '📝 Chỉnh sửa đối tượng KCHT' : '💾 Lưu đối tượng KCHT'}</span>
           <Tag color="blue" style={{ fontSize: fontSizeSm, fontWeight: fontWeightMedium }}>
             {editRecord
@@ -401,10 +386,10 @@ export default function DrawSaveModal({
       }
       onCancel={onClose}
       footer={[
-        <Button key="cancel" onClick={onClose} style={BTN_STYLE}>
+        <Button key="cancel" onClick={onClose} style={outlineButtonStyle}>
           Hủy
         </Button>,
-        <Button key="save" type="primary" loading={loading} onClick={handleSave} style={BTN_STYLE}>
+        <Button key="save" type="primary" loading={loading} onClick={handleSave} style={primaryButtonStyle}>
           Lưu
         </Button>,
       ]}
@@ -486,7 +471,7 @@ export default function DrawSaveModal({
                           <Input type="number" step="any" placeholder="Kinh độ" style={INPUT_STYLE} />
                         </Form.Item>
                         {geometryType !== 'Point' && (
-                          <Button danger type="text" onClick={() => remove(field.name)} style={BTN_STYLE}>
+                          <Button danger type="text" onClick={() => remove(field.name)} style={outlineButtonStyle}>
                             Xóa
                           </Button>
                         )}
@@ -494,7 +479,7 @@ export default function DrawSaveModal({
                     ))}
                   </div>
                   {geometryType !== 'Point' && (
-                    <Button type="dashed" onClick={() => add({ lng: '', lat: '' })} style={BTN_STYLE}>
+                    <Button type="dashed" onClick={() => add({ lng: '', lat: '' })} style={outlineButtonStyle}>
                       Thêm điểm
                     </Button>
                   )}
@@ -503,7 +488,7 @@ export default function DrawSaveModal({
             </Form.List>
           </div>
         </div>
-        <Row gutter={12}>
+        <Row gutter={spaceFormField}>
           <Col span={12}>
             <Form.Item
               label="Mã đối tượng"
@@ -537,7 +522,7 @@ export default function DrawSaveModal({
         >
           <Select
             placeholder="Chọn loại KCHT"
-            options={KCHT_GIS_TYPE_OPTIONS}
+            options={KCHT_DRAW_TYPE_OPTIONS}
             showSearch
             filterOption={(input, option) =>
               (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
@@ -578,9 +563,8 @@ export default function DrawSaveModal({
             filterOption={(input, opt) =>
               (opt?.label as string)?.toLowerCase().includes(input.toLowerCase())
             }
-            onPopupScroll={handlePopupScroll}
-            loading={fetchingMore && seaPortList.length === 0}
-            notFoundContent={fetchingMore ? 'Đang tải...' : 'Không tìm thấy cảng biển'}
+            loading={loadingPorts}
+            notFoundContent={loadingPorts ? 'Đang tải...' : 'Không tìm thấy cảng biển đã duyệt trong đơn vị đã chọn'}
             disabled={isCangBien}
             style={SELECT_STYLE}
           />

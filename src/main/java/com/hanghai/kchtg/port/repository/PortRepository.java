@@ -1,10 +1,9 @@
 package com.hanghai.kchtg.port.repository;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.port.entity.Port;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.port.dto.port.PortOptionResponse;
+import com.hanghai.kchtg.port.entity.Port;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,11 +12,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.Collection;
-import com.hanghai.kchtg.port.dto.port.PortOptionResponse;
 
 /**
  * Repository for Port entity.
@@ -46,6 +44,18 @@ public interface PortRepository extends JpaRepository<Port, UUID> {
     @Query("SELECT new com.hanghai.kchtg.port.dto.port.PortOptionResponse(p.id, p.portCode, p.portName, p.orgUnitId) " +
            "FROM Port p WHERE p.deletedAt IS NULL AND p.orgUnitId IN :orgUnitIds ORDER BY p.portName ASC")
     List<PortOptionResponse> findOptionsByOrgUnitIds(@Param("orgUnitIds") Collection<UUID> orgUnitIds);
+
+    @Query("SELECT new com.hanghai.kchtg.port.dto.port.PortOptionResponse(p.id, p.portCode, p.portName, p.orgUnitId) " +
+           "FROM Port p WHERE p.deletedAt IS NULL AND p.approvalStatus = :approvalStatus ORDER BY p.portName ASC")
+    List<PortOptionResponse> findOptionsByApprovalStatus(
+            @Param("approvalStatus") ApprovalStatus approvalStatus);
+
+    @Query("SELECT new com.hanghai.kchtg.port.dto.port.PortOptionResponse(p.id, p.portCode, p.portName, p.orgUnitId) " +
+           "FROM Port p WHERE p.deletedAt IS NULL AND p.orgUnitId IN :orgUnitIds " +
+           "AND p.approvalStatus = :approvalStatus ORDER BY p.portName ASC")
+    List<PortOptionResponse> findOptionsByOrgUnitIdsAndApprovalStatus(
+            @Param("orgUnitIds") Collection<UUID> orgUnitIds,
+            @Param("approvalStatus") ApprovalStatus approvalStatus);
 
     @Query("SELECT p FROM Port p WHERE p.id = :id AND p.deletedAt IS NULL")
     Optional<Port> findActiveById(@Param("id") UUID id);

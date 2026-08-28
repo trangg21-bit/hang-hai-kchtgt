@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.common.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.service.CommonOptionsService;
 import com.hanghai.kchtg.mapicon.dto.MapSymbolOptionResponse;
 import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
@@ -11,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -34,8 +36,10 @@ public class CommonOptionsController {
 
     @GetMapping("/ports")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<List<PortOptionResponse>>> getPortOptions() {
-        return ResponseEntity.ok(ApiResponse.success("Danh sách cảng biển theo phạm vi phân quyền", service.getPortOptions()));
+    public ResponseEntity<ApiResponse<List<PortOptionResponse>>> getPortOptions(
+            @RequestParam(required = false) ApprovalStatus approvalStatus) {
+        return ResponseEntity.ok(ApiResponse.success("Danh sách cảng biển theo phạm vi phân quyền",
+                service.getPortOptions(approvalStatus)));
     }
 
     @GetMapping("/operating-organizations")
