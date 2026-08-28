@@ -61,6 +61,7 @@ const AnchorageList = lazy(() => import('./pages/anchorage/AnchorageListPage'));
 const TransferAreaList = lazy(() => import('./pages/transfer-area/TransferAreaListPage'));
 const StormShelterList = lazy(() => import('./pages/storm-shelter/StormShelterListPage'));
 const BuoyBerthList = lazy(() => import('./pages/buoy-berth/BuoyBerthListPage'));
+const DaiTtdhList = lazy(() => import('./pages/dai-ttdh/DaiTtdhListPage'));
 const ShipRepairYardList = lazy(() => import('./pages/ship-repair-yard/ShipRepairYardListPage'));
 
 const PierListPage = lazy(() => import('./pages/port/PierListPage'));
@@ -217,6 +218,8 @@ export default function App() {
                 <Route path="/storm-shelter" element={<PermissionGuard permission="stormshelter:read"><StormShelterList /></PermissionGuard>} />
 
                 <Route path="/buoy-berth" element={<PermissionGuard permission="buoyberth:read"><BuoyBerthList /></PermissionGuard>} />
+
+                <Route path="/dai-ttdh" element={<PermissionGuard permission="daittdh:read"><DaiTtdhList /></PermissionGuard>} />
 
                 <Route path="/ship-repair-yard" element={<PermissionGuard permission="shiprepairyard:read"><ShipRepairYardList /></PermissionGuard>} />
 
