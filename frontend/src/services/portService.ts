@@ -32,6 +32,10 @@ import type {
   CreateBuoyBerthRequest,
   UpdateBuoyBerthRequest,
   BuoyBerthApprovalResponse,
+  DaiTtdh,
+  CreateDaiTtdhRequest,
+  UpdateDaiTtdhRequest,
+  DaiTtdhApprovalResponse,
   ShipRepairYard,
   CreateShipRepairYardRequest,
   UpdateShipRepairYardRequest,
@@ -1217,6 +1221,128 @@ export const buoyBerthCRUD = {
 
   async deleteAttachment(id: string, attId: string): Promise<void> {
     await api.delete(`/v1/buoy-berth/${id}/attachments/${attId}`);
+  },
+};
+
+// ── Đài TTDH (Đài Thông tin Duyên hải) CRUD ─────────────────────────
+
+export const daiTtdhCRUD = {
+  async findAll(params?: {
+    page?: number;
+    size?: number;
+    orgUnitId?: string;
+  }): Promise<PaginatedResponse<DaiTtdh>> {
+    const sp = buildSearchParams({
+      page: params?.page !== undefined ? params.page - 1 : undefined,
+      size: params?.size,
+      orgUnitId: params?.orgUnitId,
+    });
+    const res = await api.get(`/v1/dai-ttdh?${sp}`);
+    const pageData = res.data.data;
+    return {
+      data: pageData.content || [],
+      total: pageData.totalElements ?? 0,
+      page: (pageData.number ?? 0) + 1,
+      pageSize: pageData.size ?? 20,
+    };
+  },
+
+  async findById(id: string): Promise<DaiTtdh> {
+    const res = await api.get(`/v1/dai-ttdh/${id}`);
+    return res.data.data;
+  },
+
+  async search(params?: {
+    daiTtdhName?: string;
+    daiTtdhCode?: string;
+    orgUnitId?: string;
+    stationLevel?: number;
+    provinceId?: number;
+    operationalStatus?: string;
+    approvalStatus?: string;
+    updatedFrom?: string;
+    updatedTo?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<PaginatedResponse<DaiTtdh>> {
+    const sp = buildSearchParams({
+      daiTtdhName: params?.daiTtdhName,
+      daiTtdhCode: params?.daiTtdhCode,
+      orgUnitId: params?.orgUnitId,
+      stationLevel: params?.stationLevel,
+      provinceId: params?.provinceId,
+      operationalStatus: params?.operationalStatus,
+      approvalStatus: params?.approvalStatus,
+      updatedFrom: params?.updatedFrom,
+      updatedTo: params?.updatedTo,
+      page: params?.page !== undefined ? params.page - 1 : undefined,
+      size: params?.pageSize,
+    });
+    const res = await api.get(`/v1/dai-ttdh?${sp}`);
+    const pageData = res.data.data;
+    return {
+      data: pageData.content || [],
+      total: pageData.totalElements ?? 0,
+      page: (pageData.number ?? 0) + 1,
+      pageSize: pageData.size ?? 20,
+    };
+  },
+
+  async create(payload: CreateDaiTtdhRequest): Promise<DaiTtdh> {
+    const res = await api.post('/v1/dai-ttdh', payload);
+    return res.data.data;
+  },
+
+  async update(payload: UpdateDaiTtdhRequest): Promise<DaiTtdh> {
+    const res = await api.put('/v1/dai-ttdh', payload);
+    return res.data.data;
+  },
+
+  async delete(id: string): Promise<void> {
+    await api.delete(`/v1/dai-ttdh/${id}`);
+  },
+
+  async generateCode(): Promise<{ daiTtdhCode: string }> {
+    const res = await api.get('/v1/dai-ttdh/generate-code');
+    return res.data.data;
+  },
+
+  async approve(id: string, cap: string, content?: string): Promise<void> {
+    await api.post(`/v1/dai-ttdh/${id}/approve`, { cap, content });
+  },
+
+  async reject(id: string, cap: string, lyDo: string): Promise<void> {
+    await api.post(`/v1/dai-ttdh/${id}/reject`, { cap, lyDo });
+  },
+
+  async getHistory(id: string): Promise<DaiTtdhApprovalResponse> {
+    const res = await api.get(`/v1/dai-ttdh/${id}/history`);
+    return res.data.data;
+  },
+
+  async getAllHistory(): Promise<any> {
+    const res = await api.get('/v1/dai-ttdh/history/all');
+    return res.data.data;
+  },
+
+  async uploadAttachments(id: string, files: File[]): Promise<any> {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('files', file);
+    }
+    const res = await api.post(`/v1/dai-ttdh/${id}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data.data;
+  },
+
+  async listAttachments(id: string): Promise<any> {
+    const res = await api.get(`/v1/dai-ttdh/${id}/attachments`);
+    return res.data.data;
+  },
+
+  async deleteAttachment(id: string, attId: string): Promise<void> {
+    await api.delete(`/v1/dai-ttdh/${id}/attachments/${attId}`);
   },
 };
 

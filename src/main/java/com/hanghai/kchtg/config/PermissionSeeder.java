@@ -297,6 +297,27 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "buoyberth", "history", "Lịch sử phê duyệt bến phao",
                                 "Xem lịch sử thay đổi bến phao");
 
+                // 8.2.4b Đài TTDH (Đài Thông tin Duyên hải)
+                seedPermission(definitions, "daittdh", "read", "Xem đài TTDH",
+                                "Tra cứu thông tin đài TTDH");
+                seedPermission(definitions, "daittdh", "read:restricted", "Xem bản ghi hạn chế đài TTDH",
+                                "Xem các bản ghi dữ liệu mức độ Hạn chế của đài TTDH");
+                seedPermission(definitions, "daittdh", "read:confidential", "Xem bản ghi mật đài TTDH",
+                                "Xem các bản ghi dữ liệu mức độ Mật của đài TTDH");
+                seedPermission(definitions, "daittdh", "create", "Thêm đài TTDH",
+                                "Tạo mới hồ sơ đài TTDH");
+                seedPermission(definitions, "daittdh", "update", "Cập nhật đài TTDH",
+                                "Chỉnh sửa thông tin đài TTDH");
+                seedPermission(definitions, "daittdh", "delete", "Xóa đài TTDH", "Xóa đài TTDH");
+                seedPermission(definitions, "daittdh", "approve", "Phê duyệt đài TTDH",
+                                "Phê duyệt dữ liệu đài TTDH");
+                seedPermission(definitions, "daittdh", "approvec1", "Phê duyệt C1 đài TTDH",
+                                "Phê duyệt cấp 1 đài TTDH");
+                seedPermission(definitions, "daittdh", "approvec2", "Phê duyệt C2 đài TTDH",
+                                "Phê duyệt cấp 2 đài TTDH");
+                seedPermission(definitions, "daittdh", "history", "Lịch sử phê duyệt đài TTDH",
+                                "Xem lịch sử thay đổi đài TTDH");
+
                 // 8.2.5 Cơ sở sửa chữa, đóng tàu (Ship Repair Yard)
                 seedPermission(definitions, "shiprepairyard", "read", "Xem cơ sở sửa chữa, đóng tàu",
                                 "Tra cứu thông tin cơ sở sửa chữa, đóng tàu");

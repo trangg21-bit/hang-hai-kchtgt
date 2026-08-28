@@ -33,6 +33,7 @@ public class GisSpatialObjectService {
                 case SEAPORT, PORT_TERMINAL, DRY_PORT -> GisSpatialObjectType.POINT_PORT;
                 case LIGHTHOUSE -> GisSpatialObjectType.POINT_LIGHTHOUSE;
                 case BUOY -> GisSpatialObjectType.POINT_BUOY;
+                case DAI_TTDH -> GisSpatialObjectType.POINT_DAI_TTDH;
                 default -> GisSpatialObjectType.POINT_OTHER;
             };
         } else if (geomType == GisGeometryType.POLYGON) {

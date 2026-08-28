@@ -9,6 +9,7 @@ public enum GisSpatialObjectType {
     POINT_LIGHTHOUSE(11, "Hải đăng/Đèn biển"),
     POINT_BUOY(12, "Phao tiêu"),
     POINT_BEACON(13, "Tiêu"),
+    POINT_DAI_TTDH(15, "Đài TTDH"),
     POINT_OTHER(14, "Điểm khác"),
 
     // Line types (20-23)
