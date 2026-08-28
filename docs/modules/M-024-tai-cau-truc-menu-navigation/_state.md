@@ -6,7 +6,7 @@ status: in-progress
 depends-on: []
 blocked-by: []
 created: 2026-08-25T07:34:20.884Z
-last-updated: 2026-08-27T11:00:17Z
+last-updated: 2026-08-28T08:11:50Z
 current-stage: closed
 output-mode: lean
 repo-type: mini
@@ -20,39 +20,44 @@ completed-stages:
     verdict: Pass
     artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/ba/00-lean-spec.md
     performed: dispatched
-    completed-at: 2026-08-27
+    completed-at: 2026-08-28
   engineering-solution-designer:
     verdict: Pass
     artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/design/00-design-plan.md
     performed: dispatched
-    completed-at: 2026-08-27
+    completed-at: 2026-08-28
   engineering-qa-engineer-wave-1:
     verdict: Pass
     artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/qa/07-qa-report-w1.md
     performed: dispatched
-    completed-at: 2026-08-27
+    completed-at: 2026-08-28
   engineering-frontend-developer-wave-1:
     verdict: Pass
-    artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/dev/05-fe-dev-w1-sidebar-menu-search-filter.md
+    artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/dev/05-fe-dev-w1-theme-chk-docs-sync.md
     performed: dispatched
-    completed-at: 2026-08-27
+    completed-at: 2026-08-28
   engineering-qa-engineer-wave-2:
     verdict: Pass
     artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/qa/07-qa-report-w2.md
     performed: dispatched
-    completed-at: 2026-08-27
+    completed-at: 2026-08-28
   engineering-code-reviewer:
     verdict: Pass
     artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/reviewer/08-review-report.md
     performed: dispatched
-    completed-at: 2026-08-27
+    completed-at: 2026-08-28
 kpi:
   tokens-total: 0
   cycle-time-start: 2026-08-25T07:34:20.885Z
   tokens-by-stage: {}
   tokens-by-feature: {}
+  first-code-at: 2026-08-27T10:23:38.238Z
+  first-code-latency-ms: 182957353
+  first-code-seat: engineering-frontend-developer
+  first-code-path: frontend/src/components/AppLayout.tsx
+  first-code-advisory-shown: true
 rework-count:
-  engineering-business-analyst: 1
+  engineering-business-analyst: 2
 locked-fields: []
 version: 1
 finalizers: []
@@ -61,8 +66,8 @@ child-events: []
 partial-redo: []
 agent-flags: {}
 triage-id: TRI-1787823566528-bb3e
-reopened-at: 2026-08-27T09:41:18Z
-reopened-reason: "Change request (TRI-1787823566528-bb3e, C1 scope_expansion): implement real sidebar menu search (currently dead input AppLayout.tsx:561-566), user requires BA analysis first"
+reopened-at: 2026-08-28T07:08:58Z
+reopened-reason: "Change request (TRI-1787899754098-59d2, C2 theme CHK): docs-only sync — ghi nhận đợt 3 sidebar/header theo chuẩn theme CHK (theme.ts sidebarBg #12468C→#1a3f83, accent title #273e7c, fallback --bg-sidebar) vào feature-brief F-292 mục 1 + lean-spec. Code đã xong + verify (C2 solo lane); không sửa code, không dispatch dev."
 released: true
 ---
 # Pipeline State: Tái cấu trúc Menu & Navigation (M-024)
@@ -75,12 +80,12 @@ Tái cấu trúc toàn bộ hệ thống menu và giao diện điều hướng, 
 
 | # | Stage | Agent | Verdict | Artifact | Date |
 |---|---|---|---|---|---|
-| 1 | engineering-business-analyst | engineering-business-analyst | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/ba/00-lean-spec.md | 2026-08-27 |
-| 2 | engineering-solution-designer | engineering-solution-designer | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/design/00-design-plan.md | 2026-08-27 |
-| 3 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/qa/07-qa-report-w1.md | 2026-08-27 |
-| 4 | engineering-frontend-developer-wave-1 | engineering-frontend-developer-wave-1 | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/dev/05-fe-dev-w1-sidebar-menu-search-filter.md | 2026-08-27 |
-| 5 | engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/qa/07-qa-report-w2.md | 2026-08-27 |
-| 6 | engineering-code-reviewer | engineering-code-reviewer | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/reviewer/08-review-report.md | 2026-08-27 |
+| 1 | engineering-business-analyst | engineering-business-analyst | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/ba/00-lean-spec.md | 2026-08-28 |
+| 2 | engineering-solution-designer | engineering-solution-designer | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/design/00-design-plan.md | 2026-08-28 |
+| 3 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/qa/07-qa-report-w1.md | 2026-08-28 |
+| 4 | engineering-frontend-developer-wave-1 | engineering-frontend-developer-wave-1 | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/dev/05-fe-dev-w1-theme-chk-docs-sync.md | 2026-08-28 |
+| 5 | engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/qa/07-qa-report-w2.md | 2026-08-28 |
+| 6 | engineering-code-reviewer | engineering-code-reviewer | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/reviewer/08-review-report.md | 2026-08-28 |
 
 ## Current Stage
 
@@ -96,4 +101,11 @@ none
 
 ## Delivery Metrics
 
-No first source-file write recorded yet — the lane's first-code stamp (intake → first code) lands here once a seat writes source.
+| Metric | Value |
+|---|---|
+| First-code latency | 182957353 ms (3049 min) |
+| Class target | — (unset) |
+| Verdict | target not configured (no advisory) |
+| First-code at | 2026-08-27T10:23:38.238Z |
+| First-code seat | engineering-frontend-developer |
+| First-code path | frontend/src/components/AppLayout.tsx |

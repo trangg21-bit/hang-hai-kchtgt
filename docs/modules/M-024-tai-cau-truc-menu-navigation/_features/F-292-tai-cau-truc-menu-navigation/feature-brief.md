@@ -7,7 +7,7 @@ status: proposed
 classification: local
 priority: medium
 created: 2026-08-25T09:37:14Z
-last-updated: 2026-08-27
+last-updated: 2026-08-28
 locked-fields: []
 consumed_by_modules: []
 source-paths:
@@ -35,6 +35,8 @@ source-paths:
 Tái cấu trúc toàn bộ menu & điều hướng hệ thống: (1) trang chủ hiển thị **Dashboard Grid đúng 6 khối** làm cổng vào các nhóm chức năng; (2) sidebar chuyển sang **mô hình phân cấp (PMS Model)** với đúng 7 nhóm cấp 1, trong đó nhánh "Quản lý cảng biển" hiển thị đúng **13 thực thể KCHT** theo ma trận cha–con (Cảng biển → Bến cảng → Cầu cảng; Luồng hàng hải → Bến phao / Đèn biển / Đê kè / Nhà trạm → Phao tiêu; Cảng biển → Khu neo đậu / Khu chuyển tải / Khu tránh trú bão / CS sửa chữa đóng tàu). Chức năng dùng bởi mọi người dùng đã đăng nhập; quyền truy cập từng mục theo phân quyền động (nhóm/tài khoản) hiện có. Không tạo entity mới, không đổi schema; phạm vi thay đổi giới hạn trong 4 edit-target files theo triage.
 
 Bổ sung (đợt 2 — triage TRI-1787823566528-bb3e): **ô tìm kiếm menu sidebar** (`AppLayout.tsx` dòng 561–567, input tại dòng 565 — hiện là input chết) — người dùng gõ chuỗi lọc nhanh các mục menu theo `label` tiếng Việt; chuỗi được `.trim()` trước khi so khớp (VAL-024-06); xóa chuỗi → menu khôi phục đầy đủ; chỉ thu hẹp hiển thị, không navigate, không gọi API (UC-024-09/10, BR-024-13/14/15, AC-024-11/12/13).
+
+Bổ sung (đợt 3 — triage TRI-1787899754098-59d2): sidebar & header theo chuẩn theme CHK — nền sidebar navy `#1a3f83` (`themetokenchk.sidebarBg` dòng 72, `theme.ts` `sidebarBg` dòng 50 + fallback `--bg-sidebar` dòng 287/618/1006), accent tiêu đề `#273e7c` (`themetokenchk.actionPrimary` dòng 36 — áp dụng tại `AppLayout.tsx` title topbar dòng 632/865, sidebar fullscreen dòng 785/799). Giữ dark-menu, cấu trúc 7 nhóm, phân quyền, ô tìm kiếm.
 
 ## 2. Trường dữ liệu
 

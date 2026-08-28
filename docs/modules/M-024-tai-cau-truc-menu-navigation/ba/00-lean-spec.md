@@ -2,7 +2,7 @@
 feature-id: M-024
 document: lean-spec
 output-mode: lean
-last-updated: 2026-08-27
+last-updated: 2026-08-28
 ---
 
 # M-024 Tái cấu trúc Menu & Navigation — Lean Spec (BA)
@@ -12,6 +12,7 @@ last-updated: 2026-08-27
 > - `SO-DO-VA-MA-TRAN-CHA-CON-KCHT.md` — ma trận cha–con 28 loại KCHT (3–4 lớp).
 > - Triage `docs/intel/_intake/TRI-1787631386205-0f2e.json` — done-oracle, edit-target files.
 > - Triage `docs/intel/_intake/TRI-1787823566528-bb3e.json` — scope_expansion (C1): chức năng thật cho ô tìm kiếm menu sidebar (input chết `AppLayout.tsx:561–567`, input tại dòng 565).
+> - Triage `docs/intel/_intake/TRI-1787899754098-59d2.json` — theme CHK (C2, solo): sidebar/header theo chuẩn `themetokenchk.ts` — code đã implement, tài liệu đồng bộ (đợt 3).
 > - Code hiện tại: `frontend/src/components/AppLayout.tsx`, `frontend/src/store/authStore.ts`, `frontend/src/store/permissionStore.ts`, `src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java`.
 
 ---
@@ -24,6 +25,8 @@ Tái cấu trúc toàn bộ menu & điều hướng hệ thống theo 2 mô hìn
 **(c) Tìm kiếm menu sidebar** — ô tìm kiếm ngay dưới header sidebar (`AppLayout.tsx` dòng 561–567, input tại dòng 565 — hiện là input chết, TRI-1787823566528-bb3e) lọc nhanh các mục menu theo `label` tiếng Việt; chuỗi được `.trim()` trước khi so khớp (VAL-024-06); xóa chuỗi → menu khôi phục đầy đủ; chỉ thu hẹp hiển thị, không navigate.
 
 Không tạo entity nghiệp vụ mới, không đổi schema; phạm vi thay đổi của đợt tái cấu trúc nằm trong 4 edit-target files (triage): `AppLayout.tsx`, `authStore.ts`, `permissionStore.ts`, `PermissionSeeder.java`. Đợt bổ sung tìm kiếm menu (TRI-1787823566528-bb3e) giới hạn trong 3 edit-target files: `feature-brief.md`, `AppLayout.tsx`, `AppLayout.test.tsx` — **không** sửa `theme.ts`/`tokens.ts`.
+
+> **Bổ sung (đợt 3 — triage `TRI-1787899754098-59d2`):** các giới hạn edit-scope trên ràng buộc đợt 1/2. Đợt 3 (theme CHK, triage riêng — code đã implement và verify) **ĐÃ thay đổi** `theme.ts` + `AppLayout.tsx`: nền sidebar navy `#1a3f83` (`theme.ts` `sidebarBg` dòng 50, fallback `--bg-sidebar` dòng 287/618/1006 — đồng nhất `themetokenchk.sidebarBg` dòng 72), accent tiêu đề `#273e7c` (`themetokenchk.actionPrimary` dòng 36 — áp dụng tại `AppLayout.tsx` title topbar dòng 632/865); sidebar fullscreen dùng `var(--bg-sidebar, #1a3f83)` (`AppLayout.tsx` dòng 785/799). Giữ nguyên dark-menu, cấu trúc 7 nhóm, phân quyền và ô tìm kiếm menu.
 
 ---
 
@@ -276,4 +279,5 @@ Bảng ánh xạ route/quyền hiện có (đề xuất BA — SA chốt):
 - KHÔNG sửa màn hình nghiệp vụ các module khác (PortPage, BerthPage, ...) — chỉ 4 edit-target files.
 - KHÔNG tạo entity/bảng/migration mới.
 - KHÔNG thiết kế lại visual theme (giữ `theme.ts`/`tokens.ts` hiện tại) — CSS `.sidebar-search` đã có (dòng 412–435).
+- *Ngoại lệ đợt 3 (triage `TRI-1787899754098-59d2`):* triage riêng đã điều chỉnh màu sidebar/header theo chuẩn theme CHK — `theme.ts` `sidebarBg` `#12468C` → `#1a3f83` (dòng 50), fallback `--bg-sidebar` → `#1a3f83` (dòng 287/618/1006); `AppLayout.tsx` title topbar accent `#273e7c` (dòng 632/865), sidebar fullscreen `#1a3f83` (dòng 785/799). Câu trên ràng buộc phạm vi đợt 1/2, không áp dụng cho đợt 3.
 - KHÔNG thêm test scenario ở đây (thuộc QA stage).
