@@ -98,15 +98,11 @@ public class JwtUtil {
     public String generateAccessToken(User user) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + jwtProperties.getAccessTokenExpiration());
-        Set<String> allPerms = user.getAllPermissions();
-        List<String> permissions = new ArrayList<>(allPerms);
-
         Map<String, Object> claims = TokenClaimsBuilder.builder()
                 .subject(user.getUsername())
                 .jti(UUID.randomUUID().toString())
                 .userId(user.getId().toString())
                 .claim("email", user.getEmail())
-                .permissions(permissions)
                 .claim("totp_enabled", Boolean.TRUE.equals(user.getTotpEnabled()))
                 .claim("permission_version", user.getPermissionVersion())
                 .build();
