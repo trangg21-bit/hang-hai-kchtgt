@@ -11,9 +11,9 @@ import dayjs from 'dayjs';
 import { colors } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import { resolveOrgFullPath, type OrgUnitTreeOption } from '../../components/org-unit';
+import type { OrgUnitTreeOption } from '../../components/org-unit';
 import {
-  textPrimary, textSecondary, textTertiary, surfaceCard,
+  textTertiary, surfaceCard,
   actionPrimary, statusOperational, statusAttention, statusCritical,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
   spaceSm, spaceMd, spaceFormField,
@@ -112,7 +112,9 @@ export default function BuoyDetailContent({
   ddToDms,
 }: BuoyDetailContentProps) {
   const r = selectedRecord;
-  const [systemOpen, setSystemOpen] = useState(true);
+  const [operationOpen, setOperationOpen] = useState(true);
+  const [maintenanceOpen, setMaintenanceOpen] = useState(true);
+  const [incidentOpen, setIncidentOpen] = useState(true);
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const userName = (id: number | string | undefined | null) =>
     id != null ? (userMap.get(String(id)) || String(id)) : '—';
@@ -149,24 +151,16 @@ export default function BuoyDetailContent({
             <div style={{ paddingTop: 3 }}>
               <div className="chk-detail-grid">
                 {[
+                  ['Mã phao tiêu', <span style={statusBadgeStyle(actionPrimary)}>{r.code || '—'}</span>],
+                  ['Tên phao tiêu', <span style={{ fontWeight: fontWeightBold }}>{r.name || '—'}</span>],
                   ['Đơn vị quản lý', (() => {
-                    const orgPath = resolveOrgFullPath(orgUnits, r.unitId);
-                    if (!orgPath || orgPath.length === 0) return '—';
-                    const levelColors = [textPrimary, textSecondary, textTertiary];
-                    return (
-                      <span>
-                        {orgPath.map((n, i) => (
-                          <span key={i} style={{ display: 'block', color: levelColors[Math.min(i, levelColors.length - 1)], fontWeight: fontWeightBold }}>{n}</span>
-                        ))}
-                      </span>
-                    );
-                  })()],
+                    const name = orgUnits.find((o) => o.id === r.unitId)?.name || r.unitId || '—';
+                    return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
+                  })(),],
                   ['Thuộc nhà trạm quản lý vận hành phao, tiêu', r.buoyStationName || '—'],
                   ['Phân loại', r.classification || '—'],
                   ['Phân loại phao', r.classificationBuoy || '—'],
                   ['Phân loại tiêu', r.classificationMark || '—'],
-                  ['Mã phao tiêu', <span style={statusBadgeStyle(actionPrimary)}>{r.code || '—'}</span>],
-                  ['Tên phao tiêu', <span style={{ fontWeight: fontWeightBold }}>{r.name || '—'}</span>],
                   ['Địa điểm (Tỉnh/Thành Phố)', provinceName(r.provinceId)],
                   ['Địa điểm chi tiết', r.locationDetail || '—'],
                   ['Hình dáng', r.shape ? (SHAPE_LABEL_MAP[r.shape] || r.shape) : '—'],
@@ -184,7 +178,6 @@ export default function BuoyDetailContent({
                   ['Thời điểm đưa vào sử dụng', formatDateOnly(r.commissionedDate)],
                   ['Thời điểm sửa chữa gần nhất', formatDateOnly(r.lastRepairDate)],
                   ['Tình trạng', (() => { const s = CONDITION_STYLE[r.condition || ''] || { color: textTertiary, label: r.condition || '—' }; return <span style={statusBadgeStyle(s.color)}>{s.label}</span>; })()],
-                  ['Trạng thái', statusBadge],
                 ].map(([label, value], i) => (
                   <div key={i} className="chk-detail-row">
                     <span className="chk-detail-label">{label}</span>
@@ -192,32 +185,6 @@ export default function BuoyDetailContent({
                   </div>
                 ))}
               </div>
-              <button type="button" style={{ cursor: 'pointer', marginTop: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setSystemOpen(!systemOpen)}>
-                <span style={{ color: systemOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{systemOpen ? '▼' : '▶'} Thông tin hệ thống</span>
-              </button>
-              {systemOpen && (
-                <div className="chk-detail-grid" style={{ marginTop: 4 }}>
-                  {[
-                    ['Người tạo', <span style={{ fontWeight: fontWeightBold }}>{userName(r.createdBy)}</span>],
-                    ['Ngày tạo', formatDate(r.createdAt)],
-                    ['Người cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userName(r.updatedBy)}</span>],
-                    ['Ngày cập nhật', formatDate(r.updatedAt)],
-                    ['Người gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userName(r.submittedForApprovalBy)}</span>],
-                    ['Ngày gửi phê duyệt', formatDate(r.submittedForApprovalAt)],
-                    ['Người phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level1ApprovedBy)}</span>],
-                    ['Ngày phê duyệt cấp Cảng vụ/Chi cục', formatDate(r.level1ApprovedDate)],
-                    ['Người phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level2ApprovedBy)}</span>],
-                    ['Ngày phê duyệt cấp Cục', formatDate(r.level2ApprovedDate)],
-                    ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.level1ApprovalContent || '—'],
-                    ['Nội dung phê duyệt cấp Cục', r.level2ApprovalContent || '—'],
-                  ].map(([label, value], i) => (
-                    <div key={i} className="chk-detail-row">
-                      <span className="chk-detail-label">{label}</span>
-                      <span className="chk-detail-value">{value}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           ),
         },
@@ -303,9 +270,14 @@ export default function BuoyDetailContent({
           ),
         },
         {
-          key: 'operation', label: 'Thông tin vận hành khai thác',
+          key: 'operationMaintenance', label: 'Vận hành & bảo trì',
           children: (
             <div style={{ paddingTop: 3 }}>
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setOperationOpen(!operationOpen)}>
+                <span style={{ color: operationOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{operationOpen ? '▼' : '▶'} Thông tin vận hành khai thác</span>
+              </button>
+              {operationOpen && (
+                <div>
               <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách vận hành khai thác</span>
               <DetailTable
                 dataSource={(r.operationPlanCode || r.operationPlanName || r.operationStartDate || r.operationEndDate) ? [{ key: 'row', operationPlanCode: r.operationPlanCode || '—', operationPlanName: r.operationPlanName || '—', operationStartDate: r.operationStartDate || '—', operationEndDate: r.operationEndDate || '—' }] : []}
@@ -315,17 +287,17 @@ export default function BuoyDetailContent({
                   { title: 'STT', width: 50 },
                   { title: 'Mã kế hoạch', dataIndex: 'operationPlanCode', key: 'operationPlanCode', render: (v: string) => v || '—' },
                   { title: 'Tên kế hoạch', dataIndex: 'operationPlanName', key: 'operationPlanName', render: (v: string) => v || '—' },
-                  { title: 'Ngày bắt đầu', dataIndex: 'operationStartDate', key: 'operationStartDate', width: 150, align: 'center' as const, render: (v: string) => v || '—' },
-                  { title: 'Ngày kết thúc', dataIndex: 'operationEndDate', key: 'operationEndDate', width: 150, align: 'center' as const, render: (v: string) => v || '—' },
+                  { title: 'Ngày bắt đầu', dataIndex: 'operationStartDate', key: 'operationStartDate', width: 150, align: 'center' as const, render: (v: string) => (v && v !== '—' ? formatDate(v) : '—') },
+                  { title: 'Ngày kết thúc', dataIndex: 'operationEndDate', key: 'operationEndDate', width: 150, align: 'center' as const, render: (v: string) => (v && v !== '—' ? formatDate(v) : '—') },
                 ]}
               />
-            </div>
-          ),
-        },
-        {
-          key: 'maintenance', label: 'Thông tin bảo trì',
-          children: (
-            <div style={{ paddingTop: 3 }}>
+                </div>
+              )}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setMaintenanceOpen(!maintenanceOpen)}>
+                <span style={{ color: maintenanceOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{maintenanceOpen ? '▼' : '▶'} Thông tin bảo trì</span>
+              </button>
+              {maintenanceOpen && (
+                <div>
               <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin bảo trì</span>
               <DetailTable
                 dataSource={(r.maintenancePlanCode || r.maintenancePlanName || r.maintenanceStartTime || r.maintenanceEndTime) ? [{ key: 'row', maintenancePlanCode: r.maintenancePlanCode || '—', maintenancePlanName: r.maintenancePlanName || '—', maintenanceStartTime: r.maintenanceStartTime || '—', maintenanceEndTime: r.maintenanceEndTime || '—' }] : []}
@@ -335,17 +307,17 @@ export default function BuoyDetailContent({
                   { title: 'STT', width: 50 },
                   { title: 'Mã kế hoạch', dataIndex: 'maintenancePlanCode', key: 'maintenancePlanCode', render: (v: string) => v || '—' },
                   { title: 'Tên kế hoạch', dataIndex: 'maintenancePlanName', key: 'maintenancePlanName', render: (v: string) => v || '—' },
-                  { title: 'Thời gian bắt đầu', dataIndex: 'maintenanceStartTime', key: 'maintenanceStartTime', width: 150, align: 'center' as const, render: (v: string) => v || '—' },
-                  { title: 'Thời gian kết thúc', dataIndex: 'maintenanceEndTime', key: 'maintenanceEndTime', width: 150, align: 'center' as const, render: (v: string) => v || '—' },
+                  { title: 'Thời gian bắt đầu', dataIndex: 'maintenanceStartTime', key: 'maintenanceStartTime', width: 150, align: 'center' as const, render: (v: string) => (v && v !== '—' ? formatDate(v) : '—') },
+                  { title: 'Thời gian kết thúc', dataIndex: 'maintenanceEndTime', key: 'maintenanceEndTime', width: 150, align: 'center' as const, render: (v: string) => (v && v !== '—' ? formatDate(v) : '—') },
                 ]}
               />
-            </div>
-          ),
-        },
-        {
-          key: 'incident', label: 'Thông tin sự cố',
-          children: (
-            <div style={{ paddingTop: 3 }}>
+                </div>
+              )}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setIncidentOpen(!incidentOpen)}>
+                <span style={{ color: incidentOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{incidentOpen ? '▼' : '▶'} Thông tin sự cố</span>
+              </button>
+              {incidentOpen && (
+                <div>
               <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin sự cố</span>
               <DetailTable
                 dataSource={(r.incidentCode || r.incidentType || r.incidentLocation || r.incidentTime) ? [{ key: 'row', incidentCode: r.incidentCode || '—', incidentType: r.incidentType || '—', incidentLocation: r.incidentLocation || '—', incidentTime: r.incidentTime || '—' }] : []}
@@ -356,9 +328,38 @@ export default function BuoyDetailContent({
                   { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'incidentCode', render: (v: string) => v || '—' },
                   { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'incidentType', render: (v: string) => v || '—' },
                   { title: 'Địa điểm', dataIndex: 'incidentLocation', key: 'incidentLocation', render: (v: string) => v || '—' },
-                  { title: 'Thời gian', dataIndex: 'incidentTime', key: 'incidentTime', width: 150, align: 'center' as const, render: (v: string) => v || '—' },
+                  { title: 'Thời gian', dataIndex: 'incidentTime', key: 'incidentTime', width: 150, align: 'center' as const, render: (v: string) => (v && v !== '—' ? formatDate(v) : '—') },
                 ]}
               />
+                </div>
+              )}
+            </div>
+          ),
+        },
+        {
+          key: 'system', label: 'Xử lý & theo dõi',
+          children: (
+            <div style={{ paddingTop: 3 }}>
+              <div className="chk-detail-grid">
+                {[
+                  ['Trạng thái', statusBadge],
+                  ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userName(r.updatedBy)}</span>],
+                  ['Ngày cập nhật', formatDate(r.updatedAt)],
+                  ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userName(r.submittedForApprovalBy)}</span>],
+                  ['Ngày gửi phê duyệt', formatDate(r.submittedForApprovalAt)],
+                  ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level1ApprovedBy)}</span>],
+                  ['Ngày phê duyệt cấp Cảng vụ/Chi cục', formatDate(r.level1ApprovedDate)],
+                  ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level2ApprovedBy)}</span>],
+                  ['Ngày phê duyệt cấp Cục', formatDate(r.level2ApprovedDate)],
+                  ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.level1ApprovalContent || '—'],
+                  ['Nội dung phê duyệt cấp Cục', r.level2ApprovalContent || '—'],
+                ].map(([label, value], i) => (
+                  <div key={i} className="chk-detail-row" style={label === 'Trạng thái' ? { gridColumn: '1 / -1' } : undefined}>
+                    <span className="chk-detail-label">{label}</span>
+                    <span className="chk-detail-value">{value}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           ),
         },

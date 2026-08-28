@@ -14,7 +14,6 @@ import {
 } from '../../themetokenchk';
 import type { Anchorage } from '../../types/port';
 import { VIETNAM_PROVINCES } from '../../types/common';
-import { resolveOrgFullPath } from '../../components/org-unit';
 import api from '../../services/api';
 
 export interface AnchorageDetailContentProps {
@@ -78,7 +77,6 @@ const fmtNumber = (v: number | null | undefined): string => (v != null ? Number(
 export default function AnchorageDetailContent({
   selectedRecord,
   orgMap,
-  organizations = [],
   symbolMap,
   symbolImageMap,
   portOptions,
@@ -137,14 +135,13 @@ export default function AnchorageDetailContent({
             <div style={{ paddingTop: 3 }}>
               <div className="chk-detail-grid">
                 {[
-                  ['Đơn vị quản lý', (() => {
-                    const orgPathNames = resolveOrgFullPath(organizations, r.orgUnitId);
-                    if (!orgPathNames || orgPathNames.length === 0) return orgMap.get(r.orgUnitId || '') || r.orgUnitId || '—';
-                    return <span style={{ fontWeight: fontWeightBold }}>{orgPathNames}</span>;
-                  })(),],
-                  ['Thuộc cảng biển', <span style={{ fontWeight: fontWeightBold }}>{portOptions.find(o => o.value === r.portId)?.label || r.portId || '—'}</span>],
                   ['Mã khu neo đậu', <span style={statusBadgeStyle(actionPrimary)}>{r.anchorageCode || '—'}</span>],
                   ['Tên khu neo đậu', <span style={{ fontWeight: fontWeightBold }}>{r.anchorageName || '—'}</span>],
+                  ['Đơn vị quản lý', (() => {
+                    const name = orgMap.get(r.orgUnitId || '') || r.orgUnitId || '—';
+                    return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
+                  })(),],
+                  ['Thuộc cảng biển', <span style={{ fontWeight: fontWeightBold }}>{portOptions.find(o => o.value === r.portId)?.label || r.portId || '—'}</span>],
                   ['Thuộc luồng hàng hải', waterwayMap.get(r.navigationChannelId || '') || r.navigationChannelId || '—'],
                   ['Thuộc bến phao', r.buoyStationName || r.buoyStationId || '—'],
                   ['Địa điểm (Tỉnh/Thành phố)', r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '—' : '—'],
@@ -527,12 +524,9 @@ export default function AnchorageDetailContent({
         <>
           <div style={{ paddingTop: 3 }}>
             <div className="chk-detail-grid">
-              <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'flex-start', padding: '10px 12px', borderBottom: `1px solid ${borderDefault}` }}>
-                <span style={{ width: 260, flexShrink: 0, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Phạm vi khu nước neo buộc tàu:</span>
-                <span style={{ color: textPrimary, fontSize: fontSizeMd, flex: 1, overflowWrap: 'anywhere' }}>{viewingWaterArea.description || '—'}</span>
-              </div>
+              <div className="chk-detail-row"><span className="chk-detail-label">Phạm vi khu nước neo buộc tàu:</span><span className="chk-detail-value">{viewingWaterArea.description || '—'}</span></div>
             </div>
-            <div style={{ marginBottom: spaceMd, marginTop: spaceMd, paddingLeft: 12 }}>
+            <div style={{ marginBottom: spaceMd, marginTop: spaceMd }}>
               <span style={{ ...drawerTitleStyle, fontSize: 16 }}>Vị trí cụ thể điểm neo</span>
             </div>
             <div className="chk-detail-grid">
@@ -545,7 +539,7 @@ export default function AnchorageDetailContent({
                 <div key={i} className="chk-detail-row"><span className="chk-detail-label">{label}</span><span className="chk-detail-value">{value}</span></div>
               ))}
             </div>
-            <div style={{ marginTop: spaceSm, padding: '0 12px' }}>
+            <div style={{ marginTop: spaceSm }}>
               <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Tọa độ điểm neo</span>
               <DetailTable
                 dataSource={(Array.isArray(viewingWaterArea.anchorPoints) ? viewingWaterArea.anchorPoints : []).map((p: any, i: number) => ({ ...p, key: i }))}

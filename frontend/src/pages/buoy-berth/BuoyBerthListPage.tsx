@@ -471,7 +471,7 @@ export default function BuoyBerthList() {
   const [submittingRecord, setSubmittingRecord] = useState<BuoyBerth | null>(null);
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [approvingRecord, setApprovingRecord] = useState<BuoyBerth | null>(null);
-  const [approvalContent, setApprovalContent] = useState('');
+  const [, setApprovalContent] = useState('');
 
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<BuoyBerth | null>(null);

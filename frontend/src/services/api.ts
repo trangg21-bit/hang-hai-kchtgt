@@ -136,6 +136,11 @@ api.interceptors.response.use(
       error.config?.url?.includes('/vts-operation-center/options') ||
       error.config?.url?.includes('/radar-station');
 
+    // Endpoint /buoy-station/{id}/buoys chưa được backend triển khai — 404 là trạng thái chấp nhận
+    // được (tab hiện 'Chưa có dữ liệu'), không spam toast đỏ mỗi lần mở Chi tiết nhà trạm.
+    const isStationBuoysRequest =
+      error.config?.url?.includes('/buoy-station/') && error.config?.url?.endsWith('/buoys');
+
     if (status === 401) {
       const isIntegrationRequest = error.config?.url?.includes('/v1/integration/share');
       if (!isIntegrationRequest && !isPublicAuthPage && !isAuthRequest) {
@@ -166,7 +171,7 @@ api.interceptors.response.use(
         }
       }
     } else {
-      if (!isAuthRequest) {
+      if (!isAuthRequest && !isStationBuoysRequest) {
         showUniqueError(friendlyMsg);
       }
     }

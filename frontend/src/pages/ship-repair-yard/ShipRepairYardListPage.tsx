@@ -870,7 +870,7 @@ export default function ShipRepairYardList() {
       {/* ── Cơ bản: ĐVQL + Tên + Tình trạng ──────────────────── */}
       <div style={{ marginBottom: 12, marginTop: spaceMd }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-          Đơn vị quản lý <span style={{ color: statusCritical }}>*</span>
+          Đơn vị quản lý
         </div>
         <OrgUnitTreeSelect
           organizations={organizations}
@@ -1037,7 +1037,8 @@ export default function ShipRepairYardList() {
         key: 'shipRepairYardName',
         label: <span>Tên/Mã cơ sở sửa chữa, đóng tàu</span>,
         dataIndex: 'shipRepairYardName',
-        width: 220,
+        width: 400,
+        minWidth: 350,
         fixed: 'left' as const,
         sortable: true,
         sortOrder,
@@ -1066,7 +1067,7 @@ export default function ShipRepairYardList() {
         sortOrder,
         render: (_v: string | null, record: ShipRepairYard) => (
           <span style={{ fontWeight: fontWeightBold }}>
-            {orgMap.get(record.orgUnitId || '') || '—'}
+            {resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || '—'}
           </span>
         ),
       },
@@ -1163,6 +1164,7 @@ export default function ShipRepairYardList() {
     }));
   }, [
     openDetailDrawer,
+    organizations,
     orgMap,
     userMap,
     isAuditViewer,

@@ -6,7 +6,7 @@ import { colors } from '../../themetokenchk';
 import { DetailTable } from '../../components/shared/DetailTable';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import {
-  textPrimary, textSecondary, textTertiary, surfaceCard,
+  textPrimary, textTertiary, surfaceCard,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
   spaceSm, spaceMd, spaceFormField, actionPrimary,
   statusOperational, statusAttention, statusCritical,
@@ -14,7 +14,6 @@ import {
 } from '../../themetokenchk';
 import type { ShipRepairYard } from '../../types/port';
 import { VIETNAM_PROVINCES } from '../../types/common';
-import { resolveOrgFullPath } from '../../components/org-unit';
 import api from '../../services/api';
 
 export interface ShipRepairYardDetailContentProps {
@@ -77,7 +76,6 @@ const fmtNumber = (v: number | null | undefined): string => (v != null ? Number(
 export default function ShipRepairYardDetailContent({
   selectedRecord,
   orgMap,
-  organizations = [],
   symbolMap,
   symbolImageMap,
   portOptions,
@@ -128,22 +126,14 @@ export default function ShipRepairYardDetailContent({
             <div style={{ paddingTop: 3 }}>
               <div className="chk-detail-grid">
                 {[
+                  ['Mã cơ sở sửa chữa, đóng tàu', <span style={statusBadgeStyle(actionPrimary)}>{r.shipRepairYardCode || '—'}</span>],
+                  ['Tên cơ sở sửa chữa, đóng tàu', <span style={{ fontWeight: fontWeightBold }}>{r.shipRepairYardName || '—'}</span>],
                   ['Đơn vị quản lý', (() => {
-                    const orgPathNames = resolveOrgFullPath(organizations, r.orgUnitId);
-                    if (!orgPathNames || orgPathNames.length === 0) return orgMap.get(r.orgUnitId || '') || r.orgUnitId || '—';
-                    const levelColors = [textPrimary, textSecondary, textTertiary];
-                    return (
-                      <span style={{ fontWeight: fontWeightBold }}>
-                        {orgPathNames.map((n, i) => (
-                          <span key={i} style={{ display: 'block', color: levelColors[Math.min(i, levelColors.length - 1)] }}>{n}</span>
-                        ))}
-                      </span>
-                    );
+                    const name = orgMap.get(r.orgUnitId || '') || r.orgUnitId || '—';
+                    return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
                   })(),],
                   ['Thuộc cảng biển', <span style={{ fontWeight: fontWeightBold }}>{portOptions.find(o => o.value === r.portId)?.label || r.portId || '—'}</span>],
                   ['Thuộc cầu cảng', pierOptions.find(o => o.value === r.pierId)?.label || r.pierName || r.pierId || '—'],
-                  ['Mã cơ sở sửa chữa, đóng tàu', <span style={statusBadgeStyle(actionPrimary)}>{r.shipRepairYardCode || '—'}</span>],
-                  ['Tên cơ sở sửa chữa, đóng tàu', <span style={{ fontWeight: fontWeightBold }}>{r.shipRepairYardName || '—'}</span>],
                   ['Địa điểm (Tỉnh/Thành phố)', r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '—' : '—'],
                   ['Địa điểm chi tiết', r.detailedLocation || '—'],
                   ['Tình trạng', (() => { const s = r.operationalStatus; const m: Record<string,{color:string;label:string}> = { OPERATIONAL:{color:statusOperational,label:'Đang khai thác/Vận hành'}, NOT_YET_OPERATIONAL:{color:statusAttention,label:'Chưa khai thác/Vận hành'}, SUSPENDED:{color:statusCritical,label:'Dừng khai thác/Vận hành'} }; const b = s && m[s]; return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : '—'; })(),],
