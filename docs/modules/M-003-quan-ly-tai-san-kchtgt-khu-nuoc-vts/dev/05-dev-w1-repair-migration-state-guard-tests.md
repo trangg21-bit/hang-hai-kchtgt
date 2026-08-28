@@ -7,7 +7,7 @@ Contract: `docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/design/00-desi
 
 | File | Change |
 |---|---|
-| `src/main/resources/db/migration/V20260827090000__fix_buoy_station_unaccent_search_index_and_backfill_route_code.sql` | NEW (WO-1) — idempotent repair migration, 3 guarded sections |
+| `src/main/resources/db/migration/V20260828100000__fix_buoy_station_unaccent_search_index_and_backfill_route_code.sql` | NEW (WO-1) — idempotent repair migration, 3 guarded sections |
 | `src/main/java/com/hanghai/kchtg/navigationchannel/service/NavigationChannelService.java` | (WO-2) — BR-039-08 update guard |
 | `src/test/java/com/hanghai/kchtg/navigationchannel/service/NavigationChannelServiceTest.java` | (WO-3) — 6 new guard cases (suite: 12 → 18) |
 
@@ -17,7 +17,7 @@ One-way door respected: `V20260822130000` and `V20260825120000` untouched (byte-
 
 **Before**: real DBs recorded an older `V20260822130000` whose `buoy_station` lacks `code`/`name`, so `idx_buoy_station_active_code_unaccent_trgm` fails at boot (`V20260803370000` added `code` to `buoy` only); legacy `channel_route_detail.route_code` stays NULL after the `ma`→`route_code` rename (§9 of `V20260825120000`).
 
-**After** (`V20260827090000`, version sorts after all existing migrations, latest `V20260826090000`):
+**After** (`V20260828100000`, version sorts after all existing migrations, latest `V20260826090000`):
 1. `DO $$` + `to_regclass` guard: `ADD COLUMN IF NOT EXISTS code VARCHAR(50)` / `name VARCHAR(255)` on `buoy_station` **and** `buoy`.
 2. `DO $$` + `to_regclass` guard: `CREATE INDEX IF NOT EXISTS` for the 4 unaccent trigram partial indexes (`idx_buoy_station_active_code_unaccent_trgm`, `idx_buoy_station_active_name_unaccent_trgm`, `idx_buoy_active_code_unaccent_trgm`, `idx_buoy_active_name_unaccent_trgm`) using `public.immutable_unaccent(LOWER(...)) gin_trgm_ops WHERE deleted_at IS NULL` — shape identical to the applied `V20260822130000:70-91` block.
 3. `DO $$` + `to_regclass` guard on both tables: `UPDATE channel_route_detail SET route_code = (SELECT nc.channel_code FROM navigation_channel nc WHERE nc.id = channel_route_detail.navigation_channel_id) || '-' || LPAD(COALESCE(sequence_no, 1)::text, 2, '0') WHERE route_code IS NULL;` — format parity with `NavigationChannelService.toRouteDetail` (`channelCode + "-" + String.format("%02d", sequenceNo)`, service lines 817-822, verified this session).
@@ -70,7 +70,7 @@ Surefire reports (regenerated on the re-run, authoritative):
 `Migration V20260825113000__add_planning_gis_replica_identity.sql failed … ERROR: schema "qhcb_all" does not exist` (line 6, `ALTER TABLE qhcb_all.area …`). pom.xml surefire config has no `testFailureIgnore` and no `.mvn/maven.config` exists, so test errors ⇒ non-zero exit.
 
 **Pre-existence proof (not caused by this change)**:
-1. `V20260825113000` (2026-08-25) sorts BEFORE `V20260827090000` (2026-08-27) — Flyway aborts at the earlier migration, so the repair migration never executed in this suite.
+1. `V20260825113000` (2026-08-25) sorts BEFORE `V20260828100000` (2026-08-27) — Flyway aborts at the earlier migration, so the repair migration never executed in this suite.
 2. The failing file was not edited this session (session writes: exactly the 3 files above).
 3. `src/test/resources/uat-schema-fixture.sql` (committed, untouched) contains no `qhcb_all` (grep: 0 hits) — `V20260825113000` can never pass on this fixture, independent of this change.
 4. Note: the supervisor's background-job exit code reported 0 for the mvn.cmd run — a PowerShell wrapper artifact; the surefire `<<< FAILURE!` reports + standard surefire config are the ground truth (recorded as a workspace gotcha).
@@ -80,11 +80,11 @@ Command 2:
 
 ## Blocker
 
-`FlywayMigrationTest` cannot pass until the `qhcb_all` fixture gap is closed — this is outside this seat's edit boundary (migration `V20260825113000` is committed/applied; the fixture and "all other source files" are read-only per the brief). My migration `V20260827090000` therefore did not execute in the harness (chain aborts before it); its SQL patterns are byte-identical in shape to the applied `V20260822130000:70-91` block which DID execute successfully in the same chain, so syntax/pattern confidence is high, but runtime execution evidence is pending the blocker fix.
+`FlywayMigrationTest` cannot pass until the `qhcb_all` fixture gap is closed — this is outside this seat's edit boundary (migration `V20260825113000` is committed/applied; the fixture and "all other source files" are read-only per the brief). My migration `V20260828100000` therefore did not execute in the harness (chain aborts before it); its SQL patterns are byte-identical in shape to the applied `V20260822130000:70-91` block which DID execute successfully in the same chain, so syntax/pattern confidence is high, but runtime execution evidence is pending the blocker fix.
 
-**Next action (owner: PMO / migration-chain author)**: add the `qhcb_all` schema + `area`/`line` tables to `src/test/resources/uat-schema-fixture.sql` (or, if the schema is genuinely absent on real DBs, a guarded new repair migration) — then re-run the two acceptance commands; `V20260827090000` will then execute and can be verified end-to-end.
+**Next action (owner: PMO / migration-chain author)**: add the `qhcb_all` schema + `area`/`line` tables to `src/test/resources/uat-schema-fixture.sql` (or, if the schema is genuinely absent on real DBs, a guarded new repair migration) — then re-run the two acceptance commands; `V20260828100000` will then execute and can be verified end-to-end.
 
 ## Durable knowledge recorded (this session)
 
-- `flyway-fixture-qhcb-all-blocker` (gotcha, ~0.7) — FlywayMigrationTest fails at V20260825113000 (schema qhcb_all missing from uat-schema-fixture.sql) — pre-existing, blocks full-chain acceptance; repair migration V20260827090000 never runs in the suite until fixed.
+- `flyway-fixture-qhcb-all-blocker` (gotcha, ~0.7) — FlywayMigrationTest fails at V20260825113000 (schema qhcb_all missing from uat-schema-fixture.sql) — pre-existing, blocks full-chain acceptance; repair migration V20260828100000 never runs in the suite until fixed.
 - `mvn-cmd-background-exit-code-wrapper` (gotcha, ~0.6) — on this workspace, supervisor-reported exit code for background `mvn.cmd` jobs is unreliable (reported 0 despite surefire errors); trust target/surefire-reports/*.txt.

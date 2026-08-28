@@ -516,13 +516,29 @@ CREATE TABLE radar_station (
 CREATE TABLE vts_system (
     id UUID PRIMARY KEY,
     ma_he_thong VARCHAR(50),
+    code VARCHAR(50),
     system_name VARCHAR(255),
+    org_unit_id UUID,
     operational_status VARCHAR(50),
+    condition_status SMALLINT DEFAULT 0,
     approval_status VARCHAR(50),
     deleted_at TIMESTAMP,
     created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    updated_at TIMESTAMP,
+    created_by VARCHAR(100),
+    updated_by VARCHAR(100),
+    deleted_by VARCHAR(100)
 );
+
+-- === org_units ===
+-- org_units is created above (id/status/unit_type/type) with NO rows; its data
+-- seeders V19/V27 are below the test baseline (81) and never run. Merged
+-- migration V20260826180900 resolves org ids from org_units and falls back to
+-- gen_random_uuid(), which violates the org_unit FKs of vts_operation_center /
+-- ais_system — so the fixture provides one real row (the seed's LIMIT 1
+-- fallback then satisfies every org FK).
+INSERT INTO org_units (id)
+VALUES ('00000000-0000-0000-0000-0000000000f1');
 
 CREATE TABLE ship_repair_facility (
     id UUID PRIMARY KEY,
