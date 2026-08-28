@@ -4,12 +4,6 @@ import {
   Drawer, Radio, Space, Typography, Form,
 } from 'antd';
 import {
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  EyeOutlined,
   HistoryOutlined,
   ExclamationCircleOutlined,
   SearchOutlined,
@@ -48,6 +42,7 @@ import {
   borderDefault,
   fontSizeMd,
   fontSizeLg,
+  fontSizeSm,
   fontWeightMedium,
   fontWeightBold,
   radiusPill,
@@ -58,12 +53,17 @@ import {
   spaceFormField,
   drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
   primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
-  historyBadgeStyle, historyGroupGridStyle, historyTimeStyle, historyMetaRowStyle,
+  historyGroupGridStyle, historyTimeStyle, historyMetaRowStyle,
   historyInfoCardStyle, historyAccentBarStyle, historyInfoTitleStyle,
   historyChangeRowStyle, historyCreateRowStyle, historyFieldLabelStyle,
   historyOldValueStyle, historyNewValueStyle, historyArrowStyle,
-} from '../../tokens';
-import { colors } from '../../theme';
+  icons, statusBadgeStyle, cellTitleStyle, cellSubtitleStyle,
+} from '../../themetokenchk';
+import { colors } from '../../themetokenchk';
+import * as themeTokenChk from '../../themetokenchk';
+import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
+import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
+import ApprovalModal from '../../components/shared/ApprovalModal';
 
 // ── Constants ────────────────────────────────────────────────────────
 
@@ -134,7 +134,7 @@ function formatDate(dateStr: string | null | undefined): string {
   try { return dayjs(dateStr).format('DD/MM/YYYY HH:mm:ss'); } catch { return dateStr; }
 }
 
-// ── History helpers ───────────────────────────────────────────────────
+// ── History helpers (chuẩn VTS CHK) ─────────────────────────────────
 
 const historyFieldLabels: Record<string, string> = {
   securityLevel: 'Cấp bảo mật', transferAreaCode: 'Mã khu chuyển tải', transferAreaName: 'Tên khu chuyển tải', portId: 'Thuộc cảng biển',
@@ -154,6 +154,215 @@ const historyFieldLabels: Record<string, string> = {
 };
 
 function historyFieldName(fn: string): string { return historyFieldLabels[fn] || fn; }
+
+/** Badge thao tác cho lịch sử (chuẩn VTS CHK): phân biệt Thêm mới / Cập nhật / Phê duyệt / Từ chối / Trình duyệt. */
+function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; color: string; bg: string } {
+  const item = group.items?.[0] || {};
+  const rawStatus = String(item.status ?? item.action ?? '').toUpperCase();
+  const rawReason = String(item.reason ?? item.ghiChu ?? item.note ?? '').toLowerCase();
+  const level = Number(item.approvalLevel || 0);
+
+  if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
+    return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
+  }
+
+  // Tải lên / xóa tệp đính kèm
+  if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || item.changedField?.includes('đính kèm')) {
+    return { label: 'Tải lên tệp', color: '#0284c7', bg: '#0284c718' };
+  }
+  if (rawStatus === 'ATTACHMENT_DELETED' || rawReason.includes('xóa tài liệu') || rawReason.includes('xóa tệp') || rawReason.includes('xoa tep')) {
+    return { label: 'Xóa tệp', color: '#ea580c', bg: '#ea580c18' };
+  }
+
+  // Cập nhật thông tin
+  if (rawStatus === 'UPDATED' || rawStatus === 'UPDATE' || rawStatus === 'EDIT' || rawReason.includes('cập nhật') || rawReason.includes('chỉnh sửa')) {
+    return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
+  }
+
+  // Ưu tiên lý do ghi sẵn cho hành động duyệt/từ chối (chuẩn VTS CHK)
+  if (rawReason.includes('phê duyệt cấp cảng vụ') || rawReason.includes('phe duyet cap cang vu')) {
+    return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
+  }
+  if (rawReason.includes('phê duyệt cấp cục') || rawReason.includes('phe duyet cap cuc')) {
+    return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
+  }
+  if (rawReason.includes('từ chối cấp cảng vụ') || rawReason.includes('tu choi cap cang vu')) {
+    return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
+  }
+  if (rawReason.includes('từ chối cấp cục') || rawReason.includes('tu choi cap cuc')) {
+    return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
+  }
+
+  const approvalChange = changes.find((c: any) => {
+    const k = normalizeHistoryKey(c.field);
+    return k === 'approvalstatus' || k === 'trang thai phe duyet';
+  });
+
+  if (approvalChange) {
+    const nv = normalizeHistoryKey(approvalChange.newValue || '');
+    if (nv.includes('cang vu tra ve') || nv.includes('rejected_level1') || (nv.includes('tra ve') && nv.includes('cang vu'))) {
+      return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
+    }
+    if (nv.includes('cuc tra ve') || nv.includes('rejected_level2') || (nv.includes('tra ve') && nv.includes('cuc'))) {
+      return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
+    }
+    if (nv === 'cho cuc duyet' || nv.includes('da phe duyet cap 1') || nv.includes('approved_level1') || nv.includes('cuc duyet')) {
+      return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
+    }
+    if (nv === 'da duyet' || nv.includes('da phe duyet') || nv.includes('approved')) {
+      return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
+    }
+    if (nv.includes('tu choi') || nv.includes('rejected') || nv.includes('tra ve')) {
+      return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
+    }
+    if (nv.includes('cho cang vu duyet') || nv.includes('cho phe duyet') || nv.includes('pending') || nv.includes('proposed') || nv.includes('luu tam') || nv.includes('nhap')) {
+      return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
+    }
+  }
+
+  if (level === 1 || String(item.approvalLevel).includes('LEVEL_1') || rawReason.includes('cấp 1') || rawReason.includes('cap 1') || rawStatus === 'UNDER_REVIEW') {
+    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
+      return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
+    }
+    return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
+  }
+  if (level === 2 || String(item.approvalLevel).includes('LEVEL_2') || rawReason.includes('cấp 2') || rawReason.includes('cap 2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
+    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
+      return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
+    }
+    return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
+  }
+  if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi')) {
+    return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
+  }
+  if (rawStatus === 'SUBMITTED' || rawStatus === 'PENDING' || rawReason.includes('trình duyệt') || rawReason.includes('trinh duyet')) {
+    return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
+  }
+  if (rawStatus === 'DELETED' || rawStatus === 'DELETE' || rawStatus === 'SOFT_DELETE' || rawReason.includes('xóa') || rawReason.includes('xoa')) {
+    return { label: 'Xóa', color: '#64748b', bg: '#64748b18' };
+  }
+
+  return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
+}
+
+function historyTimestamp(item: any): string {
+  return item.approvedDate || item.changedAt || item.createdAt || '';
+}
+
+function historyField(item: any): string {
+  return item.changedField || item.fieldName || '';
+}
+
+function historyOldValue(item: any): string | null {
+  return item.previousValue ?? item.oldValue ?? null;
+}
+
+function historyNewValue(item: any): string | null {
+  return item.newValue ?? null;
+}
+
+function historyActor(item: any): string {
+  const raw = item?.approvedByName || item?.changedByName || item?.performedByName || item?.userName || item?.actorName || item?.approvedBy || item?.changedBy || item?.performedBy || '';
+  return raw || '—';
+}
+
+function normalizeHistoryKey(value: string): string {
+  return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+}
+
+function normalizedHistoryFields(value: string): string[] {
+  const fields = value.split(/[,;]+/).map((field: string) => field.trim()).filter(Boolean);
+  const hasApprovalStatus = fields.some((field) => {
+    const key = normalizeHistoryKey(field);
+    return key === 'approvalstatus' || key === 'trang thai phe duyet';
+  });
+  if (hasApprovalStatus) {
+    return fields.filter((field) => {
+      const key = normalizeHistoryKey(field);
+      return key !== 'approvedlevel1' && key !== 'approvedlevel2' && key !== 'da phe duyet cap 1' && key !== 'da phe duyet cap 2';
+    });
+  }
+  return fields;
+}
+
+function parseHistoryAssignments(value: string | null): Map<string, string> {
+  const result = new Map<string, string>();
+  if (!value) return result;
+  value.split(';').forEach((part) => {
+    const separator = part.indexOf('=');
+    if (separator < 0) return;
+    result.set(normalizeHistoryKey(part.slice(0, separator)), part.slice(separator + 1).trim());
+  });
+  return result;
+}
+
+function historyChangeRows(item: any): Array<{ field: string; oldValue: string | null; newValue: string | null }> {
+  const fields = normalizedHistoryFields(historyField(item));
+  const oldValue = historyOldValue(item);
+  const newValue = historyNewValue(item);
+  const oldAssignments = parseHistoryAssignments(oldValue);
+  const newAssignments = parseHistoryAssignments(newValue);
+
+  if (fields.length > 1 && oldAssignments.size === 0 && newAssignments.size === 0) {
+    return [{ field: fields.join(', '), oldValue, newValue }];
+  }
+  if (fields.length === 0) {
+    return [{ field: '', oldValue, newValue }];
+  }
+  return fields.map((field, index) => {
+    const displayField = historyFieldName(field);
+    const oldAssigned = oldAssignments.get(normalizeHistoryKey(field)) ?? oldAssignments.get(normalizeHistoryKey(displayField));
+    const newAssigned = newAssignments.get(normalizeHistoryKey(field)) ?? newAssignments.get(normalizeHistoryKey(displayField));
+    const oldParts = oldValue?.split(';').map((part) => part.trim()).filter(Boolean) || [];
+    const newParts = newValue?.split(';').map((part) => part.trim()).filter(Boolean) || [];
+    return {
+      field,
+      oldValue: oldAssigned ?? (fields.length === 1 ? oldValue : oldParts[index] || null),
+      newValue: newAssigned ?? (fields.length === 1 ? newValue : newParts[index] || null),
+    };
+  });
+}
+
+function renderHistoryValueTag(field: string, val: string | null) {
+  if (val === null || val === undefined || val === '—') {
+    return <span style={{ color: textTertiary }}>—</span>;
+  }
+  const normKey = normalizeHistoryKey(field);
+  const normVal = normalizeHistoryKey(val);
+
+  if (normKey === 'approvalstatus' || normKey === 'trang thai phe duyet' || normKey.includes('phe duyet') || normKey.includes('trang thai')) {
+    if (normVal === 'da duyet' || normVal === 'da phe duyet' || normVal === 'approved' || normVal === 'approved_level2') {
+      return (<span style={statusBadgeStyle(statusOperational)}>{val}</span>);
+    }
+    if (normVal === 'cho cuc duyet' || normVal === 'approved_level1' || normVal.includes('cap 1') || normVal.includes('cuc duyet')) {
+      return (<span style={statusBadgeStyle('#0082fb')}>{val}</span>);
+    }
+    if (normVal === 'cho cang vu duyet' || normVal === 'cho phe duyet' || normVal === 'cho duyet' || normVal === 'pending' || normVal === 'pending_approval' || normVal === 'proposed' || normVal.includes('cang vu')) {
+      return (<span style={statusBadgeStyle(statusAttention)}>{val}</span>);
+    }
+    if (normVal === 'tu choi' || normVal.includes('rejected') || normVal.includes('tra ve')) {
+      return (<span style={statusBadgeStyle(statusCritical)}>{val}</span>);
+    }
+    return (<span style={statusBadgeStyle(statusDraft)}>{val}</span>);
+  }
+
+  if (normKey === 'conditionstatus' || normKey === 'tinh trang' || normKey.includes('tinh trang')) {
+    if (normVal.includes('hoat dong tot') || normVal.includes('good') || normVal.includes('operational') || normVal.includes('hoat dong')) {
+      return (<span style={statusBadgeStyle(statusOperational)}>{val}</span>);
+    }
+    if (normVal.includes('can bao duong') || normVal.includes('warning') || normVal.includes('maintenance') || normVal.includes('bao tri')) {
+      return (<span style={statusBadgeStyle(statusAttention)}>{val}</span>);
+    }
+    if (normVal.includes('hong') || normVal.includes('ngung') || normVal.includes('dung') || normVal.includes('damaged') || normVal.includes('critical')) {
+      return (<span style={statusBadgeStyle(statusCritical)}>{val}</span>);
+    }
+    if (normVal.includes('xay dung') || normVal.includes('under_construction')) {
+      return (<span style={statusBadgeStyle(actionPrimary)}>{val}</span>);
+    }
+  }
+
+  return <span title={val} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere' }}>{val}</span>;
+}
 
 function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, string>, symbolMap?: Map<string, string>, portMap?: Map<string, string>): string {
   if (!val || val === '(null)' || val === 'null') return '(trống)';
@@ -181,7 +390,6 @@ export default function TransferAreaList() {
   const [filterName, setFilterName] = useState('');
   const [filterCode, setFilterCode] = useState('');
   const [filterPortId, setFilterPortId] = useState<string | undefined>();
-  const [filterProvince, setFilterProvince] = useState('');
   const [filterOperationalStatus, setFilterOperationalStatus] = useState<string | undefined>();
   const [filterOperationalFunctions, setFilterOperationalFunctions] = useState<string[] | undefined>();
   const [filterUpdatedFrom, setFilterUpdatedFrom] = useState<string | undefined>();
@@ -261,7 +469,6 @@ export default function TransferAreaList() {
   const [submittingRecord, setSubmittingRecord] = useState<TransferArea | null>(null);
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [approvingRecord, setApprovingRecord] = useState<TransferArea | null>(null);
-  const [approvalContent, setApprovalContent] = useState('');
 
   // ── History modal ───────────────────────────────────────────────
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -275,7 +482,20 @@ export default function TransferAreaList() {
   const [historyEntityNames, setHistoryEntityNames] = useState<Record<string, string>>({});
   const [historyEntityFilter, setHistoryEntityFilter] = useState('');
 
-  const historyFieldCount = useMemo(() => historyRecords.length, [historyRecords]);
+  const historyGroupCount = useMemo(() => {
+    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
+    const sorted = [...(Array.isArray(historyRecords) ? historyRecords : [])].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
+    const groups: { tsSec: number; actor: string }[] = [];
+    for (const r of sorted) {
+      const ts = historyTimestamp(r);
+      const sec = ts ? toSec(ts) : 0;
+      const actor = historyActor(r);
+      const prev = groups[groups.length - 1];
+      if (prev && prev.tsSec === sec && prev.actor === actor) continue;
+      groups.push({ tsSec: sec, actor });
+    }
+    return groups.length;
+  }, [historyRecords]);
 
   const openHistory = useCallback(async (r: TransferArea) => {
     setHistoryTarget(r); setHistoryOpen(true); setHistoryLoading(true); setHistoryRecords([]);
@@ -293,31 +513,21 @@ export default function TransferAreaList() {
   const HISTORY_FIELD_ORDER = ['orgUnitId', 'portId', 'transferAreaCode', 'transferAreaName', 'operationalFunctions', 'provinceId', 'detailedLocation', 'mapSymbolId', 'area', 'designWaterDepth', 'currentWaterDepth', 'bottomElevationDesign', 'maxVesselDWT', 'remarks', 'openingAnnouncementDate', 'publicDecision', 'investmentAgreement'];
 
   const renderTransferAreaHistoryTimeline = (records: any[]) => {
+    const safeRecords = Array.isArray(records) ? records : [];
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...records].sort((a: any, b: any) => new Date(b.changedAt || b.createdAt).getTime() - new Date(a.changedAt || a.createdAt).getTime());
+    const sorted = [...safeRecords].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
     const q = historySearch.toLowerCase().trim();
-    const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
+    const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
     for (const r of sorted) {
-      if (q) {
-        const fn = (r.fieldName || '').toLowerCase();
-        const ov = (r.oldValue || '').toLowerCase();
-        const nv = (r.newValue || '').toLowerCase();
-        const lb = historyFieldName(r.fieldName || '').toLowerCase();
-        const od = historyFieldValue(r.fieldName, r.oldValue, orgMap, symbolMap, portMap).toLowerCase();
-        const nd = historyFieldValue(r.fieldName, r.newValue, orgMap, symbolMap, portMap).toLowerCase();
-        if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue;
-      }
-      if (historyEntityFilter && r.entityId !== historyEntityFilter) continue;
-      if (historyFrom || historyTo) {
-        const cd = (r.changedAt || r.createdAt || '').substring(0, 16);
-        if (historyFrom && cd < historyFrom.replace(' ', 'T')) continue;
-        if (historyTo && cd > historyTo.replace(' ', 'T') + ':59') continue;
-      }
-      const ts = r.changedAt || r.createdAt || '';
+      const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
+      const actor = historyActor(r);
       const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === (r.changedBy || '')) prev.items.push(r);
-      else groups.push({ tsSec: sec, ts, actor: r.changedBy || '', items: [r] });
+      if (prev && prev.tsSec === sec && prev.actor === actor && prev.status === r.status && prev.approvalLevel === r.approvalLevel) {
+        prev.items.push(r);
+      } else {
+        groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
+      }
     }
     if (groups.length === 0) return (
       <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
@@ -332,15 +542,15 @@ export default function TransferAreaList() {
         const orgId = rec0.orgUnitId || historyTarget?.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
         const unitName = (orgName ? (orgName.split(' - ').pop() || orgName) : (rec0.orgUnitName || rec0.unitName)) || '—';
-        const barColor = actionPrimary;
-        const changes = g.items.map((item: any) => ({ field: item.fieldName || '—', oldValue: item.oldValue ?? null, newValue: item.newValue ?? null }));
-        const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
-        const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
-        const orderedChanges = [...changes].sort((a: any, b: any) => {
+        const changes = g.items.flatMap((item: any) => historyChangeRows(item)).sort((a: any, b: any) => {
           const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
           const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
           return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
         }).filter((c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments' && c.field !== 'spatialId');
+        const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
+        const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
+        const actionMeta = resolveHistoryActionMeta(g, changes);
+        const barColor = actionMeta.color;
         const formatHistoryValue = (fn: string, raw: string | null) => {
           if (raw === null || raw === '(null)' || raw === '') return null;
           const t = raw.trim();
@@ -355,7 +565,16 @@ export default function TransferAreaList() {
           }
           return historyFieldValue(fn, raw, orgMap, symbolMap, portMap);
         };
-        if (orderedChanges.length === 0) return null;
+        const validChanges = changes.filter((c: any) => {
+          if (!c.field) return false;
+          const ov = formatHistoryValue(c.field, c.oldValue);
+          const nv = formatHistoryValue(c.field, c.newValue);
+          if (ov == null && nv == null) return false;
+          if (ov === nv) return false;
+          return true;
+        });
+        const reasons = g.items.map((i: any) => i.reason || i.ghiChu || i.note).filter(Boolean);
+        if (validChanges.length === 0 && reasons.length === 0) return null;
         return (
           <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
             <div style={{ minWidth: 0, paddingTop: spaceXs }}>
@@ -364,8 +583,7 @@ export default function TransferAreaList() {
                   {g.ts ? fmtTime(g.ts) : '—'}
                 </Typography.Text>
                 <span style={{ flexShrink: 0 }}>
-                {isCreate && <span style={historyBadgeStyle(statusOperational)}>Thêm mới</span>}
-                {!isCreate && <span style={historyBadgeStyle(actionPrimary)}>Chỉnh sửa</span>}
+                  <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: actionMeta.bg, color: actionMeta.color, whiteSpace: 'nowrap' }}>{actionMeta.label}</span>
                 </span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
@@ -382,7 +600,7 @@ export default function TransferAreaList() {
               <Typography.Text style={historyInfoTitleStyle}>
                 {informationTitle}
               </Typography.Text>
-              {orderedChanges.length > 0 ? <div>{orderedChanges.map((change, ri: number) => {
+              {validChanges.length > 0 ? <div>{validChanges.map((change, ri: number) => {
                 const fn = change.field;
                 const ov = formatHistoryValue(fn, change.oldValue);
                 const nv = formatHistoryValue(fn, change.newValue);
@@ -394,20 +612,27 @@ export default function TransferAreaList() {
                   }
                   return null;
                 };
+                const renderVal = (rawVal: string | null, fmtVal: string | null) => renderCell(rawVal) ?? (fmtVal != null ? renderHistoryValueTag(fn, fmtVal) : <span style={{ color: textTertiary }}>—</span>);
                 return isCreate ? (
                   <div key={`${fn}-${ri}`} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
                     <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                    <span title={nv ?? '—'} style={historyNewValueStyle}>{renderCell(change.newValue) ?? (nv ?? '—')}</span>
+                    <span title={nv ?? '—'} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
                   </div>
                 ) : (
                   <div key={`${fn}-${ri}`} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
                     <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                    <span title={ov ?? '—'} style={historyOldValueStyle}>{renderCell(change.oldValue) ?? (ov ?? '—')}</span>
+                    <span title={ov ?? '—'} style={historyOldValueStyle}>{renderVal(change.oldValue, ov)}</span>
                     <span style={historyArrowStyle}>→</span>
-                    <span title={nv ?? '—'} style={historyNewValueStyle}>{renderCell(change.newValue) ?? (nv ?? '—')}</span>
+                    <span title={nv ?? '—'} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
                   </div>
                 );
-              })}</div> : <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có thông tin chi tiết</Typography.Text>}
+              })}</div> : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
+                  {reasons.map((r: string, ri: number) => (
+                    <div key={ri} style={{ fontSize: fontSizeMd, color: textPrimary }}>{r}</div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         );
@@ -517,7 +742,6 @@ export default function TransferAreaList() {
         transferAreaName: filterName.trim() || undefined,
         transferAreaCode: filterCode.trim() || undefined,
         portId: filterPortId,
-        provinceId: filterProvince ? (VIETNAM_PROVINCES.indexOf(filterProvince) + 1) : undefined,
         operationalFunctions: filterOperationalFunctions && filterOperationalFunctions.length > 0 ? filterOperationalFunctions.join(',') : undefined,
         operationalStatus: filterOperationalStatus,
         approvalStatus: TAB_QUERY_MAP[activeTab],
@@ -532,7 +756,7 @@ export default function TransferAreaList() {
       setError(err instanceof Error ? err : new Error('Không thể tải danh sách khu chuyển tải'));
     } finally { setIsLoading(false); }
   }, [managingUnitId, filterName, filterCode, filterPortId, filterOperationalFunctions,
-    filterProvince, filterOperationalStatus,
+    filterOperationalStatus,
     filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
@@ -547,7 +771,7 @@ export default function TransferAreaList() {
     const defaultOrg = defaultOrgUnitId.current;
     setManagingUnitId(defaultOrg === '__all__' ? undefined : defaultOrg);
     setFilterName(''); setFilterCode(''); setFilterPortId(undefined);
-    setFilterOperationalFunctions(undefined); setFilterProvince('');
+    setFilterOperationalFunctions(undefined);
     setFilterOperationalStatus(undefined);
     setFilterUpdatedFrom(undefined); setFilterUpdatedTo(undefined);
     setActiveTab('all'); setPage(1);
@@ -592,15 +816,15 @@ export default function TransferAreaList() {
   }, [deletingRecord, deleteConfirmText, fetchData, fetchCounts, managingUnitId]);
 
   // ── Approval handlers ───────────────────────────────────────────
-  const handleApprove = useCallback(async (record: TransferArea) => {
+  const handleApprove = useCallback(async (record: TransferArea, content: string) => {
     try {
       const cap = record.approvalStatus === 'APPROVED_LEVEL2' ? 'CUC' : 'CANG_VU';
-      await transferAreaCRUD.approve(record.id, cap, approvalContent);
+      await transferAreaCRUD.approve(record.id, cap, content);
       toast.success('Đã phê duyệt khu chuyển tải');
-      setApproveModalOpen(false); setApprovingRecord(null); setApprovalContent('');
+      setApproveModalOpen(false); setApprovingRecord(null);
       void fetchData(); void fetchCounts(managingUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại'); }
-  }, [fetchData, fetchCounts, managingUnitId, approvalContent]);
+  }, [fetchData, fetchCounts, managingUnitId]);
 
   const handleConfirmSubmit = useCallback(async () => {
     if (!submittingRecord) return;
@@ -630,12 +854,11 @@ export default function TransferAreaList() {
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Từ chối thất bại'); }
   }, [rejectingRecord, rejectReason, fetchData, fetchCounts, managingUnitId]);
 
-  // ── Drawer callbacks ─────────────────────────────────────────────
   // ── Header actions ──────────────────────────────────────────────
   const headerActions = useMemo(() => {
     const actions: ScreenHeaderAction[] = [];
     if (hasPerm('transferarea:create')) {
-      actions.push({ key: 'create', label: 'Thêm mới', variant: 'primary', icon: <PlusOutlined />, onClick: () => setCreateDrawerVisible(true) });
+      actions.push({ key: 'create', label: 'Thêm mới', variant: 'primary', icon: icons.create, onClick: () => setCreateDrawerVisible(true) });
     }
     return actions;
   }, [hasPerm]);
@@ -647,7 +870,7 @@ export default function TransferAreaList() {
       {/* ── Cơ bản: ĐVQL + Tên + Tình trạng ──────────────────── */}
       <div style={{ marginBottom: 12, marginTop: spaceMd }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-          Đơn vị quản lý <span style={{ color: statusCritical }}>*</span>
+          Đơn vị quản lý
         </div>
         <OrgUnitTreeSelect
           organizations={organizations}
@@ -735,20 +958,6 @@ export default function TransferAreaList() {
         </div>
 
         <div style={{ marginBottom: 12 }}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành phố)</div>
-          <Select
-            placeholder="Chọn tỉnh/thành phố"
-            allowClear
-            showSearch
-            filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-            value={filterProvince || undefined}
-            onChange={(v) => { setFilterProvince(v || ''); setPage(1); }}
-            options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
-            style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-          />
-        </div>
-
-        <div style={{ marginBottom: 12 }}>
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
           <DatePicker.RangePicker format="DD/MM/YYYY"
             placeholder={['Từ ngày', 'Đến ngày']} allowClear popupClassName="range-single-panel"
@@ -771,14 +980,15 @@ export default function TransferAreaList() {
   const rowActions = useCallback(
     (record: TransferArea) => {
       const actions: any[] = [
-        { key: 'view', label: 'Chi tiết', icon: <EyeOutlined />, onClick: () => openDetailDrawer(record) },
+        { key: 'view', label: 'Chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) },
       ];
       const st = record.approvalStatus || '';
-      if (hasPerm('transferarea:update')) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => { setEditTransferAreaId(record.id); setEditTransferAreaName(record.transferAreaName || ''); } });
-      if (hasPerm('transferarea:delete') && ['DRAFT','NHAP'].includes(st)) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => openDeleteModal(record) });
-      if (['DRAFT','NHAP'].includes(st) && hasPerm('transferarea:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
-      if (hasPerm('transferarea:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) { actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setApprovingRecord(record); setApprovalContent(''); setApproveModalOpen(true); } }); actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, danger: true, onClick: () => openRejectModal(record) }); }
-      if (hasPerm('transferarea:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistory(record) });
+      // Chỉnh sửa chỉ áp dụng cho Lưu tạm (DRAFT) và Đã phê duyệt (APPROVED) — chuẩn VTS CHK
+      if (canEditApprovalRecord(st, { hasPerm, resource: 'transferarea', extraApprovePerms: ['transferarea:approve'] })) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => { setEditTransferAreaId(record.id); setEditTransferAreaName(record.transferAreaName || ''); } });
+      if (canDeleteApprovalRecord(st, { hasPerm, resource: 'transferarea' })) actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => openDeleteModal(record) });
+      if (['DRAFT','NHAP'].includes(st) && hasPerm('transferarea:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
+      if (hasPerm('transferarea:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) { actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } }); actions.push({ key: 'reject', label: 'Từ chối', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) }); }
+      if (hasPerm('transferarea:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
       return actions;
     },
     [hasPerm, openDetailDrawer, openHistory, openDeleteModal, openRejectModal],
@@ -826,19 +1036,13 @@ export default function TransferAreaList() {
             <a
               title={v}
               onClick={() => openDetailDrawer(record)}
-              style={{
-                fontWeight: fontWeightBold,
-                color: actionPrimary,
-                cursor: 'pointer',
-                display: 'block',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
+              style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
             >
               {v}
             </a>
-            <span style={{ opacity: 0.85 }}>{record.transferAreaCode || '—'}</span>
+            <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {record.transferAreaCode || '—'}
+            </span>
           </div>
         ),
       },
@@ -901,21 +1105,7 @@ export default function TransferAreaList() {
             SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
           };
           const s = m[v || ''] || { color: textTertiary, label: v || '—' };
-          return (
-            <span
-              style={{
-                display: 'inline-flex',
-                padding: '2px 10px',
-                borderRadius: 999,
-                fontSize: fontSizeMd,
-                fontWeight: fontWeightMedium,
-                background: `${s.color}15`,
-                color: s.color,
-              }}
-            >
-              {s.label}
-            </span>
-          );
+          return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
         },
       },
     ];
@@ -956,7 +1146,7 @@ export default function TransferAreaList() {
       { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 260, sortable: true, sortOrder,
         render: (v: string) => {
           const s = APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v?.toUpperCase()] || { color: textTertiary, label: v || '—' };
-          return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
+          return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
         } },
     ];
 
@@ -1013,6 +1203,7 @@ export default function TransferAreaList() {
   // ── JSX ─────────────────────────────────────────────────────────
 
   return (
+    <ThemeTokenProvider tokens={themeTokenChk as unknown as ThemeToken}>
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <style>{`.range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }`}</style>
       <ScreenHeader
@@ -1032,19 +1223,12 @@ export default function TransferAreaList() {
         error={isError}
         onRetry={() => void fetchData()}
       >
-        <style>{`.list-view-table .ant-table-cell { padding-block: 9.5px !important; }`}</style>
-        {isError ? null : !isLoading && dataSource.length === 0 ? (
-          <DataTable dataSource={[]} rowKey="id"
-            emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>Không tìm thấy khu chuyển tải nào phù hợp</div></div>}
-          />
-        ) : !isLoading && !isError && dataSource.length > 0 ? (
-          <DataTable columns={columns}
-            dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; const aVal = getSortValue(a, sortField); const bVal = getSortValue(b, sortField); const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi'); return sortOrder === 'ascend' ? cmp : -cmp; })}
-            rowKey="id" rowActions={rowActions} loading={false}
-            onSort={(key: string, order: 'asc' | 'desc') => { setSortField(key); setSortOrder(order === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
-            scroll={{ x: isAuditViewer ? 2600 : 2050, y: 550 }}
-          />
-        ) : null}
+        <DataTable columns={columns}
+          dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; const aVal = getSortValue(a, sortField); const bVal = getSortValue(b, sortField); const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi'); return sortOrder === 'ascend' ? cmp : -cmp; })}
+          rowKey="id" rowActions={rowActions} loading={false}
+          onSort={(key: string, order: 'asc' | 'desc') => { setSortField(key); setSortOrder(order === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
+          scroll={{ x: 'max-content', y: 550 }}
+        />
         <Pagination total={total} current={page} pageSize={pageSize}
           onChange={(p, ps) => { setPage(p); setPageSize(ps); }}
         />
@@ -1192,30 +1376,13 @@ export default function TransferAreaList() {
         </div>
       </Modal>
 
-      {/* ── Approve Modal ─────────────────────────────────────────── */}
-      <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{approvingRecord?.approvalStatus === 'CHO_PD_CAP_CUC' ? 'Xác nhận Cục phê duyệt' : 'Xác nhận Cảng vụ phê duyệt'}</span>}
-        open={approveModalOpen}
+      {/* ── Approve Modal (chuẩn VTS CHK) ─────────────────────────── */}
+      <ApprovalModal
+        visible={approveModalOpen}
+        level={approvingRecord?.approvalStatus === 'APPROVED_LEVEL2' ? 'c2' : 'c1'}
+        onConfirm={(content) => { if (approvingRecord) handleApprove(approvingRecord, content); }}
         onCancel={() => { setApproveModalOpen(false); setApprovingRecord(null); }}
-        footer={[
-          <Button key="cancel" onClick={() => { setApproveModalOpen(false); setApprovingRecord(null); }}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
-          <Button key="approve" type="primary" onClick={() => approvingRecord && handleApprove(approvingRecord)}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: approvingRecord?.approvalStatus === 'CHO_PD_CAP_CUC' ? statusOperational : statusAttention, borderColor: approvingRecord?.approvalStatus === 'CHO_PD_CAP_CUC' ? statusOperational : statusAttention }}>Xác nhận</Button>,
-        ]}
-        width={480}>
-        <div style={{ padding: '8px 0' }}>
-          <p style={{ fontSize: fontSizeMd, color: textPrimary }}>
-            {approvingRecord?.approvalStatus === 'CHO_PD_CAP_CUC' ? 'Cục' : 'Cảng vụ'} phê duyệt <strong>{approvingRecord?.transferAreaCode} — {approvingRecord?.transferAreaName}</strong>?
-          </p>
-          <div style={{ marginTop: spaceMd }}>
-            <div style={{ marginBottom: spaceXs, color: textSecondary, fontSize: fontSizeMd, fontWeight: fontWeightMedium }}>Nội dung phê duyệt</div>
-            <Input.TextArea rows={3} placeholder="Nhập nội dung phê duyệt (không bắt buộc)..." value={approvalContent}
-              onChange={(e) => setApprovalContent(e.target.value)}
-              style={{ fontSize: fontSizeMd }} />
-          </div>
-        </div>
-      </Modal>
+      />
 
       {/* ── History Drawer ──────────────────────────────────────── */}
       <Drawer
@@ -1229,7 +1396,7 @@ export default function TransferAreaList() {
               <span style={drawerTitleStyle}>
                 {historyMode === 'all' ? 'Tất cả lịch sử thay đổi — Khu chuyển tải' : (historyTarget ? `Lịch sử thay đổi — ${historyTarget.transferAreaName}` : 'Lịch sử thay đổi')}
               </span>
-              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyFieldCount}</span>
+              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyGroupCount}</span>
             </Space>
           </div>
         }
@@ -1278,5 +1445,6 @@ export default function TransferAreaList() {
         </div>
       </Drawer>
     </div>
+    </ThemeTokenProvider>
   );
 }

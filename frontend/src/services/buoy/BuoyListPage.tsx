@@ -12,16 +12,11 @@ import {
   Space,
   Form,
   DatePicker,
-  TreeSelect,
   Select,
   Typography,
   Radio,
 } from 'antd';
-import {
-  PlusOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined,
-  EyeOutlined, HistoryOutlined, ExclamationCircleOutlined, EnvironmentOutlined,
-  SearchOutlined,
-} from '@ant-design/icons';
+import { ExclamationCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
@@ -39,7 +34,7 @@ import {
 import { fetchBuoyStationList } from '../buoy-station/api';
 import type { BuoyStationResponse } from '../buoy-station/types';
 import {
-  BUOY_TYPE_OPTIONS, BUOY_TYPE_MAP,
+  BUOY_TYPE_OPTIONS,
   COLOR_LABEL_MAP, SHAPE_LABEL_MAP, LIGHT_CHAR_LABEL_MAP, BUOY_FIELD_MAP,
   CONDITION_OPTIONS, buoyStatusBadge, TAB_STATUS_LIST,
 } from './schema';
@@ -61,20 +56,22 @@ import {
   textPrimary, textSecondary, textTertiary, borderDefault,
   fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
   spaceMd, spaceSm, spaceXs, spaceXl, spaceFormField, radiusPill,
-  drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
+  drawerTitleStyle, drawerFooterStyle,
   primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
-  historyBadgeStyle, historyGroupGridStyle, historyTimeStyle, historyMetaRowStyle,
+  historyGroupGridStyle, historyTimeStyle, historyMetaRowStyle,
   historyInfoCardStyle, historyAccentBarStyle, historyInfoTitleStyle,
   historyChangeRowStyle, historyCreateRowStyle, historyFieldLabelStyle,
   historyOldValueStyle, historyNewValueStyle, historyArrowStyle,
-} from '../../tokens';
-import { colors } from '../../theme';
+  statusBadgeStyle, cellTitleStyle, cellSubtitleStyle, icons,
+  fontSizeSm,
+} from '../../themetokenchk';
+import { colors } from '../../themetokenchk';
+import * as themeTokenChk from '../../themetokenchk';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
-import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import { approvalStatusLabel } from '../../components/shared/ApprovalStatusBadge';
-import { approvalStatusColor } from '../../components/shared/ApprovalStatusBadge';
-import { APPROVAL_STATUS_OPTIONS } from '../../components/shared/ApprovalStatusBadge';
+import ApprovalModal from '../../components/shared/ApprovalModal';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 
 // ── Helpers (moved verbatim from BuoyList.tsx / BuoyForm.tsx) ────────
@@ -181,11 +178,6 @@ const HISTORY_FIELD_ORDER = ['code', 'name', 'type', 'classification', 'classifi
 // ── Bản đồ nhãn giá trị cho lịch sử (giống BerthList.historyFieldValue) ──
 const GEOMETRY_TYPE_LABELS: Record<string, string> = { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' };
 const COORD_SYS_LABELS: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000' };
-const APPROVAL_STATUS_LABELS: Record<string, string> = {
-  DRAFT: 'Lưu tạm', PROPOSED: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-  APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục', APPROVED_LEVEL2: 'Đã phê duyệt', APPROVED: 'Đã phê duyệt',
-  REJECTED: 'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL2: 'Từ chối cấp cục',
-};
 
 function formatDateTime(dateStr: string | null | undefined): string {
   if (!dateStr) return '—';
@@ -224,8 +216,8 @@ const TAB_QUERY_MAP: Record<string, string | undefined> = {
   APPROVED_L1: 'APPROVED_L1', PUBLISHED: 'PUBLISHED', REJECTED_L1: 'REJECTED_L1', REJECTED_L2: 'REJECTED_L2',
 };
 
-function ddToDms(dd: number | null | undefined): { d: number | null; m: number | null; s: number | null } {
-  if (dd == null || isNaN(dd)) return { d: null, m: null, s: null };
+function ddToDms(dd: number | null | undefined): { d: number; m: number; s: number } {
+  if (dd == null || isNaN(dd)) return { d: 0, m: 0, s: 0 };
   let abs = Math.abs(dd);
   let d = Math.floor(abs);
   let mFloat = (abs - d) * 60;
@@ -235,7 +227,42 @@ function ddToDms(dd: number | null | undefined): { d: number | null; m: number |
   if (sFloat > 59.999999999) { m += 1; sFloat = 0; if (m >= 60) { m = 0; d += 1; } }
   let s = Math.round(sFloat * 100) / 100;
   if (s >= 60) { s = 0; m += 1; if (m >= 60) { m = 0; d += 1; } }
-  return { d: d === 0 ? null : d, m: m === 0 ? null : m, s: s === 0 ? null : s };
+  return { d, m, s };
+}
+
+function normalizeHistoryKey(value: string): string {
+  return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+}
+
+/** Badge thao tác cho lịch sử (chuẩn VTS CHK) — phân biệt Thêm mới / Cập nhật / Phê duyệt / Từ chối / Trình duyệt. */
+function resolveBuoyHistoryActionMeta(group: { items: ChangeHistory[] }): { label: string; color: string; bg: string } {
+  const items = group.items || [];
+  if (items.every((i) => i.oldValue == null || i.oldValue === '(null)' || i.oldValue === 'null' || i.oldValue === '')) {
+    return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
+  }
+  const approvalChange = items.find((i) => {
+    const k = normalizeHistoryKey(i.fieldName || '');
+    return k === 'approvalstatus' || k === 'status';
+  });
+  if (approvalChange) {
+    const nv = normalizeHistoryKey(String(approvalChange.newValue ?? ''));
+    if (nv.includes('published') || nv.includes('approved_l2') || nv.includes('da duyet')) {
+      return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
+    }
+    if (nv.includes('approved_l1') || nv.includes('cho cuc duyet') || nv.includes('cap 1')) {
+      return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
+    }
+    if (nv.includes('rejected_l2') || nv.includes('tu choi cap cuc')) {
+      return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
+    }
+    if (nv.includes('rejected') || nv.includes('tu choi') || nv.includes('tra ve')) {
+      return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
+    }
+    if (nv.includes('pending') || nv.includes('proposed') || nv.includes('cho phe duyet') || nv.includes('luu tam') || nv.includes('draft')) {
+      return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
+    }
+  }
+  return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
 }
 
 // ── Component ────────────────────────────────────────────────────────
@@ -271,7 +298,6 @@ export default function BuoyListPage() {
   const [pageSize, setPageSize] = useState(20);
 
   // ── Data ─────────────────────────────────────────────────────────
-  const [allData, setAllData] = useState<Buoy[]>([]);
   const [dataSource, setDataSource] = useState<Buoy[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -294,21 +320,6 @@ export default function BuoyListPage() {
       if (name) map.set(o.id, name);
     });
     return map;
-  }, [organizations]);
-
-  // Cây đơn vị cho TreeSelect filter (dựng từ id/name/code/parentId)
-  const orgTree = useMemo(() => {
-    const nodeMap = new Map<string, any>();
-    organizations.forEach((o) => {
-      nodeMap.set(o.id, { value: o.id, title: o.name, children: [] as any[] });
-    });
-    const roots: any[] = [];
-    organizations.forEach((o) => {
-      const node = nodeMap.get(o.id);
-      if (o.parentId && nodeMap.has(o.parentId)) nodeMap.get(o.parentId).children.push(node);
-      else roots.push(node);
-    });
-    return roots;
   }, [organizations]);
 
   // ── Tab counts ──────────────────────────────────────────────────
@@ -403,8 +414,8 @@ export default function BuoyListPage() {
 
   const [uploadFileList, setUploadFileList] = useState<any[]>([]);
   const [symbols, setSymbols] = useState<GisSymbol[]>([]);
-  const [createCoords, setCreateCoords] = useState<Array<{ lat: number | null; lng: number | null }>>([]);
-  const [editCoords, setEditCoords] = useState<Array<{ lat: number | null; lng: number | null }>>([]);
+  const [createCoords, setCreateCoords] = useState<Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>>([]);
+  const [editCoords, setEditCoords] = useState<Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>>([]);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const createGeomType = Form.useWatch('geometryType', createForm);
   const editGeomType = Form.useWatch('geometryType', updateForm);
@@ -435,7 +446,13 @@ export default function BuoyListPage() {
       return;
     }
     createForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
-    setCreateCoords(Array.from({ length: GEOMETRY_POINT_COUNT[createGeomType] ?? 1 }, () => ({ lat: null, lng: null })));
+    // Đổi loại đối tượng GIỮ tọa độ đã nhập — chỉ thêm dòng trống cho đủ số lượng (chuẩn VTS CHK)
+    const count = GEOMETRY_POINT_COUNT[createGeomType] ?? 1;
+    setCreateCoords((prev) => {
+      if (!prev || prev.length >= count) return prev;
+      const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
+      return [...prev, ...added];
+    });
   }, [createGeomType, createForm]);
 
   useEffect(() => {
@@ -448,7 +465,7 @@ export default function BuoyListPage() {
     const required = GEOMETRY_POINT_COUNT[editGeomType] ?? 1;
     setEditCoords((prev) => {
       if (prev.length >= required) return prev;
-      const added = Array.from({ length: required - prev.length }, () => ({ lat: null, lng: null }));
+      const added = Array.from({ length: required - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       return [...prev, ...added];
     });
   }, [editGeomType, updateForm]);
@@ -459,11 +476,14 @@ export default function BuoyListPage() {
     const dClamped = Math.min(dMax, Math.max(0, d ?? 0));
     const mClamped = Math.min(59, Math.max(0, m ?? 0));
     const sClamped = Math.min(59.99, Math.max(0, s ?? 0));
-    const decimal = dClamped + mClamped / 60 + sClamped / 3600;
-    setCreateCoords((p) => { const n = [...p]; n[i] = { ...n[i], [field]: decimal }; return n; });
+    setCreateCoords((p) => {
+      const n = [...p];
+      n[i] = { ...n[i], [field === 'lat' ? 'latD' : 'lngD']: dClamped, [field === 'lat' ? 'latM' : 'lngM']: mClamped, [field === 'lat' ? 'latS' : 'lngS']: sClamped };
+      return n;
+    });
     setGpsError(null);
   }, []);
-  const addCreateGps = useCallback(() => { setCreateCoords((p) => [...p, { lat: null, lng: null }]); setGpsError(null); }, []);
+  const addCreateGps = useCallback(() => { setCreateCoords((p) => [...p, { latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }]); setGpsError(null); }, []);
   const removeCreateGps = useCallback((i: number) => { setCreateCoords((p) => (p.length <= 1 ? p : p.filter((_, idx) => idx !== i))); setGpsError(null); }, []);
   const updateEditGps = useCallback((i: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => {
     // Chặn giá trị vượt ngưỡng khi gõ: độ ≤ 90/180, phút ≤ 59, giây ≤ 59.99 (tránh hiển thị mấy trăm)
@@ -471,11 +491,14 @@ export default function BuoyListPage() {
     const dClamped = Math.min(dMax, Math.max(0, d ?? 0));
     const mClamped = Math.min(59, Math.max(0, m ?? 0));
     const sClamped = Math.min(59.99, Math.max(0, s ?? 0));
-    const decimal = dClamped + mClamped / 60 + sClamped / 3600;
-    setEditCoords((p) => { const n = [...p]; n[i] = { ...n[i], [field]: decimal }; return n; });
+    setEditCoords((p) => {
+      const n = [...p];
+      n[i] = { ...n[i], [field === 'lat' ? 'latD' : 'lngD']: dClamped, [field === 'lat' ? 'latM' : 'lngM']: mClamped, [field === 'lat' ? 'latS' : 'lngS']: sClamped };
+      return n;
+    });
     setGpsError(null);
   }, []);
-  const addEditGps = useCallback(() => setEditCoords((p) => [...p, { lat: null, lng: null }]), []);
+  const addEditGps = useCallback(() => setEditCoords((p) => [...p, { latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }]), []);
   const removeEditGps = useCallback((i: number) => setEditCoords((p) => (p.length <= 1 ? p : p.filter((_, idx) => idx !== i))), []);
 
   // ── Detail Drawer ───────────────────────────────────────────────
@@ -516,7 +539,6 @@ export default function BuoyListPage() {
   // ── Approve modal ───────────────────────────────────────────────
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [approvingRecord, setApprovingRecord] = useState<Buoy | null>(null);
-  const [approvalContent, setApprovalContent] = useState('');
   const [approvingLevel, setApprovingLevel] = useState<'L1' | 'L2'>('L1');
 
   // ── Load organizations + users ──────────────────────────────────
@@ -590,7 +612,6 @@ export default function BuoyListPage() {
       // Lọc trạng thái theo tab đang chọn (bộ lọc nâng cao đã bỏ trạng thái — tab là nguồn duy nhất)
       const effectiveStatus = TAB_QUERY_MAP[activeTab];
       const tabFiltered = effectiveStatus ? stationFiltered.filter((d) => d.status === effectiveStatus) : stationFiltered;
-      setAllData(tabFiltered);
       setTotal(tabFiltered.length);
 
       const start = (page - 1) * pageSize;
@@ -691,10 +712,15 @@ export default function BuoyListPage() {
         const fileRes = await documentApi.listByEntity('buoy', data.id, { page: 1, size: 50 });
         setUploadFileList((fileRes.data || []).map((a: any) => ({
           uid: a.id, name: a.fileName, size: a.fileSize, status: 'done' as const,
+          uploadedBy: a.uploadedBy, uploadedAt: a.uploadedAt,
         })));
       } catch { setUploadFileList([]); }
       const loadedCoords = parseGisCoordinateList({ geometryType: data.geometryType, coordinates: data.coordinates });
-      setEditCoords(loadedCoords.length > 0 ? loadedCoords.map((c) => ({ lat: c.latitude, lng: c.longitude })) : []);
+      setEditCoords(loadedCoords.length > 0 ? loadedCoords.map((c) => {
+        const latDms = ddToDms(c.latitude);
+        const lngDms = ddToDms(c.longitude);
+        return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
+      }) : []);
       updateForm.setFieldsValue({
         code: data.code,
         name: data.name,
@@ -779,8 +805,8 @@ export default function BuoyListPage() {
     }
 
     const manualCoords = createCoords
-      .filter((c) => c.lat != null && c.lng != null && !Number.isNaN(Number(c.lat)) && !Number.isNaN(Number(c.lng)))
-      .map((c) => ({ latitude: Number(c.lat), longitude: Number(c.lng) }));
+      .filter((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null))
+      .map((c) => ({ latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600, longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600 }));
     if (manualCoords.length > 0) {
       if (manualCoords[0].latitude < -90 || manualCoords[0].latitude > 90) {
         toast.error('Vĩ độ phải từ -90° đến 90° (WGS84)'); return;
@@ -896,8 +922,8 @@ export default function BuoyListPage() {
     }
 
     const manualCoords = editCoords
-      .filter((c) => c.lat != null && c.lng != null && !Number.isNaN(Number(c.lat)) && !Number.isNaN(Number(c.lng)))
-      .map((c) => ({ latitude: Number(c.lat), longitude: Number(c.lng) }));
+      .filter((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null))
+      .map((c) => ({ latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600, longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600 }));
     if (manualCoords.length > 0) {
       if (manualCoords[0].latitude < -90 || manualCoords[0].latitude > 90) {
         toast.error('Vĩ độ phải từ -90° đến 90° (WGS84)'); return;
@@ -1073,8 +1099,9 @@ export default function BuoyListPage() {
   // ── Timeline (design §5.3 — history*Style tokens, BuoyList grouping) ─
 
   const renderBuoyHistoryTimeline = (records: ChangeHistory[]) => {
+    const safeRecords = Array.isArray(records) ? records : [];
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...records].sort((a: any, b: any) =>
+    const sorted = [...safeRecords].sort((a: any, b: any) =>
       new Date(b.changedAt || b.createdAt || 0).getTime() - new Date(a.changedAt || a.createdAt || 0).getTime());
     const q = historySearch.toLowerCase().trim();
     const groups: { tsSec: number; ts: string; actor: string; items: ChangeHistory[] }[] = [];
@@ -1101,7 +1128,7 @@ export default function BuoyListPage() {
     }
     if (groups.length === 0) return (
       <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
-        <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+        <span style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd, display: 'inline-block' }}>{icons.history}</span>
         <div style={{ color: textTertiary, fontSize: fontSizeMd }}>
           {q || historyFrom || historyTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}
         </div>
@@ -1115,17 +1142,16 @@ export default function BuoyListPage() {
       <div>
         {groups.map((g, gi) => {
           const isCreate = g.items.every((i) => i.oldValue == null || i.oldValue === '(null)' || i.oldValue === '');
+          const actionMeta = resolveBuoyHistoryActionMeta(g);
           const visibleItems = g.items.filter((i) => i.fieldName !== 'spatialId');
-          const barColor = actionPrimary;
+          const barColor = actionMeta.color;
           return (
             <div key={`${g.tsSec}-${g.actor}`} style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
               <div style={{ minWidth: 0, paddingTop: spaceXs }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
                   <Typography.Text style={historyTimeStyle}>{g.ts ? fmt(g.ts) : '—'}</Typography.Text>
                   <span style={{ flexShrink: 0 }}>
-                    {isCreate
-                      ? <span style={historyBadgeStyle(statusOperational)}>Thêm mới</span>
-                      : <span style={historyBadgeStyle(actionPrimary)}>Chỉnh sửa</span>}
+                    <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: actionMeta.bg, color: actionMeta.color, whiteSpace: 'nowrap' }}>{actionMeta.label}</span>
                   </span>
                 </div>
                 <Typography.Text style={historyMetaRowStyle}>
@@ -1244,31 +1270,28 @@ export default function BuoyListPage() {
   const openApproveModal = useCallback((record: Buoy, level: 'L1' | 'L2') => {
     setApprovingRecord(record);
     setApprovingLevel(level);
-    setApprovalContent('');
     setApproveModalOpen(true);
   }, []);
 
-  const handleConfirmApprove = useCallback(async () => {
-    if (!approvingRecord) return;
+  const handleConfirmApprove = useCallback(async (record: Buoy, level: 'L1' | 'L2', content?: string) => {
     const approverId = currentUser?.userId;
     if (!approverId) { toast.error('Không xác định được người dùng'); return; }
     try {
-      const content = approvalContent.trim() || undefined;
-      if (approvingLevel === 'L1') {
-        await approveBuoyL1(approvingRecord.id, approverId, content);
+      const approveContent = content?.trim() || undefined;
+      if (level === 'L1') {
+        await approveBuoyL1(record.id, approverId, approveContent);
         toast.success('Đã phê duyệt cấp 1');
       } else {
-        await approveBuoyL2(approvingRecord.id, approverId, content);
+        await approveBuoyL2(record.id, approverId, approveContent);
         toast.success('Đã phê duyệt cấp 2 - Phao tiêu được công bố');
       }
       setApproveModalOpen(false);
       setApprovingRecord(null);
-      setApprovalContent('');
       void fetchData();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
     }
-  }, [approvingRecord, approvingLevel, approvalContent, currentUser, fetchData]);
+  }, [currentUser, fetchData]);
 
   const openRejectModal = useCallback((record: Buoy) => {
     setRejectingRecord(record);
@@ -1305,7 +1328,7 @@ export default function BuoyListPage() {
         key: 'create',
         label: 'Thêm mới',
         variant: 'primary' as const,
-        icon: <PlusOutlined />,
+        icon: icons.create,
         onClick: () => openCreateDrawer(),
       });
     }
@@ -1337,8 +1360,16 @@ export default function BuoyListPage() {
       ellipsis: false,
       render: (name: string, record: Buoy) => (
         <div>
-          <Button type="link" onClick={() => openDetailDrawer(record)} style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer', display: 'block', padding: 0, height: 'auto' }}>{name}</Button>
-          <span style={{ opacity: 0.85 }}>{record.code}</span>
+          <a
+            title={name}
+            onClick={() => openDetailDrawer(record)}
+            style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          >
+            {name}
+          </a>
+          <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {record.code || '—'}
+          </span>
         </div>
       ),
     },
@@ -1380,7 +1411,7 @@ export default function BuoyListPage() {
       sortable: true,
       render: (v: string) => {
         const s = CONDITION_STYLE[v || ''] || { color: textTertiary, label: v || '—' };
-        return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
+        return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
       },
     },
     {
@@ -1389,7 +1420,7 @@ export default function BuoyListPage() {
       dataIndex: 'status',
       width: 260,
       sortable: true,
-      render: (status: string) => <ApprovalStatusBadge status={status} />,
+      render: (status: string) => { const b = buoyStatusBadge(status); return <span style={statusBadgeStyle(b.color)}>{b.label}</span>; },
     },
     {
       key: 'updatedAt',
@@ -1466,7 +1497,7 @@ export default function BuoyListPage() {
     actions.push({
       key: 'view',
       label: 'Chi tiết',
-      icon: <EyeOutlined />,
+      icon: icons.view,
       onClick: () => openDetailDrawer(record),
     });
 
@@ -1475,7 +1506,7 @@ export default function BuoyListPage() {
       actions.push({
         key: 'edit',
         label: 'Chỉnh sửa',
-        icon: <EditOutlined />,
+        icon: icons.edit,
         onClick: () => openEditDrawer(record),
       });
     }
@@ -1484,7 +1515,7 @@ export default function BuoyListPage() {
       actions.push({
         key: 'location',
         label: 'Xem vị trí',
-        icon: <EnvironmentOutlined />,
+        icon: icons.location,
         onClick: () => {
           window.open(`https://www.google.com/maps?q=${record.latitude},${record.longitude}`, '_blank');
         },
@@ -1496,7 +1527,7 @@ export default function BuoyListPage() {
       actions.push({
         key: 'delete',
         label: 'Xóa',
-        icon: <DeleteOutlined />,
+        icon: icons.delete,
         onClick: () => openDeleteModal(record),
         danger: true,
       });
@@ -1506,7 +1537,7 @@ export default function BuoyListPage() {
       actions.push({
         key: 'submit',
         label: 'Gửi Cảng vụ phê duyệt',
-        icon: <CheckCircleOutlined />,
+        icon: icons.submit,
         onClick: () => openSubmitModal(record),
       });
     }
@@ -1516,13 +1547,13 @@ export default function BuoyListPage() {
       actions.push({
         key: 'approveL1',
         label: 'Cảng vụ phê duyệt',
-        icon: <CheckCircleOutlined />,
+        icon: icons.approve,
         onClick: () => openApproveModal(record, 'L1'),
       });
       actions.push({
         key: 'reject',
         label: 'Từ chối',
-        icon: <CloseCircleOutlined />,
+        icon: icons.reject,
         onClick: () => openRejectModal(record),
         danger: true,
       });
@@ -1532,13 +1563,13 @@ export default function BuoyListPage() {
       actions.push({
         key: 'approveL2',
         label: 'Cục phê duyệt',
-        icon: <CheckCircleOutlined />,
+        icon: icons.approve,
         onClick: () => openApproveModal(record, 'L2'),
       });
       actions.push({
         key: 'reject',
         label: 'Từ chối',
-        icon: <CloseCircleOutlined />,
+        icon: icons.reject,
         onClick: () => openRejectModal(record),
         danger: true,
       });
@@ -1547,7 +1578,7 @@ export default function BuoyListPage() {
     actions.push({
       key: 'history',
       label: 'Lịch sử',
-      icon: <HistoryOutlined />,
+      icon: icons.history,
       onClick: () => openHistoryDrawer(record),
     });
 
@@ -1560,9 +1591,9 @@ export default function BuoyListPage() {
   // ── JSX ─────────────────────────────────────────────────────────
 
   return (
+    <ThemeTokenProvider tokens={themeTokenChk}>
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <style>{`.range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }`}</style>
-      <style>{`.list-view-table .ant-table-thead > tr > th { white-space: normal !important; line-height: 1.4 !important; }`}</style>
       <ScreenHeader
         breadcrumb={[{ label: 'Báo hiệu hàng hải' }, { label: 'Quản lý Phao, tiêu' }]}
         actions={headerActions}
@@ -1653,46 +1684,35 @@ export default function BuoyListPage() {
         }))}
         onStatusTabChange={handleTabChange}
       >
-        {isError ? null : !isLoading && dataSource.length === 0 ? (
-          <DataTable dataSource={[]} rowKey="id"
-            emptyState={
-              <div style={{ padding: '40px 0', textAlign: 'center' }}>
-                <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div>
-                <div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>Không tìm thấy phao tiêu nào phù hợp</div>
-              </div>
+        <DataTable
+          columns={columns}
+          dataSource={(() => {
+            if (!sortField) return dataSource;
+            if (sortField === 'sequenceNo') {
+              const arr = [...dataSource];
+              return sortOrder === 'descend' ? arr.reverse() : arr;
             }
-          />
-        ) : !isLoading && !isError && dataSource.length > 0 ? (
-          <DataTable
-            columns={columns}
-            dataSource={(() => {
-              if (!sortField) return dataSource;
-              if (sortField === 'sequenceNo') {
-                const arr = [...dataSource];
-                return sortOrder === 'descend' ? arr.reverse() : arr;
-              }
-              return [...dataSource].sort((a: any, b: any) => {
-                const resolve = (r: any) => {
-                  if (sortField === 'unitId') return orgLevel2Map.get(r.unitId) ?? r.unitId ?? '';
-                  if (sortField === 'buoyStationId') return r.buoyStationName || (r.buoyStationId ? (buoyStations.find((s) => s.id === r.buoyStationId)?.name || '') : '') || '';
-                  if (sortField === 'provinceId') return (r.provinceId != null ? (VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(r.provinceId))?.label || String(r.provinceId)) : '') || '';
-                  if (sortField === 'condition') return CONDITION_STYLE[r.condition || '']?.label ?? r.condition ?? '';
-                  if (sortField === 'status') return buoyStatusBadge(r.status).label;
-                  return r[sortField] ?? '';
-                };
-                const aVal = resolve(a);
-                const bVal = resolve(b);
-                const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi');
-                return sortOrder === 'ascend' ? cmp : -cmp;
-              });
-            })()}
-            rowKey="id"
-            rowActions={rowActions}
-            loading={false}
-            onSort={handleSortChange}
-            scroll={{ x: 2200, y: 550 }}
-          />
-        ) : null}
+            return [...dataSource].sort((a: any, b: any) => {
+              const resolve = (r: any) => {
+                if (sortField === 'unitId') return orgLevel2Map.get(r.unitId) ?? r.unitId ?? '';
+                if (sortField === 'buoyStationId') return r.buoyStationName || (r.buoyStationId ? (buoyStations.find((s) => s.id === r.buoyStationId)?.name || '') : '') || '';
+                if (sortField === 'provinceId') return (r.provinceId != null ? (VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(r.provinceId))?.label || String(r.provinceId)) : '') || '';
+                if (sortField === 'condition') return CONDITION_STYLE[r.condition || '']?.label ?? r.condition ?? '';
+                if (sortField === 'status') return buoyStatusBadge(r.status).label;
+                return r[sortField] ?? '';
+              };
+              const aVal = resolve(a);
+              const bVal = resolve(b);
+              const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi');
+              return sortOrder === 'ascend' ? cmp : -cmp;
+            });
+          })()}
+          rowKey="id"
+          rowActions={rowActions}
+          loading={false}
+          onSort={handleSortChange}
+          scroll={{ x: 'max-content' }}
+        />
         <Pagination
           total={total}
           current={page}
@@ -1762,6 +1782,7 @@ export default function BuoyListPage() {
             uploadFileList={uploadFileList}
             setUploadFileList={setUploadFileList}
             symbols={symbols}
+            userMap={userMap}
             geometryType={createGeomType}
             gpsCoordList={createCoords}
             gpsError={gpsError}
@@ -1812,6 +1833,7 @@ export default function BuoyListPage() {
             uploadFileList={uploadFileList}
             setUploadFileList={setUploadFileList}
             symbols={symbols}
+            userMap={userMap}
             geometryType={editGeomType}
             gpsCoordList={editCoords}
             gpsError={gpsError}
@@ -1857,7 +1879,7 @@ export default function BuoyListPage() {
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
             <Space size={spaceSm} style={{ alignItems: 'center' }}>
-              <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
+              <span style={{ color: colors.sidebarBg, fontSize: fontSizeLg, display: 'inline-flex', alignItems: 'center' }}>{icons.history}</span>
               <span style={drawerTitleStyle}>
                 {historyMode === 'all' ? 'Tất cả lịch sử thay đổi — Phao tiêu' : (historyRecord ? `Lịch sử thay đổi — ${historyRecord.name}` : 'Lịch sử thay đổi')}
               </span>
@@ -1901,13 +1923,13 @@ export default function BuoyListPage() {
             <DatePicker placeholder="Đến ngày" classNames={{ popup: { root: 'history-dt-popup' } }} value={historyTo ? dayjs(historyTo) : null}
               onChange={(d) => setHistoryTo(d ? d.format('YYYY-MM-DD HH:mm') : '')}
               style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
-            <Button type="primary" icon={<SearchOutlined />} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Tìm kiếm</Button>
+            <Button type="primary" icon={icons.search} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Tìm kiếm</Button>
           </div>
         )}
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
           {historyLoading ? <LoadingSkeleton rows={5} /> : historyData.length === 0 ? (
             <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
-              <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+              <span style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd, display: 'inline-block' }}>{icons.history}</span>
               <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
             </div>
           ) : renderBuoyHistoryTimeline(historyData)}
@@ -1944,31 +1966,13 @@ export default function BuoyListPage() {
         </div>
       </Modal>
 
-      {/* ── Approve Modal ──────────────────────────────────────────── */}
-      <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{approvingLevel === 'L1' ? 'Xác nhận Cảng vụ phê duyệt' : 'Xác nhận Cục phê duyệt'}</span>}
-        open={approveModalOpen}
+      {/* ── Approve Modal (chuẩn VTS CHK) ─────────────────────────── */}
+      <ApprovalModal
+        visible={approveModalOpen}
+        level={approvingLevel === 'L2' ? 'c2' : 'c1'}
+        onConfirm={(content) => { if (approvingRecord) void handleConfirmApprove(approvingRecord, approvingLevel, content); }}
         onCancel={() => { setApproveModalOpen(false); setApprovingRecord(null); }}
-        footer={[
-          <Button key="cancel" onClick={() => { setApproveModalOpen(false); setApprovingRecord(null); }}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
-          <Button key="approve" type="primary" onClick={handleConfirmApprove}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: approvingLevel === 'L1' ? statusAttention : statusOperational, borderColor: approvingLevel === 'L1' ? statusAttention : statusOperational }}>Xác nhận</Button>,
-        ]}
-        width={480}
-      >
-        <div style={{ padding: '8px 0' }}>
-          <p style={{ fontSize: fontSizeMd, color: textPrimary }}>
-            {approvingLevel === 'L1' ? 'Cảng vụ' : 'Cục'} phê duyệt <strong>{approvingRecord?.code} — {approvingRecord?.name}</strong>?
-          </p>
-          <div style={{ marginTop: spaceMd }}>
-            <div style={{ marginBottom: spaceXs, color: textSecondary, fontSize: fontSizeMd, fontWeight: fontWeightMedium }}>Nội dung phê duyệt</div>
-            <Input.TextArea rows={3} placeholder="Nhập nội dung phê duyệt (không bắt buộc)..." value={approvalContent}
-              onChange={(e) => setApprovalContent(e.target.value)}
-              style={{ fontSize: fontSizeMd }} />
-          </div>
-        </div>
-      </Modal>
+      />
 
       {/* ── Reject Modal ───────────────────────────────────────────── */}
       <Modal
@@ -2039,5 +2043,6 @@ export default function BuoyListPage() {
         </div>
       </Modal>
     </div>
+    </ThemeTokenProvider>
   );
 }

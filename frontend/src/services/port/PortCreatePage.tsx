@@ -19,7 +19,7 @@ import {
   borderDefault, textSecondary, textTertiary, spaceMd, spaceSm, spaceLg,
   fontSans, fontWeightBold, fontSizeMd, fontSizeLg, fontWeightMedium,
   radiusSm, spaceXs,
-} from '../../tokens';
+} from '../../themetokenchk';
 
 /* ───────────────────────────────────────────────
    Constant option lists
@@ -87,7 +87,7 @@ export default function PortCreatePage() {
   const [submitting, setSubmitting] = useState(false);
   const [portCodeLoading, setPortCodeLoading] = useState(true);
   const currentUser = useAuthStore((s) => s.user);
-  const hasPermission = usePermissionStore((s) => s.hasPermission);
+  const hasPermission = usePermissionStore((s: any) => s.hasPermission);
   const isSystemAdmin = hasPermission('admin:all') || hasPermission('*') || currentUser?.role === 'ROLE_SYSTEM_ADMIN' || currentUser?.role === 'ROLE_SUPER_ADMIN';
   const [orgUnitOptions, setOrgUnitOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(false);

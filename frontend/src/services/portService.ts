@@ -31,7 +31,6 @@ import type {
   BuoyBerth,
   CreateBuoyBerthRequest,
   UpdateBuoyBerthRequest,
-  BuoyBerthApprovalResponse,
   DaiTtdh,
   CreateDaiTtdhRequest,
   UpdateDaiTtdhRequest,
@@ -1193,9 +1192,17 @@ export const buoyBerthCRUD = {
     await api.post(`/v1/buoy-berth/${id}/reject`, { cap, lyDo });
   },
 
-  async getHistory(id: string): Promise<BuoyBerthApprovalResponse> {
-    const res = await api.get(`/v1/buoy-berth/${id}/history`);
-    return res.data.data;
+  async getHistory(id: string, page?: number, pageSize?: number, filters?: { keyword?: string; fromDate?: string; toDate?: string }): Promise<any[]> {
+    const params = new URLSearchParams();
+    if (page !== undefined && page !== null) params.append('page', String(page));
+    if (pageSize !== undefined && pageSize !== null) params.append('pageSize', String(pageSize));
+    if (filters?.keyword?.trim()) params.append('keyword', filters.keyword.trim());
+    if (filters?.fromDate) params.append('fromDate', filters.fromDate);
+    if (filters?.toDate) params.append('toDate', filters.toDate);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    const res = await api.get(`/v1/buoy-berth/${id}/history${query}`);
+    const data = res.data?.data ?? res.data;
+    return Array.isArray(data) ? data : [];
   },
 
   async getAllHistory(): Promise<any> {

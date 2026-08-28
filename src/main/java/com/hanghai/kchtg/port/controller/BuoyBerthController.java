@@ -5,6 +5,7 @@ import com.hanghai.kchtg.port.dto.buoyberth.ApproveRequest;
 import com.hanghai.kchtg.port.dto.buoyberth.AttachmentDto;
 import com.hanghai.kchtg.port.dto.buoyberth.BuoyBerthResponse;
 import com.hanghai.kchtg.port.dto.buoyberth.CreateBuoyBerthRequest;
+import com.hanghai.kchtg.port.dto.buoyberth.HistoryEntry;
 import com.hanghai.kchtg.port.dto.buoyberth.RejectRequest;
 import com.hanghai.kchtg.port.dto.buoyberth.UpdateBuoyBerthRequest;
 import com.hanghai.kchtg.port.service.BuoyBerthApprovalService;
@@ -15,6 +16,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -22,6 +24,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -139,9 +142,15 @@ public class BuoyBerthController {
 
     @GetMapping("/{id}/history")
     // @PreAuthorize("@auth.check(authentication, 'buoyberth:history')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
-    public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
+            @PathVariable UUID id,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "pageSize", required = false) Integer pageSize,
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "fromDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+            @RequestParam(value = "toDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate) {
         log.info("Getting BuoyBerth history: id={}", id);
-        Object history = buoyBerthApprovalService.getHistory(id);
+        List<HistoryEntry> history = buoyBerthApprovalService.getHistory(id, page, pageSize, keyword, fromDate, toDate);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử bến phao thành công", history));
     }
 

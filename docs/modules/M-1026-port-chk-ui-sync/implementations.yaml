@@ -1,0 +1,21 @@
+module_id: M-1026
+module_name: "Đồng bộ UI CHK - Quản lý cảng biển (Port)"
+type: bounded-context
+slug: port-chk-ui-sync
+
+# Map logical module → physical implementations across apps/services/libs.
+# Updated by `from-code` Phase 5 (auto-detect) or `dev` agent (manual).
+implementations:
+  apps: []
+  services: []
+  libs: []
+  packages: []
+
+# Stakeholder roster (BA fills business-owner; tech-lead fills tech-lead)
+stakeholders:
+  business-owner: ""
+  tech-lead: ""
+  qa-lead: ""
+
+# Cross-references
+depends_on: []

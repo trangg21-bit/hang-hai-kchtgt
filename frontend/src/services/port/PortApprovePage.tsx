@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card, Button, Space, Typography, Tag, Row, Col, Form, Checkbox, Input } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
-import { borderDefault } from '../../tokens';
+import { borderDefault } from '../../themetokenchk';
 import { fetchCangBienById, approveCangBienC1, approveCangBienC2, rejectCangBien } from './api';
 import { trangThaiPheDuyetBadge } from './schema';
 import type { CangBienResponse } from './types';
@@ -137,7 +137,7 @@ export default function PortApprovePage() {
             <Col span={12}>
               <Typography.Text strong>Khả năng tiếp nhận:</Typography.Text>
               <br />
-              <Typography.Text>{data.khaNangTiepNhan != null ? fmtNum(data.khaNangTiepNhan) : '—'}</Typography.Text>
+              <Typography.Text>{(data as any).khaNangTiepNhan != null ? fmtNum((data as any).khaNangTiepNhan) : '—'}</Typography.Text>
             </Col>
             <Col span={12}>
               <Typography.Text strong>Trạng thái phê duyệt:</Typography.Text>

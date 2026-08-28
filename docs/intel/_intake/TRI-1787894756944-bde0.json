@@ -1,0 +1,54 @@
+{
+  "triage_id": "TRI-1787894756944-bde0",
+  "created_at": 1787894756944,
+  "request_summary": "Sửa lỗi Quản lý bến phao chỉ lưu được 1 tọa độ khi chọn nhiều trên bản đồ: cho phép tích lũy nhiều marker ở POINT mode trong GisLocationSelector, form nhận toàn bộ WKT (MULTIPOINT/LINESTRING/POLYGON), và serialize WKT đúng theo geometryType.",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/components/gis/GisLocationSelector.tsx",
+      "frontend/src/pages/buoy-berth/BuoyBerthDetailContent.tsx",
+      "frontend/src/pages/buoy-berth/BuoyBerthForm.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/components/gis/GisLocationSelector.tsx",
+      "frontend/src/pages/buoy-berth/BuoyBerthDetailContent.tsx",
+      "frontend/src/pages/buoy-berth/BuoyBerthForm.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C1: 3 edit-target files in one package, no one-way door — pre-declared write scope required (3 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "/buoy-berth → Thêm mới/Sửa → tab \"Thông tin vị trí\" → nút \"Chọn tọa độ trên bản đồ\"",
+  "blast_radius": 3,
+  "done_oracle": "Người dùng chọn nhiều tọa độ trên bản đồ trong một lần mở modal, xác nhận, lưu — sau đó mở lại bản ghi thấy đủ N tọa độ trong bảng DMS và trên bản đồ chi tiết; DB lưu MULTIPOINT/LINESTRING/POLYGON đúng theo Loại đối tượng.",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "frontend",
+      "timeout_ms": 420000
+    }
+  ],
+  "change_type": "hotfix",
+  "declared_write_scope": [
+    "frontend/src/components/gis/GisLocationSelector.tsx",
+    "frontend/src/pages/buoy-berth/BuoyBerthDetailContent.tsx",
+    "frontend/src/pages/buoy-berth/BuoyBerthForm.tsx"
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "7880fcaedc6c0fc162f951aa408725f7c6ea4119",
+    "dirty": true,
+    "captured_at": 1787894757176
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

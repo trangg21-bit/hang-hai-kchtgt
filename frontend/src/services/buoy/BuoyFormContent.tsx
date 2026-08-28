@@ -1,20 +1,24 @@
 // ── BuoyFormContent — presentational Drawer form body (T4, design §2.5) ─
 // No fetch, no routing. 3 Tabs: Thông tin chung / Thông tin vị trí / File đính kèm.
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Row, Col, Form, Input, InputNumber, Select, DatePicker, Upload, Button, Tabs,
-  Table, message, Space,
+  Table, message, Space, Modal,
 } from 'antd';
 import type { UploadFile, UploadProps } from 'antd';
-import { UploadOutlined, DeleteOutlined, FileOutlined, PlusOutlined } from '@ant-design/icons';
-import { colors } from '../../theme';
-import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
+import { DeleteOutlined, FileOutlined, PlusOutlined, EnvironmentOutlined, InboxOutlined, DownloadOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
+import { colors } from '../../themetokenchk';
 import {
-  textTertiary, textPrimary,
-  fontSizeMd, fontSizeSm, fontWeightBold,
-  radiusPill, radiusMd, spaceSm, spaceFormField, surfaceCard, borderDefault, uploadHintStyle,
-} from '../../tokens';
+  textTertiary, textPrimary, sidebarBg, statusCritical, actionPrimary,
+  fontSizeMd, fontSizeSm, fontSizeLg, fontWeightMedium, fontWeightBold,
+  radiusPill, radiusMd, spaceSm, spaceMd, spaceFormField, surfaceCard, borderDefault, uploadHintStyle,
+  readonlyInputStyle, drawerTabBarStyle, drawerTabContentStyle,
+  primaryButtonStyle, outlineButtonStyle,
+} from '../../themetokenchk';
+import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
+import { useAuthStore } from '../../store/authStore';
 import {
   CLASSIFICATION_OPTIONS,
   CLASSIFICATION_BUOY_OPTIONS,
@@ -23,9 +27,9 @@ import {
   BEACON_LIGHT_OPTIONS,
 } from './schema';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
-import PagedTable from '../../components/list-view/PagedTable';
 import { fmtInputNumber } from '../../utils/numFmt';
-import { formLabelProps as labelProps } from '../../components/shared/formLabel';
+import toast from '../../components/ToastNotification';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
 
 const GEOMETRY_TYPE_OPTIONS = [
   { value: 'POINT', label: 'Đối tượng điểm' },
@@ -41,6 +45,45 @@ const datePickerStyle: React.CSSProperties = { width: '100%', borderRadius: radi
 const parseInteger = (v: string | undefined): number => {
   const intPart = (v ?? '').replace(/,/g, '').split('.')[0];
   return intPart === '' ? 0 : Number(intPart);
+};
+
+const labelProps = (text: string) => ({
+  label: <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
+});
+
+const dmsUnitStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, height: 32, fontSize: fontSizeSm, color: textTertiary };
+const dmsUnitEndStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, height: 32, borderRadius: '0 999px 999px 0', fontSize: fontSizeSm, color: textTertiary };
+
+/** Nhóm 3 ô nhập Độ/Phút/Giây dùng chung cho bảng tọa độ GPS (chuẩn VTS CHK: viên thuốc 999px). */
+const renderDmsGroup = (
+  dVal: number | null | undefined,
+  mVal: number | null | undefined,
+  sVal: number | null | undefined,
+  maxDeg: number,
+  onChange: (d: number | null, m: number | null, s: number | null) => void,
+) => {
+  return (
+    <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
+      <InputNumber value={dVal} min={0} max={maxDeg} placeholder="Độ" onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(v, mVal ?? null, sVal ?? null)} style={{ flex: 1, minWidth: 0, borderRadius: '999px 0 0 999px', height: 32 }} controls={false} />
+      <span style={dmsUnitStyle}>°</span>
+      <InputNumber value={mVal} min={0} max={59} placeholder="Phút" onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(dVal ?? null, v, sVal ?? null)} style={{ flex: 1, minWidth: 0, height: 32 }} controls={false} />
+      <span style={dmsUnitStyle}>'</span>
+      <InputNumber value={sVal} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber} onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(dVal ?? null, mVal ?? null, v)} style={{ flex: 1.2, minWidth: 0, height: 32 }} controls={false} />
+      <span style={dmsUnitEndStyle}>"</span>
+    </Space.Compact>
+  );
+};
+
+const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
+  const wkt = gisLocation?.coordinates;
+  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
+  try {
+    if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
+    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length-1].longitude) pts.pop(); return pts; } }
+    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
+    const pm = wkt.match(/POINT\s*\(([\d.+-]+)\s+([\d.+-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
+  } catch { /* ignore */ }
+  return [];
 };
 
 /** true khi giá trị field đã đạt đủ max ký tự — dùng để bật viền đỏ ô nhập + message cảnh báo bên dưới. */
@@ -81,8 +124,10 @@ export interface BuoyFormContentProps {
   uploadFileList: any[];
   setUploadFileList: (files: any[]) => void;
   symbols: Array<{ id: string; name: string; code?: string; image?: string }>;
+  /** Map id người dùng → tên hiển thị (cột Người tải lên trong bảng file đính kèm). */
+  userMap?: Map<string, string>;
   geometryType?: string;
-  gpsCoordList: Array<{ lat: number | null; lng: number | null }>;
+  gpsCoordList: Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>;
   gpsError?: string | null;
   addGpsPoint: () => void;
   removeGpsPoint: (i: number) => void;
@@ -100,6 +145,7 @@ export default function BuoyFormContent({
   uploadFileList,
   setUploadFileList,
   symbols,
+  userMap,
   geometryType,
   gpsCoordList,
   gpsError,
@@ -113,6 +159,10 @@ export default function BuoyFormContent({
   currentStationId,
   selectedUnitId,
 }: BuoyFormContentProps) {
+  const currentUser = useAuthStore((s: any) => s.user);
+  const [gisModalOpen, setGisModalOpen] = useState(false);
+  const [gpsPage, setGpsPage] = useState(1);
+  const [filePage, setFilePage] = useState(1);
   const atMax = {
     name: useMaxReached('name', 255),
     locationDetail: useMaxReached('locationDetail', 500),
@@ -166,8 +216,8 @@ export default function BuoyFormContent({
       key: 'general',
       label: 'Thông tin chung',
       children: (
-        <div style={{ paddingTop: 16 }}>
-          <Row gutter={16}>
+        <div style={drawerTabContentStyle}>
+          <Row gutter={[24, 0]}>
             <Col span={12}>
               <Form.Item
                 name="unitId"
@@ -208,7 +258,7 @@ export default function BuoyFormContent({
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={16}>
+          <Row gutter={[24, 0]}>
             <Col span={12}>
               <Form.Item
                 name="classification"
@@ -226,7 +276,7 @@ export default function BuoyFormContent({
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={16}>
+          <Row gutter={[24, 0]}>
             <Col span={12}>
               <Form.Item name="classificationMark" {...labelProps('Phân loại tiêu')} style={{ marginBottom: spaceFormField }}>
                 <Select placeholder="Chọn Phân loại tiêu" options={CLASSIFICATION_MARK_OPTIONS} allowClear style={selectStyle} />
@@ -244,12 +294,12 @@ export default function BuoyFormContent({
                   disabled
                   placeholder={isEdit ? undefined : (codeLoading ? 'Đang sinh mã...' : 'Mã tự động')}
                   maxLength={50}
-                  style={{ ...inputStyle, color: textTertiary, cursor: 'not-allowed' }}
+                  style={readonlyInputStyle}
                 />
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={16}>
+          <Row gutter={[24, 0]}>
             <Col span={12}>
               <Form.Item
                 name="name"
@@ -259,7 +309,7 @@ export default function BuoyFormContent({
                 rules={[{ required: true, message: 'Tên phao tiêu không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}
                 validateStatus={atMax.name ? 'error' : undefined} help={atMax.name ? 'Đã đạt tối đa 255 ký tự' : undefined}
               >
-                <Input placeholder="Nhập Tên phao, tiêu" maxLength={255} style={inputStyle} />
+                <Input placeholder="Nhập Tên phao, tiêu" maxLength={255} showCount style={inputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -268,22 +318,22 @@ export default function BuoyFormContent({
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={16}>
+          <Row gutter={[24, 0]}>
             <Col span={12}>
               <Form.Item name="locationDetail" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.locationDetail ? 'error' : undefined} help={atMax.locationDetail ? 'Đã đạt tối đa 500 ký tự' : undefined}>
-                <Input placeholder="Nhập Địa điểm chi tiết" maxLength={500} style={inputStyle} />
+                <Input placeholder="Nhập Địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item name="shape" {...labelProps('Hình dáng')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.shape ? 'error' : undefined} help={atMax.shape ? 'Đã đạt tối đa 500 ký tự' : undefined}>
-                <Input placeholder="Nhập Hình dáng" maxLength={500} style={inputStyle} />
+                <Input placeholder="Nhập Hình dáng" maxLength={500} showCount style={inputStyle} />
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={16}>
+          <Row gutter={[24, 0]}>
             <Col span={12}>
               <Form.Item name="structure" {...labelProps('Kết cấu')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.structure ? 'error' : undefined} help={atMax.structure ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
-                <Input placeholder="Nhập Kết cấu" maxLength={2000} style={inputStyle} />
+                <Input placeholder="Nhập Kết cấu" maxLength={2000} showCount style={inputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -292,7 +342,7 @@ export default function BuoyFormContent({
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={16}>
+          <Row gutter={[24, 0]}>
             <Col span={12}>
               <Form.Item name="bodyHeight" {...labelProps('Chiều cao thân phao (m)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.bodyHeight ? 'error' : undefined} help={atMax.bodyHeight ? 'Đã đạt tối đa 20 ký tự' : undefined}>
                 <InputNumber min={0} maxLength={20} placeholder="Nhập Chiều cao thân phao (m)" style={numberInputStyle} />
@@ -304,7 +354,7 @@ export default function BuoyFormContent({
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={16}>
+          <Row gutter={[24, 0]}>
             <Col span={12}>
               <Form.Item name="beaconLight" {...labelProps('Đèn biển')} style={{ marginBottom: spaceFormField }}>
                 <Select placeholder="Chọn Đèn biển" options={BEACON_LIGHT_OPTIONS} allowClear style={selectStyle} />
@@ -316,7 +366,7 @@ export default function BuoyFormContent({
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={16}>
+          <Row gutter={[24, 0]}>
             <Col span={12}>
               <Form.Item
                 name="lightHeight"
@@ -331,23 +381,23 @@ export default function BuoyFormContent({
             </Col>
             <Col span={12}>
               <Form.Item name="lightModel" {...labelProps('Chủng loại đèn (Thiết bị báo hiệu)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.lightModel ? 'error' : undefined} help={atMax.lightModel ? 'Đã đạt tối đa 100 ký tự' : undefined}>
-                <Input placeholder="Nhập Chủng loại đèn (Thiết bị báo hiệu)" maxLength={100} style={inputStyle} />
+                <Input placeholder="Nhập Chủng loại đèn (Thiết bị báo hiệu)" maxLength={100} showCount style={inputStyle} />
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={16}>
+          <Row gutter={[24, 0]}>
             <Col span={12}>
               <Form.Item name="towerColor" {...labelProps('Màu sắc bên ngoài của tháp đèn')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.towerColor ? 'error' : undefined} help={atMax.towerColor ? 'Đã đạt tối đa 500 ký tự' : undefined}>
-                <Input placeholder="Nhập Màu sắc bên ngoài của tháp đèn" maxLength={500} style={inputStyle} />
+                <Input placeholder="Nhập Màu sắc bên ngoài của tháp đèn" maxLength={500} showCount style={inputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item name="powerSupply" {...labelProps('Nguồn cung cấp năng lượng cho đèn')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.powerSupply ? 'error' : undefined} help={atMax.powerSupply ? 'Đã đạt tối đa 500 ký tự' : undefined}>
-                <Input placeholder="Nhập Nguồn cung cấp năng lượng cho đèn" maxLength={500} style={inputStyle} />
+                <Input placeholder="Nhập Nguồn cung cấp năng lượng cho đèn" maxLength={500} showCount style={inputStyle} />
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={16}>
+          <Row gutter={[24, 0]}>
             <Col span={12}>
               <Form.Item
                 name="range"
@@ -367,7 +417,7 @@ export default function BuoyFormContent({
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={16}>
+          <Row gutter={[24, 0]}>
             <Col span={12}>
               <Form.Item name="lastRepairDate" {...labelProps('Thời điểm sửa chữa gần nhất')} style={{ marginBottom: spaceFormField }}>
                 <DatePicker placeholder="Chọn Thời điểm sửa chữa gần nhất" format="DD/MM/YYYY" popupClassName="buoy-date-picker" style={datePickerStyle} />
@@ -393,23 +443,23 @@ export default function BuoyFormContent({
       key: 'light',
       label: 'Đặc tính ánh sáng',
       children: (
-        <div style={{ paddingTop: 16 }}>
-          <Row gutter={16}>
+        <div style={drawerTabContentStyle}>
+          <Row gutter={[24, 0]}>
             <Col span={12}>
               <Form.Item name="lightColor" {...labelProps('Màu sắc')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.lightColor ? 'error' : undefined} help={atMax.lightColor ? 'Đã đạt tối đa 50 ký tự' : undefined}>
-                <Input placeholder="Nhập Màu sắc" maxLength={50} style={inputStyle} />
+                <Input placeholder="Nhập Màu sắc" maxLength={50} showCount style={inputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item name="flashType" {...labelProps('Kiểu chớp')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.flashType ? 'error' : undefined} help={atMax.flashType ? 'Đã đạt tối đa 50 ký tự' : undefined}>
-                <Input placeholder="Nhập Kiểu chớp" maxLength={50} style={inputStyle} />
+                <Input placeholder="Nhập Kiểu chớp" maxLength={50} showCount style={inputStyle} />
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={16}>
+          <Row gutter={[24, 0]}>
             <Col span={12}>
               <Form.Item name="period" {...labelProps('Chu kỳ')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.period ? 'error' : undefined} help={atMax.period ? 'Đã đạt tối đa 50 ký tự' : undefined}>
-                <Input placeholder="Nhập Chu kỳ" maxLength={50} style={inputStyle} />
+                <Input placeholder="Nhập Chu kỳ" maxLength={50} showCount style={inputStyle} />
               </Form.Item>
             </Col>
           </Row>
@@ -418,10 +468,10 @@ export default function BuoyFormContent({
     },
     {
       key: 'gis',
-      label: 'Thông tin vị trí',
+      label: `Thông tin vị trí (${gpsCoordList.length})`,
       children: (
-        <div style={{ paddingTop: 16 }}>
-          <Row gutter={16}>
+        <div style={drawerTabContentStyle}>
+          <Row gutter={[24, 0]}>
             <Col span={12}>
               <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
                 <Select placeholder="Chọn Loại đối tượng" allowClear options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
@@ -443,7 +493,7 @@ export default function BuoyFormContent({
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={16}>
+          <Row gutter={[24, 0]}>
             <Col span={12}>
               <Form.Item name="coordinateSystem" {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }}>
                 <Select placeholder="Chọn Hệ quy chiếu" disabled style={selectStyle} options={COORD_SYS_OPTIONS} />
@@ -451,20 +501,34 @@ export default function BuoyFormContent({
             </Col>
             <Col span={12}>
               <Form.Item name="displayRule" {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }}>
-                <Input placeholder="Nhập Quy tắc hiển thị" maxLength={255} disabled style={{ ...inputStyle, color: textTertiary, cursor: 'not-allowed' }} />
+                <Input placeholder="Nhập Quy tắc hiển thị" maxLength={255} disabled style={readonlyInputStyle} />
               </Form.Item>
             </Col>
           </Row>
-          {/* GPS Coordinates (DMS) */}
-          <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>
-              <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS</span>
+          {/* ── Tọa độ GPS: 6 trường DMS riêng (latD/latM/latS/lngD/lngM/lngS), mỗi ô ghi trực tiếp (chuẩn VTS CHK) ── */}
+          <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+            <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
+              Tọa độ GPS ({gpsCoordList.length})
             </span>
-            {gpsCoordList.length > 0 && (
-              <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!geometryType} style={{ borderRadius: radiusPill }}>
+            <Space size={8}>
+              <Button
+                icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+                onClick={() => setGisModalOpen(true)}
+                disabled={!geometryType}
+                style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              >
+                Chọn tọa độ trên bản đồ
+              </Button>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={addGpsPoint}
+                disabled={!geometryType}
+                style={{ ...primaryButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              >
                 Thêm tọa độ
               </Button>
-            )}
+            </Space>
           </div>
           {gpsCoordList.length === 0 ? (
             <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
@@ -472,84 +536,156 @@ export default function BuoyFormContent({
               <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!geometryType} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
             </div>
           ) : (
-            <PagedTable dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i }))} tableProps={{ scroll: { x: 820 } }}
-              errorText={gpsError ? <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span>⚠</span><span>{gpsError}</span></span> : undefined}>
-              <Table.Column title="Vĩ độ (N)" key="lat"
-                render={(_: any, record: any) => {
-                  const dms = ddToDms(record.lat);
-                  return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
-                    <InputNumber value={dms.d} min={0} max={90} placeholder="Độ" onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lat', v ?? 0, dms.m, dms.s)} style={{ flex: 1 }} controls={false} />
-                    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span>
-                    <InputNumber value={dms.m} min={0} max={59} placeholder="Phút" onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, v ?? 0, dms.s)} style={{ flex: 1 }} controls={false} />
-                    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span>
-                    <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber} onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, dms.m, v ?? 0)} style={{ flex: 1.2 }} controls={false} />
-                    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span>
-                  </Space.Compact>;
-                }}
-                onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-              <Table.Column title="Kinh độ (E)" key="lng"
-                render={(_: any, record: any) => {
-                  const dms = ddToDms(record.lng);
-                  return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
-                    <InputNumber value={dms.d} min={0} max={180} placeholder="Độ" onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lng', v ?? 0, dms.m, dms.s)} style={{ flex: 1 }} controls={false} />
-                    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span>
-                    <InputNumber value={dms.m} min={0} max={59} placeholder="Phút" onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, v ?? 0, dms.s)} style={{ flex: 1 }} controls={false} />
-                    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span>
-                    <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber} onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, dms.m, v ?? 0)} style={{ flex: 1.2 }} controls={false} />
-                    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span>
-                  </Space.Compact>;
-                }}
-                onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-              <Table.Column title="Thao tác" key="actions" width={80} align="center"
-                render={(_: any, record: any) => <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => removeGpsPoint(record._idx)} />}
-                onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
-            </PagedTable>
+            <>
+            {gpsError && (
+              <div style={{ marginBottom: spaceSm, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ color: statusCritical, fontSize: fontSizeMd, flex: 1 }}>⚠ {gpsError}</span>
+              </div>
+            )}
+            <Table
+              size="small"
+              tableLayout="fixed"
+              pagination={gpsCoordList.length > 10 ? {
+                current: gpsPage,
+                pageSize: 10,
+                total: gpsCoordList.length,
+                onChange: (p) => setGpsPage(p),
+                showSizeChanger: false,
+                size: 'small',
+              } : false}
+              dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i }))}
+              rowKey={(r, idx) => r._idx ?? String(idx)}
+              locale={{ emptyText: 'Chưa có tọa độ GPS nào' }}
+              columns={[
+                {
+                  title: 'STT',
+                  width: 60,
+                  align: 'center',
+                  render: (_v, _r, idx) => (gpsPage - 1) * 10 + idx + 1,
+                },
+                {
+                  title: 'Vĩ độ (Latitude - N)',
+                  key: 'lat',
+                  render: (_v, record: any) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
+                },
+                {
+                  title: 'Kinh độ (Longitude - E)',
+                  key: 'lng',
+                  render: (_v, record: any) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
+                },
+                {
+                  title: '',
+                  width: 50,
+                  align: 'center',
+                  render: (_v, record: any) => (
+                    <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeGpsPoint(record._idx)} />
+                  ),
+                },
+              ]}
+            />
+            </>
           )}
         </div>
       ),
     },
     {
       key: 'files',
-      label: 'File đính kèm',
+      label: `File đính kèm (${uploadFileList.length})`,
       children: (
-        <div style={{ paddingTop: 16 }}>
-          <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
-            {uploadFileList.length > 0 && (
-              <Upload
-                beforeUpload={handleBeforeUpload}
-                showUploadList={false}
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif"
-                multiple
-              >
-                <Button type="dashed" icon={<UploadOutlined />} style={{ borderRadius: radiusPill }}>Chọn file</Button>
-              </Upload>
-            )}
+        <div style={drawerTabContentStyle}>
+          <div style={{ marginBottom: spaceMd }}>
+            <Upload.Dragger
+              beforeUpload={handleBeforeUpload}
+              showUploadList={false}
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif"
+              multiple
+              style={{ background: '#fafbfc', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, padding: '24px 16px' }}
+            >
+              <p style={{ marginBottom: 8 }}>
+                <InboxOutlined style={{ fontSize: 44, color: actionPrimary }} />
+              </p>
+              <p style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: textPrimary, marginBottom: 4 }}>
+                Kéo thả tệp vào đây hoặc nhấp để chọn tệp tải lên
+              </p>
+              <p style={{ fontSize: fontSizeSm, color: textTertiary, margin: 0 }}>
+                Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Mỗi file ≤ 20MB.
+              </p>
+            </Upload.Dragger>
           </div>
-          {uploadFileList.length === 0 ? (
-            <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
-              <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có file đính kèm.</span>
-              <Upload
-                beforeUpload={handleBeforeUpload}
-                showUploadList={false}
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif"
-                multiple
-              >
-                <Button type="dashed" icon={<UploadOutlined />} style={{ borderRadius: radiusPill }}>Chọn file</Button>
-              </Upload>
-            </div>
-          ) : (
-            <PagedTable
-              dataSource={uploadFileList.map((f, i) => ({ ...f, _idx: i, name: f.name }))}
-              tableProps={{ scroll: { x: 400 } }}>
-              <Table.Column title="Tên file" key="name" dataIndex="name"
-                render={(name: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}</span>}
-                onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-              <Table.Column title="Thao tác" key="actions" width={80} align="center"
-                render={(_: any, record: any) => <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => handleRemoveFile(record)} />}
-                onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
-            </PagedTable>
-          )}
+          <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+            <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
+              Danh sách tệp đính kèm ({uploadFileList.length})
+            </span>
+          </div>
+          <Table
+            size="small"
+            pagination={uploadFileList.length > 10 ? {
+              current: filePage,
+              pageSize: 10,
+              total: uploadFileList.length,
+              onChange: (p) => setFilePage(p),
+              showSizeChanger: false,
+              size: 'small',
+            } : false}
+            dataSource={uploadFileList.map((f, i) => ({ ...f, key: f.uid, _idx: i, name: f.name }))}
+            rowKey={(r) => r.uid || r._idx}
+            locale={{ emptyText: 'Chưa có tài liệu đính kèm nào' }}
+            scroll={{ x: 720 }}
+            columns={[
+              {
+                title: 'STT',
+                width: 60,
+                align: 'center',
+                render: (_v, _r, idx) => (filePage - 1) * 10 + idx + 1,
+              },
+              {
+                title: 'Tên tài liệu',
+                key: 'name',
+                dataIndex: 'name',
+                render: (name: string) => (
+                  <a
+                    onClick={() => toast.info(`Đang tải xuống tệp: ${name}`)}
+                    style={{ fontSize: fontSizeMd, color: actionPrimary, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontWeight: fontWeightMedium, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
+                  >
+                    <FileOutlined />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                  </a>
+                ),
+              },
+              {
+                title: 'Dung lượng',
+                key: 'size',
+                width: 120,
+                align: 'right' as const,
+                render: (_v, rec: any) => rec.size ? (rec.size > 1024 * 1024 ? `${(rec.size / (1024 * 1024)).toFixed(2)} MB` : `${(rec.size / 1024).toFixed(1)} KB`) : '—',
+              },
+              {
+                title: 'Người tải lên',
+                key: 'uploadedBy',
+                width: 180,
+                render: (_v, rec: any) => rec.uploadedBy ? (userMap?.get(rec.uploadedBy) || rec.uploadedBy) : (currentUser?.fullName || currentUser?.username || '—'),
+              },
+              {
+                title: 'Ngày tải lên',
+                key: 'uploadedDate',
+                width: 160,
+                align: 'center' as const,
+                render: (_v, rec: any) => (rec.uploadedAt || rec.uploadedDate) ? dayjs(rec.uploadedAt || rec.uploadedDate).format('DD/MM/YYYY HH:mm') : '—',
+              },
+              {
+                title: '',
+                key: 'actions',
+                width: 80,
+                align: 'center',
+                render: (_v, record: any) => (
+                  <Space size={4}>
+                    <Button type="text" icon={<DownloadOutlined style={{ color: actionPrimary }} />} onClick={() => toast.info(`Đang tải xuống tệp: ${record.name}`)} />
+                    <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleRemoveFile(record)} />
+                  </Space>
+                ),
+              },
+            ]}
+          />
           <div style={{ marginTop: spaceSm }}>
             <span style={uploadHintStyle}>Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤20MB.</span>
           </div>
@@ -565,9 +701,70 @@ export default function BuoyFormContent({
       <Tabs
         activeKey={activeTabKey}
         onChange={onTabChange}
-        tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }}
+        tabBarStyle={drawerTabBarStyle}
         items={tabItems}
       />
+
+      {/* GIS Location Selector Modal — chọn tọa độ trên bản đồ chuyên dụng (chuẩn VTS CHK) */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <EnvironmentOutlined style={{ color: actionPrimary }} />
+            <span style={{ fontWeight: fontWeightBold, color: sidebarBg, fontSize: fontSizeLg }}>
+              Chọn vị trí & tọa độ trên bản đồ chuyên dụng
+            </span>
+          </div>
+        }
+        open={gisModalOpen}
+        onCancel={() => setGisModalOpen(false)}
+        destroyOnClose
+        width="94vw"
+        style={{ top: 20, maxWidth: '1400px' }}
+        footer={[
+          <Button key="cancel" onClick={() => setGisModalOpen(false)} style={{ ...outlineButtonStyle, height: 36, borderRadius: radiusPill }}>
+            Hủy
+          </Button>,
+          <Button
+            key="ok"
+            type="primary"
+            onClick={() => setGisModalOpen(false)}
+            style={{ ...primaryButtonStyle, height: 36 }}
+          >
+            Xác nhận tọa độ
+          </Button>,
+        ]}
+      >
+        <div style={{ padding: '8px 0' }}>
+          <GisLocationSelector
+            inline={true}
+            defaultGeometryType="POINT"
+            height={520}
+            onChange={(val) => {
+              if (val?.coordinates) {
+                const points = parseGisCoordinates({ geometryType: val.geometryType, coordinates: val.coordinates });
+                if (points.length > 0) {
+                  const toDmsRow = (p: { latitude: number; longitude: number }) => {
+                    const latDms = ddToDms(p.latitude);
+                    const lngDms = ddToDms(p.longitude);
+                    return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
+                  };
+                  const rowKey = (row: any) => `${Math.round(((row.latD ?? 0) + (row.latM ?? 0) / 60 + (row.latS ?? 0) / 3600) * 1e5)}_${Math.round(((row.lngD ?? 0) + (row.lngM ?? 0) / 60 + (row.lngS ?? 0) / 3600) * 1e5)}`;
+                  const existingKeys = new Set(gpsCoordList.map(rowKey));
+                  const toAdd = points.map(toDmsRow).filter((r) => !existingKeys.has(rowKey(r)));
+                  if (toAdd.length > 0) {
+                    const baseIdx = gpsCoordList.length;
+                    toAdd.forEach(() => { addGpsPoint(); });
+                    toAdd.forEach((row, k) => {
+                      updateGpsPoint(baseIdx + k, 'lat', row.latD, row.latM, row.latS);
+                      updateGpsPoint(baseIdx + k, 'lng', row.lngD, row.lngM, row.lngS);
+                    });
+                  }
+                }
+              }
+            }}
+          />
+        </div>
+      </Modal>
     </>
   );
 }
