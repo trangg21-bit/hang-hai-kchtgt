@@ -1189,6 +1189,21 @@ public class VtsSystemService {
         entity.setUpdatedBy(effectiveUserId);
         repository.save(entity);
 
+        // Ghi lịch sử khi hồ sơ đã được duyệt chính thức
+        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2) {
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(vtsSystemId)
+                    .refType(InfrastructureType.VTS_SYSTEM)
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(effectiveUserId)
+                    .reason("Tải lên tài liệu đính kèm: " + originalName)
+                    .changedField("Tài liệu đính kèm")
+                    .previousValue(null)
+                    .newValue("Thêm " + originalName)
+                    .build());
+        }
+
         return toAttachmentResponse(saved);
     }
 
@@ -1209,6 +1224,21 @@ public class VtsSystemService {
         UUID effectiveUserId = SecurityUtils.getCurrentUserId();
         entity.setUpdatedBy(effectiveUserId);
         repository.save(entity);
+
+        // Ghi lịch sử khi hồ sơ đã được duyệt chính thức
+        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2) {
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(vtsSystemId)
+                    .refType(InfrastructureType.VTS_SYSTEM)
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(effectiveUserId)
+                    .reason("Xóa tài liệu đính kèm: " + attachment.getFileName())
+                    .changedField("Tài liệu đính kèm")
+                    .previousValue("Xóa " + attachment.getFileName())
+                    .newValue(null)
+                    .build());
+        }
     }
 
     public InfrastructureAttachment getAttachment(UUID vtsSystemId, UUID attachmentId) {
