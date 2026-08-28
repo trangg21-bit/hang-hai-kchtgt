@@ -110,6 +110,8 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
   const isEdit = !!id;
   const [, setSubmitting] = useState(false);
   const [activeTabKey, setActiveTabKey] = useState('general');
+  /** Cụm toggle 'Thông tin công bố mở, đưa vào sử dụng' (gom từ tab riêng — giống BẾN PHAO), mặc định MỞ. */
+  const [announcementOpen, setAnnouncementOpen] = useState(true);
   const [berthCodeLoading, setBerthCodeLoading] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
   const isSystemAdmin = (currentUser?.permissions?.includes('admin:all') || currentUser?.permissions?.includes('*')) ?? false;
@@ -419,30 +421,33 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
           </Form.Item>
         </Col>
       </Row>
+      {/* ── Toggle: Thông tin công bố mở, đưa vào sử dụng (gom vào tab Thông tin chung — giống BẾN PHAO) ── */}
+      <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setAnnouncementOpen(!announcementOpen)}>
+        <span style={{ color: announcementOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{announcementOpen ? '▼' : '▶'} Thông tin công bố mở, đưa vào sử dụng</span>
+      </button>
+      {announcementOpen && (<div style={{ marginTop: spaceFormField }}>
+        <Row gutter={[24, 0]}>
+          <Col span={12}>
+            <Form.Item name="openingAnnouncementDate" {...labelProps('Thời điểm công bố, đưa vào sử dụng')} style={{ marginBottom: spaceFormField }}>
+              <DatePicker placeholder="Chọn thời điểm..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="openingDecision" {...labelProps('Quyết định công bố/ Văn bản cho phép khai thác')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.openingDecision ? 'error' : undefined} help={atMax.openingDecision ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
+              <Input placeholder="Nhập quyết định công bố" maxLength={2000} showCount style={inputStyle} />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={[24, 0]}>
+          <Col span={12}>
+            <Form.Item name="investmentAgreement" {...labelProps('Văn bản thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.investmentAgreement ? 'error' : undefined} help={atMax.investmentAgreement ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
+              <Input placeholder="Nhập văn bản thỏa thuận" maxLength={2000} showCount style={inputStyle} />
+            </Form.Item>
+          </Col>
+        </Row>
+      </div>)}
     </div>) },
-    // Tab 2: Thông tin công bố
-    { key: 'announcement', label: 'Thông tin công bố mở, đưa vào sử dụng', children: (<div style={drawerTabContentStyle}>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item name="openingAnnouncementDate" {...labelProps('Thời điểm công bố, đưa vào sử dụng')} style={{ marginBottom: spaceFormField }}>
-            <DatePicker placeholder="Chọn thời điểm..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="openingDecision" {...labelProps('Quyết định công bố/ Văn bản cho phép khai thác')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.openingDecision ? 'error' : undefined} help={atMax.openingDecision ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
-            <Input placeholder="Nhập quyết định công bố" maxLength={2000} showCount style={inputStyle} />
-          </Form.Item>
-        </Col>
-      </Row>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item name="investmentAgreement" {...labelProps('Văn bản thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.investmentAgreement ? 'error' : undefined} help={atMax.investmentAgreement ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
-            <Input placeholder="Nhập văn bản thỏa thuận" maxLength={2000} showCount style={inputStyle} />
-          </Form.Item>
-        </Col>
-      </Row>
-    </div>) },
-    // Tab 3: Thông tin vị trí
+    // Tab 2: Thông tin vị trí
     { key: 'location', label: `Thông tin vị trí (${coordinateList.length})`, children: (<div style={drawerTabContentStyle}>
       <Row gutter={[24, 0]}>
         <Col span={12}>
@@ -557,7 +562,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
         </>
       )}
     </div>) },
-    // Tab 4: File đính kèm
+    // Tab 3: File đính kèm
     { key: 'files', label: `File đính kèm (${uploadedFiles.length})`, children: (<div style={drawerTabContentStyle}>
       <div style={{ marginBottom: spaceMd }}>
         <Upload.Dragger

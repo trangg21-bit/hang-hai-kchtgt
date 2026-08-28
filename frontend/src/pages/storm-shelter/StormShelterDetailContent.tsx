@@ -6,7 +6,7 @@ import { colors } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import {
-  textPrimary, textSecondary, textTertiary, borderDefault, surfaceCard,
+  textPrimary, textTertiary, borderDefault, surfaceCard,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
   spaceSm, spaceMd, actionPrimary,
   statusOperational, statusAttention, statusCritical, statusBadgeStyle,
@@ -15,7 +15,6 @@ import {
 } from '../../themetokenchk';
 import type { StormShelterArea } from '../../types/port';
 import { VIETNAM_PROVINCES } from '../../types/common';
-import { resolveOrgFullPath } from '../../components/org-unit';
 import api from '../../services/api';
 
 export interface StormShelterDetailContentProps {
@@ -78,7 +77,6 @@ const fmtDateTime = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/Y
 export default function StormShelterDetailContent({
   selectedRecord,
   orgMap,
-  organizations = [],
   symbolMap,
   symbolImageMap,
   portOptions,
@@ -133,21 +131,10 @@ export default function StormShelterDetailContent({
             <div style={{ paddingTop: 3 }}>
               <div className="chk-detail-grid">
                 {[
-                  ['Đơn vị quản lý', (() => {
-                    const orgPathNames = resolveOrgFullPath(organizations, r.orgUnitId);
-                    if (!orgPathNames || orgPathNames.length === 0) return orgMap.get(r.orgUnitId || '') || r.orgUnitId || '—';
-                    const levelColors = [textPrimary, textSecondary, textTertiary];
-                    return (
-                      <span style={{ fontWeight: fontWeightBold }}>
-                        {orgPathNames.map((n, i) => (
-                          <span key={i} style={{ display: 'block', color: levelColors[Math.min(i, levelColors.length - 1)] }}>{n}</span>
-                        ))}
-                      </span>
-                    );
-                  })(),],
-                  ['Thuộc cảng biển', <span style={{ fontWeight: fontWeightBold }}>{portOptions.find(o => o.value === r.portId)?.label || r.portId || '—'}</span>],
                   ['Mã khu tránh, trú bão', <span style={statusBadgeStyle(actionPrimary)}>{r.stormShelterCode || '—'}</span>],
                   ['Tên khu tránh, trú bão', <span style={{ fontWeight: fontWeightBold }}>{r.stormShelterName || '—'}</span>],
+                  ['Đơn vị quản lý', <span>{orgMap.get(r.orgUnitId || '') || r.orgUnitId || '—'}</span>],
+                  ['Thuộc cảng biển', <span style={{ fontWeight: fontWeightBold }}>{portOptions.find(o => o.value === r.portId)?.label || r.portId || '—'}</span>],
                   ['Địa điểm (Tỉnh/Thành phố)', r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '—' : '—'],
                   ['Thuộc luồng hàng hải', waterwayOptions.find(o => o.value === r.navigationChannelId)?.label || r.navigationChannelId || '—'],
                   ['Thuộc bến phao', r.buoyStationName || buoyStationOptions.find(o => o.value === r.buoyStationId)?.label || r.buoyStationId || '—'],
@@ -189,7 +176,7 @@ export default function StormShelterDetailContent({
                 <span style={{ color: announcementOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{announcementOpen ? '▼' : '▶'} Thông tin công bố mở, đưa vào sử dụng</span>
               </button>
               {announcementOpen && (
-                <div className="detail-grid" style={{ marginTop: 4 }}>
+                <div className="chk-detail-grid" style={{ marginTop: 4 }}>
                   {[
                     ['Thời điểm công bố mở, đưa ra sử dụng', fmtDateTime(r.openingAnnouncementDate)],
                     ['Quyết định công bố/ Văn bản cho phép khai thác', r.publicDecision || '—'],
@@ -381,7 +368,7 @@ export default function StormShelterDetailContent({
                   ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.portAuthorityApprovalContent || '—'],
                   ['Nội dung phê duyệt cấp Cục', r.departmentApprovalContent || '—'],
                 ].map(([label, value], i) => (
-                  <div key={i} className="detail-row" style={label === 'Trạng thái' ? { gridColumn: '1 / -1' } : undefined}>
+                  <div key={i} className="chk-detail-row" style={label === 'Trạng thái' ? { gridColumn: '1 / -1' } : undefined}>
                     <span className="chk-detail-label">{label}</span>
                     <span className="chk-detail-value">{value}</span>
                   </div>
@@ -472,25 +459,26 @@ export default function StormShelterDetailContent({
           <>
             <div style={{ paddingTop: 3 }}>
               <div className="chk-detail-grid">
-                <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'flex-start', padding: '10px 12px', borderBottom: `1px solid ${borderDefault}` }}>
-                  <span style={{ width: 260, flexShrink: 0, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Phạm vi khu nước neo buộc tàu:</span>
-                  <span style={{ color: textPrimary, fontSize: fontSizeMd, flex: 1, overflowWrap: 'anywhere' }}>{viewingWaterArea.description || '—'}</span>
-                </div>
+                <div className="chk-detail-row"><span className="chk-detail-label">Phạm vi khu nước neo buộc tàu:</span><span className="chk-detail-value">{viewingWaterArea.description || '—'}</span></div>
               </div>
-              <div style={{ marginBottom: spaceMd, marginTop: spaceMd, paddingLeft: 12 }}>
+              <div style={{ marginBottom: spaceMd, marginTop: spaceMd }}>
                 <span style={{ ...drawerTitleStyle, fontSize: 16 }}>Vị trí cụ thể điểm neo</span>
               </div>
               <div className="chk-detail-grid">
                 {[
+                  ['Mã và tên vị trí', (() => {
+                    const codeName = [viewingWaterArea.code, viewingWaterArea.name].filter(Boolean).join(' - ');
+                    return codeName || viewingWaterArea.description || '—';
+                  })(),],
                   ['Loại đối tượng', (() => { const m: Record<string, string> = { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' }; return viewingWaterArea.geometryType ? m[viewingWaterArea.geometryType] || viewingWaterArea.geometryType : '—'; })(),],
                   ['Biểu tượng', (() => { const symName = symbolMap.get(viewingWaterArea.mapSymbolId || '') || viewingWaterArea.mapSymbolId || '—'; const symImg = symbolImageMap.get(viewingWaterArea.mapSymbolId || ''); return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{symImg ? <img src={symImg} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}{symName}</span>; })(),],
                   ['Hệ quy chiếu', viewingWaterArea.coordinateSystem === 1 ? 'WGS-84' : viewingWaterArea.coordinateSystem === 2 ? 'VN-2000' : viewingWaterArea.coordinateSystem || '—'],
                   ['Quy tắc hiển thị', viewingWaterArea.displayRule || '—'],
                 ].map(([label, value], i) => (
-                  <div key={i} className="chk-detail-row"><span className="detail-label">{label}</span><span className="detail-value">{value}</span></div>
+                  <div key={i} className="chk-detail-row"><span className="chk-detail-label">{label}</span><span className="chk-detail-value">{value}</span></div>
                 ))}
               </div>
-              <div style={{ marginTop: spaceSm, padding: '0 12px' }}>
+              <div style={{ marginTop: spaceSm }}>
                 <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Tọa độ điểm neo</span>
                 <DetailTable
                   dataSource={(viewingWaterArea.anchorPoints || []).map((p: any, i: number) => ({ ...p, key: i }))}

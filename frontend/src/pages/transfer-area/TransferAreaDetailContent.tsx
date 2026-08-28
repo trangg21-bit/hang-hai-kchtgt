@@ -6,7 +6,7 @@ import { colors } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import {
-  textPrimary, textSecondary, textTertiary, borderDefault, surfaceCard,
+  textPrimary, textTertiary, borderDefault, surfaceCard,
   fontSizeMd, fontSizeLg, fontWeightBold,
   spaceSm, spaceMd, spaceFormField, actionPrimary, sidebarBg,
   statusOperational, statusAttention, statusCritical,
@@ -14,7 +14,6 @@ import {
 } from '../../themetokenchk';
 import type { TransferArea } from '../../types/port';
 import { VIETNAM_PROVINCES } from '../../types/common';
-import { resolveOrgFullPath } from '../../components/org-unit';
 import api from '../../services/api';
 
 export interface TransferAreaDetailContentProps {
@@ -92,7 +91,6 @@ const fmtDateTime = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/Y
 export default function TransferAreaDetailContent({
   selectedRecord,
   orgMap,
-  organizations = [],
   symbolMap,
   symbolImageMap,
   portOptions,
@@ -151,21 +149,13 @@ export default function TransferAreaDetailContent({
             <div style={{ paddingTop: 3 }}>
               <div className="chk-detail-grid">
                 {[
-                  ['Đơn vị quản lý', (() => {
-                    const orgPathNames = resolveOrgFullPath(organizations, r.orgUnitId);
-                    if (!orgPathNames || orgPathNames.length === 0) return orgMap.get(r.orgUnitId || '') || r.orgUnitId || '—';
-                    const levelColors = [textPrimary, textSecondary, textTertiary];
-                    return (
-                      <span style={{ fontWeight: fontWeightBold }}>
-                        {orgPathNames.map((n, i) => (
-                          <span key={i} style={{ display: 'block', color: levelColors[Math.min(i, levelColors.length - 1)] }}>{n}</span>
-                        ))}
-                      </span>
-                    );
-                  })(),],
-                  ['Thuộc cảng biển', <span style={{ fontWeight: fontWeightBold }}>{portOptions.find(o => o.value === r.portId)?.label || r.portId || '—'}</span>],
                   ['Mã khu chuyển tải', <span style={statusBadgeStyle(actionPrimary)}>{r.transferAreaCode || '—'}</span>],
                   ['Tên khu chuyển tải', <span style={{ fontWeight: fontWeightBold }}>{r.transferAreaName || '—'}</span>],
+                  ['Đơn vị quản lý', (() => {
+                    const name = orgMap.get(r.orgUnitId || '') || r.orgUnitId || '—';
+                    return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
+                  })(),],
+                  ['Thuộc cảng biển', <span style={{ fontWeight: fontWeightBold }}>{portOptions.find(o => o.value === r.portId)?.label || r.portId || '—'}</span>],
                   ['Công năng khai thác', formatOperationalFunctions(r.operationalFunctions)],
                   ['Địa điểm (Tỉnh/Thành phố)', r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '—' : '—'],
                   ['Địa điểm chi tiết', r.detailedLocation || '—'],
@@ -563,12 +553,9 @@ export default function TransferAreaDetailContent({
           <>
             <div style={{ paddingTop: 3 }}>
               <div className="chk-detail-grid">
-                <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'flex-start', padding: '10px 12px', borderBottom: `1px solid ${borderDefault}` }}>
-                  <span style={{ width: 260, flexShrink: 0, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Phạm vi khu nước neo buộc tàu:</span>
-                  <span style={{ color: textPrimary, fontSize: fontSizeMd, flex: 1, overflowWrap: 'anywhere' }}>{viewingWaterArea.description || '—'}</span>
-                </div>
+                <div className="chk-detail-row"><span className="chk-detail-label">Phạm vi khu nước neo buộc tàu:</span><span className="chk-detail-value">{viewingWaterArea.description || '—'}</span></div>
               </div>
-              <div style={{ marginBottom: spaceMd, marginTop: spaceMd, paddingLeft: 12 }}>
+              <div style={{ marginBottom: spaceMd, marginTop: spaceMd }}>
                 <span style={{ ...drawerTitleStyle, fontSize: 16 }}>Vị trí cụ thể điểm neo</span>
               </div>
               <div className="chk-detail-grid">

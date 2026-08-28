@@ -337,6 +337,7 @@ export default function AppLayout() {
             canAccessMenu('/storm-shelter') ? { key: '/storm-shelter', label: 'Quản lý khu tránh, trú bão', icon: <SafetyOutlined /> } : null,
           ].filter(Boolean),
         } : null,
+        canAccessMenu('/dry-port') ? { key: '/dry-port', label: 'Quản lý cảng cạn', icon: <TruckOutlined /> } : null,
         canAccessMenu('/dai-ttdh') ? {
           key: 'viem-thong-hh',
           label: 'Thông tin KCHT mạng viễn thông HH',
@@ -346,7 +347,6 @@ export default function AppLayout() {
             canAccessMenu('/dai-ttdh') ? { key: '/dai-ttdh', label: 'Quản lý đài TTDH', icon: <AimOutlined /> } : null,
           ].filter(Boolean),
         } : null,
-        canAccessMenu('/dry-port') ? { key: '/dry-port', label: 'Quản lý cảng cạn', icon: <TruckOutlined /> } : null,
         canAccessMenu('/water-zone') ? { key: '/water-zone', label: 'Quản lý vùng nước' } : null,
       ].filter(Boolean),
     },

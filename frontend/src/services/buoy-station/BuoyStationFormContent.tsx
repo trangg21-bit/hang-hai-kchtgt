@@ -165,6 +165,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
   const [coordinateList, setCoordinateList] = useState<Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>>([]);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gisModalOpen, setGisModalOpen] = useState(false);
+  const [indexOpen, setIndexOpen] = useState(true); // Toggle 'Chỉ số tổng hợp' trong tab Thông tin chung (mặc định MỞ)
   const [gpsPage, setGpsPage] = useState(1);
   const [filePage, setFilePage] = useState(1);
   const [activeTabKey, setActiveTabKey] = useState('general');
@@ -402,19 +403,25 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
         <Col span={12}><Form.Item name="constructionDate" {...labelProps('Thời điểm xây dựng')} style={{ marginBottom: spaceFormField }}><DatePicker popupClassName="buoy-station-date-picker" placeholder="Chọn ngày..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
       </Row>
       <Row gutter={[24, 0]}>
-        <Col span={12}><Form.Item name="totalArea" {...labelProps('Tổng diện tích (m²)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.totalArea ? 'error' : undefined} help={atMax.totalArea ? 'Đã đạt tối đa 20 ký tự' : undefined}><InputNumber min={0} maxLength={20} placeholder="0" style={numberInputStyle} /></Form.Item></Col>
-        <Col span={12}><Form.Item name="usableArea" {...labelProps('Diện tích sử dụng (m²)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.usableArea ? 'error' : undefined} help={atMax.usableArea ? 'Đã đạt tối đa 20 ký tự' : undefined}><InputNumber min={0} maxLength={20} placeholder="0" style={numberInputStyle} /></Form.Item></Col>
-      </Row>
-      <Row gutter={[24, 0]}>
-        <Col span={12}><Form.Item name="staffCount" {...labelProps('Số lượng nhân sự bố trí')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Số lượng nhân sự bố trí là bắt buộc' }]} validateStatus={atMax.staffCount ? 'error' : undefined} help={atMax.staffCount ? 'Đã đạt tối đa 5 ký tự' : undefined}><InputNumber min={0} maxLength={5} precision={0} parser={parseInteger} placeholder="0" style={numberInputStyle} /></Form.Item></Col>
-        <Col span={12}><Form.Item name="lastMaintenanceYear" {...labelProps('Năm bảo trì gần nhất')} style={{ marginBottom: spaceFormField }}><DatePicker picker="year" popupClassName="buoy-station-date-picker" placeholder="Chọn năm..." format="YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
-      </Row>
-      <Row gutter={[24, 0]}>
         <Col span={12}><Form.Item name="condition" {...labelProps('Tình trạng')} required style={{ marginBottom: spaceFormField }} initialValue="Chưa khai thác/vận hành" rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}><Select placeholder="Chọn tình trạng" options={CONDITION_OPTIONS} style={selectStyle} /></Form.Item></Col>
       </Row>
-      <Row gutter={[24, 0]}>
-        <Col span={24}><Form.Item name="note" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }} rules={[{ max: 2000, message: 'Tối đa 2000 ký tự' }]} validateStatus={atMax.note ? 'error' : undefined} help={atMax.note ? 'Đã đạt tối đa 2000 ký tự' : undefined}><Input.TextArea placeholder="Ghi chú..." maxLength={2000} rows={3} showCount style={{ borderRadius: radiusPill, fontSize: fontSizeMd, resize: 'none' }} /></Form.Item></Col>
-      </Row>
+      {/* ── Toggle: Chỉ số tổng hợp (gom vào tab Thông tin chung, pattern giống BuoyBerthForm) ── */}
+      <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setIndexOpen(!indexOpen)}>
+        <span style={{ color: indexOpen ? actionPrimary : sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{indexOpen ? '▼' : '▶'} Chỉ số tổng hợp</span>
+      </button>
+      {indexOpen && (<div style={{ marginTop: spaceFormField }}>
+        <Row gutter={[24, 0]}>
+          <Col span={12}><Form.Item name="totalArea" {...labelProps('Tổng diện tích (m²)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.totalArea ? 'error' : undefined} help={atMax.totalArea ? 'Đã đạt tối đa 20 ký tự' : undefined}><InputNumber min={0} maxLength={20} placeholder="0" style={numberInputStyle} /></Form.Item></Col>
+          <Col span={12}><Form.Item name="usableArea" {...labelProps('Diện tích sử dụng (m²)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.usableArea ? 'error' : undefined} help={atMax.usableArea ? 'Đã đạt tối đa 20 ký tự' : undefined}><InputNumber min={0} maxLength={20} placeholder="0" style={numberInputStyle} /></Form.Item></Col>
+        </Row>
+        <Row gutter={[24, 0]}>
+          <Col span={12}><Form.Item name="staffCount" {...labelProps('Số lượng nhân sự bố trí')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Số lượng nhân sự bố trí là bắt buộc' }]} validateStatus={atMax.staffCount ? 'error' : undefined} help={atMax.staffCount ? 'Đã đạt tối đa 5 ký tự' : undefined}><InputNumber min={0} maxLength={5} precision={0} parser={parseInteger} placeholder="0" style={numberInputStyle} /></Form.Item></Col>
+          <Col span={12}><Form.Item name="lastMaintenanceYear" {...labelProps('Năm bảo trì gần nhất')} style={{ marginBottom: spaceFormField }}><DatePicker picker="year" popupClassName="buoy-station-date-picker" placeholder="Chọn năm..." format="YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
+        </Row>
+        <Row gutter={[24, 0]}>
+          <Col span={24}><Form.Item name="note" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }} rules={[{ max: 2000, message: 'Tối đa 2000 ký tự' }]} validateStatus={atMax.note ? 'error' : undefined} help={atMax.note ? 'Đã đạt tối đa 2000 ký tự' : undefined}><Input.TextArea placeholder="Ghi chú..." maxLength={2000} rows={3} showCount style={{ borderRadius: radiusPill, fontSize: fontSizeMd, resize: 'none' }} /></Form.Item></Col>
+        </Row>
+      </div>)}
     </div>) },
     // Tab 2: Thông tin vị trí (giống BuoyFormContent tab Thông tin vị trí)
     { key: 'gis', label: 'Thông tin vị trí', children: (<div style={drawerTabContentStyle}>

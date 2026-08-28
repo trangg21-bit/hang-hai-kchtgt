@@ -3,11 +3,10 @@ import { Tabs, Select, Tooltip, Button, Modal } from 'antd';
 import { FileOutlined, EnvironmentOutlined, EyeOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { colors } from '../../themetokenchk';
-import { resolveOrgFullPath } from '../../components/org-unit';
 import DetailTable from '../../components/shared/DetailTable';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import {
-  actionPrimary, textPrimary, textSecondary, textTertiary, surfaceCard,
+  actionPrimary, textTertiary, surfaceCard,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
   spaceSm, spaceMd, spaceFormField, radiusPill,
   outlineButtonStyle, primaryButtonStyle, statusBadgeStyle,
@@ -89,7 +88,7 @@ const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> =
 export default function PierDetailContent({
   selectedRecord, orgMap, portMap, berthOptions, symbolMap, symbolImageMap,
   detailFiles, ddToDms, approvalStyleMap, operationalStyleMap,
-  userMap, waterwayMap, berthDetail, organizations,
+  userMap, waterwayMap, berthDetail,
   infrastructureList = [],
   operationPlanList = [],
   maintenancePlanList = [],
@@ -97,7 +96,9 @@ export default function PierDetailContent({
   onViewInfraDetail,
 }: PierDetailContentProps) {
   const r = selectedRecord;
-  const [systemOpen, setSystemOpen] = useState(true);
+  const [operationOpen, setOperationOpen] = useState(true);
+  const [maintenanceOpen, setMaintenanceOpen] = useState(true);
+  const [incidentOpen, setIncidentOpen] = useState(true);
   const [infraTypeFilter, setInfraTypeFilter] = useState<string>('');
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const infraRows = [...infrastructureList].filter((it: any) => {
@@ -122,25 +123,17 @@ export default function PierDetailContent({
             <div style={{ paddingTop: 3 }}>
               <div className="chk-detail-grid">
                 {[
+                  ['Mã cầu cảng', <span key="pierCode" style={statusBadgeStyle(actionPrimary)}>{r.pierCode || '—'}</span>],
+                  ['Tên cầu cảng', <span style={{ fontWeight: fontWeightBold }}>{r.pierName || '—'}</span>],
                   ['Đơn vị quản lý', (() => {
-                    const orgPathNames = resolveOrgFullPath(organizations, r.orgUnitId);
-                    if (!orgPathNames || orgPathNames.length === 0) return orgMap.get(r.orgUnitId || '') || r.orgUnitId || '—';
-                    const levelColors = [textPrimary, textSecondary, textTertiary];
-                    return (
-                      <span style={{ fontWeight: fontWeightBold }}>
-                        {orgPathNames.map((n, i) => (
-                          <span key={i} style={{ display: 'block', color: levelColors[Math.min(i, levelColors.length - 1)] }}>{n}</span>
-                        ))}
-                      </span>
-                    );
+                    const name = orgMap.get(r.orgUnitId || '') || r.orgUnitId || '—';
+                    return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
                   })(),],
                   ['Thuộc cảng biển', <span style={{ fontWeight: fontWeightBold }}>{portLabel}</span>],
                   ['Thuộc bến cảng', berthLabel],
                   ['Mã bến cảng', berthDetail?.berthCode || '—'],
                   ['Tên bến cảng', berthDetail?.berthName || berthLabel],
                   ['Thuộc luồng hàng hải', waterwayMap?.get(r.navigationChannelId || '') || r.navigationChannelId || '—'],
-                  ['Mã cầu cảng', <span key="pierCode" style={statusBadgeStyle(actionPrimary)}>{r.pierCode || '—'}</span>],
-                  ['Tên cầu cảng', <span style={{ fontWeight: fontWeightBold }}>{r.pierName || '—'}</span>],
                   ['Địa điểm (Tỉnh/Thành Phố)', r.province || '—'],
                   ['Địa điểm chi tiết', r.detailedLocation || '—'],
                   ['Chiều dài (m)', r.length != null ? r.length : '—'],
@@ -149,7 +142,6 @@ export default function PierDetailContent({
                   ['Loại kết cấu cầu cảng', r.structureType != null ? (r.structureType === 1 ? 'Kết cấu bệ cọc cao' : r.structureType === 2 ? 'Kết cấu cường từ' : r.structureType === 3 ? 'Kết cấu trọng lực' : r.structureType === 4 ? 'Kết cấu khác' : String(r.structureType)) : '—'],
                   ['Công năng khai thác', r.operationalFunction || '—'],
                   ['Tình trạng', (() => { const s = r.operationalStatus; const b = s && operationalStyleMap[s]; return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : '—'; })(),],
-                  ['Trạng thái', (() => { const s = r.approvalStatus; const b = s && approvalStyleMap[s]; return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : '—'; })(),],
                   ['Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)', r.currentWaterDepth || '—'],
                   ['Cao độ đáy bến thiết kế', r.designBedElevation || '—'],
                   ['Cỡ tàu khai thác theo công bố (DWT)', r.publishedVesselDWT || '—'],
@@ -168,32 +160,6 @@ export default function PierDetailContent({
                   </div>
                 ))}
               </div>
-              <div style={{ cursor: 'pointer', marginTop: 10, paddingLeft: 12 }} onClick={() => setSystemOpen(!systemOpen)}>
-                <span style={{ color: systemOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{systemOpen ? '▼' : '▶'} Thông tin hệ thống</span>
-              </div>
-              {systemOpen && (
-                <div className="chk-detail-grid" style={{ marginTop: 4 }}>
-                  {[
-                    ['Người tạo', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.createdBy || '') || r.createdBy || '—'}</span>],
-                    ['Ngày tạo', fmtDateTime(r.createdAt)],
-                    ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.updatedBy || '') || r.updatedBy || '—'}</span>],
-                    ['Ngày cập nhật', fmtDateTime(r.updatedAt)],
-                    ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.submittedForApprovalBy || '') || r.submittedForApprovalBy || '—'}</span>],
-                    ['Ngày gửi phê duyệt', fmtDateTime(r.submittedForApprovalAt)],
-                    ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.portAuthorityApprovedBy || '') || r.portAuthorityApprovedBy || '—'}</span>],
-                    ['Ngày phê duyệt cấp Cảng vụ/Chi cục', fmtDateTime(r.portAuthorityApprovedAt)],
-                    ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.departmentApprovedBy || '') || r.departmentApprovedBy || '—'}</span>],
-                    ['Ngày phê duyệt cấp Cục', fmtDateTime(r.departmentApprovedAt)],
-                    ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', (r as any).portAuthorityApprovalContent || '—'],
-                    ['Nội dung phê duyệt cấp Cục', (r as any).departmentApprovalContent || '—'],
-                  ].map(([label, value], i) => (
-                    <div key={i} className="chk-detail-row">
-                      <span className="chk-detail-label">{label}</span>
-                      <span className="chk-detail-value">{value}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           ),
         },
@@ -312,62 +278,96 @@ export default function PierDetailContent({
           ),
         },
         {
-          key: 'operation', label: 'Thông tin vận hành khai thác',
+          key: 'operationMaintenance', label: 'Vận hành & bảo trì',
           children: (
             <div style={{ paddingTop: 3 }}>
-              <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Thông tin vận hành khai thác</span>
-              <DetailTable
-                dataSource={operationPlanList}
-                emptyText="Chưa có dữ liệu"
-                rowKey={(rec: any) => rec.id || rec.planCode || rec.code}
-                columns={[
-                  { title: 'STT', width: 50 },
-                  { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '—' },
-                  { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '—' },
-                  { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'start', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.startTime || rec.start || null) },
-                  { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'end', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.endTime || rec.end || null) },
-                ]}
-              />
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setOperationOpen(!operationOpen)}>
+                <span style={{ color: operationOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{operationOpen ? '▼' : '▶'} Thông tin vận hành khai thác</span>
+              </button>
+              {operationOpen && (
+                <div>
+                  <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách vận hành khai thác</span>
+                  <DetailTable
+                    dataSource={operationPlanList}
+                    emptyText="Chưa có dữ liệu"
+                    rowKey={(rec: any) => rec.id || rec.planCode || rec.code}
+                    columns={[
+                      { title: 'STT', width: 50 },
+                      { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '—' },
+                      { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '—' },
+                      { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'start', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.startTime || rec.start || null) },
+                      { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'end', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.endTime || rec.end || null) },
+                    ]}
+                  />
+                </div>
+              )}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setMaintenanceOpen(!maintenanceOpen)}>
+                <span style={{ color: maintenanceOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{maintenanceOpen ? '▼' : '▶'} Thông tin bảo trì</span>
+              </button>
+              {maintenanceOpen && (
+                <div>
+                  <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin bảo trì</span>
+                  <DetailTable
+                    dataSource={maintenancePlanList}
+                    emptyText="Chưa có dữ liệu"
+                    rowKey={(rec: any) => rec.id || rec.planCode || rec.code}
+                    columns={[
+                      { title: 'STT', width: 50 },
+                      { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '—' },
+                      { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '—' },
+                      { title: 'Thời gian bắt đầu', dataIndex: 'startTime', key: 'start', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.start || rec.startDate || null) },
+                      { title: 'Thời gian kết thúc', dataIndex: 'endTime', key: 'end', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.end || rec.endDate || null) },
+                    ]}
+                  />
+                </div>
+              )}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setIncidentOpen(!incidentOpen)}>
+                <span style={{ color: incidentOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{incidentOpen ? '▼' : '▶'} Thông tin sự cố</span>
+              </button>
+              {incidentOpen && (
+                <div>
+                  <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin sự cố</span>
+                  <DetailTable
+                    dataSource={incidentList}
+                    emptyText="Chưa có dữ liệu"
+                    rowKey={(rec: any) => rec.id || rec.incidentCode || rec.code}
+                    columns={[
+                      { title: 'STT', width: 50 },
+                      { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '—' },
+                      { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'type', render: (v: string, rec: any) => v || rec.type || '—' },
+                      { title: 'Địa điểm', dataIndex: 'location', key: 'location', render: (v: string) => v || '—' },
+                      { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.time || null) },
+                    ]}
+                  />
+                </div>
+              )}
             </div>
           ),
         },
         {
-          key: 'maintenance', label: 'Thông tin bảo trì',
+          key: 'system', label: 'Xử lý & theo dõi',
           children: (
             <div style={{ paddingTop: 3 }}>
-              <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Thông tin bảo trì</span>
-              <DetailTable
-                dataSource={maintenancePlanList}
-                emptyText="Chưa có dữ liệu"
-                rowKey={(rec: any) => rec.id || rec.planCode || rec.code}
-                columns={[
-                  { title: 'STT', width: 50 },
-                  { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '—' },
-                  { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '—' },
-                  { title: 'Thời gian bắt đầu', dataIndex: 'startTime', key: 'start', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.start || rec.startDate || null) },
-                  { title: 'Thời gian kết thúc', dataIndex: 'endTime', key: 'end', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.end || rec.endDate || null) },
-                ]}
-              />
-            </div>
-          ),
-        },
-        {
-          key: 'incident', label: 'Thông tin sự cố',
-          children: (
-            <div style={{ paddingTop: 3 }}>
-              <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Thông tin sự cố</span>
-              <DetailTable
-                dataSource={incidentList}
-                emptyText="Chưa có dữ liệu"
-                rowKey={(rec: any) => rec.id || rec.incidentCode || rec.code}
-                columns={[
-                  { title: 'STT', width: 50 },
-                  { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '—' },
-                  { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'type', render: (v: string, rec: any) => v || rec.type || '—' },
-                  { title: 'Địa điểm', dataIndex: 'location', key: 'location', render: (v: string) => v || '—' },
-                  { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.time || null) },
-                ]}
-              />
+              <div className="chk-detail-grid">
+                {[
+                  ['Trạng thái', r.approvalStatus && approvalStyleMap[r.approvalStatus] ? <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>{approvalStyleMap[r.approvalStatus].label}</span> : '—'],
+                  ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.updatedBy || '') || r.updatedBy || '—'}</span>],
+                  ['Ngày cập nhật', fmtDateTime(r.updatedAt)],
+                  ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.submittedForApprovalBy || '') || r.submittedForApprovalBy || '—'}</span>],
+                  ['Ngày gửi phê duyệt', fmtDateTime(r.submittedForApprovalAt)],
+                  ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.portAuthorityApprovedBy || '') || r.portAuthorityApprovedBy || '—'}</span>],
+                  ['Ngày phê duyệt cấp Cảng vụ/Chi cục', fmtDateTime(r.portAuthorityApprovedAt)],
+                  ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.departmentApprovedBy || '') || r.departmentApprovedBy || '—'}</span>],
+                  ['Ngày phê duyệt cấp Cục', fmtDateTime(r.departmentApprovedAt)],
+                  ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', (r as any).portAuthorityApprovalContent || '—'],
+                  ['Nội dung phê duyệt cấp Cục', (r as any).departmentApprovalContent || '—'],
+                ].map(([label, value], i) => (
+                  <div key={i} className="chk-detail-row" style={label === 'Trạng thái' ? { gridColumn: '1 / -1' } : undefined}>
+                    <span className="chk-detail-label">{label}</span>
+                    <span className="chk-detail-value">{value}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           ),
         },

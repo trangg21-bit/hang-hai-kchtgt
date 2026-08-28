@@ -743,7 +743,7 @@ export default function StormShelterList() {
       {/* ── Cơ bản: ĐVQL + Tên + Tình trạng ──────────────────── */}
       <div style={{ marginBottom: 12, marginTop: spaceMd }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-          Đơn vị quản lý <span style={{ color: statusCritical }}>*</span>
+          Đơn vị quản lý
         </div>
         <OrgUnitTreeSelect
           organizations={organizations}

@@ -163,6 +163,10 @@ export default function BuoyFormContent({
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const [gpsPage, setGpsPage] = useState(1);
   const [filePage, setFilePage] = useState(1);
+  // Cụm toggle ▼/▶ trong tab Thông tin chung (mặc định MỞ) — pattern BuoyBerthForm announcementOpen
+  const [summaryOpen, setSummaryOpen] = useState(true);
+  const [timingOpen, setTimingOpen] = useState(true);
+  const [lightOpen, setLightOpen] = useState(true);
   const atMax = {
     name: useMaxReached('name', 255),
     locationDetail: useMaxReached('locationDetail', 500),
@@ -325,105 +329,6 @@ export default function BuoyFormContent({
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="shape" {...labelProps('Hình dáng')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.shape ? 'error' : undefined} help={atMax.shape ? 'Đã đạt tối đa 500 ký tự' : undefined}>
-                <Input placeholder="Nhập Hình dáng" maxLength={500} showCount style={inputStyle} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={[24, 0]}>
-            <Col span={12}>
-              <Form.Item name="structure" {...labelProps('Kết cấu')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.structure ? 'error' : undefined} help={atMax.structure ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
-                <Input placeholder="Nhập Kết cấu" maxLength={2000} showCount style={inputStyle} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="area" {...labelProps('Diện tích (m2)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.area ? 'error' : undefined} help={atMax.area ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-                <InputNumber min={0} maxLength={20} placeholder="Nhập Diện tích (m2)" style={numberInputStyle} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={[24, 0]}>
-            <Col span={12}>
-              <Form.Item name="bodyHeight" {...labelProps('Chiều cao thân phao (m)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.bodyHeight ? 'error' : undefined} help={atMax.bodyHeight ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-                <InputNumber min={0} maxLength={20} placeholder="Nhập Chiều cao thân phao (m)" style={numberInputStyle} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="diameter" {...labelProps('Đường kính phao (m)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.diameter ? 'error' : undefined} help={atMax.diameter ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-                <InputNumber min={0} maxLength={20} placeholder="Nhập Đường kính phao (m)" style={numberInputStyle} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={[24, 0]}>
-            <Col span={12}>
-              <Form.Item name="beaconLight" {...labelProps('Đèn biển')} style={{ marginBottom: spaceFormField }}>
-                <Select placeholder="Chọn Đèn biển" options={BEACON_LIGHT_OPTIONS} allowClear style={selectStyle} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="towerHeight" {...labelProps('Chiều cao tháp đèn')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.towerHeight ? 'error' : undefined} help={atMax.towerHeight ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-                <InputNumber min={0} step={1} precision={0} maxLength={20} placeholder="Nhập Chiều cao tháp đèn" parser={parseInteger} style={numberInputStyle} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={[24, 0]}>
-            <Col span={12}>
-              <Form.Item
-                name="lightHeight"
-                {...labelProps('Chiều cao tâm sáng (hải đồ)')}
-                required
-                style={{ marginBottom: spaceFormField }}
-                rules={[{ required: true, message: 'Chiều cao tâm sáng là bắt buộc' }]}
-                validateStatus={atMax.lightHeight ? 'error' : undefined} help={atMax.lightHeight ? 'Đã đạt tối đa 20 ký tự' : undefined}
-              >
-                <InputNumber min={0.01} step={1} precision={0} maxLength={20} placeholder="Nhập Chiều cao tâm sáng (hải đồ)" parser={parseInteger} style={numberInputStyle} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="lightModel" {...labelProps('Chủng loại đèn (Thiết bị báo hiệu)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.lightModel ? 'error' : undefined} help={atMax.lightModel ? 'Đã đạt tối đa 100 ký tự' : undefined}>
-                <Input placeholder="Nhập Chủng loại đèn (Thiết bị báo hiệu)" maxLength={100} showCount style={inputStyle} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={[24, 0]}>
-            <Col span={12}>
-              <Form.Item name="towerColor" {...labelProps('Màu sắc bên ngoài của tháp đèn')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.towerColor ? 'error' : undefined} help={atMax.towerColor ? 'Đã đạt tối đa 500 ký tự' : undefined}>
-                <Input placeholder="Nhập Màu sắc bên ngoài của tháp đèn" maxLength={500} showCount style={inputStyle} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="powerSupply" {...labelProps('Nguồn cung cấp năng lượng cho đèn')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.powerSupply ? 'error' : undefined} help={atMax.powerSupply ? 'Đã đạt tối đa 500 ký tự' : undefined}>
-                <Input placeholder="Nhập Nguồn cung cấp năng lượng cho đèn" maxLength={500} showCount style={inputStyle} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={[24, 0]}>
-            <Col span={12}>
-              <Form.Item
-                name="range"
-                {...labelProps('Phạm vi chiếu sáng')}
-                required
-                style={{ marginBottom: spaceFormField }}
-                rules={[{ required: true, message: 'Phạm vi chiếu sáng là bắt buộc' }]}
-                tooltip="Phạm vi chiếu sáng (hải lý)"
-                validateStatus={atMax.range ? 'error' : undefined} help={atMax.range ? 'Đã đạt tối đa 20 ký tự' : undefined}
-              >
-                <InputNumber min={0.01} step={1} precision={0} maxLength={20} placeholder="Nhập Phạm vi chiếu sáng" parser={parseInteger} style={numberInputStyle} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="commissionedDate" {...labelProps('Thời điểm đưa vào sử dụng')} style={{ marginBottom: spaceFormField }}>
-                <DatePicker placeholder="Chọn Thời điểm đưa vào sử dụng" format="DD/MM/YYYY" popupClassName="buoy-date-picker" style={datePickerStyle} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={[24, 0]}>
-            <Col span={12}>
-              <Form.Item name="lastRepairDate" {...labelProps('Thời điểm sửa chữa gần nhất')} style={{ marginBottom: spaceFormField }}>
-                <DatePicker placeholder="Chọn Thời điểm sửa chữa gần nhất" format="DD/MM/YYYY" popupClassName="buoy-date-picker" style={datePickerStyle} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
               <Form.Item
                 name="condition"
                 {...labelProps('Tình trạng')}
@@ -436,33 +341,137 @@ export default function BuoyFormContent({
               </Form.Item>
             </Col>
           </Row>
-        </div>
-      ),
-    },
-    {
-      key: 'light',
-      label: 'Đặc tính ánh sáng',
-      children: (
-        <div style={drawerTabContentStyle}>
-          <Row gutter={[24, 0]}>
-            <Col span={12}>
-              <Form.Item name="lightColor" {...labelProps('Màu sắc')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.lightColor ? 'error' : undefined} help={atMax.lightColor ? 'Đã đạt tối đa 50 ký tự' : undefined}>
-                <Input placeholder="Nhập Màu sắc" maxLength={50} showCount style={inputStyle} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="flashType" {...labelProps('Kiểu chớp')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.flashType ? 'error' : undefined} help={atMax.flashType ? 'Đã đạt tối đa 50 ký tự' : undefined}>
-                <Input placeholder="Nhập Kiểu chớp" maxLength={50} showCount style={inputStyle} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={[24, 0]}>
-            <Col span={12}>
-              <Form.Item name="period" {...labelProps('Chu kỳ')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.period ? 'error' : undefined} help={atMax.period ? 'Đã đạt tối đa 50 ký tự' : undefined}>
-                <Input placeholder="Nhập Chu kỳ" maxLength={50} showCount style={inputStyle} />
-              </Form.Item>
-            </Col>
-          </Row>
+          {/* ── Toggle: Chỉ số tổng hợp (mặc định MỞ) ── */}
+          <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setSummaryOpen(!summaryOpen)}>
+            <span style={{ color: summaryOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{summaryOpen ? '▼' : '▶'} Chỉ số tổng hợp</span>
+          </button>
+          {summaryOpen && (<div style={{ marginTop: spaceFormField }}>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item name="shape" {...labelProps('Hình dạng')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.shape ? 'error' : undefined} help={atMax.shape ? 'Đã đạt tối đa 500 ký tự' : undefined}>
+                  <Input placeholder="Nhập Hình dạng" maxLength={500} showCount style={inputStyle} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="structure" {...labelProps('Kết cấu')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.structure ? 'error' : undefined} help={atMax.structure ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
+                  <Input placeholder="Nhập Kết cấu" maxLength={2000} showCount style={inputStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item name="area" {...labelProps('Diện tích (m2)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.area ? 'error' : undefined} help={atMax.area ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+                  <InputNumber min={0} maxLength={20} placeholder="Nhập Diện tích (m2)" style={numberInputStyle} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="bodyHeight" {...labelProps('Chiều cao thân phao (m)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.bodyHeight ? 'error' : undefined} help={atMax.bodyHeight ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+                  <InputNumber min={0} maxLength={20} placeholder="Nhập Chiều cao thân phao (m)" style={numberInputStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item name="diameter" {...labelProps('Đường kính phao (m)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.diameter ? 'error' : undefined} help={atMax.diameter ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+                  <InputNumber min={0} maxLength={20} placeholder="Nhập Đường kính phao (m)" style={numberInputStyle} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="beaconLight" {...labelProps('Đèn biển')} style={{ marginBottom: spaceFormField }}>
+                  <Select placeholder="Chọn Đèn biển" options={BEACON_LIGHT_OPTIONS} allowClear style={selectStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item name="towerHeight" {...labelProps('Chiều cao tháp đèn')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.towerHeight ? 'error' : undefined} help={atMax.towerHeight ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+                  <InputNumber min={0} step={1} precision={0} maxLength={20} placeholder="Nhập Chiều cao tháp đèn" parser={parseInteger} style={numberInputStyle} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="lightHeight"
+                  {...labelProps('Chiều cao tâm sáng (hải đồ)')}
+                  required
+                  style={{ marginBottom: spaceFormField }}
+                  rules={[{ required: true, message: 'Chiều cao tâm sáng là bắt buộc' }]}
+                  validateStatus={atMax.lightHeight ? 'error' : undefined} help={atMax.lightHeight ? 'Đã đạt tối đa 20 ký tự' : undefined}
+                >
+                  <InputNumber min={0.01} step={1} precision={0} maxLength={20} placeholder="Nhập Chiều cao tâm sáng (hải đồ)" parser={parseInteger} style={numberInputStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item name="lightModel" {...labelProps('Chủng loại đèn (Thiết bị báo hiệu)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.lightModel ? 'error' : undefined} help={atMax.lightModel ? 'Đã đạt tối đa 100 ký tự' : undefined}>
+                  <Input placeholder="Nhập Chủng loại đèn (Thiết bị báo hiệu)" maxLength={100} showCount style={inputStyle} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="towerColor" {...labelProps('Màu sắc bên ngoài của tháp đèn')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.towerColor ? 'error' : undefined} help={atMax.towerColor ? 'Đã đạt tối đa 500 ký tự' : undefined}>
+                  <Input placeholder="Nhập Màu sắc bên ngoài của tháp đèn" maxLength={500} showCount style={inputStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item name="powerSupply" {...labelProps('Nguồn cung cấp năng lượng cho đèn')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.powerSupply ? 'error' : undefined} help={atMax.powerSupply ? 'Đã đạt tối đa 500 ký tự' : undefined}>
+                  <Input placeholder="Nhập Nguồn cung cấp năng lượng cho đèn" maxLength={500} showCount style={inputStyle} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="range"
+                  {...labelProps('Phạm vi chiếu sáng')}
+                  required
+                  style={{ marginBottom: spaceFormField }}
+                  rules={[{ required: true, message: 'Phạm vi chiếu sáng là bắt buộc' }]}
+                  tooltip="Phạm vi chiếu sáng (hải lý)"
+                  validateStatus={atMax.range ? 'error' : undefined} help={atMax.range ? 'Đã đạt tối đa 20 ký tự' : undefined}
+                >
+                  <InputNumber min={0.01} step={1} precision={0} maxLength={20} placeholder="Nhập Phạm vi chiếu sáng" parser={parseInteger} style={numberInputStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+          </div>)}
+          {/* ── Toggle: Thời điểm (mặc định MỞ) — 'Thời điểm sửa chữa gần nhất' chỉ hiển thị ở chi tiết ── */}
+          <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setTimingOpen(!timingOpen)}>
+            <span style={{ color: timingOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{timingOpen ? '▼' : '▶'} Thời điểm</span>
+          </button>
+          {timingOpen && (<div style={{ marginTop: spaceFormField }}>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item name="commissionedDate" {...labelProps('Thời điểm đưa vào sử dụng')} style={{ marginBottom: spaceFormField }}>
+                  <DatePicker placeholder="Chọn Thời điểm đưa vào sử dụng" format="DD/MM/YYYY" popupClassName="buoy-date-picker" style={datePickerStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+          </div>)}
+          {/* ── Toggle: Đặc tính ánh sáng (mặc định MỞ) — gom từ tab riêng ── */}
+          <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setLightOpen(!lightOpen)}>
+            <span style={{ color: lightOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{lightOpen ? '▼' : '▶'} Đặc tính ánh sáng</span>
+          </button>
+          {lightOpen && (<div style={{ marginTop: spaceFormField }}>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item name="lightColor" {...labelProps('Màu sắc')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.lightColor ? 'error' : undefined} help={atMax.lightColor ? 'Đã đạt tối đa 50 ký tự' : undefined}>
+                  <Input placeholder="Nhập Màu sắc" maxLength={50} showCount style={inputStyle} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="flashType" {...labelProps('Kiểu chớp')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.flashType ? 'error' : undefined} help={atMax.flashType ? 'Đã đạt tối đa 50 ký tự' : undefined}>
+                  <Input placeholder="Nhập Kiểu chớp" maxLength={50} showCount style={inputStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item name="period" {...labelProps('Chu kỳ')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.period ? 'error' : undefined} help={atMax.period ? 'Đã đạt tối đa 50 ký tự' : undefined}>
+                  <Input placeholder="Nhập Chu kỳ" maxLength={50} showCount style={inputStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+          </div>)}
         </div>
       ),
     },
