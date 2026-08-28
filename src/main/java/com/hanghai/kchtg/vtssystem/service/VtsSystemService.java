@@ -931,6 +931,33 @@ public class VtsSystemService {
             }).collect(Collectors.toList()));
         }
 
+        // Attachment smart delta diff
+        List<String> addedAtts = request.getAddedAttachmentNames();
+        List<String> removedAtts = request.getRemovedAttachmentNames();
+        boolean hasAttachmentChanges = (addedAtts != null && !addedAtts.isEmpty()) || (removedAtts != null && !removedAtts.isEmpty());
+        if (hasAttachmentChanges) {
+            List<String> prevAttParts = new ArrayList<>();
+            if (removedAtts != null) {
+                for (String r : removedAtts) {
+                    if (r != null && !r.trim().isEmpty()) {
+                        prevAttParts.add("Xóa " + r.trim());
+                    }
+                }
+            }
+            List<String> newAttParts = new ArrayList<>();
+            if (addedAtts != null) {
+                for (String a : addedAtts) {
+                    if (a != null && !a.trim().isEmpty()) {
+                        newAttParts.add("Thêm " + a.trim());
+                    }
+                }
+            }
+            String prevAttStr = prevAttParts.isEmpty() ? "—" : String.join(", ", prevAttParts);
+            String newAttStr = newAttParts.isEmpty() ? "—" : String.join(", ", newAttParts);
+            previousValues.put("attachments", prevAttStr);
+            customNewValues.put("attachments", newAttStr);
+        }
+
         if (request.getCoordinates() != null) {
             if (request.getCoordinates().trim().isEmpty()) {
                 if (entity.getSpatialId() != null) {
@@ -1189,21 +1216,6 @@ public class VtsSystemService {
         entity.setUpdatedBy(effectiveUserId);
         repository.save(entity);
 
-        // Ghi lịch sử khi hồ sơ đã được duyệt chính thức
-        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2) {
-            historyRepository.save(InfrastructureHistory.builder()
-                    .refId(vtsSystemId)
-                    .refType(InfrastructureType.VTS_SYSTEM)
-                    .approvalLevel(ApprovalLevel.LEVEL_2)
-                    .status(InfrastructureHistoryStatus.UPDATED)
-                    .approvedBy(effectiveUserId)
-                    .reason("Tải lên tài liệu đính kèm: " + originalName)
-                    .changedField("Tài liệu đính kèm")
-                    .previousValue(null)
-                    .newValue("Thêm " + originalName)
-                    .build());
-        }
-
         return toAttachmentResponse(saved);
     }
 
@@ -1224,21 +1236,6 @@ public class VtsSystemService {
         UUID effectiveUserId = SecurityUtils.getCurrentUserId();
         entity.setUpdatedBy(effectiveUserId);
         repository.save(entity);
-
-        // Ghi lịch sử khi hồ sơ đã được duyệt chính thức
-        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2) {
-            historyRepository.save(InfrastructureHistory.builder()
-                    .refId(vtsSystemId)
-                    .refType(InfrastructureType.VTS_SYSTEM)
-                    .approvalLevel(ApprovalLevel.LEVEL_2)
-                    .status(InfrastructureHistoryStatus.UPDATED)
-                    .approvedBy(effectiveUserId)
-                    .reason("Xóa tài liệu đính kèm: " + attachment.getFileName())
-                    .changedField("Tài liệu đính kèm")
-                    .previousValue("Xóa " + attachment.getFileName())
-                    .newValue(null)
-                    .build());
-        }
     }
 
     public InfrastructureAttachment getAttachment(UUID vtsSystemId, UUID attachmentId) {
@@ -1602,6 +1599,8 @@ public class VtsSystemService {
             return "Trạng thái phê duyệt";
         if (VtsSystem.Fields.zones.equals(field) || "zones".equals(field))
             return "Vùng VTS";
+        if ("attachments".equals(field) || "attachmentList".equals(field) || "Tài liệu đính kèm".equals(field))
+            return "Tài liệu đính kèm";
         if (EntityFields.DELETED_AT.equals(field))
             return "Thời điểm xóa";
         if (VtsSystemUpdateRequest.Fields.coordinates.equals(field))

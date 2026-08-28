@@ -121,6 +121,8 @@ export interface CreateVtsSystemRequest {
   zones?: VtsZoneDto[];
   geometryType?: 'POINT' | 'LINE' | 'POLYGON' | string;
   coordinates?: string;
+  addedAttachmentNames?: string[];
+  removedAttachmentNames?: string[];
 }
 
 export interface UpdateVtsSystemRequest extends CreateVtsSystemRequest {}

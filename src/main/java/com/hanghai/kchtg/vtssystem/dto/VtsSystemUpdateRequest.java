@@ -39,4 +39,7 @@ public class VtsSystemUpdateRequest {
 
     private GisGeometryType geometryType;
     private String coordinates;
+
+    private List<String> addedAttachmentNames;
+    private List<String> removedAttachmentNames;
 }

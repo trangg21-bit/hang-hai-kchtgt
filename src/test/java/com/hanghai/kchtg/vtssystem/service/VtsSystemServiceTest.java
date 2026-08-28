@@ -905,4 +905,44 @@ class VtsSystemServiceTest {
         assertTrue(savedHistory.getNewValue().contains("Thêm Vùng Mới Thêm (VZ-NEW)"));
         assertTrue(savedHistory.getNewValue().contains("Mới: Vùng Mới (VZ-MOD)"));
     }
+
+    @Test
+    void testUpdate_CombinedFieldsZonesAndAttachments_SingleHistoryRecord() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        entity.setSystemName("VTS Cũ");
+        entity.setZones(new java.util.ArrayList<>());
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        VtsZoneDto newZone = VtsZoneDto.builder().code("VZ-NEW").name("Vùng Mới").conditionStatus(ConditionStatus.OPERATIONAL).build();
+
+        VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
+                .systemName("VTS Mới")
+                .zones(List.of(newZone))
+                .addedAttachmentNames(List.of("doc_moi.pdf"))
+                .removedAttachmentNames(List.of("doc_cu.xlsx"))
+                .build();
+
+        VtsSystemResponse response = service.update(TEST_ID, updateReq, UUID.randomUUID());
+        assertNotNull(response);
+
+        org.mockito.ArgumentCaptor<InfrastructureHistory> historyCaptor = org.mockito.ArgumentCaptor.forClass(InfrastructureHistory.class);
+        verify(historyRepository, times(1)).save(historyCaptor.capture());
+        InfrastructureHistory savedHistory = historyCaptor.getValue();
+
+        assertEquals(InfrastructureType.VTS_SYSTEM, savedHistory.getRefType());
+        // Verify changedField contains all 3 areas
+        assertTrue(savedHistory.getChangedField().contains("Tên hệ thống"));
+        assertTrue(savedHistory.getChangedField().contains("Vùng VTS"));
+        assertTrue(savedHistory.getChangedField().contains("Tài liệu đính kèm"));
+
+        // Verify previousValue contains old field, old zone, and removed attachment
+        assertTrue(savedHistory.getPreviousValue().contains("VTS Cũ"));
+        assertTrue(savedHistory.getPreviousValue().contains("Xóa doc_cu.xlsx"));
+
+        // Verify newValue contains new field, new zone, and added attachment
+        assertTrue(savedHistory.getNewValue().contains("VTS Mới"));
+        assertTrue(savedHistory.getNewValue().contains("Thêm Vùng Mới (VZ-NEW)"));
+        assertTrue(savedHistory.getNewValue().contains("Thêm doc_moi.pdf"));
+    }
 }

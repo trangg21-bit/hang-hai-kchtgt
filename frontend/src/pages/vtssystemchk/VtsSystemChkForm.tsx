@@ -224,6 +224,7 @@ export default function VtsSystemChkForm({
   const [zoneList, setZoneList] = useState<any[]>([]);
   const [attachmentList, setAttachmentList] = useState<any[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [pendingDeletedAttachments, setPendingDeletedAttachments] = useState<{ id: string; fileName: string }[]>([]);
   const [approvalSectionOpen, setApprovalSectionOpen] = useState(true);
   const [zonesLoaded, setZonesLoaded] = useState(false);
   const [filesLoaded, setFilesLoaded] = useState(false);
@@ -251,36 +252,17 @@ export default function VtsSystemChkForm({
       return false;
     }
 
-    if (isCreateMode) {
-      (file as any)._tempId = generateTempId('temp');
-      setPendingFiles((prev) => [...prev, file]);
-      const newAttachment = {
-        id: (file as any)._tempId,
-        fileName: file.name,
-        fileSize: file.size,
-        uploadedByName: currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
-        uploadedDate: new Date().toISOString(),
-      };
-      setAttachmentList((prev) => [...prev, newAttachment]);
-      toast.success(`Đã thêm tệp ${file.name}`);
-      return false;
-    }
-
-    if (editId) {
-      try {
-        const uploaded = await vtsSystemCRUD.uploadAttachment(editId, file);
-        if (uploaded && uploaded.id) {
-          setAttachmentList((prev) => [uploaded, ...prev.filter((a) => a.id !== uploaded.id)]);
-        } else {
-          const refreshed = await vtsSystemCRUD.getAttachments(editId);
-          setAttachmentList(refreshed || []);
-        }
-        setFilesLoaded(true);
-        toast.success(`Đã tải lên tệp ${file.name}`);
-      } catch (err: any) {
-        toast.error(err?.response?.data?.message || err?.message || 'Lỗi khi tải tệp lên');
-      }
-    }
+    (file as any)._tempId = generateTempId('temp');
+    setPendingFiles((prev) => [...prev, file]);
+    const newAttachment = {
+      id: (file as any)._tempId,
+      fileName: file.name,
+      fileSize: file.size,
+      uploadedByName: currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
+      uploadedDate: new Date().toISOString(),
+    };
+    setAttachmentList((prev) => [...prev, newAttachment]);
+    toast.success(`Đã thêm tệp ${file.name}`);
     return false;
   };
 
@@ -289,21 +271,14 @@ export default function VtsSystemChkForm({
       toast.error('Không có quyền xóa tệp đính kèm');
       return;
     }
-    if (isCreateMode) {
+    const targetAtt = attachmentList.find((a) => a.id === attId);
+    if (String(attId).startsWith('temp-') || pendingFiles.some((f) => (f as any)._tempId === attId)) {
       setPendingFiles((prev) => prev.filter((f) => (f as any)._tempId !== attId && f.name !== attId));
-      setAttachmentList((prev) => prev.filter((a) => a.id !== attId));
-      toast.success('Đã xóa tệp đính kèm');
-      return;
+    } else if (targetAtt) {
+      setPendingDeletedAttachments((prev) => [...prev, { id: attId, fileName: targetAtt.fileName }]);
     }
-    if (editId) {
-      try {
-        await vtsSystemCRUD.deleteAttachment(editId, attId);
-        setAttachmentList((prev) => prev.filter((a) => a.id !== attId));
-        toast.success('Đã xóa tệp đính kèm');
-      } catch (err: any) {
-        toast.error(err?.response?.data?.message || err?.message || 'Lỗi khi xóa tệp đính kèm');
-      }
-    }
+    setAttachmentList((prev) => prev.filter((a) => a.id !== attId));
+    toast.success('Đã xóa tệp đính kèm');
   };
 
   // Approval Modals
@@ -563,6 +538,8 @@ export default function VtsSystemChkForm({
           name: z.name,
           conditionStatus: z.conditionStatus || z.status || ConditionStatus.OPERATIONAL,
         })),
+        addedAttachmentNames: pendingFiles.map((f) => f.name),
+        removedAttachmentNames: pendingDeletedAttachments.map((a) => a.fileName),
       };
 
       if (isCreateMode) {
@@ -583,6 +560,22 @@ export default function VtsSystemChkForm({
         onSuccess?.();
       } else if (editId) {
         await vtsSystemCRUD.update(editId, payload as UpdateVtsSystemRequest);
+        if (pendingDeletedAttachments.length > 0) {
+          try {
+            await Promise.all(pendingDeletedAttachments.map((a) => vtsSystemCRUD.deleteAttachment(editId, a.id)));
+          } catch (delErr) {
+            console.warn('Failed to delete some attachments on edit', delErr);
+          }
+        }
+        if (pendingFiles.length > 0) {
+          try {
+            await Promise.all(pendingFiles.map((file) => vtsSystemCRUD.uploadAttachment(editId, file)));
+          } catch (uploadErr) {
+            console.warn('Failed to upload some pending files on edit', uploadErr);
+          }
+        }
+        setPendingFiles([]);
+        setPendingDeletedAttachments([]);
         toast.success('Cập nhật thành công');
         onSuccess?.();
       }
