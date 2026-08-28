@@ -71,7 +71,7 @@ import {
 } from '../../themetokenchk';
 import { colors } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import { ThemeTokenProvider, THEME_SCOPE_CLASS } from '../../context/ThemeTokenContext';
 
 export interface NavigationChannelFormProps {
   open?: boolean;
@@ -1102,6 +1102,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
         onCancel={onCancel}
         width={1080}
         footer={null}
+        rootClassName={THEME_SCOPE_CLASS}
         title={
           <span style={{ color: textPrimary, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>
             {isCreateMode ? 'Tạo mới Luồng hàng hải' : isEditMode ? 'Chỉnh sửa Luồng hàng hải' : 'Chi tiết Luồng hàng hải'}
