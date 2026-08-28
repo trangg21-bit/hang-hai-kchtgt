@@ -1,21 +1,24 @@
-// ── BuoyDetailContent — presentational detail body (giống BerthDetailContent) ─
-// 4 Tabs: general (đầy đủ trường form + Collapse 'Thông tin hệ thống') / technical / gis / files.
+// ── BuoyDetailContent — presentational detail body (chuẩn VTS CHK, giống BuoyBerthDetailContent) ─
+// Tabs: general / light / gis / files / operation / maintenance / incident.
 // org/user name mapping comes from the page (orgUnits / userMap props) — no FE fetch.
+// Detail grid dùng class chk-detail-* (CSS trong theme), bảng con dùng DetailTable,
+// GIS modal chế độ XEM (disabled) — chuẩn VTS CHK.
 
 import React, { useState } from 'react';
-import { Table, Tabs, Space, InputNumber } from 'antd';
+import { Tabs, Button, Modal } from 'antd';
 import { FileOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { colors } from '../../theme';
+import { colors } from '../../themetokenchk';
+import DetailTable from '../../components/shared/DetailTable';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { resolveOrgFullPath, type OrgUnitTreeOption } from '../../components/org-unit';
-import Pagination from '../../components/list-view/Pagination';
-import PagedTable from '../../components/list-view/PagedTable';
 import {
-  textPrimary, textSecondary, textTertiary, borderDefault, surfaceCard,
+  textPrimary, textSecondary, textTertiary, surfaceCard,
   actionPrimary, statusOperational, statusAttention, statusCritical,
-  fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
-  spaceSm, spaceXs,
-} from '../../tokens';
+  fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
+  spaceSm, spaceMd, spaceFormField,
+  statusBadgeStyle, outlineButtonStyle, primaryButtonStyle,
+} from '../../themetokenchk';
 import {
   SHAPE_LABEL_MAP,
 } from './schema';
@@ -54,19 +57,31 @@ function formatDateOnly(dateStr: string | null | undefined): string {
 const detailLabelStyle: React.CSSProperties = { color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd };
 
 // Parse tọa độ GPS: ưu tiên WKT (coordinates) — POINT/MULTIPOINT từ form Phao tiêu;
-// fallback sang latitude/longitude (giống BerthDetailContent).
+// fallback sang latitude/longitude (giống BuoyBerthDetailContent).
+// ⚠️ MULTIPOINT regex ĐÚNG: ((?:\([^)]*\),?)+) — bắt đủ N điểm (KHÔNG dùng (?:,[^)]+)* — chỉ bắt 1 điểm)
 const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> => {
   const wkt = record?.coordinates;
   const out: Array<{ lat: number; lng: number }> = [];
   if (wkt && typeof wkt === 'string' && wkt.trim()) {
     try {
-      const mm = wkt.match(/MULTIPOINT\s*\(([^)]+(?:\),[^)]+)*)/);
-      if (mm) mm[1].split('),(').forEach((pt: string) => {
-        const [lng, lat] = pt.replace(/[()]/g, '').trim().split(/\s+/);
-        if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) });
-      });
+      if (wkt.startsWith('LINESTRING(')) {
+        const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/);
+        if (m) m[1].split(',').forEach((p: string) => { const [lng, lat] = p.trim().split(/\s+/); if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) }); });
+      }
+      if (out.length === 0 && wkt.startsWith('POLYGON((')) {
+        const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/);
+        if (m) {
+          const pts = m[1].split(',').map((p: string) => { const [lng, lat] = p.trim().split(/\s+/); return { lng: Number(lng), lat: Number(lat) }; }).filter(c => !isNaN(c.lat));
+          if (pts.length > 1 && pts[0].lng === pts[pts.length - 1].lng) pts.pop();
+          pts.forEach(p => { out.push(p); });
+        }
+      }
       if (out.length === 0) {
-        const pm = wkt.match(/POINT\s*\(([\d.\-]+)\s+([\d.\-]+)\)/);
+        const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/);
+        if (mm) mm[1].split('),(').forEach((pt: string) => { const [lng, lat] = pt.replace(/[()]/g, '').trim().split(/\s+/); if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) }); });
+      }
+      if (out.length === 0) {
+        const pm = wkt.match(/POINT\s*\(([\d.+-]+)\s+([\d.+-]+)\)/);
         if (pm) out.push({ lng: Number(pm[1]), lat: Number(pm[2]) });
       }
     } catch { /* ignore */ }
@@ -84,37 +99,7 @@ const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
   'Dừng khai thác/vận hành': { color: statusCritical, label: 'Dừng khai thác/vận hành' },
 };
 
-// Bảng con trong tab chi tiết: thanh phân trang dùng chung (chuẩn bến/cầu cảng)
-const TAB_PAGE_SIZE = 20;
-function PagedTabTable({ title, dataSource, columns, emptyText }: {
-  title: React.ReactNode;
-  dataSource: any[];
-  columns: React.ReactNode;
-  emptyText: React.ReactNode;
-}) {
-  const [page, setPage] = useState(1);
-  const maxPage = Math.max(1, Math.ceil(dataSource.length / TAB_PAGE_SIZE));
-  const cur = Math.min(page, maxPage);
-  const rows = dataSource
-    .map((row, idx) => ({ ...row, key: row?.key ?? idx, __stt: idx + 1 }))
-    .slice((cur - 1) * TAB_PAGE_SIZE, cur * TAB_PAGE_SIZE);
-  return (
-    <div style={{ paddingTop: 3 }}>
-      <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>{title}</div>
-      <Table className="list-view-table" dataSource={rows} pagination={false} size="middle" bordered
-        style={{ marginLeft: 12, marginRight: 12 }} locale={{ emptyText }}>
-        <Table.Column title="STT" key="stt" dataIndex="__stt" width={60} align="center"
-          render={(v: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{v}</span>}
-          onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-        {columns}
-      </Table>
-      <div style={{ margin: '0 12px' }}>
-        <Pagination total={dataSource.length} current={cur} pageSize={TAB_PAGE_SIZE}
-          pageSizeOptions={[10, 20, 50]} onChange={setPage} />
-      </div>
-    </div>
-  );
-}
+const GEOMETRY_TYPE_LABELS: Record<string, string> = { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' };
 
 export default function BuoyDetailContent({
   selectedRecord,
@@ -128,50 +113,41 @@ export default function BuoyDetailContent({
 }: BuoyDetailContentProps) {
   const r = selectedRecord;
   const [systemOpen, setSystemOpen] = useState(true);
+  const [gisModalOpen, setGisModalOpen] = useState(false);
   const userName = (id: number | string | undefined | null) =>
     id != null ? (userMap.get(String(id)) || String(id)) : '—';
   const provinceName = (id: number | undefined | null) =>
     id != null ? (VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(id))?.label || String(id)) : '—';
   const statusBadge = (() => {
     const b = buoyStatusBadge(r.status || '');
-    return (
-      <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${b.color}15`, color: b.color }}>
-        {b.label}
-      </span>
-    );
+    return <span style={statusBadgeStyle(b.color)}>{b.label}</span>;
   })();
 
-  const detailGrid = (
-    <style>{`.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}.detail-row{display:flex;padding:10px 12px;border-bottom:1px solid ${borderDefault}}.detail-label{width:200px;flex-shrink:0;color:${colors.sidebarBg};font-weight:${fontWeightBold};font-size:${fontSizeMd}px}.detail-label::after{content:':';margin-left:2px}.detail-value{color:${textPrimary};font-size:${fontSizeMd}px;flex:1;overflow-wrap:anywhere}.detail-value .ant-tag{margin-left:-6px!important}.ant-tabs-content-holder{padding-top:0!important}.ant-tabs-tabpane{padding-top:0!important}.ant-tabs-nav{margin-bottom:0!important;padding-left:12px!important}`}</style>
-  );
+  const renderDms = (dd: number, suffix: string) => {
+    const dms = ddToDms(dd);
+    return `${dms.d ?? 0}° ${dms.m ?? 0}' ${dms.s ?? 0}" ${suffix}`;
+  };
 
-  const gridRows = (rows: Array<[string, React.ReactNode]>) => (
-    <div className="detail-grid">
-      {rows.map(([label, value]) => (
-        <div key={String(label)} className="detail-row">
-          <span className="detail-label">{label}</span>
-          <span className="detail-value">{value}</span>
+  const renderDetailRows = (rows: Array<[string, React.ReactNode]>) => (
+    <div className="chk-detail-grid">
+      {rows.map(([label, value], i) => (
+        <div key={i} className="chk-detail-row">
+          <span className="chk-detail-label">{label}</span>
+          <span className="chk-detail-value">{value}</span>
         </div>
       ))}
     </div>
   );
 
-  const emptyBox = (text: string, icon: React.ReactNode) => (
-    <div style={{ padding: '32px 0', textAlign: 'center' }}>
-      <div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}>{icon}</div>
-      <span style={{ color: textTertiary, fontSize: fontSizeLg }}>{text}</span>
-    </div>
-  );
-
   return (
+    <>
     <Tabs defaultActiveKey="general" tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }}
       items={[
         {
           key: 'general', label: 'Thông tin chung',
           children: (
             <div style={{ paddingTop: 3 }}>
-              {detailGrid}
-              <div className="detail-grid">
+              <div className="chk-detail-grid">
                 {[
                   ['Đơn vị quản lý', (() => {
                     const orgPath = resolveOrgFullPath(orgUnits, r.unitId);
@@ -189,7 +165,7 @@ export default function BuoyDetailContent({
                   ['Phân loại', r.classification || '—'],
                   ['Phân loại phao', r.classificationBuoy || '—'],
                   ['Phân loại tiêu', r.classificationMark || '—'],
-                  ['Mã phao tiêu', <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{r.code || '—'}</span>],
+                  ['Mã phao tiêu', <span style={statusBadgeStyle(actionPrimary)}>{r.code || '—'}</span>],
                   ['Tên phao tiêu', <span style={{ fontWeight: fontWeightBold }}>{r.name || '—'}</span>],
                   ['Địa điểm (Tỉnh/Thành Phố)', provinceName(r.provinceId)],
                   ['Địa điểm chi tiết', r.locationDetail || '—'],
@@ -207,20 +183,20 @@ export default function BuoyDetailContent({
                   ['Phạm vi chiếu sáng', r.range != null ? `${r.range} hải lý` : '—'],
                   ['Thời điểm đưa vào sử dụng', formatDateOnly(r.commissionedDate)],
                   ['Thời điểm sửa chữa gần nhất', formatDateOnly(r.lastRepairDate)],
-                  ['Tình trạng', (() => { const s = CONDITION_STYLE[r.condition || ''] || { color: textTertiary, label: r.condition || '—' }; return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>; })()],
+                  ['Tình trạng', (() => { const s = CONDITION_STYLE[r.condition || ''] || { color: textTertiary, label: r.condition || '—' }; return <span style={statusBadgeStyle(s.color)}>{s.label}</span>; })()],
                   ['Trạng thái', statusBadge],
-                ].map(([label, value]) => (
-                  <div key={String(label)} className="detail-row">
-                    <span className="detail-label">{label}</span>
-                    <span className="detail-value">{value}</span>
+                ].map(([label, value], i) => (
+                  <div key={i} className="chk-detail-row">
+                    <span className="chk-detail-label">{label}</span>
+                    <span className="chk-detail-value">{value}</span>
                   </div>
                 ))}
               </div>
-              <div style={{ cursor: 'pointer', marginTop: 10, paddingLeft: 12 }} onClick={() => setSystemOpen(!systemOpen)}>
-                <span style={{ color: systemOpen ? '#1677ff' : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{systemOpen ? '▼' : '▶'} Thông tin hệ thống</span>
-              </div>
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setSystemOpen(!systemOpen)}>
+                <span style={{ color: systemOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{systemOpen ? '▼' : '▶'} Thông tin hệ thống</span>
+              </button>
               {systemOpen && (
-                <div className="detail-grid" style={{ marginTop: 4 }}>
+                <div className="chk-detail-grid" style={{ marginTop: 4 }}>
                   {[
                     ['Người tạo', <span style={{ fontWeight: fontWeightBold }}>{userName(r.createdBy)}</span>],
                     ['Ngày tạo', formatDate(r.createdAt)],
@@ -234,10 +210,10 @@ export default function BuoyDetailContent({
                     ['Ngày phê duyệt cấp Cục', formatDate(r.level2ApprovedDate)],
                     ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.level1ApprovalContent || '—'],
                     ['Nội dung phê duyệt cấp Cục', r.level2ApprovalContent || '—'],
-                  ].map(([label, value]) => (
-                    <div key={String(label)} className="detail-row">
-                      <span className="detail-label">{label}</span>
-                      <span className="detail-value">{value}</span>
+                  ].map(([label, value], i) => (
+                    <div key={i} className="chk-detail-row">
+                      <span className="chk-detail-label">{label}</span>
+                      <span className="chk-detail-value">{value}</span>
                     </div>
                   ))}
                 </div>
@@ -249,8 +225,7 @@ export default function BuoyDetailContent({
           key: 'light', label: 'Đặc tính ánh sáng',
           children: (
             <div style={{ paddingTop: 3 }}>
-              {detailGrid}
-              {gridRows([
+              {renderDetailRows([
                 ['Màu sắc', r.lightColor || r.color || '—'],
                 ['Kiểu chớp', r.flashType || '—'],
                 ['Chu kỳ', r.period || '—'],
@@ -259,43 +234,47 @@ export default function BuoyDetailContent({
           ),
         },
         {
-          key: 'gis', label: 'Thông tin vị trí',
+          key: 'gis', label: `Thông tin vị trí (${parseGisCoordinates(r).length})`,
           children: (
             <div style={{ paddingTop: 3 }}>
-              <div className="detail-grid">
+              <div className="chk-detail-grid">
                 {[
-                  ['Loại đối tượng', { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' }[(r as any).geometryType || ''] || (r as any).geometryType || '—'],
+                  ['Loại đối tượng', GEOMETRY_TYPE_LABELS[(r as any).geometryType || ''] || (r as any).geometryType || '—'],
                   ['Biểu tượng bản đồ', (() => { const symId = r.mapSymbolId || ''; const symName = symbolMap.get(symId) || symId || '—'; const symImg = symbolImageMap.get(symId); return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{symImg ? <img src={symImg} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}{symName}</span>; })(),],
                   ['Hệ quy chiếu', r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : r.coordinateSystem || '—'],
                   ['Quy tắc hiển thị', ((r as any).geometryType || (r as any).coordinates || r.latitude != null || r.longitude != null) ? 'Độ, phút, giây (DMS)' : '—'],
                 ].map(([label, value], i) => (
-                  <div key={i} className="detail-row">
-                    <span className="detail-label">{label}</span>
-                    <span className="detail-value">{value}</span>
+                  <div key={i} className="chk-detail-row">
+                    <span className="chk-detail-label">{label}</span>
+                    <span className="chk-detail-value">{value}</span>
                   </div>
                 ))}
               </div>
-              <div style={{ marginTop: spaceSm, padding: '0 12px' }}>
-                <span style={detailLabelStyle}>Tọa độ GPS</span>
+              <div style={{ marginTop: spaceMd }}>
+                <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+                  <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
+                    Tọa độ GPS ({parseGisCoordinates(r).length})
+                  </span>
+                  <Button
+                    icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+                    onClick={() => setGisModalOpen(true)}
+                    style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  >
+                    Xem vị trí trên bản đồ
+                  </Button>
+                </div>
                 {(() => {
                   const pts = parseGisCoordinates(r);
                   return (
-                    <PagedTable dataSource={pts.map((p) => ({ ...p }))}
-                      emptyText={<div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><EnvironmentOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tọa độ</span></div>}
-                    >
-                      <Table.Column title="Vĩ độ (N)" key="lat" align="center"
-                        render={(_: any, rec: any) => {
-                          const dms = ddToDms(rec.lat);
-                          return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly tabIndex={-1} style={{ flex: 1.2, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
-                        }}
-                        onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                      <Table.Column title="Kinh độ (E)" key="lng" align="center"
-                        render={(_: any, rec: any) => {
-                          const dms = ddToDms(rec.lng);
-                          return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly tabIndex={-1} style={{ flex: 1.2, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
-                        }}
-                        onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                    </PagedTable>
+                    <DetailTable
+                      dataSource={pts.map((p) => ({ ...p }))}
+                      emptyText="Chưa có tọa độ GPS nào"
+                      columns={[
+                        { title: 'STT', width: 50 },
+                        { title: 'Vĩ độ (Latitude - N)', key: 'lat', render: (_v: any, rec: any) => renderDms(rec.lat, 'N') },
+                        { title: 'Kinh độ (Longitude - E)', key: 'lng', render: (_v: any, rec: any) => renderDms(rec.lng, 'E') },
+                      ]}
+                    />
                   );
                 })()}
               </div>
@@ -303,116 +282,140 @@ export default function BuoyDetailContent({
           ),
         },
         {
-          key: 'files', label: 'File đính kèm',
+          key: 'files', label: `File đính kèm (${detailFiles.length})`,
           children: (
             <div style={{ paddingTop: 3 }}>
               <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
                 <span style={detailLabelStyle}>File đính kèm</span>
               </div>
-              <PagedTable dataSource={detailFiles.map((f) => ({ ...f }))}
-                emptyText={emptyBox('Không có tài liệu đính kèm', <FileOutlined />)}
-              >
-                <Table.Column title="Tên file" key="name" dataIndex="fileName" align="center"
-                  render={(name: string) => <div style={{ textAlign: 'left', fontSize: fontSizeMd, color: textPrimary }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}</div>}
-                  onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-              </PagedTable>
+              <DetailTable
+                dataSource={detailFiles.map((f) => ({ ...f }))}
+                emptyText="Chưa có tài liệu đính kèm"
+                columns={[
+                  { title: 'STT', width: 50 },
+                  { title: 'Tên tài liệu', dataIndex: 'fileName', key: 'fileName', render: (v: string) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{v || '—'}</span> },
+                  { title: 'Dung lượng', dataIndex: 'fileSize', key: 'fileSize', width: 120, align: 'right' as const, render: (v: number) => v ? (v > 1024 * 1024 ? `${(v / (1024 * 1024)).toFixed(2)} MB` : `${(v / 1024).toFixed(1)} KB`) : '—' },
+                  { title: 'Người tải lên', dataIndex: 'uploadedBy', key: 'uploadedBy', width: 180, render: (v: string) => userMap.get(v) || v || '—' },
+                  { title: 'Ngày tải lên', dataIndex: 'uploadedAt', key: 'uploadedAt', width: 135, align: 'center' as const, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—' },
+                ]}
+              />
             </div>
           ),
         },
         {
           key: 'operation', label: 'Thông tin vận hành khai thác',
           children: (
-            <PagedTabTable
-              title={<span style={detailLabelStyle}>Thông tin vận hành khai thác</span>}
-              dataSource={(r.operationPlanCode || r.operationPlanName || r.operationStartDate || r.operationEndDate) ? [{ key: 'row', operationPlanCode: r.operationPlanCode || '—', operationPlanName: r.operationPlanName || '—', operationStartDate: r.operationStartDate || '—', operationEndDate: r.operationEndDate || '—' }] : []}
-              emptyText={(
-                <div style={{ padding: '32px 0', textAlign: 'center' }}>
-                  <div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div>
-                  <span style={{ color: textTertiary, fontSize: fontSizeLg }}>Chưa có dữ liệu</span>
-                </div>
-              )}
-              columns={(
-                <>
-                  <Table.Column title="Mã kế hoạch" key="operationPlanCode" dataIndex="operationPlanCode"
-                    render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Tên kế hoạch" key="operationPlanName" dataIndex="operationPlanName"
-                    render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Ngày bắt đầu" key="operationStartDate" dataIndex="operationStartDate"
-                    render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Ngày kết thúc" key="operationEndDate" dataIndex="operationEndDate"
-                    render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                </>
-              )}
-            />
+            <div style={{ paddingTop: 3 }}>
+              <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách vận hành khai thác</span>
+              <DetailTable
+                dataSource={(r.operationPlanCode || r.operationPlanName || r.operationStartDate || r.operationEndDate) ? [{ key: 'row', operationPlanCode: r.operationPlanCode || '—', operationPlanName: r.operationPlanName || '—', operationStartDate: r.operationStartDate || '—', operationEndDate: r.operationEndDate || '—' }] : []}
+                emptyText="Chưa có dữ liệu"
+                rowKey={(rec: any) => rec.key || rec.operationPlanCode || 'row'}
+                columns={[
+                  { title: 'STT', width: 50 },
+                  { title: 'Mã kế hoạch', dataIndex: 'operationPlanCode', key: 'operationPlanCode', render: (v: string) => v || '—' },
+                  { title: 'Tên kế hoạch', dataIndex: 'operationPlanName', key: 'operationPlanName', render: (v: string) => v || '—' },
+                  { title: 'Ngày bắt đầu', dataIndex: 'operationStartDate', key: 'operationStartDate', width: 150, align: 'center' as const, render: (v: string) => v || '—' },
+                  { title: 'Ngày kết thúc', dataIndex: 'operationEndDate', key: 'operationEndDate', width: 150, align: 'center' as const, render: (v: string) => v || '—' },
+                ]}
+              />
+            </div>
           ),
         },
         {
           key: 'maintenance', label: 'Thông tin bảo trì',
           children: (
-            <PagedTabTable
-              title={<span style={detailLabelStyle}>Thông tin bảo trì</span>}
-              dataSource={(r.maintenancePlanCode || r.maintenancePlanName || r.maintenanceStartTime || r.maintenanceEndTime) ? [{ key: 'row', maintenancePlanCode: r.maintenancePlanCode || '—', maintenancePlanName: r.maintenancePlanName || '—', maintenanceStartTime: r.maintenanceStartTime || '—', maintenanceEndTime: r.maintenanceEndTime || '—' }] : []}
-              emptyText={(
-                <div style={{ padding: '32px 0', textAlign: 'center' }}>
-                  <div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div>
-                  <span style={{ color: textTertiary, fontSize: fontSizeLg }}>Chưa có dữ liệu</span>
-                </div>
-              )}
-              columns={(
-                <>
-                  <Table.Column title="Mã kế hoạch" key="maintenancePlanCode" dataIndex="maintenancePlanCode"
-                    render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Tên kế hoạch" key="maintenancePlanName" dataIndex="maintenancePlanName"
-                    render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Thời gian bắt đầu" key="maintenanceStartTime" dataIndex="maintenanceStartTime"
-                    render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Thời gian kết thúc" key="maintenanceEndTime" dataIndex="maintenanceEndTime"
-                    render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                </>
-              )}
-            />
+            <div style={{ paddingTop: 3 }}>
+              <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin bảo trì</span>
+              <DetailTable
+                dataSource={(r.maintenancePlanCode || r.maintenancePlanName || r.maintenanceStartTime || r.maintenanceEndTime) ? [{ key: 'row', maintenancePlanCode: r.maintenancePlanCode || '—', maintenancePlanName: r.maintenancePlanName || '—', maintenanceStartTime: r.maintenanceStartTime || '—', maintenanceEndTime: r.maintenanceEndTime || '—' }] : []}
+                emptyText="Chưa có dữ liệu"
+                rowKey={(rec: any) => rec.key || rec.maintenancePlanCode || 'row'}
+                columns={[
+                  { title: 'STT', width: 50 },
+                  { title: 'Mã kế hoạch', dataIndex: 'maintenancePlanCode', key: 'maintenancePlanCode', render: (v: string) => v || '—' },
+                  { title: 'Tên kế hoạch', dataIndex: 'maintenancePlanName', key: 'maintenancePlanName', render: (v: string) => v || '—' },
+                  { title: 'Thời gian bắt đầu', dataIndex: 'maintenanceStartTime', key: 'maintenanceStartTime', width: 150, align: 'center' as const, render: (v: string) => v || '—' },
+                  { title: 'Thời gian kết thúc', dataIndex: 'maintenanceEndTime', key: 'maintenanceEndTime', width: 150, align: 'center' as const, render: (v: string) => v || '—' },
+                ]}
+              />
+            </div>
           ),
         },
         {
           key: 'incident', label: 'Thông tin sự cố',
           children: (
-            <PagedTabTable
-              title={<span style={detailLabelStyle}>Thông tin sự cố</span>}
-              dataSource={(r.incidentCode || r.incidentType || r.incidentLocation || r.incidentTime) ? [{ key: 'row', incidentCode: r.incidentCode || '—', incidentType: r.incidentType || '—', incidentLocation: r.incidentLocation || '—', incidentTime: r.incidentTime || '—' }] : []}
-              emptyText={(
-                <div style={{ padding: '32px 0', textAlign: 'center' }}>
-                  <div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div>
-                  <span style={{ color: textTertiary, fontSize: fontSizeLg }}>Chưa có dữ liệu</span>
-                </div>
-              )}
-              columns={(
-                <>
-                  <Table.Column title="Mã sự cố" key="incidentCode" dataIndex="incidentCode"
-                    render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Loại sự cố" key="incidentType" dataIndex="incidentType"
-                    render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Địa điểm" key="incidentLocation" dataIndex="incidentLocation"
-                    render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Thời gian" key="incidentTime" dataIndex="incidentTime"
-                    render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                </>
-              )}
-            />
+            <div style={{ paddingTop: 3 }}>
+              <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin sự cố</span>
+              <DetailTable
+                dataSource={(r.incidentCode || r.incidentType || r.incidentLocation || r.incidentTime) ? [{ key: 'row', incidentCode: r.incidentCode || '—', incidentType: r.incidentType || '—', incidentLocation: r.incidentLocation || '—', incidentTime: r.incidentTime || '—' }] : []}
+                emptyText="Chưa có dữ liệu"
+                rowKey={(rec: any) => rec.key || rec.incidentCode || 'row'}
+                columns={[
+                  { title: 'STT', width: 50 },
+                  { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'incidentCode', render: (v: string) => v || '—' },
+                  { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'incidentType', render: (v: string) => v || '—' },
+                  { title: 'Địa điểm', dataIndex: 'incidentLocation', key: 'incidentLocation', render: (v: string) => v || '—' },
+                  { title: 'Thời gian', dataIndex: 'incidentTime', key: 'incidentTime', width: 150, align: 'center' as const, render: (v: string) => v || '—' },
+                ]}
+              />
+            </div>
           ),
         },
       ]}
     />
+
+    {/* GIS Location Selector Modal — xem vị trí trên bản đồ chuyên dụng (chuẩn VTS CHK, chế độ disabled) */}
+    <Modal
+      title={
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <EnvironmentOutlined style={{ color: actionPrimary }} />
+          <span style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: fontSizeLg }}>
+            Xem vị trí trên bản đồ chuyên dụng
+          </span>
+        </div>
+      }
+      open={gisModalOpen}
+      onCancel={() => setGisModalOpen(false)}
+      destroyOnClose
+      width="94vw"
+      style={{ top: 20, maxWidth: '1400px' }}
+      footer={[
+        <Button key="close" type="primary" onClick={() => setGisModalOpen(false)} style={{ ...primaryButtonStyle, height: 36 }}>
+          Đóng
+        </Button>,
+      ]}
+    >
+      <div style={{ padding: '8px 0' }}>
+        <GisLocationSelector
+          inline={true}
+          defaultGeometryType="POINT"
+          disabled
+          height={520}
+          value={(() => {
+            const pts = parseGisCoordinates(r);
+            if (pts.length > 0) {
+              const rawWkt = (r as any).coordinates || '';
+              let geom: 'POINT' | 'LINE' | 'POLYGON' = 'POINT';
+              let wkt = '';
+              if (rawWkt.startsWith('LINESTRING')) {
+                geom = 'LINE';
+                wkt = `LINESTRING(${pts.map(p => `${p.lng} ${p.lat}`).join(', ')})`;
+              } else if (rawWkt.startsWith('POLYGON')) {
+                geom = 'POLYGON';
+                wkt = `POLYGON((${pts.map(p => `${p.lng} ${p.lat}`).join(', ')}))`;
+              } else if (pts.length > 1) {
+                wkt = `MULTIPOINT(${pts.map(p => `(${p.lng} ${p.lat})`).join(',')})`;
+              } else {
+                wkt = `POINT(${pts[0].lng} ${pts[0].lat})`;
+              }
+              return { geometryType: geom, coordinates: wkt };
+            }
+            return undefined;
+          })()}
+        />
+      </div>
+    </Modal>
+    </>
   );
 }

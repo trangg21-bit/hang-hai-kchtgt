@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Table } from 'antd';
 import Pagination from './Pagination';
-import { spaceSm, textSecondary, fontSizeMd, fontWeightBold, fontWeightMedium } from '../../tokens';
-import { colors } from '../../theme';
+import { useThemeToken } from '../../context/ThemeTokenContext';
 
 export const PAGED_TABLE_PAGE_SIZE = 20;
 
@@ -30,6 +29,7 @@ export default function PagedTable({
   dataSource, pageSizeOptions = [10, 20, 50], defaultPageSize = PAGED_TABLE_PAGE_SIZE,
   emptyText, errorText, children, tableProps = {}, style,
 }: PagedTableProps) {
+  const { spaceSm, textSecondary, fontSizeMd, fontWeightBold, fontWeightMedium, colors } = useThemeToken();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(defaultPageSize);
   const maxPage = Math.max(1, Math.ceil(dataSource.length / pageSize));

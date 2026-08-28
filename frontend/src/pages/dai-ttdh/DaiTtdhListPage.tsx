@@ -4,12 +4,6 @@ import {
   Drawer, Radio, Space, Form,
 } from 'antd';
 import {
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  EyeOutlined,
   HistoryOutlined,
   ExclamationCircleOutlined,
   SearchOutlined,
@@ -48,6 +42,7 @@ import {
   borderDefault,
   fontSizeMd,
   fontSizeLg,
+  fontSizeSm,
   fontWeightMedium,
   fontWeightBold,
   radiusPill,
@@ -62,8 +57,14 @@ import {
   historyInfoCardStyle, historyAccentBarStyle, historyInfoTitleStyle,
   historyChangeRowStyle, historyCreateRowStyle, historyFieldLabelStyle,
   historyOldValueStyle, historyNewValueStyle, historyArrowStyle,
-} from '../../tokens';
-import { colors } from '../../theme';
+  icons, statusBadgeStyle,
+  cellTitleStyle, cellSubtitleStyle,
+} from '../../themetokenchk';
+import { colors } from '../../themetokenchk';
+import * as themeTokenChk from '../../themetokenchk';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import ApprovalModal from '../../components/shared/ApprovalModal';
 
 // ── Constants ────────────────────────────────────────────────────────
 
@@ -137,6 +138,141 @@ function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, 
   if (fn === 'provinceId') { const m: Record<number,string> = { 1:'Hà Nội', 2:'Hà Giang', 3:'Cao Bằng', 4:'Bắc Kạn', 5:'Lào Cai', 6:'Tuyên Quang', 7:'Lạng Sơn', 8:'Quảng Ninh', 9:'Thái Nguyên', 10:'Yên Bái', 11:'Hà Nam', 12:'Hòa Bình', 13:'Nam Định', 14:'Ninh Bình', 15:'Thanh Hóa', 16:'Nghệ An', 17:'Hà Tĩnh', 18:'Quảng Bình', 19:'Quảng Trị', 20:'Thừa Thiên Huế', 21:'Đà Nẵng', 22:'Quảng Nam', 23:'Quảng Ngãi', 24:'Bình Định', 25:'Phú Yên', 26:'Khánh Hòa', 27:'Ninh Thuận', 28:'Bình Thuận', 29:'Kon Tum', 30:'Gia Lai', 31:'Đắk Lắk', 32:'Đắk Nông', 33:'Lâm Đồng', 34:'TP. Hồ Chí Minh', 35:'Bà Rịa - Vũng Tàu', 36:'Long An', 37:'Tiền Giang', 38:'An Giang', 39:'Bến Tre', 40:'Đồng Tháp', 41:'Vĩnh Long', 42:'Trà Vinh', 43:'Hậu Giang', 44:'Sóc Trăng', 45:'Kiên Giang', 46:'Cần Thơ', 47:'Bạc Liêu', 48:'Cà Mau', 49:'Điện Biên', 50:'Lai Châu', 51:'Sơn La', 52:'Yên Bái', 53:'Hòa Bình', 54:'Thái Bình', 55:'Hải Dương', 56:'Hải Phòng', 57:' Hưng Yên', 58:'Perth', 59:'Đắk Lắk', 60:'An Giang', 61:'Bà Rịa - Vũng Tàu', 62:'Bắc Giang', 63:'Bắc Kạn', 64:'Bắc Ninh', 65:'Bến Tre', 66:'Bình Định', 67:'Bình Dương', 68:'Bình Phước', 69:'Bình Thuận', 70:'Cà Mau', 71:'Cao Bằng', 72:'Đắk Lắk', 73:'Đắk Nông', 74:'Điện Biên', 75:'Đồng Nai', 76:'Đồng Tháp', 77:'Gia Lai', 78:'Hà Giang', 79:'Hà Nam', 80:'Hà Tĩnh', 81:'Hải Dương', 82:'Hậu Giang', 83:'Hòa Bình', 84:'Hưng Yên', 85:'Khánh Hòa', 86:'Kiên Giang', 87:'Kon Tum', 88:'Lai Châu', 89:'Lâm Đồng', 90:'Lạng Sơn', 91:'Lào Cai', 92:'Long An', 93:'Nam Định', 94:'Nghệ An', 95:'Ninh Bình', 96:'Ninh Thuận', 97:'Phú Thọ', 98:'Quảng Nam', 99:'Quảng Ngãi', 100:'Quảng Ninh', 101:'Quảng Trị', 102:'Sóc Trăng', 103:'Sơn La', 104:'Thanh Hóa', 105:'Thái Bình', 106:'Thái Nguyên', 107:'TP. Hồ Chí Minh', 108:'Tiền Giang', 109:'Tây Ninh', 110:'Tin Giang', 111:'Trà Vinh', 112:'Tuyên Quang', 113:'Vĩnh Long', 114:'Vĩnh Phúc', 115:'Yên Bái' }; return m[Number(val)-1] || val; }
   if (fn === 'openingAnnouncementDate' || fn.endsWith('At')) { try { return dayjs(val).format('DD/MM/YYYY HH:mm'); } catch { return val; } }
   return val;
+}
+
+function normalizeHistoryKey(value: string): string {
+  return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+}
+
+function parseHistoryAssignments(value: string | null): Map<string, string> {
+  const result = new Map<string, string>();
+  if (!value) return result;
+  value.split(';').forEach((part) => {
+    const separator = part.indexOf('=');
+    if (separator < 0) return;
+    result.set(normalizeHistoryKey(part.slice(0, separator)), part.slice(separator + 1).trim());
+  });
+  return result;
+}
+
+function normalizedHistoryFields(value: string): string[] {
+  const fields = value.split(/[,;]+/).map((field: string) => field.trim()).filter(Boolean);
+  const hasApprovalStatus = fields.some((field) => {
+    const key = normalizeHistoryKey(field);
+    return key === 'approvalstatus' || key === 'trang thai phe duyet';
+  });
+  if (hasApprovalStatus) {
+    return fields.filter((field) => {
+      const key = normalizeHistoryKey(field);
+      return key !== 'approvedlevel1' && key !== 'approvedlevel2' && key !== 'da phe duyet cap 1' && key !== 'da phe duyet cap 2';
+    });
+  }
+  return fields;
+}
+
+function historyChangeRows(item: any): Array<{ field: string; oldValue: string | null; newValue: string | null }> {
+  const fields = normalizedHistoryFields(String(item.changedField || item.fieldName || item.field || ''));
+  const oldValue = item.previousValue ?? item.oldValue ?? null;
+  const newValue = item.newValue ?? null;
+  const oldAssignments = parseHistoryAssignments(oldValue);
+  const newAssignments = parseHistoryAssignments(newValue);
+  if (fields.length === 0) return [{ field: '', oldValue, newValue }];
+  return fields.map((field, index) => {
+    const displayField = historyFieldName(field);
+    const oldAssigned = oldAssignments.get(normalizeHistoryKey(field)) ?? oldAssignments.get(normalizeHistoryKey(displayField));
+    const newAssigned = newAssignments.get(normalizeHistoryKey(field)) ?? newAssignments.get(normalizeHistoryKey(displayField));
+    const oldParts = oldValue?.split(';').map((part: string) => part.trim()).filter(Boolean) || [];
+    const newParts = newValue?.split(';').map((part: string) => part.trim()).filter(Boolean) || [];
+    return {
+      field,
+      oldValue: oldAssigned ?? (fields.length === 1 ? oldValue : oldParts[index] || null),
+      newValue: newAssigned ?? (fields.length === 1 ? newValue : newParts[index] || null),
+    };
+  });
+}
+
+function renderHistoryValueTag(field: string, val: string | null) {
+  if (val === null || val === undefined || val === '—') {
+    return <span style={{ color: textTertiary }}>—</span>;
+  }
+  const normKey = normalizeHistoryKey(field);
+  const normVal = normalizeHistoryKey(val);
+  if (normKey === 'approvalstatus' || normKey === 'trang thai phe duyet' || normKey.includes('phe duyet') || normKey.includes('trang thai')) {
+    if (normVal === 'da duyet' || normVal === 'da phe duyet' || normVal === 'approved' || normVal === 'approved_level2') {
+      return (<span style={statusBadgeStyle(statusOperational)}>{val}</span>);
+    }
+    if (normVal === 'tu choi' || normVal.includes('rejected') || normVal.includes('tra ve') || normVal.includes('tu choi')) {
+      return (<span style={statusBadgeStyle(statusCritical)}>{val}</span>);
+    }
+    if (normVal === 'cho cuc duyet' || normVal === 'approved_level1' || normVal.includes('cap 1') || normVal.includes('cuc duyet')) {
+      return (<span style={statusBadgeStyle('#0082fb')}>{val}</span>);
+    }
+    if (normVal === 'cho cang vu duyet' || normVal === 'cho phe duyet' || normVal === 'cho duyet' || normVal === 'pending' || normVal === 'pending_approval' || normVal === 'proposed' || normVal.includes('cang vu')) {
+      return (<span style={statusBadgeStyle(statusAttention)}>{val}</span>);
+    }
+    return (<span style={statusBadgeStyle(statusDraft)}>{val}</span>);
+  }
+  if (normKey === 'operationalstatus' || normKey === 'tinh trang' || normKey.includes('tinh trang')) {
+    if (normVal.includes('hoat dong') || normVal.includes('operational')) {
+      return (<span style={statusBadgeStyle(statusOperational)}>{val}</span>);
+    }
+    if (normVal.includes('chua khai thac') || normVal.includes('not yet') || normVal.includes('chua')) {
+      return (<span style={statusBadgeStyle(statusAttention)}>{val}</span>);
+    }
+    if (normVal.includes('dung') || normVal.includes('suspended') || normVal.includes('ngung')) {
+      return (<span style={statusBadgeStyle(statusCritical)}>{val}</span>);
+    }
+  }
+  return <span title={val} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere' }}>{val}</span>;
+}
+
+/** Badge thao tác cho lịch sử (chuẩn VTS CHK): phân biệt Thêm mới / Cập nhật / Phê duyệt / Từ chối / Trình duyệt. */
+function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; color: string; bg: string } {
+  const item = group.items?.[0] || {};
+  const rawStatus = String(item.status ?? item.action ?? item.actionType ?? '').toUpperCase();
+  const rawReason = String(item.reason ?? item.ghiChu ?? item.note ?? '').toLowerCase();
+  const level = Number(item.approvalLevel || 0);
+  if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới')) {
+    return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
+  }
+  if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || String(item.changedField || '').includes('đính kèm')) {
+    return { label: 'Tải lên tệp', color: '#0284c7', bg: '#0284c718' };
+  }
+  if (rawStatus === 'ATTACHMENT_DELETED' || rawReason.includes('xóa tài liệu') || rawReason.includes('xóa tệp')) {
+    return { label: 'Xóa tệp', color: '#ea580c', bg: '#ea580c18' };
+  }
+  if (rawStatus === 'UPDATED' || rawStatus === 'UPDATE' || rawStatus === 'EDIT' || rawReason.includes('cập nhật') || rawReason.includes('chỉnh sửa')) {
+    return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
+  }
+  if (rawReason.includes('phê duyệt cấp cảng vụ')) return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
+  if (rawReason.includes('phê duyệt cấp cục')) return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
+  if (rawReason.includes('từ chối cấp cảng vụ')) return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
+  if (rawReason.includes('từ chối cấp cục')) return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
+  const approvalChange = changes.find((c: any) => {
+    const k = normalizeHistoryKey(String(c.field || c.fieldName || ''));
+    return k === 'approvalstatus' || k === 'trang thai phe duyet';
+  });
+  if (approvalChange) {
+    const nv = normalizeHistoryKey(String(approvalChange.newValue || ''));
+    if (nv.includes('rejected_level1') || (nv.includes('tra ve') && nv.includes('cang vu')) || nv.includes('tu choi cap cang vu')) return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
+    if (nv.includes('rejected_level2') || (nv.includes('tra ve') && nv.includes('cuc')) || nv.includes('tu choi cap cuc')) return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
+    if (nv === 'cho cuc duyet' || nv.includes('approved_level1') || nv.includes('da phe duyet cap 1') || nv.includes('cuc duyet')) return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
+    if (nv === 'da duyet' || nv.includes('approved') || nv.includes('da phe duyet')) return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
+    if (nv.includes('tu choi') || nv.includes('rejected') || nv.includes('tra ve')) return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
+    if (nv.includes('cho cang vu duyet') || nv.includes('cho phe duyet') || nv.includes('pending') || nv.includes('proposed') || nv.includes('luu tam') || nv.includes('nhap')) return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
+  }
+  if (level === 1 || String(item.approvalLevel).includes('LEVEL_1') || rawStatus === 'UNDER_REVIEW') {
+    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('trả về')) return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
+    return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
+  }
+  if (level === 2 || String(item.approvalLevel).includes('LEVEL_2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
+    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('trả về')) return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
+    return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
+  }
+  if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối')) return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
+  if (rawStatus === 'SUBMITTED' || rawStatus === 'PENDING' || rawReason.includes('trình duyệt')) return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
+  if (rawStatus === 'DELETED' || rawStatus === 'DELETE' || rawStatus === 'SOFT_DELETE' || rawReason.includes('xóa')) return { label: 'Xóa', color: '#64748b', bg: '#64748b18' };
+  return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
 }
 
 // ── Component ────────────────────────────────────────────────────────
@@ -222,7 +358,6 @@ export default function DaiTtdhList() {
   const [submittingRecord, setSubmittingRecord] = useState<DaiTtdh | null>(null);
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [approvingRecord, setApprovingRecord] = useState<DaiTtdh | null>(null);
-  const [approvalContent, setApprovalContent] = useState('');
 
   // ── History modal ───────────────────────────────────────────────
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -252,8 +387,9 @@ export default function DaiTtdhList() {
   }, []);
 
   const renderDaiTtdhHistoryTimeline = (records: any[]) => {
+    const safeRecords = Array.isArray(records) ? records : [];
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...records].sort((a: any, b: any) => new Date(b.changedAt || b.createdAt).getTime() - new Date(a.changedAt || a.createdAt).getTime());
+    const sorted = [...safeRecords].sort((a: any, b: any) => new Date(b.changedAt || b.createdAt).getTime() - new Date(a.changedAt || a.createdAt).getTime());
     const grouped: Array<{ dateKey: string; items: any[] }> = [];
     for (const rec of sorted) {
       const key = (rec.changedAt || rec.createdAt || '').slice(0, 10);
@@ -284,11 +420,13 @@ export default function DaiTtdhList() {
               {items.map((change: any, ci: number) => {
                 const isCreate = change.actionType === 'CREATE' || change.action === 'CREATE' || change.changeType === 'CREATE';
                 const changes = Array.isArray(change.changes) && change.changes.length > 0
-                  ? change.changes
-                  : [{ fieldName: change.fieldName || change.field || 'Trạng thái', oldValue: change.oldValue ?? change.before, newValue: change.newValue ?? change.after }];
+                  ? change.changes.map((c: any) => ({ field: c.fieldName || c.field || '', oldValue: c.oldValue ?? c.before ?? null, newValue: c.newValue ?? c.after ?? null }))
+                  : historyChangeRows(change);
+                const actionMeta = resolveHistoryActionMeta({ items: [change] }, changes);
+                const barColor = actionMeta.color;
                 return (
                   <div key={ci} style={{ ...historyInfoCardStyle, marginBottom: spaceMd }}>
-                    <div style={historyAccentBarStyle(actionPrimary)} />
+                    <div style={historyAccentBarStyle(barColor)} />
                     <div style={{ padding: `${spaceSm}px ${spaceMd}px` }}>
                       <div style={historyInfoTitleStyle}>
                         {historyMode === 'all' && (historyEntityNames[change.entityId] || 'Đài TTDH')}
@@ -297,7 +435,7 @@ export default function DaiTtdhList() {
                         </span>
                       </div>
                       <div style={historyMetaRowStyle}>
-                        <span>{change.actionType || change.action || change.changeType || 'UPDATE'}</span>
+                        <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: actionMeta.bg, color: actionMeta.color, whiteSpace: 'nowrap' }}>{actionMeta.label}</span>
                         <span>{fmtHistoryTime(change.changedAt || change.createdAt)}</span>
                       </div>
                       <div style={historyGroupGridStyle}>
@@ -313,17 +451,18 @@ export default function DaiTtdhList() {
                             }
                             return null;
                           };
+                          const renderVal = (rawVal: string | null, fmtVal: string | null) => renderCell(rawVal) ?? (fmtVal != null ? renderHistoryValueTag(fn, fmtVal) : <span style={{ color: textTertiary }}>—</span>);
                           return isCreate ? (
                             <div key={`${fn}-${ri}`} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
                               <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                              <span title={nv ?? '—'} style={historyNewValueStyle}>{renderCell(change.newValue) ?? (nv ?? '—')}</span>
+                              <span title={nv ?? '—'} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
                             </div>
                           ) : (
                             <div key={`${fn}-${ri}`} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
                               <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                              <span title={ov ?? '—'} style={historyOldValueStyle}>{renderCell(change.oldValue) ?? (ov ?? '—')}</span>
+                              <span title={ov ?? '—'} style={historyOldValueStyle}>{renderVal(change.oldValue, ov)}</span>
                               <span style={historyArrowStyle}>→</span>
-                              <span title={nv ?? '—'} style={historyNewValueStyle}>{renderCell(change.newValue) ?? (nv ?? '—')}</span>
+                              <span title={nv ?? '—'} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
                             </div>
                           );
                         })}
@@ -505,15 +644,15 @@ export default function DaiTtdhList() {
   }, [deletingRecord, deleteConfirmText, fetchData, fetchCounts, managingUnitId]);
 
   // ── Approval handlers ───────────────────────────────────────────
-  const handleApprove = useCallback(async (record: DaiTtdh) => {
+  const handleApprove = useCallback(async (record: DaiTtdh, content?: string) => {
     try {
       const cap = record.approvalStatus === 'APPROVED_LEVEL2' ? 'CUC' : 'CANG_VU';
-      await daiTtdhCRUD.approve(record.id, cap, approvalContent);
+      await daiTtdhCRUD.approve(record.id, cap, content || 'Đã phê duyệt');
       toast.success('Đã phê duyệt đài TTDH');
-      setApproveModalOpen(false); setApprovingRecord(null); setApprovalContent('');
+      setApproveModalOpen(false); setApprovingRecord(null);
       void fetchData(); void fetchCounts(managingUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại'); }
-  }, [fetchData, fetchCounts, managingUnitId, approvalContent]);
+  }, [fetchData, fetchCounts, managingUnitId]);
 
   const handleConfirmSubmit = useCallback(async () => {
     if (!submittingRecord) return;
@@ -547,7 +686,7 @@ export default function DaiTtdhList() {
   const headerActions = useMemo(() => {
     const actions: ScreenHeaderAction[] = [];
     if (hasPerm('daittdh:create')) {
-      actions.push({ key: 'create', label: 'Thêm mới', variant: 'primary', icon: <PlusOutlined />, onClick: () => setCreateDrawerVisible(true) });
+      actions.push({ key: 'create', label: 'Thêm mới', variant: 'primary', icon: icons.create, onClick: () => setCreateDrawerVisible(true) });
     }
     return actions;
   }, [hasPerm]);
@@ -559,7 +698,7 @@ export default function DaiTtdhList() {
       {/* ── Cơ bản: ĐVQL + Tên + Tình trạng ──────────────────── */}
       <div style={{ marginBottom: 12, marginTop: spaceMd }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-          Đơn vị quản lý <span style={{ color: statusCritical }}>*</span>
+          Đơn vị quản lý
         </div>
         <OrgUnitTreeSelect
           organizations={organizations}
@@ -666,14 +805,15 @@ export default function DaiTtdhList() {
   const rowActions = useCallback(
     (record: DaiTtdh) => {
       const actions: any[] = [
-        { key: 'view', label: 'Chi tiết', icon: <EyeOutlined />, onClick: () => openDetailDrawer(record) },
+        { key: 'view', label: 'Chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) },
       ];
       const st = record.approvalStatus || '';
-      if (hasPerm('daittdh:update')) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => { setEditDaiTtdhId(record.id); setEditDaiTtdhName(record.daiTtdhName || ''); } });
-      if (hasPerm('daittdh:delete') && ['DRAFT','NHAP'].includes(st)) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => openDeleteModal(record) });
-      if (['DRAFT','NHAP'].includes(st) && hasPerm('daittdh:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
-      if (hasPerm('daittdh:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) { actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setApprovingRecord(record); setApprovalContent(''); setApproveModalOpen(true); } }); actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, danger: true, onClick: () => openRejectModal(record) }); }
-      if (hasPerm('daittdh:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistory(record) });
+      // Chỉnh sửa chỉ áp dụng cho Lưu tạm (DRAFT) và Đã phê duyệt (APPROVED) — chuẩn VTS CHK
+      if (canEditApprovalRecord(st, { hasPerm, resource: 'daittdh', extraApprovePerms: ['daittdh:approve'] })) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => { setEditDaiTtdhId(record.id); setEditDaiTtdhName(record.daiTtdhName || ''); } });
+      if (hasPerm('daittdh:delete') && ['DRAFT','NHAP'].includes(st)) actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => openDeleteModal(record) });
+      if (['DRAFT','NHAP'].includes(st) && hasPerm('daittdh:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
+      if (hasPerm('daittdh:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) { actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } }); actions.push({ key: 'reject', label: 'Từ chối', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) }); }
+      if (hasPerm('daittdh:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
       return actions;
     },
     [hasPerm, openDetailDrawer, openHistory, openDeleteModal, openRejectModal],
@@ -720,19 +860,11 @@ export default function DaiTtdhList() {
             <a
               title={v}
               onClick={() => openDetailDrawer(record)}
-              style={{
-                fontWeight: fontWeightBold,
-                color: actionPrimary,
-                cursor: 'pointer',
-                display: 'block',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
+              style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
             >
               {v}
             </a>
-            <span style={{ opacity: 0.85 }}>{record.daiTtdhCode || '—'}</span>
+            <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{record.daiTtdhCode || '—'}</span>
           </div>
         ),
       },
@@ -794,17 +926,7 @@ export default function DaiTtdhList() {
           };
           const s = m[v || ''] || { color: textTertiary, label: v || '—' };
           return (
-            <span
-              style={{
-                display: 'inline-flex',
-                padding: '2px 10px',
-                borderRadius: 999,
-                fontSize: fontSizeMd,
-                fontWeight: fontWeightMedium,
-                background: `${s.color}15`,
-                color: s.color,
-              }}
-            >
+            <span style={statusBadgeStyle(s.color)}>
               {s.label}
             </span>
           );
@@ -848,7 +970,7 @@ export default function DaiTtdhList() {
       { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 260, sortable: true, sortOrder,
         render: (v: string) => {
           const s = APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v?.toUpperCase()] || { color: textTertiary, label: v || '—' };
-          return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
+          return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
         } },
     ];
 
@@ -903,6 +1025,7 @@ export default function DaiTtdhList() {
   // ── JSX ─────────────────────────────────────────────────────────
 
   return (
+    <ThemeTokenProvider tokens={themeTokenChk}>
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <style>{`.range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }`}</style>
       <ScreenHeader
@@ -922,19 +1045,12 @@ export default function DaiTtdhList() {
         error={isError}
         onRetry={() => void fetchData()}
       >
-        <style>{`.list-view-table .ant-table-cell { padding-block: 9.5px !important; }`}</style>
-        {isError ? null : !isLoading && dataSource.length === 0 ? (
-          <DataTable dataSource={[]} rowKey="id"
-            emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>Không tìm thấy đài TTDH nào phù hợp</div></div>}
-          />
-        ) : !isLoading && !isError && dataSource.length > 0 ? (
-          <DataTable columns={columns}
-            dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; const aVal = getSortValue(a, sortField); const bVal = getSortValue(b, sortField); const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi'); return sortOrder === 'ascend' ? cmp : -cmp; })}
-            rowKey="id" rowActions={rowActions} loading={false}
-            onSort={(key: string, order: 'asc' | 'desc') => { setSortField(key); setSortOrder(order === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
-            scroll={{ x: isAuditViewer ? 2300 : 1800, y: 550 }}
-          />
-        ) : null}
+        <DataTable columns={columns}
+          dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; const aVal = getSortValue(a, sortField); const bVal = getSortValue(b, sortField); const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi'); return sortOrder === 'ascend' ? cmp : -cmp; })}
+          rowKey="id" rowActions={rowActions} loading={false}
+          onSort={(key: string, order: 'asc' | 'desc') => { setSortField(key); setSortOrder(order === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
+          scroll={{ x: 'max-content', y: 550 }}
+        />
         <Pagination total={total} current={page} pageSize={pageSize}
           onChange={(p, ps) => { setPage(p); setPageSize(ps); }}
         />
@@ -1093,30 +1209,13 @@ export default function DaiTtdhList() {
         </div>
       </Modal>
 
-      {/* ── Approve Modal ─────────────────────────────────────────── */}
-      <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{approvingRecord?.approvalStatus === 'CHO_PD_CAP_CUC' ? 'Xác nhận Cục phê duyệt' : 'Xác nhận Cảng vụ phê duyệt'}</span>}
-        open={approveModalOpen}
+      {/* ── Approve Modal (chuẩn VTS CHK) ─────────────────────────── */}
+      <ApprovalModal
+        visible={approveModalOpen}
+        level={approvingRecord?.approvalStatus === 'APPROVED_LEVEL2' ? 'c2' : 'c1'}
+        onConfirm={(content) => { if (approvingRecord) handleApprove(approvingRecord, content); }}
         onCancel={() => { setApproveModalOpen(false); setApprovingRecord(null); }}
-        footer={[
-          <Button key="cancel" onClick={() => { setApproveModalOpen(false); setApprovingRecord(null); }}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
-          <Button key="approve" type="primary" onClick={() => approvingRecord && handleApprove(approvingRecord)}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: approvingRecord?.approvalStatus === 'CHO_PD_CAP_CUC' ? statusOperational : statusAttention, borderColor: approvingRecord?.approvalStatus === 'CHO_PD_CAP_CUC' ? statusOperational : statusAttention }}>Xác nhận</Button>,
-        ]}
-        width={480}>
-        <div style={{ padding: '8px 0' }}>
-          <p style={{ fontSize: fontSizeMd, color: textPrimary }}>
-            {approvingRecord?.approvalStatus === 'CHO_PD_CAP_CUC' ? 'Cục' : 'Cảng vụ'} phê duyệt <strong>{approvingRecord?.daiTtdhCode} — {approvingRecord?.daiTtdhName}</strong>?
-          </p>
-          <div style={{ marginTop: spaceMd }}>
-            <div style={{ marginBottom: spaceXs, color: textSecondary, fontSize: fontSizeMd, fontWeight: fontWeightMedium }}>Nội dung phê duyệt</div>
-            <Input.TextArea rows={3} placeholder="Nhập nội dung phê duyệt (không bắt buộc)..." value={approvalContent}
-              onChange={(e) => setApprovalContent(e.target.value)}
-              style={{ fontSize: fontSizeMd }} />
-          </div>
-        </div>
-      </Modal>
+      />
 
       {/* ── History Drawer ──────────────────────────────────────── */}
       <Drawer
@@ -1179,5 +1278,6 @@ export default function DaiTtdhList() {
         </div>
       </Drawer>
     </div>
+    </ThemeTokenProvider>
   );
 }

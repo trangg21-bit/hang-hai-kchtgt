@@ -4,13 +4,12 @@ import {
   Drawer, Radio, Space, Typography, Form,
 } from 'antd';
 import {
-  PlusOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined,
-  CloseCircleOutlined, EyeOutlined, HistoryOutlined, ExclamationCircleOutlined,
+  HistoryOutlined,
+  ExclamationCircleOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { pierCRUD, pierApproval, berthCRUD, portCRUD, shipRepairYardCRUD } from '../../services/portService';
-import { trangThaiPheDuyetBadge } from '../../services/port/schema';
 import type { Pier } from '../../types/port';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ShipRepairYardDetailContent from '../ship-repair-yard/ShipRepairYardDetailContent';
@@ -32,20 +31,40 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import toast from '../../components/ToastNotification';
 import PierForm from './PierForm';
 import PierDetailContent from './PierDetailContent';
+import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
+import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
+import ApprovalModal from '../../components/shared/ApprovalModal';
+import * as themeTokenChk from '../../themetokenchk';
 import {
-  statusOperational, statusAttention, statusCritical, statusDraft,
-  actionPrimary, textPrimary, textSecondary, textTertiary,
-  borderDefault, fontSizeMd, fontSizeLg,
-  fontWeightMedium, fontWeightBold, radiusPill,
-  spaceMd, spaceSm, spaceXs, spaceXl, spaceFormField,
+  statusOperational,
+  statusAttention,
+  statusCritical,
+  statusDraft,
+  actionPrimary,
+  textPrimary,
+  textSecondary,
+  textTertiary,
+  borderDefault,
+  fontSizeMd,
+  fontSizeLg,
+  fontSizeSm,
+  fontWeightMedium,
+  fontWeightBold,
+  radiusPill,
+  spaceMd,
+  spaceSm,
+  spaceXs,
+  spaceXl,
+  spaceFormField,
   drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
   primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
-  historyBadgeStyle, historyGroupGridStyle, historyTimeStyle, historyMetaRowStyle,
+  historyGroupGridStyle, historyTimeStyle, historyMetaRowStyle,
   historyInfoCardStyle, historyAccentBarStyle, historyInfoTitleStyle,
   historyChangeRowStyle, historyCreateRowStyle, historyFieldLabelStyle,
-  historyOldValueStyle, historyNewValueStyle, historyArrowStyle,
-} from '../../tokens';
-import { colors } from '../../theme';
+  historyOldValueStyle, historyNewValueStyle, historyArrowStyle, icons, statusBadgeStyle,
+  cellTitleStyle, cellSubtitleStyle,
+} from '../../themetokenchk';
+import { colors } from '../../themetokenchk';
 
 const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   NHAP: { color: statusDraft, label: 'Lưu tạm' }, DRAFT: { color: statusDraft, label: 'Lưu tạm' },
@@ -133,6 +152,199 @@ function histVal(fn: string, val: string | null, orgMap?: Map<string, string>, s
   return val;
 }
 
+// ── History helpers (chuẩn VTS CHK — copy từ BuoyBerthListPage) ─────────
+function historyTimestamp(item: any): string {
+  return item.approvedDate || item.changedAt || item.createdAt || '';
+}
+function historyActor(item: any): string {
+  const raw = item?.approvedByName || item?.changedByName || item?.performedByName || item?.userName || item?.actorName || item?.approvedBy || item?.changedBy || item?.performedBy || '';
+  return raw || '—';
+}
+function normalizeHistoryKey(value: string): string {
+  return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+}
+function normalizedHistoryFields(value: string): string[] {
+  const fields = value.split(/[,;]+/).map((field: string) => field.trim()).filter(Boolean);
+  const hasApprovalStatus = fields.some((field) => {
+    const key = normalizeHistoryKey(field);
+    return key === 'approvalstatus' || key === 'trang thai phe duyet';
+  });
+  if (hasApprovalStatus) {
+    return fields.filter((field) => {
+      const key = normalizeHistoryKey(field);
+      return key !== 'approvedlevel1' && key !== 'approvedlevel2' && key !== 'da phe duyet cap 1' && key !== 'da phe duyet cap 2';
+    });
+  }
+  return fields;
+}
+function parseHistoryAssignments(value: string | null): Map<string, string> {
+  const result = new Map<string, string>();
+  if (!value) return result;
+  value.split(';').forEach((part) => {
+    const separator = part.indexOf('=');
+    if (separator < 0) return;
+    result.set(normalizeHistoryKey(part.slice(0, separator)), part.slice(separator + 1).trim());
+  });
+  return result;
+}
+function historyChangeRows(item: any): Array<{ field: string; oldValue: string | null; newValue: string | null }> {
+  const fields = normalizedHistoryFields(String(item.changedField || item.fieldName || '').trim());
+  const oldValue = item.previousValue ?? item.oldValue ?? null;
+  const newValue = item.newValue ?? null;
+  const oldAssignments = parseHistoryAssignments(oldValue);
+  const newAssignments = parseHistoryAssignments(newValue);
+
+  if (fields.length > 1 && oldAssignments.size === 0 && newAssignments.size === 0) {
+    return [{ field: fields.join(', '), oldValue, newValue }];
+  }
+  if (fields.length === 0) {
+    return [{ field: '', oldValue, newValue }];
+  }
+  return fields.map((field, index) => {
+    const displayField = histField(field);
+    const oldAssigned = oldAssignments.get(normalizeHistoryKey(field)) ?? oldAssignments.get(normalizeHistoryKey(displayField));
+    const newAssigned = newAssignments.get(normalizeHistoryKey(field)) ?? newAssignments.get(normalizeHistoryKey(displayField));
+    const oldParts = oldValue?.split(';').map((part: string) => part.trim()).filter(Boolean) || [];
+    const newParts = newValue?.split(';').map((part: string) => part.trim()).filter(Boolean) || [];
+    return {
+      field,
+      oldValue: oldAssigned ?? (fields.length === 1 ? oldValue : oldParts[index] || null),
+      newValue: newAssigned ?? (fields.length === 1 ? newValue : newParts[index] || null),
+    };
+  });
+}
+
+function renderHistoryValueTag(field: string, val: string | null) {
+  if (val === null || val === undefined || val === '—') {
+    return <span style={{ color: textTertiary }}>—</span>;
+  }
+  const normKey = normalizeHistoryKey(field);
+  const normVal = normalizeHistoryKey(val);
+
+  if (normKey === 'approvalstatus' || normKey === 'trang thai phe duyet' || normKey.includes('phe duyet') || normKey.includes('trang thai')) {
+    if (normVal === 'da duyet' || normVal === 'da phe duyet' || normVal === 'approved' || normVal === 'approved_level2') {
+      return (<span style={statusBadgeStyle(statusOperational)}>{val}</span>);
+    }
+    if (normVal === 'cho cuc duyet' || normVal === 'approved_level1' || normVal.includes('cap 1') || normVal.includes('cuc duyet')) {
+      return (<span style={statusBadgeStyle('#0082fb')}>{val}</span>);
+    }
+    if (normVal === 'cho cang vu duyet' || normVal === 'cho phe duyet' || normVal === 'cho duyet' || normVal === 'pending' || normVal === 'pending_approval' || normVal === 'proposed' || normVal.includes('cang vu')) {
+      return (<span style={statusBadgeStyle(statusAttention)}>{val}</span>);
+    }
+    if (normVal === 'tu choi' || normVal.includes('rejected') || normVal.includes('tra ve')) {
+      return (<span style={statusBadgeStyle(statusCritical)}>{val}</span>);
+    }
+    return (<span style={statusBadgeStyle(statusDraft)}>{val}</span>);
+  }
+
+  if (normKey === 'conditionstatus' || normKey === 'tinh trang' || normKey.includes('tinh trang')) {
+    if (normVal.includes('hoat dong tot') || normVal.includes('good') || normVal.includes('operational') || normVal.includes('hoat dong')) {
+      return (<span style={statusBadgeStyle(statusOperational)}>{val}</span>);
+    }
+    if (normVal.includes('can bao duong') || normVal.includes('warning') || normVal.includes('maintenance') || normVal.includes('bao tri')) {
+      return (<span style={statusBadgeStyle(statusAttention)}>{val}</span>);
+    }
+    if (normVal.includes('hong') || normVal.includes('ngung') || normVal.includes('dung') || normVal.includes('damaged') || normVal.includes('critical')) {
+      return (<span style={statusBadgeStyle(statusCritical)}>{val}</span>);
+    }
+    if (normVal.includes('xay dung') || normVal.includes('under_construction')) {
+      return (<span style={statusBadgeStyle(actionPrimary)}>{val}</span>);
+    }
+  }
+
+  return <span title={val} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere' }}>{val}</span>;
+}
+
+/** Badge thao tác cho lịch sử (chuẩn VTS CHK): phân biệt Thêm mới / Cập nhật / Phê duyệt / Từ chối / Trình duyệt. */
+function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; color: string; bg: string } {
+  const item = group.items?.[0] || {};
+  const rawStatus = String(item.status ?? item.action ?? '').toUpperCase();
+  const rawReason = String(item.reason ?? item.ghiChu ?? item.note ?? '').toLowerCase();
+  const level = Number(item.approvalLevel || 0);
+
+  if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
+    return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
+  }
+
+  // Tải lên / xóa tệp đính kèm
+  if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || item.changedField?.includes('đính kèm')) {
+    return { label: 'Tải lên tệp', color: '#0284c7', bg: '#0284c718' };
+  }
+  if (rawStatus === 'ATTACHMENT_DELETED' || rawReason.includes('xóa tài liệu') || rawReason.includes('xóa tệp') || rawReason.includes('xoa tep')) {
+    return { label: 'Xóa tệp', color: '#ea580c', bg: '#ea580c18' };
+  }
+
+  // Cập nhật thông tin
+  if (rawStatus === 'UPDATED' || rawStatus === 'UPDATE' || rawStatus === 'EDIT' || rawReason.includes('cập nhật') || rawReason.includes('chỉnh sửa')) {
+    return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
+  }
+
+  // Ưu tiên lý do ghi sẵn cho hành động duyệt/từ chối (chuẩn VTS CHK)
+  if (rawReason.includes('phê duyệt cấp cảng vụ') || rawReason.includes('phe duyet cap cang vu')) {
+    return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
+  }
+  if (rawReason.includes('phê duyệt cấp cục') || rawReason.includes('phe duyet cap cuc')) {
+    return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
+  }
+  if (rawReason.includes('từ chối cấp cảng vụ') || rawReason.includes('tu choi cap cang vu')) {
+    return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
+  }
+  if (rawReason.includes('từ chối cấp cục') || rawReason.includes('tu choi cap cuc')) {
+    return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
+  }
+
+  const approvalChange = changes.find((c: any) => {
+    const k = normalizeHistoryKey(c.field);
+    return k === 'approvalstatus' || k === 'trang thai phe duyet';
+  });
+
+  if (approvalChange) {
+    const nv = normalizeHistoryKey(approvalChange.newValue || '');
+    if (nv.includes('cang vu tra ve') || nv.includes('rejected_level1') || (nv.includes('tra ve') && nv.includes('cang vu'))) {
+      return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
+    }
+    if (nv.includes('cuc tra ve') || nv.includes('rejected_level2') || (nv.includes('tra ve') && nv.includes('cuc'))) {
+      return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
+    }
+    if (nv === 'cho cuc duyet' || nv.includes('da phe duyet cap 1') || nv.includes('approved_level1') || nv.includes('cuc duyet')) {
+      return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
+    }
+    if (nv === 'da duyet' || nv.includes('da phe duyet') || nv.includes('approved')) {
+      return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
+    }
+    if (nv.includes('tu choi') || nv.includes('rejected') || nv.includes('tra ve')) {
+      return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
+    }
+    if (nv.includes('cho cang vu duyet') || nv.includes('cho phe duyet') || nv.includes('pending') || nv.includes('proposed') || nv.includes('luu tam') || nv.includes('nhap')) {
+      return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
+    }
+  }
+
+  if (level === 1 || String(item.approvalLevel).includes('LEVEL_1') || rawReason.includes('cấp 1') || rawReason.includes('cap 1') || rawStatus === 'UNDER_REVIEW') {
+    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
+      return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
+    }
+    return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
+  }
+  if (level === 2 || String(item.approvalLevel).includes('LEVEL_2') || rawReason.includes('cấp 2') || rawReason.includes('cap 2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
+    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
+      return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
+    }
+    return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
+  }
+  if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi')) {
+    return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
+  }
+  if (rawStatus === 'SUBMITTED' || rawStatus === 'PENDING' || rawReason.includes('trình duyệt') || rawReason.includes('trinh duyet')) {
+    return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
+  }
+  if (rawStatus === 'DELETED' || rawStatus === 'DELETE' || rawStatus === 'SOFT_DELETE' || rawReason.includes('xóa') || rawReason.includes('xoa')) {
+    return { label: 'Xóa', color: '#64748b', bg: '#64748b18' };
+  }
+
+  return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
+}
+
 export default function PierListPage() {
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const userPermissions = useAuthStore((s) => s.user?.permissions) || [];
@@ -199,7 +411,6 @@ export default function PierListPage() {
   const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve' | 'update'>('draft');
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [approvingRecord, setApprovingRecord] = useState<Pier | null>(null);
-  const [approvalContent, setApprovalContent] = useState('');
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<Pier | null>(null);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
@@ -211,7 +422,20 @@ export default function PierListPage() {
   const [historyEntityNames, setHistoryEntityNames] = useState<Record<string, string>>({});
   const [historyEntityFilter, setHistoryEntityFilter] = useState('');
 
-  const historyFieldCount = useMemo(() => historyRecords.length, [historyRecords]);
+  const historyGroupCount = useMemo(() => {
+    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
+    const sorted = [...(Array.isArray(historyRecords) ? historyRecords : [])].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
+    const groups: { tsSec: number; actor: string }[] = [];
+    for (const r of sorted) {
+      const ts = historyTimestamp(r);
+      const sec = ts ? toSec(ts) : 0;
+      const actor = historyActor(r);
+      const prev = groups[groups.length - 1];
+      if (prev && prev.tsSec === sec && prev.actor === actor) continue;
+      groups.push({ tsSec: sec, actor });
+    }
+    return groups.length;
+  }, [historyRecords]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   const appliedFiltersRef = useRef<{
@@ -234,10 +458,11 @@ export default function PierListPage() {
   const HISTORY_FIELD_ORDER = ['orgUnitId', 'portId', 'berthId', 'pierCode', 'pierName', 'pierType', 'length', 'width', 'designLoad', 'operationalFunction', 'operationalStatus', 'province', 'detailedLocation', 'coordinateSystem', 'displayRule', 'mapSymbolId', 'constructionGrade', 'structureType', 'conditionStatus', 'currentWaterDepth', 'designBedElevation', 'publishedVesselDWT', 'maintenanceApprovalDate', 'safetyAssessmentDate', 'lastInspectionDate', 'operatingPierCount', 'publishedPierCount', 'investmentAgreementPierCount', 'cargoThroughput', 'receivesLargeVessel', 'documentNumber', 'documentDate', 'openingAnnouncementDate', 'openingDecision', 'investmentAgreementDoc', 'waterAreaNeutralScope', 'navigationChannelId'];
 
   const renderPierHistoryTimeline = (records: any[]) => {
+    const safeRecords = Array.isArray(records) ? records : [];
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...records].sort((a: any, b: any) => new Date(b.changedAt || b.createdAt).getTime() - new Date(a.changedAt || a.createdAt).getTime());
+    const sorted = [...safeRecords].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
     const q = historySearch.toLowerCase().trim();
-    const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
+    const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
     for (const r of sorted) {
       if (q) {
         const fn = (r.fieldName || '').toLowerCase();
@@ -254,11 +479,15 @@ export default function PierListPage() {
         if (historyFrom && cd < historyFrom.replace(' ', 'T')) continue;
         if (historyTo && cd > historyTo.replace(' ', 'T') + ':59') continue;
       }
-      const ts = r.changedAt || r.createdAt || '';
+      const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
+      const actor = historyActor(r);
       const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === (r.changedBy || '')) prev.items.push(r);
-      else groups.push({ tsSec: sec, ts, actor: r.changedBy || '', items: [r] });
+      if (prev && prev.tsSec === sec && prev.actor === actor && prev.status === r.status && prev.approvalLevel === r.approvalLevel) {
+        prev.items.push(r);
+      } else {
+        groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
+      }
     }
     if (groups.length === 0) return (
       <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
@@ -273,15 +502,15 @@ export default function PierListPage() {
         const orgId = rec0.orgUnitId || historyTarget?.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
         const unitName = (orgName ? (orgName.split(' - ').pop() || orgName) : (rec0.orgUnitName || rec0.unitName)) || '—';
-        const barColor = actionPrimary;
-        const changes = g.items.map((item: any) => ({ field: item.fieldName || '—', oldValue: item.oldValue ?? null, newValue: item.newValue ?? null }));
-        const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
-        const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
-        const orderedChanges = [...changes].sort((a: any, b: any) => {
+        const changes = g.items.flatMap((item: any) => historyChangeRows(item)).sort((a: any, b: any) => {
           const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
           const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
           return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
         }).filter((c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments' && c.field !== 'spatialId');
+        const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
+        const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
+        const actionMeta = resolveHistoryActionMeta(g, changes);
+        const barColor = actionMeta.color;
         const formatHistoryValue = (fn: string, raw: string | null) => {
           if (raw === null || raw === '(null)' || raw === '') return null;
           const t = raw.trim();
@@ -296,7 +525,16 @@ export default function PierListPage() {
           }
           return histVal(fn, raw, orgMap, symbolMap, portMap, historyBerthMap, waterwayMap);
         };
-        if (orderedChanges.length === 0) return null;
+        const validChanges = changes.filter((c: any) => {
+          if (!c.field) return false;
+          const ov = formatHistoryValue(c.field, c.oldValue);
+          const nv = formatHistoryValue(c.field, c.newValue);
+          if (ov == null && nv == null) return false;
+          if (ov === nv) return false;
+          return true;
+        });
+        const reasons = g.items.map((i: any) => i.reason || i.ghiChu || i.note).filter(Boolean);
+        if (validChanges.length === 0 && reasons.length === 0) return null;
         return (
           <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
             <div style={{ minWidth: 0, paddingTop: spaceXs }}>
@@ -305,8 +543,7 @@ export default function PierListPage() {
                   {g.ts ? fmtTime(g.ts) : '—'}
                 </Typography.Text>
                 <span style={{ flexShrink: 0 }}>
-                {isCreate && <span style={historyBadgeStyle(statusOperational)}>Thêm mới</span>}
-                {!isCreate && <span style={historyBadgeStyle(actionPrimary)}>Chỉnh sửa</span>}
+                  <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: actionMeta.bg, color: actionMeta.color, whiteSpace: 'nowrap' }}>{actionMeta.label}</span>
                 </span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
@@ -323,7 +560,7 @@ export default function PierListPage() {
               <Typography.Text style={historyInfoTitleStyle}>
                 {informationTitle}
               </Typography.Text>
-              {orderedChanges.length > 0 ? <div>{orderedChanges.map((change, ri: number) => {
+              {validChanges.length > 0 ? <div>{validChanges.map((change, ri: number) => {
                 const fn = change.field;
                 const ov = formatHistoryValue(fn, change.oldValue);
                 const nv = formatHistoryValue(fn, change.newValue);
@@ -335,20 +572,27 @@ export default function PierListPage() {
                   }
                   return null;
                 };
+                const renderVal = (rawVal: string | null, fmtVal: string | null) => renderCell(rawVal) ?? (fmtVal != null ? renderHistoryValueTag(fn, fmtVal) : <span style={{ color: textTertiary }}>—</span>);
                 return isCreate ? (
                   <div key={`${fn}-${ri}`} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
                     <div style={historyFieldLabelStyle}>{fn ? `${histField(fn)}:` : '—'}</div>
-                    <span title={nv ?? '—'} style={historyNewValueStyle}>{renderCell(change.newValue) ?? (nv ?? '—')}</span>
+                    <span title={nv ?? '—'} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
                   </div>
                 ) : (
                   <div key={`${fn}-${ri}`} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
                     <div style={historyFieldLabelStyle}>{fn ? `${histField(fn)}:` : '—'}</div>
-                    <span title={ov ?? '—'} style={historyOldValueStyle}>{renderCell(change.oldValue) ?? (ov ?? '—')}</span>
+                    <span title={ov ?? '—'} style={historyOldValueStyle}>{renderVal(change.oldValue, ov)}</span>
                     <span style={historyArrowStyle}>→</span>
-                    <span title={nv ?? '—'} style={historyNewValueStyle}>{renderCell(change.newValue) ?? (nv ?? '—')}</span>
+                    <span title={nv ?? '—'} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
                   </div>
                 );
-              })}</div> : <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có thông tin chi tiết</Typography.Text>}
+              })}</div> : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
+                  {reasons.map((r: string, ri: number) => (
+                    <div key={ri} style={{ fontSize: fontSizeMd, color: textPrimary }}>{r}</div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         );
@@ -481,11 +725,11 @@ export default function PierListPage() {
     catch (ex: unknown) { toast.error(ex instanceof Error ? ex.message : 'Xóa thất bại'); }
   }, [deletingRecord, deleteConfirmText, fetchData, fetchCounts, orgUnit]);
 
-  const handleApprove = useCallback(async (record: Pier) => {
+  const handleApprove = useCallback(async (record: Pier, content?: string) => {
     const cap = record.approvalStatus === 'APPROVED_LEVEL2' ? 'CUC' : 'CANG_VU';
-    try { await pierApproval.approve(record.id, cap, approvalContent); toast.success(cap === 'CUC' ? 'Đã phê duyệt cấp Cục' : 'Đã phê duyệt cấp Cảng vụ'); setApproveModalOpen(false); setApprovingRecord(null); setApprovalContent(''); void fetchData(); void fetchCounts(orgUnit); }
+    try { await pierApproval.approve(record.id, cap, content); toast.success(cap === 'CUC' ? 'Đã phê duyệt cấp Cục' : 'Đã phê duyệt cấp Cảng vụ'); setApproveModalOpen(false); setApprovingRecord(null); void fetchData(); void fetchCounts(orgUnit); }
     catch (ex: unknown) { toast.error(ex instanceof Error ? ex.message : 'Phê duyệt thất bại'); }
-  }, [fetchData, fetchCounts, orgUnit, approvalContent]);
+  }, [fetchData, fetchCounts, orgUnit]);
 
   const handleSubmitApproval = useCallback((record: Pier) => { setSubmittingRecord(record); setSubmitModalOpen(true); }, []);
   const confirmSubmitApproval = useCallback(async () => {
@@ -607,16 +851,17 @@ export default function PierListPage() {
   );
 
   const rowActions = useCallback((record: Pier) => {
-    const actions: any[] = [{ key: 'view', label: 'Chi tiết', icon: <EyeOutlined />, onClick: () => openDetailDrawer(record) }];
+    const actions: any[] = [{ key: 'view', label: 'Chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) }];
     const st = record.approvalStatus || '';
-    if (hasPerm('pier:update')) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => { setEditPierId(record.id); setCreateDrawerVisible(true); } });
-    if (hasPerm('pier:delete') && ['DRAFT','NHAP'].includes(st)) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => openDeleteModal(record) });
-    if (['DRAFT','NHAP'].includes(st) && hasPerm('pier:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => handleSubmitApproval(record) });
+    const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'pier', extraApprovePerms: ['pier:approve'] });
+    if (editable) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => { setEditPierId(record.id); setCreateDrawerVisible(true); } });
+    if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'pier' })) actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => openDeleteModal(record) });
+    if (['DRAFT','NHAP'].includes(st) && hasPerm('pier:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => handleSubmitApproval(record) });
     if (hasPerm('pier:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) {
-      actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setApprovingRecord(record); setApprovalContent(''); setApproveModalOpen(true); } });
-      actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, danger: true, onClick: () => openRejectModal(record) });
+      actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
+      actions.push({ key: 'reject', label: 'Từ chối', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
     }
-    if (hasPerm('pier:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistory(record) });
+    if (hasPerm('pier:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
     return actions;
   }, [hasPerm, openDetailDrawer, openHistory, handleSubmitApproval, openRejectModal, openDeleteModal]);
 
@@ -658,14 +903,14 @@ export default function PierListPage() {
   }, [portMap, berthOptions, waterwayMap]);
 
   const columns = useMemo(() => {
-    return [
+    const baseColumns: any[] = [
     { label: 'STT', key: 'stt', width: 60, fixed: 'left' as const, align: 'center' as const,
       render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + i + 1}</span> },
     { label: <span>Tên/Mã cầu cảng</span>, dataIndex: 'pierName', key: 'pierName', width: 210, fixed: 'left' as const, sortable: true, ellipsis: false,
       render: (v: string, record: Pier) => (
         <div>
-          <a title={v || '—'} onClick={(e) => { e.stopPropagation(); openDetailDrawer(record); }} style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v || '—'}</a>
-          <span style={{ opacity: 0.85 }}>{record.pierCode || '—'}</span>
+          <a title={v || '—'} onClick={(e) => { e.stopPropagation(); openDetailDrawer(record); }} style={{ ...cellTitleStyle, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}>{v || '—'}</a>
+          <span style={{ ...cellSubtitleStyle, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{record.pierCode || '—'}</span>
         </div>
       ) },
     { label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', key: 'orgUnitId', width: 260, sortable: true,
@@ -685,13 +930,11 @@ export default function PierListPage() {
     { label: 'Công năng khai thác', dataIndex: 'operationalFunction', key: 'operationalFunction', width: 240, ellipsis: true, sortable: true,
       render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
     { label: 'Tình trạng', dataIndex: 'operationalStatus', key: 'operationalStatus', width: 190, sortable: true,
-      render: (v: string) => { const b = v && OPERATIONAL_STYLE_MAP[v]; return b ? <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${b.color}15`, color: b.color }}>{b.label}</span> : <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>; } },
+      render: (v: string) => { const b = v && OPERATIONAL_STYLE_MAP[v]; return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>; } },
     { label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 260, sortable: true,
       render: (v: string) => {
-        const badge = v ? trangThaiPheDuyetBadge(v) : null;
-        if (!badge || badge.color === 'default') { const s = v && APPROVAL_STYLE_MAP[v]; return s ? <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span> : <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>; }
-        const bc = badge.color === 'green' ? statusOperational : badge.color === 'red' ? statusCritical : badge.color === 'orange' ? statusAttention : textTertiary;
-        return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${bc}15`, color: bc }}>{badge.label}</span>;
+        const s = v && (APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v.toUpperCase()]);
+        return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>;
       } },
     { label: 'Cán bộ cập nhật', dataIndex: 'updatedAt', key: 'updatedAt', width: 200, sortable: true,
       render: (v: string, record: Pier) => (
@@ -700,19 +943,23 @@ export default function PierListPage() {
           <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
         </div>
       ) },
-    ...auditColumns,
-    ].map(col => ({ ...col, sortOrder: col.sortable && col.key === sortField ? sortOrder : undefined }));
+    ];
+    const tailColumns: any[] = [
+    ];
+    const allColumns = [...baseColumns, ...tailColumns, ...auditColumns];
+    return allColumns.map(col => ({ ...col, sortOrder: col.sortable && col.key === sortField ? sortOrder : undefined }));
   }, [page, pageSize, organizations, orgMap, berthOptions, portMap, waterwayMap, userMap, auditColumns, sortField, sortOrder, openDetailDrawer]);
 
   const headerActions = useMemo(() => {
     const actions: Array<{ key: string; label: string; variant: 'primary' | 'outline' | 'subtle'; icon?: React.ReactNode; onClick: () => void }> = [];
     if (hasPerm('pier:create')) {
-      actions.push({ key: 'create', label: 'Thêm mới', variant: 'primary', icon: <PlusOutlined />, onClick: () => setCreateDrawerVisible(true) });
+      actions.push({ key: 'create', label: 'Thêm mới', variant: 'primary', icon: icons.create, onClick: () => setCreateDrawerVisible(true) });
     }
     return actions;
   }, [hasPerm]);
 
   return (
+    <ThemeTokenProvider tokens={themeTokenChk as unknown as ThemeToken}>
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý cầu cảng' }]}
         actions={headerActions} />
@@ -721,14 +968,9 @@ export default function PierListPage() {
         onStatusTabChange={handleTabChange} onFilterApply={handleFilterApply} onFilterReset={handleFilterReset}
         filterCollapsed={filterCollapsed} onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
         loading={isLoading} error={isError} onRetry={() => void fetchData()}>
-        <style>{`.list-view-table .ant-table-cell { padding-block: 8.5px !important; }`}</style>
-        {isError ? null : !isLoading && dataSource.length === 0 ? (
-          <DataTable dataSource={[]} rowKey="id" emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>Không tìm thấy cầu cảng nào phù hợp</div></div>} />
-        ) : !isLoading && !isError && dataSource.length > 0 ? (
-          <DataTable columns={columns} dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; if (sortField === 'stt') { const arr = [...dataSource]; return sortOrder === 'descend' ? (arr.reverse(), 0) : 0; } const av = getSortValue(a, sortField); const bv = getSortValue(b, sortField); const c = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv), 'vi'); return sortOrder === 'ascend' ? c : -c; })}
-            rowKey="id" rowActions={rowActions} loading={false} onSort={(k: string, o: 'asc' | 'desc') => { setSortField(k); setSortOrder(o === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
-            scroll={{ x: 1900, y: 500 }} />
-        ) : null}
+        <DataTable columns={columns} dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; if (sortField === 'stt') { const arr = [...dataSource]; return sortOrder === 'descend' ? (arr.reverse(), 0) : 0; } const av = getSortValue(a, sortField); const bv = getSortValue(b, sortField); const c = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv), 'vi'); return sortOrder === 'ascend' ? c : -c; })}
+          rowKey="id" rowActions={rowActions} loading={false} onSort={(k: string, o: 'asc' | 'desc') => { setSortField(k); setSortOrder(o === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
+          scroll={{ x: 'max-content', y: 500 }} />
         <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
       </FilterTableLayout>
 
@@ -819,7 +1061,7 @@ export default function PierListPage() {
           {rejectingRecord && <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}><strong style={{ color: textPrimary }}>{rejectingRecord.pierCode} — {rejectingRecord.pierName}</strong></p>}
           <Input.TextArea placeholder="Nhập lý do từ chối..." value={rejectReason}
             onChange={(e) => { setRejectReason(e.target.value); setRejectError(''); }}
-            rows={3} style={{ borderRadius: 8, fontSize: fontSizeMd, borderColor: rejectError ? statusCritical : undefined }} />
+            rows={3} maxLength={500} showCount style={{ borderRadius: 8, fontSize: fontSizeMd, borderColor: rejectError ? statusCritical : undefined }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
             {rejectError ? <span style={{ color: statusCritical, fontSize: fontSizeMd }}>{rejectError}</span> : <span />}
             <span style={{ color: rejectReason.trim().length < 10 ? statusCritical : textTertiary, fontSize: fontSizeMd }}>
@@ -846,28 +1088,13 @@ export default function PierListPage() {
         </div>
       </Modal>
 
-      <Modal maskStyle={{ background: 'rgba(0, 0, 0, 0.4)' }}
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{approvingRecord?.approvalStatus === 'APPROVED_LEVEL2' ? 'Xác nhận Cục phê duyệt' : 'Xác nhận Cảng vụ phê duyệt'}</span>}
-        open={approveModalOpen} onCancel={() => { setApproveModalOpen(false); setApprovingRecord(null); }}
-        footer={[
-          <Button key="cancel" onClick={() => { setApproveModalOpen(false); setApprovingRecord(null); }}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
-          <Button key="approve" type="primary" onClick={() => { if (approvingRecord) { handleApprove(approvingRecord); } }}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: statusOperational, borderColor: statusOperational }}>Xác nhận</Button>,
-        ]}
-        width={480}>
-        <div style={{ padding: '8px 0' }}>
-          <p style={{ fontSize: fontSizeMd, color: textPrimary }}>
-            Phê duyệt <strong>{approvingRecord?.pierCode} — {approvingRecord?.pierName}</strong>?{approvingRecord?.approvalStatus === 'APPROVED_LEVEL2' ? ' (cấp Cục)' : ' (cấp Cảng vụ)'}
-          </p>
-          <div style={{ marginTop: spaceMd }}>
-            <div style={{ marginBottom: spaceXs, color: textSecondary, fontSize: fontSizeMd, fontWeight: fontWeightMedium }}>Nội dung phê duyệt</div>
-            <Input.TextArea rows={3} placeholder="Nhập nội dung phê duyệt (không bắt buộc)..." value={approvalContent}
-              onChange={(e) => setApprovalContent(e.target.value)}
-              style={{ fontSize: fontSizeMd }} />
-          </div>
-        </div>
-      </Modal>
+      {/* ── Approve Modal (chuẩn VTS CHK) ─────────────────────────── */}
+      <ApprovalModal
+        visible={approveModalOpen}
+        level={approvingRecord?.approvalStatus === 'APPROVED_LEVEL2' ? 'c2' : 'c1'}
+        onConfirm={(content) => { if (approvingRecord) handleApprove(approvingRecord, content); }}
+        onCancel={() => { setApproveModalOpen(false); setApprovingRecord(null); }}
+      />
 
       <Drawer
         {...drawerProps}
@@ -880,7 +1107,7 @@ export default function PierListPage() {
               <span style={drawerTitleStyle}>
                 {historyMode === 'all' ? 'Tất cả lịch sử thay đổi — Cầu cảng' : (historyTarget ? `Lịch sử thay đổi — ${historyTarget.pierName}` : 'Lịch sử thay đổi')}
               </span>
-              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyFieldCount}</span>
+              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyGroupCount}</span>
             </Space>
           </div>
         }
@@ -929,5 +1156,6 @@ export default function PierListPage() {
         </div>
       </Drawer>
     </div>
+    </ThemeTokenProvider>
   );
 }

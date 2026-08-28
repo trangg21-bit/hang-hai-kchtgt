@@ -1,18 +1,19 @@
 import React from 'react';
 import {
-  Row, Col, Form, Input, Select, InputNumber, Tabs, Button, Table, Upload, Space, Tag,
+  Row, Col, Form, Input, Select, InputNumber, Tabs, Button, Table, Upload, Space,
 } from 'antd';
 import { message } from '../../components/ToastNotification';
 import { PlusOutlined, DeleteOutlined, UploadOutlined, FileOutlined } from '@ant-design/icons';
 import {
   colors,
-} from '../../theme';
+} from '../../themetokenchk';
 import {
-  textPrimary, textSecondary, textTertiary, borderDefault,
-  fontSizeSm, fontSizeMd, fontWeightMedium, fontWeightBold,
-  radiusMd, radiusPill, spaceXs, spaceSm, spaceFormField, spaceMd, spaceLg,
-  surfaceCard, surfacePage, uploadHintStyle,
-} from '../../tokens';
+  textPrimary, textTertiary, borderDefault,
+  fontSizeSm, fontSizeMd, fontWeightBold,
+  radiusMd, radiusPill, spaceSm, spaceFormField,
+  surfaceCard, uploadHintStyle, readonlyInputStyle,
+  drawerTabBarStyle, drawerTabContentStyle,
+} from '../../themetokenchk';
 import PagedTable from '../../components/list-view/PagedTable';
 import { normalizeSearchText } from '../../components/org-unit';
 import { formLabelProps as labelProps } from '../../components/shared/formLabel';
@@ -54,7 +55,6 @@ export interface PortFormContentProps {
 }
 
 export default function PortFormContent({
-  form,
   isEdit,
   activeTabKey,
   onTabChange,
@@ -74,15 +74,14 @@ export default function PortFormContent({
   updateInfraQty,
   uploadFileList,
   setUploadFileList,
-  geometryType,
 }: PortFormContentProps) {
 
   const tabItems = [
     {
       key: 'general', label: 'Thông tin chung',
       children: (
-        <div style={{ paddingTop: 16 }}>
-          <Row gutter={16}>
+        <div style={drawerTabContentStyle}>
+          <Row gutter={[24, 0]}>
             <Col span={12}>
               <Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required style={{ marginBottom: spaceFormField }}>
                 <Select placeholder="Chọn đơn vị quản lý" allowClear showSearch optionFilterProp="label"
@@ -103,14 +102,14 @@ export default function PortFormContent({
             <Col span={12}>
               <Form.Item name="portCode" {...labelProps('Mã cảng biển')} style={{ marginBottom: spaceFormField }}
                 tooltip="Mã cảng được sinh tự động, không thể chỉnh sửa">
-                <Input disabled placeholder={portCodeLoading ? 'Đang sinh mã...' : 'Mã tự động'} maxLength={50}
-                  style={{ ...inputStyle, color: '#8c8c8c', cursor: 'not-allowed' }} />
+                <Input disabled placeholder={portCodeLoading ? 'Đang sinh mã...' : 'Mã tự động'} maxLength={50} showCount
+                  style={readonlyInputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item name="portName" {...labelProps('Tên cảng biển')} style={{ marginBottom: spaceFormField }}
                 rules={[{ required: true, message: 'Tên cảng không được để trống' }, { max: 255, message: 'Tên cảng tối đa 255 ký tự' }]}>
-                <Input placeholder="VD: Cảng biển Hải Phòng" maxLength={255} style={inputStyle} />
+                <Input placeholder="VD: Cảng biển Hải Phòng" maxLength={255} showCount style={inputStyle} />
               </Form.Item>
             </Col>
           </Row>
@@ -124,7 +123,7 @@ export default function PortFormContent({
             </Col>
             <Col span={12}>
               <Form.Item name="detailedLocation" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }}>
-                <Input placeholder="VD: Xã Đình Vũ, Quận Hải An" maxLength={500} style={inputStyle} />
+                <Input placeholder="VD: Xã Đình Vũ, Quận Hải An" maxLength={500} showCount style={inputStyle} />
               </Form.Item>
             </Col>
           </Row>
@@ -140,7 +139,7 @@ export default function PortFormContent({
             </Col>
             <Col span={12}>
               <Form.Item name="waterAreaScope" {...labelProps('Phạm vi vùng nước cảng biển')} style={{ marginBottom: spaceFormField }}>
-                <Input placeholder="Mô tả phạm vi vùng nước cảng biển" maxLength={2000} style={inputStyle} />
+                <Input placeholder="Mô tả phạm vi vùng nước cảng biển" maxLength={2000} showCount style={inputStyle} />
               </Form.Item>
             </Col>
           </Row>
@@ -224,14 +223,14 @@ export default function PortFormContent({
             </Col>
             <Col span={12}>
               <Form.Item name="otherWaterAreas" {...labelProps('Các khu nước, vùng nước khác')} style={{ marginBottom: spaceFormField }}>
-                <Input placeholder="Mô tả" maxLength={2000} style={inputStyle} />
+                <Input placeholder="Mô tả" maxLength={2000} showCount style={inputStyle} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={16}>
             <Col span={24}>
               <Form.Item name="remarks" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }}>
-                <Input.TextArea rows={3} placeholder="Ghi chú" maxLength={2000}
+                <Input.TextArea rows={3} placeholder="Ghi chú" maxLength={2000} showCount
                   styles={{ textarea: { borderRadius: radiusPill, overflow: 'hidden', padding: '4px 12px', resize: 'none' } }} />
               </Form.Item>
             </Col>
@@ -242,8 +241,8 @@ export default function PortFormContent({
     {
       key: 'gis', label: 'Thông tin vị trí',
       children: (
-        <div style={{ paddingTop: 16 }}>
-          <Row gutter={16}>
+        <div style={drawerTabContentStyle}>
+          <Row gutter={[24, 0]}>
             <Col span={12}>
               <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
                 <Select placeholder="Chọn loại đối tượng"
@@ -270,7 +269,7 @@ export default function PortFormContent({
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={16}>
+          <Row gutter={[24, 0]}>
             <Col span={12}>
               <Form.Item name="coordinateSystem" {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }}>
                 <Select placeholder="Chọn hệ quy chiếu" disabled style={selectStyle}
@@ -279,7 +278,7 @@ export default function PortFormContent({
             </Col>
             <Col span={12}>
               <Form.Item name="displayRule" {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }}>
-                <Input placeholder="VD: Hiển thị mặc định" maxLength={255} disabled style={{ ...inputStyle, color: '#8c8c8c', cursor: 'not-allowed' }} />
+                <Input placeholder="VD: Hiển thị mặc định" maxLength={255} showCount disabled style={readonlyInputStyle} />
               </Form.Item>
             </Col>
           </Row>
@@ -306,11 +305,11 @@ export default function PortFormContent({
                 render={(_: any, record: any) => {
                   const dms = ddToDms(record.lat);
                   return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
-                    <InputNumber value={dms.d} min={0} max={90} placeholder="Độ" onChange={(v) => updateGpsPoint(record._idx, 'lat', v ?? 0, dms.m, dms.s)} style={{ flex: 1 }} controls={false} />
+                    <InputNumber value={dms.d} min={0} max={90} placeholder="Độ" onChange={(v) => updateGpsPoint(record._idx, 'lat', v ?? 0, dms.m ?? 0, dms.s ?? 0)} style={{ flex: 1 }} controls={false} />
                     <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span>
-                    <InputNumber value={dms.m} min={0} max={59} placeholder="Phút" onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, v ?? 0, dms.s)} style={{ flex: 1 }} controls={false} />
+                    <InputNumber value={dms.m} min={0} max={59} placeholder="Phút" onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d ?? 0, v ?? 0, dms.s ?? 0)} style={{ flex: 1 }} controls={false} />
                     <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span>
-                    <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, dms.m, v ?? 0)} style={{ flex: 1.2 }} controls={false} />
+                    <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d ?? 0, dms.m ?? 0, v ?? 0)} style={{ flex: 1.2 }} controls={false} />
                     <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span>
                   </Space.Compact>;
                 }}
@@ -319,11 +318,11 @@ export default function PortFormContent({
                 render={(_: any, record: any) => {
                   const dms = ddToDms(record.lng);
                   return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
-                    <InputNumber value={dms.d} min={0} max={180} placeholder="Độ" onChange={(v) => updateGpsPoint(record._idx, 'lng', v ?? 0, dms.m, dms.s)} style={{ flex: 1 }} controls={false} />
+                    <InputNumber value={dms.d} min={0} max={180} placeholder="Độ" onChange={(v) => updateGpsPoint(record._idx, 'lng', v ?? 0, dms.m ?? 0, dms.s ?? 0)} style={{ flex: 1 }} controls={false} />
                     <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span>
-                    <InputNumber value={dms.m} min={0} max={59} placeholder="Phút" onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, v ?? 0, dms.s)} style={{ flex: 1 }} controls={false} />
+                    <InputNumber value={dms.m} min={0} max={59} placeholder="Phút" onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d ?? 0, v ?? 0, dms.s ?? 0)} style={{ flex: 1 }} controls={false} />
                     <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span>
-                    <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, dms.m, v ?? 0)} style={{ flex: 1.2 }} controls={false} />
+                    <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d ?? 0, dms.m ?? 0, v ?? 0)} style={{ flex: 1.2 }} controls={false} />
                     <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span>
                   </Space.Compact>;
                 }}
@@ -339,7 +338,7 @@ export default function PortFormContent({
     {
       key: 'infra', label: 'Công trình KCHT',
       children: (
-        <div style={{ paddingTop: 16 }}>
+        <div style={drawerTabContentStyle}>
           <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Công trình KCHT</span>
             {infraList.length > 0 && (
@@ -371,7 +370,7 @@ export default function PortFormContent({
     {
       key: 'files', label: 'File đính kèm',
       children: (
-        <div style={{ paddingTop: 16 }}>
+        <div style={drawerTabContentStyle}>
           <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
             {uploadFileList.length > 0 && (
@@ -422,7 +421,7 @@ export default function PortFormContent({
   return (
     <Tabs
       {...(isEdit ? { defaultActiveKey: 'general' } : { activeKey: activeTabKey, onChange: onTabChange })}
-      tabBarStyle={{ marginBottom: 0, paddingTop: 0 }}
+      tabBarStyle={drawerTabBarStyle}
       items={tabItems}
     />
   );

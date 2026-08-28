@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Tabs, Table, Space, InputNumber, Collapse } from 'antd';
+import { Tabs, Collapse, Button, Modal } from 'antd';
 import { FileOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { colors } from '../../theme';
-import PagedTable from '../../components/list-view/PagedTable';
+import { colors } from '../../themetokenchk';
+import DetailTable from '../../components/shared/DetailTable';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import {
-  textPrimary, textSecondary, textTertiary, borderDefault, surfaceCard,
-  fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
-  spaceSm, spaceMd, actionPrimary,
+  textPrimary, textSecondary, textTertiary, surfaceCard,
+  fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
+  spaceSm, spaceMd, spaceFormField, actionPrimary, outlineButtonStyle, primaryButtonStyle, statusBadgeStyle,
   statusOperational, statusAttention, statusCritical,
-} from '../../tokens';
+} from '../../themetokenchk';
 import type { DaiTtdh } from '../../types/port';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { VIETNAM_PROVINCES } from '../../types/common';
@@ -56,7 +57,7 @@ const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> =
         }
       }
       if (out.length === 0) {
-        const mm = wkt.match(/MULTIPOINT\s*\(([^)]+(?:,[^)]+)*)/);
+        const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/);
         if (mm) mm[1].split('),(').forEach((pt: string) => { const [lng, lat] = pt.replace(/[()]/g, '').trim().split(/\s+/); if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) }); });
       }
       if (out.length === 0) {
@@ -93,6 +94,7 @@ export default function DaiTtdhDetailContent({
   const [incidentOpen, setIncidentOpen] = useState(true);
   const [approvalLogs, setApprovalLogs] = useState<any[]>([]);
   const [changeHistory, setChangeHistory] = useState<any[]>([]);
+  const [gisModalOpen, setGisModalOpen] = useState(false);
   const [, setLoading] = useState(true);
 
   const stationLevelLabel = (v?: number) => DAI_TTDH_STATION_LEVEL_OPTIONS.find(o => o.value === v)?.label || (v != null ? String(v) : '—');
@@ -108,8 +110,8 @@ export default function DaiTtdhDetailContent({
     try {
       const res = await api.get(`/v1/dai-ttdh/${selectedRecord.id}/history`);
       const data = res.data?.data || res.data || {};
-      setChangeHistory(data.changeHistory || []);
-      setApprovalLogs(data.approvalLog || []);
+      setChangeHistory(Array.isArray(data?.changeHistory) ? data.changeHistory : []);
+      setApprovalLogs(Array.isArray(data?.approvalLog) ? data.approvalLog : []);
     } catch {
       // ignore
     } finally {
@@ -129,8 +131,7 @@ export default function DaiTtdhDetailContent({
           key: 'general', label: 'Thông tin chung',
           children: (
             <div style={{ paddingTop: 3 }}>
-              <style>{`.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}.detail-row{display:flex;padding:10px 12px;border-bottom:1px solid ${borderDefault}}.detail-label{width:200px;flex-shrink:0;color:${colors.sidebarBg};font-weight:${fontWeightBold};font-size:${fontSizeMd}px}.detail-label::after{content:':';margin-left:2px}.detail-value{color:${textPrimary};font-size:${fontSizeMd}px;flex:1}.detail-value .ant-tag{margin-left:-6px!important}.system-collapse .ant-collapse-header{gap:0!important;padding:4px 0!important}.system-collapse .ant-collapse-content-box{padding:0!important}.ant-tabs-content-holder{padding-top:0!important}.ant-tabs-tabpane{padding-top:0!important}.ant-tabs-nav{margin-bottom:0!important;padding-left:12px!important}`}</style>
-              <div className="detail-grid">
+              <div className="chk-detail-grid">
                 {[
                   ['Đơn vị quản lý', (() => {
                     const orgPathNames = resolveOrgFullPath(organizations, r.orgUnitId);
@@ -145,19 +146,19 @@ export default function DaiTtdhDetailContent({
                     );
                   })(),],
                   ['Đơn vị khai thác', <span style={{ fontWeight: fontWeightBold }}>{DEFAULT_OPERATING_ORGANIZATIONS.find(o => o.id === r.operatingUnitId)?.name || r.operatingUnitName || r.operatingUnitId || '—'}</span>],
-                  ['Mã đài', <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{r.daiTtdhCode || '—'}</span>],
+                  ['Mã đài', <span style={statusBadgeStyle(actionPrimary)}>{r.daiTtdhCode || '—'}</span>],
                   ['Tên đài', <span style={{ fontWeight: fontWeightBold }}>{r.daiTtdhName || '—'}</span>],
                   ['Phân loại đài', stationLevelLabel(r.stationLevel)],
                   ['Địa điểm (Tỉnh/Thành phố)', r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '—' : '—'],
                   ['Địa điểm chi tiết', r.detailedLocation || '—'],
-                  ['Tình trạng', (() => { const s = r.operationalStatus; const m: Record<string,{color:string;label:string}> = { OPERATIONAL:{color:statusOperational,label:'Đang khai thác/Vận hành'}, NOT_YET_OPERATIONAL:{color:statusAttention,label:'Chưa khai thác/Vận hành'}, SUSPENDED:{color:statusCritical,label:'Dừng khai thác/Vận hành'} }; const b = s && m[s]; return b ? <span style={{ display:'inline-flex',padding:'2px 10px',borderRadius:999,fontSize:fontSizeMd,fontWeight:fontWeightMedium,background:`${b.color}15`,color:b.color }}>{b.label}</span> : '—'; })(),],
+                  ['Tình trạng', (() => { const s = r.operationalStatus; const m: Record<string,{color:string;label:string}> = { OPERATIONAL:{color:statusOperational,label:'Đang khai thác/Vận hành'}, NOT_YET_OPERATIONAL:{color:statusAttention,label:'Chưa khai thác/Vận hành'}, SUSPENDED:{color:statusCritical,label:'Dừng khai thác/Vận hành'} }; const b = s && m[s]; return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : '—'; })(),],
                   ['Vùng phủ sóng', <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{r.coverageArea || '—'}</span>],
                   ['Dịch vụ cung cấp', servicesLabels(r.servicesProvided)],
                   ['Ghi chú', <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{r.remarks || '—'}</span>],
                 ].map(([label, value], i) => (
-                  <div key={i} className="detail-row" style={['Vùng phủ sóng', 'Dịch vụ cung cấp', 'Ghi chú'].includes(label) ? { gridColumn: '1 / -1' } : undefined}>
-                    <span className="detail-label">{label}</span>
-                    <span className="detail-value">{value}</span>
+                  <div key={i} className="chk-detail-row" style={['Vùng phủ sóng', 'Dịch vụ cung cấp', 'Ghi chú'].includes(label as string) ? { gridColumn: '1 / -1' } : undefined}>
+                    <span className="chk-detail-label">{label}</span>
+                    <span className="chk-detail-value">{value}</span>
                   </div>
                 ))}
               </div>
@@ -165,7 +166,7 @@ export default function DaiTtdhDetailContent({
           ),
         },
         {
-          key: 'gis', label: 'Thông tin vị trí',
+          key: 'gis', label: `Thông tin vị trí (${parseGisCoordinates(r).length})`,
           children: (
             <div style={{ paddingTop: 3 }}>
               <div className="detail-grid">
@@ -175,33 +176,37 @@ export default function DaiTtdhDetailContent({
                   ['Hệ quy chiếu', r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : r.coordinateSystem || '—'],
                   ['Quy tắc hiển thị', ((r as any).geometryType || (r as any).coordinates || (r as any).latitude != null || (r as any).longitude != null) ? 'Độ, phút, giây (DMS)' : '—'],
                 ].map(([label, value], i) => (
-                  <div key={i} className="detail-row">
-                    <span className="detail-label">{label}</span>
-                    <span className="detail-value">{value}</span>
+                  <div key={i} className="chk-detail-row">
+                    <span className="chk-detail-label">{label}</span>
+                    <span className="chk-detail-value">{value}</span>
                   </div>
                 ))}
               </div>
-              <div style={{ marginTop: spaceMd, padding: '0 12px' }}>
-                <span style={detailLabelStyle}>Tọa độ</span>
+              <div style={{ marginTop: spaceMd }}>
+                <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+                  <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
+                    Tọa độ GPS ({parseGisCoordinates(r).length})
+                  </span>
+                  <Button
+                    icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+                    onClick={() => setGisModalOpen(true)}
+                    style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  >
+                    Xem vị trí trên bản đồ
+                  </Button>
+                </div>
                 {(() => {
                   const pts = parseGisCoordinates(r);
                   return (
-                    <PagedTable dataSource={pts.map((p) => ({ ...p }))}
-                      emptyText={<div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><EnvironmentOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tọa độ</span></div>}
-                    >
-                      <Table.Column title="Vĩ độ (N)" key="lat" align="center"
-                        render={(_: any, rec: any) => {
-                          const dms = ddToDms(rec.lat);
-                          return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly tabIndex={-1} style={{ flex: 1, minWidth: 0, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly tabIndex={-1} style={{ flex: 1, minWidth: 0, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly tabIndex={-1} style={{ flex: 1.2, minWidth: 0, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
-                        }}
-                        onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                      <Table.Column title="Kinh độ (E)" key="lng" align="center"
-                        render={(_: any, rec: any) => {
-                          const dms = ddToDms(rec.lng);
-                          return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly tabIndex={-1} style={{ flex: 1, minWidth: 0, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly tabIndex={-1} style={{ flex: 1, minWidth: 0, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly tabIndex={-1} style={{ flex: 1.2, minWidth: 0, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
-                        }}
-                        onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                    </PagedTable>
+                    <DetailTable
+                      dataSource={pts.map((p) => ({ ...p }))}
+                      emptyText="Chưa có tọa độ GPS nào"
+                      columns={[
+                        { title: 'STT', width: 50 },
+                        { title: 'Vĩ độ (Latitude - N)', key: 'lat', render: (_v: any, rec: any) => { const dms = ddToDms(rec.lat); return `${dms.d}° ${dms.m}' ${dms.s}" N`; } },
+                        { title: 'Kinh độ (Longitude - E)', key: 'lng', render: (_v: any, rec: any) => { const dms = ddToDms(rec.lng); return `${dms.d}° ${dms.m}' ${dms.s}" E`; } },
+                      ]}
+                    />
                   );
                 })()}
               </div>
@@ -209,24 +214,23 @@ export default function DaiTtdhDetailContent({
           ),
         },
         {
-          key: 'files', label: 'File đính kèm',
+          key: 'files', label: `File đính kèm (${detailFiles.length})`,
           children: (
             <div style={{ paddingTop: 3 }}>
               <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
                 <span style={detailLabelStyle}>File đính kèm</span>
               </div>
-              <PagedTable dataSource={detailFiles.map((f) => ({ ...f }))}
-                emptyText={(
-                  <div style={{ padding: '32px 0', textAlign: 'center' }}>
-                    <div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div>
-                    <span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tài liệu đính kèm</span>
-                  </div>
-                )}
-              >
-                <Table.Column title="Tên file" key="name" dataIndex="fileName" align="center"
-                  render={(name: string) => <div style={{ textAlign: 'left', fontSize: fontSizeMd, color: textPrimary }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}</div>}
-                  onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-              </PagedTable>
+              <DetailTable
+                dataSource={detailFiles.map((f) => ({ ...f }))}
+                emptyText="Chưa có tài liệu đính kèm"
+                columns={[
+                  { title: 'STT', width: 50 },
+                  { title: 'Tên tài liệu', dataIndex: 'fileName', key: 'fileName', render: (v: string) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{v || '—'}</span> },
+                  { title: 'Dung lượng', dataIndex: 'fileSize', key: 'fileSize', width: 120, align: 'right' as const, render: (v: number) => v ? (v > 1024 * 1024 ? `${(v / (1024 * 1024)).toFixed(2)} MB` : `${(v / 1024).toFixed(1)} KB`) : '—' },
+                  { title: 'Người tải lên', dataIndex: 'uploadedBy', key: 'uploadedBy', width: 180, render: (v: string) => userMap.get(v) || v || '—' },
+                  { title: 'Ngày tải lên', dataIndex: 'uploadedAt', key: 'uploadedAt', width: 135, align: 'center' as const, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—' },
+                ]}
+              />
             </div>
           ),
         },
@@ -240,20 +244,18 @@ export default function DaiTtdhDetailContent({
               {operationOpen && (
                 <div>
               <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách vận hành khai thác</span>
-              <PagedTable dataSource={operationPlanList} emptyText={<div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Chưa có dữ liệu</span></div>}>
-                <Table.Column title="Mã kế hoạch" key="code" dataIndex="planCode" align="center"
-                  render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || rec.code || '—'}</span>}
-                  onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                <Table.Column title="Tên kế hoạch" key="name" dataIndex="planName" align="center"
-                  render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || rec.name || '—'}</span>}
-                  onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                <Table.Column title="Ngày bắt đầu" key="start" dataIndex="startDate" align="center"
-                  render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{fmtDateTime(v || rec.startTime || rec.start || null)}</span>}
-                  onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                <Table.Column title="Ngày kết thúc" key="end" dataIndex="endDate" align="center"
-                  render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{fmtDateTime(v || rec.endTime || rec.end || null)}</span>}
-                  onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-              </PagedTable>
+              <DetailTable
+                dataSource={operationPlanList}
+                emptyText="Chưa có dữ liệu"
+                rowKey={(r: any) => r.id || r.planCode || r.code}
+                columns={[
+                  { title: 'STT', width: 50 },
+                  { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '—' },
+                  { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '—' },
+                  { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'start', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.startTime || rec.start || null) },
+                  { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'end', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.endTime || rec.end || null) },
+                ]}
+              />
                 </div>
               )}
               <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setMaintenanceOpen(!maintenanceOpen)}>
@@ -262,20 +264,18 @@ export default function DaiTtdhDetailContent({
               {maintenanceOpen && (
                 <div>
               <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin bảo trì</span>
-              <PagedTable dataSource={maintenancePlanList} emptyText={<div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Chưa có dữ liệu</span></div>}>
-                <Table.Column title="Mã kế hoạch" key="code" dataIndex="planCode" align="center"
-                  render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || rec.code || '—'}</span>}
-                  onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                <Table.Column title="Tên kế hoạch" key="name" dataIndex="planName" align="center"
-                  render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || rec.name || '—'}</span>}
-                  onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                <Table.Column title="Thời gian bắt đầu" key="start" dataIndex="startTime" align="center"
-                  render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{fmtDateTime(v || rec.startDate || rec.start || null)}</span>}
-                  onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                <Table.Column title="Thời gian kết thúc" key="end" dataIndex="endTime" align="center"
-                  render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{fmtDateTime(v || rec.endDate || rec.end || null)}</span>}
-                  onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-              </PagedTable>
+              <DetailTable
+                dataSource={maintenancePlanList}
+                emptyText="Chưa có dữ liệu"
+                rowKey={(r: any) => r.id || r.planCode || r.code}
+                columns={[
+                  { title: 'STT', width: 50 },
+                  { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '—' },
+                  { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '—' },
+                  { title: 'Thời gian bắt đầu', dataIndex: 'startTime', key: 'start', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.start || rec.startDate || null) },
+                  { title: 'Thời gian kết thúc', dataIndex: 'endTime', key: 'end', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.end || rec.endDate || null) },
+                ]}
+              />
                 </div>
               )}
               <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setIncidentOpen(!incidentOpen)}>
@@ -284,20 +284,18 @@ export default function DaiTtdhDetailContent({
               {incidentOpen && (
                 <div>
               <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách sự cố</span>
-              <PagedTable dataSource={incidentList} emptyText={<div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Chưa có dữ liệu</span></div>}>
-                <Table.Column title="Mã sự cố" key="code" dataIndex="incidentCode" align="center"
-                  render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || rec.code || '—'}</span>}
-                  onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                <Table.Column title="Loại sự cố" key="type" dataIndex="incidentType" align="center"
-                  render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || rec.type || '—'}</span>}
-                  onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                <Table.Column title="Địa điểm" key="location" dataIndex="location" align="center"
-                  render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || rec.location || '—'}</span>}
-                  onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                <Table.Column title="Thời gian" key="time" dataIndex="incidentTime" align="center"
-                  render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{fmtDateTime(v || rec.time || rec.occurredAt || null)}</span>}
-                  onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-              </PagedTable>
+              <DetailTable
+                dataSource={incidentList}
+                emptyText="Chưa có dữ liệu"
+                rowKey={(r: any) => r.id || r.incidentCode || r.code}
+                columns={[
+                  { title: 'STT', width: 50 },
+                  { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '—' },
+                  { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'type', render: (v: string, rec: any) => v || rec.type || '—' },
+                  { title: 'Địa điểm', dataIndex: 'location', key: 'location', render: (v: string) => v || '—' },
+                  { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.time || null) },
+                ]}
+              />
                 </div>
               )}
             </div>
@@ -309,7 +307,7 @@ export default function DaiTtdhDetailContent({
             <div style={{ paddingTop: 3 }}>
               <div className="detail-grid">
                 {[
-                  ['Trạng thái', r.approvalStatus && approvalStyleMap[r.approvalStatus] ? <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${approvalStyleMap[r.approvalStatus].color}15`, color: approvalStyleMap[r.approvalStatus].color }}>{approvalStyleMap[r.approvalStatus].label}</span> : '—'],
+                  ['Trạng thái', r.approvalStatus && approvalStyleMap[r.approvalStatus] ? <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>{approvalStyleMap[r.approvalStatus].label}</span> : '—'],
                   ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.updatedBy || '') || r.updatedBy || '—'}</span>],
                   ['Ngày cập nhật', fmtDateTime(r.updatedAt)],
                   ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.submittedForApprovalBy || '') || r.submittedForApprovalBy || '—'}</span>],
@@ -321,9 +319,9 @@ export default function DaiTtdhDetailContent({
                   ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.portAuthorityApprovalContent || '—'],
                   ['Nội dung phê duyệt cấp Cục', r.departmentApprovalContent || '—'],
                 ].map(([label, value], i) => (
-                  <div key={i} className="detail-row" style={label === 'Trạng thái' ? { gridColumn: '1 / -1' } : undefined}>
-                    <span className="detail-label">{label}</span>
-                    <span className="detail-value">{value}</span>
+                  <div key={i} className="chk-detail-row" style={label === 'Trạng thái' ? { gridColumn: '1 / -1' } : undefined}>
+                    <span className="chk-detail-label">{label}</span>
+                    <span className="chk-detail-value">{value}</span>
                   </div>
                 ))}
               </div>
@@ -396,6 +394,58 @@ export default function DaiTtdhDetailContent({
         }] : []),
       ]}
     />
+
+    {/* GIS Location Selector Modal — xem vị trí trên bản đồ chuyên dụng (chuẩn VTS CHK) */}
+    <Modal
+      title={
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <EnvironmentOutlined style={{ color: actionPrimary }} />
+          <span style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: fontSizeLg }}>
+            Xem vị trí trên bản đồ chuyên dụng
+          </span>
+        </div>
+      }
+      open={gisModalOpen}
+      onCancel={() => setGisModalOpen(false)}
+      destroyOnClose
+      width="94vw"
+      style={{ top: 20, maxWidth: '1400px' }}
+      footer={[
+        <Button key="close" type="primary" onClick={() => setGisModalOpen(false)} style={{ ...primaryButtonStyle, height: 36 }}>
+          Đóng
+        </Button>,
+      ]}
+    >
+      <div style={{ padding: '8px 0' }}>
+        <GisLocationSelector
+          inline={true}
+          defaultGeometryType="POINT"
+          disabled
+          height={520}
+          value={(() => {
+            const pts = parseGisCoordinates(r);
+            if (pts.length > 0) {
+              const rawWkt = (r as any).coordinates || '';
+              let geom: 'POINT' | 'LINE' | 'POLYGON' = 'POINT';
+              let wkt = '';
+              if (rawWkt.startsWith('LINESTRING')) {
+                geom = 'LINE';
+                wkt = `LINESTRING(${pts.map(p => `${p.lng} ${p.lat}`).join(', ')})`;
+              } else if (rawWkt.startsWith('POLYGON')) {
+                geom = 'POLYGON';
+                wkt = `POLYGON((${pts.map(p => `${p.lng} ${p.lat}`).join(', ')}))`;
+              } else if (pts.length > 1) {
+                wkt = `MULTIPOINT(${pts.map(p => `(${p.lng} ${p.lat})`).join(',')})`;
+              } else {
+                wkt = `POINT(${pts[0].lng} ${pts[0].lat})`;
+              }
+              return { geometryType: geom, coordinates: wkt };
+            }
+            return undefined;
+          })()}
+        />
+      </div>
+    </Modal>
     </>
   );
 }

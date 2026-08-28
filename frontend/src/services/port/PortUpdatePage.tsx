@@ -17,11 +17,11 @@ import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import api from '../../services/api';
 import {
   actionPrimary, radiusPill, radiusMd, radiusSm,
-  fontSizeMd, fontSizeLg, fontSizeSm, borderDefault,
-  textSecondary, textTertiary,
-  surfaceCard, spaceFormField, spaceMd, spaceLg, spaceXl, spaceSm, spaceXs,
+  fontSizeMd, fontSizeLg, borderDefault,
+  textSecondary,
+  surfaceCard, spaceFormField, spaceMd, spaceXl, spaceSm, spaceXs,
   fontWeightMedium, fontWeightBold, metaStyle, dividerStyle,
-} from '../../tokens';
+} from '../../themetokenchk';
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
