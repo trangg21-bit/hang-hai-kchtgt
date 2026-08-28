@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Select, Input, Tag, Tooltip, DatePicker, Drawer, Button } from 'antd';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Input, Tooltip, DatePicker, Drawer, Button } from 'antd';
 import { message } from '../components/ToastNotification';
-import { EyeOutlined, DownloadOutlined } from '@ant-design/icons';
+import { EyeOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { ScreenHeader, DataTable, Pagination } from '../components/list-view';
@@ -10,46 +10,20 @@ import type { DataTableColumn } from '../components/list-view/DataTable';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import EmptyState from '../components/EmptyState';
 import {
-  textPrimary, textSecondary, textTertiary, actionPrimary,
-  statusOperational, statusAttention, statusCritical,
-  spaceFormField, spaceMd, spaceSm, radiusPill, radiusSm,
-  fontSizeSm, fontSizeMd,
-  fontWeightMedium, fontWeightBold,
-  badgeBaseStyle, metaStyle, fontMono, borderDefault, radiusLg, controlHeight,
+  textPrimary, textTertiary, statusCritical,
+  spaceFormField, spaceMd, spaceSm, radiusPill,
+  fontSizeMd,
+  fontWeightBold,
+  fontMono, borderDefault, radiusLg, controlHeight,
   drawerProps, drawerTitleStyle, drawerCloseBtnStyle,
 } from '../tokens';
 import { colors } from '../theme';
 import { logService, type AccessLogEntry } from '../services/logService';
-import { organizationService } from '../services/organizationService';
+import api from '../services/api';
+import { OrgUnitTreeSelect } from '../components/org-unit';
 import { useAuthStore } from '../store/authStore';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
-
-const TAB_KEYS = ['access', 'login', 'error', 'account', 'configuration'] as const;
-
-const LOG_TYPE_LABEL: Record<string, string> = {
-  access: 'Thao tác',
-  login: 'Đăng nhập',
-  error: 'Lỗi hệ thống',
-  account: 'Tài khoản',
-  configuration: 'Cấu hình',
-};
-
-const TAB_LABELS: Record<string, string> = {
-  access: 'Thao tác',
-  login: 'Đăng nhập',
-  error: 'Lỗi hệ thống',
-  account: 'Tài khoản',
-  configuration: 'Cấu hình',
-};
-
-const TAB_COLORS: Record<string, string> = {
-  access: actionPrimary,
-  login: '#2A78D6',
-  error: statusCritical,
-  account: statusAttention,
-  configuration: '#E87BA4',
-};
 
 const TYPE_OPTIONS = [
   { value: 'access', label: 'Thao tác' },
@@ -58,26 +32,6 @@ const TYPE_OPTIONS = [
   { value: 'account', label: 'Tài khoản' },
   { value: 'configuration', label: 'Cấu hình' },
 ];
-
-const SEVERITY_OPTIONS = [
-  { value: 'info', label: 'Thông tin' },
-  { value: 'warning', label: 'Cảnh báo' },
-  { value: 'error', label: 'Lỗi' },
-  { value: 'critical', label: 'Nghiêm trọng' },
-];
-
-const STATUS_CONFIG: Record<string, { color: string; label: string }> = {
-  SUCCESS: { color: statusOperational, label: 'Thành công' },
-  FAILED: { color: statusCritical, label: 'Thất bại' },
-  FAILURE: { color: statusCritical, label: 'Thất bại' },
-};
-
-const SEVERITY_CONFIG: Record<string, { color: string; label: string }> = {
-  info: { color: statusOperational, label: 'Thông tin' },
-  warning: { color: statusAttention, label: 'Cảnh báo' },
-  error: { color: statusCritical, label: 'Lỗi' },
-  critical: { color: statusCritical, label: 'Nghiêm trọng' },
-};
 
 // ── Action translation: English code → Vietnamese display ─────────────────────
 
@@ -206,18 +160,6 @@ function translateAction(action: string): string {
   return action;
 }
 
-// ── Helper ──────────────────────────────────────────────────────────────────────
-
-function formatMetadata(metadata: unknown): string {
-  if (!metadata) return '';
-  try {
-    const parsed = typeof metadata === 'string' ? JSON.parse(metadata) : metadata;
-    return JSON.stringify(parsed, null, 2);
-  } catch {
-    return String(metadata);
-  }
-}
-
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export default function LogsPage() {
@@ -230,25 +172,19 @@ export default function LogsPage() {
   // ---- UI state ----
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [activeTab, setActiveTab] = useState('access');
-  const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
-  const [orgOptions, setOrgOptions] = useState<{ value: string; label: string }[]>([]);
-  const [filters, setFilters] = useState<Record<string, any>>({});
+  const [orgUnits, setOrgUnits] = useState<{ id: string; name: string; code?: string; parentId?: string }[]>([]);
+  const [loadingOrgs, setLoadingOrgs] = useState(false);
+  const [filters, setFilters] = useState<Record<string, any>>({
+    dateRange: [dayjs().startOf('day'), dayjs().endOf('day')],
+  });
   const [filterValues, setFilterValues] = useState<{
     dateRange: [Dayjs | null, Dayjs | null] | null;
-    keyword: string;
-    severity?: string;
     orgUnit?: string;
     email: string;
-  }>({ dateRange: null, keyword: '', severity: undefined, orgUnit: undefined, email: '' });
+  }>({ dateRange: [dayjs().startOf('day'), dayjs().endOf('day')], orgUnit: '__all__', email: '' });
 
-  // ── Advanced filter state ──────────────────────────────────────
-  const [filterSeverity, setFilterSeverity] = useState<string | undefined>();
   const [filterOrgUnit, setFilterOrgUnit] = useState<string | undefined>();
   const [filterEmail, setFilterEmail] = useState('');
-
-  // ---- Advanced filter toggle ----
-  const [advancedVisible, setAdvancedVisible] = useState(false);
 
   // ---- Auth ----
   const user = useAuthStore((s) => s.user);
@@ -258,21 +194,33 @@ export default function LogsPage() {
   const isLeader = role === 'ROLE_LEADER';
   const isSelfOnly = role && role !== 'ROLE_SYSTEM_ADMIN' && role !== 'ROLE_ADMIN' && !isAdminOp;
 
-  // ---- Role-based tab visibility ----
-  const visibleTabKeys = isAdminOp ? (['access', 'login'] as const) : TAB_KEYS;
-
   // ---- Detail modal state ----
   const [selectedLog, setSelectedLog] = useState<AccessLogEntry | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  // ---- Load org options ----
-  const loadOrgOptions = () => {
-    organizationService.list({ pageSize: 1000 }).then((res) => {
-      setOrgOptions(
-        res.data.map((o) => ({ value: o.id, label: o.name })),
-      );
-    });
+  // ---- Table body height: fill available space so its bottom aligns with the filter divider ----
+  const tableWrapRef = useRef<HTMLDivElement>(null);
+  const [tableBodyHeight, setTableBodyHeight] = useState(540);
+
+  // ---- Load org options (giống màn /cctv: fetch trực tiếp /common/options/org-units, không dùng cache) ----
+  const loadOrgOptions = async () => {
+    setLoadingOrgs(true);
+    try {
+      const res = await api.get('/common/options/org-units');
+      const items = res.data?.data;
+      const orgs = (Array.isArray(items) ? items : []).map((o: { id?: string; name?: string; code?: string; parentId?: string | null }) => ({
+        id: String(o.id),
+        name: o.name || 'Đơn vị',
+        code: o.code || undefined,
+        parentId: o.parentId ? String(o.parentId) : undefined,
+      }));
+      setOrgUnits(orgs);
+    } catch (error) {
+      console.error('Lỗi tải danh sách đơn vị:', error);
+    } finally {
+      setLoadingOrgs(false);
+    }
   };
 
   useEffect(() => {
@@ -284,7 +232,6 @@ export default function LogsPage() {
     const params: Record<string, any> = {};
     if (fv.dateRange?.[0]) params.from = dayjs(fv.dateRange[0]).startOf('day').format('YYYY-MM-DDTHH:mm:ss');
     if (fv.dateRange?.[1]) params.to = dayjs(fv.dateRange[1]).endOf('day').format('YYYY-MM-DDTHH:mm:ss');
-    if (fv.keyword) params.keyword = fv.keyword;
     return params;
   };
 
@@ -293,10 +240,8 @@ export default function LogsPage() {
     const params: Record<string, any> = {
       page: page - 1,
       size: pageSize,
-      type: activeTab,
       ...buildApiParams(filters),
     };
-    if (filterSeverity) params.severity = filterSeverity;
     if (filterOrgUnit) params.orgUnit = filterOrgUnit;
     if (filterEmail) params.email = filterEmail;
     if (isSelfOnly && username) params.username = username;
@@ -318,44 +263,23 @@ export default function LogsPage() {
     }
   };
 
-  // ---- Fetch tab counts ----
-  const fetchTabCounts = async () => {
-    const baseParams = buildFullParams();
-    const counts: Record<string, number> = {};
-    await Promise.all(
-      visibleTabKeys.map(async (key) => {
-        try {
-          const res = await logService.listAccessLogs({
-            ...baseParams,
-            type: key,
-            size: 1,
-          });
-          counts[key] = res.totalElements;
-        } catch {
-          counts[key] = 0;
-        }
-      }),
-    );
-    setTabCounts(counts);
-  };
-
   // ---- Effects ----
   useEffect(() => {
     fetchData();
-  }, [filters, page, pageSize, activeTab, filterSeverity, filterOrgUnit, filterEmail]);
-
-  useEffect(() => {
-    fetchTabCounts();
-  }, [filters, filterSeverity, filterOrgUnit, filterEmail]);
+  }, [filters, page, pageSize, filterOrgUnit, filterEmail]);
 
   // Auto-refresh when navigating back to this page (React Router v6 remounts components)
   useEffect(() => {
     fetchData();
-    fetchTabCounts();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- Event handlers ----
   const handleSearch = (values: Record<string, any>) => {
+    const email = (values.email || '').trim();
+    if (email.length > 255) {
+      message.error('Email không được vượt quá 255 ký tự');
+      return;
+    }
     if (
       values.dateRange?.[0] &&
       values.dateRange?.[1] &&
@@ -366,19 +290,42 @@ export default function LogsPage() {
     }
     loadOrgOptions();
     setFilters(values);
-    setFilterSeverity(values.severity || undefined);
-    setFilterOrgUnit(values.orgUnit || undefined);
-    setFilterEmail(values.email || '');
+    setFilterOrgUnit(values.orgUnit === '__all__' ? undefined : values.orgUnit || undefined);
+    setFilterEmail(email);
     setPage(1);
   };
 
   const handleReset = () => {
-    setFilterValues({ dateRange: null, keyword: '', severity: undefined, orgUnit: undefined, email: '' });
-    setFilters({});
-    setFilterSeverity(undefined);
+    setFilterValues({ dateRange: [dayjs().startOf('day'), dayjs().endOf('day')], orgUnit: '__all__', email: '' });
+    setFilters({ dateRange: [dayjs().startOf('day'), dayjs().endOf('day')] });
     setFilterOrgUnit(undefined);
     setFilterEmail('');
     setPage(1);
+  };
+
+  // Giới hạn khoảng thời gian: chỉ chọn trong vòng 1 tháng trở lại, không cho chọn ngày tương lai
+  // Measure available height for the table body so its bottom aligns with the
+  // filter panel divider (the border-top above the action buttons row). Mirrors the
+  // GISChartView pattern: reserve the measured pagination height + the 6px spacer.
+  useEffect(() => {
+    const el = tableWrapRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const paginationHeight = el.querySelector<HTMLElement>('.list-view-pagination')
+          ?.getBoundingClientRect().height ?? 55;
+        const available = entry.contentRect.height - paginationHeight - 6;
+        setTableBodyHeight(Math.max(200, Math.floor(available)));
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const disabledDate = (current: Dayjs) => {
+    const today = dayjs().startOf('day');
+    const minDate = today.subtract(1, 'month');
+    return current.isBefore(minDate, 'day') || current.isAfter(today, 'day');
   };
 
   const handleAdvancedSearch = useCallback(() => {
@@ -390,11 +337,6 @@ export default function LogsPage() {
     if (newPageSize !== pageSize) {
       setPageSize(newPageSize);
     }
-  };
-
-  const handleTabChange = (key: string) => {
-    setActiveTab(key);
-    setPage(1);
   };
 
   const openDetail = async (record: AccessLogEntry) => {
@@ -414,33 +356,6 @@ export default function LogsPage() {
     setModalVisible(false);
     setSelectedLog(null);
   };
-
-  const handleExport = async () => {
-    try {
-      message.loading({ content: 'Đang xuất CSV...', key: 'export' });
-      const blob = await logService.exportCsv(buildFullParams());
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `access_logs_${dayjs().format('YYYY-MM-DD_HHmmss')}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      message.success({ content: 'Xuất CSV thành công', key: 'export' });
-    } catch (e: any) {
-      message.error({ content: e?.message || 'Xuất CSV thất bại', key: 'export' });
-    }
-  };
-
-  // ---- Status tabs ----
-  const statusTabs = visibleTabKeys.map((key) => ({
-    key,
-    label: TAB_LABELS[key],
-    count: tabCounts[key] ?? 0,
-    color: TAB_COLORS[key],
-    active: activeTab === key,
-  }));
 
   // ---- DataTable columns ----
   const tableData = data.map((item, idx) => ({
@@ -464,111 +379,76 @@ export default function LogsPage() {
       label: 'STT',
       dataIndex: '_rowIndex',
       width: 60,
+      fixed: 'left' as const,
+      type: 'mono' as const,
       align: 'center',
       render: (val: any) => (
         <span style={{ fontSize: fontSizeMd }}>{val}</span>
       ),
     },
     {
-      key: 'orgUnit',
-      label: 'Đơn vị',
-      dataIndex: 'orgUnit',
+      key: 'email',
+      label: 'Email',
+      dataIndex: 'email',
+      width: 260,
       render: (val: any) =>
         val ? (
-          <span style={{ color: textPrimary, fontSize: fontSizeMd }}>{typeof val === 'object' ? val.name : val}</span>
+          <span style={{ color: textPrimary, fontSize: fontSizeMd }} title={val}>{val}</span>
         ) : (
           <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>
         ),
     },
     {
+      key: 'orgUnit',
+      label: 'Đơn vị',
+      dataIndex: 'orgUnit',
+      width: 280,
+      render: (val: any) => {
+        const name = orgUnits.find((o) => o.id === val)?.name;
+        return val ? (
+          <span style={{ color: textPrimary, fontSize: fontSizeMd, fontWeight: fontWeightBold }} title={val}>{name || val}</span>
+        ) : (
+          <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>
+        );
+      },
+    },
+    {
       key: 'action',
       label: 'Chức năng',
-      width: 180,
+      width: 240,
       dataIndex: 'action',
       render: (val: any) => (
-        <Tag
-          color="blue"
-          title={val}
-          style={{
-            borderRadius: radiusSm,
-            fontSize: fontSizeSm,
-            fontWeight: fontWeightMedium,
-          }}
-        >
-          {translateAction(val)}
-        </Tag>
+        <Tooltip title={val}>
+          <span style={{ color: textPrimary, fontSize: fontSizeMd, fontWeight: fontWeightBold }}>
+            {translateAction(val)}
+          </span>
+        </Tooltip>
       ),
-    },
-    {
-      key: 'type',
-      label: 'Loại log',
-      dataIndex: 'type',
-      width: 110,
-      render: (val: any) => {
-        const label = LOG_TYPE_LABEL[val?.toLowerCase()] || val || '—';
-        const color = TAB_COLORS[val?.toLowerCase()] || textTertiary;
-        return (
-          <span style={{ ...badgeBaseStyle, background: `${color}15`, color: color }}>
-            {label}
-          </span>
-        );
-      },
-    },
-    {
-      key: 'severity',
-      label: 'Mức độ',
-      dataIndex: 'severity',
-      width: 110,
-      render: (val: any) => {
-        const cfg = val ? SEVERITY_CONFIG[val.toLowerCase()] : null;
-        return cfg ? (
-          <span style={{ ...badgeBaseStyle, background: `${cfg.color}15`, color: cfg.color }}>
-            {cfg.label}
-          </span>
-        ) : (
-          <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>
-        );
-      },
-    },
-    {
-      key: 'status',
-      label: 'Trạng thái',
-      dataIndex: 'status',
-      width: 120,
-      render: (val: any) => {
-        const cfg = val ? STATUS_CONFIG[val] : null;
-        return cfg ? (
-          <span style={{ ...badgeBaseStyle, background: `${cfg.color}15`, color: cfg.color }}>
-            {cfg.label}
-          </span>
-        ) : (
-          <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>
-        );
-      },
     },
     {
       key: 'ipAddress',
       label: 'Địa chỉ IP',
       dataIndex: 'ipAddress',
+      width: 180,
       render: (val: any) => (
-        <span style={{ fontFamily: fontMono, color: textSecondary, fontSize: fontSizeMd }}>
+        <span style={{ fontFamily: fontMono, color: textPrimary, fontSize: fontSizeMd }}>
           {val}
         </span>
       ),
     },
     {
       key: 'userAgent',
-      label: 'Trình duyệt',
+      label: 'Thông tin trình duyệt',
       dataIndex: 'userAgent',
+      width: 300,
       render: (val: any) => {
         if (!val) {
           return <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>;
         }
-        const display = val.length > 40 ? `${val.substring(0, 40)}...` : val;
         return (
-          <Tooltip title={val}>
-            <span style={{ color: textSecondary, fontSize: fontSizeMd }}>{display}</span>
-          </Tooltip>
+          <span style={{ color: textPrimary, fontSize: fontSizeMd, whiteSpace: 'normal', wordBreak: 'break-word', display: 'block', lineHeight: 1.4 }}>
+            {val}
+          </span>
         );
       },
     },
@@ -576,17 +456,15 @@ export default function LogsPage() {
       key: 'sessionId',
       label: 'Phiên đăng nhập',
       dataIndex: 'sessionId',
+      width: 240,
       render: (val: any) => {
         if (!val) {
           return <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>;
         }
-        const display = val.length > 12 ? `${val.substring(0, 12)}...` : val;
         return (
-          <Tooltip title={val}>
-            <span style={{ fontFamily: fontMono, color: textSecondary, fontSize: fontSizeMd }}>
-              {display}
-            </span>
-          </Tooltip>
+          <span style={{ fontFamily: fontMono, color: textPrimary, fontSize: fontSizeMd, whiteSpace: 'normal', wordBreak: 'break-all', display: 'block', lineHeight: 1.4 }}>
+            {val}
+          </span>
         );
       },
     },
@@ -594,42 +472,17 @@ export default function LogsPage() {
       key: 'createdAt',
       label: 'Ngày truy cập',
       dataIndex: 'createdAt',
+      width: 200,
       render: (val: any) => (
-        <span style={{ ...metaStyle, fontSize: fontSizeMd }}>
-          {val ? dayjs(val).format('DD/MM/YYYY HH:mm') : '—'}
+        <span style={{ color: textPrimary, fontSize: fontSizeMd, whiteSpace: 'nowrap' }}>
+          {val ? dayjs(val).format('DD/MM/YYYY HH:mm:ss') : '—'}
         </span>
       ),
-    },
-    {
-      key: 'responseCode',
-      label: 'Mã',
-      dataIndex: 'responseCode',
-      width: 70,
-      align: 'center',
-      render: (val: any) => {
-        if (val == null) return <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>;
-        const isSuccess = val >= 200 && val < 400;
-        return (
-          <Tag
-            color={isSuccess ? 'green' : 'red'}
-            style={{
-              borderRadius: radiusSm,
-              fontSize: fontSizeSm,
-              fontWeight: fontWeightMedium,
-              fontFamily: fontMono,
-              margin: 0,
-            }}
-          >
-            {val}
-          </Tag>
-        );
-      },
     },
   ];
 
   // ---- Detail modal fields ----
   const r = selectedLog;
-  const severityEntry = r && r.severity ? SEVERITY_CONFIG[r.severity.toLowerCase()] : null;
 
   // ---- Leader view ----
   if (isLeader) {
@@ -654,15 +507,11 @@ export default function LogsPage() {
           { label: 'Quản trị hệ thống' },
           { label: 'Quản lý log truy cập' },
         ]}
-        actions={[
-          { key: 'export', label: 'Xuất CSV', icon: <DownloadOutlined />, variant: 'outline', onClick: handleExport },
-        ]}
       />
 
-      {/* 2. FilterTableLayout — filter panel dọc trái + StatusTabs + bảng (chuẩn màn /port) */}
+      {/* 2. FilterTableLayout — filter panel dọc trái + bảng (chuẩn màn /port) */}
       <FilterTableLayout
-        filterCollapsed={advancedVisible}
-        onToggleCollapse={() => setAdvancedVisible((v) => !v)}
+        hideFilterToggle
         onFilterApply={() => handleSearch(filterValues)}
         onFilterReset={handleReset}
         loading={loading}
@@ -671,89 +520,86 @@ export default function LogsPage() {
         filterContent={
           <>
             <div style={{ marginBottom: spaceFormField, marginTop: spaceMd }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Khoảng thời gian</div>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày truy cập <span style={{ color: statusCritical }}>*</span></div>
               <DatePicker.RangePicker
                 placeholder={['Từ ngày', 'Đến ngày']}
                 allowClear
+                format="DD/MM/YYYY"
                 value={filterValues.dateRange}
-                onChange={(dates) => setFilterValues((prev) => ({ ...prev, dateRange: dates }))}
+                disabledDate={disabledDate}
+                onChange={(dates) => {
+                  if (!dates || !dates[0] || !dates[1]) {
+                    message.error('Ngày truy cập là bắt buộc');
+                    return;
+                  }
+                  setFilterValues((prev) => ({ ...prev, dateRange: dates }));
+                }}
                 style={{ width: '100%', borderRadius: radiusPill, height: controlHeight, fontSize: fontSizeMd }}
               />
             </div>
             <div style={{ marginBottom: spaceFormField }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Từ khóa</div>
-              <Input
-                placeholder="Tìm kiếm theo nội dung..."
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Đơn vị quản lý</div>
+              <OrgUnitTreeSelect
+                organizations={orgUnits}
+                placeholder="Chọn đơn vị"
                 allowClear
-                value={filterValues.keyword}
-                onChange={(e) => setFilterValues((prev) => ({ ...prev, keyword: e.target.value }))}
+                showPath
+                allLabel="Tất cả"
+                treeDefaultExpandAll={false}
+                value={filterValues.orgUnit || undefined}
+                onChange={(val) => setFilterValues((prev) => ({ ...prev, orgUnit: val }))}
+                loading={loadingOrgs}
+                style={{ borderRadius: radiusPill, height: 40 }}
+              />
+            </div>
+            <div style={{ marginBottom: spaceFormField }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Email</div>
+              <Input
+                placeholder="Tìm theo email..."
+                allowClear
+                maxLength={255}
+                value={filterValues.email}
+                onChange={(e) => setFilterValues((prev) => ({ ...prev, email: e.target.value }))}
                 onPressEnter={() => handleSearch(filterValues)}
                 style={{ width: '100%', borderRadius: radiusPill, height: controlHeight }}
               />
             </div>
-            {advancedVisible && (
-              <>
-                <div style={{ marginBottom: spaceFormField }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mức độ</div>
-                  <Select
-                    placeholder="Chọn mức độ"
-                    allowClear
-                    value={filterValues.severity}
-                    onChange={(val) => setFilterValues((prev) => ({ ...prev, severity: val }))}
-                    options={SEVERITY_OPTIONS}
-                    style={{ width: '100%', borderRadius: radiusPill, height: controlHeight }}
-                  />
-                </div>
-                <div style={{ marginBottom: spaceFormField }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Đơn vị</div>
-                  <Select
-                    placeholder="Chọn đơn vị"
-                    allowClear
-                    showSearch
-                    optionFilterProp="label"
-                    value={filterValues.orgUnit}
-                    onChange={(val) => setFilterValues((prev) => ({ ...prev, orgUnit: val }))}
-                    options={orgOptions}
-                    style={{ width: '100%', borderRadius: radiusPill, height: controlHeight }}
-                  />
-                </div>
-                <div style={{ marginBottom: spaceFormField }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Email</div>
-                  <Input
-                    placeholder="Tìm theo email..."
-                    allowClear
-                    value={filterValues.email}
-                    onChange={(e) => setFilterValues((prev) => ({ ...prev, email: e.target.value }))}
-                    style={{ width: '100%', borderRadius: radiusPill, height: controlHeight }}
-                  />
-                </div>
-              </>
-            )}
           </>
         }
-        statusTabs={statusTabs}
-        onStatusTabChange={handleTabChange}
+        hideStatusTabs
       >
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-          <style>{`.logs-pagination-compact .list-view-pagination { padding-top: 20px !important; padding-bottom: 0 !important; } .logs-pagination-compact .list-view-pagination button { width: 40px !important; height: 40px !important; } .logs-pagination-compact .list-view-pagination .ant-select { height: 40px !important; }`}</style>
-          <DataTable
-            fill
-            columns={columns}
-            dataSource={tableData}
-            rowKey="id"
-            rowActions={rowActions}
-            scroll={{ x: 1400, y: 400 }}
-            emptyState={<EmptyState description="Không có log nào phù hợp với bộ lọc. Thử thay đổi tiêu chí tìm kiếm." />}
-          />
-          <div className="logs-pagination-compact" style={{ height: 55, overflow: 'visible', marginBottom: 8 }}>
-            <Pagination
-              total={total}
-              current={page}
-              pageSize={pageSize}
-              pageSizeOptions={[10, 20, 50]}
-              onChange={handlePageChange}
+        <div ref={tableWrapRef} style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+          <style>{`.list-view-table .ant-table-cell { padding-block: 8.5px !important; }`}</style>
+          {error ? null : !loading && data.length === 0 ? (
+            <DataTable
+              fill
+              columns={columns}
+              dataSource={[]}
+              rowKey="id"
+              loading={false}
+              scroll={{ x: 'max-content', y: tableBodyHeight }}
+              emptyState={<EmptyState description="Không có log nào phù hợp với bộ lọc. Thử thay đổi tiêu chí tìm kiếm." />}
             />
-          </div>
+          ) : !loading && !error && data.length > 0 ? (
+            <DataTable
+              fill
+              columns={columns}
+              dataSource={tableData}
+              rowKey="id"
+              rowActions={rowActions}
+              loading={false}
+              scroll={{ x: 'max-content', y: tableBodyHeight }}
+              emptyState={<EmptyState description="Không có log nào phù hợp với bộ lọc. Thử thay đổi tiêu chí tìm kiếm." />}
+            />
+          ) : null}
+          <div style={{ height: 6, flexShrink: 0 }} />
+          <Pagination
+            total={total}
+            current={page}
+            pageSize={pageSize}
+            pageSizeOptions={[10, 20, 50]}
+            onChange={handlePageChange}
+          />
         </div>
       </FilterTableLayout>
 
@@ -781,60 +627,19 @@ export default function LogsPage() {
             <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-label { width: 200px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; min-width: 0; overflow-wrap: anywhere; } .detail-value-full { grid-column: 1 / -1; }`}</style>
             <div className="detail-grid">
               {[
-                ['Thời gian', dayjs(r.createdAt).format('DD/MM/YYYY HH:mm:ss')],
-                ['Người dùng', r.username || '—'],
+                ['Đơn vị', orgUnits.find((o) => o.id === r.orgUnit)?.name || r.orgUnit || '—'],
                 ['Email', r.email || '—'],
-                ['Đơn vị', r.orgUnit || '—'],
-                ['Hành động', translateAction(r.action)],
-                ['Loại log', LOG_TYPE_LABEL[r.type?.toLowerCase()] || r.type || '—'],
-                ['Mức độ', severityEntry ? (
-                  <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${severityEntry.color}15`, color: severityEntry.color }}>{severityEntry.label}</span>
-                ) : '—'],
-                ['Trạng thái', r.status ? (
-                  <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${(r.status === 'SUCCESS' ? statusOperational : statusCritical)}15`, color: r.status === 'SUCCESS' ? statusOperational : statusCritical }}>{r.status === 'SUCCESS' ? 'Thành công' : 'Thất bại'}</span>
-                ) : '—'],
-                ['Địa chỉ IP', <span style={{ fontFamily: fontMono }}>{r.ipAddress}</span>],
-                ['Mã phản hồi', r.responseCode != null && r.responseCode >= 200 && r.responseCode < 400 ? (
-                  <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${statusOperational}15`, color: statusOperational }}>{r.responseCode}</span>
-                ) : (
-                  <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${statusCritical}15`, color: statusCritical }}>{r.responseCode ?? '—'}</span>
-                )],
-              ].map(([label, value], i) => (
-                <div key={i} className="detail-row">
+                ['Chức năng', translateAction(r.action)],
+                ['Địa chỉ IP', <span style={{ fontFamily: fontMono }}>{r.ipAddress || '—'}</span>],
+                ['Thông tin trình duyệt', r.userAgent || '—', true],
+                ['Phiên đăng nhập', <span style={{ fontFamily: fontMono, wordBreak: 'break-all' }}>{r.sessionId || '—'}</span>, true],
+                ['Ngày truy cập', dayjs(r.createdAt).format('DD/MM/YYYY HH:mm:ss'), true],
+              ].map(([label, value, full], i) => (
+                <div key={i} className={full ? 'detail-row detail-value-full' : 'detail-row'}>
                   <span className="detail-label">{label}</span>
                   <span className="detail-value">{value}</span>
                 </div>
               ))}
-              <div className="detail-row detail-value-full">
-                <span className="detail-label">Thời gian xử lý</span>
-                <span className="detail-value">{r.durationMs != null ? `${r.durationMs}ms` : '—'}</span>
-              </div>
-              <div className="detail-row detail-value-full">
-                <span className="detail-label">Đường dẫn</span>
-                <span className="detail-value"><span style={{ fontFamily: fontMono }}>{r.requestPath || '—'}</span></span>
-              </div>
-              <div className="detail-row detail-value-full">
-                <span className="detail-label">Nội dung</span>
-                <span className="detail-value">{r.detail || '—'}</span>
-              </div>
-              {r.metadata && (
-                <div className="detail-row detail-value-full">
-                  <span className="detail-label">Metadata</span>
-                  <span className="detail-value">
-                    <pre style={{ fontFamily: fontMono, fontSize: fontSizeSm, maxHeight: 200, overflow: 'auto', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                      {formatMetadata(r.metadata)}
-                    </pre>
-                  </span>
-                </div>
-              )}
-              <div className="detail-row detail-value-full">
-                <span className="detail-label">Phiên đăng nhập</span>
-                <span className="detail-value"><span style={{ fontFamily: fontMono, wordBreak: 'break-all' }}>{r.sessionId || '—'}</span></span>
-              </div>
-              <div className="detail-row detail-value-full">
-                <span className="detail-label">Trình duyệt</span>
-                <span className="detail-value">{r.userAgent || '—'}</span>
-              </div>
             </div>
           </div>
         ) : null}
