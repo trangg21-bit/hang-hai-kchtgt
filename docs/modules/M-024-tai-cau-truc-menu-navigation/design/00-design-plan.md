@@ -1,386 +1,205 @@
-# M-024 Tái cấu trúc Menu & Navigation — Design Plan (SA)
+# M-024 / F-292 — Design Plan: Sidebar Menu Search (real feature for the dead input)
 
-- **Module:** M-024 — Tái cấu trúc Menu & Navigation
-- **Feature:** F-292 — Tái cấu trúc menu & điều hướng
-- **Stage:** engineering-solution-designer
-- **Inputs:** `ba/00-lean-spec.md` (UC-024-01..08, BR-024-01..12, VAL-024-01..06, AC-024-01..10, Decision Points D-1..D-4), `_features/F-292-tai-cau-truc-menu-navigation/feature-brief.md` (§6-7 BA proposals), `HH_Menu_21-08-2026.xlsx` (7 nhóm I–VII, cấp 2–4), `SO-DO-VA-MA-TRAN-CHA-CON-KCHT.md` (ma trận cha–con), triage `TRI-1787631386205-0f2e.json` (4 edit-target files, done-oracle, verification commands).
-- **Edit scope (triage):** `AppLayout.tsx`, `authStore.ts`, `permissionStore.ts`, `PermissionSeeder.java`. Everything else read-only.
-
----
-
-## 1. Purpose
-
-Decide HOW the approved lean-spec is implemented: a **static hierarchical sidebar** (7 nhóm cấp 1 per xlsx, nhánh "Quản lý cảng biển" = 13 thực thể KCHT theo ma trận cha–con) and a **Dashboard Grid đúng 6 khối** on the home route, gated by the existing dynamic permission model — with zero schema change, zero new business entity, zero new endpoint. This plan finalizes BA decision points D-1..D-4 and feature-brief §6-7, then splits the work into independently executable backend / frontend work orders with verification oracles.
+- **Module:** M-024 Tái cấu trúc Menu & Navigation — Feature F-292
+- **Stage:** engineering-solution-designer (SA) — settles BA proposals in feature-brief §6 and lean-spec D-5
+- **Scope of this design:** `frontend/src/components/AppLayout.tsx` (edit) + `frontend/src/components/AppLayout.test.tsx` (new) ONLY.
+  No theme.ts / tokens.ts, no backend, no entity, no migration, no other module screens, no new dependency.
+- **Sources:** lean-spec `ba/00-lean-spec.md` (UC-024-09/10, BR-024-13/14/15, VAL-024-06, AC-024-11/12/13, D-5); F-292 feature-brief §6 (local `searchQuery` state, no API); `frontend/src/components/AppLayout.tsx` anchors opened this session (lines below refer to current file).
 
 ---
 
-## 2. Verified current seam (anchored evidence)
+## 1. Current seam → intended delta
 
-| Claim | Anchor | Evidence read this session |
+| Aspect | Current (verified anchors) | Intended |
 |---|---|---|
-| Menu permission map: route → `<resource>:<action>` | `AppLayout.tsx:43` | Object literal at line 43; entries incl. `'/buoys': 'data:read'`, `'/water-zone': 'waterarea:read'`, `'/symbols': 'map:manage'` |
-| Menu item gate: missing map entry → visible | `AppLayout.tsx:84` | Function body: `const required = MENU_PERMISSION_MAP[path]; if (!required) return true;` |
-| Static menu config (AntD items, Vietnamese labels) | `AppLayout.tsx:222` | `const rawMenuItems: MenuProps['items'] = [...]` — 7 top-level groups today, several block-commented |
-| Empty-submenu pruner | `AppLayout.tsx:464` | `const filterEmptyChildren = ...` — drops empty children + redundant dividers |
-| Built menu | `menuItems` (`AppLayout.tsx:488`) | assigned from the pruned raw tree |
-| Click handler (navigates only `/`-prefixed keys) | `handleMenuClick` (`AppLayout.tsx:492`) | navigates `e.key` when it starts with `/` |
-| Store imports + theme token import | `AppLayout.tsx:35`, `AppLayout.tsx:36`, `AppLayout.tsx:37` | `useAuthStore`, `usePermissionStore`, `layout` from `../theme` |
-| Permission source from JWT | `parseJwt` (`authStore.ts:44`) | parses the JWT payload (incl. permissions) |
-| Login applies permissions | `login` (`authStore.ts:81`) | copies the JWT permissions array into user state |
-| Token renewal applies permissions | `replaceAccessToken` (`authStore.ts:111`) | refreshes user state on token renewal |
-| Permission-key normalization (dot→colon) | `normalizePermissionKey` (`permissionStore.ts:19`) | dot-notation → `<resource>:<action>` |
-| Permission check + bypass rules | `hasPermissionFromList` (`permissionStore.ts:55`) | bypass via `*` / `admin:all` / `resource:manage` / `resource:*` / `resource:write` |
-| Granted-set build | `permissionStore.ts:64` | `.map((permission) => normalizePermissionKey(permission.trim()))` fills the Set |
-| Store accessor | `hasPermission` (`permissionStore.ts:99`) | store method checking one key |
-| Auto-sync on auth change | `useAuthStore.subscribe` (`permissionStore.ts:119`) | auth-change subscription |
-| Seeder entry point | `run` (`PermissionSeeder.java:45`) | `run(String... args)` (CommandLineRunner) |
-| Seed method | `seedPermission` (`PermissionSeeder.java:716`) | `seedPermission(Map, resource, action, name, description)` |
-| Home route renders the KPI dashboard page | `App.tsx:128`, `App.tsx:43` | `<Route path="/" element={<HomePage />} />`; `const HomePage = lazy(() => import('./pages/Home'))` |
-| Dashboard page is a KPI dashboard (no functional 6-block grid today) | `Home.tsx:304`, `Home.tsx:661` | `HomeDashboard` renders hero KPI + cards + charts + infra table; `export default function HomePage()` |
-| Existing label→route map inside dashboard (maps Bến phao/Khu neo đậu/Khu chuyển tải → `/water-zone`) | `Home.tsx:130` | `KCHT_LABEL_ROUTES` |
-| Route guards (authoritative per-route permission) | `App.tsx:186`, `App.tsx:190`, `App.tsx:192`, `App.tsx:196`, `App.tsx:198`, `App.tsx:205`, `App.tsx:210`, `App.tsx:215`, `App.tsx:220`, `App.tsx:225`, `App.tsx:179`, `App.tsx:182`, `App.tsx:241`, `App.tsx:244`, `App.tsx:245`, `App.tsx:165`, `App.tsx:171`, `App.tsx:174`, `App.tsx:230`, `App.tsx:231`, `App.tsx:232`, `App.tsx:233`, `App.tsx:236`, `App.tsx:248`, `App.tsx:251`, `App.tsx:254` | Full route list verified — see §4.4 |
-| Seeded permission codes (all referenced by the target menu exist) | `PermissionSeeder.java:54`, `:66`, `:72`, `:83`, `:84`, `:90`, `:101`, `:108`, `:120`, `:131`, `:182`, `:199`, `:214`, `:229`, `:246`, `:260`, `:294`, `:314`, `:330`, `:370`, `:387`, `:414`, `:430`, `:446`, `:480`, `:490`, `:510`, `:514`, `:516`, `:518` | `seedPermission` calls for `user:read`, `orgunit:read`, `group:read`, `admin:manage`, `admin:view`, `map:manage`, `connection:read`, `data:read`, `report:read`, `document:read`, `port:read`, `berth:read`, `pier:read`, `dryport:read`, `waterzone:read`, `waterarea:read`, `navigationchannel:read`, `dikerevetment:read`, `shiprepair:read`, `radarstation:read`, `vts:read`, `beaconstation:read`, `buoystation:read`, `buoy:read`, `coastalstation:read`, `specialstation:read`, `inventoryasset:manage`, `assetdecrease:manage`, `assetincrease:manage`, `assetexploitation:manage` |
-| Vite dev-mode re-export guard already applied to dashboard token layer | `tokens-dashboard.ts:6` | Comment: explicit import required — Vite dev does not resolve re-export bindings (import-then-export pattern) |
+| State | `openKeys` = `useState<string[]>([])` (line ~154); Menu is controlled: `openKeys={openKeys}` + `onOpenChange={setOpenKeys}` (line ~577) | Add `searchQuery` state; derive `displayedItems` + `effectiveOpenKeys` |
+| Menu tree | `rawMenuItems` at `frontend/src/components/AppLayout.tsx:230` → `filterEmptyChildren(rawMenuItems)` → `menuItems` at `frontend/src/components/AppLayout.tsx:498`. `filterEmptyChildren` is a pure recursive pruner, currently defined **inside** the component at `frontend/src/components/AppLayout.tsx:474`: drops nulls, drops groups with 0 valid children, removes leading/trailing/duplicate dividers | Same gating pipeline stays the source of truth. Search filters **after** it, on `menuItems` (BR-024-13) |
+| Input | Dead `<div className="sidebar-search"><SearchOutlined /><input placeholder="Tìm kiếm" /></div>` (lines ~561–567), rendered when `!collapsed && !isMenuFullScreen` (line ~562) | Controlled input: `value={searchQuery}` + `onChange` — no Enter handler, no form wrapper, no API (BR-024-13, AC-024-13) |
+| Menu render | `<Menu ... items={menuItems} openKeys={openKeys} onOpenChange={setOpenKeys} ... />` (line ~577) | `items={displayedItems}` + `openKeys={effectiveOpenKeys}`; `onOpenChange` unchanged |
 
-**Gap found (load-bearing):** `MENU_PERMISSION_MAP` values diverge from the route-guard permissions in `App.tsx` for 5 routes:
-
-| Route | Map value (`AppLayout.tsx:43`) | Route guard (`App.tsx`) | Action |
-|---|---|---|---|
-| `/buoys` | `data:read` | `buoy:read` (`App.tsx:182`) | align map → `buoy:read` |
-| `/beacon-stations` | `data:read` | `beaconstation:read` (`App.tsx:179`) | align map → `beaconstation:read` |
-| `/buoy-station` | `data:read` | `buoystation:read` (`App.tsx:241`) | align map → `buoystation:read` |
-| `/symbols` | `map:manage` | `data:read` (`App.tsx:248`) | align map → `data:read` |
-| `/water-zone` | `waterarea:read` | `waterzone:read` (`App.tsx:198`) | align map → `waterzone:read` |
-
-Leaving these divergent would let a user see a menu item but be blocked by the route guard (or vice versa) — the menu must mirror the guard so "menu hiển thị ⇔ route cho phép".
+**Data flow (search):** `searchQuery` (raw string state) → `.trim()` at match time (VAL-024-06) → if empty/whitespace: show `menuItems` unchanged (AC-024-12) → else `filterMenuByQuery(menuItems, query)` → `displayedItems`; `effectiveOpenKeys` = all kept submenu keys while searching, `openKeys` otherwise.
 
 ---
 
-## 3. Decisions (D-1..D-4, §6-7)
+## 2. Design decisions (settled — the SA answers to BA proposals)
 
-### D-1 — 4 route-less entities: disabled placeholders (option a) — CONFIRMED
+### D-1. State shape and input wiring
+- `const [searchQuery, setSearchQuery] = useState('');` — plain string, stores the **raw** value (spaces preserved so the user can type/edit freely). Place next to the other `useState` calls (after line ~151 `isMenuFullScreen`).
+- Input becomes controlled: `value={searchQuery}`, `onChange={(e) => setSearchQuery(e.target.value)}`.
+- **No** `onKeyDown` / `onPressEnter`, **no** `<form>` wrapper, **no** debounce, **no** `useMemo` beyond plain derived consts (menu is small, client-side; spec requires none — smallest complete change).
+- `.trim()` happens only where the value is *used* (match + is-searching check), never stored trimmed (VAL-024-06). Whitespace-only input is a valid intermediate state that restores the full menu.
 
-**Decision:** Bến phao, Khu neo đậu, Khu chuyển tải, Khu tránh/trú bão render as **disabled AntD menu items with tooltip "Chưa triển khai"**, no route, no permission, no navigation. Keeps the "13 thực thể" node count (AC-024-02) and honors BR-024-08 ("cấm navigate route giả").
-
-**Rejected:**
-- (b) Omit the items — breaks the done-oracle (node count = 13) and the xlsx tree.
-- (c) Add routes inside M-003 entity modules — outside M-024's 4-file edit scope, and would navigate to screens that do not exist (violates BR-024-08 / "Data thật, không gán mặc định").
-
-**Implementation contract:** `disabled: true` + `title: 'Chưa triển khai'` on the AntD item; `key` is a **non-route English string** (so `handleMenuClick` at `AppLayout.tsx:492` cannot navigate it), e.g. `mooring-buoy-placeholder`, `anchorage-area-placeholder`, `transshipment-area-placeholder`, `storm-shelter-area-placeholder`. No entry in `MENU_PERMISSION_MAP` (BR-292-03: item chưa có màn hình → disabled, không gating). Placeholders are unconditional children (not wrapped in `canAccessMenu`) so the branch keeps its target shape for every user who can open it.
-
-### D-2 — 6-khối Dashboard mapping: REVISED (I, II, IV, V, VI, VII)
-
-**Decision:** 6 khối = **nhóm I, II, IV, V, VI, VII** — the six groups that have at least one implemented, navigable screen. **Nhóm III (PHÊ DUYỆT) has NO list screen** (no approval list route exists anywhere in `App.tsx:121`–`App.tsx:261`; the only approval routes are per-record detail actions like `App.tsx:187` `/port/:id/approve`), so it cannot supply a navigable block; it stays sidebar-only with disabled placeholder items. **Nhóm VII (TÍCH HỢP) gets a block** because it has real navigable screens (`App.tsx:165` `/connections`, `App.tsx:171` `/interconnect`).
-
-**Why revised vs BA proposal (I–VI):** AC-024-01 requires *mỗi khối ... điều hướng được* (every block navigable). A PHÊ DUYỆT block would be a dead block. Swapping III → VII keeps exactly 6 navigable blocks. The mapping is a **single data-driven config** — `DASHBOARD_BLOCKS` (NEW, introduced by WO-FE-4; §4.3) — so if the target photo `docs/inputs/photo_2026-07-09_15-47-20.jpg` (unreadable this session — base64 only, see §9) dictates a different mapping, it is a one-config change, not a redesign.
-
-**Block table (label tiếng Việt / target route / gate permission):**
-
-| # | Khối (label) | Target route | Gate (route guard) |
-|---|---|---|---|
-| 1 | QUẢN LÝ KCHT HÀNG HẢI | `/port` | `port:read` |
-| 2 | QUẢN LÝ TÀI SẢN KCHT HÀNG HẢI | `/asset/inventory` | `inventoryasset:manage` |
-| 3 | BÁO CÁO THỐNG KÊ | `/reports` | `report:read` |
-| 4 | QUẢN LÝ NGƯỜI DÙNG | `/users` | `user:read` |
-| 5 | QUẢN LÝ QUY HOẠCH & VẬN HÀNH | `/documents/legal` | `document:read` |
-| 6 | TÍCH HỢP | `/connections` | `connection:read` |
-
-**Grid behavior:** the grid always renders **exactly 6 blocks** for every logged-in user (AC-024-01 count oracle); unauthorized clicks are stopped by the existing route guards (`PermissionGuard` in `App.tsx`) — navigation security never depends on hiding UI (BR-024-12). Clicking a block navigates to its target; the sidebar syncs via the `selectedKey`/`openKeys` effect (WO-FE-3), satisfying UC-024-02.
-
-**Placement:** the grid renders **inside `AppLayout.tsx` above the `<Outlet />` when `location.pathname === '/'`**. Home.tsx (the KPI dashboard) is NOT an edit target, so the grid is an AppLayout-owned layer on the home route, with the existing dashboard preserved below it. This is a deliberate scope-preserving deviation — flagged in §8. If PMO later approves editing `Home.tsx`, the grid component moves there unchanged.
-
-### D-3 — utility items absent from xlsx: keep, outside the 7 groups
-
-| Item | Decision | Gate |
-|---|---|---|
-| `Trang chủ` (`/`) | **Keep** — first sidebar utility item (already `AppLayout.tsx:223`) | none (every logged-in user) |
-| `Cấu hình hệ thống` (`/settings`) | **Keep** — last sidebar utility item | `admin:manage` (matches `App.tsx:254`) |
-| `Quản lý vùng nước` (`/water-zone`) | **Keep** — utility item at sidebar bottom, gated `waterzone:read` | `waterzone:read` (matches `App.tsx:198`) |
-
-**Rationale for `/water-zone`:** it is a **real implemented screen** (`App.tsx:198`) not represented in the xlsx target tree (the xlsx splits the 3 Khu as separate items, all without screens — D-1). Hiding it entirely would orphan a working screen (violates "Bảo tồn Code"); placing it inside the 13-entity tree would break AC-024-02 (count = 13). Utility position keeps both invariants. The 3 Khu remain disabled placeholders inside the Cảng-biển tree.
-
-### D-4 — permission model: NO new permission; reuse route-guard permissions
-
-**Decision:** do **not** introduce `menu:view`. All 30 permission codes referenced by the target menu are already seeded (anchors in §2). Gating stays dynamic: JWT permissions → `permissionStore` → `canAccessMenu` (`AppLayout.tsx:84`); bypass only via `*` / `admin:all` / `resource:manage` / `resource:*` / `resource:write` — logic in `hasPermissionFromList` (`permissionStore.ts:55`), never `admin:manage` (BR-024-05).
-
-**Consequence:** `PermissionSeeder.java` receives **no code change** in this module (see WO-BE-1 — verify-only). The only backend-adjacent work is the `MENU_PERMISSION_MAP` alignment in §2 (frontend).
-
-### §6 — menu data source: STATIC (confirmed), route→permission map finalized
-
-**Decision:** static menu in `AppLayout.tsx` (`rawMenuItems` + `MENU_PERMISSION_MAP`), gated client-side by JWT permissions. **Rejected: dynamic `/api/menu`.** Reasons: (1) BR-024-11 / constraint forbids new entities, tables, migrations — a dynamic menu requires a `menu_item` table and a new controller/service (feature-brief §7 proposal), which also exceeds the 4-file edit scope; (2) the menu is release-bound configuration, not runtime data; (3) the existing pattern (static config + dynamic gating) already delivers permission-correct menus with zero server round-trip. Finalized route→permission map in §4.4.
-
-### §7 — table structure: NONE
-
-**Decision:** no new DB table. The `menu_item` table sketched in feature-brief §7 is rejected (see §6 rationale). Menu structure lives as TypeScript config (§4.1) — no migration, no backfill, no `orgUnitId`/`@Filter`/`@DataScope` (BR-024-11).
-
----
-
-## 4. Target architecture
-
-### 4.1 Menu model (static TS config in AppLayout.tsx)
-
-Extend the existing inline AntD items with a small typed helper so the tree stays declarative and verifiable:
+### D-2. Filter algorithm (settles BR-024-14 + D-5)
+Applied to the **already permission-gated** `menuItems` (BR-024-13, BR-024-15). New module-level pure function:
 
 ```ts
-type MenuNode = {
-  key: string;                 // English; leaf keys start with '/' (route) or are non-route placeholders
-  label: string;               // Vietnamese, diacritics
-  route?: string;              // leaf only — must exist in App.tsx
-  permission?: string | string[]; // resolved through canAccessMenu; absent => unconditional
-  disabled?: boolean;          // true => 'Chưa triển khai' placeholder (BR-024-08)
-  children?: MenuNode[];
-};
+// module scope (after filterEmptyChildren is hoisted)
+export function filterMenuByQuery(items: MenuProps['items'], query: string): MenuProps['items'] {
+  const q = query.trim().toLowerCase();            // VAL-024-06 + case-insensitive
+  if (!q) return items;                            // AC-024-12: empty/whitespace → exact full menu (same reference, no re-render churn beyond one pass)
+  const keepMatching = (nodes: MenuProps['items']): MenuProps['items'] =>
+    (nodes ?? []).map((node: any) => {
+      if (!node) return null;
+      if (node.type === 'divider') return node;    // kept; filterEmptyChildren applies existing divider hygiene
+      if (node.children) return keepMatching(node.children); // parent kept iff ≥1 descendant kept (D-5a); own-label match of a submenu does NOT keep it when all descendants are filtered out
+      const labelMatches = typeof node.label === 'string' && node.label.toLowerCase().includes(q);
+      return labelMatches ? node : null;
+    });
+  return filterEmptyChildren(keepMatching(items)); // prunes empty branches + cleans dividers — reuse, do NOT duplicate
+}
 ```
 
-Rules (VAL-024-01..06): unique `key` per level; depth ≤ 4 (group → level 4 per xlsx); leaf keys start with `/` only when the route exists; placeholder keys are English, non-route, suffixed `-placeholder`; labels Vietnamese; no hardcoded color/spacing/font-size anywhere in menu config (UI via `theme.ts`/`tokens.ts` only).
+Rules (each traceable):
+- **Leaf (no `children`)**: kept iff its string `label` contains the trimmed query as a case-insensitive substring. Vietnamese diacritics are matched **exactly** (no folding): `"cảng"` matches `"Cảng biển"`, `"cang"` does not — spec-faithful, documented limitation.
+- **Submenu (has `children`)**: kept iff **≥1 descendant** is kept (D-5 settle — option (a) of lean-spec D-5: matching leaves stay reachable through their ancestor chain). A submenu whose own label matches but has no matching descendant is hidden (per design decision in the dispatch brief: "nested submenu stays visible when ANY descendant matches… otherwise hidden"). This is exactly `filterEmptyChildren`'s existing empty-branch rule (BR-024-04), so the two behaviors are one.
+- **Divider**: passed through, then `filterEmptyChildren` removes leading/trailing/duplicate dividers — same hygiene as the non-search menu.
+- **No mutation**: `rawMenuItems` is never touched; parents are rebuilt via `filterEmptyChildren`'s existing `{ ...item, children }` spread; kept leaves are returned by reference.
+- **No match anywhere** → `[]` → Menu renders empty scroll area (header + search box remain). Spec-silent; acceptable.
+- Non-string labels (ReactNode) never crash: guarded by `typeof node.label === 'string'`; children still traversed (defensive; all current labels in `rawMenuItems` are plain strings).
 
-### 4.2 Target sidebar tree (7 nhóm cấp 1 + utilities)
+### D-3. Auto-open ancestors of matches (while filtering)
+New module-level pure function:
 
-Top-level order and labels EXACTLY per xlsx (BR-024-01). Group keys are English; labels Vietnamese. 7 group headers render unconditionally (AC-024-03); child real items gated via `canAccessMenu`; placeholder items unconditional; `filterEmptyChildren` (`AppLayout.tsx:464`) continues pruning nested submenus whose children are all filtered out (AC-024-04).
-
-```text
-Trang chủ /                     [utility, no gate]
-— divider —
-I. QUẢN LÝ KCHT HÀNG HẢI        key: group-kcht
-   Quản lý cảng biển            key: port-tree (submenu, onTitleClick -> /port)
-     Cảng biển                  /port              port:read
-     Bến cảng                   key: berth-parent (submenu, onTitleClick -> /berth)
-       Cầu cảng                 /pier              pier:read
-     Luồng hàng hải             key: nav-channel-parent (submenu, onTitleClick -> /navigation-channel)
-       Bến phao                 disabled placeholder mooring-buoy-placeholder
-       Đèn biển + nhà trạm gắn đèn  /beacon-stations    beaconstation:read
-       Đê/kè                    /dike-revetment    dikerevetment:read
-       Nhà trạm phao/tiêu       key: buoy-station-parent (submenu, onTitleClick -> /buoy-station)
-         Phao tiêu              /buoys             buoy:read
-     Khu neo đậu                disabled placeholder anchorage-area-placeholder
-     Khu chuyển tải             disabled placeholder transshipment-area-placeholder
-     Khu tránh/trú bão          disabled placeholder storm-shelter-area-placeholder
-     CS sửa chữa/đóng tàu       /ship-repair-facility   shiprepair:read
-   Hệ thống VTS                 key: vts-parent (submenu, onTitleClick -> /vts-system)
-     Thông tin hệ thống VTS     /vts-system        vts:read
-     Trung tâm điều hành VTS    key: vts-ops-center
-       Thông tin TT ĐHVTS       disabled placeholder vts-ops-info-placeholder
-       Radar                    /radar-station     radarstation:read
-       AIS / CCTV / SCADA / Truyền dẫn / Phụ trợ VTS / VHF   disabled placeholders
-       Đài TT duyên hải         /station/coastal   coastalstation:read
-       Inmarsat                 /station/special   specialstation:read
-       Sarsat / LRIT / Trung tâm xử lý TT          disabled placeholders
-   Thông tin cảng cạn           /dry-port          dryport:read
-II. QUẢN LÝ TÀI SẢN KCHT HÀNG HẢI   key: group-asset
-   [xlsx tree levels 2-4; real leaves enabled, rest disabled placeholders]
-     Yêu cầu tăng tài sản       /asset/increase    assetincrease:manage
-     Yêu cầu giảm tài sản       /asset/decrease    assetdecrease:manage
-     Kiểm kê tài sản            /asset/inventory   inventoryasset:manage
-     Khai thác tài sản          /asset/exploitation  assetexploitation:manage
-     (other xlsx nodes: Tài sản cảng biển, Tài sản bến cảng -> Tài sản cầu cảng,
-      Tài sản bến phao, ..., Tài sản cảng cạn, Kiểm kê & Xử lý -> Đề nghị xử lý tài sản,
-      Quản lý sản lượng cảng biển, Kiểm kê tài sản)  -> disabled placeholders
-III. PHÊ DUYỆT                  key: group-approval
-   [xlsx tree levels 2-4: Duyệt Bến cảng, Duyệt Cầu cảng, Duyệt Bến phao,
-    Duyệt Khu tránh/trú bão, Duyệt Khu chuyển tải, Duyệt Khu neo đậu,
-    Duyệt CS sửa chữa/đóng tàu, Duyệt Luồng hàng hải, Duyệt Đèn biển + nhà trạm gắn đèn,
-    Duyệt Đê/kè, Nhà trạm quản lý phao/tiêu -> Duyệt Nhà trạm / Duyệt Phao tiêu,
-    Hệ thống VTS -> Duyệt hệ thống VTS -> Trung tâm điều hành VTS -> (12 level-4),
-    Duyệt cảng cạn, Duyệt sản lượng cảng biển]  -> ALL disabled placeholders (no screens)
-IV. BÁO CÁO THỐNG KÊ            key: group-reports
-   [restore the block-commented tree: /reports (Tất cả báo cáo, report:read) +
-    groups F-141..F-189 keys '/reports/F-*' — routes exist via /reports/:code]
-V. QUẢN LÝ NGƯỜI DÙNG           key: group-users
-     Quản lý đơn vị             /organizations     orgunit:read
-     Quản lý nhóm người dùng    /groups            group:read
-     Quản lý người dùng         /users             user:read
-     Quản lý log truy cập       /logs              admin:view
-VI. QUẢN LÝ QUY HOẠCH & VẬN HÀNH  key: group-planning
-     Quản lý quy hoạch          disabled placeholder planning-placeholder
-     Quản lý thông tin vận hành khai thác   disabled placeholder
-     Quản lý thông tin bảo trì  disabled placeholder
-     Quản lý thông tin sự cố    /documents/incidents   document:read
-     Quản lý thông tin KCHT hàng hải trên bản đồ  /gis/map   data:read
-     Quản lý biểu tượng trên bản đồ  /symbols     data:read
-     Quản lý danh mục đối tượng điểm / đường / vùng  /gis/points, /gis/lines, /gis/polygons  data:read
-     Quản lý văn bản pháp lý    /documents/legal  document:read
-     Quản lý hồ sơ              disabled placeholder
-VII. TÍCH HỢP                   key: group-integration
-     Quản lý kết nối liên thông chia sẻ dữ liệu  /connections   connection:read
-     (Quản lý kết nối liên thông)  /interconnect  connection:read
-     Tích hợp các mảnh hải đồ điện tử            disabled placeholder
-     Tích hợp bản đồ quy hoạch cảng biển         disabled placeholder
-— divider —
-Cấu hình hệ thống /settings     admin:manage       [utility]
-Quản lý vùng nước /water-zone   waterzone:read     [utility]
+```ts
+export function collectOpenableKeys(items: MenuProps['items']): string[] {
+  return (items ?? []).reduce<string[]>((acc, node: any) => {
+    if (node?.children?.length) {
+      acc.push(node.key as string);
+      acc.push(...collectOpenableKeys(node.children));
+    }
+    return acc;
+  }, []);
+}
 ```
 
-**13-entity count (AC-024-02 oracle):** Cảng biển, Bến cảng, Cầu cảng, Luồng hàng hải, Bến phao, Đèn biển + nhà trạm gắn đèn, Đê/kè, Nhà trạm phao/tiêu, Phao tiêu, Khu neo đậu, Khu chuyển tải, Khu tránh/trú bão, CS sửa chữa/đóng tàu = **13**, hierarchy per BR-024-03 / SO-DO matrix chains.
+In the component: `const effectiveOpenKeys = isSearching ? collectOpenableKeys(displayedItems) : openKeys;` and pass `openKeys={effectiveOpenKeys}` to `<Menu>`.
+- Every kept submenu in the filtered tree is exactly an ancestor of ≥1 match, so this set = "ancestor keys of matches" — all paths to results are expanded.
+- While searching, the derived set **wins** over user toggling (`onOpenChange` still writes to base `openKeys`); on clear, the base state (pre-search, plus any toggles made meanwhile) is shown again — deterministic, restores "exact full menu" (AC-024-12).
+- Keys absent from the filtered tree are never pushed (no stale-key warnings).
 
-**Placeholders naming convention:** English, non-route, `-placeholder` suffix (e.g. `ais-placeholder`, `cctv-placeholder`, `ts-cang-bien-placeholder` → **use English**: `asset-port-placeholder`, `asset-berth-placeholder`, ...). No transliterated Vietnamese keys (naming convention). Full list is derived from the xlsx tree by the implementer; the work order requires the xlsx sheet to be the source of labels.
+### D-4. Restore on clear (AC-024-12)
+- `const trimmedSearchQuery = searchQuery.trim();`
+- `const isSearching = trimmedSearchQuery.length > 0;`
+- `const displayedItems = isSearching ? filterMenuByQuery(menuItems, trimmedSearchQuery) : menuItems;` — empty/whitespace query returns the **same** `menuItems` reference (filterMenuByQuery early-returns `items`), so the full gated menu (7 groups + utility items) reappears with zero filtering.
+- `filterMenuByQuery` re-trims internally as a defensive contract (VAL-024-06 lives in the function, not only at the call site).
 
-### 4.3 Dashboard Grid 6 khối (AppLayout-owned)
+### D-5. No navigation, no API (AC-024-13 / BR-024-13)
+- The input has no Enter handler and is not wrapped in a form → pressing Enter cannot submit/navigate.
+- Search never calls `navigate`, `useSearchParams`, or any service/API; it only derives props fed to the existing controlled `<Menu>`. Leaf clicks keep navigating through the existing `handleMenuClick` (unchanged, AC-024-06).
+- BR-024-15 holds structurally: the filter receives the already-gated tree and can only **remove** items (output ⊆ input), never add.
 
-- **NEW (proposed)** — single-source config `DASHBOARD_BLOCKS` (6 entries: `label` Vietnamese, `icon` from `@ant-design/icons`, `target` route, `permission`) to be introduced by WO-FE-4; this config does not exist today.
-- **Proposed (new behavior):** rendered on `location.pathname === '/'` above `<Outlet />` inside the Content of `AppLayout.tsx` (WO-FE-4).
-- **Display gating:** blocks are NOT permission-filtered — always 6 (AC-024-01 count oracle); unauthorized navigation is stopped by route guards (BR-024-12). (Rejected alternative: gating blocks by permission → the block count becomes user-dependent and fails the "đúng 6 khối" oracle.)
-- Layout: responsive grid (Row/Col pattern as used in `HomeDashboard` at `Home.tsx:304`); styling ONLY via `tokens.ts` presets (e.g. cardStyle-family, radiusLg, `spaceMd` at `tokens.ts:69`) — no hex, no raw spacing/font-size.
-- Icons: reuse the existing @ant-design/icons import block — e.g. `ApiOutlined` at `AppLayout.tsx:23` and `DashboardOutlined` at `AppLayout.tsx:18`; add any missing icon the same way.
-- Click → `navigate(target)` + `setOpenKeys` for the branch (WO-FE-3), closing the mobile drawer if open.
+### D-6. Scope (triage TRI-1787823566528-bb3e)
+- Edit: `frontend/src/components/AppLayout.tsx` only. New: `frontend/src/components/AppLayout.test.tsx` (co-located — the vitest runner collects `frontend/**/*.test.*`, and co-location matches `PermissionGuard.test.tsx` etc.).
+- **No** `theme.ts`/`tokens.ts` change: `.sidebar-search` CSS already exists (theme.ts lines ~412–435); no new class, no style props, no hardcoded color/spacing/font-size (BR-024-10).
+- **No** new Layout/Sider/Menu of our own; no API endpoint; no entity; no migration; no other module screen.
+- Naming: identifiers/keys English (`searchQuery`, `filterMenuByQuery`, `collectOpenableKeys`, `displayedItems`, `effectiveOpenKeys`); labels/placeholder/UI text Vietnamese with diacritics (`placeholder="Tìm kiếm"` stays).
 
-### 4.4 Route → permission map — FINAL (§6)
+### D-7. Unit-test seams (what the developer must cover)
+Pure-function tests on the two **exported** helpers — no rendering, no router/store mocks (AppLayout module import is side-effect-free beyond imports). Test file follows the `PermissionGuard.test.tsx` convention (vitest + `@testing-library/react` + `import '@testing-library/jest-dom'`).
 
-| Route | Permission (guard = source of truth) | Guard anchor | MENU_PERMISSION_MAP action |
-|---|---|---|---|
-| `/port` | `port:read` | `App.tsx:186` | keep |
-| `/berth` | `berth:read` | `App.tsx:190` | keep |
-| `/pier` | `pier:read` | `App.tsx:192` | keep |
-| `/navigation-channel` | `navigationchannel:read` | `App.tsx:205` | keep |
-| `/dike-revetment` | `dikerevetment:read` | `App.tsx:210` | keep |
-| `/ship-repair-facility` | `shiprepair:read` | `App.tsx:215` | keep |
-| `/radar-station` | `radarstation:read` | `App.tsx:220` | keep |
-| `/vts-system` | `vts:read` | `App.tsx:225` | keep |
-| `/beacon-stations` | `beaconstation:read` | `App.tsx:179` | **change** (`data:read` → `beaconstation:read`) |
-| `/buoys` | `buoy:read` | `App.tsx:182` | **change** (`data:read` → `buoy:read`) |
-| `/buoy-station` | `buoystation:read` | `App.tsx:241` | **change** (`data:read` → `buoystation:read`) |
-| `/station/coastal` | `coastalstation:read` | `App.tsx:244` | keep |
-| `/station/special` | `specialstation:read` | `App.tsx:245` | keep |
-| `/dry-port` | `dryport:read` | `App.tsx:196` | keep |
-| `/water-zone` | `waterzone:read` | `App.tsx:198` | **change** (`waterarea:read` → `waterzone:read`) |
-| `/asset/increase` | `assetincrease:manage` | `App.tsx:230` | **add** (currently `data:read`) |
-| `/asset/decrease` | `assetdecrease:manage` | `App.tsx:231` | **add** (currently `data:read`) |
-| `/asset/inventory` | `inventoryasset:manage` | `App.tsx:232` | **add** (currently `data:read`) |
-| `/asset/exploitation` | `assetexploitation:manage` | `App.tsx:233` | **add** (currently `data:read`) |
-| `/reports` | `report:read` | `App.tsx:174` | keep |
-| `/reports/F-*` | (inherited from `/reports` parent gate; no map entry needed — `canAccessMenu` at `AppLayout.tsx:84` returns true when a path has no map entry) | — | none |
-| `/users` | `user:read` | `App.tsx:129` | keep |
-| `/organizations` | `orgunit:read` | `App.tsx:132` | keep |
-| `/groups` | `group:read` | `App.tsx:138` | keep |
-| `/logs` | `admin:view` | `App.tsx:251` | keep |
-| `/documents/legal` | `document:read` | `App.tsx:236` | keep |
-| `/documents/incidents` | `document:read` | `App.tsx:237` | keep |
-| `/documents/port-planning` | `document:read` | `App.tsx:238` | keep |
-| `/symbols` | `data:read` | `App.tsx:248` | **change** (`map:manage` → `data:read`) |
-| `/gis/points` `/gis/lines` `/gis/polygons` | `data:read` | `App.tsx:143` `App.tsx:148` `App.tsx:153` | keep (restore from block comment) |
-| `/gis/map` | `data:read` | `App.tsx:161` | keep |
-| `/connections` | `connection:read` | `App.tsx:165` | keep |
-| `/interconnect` | `connection:read` | `App.tsx:171` | keep |
-| `/settings` | `admin:manage` | `App.tsx:254` | keep |
-| `/` (Trang chủ) | none | `App.tsx:128` | none (utility) |
-
-### 4.5 §7 — persistence: none
-
-No table, no entity, no migration, no backfill, no `orgUnitId` / `@Filter` / `@DataScope` (BR-024-11). Data-scope declaration (feature-brief §5 row 3): chức năng không quản lý dữ liệu nghiệp vụ → no data scope.
-
----
-
-## 5. Component & data flow
-
-```
-Login (authStore.ts:44 parseJwt -> permissions claim)
-  -> permissionStore.ts:119 subscribe syncs permissions
-  -> AppLayout renders:
-       sidebar: rawMenuItems (static, §4.2) -> filterEmptyChildren (AppLayout.tsx:464)
-                -> Menu items gated by canAccessMenu (AppLayout.tsx:84)
-       home '/': DashboardGrid (6 blocks, §4.3) above <Outlet /> (Home.tsx dashboard below)
-  -> click leaf (AppLayout.tsx:492 handleMenuClick): navigate(route)
-  -> selectedKey/openKeys effect (WO-FE-3) opens the branch
-  -> deep link without permission: route guard in App.tsx -> 403/redirect (BR-024-12)
-```
-
-No API calls added; no backend endpoint; no store schema change.
-
----
-
-## 6. Work orders
-
-### Backend
-
-**WO-BE-1 — Verify seeded permissions; expected diff: NONE (PermissionSeeder.java)**
-- File: `PermissionSeeder.java` (read-only this stage).
-- Task: confirm every permission code in §4.4 resolves to a `seedPermission` call inside `run()` — the anchored list in §2 already proves all 30 exist (`run` at `PermissionSeeder.java:45`, `seedPermission` at `PermissionSeeder.java:716`). Make **no code change**.
-- Fallback (ONLY if review/QA finds a referenced code missing from the DB after boot): add `seedPermission(definitions, resource, action, "Tên tiếng Việt", "Mô tả tiếng Việt");` inside `run()` per BR-024-09 — dynamic, no role assignment.
-- Oracle: `mvn compile -DskipTests` passes; every §4.4 permission code appears in `run()`'s seed list.
-
-### Frontend — `AppLayout.tsx`
-
-**WO-FE-1 — Rebuild `rawMenuItems` to the 7-group target tree** (`AppLayout.tsx:222`)
-- Replace the current items with the tree in §4.2: utility `Trang chủ` first; 7 group headers (I–VII, exact xlsx labels); group I with the 13-entity Cảng-biển tree + VTS subtree + `Thông tin cảng cạn`; groups II/III with xlsx placeholder trees; group IV restored from the block comment (F-141..F-189, keys `/reports/F-*`); groups V/VI/VII per §4.2.
-- Placeholders: `disabled: true` + `title: 'Chưa triển khai'`; English non-route keys with `-placeholder` suffix; **not** wrapped in `canAccessMenu`.
-- Group headers (I–VII) render unconditionally; real leaves wrapped in `canAccessMenu(route)`.
-- Constraints: labels tiếng Việt có dấu; keys/routes tiếng Anh; no hardcoded color/spacing/font-size; no route that does not exist in `App.tsx`.
-- Oracle: node count of `Quản lý cảng biển` branch = 13; 7 groups; `cd frontend && npx tsc --noEmit` passes.
-
-**WO-FE-2 — Align `MENU_PERMISSION_MAP` to route guards** (`AppLayout.tsx:43`)
-- Apply exactly the 5 changes + 4 additions in §4.4 (`/buoys`, `/beacon-stations`, `/buoy-station`, `/symbols`, `/water-zone`; `/asset/increase`, `/asset/decrease`, `/asset/inventory`, `/asset/exploitation`).
-- Do not remove entries for hidden routes (`/gis/*`, `/history`, `/documents/port-planning`, `/interconnect`, `/dry-port`) — they are inert or reused.
-- Oracle: for every route in §4.4, `MENU_PERMISSION_MAP[route] ===` the guard permission in `App.tsx`.
-
-**WO-FE-3 — Rewrite `selectedKey`/`openKeys` branch sync for the new tree**
-- Replace the old branch-key branches (e.g. `cangben`, `khu-nuoc-vts`, `beacon`, `stations`, `system-admin`, `documents-incidents`) with the new keys: `group-kcht`, `port-tree`, `berth-parent`, `nav-channel-parent`, `buoy-station-parent`, `vts-parent`, `vts-ops-center`, `group-asset`, `group-approval`, `group-reports`, `group-users`, `group-planning`, `group-integration`.
-- Grid clicks must open the matching branch (e.g. block TÍCH HỢP → `/connections` → `group-integration`).
-- Keep the existing branch-sync `selectedKey` effect (`AppLayout.tsx:188`) and its special cases (port-parent, buoy-station-parent) — extend, don't delete.
-- Oracle: AC-024-06 — clicking each leaf opens exactly its branch (no stray branch).
-
-**WO-FE-4 — Add `DashboardGrid` (6 khối) + NEW `DASHBOARD_BLOCKS` config**
-- New local component + config in `AppLayout.tsx`; render above `<Outlet />` only when `location.pathname === '/'`.
-- 6 blocks per §3 (D-2): label tiếng Việt, AntD icon, target route, click → `navigate` + branch sync + close mobile drawer.
-- Styling from `tokens.ts` presets only; no hex/spacing/font-size literals.
-- **Vite re-export bug discipline:** if any import comes from a tokens barrel, use explicit `import { x } from './tokens'` then `export { x }` — never `export { x } from ...` + in-body usage (pattern already applied at `tokens-dashboard.ts:6`). New tokens are NOT expected; reuse existing presets.
-- Oracle: AC-024-01 — home renders exactly 6 grid blocks, each with Vietnamese label, each navigable.
-
-**WO-FE-5 — Keep gating helpers; adjust empty-submenu behavior**
-- `canAccessMenu` (`AppLayout.tsx:84`) unchanged.
-- `filterEmptyChildren` (`AppLayout.tsx:464`): unchanged logic; because placeholders are unconditional children, branches with placeholders never collapse; branches with only gated children collapse when all are filtered (AC-024-04).
-- Oracle: AC-024-03 (7 groups for every user), AC-024-04 (no-permission items hidden), AC-024-05 (`admin:all`/`*` sees everything).
-
-### Frontend — `authStore.ts`, `permissionStore.ts`
-
-**WO-FE-6 — Verify permission flow; expected diff: NONE**
-- File: `authStore.ts`, `permissionStore.ts` (read-only this stage).
-- Verify: `parseJwt` (`authStore.ts:44`) parses the JWT permissions claim.
-- Verify: `login` (`authStore.ts:81`) applies the permissions to user state.
-- Verify: `replaceAccessToken` (`authStore.ts:111`) refreshes them on token renewal.
-- Verify: `normalizePermissionKey` (`permissionStore.ts:19`) normalizes legacy dot-notation keys.
-- Verify: `hasPermissionFromList` (`permissionStore.ts:55`) implements bypass + exact-match checks.
-- Verify: `useAuthStore.subscribe` (`permissionStore.ts:119`) syncs permissions on auth change.
-- All referenced menu permission keys are plain <resource>:<action> codes that pass through unchanged.
-- Make **no code change**. If QA finds a gating gap (e.g. a legacy dot-notation key that fails normalization for a menu permission), report to SA with the exact key — do not improvise a normalization rule.
-- Oracle: AC-024-09 typecheck/compile + spot-check of a seeded permission key round-tripping through `normalizePermissionKey` unchanged.
-
----
-
-## 7. Acceptance mapping
-
-| AC | Design element | Verification oracle |
+| Seam | Case | Assertion |
 |---|---|---|
-| AC-024-01 (6 khối, navigable) | §4.3 `DASHBOARD_BLOCKS` (NEW) + WO-FE-4 | Count grid elements on `/` = 6; click each block → target route renders |
-| AC-024-02 (13 entities, hierarchy) | §4.2 group I tree + WO-FE-1 | Count nodes in `Quản lý cảng biển` = 13; parent–child chains per BR-024-03 |
-| AC-024-03 (7 groups) | §4.2 group headers + WO-FE-1 | Sidebar shows exactly groups I–VII + utility items |
-| AC-024-04 (permission hiding) | `canAccessMenu` + WO-FE-2/5 | User without `port:read` sees no Cảng biển item; empty submenus collapse |
-| AC-024-05 (`admin:all`/`*`) | `permissionStore.ts:55` bypass | Admin sees full menu |
-| AC-024-06 (navigation sync) | WO-FE-3 | Click leaf → route + correct `selectedKey`/`openKeys` |
-| AC-024-07 (disabled + tooltip) | D-1 placeholders + WO-FE-1 | 4 placeholders disabled, tooltip "Chưa triển khai", no navigation |
-| AC-024-08 (naming/UI) | constraints throughout | Static check: English keys/routes, Vietnamese labels, no hex/spacing/font-size literals |
-| AC-024-09 (builds) | all work orders | `cd frontend && npx tsc --noEmit`; `mvn compile -DskipTests` |
-| AC-024-10 (seed if new permission) | WO-BE-1 (no new permission by design) | N/A — no new permission; if fallback triggers, permission appears in DB, no role assignment |
+| label match | `filterMenuByQuery(tree, 'cảng')` | leaf `'Cảng biển'` kept; leaf `'Quản lý log truy cập'` dropped |
+| trim (VAL-024-06) | `filterMenuByQuery(tree, '  cảng  ')` | same result as `'cảng'`; whitespace-only `'   '` returns `items` (same reference / full tree) |
+| case-insensitive | `'CẢNG'` vs `'cảng'` | identical kept-key sets |
+| parent/child (D-5a) | parent with 1 matching child | parent kept, `children` = only the matching leaf; parent with 0 matching descendants → dropped entirely |
+| divider hygiene | tree where only a mid subtree matches | result has no leading/trailing/duplicate dividers |
+| restore on clear (AC-024-12) | empty + whitespace query | `filterMenuByQuery(items, '')` and `('   ')` return the full tree unchanged |
+| permission-gating unaffected (BR-024-15) | feed a tree, then feed the same tree minus one leaf | output keys ⊆ input keys (filter only removes); `collectOpenableKeys` on the filtered result returns only keys present in it |
+| ReactNode label guard | node with non-string `label` + children | no throw; children still traversed |
+
+One render-level test is **optional** (input exists with `placeholder="Tìm kiếm"`; typing filters) — it requires mocking `useAuthStore`/`usePermissionStore`/router like `PermissionGuard.test.tsx` does; do not block on it.
 
 ---
 
-## 8. Risks & rollback
+## 3. Acceptance-criteria mapping
+
+| AC / BR / VAL | Design element |
+|---|---|
+| AC-024-11 (` cảng ` with extra spaces → only labels containing "cảng" after trim, case-insensitive; empty branches hidden; nothing out-of-permission) | D-2 filter + D-4 trim; runs on gated `menuItems` (D-5/BR-024-15) |
+| AC-024-12 (clear or whitespace-only → full menu restored, 7 groups) | D-4: `isSearching` false → `displayedItems = menuItems` (same reference) |
+| AC-024-13 (typing + Enter, or clicking a match → no unintended navigation, no search API) | D-5: no Enter handler, no form, no navigate/API in search path |
+| BR-024-13 (display-only filter on gated tree; trim before match) | D-2/D-4: applied after `menuItems` (line 498); `filterMenuByQuery` trims |
+| BR-024-14 (substring case-insensitive on Vietnamese label; submenu kept iff ≥1 child kept; empty/whitespace restores) | D-2 algorithm |
+| BR-024-15 (search never bypasses permissions) | D-5: filter applied post-gating; output ⊆ input |
+| VAL-024-06 (input `.trim()` before use) | D-1/D-4: trim at use site and inside `filterMenuByQuery` |
+| D-5 (SA settle) | Option (a) confirmed: parent kept iff ≥1 descendant kept → leaves reachable; own-label match of a submenu alone does not keep it |
+| AC-024-08 / BR-024-10 (English identifiers, Vietnamese labels, no hardcoded styling) | D-6 naming + no style additions |
+| AC-024-09 (verification) | `cd frontend && npx tsc --noEmit` + `npm test` (see WO-7) |
+
+---
+
+## 4. Work orders (frontend developer — each independently executable and verifiable)
+
+### WO-1 — Add `searchQuery` state + make the input controlled
+- **File:** `frontend/src/components/AppLayout.tsx`
+- **Where:** add `const [searchQuery, setSearchQuery] = useState('');` after `isMenuFullScreen` state (line ~151). Replace the dead input inside `.sidebar-search` (lines ~563–566) with:
+  ```tsx
+  <input
+    placeholder="Tìm kiếm"
+    value={searchQuery}
+    onChange={(e) => setSearchQuery(e.target.value)}
+  />
+  ```
+- **Constraints:** no `onKeyDown`/`onPressEnter`, no `<form>` wrapper, no style props, keep `SearchOutlined` and `.sidebar-search` as-is (render condition `!collapsed && !isMenuFullScreen` unchanged).
+- **Verify by:** WO-6 test "input wiring" (optional render test) + `npx tsc --noEmit`.
+
+### WO-2 — Hoist `filterEmptyChildren` to module scope
+- **File:** `frontend/src/components/AppLayout.tsx`
+- **Where:** move the existing `filterEmptyChildren` at `frontend/src/components/AppLayout.tsx:474` verbatim out of the component to module scope (above `export default function AppLayout`). Logic unchanged; it is already pure (depends only on its argument).
+- **Verify by:** `npm test` on WO-6 + no behavior change in non-search menu (existing AC-024-04 path).
+
+### WO-3 — Add exported `filterMenuByQuery(items, query)` (module scope)
+- **File:** `frontend/src/components/AppLayout.tsx`
+- **Signature:** `export function filterMenuByQuery(items: MenuProps['items'], query: string): MenuProps['items']`
+- **Contract:** exactly the algorithm in D-2 — trim + lowercase (VAL-024-06, BR-024-14); empty/whitespace → return `items` unchanged (AC-024-12); leaf kept iff string-label substring match; divider kept (hygiene via `filterEmptyChildren`); submenu kept iff ≥1 kept descendant (D-5a); **must not mutate** `rawMenuItems` or input nodes; non-string labels guarded.
+- **Verify by:** WO-6 pure-function tests.
+
+### WO-4 — Add exported `collectOpenableKeys(items)` (module scope)
+- **File:** `frontend/src/components/AppLayout.tsx`
+- **Signature:** `export function collectOpenableKeys(items: MenuProps['items']): string[]`
+- **Contract:** D-3 — return the `key` of every kept submenu (item with non-empty `children`), recursively.
+- **Verify by:** WO-6 test (returned keys ⊆ keys present in the filtered tree).
+
+### WO-5 — Wire derived values + Menu props
+- **File:** `frontend/src/components/AppLayout.tsx`
+- **Where:** immediately after `const menuItems = filterEmptyChildren(rawMenuItems);` (line ~498) add:
+  ```tsx
+  const trimmedSearchQuery = searchQuery.trim();
+  const isSearching = trimmedSearchQuery.length > 0;
+  const displayedItems = isSearching ? filterMenuByQuery(menuItems, trimmedSearchQuery) : menuItems;
+  const effectiveOpenKeys = isSearching ? collectOpenableKeys(displayedItems) : openKeys;
+  ```
+- **Where (Menu, line ~577):** change `items={menuItems}` → `items={displayedItems}` and `openKeys={openKeys}` → `openKeys={effectiveOpenKeys}`. Keep `onOpenChange={setOpenKeys}`, `selectedKeys`, `onClick` untouched.
+- **Verify by:** WO-6 tests + manual smoke (type a query → tree narrows and ancestors auto-open; clear → full menu returns with pre-search open state).
+
+### WO-6 — Add `frontend/src/components/AppLayout.test.tsx` (new file)
+- **Where:** `frontend/src/components/AppLayout.test.tsx` (co-located; runner collects it). Import `{ filterMenuByQuery, collectOpenableKeys } from './AppLayout'`.
+- **Cover:** the 8 seams in D-7 (label match; trim incl. whitespace-only restore; case-insensitive; parent/child D-5a keep + drop; divider hygiene; restore-on-clear same-reference/full-tree; permission-gating unaffected — output ⊆ input; ReactNode-label guard). Optional: one render test of the input using the `PermissionGuard.test.tsx` mock pattern.
+- **Verify by:** `npm test` (vitest run) — focused file green; `npx tsc --noEmit` green.
+
+### WO-7 — Verification + scope guard
+- **Run:** `cd frontend && npx tsc --noEmit` (AC-024-09) and `cd frontend && npm test` (focused: `npx vitest run src/components/AppLayout.test.tsx`).
+- **Scope guard:** diff must touch exactly `AppLayout.tsx` + `AppLayout.test.tsx`. No `theme.ts`/`tokens.ts`, no backend, no migration, no other module files, no new package.json dependencies (testing-library + jest-dom already present), no git operations.
+
+---
+
+## 5. Risks & edge cases
 
 | Risk | Mitigation |
 |---|---|
-| Dashboard 6-khối required by done-oracle but `Home.tsx` is NOT an edit target | Grid rendered by `AppLayout.tsx` on `/` above the existing dashboard (WO-FE-4) — preserves M-022 content, stays in edit scope. Flagged deviation; if PMO approves editing `Home.tsx`, move the component there unchanged. |
-| Target photo `docs/inputs/photo_2026-07-09_15-47-20.jpg` may dictate a different block mapping; unreadable this session (base64 only, no vision extraction) | Block mapping is a single NEW config (`DASHBOARD_BLOCKS`, §4.3) — one-line change; D-2 rationale documented so a reviewer can re-decide from the photo. |
-| `MENU_PERMISSION_MAP` divergence would cause visible-item-but-403 (or hidden-item) mismatches | WO-FE-2 aligns map to guards; §4.4 table is the contract. |
-| 4-level menu depth + ~90 placeholder nodes (groups II/III per xlsx) | AntD inline menu supports deep nesting (external library behavior — assumed, confirm at review); placeholders sit in collapsed submenus; `inlineIndent` set at `AppLayout.tsx:566` (currently 12). |
-| Restored group IV report tree (~60 items) increases sidebar weight | Keys are existing `/reports/F-*` routes (`App.tsx:175` catch-all); single parent gate `report:read`. |
-| `filterEmptyChildren` behavior change risk | No logic change; placeholder children are unconditional, so pruning semantics stay predictable (AC-024-03/04). |
-| Static menu = release-bound changes | Accepted — matches existing pattern; no runtime menu editing requirement exists. |
-
-**Rollback:** all changes are frontend config (menu tree, map, keys, one component) + zero backend diff → revert the `AppLayout.tsx` diff restores the previous menu; no DB/migration/endpoint involved, no server-side rollback.
+| Diacritic folding expected by a user (`cang` → "Cảng") | Out of spec (BR-024-14 = substring on label as-is). Documented limitation; do not add folding (would be speculative scope). |
+| Submenu whose own label matches but no descendant does → hidden | Per dispatch design decision + D-5 settle; consistent with BR-024-04/14 wording. Tested in WO-6. |
+| Controlled `openKeys` overridden while searching (user toggles ignored) | Intended: deterministic auto-open during search; base state restored on clear. Documented in D-3. |
+| Search state survives fullscreen/collapse toggles | Render condition hides the box but state persists — acceptable, no requirement to reset. |
+| Empty result set | Menu renders empty scroll area; header + search box remain. Spec-silent; acceptable. |
+| Importing AppLayout in a test executes store/router module imports | Pure-function tests never render; module imports have no side effects. |
 
 ---
 
-## 9. Out of scope / open items
+## 6. Out of scope (unchanged)
 
-- No modification to `Home.tsx`, `App.tsx`, router, business screens, or other modules (triage edit scope).
-- No new entity/table/migration/endpoint; no data scope (BR-024-11).
-- `docs/inputs/photo_2026-07-09_15-47-20.jpg` and `docs/inputs/logo-vinamarine_1_1.png` were read as binary this session (JPEG/PNG base64 only — visual content not extractable). The photo is the D-2 reference for block mapping (see §8); the logo is a brand asset outside the 4-file edit scope (`AppLayout.tsx` already references `/images/logo-vinamarine.png` in the sidebar header; swapping the served asset is a product decision, not a code change).
-- Group III (PHÊ DUYỆT) intentionally has no dashboard block and no real sidebar leaves until approval list screens exist (all disabled placeholders).
+- No backend endpoint, entity, migration, permission seeder change (D-4 of lean-spec: no new permission).
+- No theme/token/class/CSS changes — `.sidebar-search` exists.
+- No other module screens; no dashboard 6-block work (separate F-xxx features of M-024).
+- No QA test scenarios here (belongs to the QA stage).

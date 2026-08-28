@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Input, Select, DatePicker } from 'antd';
-import { PlusOutlined, EyeOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { message } from '../../components/ToastNotification';
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
@@ -26,13 +26,19 @@ import {
   textSecondary,
   textTertiary,
   fontSizeMd,
-  fontWeightMedium,
-  badgeBaseStyle,
+  fontSizeSm,
+  fontWeightBold,
+  statusBadgeStyle,
+  cellTitleStyle,
+  cellSubtitleStyle,
+  icons,
   filterInputStyle,
   filterLabelStyle,
   spaceFormField,
   spaceXs,
-} from '../../tokens';
+} from '../../themetokenchk';
+import * as themeTokenChk from '../../themetokenchk';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import NavigationChannelForm from './NavigationChannelForm';
 import { canDeleteApprovalRecord, canEditApprovalRecord } from '../../utils/approvalEditPolicy';
@@ -53,7 +59,7 @@ const STATUS_TAB_LIST = [
   { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', statuses: ['PENDING_APPROVAL'] },
   { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', statuses: ['APPROVED_LEVEL1'] },
   { key: 'APPROVED', label: 'Đã duyệt', statuses: ['APPROVED'] },
-  { key: 'REJECTED', label: 'Bị trả về', statuses: ['REJECTED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'] },
+  { key: 'REJECTED', label: 'Từ chối', statuses: ['REJECTED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'] },
 ];
 
 // ── F-039/F-040 — Gating nút Sửa theo trạng thái phê duyệt ─────────────
@@ -69,8 +75,6 @@ const TAB_COLOR: Record<string, string> = {
   APPROVED: statusOperational,
   REJECTED: statusCritical,
 };
-
-const formatDate = (v?: string) => (v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—');
 
 export default function NavigationChannelList() {
   const isInIframe = window.self !== window.top;
@@ -231,6 +235,13 @@ export default function NavigationChannelList() {
     setIsModalOpen(true);
   }, []);
 
+  // Map user id → tên hiển thị cho cột "Cán bộ cập nhật" (backend NavigationChannel chưa trả updatedByName như các module khác)
+  const userMap = useMemo(() => {
+    const m = new Map<string, string>();
+    userOptions.forEach((o) => { m.set(o.value, o.label); });
+    return m;
+  }, [userOptions]);
+
   // ── Columns (DS scope: #5/#4/#2/#1/#6/#8/#47/#48) ───────────────────
   const columns = useMemo(() => {
     const orgLabel = (orgUnitId?: string) => orgUnitId || '—';
@@ -247,28 +258,35 @@ export default function NavigationChannelList() {
         label: 'STT',
         width: 60,
         align: 'center' as const,
+        fixed: 'left' as const,
         render: (_: unknown, __: unknown, idx?: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + (idx ?? 0) + 1}</span>,
       },
       {
         key: 'channelName',
-        label: 'Tên luồng hàng hải (#5)',
+        label: 'Tên/Mã luồng hàng hải',
         dataIndex: 'channelName',
-        width: 220,
+        width: 260,
+        fixed: 'left' as const,
         sortable: true,
         ellipsis: false,
-        render: (v: string | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightMedium }}>{v || '—'}</span>,
-      },
-      {
-        key: 'channelCode',
-        label: 'Mã luồng (#4)',
-        dataIndex: 'channelCode',
-        width: 130,
-        type: 'mono' as const,
-        render: (v: string | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>,
+        render: (v: string | undefined, record: NavigationChannelResponse) => (
+          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <a
+              title={v || ''}
+              onClick={() => openModal('detail', record.id)}
+              style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {v || '—'}
+            </a>
+            <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {record.channelCode || '—'}
+            </span>
+          </div>
+        ),
       },
       {
         key: 'seaportId',
-        label: 'Thuộc cảng biển (#2)',
+        label: 'Thuộc cảng biển',
         dataIndex: 'seaportId',
         width: 180,
         ellipsis: true,
@@ -276,7 +294,7 @@ export default function NavigationChannelList() {
       },
       {
         key: 'orgUnitId',
-        label: 'Đơn vị quản lý (#1)',
+        label: 'Đơn vị quản lý',
         dataIndex: 'orgUnitId',
         width: 200,
         ellipsis: true,
@@ -286,49 +304,60 @@ export default function NavigationChannelList() {
       },
       {
         key: 'provinceId',
-        label: 'Địa điểm Tỉnh/TP (#6)',
+        label: 'Địa điểm Tỉnh/TP',
         dataIndex: 'provinceId',
         width: 150,
         render: (v: number | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{provinceLabel(v)}</span>,
       },
       {
         key: 'conditionStatus',
-        label: 'Tình trạng (#8)',
+        label: 'Tình trạng',
         dataIndex: 'conditionStatus',
         width: 150,
         sortable: true,
         render: (v: string | undefined) => {
           if (!v) return <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>;
           const s = CONDITION_STATUS_STYLE_MAP[v] || { label: CONDITION_STATUS_MAP[v as keyof typeof CONDITION_STATUS_MAP] || v, color: textTertiary };
-          return <span style={{ ...badgeBaseStyle, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
+          return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
         },
       },
       {
         key: 'approvalStatus',
-        label: 'Trạng thái (#47)',
+        label: 'Trạng thái',
         dataIndex: 'approvalStatus',
         width: 160,
         render: (v: ApprovalStatus) => (v ? <ApprovalStatusBadge status={v} /> : '—'),
       },
       {
         key: 'updatedAt',
-        label: 'Ngày cập nhật (#48)',
+        label: 'Cán bộ cập nhật',
         dataIndex: 'updatedAt',
-        width: 150,
+        width: 220,
         sortable: true,
-        render: (v: string | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{formatDate(v)}</span>,
+        ellipsis: false,
+        render: (v: string | undefined, record: NavigationChannelResponse) => {
+          const name = record.updatedBy ? userMap.get(record.updatedBy) : undefined;
+          return (
+            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name || record.updatedBy || ''}>
+              <div style={{ fontWeight: fontWeightBold, fontSize: fontSizeMd, color: textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {name || record.updatedBy || '—'}
+              </div>
+              <div style={{ fontSize: fontSizeSm, color: textTertiary }}>{v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—'}</div>
+            </div>
+          );
+        },
       },
     ];
-  }, [page, pageSize, seaportOptions]);
+  }, [page, pageSize, seaportOptions, openModal, userMap]);
 
   const rowActions = useCallback(
     (record: NavigationChannelResponse) => {
       const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];
       if (hasPerm('navigationchannel:read')) {
-        actions.push({ key: 'view', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => openModal('detail', record.id) });
+        actions.push({ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openModal('detail', record.id) });
       }
       if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'navigationchannel' })) {
-        actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openModal('edit', record.id) });
+        actions.push({ key: 'edit', label: 'Sửa', icon: icons.edit, onClick: () => openModal('edit', record.id) });
       }
       // Quy tắc 11 (approval-2-level-spec.md mục 3.6): chỉ xóa được hồ sơ Lưu tạm.
       // Trước đây gating ngược — chỉ hiện nút Xóa khi hồ sơ đã `APPROVED`.
@@ -336,7 +365,7 @@ export default function NavigationChannelList() {
         actions.push({
           key: 'delete',
           label: 'Xóa',
-          icon: <DeleteOutlined />,
+          icon: icons.delete,
           danger: true,
           onClick: () => {
             void (async () => {
@@ -360,7 +389,7 @@ export default function NavigationChannelList() {
   const filterContent = (
     <>
       <div style={{ marginBottom: spaceFormField, marginTop: 16 }}>
-        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Đơn vị quản lý (#1)</div>
+        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Đơn vị quản lý</div>
         <OrgUnitTreeSelect
           organizations={organizations}
           placeholder="Chọn đơn vị..."
@@ -372,7 +401,7 @@ export default function NavigationChannelList() {
         />
       </div>
       <div style={{ marginBottom: spaceFormField }}>
-        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Thuộc cảng biển (#2)</div>
+        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Thuộc cảng biển</div>
         <Select
           placeholder="Chọn cảng biển..."
           allowClear
@@ -385,7 +414,7 @@ export default function NavigationChannelList() {
         />
       </div>
       <div style={{ marginBottom: spaceFormField }}>
-        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Tên luồng (#5)</div>
+        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Tên luồng</div>
         <Input
           placeholder="Tìm theo tên luồng..."
           allowClear
@@ -399,7 +428,7 @@ export default function NavigationChannelList() {
       {filterCollapsed && (
         <>
           <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Mã luồng (#4)</div>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Mã luồng</div>
             <Input
               placeholder="Nhập mã luồng..."
               allowClear
@@ -410,7 +439,7 @@ export default function NavigationChannelList() {
             />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Địa điểm Tỉnh/TP (#6)</div>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Địa điểm Tỉnh/TP</div>
             <Select
               placeholder="Chọn tỉnh/thành phố..."
               allowClear
@@ -423,7 +452,7 @@ export default function NavigationChannelList() {
             />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Tình trạng (#8)</div>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Tình trạng</div>
             <Select
               placeholder="Chọn tình trạng"
               allowClear
@@ -434,7 +463,7 @@ export default function NavigationChannelList() {
             />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Cán bộ cập nhật (#49)</div>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Cán bộ cập nhật</div>
             <Select
               placeholder="Chọn cán bộ cập nhật"
               allowClear
@@ -446,7 +475,7 @@ export default function NavigationChannelList() {
             />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Ngày cập nhật (#48)</div>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Ngày cập nhật</div>
             <DatePicker.RangePicker
               placeholder={['Từ ngày', 'Đến ngày']}
               format="DD/MM/YYYY"
@@ -486,6 +515,7 @@ export default function NavigationChannelList() {
   );
 
   return (
+    <ThemeTokenProvider tokens={themeTokenChk}>
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader
         breadcrumb={[{ label: 'KCHT hàng hải' }, { label: 'Luồng hàng hải' }]}
@@ -539,5 +569,6 @@ export default function NavigationChannelList() {
         }}
       />
     </div>
+    </ThemeTokenProvider>
   );
 }

@@ -6,14 +6,14 @@
  */
 import { test, expect, Page } from '@playwright/test';
 
-const LIST_URL = '/co-so-sua-chua';
-const CREATE_URL = '/co-so-sua-chua/create';
-const DETAIL_URL = '/co-so-sua-chua/1';
+const LIST_URL = '/ship-repair-facility';
+const CREATE_URL = '/ship-repair-facility/create';
+const DETAIL_URL = '/ship-repair-facility/1';
 
 async function login(page: Page) {
   await page.goto('/login');
   await page.getByLabel('Tài khoản').fill('admin');
-  await page.getByLabel('Mật khẩu').fill('admin123');
+  await page.getByLabel('Mật khẩu').fill('Asdqwe@123');
   await page.getByRole('button', { name: /đăng nhập/i }).click();
   await page.waitForURL((url) => !/\/login/.test(url.pathname), { timeout: 15000 });
 }

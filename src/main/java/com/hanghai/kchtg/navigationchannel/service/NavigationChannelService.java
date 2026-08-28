@@ -225,10 +225,21 @@ public class NavigationChannelService {
         approvalService.assertEditable(nc);
         ApprovalStatus currentStatus = nc.getApprovalStatus() != null ? nc.getApprovalStatus() : ApprovalStatus.DRAFT;
 
+        // BR-039-08 (chốt TRI-1787825767692-3dab): hồ sơ đã duyệt là bất biến qua update —
+        // mọi thay đổi phải đi qua quy trình phê duyệt mới. Fail-fast trước MỌI mutation để
+        // request bị từ chối không để lại bất kỳ side effect (child/GIS/history) nào.
+        if (currentStatus == ApprovalStatus.APPROVED || currentStatus == ApprovalStatus.APPROVED_LEVEL2) {
+            throw new IllegalStateException("Không thể sửa hồ sơ đã duyệt");
+        }
+
         // BR-038-04: nếu đổi đơn vị quản lý phải nằm trong phạm vi được phân quyền
         if (req.getOrgUnitId() != null && !orgUnitScopeService.currentUserScope().allows(req.getOrgUnitId())) {
             throw new AccessDeniedException("Đơn vị quản lý nằm ngoài phạm vi được phân quyền");
         }
+
+        // BR-039-08: chuẩn hóa trim trên REQUEST trước khi copy — payload chỉ khác khoảng trắng
+        // so với giá trị đang lưu phải rơi vào nhánh no-op (giữ trạng thái, không ghi history).
+        trimRequestStrings(req);
 
         Map<String, String> previousValues = new LinkedHashMap<>();
         Map<String, String> manualNewValues = new LinkedHashMap<>();
@@ -381,15 +392,9 @@ public class NavigationChannelService {
         }
 
         // F-039 D2: hồ sơ Bị trả về sau khi sửa thì quay về Lưu tạm để người nhập gửi lại.
-        //
-        // Quy tắc 12/T12 (approval-2-level-spec.md mục 3.9): hồ sơ **Đã duyệt** thì TUYỆT ĐỐI
-        // không hạ về `DRAFT` — sửa qua "Lưu và phê duyệt", giữ nguyên `APPROVED` và ghi bản cũ
-        // vào nhật ký. Hạ trạng thái sẽ làm hồ sơ đang khai thác biến mất khỏi mọi dropdown
-        // `/options` (quy tắc APPROVED ONLY) của các màn hình khác.
-        if (currentStatus == ApprovalStatus.APPROVED || currentStatus == ApprovalStatus.APPROVED_LEVEL2) {
-            approvalService.recordSaveAndApprove(nc, InfrastructureType.NAVIGATION_CHANNEL,
-                    "Cập nhật sau phê duyệt", updatedBy);
-        } else if (currentStatus != ApprovalStatus.DRAFT) {
+        // BR-039-08 (chốt TRI-1787825767692-3dab): APPROVED / APPROVED_LEVEL2 đã bị chặn từ đầu
+        // method (guard fail-fast) — nhánh này chỉ còn phục vụ REJECTED-family / PROPOSED.
+        if (currentStatus != ApprovalStatus.DRAFT) {
             nc.setApprovalStatus(ApprovalStatus.DRAFT);
             nc.setSubmittedAt(null);
             nc.setSubmittedBy(null);
@@ -858,6 +863,22 @@ public class NavigationChannelService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    /**
+     * BR-039-08: chuẩn hóa trim 9 trường text của update request trước khi copy —
+     * payload chỉ khác khoảng trắng so với giá trị đang lưu được coi là no-op.
+     */
+    private void trimRequestStrings(NavigationChannelUpdateRequest req) {
+        req.setChannelName(trimToNull(req.getChannelName()));
+        req.setDetailedLocation(trimToNull(req.getDetailedLocation()));
+        req.setManagementStation(trimToNull(req.getManagementStation()));
+        req.setNotes(trimToNull(req.getNotes()));
+        req.setAnnouncementDecisionNumber(trimToNull(req.getAnnouncementDecisionNumber()));
+        req.setAnnouncementDecisionIssuer(trimToNull(req.getAnnouncementDecisionIssuer()));
+        req.setProtectionNotes(trimToNull(req.getProtectionNotes()));
+        req.setCoordinateReferenceSystem(trimToNull(req.getCoordinateReferenceSystem()));
+        req.setDisplayRule(trimToNull(req.getDisplayRule()));
     }
 
     // ── F-039 D3: helpers định dạng diff / history UPDATED ──────────────────

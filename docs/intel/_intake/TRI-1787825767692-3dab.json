@@ -1,0 +1,87 @@
+{
+  "triage_id": "TRI-1787825767692-3dab",
+  "created_at": 1787825767692,
+  "request_summary": "Fix 3 vấn đề còn lại của module Luồng hàng hải: (1) Flyway V20260822130000 lỗi index buoy_station cột code; (2) backfill route_code cho dữ liệu cũ; (3) BR-039-08 state guard khi cập nhật (chặn APPROVED, reset DRAFT, 4-eyes).",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/java/com/hanghai/kchtg/navigationchannel/service/NavigationChannelService.java",
+      "src/main/resources/db/migration/V20260822130000__add_unaccent_port_buoy_search_indexes.sql",
+      "src/main/resources/db/migration/V20260825120000__navigation_channel_excel_71_fields.sql"
+    ],
+    "impact_files": [
+      "src/main/java/com/hanghai/kchtg/navigationchannel/service/NavigationChannelService.java",
+      "src/main/resources/db/migration/V20260822130000__add_unaccent_port_buoy_search_indexes.sql",
+      "src/main/resources/db/migration/V20260825120000__navigation_channel_excel_71_fields.sql"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/V20260822130000__add_unaccent_port_buoy_search_indexes.sql"
+      },
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/V20260825120000__navigation_channel_excel_71_fields.sql"
+      }
+    ],
+    "dev_footprint": "backend"
+  },
+  "rationale": "C3: one-way door: schema:src/main/resources/db/migration/V20260822130000__add_unaccent_port_buoy_search_indexes.sql, schema:src/main/resources/db/migration/V20260825120000__navigation_channel_excel_71_fields.sql — floors at C3 regardless of size (3 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn Quản lý Luồng hàng hải (F-038..F-043) — tạo/cập nhật/phê duyệt + khởi động backend (Flyway migrate)",
+  "blast_radius": 3,
+  "done_oracle": "(1) Flyway V20260822130000 pass trên DB thật (index buoy_station không lỗi cột code); (2) route_code dữ liệu cũ được backfill từ channelCode+sequence_no (migration V20260825120000 bổ sung UPDATE backfill); (3) BR-039-08 state guard: update chặn bản ghi đã APPROVED/APPROVED_LEVEL2, thay đổi thật reset DRAFT + clear workflow fields, no-op không ghi history. mvn test pass, FlywayMigrationTest pass.",
+  "verification_commands": [
+    {
+      "command": "mvn test -Dtest=FlywayMigrationTest,NavigationChannelServiceTest,NavigationChannelControllerTest",
+      "cwd": ".",
+      "timeout_ms": 300000
+    },
+    {
+      "command": "mvn compile -DskipTests",
+      "cwd": ".",
+      "timeout_ms": 180000
+    }
+  ],
+  "change_type": "hotfix",
+  "seam_claims": [
+    {
+      "file": "src/main/resources/db/migration/V20260822130000__add_unaccent_port_buoy_search_indexes.sql",
+      "line": 81,
+      "quote": "            ON public.buoy_station USING gin (public.immutable_unaccent(LOWER(code)) gin_trgm_ops)",
+      "source_hash": "d2490960a9b2f292be4eb64cca104ee258f8b3dcfe48957068041d6f96723d59",
+      "quote_hash": "e42e7b3dc3b9261e99613c21a264c393b303097413097400fe03d6d2d8ec543e",
+      "note": "Index tạo trên cột code của buoy_station — QA battery B4 báo lỗi 'column code does not exist' tại migration này"
+    },
+    {
+      "file": "src/main/resources/db/migration/V20260825120000__navigation_channel_excel_71_fields.sql",
+      "line": 186,
+      "quote": "        ALTER TABLE public.channel_route_detail RENAME COLUMN ma TO route_code;",
+      "source_hash": "39da264dec09f20a295d33f36b3feb5666d8a32570c9cecdc0972258b7f92769",
+      "quote_hash": "19db80b803c294d1534efb21f375d2ec228ae0283ec6ab42cac1c66fc100dfdb",
+      "note": "Chỉ RENAME cột ma→route_code, KHÔNG backfill route_code cho dữ liệu cũ (route_code legacy vẫn NULL)"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/navigationchannel/service/NavigationChannelService.java",
+      "line": 817,
+      "quote": "    private ChannelRouteDetail toRouteDetail(ChannelRouteDetailRequest d, NavigationChannel nc, int index) {",
+      "source_hash": "26226e8edf6a4517108526dc72c106544beae1f1882401f4e03a0d0b176e11b4",
+      "quote_hash": "6ae526831ff8a591fc2e46eefaec873821cfc918172124962461a3ab0a687fb1",
+      "note": "routeCode tự sinh cho dữ liệu MỚI (BR-038-03) — đã fix; còn update state-guard BR-039-08 chưa implement"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "1f9508eb5266acbcb3ffd73c784c361946096d71",
+    "dirty": true,
+    "captured_at": 1787825767913
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

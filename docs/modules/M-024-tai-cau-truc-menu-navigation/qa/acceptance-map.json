@@ -2,106 +2,65 @@
   "module": "M-024",
   "feature": "F-292",
   "feature_name": "Tái cấu trúc menu & điều hướng",
-  "source": "ba/00-lean-spec.md (AC-024-01..10), oracle qa/07-qa-report-w1.md (TC-01..16), execution qa/07-qa-report-w2.md",
-  "executed_on": "2026-08-26 (wave-2)",
+  "source": "ba/00-lean-spec.md (AC-024-11..13, VAL-024-06, BR-024-15 — menu search scope, TRI-1787823566528-bb3e); oracle qa/07-qa-report-w1.md (A1..A13, B1..B5); execution qa/07-qa-report-w2.md",
+  "executed_on": "2026-08-27 (wave-2, scope-expansion run)",
   "acceptance_map": [
     {
-      "ac_id": "AC-024-01",
-      "ac_summary": "Dashboard hiển thị đúng 6 khối; mỗi khối có label tiếng Việt và điều hướng được",
-      "test_name": "TC-01/TC-02 static oracle: DASHBOARD_BLOCKS count = 6 (label/target/permission theo D-2) + grid render chỉ khi location.pathname === '/'",
-      "file": "frontend/src/components/AppLayout.tsx",
-      "status": "static-evidence",
-      "evidence": "DASHBOARD_BLOCKS AppLayout.tsx:96-102 (6 entries: /port, /asset/inventory, /reports, /users, /documents/legal, /connections); render AppLayout.tsx:885-910 (pathname==='/' :885; onClick navigate(block.target) :900-903)",
-      "proving_check": "npx tsc --noEmit (exit 0) — config typecheck; static count verified bằng read/grep wave-2",
-      "note": "Chưa có component test cho DashboardGrid; click->navigate chưa probe runtime (không có browser) — deferral"
-    },
-    {
-      "ac_id": "AC-024-02",
-      "ac_summary": "Sidebar nhánh Quản lý cảng biển hiển thị đúng 13 thực thể theo ma trận cha-con",
-      "test_name": "TC-03 static oracle: đếm node cây port-tree = 13, phân cấp cha-con theo BR-024-03",
-      "file": "frontend/src/components/AppLayout.tsx",
-      "status": "static-evidence",
-      "evidence": "Cây 13 thực thể AppLayout.tsx:254-298 (Cảng biển :260; Bến cảng berth-parent :263 -> Cầu cảng /pier; Luồng hàng hải nav-channel-parent -> Bến phao :278 + /beacon-stations :279 + /dike-revetment :280 + buoy-station-parent -> /buoys :288; Khu neo đậu :293, Khu chuyển tải :294, Khu tránh/trú bão :295; /ship-repair-facility :297)",
-      "proving_check": "npx tsc --noEmit (exit 0); count/hierarchy verified bằng read/grep wave-2",
-      "note": "done-oracle; DOM count lúc render chưa probe runtime (không có browser)"
-    },
-    {
-      "ac_id": "AC-024-03",
-      "ac_summary": "Đúng 7 nhóm cấp 1 theo tên xlsx (I-VII) + item tiện ích theo D-3",
-      "test_name": "TC-05 static oracle: 7 group headers I-VII + Trang chủ đầu / Cấu hình hệ thống cuối sidebar",
-      "file": "frontend/src/components/AppLayout.tsx",
-      "status": "static-evidence",
-      "evidence": "group-kcht :249, group-asset :333, group-approval :350, group-reports :372, group-users :481, group-planning :492, group-integration :510; Trang chủ :242; divider + /settings + /water-zone :519-522",
-      "proving_check": "npx tsc --noEmit (exit 0); verified bằng read/grep wave-2"
-    },
-    {
-      "ac_id": "AC-024-04",
-      "ac_summary": "User thiếu quyền -> item ẩn; submenu hết con hợp lệ -> ẩn cả nhánh (filterEmptyChildren)",
-      "test_name": "permissionStore Unit Tests > should return true for direct exact permission match; should evaluate hasAnyPermission correctly",
-      "file": "frontend/src/store/permissionStore.test.ts",
+      "ac_id": "AC-024-11",
+      "ac_summary": "Filter by Vietnamese label: query ' cảng ' (extra spaces) -> only items whose label contains 'cảng' after .trim() show (case-insensitive substring, BR-024-14); non-matches hidden; submenu with 0 matching children hidden; nothing out-of-permission (BR-024-15)",
+      "test_name": "A1 (label match), A2 (trim), A4 (case-insensitive), A5 (parent/child keep), A6 (parent/child drop), A8 (divider hygiene), A10 (output subset)",
+      "file": "frontend/src/components/AppLayout.test.tsx",
       "status": "pass",
-      "evidence": "Unit test chạy PASS trong vitest (9/9); static: canAccessMenu AppLayout.tsx:104-113, leaves bọc canAccessMenu (:260/:279/:288/:337-340/:501/:522), filterEmptyChildren AppLayout.tsx:525, menuItems :549",
-      "proving_check": "npx vitest run (exit 0 — 46/46, gồm 9 permissionStore tests)",
-      "note": "Test 2-user trên DOM (có/không port:read) chưa chạy runtime — logic gating được unit test + static phủ"
+      "evidence": "7 tests green in AppLayout.test.tsx (18/18 suite); filterMenuByQuery AppLayout.tsx:170 (query.trim().toLowerCase(); leaf kept iff typeof label==='string' && label.toLowerCase().includes(q); submenu kept iff >=1 kept descendant); filter applied on gated menuItems :522 -> displayedItems :527",
+      "proving_check": "npx vitest run (exit 0 — 11 files / 91 tests, AppLayout.test.tsx 18/18); npx tsc --noEmit (exit 0)",
+      "note": "Diacritic folding ('cang' -> 'Cảng') ngoài spec BR-024-14 — A4 asserts the negative"
     },
     {
-      "ac_id": "AC-024-05",
-      "ac_summary": "User có admin:all (hoặc *) thấy toàn bộ menu; admin:manage KHÔNG phải toàn quyền",
-      "test_name": "permissionStore Unit Tests > should return true when user has admin:all direct permission; should return true when user has * wildcard override; should not treat admin:manage as global access",
-      "file": "frontend/src/store/permissionStore.test.ts",
+      "ac_id": "AC-024-12",
+      "ac_summary": "Clear (or whitespace-only) input -> full menu restored as before search (7 level-1 groups + utility items per permission)",
+      "test_name": "A3 (same-reference restore), A9 (full-tree restore)",
+      "file": "frontend/src/components/AppLayout.test.tsx",
       "status": "pass",
-      "evidence": "3 test bypass/negative chạy PASS trong vitest; logic hasPermissionFromList permissionStore.ts:55 (không đổi)",
-      "proving_check": "npx vitest run (exit 0 — 46/46)",
-      "note": "BR-024-05: bypass chỉ qua * / admin:all / resource:manage / resource:* / resource:write — unit test phủ"
+      "evidence": "A3 asserts filterMenuByQuery(gatedMenu,'') and ('   ') toBe(gatedMenu) (same reference); A9 asserts toEqual(gatedMenu) + full key set; displayedItems = isSearching ? filterMenuByQuery(menuItems, trimmedSearchQuery) : menuItems (AppLayout.tsx:527) — empty/whitespace returns menuItems unchanged",
+      "proving_check": "npx vitest run (exit 0 — 11 files / 91 tests, AppLayout.test.tsx 18/18); npx tsc --noEmit (exit 0)"
     },
     {
-      "ac_id": "AC-024-06",
-      "ac_summary": "Click item lá có route -> navigate đúng; selectedKey + openKeys mở đúng nhánh (không lạc nhánh)",
-      "test_name": "TC-08 static oracle: handleMenuClick navigate key bắt đầu bằng '/' + effect setOpenKeys dùng key nhánh mới",
-      "file": "frontend/src/components/AppLayout.tsx",
+      "ac_id": "AC-024-13",
+      "ac_summary": "Search never navigates and never calls an API: typing + Enter is a no-op (no form submit, no route change); only clicking a leaf navigates (AC-024-06); no search API request",
+      "test_name": "Static: bare controlled input AppLayout.tsx ~593-600 (no onKeyDown/onPressEnter, no <form>, no navigate/fetch in search path) + A13 empty-result no-crash",
+      "file": "frontend/src/components/AppLayout.tsx; frontend/src/components/AppLayout.test.tsx",
       "status": "static-evidence",
-      "evidence": "handleMenuClick AppLayout.tsx:553-557; effect setOpenKeys AppLayout.tsx:210-241 (group-kcht/port-tree/nav-channel-parent/buoy-station-parent/berth-parent/vts-parent/vts-ops-center/group-planning/group-asset/group-reports/group-users/group-integration); grep key cũ (cangben|khu-nuoc-vts|system-admin|documents-incidents|asset-movement) = 0 match",
-      "proving_check": "npx tsc --noEmit (exit 0); verified bằng grep/read wave-2",
-      "note": "Click runtime chưa probe (không có browser) — deferral"
+      "evidence": "Input :596-600 has only value={searchQuery} + onChange, no key handler and not wrapped in a form; search path (state :201 -> trim :525 -> filterMenuByQuery :527) contains no navigate/useSearchParams/fetch; Menu onClick=handleMenuClick unchanged :613 (leaf navigation only, AC-024-06); A13 unit: no-match query returns [] without throwing",
+      "proving_check": "npx tsc --noEmit (exit 0) — config typecheck; code inspection bằng read/grep wave-2; npx vitest run (exit 0 — 11 files / 91 tests)",
+      "note": "Enter-key runtime probe (network tab) chưa chạy — không có browser trong môi trường QA; deferral ghi ở qa/07-qa-report-w2.md §4 (C4)"
     },
     {
-      "ac_id": "AC-024-07",
-      "ac_summary": "Item chưa có màn hình hiển thị disabled + tooltip tiếng Việt 'Chưa triển khai'; KHÔNG navigate route giả",
-      "test_name": "TC-04 static oracle: 4 placeholder disabled:true + title 'Chưa triển khai', key non-route -placeholder",
-      "file": "frontend/src/components/AppLayout.tsx",
-      "status": "static-evidence",
-      "evidence": "AppLayout.tsx:278 mooring-buoy-placeholder, :293 anchorage-area-placeholder, :294 transshipment-area-placeholder, :295 storm-shelter-area-placeholder (disabled:true, title:'Chưa triển khai'); handleMenuClick chỉ navigate key '/'-prefixed :553-557; grep route mooring|anchorage|transshipment|storm-shelter trong App.tsx = 0",
-      "proving_check": "npx tsc --noEmit (exit 0); verified bằng read/grep wave-2"
+      "ac_id": "VAL-024-06",
+      "ac_summary": "Input string must be .trim() before matching",
+      "test_name": "A2 (padded query key-set identical to trimmed query)",
+      "file": "frontend/src/components/AppLayout.test.tsx",
+      "status": "pass",
+      "evidence": "A2 asserts collectKeys(filterMenuByQuery(gatedMenu,'  cảng  ')) toEqual collectKeys(filterMenuByQuery(gatedMenu,'cảng')); trim at use site AppLayout.tsx:525 (trimmedSearchQuery = searchQuery.trim()) and inside filterMenuByQuery :170 (query.trim().toLowerCase()) — defensive contract per design D-4",
+      "proving_check": "npx vitest run (exit 0 — 11 files / 91 tests, AppLayout.test.tsx 18/18); npx tsc --noEmit (exit 0)"
     },
     {
-      "ac_id": "AC-024-08",
-      "ac_summary": "Key/route/resource tiếng Anh chuẩn; label tiếng Việt có dấu; không hardcode hex/spacing/font-size trong menu",
-      "test_name": "TC-09 static oracle: naming + UI convention (labels tiếng Việt, keys English, styling qua tokens)",
-      "file": "frontend/src/components/AppLayout.tsx",
-      "status": "static-evidence",
-      "evidence": "Grid style dùng token spaceLg/spaceMd/cardStyle/shadowMd/shadowSm/fontSizeXl/fontSizeMd/fontWeightBold/textPrimary (AppLayout.tsx:887-910); key English -placeholder suffix; labels tiếng Việt có dấu toàn cây",
-      "proving_check": "npx tsc --noEmit (exit 0); inspected bằng read wave-2",
-      "note": "Kiểm tra tĩnh — không có linter config chuyên dụng cho rule này"
+      "ac_id": "BR-024-15",
+      "ac_summary": "Search never bypasses permissions: filter only removes items from the already-gated set — user never sees an out-of-permission item via search",
+      "test_name": "A10 (output keys ⊆ input keys; removed leaf cannot reappear)",
+      "file": "frontend/src/components/AppLayout.test.tsx",
+      "status": "pass",
+      "evidence": "A10 asserts for 5 queries every output key is in the input key universe, and a tree without /pier never yields /pier for a matching query; structural: filterMenuByQuery receives menuItems (post canAccessMenu + filterEmptyChildren, AppLayout.tsx:522) not rawMenuItems — output ⊆ input by construction",
+      "proving_check": "npx vitest run (exit 0 — 11 files / 91 tests, AppLayout.test.tsx 18/18); npx tsc --noEmit (exit 0)"
     },
     {
       "ac_id": "AC-024-09",
-      "ac_summary": "Verification: cd frontend && npx tsc --noEmit pass; mvn compile -DskipTests pass (theo triage)",
-      "test_name": "V-1/V-2/V-3 build gates — cả 3 lệnh exit 0",
-      "file": "npx tsc --noEmit (frontend); npx vitest run (frontend); mvn compile -DskipTests (workspace root, Maven 3.9.16)",
+      "ac_summary": "Build/verification gates: npx tsc --noEmit pass; npx vitest run pass with AppLayout.test.tsx collected",
+      "test_name": "V-1/V-2 build gates — 2 lệnh exit 0",
+      "file": "npx tsc --noEmit (frontend); npx vitest run (frontend)",
       "status": "pass",
-      "evidence": "tsc exit 0 (no errors); vitest exit 0 — 5 files/46 tests/0 failures; mvn compile exit 0 — BUILD SUCCESS (3.017s/2.837s, enforcer enforce-java-17 passed)",
-      "proving_check": "executed wave-2: npx tsc --noEmit; npx vitest run (path-scoped re-run xác nhận 46/46); mvn compile -DskipTests",
-      "note": "AC-024-09 đã đóng — toàn bộ exit 0"
-    },
-    {
-      "ac_id": "AC-024-10",
-      "ac_summary": "Permission mới (nếu D-4 = có) phải seed qua seedPermission trong run(); D-4 chốt KHÔNG thêm menu:view",
-      "test_name": "TC-11 static oracle: grep menu:view / seed 'menu' = 0 trong PermissionSeeder.java; anchors seed không đổi",
-      "file": "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java",
-      "status": "pass",
-      "evidence": "grep 'menu:view'/'\"menu\"' trong PermissionSeeder.java = 0 match (executed wave-2); run():45, seedPermission():716, port:read:182, waterzone:read:246, navigationchannel:read:294, beaconstation:read:414 nguyên vị trí; grep api/menu|menu:view trong src/main/java = 0",
-      "proving_check": "grep (executed wave-2); mvn compile -DskipTests (exit 0, BUILD SUCCESS)",
-      "note": "N/A theo D-4 (không phát sinh permission mới); fallback WO-BE-1 không kích hoạt"
+      "evidence": "tsc exit 0 (no violations); vitest exit 0 — 11 test files / 91 tests / 0 failures (10 pre-existing suites 73 tests unregressed + src/components/AppLayout.test.tsx 18 tests collected)",
+      "proving_check": "executed wave-2 2026-08-27: npx tsc --noEmit; npx vitest run — cả 2 exit 0 (verbatim output qa/07-qa-report-w2.md §1)",
+      "note": "Scope-expansion này là frontend-only (AppLayout.tsx + AppLayout.test.tsx + vitest.config.ts) — không có thay đổi Java nên mvn compile không chạy lại; AC-024-09 triage yêu cầu tsc + vitest cho đợt này"
     }
   ]
 }

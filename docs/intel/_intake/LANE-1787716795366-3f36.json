@@ -1,0 +1,15 @@
+{
+  "route_id": "LANE-1787716795366-3f36",
+  "created_at": 1787716795366,
+  "lane": "test-campaign",
+  "owner": "pmo-test-manager",
+  "dispatch_target": "pmo-test-manager",
+  "routing_mode": "dispatch",
+  "request_summary": "Chạy toàn bộ unit tests frontend + backend, ghi kết quả vào Test Studio (_tests/_results), và sửa cấu hình suite cho khớp môi trường máy (thiếu bun/mvn — dùng npx vitest).",
+  "reason": "Project-wide test campaign: chạy suite, ghi kết quả Test Studio, hiệu chỉnh cấu hình test cho đúng môi trường — thuộc sở hữu pmo-test-manager.",
+  "signals": [
+    "Test Studio mở (docs/intel/_tests/suite.json + _results có run cũ)",
+    "workspace_health khuyến nghị bun/mvn nhưng máy không có",
+    "vitest 4.1.11 cài sẵn frontend, 46/46 pass qua npx"
+  ]
+}
