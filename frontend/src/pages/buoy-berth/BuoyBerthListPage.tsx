@@ -70,6 +70,7 @@ import {
   historyInfoCardStyle, historyAccentBarStyle, historyInfoTitleStyle,
   historyChangeRowStyle, historyCreateRowStyle, historyFieldLabelStyle,
   historyOldValueStyle, historyNewValueStyle, historyArrowStyle,
+  getRangePickerProps,
 } from '../../tokens';
 import { colors } from '../../theme';
 
@@ -269,6 +270,7 @@ export default function BuoyBerthList() {
   const [historyTarget, setHistoryTarget] = useState<BuoyBerth | null>(null);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historySearchInput, setHistorySearchInput] = useState('');
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
   const [historyTo, setHistoryTo] = useState('');
@@ -280,7 +282,7 @@ export default function BuoyBerthList() {
 
   const openHistory = useCallback(async (r: BuoyBerth) => {
     setHistoryTarget(r); setHistoryOpen(true); setHistoryLoading(true); setHistoryRecords([]);
-    setHistorySearch(''); setHistoryFrom(''); setHistoryTo('');
+    setHistorySearchInput(''); setHistorySearch(''); setHistoryFrom(''); setHistoryTo('');
     setHistoryMode('current');
     try {
       const res = await api.get(`/v1/buoy-berth/${r.id}/history`);
@@ -1345,20 +1347,48 @@ export default function BuoyBerthList() {
         )}
         {!historyLoading && (
           <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
-            <Input placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
-              onChange={e => setHistorySearch(e.target.value)} style={{ flex: 1, borderRadius: radiusPill, height: 40 }} />
+            <Input
+              placeholder="Tìm kiếm nội dung thay đổi..."
+              allowClear
+              value={historySearchInput}
+              onChange={(e) => {
+                const val = e.target.value;
+                setHistorySearchInput(val);
+                if (!val) setHistorySearch('');
+              }}
+              onPressEnter={() => setHistorySearch(historySearchInput.trim())}
+              style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
+            />
             {historyMode === 'all' && <Select placeholder="Chọn bến phao" allowClear showSearch value={historyEntityFilter || undefined}
               onChange={v => setHistoryEntityFilter(v || '')}
               filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
               style={{ width: 200, borderRadius: radiusPill, height: 40 }}
               options={Object.entries(historyEntityNames).map(([id, name]) => ({ value: id, label: name }))} />}
-            <DatePicker placeholder="Từ ngày" classNames={{ popup: { root: 'history-dt-popup' } }} value={historyFrom ? dayjs(historyFrom) : null}
-              onChange={d => setHistoryFrom(d ? d.format('YYYY-MM-DD HH:mm') : '')}
-              style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
-            <DatePicker placeholder="Đến ngày" classNames={{ popup: { root: 'history-dt-popup' } }} value={historyTo ? dayjs(historyTo) : null}
-              onChange={d => setHistoryTo(d ? d.format('YYYY-MM-DD HH:mm') : '')}
-              style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
-            <Button type="primary" icon={<SearchOutlined />} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Tìm kiếm</Button>
+            <DatePicker.RangePicker
+              {...getRangePickerProps({
+                value: (historyFrom && historyTo)
+                  ? [dayjs(historyFrom), dayjs(historyTo)]
+                  : (historyFrom ? [dayjs(historyFrom), null] : (historyTo ? [null, dayjs(historyTo)] : null)),
+                onChange: (dates: any) => {
+                  if (!dates || dates.length === 0 || (!dates[0] && !dates[1])) {
+                    setHistoryFrom('');
+                    setHistoryTo('');
+                  } else {
+                    setHistoryFrom(dates[0] ? dates[0].startOf('day').format('YYYY-MM-DD HH:mm') : '');
+                    setHistoryTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DD HH:mm') : '');
+                  }
+                },
+                style: { width: 280, borderRadius: radiusPill, height: 40 },
+              })}
+            />
+            <Button
+              type="primary"
+              icon={<SearchOutlined />}
+              onClick={() => setHistorySearch(historySearchInput.trim())}
+              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}
+            >
+              Tìm kiếm
+            </Button>
           </div>
         )}
         </div>

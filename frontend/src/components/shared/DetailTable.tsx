@@ -1,51 +1,44 @@
 import React, { useState, useMemo } from 'react';
-import { Table, Pagination } from 'antd';
+import { Table } from 'antd';
 import type { ColumnsType, TableProps } from 'antd/es/table';
 import dayjs from 'dayjs';
+import Pagination from '../list-view/Pagination';
 
 export interface DetailTableProps<T = any> extends Omit<TableProps<T>, 'pagination'> {
   columns: ColumnsType<T>;
   dataSource: T[];
   pageSize?: number;
+  pageSizeOptions?: number[];
   rowKey?: string | ((record: T, index?: number) => string);
   emptyText?: string;
   currentPage?: number;
-  onPageChange?: (page: number) => void;
-  showTotal?: (total: number, range: [number, number]) => React.ReactNode;
+  onPageChange?: (page: number, pageSize?: number) => void;
   headerNode?: React.ReactNode;
   padEmptyRows?: boolean;
+  scrollY?: number | string;
 }
 
 /** Tự động suy luận độ rộng tối ưu cho cột nếu chưa được khai báo */
-const getSmartColumnWidth = (col: any): number => {
+const getSmartColumnWidth = (col: any): number | undefined => {
   if (col.width && typeof col.width === 'number') {
-    const key = String(col.dataIndex || col.key || col.title || '').toLowerCase();
-    if (key.includes('severity') || key.includes('mức độ')) {
-      return Math.max(col.width, 150);
-    }
-    if (key.includes('status') || key.includes('trạng thái') || key.includes('tình trạng') || key.includes('handle')) {
-      return Math.max(col.width, 160);
-    }
-    if (key.includes('cost') || key.includes('chi phí') || key.includes('price') || key.includes('tiền')) {
-      return Math.max(col.width, 170);
-    }
     return col.width;
   }
   if (typeof col.width === 'string' && col.width.endsWith('px')) {
     const parsed = parseInt(col.width, 10);
     if (!isNaN(parsed)) return parsed;
   }
+  if (col.width !== undefined) return col.width;
   const key = String(col.dataIndex || col.key || col.title || '').toLowerCase();
   if (key === 'stt' || col.title === 'STT') return 50;
   if (key.includes('code') || key.includes('mã')) return 120;
-  if (key.includes('name') || key.includes('tên') || key.includes('spec') || key.includes('thông số') || key.includes('nội dung') || key.includes('content') || key.includes('mô tả') || key.includes('description') || key.includes('tiêu đề') || key.includes('title')) return 200;
-  if (key.includes('date') || key.includes('time') || key.includes('ngày') || key.includes('thời gian') || key.includes('năm') || key.includes('year')) return 140;
-  if (key.includes('org') || key.includes('unit') || key.includes('đơn vị') || key.includes('location') || key.includes('địa điểm') || key.includes('address') || key.includes('cơ quan')) return 180;
-  if (key.includes('cost') || key.includes('chi phí') || key.includes('price') || key.includes('amount') || key.includes('tiền') || key.includes('kinh phí') || key.includes('budget')) return 170;
-  if (key.includes('severity') || key.includes('mức độ')) return 150;
-  if (key.includes('status') || key.includes('trạng thái') || key.includes('tình trạng') || key.includes('handle')) return 160;
-  if (key.includes('lat') || key.includes('lng') || key.includes('kinh độ') || key.includes('vĩ độ')) return 160;
-  return 140;
+  if (key.includes('spec') || key.includes('thông số') || key.includes('kỹ thuật')) return 220;
+  if (key.includes('type') || key.includes('loại')) return 160;
+  if (key.includes('date') || key.includes('time') || key.includes('ngày') || key.includes('thời gian') || key.includes('năm') || key.includes('year')) return 120;
+  if (key.includes('status') || key.includes('trạng thái') || key.includes('tình trạng') || key.includes('handle')) return 140;
+  if (key.includes('cost') || key.includes('chi phí') || key.includes('price') || key.includes('amount') || key.includes('tiền')) return 150;
+  if (key.includes('org') || key.includes('unit') || key.includes('đơn vị')) return 160;
+  if (key.includes('name') || key.includes('tên')) return 220;
+  return undefined;
 };
 
 /** Tự động suy luận căn lề tối ưu cho cột nếu chưa được khai báo */
@@ -106,12 +99,12 @@ const getSmartSorter = (col: any) => {
 export const DetailTable = <T extends object = any>({
   columns,
   dataSource = [],
-  pageSize = 10,
+  pageSize: propPageSize,
+  pageSizeOptions = [10, 20, 50],
   rowKey,
   emptyText = 'Không có dữ liệu',
   currentPage,
   onPageChange,
-  showTotal = (total) => `Tổng số: ${total} bản ghi`,
   headerNode,
   size = 'small',
   tableLayout = 'fixed',
@@ -119,17 +112,29 @@ export const DetailTable = <T extends object = any>({
   className,
   style,
   padEmptyRows = false,
+  scrollY,
+  scroll,
   ...rest
 }: DetailTableProps<T>) => {
+  const [internalPageSize, setInternalPageSize] = useState<number>(propPageSize ?? 20);
+  const pageSize = propPageSize !== undefined ? propPageSize : internalPageSize;
   const [internalPage, setInternalPage] = useState<number>(1);
   const activePage = currentPage !== undefined ? currentPage : internalPage;
 
-  const handlePageChange = (page: number) => {
+  const handlePageChange = (page: number, newPageSize: number) => {
+    if (newPageSize !== pageSize) {
+      setInternalPageSize(newPageSize);
+      setInternalPage(1);
+      if (onPageChange) {
+        onPageChange(1, newPageSize);
+      }
+      return;
+    }
     if (currentPage === undefined) {
       setInternalPage(page);
     }
     if (onPageChange) {
-      onPageChange(page);
+      onPageChange(page, pageSize);
     }
   };
 
@@ -158,11 +163,11 @@ export const DetailTable = <T extends object = any>({
       const width = getSmartColumnWidth(col);
       const align = getSmartColumnAlign(col);
       const sorter = getSmartSorter(col);
-      totalW += width;
+      if (width !== undefined) totalW += width;
 
       return {
         ...col,
-        width,
+        ...(width !== undefined ? { width } : {}),
         align,
         sorter,
         render: (value: any, record: any, index: number) => {
@@ -228,30 +233,24 @@ export const DetailTable = <T extends object = any>({
     return `p${activePage}-r${idx}`;
   };
 
-  // Tính toán chiều cao tối thiểu động theo pageSize của từng bảng (chỉ bật khi có nhiều trang)
-  const dynamicMinHeight = useMemo(() => {
-    if (dataSource.length <= pageSize) return undefined;
-    const headerHeight = 38;
-    const rowHeight = 42;
-    return headerHeight + (pageSize * rowHeight);
-  }, [dataSource.length, pageSize]);
+
+  const instanceId = useMemo(() => `chk-dt-${Math.random().toString(36).substring(2, 9)}`, []);
+  const effectiveScrollY = scrollY || 'calc(100vh - 330px)';
 
   return (
     <div
-      className={`chk-detail-table-card ${className || ''}`}
+      className={`chk-detail-table-card ${instanceId} ${className || ''}`}
       style={{
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'flex-start',
+        width: '100%',
         ...style,
       }}
     >
       <style>{`
-        .chk-detail-table-card .ant-table table {
-          width: 100% !important;
+        .${instanceId} .ant-table table {
+          ${scroll?.x ? 'width: max-content !important; min-width: 100% !important;' : 'width: 100% !important;'}
           table-layout: fixed !important;
         }
-        .chk-detail-table-card .ant-table-thead > tr > th {
+        .${instanceId} .ant-table-thead > tr > th {
           white-space: nowrap !important;
           overflow: visible !important;
           text-overflow: clip !important;
@@ -259,7 +258,7 @@ export const DetailTable = <T extends object = any>({
           height: 38px !important;
           box-sizing: border-box !important;
         }
-        .chk-detail-table-card .ant-table-tbody > tr:not(.ant-table-measure-row) > td {
+        .${instanceId} .ant-table-tbody > tr:not(.ant-table-measure-row) > td {
           padding: 6px 12px !important;
           height: 35px !important;
           line-height: 22px !important;
@@ -268,62 +267,42 @@ export const DetailTable = <T extends object = any>({
           overflow: hidden !important;
           text-overflow: ellipsis !important;
         }
-        .chk-detail-table-card .ant-table-tbody > tr:not(.ant-table-measure-row) > td:has(.ant-tag),
-        .chk-detail-table-card .ant-table-tbody > tr:not(.ant-table-measure-row) > td:has(span[style*="999px"]),
-        .chk-detail-table-card .ant-table-tbody > tr:not(.ant-table-measure-row) > td:has(span[style*="borderRadius: 999px"]),
-        .chk-detail-table-card .ant-table-tbody > tr:not(.ant-table-measure-row) > td:has(span[style*="border-radius: 999px"]),
-        .chk-detail-table-card .ant-table-tbody > tr:not(.ant-table-measure-row) > td.chk-col-status {
+        .${instanceId} .ant-table-tbody > tr:not(.ant-table-measure-row) > td:has(.ant-tag),
+        .${instanceId} .ant-table-tbody > tr:not(.ant-table-measure-row) > td:has(span[style*="999px"]),
+        .${instanceId} .ant-table-tbody > tr:not(.ant-table-measure-row) > td:has(span[style*="borderRadius: 999px"]),
+        .${instanceId} .ant-table-tbody > tr:not(.ant-table-measure-row) > td:has(span[style*="border-radius: 999px"]),
+        .${instanceId} .ant-table-tbody > tr:not(.ant-table-measure-row) > td.chk-col-status {
           white-space: nowrap !important;
           overflow: visible !important;
           text-overflow: clip !important;
         }
-        .chk-detail-table-card .ant-table-thead > tr > th.ant-table-cell-align-right,
-        .chk-detail-table-card .ant-table-tbody > tr > td.ant-table-cell-align-right {
+        .${instanceId} .ant-table-thead > tr > th.ant-table-cell-align-right,
+        .${instanceId} .ant-table-tbody > tr > td.ant-table-cell-align-right {
           padding-right: 18px !important;
         }
-        .chk-detail-table-card .ant-table-tbody > tr.ant-table-measure-row,
-        .chk-detail-table-card .ant-table-tbody > tr.ant-table-measure-row > td {
+        .${instanceId} .ant-table-tbody > tr.ant-table-measure-row,
+        .${instanceId} .ant-table-tbody > tr.ant-table-measure-row > td {
           padding: 0 !important;
           height: 0 !important;
           border: 0 !important;
           line-height: 0 !important;
           font-size: 0 !important;
         }
-        .chk-detail-table-card .ant-table-row-placeholder {
+        .${instanceId} .ant-table-row-placeholder {
           pointer-events: none !important;
         }
-        .chk-detail-table-card .ant-table-row-placeholder:hover > td {
-          background: transparent !important;
+        .${instanceId} .ant-table-body {
+          height: ${typeof effectiveScrollY === 'number' ? `${effectiveScrollY}px` : effectiveScrollY} !important;
+          min-height: ${typeof effectiveScrollY === 'number' ? `${effectiveScrollY}px` : effectiveScrollY} !important;
+          max-height: ${typeof effectiveScrollY === 'number' ? `${effectiveScrollY}px` : effectiveScrollY} !important;
+          overflow-x: auto !important;
         }
-        .chk-detail-table-card .ant-pagination {
-          display: inline-flex !important;
-          align-items: center !important;
-        }
-        .chk-detail-table-card .ant-pagination-total-text {
-          margin-inline-end: 12px !important;
-          font-size: 13px !important;
-          color: #5E6278 !important;
-          white-space: nowrap !important;
-          user-select: none !important;
-        }
-        .chk-detail-table-card .ant-pagination-item,
-        .chk-detail-table-card .ant-pagination-prev,
-        .chk-detail-table-card .ant-pagination-next {
-          min-width: 24px !important;
-          width: 24px !important;
-          height: 24px !important;
-          line-height: 22px !important;
-          margin-inline-end: 6px !important;
-          margin-inline-start: 0 !important;
-          text-align: center !important;
-          box-sizing: border-box !important;
-        }
-        .chk-detail-table-card .ant-pagination-next {
-          margin-inline-end: 0 !important;
+        .${instanceId} .ant-table-placeholder .ant-table-cell {
+          height: ${typeof effectiveScrollY === 'number' ? `${effectiveScrollY}px` : effectiveScrollY} !important;
         }
       `}</style>
-      {headerNode}
-      <div style={{ minHeight: dynamicMinHeight }}>
+      <div>
+        {headerNode}
         <Table<any>
           size={size}
           tableLayout="fixed"
@@ -340,7 +319,10 @@ export const DetailTable = <T extends object = any>({
             ),
           }}
           loading={loading}
-          scroll={{ x: Math.max(totalTableWidth, 600) }}
+          scroll={{
+            y: effectiveScrollY,
+            ...scroll,
+          }}
           onRow={(record: any) => {
             if (record && record.__isPlaceholder) {
               return {
@@ -352,23 +334,14 @@ export const DetailTable = <T extends object = any>({
           {...rest}
         />
       </div>
-      {dataSource.length > pageSize && (
-        <div
-          style={{
-            marginTop: 12,
-            display: 'flex',
-            justifyContent: 'flex-end',
-            alignItems: 'center',
-          }}
-        >
+      {dataSource.length > 0 && (
+        <div style={{ marginTop: 8, marginBottom: 8, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%' }}>
           <Pagination
-            size="small"
+            total={dataSource.length}
             current={activePage}
             pageSize={pageSize}
-            total={dataSource.length}
-            showTotal={showTotal}
+            pageSizeOptions={pageSizeOptions}
             onChange={handlePageChange}
-            showSizeChanger={false}
           />
         </div>
       )}

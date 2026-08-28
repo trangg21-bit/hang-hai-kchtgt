@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { TreeSelect } from 'antd';
 import type { TreeSelectProps } from 'antd';
-import { DownOutlined, RightOutlined } from '@ant-design/icons';
+import { DownOutlined } from '@ant-design/icons';
 import { useThemeToken } from '../../context/ThemeTokenContext';
 
 /** Dữ liệu tối thiểu để hiển thị một đơn vị trong cây. */
@@ -151,8 +151,10 @@ export function buildOrgUnitTreeData(options: readonly OrgUnitTreeOption[] = [])
 }
 
 export interface OrgUnitTreeSelectProps
-  extends Omit<TreeSelectProps, 'treeData'> {
+  extends Omit<TreeSelectProps, 'treeData' | 'variant'> {
   organizations?: readonly OrgUnitTreeOption[];
+  /** Chế độ sử dụng: 'filter' (màn lọc sidebar/header) hoặc 'form' (màn thêm mới/sửa). */
+  variant?: 'filter' | 'form';
   /** Hiển thị đường dẫn đầy đủ (cấp cao nhất → cấp được chọn) trên thanh select. */
   showPath?: boolean;
   /** Hiển thị item đầu tiên "Tất cả" (value = '__all__') cùng cấp với cấp ngoài cùng — dùng cho bộ lọc. */
@@ -161,23 +163,44 @@ export interface OrgUnitTreeSelectProps
 
 /**
  * Select đơn vị dùng chung cho toàn bộ frontend.
- * Các màn hình chỉ cần truyền danh sách đơn vị và dùng value trả về làm orgUnitId.
+ * Hỗ trợ 2 chế độ chuẩn hóa:
+ * - variant="filter": placeholder="Tất cả", menu dropdown tối thiểu 380px hiển thị rõ tên đơn vị dài.
+ * - variant="form": placeholder="Chọn đơn vị quản lý", menu dropdown co giãn 100% theo ô nhập trong Drawer/Modal.
  */
-export default function OrgUnitTreeSelect({
-  organizations = [],
-  style,
-  showSearch = true,
-  treeDefaultExpandAll = true,
-  treeLine = false,
-  treeNodeFilterProp = 'title',
-  showPath = false,
-  allLabel,
-  dropdownStyle,
-  popupMatchSelectWidth = false,
-  listHeight = 300,
-  ...props
-}: OrgUnitTreeSelectProps) {
-  const { radiusPill, controlHeight, radiusMd } = useThemeToken();
+export default function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
+  const {
+    organizations = [],
+    variant = 'filter',
+    style,
+    placeholder,
+    allowClear,
+    showSearch = true,
+    treeDefaultExpandAll = true,
+    treeLine = false,
+    treeNodeFilterProp = 'title',
+    showPath = false,
+    allLabel,
+    dropdownStyle,
+    popupMatchSelectWidth,
+    listHeight,
+    ...restProps
+  } = props;
+
+  const {
+    filterTreeSelectDropdownStyle,
+    formTreeSelectDropdownStyle,
+    filterTreeSelectStyle,
+    formTreeSelectStyle,
+  } = useThemeToken();
+  const isForm = variant === 'form';
+
+  const defaultPlaceholder = placeholder !== undefined ? placeholder : isForm ? 'Chọn đơn vị quản lý' : 'Tất cả';
+  const defaultAllowClear = allowClear !== undefined ? allowClear : true;
+  const defaultListHeight = listHeight !== undefined ? listHeight : isForm ? 300 : 256;
+  const defaultMatchWidth = popupMatchSelectWidth !== undefined ? popupMatchSelectWidth : (isForm ? true : false);
+  const baseDropdownStyle = isForm ? formTreeSelectDropdownStyle : filterTreeSelectDropdownStyle;
+  const baseControlStyle = isForm ? formTreeSelectStyle : filterTreeSelectStyle;
+
   const treeData = useMemo(() => {
     const list = Array.isArray(organizations) ? organizations : [];
     const built = buildOrgUnitTreeData(list);
@@ -213,7 +236,9 @@ export default function OrgUnitTreeSelect({
 
   return (
     <TreeSelect
-      {...props}
+      {...restProps}
+      placeholder={defaultPlaceholder}
+      allowClear={defaultAllowClear}
       treeData={treeData}
       showSearch={showSearch}
       treeDefaultExpandAll={treeDefaultExpandAll}
@@ -221,22 +246,35 @@ export default function OrgUnitTreeSelect({
       treeNodeFilterProp={treeNodeFilterProp}
       treeNodeLabelProp={showPath ? 'label' : undefined}
       filterTreeNode={(input, node) => normalizeSearchText(node?.title).includes(normalizeSearchText(input))}
-      listHeight={listHeight}
-      popupMatchSelectWidth={popupMatchSelectWidth}
-      dropdownStyle={{
-        minWidth: 380,
-        maxWidth: 520,
-        maxHeight: 320,
-        borderRadius: radiusMd || 10,
-        padding: '6px',
-        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',
-        ...dropdownStyle,
+      listHeight={defaultListHeight}
+      popupMatchSelectWidth={defaultMatchWidth}
+      styles={{
+        ...restProps.styles,
+        popup: {
+          ...restProps.styles?.popup,
+          root: {
+            ...baseDropdownStyle,
+            ...dropdownStyle,
+            ...(typeof restProps.styles?.popup === 'object' ? restProps.styles.popup?.root : undefined),
+          },
+        },
       }}
       switcherIcon={(nodeProps: any) => {
         if (nodeProps.isLeaf) return null;
         return <DownOutlined style={{ fontSize: 10, color: '#7e8299' }} />;
       }}
-      style={{ width: '100%', height: controlHeight, borderRadius: radiusPill, ...style }}
+      style={{ ...baseControlStyle, ...style }}
     />
   );
 }
+
+/** Component Dropdown đơn vị chuẩn hóa dành riêng cho Thanh Lọc Sidebar / Header */
+export function FilterOrgUnitTreeSelect(props: Omit<OrgUnitTreeSelectProps, 'variant'>) {
+  return <OrgUnitTreeSelect variant="filter" {...props} />;
+}
+
+/** Component Dropdown đơn vị chuẩn hóa dành riêng cho Form Thêm mới / Chỉnh sửa (Drawer / Modal) */
+export function FormOrgUnitTreeSelect(props: Omit<OrgUnitTreeSelectProps, 'variant'>) {
+  return <OrgUnitTreeSelect variant="form" {...props} />;
+}
+

@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  EyeOutlined, EditOutlined, DeleteOutlined, HistoryOutlined, SendOutlined,
+  DeleteOutlined, HistoryOutlined, SendOutlined,
   CheckOutlined, CloseOutlined, PlusOutlined, SearchOutlined, ReloadOutlined,
   EnvironmentOutlined,
 } from '@ant-design/icons';
@@ -230,6 +230,22 @@ export const statusTabsPadding = '5px';
 export const scrollbarSize = 3;
 export const scrollbarThumb = 'rgba(0, 0, 0, 0.12)';
 export const scrollbarThumbHover = 'rgba(0, 0, 0, 0.25)';
+
+/**
+ * Chuẩn chiều cao bảng trong Drawer (DRAWER_TABLE_SCROLL_Y)
+ * Đảm bảo khoảng cách từ thanh phân trang xuống vạch kẻ footer luôn luôn cố định (16px - 20px)
+ * và tổng cao độ giữa các Tab bằng nhau tuyệt đối (100vh - 290px):
+ */
+export const DRAWER_TABLE_SCROLL_Y = {
+  /** Tab chỉ có bảng thuần (không có nút hay upload phía trên) */
+  pureTable: 'calc(100vh - 328px)',
+  /** Tab có nút bấm ở trên (Button 32px + margin 10px = 42px) */
+  withButton: 'calc(100vh - 370px)',
+  /** Tab có khung Upload Dragger (Dragger 104px + margin 10px = 114px) */
+  withDragger: 'calc(100vh - 442px)',
+  /** Tab trong Drawer Xem chi tiết (Detail mode không có nút thao tác trên đầu) */
+  detailView: 'calc(100vh - 296px)',
+} as const;
 
 /** --info-color của chk, ghi đè --kt-info của Metronic (#7239ea tím). */
 export const statusInfo = '#0284C7';
@@ -1125,11 +1141,451 @@ textarea.ant-input {
 
 /* ── DatePicker Dropdown & Calendar Styling ── */
 .ant-picker-dropdown {
-  border-radius: 8px !important;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
   z-index: 1200 !important;
 }
+
+.chk-form-datepicker-popup.ant-picker-dropdown {
+  width: 100% !important;
+  min-width: 100% !important;
+  left: 0 !important;
+  right: 0 !important;
+}
+
+.chk-form-datepicker-popup .ant-picker-panel-container {
+  width: 100% !important;
+  min-width: 100% !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  background: #ffffff !important;
+}
+
+.chk-form-datepicker-popup .ant-picker-panel {
+  width: 100% !important;
+  display: block !important;
+}
+
+.chk-form-datepicker-popup .ant-picker-date-panel {
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.chk-form-datepicker-popup .ant-picker-header {
+  width: 100% !important;
+  padding: 4px 12px !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  border-bottom: 1px solid ${borderDefault} !important;
+  height: 34px !important;
+}
+
+.chk-form-datepicker-popup .ant-picker-header button {
+  padding: 0 4px !important;
+  font-size: 11px !important;
+}
+
+.chk-form-datepicker-popup .ant-picker-header-view {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+
+.chk-form-datepicker-popup .ant-picker-body {
+  width: 100% !important;
+  padding: 4px 8px !important;
+}
+
+.chk-form-datepicker-popup .ant-picker-content {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.chk-form-datepicker-popup .ant-picker-content th {
+  width: 14.285% !important;
+  text-align: center !important;
+  padding: 2px 0 !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+  color: ${textSecondary} !important;
+  height: 24px !important;
+}
+
+.chk-form-datepicker-popup .ant-picker-cell {
+  width: 14.285% !important;
+  text-align: center !important;
+  padding: 1px 0 !important;
+}
+
+.chk-form-datepicker-popup .ant-picker-cell .ant-picker-cell-inner {
+  margin: 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 26px !important;
+  height: 26px !important;
+  min-width: 26px !important;
+  line-height: 26px !important;
+  border-radius: ${radiusPill} !important;
+  font-size: 12px !important;
+}
+
+.chk-form-datepicker-popup .ant-picker-cell-selected .ant-picker-cell-inner {
+  background: ${actionPrimary} !important;
+  color: #ffffff !important;
+}
+
+.chk-form-datepicker-popup .ant-picker-cell-today .ant-picker-cell-inner::before {
+  border-radius: ${radiusPill} !important;
+  border-color: ${actionPrimary} !important;
+}
+
+.chk-form-datepicker-popup .ant-picker-footer {
+  width: 100% !important;
+  border-top: 1px solid ${borderDefault} !important;
+  padding: 8px 12px 10px 12px !important;
+  text-align: center !important;
+  min-height: auto !important;
+}
+
+.chk-form-datepicker-popup .ant-picker-ranges {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  list-style: none !important;
+}
+
+.chk-form-datepicker-popup .ant-picker-today-btn {
+  color: ${actionPrimary} !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  line-height: 20px !important;
+  display: inline-block !important;
+  padding: 2px 8px !important;
+}
+
+/* ── RangePicker Dropdown & 2-Panel Calendar Styling (x2 Width) ── */
+.chk-range-datepicker-popup.ant-picker-dropdown {
+  border-radius: 12px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18) !important;
+  z-index: 1500 !important;
+  background: #ffffff !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-panel-container {
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  background: #ffffff !important;
+  border: 1px solid ${borderDefault} !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+  padding-bottom: 10px !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-panels {
+  display: flex !important;
+  flex-direction: row !important;
+  width: 560px !important;
+  background: #ffffff !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-panel {
+  flex: 1 !important;
+  width: 280px !important;
+  display: block !important;
+  background: #ffffff !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-panel:first-child {
+  border-right: 1px solid ${borderDefault} !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-date-panel {
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-header {
+  width: 100% !important;
+  padding: 6px 14px !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  border-bottom: 1px solid ${borderDefault} !important;
+  height: 36px !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-header button {
+  padding: 0 6px !important;
+  font-size: 12px !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-header-view {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-body {
+  width: 100% !important;
+  padding: 8px 10px !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-content {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-content th {
+  width: 14.285% !important;
+  text-align: center !important;
+  padding: 2px 0 !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+  color: ${textSecondary} !important;
+  height: 24px !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-cell {
+  width: 14.285% !important;
+  text-align: center !important;
+  padding: 1px 0 !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-cell .ant-picker-cell-inner {
+  margin: 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 26px !important;
+  height: 26px !important;
+  min-width: 26px !important;
+  line-height: 26px !important;
+  border-radius: ${radiusPill} !important;
+  font-size: 12px !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-cell-selected .ant-picker-cell-inner,
+.chk-range-datepicker-popup .ant-picker-cell-range-start .ant-picker-cell-inner,
+.chk-range-datepicker-popup .ant-picker-cell-range-end .ant-picker-cell-inner {
+  background: ${actionPrimary} !important;
+  color: #ffffff !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-cell-in-range:not(.ant-picker-cell-selected):not(.ant-picker-cell-range-start):not(.ant-picker-cell-range-end) {
+  background: #eff6ff !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-cell-today .ant-picker-cell-inner::before {
+  border-radius: ${radiusPill} !important;
+  border-color: ${actionPrimary} !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-footer {
+  width: 100% !important;
+  border-top: 1px solid ${borderDefault} !important;
+  padding: 8px 12px 10px 12px !important;
+  text-align: center !important;
+  min-height: auto !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-ranges {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  list-style: none !important;
+}
+
+/* ── Sidebar Compact 1-Panel RangePicker Styling (280px) ── */
+.chk-sidebar-range-datepicker-popup.ant-picker-dropdown {
+  border-radius: 12px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18) !important;
+  z-index: 1500 !important;
+  background: #ffffff !important;
+  width: 280px !important;
+}
+
+.chk-sidebar-range-datepicker-popup .ant-picker-panel-container {
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  background: #ffffff !important;
+  border: 1px solid ${borderDefault} !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+  padding-bottom: 10px !important;
+  width: 280px !important;
+}
+
+.chk-sidebar-range-datepicker-popup .ant-picker-panels {
+  display: flex !important;
+  flex-direction: row !important;
+  width: 280px !important;
+  background: #ffffff !important;
+}
+
+.chk-sidebar-range-datepicker-popup .ant-picker-panel {
+  width: 280px !important;
+  display: block !important;
+  background: #ffffff !important;
+}
+
+.chk-sidebar-range-datepicker-popup .ant-picker-panel + .ant-picker-panel {
+  display: none !important;
+}
+
+.chk-sidebar-range-datepicker-popup .ant-picker-date-panel {
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.chk-sidebar-range-datepicker-popup .ant-picker-header {
+  width: 100% !important;
+  padding: 6px 14px !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  border-bottom: 1px solid ${borderDefault} !important;
+  height: 36px !important;
+}
+
+.chk-sidebar-range-datepicker-popup .ant-picker-header button {
+  padding: 0 6px !important;
+  font-size: 12px !important;
+}
+
+.chk-sidebar-range-datepicker-popup .ant-picker-header-view {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+
+.chk-sidebar-range-datepicker-popup .ant-picker-body {
+  width: 100% !important;
+  padding: 8px 10px !important;
+}
+
+.chk-sidebar-range-datepicker-popup .ant-picker-content {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.chk-sidebar-range-datepicker-popup .ant-picker-content th {
+  width: 14.285% !important;
+  text-align: center !important;
+  padding: 2px 0 !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+  color: ${textSecondary} !important;
+  height: 24px !important;
+}
+
+.chk-sidebar-range-datepicker-popup .ant-picker-cell {
+  width: 14.285% !important;
+  text-align: center !important;
+  padding: 1px 0 !important;
+}
+
+.chk-sidebar-range-datepicker-popup .ant-picker-cell .ant-picker-cell-inner {
+  margin: 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 26px !important;
+  height: 26px !important;
+  min-width: 26px !important;
+  line-height: 26px !important;
+  border-radius: ${radiusPill} !important;
+  font-size: 12px !important;
+}
+
+.chk-sidebar-range-datepicker-popup .ant-picker-cell-selected .ant-picker-cell-inner,
+.chk-sidebar-range-datepicker-popup .ant-picker-cell-range-start .ant-picker-cell-inner,
+.chk-sidebar-range-datepicker-popup .ant-picker-cell-range-end .ant-picker-cell-inner {
+  background: ${actionPrimary} !important;
+  color: #ffffff !important;
+}
+
+.chk-sidebar-range-datepicker-popup .ant-picker-cell-in-range:not(.ant-picker-cell-selected):not(.ant-picker-cell-range-start):not(.ant-picker-cell-range-end) {
+  background: #eff6ff !important;
+}
+
+.chk-sidebar-range-datepicker-popup .ant-picker-cell-today .ant-picker-cell-inner::before {
+  border-radius: ${radiusPill} !important;
+  border-color: ${actionPrimary} !important;
+}
 `;
+
+/**
+ * Helper chuẩn hóa props cho DatePicker (đơn) và RangePicker (khoảng ngày)
+ * Đảm bảo kích thước đồng nhất:
+ * - DatePicker đơn: popupClassName="chk-form-datepicker-popup", co dãn ôm khít 100% chiều rộng ô input.
+ * - DatePicker.RangePicker: popupClassName="chk-range-datepicker-popup", kích thước x2 (2 panel cạnh nhau 560px), ô ngày 26px đồng bộ.
+ * - DatePicker.RangePicker (Sidebar): popupClassName="chk-sidebar-range-datepicker-popup", kích thước 1 panel ôm trọn thanh Sidebar 280px.
+ */
+export const getDatePickerProps = (extraProps?: Record<string, any>) => {
+  const { classNames: extraClassNames, ...rest } = extraProps || {};
+  return {
+    format: 'DD/MM/YYYY',
+    classNames: {
+      ...extraClassNames,
+      popup: {
+        ...extraClassNames?.popup,
+        root: [
+          'chk-form-datepicker-popup',
+          typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
+          typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
+        ].filter(Boolean).join(' '),
+      },
+    },
+    style: { ...inputStyle, width: '100%' },
+    ...rest,
+  };
+};
+
+export const getRangePickerProps = (extraProps?: Record<string, any>) => {
+  const { classNames: extraClassNames, ...rest } = extraProps || {};
+  return {
+    format: 'DD/MM/YYYY',
+    placeholder: ['Từ ngày', 'Đến ngày'] as [string, string],
+    classNames: {
+      ...extraClassNames,
+      popup: {
+        ...extraClassNames?.popup,
+        root: [
+          'chk-range-datepicker-popup',
+          typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
+          typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
+        ].filter(Boolean).join(' '),
+      },
+    },
+    style: { ...inputStyle, width: '100%' },
+    ...rest,
+  };
+};
+
+export const getSidebarRangePickerProps = (extraProps?: Record<string, any>) => {
+  const { classNames: extraClassNames, ...rest } = extraProps || {};
+  return {
+    format: 'DD/MM/YYYY',
+    placeholder: ['Từ ngày', 'Đến ngày'] as [string, string],
+    classNames: {
+      ...extraClassNames,
+      popup: {
+        ...extraClassNames?.popup,
+        root: [
+          'chk-sidebar-range-datepicker-popup',
+          typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
+          typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
+        ].filter(Boolean).join(' '),
+      },
+    },
+    style: { ...inputStyle, width: '100%' },
+    ...rest,
+  };
+};
 
 
 
@@ -1301,6 +1757,33 @@ export const formTreeSelectStyle: React.CSSProperties = {
   height: controlHeight,
 };
 
+/** Style chuẩn cho OrgUnitTreeSelect trong Sidebar bộ lọc */
+export const filterTreeSelectStyle: React.CSSProperties = {
+  width: '100%',
+  borderRadius: radiusPill,
+  height: controlHeight,
+};
+
+/** Style popup menu Dropdown chuẩn cho OrgUnitTreeSelect trong Sidebar bộ lọc */
+export const filterTreeSelectDropdownStyle: React.CSSProperties = {
+  minWidth: 380,
+  maxWidth: 520,
+  maxHeight: 320,
+  borderRadius: radiusMd,
+  padding: '6px',
+  boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',
+};
+
+/** Style popup menu Dropdown chuẩn cho OrgUnitTreeSelect trong Form (Drawer / Modal) */
+export const formTreeSelectDropdownStyle: React.CSSProperties = {
+  minWidth: '100%',
+  maxWidth: 650,
+  maxHeight: 320,
+  borderRadius: radiusMd,
+  padding: '6px',
+  boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',
+};
+
 export const ATTACHMENT_HELPER_TEXT =
   'Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤10MB.';
 
@@ -1413,9 +1896,10 @@ export const paginationSizeSelectStyle: React.CSSProperties = {
 // --- 5.5 Drawer ---
 
 export const drawerProps = {
-  width: '50%',
+  size: '50%' as const,
   placement: 'right' as const,
   closable: false,
+  push: false,
   styles: {
     header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
     body: { padding: '0 24px 12px 24px' },
@@ -1819,7 +2303,6 @@ const SORT_ICON_PATHS: Record<'none' | 'asc' | 'desc', string[]> = {
     'M3.38714 14C3.01681 14 2.70972 13.6929 2.70972 13.3226V0.677419C2.70972 0.307097 3.01681 0 3.38714 0C3.75746 0 4.06456 0.307097 4.06456 0.677419V13.3226C4.06456 13.6929 3.75746 14 3.38714 14Z',
     'M10.6129 14C10.4413 14 10.2697 13.9368 10.1342 13.8013L7.87611 11.5432C7.61418 11.2813 7.61418 10.8477 7.87611 10.5858C8.13805 10.3239 8.5716 10.3239 8.83353 10.5858L10.6129 12.3652L12.3922 10.5858C12.6542 10.3239 13.0877 10.3239 13.3497 10.5858C13.6116 10.8477 13.6116 11.2813 13.3497 11.5432L11.0916 13.8013C10.9561 13.9368 10.7845 14 10.6129 14Z',
     'M10.6129 14C10.2426 14 9.93552 13.6929 9.93552 13.3226V0.677419C9.93552 0.307097 10.2426 0 10.6129 0C10.9833 0 11.2904 0.307097 11.2904 0.677419V13.3226C11.2904 13.6929 10.9832 14 10.6129 14Z',
-    'clip0_378_15529',
   ],
   asc: [
     'M4.59864 3.99958C4.44662 3.99958 4.2946 3.94357 4.17458 3.82356L2.59836 2.24734L1.02214 3.82356C0.79011 4.05559 0.406057 4.05559 0.174024 3.82356C-0.0580081 3.59152 -0.0580081 3.20747 0.174024 2.97544L2.1743 0.97516C2.40634 0.743127 2.79039 0.743127 3.02242 0.97516L5.0227 2.97544C5.25473 3.20747 5.25473 3.59152 5.0227 3.82356C4.90268 3.94357 4.75066 3.99958 4.59864 3.99958Z',
@@ -1828,7 +2311,6 @@ const SORT_ICON_PATHS: Record<'none' | 'asc' | 'desc', string[]> = {
     'M10.1995 6.39991H6.99902C6.67098 6.39991 6.39894 6.12788 6.39894 5.79983C6.39894 5.47179 6.67098 5.19975 6.99902 5.19975H10.1995C10.5275 5.19975 10.7996 5.47179 10.7996 5.79983C10.7996 6.12788 10.5275 6.39991 10.1995 6.39991Z',
     'M8.59925 3.99958H6.99902C6.67098 3.99958 6.39894 3.72754 6.39894 3.3995C6.39894 3.07145 6.67098 2.79941 6.99902 2.79941H8.59925C8.92729 2.79941 9.19933 3.07145 9.19933 3.3995C9.19933 3.72754 8.92729 3.99958 8.59925 3.99958Z',
     'M11.7997 8.80025H6.99902C6.67098 8.80025 6.39894 8.52821 6.39894 8.20017C6.39894 7.87212 6.67098 7.60008 6.99902 7.60008H11.7997C12.1277 7.60008 12.3998 7.87212 12.3998 8.20017C12.3998 8.52821 12.1277 8.80025 11.7997 8.80025Z',
-    'clip0_378_15578',
   ],
   desc: [
     'M2.59836 13.2009C2.44634 13.2009 2.29432 13.1449 2.1743 13.0248L0.174024 11.0246C-0.0580081 10.7925 -0.0580081 10.4085 0.174024 10.1764C0.406057 9.94441 0.79011 9.94441 1.02214 10.1764L2.59836 11.7527L4.17458 10.1764C4.40662 9.94441 4.79067 9.94441 5.0227 10.1764C5.25473 10.4085 5.25473 10.7925 5.0227 11.0246L3.02242 13.0248C2.90241 13.1449 2.75038 13.2009 2.59836 13.2009Z',
@@ -1837,7 +2319,6 @@ const SORT_ICON_PATHS: Record<'none' | 'asc' | 'desc', string[]> = {
     'M10.1995 6.39991H6.99902C6.67098 6.39991 6.39894 6.12788 6.39894 5.79983C6.39894 5.47179 6.67098 5.19975 6.99902 5.19975H10.1995C10.5275 5.19975 10.7996 5.47179 10.7996 5.79983C10.7996 6.12788 10.5275 6.39991 10.1995 6.39991Z',
     'M8.59925 3.99958H6.99902C6.67098 3.99958 6.39894 3.72754 6.39894 3.3995C6.39894 3.07145 6.67098 2.79941 6.99902 2.79941H8.59925C8.92729 2.79941 9.19933 3.07145 9.19933 3.3995C9.19933 3.72754 8.92729 3.99958 8.59925 3.99958Z',
     'M11.7997 8.80025H6.99902C6.67098 8.80025 6.39894 8.52821 6.39894 8.20017C6.39894 7.87212 6.67098 7.60008 6.99902 7.60008H11.7997C12.1277 7.60008 12.3998 7.87212 12.3998 8.20017C12.3998 8.52821 12.1277 8.80025 11.7997 8.80025Z',
-    'clip0_378_15544',
   ],
 };
 
@@ -1876,3 +2357,77 @@ export const tableEmptyState: React.ReactNode = React.createElement(
   },
   'Không có kết quả tìm kiếm',
 );
+
+/**
+ * Helper sinh mã ID duy nhất cho tệp đính kèm và các dòng con tạm thời trong Form/Drawer:
+ * Tránh lỗi trùng ID khi người dùng kéo thả tải lên nhiều file cùng lúc trong cùng 1 mili-giây.
+ */
+export const generateTempId = (prefix: string = 'temp'): string => {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+};
+
+/**
+ * QUY CHUẨN BẢNG CHI TIẾT DETAILTABLE & BẢNG CON TRONG DRAWER/FORM:
+ * 1. Mặc định padEmptyRows = false: chỉ render đúng số dòng dữ liệu thực tế, tuyệt đối CẤM đệm các dòng kẻ ngang trống thừa (__isPlaceholder).
+ * 2. Cột STT tính chuẩn theo: (page - 1) * pageSize + index + 1.
+ * 3. Khi upload nhiều file hoặc thêm mới row con: BẮT BUỘC dùng generateTempId(...) để tránh trùng lặp rowKey.
+ * 4. Phân trang sử dụng tabPaneFlexContainerStyle (minHeight linh hoạt theo 100vh) + pagedTablePaginationWrapperStyle (marginTop auto) + .chk-pagination-stable để cố định vị trí đáy tuyệt đối trên mọi độ phân giải.
+ */
+export const DEFAULT_PAGE_SIZE = 20;
+export const DEFAULT_PAGE_SIZE_OPTIONS = [20, 50, 100];
+
+export const drawerPagedTabContainerStyle = (offsetTop: number = 210): React.CSSProperties => ({
+  display: 'flex',
+  flexDirection: 'column',
+  minHeight: `calc(100vh - ${offsetTop}px)`,
+  justifyContent: 'space-between',
+  width: '100%',
+});
+
+export const drawerPaginationWrapperStyle: React.CSSProperties = {
+  marginTop: 'auto',
+  paddingTop: 8,
+  width: '100%',
+};
+
+export const tabPaneFlexContainerStyle = (hasMultiplePages: boolean = false, offsetTop: number = 260): React.CSSProperties => ({
+  display: 'flex',
+  flexDirection: 'column',
+  minHeight: hasMultiplePages ? `calc(100vh - ${offsetTop}px)` : undefined,
+  justifyContent: 'space-between',
+  width: '100%',
+});
+
+export const pagedTableContainerStyle = (hasMultiplePages: boolean = false, offsetTop: number = 260): React.CSSProperties =>
+  tabPaneFlexContainerStyle(hasMultiplePages, offsetTop);
+
+export const pagedTablePaginationWrapperStyle: React.CSSProperties = {
+  marginTop: 'auto',
+  paddingTop: 12,
+  display: 'flex',
+  justifyContent: 'flex-end',
+  alignItems: 'center',
+  width: '100%',
+};
+
+export const pagedTablePaginationStyle = `
+  .chk-pagination-stable .ant-pagination-item,
+  .chk-pagination-stable .ant-pagination-prev,
+  .chk-pagination-stable .ant-pagination-next {
+    min-width: 32px !important;
+    width: 32px !important;
+    height: 32px !important;
+    line-height: 30px !important;
+    text-align: center !important;
+    margin: 0 4px !important;
+    border-radius: 999px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  .chk-pagination-stable .ant-pagination-options {
+    margin-left: 12px !important;
+  }
+`;
+
+

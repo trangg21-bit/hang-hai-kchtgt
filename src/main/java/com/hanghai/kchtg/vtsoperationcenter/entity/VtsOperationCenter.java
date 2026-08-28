@@ -62,6 +62,9 @@ public class VtsOperationCenter extends BaseApprovableEntity {
     @Column(name = "coordinate_reference_system", length = 50)
     private String coordinateReferenceSystem;
 
+    @Column(name = "symbol_id")
+    private UUID symbolId;
+
     // Các trường phân quyền (org_unit_id, province_id, security_level), GIS (spatial_id) và
     // toàn bộ vết phê duyệt 2 cấp — kể cả submitted_at/submitted_by và
     // level1/level2_approval_content — đã nằm ở BaseApprovableEntity, không khai lại ở đây.

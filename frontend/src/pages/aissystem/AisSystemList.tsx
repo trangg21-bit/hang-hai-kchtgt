@@ -81,6 +81,7 @@ import {
   drawerTitleStyle,
   drawerCloseBtnStyle,
   borderDefault,
+  getRangePickerProps,
 } from '../../tokens';
 import { colors } from '../../theme';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
@@ -475,6 +476,7 @@ export const AisSystemList: React.FC = () => {
   const [historyTargetRecord, setHistoryTargetRecord] = useState<AisSystemListItem | null>(null);
   const [historyRecords, setHistoryRecords] = useState<HistoryEntry[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historySearchInput, setHistorySearchInput] = useState('');
   const [historySearch, setHistorySearch] = useState('');
   const [historyDateFrom, setHistoryDateFrom] = useState('');
   const [historyDateTo, setHistoryDateTo] = useState('');
@@ -699,6 +701,7 @@ export const AisSystemList: React.FC = () => {
     setHistoryTargetRecord(record);
     setHistoryDrawerVisible(true);
     setLoadingHistory(true);
+    setHistorySearchInput('');
     setHistorySearch('');
     setHistoryDateFrom('');
     setHistoryDateTo('');
@@ -1269,12 +1272,40 @@ export const AisSystemList: React.FC = () => {
                 </Typography.Text>
 
                 {(() => {
+                  const isLongHistoryText = (val: string | null | undefined): boolean => {
+                    if (!val) return false;
+                    const str = String(val).trim();
+                    return str.length > 40 || str.includes('\n') || (str.includes(',') && str.length > 25);
+                  };
+
+                  const renderHistoryContent = (field: string, val: string | null, _isOld: boolean = false) => {
+                    if (val === null || val === undefined || val === '—' || val === '') {
+                      return <span style={{ color: textTertiary }}>—</span>;
+                    }
+                    const str = String(val).trim();
+                    if (str.includes(',') && str.length > 25) {
+                      const items = str.split(',').map((s) => s.trim()).filter(Boolean);
+                      if (items.length > 1) {
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+                            {items.map((item, idx) => (
+                              <div key={idx} style={{ color: textPrimary, fontWeight: fontWeightMedium, lineHeight: '20px', wordBreak: 'break-word' }}>
+                                {item}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      }
+                    }
+                    return renderHistoryValueTag(field, val);
+                  };
+
                   const validChanges = changes.filter((c: any) => {
-                    if (!c.field) return false;
+                    if (!c.field && !c.oldValue && !c.newValue) return false;
                     const ov = formatHistoryValue(c.field, c.oldValue);
                     const nv = formatHistoryValue(c.field, c.newValue);
                     if (ov == null && nv == null) return false;
-                    if (ov === nv) return false;
+                    if (ov !== null && nv !== null && String(ov).trim() === String(nv).trim()) return false;
                     return true;
                   });
                   const reasons = g.items.map((i: any) => i.reason || i.ghiChu || i.note).filter(Boolean);
@@ -1286,20 +1317,25 @@ export const AisSystemList: React.FC = () => {
                           const fn = change.field;
                           const ov = formatHistoryValue(fn, change.oldValue);
                           const nv = formatHistoryValue(fn, change.newValue);
-                          return isCreate ? (
-                            <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '170px minmax(0, 1fr)', alignItems: 'flex-start', gap: spaceMd, fontSize: fontSizeMd, lineHeight: 1.6 }}>
-                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                              <div style={{ minWidth: 0, overflowWrap: 'break-word' }}>{renderHistoryValueTag(fn, nv)}</div>
-                            </div>
-                          ) : (
-                            <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '170px minmax(120px, 1fr) 24px minmax(120px, 1fr)', alignItems: 'center', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6 }}>
-                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                              <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, overflowWrap: 'break-word' }}>
-                                {renderHistoryValueTag(fn, ov)}
+
+                          if (isCreate) {
+                            return (
+                              <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '170px minmax(0, 1fr)', alignItems: 'flex-start', gap: spaceMd, fontSize: fontSizeMd, lineHeight: 1.6, padding: '3px 0' }}>
+                                <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
+                                <div style={{ minWidth: 0, overflowWrap: 'break-word' }}>{renderHistoryContent(fn, nv, false)}</div>
                               </div>
-                              <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none' }}>→</div>
-                              <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, overflowWrap: 'break-word' }}>
-                                {renderHistoryValueTag(fn, nv)}
+                            );
+                          }
+
+                          return (
+                            <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '170px minmax(100px, 1fr) 24px minmax(100px, 1fr)', alignItems: 'flex-start', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6, padding: '3px 0' }}>
+                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word' }}>
+                                {renderHistoryContent(fn, ov, true)}
+                              </div>
+                              <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>→</div>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word' }}>
+                                {renderHistoryContent(fn, nv, false)}
                               </div>
                             </div>
                           );
@@ -1647,29 +1683,36 @@ export const AisSystemList: React.FC = () => {
             <Input
               placeholder="Tìm kiếm nội dung thay đổi..."
               allowClear
-              value={historySearch}
-              onChange={(e) => setHistorySearch(e.target.value)}
+              value={historySearchInput}
+              onChange={(e) => {
+                const val = e.target.value;
+                setHistorySearchInput(val);
+                if (!val) setHistorySearch('');
+              }}
+              onPressEnter={() => setHistorySearch(historySearchInput.trim())}
               style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
             />
-            <DatePicker
-              placeholder="Từ ngày"
-              value={historyDateFrom ? dayjs(historyDateFrom) : null}
-              onChange={(d) => setHistoryDateFrom(d ? d.startOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
-              style={{ width: 170, borderRadius: radiusPill, height: 40 }}
-              format="DD/MM/YYYY HH:mm"
-              showTime={{ format: 'HH:mm' }}
-            />
-            <DatePicker
-              placeholder="Đến ngày"
-              value={historyDateTo ? dayjs(historyDateTo) : null}
-              onChange={(d) => setHistoryDateTo(d ? d.endOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
-              style={{ width: 170, borderRadius: radiusPill, height: 40 }}
-              format="DD/MM/YYYY HH:mm"
-              showTime={{ format: 'HH:mm' }}
+            <DatePicker.RangePicker
+              {...getRangePickerProps({
+                value: (historyDateFrom && historyDateTo)
+                  ? [dayjs(historyDateFrom), dayjs(historyDateTo)]
+                  : (historyDateFrom ? [dayjs(historyDateFrom), null] : (historyDateTo ? [null, dayjs(historyDateTo)] : null)),
+                onChange: (dates: any) => {
+                  if (!dates || dates.length === 0 || (!dates[0] && !dates[1])) {
+                    setHistoryDateFrom('');
+                    setHistoryDateTo('');
+                  } else {
+                    setHistoryDateFrom(dates[0] ? dates[0].startOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
+                    setHistoryDateTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
+                  }
+                },
+                style: { width: 280, borderRadius: radiusPill, height: 40 },
+              })}
             />
             <Button
               type="primary"
               icon={<SearchOutlined />}
+              onClick={() => setHistorySearch(historySearchInput.trim())}
               style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}
             >
               Tìm kiếm

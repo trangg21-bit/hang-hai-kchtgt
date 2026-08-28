@@ -250,13 +250,13 @@ export default function App() {
                 <Route path="/radar-station/create" element={<PermissionGuard permission="radarstation:create"><RadarStationForm /></PermissionGuard>} />
                 <Route path="/radar-station/:id" element={<PermissionGuard permission="radarstation:read"><RadarStationForm /></PermissionGuard>} />
 
-                {/* Hệ thống VTS */}
+                {/* Hệ thống VTS (màn cũ đã thay thế)
                 <Route path="/vts-system" element={<PermissionGuard permission="vts:read"><VtsSystemList /></PermissionGuard>} />
                 <Route path="/vts-system/create" element={<PermissionGuard permission="vts:create"><VtsSystemForm /></PermissionGuard>} />
                 <Route path="/vts-system/:id" element={<PermissionGuard permission="vts:read"><VtsSystemForm /></PermissionGuard>} />
-
-                {/* Hệ thống VTS CHK */}
-                <Route path="/vts-system-chk" element={<PermissionGuard permission="vts:read"><VtsSystemChkList /></PermissionGuard>} />
+                */}
+                <Route path="/vts-system" element={<PermissionGuard permission="vts:read"><VtsSystemChkList /></PermissionGuard>} />
+                <Route path="/vts-system-chk" element={<Navigate to="/vts-system" replace />} />
 
                 {/* Trung tâm điều hành VTS */}
                 <Route path="/vts-operation-center" element={<PermissionGuard permission="vtsoperationcenter:read"><VtsOperationCenterList /></PermissionGuard>} />
@@ -265,8 +265,8 @@ export default function App() {
                 <Route path="/vts-operation-center-chk" element={<PermissionGuard permission="vtsoperationcenter:read"><VtsOperationCenterChkList /></PermissionGuard>} />
 
                 {/* Hệ thống trạm bờ AIS */}
-                <Route path="/ais-system" element={<PermissionGuard permission="aissystem:read"><AisSystemList /></PermissionGuard>} />
-                <Route path="/ais-system-chk" element={<PermissionGuard permission="aissystem:read"><AisSystemChkList /></PermissionGuard>} />
+                <Route path="/ais-system" element={<PermissionGuard permission="aissystem:read"><AisSystemChkList /></PermissionGuard>} />
+                <Route path="/ais-system-chk" element={<Navigate to="/ais-system" replace />} />
 
                 {/* M-005: Biến động tài sản */}
                 <Route path="/asset/increase" element={<PermissionGuard permission="assetincrease:manage"><AssetIncreaseList /></PermissionGuard>} />

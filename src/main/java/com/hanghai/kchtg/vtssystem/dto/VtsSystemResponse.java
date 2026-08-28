@@ -59,6 +59,8 @@ public class VtsSystemResponse {
     private String updatedByName;
     private LocalDateTime updatedDate;
     private List<VtsSystemAttachmentResponse> attachments;
+    private Integer zoneCount;
+    private Integer attachmentCount;
 
     private UUID spatialId;
     private GisGeometryType geometryType;

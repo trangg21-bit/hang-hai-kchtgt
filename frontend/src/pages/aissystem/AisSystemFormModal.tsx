@@ -44,6 +44,9 @@ import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import toast from '../../components/ToastNotification';
 import { useAuthStore } from '../../store/authStore';
 import { AppDrawer } from '../../components/shared/AppDrawer';
+import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import DetailTable from '../../components/shared/DetailTable';
+import { generateTempId, DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import { useLocation } from 'react-router-dom';
 import { colors } from '../../theme';
 import {
@@ -181,8 +184,66 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
   const [symbols, setSymbols] = useState<GisSymbol[]>([]);
   const [coordinateList, setCoordinateList] = useState<CoordinateItem[]>([{ latitude: null, longitude: null }]);
   const [mapModalOpen, setMapModalOpen] = useState(false);
-  const [fileList, setFileList] = useState<UploadFile[]>([]);
-  const [existingAttachments, setExistingAttachments] = useState<AisSystemAttachment[]>([]);
+  const [attachmentList, setAttachmentList] = useState<any[]>([]);
+
+  const handleUploadAttachment = async (file: File) => {
+    if (!item?.id) {
+      const newItem = {
+        id: generateTempId(),
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type || file.name.split('.').pop()?.toLowerCase(),
+        file,
+        uploadedDate: dayjs().toISOString(),
+        uploadedByName: currentUser?.fullName || currentUser?.username || 'Người dùng hiện tại',
+      };
+      setAttachmentList((prev) => [newItem, ...prev]);
+      return;
+    }
+
+    try {
+      await aisSystemService.uploadAttachment(item.id, file);
+      toast.success('Tải lên tệp đính kèm thành công');
+      const atts = await aisSystemService.listAttachments(item.id);
+      setAttachmentList(atts || []);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Lỗi tải lên tệp đính kèm');
+    }
+  };
+
+  const handleDeleteAttachment = async (attId: string) => {
+    if (!item?.id) {
+      setAttachmentList((prev) => prev.filter((a) => a.id !== attId));
+      toast.success('Đã xóa tệp đính kèm');
+      return;
+    }
+    try {
+      await aisSystemService.deleteAttachment(item.id, attId);
+      toast.success('Xóa tệp đính kèm thành công');
+      setAttachmentList((prev) => prev.filter((a) => a.id !== attId));
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Lỗi khi xóa tệp đính kèm');
+    }
+  };
+
+  const handleDownloadAttachment = async (attId: string, fileName?: string) => {
+    if (!attId) return;
+    if (item?.id) {
+      await aisSystemService.downloadAttachment(item.id, attId, fileName);
+    } else {
+      const found = attachmentList.find((a) => a.id === attId);
+      if (found?.file) {
+        const url = URL.createObjectURL(found.file);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = found.fileName || fileName || 'download';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    }
+  };
 
   const isEdit = !!item;
   const formOrgUnitId = Form.useWatch('orgUnitId', form);
@@ -288,11 +349,11 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
         setCoordinateList(parsedCoords);
 
         aisSystemService.listAttachments(item.id).then((atts) => {
-          setExistingAttachments(atts || []);
+          setAttachmentList(atts || []);
         }).catch(() => {});
       } else {
         form.resetFields();
-        setExistingAttachments([]);
+        setAttachmentList([]);
         setCoordinateList([]);
         aisSystemService.generateCode().then((res) => {
           form.setFieldsValue({
@@ -309,7 +370,6 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
           });
         });
       }
-      setFileList([]);
     }
   }, [visible, item, form]);
 
@@ -479,12 +539,12 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
         toast.success(msg);
       }
 
-      // Upload files if any
-      if (savedId && fileList.length > 0) {
-        const rawFiles = fileList.map((f) => f.originFileObj as File).filter(Boolean);
-        if (rawFiles.length > 0) {
+      // Upload pending files if creating new
+      if (savedId && !isEdit) {
+        const pendingFiles = attachmentList.map((a) => a.file).filter(Boolean);
+        if (pendingFiles.length > 0) {
           try {
-            await aisSystemService.uploadAttachments(savedId, rawFiles);
+            await aisSystemService.uploadAttachments(savedId, pendingFiles);
           } catch (e) {
             toast.warning('Đã lưu thông tin nhưng tải tệp đính kèm thất bại');
           }
@@ -910,14 +970,11 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
               </Button>
             </div>
           ) : (
-            <Table
-              className="list-view-table"
-              rowKey="_idx"
-              size="small"
-              bordered
-              pagination={false}
+            <DetailTable
+              scrollY={DRAWER_TABLE_SCROLL_Y.withButton}
               dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))}
-              scroll={{ x: 600 }}
+              rowKey="_idx"
+              emptyText="Chưa có tọa độ nào"
               columns={[
                 {
                   title: 'STT',
@@ -927,19 +984,16 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                   render: (_: any, __: any, i: number) => (
                     <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>
                   ),
-                  onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '10px 8px' } }),
                 },
                 {
                   title: 'Vĩ độ (N)',
                   key: 'lat',
                   render: (_: any, r: any) => renderDms(r._idx, 'lat', r),
-                  onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '10px 8px' } }),
                 },
                 {
                   title: 'Kinh độ (E)',
                   key: 'lng',
                   render: (_: any, r: any) => renderDms(r._idx, 'lng', r),
-                  onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '10px 8px' } }),
                 },
                 {
                   title: '',
@@ -948,14 +1002,13 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                   align: 'center',
                   render: (_: any, r: any) => (
                     <Button
-                      type="link"
+                      type="text"
                       danger
-                      size="small"
-                      icon={<DeleteOutlined />}
+                      icon={<DeleteOutlined style={{ fontSize: 16 }} />}
                       onClick={() => setCoordinateList((p) => p.filter((_, idx) => idx !== r._idx))}
+                      title="Xóa tọa độ"
                     />
                   ),
-                  onHeaderCell: () => ({ style: { background: colors.bodyBg, padding: '10px 6px' } }),
                 },
               ]}
             />
@@ -965,195 +1018,15 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
     },
     {
       key: 'attachment',
-      label: 'File đính kèm',
+      label: `File đính kèm (${attachmentList.length})`,
       children: (
-        <div style={drawerTabContentStyle}>
-          <div style={{ marginBottom: spaceMd }}>
-            <Upload.Dragger
-              fileList={fileList}
-              beforeUpload={(file) => {
-                if (file.size > 20 * 1024 * 1024) {
-                  toast.error('File vượt quá 20MB');
-                  return false;
-                }
-                const ext = file.name.split('.').pop()?.toLowerCase();
-                if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif', 'dwg'].includes(ext)) {
-                  toast.error('Định dạng file không hỗ trợ');
-                  return false;
-                }
-                return false;
-              }}
-              onChange={({ fileList }) => setFileList(fileList)}
-              multiple
-              showUploadList={false}
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif,.dwg"
-              style={{
-                background: '#fafbfc',
-                border: `1px dashed ${borderDefault}`,
-                borderRadius: radiusMd,
-                padding: '40px 16px',
-              }}
-            >
-              <p style={{ marginBottom: 12 }}>
-                <InboxOutlined style={{ fontSize: 48, color: actionPrimary }} />
-              </p>
-              <p style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: textPrimary, marginBottom: 6 }}>
-                Kéo thả tệp vào đây hoặc nhấp để chọn tệp tải lên
-              </p>
-              <p style={{ fontSize: fontSizeSm, color: textTertiary, margin: 0 }}>
-                Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤20MB.
-              </p>
-            </Upload.Dragger>
-          </div>
-
-          {existingAttachments.length > 0 && (
-            <div style={{ marginBottom: spaceMd }}>
-              <div style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                Danh sách tệp đính kèm ({existingAttachments.length})
-              </div>
-              <Table
-                className="list-view-table"
-                dataSource={existingAttachments}
-                rowKey="id"
-                pagination={false}
-                size="small"
-                bordered
-                columns={[
-                  {
-                    title: 'STT',
-                    width: 50,
-                    align: 'center' as const,
-                    render: (_: any, __: any, idx: number) => idx + 1,
-                    onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } }),
-                  },
-                  {
-                    title: 'Tên tệp',
-                    dataIndex: 'fileName',
-                    render: (t: string, row: AisSystemAttachment) => (
-                      <a
-                        style={{
-                          fontSize: fontSizeMd,
-                          color: actionPrimary,
-                          cursor: row.filePath ? 'pointer' : 'default',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: spaceSm,
-                        }}
-                        onClick={async (e) => {
-                          if (row.filePath && item?.id) {
-                            e.preventDefault();
-                            await aisSystemService.downloadAttachment(item.id, row.id, row.fileName);
-                          }
-                        }}
-                        title={row.filePath ? 'Nhấn để tải tệp xuống' : undefined}
-                      >
-                        <FileOutlined style={{ color: actionPrimary }} />
-                        <span>{t}</span>
-                      </a>
-                    ),
-                    onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } }),
-                  },
-                  {
-                    title: 'Dung lượng',
-                    dataIndex: 'fileSize',
-                    width: 120,
-                    render: (bytes: number) => {
-                      if (!bytes) return '—';
-                      if (bytes < 1024) return `${bytes} B`;
-                      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-                      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-                    },
-                    onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } }),
-                  },
-                  {
-                    title: 'Thao tác',
-                    width: 80,
-                    align: 'center' as const,
-                    render: (_: any, row: AisSystemAttachment) => (
-                      <Button
-                        type="text"
-                        danger
-                        icon={<DeleteOutlined />}
-                        onClick={() => handleDeleteExistingAttachment(row.id)}
-                        title="Xóa tệp"
-                      />
-                    ),
-                    onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } }),
-                  },
-                ]}
-              />
-            </div>
-          )}
-
-          {fileList.length > 0 && (
-            <div style={{ marginBottom: spaceMd }}>
-              <div style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                Danh sách tệp mới chọn ({fileList.length})
-              </div>
-              <Table
-                className="list-view-table"
-                dataSource={fileList}
-                rowKey={(f) => f.uid}
-                pagination={false}
-                size="small"
-                bordered
-                columns={[
-                  {
-                    title: 'STT',
-                    width: 50,
-                    align: 'center' as const,
-                    render: (_: any, __: any, idx: number) => idx + 1,
-                    onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } }),
-                  },
-                  {
-                    title: 'Tên tệp',
-                    dataIndex: 'name',
-                    render: (t: string) => (
-                      <Space>
-                        <FileOutlined style={{ color: actionPrimary }} />
-                        <span>{t}</span>
-                      </Space>
-                    ),
-                    onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } }),
-                  },
-                  {
-                    title: 'Dung lượng',
-                    dataIndex: 'size',
-                    width: 120,
-                    render: (bytes: number) => {
-                      if (!bytes) return '—';
-                      if (bytes < 1024) return `${bytes} B`;
-                      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-                      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-                    },
-                    onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } }),
-                  },
-                  {
-                    title: 'Thao tác',
-                    width: 80,
-                    align: 'center' as const,
-                    render: (_: any, file: UploadFile) => (
-                      <Button
-                        type="text"
-                        danger
-                        icon={<DeleteOutlined />}
-                        onClick={() => setFileList((prev) => prev.filter((f) => f.uid !== file.uid))}
-                        title="Hủy chọn tệp"
-                      />
-                    ),
-                    onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } }),
-                  },
-                ]}
-              />
-            </div>
-          )}
-
-          <div style={{ marginTop: spaceSm }}>
-            <span style={uploadHintStyle}>
-              Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤20MB.
-            </span>
-          </div>
-        </div>
+        <InfrastructureAttachmentTab
+          attachments={attachmentList}
+          readonly={false}
+          onUpload={handleUploadAttachment}
+          onDelete={handleDeleteAttachment}
+          onDownload={handleDownloadAttachment}
+        />
       ),
     },
   ];

@@ -34,15 +34,15 @@ Quy trình phê duyệt **2 cấp** cho Trung tâm điều hành VTS theo `appro
 ## 4. Ma trận dữ liệu
 | # | Tên trường | Trường kỹ thuật | Ghi ở bước nào | Hiện trạng code |
 |---|---|---|---|---|
-| 17 | Trạng thái | `approvalStatus` | Mọi bước | Đã có |
-| 20 | Ngày gửi phê duyệt | `submittedAt` | Gửi duyệt | **THIẾU** |
-| 21 | Cán bộ gửi phê duyệt | `submittedBy` | Gửi duyệt | **THIẾU** |
-| 22 | Ngày phê duyệt cấp Cảng vụ/Chi cục | `approvedDateLevel1` | Duyệt C1 | Đã có |
-| 23 | Cán bộ phê duyệt cấp Cảng vụ/Chi cục | `approverLevel1` | Duyệt C1 | Đã có |
-| 24 | Nội dung phê duyệt cấp Cảng vụ/Chi cục | `level1ApprovalContent` | Duyệt C1 | **THIẾU** |
-| 25 | Ngày phê duyệt cấp Cục | `approvedDateLevel2` | Duyệt C2 | Đã có |
-| 26 | Cán bộ phê duyệt cấp Cục | `approverLevel2` | Duyệt C2 | Đã có |
-| 27 | Nội dung phê duyệt cấp Cục | `level2ApprovalContent` | Duyệt C2 | **THIẾU** |
+| 11 | Trạng thái phê duyệt | `approvalStatus` | Mọi bước | Đã có (`ApprovalStatusBadge`) |
+| 14 | Ngày gửi phê duyệt | `submittedAt` | Gửi duyệt | Đã có |
+| 15 | Cán bộ gửi phê duyệt | `submittedBy` | Gửi duyệt | Đã có |
+| 16 | Ngày phê duyệt cấp Cảng vụ/Chi cục | `approvedDateLevel1` | Duyệt C1 | Đã có |
+| 17 | Cán bộ phê duyệt cấp Cảng vụ/Chi cục | `approverLevel1` | Duyệt C1 | Đã có |
+| 18 | Nội dung phê duyệt cấp Cảng vụ/Chi cục | `approvalReasonLevel1` | Duyệt C1 | Đã có |
+| 19 | Ngày phê duyệt cấp Cục | `approvedDateLevel2` | Duyệt C2 | Đã có |
+| 20 | Cán bộ phê duyệt cấp Cục | `approverLevel2` | Duyệt C2 | Đã có |
+| 21 | Nội dung phê duyệt cấp Cục | `approvalReasonLevel2` | Duyệt C2 | Đã có |
 | — | Lý do từ chối | `rejectionReason` | Từ chối C1/C2 | Đã có |
 
 > Ma trận 41 trường đầy đủ xem `F-293-quan-ly-tt-dieu-hanh-vts-tao-moi/ba/00-lean-spec.md`.

@@ -620,6 +620,7 @@ export const globalCssVars = `
 .list-view-table .ant-table-cell {
   white-space: nowrap !important;
   overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
 
 /* --- Navigation zone (BLUE — đồng nhất) --- */
@@ -2322,6 +2323,121 @@ textarea::placeholder,
   transition: none !important;
 }
 
+/* ── DatePicker & RangePicker Dropdown Global Styling ── */
+.chk-range-datepicker-popup.ant-picker-dropdown {
+  border-radius: 12px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18) !important;
+  z-index: 1500 !important;
+  background: #ffffff !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-panel-container {
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  background: #ffffff !important;
+  border: 1px solid var(--border-base, #e2e8f0) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+  padding-bottom: 10px !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-panels {
+  display: flex !important;
+  flex-direction: row !important;
+  width: 560px !important;
+  background: #ffffff !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-panel {
+  flex: 1 !important;
+  width: 280px !important;
+  display: block !important;
+  background: #ffffff !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-panel:first-child {
+  border-right: 1px solid var(--border-base, #e2e8f0) !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-date-panel {
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-header {
+  width: 100% !important;
+  padding: 6px 14px !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  border-bottom: 1px solid var(--border-base, #e2e8f0) !important;
+  height: 36px !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-header button {
+  padding: 0 6px !important;
+  font-size: 12px !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-header-view {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-body {
+  width: 100% !important;
+  padding: 8px 10px !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-content {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-content th {
+  width: 14.285% !important;
+  text-align: center !important;
+  padding: 2px 0 !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+  color: var(--text-secondary, #64748b) !important;
+  height: 24px !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-cell {
+  width: 14.285% !important;
+  text-align: center !important;
+  padding: 1px 0 !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-cell .ant-picker-cell-inner {
+  margin: 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 26px !important;
+  height: 26px !important;
+  min-width: 26px !important;
+  line-height: 26px !important;
+  border-radius: 999px !important;
+  font-size: 12px !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-cell-selected .ant-picker-cell-inner,
+.chk-range-datepicker-popup .ant-picker-cell-range-start .ant-picker-cell-inner,
+.chk-range-datepicker-popup .ant-picker-cell-range-end .ant-picker-cell-inner {
+  background: var(--color-primary, #0E6FD6) !important;
+  color: #ffffff !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-cell-in-range:not(.ant-picker-cell-selected):not(.ant-picker-cell-range-start):not(.ant-picker-cell-range-end) {
+  background: #eff6ff !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-cell-today .ant-picker-cell-inner::before {
+  border-radius: 999px !important;
+  border-color: var(--color-primary, #0E6FD6) !important;
+}
 `;
 
 // ============================================================

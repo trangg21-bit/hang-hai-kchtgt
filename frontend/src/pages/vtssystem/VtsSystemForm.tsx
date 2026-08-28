@@ -15,11 +15,10 @@ import {
   Table,
   Row,
   Col,
-  Upload,
   Modal,
   Tooltip,
 } from 'antd';
-import { PlusOutlined, DeleteOutlined, UploadOutlined, InboxOutlined, FileOutlined, DownloadOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import toast from '../../components/ToastNotification';
 import api from '../../services/api';
@@ -33,12 +32,12 @@ import type {
   ApprovalRequest,
 } from '../../types/vtsSystem';
 import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/vtsSystem';
-import { drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, requiredMarkStyle, spaceFormField, radiusPill, radiusMd, sidebarBg, fontWeightBold, fontWeightMedium, spaceMd, spaceSm, fontSizeMd, fontSizeSm, textSecondary, textTertiary, textPrimary, borderDefault, surfaceCard, uploadHintStyle, statusCritical, statusAttention, statusOperational, actionPrimary, textAreaStyle, readonlyInputStyle } from '../../tokens';
+import { drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, requiredMarkStyle, spaceFormField, radiusPill, radiusMd, sidebarBg, fontWeightBold, fontWeightMedium, spaceMd, spaceSm, fontSizeMd, textSecondary, textTertiary, textPrimary, borderDefault, surfaceCard, statusCritical, statusAttention, statusOperational, actionPrimary, textAreaStyle, readonlyInputStyle } from '../../tokens';
 import { colors } from '../../theme';
 import { VIETNAM_PROVINCES, getProvinceIdByName, getProvinceNameById } from '../../types/common';
 
 import { useAuthStore } from '../../store/authStore';
-import AttachmentList from '../../components/shared/AttachmentList';
+import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import { OrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
 import { AppDrawer } from '../../components/shared/AppDrawer';
@@ -108,12 +107,6 @@ const isCompleteVtsDetail = (data?: VtsSystemResponse | null): data is VtsSystem
   Boolean(data?.id && Array.isArray(data.zones) && Array.isArray(data.attachments));
 
 /**
- * Bỏ bản chi tiết đã cache của một hệ thống VTS.
- *
- * Mọi thao tác đổi trạng thái (gửi duyệt, phê duyệt, từ chối, xóa) — dù thực
- * hiện từ drawer chi tiết hay từ màn danh sách — đều phải gọi hàm này, nếu
- * không lần mở chi tiết kế tiếp sẽ đọc lại bản cache cũ và hiển thị sai trạng
- * thái phê duyệt.
  */
 export const invalidateVtsDetailCache = (id?: string | null): void => {
   if (!id) return;
@@ -194,12 +187,14 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
 
   const [record, setRecord] = useState<VtsSystemResponse | null>(null);
 
-  // N09/BR-019 — tài liệu đính kèm chỉ sửa được khi hồ sơ ở "Lưu tạm" hoặc bị
-  // trả về; các trạng thái còn lại (đang chờ duyệt, đã duyệt, đã xóa) bị khóa.
-  const attachmentsEditable = !record?.approvalStatus
+  // Cho phép cập nhật tệp đính kèm khi tạo mới, khi hồ sơ ở trạng thái Lưu tạm / Bị trả về,
+  // hoặc khi hồ sơ Đã duyệt và tài khoản có quyền vts:approvec2 (Quy tắc 12 / T12).
+  const attachmentsEditable = isCreateMode
+    || !record?.approvalStatus
     || record.approvalStatus === ApprovalStatus.DRAFT
     || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL1
-    || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL2;
+    || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL2
+    || (record.approvalStatus === ApprovalStatus.APPROVED && userPermissions.includes('vts:approvec2'));
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -586,54 +581,84 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
     }
   };
 
-  const handleUploadAttachment = async (file: File) => {
-    // N09/BR-019: hồ sơ đang chờ duyệt / đã duyệt bị khóa sửa tài liệu. Chặn ngay
-    // ở đây để người dùng biết lý do thay vì chờ backend trả lỗi.
-    if (!isCreateMode && !attachmentsEditable) {
-      toast.error('Chỉ thay đổi được tài liệu đính kèm khi hồ sơ ở trạng thái Lưu tạm hoặc Bị trả về');
-      return;
+  const [, setDeletingAttachmentId] = useState<string | null>(null);
+  const [, setDownloadingAttachmentId] = useState<string | null>(null);
+
+  const displayAttachments = useMemo(() => {
+    if (isCreateMode) {
+      return pendingFiles.map((f, i) => ({
+        id: (f as any)._tempId || `temp-${i}`,
+        fileName: f.name,
+        fileSize: f.size,
+        fileType: f.name.split('.').pop()?.toLowerCase(),
+        uploadedByName: currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
+        uploadedDate: dayjs().toISOString(),
+        file: f,
+      }));
     }
-    // Ngưỡng dung lượng và định dạng bám đúng ràng buộc backend, tránh trường hợp
-    // giao diện cho chọn rồi server mới từ chối.
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('Dung lượng mỗi file không được vượt quá 10MB theo quy định');
-      return;
+    return (record?.attachments || []).map((att: any) => ({
+      id: att.id,
+      fileName: att.fileName || att.name,
+      fileSize: att.fileSize ?? att.size,
+      fileType: att.fileType ?? att.documentType,
+      uploadedByName: att.uploadedByName || (att.uploadedBy ? 'Cán bộ quản lý' : '—'),
+      uploadedDate: att.uploadedDate || att.createdAt,
+      filePath: att.filePath,
+    }));
+  }, [isCreateMode, pendingFiles, record?.attachments, currentUser]);
+
+  const handleUploadAttachment = async (file: File) => {
+    if (!isCreateMode && !attachmentsEditable) {
+      toast.error('Chỉ thay đổi được tài liệu đính kèm khi hồ sơ ở trạng thái Lưu tạm, Bị trả về hoặc có quyền phê duyệt cấp Cục đối với hồ sơ Đã duyệt');
+      return false;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('Dung lượng mỗi file không được vượt quá 20MB theo quy định');
+      return false;
     }
     const ext = file.name.split('.').pop()?.toLowerCase();
-    if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
-      toast.error('Định dạng không hỗ trợ (chỉ chấp nhận PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, GIF)');
-      return;
+    if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'gif', 'tiff', 'tif'].includes(ext)) {
+      toast.error('Định dạng không hỗ trợ (chỉ chấp nhận PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, GIF, TIFF)');
+      return false;
     }
     const currentCount = isCreateMode ? pendingFiles.length : (record?.attachments?.length || 0);
     if (currentCount >= 10) {
       toast.error('Số lượng file đính kèm tối đa là 10 file theo quy định');
-      return;
+      return false;
     }
 
     if (isCreateMode) {
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      (file as any)._tempId = tempId;
       setPendingFiles((prev) => [...prev, file]);
-      return;
+      toast.success(`Đã thêm tệp ${file.name}`);
+      return false;
     }
-    if (!id) throw new Error('Cần lưu hệ thống VTS trước khi tải tài liệu lên');
-    const uploaded = await vtsSystemApproval.uploadAttachment(id, file);
-    setRecord((prev) => (prev ? { ...prev, attachments: [...(prev.attachments || []), uploaded] } : prev));
-    // Thay đổi tài liệu sau khi đã gửi duyệt khiến backend đưa hồ sơ về "Lưu tạm"
-    // (approvalRestart), nên phải nạp lại từ server thay vì cache bản sửa cục bộ.
-    void refreshRecordFromServer(id);
-    setHasChanges(true);
-    toast.success('Tải tệp lên thành công');
+    if (!id) {
+      toast.error('Cần lưu hệ thống VTS trước khi tải tài liệu lên');
+      return false;
+    }
+    try {
+      const uploaded = await vtsSystemApproval.uploadAttachment(id, file);
+      setRecord((prev) => (prev ? { ...prev, attachments: [...(prev.attachments || []), uploaded] } : prev));
+      void refreshRecordFromServer(id);
+      setHasChanges(true);
+      toast.success('Tải tệp lên thành công');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Lỗi khi tải tệp lên');
+    }
+    return false;
   };
-
-  const [deletingAttachmentId, setDeletingAttachmentId] = useState<string | null>(null);
 
   const handleDeleteAttachment = async (recordOrId: any) => {
     const attachmentId = typeof recordOrId === 'string' ? recordOrId : recordOrId?.id;
     if (!isCreateMode && !attachmentsEditable) {
-      toast.error('Chỉ thay đổi được tài liệu đính kèm khi hồ sơ ở trạng thái Lưu tạm hoặc Bị trả về');
+      toast.error('Chỉ thay đổi được tài liệu đính kèm khi hồ sơ ở trạng thái Lưu tạm, Bị trả về hoặc có quyền phê duyệt cấp Cục đối với hồ sơ Đã duyệt');
       return;
     }
     if (isCreateMode) {
-      setPendingFiles((prev) => prev.filter((_, idx) => `temp-${idx}` !== attachmentId && idx !== recordOrId?._idx));
+      setPendingFiles((prev) => prev.filter((f, idx) => (f as any)._tempId !== attachmentId && `temp-${idx}` !== attachmentId && idx !== recordOrId?._idx));
+      toast.success('Đã xóa tệp đính kèm');
       return;
     }
     if (!id || !attachmentId) return;
@@ -647,24 +672,29 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
       setHasChanges(true);
       toast.success('Xóa tệp thành công');
     } catch (err: any) {
-      toast.error('Lỗi khi xóa tệp đính kèm');
+      toast.error(err?.response?.data?.message || err?.message || 'Lỗi khi xóa tệp đính kèm');
     } finally {
       setDeletingAttachmentId(null);
     }
   };
 
-  const [downloadingAttachmentId, setDownloadingAttachmentId] = useState<string | null>(null);
-
-  const handleDownloadAttachment = async (att: any) => {
-    if (!att?.filePath) {
+  const handleDownloadAttachment = async (recordOrId: any, fileName?: string) => {
+    let att = recordOrId;
+    if (typeof recordOrId === 'string') {
+      att = (record?.attachments || []).find((a: any) => a.id === recordOrId) || { id: recordOrId, fileName: fileName || 'tai-lieu', filePath: `/api/v1/vts-systems/${id}/attachments/${recordOrId}/download` };
+    }
+    const attId = att?.id || recordOrId;
+    const attName = att?.fileName || fileName || 'tai-lieu';
+    const filePath = att?.filePath || (id && attId ? `/api/v1/vts-systems/${id}/attachments/${attId}/download` : undefined);
+    if (!filePath) {
       toast.error('Không tìm thấy đường dẫn tệp');
       return;
     }
-    setDownloadingAttachmentId(att.id);
+    setDownloadingAttachmentId(attId);
     try {
-      const url = att.filePath.startsWith('/api')
-        ? att.filePath.replace(/^\/api/, '')
-        : att.filePath;
+      const url = filePath.startsWith('/api')
+        ? filePath.replace(/^\/api/, '')
+        : filePath;
       const resp = await api.get(url, {
         responseType: 'blob',
       });
@@ -677,7 +707,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
       const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = blobUrl;
-      link.download = att.fileName || 'tai-lieu';
+      link.download = attName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -889,14 +919,15 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
               },
               {
                 key: 'files',
-                label: 'File đính kèm',
+                label: `File đính kèm (${(record?.attachments || []).length})`,
                 children: (
                   <div style={{ paddingTop: 16 }}>
-                    {loadingDetailSection === 'attachments' ? (
-                      <Spin />
-                    ) : (
-                      <AttachmentList attachments={record?.attachments || []} readonly={true} />
-                    )}
+                    <InfrastructureAttachmentTab
+                      attachments={displayAttachments}
+                      readonly={true}
+                      isLoading={loadingDetailSection === 'attachments'}
+                      onDownload={handleDownloadAttachment}
+                    />
                   </div>
                 ),
               },
@@ -1112,7 +1143,8 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
             <Tabs activeKey={tabKey} onChange={setTabKey} tabBarStyle={{ marginBottom: 0, paddingTop: 0 }} items={[
               {
                 key: 'general', label: 'Thông tin hệ thống VTS',
-                children: <div style={{ paddingTop: spaceMd }}>
+                children: (
+                  <div style={{ paddingTop: spaceMd }}>
                   <Row gutter={16}>
                     <Col span={12}>
                       <Form.Item
@@ -1285,8 +1317,9 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                       </Form.Item>
                     </Col>
                   </Row>
-                </div>,
-              },
+                </div>
+              ),
+            },
               {
                 key: 'zones', label: 'Danh sách vùng VTS',
                 children: (
@@ -1327,125 +1360,18 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
               },
 
               {
-                key: 'files', label: 'File đính kèm',
+                key: 'files',
+                label: `File đính kèm (${isCreateMode ? pendingFiles.length : (record?.attachments?.length || 0)})`,
                 children: (
                   <div style={{ paddingTop: 16 }}>
-                    <div style={{ marginBottom: spaceMd }}>
-                      <Upload.Dragger
-                        beforeUpload={(file) => {
-                          if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB'); return false; }
-                          const ext = file.name.split('.').pop()?.toLowerCase();
-                          if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) { toast.error('Định dạng không hỗ trợ'); return false; }
-                          handleUploadAttachment(file);
-                          return false;
-                        }}
-                        showUploadList={false}
-                        accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif"
-                        multiple
-                        style={{
-                          background: '#fafbfc',
-                          border: `1px dashed ${borderDefault}`,
-                          borderRadius: radiusMd,
-                          padding: '24px 16px',
-                        }}
-                      >
-                        <p style={{ marginBottom: 8 }}>
-                          <InboxOutlined style={{ fontSize: 44, color: actionPrimary }} />
-                        </p>
-                        <p style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: textPrimary, marginBottom: 4 }}>
-                          Kéo thả tệp vào đây hoặc nhấp để chọn tệp tải lên
-                        </p>
-                        <p style={{ fontSize: fontSizeSm, color: textTertiary, margin: 0 }}>
-                          Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤20MB.
-                        </p>
-                      </Upload.Dragger>
-                    </div>
-
-                    {((isCreateMode ? pendingFiles.length : (record?.attachments?.length || 0)) > 0) && (
-                      <div style={{ marginBottom: spaceMd }}>
-                        <div style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                          Danh sách tệp đính kèm ({isCreateMode ? pendingFiles.length : record?.attachments?.length})
-                        </div>
-                        <Table<any>
-                          className="list-view-table"
-                          dataSource={
-                            isCreateMode
-                              ? pendingFiles.map((f, i) => ({ id: `temp-${i}`, fileName: f.name, size: f.size, _idx: i, key: i }))
-                              : (record?.attachments || []).map((f: any, i: number) => ({ ...f, _idx: i, key: f.id || i, size: f.size ?? f.fileSize }))
-                          }
-                          pagination={false}
-                          size="middle"
-                          bordered
-                          scroll={{ x: 400 }}
-                        >
-                          <Table.Column title="STT" key="stt" width={60} align="center"
-                            render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
-                            onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                          <Table.Column title="Tên file" key="fileName" dataIndex="fileName"
-                            render={(name: string, record: any) => (
-                              <a
-                                style={{
-                                  fontSize: fontSizeMd,
-                                  color: actionPrimary,
-                                  cursor: record.filePath ? 'pointer' : 'default',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: spaceSm,
-                                }}
-                                onClick={(e) => {
-                                  if (record.filePath) {
-                                    e.preventDefault();
-                                    handleDownloadAttachment(record);
-                                  }
-                                }}
-                                title={record.filePath ? 'Nhấn để tải tệp xuống' : undefined}
-                              >
-                                <FileOutlined style={{ color: actionPrimary }} />
-                                <span>{name}</span>
-                              </a>
-                            )}
-                            onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                          <Table.Column title="Dung lượng" key="size" dataIndex="size" width={120}
-                            render={(bytes: number) => {
-                              if (!bytes) return '—';
-                              if (bytes < 1024) return `${bytes} B`;
-                              if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-                              return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-                            }}
-                            onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                          <Table.Column title="Thao tác" key="actions" width={80} align="center"
-                            render={(_: any, record: any) => (
-                              <Space size="small">
-                                {record.filePath && (
-                                  <Button
-                                    type="link"
-                                    size="small"
-                                    icon={<DownloadOutlined />}
-                                    loading={downloadingAttachmentId === record.id}
-                                    onClick={() => handleDownloadAttachment(record)}
-                                    title="Tải xuống"
-                                  />
-                                )}
-                                <Button
-                                  type="link"
-                                  danger
-                                  size="small"
-                                  icon={<DeleteOutlined />}
-                                  loading={deletingAttachmentId === record.id}
-                                  onClick={() => handleDeleteAttachment(record)}
-                                  title="Xóa tệp"
-                                />
-                              </Space>
-                            )}
-                            onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
-                        </Table>
-                      </div>
-                    )}
-                    <div style={{ marginTop: spaceSm }}>
-                      <span style={uploadHintStyle}>
-                        Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤20MB.
-                      </span>
-                    </div>
+                    <InfrastructureAttachmentTab
+                      attachments={displayAttachments}
+                      readonly={!attachmentsEditable}
+                      onUpload={handleUploadAttachment}
+                      onDelete={handleDeleteAttachment}
+                      onDownload={handleDownloadAttachment}
+                      maxSizeMB={20}
+                    />
                   </div>
                 ),
               },
@@ -1631,35 +1557,19 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
             </Table>
           )}
 
-          <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
-            <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
-            {(isCreateMode ? pendingFiles.length > 0 : record?.attachments && record.attachments.length > 0) && (
-              <Upload beforeUpload={(file) => { handleUploadAttachment(file); return false; }} showUploadList={false} multiple>
-                <Button type="dashed" size="small" icon={<PlusOutlined />} style={{ borderRadius: radiusPill }}>Thêm file</Button>
-              </Upload>
-            )}
+          <div style={{ marginBottom: spaceFormField, marginTop: 24 }}>
+            <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, display: 'block', marginBottom: spaceSm }}>
+              File đính kèm ({displayAttachments.length})
+            </span>
+            <InfrastructureAttachmentTab
+              attachments={displayAttachments}
+              readonly={!attachmentsEditable}
+              onUpload={handleUploadAttachment}
+              onDelete={handleDeleteAttachment}
+              onDownload={handleDownloadAttachment}
+              maxSizeMB={20}
+            />
           </div>
-          {((isCreateMode ? pendingFiles.length : (record?.attachments?.length || 0)) === 0) ? (
-            <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
-              <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có file đính kèm.</span>
-              <Upload beforeUpload={(file) => { handleUploadAttachment(file); return false; }} showUploadList={false} multiple>
-                <Button type="dashed" icon={<UploadOutlined />} style={{ borderRadius: radiusPill }}>Chọn file</Button>
-              </Upload>
-            </div>
-          ) : (
-            <Table className="list-view-table" dataSource={isCreateMode ? pendingFiles.map((f, i) => ({ id: `temp-${i}`, fileName: f.name, _idx: i, key: i })) : record?.attachments?.map((f, i) => ({ ...f, _idx: i, key: i }))}
-              pagination={false} size="middle" bordered scroll={{ x: 400 }} style={{ marginBottom: 24 }}>
-              <Table.Column title="STT" key="stt" width={60} align="center"
-                render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
-                onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-              <Table.Column title="Tên file" key="fileName" dataIndex="fileName"
-                render={(name: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}</span>}
-                onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-              <Table.Column title="" key="actions" width={44} align="center"
-                render={(_: any, record: any) => <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => handleDeleteAttachment(record.id)} />}
-                onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
-            </Table>
-          )}
 
           <Form.Item label="Vị trí/Hình vẽ bản đồ" name="spatialData">
             <GisLocationSelector defaultGeometryType="POINT" />

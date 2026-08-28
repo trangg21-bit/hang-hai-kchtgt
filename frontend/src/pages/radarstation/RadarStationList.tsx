@@ -119,6 +119,7 @@ import {
   historyChangeRowStyle,
   historyFieldLabelStyle,
   historyNewValueStyle,
+  getRangePickerProps,
 } from '../../tokens';
 
 // ── Constants ────────────────────────────────────────────────────────
@@ -1621,12 +1622,23 @@ export default function RadarStationList() {
         <Space style={{ marginTop: spaceMd, marginBottom: spaceMd }} wrap>
           <Input placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
             onChange={(e) => setHistorySearch(e.target.value)} style={{ width: 240, ...inputStyle }} />
-          <DatePicker placeholder="Từ ngày" value={historyFrom ? dayjs(historyFrom) : null}
-            onChange={(d) => setHistoryFrom(d ? d.format('YYYY-MM-DD HH:mm') : '')}
-            style={{ width: 170, ...selectStyle }} format="DD/MM/YYYY HH:mm" showTime />
-          <DatePicker placeholder="Đến ngày" value={historyTo ? dayjs(historyTo) : null}
-            onChange={(d) => setHistoryTo(d ? d.format('YYYY-MM-DD HH:mm') : '')}
-            style={{ width: 170, ...selectStyle }} format="DD/MM/YYYY HH:mm" showTime />
+          <DatePicker.RangePicker
+            {...getRangePickerProps({
+              value: (historyFrom && historyTo)
+                ? [dayjs(historyFrom), dayjs(historyTo)]
+                : (historyFrom ? [dayjs(historyFrom), null] : (historyTo ? [null, dayjs(historyTo)] : null)),
+              onChange: (dates: any) => {
+                if (!dates || dates.length === 0 || (!dates[0] && !dates[1])) {
+                  setHistoryFrom('');
+                  setHistoryTo('');
+                } else {
+                  setHistoryFrom(dates[0] ? dates[0].startOf('day').format('YYYY-MM-DD HH:mm') : '');
+                  setHistoryTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DD HH:mm') : '');
+                }
+              },
+              style: { width: 280, ...selectStyle },
+            })}
+          />
         </Space>
         <div style={{ maxHeight: 500, overflowY: 'auto', marginTop: spaceFormField }}>
           {historyLoading ? (

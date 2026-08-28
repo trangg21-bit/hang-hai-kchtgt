@@ -12,7 +12,6 @@ import {
 import {
   FileOutlined,
   DownloadOutlined,
-  EditOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
   DeleteOutlined,
@@ -544,28 +543,7 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
           </Space>
         </div>
       }
-      footer={
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '8px 16px' }}>
-          {onEdit && record && !isApproved && (
-            <Button
-              icon={<EditOutlined />}
-              onClick={() => {
-                onClose();
-                onEdit(record);
-              }}
-              style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
-            >
-              Chỉnh sửa
-            </Button>
-          )}
-          <Button
-            onClick={onClose}
-            style={{ borderRadius: radiusPill, height: 40, padding: '0 20px' }}
-          >
-            Đóng
-          </Button>
-        </div>
-      }
+      footer={null}
     >
       <style>{`
         .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }

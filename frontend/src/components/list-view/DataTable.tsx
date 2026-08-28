@@ -341,18 +341,27 @@ const DataTable: React.FC<DataTableProps> = ({
         } : undefined,
       }),
       title: <span style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>{((col as any).title ?? col.label)}</span>,
-      onCell: () => ({
-        style: {
-          fontSize: dense ? fontSizeSm : fontSizeMd,
-          color: textPrimary,
-          padding: col.key === 'stt' ? '8px 4px' : (tableCellPadding || undefined),
-          whiteSpace: 'nowrap',
-          overflow: col.key === 'stt' ? 'visible' : 'hidden',
-          textOverflow: (col.key === 'stt' || col.ellipsis === false) ? 'clip' : 'ellipsis',
-          background: col.fixed ? '#ffffff' : undefined,
-          zIndex: col.fixed ? 9 : undefined,
-        },
-      }),
+      onCell: (record: any) => {
+        let cellTitleText: string | undefined = undefined;
+        if (col.cellTitle) {
+          cellTitleText = col.cellTitle(record);
+        } else if (dataKey && record && record[dataKey] != null && typeof record[dataKey] !== 'object') {
+          cellTitleText = String(record[dataKey]);
+        }
+        return {
+          title: cellTitleText,
+          style: {
+            fontSize: dense ? fontSizeSm : fontSizeMd,
+            color: textPrimary,
+            padding: col.key === 'stt' ? '8px 4px' : (tableCellPadding || undefined),
+            whiteSpace: 'nowrap',
+            overflow: col.key === 'stt' ? 'visible' : 'hidden',
+            textOverflow: col.key === 'stt' ? 'clip' : 'ellipsis',
+            background: col.fixed ? '#ffffff' : undefined,
+            zIndex: col.fixed ? 9 : undefined,
+          },
+        };
+      },
     };
 
     if (col.sortOrder !== undefined) {

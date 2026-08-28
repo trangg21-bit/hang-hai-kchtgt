@@ -1297,7 +1297,7 @@ export default function WaterZoneListPage() {
                     {/* Old/New value */}
                     {record.oldValue !== undefined && record.oldValue != null && (
                       <div style={{ marginBottom: 2 }}>
-                        <Typography.Text type="secondary" style={{ textDecoration: 'line-through', color: '#ff4d4f' }}>
+                        <Typography.Text type="secondary">
                           cũ: {translateValue(record.fieldName || record.fieldChanged, record.oldValue)}
                         </Typography.Text>
                       </div>
@@ -1305,7 +1305,7 @@ export default function WaterZoneListPage() {
                     {record.newValue !== undefined && record.newValue != null && (
                       <div>
                         <Typography.Text type="secondary">mới: </Typography.Text>
-                        <Typography.Text style={{ color: '#52c41a', fontWeight: 500 }}>
+                        <Typography.Text style={{ fontWeight: 500 }}>
                           {translateValue(record.fieldName || record.fieldChanged, record.newValue)}
                         </Typography.Text>
                       </div>

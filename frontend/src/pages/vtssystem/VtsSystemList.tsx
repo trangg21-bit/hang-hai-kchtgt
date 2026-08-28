@@ -31,7 +31,7 @@ import {
   radiusSm, radiusPill, spaceFormField, spaceMd, spaceSm, spaceLg,
   statusOperational, statusDraft, statusCritical, statusAttention,
   surfacePage, spaceXs, spaceXl, drawerTitleStyle, drawerCloseBtnStyle, selectStyle,
-  borderDefault,
+  borderDefault, getRangePickerProps,
 } from '../../tokens';
 import { colors } from '../../theme';
 import dayjs from 'dayjs';
@@ -427,13 +427,14 @@ export default function VtsSystemList() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
   const [hasMoreHistory, setHasMoreHistory] = useState(true);
+  const [historySearchInput, setHistorySearchInput] = useState('');
   const [historySearch, setHistorySearch] = useState('');
   const [historyDateFrom, setHistoryDateFrom] = useState<string>('');
   const [historyDateTo, setHistoryDateTo] = useState<string>('');
   // Số trang lịch sử đã tải. Không suy ra từ `historyRecords.length` vì backend
   // có thể trả về ít hơn pageSize khi lọc, làm lệch số trang → sót/lặp bản ghi.
   const [historyPage, setHistoryPage] = useState(0);
-  // Tăng lên để buộc nạp lại ngay, bỏ qua debounce (nút "Tìm kiếm").
+  // Tăng lên để buộc nạp lại ngay (khi nhấn Enter / nút "Tìm kiếm" / Clear).
   const [historyReloadToken, setHistoryReloadToken] = useState(0);
 
   // Số nhóm bản ghi lịch sử (gom theo giây + người cập nhật — giống logic timeline Cảng biển)
@@ -620,6 +621,7 @@ export default function VtsSystemList() {
     setLoadingHistory(false);
     setLoadingMoreHistory(false);
     setHasMoreHistory(true);
+    setHistorySearchInput('');
     setHistorySearch('');
     setHistoryDateFrom('');
     setHistoryDateTo('');
@@ -629,7 +631,7 @@ export default function VtsSystemList() {
   useEffect(() => {
     if (!historyModalOpen || !selectedRecord) return;
     let cancelled = false;
-    const timer = window.setTimeout(async () => {
+    (async () => {
       setLoadingHistory(true);
       setLoadingMoreHistory(false);
       setHasMoreHistory(true);
@@ -637,9 +639,9 @@ export default function VtsSystemList() {
       setHistoryPage(0);
       try {
         const history = await vtsSystemApproval.getHistory(selectedRecord.id, 0, HISTORY_PAGE_SIZE, {
-          keyword: historySearch,
-          fromDate: historyDateFrom,
-          toDate: historyDateTo,
+          keyword: historySearch || undefined,
+          fromDate: historyDateFrom || undefined,
+          toDate: historyDateTo || undefined,
         });
         if (cancelled) return;
         const items = history || [];
@@ -650,10 +652,9 @@ export default function VtsSystemList() {
       } finally {
         if (!cancelled) setLoadingHistory(false);
       }
-    }, historySearch.trim() ? 300 : 0);
+    })();
     return () => {
       cancelled = true;
-      window.clearTimeout(timer);
     };
   }, [historyModalOpen, selectedRecord?.id, historySearch, historyDateFrom, historyDateTo, historyReloadToken]);
 
@@ -1103,12 +1104,40 @@ export default function VtsSystemList() {
                 </Typography.Text>
 
                 {(() => {
+                  const isLongHistoryText = (val: string | null | undefined): boolean => {
+                    if (!val) return false;
+                    const str = String(val).trim();
+                    return str.length > 40 || str.includes('\n') || (str.includes(',') && str.length > 25);
+                  };
+
+                  const renderHistoryContent = (field: string, val: string | null, _isOld: boolean = false) => {
+                    if (val === null || val === undefined || val === '—' || val === '') {
+                      return <span style={{ color: textTertiary }}>—</span>;
+                    }
+                    const str = String(val).trim();
+                    if (str.includes(',') && str.length > 25) {
+                      const items = str.split(',').map((s) => s.trim()).filter(Boolean);
+                      if (items.length > 1) {
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+                            {items.map((item, idx) => (
+                              <div key={idx} style={{ color: textPrimary, fontWeight: fontWeightMedium, lineHeight: '20px', wordBreak: 'break-word' }}>
+                                {item}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      }
+                    }
+                    return renderHistoryValueTag(field, val);
+                  };
+
                   const validChanges = changes.filter((c: any) => {
-                    if (!c.field) return false;
+                    if (!c.field && !c.oldValue && !c.newValue) return false;
                     const ov = formatHistoryValue(c.field, c.oldValue);
                     const nv = formatHistoryValue(c.field, c.newValue);
                     if (ov == null && nv == null) return false;
-                    if (ov === nv) return false;
+                    if (ov !== null && nv !== null && String(ov).trim() === String(nv).trim()) return false;
                     return true;
                   });
                   const reasons = g.items.map((i: any) => i.reason || i.ghiChu || i.note).filter(Boolean);
@@ -1120,20 +1149,25 @@ export default function VtsSystemList() {
                           const fn = change.field;
                           const ov = formatHistoryValue(fn, change.oldValue);
                           const nv = formatHistoryValue(fn, change.newValue);
-                          return isCreate ? (
-                            <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '170px minmax(0, 1fr)', alignItems: 'flex-start', gap: spaceMd, fontSize: fontSizeMd, lineHeight: 1.6 }}>
-                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                              <div style={{ minWidth: 0, overflowWrap: 'break-word' }}>{renderHistoryValueTag(fn, nv)}</div>
-                            </div>
-                          ) : (
-                            <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '170px minmax(120px, 1fr) 24px minmax(120px, 1fr)', alignItems: 'center', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6 }}>
-                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                              <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, overflowWrap: 'break-word' }}>
-                                {renderHistoryValueTag(fn, ov)}
+
+                          if (isCreate) {
+                            return (
+                              <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '170px minmax(0, 1fr)', alignItems: 'flex-start', gap: spaceMd, fontSize: fontSizeMd, lineHeight: 1.6, padding: '3px 0' }}>
+                                <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
+                                <div style={{ minWidth: 0, overflowWrap: 'break-word' }}>{renderHistoryContent(fn, nv, false)}</div>
                               </div>
-                              <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none' }}>→</div>
-                              <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, overflowWrap: 'break-word' }}>
-                                {renderHistoryValueTag(fn, nv)}
+                            );
+                          }
+
+                          return (
+                            <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '170px minmax(100px, 1fr) 24px minmax(100px, 1fr)', alignItems: 'flex-start', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6, padding: '3px 0' }}>
+                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word' }}>
+                                {renderHistoryContent(fn, ov, true)}
+                              </div>
+                              <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>→</div>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word' }}>
+                                {renderHistoryContent(fn, nv, false)}
                               </div>
                             </div>
                           );
@@ -1368,17 +1402,53 @@ export default function VtsSystemList() {
             </div>
           )}
           <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
-            <Input placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
-              onChange={e => setHistorySearch(e.target.value)} style={{ flex: 1, borderRadius: radiusPill, height: 40 }} />
-            <DatePicker placeholder="Từ ngày" classNames={{ popup: { root: 'history-dt-popup' } }} value={historyDateFrom ? dayjs(historyDateFrom) : null}
-              onChange={d => setHistoryDateFrom(d ? d.startOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
-              style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
-            <DatePicker placeholder="Đến ngày" classNames={{ popup: { root: 'history-dt-popup' } }} value={historyDateTo ? dayjs(historyDateTo) : null}
-              onChange={d => setHistoryDateTo(d ? d.endOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
-              style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
-            <Button type="primary" icon={<SearchOutlined />} loading={loadingHistory}
-              onClick={() => setHistoryReloadToken((token) => token + 1)}
-              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Tìm kiếm</Button>
+            <Input
+              placeholder="Tìm kiếm nội dung thay đổi..."
+              allowClear
+              value={historySearchInput}
+              onChange={(e) => {
+                const val = e.target.value;
+                setHistorySearchInput(val);
+                if (!val) {
+                  setHistorySearch('');
+                  setHistoryReloadToken((token) => token + 1);
+                }
+              }}
+              onPressEnter={() => {
+                setHistorySearch(historySearchInput.trim());
+                setHistoryReloadToken((token) => token + 1);
+              }}
+              style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
+            />
+            <DatePicker.RangePicker
+              {...getRangePickerProps({
+                value: (historyDateFrom && historyDateTo)
+                  ? [dayjs(historyDateFrom), dayjs(historyDateTo)]
+                  : (historyDateFrom ? [dayjs(historyDateFrom), null] : (historyDateTo ? [null, dayjs(historyDateTo)] : null)),
+                onChange: (dates: any) => {
+                  if (!dates || dates.length === 0 || (!dates[0] && !dates[1])) {
+                    setHistoryDateFrom('');
+                    setHistoryDateTo('');
+                  } else {
+                    setHistoryDateFrom(dates[0] ? dates[0].startOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
+                    setHistoryDateTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
+                  }
+                },
+                style: { width: 280, borderRadius: radiusPill, height: 40 },
+              })}
+            />
+            <Button
+              type="primary"
+              icon={<SearchOutlined />}
+              loading={loadingHistory}
+              onClick={() => {
+                setHistorySearch(historySearchInput.trim());
+                setHistoryReloadToken((token) => token + 1);
+              }}
+              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}
+            >
+              Tìm kiếm
+            </Button>
           </div>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>

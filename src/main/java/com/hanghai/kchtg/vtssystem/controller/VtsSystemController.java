@@ -13,6 +13,9 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -101,8 +104,8 @@ public class VtsSystemController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<VtsSystemResponse>> getById(
             @PathVariable UUID id,
-            @RequestParam(defaultValue = "true") boolean includeZones,
-            @RequestParam(defaultValue = "true") boolean includeAttachments,
+            @RequestParam(defaultValue = "false") boolean includeZones,
+            @RequestParam(defaultValue = "false") boolean includeAttachments,
             Authentication authentication) {
         VtsSystemResponse response = service.getById(id, includeZones, includeAttachments);
         return ResponseEntity.ok(ApiResponse.success("Xem chi tiết thành công", response));
@@ -111,8 +114,49 @@ public class VtsSystemController {
     @PreAuthorize("@auth.check(authentication, 'vts:read')")
     @DataScope
     @GetMapping("/{id}/zones")
-    public ResponseEntity<ApiResponse<List<VtsZoneDto>>> getZones(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<?>> getZones(
+            @PathVariable UUID id,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        if (page != null && size != null) {
+            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "createdAt"));
+            return ResponseEntity.ok(ApiResponse.success("Lấy danh sách vùng VTS thành công", service.getZones(id, pageable)));
+        }
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách vùng VTS thành công", service.getZones(id)));
+    }
+
+    @PreAuthorize("@auth.checkAny(authentication, 'vts:create', 'vts:update', 'vts:approvec2')")
+    @DataScope
+    @PostMapping("/{id}/zones")
+    public ResponseEntity<ApiResponse<VtsZoneDto>> createZone(
+            @PathVariable UUID id,
+            @Valid @RequestBody VtsZoneDto dto,
+            Authentication authentication) {
+        VtsZoneDto response = service.createZone(id, dto, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success("Thêm mới vùng VTS thành công", response));
+    }
+
+    @PreAuthorize("@auth.checkAny(authentication, 'vts:update', 'vts:approvec2')")
+    @DataScope
+    @PutMapping("/{id}/zones/{zoneId}")
+    public ResponseEntity<ApiResponse<VtsZoneDto>> updateZone(
+            @PathVariable UUID id,
+            @PathVariable UUID zoneId,
+            @Valid @RequestBody VtsZoneDto dto,
+            Authentication authentication) {
+        VtsZoneDto response = service.updateZone(id, zoneId, dto, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật vùng VTS thành công", response));
+    }
+
+    @PreAuthorize("@auth.checkAny(authentication, 'vts:update', 'vts:approvec2')")
+    @DataScope
+    @DeleteMapping("/{id}/zones/{zoneId}")
+    public ResponseEntity<ApiResponse<Void>> deleteZone(
+            @PathVariable UUID id,
+            @PathVariable UUID zoneId,
+            Authentication authentication) {
+        service.deleteZone(id, zoneId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success("Xóa vùng VTS thành công", null));
     }
 
     @PreAuthorize("@auth.check(authentication, 'vts:read')")
@@ -123,7 +167,7 @@ public class VtsSystemController {
                 .ok(ApiResponse.success("Lấy danh sách tài liệu đính kèm thành công", service.getAttachments(id)));
     }
 
-    @PreAuthorize("@auth.check(authentication, 'vts:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'vts:update', 'vts:approvec2')")
     @DataScope
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<VtsSystemResponse>> update(
@@ -220,7 +264,7 @@ public class VtsSystemController {
         return getHistory(id, null, null, null, null, null);
     }
 
-    @PreAuthorize("@auth.check(authentication, 'vts:update')")
+    @PreAuthorize("@auth.check(authentication, 'vts:update') or @auth.check(authentication, 'vts:create') or @auth.check(authentication, 'vts:approvec2')")
     @DataScope
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<VtsSystemAttachmentResponse>> uploadAttachment(
@@ -231,7 +275,7 @@ public class VtsSystemController {
         return ResponseEntity.ok(ApiResponse.success("Tải lên tài liệu đính kèm thành công", response));
     }
 
-    @PreAuthorize("@auth.check(authentication, 'vts:update')")
+    @PreAuthorize("@auth.check(authentication, 'vts:update') or @auth.check(authentication, 'vts:create') or @auth.check(authentication, 'vts:approvec2')")
     @DataScope
     @DeleteMapping("/{id}/attachments/{attachmentId}")
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(

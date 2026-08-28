@@ -354,7 +354,7 @@ public class AisSystemService {
         if (fieldName.equals(AisSystem.Fields.conditionStatus)) return entity.getConditionStatus();
         if (fieldName.equals(AisSystem.Fields.maintenanceInfo)) return entity.getMaintenanceInfo();
         if (fieldName.equals(AisSystem.Fields.note)) return entity.getNote();
-        if (fieldName.equals(AisSystem.Fields.spatialId)) return entity.getSpatialId();
+        if (fieldName.equals(BaseApprovableEntity.Fields.spatialId)) return entity.getSpatialId();
         return null;
     }
 
@@ -707,18 +707,18 @@ public class AisSystemService {
                                     : (u.getUsername() != null && !u.getUsername().trim().isEmpty() ? u.getUsername() : null))
                             : null;
                     String orgUnitName = u != null && u.getOrgUnit() != null ? u.getOrgUnit().getName() : null;
-                    return HistoryEntry.builder()
-                            .id(h.getId())
-                            .approvalLevel(h.getApprovalLevel())
-                            .status(h.getStatus() != null ? h.getStatus().getCode() : null)
-                            .approvedBy(userName)
-                            .orgUnitName(orgUnitName)
-                            .approvedDate(h.getApprovedDate())
-                            .reason(h.getReason())
-                            .changedField(h.getChangedField())
-                            .previousValue(formatDisplayValue(h.getChangedField(), h.getPreviousValue()))
-                            .newValue(formatDisplayValue(h.getChangedField(), h.getNewValue()))
-                            .build();
+                    HistoryEntry entry = new HistoryEntry();
+                    entry.setId(h.getId());
+                    entry.setApprovalLevel(h.getApprovalLevel());
+                    entry.setStatus(h.getStatus() != null ? h.getStatus().getCode() : null);
+                    entry.setApprovedBy(userName);
+                    entry.setOrgUnitName(orgUnitName);
+                    entry.setApprovedDate(h.getApprovedDate());
+                    entry.setReason(h.getReason());
+                    entry.setChangedField(h.getChangedField());
+                    entry.setPreviousValue(formatDisplayValue(h.getChangedField(), h.getPreviousValue()));
+                    entry.setNewValue(formatDisplayValue(h.getChangedField(), h.getNewValue()));
+                    return entry;
                 })
                 .collect(Collectors.toList());
     }
@@ -1256,6 +1256,9 @@ public class AisSystemService {
     }
 
     private VtsSystemAttachmentResponse toAttachmentResponse(InfrastructureAttachment att) {
+        String uploadedByName = att.getUploadedBy() != null
+                ? userRepository.findById(att.getUploadedBy()).map(User::getFullName).orElse(null)
+                : null;
         return VtsSystemAttachmentResponse.builder()
                 .id(att.getId())
                 .fileName(att.getFileName())
@@ -1263,6 +1266,7 @@ public class AisSystemService {
                 .fileSize(att.getFileSize())
                 .documentType(att.getFileType() != null ? att.getFileType().name() : null)
                 .uploadedBy(att.getUploadedBy())
+                .uploadedByName(uploadedByName)
                 .uploadedDate(att.getUploadedDate())
                 .build();
     }

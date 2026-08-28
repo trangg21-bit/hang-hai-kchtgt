@@ -361,16 +361,17 @@ public class DikeRevetmentService {
     public List<HistoryEntry> getHistory(UUID id) {
         List<InfrastructureHistory> historyList = approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(
                 InfrastructureType.DIKE_REVETMENT, id);
-        return historyList.stream().map(h -> HistoryEntry.builder()
-                .id(h.getId())
-                .dikeRevetmentId(h.getRefId())
-                .approvalLevel(h.getApprovalLevel())
-                .status(h.getStatus() != null ? h.getStatus().name() : null)
-                .approver(h.getApprovedBy() != null ? userResolverService.resolveName(h.getApprovedBy()) : null)
-                .approvalDate(h.getApprovedDate() != null ? h.getApprovedDate().toLocalDate() : null)
-                .reason(h.getReason())
-                .build())
-                .toList();
+        return historyList.stream().map(h -> {
+            HistoryEntry entry = new HistoryEntry();
+            entry.setId(h.getId());
+            entry.setDikeRevetmentId(h.getRefId());
+            entry.setApprovalLevel(h.getApprovalLevel());
+            entry.setStatus(h.getStatus() != null ? h.getStatus().name() : null);
+            entry.setApprover(h.getApprovedBy() != null ? userResolverService.resolveName(h.getApprovedBy()) : null);
+            entry.setApprovalDate(h.getApprovedDate() != null ? h.getApprovedDate().toLocalDate() : null);
+            entry.setReason(h.getReason());
+            return entry;
+        }).toList();
     }
 
     private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {

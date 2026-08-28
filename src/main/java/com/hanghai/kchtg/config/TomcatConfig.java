@@ -26,8 +26,8 @@ public class TomcatConfig {
 
     private static final Logger log = LoggerFactory.getLogger(TomcatConfig.class);
 
-    /** 32 KB — enough for JWT tokens with ~200 permissions */
-    private static final int MAX_HTTP_HEADER_SIZE = 32768;
+    /** 256 KB — enough for large JWT tokens with hundreds of permissions in headers */
+    private static final int MAX_HTTP_HEADER_SIZE = 262144;
 
     @Bean
     public WebServerFactoryCustomizer<TomcatServletWebServerFactory> tomcatHeaderSizeCustomizer() {

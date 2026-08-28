@@ -12,7 +12,6 @@ import {
 import {
   FileOutlined,
   DownloadOutlined,
-  EditOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
   DeleteOutlined,
@@ -22,6 +21,7 @@ import type {
   AisSystemResponse,
   AisSystemAttachment,
 } from '../../types/aisSystem';
+import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import { UNIT_OF_MEASURE_MAP } from '../../types/aisSystem';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { aisSystemService } from '../../services/aisSystemService';
@@ -53,8 +53,10 @@ import {
   actionPrimary,
   primaryButtonStyle,
   outlineButtonStyle,
+  DRAWER_TABLE_SCROLL_Y,
 } from '../../themetokenchk';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import DetailTable from '../../components/shared/DetailTable';
 import { useAuthStore } from '../../store/authStore';
 
 interface CoordinateItem {
@@ -206,60 +208,6 @@ export const AisSystemChkDetailDrawer: React.FC<AisSystemChkDetailDrawerProps> =
   const provinceDisplay = record?.provinceId ? (getProvinceNameById(record.provinceId) || record.provinceId) : (record?.provinceName || '—');
   const uomDisplay = record?.unitOfMeasure ? (UNIT_OF_MEASURE_MAP[record.unitOfMeasure] || record.unitOfMeasureLabel || record.unitOfMeasure) : (record?.unitOfMeasureLabel || '—');
 
-  const attachmentColumns = [
-    {
-      title: 'STT',
-      width: 60,
-      align: 'center' as const,
-      render: (_: any, __: any, index: number) => index + 1,
-    },
-    {
-      title: 'Tên tệp',
-      dataIndex: 'fileName',
-      render: (text: string) => (
-        <Space>
-          <FileOutlined style={{ color: colors.sidebarBg }} />
-          <span>{text}</span>
-        </Space>
-      ),
-    },
-    {
-      title: 'Dung lượng',
-      dataIndex: 'fileSize',
-      width: 130,
-      render: (bytes: number) => {
-        if (!bytes) return '—';
-        if (bytes < 1024) return `${bytes} B`;
-        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-      },
-    },
-    {
-      title: 'Ngày tải lên',
-      dataIndex: 'uploadedDate',
-      width: 170,
-      render: (d?: string) => (d ? dayjs(d).format('DD/MM/YYYY HH:mm:ss') : '—'),
-    },
-    {
-      title: 'Thao tác',
-      width: 100,
-      align: 'center' as const,
-      render: (_: any, row: AisSystemAttachment) => (
-        <Button
-          type="link"
-          icon={<DownloadOutlined />}
-          onClick={async () => {
-            if (record?.id) {
-              await aisSystemService.downloadAttachment(record.id, row.id, row.fileName);
-            }
-          }}
-        >
-          Tải về
-        </Button>
-      ),
-    },
-  ];
-
   const tabItems = [
     {
       key: 'basic',
@@ -375,25 +323,19 @@ export const AisSystemChkDetailDrawer: React.FC<AisSystemChkDetailDrawerProps> =
             <div style={{ fontSize: 13, fontWeight: fontWeightBold, color: colors.sidebarBg, marginBottom: 8 }}>
               Tọa độ các điểm đỉnh:
             </div>
-            {parsedCoords.length > 0 ? (
-              <Table
-                dataSource={parsedCoords.map((c, i) => ({ key: i, index: i + 1, ...c }))}
-                pagination={false}
-                size="middle"
-                bordered
-                columns={[
-                  { title: 'STT', dataIndex: 'index', width: 60, align: 'center' },
-                  { title: 'Kinh độ (Độ thập phân)', dataIndex: 'longitude', render: (val) => (val != null ? val.toFixed(6) : '—') },
-                  { title: 'Vĩ độ (Độ thập phân)', dataIndex: 'latitude', render: (val) => (val != null ? val.toFixed(6) : '—') },
-                  { title: 'Kinh độ (DMS)', dataIndex: 'longitude', render: (val) => ddToDms(val) },
-                  { title: 'Vĩ độ (DMS)', dataIndex: 'latitude', render: (val) => ddToDms(val) },
-                ]}
-              />
-            ) : (
-              <div style={{ color: textTertiary, fontStyle: 'italic', padding: '12px 0' }}>
-                Chưa có dữ liệu tọa độ
-              </div>
-            )}
+            <DetailTable
+              scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
+              dataSource={parsedCoords.map((c, i) => ({ key: i, index: i + 1, ...c }))}
+              rowKey="index"
+              emptyText="Chưa có dữ liệu tọa độ"
+              columns={[
+                { title: 'STT', dataIndex: 'index', width: 60, align: 'center' },
+                { title: 'Kinh độ (Độ thập phân)', dataIndex: 'longitude', render: (val) => (val != null ? val.toFixed(6) : '—') },
+                { title: 'Vĩ độ (Độ thập phân)', dataIndex: 'latitude', render: (val) => (val != null ? val.toFixed(6) : '—') },
+                { title: 'Kinh độ (DMS)', dataIndex: 'longitude', render: (val) => ddToDms(val) },
+                { title: 'Vĩ độ (DMS)', dataIndex: 'latitude', render: (val) => ddToDms(val) },
+              ]}
+            />
           </div>
         </div>
       ),
@@ -402,17 +344,16 @@ export const AisSystemChkDetailDrawer: React.FC<AisSystemChkDetailDrawerProps> =
       key: 'attachment',
       label: `File đính kèm (${attachments.length})`,
       children: (
-        <div style={{ paddingTop: 16 }}>
-          <Table
-            dataSource={attachments}
-            columns={attachmentColumns}
-            rowKey="id"
-            pagination={false}
-            size="middle"
-            bordered
-            locale={{ emptyText: 'Chưa có tệp đính kèm nào' }}
-          />
-        </div>
+        <InfrastructureAttachmentTab
+          attachments={attachments}
+          readonly={true}
+          isLoading={loading}
+          onDownload={(attId, fileName) => {
+            if (record?.id) {
+              return aisSystemService.downloadAttachment(record.id, attId, fileName);
+            }
+          }}
+        />
       ),
     },
     {
@@ -544,28 +485,7 @@ export const AisSystemChkDetailDrawer: React.FC<AisSystemChkDetailDrawerProps> =
           </Space>
         </div>
       }
-      footer={
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '8px 16px' }}>
-          {onEdit && record && !isApproved && (
-            <Button
-              icon={<EditOutlined />}
-              onClick={() => {
-                onClose();
-                onEdit(record);
-              }}
-              style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
-            >
-              Chỉnh sửa
-            </Button>
-          )}
-          <Button
-            onClick={onClose}
-            style={{ borderRadius: radiusPill, height: 40, padding: '0 20px' }}
-          >
-            Đóng
-          </Button>
-        </div>
-      }
+      footer={null}
     >
       <style>{`
         .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }

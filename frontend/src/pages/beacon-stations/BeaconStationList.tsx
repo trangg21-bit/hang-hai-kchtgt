@@ -128,6 +128,7 @@ import {
   historyOldValueStyle,
   historyNewValueStyle,
   historyArrowStyle,
+  getRangePickerProps,
 } from '../../tokens';
 
 // ── Field name translation ───────────────────────────────────────────
@@ -1230,22 +1231,34 @@ export default function BeaconStationList() {
                 {ordered.map((change) => {
                   const fn = change.field;
                   const changeKey = change.id || fn || 'row';
+                  const isLongHistoryText = (val: string | null | undefined): boolean => {
+                    if (!val || val === '—') return false;
+                    const str = String(val).trim();
+                    return str.length > 40 || str.includes('\n') || (str.includes(',') && str.length > 25);
+                  };
+
                   if (change.reason && change.reason !== '(null)') {
                     return (
-                      <div key={changeKey} style={{ ...historyChangeRowStyle, paddingTop: 0 }}>
+                      <div key={changeKey} style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '4px 0' }}>
                         <div style={historyFieldLabelStyle}>Lý do từ chối:</div>
-                        <span title={change.reason} style={historyNewValueStyle}>{change.reason}</span>
+                        <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: radiusSm, padding: '6px 12px', color: statusCritical, fontSize: fontSizeMd, overflowWrap: 'anywhere' }}>{change.reason}</div>
                       </div>
                     );
                   }
                   const ov = formatHistoryValue(fn, change.oldValue);
                   const nv = formatHistoryValue(fn, change.newValue);
-                  return isCreate ? (
-                    <div key={changeKey} style={historyCreateRowStyle}>
-                      <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                      <span title={nv} style={historyNewValueStyle}>{nv}</span>
-                    </div>
-                  ) : (
+                  const isLong = isLongHistoryText(ov) || isLongHistoryText(nv);
+
+                  if (isCreate) {
+                    return (
+                      <div key={changeKey} style={historyCreateRowStyle}>
+                        <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
+                        <span title={nv} style={historyNewValueStyle}>{nv}</span>
+                      </div>
+                    );
+                  }
+
+                  return (
                     <div key={changeKey} style={historyChangeRowStyle}>
                       <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
                       <span title={ov} style={historyOldValueStyle}>{ov}</span>
@@ -1749,12 +1762,23 @@ export default function BeaconStationList() {
         <Space style={{ marginTop: spaceMd, marginBottom: spaceMd }} wrap>
           <Input placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
             onChange={(e) => setHistorySearch(e.target.value)} style={{ width: 240, ...inputStyle }} />
-          <DatePicker placeholder="Từ ngày" value={historyFrom ? dayjs(historyFrom) : null}
-            onChange={(d) => setHistoryFrom(d ? d.format('YYYY-MM-DD HH:mm') : '')}
-            style={{ width: 170, ...selectStyle }} format="DD/MM/YYYY HH:mm" showTime />
-          <DatePicker placeholder="Đến ngày" value={historyTo ? dayjs(historyTo) : null}
-            onChange={(d) => setHistoryTo(d ? d.format('YYYY-MM-DD HH:mm') : '')}
-            style={{ width: 170, ...selectStyle }} format="DD/MM/YYYY HH:mm" showTime />
+          <DatePicker.RangePicker
+            {...getRangePickerProps({
+              value: (historyFrom && historyTo)
+                ? [dayjs(historyFrom), dayjs(historyTo)]
+                : (historyFrom ? [dayjs(historyFrom), null] : (historyTo ? [null, dayjs(historyTo)] : null)),
+              onChange: (dates: any) => {
+                if (!dates || dates.length === 0 || (!dates[0] && !dates[1])) {
+                  setHistoryFrom('');
+                  setHistoryTo('');
+                } else {
+                  setHistoryFrom(dates[0] ? dates[0].startOf('day').format('YYYY-MM-DD HH:mm') : '');
+                  setHistoryTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DD HH:mm') : '');
+                }
+              },
+              style: { width: 280, ...selectStyle },
+            })}
+          />
         </Space>
         <div style={{ maxHeight: 500, overflowY: 'auto', marginTop: spaceFormField }}>
           {historyLoading ? (

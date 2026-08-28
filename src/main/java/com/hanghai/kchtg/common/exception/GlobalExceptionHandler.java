@@ -15,6 +15,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
+import org.apache.catalina.connector.ClientAbortException;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
+
+import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -288,11 +292,49 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handles client disconnect / abort exceptions silently (e.g. when user closes browser tab,
+     * refreshes page, or aborts an active in-flight request).
+     */
+    @ExceptionHandler({
+            ClientAbortException.class,
+            AsyncRequestNotUsableException.class
+    })
+    public void handleClientAbort(Exception ex) {
+        log.debug("Client connection closed/aborted: {}", ex.getMessage());
+    }
+
+    @ExceptionHandler(IOException.class)
+    public void handleIOException(IOException ex) {
+        String msg = ex.getMessage();
+        if (msg != null && (msg.contains("aborted") || msg.contains("Broken pipe") || msg.contains("Connection reset"))) {
+            log.debug("Client socket aborted: {}", msg);
+            return;
+        }
+        log.warn("IO exception during request processing: {}", msg);
+    }
+
+    /**
      * Catch-all for any exception not handled by the specialised handlers above.
      * Logs the full stack-trace at WARN level and returns 500.
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<String>> handleGeneric(Exception ex) {
+        // Suppress client aborts wrapped in other exceptions
+        Throwable cause = ex;
+        while (cause != null) {
+            if (cause instanceof ClientAbortException
+                    || cause instanceof AsyncRequestNotUsableException) {
+                log.debug("Suppressed wrapped client abort exception: {}", cause.getMessage());
+                return null;
+            }
+            if (cause instanceof IOException ioEx && ioEx.getMessage() != null
+                    && (ioEx.getMessage().contains("aborted") || ioEx.getMessage().contains("Broken pipe") || ioEx.getMessage().contains("Connection reset"))) {
+                log.debug("Suppressed wrapped client socket abort: {}", ioEx.getMessage());
+                return null;
+            }
+            cause = cause.getCause();
+        }
+
         log.error("Unhandled exception", ex);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)

@@ -7,6 +7,10 @@ export interface VtsOperationCenterAttachment {
   uploadedDate?: string;
   filePath?: string;
   uploadedBy?: string;
+  uploadedByName?: string;
+  fileType?: string;
+  file?: File;
+  [key: string]: any;
 }
 
 export interface VtsOperationCenterResponse {
@@ -32,17 +36,25 @@ export interface VtsOperationCenterResponse {
   approvalStatus: ApprovalStatus;
   approvalStatusLabel?: string;
   submittedAt?: string;
+  submittedDate?: string;
   submittedBy?: string;
   submittedByName?: string;
   approverLevel1?: string;
   approverLevel1Name?: string;
   approvedDateLevel1?: string;
+  approvalContentLevel1?: string;
+  approvalReasonLevel1?: string;
+  rejectionReasonLevel1?: string;
   approverLevel2?: string;
   approverLevel2Name?: string;
   approvedDateLevel2?: string;
+  approvalContentLevel2?: string;
+  approvalReasonLevel2?: string;
+  rejectionReasonLevel2?: string;
   rejectionReason?: string;
   createdAt?: string;
   updatedAt?: string;
+  updatedDate?: string;
   createdBy?: string;
   createdByName?: string;
   updatedBy?: string;

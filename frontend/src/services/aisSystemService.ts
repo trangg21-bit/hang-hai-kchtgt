@@ -47,41 +47,70 @@ export interface AisSystemSearchResponse {
   statusCounts: Record<string, number>;
 }
 
+const inFlightGetByIdPromises = new Map<string, Promise<AisSystemResponse>>();
+let inFlightSearchPromise: { key: string; promise: Promise<AisSystemSearchResponse> } | null = null;
+
 export const aisSystemService = {
   async getById(id: string): Promise<AisSystemResponse> {
-    const res = await api.get(`${BASE_PATH}/${id}`);
-    return toSingle<AisSystemResponse>(res.data) || ({} as AisSystemResponse);
+    const existing = inFlightGetByIdPromises.get(id);
+    if (existing) {
+      return existing;
+    }
+    const promise = (async () => {
+      try {
+        const res = await api.get(`${BASE_PATH}/${id}`);
+        return toSingle<AisSystemResponse>(res.data) || ({} as AisSystemResponse);
+      } finally {
+        inFlightGetByIdPromises.delete(id);
+      }
+    })();
+    inFlightGetByIdPromises.set(id, promise);
+    return promise;
   },
 
   async search(params?: AisSystemListParams): Promise<AisSystemSearchResponse> {
-    const sp = buildSearchParams({
-      keyword: params?.keyword,
-      name: params?.name,
-      code: params?.code,
-      orgUnitId: params?.orgUnitId,
-      vtsOperationCenterId: params?.vtsOperationCenterId,
-      radarStationId: params?.radarStationId,
-      operatingOrgId: params?.operatingOrgId,
-      provinceId: params?.provinceId,
-      conditionStatus: params?.conditionStatus,
-      approvalStatus: params?.approvalStatus,
-      commissioningYear: params?.commissioningYear,
-      updatedFrom: params?.updatedFrom,
-      updatedTo: params?.updatedTo,
-      page: params?.page !== undefined ? Math.max(0, params.page > 0 ? params.page - 1 : 0) : 0,
-      size: params?.size || 20,
-      sortBy: params?.sortBy,
-      sortDir: params?.sortDir,
-    });
-    const res = await api.get(`${BASE_PATH}?${sp}`);
-    const data = res.data?.data || {};
-    return {
-      items: data.content || [],
-      total: data.totalElements || 0,
-      page: (data.number ?? 0) + 1,
-      size: data.size ?? (params?.size || 20),
-      statusCounts: data.statusCounts || {},
-    };
+    const key = JSON.stringify(params || {});
+    if (inFlightSearchPromise && inFlightSearchPromise.key === key) {
+      return inFlightSearchPromise.promise;
+    }
+    const promise = (async () => {
+      try {
+        const sp = buildSearchParams({
+          keyword: params?.keyword,
+          name: params?.name,
+          code: params?.code,
+          orgUnitId: params?.orgUnitId,
+          vtsOperationCenterId: params?.vtsOperationCenterId,
+          radarStationId: params?.radarStationId,
+          operatingOrgId: params?.operatingOrgId,
+          provinceId: params?.provinceId,
+          conditionStatus: params?.conditionStatus,
+          approvalStatus: params?.approvalStatus,
+          commissioningYear: params?.commissioningYear,
+          updatedFrom: params?.updatedFrom,
+          updatedTo: params?.updatedTo,
+          page: params?.page !== undefined ? Math.max(0, params.page > 0 ? params.page - 1 : 0) : 0,
+          size: params?.size || 20,
+          sortBy: params?.sortBy,
+          sortDir: params?.sortDir,
+        });
+        const res = await api.get(`${BASE_PATH}?${sp}`);
+        const data = res.data?.data || {};
+        return {
+          items: data.content || [],
+          total: data.totalElements || 0,
+          page: (data.number ?? 0) + 1,
+          size: data.size ?? (params?.size || 20),
+          statusCounts: data.statusCounts || {},
+        };
+      } finally {
+        if (inFlightSearchPromise?.key === key) {
+          inFlightSearchPromise = null;
+        }
+      }
+    })();
+    inFlightSearchPromise = { key, promise };
+    return promise;
   },
 
   async generateCode(): Promise<{ code: string }> {

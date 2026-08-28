@@ -279,6 +279,33 @@ export const formTreeSelectStyle: React.CSSProperties = {
   height: controlHeight,
 };
 
+/** Style chuẩn cho OrgUnitTreeSelect trong Sidebar bộ lọc */
+export const filterTreeSelectStyle: React.CSSProperties = {
+  width: '100%',
+  borderRadius: radiusPill,
+  height: controlHeight,
+};
+
+/** Style popup menu Dropdown chuẩn cho OrgUnitTreeSelect trong Sidebar bộ lọc */
+export const filterTreeSelectDropdownStyle: React.CSSProperties = {
+  minWidth: 380,
+  maxWidth: 520,
+  maxHeight: 320,
+  borderRadius: radiusMd,
+  padding: '6px',
+  boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',
+};
+
+/** Style popup menu Dropdown chuẩn cho OrgUnitTreeSelect trong Form (Drawer / Modal) */
+export const formTreeSelectDropdownStyle: React.CSSProperties = {
+  minWidth: '100%',
+  maxWidth: 650,
+  maxHeight: 320,
+  borderRadius: radiusMd,
+  padding: '6px',
+  boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',
+};
+
 /** Text gợi ý chuẩn cho khu vực đính kèm file */
 export const ATTACHMENT_HELPER_TEXT =
   'Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤10MB.';
@@ -311,6 +338,71 @@ export const drawerCloseBtnStyle: React.CSSProperties = {
 /** CSS đưa dấu * required sang bên phải label */
 export const requiredMarkStyle =
   '.ant-form-item-required::before { display: inline-block; margin-left: 4px; order: 1; } .ant-form-item-required::after { display: none; }';
+
+/**
+ * Helper chuẩn hóa props cho DatePicker (đơn) và RangePicker (khoảng ngày)
+ */
+export const getDatePickerProps = (extraProps?: Record<string, any>) => {
+  const { classNames: extraClassNames, ...rest } = extraProps || {};
+  return {
+    format: 'DD/MM/YYYY',
+    classNames: {
+      ...extraClassNames,
+      popup: {
+        ...extraClassNames?.popup,
+        root: [
+          'chk-form-datepicker-popup',
+          typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
+          typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
+        ].filter(Boolean).join(' '),
+      },
+    },
+    style: { ...inputStyle, width: '100%' },
+    ...rest,
+  };
+};
+
+export const getRangePickerProps = (extraProps?: Record<string, any>) => {
+  const { classNames: extraClassNames, ...rest } = extraProps || {};
+  return {
+    format: 'DD/MM/YYYY',
+    placeholder: ['Từ ngày', 'Đến ngày'] as [string, string],
+    classNames: {
+      ...extraClassNames,
+      popup: {
+        ...extraClassNames?.popup,
+        root: [
+          'chk-range-datepicker-popup',
+          typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
+          typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
+        ].filter(Boolean).join(' '),
+      },
+    },
+    style: { ...inputStyle, width: '100%' },
+    ...rest,
+  };
+};
+
+export const getSidebarRangePickerProps = (extraProps?: Record<string, any>) => {
+  const { classNames: extraClassNames, ...rest } = extraProps || {};
+  return {
+    format: 'DD/MM/YYYY',
+    placeholder: ['Từ ngày', 'Đến ngày'] as [string, string],
+    classNames: {
+      ...extraClassNames,
+      popup: {
+        ...extraClassNames?.popup,
+        root: [
+          'chk-sidebar-range-datepicker-popup',
+          typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
+          typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
+        ].filter(Boolean).join(' '),
+      },
+    },
+    style: { ...inputStyle, width: '100%' },
+    ...rest,
+  };
+};
 
 
 // --- 5.3 Trang danh sách ---
@@ -405,7 +497,7 @@ export const paginationSizeSelectStyle: React.CSSProperties = {
 
 /** Props chuẩn cho Drawer CRUD: size 50% màn hình, right, không nút X mặc định */
 export const drawerProps = {
-  width: '50%',
+  size: '50%' as const,
   placement: 'right' as const,
   closable: false,
   // Chống Drawer con đẩy Drawer cha (antd v6 mặc định push {distance:180} khi lồng nhau)

@@ -15,10 +15,14 @@ import type {
 } from '../types/vtsSystem';
 
 import { organizationService } from './organizationService';
+import { portCRUD } from './portService';
 import { MOCK_ORGANIZATIONS } from './mockData';
 
 const VTS_BASE_PATH = '/v1/vts-system';
 const COMMON_OPTIONS_BASE_PATH = '/common/options';
+
+const inFlightGetByIdPromises = new Map<string, Promise<VtsSystemResponse>>();
+let inFlightListPromise: { key: string; promise: Promise<{ items: VtsSystemListItem[]; total: number; statusCounts: Record<string, number> }> } | null = null;
 
 export const vtsSystemCRUD = {
   async getScopedOrgUnitOptions(): Promise<Array<{ id: string; name: string; code?: string; path?: string; parentId?: string }>> {
@@ -32,9 +36,7 @@ export const vtsSystemCRUD = {
   },
 
   async getScopedPortOptions(): Promise<Array<{ id: string; portCode?: string; portName?: string; orgUnitId?: string }>> {
-    const res = await api.get(`${COMMON_OPTIONS_BASE_PATH}/ports`);
-    const data = res.data?.data;
-    return Array.isArray(data) ? data : [];
+    return portCRUD.getOptions();
   },
 
   async getOperatingOrganizationOptions(): Promise<Array<{ id: string; name: string; code: string }>> {
@@ -70,33 +72,45 @@ export const vtsSystemCRUD = {
   },
 
   async list(params?: ListParams & { includeCounts?: boolean; sort?: string }): Promise<{ items: VtsSystemListItem[]; total: number; statusCounts: Record<string, number> }> {
-    const res = await api.get(VTS_BASE_PATH, {
-      params: {
-        orgUnitId: params?.orgUnitId,
-        portId: params?.portId,
-        provinceId: params?.provinceId,
-        page: params?.page || 0,
-        size: params?.size || 20,
-        keyword: params?.keyword,
-        conditionStatus: params?.conditionStatus,
-        approvalStatus: params?.approvalStatus,
-        year: params?.year,
-        operationStartDateFrom: params?.operationStartDateFrom,
-        operationStartDateTo: params?.operationStartDateTo,
-        updatedFrom: params?.updatedFrom,
-        updatedTo: params?.updatedTo,
-        includeCounts: params?.includeCounts ?? true,
-        // `<field>,<asc|desc>` — sắp xếp thực hiện ở server để áp dụng cho toàn bộ
-        // kết quả, không chỉ trang đang hiển thị.
-        sort: params?.sort,
-      },
-    });
-    const data = res.data?.data || {};
-    return {
-      items: Array.isArray(data.items) ? data.items as VtsSystemListItem[] : [],
-      total: data.total || 0,
-      statusCounts: data.statusCounts || {},
-    };
+    const key = JSON.stringify(params || {});
+    if (inFlightListPromise && inFlightListPromise.key === key) {
+      return inFlightListPromise.promise;
+    }
+    const promise = (async () => {
+      try {
+        const res = await api.get(VTS_BASE_PATH, {
+          params: {
+            orgUnitId: params?.orgUnitId,
+            portId: params?.portId,
+            provinceId: params?.provinceId,
+            page: params?.page || 0,
+            size: params?.size || 20,
+            keyword: params?.keyword,
+            conditionStatus: params?.conditionStatus,
+            approvalStatus: params?.approvalStatus,
+            year: params?.year,
+            operationStartDateFrom: params?.operationStartDateFrom,
+            operationStartDateTo: params?.operationStartDateTo,
+            updatedFrom: params?.updatedFrom,
+            updatedTo: params?.updatedTo,
+            includeCounts: params?.includeCounts ?? true,
+            sort: params?.sort,
+          },
+        });
+        const data = res.data?.data || {};
+        return {
+          items: Array.isArray(data.items) ? data.items as VtsSystemListItem[] : [],
+          total: data.total || 0,
+          statusCounts: data.statusCounts || {},
+        };
+      } finally {
+        if (inFlightListPromise?.key === key) {
+          inFlightListPromise = null;
+        }
+      }
+    })();
+    inFlightListPromise = { key, promise };
+    return promise;
   },
 
   async search(params?: ListParams): Promise<SearchResponse<VtsSystemResponse>> {
@@ -120,23 +134,83 @@ export const vtsSystemCRUD = {
   },
 
   async getById(id: string, options?: { includeZones?: boolean; includeAttachments?: boolean }): Promise<VtsSystemResponse> {
-    const res = await api.get(`${VTS_BASE_PATH}/${id}`, options ? {
-      params: {
-        includeZones: options.includeZones ?? true,
-        includeAttachments: options.includeAttachments ?? true,
-      },
-    } : undefined);
-    return toSingle<VtsSystemResponse>(res.data) || {} as VtsSystemResponse;
+    const key = `${id}-${options?.includeZones ?? true}-${options?.includeAttachments ?? true}`;
+    const existing = inFlightGetByIdPromises.get(key);
+    if (existing) {
+      return existing;
+    }
+    const promise = (async () => {
+      try {
+        const res = await api.get(`${VTS_BASE_PATH}/${id}`, options ? {
+          params: {
+            includeZones: options.includeZones ?? true,
+            includeAttachments: options.includeAttachments ?? true,
+          },
+        } : undefined);
+        return toSingle<VtsSystemResponse>(res.data) || {} as VtsSystemResponse;
+      } finally {
+        inFlightGetByIdPromises.delete(key);
+      }
+    })();
+    inFlightGetByIdPromises.set(key, promise);
+    return promise;
   },
 
-  async getZones(id: string): Promise<VtsZoneDto[]> {
-    const res = await api.get(`${VTS_BASE_PATH}/${id}/zones`);
-    return toArray<VtsZoneDto>(res.data);
+  async getZones(id: string, params?: { page?: number; size?: number }): Promise<VtsZoneDto[]> {
+    const res = params
+      ? await api.get(`${VTS_BASE_PATH}/${id}/zones`, { params })
+      : await api.get(`${VTS_BASE_PATH}/${id}/zones`);
+    const data = res.data?.data?.items || res.data?.items || res.data?.data || res.data;
+    return Array.isArray(data) ? data : toArray<VtsZoneDto>(res.data);
+  },
+
+  async createZone(id: string, data: VtsZoneDto): Promise<VtsZoneDto> {
+    const res = await api.post(`${VTS_BASE_PATH}/${id}/zones`, data);
+    return toSingle<VtsZoneDto>(res.data) || {} as VtsZoneDto;
+  },
+
+  async updateZone(id: string, zoneId: string, data: VtsZoneDto): Promise<VtsZoneDto> {
+    const res = await api.put(`${VTS_BASE_PATH}/${id}/zones/${zoneId}`, data);
+    return toSingle<VtsZoneDto>(res.data) || {} as VtsZoneDto;
+  },
+
+  async deleteZone(id: string, zoneId: string): Promise<void> {
+    await api.delete(`${VTS_BASE_PATH}/${id}/zones/${zoneId}`);
   },
 
   async getAttachments(id: string): Promise<VtsSystemAttachment[]> {
     const res = await api.get(`${VTS_BASE_PATH}/${id}/attachments`);
     return toArray<VtsSystemAttachment>(res.data);
+  },
+
+  async uploadAttachment(id: string, file: File): Promise<VtsSystemAttachment> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.post(`${VTS_BASE_PATH}/${id}/attachments`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return toSingle<VtsSystemAttachment>(res.data) || {} as VtsSystemAttachment;
+  },
+
+  async deleteAttachment(id: string, attId: string): Promise<void> {
+    await api.delete(`${VTS_BASE_PATH}/${id}/attachments/${attId}`);
+  },
+
+  async downloadAttachment(id: string, attId: string, fileName?: string): Promise<void> {
+    const res = await api.get(`${VTS_BASE_PATH}/${id}/attachments/${attId}/download`, {
+      responseType: 'blob',
+    });
+    const blob = new Blob([res.data]);
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName || 'attachment';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   },
 
   async create(data: CreateVtsSystemRequest): Promise<VtsSystemResponse> {

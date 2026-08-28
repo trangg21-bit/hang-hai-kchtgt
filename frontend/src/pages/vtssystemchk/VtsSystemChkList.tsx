@@ -10,30 +10,30 @@ import type { VtsSystemResponse, ListParams, ApprovalRequest } from '../../types
 import { ConditionStatus, ApprovalStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/vtsSystem';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
 import VtsSystemChkForm, { invalidateVtsDetailCache } from './VtsSystemChkForm';
 import ApprovalModal from '../../components/shared/ApprovalModal';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
 import toast, { modal } from '../../components/ToastNotification';
 import {
   actionPrimary, textPrimary, textSecondary, textTertiary,
   fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd, fontSizeLg,
-  radiusSm, spaceFormField, spaceMd, spaceSm, spaceLg,
+  radiusSm, spaceFormField, spaceMd, spaceSm, spaceXs, spaceLg, spaceXl, surfacePage,
   statusOperational, statusDraft, statusCritical, statusAttention,
-  surfacePage, spaceXs, spaceXl, drawerTitleStyle, drawerCloseBtnStyle, selectStyle,
+  drawerTitleStyle, drawerCloseBtnStyle, selectStyle,
   borderDefault, statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
-  inputStyle, primaryButtonStyle, textAreaStyle,
+  inputStyle, textAreaStyle, colors, primaryButtonStyle,
+  getRangePickerProps,
 } from '../../themetokenchk';
-import { colors } from '../../themetokenchk';
+import * as themeTokenChk from '../../themetokenchk';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import dayjs from 'dayjs';
 import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { OrgUnitTreeSelect, normalizeSearchText, type OrgUnitTreeOption } from '../../components/org-unit';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
-import * as themeTokenChk from '../../themetokenchk';
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 
 
 
@@ -421,13 +421,14 @@ export default function VtsSystemChkList() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
   const [hasMoreHistory, setHasMoreHistory] = useState(true);
+  const [historySearchInput, setHistorySearchInput] = useState('');
   const [historySearch, setHistorySearch] = useState('');
   const [historyDateFrom, setHistoryDateFrom] = useState<string>('');
   const [historyDateTo, setHistoryDateTo] = useState<string>('');
   // Số trang lịch sử đã tải. Không suy ra từ `historyRecords.length` vì backend
   // có thể trả về ít hơn pageSize khi lọc, làm lệch số trang → sót/lặp bản ghi.
   const [historyPage, setHistoryPage] = useState(0);
-  // Tăng lên để buộc nạp lại ngay, bỏ qua debounce (nút "Tìm kiếm").
+  // Tăng lên để buộc nạp lại ngay (khi nhấn Enter / nút "Tìm kiếm" / Clear).
   const [historyReloadToken, setHistoryReloadToken] = useState(0);
 
   // Số nhóm bản ghi lịch sử (gom theo giây + người cập nhật — giống logic timeline Cảng biển)
@@ -614,6 +615,7 @@ export default function VtsSystemChkList() {
     setLoadingHistory(false);
     setLoadingMoreHistory(false);
     setHasMoreHistory(true);
+    setHistorySearchInput('');
     setHistorySearch('');
     setHistoryDateFrom('');
     setHistoryDateTo('');
@@ -623,7 +625,7 @@ export default function VtsSystemChkList() {
   useEffect(() => {
     if (!historyModalOpen || !selectedRecord) return;
     let cancelled = false;
-    const timer = window.setTimeout(async () => {
+    (async () => {
       setLoadingHistory(true);
       setLoadingMoreHistory(false);
       setHasMoreHistory(true);
@@ -631,9 +633,9 @@ export default function VtsSystemChkList() {
       setHistoryPage(0);
       try {
         const history = await vtsSystemApproval.getHistory(selectedRecord.id, 0, HISTORY_PAGE_SIZE, {
-          keyword: historySearch,
-          fromDate: historyDateFrom,
-          toDate: historyDateTo,
+          keyword: historySearch || undefined,
+          fromDate: historyDateFrom || undefined,
+          toDate: historyDateTo || undefined,
         });
         if (cancelled) return;
         const items = history || [];
@@ -644,10 +646,9 @@ export default function VtsSystemChkList() {
       } finally {
         if (!cancelled) setLoadingHistory(false);
       }
-    }, historySearch.trim() ? 300 : 0);
+    })();
     return () => {
       cancelled = true;
-      window.clearTimeout(timer);
     };
   }, [historyModalOpen, selectedRecord?.id, historySearch, historyDateFrom, historyDateTo, historyReloadToken]);
 
@@ -943,13 +944,20 @@ export default function VtsSystemChkList() {
       });
     }
     if (hasPerm('vts:approvec1') && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL) {
-      actions.push({ key: 'approveC1', label: 'Phê duyệt cấp Cảng vụ/Chi cục', icon: icons.approve, onClick: () => openApproveModal(record.id, 'c1') });
-      actions.push({ key: 'rejectC1', label: 'Từ chối cấp Cảng vụ/Chi cục', danger: true, icon: icons.reject, onClick: () => openRejectModal(record.id, 'c1') });
+      const isCreator = Boolean(currentUser?.userId && record.createdBy === currentUser.userId);
+      if (!isCreator) {
+        actions.push({ key: 'approveC1', label: 'Phê duyệt cấp Cảng vụ/Chi cục', icon: icons.approve, onClick: () => openApproveModal(record.id, 'c1') });
+        actions.push({ key: 'rejectC1', label: 'Từ chối cấp Cảng vụ/Chi cục', danger: true, icon: icons.reject, onClick: () => openRejectModal(record.id, 'c1') });
+      }
     }
     if (hasPerm('vts:approvec2') && record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1) {
-      const isSelfApproval = Boolean(currentUser?.userId && record.approverLevel1 === currentUser.userId);
-      actions.push({ key: 'approveC2', label: isSelfApproval ? 'Phê duyệt cấp Cục (không thể tự duyệt)' : 'Phê duyệt cấp Cục', icon: icons.approve, disabled: isSelfApproval, onClick: () => openApproveModal(record.id, 'c2') });
-      actions.push({ key: 'rejectC2', label: isSelfApproval ? 'Từ chối cấp Cục (không thể tự duyệt)' : 'Từ chối cấp Cục', danger: true, disabled: isSelfApproval, icon: icons.reject, onClick: () => openRejectModal(record.id, 'c2') });
+      const isCreator = Boolean(currentUser?.userId && record.createdBy === currentUser.userId);
+      const isApproverL1 = Boolean(currentUser?.userId && record.approverLevel1 === currentUser.userId);
+      const isSelfApproval = isCreator || isApproverL1;
+      if (!isSelfApproval) {
+        actions.push({ key: 'approveC2', label: 'Phê duyệt cấp Cục', icon: icons.approve, onClick: () => openApproveModal(record.id, 'c2') });
+        actions.push({ key: 'rejectC2', label: 'Từ chối cấp Cục', danger: true, icon: icons.reject, onClick: () => openRejectModal(record.id, 'c2') });
+      }
     }
     // T13/N04: chỉ hồ sơ đang "Lưu tạm" mới được xóa (approval-2-level-spec §3.6).
     if (hasPerm('vts:delete') && record.approvalStatus === ApprovalStatus.DRAFT) {
@@ -1114,12 +1122,40 @@ export default function VtsSystemChkList() {
                 </Typography.Text>
 
                 {(() => {
+                  const isLongHistoryText = (val: string | null | undefined): boolean => {
+                    if (!val) return false;
+                    const str = String(val).trim();
+                    return str.length > 40 || str.includes('\n') || (str.includes(',') && str.length > 25);
+                  };
+
+                  const renderHistoryContent = (field: string, val: string | null, _isOld: boolean = false) => {
+                    if (val === null || val === undefined || val === '—' || val === '') {
+                      return <span style={{ color: textTertiary }}>—</span>;
+                    }
+                    const str = String(val).trim();
+                    if (str.includes(',') && str.length > 25) {
+                      const items = str.split(',').map((s) => s.trim()).filter(Boolean);
+                      if (items.length > 1) {
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+                            {items.map((item, idx) => (
+                              <div key={idx} style={{ color: textPrimary, fontWeight: fontWeightMedium, lineHeight: '20px', wordBreak: 'break-word' }}>
+                                {item}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      }
+                    }
+                    return renderHistoryValueTag(field, val);
+                  };
+
                   const validChanges = changes.filter((c: any) => {
-                    if (!c.field) return false;
+                    if (!c.field && !c.oldValue && !c.newValue) return false;
                     const ov = formatHistoryValue(c.field, c.oldValue);
                     const nv = formatHistoryValue(c.field, c.newValue);
                     if (ov == null && nv == null) return false;
-                    if (ov === nv) return false;
+                    if (ov !== null && nv !== null && String(ov).trim() === String(nv).trim()) return false;
                     return true;
                   });
                   const reasons = g.items.map((i: any) => i.reason || i.ghiChu || i.note).filter(Boolean);
@@ -1131,20 +1167,25 @@ export default function VtsSystemChkList() {
                           const fn = change.field;
                           const ov = formatHistoryValue(fn, change.oldValue);
                           const nv = formatHistoryValue(fn, change.newValue);
-                          return isCreate ? (
-                            <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '170px minmax(0, 1fr)', alignItems: 'flex-start', gap: spaceMd, fontSize: fontSizeMd, lineHeight: 1.6 }}>
-                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                              <div style={{ minWidth: 0, overflowWrap: 'break-word' }}>{renderHistoryValueTag(fn, nv)}</div>
-                            </div>
-                          ) : (
-                            <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '170px minmax(120px, 1fr) 24px minmax(120px, 1fr)', alignItems: 'center', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6 }}>
-                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                              <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, overflowWrap: 'break-word' }}>
-                                {renderHistoryValueTag(fn, ov)}
+
+                          if (isCreate) {
+                            return (
+                              <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '170px minmax(0, 1fr)', alignItems: 'flex-start', gap: spaceMd, fontSize: fontSizeMd, lineHeight: 1.6, padding: '3px 0' }}>
+                                <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
+                                <div style={{ minWidth: 0, overflowWrap: 'break-word' }}>{renderHistoryContent(fn, nv, false)}</div>
                               </div>
-                              <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none' }}>→</div>
-                              <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, overflowWrap: 'break-word' }}>
-                                {renderHistoryValueTag(fn, nv)}
+                            );
+                          }
+
+                          return (
+                            <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '170px minmax(100px, 1fr) 24px minmax(100px, 1fr)', alignItems: 'flex-start', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6, padding: '3px 0' }}>
+                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word' }}>
+                                {renderHistoryContent(fn, ov, true)}
+                              </div>
+                              <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>→</div>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word' }}>
+                                {renderHistoryContent(fn, nv, false)}
                               </div>
                             </div>
                           );
@@ -1178,12 +1219,12 @@ export default function VtsSystemChkList() {
     <ThemeTokenProvider tokens={themeTokenChk}>
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader
-        breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Hệ thống VTS CHK' }]}
+        breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Hệ thống VTS' }]}
         actions={
           hasPerm('vts:create')
             ? [{
               key: 'create', label: 'Thêm mới', variant: 'primary' as const, icon: icons.create,
-              onClick: () => { setEditingId(null); setModalMode('create'); setIsModalOpen(true); }
+              onClick: () => { setEditingId(null); setSelectedRecord(null); setModalMode('create'); setIsModalOpen(true); }
             }]
             : []
         }
@@ -1249,7 +1290,7 @@ export default function VtsSystemChkList() {
               />
             </div>
 
-            {/* ── BỘ LỌC NÂNG CAO (Mở rộng / Thu gọn bằng nút phễu) ── */}
+            {/* ── BỘ LỌC NÂNG CAO ── */}
             {filterCollapsed && (
               <>
                 <div style={{ marginBottom: spaceFormField }}>
@@ -1269,11 +1310,10 @@ export default function VtsSystemChkList() {
                     Thời gian bắt đầu hoạt động
                   </div>
                   <DatePicker.RangePicker
-                    format="DD/MM/YYYY"
-                    placeholder={['Từ ngày', 'Đến ngày']}
-                    value={filterValues.operationDateRange}
-                    onChange={(dates) => setFilterValues((prev) => ({ ...prev, operationDateRange: dates }))}
-                    style={{ ...inputStyle, width: '100%' }}
+                    {...getRangePickerProps({
+                      value: filterValues.operationDateRange,
+                      onChange: (dates: any) => setFilterValues((prev) => ({ ...prev, operationDateRange: dates })),
+                    })}
                   />
                 </div>
 
@@ -1282,12 +1322,10 @@ export default function VtsSystemChkList() {
                     Ngày cập nhật
                   </div>
                   <DatePicker.RangePicker
-                    format="DD/MM/YYYY"
-                    placeholder={['Từ ngày', 'Đến ngày']}
-                    placement="topLeft"
-                    value={filterValues.updateDateRange}
-                    onChange={(dates) => setFilterValues((prev) => ({ ...prev, updateDateRange: dates }))}
-                    style={{ ...inputStyle, width: '100%' }}
+                    {...getRangePickerProps({
+                      value: filterValues.updateDateRange,
+                      onChange: (dates: any) => setFilterValues((prev) => ({ ...prev, updateDateRange: dates })),
+                    })}
                   />
                 </div>
 
@@ -1310,9 +1348,6 @@ export default function VtsSystemChkList() {
             )}
           </>
         }
-        hideFilterToggle={false}
-        filterCollapsed={filterCollapsed}
-        onToggleCollapse={() => setFilterCollapsed((prev) => !prev)}
       >
         <DataTable
           columns={columns}
@@ -1380,17 +1415,53 @@ export default function VtsSystemChkList() {
             </div>
           )}
           <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
-            <Input placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
-              onChange={e => setHistorySearch(e.target.value)} style={{ ...inputStyle, flex: 1 }} />
-            <DatePicker placeholder="Từ ngày" classNames={{ popup: { root: 'history-dt-popup' } }} value={historyDateFrom ? dayjs(historyDateFrom) : null}
-              onChange={d => setHistoryDateFrom(d ? d.startOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
-              style={{ ...inputStyle, width: 170 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
-            <DatePicker placeholder="Đến ngày" classNames={{ popup: { root: 'history-dt-popup' } }} value={historyDateTo ? dayjs(historyDateTo) : null}
-              onChange={d => setHistoryDateTo(d ? d.endOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
-              style={{ ...inputStyle, width: 170 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
-            <Button type="primary" icon={<SearchOutlined />} loading={loadingHistory}
-              onClick={() => setHistoryReloadToken((token) => token + 1)}
-              style={primaryButtonStyle}>Tìm kiếm</Button>
+            <Input
+              placeholder="Tìm kiếm nội dung thay đổi..."
+              allowClear
+              value={historySearchInput}
+              onChange={(e) => {
+                const val = e.target.value;
+                setHistorySearchInput(val);
+                if (!val) {
+                  setHistorySearch('');
+                  setHistoryReloadToken((token) => token + 1);
+                }
+              }}
+              onPressEnter={() => {
+                setHistorySearch(historySearchInput.trim());
+                setHistoryReloadToken((token) => token + 1);
+              }}
+              style={{ ...inputStyle, flex: 1 }}
+            />
+            <DatePicker.RangePicker
+              {...getRangePickerProps({
+                value: (historyDateFrom && historyDateTo)
+                  ? [dayjs(historyDateFrom), dayjs(historyDateTo)]
+                  : (historyDateFrom ? [dayjs(historyDateFrom), null] : (historyDateTo ? [null, dayjs(historyDateTo)] : null)),
+                onChange: (dates: any) => {
+                  if (!dates || dates.length === 0 || (!dates[0] && !dates[1])) {
+                    setHistoryDateFrom('');
+                    setHistoryDateTo('');
+                  } else {
+                    setHistoryDateFrom(dates[0] ? dates[0].startOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
+                    setHistoryDateTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
+                  }
+                },
+                style: { ...inputStyle, width: 280 },
+              })}
+            />
+            <Button
+              type="primary"
+              icon={<SearchOutlined />}
+              loading={loadingHistory}
+              onClick={() => {
+                setHistorySearch(historySearchInput.trim());
+                setHistoryReloadToken((token) => token + 1);
+              }}
+              style={primaryButtonStyle}
+            >
+              Tìm kiếm
+            </Button>
           </div>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>

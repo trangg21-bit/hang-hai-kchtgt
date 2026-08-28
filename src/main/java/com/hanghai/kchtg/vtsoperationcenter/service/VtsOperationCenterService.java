@@ -148,6 +148,7 @@ public class VtsOperationCenterService {
                 .conditionStatus(request.getConditionStatus() != null ? request.getConditionStatus()
                         : ConditionStatus.OPERATIONAL)
                 .note(request.getNote())
+                .symbolId(request.getSymbolId())
                 .spatialId(request.getSpatialId())
                 .approvalStatus(
                         request.getApprovalStatus() != null ? request.getApprovalStatus() : ApprovalStatus.DRAFT)
@@ -549,18 +550,18 @@ public class VtsOperationCenterService {
                                     : (u.getUsername() != null && !u.getUsername().trim().isEmpty() ? u.getUsername() : null))
                             : null;
                     String orgUnitName = u != null && u.getOrgUnit() != null ? u.getOrgUnit().getName() : null;
-                    return HistoryEntry.builder()
-                            .id(h.getId())
-                            .approvalLevel(h.getApprovalLevel())
-                            .status(h.getStatus() != null ? h.getStatus().getCode() : null)
-                            .approvedBy(userName)
-                            .orgUnitName(orgUnitName)
-                            .approvedDate(h.getApprovedDate())
-                            .reason(h.getReason())
-                            .changedField(h.getChangedField())
-                            .previousValue(formatDisplayValue(h.getChangedField(), h.getPreviousValue()))
-                            .newValue(formatDisplayValue(h.getChangedField(), h.getNewValue()))
-                            .build();
+                    HistoryEntry entry = new HistoryEntry();
+                    entry.setId(h.getId());
+                    entry.setApprovalLevel(h.getApprovalLevel());
+                    entry.setStatus(h.getStatus() != null ? h.getStatus().getCode() : null);
+                    entry.setApprovedBy(userName);
+                    entry.setOrgUnitName(orgUnitName);
+                    entry.setApprovedDate(h.getApprovedDate());
+                    entry.setReason(h.getReason());
+                    entry.setChangedField(h.getChangedField());
+                    entry.setPreviousValue(formatDisplayValue(h.getChangedField(), h.getPreviousValue()));
+                    entry.setNewValue(formatDisplayValue(h.getChangedField(), h.getNewValue()));
+                    return entry;
                 })
                 .collect(Collectors.toList());
     }
@@ -660,30 +661,30 @@ public class VtsOperationCenterService {
     /** Số tệp đính kèm tối đa cho một hồ sơ (khớp giới hạn hiển thị ở giao diện). */
     private static final int MAX_ATTACHMENTS = 10;
 
-    private static final long MAX_ATTACHMENT_SIZE = 10L * 1024 * 1024;
+    private static final long MAX_ATTACHMENT_SIZE = 20L * 1024 * 1024;
 
     private static final List<String> ALLOWED_ATTACHMENT_TYPES = List.of(
             "application/pdf", "application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "application/vnd.ms-excel",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "image/jpeg", "image/png", "image/gif");
+            "image/jpeg", "image/png", "image/gif", "image/tiff", "image/tif");
+
+    private static final List<String> ALLOWED_EXTENSIONS = List.of(
+            "pdf", "doc", "docx", "xls", "xlsx", "jpg", "jpeg", "png", "gif", "tiff", "tif");
+
+    private boolean isAllowedFileExtension(String filename) {
+        if (filename == null || !filename.contains(".")) return false;
+        String ext = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT);
+        return ALLOWED_EXTENSIONS.contains(ext);
+    }
 
     /**
-     * N09/BR-019 — hồ sơ đang chờ duyệt bị khóa sửa, hồ sơ đã duyệt và đã xóa
-     * cũng vậy. Chỉ "Lưu tạm" và "Bị trả về" mới được thay đổi tài liệu đính kèm.
+     * N09/BR-019 & T12 — hồ sơ đang chờ duyệt bị khóa sửa.
+     * Ủy thác cho InfrastructureApprovalService.assertEditable để cho phép tài khoản có quyền cấp Cục sửa hồ sơ Đã duyệt.
      */
     private void ensureAttachmentEditable(VtsOperationCenter entity) {
-        ApprovalStatus status = entity.getApprovalStatus();
-        boolean editable = status == null
-                || status == ApprovalStatus.DRAFT
-                || status == ApprovalStatus.REJECTED_LEVEL1
-                || status == ApprovalStatus.REJECTED_LEVEL2;
-        if (!editable) {
-            throw new IllegalStateException(
-                    "Chỉ thay đổi được tài liệu đính kèm khi hồ sơ ở trạng thái Lưu tạm hoặc Bị trả về. "
-                            + "Trạng thái hiện tại: " + status.getLabel());
-        }
+        approvalService.assertEditable(entity);
     }
 
     private void validateAttachment(MultipartFile file) {
@@ -691,11 +692,13 @@ public class VtsOperationCenterService {
             throw new IllegalArgumentException("Tài liệu đính kèm không được để trống");
         }
         if (file.getSize() > MAX_ATTACHMENT_SIZE) {
-            throw new IllegalArgumentException("Tài liệu đính kèm không được vượt quá 10MB");
+            throw new IllegalArgumentException("Tài liệu đính kèm không được vượt quá 20MB theo quy định");
         }
         String contentType = file.getContentType() == null ? "" : file.getContentType().toLowerCase(Locale.ROOT);
-        if (!ALLOWED_ATTACHMENT_TYPES.contains(contentType)) {
-            throw new IllegalArgumentException("Định dạng tài liệu không được hỗ trợ");
+        boolean typeOk = ALLOWED_ATTACHMENT_TYPES.contains(contentType);
+        boolean extOk = isAllowedFileExtension(file.getOriginalFilename());
+        if (!typeOk && !extOk) {
+            throw new IllegalArgumentException("Định dạng tài liệu không được hỗ trợ (chấp nhận: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, GIF, TIFF)");
         }
     }
 
@@ -748,6 +751,7 @@ public class VtsOperationCenterService {
         if (VtsOperationCenter.Fields.conditionStatus.equals(field)) return "Tình trạng";
         if (VtsOperationCenter.Fields.note.equals(field)) return "Ghi chú";
         if (BaseApprovableEntity.Fields.approvalStatus.equals(field)) return "Trạng thái phê duyệt";
+        if (VtsOperationCenter.Fields.symbolId.equals(field)) return "Biểu tượng";
         if (VtsOperationCenterRequest.Fields.coordinates.equals(field)) return "Tọa độ GIS";
         if (VtsOperationCenterRequest.Fields.geometryType.equals(field)) return "Loại đối tượng GIS";
         return field;
@@ -756,6 +760,16 @@ public class VtsOperationCenterService {
     private String formatDisplayValue(String field, String rawValue) {
         if (rawValue == null || rawValue.isEmpty() || "null".equalsIgnoreCase(rawValue) || "Chưa có".equals(rawValue)) {
             return "Chưa có";
+        }
+        if (VtsOperationCenter.Fields.symbolId.equals(field)
+                || getFieldDisplayName(VtsOperationCenter.Fields.symbolId).equals(field)) {
+            try {
+                UUID symId = UUID.fromString(rawValue);
+                List<String> names = jdbcTemplate.queryForList("SELECT name FROM map_symbols WHERE id = ?", String.class, symId);
+                return (!names.isEmpty() && names.get(0) != null) ? names.get(0) : rawValue;
+            } catch (Exception e) {
+                return rawValue;
+            }
         }
         if (BaseApprovableEntity.Fields.orgUnitId.equals(field)
                 || getFieldDisplayName(BaseApprovableEntity.Fields.orgUnitId).equals(field)) {
@@ -912,6 +926,7 @@ public class VtsOperationCenterService {
                 .spatialId(entity.getSpatialId())
                 .geometryType(geometryType)
                 .coordinates(coordinates)
+                .symbolId(entity.getSymbolId())
                 .approvalStatus(entity.getApprovalStatus())
                 .approvalStatusLabel(entity.getApprovalStatus() != null ? entity.getApprovalStatus().getLabel() : null)
                 .approverLevel1(entity.getApproverLevel1())
@@ -1022,6 +1037,9 @@ public class VtsOperationCenterService {
     }
 
     private VtsSystemAttachmentResponse toAttachmentResponse(InfrastructureAttachment att) {
+        String uploadedByName = att.getUploadedBy() != null
+                ? userRepository.findById(att.getUploadedBy()).map(User::getFullName).orElse(null)
+                : null;
         return VtsSystemAttachmentResponse.builder()
                 .id(att.getId())
                 .fileName(att.getFileName())
@@ -1029,6 +1047,7 @@ public class VtsOperationCenterService {
                 .fileSize(att.getFileSize())
                 .documentType(att.getFileType() != null ? att.getFileType().name() : null)
                 .uploadedBy(att.getUploadedBy())
+                .uploadedByName(uploadedByName)
                 .uploadedDate(att.getUploadedDate())
                 .build();
     }

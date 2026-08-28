@@ -6,7 +6,7 @@ import {
   FileOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { colors } from '../../theme';
+import { getRangePickerProps } from '../../themetokenchk';
 import {
   actionPrimary,
   statusOperational,
@@ -197,9 +197,19 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
   fieldLabelMap = {},
   formatValue,
 }) => {
+  const [searchInput, setSearchInput] = useState('');
   const [keyword, setKeyword] = useState('');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
+
+  useEffect(() => {
+    if (!open) {
+      setSearchInput('');
+      setKeyword('');
+      setDateFrom('');
+      setDateTo('');
+    }
+  }, [open]);
 
   const combinedFieldMap = useMemo(() => ({
     ...DEFAULT_FIELD_MAP,
@@ -349,29 +359,36 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
           <Input
             placeholder="Tìm kiếm nội dung thay đổi..."
             allowClear
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
+            value={searchInput}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSearchInput(val);
+              if (!val) setKeyword('');
+            }}
+            onPressEnter={() => setKeyword(searchInput.trim())}
             style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
           />
-          <DatePicker
-            placeholder="Từ ngày"
-            value={dateFrom ? dayjs(dateFrom) : null}
-            onChange={(d) => setDateFrom(d ? d.startOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
-            style={{ width: 175, borderRadius: radiusPill, height: 40 }}
-            format="DD/MM/YYYY HH:mm"
-            showTime={{ format: 'HH:mm' }}
-          />
-          <DatePicker
-            placeholder="Đến ngày"
-            value={dateTo ? dayjs(dateTo) : null}
-            onChange={(d) => setDateTo(d ? d.endOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
-            style={{ width: 175, borderRadius: radiusPill, height: 40 }}
-            format="DD/MM/YYYY HH:mm"
-            showTime={{ format: 'HH:mm' }}
+          <DatePicker.RangePicker
+            {...getRangePickerProps({
+              value: (dateFrom && dateTo)
+                ? [dayjs(dateFrom), dayjs(dateTo)]
+                : (dateFrom ? [dayjs(dateFrom), null] : (dateTo ? [null, dayjs(dateTo)] : null)),
+              onChange: (dates: any) => {
+                if (!dates || dates.length === 0 || (!dates[0] && !dates[1])) {
+                  setDateFrom('');
+                  setDateTo('');
+                } else {
+                  setDateFrom(dates[0] ? dates[0].startOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
+                  setDateTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
+                }
+              },
+              style: { width: 280, borderRadius: radiusPill, height: 40 },
+            })}
           />
           <Button
             type="primary"
             icon={<SearchOutlined />}
+            onClick={() => setKeyword(searchInput.trim())}
             style={{
               borderRadius: radiusPill,
               height: 40,
@@ -528,31 +545,66 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                         >
                           {infoTitle}
                         </Typography.Text>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                           {groupChanges.map((change, cIdx) => {
                             const label = combinedFieldMap[change.field] || change.field;
                             const ov = resolveFieldValue(change.field, change.oldValue);
                             const nv = resolveFieldValue(change.field, change.newValue);
 
-                            return isCreate ? (
-                              <div
-                                key={cIdx}
-                                style={{
-                                  display: 'grid',
-                                  gridTemplateColumns: 'minmax(140px, 1fr) minmax(160px, 2fr)',
-                                  gap: spaceSm,
-                                  fontSize: fontSizeMd,
-                                  lineHeight: 1.5,
-                                }}
-                              >
-                                <span style={{ fontWeight: fontWeightMedium, color: textSecondary }}>
-                                  {label}:
-                                </span>
-                                <div>
-                                  {renderCommonHistoryValueTag(label, nv)}
+                            if (ov !== '—' && nv !== '—' && String(ov).trim() === String(nv).trim()) {
+                              return null;
+                            }
+
+                            const isLongHistoryText = (val: string | null | undefined): boolean => {
+                              if (!val || val === '—') return false;
+                              const str = String(val).trim();
+                              return str.length > 40 || str.includes('\n') || (str.includes(',') && str.length > 25);
+                            };
+
+                            const renderFormattedContent = (content: string, _isOld: boolean = false) => {
+                              if (!content || content === '—') return <span style={{ color: textTertiary }}>—</span>;
+                              const str = String(content).trim();
+                              if (str.includes(',') && str.length > 25) {
+                                const items = str.split(',').map((s) => s.trim()).filter(Boolean);
+                                if (items.length > 1) {
+                                  return (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+                                      {items.map((item, idx) => (
+                                        <div key={idx} style={{ color: textPrimary, fontWeight: fontWeightMedium, lineHeight: '20px', wordBreak: 'break-word' }}>
+                                          {item}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  );
+                                }
+                              }
+                              return renderCommonHistoryValueTag(label, content);
+                            };
+
+                            if (isCreate) {
+                              return (
+                                <div
+                                  key={cIdx}
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'minmax(140px, 1fr) minmax(160px, 2fr)',
+                                    gap: spaceSm,
+                                    fontSize: fontSizeMd,
+                                    lineHeight: 1.5,
+                                    padding: '3px 0',
+                                  }}
+                                >
+                                  <span style={{ fontWeight: fontWeightMedium, color: textSecondary }}>
+                                    {label}:
+                                  </span>
+                                  <div>
+                                    {renderFormattedContent(nv, false)}
+                                  </div>
                                 </div>
-                              </div>
-                            ) : (
+                              );
+                            }
+
+                            return (
                               <div
                                 key={cIdx}
                                 style={{
@@ -562,17 +614,18 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                                   alignItems: 'center',
                                   fontSize: fontSizeMd,
                                   lineHeight: 1.5,
+                                  padding: '3px 0',
                                 }}
                               >
                                 <span style={{ fontWeight: fontWeightMedium, color: textSecondary }}>
                                   {label}:
                                 </span>
-                                <div style={{ textDecoration: ov !== '—' ? 'line-through' : 'none' }}>
-                                  {renderCommonHistoryValueTag(label, ov)}
-                                </div>
-                                <span style={{ color: textTertiary, textAlign: 'center' }}>→</span>
                                 <div>
-                                  {renderCommonHistoryValueTag(label, nv)}
+                                  {renderFormattedContent(ov, true)}
+                                </div>
+                                <span style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold }}>→</span>
+                                <div>
+                                  {renderFormattedContent(nv, false)}
                                 </div>
                               </div>
                             );

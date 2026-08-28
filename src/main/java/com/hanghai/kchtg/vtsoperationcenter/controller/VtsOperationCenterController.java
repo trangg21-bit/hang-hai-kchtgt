@@ -151,7 +151,7 @@ public class VtsOperationCenterController {
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách thành công", data));
     }
 
-    @PreAuthorize("@auth.check(authentication, 'vtsoperationcenter:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'vtsoperationcenter:update', 'vtsoperationcenter:approvec2', 'vts:update', 'vts:approvec2')")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<VtsOperationCenterResponse>> update(
             @PathVariable UUID id,
@@ -230,9 +230,7 @@ public class VtsOperationCenterController {
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử thành công", history));
     }
 
-    // OR-logic: `check(Authentication, String...)` là alias của `checkAny`. Dùng
-    // `checkAny` cho đúng nghĩa để người đọc không hiểu nhầm là bắt buộc cả hai.
-    @PreAuthorize("@auth.checkAny(authentication, 'vtsoperationcenter:create', 'vtsoperationcenter:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'vtsoperationcenter:create', 'vtsoperationcenter:update', 'vtsoperationcenter:approvec2', 'vts:create', 'vts:update', 'vts:approvec2')")
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<List<VtsSystemAttachmentResponse>>> uploadAttachments(
             @PathVariable UUID id,
@@ -250,7 +248,7 @@ public class VtsOperationCenterController {
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách tệp đính kèm thành công", list));
     }
 
-    @PreAuthorize("@auth.check(authentication, 'vtsoperationcenter:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'vtsoperationcenter:update', 'vtsoperationcenter:approvec2', 'vts:update', 'vts:approvec2')")
     @DeleteMapping("/{id}/attachments/{attId}")
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,

@@ -3,28 +3,21 @@ import {
   Form,
   Button,
   Input,
+  InputNumber,
   Select,
   Spin,
   Space,
   Tabs,
-  DatePicker,
   Row,
   Col,
-  Upload,
+  Table,
   Modal,
-  Tooltip,
   Drawer,
 } from 'antd';
 import {
   PlusOutlined,
   DeleteOutlined,
-  UploadOutlined,
-  FileOutlined,
   CloseOutlined,
-  EditOutlined,
-  SendOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
   EnvironmentOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -32,7 +25,7 @@ import toast from '../../components/ToastNotification';
 import { vtsOperationCenterService } from '../../services/vtsOperationCenterService';
 import { vtsSystemCRUD } from '../../services/vtsSystemService';
 import { portCRUD } from '../../services/portService';
-import { symbolService, type Symbol as GisSymbol } from '../../services/symbolService';
+import { symbolService } from '../../services/symbolService';
 import type {
   VtsOperationCenterResponse,
   CreateVtsOperationCenterRequest,
@@ -42,25 +35,21 @@ import type {
 import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/vtsSystem';
 import {
   drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle,
-  dangerButtonStyle, drawerTabBarStyle,
-  requiredMarkStyle, spaceFormField, radiusSm, radiusMd, radiusPill, sidebarBg,
-  fontWeightBold, fontWeightMedium, spaceMd, spaceSm, fontSizeMd, fontSizeSm, fontSizeLg,
-  textSecondary, textTertiary, textPrimary, borderDefault, uploadHintStyle,
-  statusCritical, statusAttention, statusOperational, statusDraft, actionPrimary, textAreaStyle,
-  colors, inputStyle, selectStyle, drawerCloseBtnStyle, statusBadgeStyle,
-  renderPlanStatusBadge, renderSeverityBadge, icons,
+  drawerTabBarStyle,
+  requiredMarkStyle, spaceFormField, radiusMd, radiusPill, sidebarBg,
+  fontWeightBold, fontWeightMedium, spaceSm, fontSizeMd, fontSizeSm, fontSizeLg,
+  textSecondary, textTertiary, borderDefault,
+  statusCritical, statusAttention, statusOperational, actionPrimary, textAreaStyle,
+  colors, readonlyInputStyle, drawerCloseBtnStyle, inputStyle, selectStyle,
 } from '../../themetokenchk';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
-import { OrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
+import { FormOrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
 import DetailTable from '../../components/shared/DetailTable';
-import HistoryTimeline from '../../components/shared/HistoryTimeline';
-import ApprovalModal from '../../components/shared/ApprovalModal';
+import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
-import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
-import * as themeTokenChk from '../../themetokenchk';
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
 
 export interface VtsOperationCenterChkFormProps {
   open?: boolean;
@@ -102,54 +91,68 @@ const renderConditionBadge = (status?: ConditionStatus | string) => {
   );
 };
 
-// ── Mock Detail Tables Data ──
-const MOCK_EQUIPMENTS = [
-  { id: 'eq-1', code: 'TB-RADAR-01', name: 'Radar giám sát hàng hải Terma SCANTER 5202', type: 'Radar Station', status: ConditionStatus.OPERATIONAL, spec: 'Tần số X-band 9GHz, Tầm quét 24 NM' },
-  { id: 'eq-2', code: 'TB-AIS-01', name: 'Trạm thu phát AIS Transas T214 Class A', type: 'AIS Base Station', status: ConditionStatus.OPERATIONAL, spec: 'Kênh 87B/88B, Công suất 12.5W' },
-  { id: 'eq-3', code: 'TB-VHF-01', name: 'Hệ thống đài vô tuyến VHF Sailor 6222', type: 'VHF Radio', status: ConditionStatus.OPERATIONAL, spec: 'Kênh 16, 70 DSC, Công suất 25W' },
-  { id: 'eq-4', code: 'TB-CCTV-01', name: 'Camera tầm xa hồng ngoại Axis Q6215-LE PTZ', type: 'CCTV Camera', status: ConditionStatus.OPERATIONAL, spec: 'Zoom 30x, Tầm nhìn đêm 400m' },
-  { id: 'eq-5', code: 'TB-SERVER-01', name: 'Máy chủ xử lý dữ liệu VTS Dell PowerEdge R750', type: 'Server Cluster', status: ConditionStatus.OPERATIONAL, spec: 'Dual Xeon 32 Core, 128GB RAM' },
-  { id: 'eq-6', code: 'TB-UPS-01', name: 'Bộ lưu điện UPS APC Symmetra PX 40kVA', type: 'Power Backup', status: ConditionStatus.OPERATIONAL, spec: 'Lưu điện liên tục 4h toàn trung tâm' },
-  { id: 'eq-7', code: 'TB-METEO-01', name: 'Trạm khí tượng thủy văn tự động Vaisala WXT530', type: 'Weather Station', status: ConditionStatus.OPERATIONAL, spec: 'Đo gió, áp suất, độ ẩm, tầm nhìn' },
-  { id: 'eq-8', code: 'TB-VOIP-01', name: 'Hệ thống ghi âm thoại và quản lý liên lạc VCCS', type: 'Voice Recorder', status: ConditionStatus.OPERATIONAL, spec: 'Ghi âm 32 kênh đồng thời chuẩn hàng hải' },
-  { id: 'eq-9', code: 'TB-DISP-01', name: 'Bàn điều hành đa màn hình hiển thị hải đồ điện tử', type: 'Operator Console', status: ConditionStatus.OPERATIONAL, spec: '4 màn hình 4K 32 inch chuyên dụng' },
-  { id: 'eq-10', code: 'TB-GEN-01', name: 'Máy phát điện dự phòng tự động Cummins 100kVA', type: 'Diesel Generator', status: ConditionStatus.OPERATIONAL, spec: 'Khởi động tự động ATS trong 10 giây' },
-  { id: 'eq-11', code: 'TB-FIRE-01', name: 'Hệ thống báo cháy và chữa cháy khí sạch FM-200', type: 'Fire System', status: ConditionStatus.OPERATIONAL, spec: 'Bảo vệ phòng máy chủ trung tâm' },
-  { id: 'eq-12', code: 'TB-NET-01', name: 'Hạ tầng mạng cáp quang Cisco Industrial', type: 'Network Switch', status: ConditionStatus.OPERATIONAL, spec: 'Dự phòng Ring 10Gbps kết nối trạm xa' },
-];
-
-const MOCK_OPERATIONS = [
-  { id: 'op-1', planCode: 'KHVH-TT-2026-01', planName: 'Kế hoạch trực vận hành giám sát luồng hàng hải Q1/2026', startDate: '2026-01-01', endDate: '2026-03-31', orgName: 'Trung tâm VTS', status: 'Đang thực hiện' },
-  { id: 'op-2', planCode: 'KHVH-TT-2026-02', planName: 'Kế hoạch diễn tập xử lý sự cố mất tín hiệu Radar', startDate: '2026-04-10', endDate: '2026-04-12', orgName: 'Phòng An toàn Hàng hải', status: 'Chưa thực hiện' },
-  { id: 'op-3', planCode: 'KHVH-TT-2026-03', planName: 'Kế hoạch nâng cấp phần mềm giám sát luồng tàu VTS v3.5', startDate: '2026-05-15', endDate: '2026-05-20', orgName: 'Trung tâm CNTT', status: 'Chưa thực hiện' },
-  { id: 'op-4', planCode: 'KHVH-TT-2026-04', planName: 'Kế hoạch phân luồng điều tiết tàu trọng tải lớn cập cảng', startDate: '2026-06-01', endDate: '2026-06-30', orgName: 'Đội điều hành tàu', status: 'Chưa thực hiện' },
-  { id: 'op-5', planCode: 'KHVH-TT-2026-05', planName: 'Kế hoạch phối hợp tìm kiếm cứu nạn hàng hải khu vực', startDate: '2026-07-01', endDate: '2026-09-30', orgName: 'Trung tâm VTS & SAR', status: 'Chưa thực hiện' },
-];
-
-const MOCK_MAINTENANCE = [
-  { id: 'mt-1', maintCode: 'BT-TT-2026-01', maintName: 'Bảo dưỡng định kỳ hệ thống máy chủ và điều hòa chính xác', startDate: '2026-02-15', endDate: '2026-02-18', orgName: 'Công ty Kỹ thuật Hàng hải', estimatedCost: 85000000, status: 'Hoàn thành' },
-  { id: 'mt-2', maintCode: 'BT-TT-2026-02', maintName: 'Kiểm chuẩn và bảo trì hệ thống anten thu phát VHF/AIS', startDate: '2026-05-10', endDate: '2026-05-13', orgName: 'Viện Điện tử Viễn thông', estimatedCost: 120000000, status: 'Chưa thực hiện' },
-  { id: 'mt-3', maintCode: 'BT-TT-2026-03', maintName: 'Thay thế ắc quy định kỳ cho hệ thống UPS 40kVA', startDate: '2026-08-20', endDate: '2026-08-22', orgName: 'Công ty Năng lượng APC', estimatedCost: 65000000, status: 'Chưa thực hiện' },
-];
-
-const MOCK_INCIDENTS = [
-  { id: 'ic-1', incidentCode: 'SC-TT-2026-001', incidentType: 'Mất tín hiệu đường truyền', location: 'Tuyến cáp quang trạm Radar xa', incidentTime: '2026-01-15 08:30', severity: 'Trung bình', handleStatus: 'Đã xử lý' },
-  { id: 'ic-2', incidentCode: 'SC-TT-2026-002', incidentType: 'Lỗi đồng bộ dữ liệu AIS', location: 'Máy chủ xử lý VTS 01', incidentTime: '2026-02-02 14:15', severity: 'Thấp', handleStatus: 'Đã xử lý' },
-];
-
-const ddToDms = (dd?: number) => {
+const ddToDms = (dd?: number | null) => {
   if (dd === undefined || dd === null || isNaN(dd)) return { d: 0, m: 0, s: 0 };
   const abs = Math.abs(dd);
-  const d = Math.floor(abs);
-  const minFloat = (abs - d) * 60;
-  const m = Math.floor(minFloat);
-  const s = Math.round((minFloat - m) * 60 * 100) / 100;
+  let d = Math.floor(abs);
+  let minFloat = (abs - d) * 60;
+  if (minFloat > 59.999999999) { d += 1; minFloat = 0; }
+  let m = Math.floor(minFloat);
+  let sFloat = (minFloat - m) * 60;
+  if (sFloat > 59.999999999) { m += 1; sFloat = 0; if (m >= 60) { m = 0; d += 1; } }
+  let s = Math.round(sFloat * 100) / 100;
+  if (s >= 60) { s = 0; m += 1; if (m >= 60) { m = 0; d += 1; } }
   return { d, m, s };
 };
 
-const MOCK_GPS_COORDS = [
-  { id: 'gps-1', longitude: 106.6838, latitude: 20.8651 },
-];
+const parseWktToCoordinates = (wkt?: string): { latitude: number; longitude: number }[] => {
+  if (!wkt) return [];
+  try {
+    const upper = wkt.trim().toUpperCase();
+    if (upper.startsWith('POINT')) {
+      const match = upper.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
+      if (match) {
+        return [{ longitude: parseFloat(match[1]), latitude: parseFloat(match[2]) }];
+      }
+    } else if (upper.startsWith('LINESTRING') || upper.startsWith('LINE')) {
+      const match = upper.match(/LINESTRING\s*\(([^)]+)\)/i);
+      if (match) {
+        return match[1].split(',').map((pt) => {
+          const parts = pt.trim().split(/\s+/);
+          return { longitude: parseFloat(parts[0]), latitude: parseFloat(parts[1]) };
+        });
+      }
+    } else if (upper.startsWith('POLYGON')) {
+      const match = upper.match(/POLYGON\s*\(\(([^)]+)\)\)/i);
+      if (match) {
+        return match[1].split(',').map((pt) => {
+          const parts = pt.trim().split(/\s+/);
+          return { longitude: parseFloat(parts[0]), latitude: parseFloat(parts[1]) };
+        });
+      }
+    }
+  } catch {}
+  return [];
+};
+
+const serializeCoordinatesToWkt = (coords: { latitude: number | null; longitude: number | null }[], geomType: string = 'POINT'): string => {
+  const valid = coords.filter((c) => c.latitude != null && c.longitude != null && !isNaN(c.latitude) && !isNaN(c.longitude));
+  if (valid.length === 0) return '';
+  if (geomType === 'POINT') {
+    return `POINT (${valid[0].longitude} ${valid[0].latitude})`;
+  } else if (geomType === 'LINE' || geomType === 'LINESTRING') {
+    return `LINESTRING (${valid.map((c) => `${c.longitude} ${c.latitude}`).join(', ')})`;
+  } else if (geomType === 'POLYGON') {
+    const pts = [...valid];
+    if (pts.length >= 3) {
+      if (pts[0].latitude !== pts[pts.length - 1].latitude || pts[0].longitude !== pts[pts.length - 1].longitude) {
+        pts.push(pts[0]);
+      }
+    }
+    return `POLYGON ((${pts.map((c) => `${c.longitude} ${c.latitude}`).join(', ')}))`;
+  }
+  return `POINT (${valid[0].longitude} ${valid[0].latitude})`;
+};
 
 export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps> = ({
   open,
@@ -172,14 +175,12 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
 
   const [portOptions, setPortOptions] = useState<any[]>([]);
   const [vtsSystemOptions, setVtsSystemOptions] = useState<any[]>([]);
+  const [symbols, setSymbols] = useState<any[]>([]);
+  const [coordinateList, setCoordinateList] = useState<{ latitude: number | null; longitude: number | null }[]>([]);
+  const [mapModalOpen, setMapModalOpen] = useState(false);
   const [attachments, setAttachments] = useState<VtsOperationCenterAttachment[]>([]);
-  const [historyList, setHistoryList] = useState<any[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
-  // Approval Modal states
-  const [approveModalOpen, setApproveModalOpen] = useState(false);
-  const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c1');
-  const [rejectModalOpen, setRejectModalOpen] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
   const [approvalSectionOpen, setApprovalSectionOpen] = useState(true);
 
   const currentUser = useAuthStore((s) => s.user);
@@ -189,6 +190,159 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
   const isCreateMode = currentMode === 'create';
   const isEditMode = currentMode === 'edit';
 
+  const watchedGeometryType = Form.useWatch('geometryType', form);
+
+  const attachmentsEditable = isCreateMode ||
+    record?.approvalStatus === ApprovalStatus.DRAFT ||
+    record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 ||
+    record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL2 ||
+    (record?.approvalStatus === ApprovalStatus.APPROVED && (hasPerm('vtsoperationcenter:approvec2') || hasPerm('vts:approvec2')));
+
+  const handleUploadAttachment = async (file: File) => {
+    if (!isCreateMode && !attachmentsEditable) {
+      toast.error('Chỉ thay đổi được tài liệu đính kèm khi hồ sơ ở trạng thái Lưu tạm, Bị trả về hoặc có quyền phê duyệt cấp Cục đối với hồ sơ Đã duyệt');
+      return false;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('File vượt quá 20MB theo quy định');
+      return false;
+    }
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'gif', 'tiff', 'tif'].includes(ext)) {
+      toast.error('Định dạng không hỗ trợ (chỉ chấp nhận PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, GIF, TIFF)');
+      return false;
+    }
+    if (attachments.length >= 10) {
+      toast.error('Số lượng tệp đính kèm tối đa là 10 tệp');
+      return false;
+    }
+
+    if (isCreateMode) {
+      const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      (file as any)._tempId = tempId;
+      const newAttachment: VtsOperationCenterAttachment = {
+        id: tempId,
+        fileName: file.name,
+        fileSize: file.size,
+        uploadedByName: currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
+        uploadedBy: currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
+        uploadedDate: new Date().toISOString(),
+      };
+      setPendingFiles((prev) => [...prev, file]);
+      setAttachments((prev) => [...prev, newAttachment]);
+      toast.success(`Đã thêm tệp ${file.name}`);
+      return false;
+    }
+
+    if (editId) {
+      try {
+        const uploadedList = await vtsOperationCenterService.uploadAttachments(editId, [file]);
+        setAttachments((prev) => [...prev, ...(uploadedList || [])]);
+        toast.success(`Đã tải lên tệp ${file.name}`);
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || err?.message || 'Lỗi khi tải tệp lên');
+      }
+    }
+    return false;
+  };
+
+  const handleDeleteAttachment = async (attId: string) => {
+    if (!isCreateMode && !attachmentsEditable) {
+      toast.error('Không có quyền xóa tệp đính kèm');
+      return;
+    }
+    if (isCreateMode) {
+      setPendingFiles((prev) => prev.filter((f) => (f as any)._tempId !== attId && f.name !== attId));
+      setAttachments((prev) => prev.filter((a) => a.id !== attId));
+      toast.success('Đã xóa tệp đính kèm');
+      return;
+    }
+    if (editId) {
+      try {
+        await vtsOperationCenterService.deleteAttachment(editId, attId);
+        setAttachments((prev) => prev.filter((a) => a.id !== attId));
+        toast.success('Đã xóa tệp đính kèm');
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || err?.message || 'Lỗi khi xóa tệp');
+      }
+    }
+  };
+
+  const handleDownloadAttachment = async (attId: string, fileName?: string) => {
+    const targetId = record?.id || editId;
+    if (!targetId) return;
+    try {
+      await vtsOperationCenterService.downloadAttachment(targetId, attId, fileName);
+    } catch {
+      toast.error('Không thể tải xuống tệp đính kèm');
+    }
+  };
+
+  const updateGpsPoint = (i: number, field: 'lat' | 'lng', dVal: number | null, mVal: number | null, sVal: number | null) => {
+    const d = dVal ?? 0;
+    const m = mVal ?? 0;
+    const s = sVal ?? 0;
+    const dMax = field === 'lat' ? 90 : 180;
+    const dClamped = Math.min(dMax, Math.max(0, d));
+    const mClamped = Math.min(59, Math.max(0, m));
+    const sClamped = Math.min(59.9999, Math.max(0, s));
+    const decimal = dClamped + mClamped / 60 + sClamped / 3600;
+    setCoordinateList((prev) => {
+      const next = [...prev];
+      next[i] = {
+        ...next[i],
+        [field === 'lat' ? 'latitude' : 'longitude']: decimal,
+      };
+      return next;
+    });
+  };
+
+  const renderDms = (i: number, field: 'lat' | 'lng', r: { latitude: number | null; longitude: number | null }) => {
+    const v = field === 'lat' ? (r.latitude ?? 0) : (r.longitude ?? 0);
+    const dms = ddToDms(v);
+    const maxD = field === 'lat' ? 90 : 180;
+    return (
+      <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
+        <InputNumber
+          value={dms.d}
+          min={0}
+          max={maxD}
+          precision={0}
+          placeholder="Độ"
+          controls={false}
+          onFocus={(e) => e.currentTarget.select()}
+          onChange={(x) => updateGpsPoint(i, field, x, dms.m, dms.s)}
+          style={{ flex: 1, minWidth: 0, textAlign: 'center' }}
+        />
+        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span>
+        <InputNumber
+          value={dms.m}
+          min={0}
+          max={59}
+          precision={0}
+          placeholder="Phút"
+          controls={false}
+          onFocus={(e) => e.currentTarget.select()}
+          onChange={(x) => updateGpsPoint(i, field, dms.d, x, dms.s)}
+          style={{ flex: 1, minWidth: 0, textAlign: 'center' }}
+        />
+        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span>
+        <InputNumber
+          value={dms.s}
+          min={0}
+          max={59.9999}
+          step={0.01}
+          placeholder="Giây"
+          controls={false}
+          onFocus={(e) => e.currentTarget.select()}
+          onChange={(x) => updateGpsPoint(i, field, dms.d, dms.m, x)}
+          style={{ flex: 1.2, minWidth: 0, textAlign: 'center' }}
+        />
+        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span>
+      </Space.Compact>
+    );
+  };
+
   useEffect(() => {
     setCurrentMode(mode);
   }, [mode]);
@@ -197,6 +351,7 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
     if (open) {
       portCRUD.getOptions().then((res) => setPortOptions(Array.isArray(res) ? res : [])).catch(() => {});
       vtsSystemCRUD.getOptions().then((res) => setVtsSystemOptions(Array.isArray(res) ? res : [])).catch(() => {});
+      symbolService.getOptions().then((res) => setSymbols(Array.isArray(res) ? res : [])).catch(() => {});
     }
   }, [open]);
 
@@ -207,26 +362,51 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
     setApprovalSectionOpen(true);
 
     if (editId) {
+      if (initialData) {
+        setRecord(initialData);
+        const pts = parseWktToCoordinates(initialData.coordinates);
+        if (pts.length > 0) setCoordinateList(pts);
+        form.setFieldsValue({
+          code: initialData.code,
+          name: initialData.name,
+          orgUnitId: initialData.orgUnitId,
+          portId: initialData.portId,
+          vtsSystemId: initialData.vtsSystemId,
+          provinceId: initialData.provinceId != null ? String(initialData.provinceId) : undefined,
+          detailedLocation: initialData.detailedLocation,
+          coverage: initialData.coverage,
+          conditionStatus: initialData.conditionStatus || ConditionStatus.OPERATIONAL,
+          note: initialData.note,
+          geometryType: initialData.geometryType || 'POINT',
+          symbolId: initialData.symbolId,
+          coordinateSystem: (initialData as any).coordinateSystem || 'WGS 84 / VN-2000',
+          displayRule: (initialData as any).displayRule || 'Độ, phút, giây (DMS)',
+        });
+      }
       setIsLoading(true);
       Promise.all([
         vtsOperationCenterService.getById(editId),
         vtsOperationCenterService.listAttachments(editId).catch(() => []),
-        vtsOperationCenterService.getHistory(editId).catch(() => []),
-      ]).then(([res, atts, hists]) => {
+      ]).then(([res, atts]) => {
         setRecord(res);
         setAttachments(atts || []);
-        setHistoryList(hists || []);
+        const pts = parseWktToCoordinates(res.coordinates);
+        setCoordinateList(pts.length > 0 ? pts : [{ latitude: 20.8651, longitude: 106.6838 }]);
         form.setFieldsValue({
           code: res.code,
           name: res.name,
           orgUnitId: res.orgUnitId,
           portId: res.portId,
           vtsSystemId: res.vtsSystemId,
-          provinceId: res.provinceId,
+          provinceId: res.provinceId != null ? String(res.provinceId) : undefined,
           detailedLocation: res.detailedLocation,
           coverage: res.coverage,
           conditionStatus: res.conditionStatus || ConditionStatus.OPERATIONAL,
           note: res.note,
+          geometryType: res.geometryType || 'POINT',
+          symbolId: res.symbolId,
+          coordinateSystem: (res as any).coordinateSystem || 'WGS 84 / VN-2000',
+          displayRule: (res as any).displayRule || 'Độ, phút, giây (DMS)',
         });
       }).catch(() => {
         toast.error('Không thể tải chi tiết');
@@ -236,17 +416,23 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
     } else if (isCreateMode) {
       setRecord(null);
       setAttachments([]);
-      setHistoryList([]);
+      setCoordinateList([]);
       form.resetFields();
       vtsOperationCenterService.generateCode().then((res) => {
         form.setFieldsValue({
           code: res.code || 'TT-VTS-AUTO',
           conditionStatus: ConditionStatus.OPERATIONAL,
+          geometryType: 'POINT',
+          coordinateSystem: 'WGS 84 / VN-2000',
+          displayRule: 'Độ, phút, giây (DMS)',
         });
       }).catch(() => {
         form.setFieldsValue({
           code: 'TT-VTS-AUTO',
           conditionStatus: ConditionStatus.OPERATIONAL,
+          geometryType: 'POINT',
+          coordinateSystem: 'WGS 84 / VN-2000',
+          displayRule: 'Độ, phút, giây (DMS)',
         });
       });
     }
@@ -256,42 +442,66 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
   const effectiveOrgUnitId = selectedOrgUnitId || record?.orgUnitId;
 
   const filteredPortOptions = useMemo(() => {
-    if (!effectiveOrgUnitId) return portOptions;
-    return portOptions.filter((p) => !p.orgUnitId || p.orgUnitId === effectiveOrgUnitId);
-  }, [portOptions, effectiveOrgUnitId]);
+    let list = portOptions;
+    if (effectiveOrgUnitId) {
+      list = list.filter((p) => !p.orgUnitId || p.orgUnitId === effectiveOrgUnitId || p.id === record?.portId);
+    }
+    if (record?.portId && !list.some((p) => p.id === record.portId)) {
+      list = [{ id: record.portId, portName: record.portName || record.portId, portCode: (record as any).portCode }, ...list];
+    }
+    return list;
+  }, [portOptions, effectiveOrgUnitId, record?.portId, record?.portName]);
 
   const filteredVtsSystemOptions = useMemo(() => {
-    if (!effectiveOrgUnitId) return vtsSystemOptions;
-    return vtsSystemOptions.filter((v) => !v.orgUnitId || v.orgUnitId === effectiveOrgUnitId);
-  }, [vtsSystemOptions, effectiveOrgUnitId]);
+    let list = vtsSystemOptions;
+    if (effectiveOrgUnitId) {
+      list = list.filter((v) => !v.orgUnitId || v.orgUnitId === effectiveOrgUnitId || v.id === record?.vtsSystemId);
+    }
+    if (record?.vtsSystemId && !list.some((v) => v.id === record.vtsSystemId)) {
+      list = [{ id: record.vtsSystemId, name: record.vtsSystemName || record.vtsSystemId, code: (record as any).vtsSystemCode }, ...list];
+    }
+    return list;
+  }, [vtsSystemOptions, effectiveOrgUnitId, record?.vtsSystemId, record?.vtsSystemName]);
 
   const handleFinish = async (values: any) => {
     const act = actionTypeRef.current;
     setIsSubmitting(true);
     try {
+      const wkt = serializeCoordinatesToWkt(coordinateList, values.geometryType || 'POINT');
       const payload: CreateVtsOperationCenterRequest = {
         code: values.code?.trim(),
         name: values.name?.trim(),
         orgUnitId: values.orgUnitId,
         portId: values.portId,
         vtsSystemId: values.vtsSystemId,
-        provinceId: values.provinceId,
+        provinceId: values.provinceId != null ? Number(values.provinceId) : 1,
         detailedLocation: values.detailedLocation?.trim(),
         coverage: values.coverage?.trim(),
         conditionStatus: values.conditionStatus,
         note: values.note?.trim(),
-        geometryType: 'POINT',
-        coordinates: 'POINT (106.6838 20.8651)',
+        geometryType: values.geometryType || 'POINT',
+        symbolId: values.symbolId,
+        coordinates: wkt || 'POINT (106.6838 20.8651)',
+        coordinateSystem: values.coordinateSystem,
+        displayRule: values.displayRule,
       };
 
       if (isCreateMode) {
         const created = await vtsOperationCenterService.create(payload);
+        if (created?.id && pendingFiles.length > 0) {
+          try {
+            await vtsOperationCenterService.uploadAttachments(created.id, pendingFiles);
+          } catch {
+            toast.warning('Đã tạo trung tâm nhưng không tải lên được một số tệp đính kèm');
+          }
+        }
         if (act === 'submit' && created?.id) {
           await vtsOperationCenterService.submit(created.id);
         } else if (act === 'approve' && created?.id) {
           await vtsOperationCenterService.submit(created.id).catch(() => {});
           await vtsOperationCenterService.approveC2(created.id, 'APPROVED', 'Lưu và phê duyệt trực tiếp');
         }
+        setPendingFiles([]);
         toast.success('Thêm mới thành công');
       } else if (editId) {
         await vtsOperationCenterService.update(editId, payload as UpdateVtsOperationCenterRequest);
@@ -308,62 +518,10 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
     }
   };
 
-  const handleApprove = async (reason?: string) => {
-    if (!editId) return;
-    setIsSubmitting(true);
-    try {
-      if (approveLevel === 'c1') {
-        await vtsOperationCenterService.approveC1(editId, 'APPROVED', reason);
-        toast.success('Phê duyệt cấp 1 thành công');
-      } else {
-        await vtsOperationCenterService.approveC2(editId, 'APPROVED', reason);
-        toast.success('Phê duyệt cấp 2 thành công');
-      }
-      setApproveModalOpen(false);
-      onSuccess?.();
-    } catch (e: any) {
-      toast.error(e?.message || 'Lỗi phê duyệt');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleReject = async () => {
-    if (!editId || !rejectReason.trim()) {
-      toast.error('Vui lòng nhập lý do');
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      await vtsOperationCenterService.reject(editId, rejectReason.trim());
-      toast.success('Từ chối thành công');
-      setRejectModalOpen(false);
-      onSuccess?.();
-    } catch (e: any) {
-      toast.error(e?.message || 'Lỗi từ chối');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const isCreator = currentUser?.id && record?.createdBy === currentUser.id;
-  const canEdit = canEditApprovalRecord(record?.approvalStatus ?? ApprovalStatus.DRAFT, {
-    hasPerm,
-    resource: 'vtsoperationcenter',
-  });
-
-  const showSubmitBtn = hasPerm('vtsoperationcenter:update') && (
-    record?.approvalStatus === ApprovalStatus.DRAFT ||
-    record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 ||
-    record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL2
-  );
-
-  const showApproveC1Btn = hasPerm('vtsoperationcenter:approvec1') && record?.approvalStatus === ApprovalStatus.PENDING_APPROVAL && !isCreator;
-  const showApproveC2Btn = hasPerm('vtsoperationcenter:approvec2') && record?.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 && !isCreator;
-
   // ── Render Detail View ──────────────────────────────────────────
   const renderDetailContent = () => {
     if (!record) return null;
+
     return (
       <Tabs
         activeKey={detailTabKey}
@@ -375,7 +533,7 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
             key: 'general',
             label: 'Thông tin chung',
             children: (
-              <div>
+              <div style={{ maxHeight: 'calc(100vh - 210px)', overflowY: 'auto', overflowX: 'hidden', padding: '0 8px 16px 2px', boxSizing: 'border-box' }}>
                 <div className="chk-detail-grid">
                   <div className="chk-detail-row"><span className="chk-detail-label">Mã trung tâm</span><span className="chk-detail-value">{record.code || '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Tên trung tâm</span><span className="chk-detail-value">{record.name || '—'}</span></div>
@@ -385,8 +543,18 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
                   <div className="chk-detail-row"><span className="chk-detail-label">Địa điểm (Tỉnh/TP)</span><span className="chk-detail-value">{record.provinceName || getProvinceNameById(record.provinceId) || '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Địa điểm chi tiết</span><span className="chk-detail-value">{record.detailedLocation || '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Tình trạng</span><span className="chk-detail-value">{renderConditionBadge(record.conditionStatus)}</span></div>
-                  <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Vùng phủ sóng</span><span className="chk-detail-value">{record.coverage || '—'}</span></div>
-                  <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Ghi chú</span><span className="chk-detail-value">{record.note || '—'}</span></div>
+
+                  <div className="chk-detail-row"><span className="chk-detail-label">Ngày cập nhật</span><span className="chk-detail-value">{record.updatedAt ? dayjs(record.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
+                  <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ cập nhật</span><span className="chk-detail-value">{record.updatedByName || record.updatedBy || record.createdByName || '—'}</span></div>
+
+                  <div className="chk-detail-row chk-detail-row--full">
+                    <span className="chk-detail-label">Vùng phủ sóng</span>
+                    <span className="chk-detail-value">{record.coverage || '—'}</span>
+                  </div>
+                  <div className="chk-detail-row chk-detail-row--full">
+                    <span className="chk-detail-label">Ghi chú</span>
+                    <span className="chk-detail-value">{record.note || '—'}</span>
+                  </div>
                 </div>
 
                 {/* ── Thông tin phê duyệt (Toggle Dropdown) ── */}
@@ -430,8 +598,12 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
                     <div style={{ border: 'none' }} />
 
                     <div className="chk-detail-row"><span className="chk-detail-label">Trạng thái phê duyệt</span><span className="chk-detail-value"><ApprovalStatusBadge status={record.approvalStatus} /></span></div>
+                    <div style={{ border: 'none' }} />
+
                     {record.rejectionReason && (
-                      <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Lý do từ chối</span><span className="chk-detail-value" style={{ color: statusCritical }}>{record.rejectionReason}</span></div>
+                      <>
+                        <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Lý do từ chối</span><span className="chk-detail-value" style={{ color: statusCritical }}>{record.rejectionReason}</span></div>
+                      </>
                     )}
                   </div>
                 )}
@@ -439,111 +611,73 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
             ),
           },
           {
-            key: 'equipments',
-            label: `Danh sách thiết bị (${MOCK_EQUIPMENTS.length})`,
-            children: (
-              <DetailTable
-                dataSource={MOCK_EQUIPMENTS}
-                rowKey="id"
-                columns={[
-                  { title: 'STT', width: 50 },
-                  { title: 'Mã thiết bị', dataIndex: 'code', key: 'code', width: 120, render: (v) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>{v || '—'}</span> },
-                  { title: 'Tên thiết bị', dataIndex: 'name', key: 'name', width: 200, render: (v) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>{v || '—'}</span> },
-                  { title: 'Loại thiết bị', dataIndex: 'type', key: 'type', width: 150, render: (v) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>{v || '—'}</span> },
-                  { title: 'Thông số kỹ thuật', dataIndex: 'spec', key: 'spec', width: 220, render: (v) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>{v || '—'}</span> },
-                  { title: 'Tình trạng', dataIndex: 'status', key: 'status', width: 140, render: (v) => renderConditionBadge(v) },
-                ]}
-              />
-            ),
-          },
-          {
-            key: 'operations',
-            label: `Vận hành khai thác (${MOCK_OPERATIONS.length})`,
-            children: (
-              <DetailTable
-                dataSource={MOCK_OPERATIONS}
-                rowKey="id"
-                columns={[
-                  { title: 'STT', width: 50 },
-                  { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'planCode', width: 120, render: (v) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>{v || '—'}</span> },
-                  { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'planName', width: 200, render: (v) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>{v || '—'}</span> },
-                  { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'startDate', width: 110, align: 'center', render: (v) => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
-                  { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'endDate', width: 110, align: 'center', render: (v) => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
-                  { title: 'Đơn vị thực hiện', dataIndex: 'orgName', key: 'orgName', width: 180, render: (v) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>{v || '—'}</span> },
-                  { title: 'Trạng thái', dataIndex: 'status', key: 'status', width: 140, render: (v) => renderPlanStatusBadge(v) },
-                ]}
-              />
-            ),
-          },
-          {
-            key: 'maintenance',
-            label: `Thông tin bảo trì (${MOCK_MAINTENANCE.length})`,
-            children: (
-              <DetailTable
-                dataSource={MOCK_MAINTENANCE}
-                rowKey="id"
-                columns={[
-                  { title: 'STT', width: 50 },
-                  { title: 'Mã kế hoạch', dataIndex: 'maintCode', key: 'maintCode', width: 120, render: (v) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>{v || '—'}</span> },
-                  { title: 'Tên hạng mục', dataIndex: 'maintName', key: 'maintName', width: 200, render: (v) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>{v || '—'}</span> },
-                  { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'startDate', width: 110, align: 'center', render: (v) => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
-                  { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'endDate', width: 110, align: 'center', render: (v) => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
-                  { title: 'Đơn vị thực hiện', dataIndex: 'orgName', key: 'orgName', width: 180, render: (v) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>{v || '—'}</span> },
-                  { title: 'Chi phí dự kiến (VNĐ)', dataIndex: 'estimatedCost', key: 'estimatedCost', width: 160, align: 'right', render: (v) => v ? Number(v).toLocaleString('vi-VN') : '—' },
-                  { title: 'Trạng thái', dataIndex: 'status', key: 'status', width: 130, render: (v) => renderPlanStatusBadge(v) },
-                ]}
-              />
-            ),
-          },
-          {
-            key: 'incidents',
-            label: `Thông tin sự cố (${MOCK_INCIDENTS.length})`,
-            children: (
-              <DetailTable
-                dataSource={MOCK_INCIDENTS}
-                rowKey="id"
-                columns={[
-                  { title: 'STT', width: 50 },
-                  { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'incidentCode', width: 120, render: (v) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>{v || '—'}</span> },
-                  { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'incidentType', width: 170, render: (v) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>{v || '—'}</span> },
-                  { title: 'Địa điểm', dataIndex: 'location', key: 'location', width: 180, render: (v) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>{v || '—'}</span> },
-                  { title: 'Thời gian xảy ra', dataIndex: 'incidentTime', key: 'incidentTime', width: 140, align: 'center', render: (v) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—' },
-                  { title: 'Mức độ', dataIndex: 'severity', key: 'severity', width: 110, render: (v) => renderSeverityBadge(v) },
-                  { title: 'Tình trạng xử lý', dataIndex: 'handleStatus', key: 'handleStatus', width: 130, render: (v) => renderPlanStatusBadge(v) },
-                ]}
-              />
-            ),
-          },
-          {
             key: 'gis',
-            label: `Thông tin vị trí (${MOCK_GPS_COORDS.length})`,
+            label: `Thông tin vị trí (${coordinateList.length || 1})`,
             children: (
               <DetailTable
-                dataSource={MOCK_GPS_COORDS}
+                scrollY="calc(100vh - 428px)"
+                dataSource={coordinateList.length > 0 ? coordinateList : [{ latitude: 20.8651, longitude: 106.6838 }]}
                 emptyText="Chưa có tọa độ GPS nào"
                 headerNode={
                   <>
                     <div className="chk-detail-grid" style={{ marginBottom: 16 }}>
-                      <div className="chk-detail-row"><span className="chk-detail-label">Loại đối tượng</span><span className="chk-detail-value">{record?.geometryType || 'Đối tượng điểm'}</span></div>
-                      <div className="chk-detail-row"><span className="chk-detail-label">Biểu tượng bản đồ</span><span className="chk-detail-value">{record?.symbolId ? `Biểu tượng (${record.symbolId})` : 'Trung tâm điều hành VTS (VTS-SYM-01)'}</span></div>
-                      <div className="chk-detail-row"><span className="chk-detail-label">Hệ quy chiếu</span><span className="chk-detail-value">WGS-84 (Toàn cầu)</span></div>
-                      <div className="chk-detail-row"><span className="chk-detail-label">Quy tắc hiển thị</span><span className="chk-detail-value">Hiển thị theo phạm vi hoạt động</span></div>
+                      <div className="chk-detail-row"><span className="chk-detail-label">Loại đối tượng</span><span className="chk-detail-value">{record?.geometryType === 'LINE' ? 'Đối tượng đường' : record?.geometryType === 'POLYGON' ? 'Đối tượng vùng' : 'Đối tượng điểm'}</span></div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label">Biểu tượng bản đồ</span>
+                        <span className="chk-detail-value">
+                          {(() => {
+                            const symId = record?.symbolId;
+                            const sym = symbols.find((s) => s.id === symId || s.code === symId || (symId && String(s.id) === String(symId)));
+                            if (sym) {
+                              const imgSrc = sym.image
+                                ? (sym.image.startsWith('data:') || sym.image.startsWith('http') || sym.image.startsWith('/')
+                                    ? sym.image
+                                    : `data:image/png;base64,${sym.image}`)
+                                : undefined;
+                              return (
+                                <Space size={8} align="center" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                  {imgSrc ? (
+                                    <img
+                                      src={imgSrc}
+                                      alt={sym.name || ''}
+                                      style={{ width: 20, height: 20, objectFit: 'contain', verticalAlign: 'middle', display: 'inline-block' }}
+                                      onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                                    />
+                                  ) : (
+                                    <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', backgroundColor: actionPrimary }} />
+                                  )}
+                                  <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
+                                </Space>
+                              );
+                            }
+                            return (
+                              <Space size={8} align="center" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', backgroundColor: actionPrimary }} />
+                                <span>{(record as any)?.symbolName || (record?.symbolId ? `Biểu tượng (${record.symbolId})` : 'Trung tâm điều hành VTS')}</span>
+                              </Space>
+                            );
+                          })()}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row"><span className="chk-detail-label">Hệ quy chiếu</span><span className="chk-detail-value">WGS 84 / VN-2000</span></div>
+                      <div className="chk-detail-row"><span className="chk-detail-label">Quy tắc hiển thị</span><span className="chk-detail-value">Độ, phút, giây (DMS)</span></div>
                     </div>
                     <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
                       <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px' }}>
-                        Tọa độ GPS ({MOCK_GPS_COORDS.length})
+                        Tọa độ GPS ({coordinateList.length || 1})
                       </span>
                       <Button
-                        icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
-                        onClick={() => toast.info('Đang mở bản đồ GIS...')}
+                        type="primary"
+                        icon={<EnvironmentOutlined />}
+                        onClick={() => setMapModalOpen(true)}
                         style={{
-                          ...outlineButtonStyle,
+                          ...primaryButtonStyle,
                           height: 32,
                           fontSize: fontSizeSm,
                           padding: '0 14px',
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: 4,
+                          gap: 6,
                         }}
                       >
                         Xem vị trí trên bản đồ
@@ -552,7 +686,7 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
                   </>
                 }
                 columns={[
-                  { title: 'STT', width: 50 },
+                  { title: 'STT', width: 50, align: 'center', render: (_: any, __: any, i: number) => i + 1 },
                   {
                     title: 'Vĩ độ (Latitude - N)',
                     key: 'lat',
@@ -577,45 +711,10 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
             key: 'files',
             label: `File đính kèm (${attachments.length})`,
             children: (
-              <DetailTable
-                dataSource={attachments}
-                rowKey="id"
-                columns={[
-                  { title: 'STT', width: 50 },
-                  {
-                    title: 'Tên tài liệu',
-                    dataIndex: 'fileName',
-                    key: 'fileName',
-                    render: (v) => (
-                      <Space>
-                        <FileOutlined style={{ color: actionPrimary }} />
-                        <span style={{ color: actionPrimary, fontWeight: fontWeightMedium }}>{v || '—'}</span>
-                      </Space>
-                    ),
-                  },
-                  {
-                    title: 'Dung lượng',
-                    dataIndex: 'fileSize',
-                    key: 'fileSize',
-                    width: 130,
-                    render: (v) => v ? `${(Number(v) / 1024).toFixed(1)} KB` : '—',
-                  },
-                  {
-                    title: 'Người tải lên',
-                    dataIndex: 'uploadedBy',
-                    key: 'uploadedBy',
-                    width: 180,
-                    render: (v) => v || '—',
-                  },
-                  {
-                    title: 'Ngày tải lên',
-                    dataIndex: 'uploadedDate',
-                    key: 'uploadedDate',
-                    width: 140,
-                    align: 'center',
-                    render: (v) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—',
-                  },
-                ]}
+              <InfrastructureAttachmentTab
+                attachments={attachments}
+                readonly={true}
+                onDownload={handleDownloadAttachment}
               />
             ),
           },
@@ -624,73 +723,20 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
     );
   };
 
-  const detailFooter = (
-    <div style={drawerFooterStyle}>
-      <Button onClick={onCancel} style={outlineButtonStyle}>Đóng</Button>
-      {canEdit && (
-        <Button
-          type="primary"
-          icon={icons.edit}
-          onClick={() => setCurrentMode('edit')}
-          style={primaryButtonStyle}
-        >
-          Chỉnh sửa
-        </Button>
-      )}
-      {showSubmitBtn && (
-        <Button
-          type="primary"
-          icon={icons.submit}
-          onClick={async () => {
-            if (!editId) return;
-            try {
-              await vtsOperationCenterService.submit(editId);
-              toast.success('Gửi duyệt thành công');
-              onSuccess?.();
-            } catch (e: any) {
-              toast.error(e?.message || 'Lỗi gửi duyệt');
-            }
-          }}
-          style={primaryButtonStyle}
-        >
-          Gửi duyệt
-        </Button>
-      )}
-      {showApproveC1Btn && (
-        <Space>
-          <Button danger icon={icons.reject} onClick={() => { setRejectReason(''); setRejectModalOpen(true); }} style={dangerButtonStyle}>
-            Từ chối cấp 1
-          </Button>
-          <Button type="primary" icon={icons.approve} onClick={() => { setApproveLevel('c1'); setApproveModalOpen(true); }} style={primaryButtonStyle}>
-            Phê duyệt cấp 1
-          </Button>
-        </Space>
-      )}
-      {showApproveC2Btn && (
-        <Space>
-          <Button danger icon={icons.reject} onClick={() => { setRejectReason(''); setRejectModalOpen(true); }} style={dangerButtonStyle}>
-            Từ chối cấp 2
-          </Button>
-          <Button type="primary" icon={icons.approve} onClick={() => { setApproveLevel('c2'); setApproveModalOpen(true); }} style={primaryButtonStyle}>
-            Phê duyệt cấp 2
-          </Button>
-        </Space>
-      )}
-    </div>
-  );
-
   return (
     <Drawer
       rootClassName="vtssystemchk-theme-scope"
-      width="50%"
+      size="50%"
       placement="right"
       closable={false}
       open={open}
       onClose={onCancel}
       styles={{
         header: { padding: '16px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-        body: { padding: '0 24px 16px 24px' },
-        footer: { padding: '16px 24px', borderTop: `1px solid ${borderDefault}`, display: 'flex', justifyContent: 'center', alignItems: 'center' },
+        body: { padding: '0 24px 0 24px', overflow: 'hidden' },
+        ...(isDetailMode ? {} : {
+          footer: { padding: '12px 24px', borderTop: `1px solid ${borderDefault}`, display: 'flex', justifyContent: 'center', alignItems: 'center' },
+        }),
       }}
       title={
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -719,7 +765,7 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
         </div>
       }
       footer={
-        isDetailMode ? detailFooter : (
+        isDetailMode ? null : (
           <div style={drawerFooterStyle}>
             {isCreateMode ? (
               <>
@@ -748,7 +794,6 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
                     Lưu và phê duyệt
                   </Button>
                 )}
-                <Button onClick={onCancel} style={outlineButtonStyle}>Hủy</Button>
               </>
             ) : (
               <>
@@ -786,190 +831,403 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
                   key: 'general',
                   label: 'Thông tin chung',
                   children: (
-                    <Row gutter={[24, 0]}>
-                      <Col span={12}>
-                        <Form.Item
-                          label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị quản lý</span>}
-                          name="orgUnitId"
-                          rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <OrgUnitTreeSelect
-                            organizations={orgUnits}
-                            placeholder="Chọn đơn vị quản lý"
-                            allowClear
-                            treeDefaultExpandAll={true}
-                            listHeight={256}
-                            onChange={(val) => {
-                              form.setFieldsValue({ orgUnitId: val, portId: undefined, vtsSystemId: undefined });
-                            }}
-                            style={{ ...selectStyle, width: '100%' }}
-                          />
-                        </Form.Item>
-                      </Col>
+                    <div style={{ maxHeight: 'calc(100vh - 210px)', overflowY: 'auto', overflowX: 'hidden', padding: '0 8px 16px 2px', boxSizing: 'border-box' }}>
+                      <Row gutter={[24, 0]}>
+                        <Col span={12}>
+                          <Form.Item
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị quản lý</span>}
+                            name="orgUnitId"
+                            rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <FormOrgUnitTreeSelect
+                              organizations={orgUnits}
+                              placeholder="Chọn đơn vị quản lý"
+                              disabled={isEditMode}
+                              allowClear
+                              onChange={(val) => {
+                                form.setFieldsValue({ orgUnitId: val, portId: undefined, vtsSystemId: undefined });
+                              }}
+                            />
+                          </Form.Item>
+                        </Col>
 
-                      <Col span={12}>
-                        <Form.Item
-                          label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thuộc cảng biển</span>}
-                          name="portId"
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            placeholder="Chọn cảng biển"
-                            allowClear
-                            showSearch
-                            filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}
-                            options={filteredPortOptions.map((p) => ({
-                              value: p.id,
-                              label: p.portCode ? `${p.portCode} - ${p.portName}` : (p.portName || p.id),
-                            }))}
-                            style={selectStyle}
-                          />
-                        </Form.Item>
-                      </Col>
+                        <Col span={12}>
+                          <Form.Item
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thuộc cảng biển</span>}
+                            name="portId"
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <Select
+                              placeholder="Chọn cảng biển"
+                              allowClear
+                              showSearch
+                              filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}
+                              options={filteredPortOptions.map((p) => ({
+                                value: p.id,
+                                label: p.portCode ? `${p.portCode} - ${p.portName}` : (p.portName || p.id),
+                              }))}
+                              style={selectStyle}
+                            />
+                          </Form.Item>
+                        </Col>
 
-                      <Col span={12}>
-                        <Form.Item
-                          label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thuộc hệ thống VTS</span>}
-                          name="vtsSystemId"
-                          rules={[{ required: true, message: 'Vui lòng chọn hệ thống VTS' }]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            placeholder="Chọn hệ thống VTS"
-                            allowClear
-                            showSearch
-                            filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}
-                            options={filteredVtsSystemOptions.map((v) => ({
-                              value: v.id,
-                              label: v.code ? `${v.code} - ${v.systemName || v.name}` : (v.systemName || v.name || v.id),
-                            }))}
-                            style={selectStyle}
-                          />
-                        </Form.Item>
-                      </Col>
+                        <Col span={12}>
+                          <Form.Item
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thuộc hệ thống VTS</span>}
+                            name="vtsSystemId"
+                            rules={[{ required: true, message: 'Vui lòng chọn hệ thống VTS' }]}
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <Select
+                              placeholder="Chọn hệ thống VTS"
+                              allowClear
+                              showSearch
+                              filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}
+                              options={filteredVtsSystemOptions.map((v) => ({
+                                value: v.id,
+                                label: v.code ? `${v.code} - ${v.systemName || v.name}` : (v.systemName || v.name || v.id),
+                              }))}
+                              style={selectStyle}
+                            />
+                          </Form.Item>
+                        </Col>
 
-                      <Col span={12}>
-                        <Form.Item
-                          label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Mã trung tâm điều hành</span>}
-                          name="code"
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input placeholder="Mã tự sinh" disabled={true} style={inputStyle} />
-                        </Form.Item>
-                      </Col>
+                        <Col span={12}>
+                          <Form.Item
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Mã trung tâm điều hành</span>}
+                            name="code"
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <Input placeholder="Mã tự sinh" disabled={true} style={inputStyle} />
+                          </Form.Item>
+                        </Col>
 
-                      <Col span={12}>
-                        <Form.Item
-                          label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tên trung tâm điều hành</span>}
-                          name="name"
-                          rules={[{ required: true, message: 'Vui lòng nhập tên trung tâm điều hành' }]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input placeholder="Nhập tên trung tâm điều hành..." style={inputStyle} />
-                        </Form.Item>
-                      </Col>
+                        <Col span={12}>
+                          <Form.Item
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tên trung tâm điều hành</span>}
+                            name="name"
+                            rules={[{ required: true, message: 'Vui lòng nhập tên trung tâm điều hành' }]}
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <Input placeholder="Nhập tên trung tâm điều hành..." maxLength={255} showCount style={inputStyle} />
+                          </Form.Item>
+                        </Col>
 
-                      <Col span={12}>
-                        <Form.Item
-                          label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm (Tỉnh/TP)</span>}
-                          name="provinceId"
-                          rules={[{ required: true, message: 'Vui lòng chọn tỉnh/thành phố' }]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            placeholder="Chọn địa điểm"
-                            allowClear
-                            showSearch
-                            filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}
-                            options={VIETNAM_PROVINCE_OPTIONS}
-                            style={selectStyle}
-                          />
-                        </Form.Item>
-                      </Col>
+                        <Col span={12}>
+                          <Form.Item
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm (Tỉnh/TP)</span>}
+                            name="provinceId"
+                            rules={[{ required: true, message: 'Vui lòng chọn tỉnh/thành phố' }]}
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <Select
+                              placeholder="Chọn địa điểm"
+                              allowClear
+                              showSearch
+                              filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}
+                              options={VIETNAM_PROVINCE_OPTIONS}
+                              style={selectStyle}
+                            />
+                          </Form.Item>
+                        </Col>
 
-                      <Col span={12}>
-                        <Form.Item
-                          label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm chi tiết</span>}
-                          name="detailedLocation"
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input placeholder="Nhập địa điểm chi tiết..." style={inputStyle} />
-                        </Form.Item>
-                      </Col>
+                        <Col span={12}>
+                          <Form.Item
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm chi tiết</span>}
+                            name="detailedLocation"
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <Input placeholder="Nhập địa điểm chi tiết..." maxLength={500} showCount style={inputStyle} />
+                          </Form.Item>
+                        </Col>
 
-                      <Col span={12}>
-                        <Form.Item
-                          label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tình trạng</span>}
-                          name="conditionStatus"
-                          rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select placeholder="Chọn tình trạng" options={CONDITION_STATUS_OPTIONS} style={selectStyle} />
-                        </Form.Item>
-                      </Col>
+                        <Col span={12}>
+                          <Form.Item
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tình trạng</span>}
+                            name="conditionStatus"
+                            rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <Select placeholder="Chọn tình trạng" options={CONDITION_STATUS_OPTIONS} style={selectStyle} />
+                          </Form.Item>
+                        </Col>
 
-                      <Col span={24}>
-                        <Form.Item
-                          label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Vùng phủ sóng</span>}
-                          name="coverage"
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input.TextArea placeholder="Nhập phạm vi vùng phủ sóng..." rows={3} style={textAreaStyle} />
-                        </Form.Item>
-                      </Col>
+                        <Col span={24}>
+                          <Form.Item
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Vùng phủ sóng</span>}
+                            name="coverage"
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <Input.TextArea placeholder="Mô tả phạm vi hoặc vùng phủ sóng của trung tâm điều hành VTS" rows={3} maxLength={2000} showCount style={textAreaStyle} />
+                          </Form.Item>
+                        </Col>
 
-                      <Col span={24}>
-                        <Form.Item
-                          label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Ghi chú</span>}
-                          name="note"
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input.TextArea placeholder="Nhập ghi chú thêm..." rows={3} style={textAreaStyle} />
-                        </Form.Item>
-                      </Col>
-                    </Row>
+                        <Col span={24}>
+                          <Form.Item
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Ghi chú</span>}
+                            name="note"
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <Input.TextArea placeholder="Nhập ghi chú thêm nếu có..." rows={3} maxLength={2000} showCount style={textAreaStyle} />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </div>
                   ),
                 },
                 {
                   key: 'gis',
                   label: 'Thông tin vị trí',
                   children: (
-                    <DetailTable
-                      dataSource={MOCK_GPS_COORDS}
-                      rowKey="id"
-                      columns={[
-                        { title: 'STT', width: 50 },
-                        { title: 'Kinh độ (Độ thập phân)', dataIndex: 'longitude', key: 'longitude' },
-                        { title: 'Vĩ độ (Độ thập phân)', dataIndex: 'latitude', key: 'latitude' },
-                        { title: 'Kinh độ (DMS)', key: 'dmsLng', render: () => "106°41'1.68\"E" },
-                        { title: 'Vĩ độ (DMS)', key: 'dmsLat', render: () => "20°51'54.36\"N" },
-                      ]}
-                    />
+                    <div style={{ maxHeight: 'calc(100vh - 210px)', overflowY: 'auto', overflowX: 'hidden', padding: '0 8px 16px 2px', boxSizing: 'border-box' }}>
+                      <Row gutter={[24, 0]}>
+                        <Col span={12}>
+                          <Form.Item
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Loại đối tượng</span>}
+                            name="geometryType"
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <Select
+                              placeholder="Chọn loại đối tượng"
+                              allowClear
+                              options={[
+                                { value: 'POINT', label: 'Đối tượng điểm' },
+                                { value: 'LINE', label: 'Đối tượng đường' },
+                                { value: 'POLYGON', label: 'Đối tượng vùng' },
+                              ]}
+                              style={selectStyle}
+                              onChange={(val) => {
+                                form.setFieldValue('geometryType', val);
+                                if (val) {
+                                  form.setFieldValue('coordinateSystem', 'WGS 84 / VN-2000');
+                                  form.setFieldValue('displayRule', 'Độ, phút, giây (DMS)');
+                                  const minCount = val === 'POLYGON' ? 3 : (val === 'LINE' ? 2 : 1);
+                                  setCoordinateList((prev) => {
+                                    if (val === 'POINT') {
+                                      return prev.length > 0 ? [prev[0]] : [{ latitude: 20.8651, longitude: 106.6838 }];
+                                    }
+                                    if (prev.length >= minCount) return prev;
+                                    const baseLat = prev[0]?.latitude ?? 20.8651;
+                                    const baseLng = prev[0]?.longitude ?? 106.6838;
+                                    const delta = 0.005;
+                                    if (prev.length === 1 && prev[0].latitude != null && prev[0].longitude != null) {
+                                      if (val === 'POLYGON') {
+                                        return [
+                                          prev[0],
+                                          { latitude: baseLat + delta, longitude: baseLng + delta },
+                                          { latitude: baseLat - delta, longitude: baseLng + delta },
+                                        ];
+                                      } else if (val === 'LINE') {
+                                        return [
+                                          prev[0],
+                                          { latitude: baseLat + delta, longitude: baseLng + delta },
+                                        ];
+                                      }
+                                    }
+                                    const added = Array.from({ length: minCount - prev.length }, (_, i) => ({
+                                      latitude: baseLat + (i + 1) * delta,
+                                      longitude: baseLng + (i + 1) * delta,
+                                    }));
+                                    return [...prev, ...added];
+                                  });
+                                } else {
+                                  form.setFieldValue('coordinateSystem', undefined);
+                                  form.setFieldValue('displayRule', undefined);
+                                  form.setFieldValue('symbolId', undefined);
+                                }
+                              }}
+                            />
+                          </Form.Item>
+                        </Col>
+
+                        <Col span={12}>
+                          <Form.Item
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Biểu tượng</span>}
+                            name="symbolId"
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <Select
+                              placeholder="Chọn biểu tượng bản đồ"
+                              allowClear
+                              disabled={!watchedGeometryType}
+                              options={symbols.map((sym) => ({
+                                value: sym.id,
+                                label: (
+                                  <Space size={6} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                    {sym.image ? (
+                                      <img
+                                        src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`}
+                                        alt={sym.name}
+                                        style={{ width: 16, height: 16, objectFit: 'contain', verticalAlign: 'middle' }}
+                                      />
+                                    ) : (
+                                      <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: actionPrimary }} />
+                                    )}
+                                    <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
+                                  </Space>
+                                ),
+                              }))}
+                              style={selectStyle}
+                            />
+                          </Form.Item>
+                        </Col>
+
+                        <Col span={12}>
+                          <Form.Item
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Hệ quy chiếu</span>}
+                            name="coordinateSystem"
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <Select
+                              placeholder="Chọn hệ quy chiếu"
+                              allowClear
+                              options={[
+                                { value: 'WGS 84 / VN-2000', label: 'WGS 84 / VN-2000' },
+                                { value: 'WGS-84', label: 'WGS-84' },
+                                { value: 'VN-2000', label: 'VN-2000' },
+                              ]}
+                              style={selectStyle}
+                            />
+                          </Form.Item>
+                        </Col>
+
+                        <Col span={12}>
+                          <Form.Item
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Quy tắc hiển thị</span>}
+                            name="displayRule"
+                            initialValue="Độ, phút, giây (DMS)"
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <Input
+                              disabled
+                              style={{ ...readonlyInputStyle, borderRadius: radiusPill, height: 40 }}
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+                        <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
+                          Tọa độ
+                        </span>
+                        <Space>
+                          <Button
+                            icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+                            onClick={() => setMapModalOpen(true)}
+                            style={{
+                              borderRadius: radiusPill,
+                              height: 32,
+                              padding: '0 14px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              borderColor: actionPrimary,
+                              color: actionPrimary,
+                            }}
+                          >
+                            Chọn vị trí trên bản đồ
+                          </Button>
+                          {watchedGeometryType && watchedGeometryType !== 'POINT' && (
+                            <Button
+                              icon={<PlusOutlined />}
+                              onClick={() => setCoordinateList((p) => [...p, { latitude: 20.8651, longitude: 106.6838 }])}
+                              style={{ borderRadius: radiusPill, height: 32 }}
+                            >
+                              Thêm tọa độ
+                            </Button>
+                          )}
+                        </Space>
+                      </div>
+
+                      {coordinateList.length === 0 ? (
+                        <div
+                          style={{
+                            padding: '36px 16px',
+                            textAlign: 'center',
+                            border: `1px dashed ${borderDefault}`,
+                            borderRadius: radiusMd,
+                            background: '#fafbfc',
+                          }}
+                        >
+                          <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>
+                            Chưa có tọa độ nào.
+                          </span>
+                          <Button
+                            icon={<PlusOutlined />}
+                            onClick={() => setCoordinateList([{ latitude: 20.8651, longitude: 106.6838 }])}
+                            style={{ borderRadius: radiusPill, ...outlineButtonStyle }}
+                          >
+                            Thêm tọa độ
+                          </Button>
+                        </div>
+                      ) : (
+                        <Table
+                          className="list-view-table"
+                          rowKey="_idx"
+                          size="small"
+                          bordered
+                          pagination={false}
+                          dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))}
+                          scroll={{ x: 600 }}
+                          columns={[
+                            {
+                              title: 'STT',
+                              key: 'stt',
+                              width: 60,
+                              align: 'center',
+                              render: (_: any, __: any, i: number) => (
+                                <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>
+                              ),
+                              onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '10px 8px' } }),
+                            },
+                            {
+                              title: 'Vĩ độ (N)',
+                              key: 'lat',
+                              render: (_: any, r: any) => renderDms(r._idx, 'lat', r),
+                              onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '10px 8px' } }),
+                            },
+                            {
+                              title: 'Kinh độ (E)',
+                              key: 'lng',
+                              render: (_: any, r: any) => renderDms(r._idx, 'lng', r),
+                              onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '10px 8px' } }),
+                            },
+                            {
+                              title: '',
+                              key: 'actions',
+                              width: 50,
+                              align: 'center',
+                              render: (_: any, r: any) => (
+                                <Button
+                                  type="text"
+                                  danger
+                                  size="small"
+                                  icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                                  style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                  onClick={() => setCoordinateList((p) => p.filter((_, idx) => idx !== r._idx))}
+                                  title="Xóa tọa độ"
+                                />
+                              ),
+                              onHeaderCell: () => ({ style: { background: colors.bodyBg, padding: '10px 6px' } }),
+                            },
+                          ]}
+                        />
+                      )}
+                    </div>
                   ),
                 },
                 {
                   key: 'files',
                   label: `File đính kèm (${attachments.length})`,
                   children: (
-                    <div>
-                      <div style={{ marginBottom: 16 }}>
-                        <Upload beforeUpload={() => false} multiple>
-                          <Button icon={<UploadOutlined />} style={outlineButtonStyle}>Tải lên tài liệu</Button>
-                        </Upload>
-                      </div>
-                      <DetailTable
-                        dataSource={attachments}
-                        rowKey="id"
-                        columns={[
-                          { title: 'STT', width: 50 },
-                          { title: 'Tên tài liệu', dataIndex: 'fileName', key: 'fileName', render: (v) => <span style={{ color: actionPrimary }}>{v || '—'}</span> },
-                          { title: 'Dung lượng', dataIndex: 'fileSize', key: 'fileSize', width: 130, render: (v) => v ? `${(Number(v)/1024).toFixed(1)} KB` : '—' },
-                          { title: 'Người tải lên', dataIndex: 'uploadedBy', key: 'uploadedBy', width: 180, render: (v) => v || '—' },
-                          { title: 'Ngày tải lên', dataIndex: 'uploadedDate', key: 'uploadedDate', width: 140, align: 'center', render: (v) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—' },
-                        ]}
-                      />
-                    </div>
+                    <InfrastructureAttachmentTab
+                      attachments={attachments}
+                      readonly={!attachmentsEditable}
+                      onUpload={handleUploadAttachment}
+                      onDelete={handleDeleteAttachment}
+                      onDownload={handleDownloadAttachment}
+                    />
                   ),
                 },
               ]}
@@ -978,33 +1236,65 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
         )}
       </Spin>
 
-      {/* Approval Modal */}
-      <ApprovalModal
-        visible={approveModalOpen}
-        level={approveLevel}
-        onConfirm={handleApprove}
-        onCancel={() => setApproveModalOpen(false)}
-      />
-
-      {/* Rejection Modal */}
+      {/* Modal Chọn vị trí GIS trên bản đồ */}
       <Modal
-        title="Từ chối phê duyệt"
-        open={rejectModalOpen}
-        onCancel={() => setRejectModalOpen(false)}
-        onOk={handleReject}
-        okText="Từ chối"
-        cancelText="Hủy"
-        okButtonProps={{ danger: true }}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <EnvironmentOutlined style={{ color: actionPrimary }} />
+            <span style={{ fontWeight: fontWeightBold, color: sidebarBg, fontSize: fontSizeLg }}>
+              {isDetailMode ? 'Xem vị trí trên bản đồ chuyên dụng' : 'Chọn vị trí & tọa độ trên bản đồ chuyên dụng'}
+            </span>
+          </div>
+        }
+        open={mapModalOpen}
+        onCancel={() => setMapModalOpen(false)}
+        destroyOnHidden
+        width="90vw"
+        style={{ top: 20, maxWidth: '1400px' }}
+        footer={
+          isDetailMode ? null : [
+            <Button
+              key="ok"
+              type="primary"
+              onClick={() => {
+                setMapModalOpen(false);
+                toast.success('Đã xác nhận vị trí từ bản đồ');
+              }}
+              style={{ ...primaryButtonStyle, height: 36, borderRadius: radiusPill }}
+            >
+              Xác nhận tọa độ
+            </Button>,
+          ]
+        }
       >
-        <p style={{ marginBottom: spaceFormField }}>Nhập lý do từ chối:</p>
-        <Input.TextArea
-          rows={3}
-          value={rejectReason}
-          onChange={(e) => setRejectReason(e.target.value)}
-          placeholder="Nhập lý do từ chối..."
-          style={textAreaStyle}
-        />
+        <div style={{ padding: '8px 0' }}>
+          <GisLocationSelector
+            inline={true}
+            height={560}
+            disabled={isDetailMode}
+            value={{
+              geometryType: watchedGeometryType || 'POINT',
+              coordinates: serializeCoordinatesToWkt(coordinateList, watchedGeometryType || 'POINT'),
+              symbolId: form.getFieldValue('symbolId'),
+            }}
+            defaultGeometryType={(watchedGeometryType as any) || 'POINT'}
+            onChange={(val) => {
+              if (isDetailMode) return;
+              if (val?.coordinates) {
+                const pts = parseWktToCoordinates(val.coordinates);
+                if (pts.length > 0) setCoordinateList(pts);
+              }
+              if (val?.geometryType) {
+                form.setFieldValue('geometryType', val.geometryType);
+              }
+              if (val?.symbolId) {
+                form.setFieldValue('symbolId', val.symbolId);
+              }
+            }}
+          />
+        </div>
       </Modal>
+
     </Drawer>
   );
 };

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Tag,
   Input,
   Select,
   Modal,
@@ -11,14 +10,7 @@ import {
   Typography,
 } from 'antd';
 import {
-  PlusOutlined,
-  EyeOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  SendOutlined,
   HistoryOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -31,8 +23,6 @@ import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '..
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
 import {
   CONDITION_STATUS_OPTIONS,
-  CONDITION_STATUS_TAG_MAP,
-  APPROVAL_STATUS_TAG_MAP,
   ApprovalStatus,
 } from '../../types/vtsSystem';
 import { UNIT_OF_MEASURE_MAP } from '../../types/aisSystem';
@@ -81,7 +71,11 @@ import {
   drawerTitleStyle,
   drawerCloseBtnStyle,
   borderDefault,
+  icons,
+  getRangePickerProps,
 } from '../../themetokenchk';
+import * as themeTokenChk from '../../themetokenchk';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import { colors } from '../../theme';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
@@ -475,6 +469,7 @@ export const AisSystemChkList: React.FC = () => {
   const [historyTargetRecord, setHistoryTargetRecord] = useState<AisSystemListItem | null>(null);
   const [historyRecords, setHistoryRecords] = useState<HistoryEntry[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historySearchInput, setHistorySearchInput] = useState('');
   const [historySearch, setHistorySearch] = useState('');
   const [historyDateFrom, setHistoryDateFrom] = useState('');
   const [historyDateTo, setHistoryDateTo] = useState('');
@@ -699,6 +694,7 @@ export const AisSystemChkList: React.FC = () => {
     setHistoryTargetRecord(record);
     setHistoryDrawerVisible(true);
     setLoadingHistory(true);
+    setHistorySearchInput('');
     setHistorySearch('');
     setHistoryDateFrom('');
     setHistoryDateTo('');
@@ -838,9 +834,20 @@ export const AisSystemChkList: React.FC = () => {
       dataIndex: 'orgUnitName',
       width: 260,
       ellipsis: false,
-      // Tên đơn vị resolve từ cache sau truy vấn nên không sắp xếp được ở server;
-      // không bật sắp xếp để tránh chỉ sắp đúng trang đang xem.
-      render: (orgName: string) => <span style={{ fontWeight: fontWeightBold }}>{orgName || '—'}</span>,
+      render: (orgName: string) => (
+        <span
+          title={orgName || undefined}
+          style={{
+            fontWeight: fontWeightBold,
+            display: 'block',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {orgName || '—'}
+        </span>
+      ),
     },
     {
       key: 'vtsOperationCenterName',
@@ -848,7 +855,22 @@ export const AisSystemChkList: React.FC = () => {
       dataIndex: 'vtsOperationCenterName',
       width: 260,
       ellipsis: false,
-      render: (_: string, record: AisSystemListItem) => record.attachedLocationName || record.vtsOperationCenterName || record.radarStationName || '—',
+      render: (_: string, record: AisSystemListItem) => {
+        const val = record.attachedLocationName || record.vtsOperationCenterName || record.radarStationName || '—';
+        return (
+          <span
+            title={val !== '—' ? val : undefined}
+            style={{
+              display: 'block',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {val}
+          </span>
+        );
+      },
     },
     {
       key: 'operatingOrgName',
@@ -856,7 +878,22 @@ export const AisSystemChkList: React.FC = () => {
       dataIndex: 'operatingOrgName',
       width: 200,
       ellipsis: false,
-      render: (oName: string, record: AisSystemListItem) => oName || DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === record.operatingOrgId)?.name || '—',
+      render: (oName: string, record: AisSystemListItem) => {
+        const val = oName || DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === record.operatingOrgId)?.name || '—';
+        return (
+          <span
+            title={val !== '—' ? val : undefined}
+            style={{
+              display: 'block',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {val}
+          </span>
+        );
+      },
     },
     {
       key: 'provinceId',
@@ -864,7 +901,22 @@ export const AisSystemChkList: React.FC = () => {
       dataIndex: 'provinceId',
       width: 190,
       ellipsis: false,
-      render: (pId: number) => (pId ? getProvinceNameById(pId) || pId : '—'),
+      render: (pId: number) => {
+        const val = pId ? getProvinceNameById(pId) || String(pId) : '—';
+        return (
+          <span
+            title={val !== '—' ? val : undefined}
+            style={{
+              display: 'block',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {val}
+          </span>
+        );
+      },
     },
     {
       key: 'unitOfMeasure',
@@ -1042,7 +1094,7 @@ export const AisSystemChkList: React.FC = () => {
     // 1. Xem chi tiết
     actions.push({
       key: 'view',
-      icon: <EyeOutlined />,
+      icon: icons.view,
       label: 'Xem chi tiết',
       onClick: () => handleViewDetail(record),
     });
@@ -1051,7 +1103,7 @@ export const AisSystemChkList: React.FC = () => {
     if (canHistory) {
       actions.push({
         key: 'history',
-        icon: <HistoryOutlined />,
+        icon: icons.history,
         label: 'Lịch sử',
         onClick: () => handleViewHistory(record),
       });
@@ -1061,7 +1113,7 @@ export const AisSystemChkList: React.FC = () => {
     if (canEditApprovalRecord(record.approvalStatus, { hasPerm: hasPermission, resource: 'aissystem' })) {
       actions.push({
         key: 'edit',
-        icon: <EditOutlined />,
+        icon: icons.edit,
         label: 'Chỉnh sửa',
         onClick: () => handleEdit(record),
       });
@@ -1071,7 +1123,7 @@ export const AisSystemChkList: React.FC = () => {
     if (canUpdate && isDraft) {
       actions.push({
         key: 'submit',
-        icon: <SendOutlined />,
+        icon: icons.submit,
         label: 'Gửi phê duyệt',
         onClick: async () => {
           try {
@@ -1086,22 +1138,19 @@ export const AisSystemChkList: React.FC = () => {
     }
 
     // 5. Phê duyệt & Từ chối cấp Cảng vụ
-    if (canApproveC1 && isPendingC1) {
-      const isSelfApproval = Boolean(isCreator);
+    if (canApproveC1 && isPendingC1 && !isCreator) {
       actions.push({
         key: 'approveC1',
-        icon: <CheckCircleOutlined />,
-        disabled: isSelfApproval,
-        label: isSelfApproval ? 'Phê duyệt cấp Cảng vụ (không thể tự duyệt)' : 'Phê duyệt cấp Cảng vụ',
-        onClick: () => !isSelfApproval && openApproveModal(record.id, 'C1'),
+        icon: icons.approve,
+        label: 'Phê duyệt cấp Cảng vụ',
+        onClick: () => openApproveModal(record.id, 'C1'),
       });
       actions.push({
         key: 'rejectC1',
-        icon: <CloseCircleOutlined />,
+        icon: icons.reject,
         danger: true,
-        disabled: isSelfApproval,
-        label: isSelfApproval ? 'Từ chối cấp Cảng vụ (không thể tự duyệt)' : 'Từ chối cấp Cảng vụ',
-        onClick: () => !isSelfApproval && openRejectModal(record.id),
+        label: 'Từ chối cấp Cảng vụ',
+        onClick: () => openRejectModal(record.id),
       });
     }
 
@@ -1110,34 +1159,29 @@ export const AisSystemChkList: React.FC = () => {
       const isSelfApproval = Boolean(isCreator);
       const isSameApprover = Boolean(user?.id && record.approverLevel1 === user.id);
       const isBlocked = isSelfApproval || isSameApprover;
-      const blockedReason = isSelfApproval
-        ? ' (không thể tự duyệt)'
-        : isSameApprover
-        ? ' (người duyệt cấp Cục không được trùng người duyệt cấp Cảng vụ)'
-        : '';
 
-      actions.push({
-        key: 'approveC2',
-        icon: <CheckCircleOutlined />,
-        disabled: isBlocked,
-        label: `Phê duyệt cấp Cục${blockedReason}`,
-        onClick: () => !isBlocked && openApproveModal(record.id, 'C2'),
-      });
-      actions.push({
-        key: 'rejectC2',
-        icon: <CloseCircleOutlined />,
-        danger: true,
-        disabled: isBlocked,
-        label: `Từ chối cấp Cục${blockedReason}`,
-        onClick: () => !isBlocked && openRejectModal(record.id),
-      });
+      if (!isBlocked) {
+        actions.push({
+          key: 'approveC2',
+          icon: icons.approve,
+          label: 'Phê duyệt cấp Cục',
+          onClick: () => openApproveModal(record.id, 'C2'),
+        });
+        actions.push({
+          key: 'rejectC2',
+          icon: icons.reject,
+          danger: true,
+          label: 'Từ chối cấp Cục',
+          onClick: () => openRejectModal(record.id),
+        });
+      }
     }
 
     // 7. Xóa — T13/N04: chỉ hồ sơ đang "Lưu tạm" mới xóa được.
     if (canDelete && record.approvalStatus === ApprovalStatus.DRAFT) {
       actions.push({
         key: 'delete',
-        icon: <DeleteOutlined />,
+        icon: icons.delete,
         danger: true,
         label: 'Xóa',
         onClick: () => {
@@ -1269,12 +1313,40 @@ export const AisSystemChkList: React.FC = () => {
                 </Typography.Text>
 
                 {(() => {
+                  const isLongHistoryText = (val: string | null | undefined): boolean => {
+                    if (!val) return false;
+                    const str = String(val).trim();
+                    return str.length > 40 || str.includes('\n') || (str.includes(',') && str.length > 25);
+                  };
+
+                  const renderHistoryContent = (field: string, val: string | null, _isOld: boolean = false) => {
+                    if (val === null || val === undefined || val === '—' || val === '') {
+                      return <span style={{ color: textTertiary }}>—</span>;
+                    }
+                    const str = String(val).trim();
+                    if (str.includes(',') && str.length > 25) {
+                      const items = str.split(',').map((s) => s.trim()).filter(Boolean);
+                      if (items.length > 1) {
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+                            {items.map((item, idx) => (
+                              <div key={idx} style={{ color: textPrimary, fontWeight: fontWeightMedium, lineHeight: '20px', wordBreak: 'break-word' }}>
+                                {item}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      }
+                    }
+                    return renderHistoryValueTag(field, val);
+                  };
+
                   const validChanges = changes.filter((c: any) => {
-                    if (!c.field) return false;
+                    if (!c.field && !c.oldValue && !c.newValue) return false;
                     const ov = formatHistoryValue(c.field, c.oldValue);
                     const nv = formatHistoryValue(c.field, c.newValue);
                     if (ov == null && nv == null) return false;
-                    if (ov === nv) return false;
+                    if (ov !== null && nv !== null && String(ov).trim() === String(nv).trim()) return false;
                     return true;
                   });
                   const reasons = g.items.map((i: any) => i.reason || i.ghiChu || i.note).filter(Boolean);
@@ -1286,20 +1358,25 @@ export const AisSystemChkList: React.FC = () => {
                           const fn = change.field;
                           const ov = formatHistoryValue(fn, change.oldValue);
                           const nv = formatHistoryValue(fn, change.newValue);
-                          return isCreate ? (
-                            <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '170px minmax(0, 1fr)', alignItems: 'flex-start', gap: spaceMd, fontSize: fontSizeMd, lineHeight: 1.6 }}>
-                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                              <div style={{ minWidth: 0, overflowWrap: 'break-word' }}>{renderHistoryValueTag(fn, nv)}</div>
-                            </div>
-                          ) : (
-                            <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '170px minmax(120px, 1fr) 24px minmax(120px, 1fr)', alignItems: 'center', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6 }}>
-                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                              <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, overflowWrap: 'break-word' }}>
-                                {renderHistoryValueTag(fn, ov)}
+
+                          if (isCreate) {
+                            return (
+                              <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '170px minmax(0, 1fr)', alignItems: 'flex-start', gap: spaceMd, fontSize: fontSizeMd, lineHeight: 1.6, padding: '3px 0' }}>
+                                <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
+                                <div style={{ minWidth: 0, overflowWrap: 'break-word' }}>{renderHistoryContent(fn, nv, false)}</div>
                               </div>
-                              <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none' }}>→</div>
-                              <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, overflowWrap: 'break-word' }}>
-                                {renderHistoryValueTag(fn, nv)}
+                            );
+                          }
+
+                          return (
+                            <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '170px minmax(100px, 1fr) 24px minmax(100px, 1fr)', alignItems: 'flex-start', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6, padding: '3px 0' }}>
+                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word' }}>
+                                {renderHistoryContent(fn, ov, true)}
+                              </div>
+                              <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>→</div>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word' }}>
+                                {renderHistoryContent(fn, nv, false)}
                               </div>
                             </div>
                           );
@@ -1346,26 +1423,27 @@ export const AisSystemChkList: React.FC = () => {
   }, [historyRecords]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
-      <ScreenHeader
-        breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Hệ thống trạm bờ AIS CHK' }]}
-        actions={
-          canCreate
-            ? [
-                {
-                  key: 'create',
-                  label: 'Thêm mới',
-                  icon: <PlusOutlined />,
-                  variant: 'primary' as const,
-                  onClick: () => {
-                    setSelectedItem(null);
-                    setModalVisible(true);
+    <ThemeTokenProvider tokens={themeTokenChk}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+        <ScreenHeader
+          breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Hệ thống trạm bờ AIS' }]}
+          actions={
+            canCreate
+              ? [
+                  {
+                    key: 'create',
+                    label: 'Thêm mới',
+                    icon: icons.create,
+                    variant: 'primary' as const,
+                    onClick: () => {
+                      setSelectedItem(null);
+                      setModalVisible(true);
+                    },
                   },
-                },
-              ]
-            : []
-        }
-      />
+                ]
+              : []
+          }
+        />
 
       <FilterTableLayout
         filterCollapsed={filterCollapsed}
@@ -1647,29 +1725,36 @@ export const AisSystemChkList: React.FC = () => {
             <Input
               placeholder="Tìm kiếm nội dung thay đổi..."
               allowClear
-              value={historySearch}
-              onChange={(e) => setHistorySearch(e.target.value)}
+              value={historySearchInput}
+              onChange={(e) => {
+                const val = e.target.value;
+                setHistorySearchInput(val);
+                if (!val) setHistorySearch('');
+              }}
+              onPressEnter={() => setHistorySearch(historySearchInput.trim())}
               style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
             />
-            <DatePicker
-              placeholder="Từ ngày"
-              value={historyDateFrom ? dayjs(historyDateFrom) : null}
-              onChange={(d) => setHistoryDateFrom(d ? d.startOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
-              style={{ width: 170, borderRadius: radiusPill, height: 40 }}
-              format="DD/MM/YYYY HH:mm"
-              showTime={{ format: 'HH:mm' }}
-            />
-            <DatePicker
-              placeholder="Đến ngày"
-              value={historyDateTo ? dayjs(historyDateTo) : null}
-              onChange={(d) => setHistoryDateTo(d ? d.endOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
-              style={{ width: 170, borderRadius: radiusPill, height: 40 }}
-              format="DD/MM/YYYY HH:mm"
-              showTime={{ format: 'HH:mm' }}
+            <DatePicker.RangePicker
+              {...getRangePickerProps({
+                value: (historyDateFrom && historyDateTo)
+                  ? [dayjs(historyDateFrom), dayjs(historyDateTo)]
+                  : (historyDateFrom ? [dayjs(historyDateFrom), null] : (historyDateTo ? [null, dayjs(historyDateTo)] : null)),
+                onChange: (dates: any) => {
+                  if (!dates || dates.length === 0 || (!dates[0] && !dates[1])) {
+                    setHistoryDateFrom('');
+                    setHistoryDateTo('');
+                  } else {
+                    setHistoryDateFrom(dates[0] ? dates[0].startOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
+                    setHistoryDateTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
+                  }
+                },
+                style: { width: 280, borderRadius: radiusPill, height: 40 },
+              })}
             />
             <Button
               type="primary"
               icon={<SearchOutlined />}
+              onClick={() => setHistorySearch(historySearchInput.trim())}
               style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}
             >
               Tìm kiếm
@@ -1740,6 +1825,7 @@ export const AisSystemChkList: React.FC = () => {
         </div>
       </Modal>
     </div>
+    </ThemeTokenProvider>
   );
 };
 

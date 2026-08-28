@@ -82,6 +82,8 @@ import {
   inputStyle,
   selectStyle,
   drawerCloseBtnStyle,
+  generateTempId,
+  DRAWER_TABLE_SCROLL_Y,
 } from '../../themetokenchk';
 import { colors } from '../../theme';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
@@ -90,6 +92,8 @@ import { usePermissionStore } from '../../store/permissionStore';
 import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../components/org-unit';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import DetailTable from '../../components/shared/DetailTable';
 
 interface CoordinateItem {
   latitude: number | null;
@@ -232,13 +236,73 @@ export const AisSystemChkForm: React.FC<AisSystemChkFormProps> = ({
   const [symbols, setSymbols] = useState<GisSymbol[]>([]);
   const [coordinateList, setCoordinateList] = useState<CoordinateItem[]>([{ latitude: null, longitude: null }]);
   const [mapModalOpen, setMapModalOpen] = useState(false);
-  const [fileList, setFileList] = useState<UploadFile[]>([]);
-  const [existingAttachments, setExistingAttachments] = useState<AisSystemAttachment[]>([]);
+  const [attachmentList, setAttachmentList] = useState<any[]>([]);
   const [detailData, setDetailData] = useState<AisSystemResponse | null>(null);
 
   const isView = mode === 'view';
   const isEdit = mode === 'edit';
   const isCreate = mode === 'create';
+
+  const activeRecord = initialData || detailData;
+
+  const handleUploadAttachment = async (file: File) => {
+    if (!activeRecord?.id) {
+      const newItem = {
+        id: generateTempId(),
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type || file.name.split('.').pop()?.toLowerCase(),
+        file,
+        uploadedDate: dayjs().toISOString(),
+        uploadedByName: currentUser?.fullName || currentUser?.username || 'Người dùng hiện tại',
+      };
+      setAttachmentList((prev) => [newItem, ...prev]);
+      return;
+    }
+
+    try {
+      await aisSystemService.uploadAttachment(activeRecord.id, file);
+      toast.success('Tải lên tệp đính kèm thành công');
+      const atts = await aisSystemService.listAttachments(activeRecord.id);
+      setAttachmentList(atts || []);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Lỗi tải lên tệp đính kèm');
+    }
+  };
+
+  const handleDeleteAttachment = async (attId: string) => {
+    if (!activeRecord?.id) {
+      setAttachmentList((prev) => prev.filter((a) => a.id !== attId));
+      toast.success('Đã xóa tệp đính kèm');
+      return;
+    }
+    try {
+      await aisSystemService.deleteAttachment(activeRecord.id, attId);
+      toast.success('Xóa tệp đính kèm thành công');
+      setAttachmentList((prev) => prev.filter((a) => a.id !== attId));
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Lỗi khi xóa tệp đính kèm');
+    }
+  };
+
+  const handleDownloadAttachment = async (attId: string, fileName?: string) => {
+    if (!attId) return;
+    if (activeRecord?.id) {
+      await aisSystemService.downloadAttachment(activeRecord.id, attId, fileName);
+    } else {
+      const found = attachmentList.find((a) => a.id === attId);
+      if (found?.file) {
+        const url = URL.createObjectURL(found.file);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = found.fileName || fileName || 'download';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    }
+  };
 
   const formOrgUnitId = Form.useWatch('orgUnitId', form);
   const watchedGeom = Form.useWatch('geometryType', form) || 'POINT';
@@ -313,7 +377,7 @@ export const AisSystemChkForm: React.FC<AisSystemChkFormProps> = ({
       ])
         .then(([full, atts]) => {
           setDetailData(full);
-          setExistingAttachments(atts || []);
+          setAttachmentList(atts || []);
           const initialLocId = full.vtsOperationCenterId || full.radarStationId;
           form.setFieldsValue({
             code: full.code,
@@ -350,7 +414,7 @@ export const AisSystemChkForm: React.FC<AisSystemChkFormProps> = ({
       // Create mode
       form.resetFields();
       setDetailData(null);
-      setExistingAttachments([]);
+      setAttachmentList([]);
       setCoordinateList([{ latitude: null, longitude: null }]);
       aisSystemService.generateCode().then((res) => {
         form.setFieldsValue({
@@ -544,15 +608,14 @@ export const AisSystemChkForm: React.FC<AisSystemChkFormProps> = ({
         );
       }
 
-      // Upload files if any
-      if (fileList.length > 0) {
-        for (const file of fileList) {
-          if (file.originFileObj) {
-            try {
-              await aisSystemService.uploadAttachment(resultId, file.originFileObj);
-            } catch {
-              toast.error(`Lỗi tải lên tệp: ${file.name}`);
-            }
+      // Upload pending files if creating new
+      if (resultId && isCreate) {
+        const pendingFiles = attachmentList.map((a) => a.file).filter(Boolean);
+        if (pendingFiles.length > 0) {
+          try {
+            await aisSystemService.uploadAttachments(resultId, pendingFiles);
+          } catch {
+            toast.warning('Đã lưu thông tin nhưng tải tệp đính kèm thất bại');
           }
         }
       }
@@ -1088,7 +1151,38 @@ export const AisSystemChkForm: React.FC<AisSystemChkFormProps> = ({
                     {isView && activeRecord ? (
                       <Row gutter={[24, 0]} style={{ marginBottom: 16 }}>
                         {renderDetailField('Loại đối tượng GIS', activeRecord.geometryType === 'POINT' ? 'Điểm (Point)' : activeRecord.geometryType === 'LINE' ? 'Đường (LineString)' : activeRecord.geometryType === 'POLYGON' ? 'Vùng (Polygon)' : (activeRecord.geometryType || 'Điểm (Point)'))}
-                        {renderDetailField('Biểu tượng bản đồ', activeRecord.symbolId || 'Mặc định')}
+                        {renderDetailField('Biểu tượng bản đồ', (() => {
+                          const symId = activeRecord.symbolId;
+                          const sym = symbols.find((s) => s.id === symId || s.code === symId || (symId && String(s.id) === String(symId)));
+                          if (sym) {
+                            const imgSrc = sym.image
+                              ? (sym.image.startsWith('data:') || sym.image.startsWith('http') || sym.image.startsWith('/')
+                                  ? sym.image
+                                  : `data:image/png;base64,${sym.image}`)
+                              : undefined;
+                            return (
+                              <Space size={8} align="center" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                {imgSrc ? (
+                                  <img
+                                    src={imgSrc}
+                                    alt={sym.name || ''}
+                                    style={{ width: 20, height: 20, objectFit: 'contain', verticalAlign: 'middle', display: 'inline-block' }}
+                                    onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                                  />
+                                ) : (
+                                  <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', backgroundColor: actionPrimary }} />
+                                )}
+                                <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
+                              </Space>
+                            );
+                          }
+                          return (
+                            <Space size={8} align="center" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                              <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', backgroundColor: actionPrimary }} />
+                              <span>{activeRecord.symbolId ? `Biểu tượng (${activeRecord.symbolId})` : 'Hệ thống AIS'}</span>
+                            </Space>
+                          );
+                        })())}
                         {renderDetailField('Hệ quy chiếu', 'WGS 84 (EPSG:4326) / VN-2000')}
                         {renderDetailField('Quy tắc hiển thị', 'Độ, phút, giây (DMS)')}
                       </Row>
@@ -1108,6 +1202,44 @@ export const AisSystemChkForm: React.FC<AisSystemChkFormProps> = ({
                                 { value: 'POLYGON', label: 'Vùng (Polygon)' },
                               ]}
                               style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                              onChange={(val) => {
+                                form.setFieldValue('geometryType', val);
+                                if (val) {
+                                  form.setFieldValue('coordinateSystem', 'WGS 84 (EPSG:4326) / VN-2000');
+                                  form.setFieldValue('displayRule', 'Độ, phút, giây (DMS)');
+                                  const minCount = val === 'POLYGON' ? 3 : (val === 'LINE' ? 2 : 1);
+                                  setCoordinateList((prev) => {
+                                    if (val === 'POINT') {
+                                      return prev.length > 0 ? [prev[0]] : [{ latitude: 20.8651, longitude: 106.6838 }];
+                                    }
+                                    if (prev.length >= minCount) return prev;
+                                    const baseLat = prev[0]?.latitude ?? 20.8651;
+                                    const baseLng = prev[0]?.longitude ?? 106.6838;
+                                    const delta = 0.005;
+                                    if (prev.length === 1 && prev[0].latitude != null && prev[0].longitude != null) {
+                                      if (val === 'POLYGON') {
+                                        return [
+                                          prev[0],
+                                          { latitude: baseLat + delta, longitude: baseLng + delta },
+                                          { latitude: baseLat - delta, longitude: baseLng + delta },
+                                        ];
+                                      } else if (val === 'LINE') {
+                                        return [
+                                          prev[0],
+                                          { latitude: baseLat + delta, longitude: baseLng + delta },
+                                        ];
+                                      }
+                                    }
+                                    const added = Array.from({ length: minCount - prev.length }, (_, i) => ({
+                                      latitude: baseLat + (i + 1) * delta,
+                                      longitude: baseLng + (i + 1) * delta,
+                                    }));
+                                    return [...prev, ...added];
+                                  });
+                                } else {
+                                  form.setFieldValue('symbolId', undefined);
+                                }
+                              }}
                             />
                           </Form.Item>
                         </Col>
@@ -1121,7 +1253,23 @@ export const AisSystemChkForm: React.FC<AisSystemChkFormProps> = ({
                             <Select
                               placeholder="Chọn biểu tượng"
                               allowClear
-                              options={symbols.map((s) => ({ value: s.id, label: s.name }))}
+                              options={symbols.map((sym) => ({
+                                value: sym.id,
+                                label: (
+                                  <Space size={6} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                    {sym.image ? (
+                                      <img
+                                        src={sym.image.startsWith('data:') || sym.image.startsWith('http') || sym.image.startsWith('/') ? sym.image : `data:image/png;base64,${sym.image}`}
+                                        alt={sym.name}
+                                        style={{ width: 16, height: 16, objectFit: 'contain', verticalAlign: 'middle' }}
+                                      />
+                                    ) : (
+                                      <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: actionPrimary }} />
+                                    )}
+                                    <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
+                                  </Space>
+                                ),
+                              }))}
                               style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
                             />
                           </Form.Item>
@@ -1184,11 +1332,11 @@ export const AisSystemChkForm: React.FC<AisSystemChkFormProps> = ({
                         </Space>
                       </div>
 
-                      <Table
+                      <DetailTable
+                        scrollY={DRAWER_TABLE_SCROLL_Y.withButton}
                         dataSource={coordinateList.map((c, i) => ({ key: i, index: i + 1, ...c }))}
-                        pagination={false}
-                        size="middle"
-                        bordered
+                        rowKey="index"
+                        emptyText="Chưa có dữ liệu tọa độ"
                         columns={[
                           { title: 'STT', dataIndex: 'index', width: 50, align: 'center' },
                           {
@@ -1239,89 +1387,15 @@ export const AisSystemChkForm: React.FC<AisSystemChkFormProps> = ({
               // ── TAB 4: FILE ĐÍNH KÈM ─────────────────────────────────
               {
                 key: 'attachment',
-                label: `File đính kèm (${existingAttachments.length + fileList.length})`,
+                label: `File đính kèm (${attachmentList.length})`,
                 children: (
-                  <div style={drawerTabContentStyle}>
-                    {!isView && (
-                      <div style={{ marginBottom: spaceLg }}>
-                        <Upload.Dragger
-                          multiple
-                          fileList={fileList}
-                          beforeUpload={(f) => {
-                            setFileList((prev) => [...prev, f]);
-                            return false;
-                          }}
-                          onRemove={(f) => setFileList((prev) => prev.filter((item) => item.uid !== f.uid))}
-                          style={{ padding: '20px', borderRadius: radiusMd, background: surfaceCard }}
-                        >
-                          <p className="ant-upload-drag-icon">
-                            <InboxOutlined style={{ color: actionPrimary, fontSize: 36 }} />
-                          </p>
-                          <p className="ant-upload-text" style={{ fontSize: fontSizeMd, fontWeight: fontWeightMedium }}>
-                            Nhấp hoặc kéo thả tệp vào đây để tải lên
-                          </p>
-                          <p className="ant-upload-hint" style={uploadHintStyle}>
-                            Hỗ trợ định dạng PDF, DOC, DOCX, XLS, XLSX, PNG, JPG (Tối đa 25MB/tệp)
-                          </p>
-                        </Upload.Dragger>
-                      </div>
-                    )}
-
-                    <div style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg, marginBottom: spaceSm }}>
-                      Danh sách tệp đính kèm:
-                    </div>
-
-                    <Table
-                      dataSource={existingAttachments}
-                      rowKey="id"
-                      pagination={false}
-                      size="middle"
-                      bordered
-                      locale={{ emptyText: 'Chưa có tệp đính kèm nào' }}
-                      columns={[
-                        { title: 'STT', key: 'stt', width: 50, align: 'center', render: (_: any, __: any, i: number) => i + 1 },
-                        {
-                          title: 'Tên tệp',
-                          dataIndex: 'fileName',
-                          key: 'fileName',
-                          render: (val: string, r: AisSystemAttachment) => (
-                            <Space>
-                              <FileOutlined style={{ color: actionPrimary }} />
-                              <a href={r.filePath} target="_blank" rel="noreferrer" style={{ color: actionPrimary }}>
-                                {val || 'Tệp đính kèm'}
-                              </a>
-                            </Space>
-                          ),
-                        },
-                        {
-                          title: 'Thao tác',
-                          key: 'action',
-                          width: 120,
-                          align: 'center',
-                          render: (_: any, r: AisSystemAttachment) => (
-                            <Space>
-                              <Button
-                                type="text"
-                                icon={<DownloadOutlined />}
-                                href={r.filePath}
-                                target="_blank"
-                                title="Tải về"
-                              />
-                              {!isView && (
-                                <Button
-                                  type="text"
-                                  danger
-                                  icon={<DeleteOutlined />}
-                                  onClick={() => handleDeleteExistingAttachment(r.id)}
-                                  title="Xóa tệp"
-                                />
-                              )}
-                            </Space>
-                          ),
-                        },
-                      ]}
-                    />
-                  </div>
+                  <InfrastructureAttachmentTab
+                    attachments={attachmentList}
+                    readonly={isView}
+                    onUpload={handleUploadAttachment}
+                    onDelete={handleDeleteAttachment}
+                    onDownload={handleDownloadAttachment}
+                  />
                 ),
               },
             ]}

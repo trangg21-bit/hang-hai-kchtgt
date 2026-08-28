@@ -363,17 +363,18 @@ public class ShipRepairFacilityService {
                 .collect(Collectors.toSet());
         Map<UUID, String> userNames = resolveUserNames(userIds);
 
-        return historyList.stream().map(h -> HistoryEntry.builder()
-                .id(h.getId())
-                .approvalLevel(h.getApprovalLevel())
-                .status(h.getStatus() != null ? h.getStatus().getCode() : null)
-                .approvedBy(h.getApprovedBy() != null
-                        ? userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
-                        : null)
-                .approvedDate(h.getApprovedDate())
-                .reason(h.getReason())
-                .build())
-                .toList();
+        return historyList.stream().map(h -> {
+            HistoryEntry entry = new HistoryEntry();
+            entry.setId(h.getId());
+            entry.setApprovalLevel(h.getApprovalLevel());
+            entry.setStatus(h.getStatus() != null ? h.getStatus().getCode() : null);
+            entry.setApprovedBy(h.getApprovedBy() != null
+                    ? userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
+                    : null);
+            entry.setApprovedDate(h.getApprovedDate());
+            entry.setReason(h.getReason());
+            return entry;
+        }).toList();
     }
 
     private Map<UUID, String> resolveUserNames(Collection<UUID> userIds) {
