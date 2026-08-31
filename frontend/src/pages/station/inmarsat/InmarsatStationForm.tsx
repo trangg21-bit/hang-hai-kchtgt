@@ -665,78 +665,6 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
           ) : (
             <Form form={form} layout="vertical" onFinish={handleFinish}>
               <style>{requiredMarkStyle}</style>
-              <style>{`
-                .inmarsat-services-select-ctrl.ant-select .ant-select-selector,
-                .inmarsat-services-select-ctrl.ant-select-multiple .ant-select-selector {
-                  border-radius: 20px !important;
-                  padding: 4px 32px 4px 12px !important;
-                  min-height: 40px !important;
-                  height: auto !important;
-                  box-sizing: border-box !important;
-                  display: flex !important;
-                  align-items: center !important;
-                  flex-wrap: wrap !important;
-                  gap: 4px !important;
-                  background-color: #fff !important;
-                  border: 1px solid #d9d9d9 !important;
-                }
-                .inmarsat-services-select-ctrl.ant-select-focused .ant-select-selector {
-                  border-color: #273e7c !important;
-                  box-shadow: 0 0 0 2px rgba(39, 62, 124, 0.1) !important;
-                }
-                .inmarsat-services-select-ctrl .ant-select-selection-overflow {
-                  display: flex !important;
-                  align-items: center !important;
-                  flex-wrap: wrap !important;
-                  gap: 4px !important;
-                  width: 100% !important;
-                  padding: 0 !important;
-                  margin: 0 !important;
-                }
-                .inmarsat-services-select-ctrl .ant-select-selection-placeholder {
-                  left: 12px !important;
-                  font-size: 13px !important;
-                  color: rgba(0, 0, 0, 0.25) !important;
-                  line-height: 28px !important;
-                  padding: 0 !important;
-                  margin: 0 !important;
-                }
-                .inmarsat-services-select-ctrl .ant-select-selection-item {
-                  margin: 2px 6px 2px 0 !important;
-                  padding: 0 10px !important;
-                  height: 28px !important;
-                  line-height: 26px !important;
-                  border-radius: 999px !important;
-                  background: #eef3fb !important;
-                  border: 1px solid #c6d9f5 !important;
-                  color: #12468C !important;
-                  font-size: 12px !important;
-                  font-weight: 500 !important;
-                  display: inline-flex !important;
-                  align-items: center !important;
-                  white-space: nowrap !important;
-                }
-                .inmarsat-services-select-ctrl .ant-select-selection-item-content {
-                  margin-right: 4px !important;
-                }
-                .inmarsat-services-select-ctrl .ant-select-selection-item-remove {
-                  color: #7e8299 !important;
-                  font-size: 11px !important;
-                  display: inline-flex !important;
-                  align-items: center !important;
-                }
-                .inmarsat-services-select-ctrl .ant-select-selection-item-remove:hover {
-                  color: #f1416c !important;
-                }
-                .inmarsat-services-select-ctrl .ant-select-suffix {
-                  position: absolute !important;
-                  right: 12px !important;
-                  top: 50% !important;
-                  transform: translateY(-50%) !important;
-                  margin: 0 !important;
-                  pointer-events: none !important;
-                }
-              `}</style>
               <Tabs
                 activeKey={tabKey}
                 onChange={setTabKey}
@@ -865,7 +793,6 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                               style={{ marginBottom: spaceFormField }}
                             >
                               <Select
-                                className="inmarsat-services-select-ctrl"
                                 mode="multiple"
                                 showSearch
                                 placeholder="Chọn dịch vụ cung cấp..."
