@@ -33,6 +33,7 @@ import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '..
 import SidebarFilterField from '../../../components/list-view/SidebarFilterField';
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../../utils/approvalEditPolicy';
 import { CommonHistoryDrawer, type CommonHistoryEntry, type HistoryChangeItem } from '../../../components/shared/CommonHistoryDrawer';
+import LoadingSkeleton from '../../../components/LoadingSkeleton';
 
 const INMARSAT_FIELD_MAP: Record<string, string> = {
   code: 'Mã đài',
