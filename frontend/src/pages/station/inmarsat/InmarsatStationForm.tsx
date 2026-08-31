@@ -81,6 +81,66 @@ export interface InmarsatStationFormProps {
   onSuccess?: () => void;
 }
 
+const CONDITION_COLOR: Record<string, string> = {
+  [ConditionStatus.OPERATIONAL]: statusOperational,
+  [ConditionStatus.STOPPED]: statusCritical,
+  [ConditionStatus.MAINTENANCE]: statusAttention,
+  [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
+};
+
+const renderConditionBadge = (status?: ConditionStatus | string) => {
+  if (!status) return '—';
+  const label = CONDITION_STATUS_MAP[status as ConditionStatus] || status;
+  const color = CONDITION_COLOR[status as ConditionStatus] || textSecondary;
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        padding: '2px 10px',
+        border: `1px solid ${color}40`,
+        borderRadius: radiusPill,
+        fontSize: fontSizeMd,
+        fontWeight: fontWeightMedium,
+        background: `${color}15`,
+        color,
+      }}
+    >
+      {label}
+    </span>
+  );
+};
+
+const renderServicesBadges = (services?: string[] | string) => {
+  if (!services) return '—';
+  const list = Array.isArray(services)
+    ? services
+    : (typeof services === 'string' ? services.split(',').map((s) => s.trim()).filter(Boolean) : []);
+  if (list.length === 0) return '—';
+  return (
+    <Space size={[6, 6]} wrap>
+      {list.map((srv) => (
+        <span
+          key={srv}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            padding: '2px 10px',
+            border: `1px solid ${actionPrimary}40`,
+            borderRadius: radiusPill,
+            fontSize: fontSizeMd,
+            fontWeight: fontWeightMedium,
+            background: `${actionPrimary}15`,
+            color: actionPrimary,
+          }}
+        >
+          {srv}
+        </span>
+      ))}
+    </Space>
+  );
+};
+
 export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
   open = true,
   editId,
@@ -89,7 +149,6 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
   orgUnits = [],
   onClose,
   onSuccess,
-  onEdit,
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -535,60 +594,88 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                   label: 'Thông tin chung',
                   children: (
                     <div style={drawerFormScrollStyle}>
-                      {/* Accordion Phê duyệt */}
-                      <div style={{ marginBottom: 16, border: `1px solid ${borderDefault}`, borderRadius: radiusMd, overflow: 'hidden' }}>
+                      {/* ── Thông tin cơ bản (1-7) ── */}
+                      <div className="chk-detail-grid">
+                        <div className="chk-detail-row"><span className="chk-detail-label">Mã đài</span><span className="chk-detail-value">{record.code || record.deviceCode || '—'}</span></div>
+                        <div className="chk-detail-row"><span className="chk-detail-label">Tên đài</span><span className="chk-detail-value">{record.name || record.stationName || '—'}</span></div>
+                        <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị quản lý</span><span className="chk-detail-value">{record.orgUnitName || '—'}</span></div>
+                        <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị khai thác</span><span className="chk-detail-value">{record.operatingOrgName || '—'}</span></div>
+                        <div className="chk-detail-row"><span className="chk-detail-label">Địa điểm (Tỉnh/TP)</span><span className="chk-detail-value">{getProvinceNameById(record.provinceId) || '—'}</span></div>
+                        <div className="chk-detail-row"><span className="chk-detail-label">Địa điểm chi tiết</span><span className="chk-detail-value">{record.locationDetail || record.locationAddress || '—'}</span></div>
+                        <div className="chk-detail-row"><span className="chk-detail-label">Tình trạng</span><span className="chk-detail-value">{renderConditionBadge(record.conditionStatus)}</span></div>
+                        <div className="chk-detail-row"><span className="chk-detail-label">Dịch vụ cung cấp</span><span className="chk-detail-value">{renderServicesBadges(record.services)}</span></div>
+                      </div>
+
+                      {/* ── Thông tin khác (8-11) ── */}
+                      <div style={{ marginTop: 16, marginBottom: 10, borderTop: `1px solid ${borderDefault}`, paddingTop: 10 }}>
+                        <span style={{ color: actionPrimary, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
+                          Thông tin khác
+                        </span>
+                      </div>
+
+                      <div className="chk-detail-grid">
+                        <div className="chk-detail-row chk-detail-row--full">
+                          <span className="chk-detail-label">Vùng phủ sóng</span>
+                          <span className="chk-detail-value">{record.coverageZone || '—'}</span>
+                        </div>
+                        <div className="chk-detail-row chk-detail-row--full">
+                          <span className="chk-detail-label">Tần số liên lạc</span>
+                          <span className="chk-detail-value">{record.frequency || '—'}</span>
+                        </div>
+                        <div className="chk-detail-row chk-detail-row--full">
+                          <span className="chk-detail-label">Ghi chú</span>
+                          <span className="chk-detail-value">{record.notes || record.description || (record as any).note || '—'}</span>
+                        </div>
+                      </div>
+
+                      {/* ── Thông tin phê duyệt (Toggle Dropdown) ── */}
+                      <div style={{ marginTop: 16, marginBottom: 6 }}>
                         <button
                           type="button"
-                          onClick={() => setApprovalSectionOpen((p) => !p)}
+                          onClick={() => setApprovalSectionOpen(!approvalSectionOpen)}
                           style={{
-                            width: '100%',
-                            padding: '10px 16px',
-                            background: '#f8fafc',
+                            background: 'none',
                             border: 'none',
                             cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
+                            padding: '4px 0',
+                            color: actionPrimary,
                             fontWeight: fontWeightBold,
                             fontSize: fontSizeMd,
-                            color: sidebarBg,
-                            textAlign: 'left',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
                           }}
                         >
                           <span style={{ fontSize: 10, color: actionPrimary }}>{approvalSectionOpen ? '▼' : '▶'}</span>
                           <span>Thông tin phê duyệt</span>
                         </button>
-                        {approvalSectionOpen && (
-                          <div className="chk-detail-grid" style={{ padding: '12px 16px', borderTop: `1px solid ${borderDefault}` }}>
-                            <div className="chk-detail-row"><span className="chk-detail-label">Ngày gửi duyệt</span><span className="chk-detail-value">{record.submittedAt ? dayjs(record.submittedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                            <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ gửi duyệt</span><span className="chk-detail-value">{record.submittedByName || record.submittedBy || '—'}</span></div>
-                            <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt Cảng vụ</span><span className="chk-detail-value">{record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                            <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt Cảng vụ</span><span className="chk-detail-value">{record.approverNameLevel1 || record.approverLevel1 || '—'}</span></div>
-                            <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt Cục</span><span className="chk-detail-value">{record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                            <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt Cục</span><span className="chk-detail-value">{record.approverNameLevel2 || record.approverLevel2 || '—'}</span></div>
-                            <div className="chk-detail-row"><span className="chk-detail-label">Trạng thái phê duyệt</span><span className="chk-detail-value"><ApprovalStatusBadge status={record.approvalStatus} /></span></div>
-                            <div style={{ border: 'none' }} />
-                            {record.rejectionReason && (
-                              <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Lý do từ chối</span><span className="chk-detail-value" style={{ color: statusCritical }}>{record.rejectionReason}</span></div>
-                            )}
-                          </div>
-                        )}
                       </div>
 
-                      {/* Detail Fields Grid */}
-                      <div className="chk-detail-grid">
-                        <div className="chk-detail-row"><span className="chk-detail-label">Mã đài</span><span className="chk-detail-value">{record.code || record.deviceCode || '—'}</span></div>
-                        <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị quản lý</span><span className="chk-detail-value">{record.orgUnitName || '—'}</span></div>
-                        <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Tên đài</span><span className="chk-detail-value">{record.name || record.stationName || '—'}</span></div>
-                        <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị khai thác</span><span className="chk-detail-value">{record.operatingOrgName || '—'}</span></div>
-                        <div className="chk-detail-row"><span className="chk-detail-label">Địa điểm (Tỉnh/TP)</span><span className="chk-detail-value">{getProvinceNameById(record.provinceId) || '—'}</span></div>
-                        <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Địa điểm chi tiết</span><span className="chk-detail-value">{record.locationDetail || record.locationAddress || '—'}</span></div>
-                        <div className="chk-detail-row"><span className="chk-detail-label">Tình trạng</span><span className="chk-detail-value">{record.conditionStatus ? (CONDITION_STATUS_MAP[record.conditionStatus] || record.conditionStatus) : '—'}</span></div>
-                        <div className="chk-detail-row"><span className="chk-detail-label">Dịch vụ cung cấp</span><span className="chk-detail-value">{Array.isArray(record.services) ? record.services.join(', ') : (record.services || '—')}</span></div>
-                        <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Vùng phủ sóng</span><span className="chk-detail-value">{record.coverageZone || '—'}</span></div>
-                        <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Tần số liên lạc</span><span className="chk-detail-value">{record.frequency || '—'}</span></div>
-                        <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Ghi chú</span><span className="chk-detail-value">{record.notes || record.description || (record as any).note || '—'}</span></div>
-                      </div>
+                      {approvalSectionOpen && (
+                        <div className="chk-detail-grid">
+                          <div className="chk-detail-row"><span className="chk-detail-label">Ngày gửi duyệt</span><span className="chk-detail-value">{record.submittedDate ? dayjs(record.submittedDate).format('DD/MM/YYYY HH:mm:ss') : (record.submittedAt ? dayjs(record.submittedAt).format('DD/MM/YYYY HH:mm:ss') : '—')}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ gửi duyệt</span><span className="chk-detail-value">{record.submittedByName || record.submittedBy || '—'}</span></div>
+
+                          <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt Cảng vụ</span><span className="chk-detail-value">{record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt Cảng vụ</span><span className="chk-detail-value">{record.approverNameLevel1 || record.approverLevel1 || '—'}</span></div>
+
+                          <div className="chk-detail-row"><span className="chk-detail-label">Nội dung Cảng vụ phê duyệt</span><span className="chk-detail-value">{record.approvalReasonLevel1 || record.rejectionReasonLevel1 || (record as any).level1ApprovalContent || '—'}</span></div>
+                          <div style={{ border: 'none' }} />
+
+                          <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt Cục</span><span className="chk-detail-value">{record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt Cục</span><span className="chk-detail-value">{record.approverNameLevel2 || record.approverLevel2 || '—'}</span></div>
+
+                          <div className="chk-detail-row"><span className="chk-detail-label">Nội dung Cục phê duyệt</span><span className="chk-detail-value">{record.approvalReasonLevel2 || record.rejectionReasonLevel2 || (record as any).level2ApprovalContent || '—'}</span></div>
+                          <div style={{ border: 'none' }} />
+
+                          <div className="chk-detail-row"><span className="chk-detail-label">Trạng thái phê duyệt</span><span className="chk-detail-value"><ApprovalStatusBadge status={record.approvalStatus} /></span></div>
+                          <div style={{ border: 'none' }} />
+
+                          {record.rejectionReason && (
+                            <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Lý do từ chối</span><span className="chk-detail-value" style={{ color: statusCritical }}>{record.rejectionReason}</span></div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ),
                 },
@@ -858,38 +945,45 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                           </Col>
                         </Row>
 
+                        <Col span={24}>
+                          <div style={{ marginTop: 12, marginBottom: 12, borderTop: `1px solid ${borderDefault}`, paddingTop: 12 }}>
+                            <span style={{ color: actionPrimary, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
+                              Thông tin khác
+                            </span>
+                          </div>
+                        </Col>
+
                         <Row gutter={[24, 0]}>
-                          <Col span={12}>
+                          <Col span={24}>
                             <Form.Item
                               name="coverageZone"
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Vùng phủ sóng</span>}
                               style={{ marginBottom: spaceFormField }}
                             >
-                              <Input
+                              <Input.TextArea
                                 placeholder="Nhập vùng phủ sóng..."
+                                rows={3}
                                 maxLength={500}
                                 showCount
-                                style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }}
+                                style={textAreaStyle}
                               />
                             </Form.Item>
                           </Col>
-                          <Col span={12}>
+                          <Col span={24}>
                             <Form.Item
                               name="frequency"
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tần số liên lạc</span>}
                               style={{ marginBottom: spaceFormField }}
                             >
-                              <Input
+                              <Input.TextArea
                                 placeholder="Nhập tần số liên lạc..."
+                                rows={3}
                                 maxLength={500}
                                 showCount
-                                style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }}
+                                style={textAreaStyle}
                               />
                             </Form.Item>
                           </Col>
-                        </Row>
-
-                        <Row gutter={[24, 0]}>
                           <Col span={24}>
                             <Form.Item
                               name="notes"
