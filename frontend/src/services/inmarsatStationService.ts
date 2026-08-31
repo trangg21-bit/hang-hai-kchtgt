@@ -134,28 +134,15 @@ export const inmarsatStationService = {
     return toArray<CoastalStationInmarsatOptionResponse>(res.data);
   },
 
-  async getAttachments(id: string) {
-    try {
-      const res = await api.get(`/v1/attachments?entityType=COASTAL_STATION_INMARSAT&entityId=${id}`);
-      return toArray(res.data?.data || res.data || []);
-    } catch {
-      return [];
-    }
+  async getAttachments(_id: string) {
+    return [];
   },
 
-  async uploadAttachment(id: string, file: File) {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('entityType', 'COASTAL_STATION_INMARSAT');
-    formData.append('entityId', id);
-    const res = await api.post('/v1/attachments/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return res.data;
+  async uploadAttachment(_id: string, _file: File) {
+    return null;
   },
 
-  async deleteAttachment(attachmentId: string) {
-    await api.delete(`/v1/attachments/${attachmentId}`);
+  async deleteAttachment(_attachmentId: string) {
   },
 
   async generateCode(): Promise<{ code: string }> {
