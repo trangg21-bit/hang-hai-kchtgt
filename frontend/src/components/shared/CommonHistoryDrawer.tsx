@@ -556,12 +556,6 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                               return null;
                             }
 
-                            const isLongHistoryText = (val: string | null | undefined): boolean => {
-                              if (!val || val === '—') return false;
-                              const str = String(val).trim();
-                              return str.length > 40 || str.includes('\n') || (str.includes(',') && str.length > 25);
-                            };
-
                             const renderFormattedContent = (content: string, _isOld: boolean = false) => {
                               if (!content || content === '—') return <span style={{ color: textTertiary }}>—</span>;
                               const str = String(content).trim();

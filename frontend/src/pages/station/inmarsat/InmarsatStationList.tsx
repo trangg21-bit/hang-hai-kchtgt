@@ -16,11 +16,11 @@ import ApprovalStatusBadge from '../../../components/shared/ApprovalStatusBadge'
 import toast from '../../../components/ToastNotification';
 import {
   actionPrimary, textSecondary,
-  fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd, fontSizeLg,
+  fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeLg,
   radiusPill, spaceMd, sidebarBg,
   statusOperational, statusCritical, statusAttention, statusDraft,
-  drawerTitleStyle, selectStyle,
-  borderDefault, statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
+  selectStyle,
+  statusBadgeStyle, icons,
   inputStyle, clientSideStringSorter,
   clientSideProvinceSorter, clientSideBadgeSorter,
   getRangePickerProps,
@@ -128,7 +128,6 @@ export const InmarsatStationList = () => {
   const userUnitType = user?.unitType || '';
 
   const canCreate = hasPermission('coastalstationinmarsat:create') || hasPermission('specialstation:create') || hasPermission('data:create') || hasPermission('admin:all');
-  const canUpdate = hasPermission('coastalstationinmarsat:update') || hasPermission('specialstation:update') || hasPermission('data:update') || hasPermission('admin:all');
   const isCucLevel = !userUnitType || userUnitType === 'CHUYEN_VIEN_CUC' || userUnitType === 'LANH_DAO_CUC' || userUnitType === 'CUC' || userUnitType === 'CUC_HANG_HAI' || user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN';
   const isCangVuLevel = userUnitType === 'CVHH' || userUnitType === 'CANG_VU';
   const canApproveL1 = (hasPermission('coastalstationinmarsat:approvec1') || hasPermission('coastalstationinmarsat:approve') || hasPermission('specialstation:approve') || hasPermission('admin:all')) && (isCangVuLevel || !isCucLevel);
@@ -638,7 +637,7 @@ export const InmarsatStationList = () => {
             <LoadingSkeleton />
           ) : (
             <>
-              <DataTable<CoastalStationInmarsatResponse>
+              <DataTable
                 dataSource={data}
                 columns={columns}
                 rowKey="id"

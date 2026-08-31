@@ -24,6 +24,9 @@ export interface User {
   userId?: string;
   id?: string;
   email?: string;
+  orgUnitId?: string | number;
+  unitType?: string;
+  [key: string]: any;
 }
 
 export interface AuthState {
