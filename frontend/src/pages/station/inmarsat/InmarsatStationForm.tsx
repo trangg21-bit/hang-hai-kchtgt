@@ -868,7 +868,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                                 className="inmarsat-services-select-ctrl"
                                 mode="multiple"
                                 showSearch
-                                placeholder="Chọn các dịch vụ Inmarsat..."
+                                placeholder="Chọn dịch vụ cung cấp..."
                                 options={INMARSAT_SERVICE_OPTIONS}
                                 suffixIcon={<DownOutlined style={{ fontSize: 11, color: '#93A3B3', pointerEvents: 'none' }} />}
                                 filterOption={(input, option) =>

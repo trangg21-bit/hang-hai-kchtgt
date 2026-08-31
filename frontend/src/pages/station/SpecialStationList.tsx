@@ -1032,7 +1032,7 @@ export default function SpecialStationList() {
                           <Select
                             mode="multiple"
                             options={INMARSAT_SERVICE_OPTIONS}
-                            placeholder="Chọn các dịch vụ Inmarsat..."
+                            placeholder="Chọn dịch vụ cung cấp..."
                             allowClear
                             showSearch
                             filterOption={(input, option) =>
