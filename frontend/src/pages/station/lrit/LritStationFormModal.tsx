@@ -200,7 +200,7 @@ export const LritStationFormModal: React.FC<LritStationFormModalProps> = ({
         form.setFieldsValue({
           orgUnitId: initialData.orgUnitId,
           operatingOrgId: initialData.operatingOrgId,
-          provinceId: initialData.provinceId,
+          provinceId: initialData.provinceId != null ? String(initialData.provinceId) : undefined,
           code: initialData.code,
           name: initialData.name,
           locationAddress: initialData.locationAddress,
@@ -306,7 +306,7 @@ export const LritStationFormModal: React.FC<LritStationFormModalProps> = ({
       const payload: CreateLritStationRequest = {
         orgUnitId: values.orgUnitId,
         operatingOrgId: values.operatingOrgId,
-        provinceId: values.provinceId,
+        provinceId: values.provinceId != null ? Number(values.provinceId) : undefined,
         code: values.code,
         name: values.name?.trim(),
         locationAddress: values.locationAddress?.trim(),

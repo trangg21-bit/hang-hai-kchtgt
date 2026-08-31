@@ -202,7 +202,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
             name: res.name || res.stationName,
             orgUnitId: res.orgUnitId ? String(res.orgUnitId) : undefined,
             operatingOrgId: res.operatingOrgId ? String(res.operatingOrgId) : undefined,
-            provinceId: res.provinceId,
+            provinceId: res.provinceId != null ? String(res.provinceId) : undefined,
             locationDetail: res.locationDetail || res.locationAddress,
             conditionStatus: res.conditionStatus || 'OPERATIONAL',
             coverageZone: res.coverageZone,
