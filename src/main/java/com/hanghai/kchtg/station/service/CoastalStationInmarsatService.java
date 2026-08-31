@@ -239,13 +239,8 @@ public class CoastalStationInmarsatService {
             validateAllowedOrgUnit(entity.getOrgUnitId());
         }
 
-        // Chỉ cho phép cập nhật khi ở trạng thái DRAFT hoặc bị từ chối
-        if (entity.getApprovalStatus() != ApprovalStatus.DRAFT &&
-            entity.getApprovalStatus() != ApprovalStatus.REJECTED_LEVEL1 &&
-            entity.getApprovalStatus() != ApprovalStatus.REJECTED_LEVEL2 &&
-            !SecurityUtils.isElevatedAdministrator()) {
-            throw new IllegalStateException("Chỉ được chỉnh sửa bản ghi ở trạng thái Lưu tạm hoặc Bị trả về");
-        }
+        // Quy tắc 12: Kiểm tra quyền chỉnh sửa hồ sơ
+        approvalService.assertEditable(entity);
 
         boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
                 || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;

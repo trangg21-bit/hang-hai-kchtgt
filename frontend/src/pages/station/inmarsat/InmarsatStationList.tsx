@@ -299,42 +299,29 @@ export const InmarsatStationList = () => {
       const logs = await inmarsatStationService.getHistory(rec.id);
       const filteredLogs = (logs || []).filter((h: any) => {
         const act = String(h.actionType || h.action || '').toUpperCase();
-        return !['APPROVE_L1', 'APPROVE_L2', 'APPROVE', 'SUBMIT'].includes(act);
+        if (['APPROVE_L1', 'APPROVE_L2', 'APPROVE', 'SUBMIT'].includes(act)) return false;
+        const field = h.changedField || h.field || '';
+        const nv = String(h.newValue || '');
+        if ((!field || field === 'Thông tin') && (!h.previousValue || h.previousValue === '—') && nv.includes('Cập nhật thông tin')) {
+          return false;
+        }
+        return true;
       });
       const mapped: CommonHistoryEntry[] = filteredLogs.map((h: any) => {
         let changes: HistoryChangeItem[] = [];
         if (h.changes && Array.isArray(h.changes)) {
           changes = h.changes;
         } else if (h.previousValue || h.newValue || h.changedField) {
-          try {
-            const prevObj = typeof h.previousValue === 'string' && h.previousValue.startsWith('{') ? JSON.parse(h.previousValue) : null;
-            const newObj = typeof h.newValue === 'string' && h.newValue.startsWith('{') ? JSON.parse(h.newValue) : null;
-            if (prevObj || newObj) {
-              const allKeys = Array.from(new Set([...Object.keys(prevObj || {}), ...Object.keys(newObj || {})]));
-              changes = allKeys.map((k) => ({
-                field: k,
-                oldValue: prevObj ? prevObj[k] : undefined,
-                newValue: newObj ? newObj[k] : undefined,
-              }));
-            } else {
-              changes = [{
-                field: h.changedField || 'Thông tin',
-                oldValue: h.previousValue || '—',
-                newValue: h.newValue || '—',
-              }];
-            }
-          } catch {
-            changes = [{
-              field: h.changedField || 'Thông tin',
-              oldValue: h.previousValue || '—',
-              newValue: h.newValue || '—',
-            }];
-          }
+          changes = [{
+            field: h.changedField || 'Thông tin',
+            oldValue: h.previousValue != null && h.previousValue !== '' ? String(h.previousValue) : '—',
+            newValue: h.newValue != null && h.newValue !== '' ? String(h.newValue) : '—',
+          }];
         }
 
         return {
           id: h.id,
-          action: h.actionType || h.action,
+          action: h.actionType || h.action || 'UPDATE',
           changedBy: h.changedByName || h.changedBy || 'Hệ thống',
           changedByName: h.changedByName || h.changedBy || 'Hệ thống',
           changedAt: h.changedAt || h.createdAt || h.timestamp,
