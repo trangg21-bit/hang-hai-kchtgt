@@ -446,7 +446,7 @@ export const LritStationList: React.FC = () => {
         ? [
             {
               key: 'delete',
-              label: 'Xóa',
+              label: 'Xóa bỏ',
               icon: <DeleteOutlined />,
               danger: true,
               onClick: () => handleDelete(record),

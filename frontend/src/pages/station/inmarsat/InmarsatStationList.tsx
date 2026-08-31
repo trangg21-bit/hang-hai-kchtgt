@@ -588,6 +588,12 @@ export const InmarsatStationList = () => {
                       icon: icons.view,
                       onClick: () => handleOpenDetail(rec),
                     },
+                    {
+                      key: 'history',
+                      label: 'Lịch sử',
+                      icon: icons.history,
+                      onClick: () => handleOpenHistory(rec),
+                    },
                     ...(canEditThis ? [{
                       key: 'edit',
                       label: 'Chỉnh sửa',
@@ -596,7 +602,7 @@ export const InmarsatStationList = () => {
                     }] : []),
                     ...(isDraftOrRejected && canCreate ? [{
                       key: 'submit',
-                      label: 'Gửi duyệt',
+                      label: 'Gửi phê duyệt',
                       icon: icons.submit,
                       onClick: () => handleSubmit(rec),
                     }] : []),
@@ -637,12 +643,6 @@ export const InmarsatStationList = () => {
                       danger: true,
                       onClick: () => handleDelete(rec),
                     }] : []),
-                    {
-                      key: 'history',
-                      label: 'Lịch sử thay đổi',
-                      icon: icons.history,
-                      onClick: () => handleOpenHistory(rec),
-                    },
                   ];
                 }}
               />
