@@ -633,19 +633,110 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                   label: 'Vị trí (GIS)',
                   children: (
                     <DetailTable
-                      scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
+                      scrollY="calc(100vh - 428px)"
                       dataSource={coordinateList}
                       emptyText="Chưa có tọa độ GPS nào"
                       headerNode={
-                        <div className="chk-detail-grid" style={{ marginBottom: 16 }}>
-                          <div className="chk-detail-row"><span className="chk-detail-label">Loại đối tượng</span><span className="chk-detail-value">{record?.objectType === 'LINE' ? 'Đối tượng đường' : record?.objectType === 'POLYGON' ? 'Đối tượng vùng' : 'Đối tượng điểm'}</span></div>
-                          <div className="chk-detail-row"><span className="chk-detail-label">Hệ quy chiếu</span><span className="chk-detail-value">{record?.coordinateSystem || 'WGS 84 / VN-2000'}</span></div>
-                        </div>
+                        <>
+                          <div className="chk-detail-grid" style={{ marginBottom: 16 }}>
+                            <div className="chk-detail-row">
+                              <span className="chk-detail-label">Loại đối tượng</span>
+                              <span className="chk-detail-value">
+                                {record?.geometryType === 'LINE' || (record as any)?.objectType === 'LINE' ? 'Đối tượng đường' : record?.geometryType === 'POLYGON' || (record as any)?.objectType === 'POLYGON' ? 'Đối tượng vùng' : 'Đối tượng điểm'}
+                              </span>
+                            </div>
+                            <div className="chk-detail-row">
+                              <span className="chk-detail-label">Biểu tượng bản đồ</span>
+                              <span className="chk-detail-value">
+                                {(() => {
+                                  const symId = record?.symbolId || (record as any)?.symbol;
+                                  const sym = symbols.find((s) => s.id === symId || s.code === symId || (symId && String(s.id) === String(symId)));
+                                  if (sym) {
+                                    const imgSrc = sym.image
+                                      ? (sym.image.startsWith('data:') || sym.image.startsWith('http') || sym.image.startsWith('/')
+                                          ? sym.image
+                                          : `data:image/png;base64,${sym.image}`)
+                                      : undefined;
+                                    return (
+                                      <Space size={8} align="center" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                        {imgSrc ? (
+                                          <img
+                                            src={imgSrc}
+                                            alt={sym.name || ''}
+                                            style={{ width: 20, height: 20, objectFit: 'contain', verticalAlign: 'middle', display: 'inline-block' }}
+                                            onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                                          />
+                                        ) : (
+                                          <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', backgroundColor: actionPrimary }} />
+                                        )}
+                                        <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
+                                      </Space>
+                                    );
+                                  }
+                                  return (
+                                    <Space size={8} align="center" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                      <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', backgroundColor: actionPrimary }} />
+                                      <span>{(record as any)?.symbolName || (record?.symbolId ? `Biểu tượng (${record.symbolId})` : 'Đài thông tin vệ tinh Inmarsat')}</span>
+                                    </Space>
+                                  );
+                                })()}
+                              </span>
+                            </div>
+                            <div className="chk-detail-row">
+                              <span className="chk-detail-label">Hệ quy chiếu</span>
+                              <span className="chk-detail-value">{record?.coordinateSystem || 'WGS 84 / VN-2000'}</span>
+                            </div>
+                            <div className="chk-detail-row">
+                              <span className="chk-detail-label">Quy tắc hiển thị</span>
+                              <span className="chk-detail-value">{(record as any)?.displayRule || 'Độ, phút, giây (DMS)'}</span>
+                            </div>
+                          </div>
+                          <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+                            <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px' }}>
+                              Tọa độ GPS
+                            </span>
+                            <Button
+                              type="primary"
+                              icon={<EnvironmentOutlined />}
+                              onClick={() => setMapModalOpen(true)}
+                              style={{
+                                ...primaryButtonStyle,
+                                height: 32,
+                                fontSize: fontSizeSm,
+                                padding: '0 14px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6,
+                              }}
+                            >
+                              Xem vị trí trên bản đồ
+                            </Button>
+                          </div>
+                        </>
                       }
                       columns={[
-                        { title: 'STT', width: 60, align: 'center' },
-                        { title: 'Vĩ độ (N)', render: (_: any, r: any) => (r.latitude != null ? `${r.latitude}°` : '—') },
-                        { title: 'Kinh độ (E)', render: (_: any, r: any) => (r.longitude != null ? `${r.longitude}°` : '—') },
+                        {
+                          title: 'STT',
+                          width: 50,
+                          align: 'center',
+                          render: (_: any, __: any, i: number) => i + 1,
+                        },
+                        {
+                          title: 'Vĩ độ (Latitude - N)',
+                          key: 'lat',
+                          render: (_v: any, r: any) => {
+                            const dms = ddToDms(r.latitude);
+                            return `${dms.d}° ${dms.m}' ${dms.s}" N`;
+                          },
+                        },
+                        {
+                          title: 'Kinh độ (Longitude - E)',
+                          key: 'lng',
+                          render: (_v: any, r: any) => {
+                            const dms = ddToDms(r.longitude);
+                            return `${dms.d}° ${dms.m}' ${dms.s}" E`;
+                          },
+                        },
                       ]}
                     />
                   ),
