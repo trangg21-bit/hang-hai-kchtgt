@@ -793,6 +793,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                               style={{ marginBottom: spaceFormField }}
                             >
                               <Select
+                                className="chk-multi-select"
                                 mode="multiple"
                                 showSearch
                                 placeholder="Chọn dịch vụ cung cấp..."
