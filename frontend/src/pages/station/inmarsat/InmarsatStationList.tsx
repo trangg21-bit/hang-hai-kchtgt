@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { Modal, Input, Drawer, Select, DatePicker } from 'antd';
+import { Modal, Input, Select, DatePicker } from 'antd';
 import { inmarsatStationService } from '../../../services/inmarsatStationService';
 import { organizationService } from '../../../services/organizationService';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
-import type { CoastalStationInmarsatResponse, CoastalStationInmarsatHistoryResponse } from '../../../services/station/types';
+import type { CoastalStationInmarsatResponse } from '../../../services/station/types';
 import { ConditionStatus, CONDITION_STATUS_MAP, CONDITION_STATUS_OPTIONS } from '../../../types/vtsSystem';
 import { useAuthStore } from '../../../store/authStore';
 import { usePermissionStore } from '../../../store/permissionStore';
@@ -32,7 +32,46 @@ import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../../types/co
 import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../../components/org-unit';
 import SidebarFilterField from '../../../components/list-view/SidebarFilterField';
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../../utils/approvalEditPolicy';
-import LoadingSkeleton from '../../../components/LoadingSkeleton';
+import { CommonHistoryDrawer, type CommonHistoryEntry, type HistoryChangeItem } from '../../../components/shared/CommonHistoryDrawer';
+
+const INMARSAT_FIELD_MAP: Record<string, string> = {
+  code: 'Mã đài',
+  deviceCode: 'Mã đài',
+  name: 'Tên đài',
+  stationName: 'Tên đài',
+  orgUnitId: 'Đơn vị quản lý',
+  orgUnitName: 'Đơn vị quản lý',
+  operatingOrgId: 'Đơn vị khai thác',
+  operatingOrgName: 'Đơn vị khai thác',
+  provinceId: 'Địa điểm (Tỉnh/TP)',
+  locationDetail: 'Địa điểm chi tiết',
+  locationAddress: 'Địa điểm chi tiết',
+  conditionStatus: 'Tình trạng',
+  coverageZone: 'Vùng phủ sóng',
+  services: 'Dịch vụ cung cấp',
+  frequency: 'Tần số liên lạc',
+  notes: 'Ghi chú',
+  note: 'Ghi chú',
+  description: 'Ghi chú',
+  latitude: 'Vĩ độ',
+  longitude: 'Kinh độ',
+  symbol: 'Ký hiệu GIS',
+  geometryType: 'Đối tượng không gian',
+  objectType: 'Đối tượng không gian',
+  approvalStatus: 'Trạng thái phê duyệt',
+  approvalLevel: 'Cấp phê duyệt',
+};
+
+const formatHistoryValue = (field: string, val: any): string => {
+  if (val === null || val === undefined || val === '') return '—';
+  if (field === 'provinceId') {
+    return getProvinceNameById(val) || String(val);
+  }
+  if (field === 'conditionStatus') {
+    return CONDITION_STATUS_MAP[val] || String(val);
+  }
+  return String(val);
+};
 
 const CONDITION_COLOR: Record<ConditionStatus, string> = {
   [ConditionStatus.OPERATIONAL]: statusOperational,
@@ -78,7 +117,7 @@ export const InmarsatStationList = () => {
   // History modal
   const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyList, setHistoryList] = useState<CoastalStationInmarsatHistoryResponse[]>([]);
+  const [historyList, setHistoryList] = useState<CommonHistoryEntry[]>([]);
 
   // Permissions & user
   const { user } = useAuthStore();
@@ -258,7 +297,48 @@ export const InmarsatStationList = () => {
     setHistoryLoading(true);
     try {
       const logs = await inmarsatStationService.getHistory(rec.id);
-      setHistoryList(logs);
+      const mapped: CommonHistoryEntry[] = (logs || []).map((h: any) => {
+        let changes: HistoryChangeItem[] = [];
+        if (h.changes && Array.isArray(h.changes)) {
+          changes = h.changes;
+        } else if (h.previousValue || h.newValue) {
+          try {
+            const prevObj = typeof h.previousValue === 'string' && h.previousValue.startsWith('{') ? JSON.parse(h.previousValue) : null;
+            const newObj = typeof h.newValue === 'string' && h.newValue.startsWith('{') ? JSON.parse(h.newValue) : null;
+            if (prevObj || newObj) {
+              const allKeys = Array.from(new Set([...Object.keys(prevObj || {}), ...Object.keys(newObj || {})]));
+              changes = allKeys.map((k) => ({
+                field: k,
+                oldValue: prevObj ? prevObj[k] : undefined,
+                newValue: newObj ? newObj[k] : undefined,
+              }));
+            } else if (h.previousValue || h.newValue) {
+              changes = [{
+                field: 'Thông tin',
+                oldValue: h.previousValue,
+                newValue: h.newValue,
+              }];
+            }
+          } catch {
+            changes = [{
+              field: 'Thông tin',
+              oldValue: h.previousValue,
+              newValue: h.newValue,
+            }];
+          }
+        }
+
+        return {
+          id: h.id,
+          action: h.actionType || h.action,
+          changedBy: h.changedByName || h.changedBy || 'Hệ thống',
+          changedByName: h.changedByName || h.changedBy || 'Hệ thống',
+          changedAt: h.changedAt || h.createdAt || h.timestamp,
+          description: h.description || h.reason || h.note,
+          changes,
+        };
+      });
+      setHistoryList(mapped);
     } catch {
       setHistoryList([]);
       toast.error('Không thể tải lịch sử thay đổi');
@@ -707,60 +787,15 @@ export const InmarsatStationList = () => {
         </Modal>
 
         {/* History Drawer */}
-        <Drawer
-          title={
-            <span style={drawerTitleStyle}>
-              Lịch sử thay đổi: {selectedRecord?.name || selectedRecord?.stationName || selectedRecord?.code}
-            </span>
-          }
+        <CommonHistoryDrawer
           open={historyDrawerOpen}
           onClose={() => setHistoryDrawerOpen(false)}
-          width={720}
-          destroyOnHidden
-        >
-          {historyLoading ? (
-            <LoadingSkeleton />
-          ) : historyList.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: textTertiary }}>
-              Chưa có lịch sử thay đổi nào
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {historyList.map((h, i) => (
-                <div
-                  key={h.id || i}
-                  style={{
-                    padding: 16,
-                    border: `1px solid ${borderDefault}`,
-                    borderRadius: 8,
-                    background: '#ffffff',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <span style={{ fontWeight: fontWeightBold, color: actionPrimary, fontSize: fontSizeMd }}>
-                      {h.actionType === 'CREATE' ? 'Tạo mới' : h.actionType === 'UPDATE' ? 'Cập nhật' : h.actionType}
-                    </span>
-                    <span style={{ color: textTertiary, fontSize: fontSizeSm }}>
-                      {(h as any).performedAt ? dayjs((h as any).performedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}
-                    </span>
-                  </div>
-                  <div style={{ color: textSecondary, fontSize: fontSizeSm }}>
-                    <span>Thực hiện bởi: </span>
-                    <span style={{ fontWeight: fontWeightMedium, color: textSecondary }}>
-                      {(h as any).performedByName || (h as any).performedBy || 'Hệ thống'}
-                    </span>
-                  </div>
-                  {(h as any).reason && (
-                    <div style={{ marginTop: 6, color: statusCritical, fontSize: fontSizeSm }}>
-                      <span>Lý do: </span>
-                      <span>{(h as any).reason}</span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </Drawer>
+          entityName={selectedRecord?.name || selectedRecord?.stationName || selectedRecord?.code}
+          records={historyList}
+          loading={historyLoading}
+          fieldLabelMap={INMARSAT_FIELD_MAP}
+          formatValue={formatHistoryValue}
+        />
       </div>
     </ThemeTokenProvider>
   );
