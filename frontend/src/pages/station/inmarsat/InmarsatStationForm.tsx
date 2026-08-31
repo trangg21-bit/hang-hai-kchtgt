@@ -11,13 +11,10 @@ import {
   Tabs,
   Modal,
   Drawer,
-  InputNumber,
 } from 'antd';
 import {
   CloseOutlined,
   EnvironmentOutlined,
-  PlusOutlined,
-  DeleteOutlined,
   DownOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -31,11 +28,11 @@ import { ConditionStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP, Approv
 import {
   drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle,
   drawerTabBarStyle, drawerStyles, drawerFormScrollStyle, drawerGisControlBoxStyle, DRAWER_TABLE_SCROLL_Y,
-  requiredMarkStyle, spaceFormField, radiusMd, radiusPill, sidebarBg,
+  requiredMarkStyle, spaceFormField, radiusPill, sidebarBg,
   fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeLg,
   textSecondary, textTertiary, borderDefault,
   statusCritical, statusOperational, actionPrimary, textAreaStyle,
-  readonlyInputStyle, drawerCloseBtnStyle, selectStyle, inputStyle,
+  drawerCloseBtnStyle, selectStyle, inputStyle,
 } from '../../../themetokenchk';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../../types/common';
 import { useAuthStore } from '../../../store/authStore';
@@ -43,11 +40,10 @@ import { usePermissionStore } from '../../../store/permissionStore';
 import { FormOrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../../components/org-unit';
 import DetailTable from '../../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../../components/shared/InfrastructureAttachmentTab';
-import ApprovalStatusBadge from '../../../components/shared/ApprovalStatusBadge';
 import GisLocationSelector from '../../../components/gis/GisLocationSelector';
 import { symbolService } from '../../../services/symbolService';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
-import { parseWktToCoordinates, serializeCoordinatesToWkt, ddToDms, dmsToDd } from '../../../utils/gisGeometry';
+import { parseWktToCoordinates, serializeCoordinatesToWkt, ddToDms } from '../../../utils/gisGeometry';
 
 export const INMARSAT_SERVICE_OPTIONS = [
   { value: 'Inmarsat-C', label: 'Inmarsat-C' },
@@ -156,7 +152,6 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
   const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve'>('draft');
   const actionTypeRef = useRef<'draft' | 'submit' | 'approve'>('draft');
   const [tabKey, setTabKey] = useState<string>('general');
-  const [approvalSectionOpen, setApprovalSectionOpen] = useState(true);
 
   const [record, setRecord] = useState<CoastalStationInmarsatResponse | null>(initialData || null);
   const [attachments, setAttachments] = useState<any[]>([]);
@@ -627,55 +622,6 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                           <span className="chk-detail-value">{record.notes || record.description || (record as any).note || '—'}</span>
                         </div>
                       </div>
-
-                      {/* ── Thông tin phê duyệt (Toggle Dropdown) ── */}
-                      <div style={{ marginTop: 16, marginBottom: 6 }}>
-                        <button
-                          type="button"
-                          onClick={() => setApprovalSectionOpen(!approvalSectionOpen)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: '4px 0',
-                            color: actionPrimary,
-                            fontWeight: fontWeightBold,
-                            fontSize: fontSizeMd,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 6,
-                          }}
-                        >
-                          <span style={{ fontSize: 10, color: actionPrimary }}>{approvalSectionOpen ? '▼' : '▶'}</span>
-                          <span>Thông tin phê duyệt</span>
-                        </button>
-                      </div>
-
-                      {approvalSectionOpen && (
-                        <div className="chk-detail-grid">
-                          <div className="chk-detail-row"><span className="chk-detail-label">Ngày gửi duyệt</span><span className="chk-detail-value">{record.submittedDate ? dayjs(record.submittedDate).format('DD/MM/YYYY HH:mm:ss') : (record.submittedAt ? dayjs(record.submittedAt).format('DD/MM/YYYY HH:mm:ss') : '—')}</span></div>
-                          <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ gửi duyệt</span><span className="chk-detail-value">{record.submittedByName || record.submittedBy || '—'}</span></div>
-
-                          <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt Cảng vụ</span><span className="chk-detail-value">{record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                          <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt Cảng vụ</span><span className="chk-detail-value">{record.approverNameLevel1 || record.approverLevel1 || '—'}</span></div>
-
-                          <div className="chk-detail-row"><span className="chk-detail-label">Nội dung Cảng vụ phê duyệt</span><span className="chk-detail-value">{record.approvalReasonLevel1 || record.rejectionReasonLevel1 || (record as any).level1ApprovalContent || '—'}</span></div>
-                          <div style={{ border: 'none' }} />
-
-                          <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt Cục</span><span className="chk-detail-value">{record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                          <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt Cục</span><span className="chk-detail-value">{record.approverNameLevel2 || record.approverLevel2 || '—'}</span></div>
-
-                          <div className="chk-detail-row"><span className="chk-detail-label">Nội dung Cục phê duyệt</span><span className="chk-detail-value">{record.approvalReasonLevel2 || record.rejectionReasonLevel2 || (record as any).level2ApprovalContent || '—'}</span></div>
-                          <div style={{ border: 'none' }} />
-
-                          <div className="chk-detail-row"><span className="chk-detail-label">Trạng thái phê duyệt</span><span className="chk-detail-value"><ApprovalStatusBadge status={record.approvalStatus} /></span></div>
-                          <div style={{ border: 'none' }} />
-
-                          {record.rejectionReason && (
-                            <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Lý do từ chối</span><span className="chk-detail-value" style={{ color: statusCritical }}>{record.rejectionReason}</span></div>
-                          )}
-                        </div>
-                      )}
                     </div>
                   ),
                 },
