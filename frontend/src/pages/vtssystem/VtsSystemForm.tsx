@@ -28,7 +28,7 @@ import {
   requiredMarkStyle, inputStyle,
   drawerTabBarStyle, drawerStyles, drawerFormScrollStyle, spaceFormField, radiusPill, sidebarBg,
   fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeSm,
-  textSecondary, textTertiary, textPrimary, borderDefault,
+  textSecondary, textTertiary, textPrimary,
   statusCritical, statusAttention, statusOperational, actionPrimary, textAreaStyle,
   readonlyInputStyle, selectStyle, drawerCloseBtnStyle, statusBadgeStyle,
   generateTempId,

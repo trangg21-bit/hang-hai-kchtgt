@@ -12,8 +12,6 @@ import {
   Modal,
   Drawer,
   InputNumber,
-  Tooltip,
-  Tag,
 } from 'antd';
 import {
   CloseOutlined,

@@ -10,8 +10,8 @@ export interface HanoiStationItem {
   provinceName?: string;
   locationAddress?: string;
   conditionStatus?: string;
-  status?: number;
-  approvalStatus?: number;
+  status?: string;
+  approvalStatus?: string;
   portName?: string;
   district?: string;
   ward?: string;

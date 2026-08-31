@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Tag,
   Input,
   Select,
   Modal,
   Space,
   Button,
   DatePicker,
-  Typography,
 } from 'antd';
 import {
   PlusOutlined,
@@ -25,7 +23,6 @@ import dayjs from 'dayjs';
 import { ScreenHeader, DataTable } from '../../../components/list-view';
 import FilterTableLayout from '../../../components/list-view/FilterTableLayout';
 import Pagination from '../../../components/list-view/Pagination';
-import StatusTabs from '../../../components/list-view/StatusTabs';
 import EmptyState from '../../../components/EmptyState';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import { OrgUnitTreeSelect, normalizeSearchText } from '../../../components/org-unit';
@@ -53,9 +50,6 @@ import {
   surfacePage,
   spaceMd,
   spaceSm,
-  spaceXs,
-  spaceLg,
-  fontSizeLg,
   fontSizeMd,
   fontSizeSm,
   fontWeightBold,
@@ -353,7 +347,7 @@ export const LritStationList: React.FC = () => {
       dataIndex: 'approvalStatus',
       key: 'approvalStatus',
       width: 180,
-      render: (status: number) => <ApprovalStatusBadge status={status ?? 0} />,
+      render: (status: string) => <ApprovalStatusBadge status={status || 'DRAFT'} />,
     },
     {
       title: 'Tình trạng',
@@ -384,8 +378,8 @@ export const LritStationList: React.FC = () => {
 
   const getRowActions = (record: LritStationItem) => {
     const isOwner = user?.id && record.createdBy === user.id;
-    const canEdit = canEditApprovalRecord(record.approvalStatus ?? 0, { hasPerm: hasPermission, resource: 'coastalstationlrit' });
-    const canDelete = canDeleteApprovalRecord(record.approvalStatus ?? 0, { hasPerm: hasPermission, resource: 'coastalstationlrit' });
+    const canEdit = canEditApprovalRecord(record.approvalStatus || 'DRAFT', { hasPerm: hasPermission, resource: 'coastalstationlrit' });
+    const canDelete = canDeleteApprovalRecord(record.approvalStatus || 'DRAFT', { hasPerm: hasPermission, resource: 'coastalstationlrit' });
 
     return [
       {
@@ -580,11 +574,10 @@ export const LritStationList: React.FC = () => {
   return (
     <div style={{ background: surfacePage, minHeight: '100vh', padding: spaceMd }}>
       <ScreenHeader
-        title="Quản lý Đài LRIT"
-        breadcrumbItems={[
-          { title: 'Trang chủ', path: '/' },
-          { title: 'Đài bờ & TT thông tin' },
-          { title: 'Đài LRIT' },
+        breadcrumb={[
+          { label: 'Trang chủ', path: '/' },
+          { label: 'Đài bờ & TT thông tin' },
+          { label: 'Đài LRIT' },
         ]}
         actions={
           <Space>
@@ -608,24 +601,21 @@ export const LritStationList: React.FC = () => {
       />
 
       <FilterTableLayout
-        sidebarTitle="Bộ lọc tìm kiếm"
-        sidebarContent={sidebarFilterContent}
+        statusTabs={statusTabItems}
+        onStatusTabChange={(key) => {
+          setApprovalStatusTab(key);
+          setPage(1);
+        }}
+        onFilterApply={() => { setPage(1); fetchData(); }}
+        onFilterReset={handleResetFilter}
+        filterContent={sidebarFilterContent}
         hideFilterToggle={true}
+        loading={loading}
       >
-        <StatusTabs
-          items={statusTabItems}
-          activeKey={approvalStatusTab}
-          onChange={(key) => {
-            setApprovalStatusTab(key);
-            setPage(1);
-          }}
-        />
-
         {loading ? (
           <LoadingSkeleton rows={5} />
         ) : data.length === 0 ? (
           <EmptyState
-            title="Không có dữ liệu Đài LRIT"
             description="Không tìm thấy bản ghi nào khớp với tiêu chí tìm kiếm"
           />
         ) : (

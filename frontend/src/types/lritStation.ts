@@ -10,8 +10,8 @@ export interface LritStationItem {
   provinceName?: string;
   locationAddress?: string;
   conditionStatus?: string;
-  status?: number;
-  approvalStatus?: number;
+  status?: string;
+  approvalStatus?: string;
   terminalId?: string;
   imoNumber?: string;
   reportingInterval?: number;
