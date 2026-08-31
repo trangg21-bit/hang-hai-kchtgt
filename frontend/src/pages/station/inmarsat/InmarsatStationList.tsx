@@ -15,7 +15,7 @@ import ApprovalModal from '../../../components/shared/ApprovalModal';
 import ApprovalStatusBadge from '../../../components/shared/ApprovalStatusBadge';
 import toast from '../../../components/ToastNotification';
 import {
-  actionPrimary, textSecondary, textTertiary,
+  actionPrimary, textSecondary,
   fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd, fontSizeLg,
   radiusPill, spaceMd, sidebarBg,
   statusOperational, statusCritical, statusAttention, statusDraft,
@@ -496,7 +496,7 @@ export const InmarsatStationList = () => {
             >
               {name}
             </div>
-            <div style={{ fontSize: fontSizeSm, color: textTertiary, whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
               {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
             </div>
           </div>
