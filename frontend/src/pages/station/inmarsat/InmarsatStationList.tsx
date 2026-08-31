@@ -20,7 +20,7 @@ import {
   radiusPill, spaceMd, sidebarBg,
   statusOperational, statusCritical, statusAttention, statusDraft,
   selectStyle,
-  statusBadgeStyle, icons,
+  statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
   inputStyle, clientSideStringSorter,
   clientSideProvinceSorter, clientSideBadgeSorter,
   getRangePickerProps,
