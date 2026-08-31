@@ -16,8 +16,8 @@ import ApprovalStatusBadge from '../../../components/shared/ApprovalStatusBadge'
 import toast from '../../../components/ToastNotification';
 import {
   actionPrimary, textSecondary, textTertiary,
-  fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd,
-  radiusPill, spaceMd,
+  fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd, fontSizeLg,
+  radiusPill, spaceMd, sidebarBg,
   statusOperational, statusCritical, statusAttention, statusDraft,
   drawerTitleStyle, selectStyle,
   borderDefault, statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
@@ -67,9 +67,12 @@ export const InmarsatStationList = () => {
   const [formMode, setFormMode] = useState<'create' | 'edit' | 'detail'>('create');
   const [selectedRecord, setSelectedRecord] = useState<CoastalStationInmarsatResponse | null>(null);
 
-  // Approval modal
-  const [approvalModalOpen, setApprovalModalOpen] = useState(false);
-  const [approvalAction, setApprovalAction] = useState<'submit' | 'approve' | 'reject'>('submit');
+  // Approval modal state
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c2');
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [approvalLoading, setApprovalLoading] = useState(false);
   const [targetRecord, setTargetRecord] = useState<CoastalStationInmarsatResponse | null>(null);
 
   // History modal
@@ -189,33 +192,63 @@ export const InmarsatStationList = () => {
     });
   };
 
-  const handleOpenApproval = (rec: CoastalStationInmarsatResponse, action: 'submit' | 'approve' | 'reject') => {
-    setTargetRecord(rec);
-    setApprovalAction(action);
-    setApprovalModalOpen(true);
-  };
-
-  const handleConfirmApproval = async (note: string) => {
-    if (!targetRecord) return;
+  const handleSubmit = async (rec: CoastalStationInmarsatResponse) => {
     try {
-      if (approvalAction === 'submit') {
-        await inmarsatStationService.submit(targetRecord.id);
-        toast.success('Gửi phê duyệt thành công');
-      } else if (approvalAction === 'approve') {
-        if (canApproveL2) {
-          await inmarsatStationService.approveL2(targetRecord.id);
-        } else {
-          await inmarsatStationService.approveL1(targetRecord.id);
-        }
-        toast.success('Phê duyệt thành công');
-      } else if (approvalAction === 'reject') {
-        await inmarsatStationService.reject(targetRecord.id, note);
-        toast.success('Đã từ chối phê duyệt');
-      }
-      setApprovalModalOpen(false);
+      await inmarsatStationService.submit(rec.id);
+      toast.success('Gửi phê duyệt thành công');
       fetchData();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Thao tác thất bại');
+      toast.error(err?.response?.data?.message || err?.message || 'Lỗi gửi phê duyệt');
+    }
+  };
+
+  const handleOpenApprove = (rec: CoastalStationInmarsatResponse, level: 'c1' | 'c2') => {
+    setTargetRecord(rec);
+    setApproveLevel(level);
+    setApproveModalOpen(true);
+  };
+
+  const handleConfirmApprove = async () => {
+    if (!targetRecord) return;
+    try {
+      setApprovalLoading(true);
+      if (approveLevel === 'c2') {
+        await inmarsatStationService.approveL2(targetRecord.id);
+      } else {
+        await inmarsatStationService.approveL1(targetRecord.id);
+      }
+      toast.success('Phê duyệt thành công');
+      setApproveModalOpen(false);
+      fetchData();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Phê duyệt thất bại');
+    } finally {
+      setApprovalLoading(false);
+    }
+  };
+
+  const handleOpenReject = (rec: CoastalStationInmarsatResponse) => {
+    setTargetRecord(rec);
+    setRejectReason('');
+    setRejectModalOpen(true);
+  };
+
+  const handleConfirmReject = async () => {
+    if (!targetRecord) return;
+    if (!rejectReason.trim()) {
+      toast.error('Vui lòng nhập lý do từ chối');
+      return;
+    }
+    try {
+      setApprovalLoading(true);
+      await inmarsatStationService.reject(targetRecord.id, rejectReason.trim());
+      toast.success('Đã từ chối phê duyệt');
+      setRejectModalOpen(false);
+      fetchData();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Từ chối thất bại');
+    } finally {
+      setApprovalLoading(false);
     }
   };
 
@@ -565,21 +598,21 @@ export const InmarsatStationList = () => {
                       key: 'submit',
                       label: 'Gửi duyệt',
                       icon: icons.submit,
-                      onClick: () => handleOpenApproval(rec, 'submit'),
+                      onClick: () => handleSubmit(rec),
                     }] : []),
                     ...(isPendingL1 && canApproveL1 ? [
                       {
                         key: 'approveL1',
                         label: 'Phê duyệt cấp Cảng vụ/Chi cục',
                         icon: icons.approve,
-                        onClick: () => handleOpenApproval(rec, 'approve'),
+                        onClick: () => handleOpenApprove(rec, 'c1'),
                       },
                       {
                         key: 'rejectL1',
                         label: 'Từ chối cấp Cảng vụ/Chi cục',
                         icon: icons.reject,
                         danger: true,
-                        onClick: () => handleOpenApproval(rec, 'reject'),
+                        onClick: () => handleOpenReject(rec),
                       },
                     ] : []),
                     ...(isPendingL2 && canApproveL2 ? [
@@ -587,14 +620,14 @@ export const InmarsatStationList = () => {
                         key: 'approveL2',
                         label: 'Phê duyệt cấp Cục',
                         icon: icons.approve,
-                        onClick: () => handleOpenApproval(rec, 'approve'),
+                        onClick: () => handleOpenApprove(rec, 'c2'),
                       },
                       {
                         key: 'rejectL2',
                         label: 'Từ chối cấp Cục',
                         icon: icons.reject,
                         danger: true,
-                        onClick: () => handleOpenApproval(rec, 'reject'),
+                        onClick: () => handleOpenReject(rec),
                       },
                     ] : []),
                     ...(canDeleteThis ? [{
@@ -640,12 +673,38 @@ export const InmarsatStationList = () => {
 
         {/* Approval Modal */}
         <ApprovalModal
-          open={approvalModalOpen}
-          action={approvalAction}
-          recordTitle={targetRecord ? `${targetRecord.name || targetRecord.stationName || targetRecord.code}` : ''}
-          onConfirm={handleConfirmApproval}
-          onCancel={() => setApprovalModalOpen(false)}
+          visible={approveModalOpen}
+          level={approveLevel}
+          loading={approvalLoading}
+          onConfirm={handleConfirmApprove}
+          onCancel={() => setApproveModalOpen(false)}
         />
+
+        {/* Reject Modal */}
+        <Modal
+          title={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Từ chối phê duyệt</span>}
+          open={rejectModalOpen}
+          onCancel={() => setRejectModalOpen(false)}
+          onOk={handleConfirmReject}
+          okText="Xác nhận từ chối"
+          cancelText="Hủy"
+          okButtonProps={{ danger: true, style: { borderRadius: radiusPill, height: 38 }, loading: approvalLoading }}
+          cancelButtonProps={{ style: { borderRadius: radiusPill, height: 38 } }}
+          width={520}
+        >
+          <div style={{ padding: '12px 0' }}>
+            <div style={{ marginBottom: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, color: textSecondary }}>
+              Lý do từ chối <span style={{ color: statusCritical }}>*</span>
+            </div>
+            <Input.TextArea
+              rows={4}
+              placeholder="Nhập lý do từ chối phê duyệt..."
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              style={{ borderRadius: 8 }}
+            />
+          </div>
+        </Modal>
 
         {/* History Drawer */}
         <Drawer
