@@ -301,7 +301,7 @@ export const InmarsatStationList = () => {
         let changes: HistoryChangeItem[] = [];
         if (h.changes && Array.isArray(h.changes)) {
           changes = h.changes;
-        } else if (h.previousValue || h.newValue) {
+        } else if (h.previousValue || h.newValue || h.changedField) {
           try {
             const prevObj = typeof h.previousValue === 'string' && h.previousValue.startsWith('{') ? JSON.parse(h.previousValue) : null;
             const newObj = typeof h.newValue === 'string' && h.newValue.startsWith('{') ? JSON.parse(h.newValue) : null;
@@ -312,18 +312,18 @@ export const InmarsatStationList = () => {
                 oldValue: prevObj ? prevObj[k] : undefined,
                 newValue: newObj ? newObj[k] : undefined,
               }));
-            } else if (h.previousValue || h.newValue) {
+            } else {
               changes = [{
-                field: 'Thông tin',
-                oldValue: h.previousValue,
-                newValue: h.newValue,
+                field: h.changedField || 'Thông tin',
+                oldValue: h.previousValue || '—',
+                newValue: h.newValue || '—',
               }];
             }
           } catch {
             changes = [{
-              field: 'Thông tin',
-              oldValue: h.previousValue,
-              newValue: h.newValue,
+              field: h.changedField || 'Thông tin',
+              oldValue: h.previousValue || '—',
+              newValue: h.newValue || '—',
             }];
           }
         }

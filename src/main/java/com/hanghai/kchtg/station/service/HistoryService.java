@@ -43,7 +43,9 @@ public class HistoryService {
     @Transactional
     public void recordHistory(InfrastructureType refType, UUID refId,
                               StationHistoryActionType action,
+                              String changedField,
                               String previousValue, String newValue,
+                              String reason,
                               UUID changedBy) {
         if (refType == null || refId == null) {
             return;
@@ -55,9 +57,19 @@ public class HistoryService {
                 .status(toStatus(action))
                 .approvedBy(changedBy)
                 .approvedDate(LocalDateTime.now())
+                .changedField(changedField)
                 .previousValue(previousValue)
                 .newValue(newValue)
+                .reason(reason)
                 .build());
+    }
+
+    @Transactional
+    public void recordHistory(InfrastructureType refType, UUID refId,
+                              StationHistoryActionType action,
+                              String previousValue, String newValue,
+                              UUID changedBy) {
+        recordHistory(refType, refId, action, null, previousValue, newValue, null, changedBy);
     }
 
     @Transactional(readOnly = true)
@@ -79,8 +91,11 @@ public class HistoryService {
             entry.setId(h.getId());
             entry.setStationCode(stationCode);
             entry.setActionType(toActionType(h.getStatus(), h.getApprovalLevel()));
+            entry.setChangedField(h.getChangedField());
             entry.setPreviousValue(h.getPreviousValue());
             entry.setNewValue(h.getNewValue());
+            entry.setReason(h.getReason());
+            entry.setApprovalLevel(h.getApprovalLevel() != null ? h.getApprovalLevel().name() : null);
             entry.setChangedBy(h.getApprovedBy() == null
                     ? "Hệ thống"
                     : userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()));

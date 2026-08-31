@@ -18,8 +18,11 @@ public class CoastalStationInmarsatHistoryResponse {
     private UUID id;
     private String deviceCode;
     private StationHistoryActionType actionType;
+    private String changedField;
     private String previousValue;
     private String newValue;
+    private String reason;
+    private String approvalLevel;
     private String changedBy;
     private LocalDateTime changedAt;
 }
