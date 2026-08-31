@@ -297,7 +297,11 @@ export const InmarsatStationList = () => {
     setHistoryLoading(true);
     try {
       const logs = await inmarsatStationService.getHistory(rec.id);
-      const mapped: CommonHistoryEntry[] = (logs || []).map((h: any) => {
+      const filteredLogs = (logs || []).filter((h: any) => {
+        const act = String(h.actionType || h.action || '').toUpperCase();
+        return !['APPROVE_L1', 'APPROVE_L2', 'APPROVE', 'SUBMIT'].includes(act);
+      });
+      const mapped: CommonHistoryEntry[] = filteredLogs.map((h: any) => {
         let changes: HistoryChangeItem[] = [];
         if (h.changes && Array.isArray(h.changes)) {
           changes = h.changes;

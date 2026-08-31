@@ -496,17 +496,7 @@ public class CoastalStationInmarsatService {
         entity.setApprovedBy(currentUserId);
         entity.setApprovedDate(LocalDateTime.now());
         syncStationStatus(entity);
-        CoastalStationInmarsat saved = repository.save(entity);
-        historyService.recordHistory(
-                InfrastructureType.INMARSAT_STATION,
-                saved.getId(),
-                StationHistoryActionType.APPROVE_L2,
-                "Trạng thái phê duyệt",
-                "Chờ Cục duyệt",
-                "Đã duyệt",
-                "Phê duyệt chính thức đài Inmarsat (Cục HH)",
-                currentUserId);
-        return saved;
+        return repository.save(entity);
     }
 
     public CoastalStationInmarsat reject(UUID id, String rejectionReason) {
@@ -617,6 +607,11 @@ public class CoastalStationInmarsatService {
         CoastalStationInmarsat entity = getStationById(id);
         String code = entity.getCode() != null ? entity.getCode() : entity.getDeviceCode();
         return historyService.getHistory(InfrastructureType.INMARSAT_STATION, entity.getId(), code).stream()
+                .filter(h -> {
+                    if (h.getActionType() == null) return true;
+                    String act = h.getActionType().toUpperCase(Locale.ROOT);
+                    return !"APPROVE_L1".equals(act) && !"APPROVE_L2".equals(act) && !"APPROVE".equals(act) && !"SUBMIT".equals(act);
+                })
                 .map(h -> {
                     CoastalStationInmarsatHistoryResponse r = new CoastalStationInmarsatHistoryResponse();
                     r.setId(h.getId());
@@ -628,6 +623,7 @@ public class CoastalStationInmarsatService {
                     r.setReason(h.getReason());
                     r.setApprovalLevel(h.getApprovalLevel());
                     r.setChangedBy(h.getChangedBy());
+                    r.setChangedByName(h.getChangedByName());
                     r.setChangedAt(h.getChangedAt());
                     return r;
                 })
