@@ -603,9 +603,18 @@ public class CoastalStationInmarsatService {
         String code = entity.getCode() != null ? entity.getCode() : entity.getDeviceCode();
         return historyService.getHistory(InfrastructureType.INMARSAT_STATION, entity.getId(), code).stream()
                 .filter(h -> {
-                    if (h.getActionType() == null) return true;
-                    String act = h.getActionType().toUpperCase(Locale.ROOT);
-                    return !"APPROVE_L1".equals(act) && !"APPROVE_L2".equals(act) && !"APPROVE".equals(act) && !"SUBMIT".equals(act);
+                    if (h.getActionType() == null) return false;
+                    StationHistoryActionType act = h.getActionType();
+                    if (act == StationHistoryActionType.APPROVE_L1 || act == StationHistoryActionType.APPROVE_L2 || act == StationHistoryActionType.REJECT) {
+                        return false;
+                    }
+                    String changedField = h.getChangedField();
+                    String newVal = h.getNewValue();
+                    if ((changedField == null || "Thông tin".equals(changedField))
+                            && newVal != null && (newVal.contains("Phê duyệt") || newVal.contains("Cập nhật thông tin đài Inmarsat"))) {
+                        return false;
+                    }
+                    return true;
                 })
                 .map(h -> {
                     CoastalStationInmarsatHistoryResponse r = new CoastalStationInmarsatHistoryResponse();

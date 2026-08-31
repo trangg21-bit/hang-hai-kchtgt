@@ -30,6 +30,8 @@ import {
   fontSizeLg,
   fontWeightMedium,
   fontWeightBold,
+  inputStyle,
+  primaryButtonStyle,
 } from '../../tokens';
 
 export interface HistoryChangeItem {
@@ -319,21 +321,21 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
   return (
     <Drawer
       rootClassName="vtssystemchk-theme-scope"
-      size={width ? undefined : (size || '50%')}
-      width={width}
+      size={width ? undefined : (size || 960)}
+      width={width || 960}
       placement="right"
       open={open}
       onClose={onClose}
       closable={false}
       extra={
-        <Button type="text" aria-label="Đóng" onClick={onClose} style={drawerCloseBtnStyle}>
+        <Button type="text" aria-label="Đóng lịch sử thay đổi" onClick={onClose} style={drawerCloseBtnStyle}>
           ✕
         </Button>
       }
       footer={null}
       styles={{
         header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-        body: { padding: '16px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
+        body: { padding: '12px 24px 12px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
       }}
       title={
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
@@ -346,8 +348,8 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
               style={{
                 display: 'inline-flex',
                 padding: '2px 10px',
-                borderRadius: radiusPill,
-                fontSize: fontSizeSm + 1,
+                borderRadius: radiusSm,
+                fontSize: fontSizeLg - 1,
                 fontWeight: fontWeightBold,
                 background: `${colors.sidebarBg}15`,
                 color: colors.sidebarBg,
@@ -361,8 +363,8 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
       }
     >
       {/* ── Search & Filter Bar ────────────────────────────── */}
-      <div style={{ flexShrink: 0, marginBottom: spaceMd }}>
-        <div style={{ display: 'flex', gap: spaceSm }}>
+      <div style={{ flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
           <Input
             placeholder="Tìm kiếm nội dung thay đổi..."
             allowClear
@@ -373,7 +375,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
               if (!val) setKeyword('');
             }}
             onPressEnter={() => setKeyword(searchInput.trim())}
-            style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
+            style={{ ...inputStyle, flex: 1 }}
           />
           <DatePicker.RangePicker
             {...getRangePickerProps({
@@ -389,20 +391,15 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                   setDateTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
                 }
               },
-              style: { width: 280, borderRadius: radiusPill, height: 40 },
+              style: { ...inputStyle, width: 280 },
             })}
           />
           <Button
             type="primary"
             icon={<SearchOutlined />}
+            loading={loading}
             onClick={() => setKeyword(searchInput.trim())}
-            style={{
-              borderRadius: radiusPill,
-              height: 40,
-              fontSize: fontSizeMd,
-              background: actionPrimary,
-              borderColor: actionPrimary,
-            }}
+            style={primaryButtonStyle}
           >
             Tìm kiếm
           </Button>
@@ -410,7 +407,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
       </div>
 
       {/* ── Timeline Body ─────────────────────────────────── */}
-      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, paddingRight: spaceXs }}>
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         {loading ? (
           <div style={{ padding: spaceMd }}>
             <Skeleton active paragraph={{ rows: 6 }} />
@@ -425,7 +422,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
             </div>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}>
+          <div>
             {filteredGroups.map((group, gIdx) => {
               // Extract all changes from items in the group
               const groupChanges: HistoryChangeItem[] = [];
@@ -444,24 +441,35 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
               const actionMeta = resolveAction(primaryAction);
               const isCreate = primaryAction.toUpperCase().includes('CREATE') || primaryAction.toUpperCase().includes('ADD');
               const infoTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
+              const rawUnit = group.unitName;
+              const unitName = rawUnit && rawUnit !== '—' ? rawUnit : 'Cục Hàng hải Việt Nam';
+
+              const validChanges = groupChanges.filter((change) => {
+                const ov = resolveFieldValue(change.field, change.oldValue);
+                const nv = resolveFieldValue(change.field, change.newValue);
+                if (ov !== '—' && nv !== '—' && String(ov).trim() === String(nv).trim()) {
+                  return false;
+                }
+                return true;
+              });
 
               return (
                 <div
                   key={gIdx}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'minmax(250px, 0.36fr) minmax(0, 1fr)',
+                    gridTemplateColumns: 'minmax(310px, 0.38fr) minmax(0, 1fr)',
                     gap: spaceLg,
                     alignItems: 'start',
-                    paddingBottom: spaceSm,
-                    borderBottom: gIdx < filteredGroups.length - 1 ? `1px dashed ${borderDefault}` : 'none',
+                    marginBottom: gIdx < filteredGroups.length - 1 ? spaceMd : 0,
                   }}
                 >
                   {/* Left Column: Metadata */}
                   <div style={{ minWidth: 0, paddingTop: spaceXs }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: spaceSm, flexWrap: 'wrap', marginBottom: spaceXs }}>
+                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: spaceSm, marginBottom: spaceXs }}>
                       <Typography.Text
                         style={{
+                          display: 'block',
                           fontSize: fontSizeLg - 1,
                           color: textPrimary,
                           fontWeight: fontWeightBold,
@@ -469,48 +477,49 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {formatTimestamp(group.ts)}
+                        {group.ts ? formatTimestamp(group.ts) : '—'}
                       </Typography.Text>
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          padding: '2px 10px',
-                          borderRadius: radiusPill,
-                          fontSize: fontSizeSm + 1,
-                          fontWeight: fontWeightMedium,
-                          background: actionMeta.bg,
-                          color: actionMeta.color,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {actionMeta.label}
+                      <span style={{ flexShrink: 0 }}>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            padding: '2px 10px',
+                            borderRadius: 999,
+                            fontSize: fontSizeSm + 1,
+                            fontWeight: fontWeightMedium,
+                            background: actionMeta.bg,
+                            color: actionMeta.color,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {actionMeta.label}
+                        </span>
                       </span>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: spaceXs }}>
                       <Typography.Text
                         style={{
                           display: 'block',
-                          fontSize: fontSizeMd,
+                          fontSize: fontSizeSm + 1,
                           color: textSecondary,
                           fontWeight: fontWeightMedium,
                           lineHeight: 1.4,
                         }}
                       >
-                        Người thực hiện: <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{group.actor}</span>
+                        Người cập nhật: <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{group.actor || '—'}</span>
                       </Typography.Text>
-                      {group.unitName && (
-                        <Typography.Text
-                          style={{
-                            display: 'block',
-                            fontSize: fontSizeMd,
-                            color: textSecondary,
-                            lineHeight: 1.4,
-                          }}
-                        >
-                          Đơn vị: {group.unitName}
-                        </Typography.Text>
-                      )}
+                      <Typography.Text
+                        style={{
+                          display: 'block',
+                          fontSize: fontSizeSm + 1,
+                          color: textSecondary,
+                          fontWeight: fontWeightMedium,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        Đơn vị: <span style={{ color: textPrimary }}>{unitName}</span>
+                      </Typography.Text>
                     </div>
                   </div>
 
@@ -521,9 +530,10 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                       minWidth: 0,
                       background: surfacePage,
                       borderRadius: radiusSm,
-                      padding: `${spaceSm + 2}px ${spaceMd}px`,
+                      padding: `${spaceMd}px ${spaceLg}px`,
                       paddingLeft: spaceLg,
                       overflow: 'hidden',
+                      border: `1px solid ${borderDefault}`,
                     }}
                   >
                     {/* Left Accent Gradient Bar */}
@@ -538,100 +548,98 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                       }}
                     />
 
+                    <Typography.Text
+                      style={{
+                        display: 'block',
+                        color: colors.sidebarBg,
+                        fontSize: fontSizeMd,
+                        fontWeight: fontWeightBold,
+                        marginBottom: spaceSm,
+                      }}
+                    >
+                      {infoTitle}
+                    </Typography.Text>
+
                     {/* Change list */}
-                    {groupChanges.length > 0 ? (
-                      <div>
-                        <Typography.Text
-                          style={{
-                            display: 'block',
-                            color: textPrimary,
-                            fontSize: fontSizeMd,
-                            fontWeight: fontWeightBold,
-                            marginBottom: spaceXs,
-                          }}
-                        >
-                          {infoTitle}
-                        </Typography.Text>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          {groupChanges.map((change, cIdx) => {
-                            const label = combinedFieldMap[change.field] || change.field;
-                            const ov = resolveFieldValue(change.field, change.oldValue);
-                            const nv = resolveFieldValue(change.field, change.newValue);
+                    {validChanges.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}>
+                        {validChanges.map((change, cIdx) => {
+                          const label = combinedFieldMap[change.field] || change.field;
+                          const ov = resolveFieldValue(change.field, change.oldValue);
+                          const nv = resolveFieldValue(change.field, change.newValue);
 
-                            if (ov !== '—' && nv !== '—' && String(ov).trim() === String(nv).trim()) {
-                              return null;
-                            }
-
-                            const renderFormattedContent = (content: string, _isOld: boolean = false) => {
-                              if (!content || content === '—') return <span style={{ color: textTertiary }}>—</span>;
-                              const str = String(content).trim();
-                              if (str.includes(',') && str.length > 25) {
-                                const items = str.split(',').map((s) => s.trim()).filter(Boolean);
-                                if (items.length > 1) {
-                                  return (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
-                                      {items.map((item, idx) => (
-                                        <div key={idx} style={{ color: textPrimary, fontWeight: fontWeightMedium, lineHeight: '20px', wordBreak: 'break-word' }}>
-                                          {item}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  );
-                                }
-                              }
-                              return renderCommonHistoryValueTag(label, content);
-                            };
-
-                            if (isCreate) {
-                              return (
-                                <div
-                                  key={cIdx}
-                                  style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'minmax(140px, 1fr) minmax(160px, 2fr)',
-                                    gap: spaceSm,
-                                    fontSize: fontSizeMd,
-                                    lineHeight: 1.5,
-                                    padding: '3px 0',
-                                  }}
-                                >
-                                  <span style={{ fontWeight: fontWeightMedium, color: textSecondary }}>
-                                    {label}:
-                                  </span>
-                                  <div>
-                                    {renderFormattedContent(nv, false)}
+                          const renderFormattedContent = (content: string, _isOld: boolean = false) => {
+                            if (!content || content === '—') return <span style={{ color: textTertiary }}>—</span>;
+                            const str = String(content).trim();
+                            if (str.includes(',') && str.length > 25) {
+                              const items = str.split(',').map((s) => s.trim()).filter(Boolean);
+                              if (items.length > 1) {
+                                return (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+                                    {items.map((item, idx) => (
+                                      <div key={idx} style={{ color: textPrimary, fontWeight: fontWeightMedium, lineHeight: '20px', wordBreak: 'break-word' }}>
+                                        {item}
+                                      </div>
+                                    ))}
                                   </div>
-                                </div>
-                              );
+                                );
+                              }
                             }
+                            return renderCommonHistoryValueTag(label, content);
+                          };
 
+                          if (isCreate) {
                             return (
                               <div
                                 key={cIdx}
                                 style={{
                                   display: 'grid',
-                                  gridTemplateColumns: 'minmax(120px, 1.2fr) minmax(90px, 0.8fr) 20px minmax(120px, 1.2fr)',
+                                  gridTemplateColumns: '170px minmax(100px, 1fr)',
+                                  alignItems: 'flex-start',
                                   gap: spaceSm,
-                                  alignItems: 'center',
                                   fontSize: fontSizeMd,
-                                  lineHeight: 1.5,
+                                  lineHeight: 1.6,
                                   padding: '3px 0',
                                 }}
                               >
-                                <span style={{ fontWeight: fontWeightMedium, color: textSecondary }}>
-                                  {label}:
-                                </span>
-                                <div>
-                                  {renderFormattedContent(ov, true)}
+                                <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>
+                                  {label ? `${label}:` : '—'}
                                 </div>
-                                <span style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold }}>→</span>
-                                <div>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word', color: textPrimary }}>
                                   {renderFormattedContent(nv, false)}
                                 </div>
                               </div>
                             );
-                          })}
-                        </div>
+                          }
+
+                          return (
+                            <div
+                              key={cIdx}
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: '170px minmax(100px, 1fr) 24px minmax(100px, 1fr)',
+                                alignItems: 'flex-start',
+                                gap: spaceSm,
+                                fontSize: fontSizeMd,
+                                lineHeight: 1.6,
+                                padding: '3px 0',
+                              }}
+                            >
+                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>
+                                {label ? `${label}:` : '—'}
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word' }}>
+                                {renderFormattedContent(ov, true)}
+                              </div>
+                              <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>
+                                →
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word' }}>
+                                {renderFormattedContent(nv, false)}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : groupNotes.length > 0 ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
