@@ -535,15 +535,17 @@ export const InmarsatStationList = () => {
                   const isPendingL2 = rec.approvalStatus === 'APPROVED_LEVEL1';
                   const isDraftOrRejected = rec.approvalStatus === 'DRAFT' || rec.approvalStatus === 'REJECTED' || rec.approvalStatus === 'REJECTED_LEVEL1' || rec.approvalStatus === 'REJECTED_LEVEL2';
 
-                  const canEditThis = canUpdate && canEditApprovalRecord(rec.approvalStatus, {
-                    userUnitType,
-                    allowEditApproved: false,
-                    allowEditLevel1Approved: canApproveL2,
+                  const canEditThis = canEditApprovalRecord(rec.approvalStatus, {
+                    hasPerm: hasPermission,
+                    resource: 'coastalstationinmarsat',
+                    extraUpdatePerms: ['specialstation:update', 'data:update', 'admin:all'],
+                    extraApprovePerms: ['specialstation:approvec2', 'specialstation:approve', 'admin:all'],
                   });
 
-                  const canDeleteThis = canDelete && canDeleteApprovalRecord(rec.approvalStatus, {
-                    userUnitType,
-                    allowDeleteApproved: false,
+                  const canDeleteThis = canDeleteApprovalRecord(rec.approvalStatus, {
+                    hasPerm: hasPermission,
+                    resource: 'coastalstationinmarsat',
+                    extraDeletePerms: ['specialstation:delete', 'data:delete', 'admin:all'],
                   });
 
                   return [

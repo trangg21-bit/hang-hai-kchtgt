@@ -384,8 +384,8 @@ export const HanoiStationList: React.FC = () => {
 
   const getRowActions = (record: HanoiStationItem) => {
     const isOwner = user?.id && record.createdBy === user.id;
-    const canEdit = canEditApprovalRecord(record.approvalStatus ?? 0, 'coastalstationhaiphong', hasPermission);
-    const canDelete = canDeleteApprovalRecord(record.approvalStatus ?? 0, 'coastalstationhaiphong', hasPermission);
+    const canEdit = canEditApprovalRecord(record.approvalStatus ?? 0, { hasPerm: hasPermission, resource: 'coastalstationhaiphong' });
+    const canDelete = canDeleteApprovalRecord(record.approvalStatus ?? 0, { hasPerm: hasPermission, resource: 'coastalstationhaiphong' });
 
     return [
       {

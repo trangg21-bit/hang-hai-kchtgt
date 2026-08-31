@@ -384,8 +384,8 @@ export const LritStationList: React.FC = () => {
 
   const getRowActions = (record: LritStationItem) => {
     const isOwner = user?.id && record.createdBy === user.id;
-    const canEdit = canEditApprovalRecord(record.approvalStatus ?? 0, 'coastalstationlrit', hasPermission);
-    const canDelete = canDeleteApprovalRecord(record.approvalStatus ?? 0, 'coastalstationlrit', hasPermission);
+    const canEdit = canEditApprovalRecord(record.approvalStatus ?? 0, { hasPerm: hasPermission, resource: 'coastalstationlrit' });
+    const canDelete = canDeleteApprovalRecord(record.approvalStatus ?? 0, { hasPerm: hasPermission, resource: 'coastalstationlrit' });
 
     return [
       {
