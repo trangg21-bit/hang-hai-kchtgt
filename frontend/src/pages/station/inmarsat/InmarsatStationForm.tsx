@@ -11,6 +11,7 @@ import {
   Tabs,
   Modal,
   Drawer,
+  InputNumber,
 } from 'antd';
 import {
   CloseOutlined,
@@ -29,9 +30,9 @@ import {
   drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle,
   drawerTabBarStyle, drawerStyles, drawerFormScrollStyle, drawerGisControlBoxStyle, DRAWER_TABLE_SCROLL_Y,
   requiredMarkStyle, spaceFormField, radiusPill, sidebarBg,
-  fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeLg,
+  fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd, fontSizeLg,
   textSecondary, textTertiary, borderDefault,
-  statusCritical, statusOperational, actionPrimary, textAreaStyle,
+  statusCritical, statusOperational, statusAttention, actionPrimary, textAreaStyle,
   drawerCloseBtnStyle, selectStyle, inputStyle,
 } from '../../../themetokenchk';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../../types/common';
