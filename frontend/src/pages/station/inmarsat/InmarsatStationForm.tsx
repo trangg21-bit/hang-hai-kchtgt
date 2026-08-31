@@ -17,8 +17,9 @@ import {
   CloseOutlined,
   EnvironmentOutlined,
   DownOutlined,
+  PlusOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
-import dayjs from 'dayjs';
 import toast from '../../../components/ToastNotification';
 import { inmarsatStationService } from '../../../services/inmarsatStationService';
 import type {
@@ -33,7 +34,7 @@ import {
   fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd, fontSizeLg,
   textSecondary, textTertiary, borderDefault,
   statusCritical, statusOperational, statusAttention, actionPrimary, textAreaStyle,
-  drawerCloseBtnStyle, selectStyle, inputStyle,
+  readonlyInputStyle, drawerCloseBtnStyle, selectStyle, inputStyle,
 } from '../../../themetokenchk';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../../types/common';
 import { useAuthStore } from '../../../store/authStore';
@@ -44,7 +45,7 @@ import InfrastructureAttachmentTab from '../../../components/shared/Infrastructu
 import GisLocationSelector from '../../../components/gis/GisLocationSelector';
 import { symbolService } from '../../../services/symbolService';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
-import { parseWktToCoordinates, serializeCoordinatesToWkt, ddToDms } from '../../../utils/gisGeometry';
+import { parseWktToCoordinates, serializeCoordinatesToWkt, ddToDms, dmsToDd } from '../../../utils/gisGeometry';
 
 export const INMARSAT_SERVICE_OPTIONS = [
   { value: 'Inmarsat-C', label: 'Inmarsat-C' },
