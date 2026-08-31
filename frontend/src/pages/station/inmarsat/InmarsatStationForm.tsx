@@ -520,31 +520,17 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
               </>
             ) : (
               <>
-                <Button
-                  onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); form.submit(); }}
-                  loading={isSubmitting && actionType === 'draft'}
-                  style={outlineButtonStyle}
-                >
-                  Lưu thay đổi
+                <Button onClick={onClose} style={outlineButtonStyle}>
+                  Hủy
                 </Button>
                 <Button
                   type="primary"
-                  onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); form.submit(); }}
-                  loading={isSubmitting && actionType === 'submit'}
+                  onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); form.submit(); }}
+                  loading={isSubmitting}
                   style={primaryButtonStyle}
                 >
-                  Lưu và gửi phê duyệt
+                  Cập nhật
                 </Button>
-                {canSaveAndApprove && (
-                  <Button
-                    type="primary"
-                    onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
-                    loading={isSubmitting && actionType === 'approve'}
-                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                  >
-                    Lưu và phê duyệt
-                  </Button>
-                )}
               </>
             )}
           </div>
