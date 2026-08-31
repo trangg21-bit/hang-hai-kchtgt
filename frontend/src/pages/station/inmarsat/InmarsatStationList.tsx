@@ -330,11 +330,11 @@ export const InmarsatStationList = () => {
       label: 'Tình trạng',
       dataIndex: 'conditionStatus',
       width: 160,
-      sorter: clientSideBadgeSorter('conditionStatus'),
+      sorter: clientSideBadgeSorter('conditionStatus', CONDITION_STATUS_MAP),
       render: (st: string) => {
         const enumKey = (st || ConditionStatus.OPERATIONAL) as ConditionStatus;
         const color = CONDITION_COLOR[enumKey] || statusOperational;
-        const label = CONDITION_STATUS_MAP[enumKey]?.label || st || 'Hoạt động bình thường';
+        const label = CONDITION_STATUS_MAP[enumKey] || st || 'Đang hoạt động';
         return (
           <span
             style={{
