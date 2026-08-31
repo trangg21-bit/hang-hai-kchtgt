@@ -64,6 +64,8 @@ export interface CommonHistoryDrawerProps {
   loading?: boolean;
   fieldLabelMap?: Record<string, string>;
   formatValue?: (fieldName: string, value: any) => string;
+  width?: string | number;
+  size?: 'default' | 'large' | '50%' | string;
 }
 
 const DEFAULT_ACTION_MAP: Record<string, { label: string; color: string; bg: string }> = {
@@ -197,6 +199,8 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
   loading = false,
   fieldLabelMap = {},
   formatValue,
+  width,
+  size,
 }) => {
   const [searchInput, setSearchInput] = useState('');
   const [keyword, setKeyword] = useState('');
@@ -314,7 +318,9 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
 
   return (
     <Drawer
-      width={880}
+      rootClassName="vtssystemchk-theme-scope"
+      size={width ? undefined : (size || '50%')}
+      width={width}
       placement="right"
       open={open}
       onClose={onClose}
