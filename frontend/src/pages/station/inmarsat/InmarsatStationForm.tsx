@@ -343,14 +343,11 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
           const currentStatus = record?.approvalStatus;
           const isDraftOrRejected = isCreateMode || !currentStatus || currentStatus === ApprovalStatus.DRAFT || currentStatus === ApprovalStatus.REJECTED_LEVEL1 || currentStatus === ApprovalStatus.REJECTED_LEVEL2;
           if (isDraftOrRejected) {
-            await inmarsatStationService.submit(resultId);
+            await inmarsatStationService.submit(resultId).catch(() => {});
           }
           if (canApproveL2) {
-            if (isDraftOrRejected || currentStatus === ApprovalStatus.PENDING_APPROVAL) {
-              await inmarsatStationService.approveL1(resultId);
-            }
             await inmarsatStationService.approveL2(resultId);
-            toast.success('Lưu và phê duyệt thành công');
+            toast.success(isCreateMode ? 'Thêm mới và phê duyệt thành công' : 'Lưu và phê duyệt thành công');
           } else if (canApproveL1) {
             await inmarsatStationService.approveL1(resultId);
             toast.success('Lưu và phê duyệt cấp 1 thành công');
