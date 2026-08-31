@@ -665,90 +665,6 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
           ) : (
             <Form form={form} layout="vertical" onFinish={handleFinish}>
               <style>{requiredMarkStyle}</style>
-              <style>{`
-                #inmarsat-services-select .ant-select {
-                  border-radius: 20px !important;
-                  padding: 5px 32px 5px 12px !important;
-                  min-height: 40px !important;
-                  height: auto !important;
-                  box-sizing: border-box !important;
-                  position: relative !important;
-                }
-                #inmarsat-services-select .ant-select-content {
-                  display: flex !important;
-                  flex-wrap: wrap !important;
-                  gap: 0 !important;
-                  width: 100% !important;
-                  align-items: center !important;
-                  position: relative !important;
-                  padding: 0 !important;
-                  margin: 0 !important;
-                }
-                #inmarsat-services-select .ant-select-content-item {
-                  flex-shrink: 0 !important;
-                  margin: 0 !important;
-                  padding: 0 !important;
-                }
-                #inmarsat-services-select .ant-select-content-item-prefix {
-                  position: absolute !important;
-                  left: 0 !important;
-                  top: 50% !important;
-                  transform: translateY(-50%) !important;
-                  pointer-events: none !important;
-                  padding: 0 !important;
-                  margin: 0 !important;
-                  width: 100% !important;
-                }
-                #inmarsat-services-select .ant-select-placeholder {
-                  padding: 0 !important;
-                  margin: 0 !important;
-                  left: 0 !important;
-                  font-size: 13px !important;
-                  color: rgba(0, 0, 0, 0.25) !important;
-                  line-height: 28px !important;
-                }
-                #inmarsat-services-select .ant-select-content-item-suffix {
-                  margin: 0 !important;
-                  padding: 0 !important;
-                }
-                #inmarsat-services-select input.ant-select-input {
-                  margin: 0 !important;
-                  padding: 0 !important;
-                  font-size: 13px !important;
-                }
-                #inmarsat-services-select .ant-select-selection-item {
-                  margin: 2px 6px 2px 0 !important;
-                  padding: 0 10px !important;
-                  height: 28px !important;
-                  line-height: 26px !important;
-                  border-radius: 999px !important;
-                  background: #eef3fb !important;
-                  border: 1px solid #c6d9f5 !important;
-                  color: #12468C !important;
-                  font-size: 12px !important;
-                  font-weight: 500 !important;
-                  display: inline-flex !important;
-                  align-items: center !important;
-                  white-space: nowrap !important;
-                }
-                #inmarsat-services-select .ant-select-selection-item-content {
-                  margin-right: 4px !important;
-                }
-                #inmarsat-services-select .ant-select-selection-item-remove {
-                  color: #7e8299 !important;
-                  font-size: 11px !important;
-                }
-                #inmarsat-services-select .ant-select-selection-item-remove:hover {
-                  color: #f1416c !important;
-                }
-                #inmarsat-services-select .ant-select-suffix {
-                  position: absolute !important;
-                  right: 12px !important;
-                  top: 14px !important;
-                  margin: 0 !important;
-                  pointer-events: none !important;
-                }
-              `}</style>
               <Tabs
                 activeKey={tabKey}
                 onChange={setTabKey}
@@ -876,19 +792,18 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Dịch vụ cung cấp</span>}
                               style={{ marginBottom: spaceFormField }}
                             >
-                              <div id="inmarsat-services-select">
-                                <Select
-                                  mode="multiple"
-                                  showSearch
-                                  placeholder="Chọn các dịch vụ Inmarsat..."
-                                  options={INMARSAT_SERVICE_OPTIONS}
-                                  suffixIcon={<DownOutlined style={{ fontSize: 11, color: '#93A3B3', pointerEvents: 'none' }} />}
-                                  filterOption={(input, option) =>
-                                    normalizeSearchText(String(option?.label || '')).includes(normalizeSearchText(input))
-                                  }
-                                  style={{ width: '100%' }}
-                                />
-                              </div>
+                              <Select
+                                className="chk-multi-select"
+                                mode="multiple"
+                                showSearch
+                                placeholder="Chọn các dịch vụ Inmarsat..."
+                                options={INMARSAT_SERVICE_OPTIONS}
+                                suffixIcon={<DownOutlined style={{ fontSize: 11, color: '#93A3B3', pointerEvents: 'none' }} />}
+                                filterOption={(input, option) =>
+                                  normalizeSearchText(String(option?.label || '')).includes(normalizeSearchText(input))
+                                }
+                                style={{ width: '100%' }}
+                              />
                             </Form.Item>
                           </Col>
                         </Row>
