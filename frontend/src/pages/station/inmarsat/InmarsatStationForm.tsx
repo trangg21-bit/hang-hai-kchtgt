@@ -364,53 +364,79 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
     }
   };
 
+  const attachmentsEditable = isCreateMode ||
+    record?.approvalStatus === ApprovalStatus.DRAFT ||
+    record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 ||
+    record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL2 ||
+    (record?.approvalStatus === ApprovalStatus.APPROVED && canApproveL2);
+
   // Attachment callbacks
   const handleUploadAttachment = async (file: File) => {
-    if (isCreateMode) {
-      setPendingFiles((p) => [...p, file]);
-      setAttachments((p) => [
-        ...p,
-        {
-          id: `temp-${Date.now()}`,
-          fileName: file.name,
-          fileSize: file.size,
-          uploadedByName: user?.fullName || 'Người dùng',
-          createdAt: new Date().toISOString(),
-        },
-      ]);
+    if (!isCreateMode && !attachmentsEditable) {
+      toast.error('Chỉ thay đổi được tài liệu đính kèm khi hồ sơ ở trạng thái Lưu tạm, Bị trả về hoặc có quyền phê duyệt cấp Cục đối với hồ sơ Đã duyệt');
+      return false;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('File vượt quá 20MB theo quy định');
+      return false;
+    }
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'gif', 'tiff', 'tif'].includes(ext)) {
+      toast.error('Định dạng không hỗ trợ (chỉ chấp nhận PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, GIF, TIFF)');
+      return false;
+    }
+    if (attachments.length >= 10) {
+      toast.error('Số lượng tệp đính kèm tối đa là 10 tệp');
+      return false;
+    }
+
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    (file as any)._tempId = tempId;
+    const newAttachment = {
+      id: tempId,
+      fileName: file.name,
+      fileSize: file.size,
+      uploadedByName: (user as any)?.fullName || (user as any)?.username || 'Cán bộ quản lý',
+      uploadedBy: (user as any)?.fullName || (user as any)?.username || 'Cán bộ quản lý',
+      uploadedDate: new Date().toISOString(),
+    };
+    setPendingFiles((prev) => [...prev, file]);
+    setAttachments((prev) => [...prev, newAttachment]);
+    toast.success(`Đã thêm tệp ${file.name}`);
+    return false;
+  };
+
+  const handleDeleteAttachment = async (attId: string) => {
+    if (!isCreateMode && !attachmentsEditable) {
+      toast.error('Không có quyền xóa tệp đính kèm');
       return;
     }
-    const currentId = editId || record?.id;
-    if (!currentId) return;
+    setPendingFiles((prev) => prev.filter((f) => (f as any)._tempId !== attId && f.name !== attId));
+    setAttachments((prev) => prev.filter((a) => a.id !== attId));
+    toast.success('Đã xóa tệp đính kèm');
+  };
+
+  const handleDownloadAttachment = async (attId: string, fileName?: string) => {
+    if (String(attId).startsWith('temp_') || String(attId).startsWith('temp-')) {
+      const localFile = pendingFiles.find((f) => (f as any)._tempId === attId || f.name === fileName);
+      if (localFile) {
+        const url = URL.createObjectURL(localFile);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = localFile.name;
+        a.click();
+        URL.revokeObjectURL(url);
+        return;
+      }
+    }
+    const targetId = record?.id || editId;
+    if (!targetId) return;
     try {
-      await inmarsatStationService.uploadAttachment(currentId, file);
-      const atts = await inmarsatStationService.getAttachments(currentId);
-      setAttachments(atts);
-      toast.success('Tải lên tệp thành công');
+      await inmarsatStationService.downloadAttachment(targetId, attId, fileName);
     } catch {
-      toast.error('Không thể tải lên tệp đính kèm');
+      toast.error('Không thể tải xuống tệp đính kèm');
     }
   };
-
-  const handleDeleteAttachment = async (attachmentId: string) => {
-    if (isCreateMode) {
-      setAttachments((p) => p.filter((a) => a.id !== attachmentId));
-      return;
-    }
-    try {
-      await inmarsatStationService.deleteAttachment(attachmentId);
-      setAttachments((p) => p.filter((a) => a.id !== attachmentId));
-      toast.success('Xóa tệp đính kèm thành công');
-    } catch {
-      toast.error('Không thể xóa tệp đính kèm');
-    }
-  };
-
-  const handleDownloadAttachment = async (_attId: string, fileName: string) => {
-    toast.info(`Đang tải xuống tệp: ${fileName}`);
-  };
-
-  const attachmentsEditable = !isDetailMode;
 
   return (
     <Drawer
