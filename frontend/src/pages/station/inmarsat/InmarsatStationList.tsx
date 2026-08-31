@@ -518,7 +518,7 @@ export const InmarsatStationList = () => {
             canCreate
               ? [{
                 key: 'create',
-                label: 'Thêm đài Inmarsat',
+                label: 'Thêm mới',
                 variant: 'primary' as const,
                 icon: icons.create,
                 onClick: handleOpenCreate,

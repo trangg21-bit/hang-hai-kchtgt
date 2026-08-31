@@ -813,7 +813,7 @@ export default function SpecialStationList() {
         actions={[
           ...(hasPerm('coastalstationinmarsat:create') ? [{
             key: 'create',
-            label: 'Thêm đài Inmarsat',
+            label: 'Thêm mới',
             variant: 'primary' as const,
             icon: <PlusOutlined />,
             onClick: () => handleOpenDrawer(null, 'create'),
