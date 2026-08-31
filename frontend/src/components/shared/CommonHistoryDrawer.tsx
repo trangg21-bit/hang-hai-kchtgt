@@ -6,8 +6,7 @@ import {
   FileOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { colors } from '../../theme';
-import { getRangePickerProps } from '../../themetokenchk';
+import { colors, getRangePickerProps } from '../../themetokenchk';
 import {
   actionPrimary,
   statusOperational,
@@ -32,7 +31,7 @@ import {
   fontWeightBold,
   inputStyle,
   primaryButtonStyle,
-} from '../../tokens';
+} from '../../themetokenchk';
 
 export interface HistoryChangeItem {
   field: string;
