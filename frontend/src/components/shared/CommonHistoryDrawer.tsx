@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Drawer, Input, DatePicker, Button, Typography, Space, Skeleton } from 'antd';
 import {
   HistoryOutlined,
@@ -6,6 +6,7 @@ import {
   FileOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { colors } from '../../theme';
 import { getRangePickerProps } from '../../themetokenchk';
 import {
   actionPrimary,
