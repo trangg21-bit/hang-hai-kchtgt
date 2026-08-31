@@ -747,7 +747,6 @@ export const InmarsatStationList = () => {
             orgUnits={orgUnits}
             onClose={() => setFormOpen(false)}
             onSuccess={() => { setFormOpen(false); fetchData(); }}
-            onEdit={(rec) => { setSelectedRecord(rec); setFormMode('edit'); }}
           />
         )}
 

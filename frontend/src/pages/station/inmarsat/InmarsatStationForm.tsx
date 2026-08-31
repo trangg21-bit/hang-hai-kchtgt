@@ -32,7 +32,7 @@ import {
   drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle,
   drawerTabBarStyle, drawerStyles, drawerFormScrollStyle, drawerGisControlBoxStyle, DRAWER_TABLE_SCROLL_Y,
   requiredMarkStyle, spaceFormField, radiusMd, radiusPill, sidebarBg,
-  fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeSm, fontSizeLg,
+  fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeLg,
   textSecondary, textTertiary, borderDefault,
   statusCritical, statusOperational, actionPrimary, textAreaStyle,
   readonlyInputStyle, drawerCloseBtnStyle, selectStyle, inputStyle,
@@ -79,7 +79,6 @@ export interface InmarsatStationFormProps {
   orgUnits?: any[];
   onClose?: () => void;
   onSuccess?: () => void;
-  onEdit?: (record: CoastalStationInmarsatResponse) => void;
 }
 
 export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
@@ -455,33 +454,21 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
             {isEditMode && (record?.name ? `Chỉnh sửa — ${record.name}` : 'Chỉnh sửa Đài thông tin vệ tinh Inmarsat')}
             {isDetailMode && (record?.name ? `Xem chi tiết — ${record.name}` : 'Xem chi tiết Đài thông tin vệ tinh Inmarsat')}
           </span>
-          <Space size={8}>
-            {isDetailMode && onEdit && record && (
-              <Button
-                type="primary"
-                size="small"
-                onClick={() => onEdit(record)}
-                style={{ ...primaryButtonStyle, height: 28, fontSize: fontSizeSm, borderRadius: radiusPill }}
-              >
-                Chuyển sang sửa
-              </Button>
-            )}
-            <Button
-              type="text"
-              onClick={onClose}
-              style={{
-                ...drawerCloseBtnStyle,
-                borderRadius: '50%',
-                width: 32,
-                height: 32,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <CloseOutlined style={{ fontSize: 14, color: textSecondary }} />
-            </Button>
-          </Space>
+          <Button
+            type="text"
+            onClick={onClose}
+            style={{
+              ...drawerCloseBtnStyle,
+              borderRadius: '50%',
+              width: 32,
+              height: 32,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <CloseOutlined style={{ fontSize: 14, color: textSecondary }} />
+          </Button>
         </div>
       }
       footer={
