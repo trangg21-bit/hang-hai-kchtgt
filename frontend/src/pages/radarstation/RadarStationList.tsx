@@ -415,6 +415,9 @@ export default function RadarStationList() {
     setIsDetailMode(false);
     setDetailRecord(null);
     createForm.resetFields();
+    createForm.setFieldsValue({
+      conditionStatus: '1',
+    });
     setActiveTabKey('general');
     setUploadedFiles([]);
     setPreviewCode('');
@@ -1267,7 +1270,7 @@ export default function RadarStationList() {
         ) : (
           <>
             <style>{requiredMarkStyle}</style>
-            <Form form={createForm} layout="vertical" initialValues={{}}>
+            <Form form={createForm} layout="vertical" initialValues={{ conditionStatus: '1' }}>
               <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={tabBarStyle}
                 items={[
                   {

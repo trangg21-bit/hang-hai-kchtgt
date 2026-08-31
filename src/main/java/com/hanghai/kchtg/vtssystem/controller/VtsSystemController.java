@@ -206,7 +206,7 @@ public class VtsSystemController {
             @Valid @RequestBody ApprovalRequest request,
             Authentication authentication) {
         VtsSystemResponse response = service.approveC1(id, request, SecurityUtils.getCurrentUserId());
-        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 1 thành công", response));
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Chi cục thành công", response));
     }
 
     @PreAuthorize("@auth.check(authentication, 'vts:approvec2')")
@@ -217,7 +217,7 @@ public class VtsSystemController {
             @Valid @RequestBody ApprovalRequest request,
             Authentication authentication) {
         VtsSystemResponse response = service.approveC2(id, request, SecurityUtils.getCurrentUserId());
-        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 2 thành công", response));
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", response));
     }
 
     /**

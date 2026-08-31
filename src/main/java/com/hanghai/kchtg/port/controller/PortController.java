@@ -131,7 +131,7 @@ public class PortController {
         UUID userId = SecurityUtils.getCurrentUserId();
         log.info("Approving Port at level 1: id={}, userId={}", id, userId);
         portApprovalService.approveC1(id, reason, userId);
-        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cảng vụ thành công", null));
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Chi cục thành công", null));
     }
 
     @PostMapping("/{id}/approve/c2")

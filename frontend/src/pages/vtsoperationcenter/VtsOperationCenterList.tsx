@@ -1,138 +1,66 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { Typography, Modal, Input, Drawer, Button, DatePicker, Space, Select } from 'antd';
 import {
-  Tag,
-  Input,
-  Select,
-  Modal,
-  Space,
-  Button,
-  Drawer,
-  DatePicker,
-  Typography,
-} from 'antd';
-import {
-  PlusOutlined,
-  EyeOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  SendOutlined,
   HistoryOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
+  ExclamationCircleOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
-import dayjs from 'dayjs';
+import { vtsOperationCenterService, type VtsOperationCenterListParams } from '../../services/vtsOperationCenterService';
+import { vtsSystemCRUD } from '../../services/vtsSystemService';
+import { symbolService } from '../../services/symbolService';
+import type { VtsOperationCenterListItem, VtsOperationCenterResponse } from '../../types/vtsOperationCenter';
+import { ConditionStatus, ApprovalStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/vtsSystem';
+import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
-import EmptyState from '../../components/EmptyState';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../components/org-unit';
-
-import type {
-  VtsOperationCenterListItem,
-  VtsOperationCenterResponse,
-} from '../../types/vtsOperationCenter';
-import type { HistoryEntry } from '../../types/radarStation';
-import { vtsOperationCenterService } from '../../services/vtsOperationCenterService';
-import { organizationService } from '../../services/organizationService';
-import { vtsSystemCRUD } from '../../services/vtsSystemService';
-import { portCRUD } from '../../services/portService';
-import {
-  CONDITION_STATUS_TAG_MAP,
-  APPROVAL_STATUS_TAG_MAP,
-  ApprovalStatus,
-  ConditionStatus,
-} from '../../types/vtsSystem';
-import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
-import { usePermissionStore } from '../../store/permissionStore';
-import { useAuthStore } from '../../store/authStore';
-import toast from '../../components/ToastNotification';
-
-import { VtsOperationCenterFormModal } from './VtsOperationCenterFormModal';
-import { VtsOperationCenterDetailDrawer } from './VtsOperationCenterDetailDrawer';
-
-import {
-  statusDraft,
-  statusOperational,
-  statusCritical,
-  statusAttention,
-  actionPrimary,
-  textPrimary,
-  textSecondary,
-  textTertiary,
-  surfacePage,
-  spaceMd,
-  spaceSm,
-  spaceXs,
-  spaceLg,
-  spaceXl,
-  fontSizeLg,
-  fontSizeMd,
-  fontSizeSm,
-  fontWeightBold,
-  fontWeightMedium,
-  spaceFormField,
-  radiusPill,
-  radiusSm,
-  radiusMd,
-  primaryButtonStyle,
-  drawerTitleStyle,
-  drawerCloseBtnStyle,
-  borderDefault,
-  getRangePickerProps,
-} from '../../tokens';
-import { colors } from '../../theme';
-import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import VtsOperationCenterForm from './VtsOperationCenterForm';
+import ApprovalModal from '../../components/shared/ApprovalModal';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import toast, { modal } from '../../components/ToastNotification';
+import {
+  actionPrimary, textPrimary, textSecondary, textTertiary,
+  fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd, fontSizeLg,
+  radiusSm, spaceFormField, spaceMd, spaceSm, spaceLg,
+  statusOperational, statusDraft, statusCritical, statusAttention,
+  surfacePage, spaceXs, spaceXl, drawerTitleStyle, drawerCloseBtnStyle, selectStyle,
+  borderDefault, statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
+  inputStyle, primaryButtonStyle, textAreaStyle, clientSideStringSorter,
+  clientSideProvinceSorter, clientSideUserSorter, clientSideBadgeSorter,
+  getRangePickerProps,
+} from '../../themetokenchk';
+import { colors } from '../../themetokenchk';
+import dayjs from 'dayjs';
+import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
+import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds, type OrgUnitTreeOption } from '../../components/org-unit';
 import SidebarFilterField from '../../components/list-view/SidebarFilterField';
-import { type Dayjs } from 'dayjs';
+import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
+import * as themeTokenChk from '../../themetokenchk';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+
+const CONDITION_COLOR: Record<ConditionStatus, string> = {
+  [ConditionStatus.OPERATIONAL]: statusOperational,
+  [ConditionStatus.STOPPED]: statusCritical,
+  [ConditionStatus.MAINTENANCE]: statusAttention,
+  [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
+};
 
 const HISTORY_FIELD_ORDER = [
-  'orgUnitId',
-  'orgUnitName',
-  'portId',
-  'portName',
-  'vtsSystemId',
-  'vtsSystemName',
-  'code',
-  'name',
-  'provinceId',
-  'province',
-  'detailedLocation',
-  'address',
-  'coverage',
-  'conditionStatus',
-  'note',
-  'approvalStatus',
-  'geometryType',
-  'coordinates',
-  'symbolId',
+  'orgUnitId', 'orgUnitName', 'portId', 'portName', 'vtsSystemId', 'vtsSystemName',
+  'code', 'name', 'provinceId', 'province', 'detailedLocation', 'coverage', 'conditionStatus', 'note',
+  'approvalStatus', 'geometryType', 'coordinates', 'symbolId'
 ];
-
-// ── History helpers ──────────────────────────────────────────────
 
 function historyFieldName(fn: string): string {
   const map: Record<string, string> = {
-    name: 'Tên trung tâm điều hành VTS',
-    code: 'Mã trung tâm điều hành VTS',
-    province: 'Tỉnh/Thành phố',
-    provinceId: 'Địa điểm (Tỉnh/TP)',
-    detailedLocation: 'Địa điểm chi tiết',
-    address: 'Địa điểm chi tiết',
-    coverage: 'Vùng phủ sóng',
-    note: 'Ghi chú',
-    approvalStatus: 'Trạng thái phê duyệt',
-    conditionStatus: 'Tình trạng',
-    orgUnitName: 'Đơn vị quản lý',
-    orgUnitId: 'Đơn vị quản lý',
-    portName: 'Thuộc cảng biển',
-    portId: 'Thuộc cảng biển',
-    vtsSystemName: 'Thuộc hệ thống VTS',
-    vtsSystemId: 'Thuộc hệ thống VTS',
-    geometryType: 'Loại đối tượng',
-    coordinates: 'Tọa độ (GIS)',
-    symbolId: 'Biểu tượng',
+    name: 'Tên trung tâm điều hành VTS', code: 'Mã trung tâm điều hành VTS', province: 'Tỉnh/Thành phố',
+    provinceId: 'Địa điểm (Tỉnh/TP)', detailedLocation: 'Địa điểm chi tiết', address: 'Địa điểm chi tiết',
+    coverage: 'Vùng phủ sóng', note: 'Ghi chú', approvalStatus: 'Trạng thái phê duyệt', conditionStatus: 'Tình trạng',
+    orgUnitName: 'Đơn vị quản lý', orgUnitId: 'Đơn vị quản lý', portName: 'Thuộc cảng biển', portId: 'Thuộc cảng biển',
+    vtsSystemName: 'Thuộc hệ thống VTS', vtsSystemId: 'Thuộc hệ thống VTS',
+    symbolId: 'Biểu tượng', coordinates: 'Tọa độ GIS', geometryType: 'Loại đối tượng GIS',
   };
   return map[fn] || fn;
 }
@@ -161,35 +89,13 @@ function historyFieldValue(fn: string, val: string | null): string {
       APPROVED_LEVEL2: 'Đã duyệt',
       APPROVED: 'Đã duyệt',
       REJECTED: 'Từ chối',
-      REJECTED_LEVEL1: 'Bị Cảng vụ trả về',
-      REJECTED_LEVEL2: 'Bị Cục trả về',
+      REJECTED_LEVEL1: 'Từ chối',
+      REJECTED_LEVEL2: 'Từ chối',
     };
     return displayValue.split(';').map((value) => {
       const normalizedValue = String(value || '').trim();
       const fromEnum = statusMap[normalizedValue] || statusMap[normalizedValue.toUpperCase()];
       if (fromEnum) return fromEnum;
-      const normText = normalizeHistoryKey(normalizedValue);
-      if (normText.includes('cang vu') && (normText.includes('tra ve') || normText.includes('tu choi'))) {
-        return 'Bị Cảng vụ trả về';
-      }
-      if (normText.includes('cuc') && (normText.includes('tra ve') || normText.includes('tu choi'))) {
-        return 'Bị Cục trả về';
-      }
-      if (normText.includes('cho') && (normText.includes('cang vu') || normText.includes('chi cuc') || normText.includes('phe duyet'))) {
-        return 'Chờ Cảng vụ duyệt';
-      }
-      if (normText.includes('cho') && normText.includes('cuc')) {
-        return 'Chờ Cục duyệt';
-      }
-      if (normText.includes('da') && normText.includes('duyet')) {
-        return 'Đã duyệt';
-      }
-      if (normText.includes('tu choi') || normText.includes('tra ve')) {
-        return 'Từ chối';
-      }
-      if (normText.includes('luu tam') || normText.includes('nhap')) {
-        return 'Lưu tạm';
-      }
       return normalizedValue;
     }).join('; ');
   }
@@ -199,18 +105,7 @@ function historyFieldValue(fn: string, val: string | null): string {
     return displayValue;
   }
   if (fn === 'conditionStatus') {
-    const statusMap: Record<string, string> = {
-      OPERATIONAL: 'Đang hoạt động',
-      STOPPED: 'Dừng hoạt động',
-      MAINTENANCE: 'Đang bảo trì',
-      UNDER_CONSTRUCTION: 'Đang xây dựng',
-      '1': 'Đang hoạt động',
-      '2': 'Dừng hoạt động',
-      '3': 'Đang bảo trì',
-      '4': 'Đang xây dựng',
-    };
-    const strVal = String(displayValue || '');
-    return statusMap[strVal] || statusMap[strVal.toUpperCase()] || strVal;
+    return CONDITION_STATUS_MAP[displayValue as ConditionStatus] || displayValue;
   }
   return displayValue;
 }
@@ -248,835 +143,575 @@ function normalizedHistoryFields(value: string): string[] {
       const key = normalizeHistoryKey(field);
       return key !== 'approvedlevel1'
         && key !== 'approvedlevel2'
-        && key !== 'da phe duyet cap 1'
-        && key !== 'da phe duyet cap 2';
+        && key !== 'rejectedlevel1'
+        && key !== 'rejectedlevel2'
+        && key !== 'approvalreasonlevel1'
+        && key !== 'approvalreasonlevel2';
     });
   }
 
   return fields;
 }
 
-function parseHistoryAssignments(value: string | null): Map<string, string> {
-  const result = new Map<string, string>();
-  if (!value) return result;
-  value.split(';').forEach((part) => {
-    const separator = part.indexOf('=');
-    if (separator < 0) return;
-    result.set(normalizeHistoryKey(part.slice(0, separator)), part.slice(separator + 1).trim());
-  });
-  return result;
-}
-
 function historyChangeRows(item: any): Array<{ field: string; oldValue: string | null; newValue: string | null }> {
   const fields = normalizedHistoryFields(historyField(item));
-  const oldValue = historyOldValue(item);
-  const newValue = historyNewValue(item);
-  const oldAssignments = parseHistoryAssignments(oldValue);
-  const newAssignments = parseHistoryAssignments(newValue);
+  const oldVal = historyOldValue(item);
+  const newVal = historyNewValue(item);
 
-  if (fields.length > 1 && oldAssignments.size === 0 && newAssignments.size === 0) {
-    return [{ field: fields.join(', '), oldValue, newValue }];
+  if (fields.length <= 1) {
+    return [{ field: fields[0] || '', oldValue: oldVal, newValue: newVal }];
   }
 
-  if (fields.length === 0) {
-    return [{ field: '', oldValue, newValue }];
+  const oldMap = new Map<string, string>();
+  if (oldVal) {
+    oldVal.split(';').forEach((part) => {
+      const idx = part.indexOf('=');
+      if (idx >= 0) oldMap.set(part.slice(0, idx).trim(), part.slice(idx + 1).trim());
+    });
   }
 
-  return fields.map((field, index) => {
-    const displayField = historyFieldName(field);
-    const oldAssigned = oldAssignments.get(normalizeHistoryKey(field))
-      ?? oldAssignments.get(normalizeHistoryKey(displayField));
-    const newAssigned = newAssignments.get(normalizeHistoryKey(field))
-      ?? newAssignments.get(normalizeHistoryKey(displayField));
-    const oldParts = oldValue?.split(';').map((part) => part.trim()).filter(Boolean) || [];
-    const newParts = newValue?.split(';').map((part) => part.trim()).filter(Boolean) || [];
-    return {
-      field,
-      oldValue: oldAssigned ?? (fields.length === 1 ? oldValue : oldParts[index] || null),
-      newValue: newAssigned ?? (fields.length === 1 ? newValue : newParts[index] || null),
-    };
+  const newMap = new Map<string, string>();
+  if (newVal) {
+    newVal.split(';').forEach((part) => {
+      const idx = part.indexOf('=');
+      if (idx >= 0) newMap.set(part.slice(0, idx).trim(), part.slice(idx + 1).trim());
+    });
+  }
+
+  return fields.map((fn) => ({
+    field: fn,
+    oldValue: oldMap.get(fn) ?? (fields.length === 1 ? oldVal : null),
+    newValue: newMap.get(fn) ?? (fields.length === 1 ? newVal : null),
+  })).filter((r) => {
+    if (r.oldValue === null && r.newValue === null) return false;
+    return r.oldValue !== r.newValue;
   });
 }
 
-function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; color: string; bg: string } {
-  const item = group.items?.[0] || {};
-  const rawStatus = String(item.status ?? item.action ?? '').toUpperCase();
-  const rawReason = String(item.reason ?? item.ghiChu ?? item.note ?? '').toLowerCase();
-  const level = Number(item.approvalLevel || 0);
+function isListDeltaField(fn: string): boolean {
+  const norm = normalizeHistoryKey(fn);
+  return norm.includes('vung vts') || norm.includes('zones') || norm.includes('dinh kem') || norm.includes('attachment');
+}
 
-  if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('tao moi')) {
-    return { label: 'Tạo mới', color: statusOperational, bg: `${statusOperational}18` };
-  }
+function parseListDelta(oldVal: string | null, newVal: string | null) {
+  const removed: string[] = [];
+  const added: string[] = [];
+  const modifiedOld: string[] = [];
+  const modifiedNew: string[] = [];
 
-  if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || item.changedField?.includes('đính kèm')) {
-    return { label: 'Tải lên tệp', color: '#0284c7', bg: '#0284c718' };
-  }
-  if (rawStatus === 'ATTACHMENT_DELETED' || rawReason.includes('xóa tài liệu') || rawReason.includes('xóa tệp') || rawReason.includes('xoa tep')) {
-    return { label: 'Xóa tệp', color: '#ea580c', bg: '#ea580c18' };
-  }
+  const splitParts = (val: string | null) => {
+    if (!val || val === '—' || val === '(null)' || val === '(trống)' || val === 'Chưa có' || val === 'null' || val === 'undefined') return [];
+    return val.split(',').map((s) => s.trim()).filter((s) => s && s !== '—' && s !== '(null)' && s !== '(trống)' && s !== 'Chưa có' && s !== 'null' && s !== 'undefined');
+  };
 
-  if (rawStatus === 'UPDATED' || rawStatus === 'UPDATE' || rawStatus === 'EDIT' || rawReason.includes('cập nhật') || rawReason.includes('chỉnh sửa')) {
-    return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
-  }
+  const oldParts = splitParts(oldVal);
+  const newParts = splitParts(newVal);
 
-  const approvalChange = changes.find((c: any) => {
-    const k = normalizeHistoryKey(c.field);
-    return k === 'approvalstatus' || k === 'trang thai phe duyet';
+  oldParts.forEach((part) => {
+    if (part.startsWith('Xóa ')) {
+      removed.push(part.replace('Xóa ', '').trim());
+    } else if (part.startsWith('Cũ: ')) {
+      modifiedOld.push(part.replace('Cũ: ', '').trim());
+    } else if (part !== '—') {
+      removed.push(part);
+    }
   });
 
-  if (approvalChange) {
-    const nv = normalizeHistoryKey(approvalChange.newValue || '');
-    if (nv.includes('cang vu tra ve') || nv.includes('rejected_level1') || (nv.includes('tra ve') && nv.includes('cang vu'))) {
-      return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
+  newParts.forEach((part) => {
+    if (part.startsWith('Thêm ')) {
+      added.push(part.replace('Thêm ', '').trim());
+    } else if (part.startsWith('Mới: ')) {
+      modifiedNew.push(part.replace('Mới: ', '').trim());
+    } else if (part !== '—') {
+      added.push(part);
     }
-    if (nv.includes('cuc tra ve') || nv.includes('rejected_level2') || (nv.includes('tra ve') && nv.includes('cuc'))) {
-      return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    if (nv === 'cho cuc duyet' || nv.includes('da phe duyet cap 1') || nv.includes('approved_level1') || nv.includes('cuc duyet')) {
-      return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
-    }
-    if (nv === 'da duyet' || nv.includes('da phe duyet') || nv.includes('approved')) {
-      return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
-    }
-    if (nv.includes('tu choi') || nv.includes('rejected') || nv.includes('tra ve')) {
-      return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    if (nv.includes('cho cang vu duyet') || nv.includes('cho phe duyet') || nv.includes('pending') || nv.includes('proposed')) {
-      return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
-    }
+  });
+
+  const modifiedPairs: Array<{ oldV: string; newV: string }> = [];
+  const maxMod = Math.max(modifiedOld.length, modifiedNew.length);
+  for (let i = 0; i < maxMod; i++) {
+    modifiedPairs.push({
+      oldV: modifiedOld[i] || '—',
+      newV: modifiedNew[i] || '—',
+    });
   }
 
-  if (level === 1 || String(item.approvalLevel).includes('LEVEL_1') || rawReason.includes('cấp 1') || rawReason.includes('cap 1') || rawStatus === 'UNDER_REVIEW') {
-    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
-      return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
-  }
-  if (level === 2 || String(item.approvalLevel).includes('LEVEL_2') || rawReason.includes('cấp 2') || rawReason.includes('cap 2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
-    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
-      return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
-  }
-  if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi')) {
-    return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
-  }
-  if (rawStatus === 'SUBMITTED' || rawStatus === 'PENDING' || rawReason.includes('trình duyệt') || rawReason.includes('trinh duyet')) {
-    return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
-  }
-  if (rawStatus === 'DELETED' || rawStatus === 'DELETE' || rawStatus === 'SOFT_DELETE' || rawReason.includes('xóa') || rawReason.includes('xoa')) {
-    return { label: 'Xóa', color: '#64748b', bg: '#64748b18' };
-  }
+  return { removed, added, modifiedPairs };
+}
 
+function resolveHistoryActionMeta(_group?: any, _changes?: any[]): { label: string; color: string; bg: string } {
   return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
 }
 
-function renderHistoryValueTag(field: string, val: string | null) {
-  if (val === null || val === undefined || val === '—') {
-    return <span style={{ color: textTertiary }}>—</span>;
-  }
-  const normKey = normalizeHistoryKey(field);
-  const normVal = normalizeHistoryKey(val);
+function formatCoordPointDms(xStr: string, yStr?: string): string {
+  const x = Number(xStr);
+  const y = yStr !== undefined && yStr !== '' ? Number(yStr) : NaN;
 
-  if (normKey === 'approvalstatus' || normKey === 'trang thai phe duyet' || normKey.includes('phe duyet') || normKey.includes('trang thai')) {
-    if (normVal === 'da duyet' || normVal === 'da phe duyet' || normVal === 'approved' || normVal === 'approved_level2') {
-      return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', border: `1px solid ${statusOperational}40`, borderRadius: radiusPill, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: `${statusOperational}15`, color: statusOperational, whiteSpace: 'nowrap' }}>
-          {val}
-        </span>
-      );
+  const toDmsString = (val: number, isLat: boolean) => {
+    if (isNaN(val)) return '';
+    const abs = Math.abs(val);
+    const d = Math.floor(abs);
+    const minFloat = (abs - d) * 60;
+    const m = Math.floor(minFloat);
+    const s = Math.round((minFloat - m) * 60 * 10) / 10;
+    const dir = isLat ? (val >= 0 ? 'N' : 'S') : (val >= 0 ? 'E' : 'W');
+    return `${d}° ${m}' ${s.toFixed(1)}" ${dir}`;
+  };
+
+  if (!isNaN(x) && !isNaN(y)) {
+    let lat = y;
+    let lng = x;
+    if (x < 35 && y > 50) {
+      lat = x;
+      lng = y;
     }
-    if (normVal === 'cho cuc duyet' || normVal === 'approved_level1' || normVal.includes('cap 1') || normVal.includes('cuc duyet')) {
-      return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', border: '1px solid #13C2C240', borderRadius: radiusPill, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: '#13C2C215', color: '#13C2C2', whiteSpace: 'nowrap' }}>
-          {val}
-        </span>
-      );
+    const latDms = toDmsString(lat, true);
+    const lngDms = toDmsString(lng, false);
+    return `${latDms}, ${lngDms}`;
+  }
+
+  if (!isNaN(x)) {
+    const isLat = x <= 35 && x >= -35;
+    return toDmsString(x, isLat);
+  }
+
+  return xStr;
+}
+
+function parseCoordinatesPoints(raw: string | null): { typeName?: string; points: Array<{ x: string; y: string; index: number }> } | null {
+  if (!raw || raw === '—' || raw === 'Chưa có' || raw === '(null)' || raw === '(trống)') return null;
+  const str = raw.trim();
+
+  if (/^(Đường|Vùng|Điểm)\s+bản\s+đồ\s*\(\d+\s+điểm/i.test(str)) {
+    return { typeName: str, points: [] };
+  }
+
+  let typeName = '';
+  let inner = str;
+
+  if (/^POINT\s*\(/i.test(str)) {
+    typeName = 'Điểm';
+    inner = str.replace(/^POINT\s*\(/i, '').replace(/\)\s*$/, '');
+  } else if (/^LINESTRING\s*\(/i.test(str)) {
+    typeName = 'Đường';
+    inner = str.replace(/^LINESTRING\s*\(/i, '').replace(/\)\s*$/, '');
+  } else if (/^LINE\s*\(/i.test(str)) {
+    typeName = 'Đường';
+    inner = str.replace(/^LINE\s*\(/i, '').replace(/\)\s*$/, '');
+  } else if (/^POLYGON\s*\(\(/i.test(str)) {
+    typeName = 'Vùng';
+    inner = str.replace(/^POLYGON\s*\(\(/i, '').replace(/\)\)\s*$/, '');
+  } else if (/^MULTIPOINT\s*\(/i.test(str)) {
+    typeName = 'Tập hợp điểm';
+    inner = str.replace(/^MULTIPOINT\s*\(/i, '').replace(/\)\s*$/, '');
+  } else if (str.startsWith('(') && str.endsWith(')')) {
+    inner = str.slice(1, -1);
+  }
+
+  const pointStrings = inner.split(',').map((s) => s.trim()).filter(Boolean);
+  if (pointStrings.length === 0) return null;
+
+  const points = pointStrings.map((ps, idx) => {
+    const clean = ps.replace(/[()]/g, '').trim();
+    const parts = clean.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return { x: parts[0], y: parts[1], index: idx + 1 };
     }
-    if (normVal === 'cho cang vu duyet' || normVal === 'cho phe duyet' || normVal === 'cho duyet' || normVal === 'pending' || normVal === 'pending_approval' || normVal === 'proposed' || normVal.includes('cang vu')) {
-      return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', border: `1px solid ${statusAttention}40`, borderRadius: radiusPill, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: `${statusAttention}15`, color: statusAttention, whiteSpace: 'nowrap' }}>
-          {val}
-        </span>
-      );
-    }
-    if (normVal === 'tu choi' || normVal.includes('rejected') || normVal.includes('tra ve')) {
-      return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', border: `1px solid ${statusCritical}40`, borderRadius: radiusPill, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: `${statusCritical}15`, color: statusCritical, whiteSpace: 'nowrap' }}>
-          {val}
-        </span>
-      );
-    }
+    return { x: clean, y: '', index: idx + 1 };
+  });
+
+  return { typeName, points };
+}
+
+function renderCoordinatesDisplay(val: string | null) {
+  if (!val || val === '—' || val === 'Chưa có' || val === '(null)' || val === '(trống)') {
+    return <span style={{ color: textTertiary }}>{val === 'Chưa có' ? 'Chưa có' : '—'}</span>;
+  }
+  const parsed = parseCoordinatesPoints(val);
+  if (!parsed) {
+    return <span style={{ color: textPrimary, fontWeight: fontWeightMedium }}>{val}</span>;
+  }
+
+  if (parsed.points.length === 0) {
+    return <span style={{ color: textPrimary, fontWeight: fontWeightMedium }}>{parsed.typeName || val}</span>;
+  }
+
+  if (parsed.points.length === 1) {
+    const pt = parsed.points[0];
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', border: `1px solid ${statusDraft}40`, borderRadius: radiusPill, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: `${statusDraft}15`, color: statusDraft, whiteSpace: 'nowrap' }}>
-        {val}
+      <span style={{ color: textPrimary, fontWeight: fontWeightMedium }}>
+        {formatCoordPointDms(pt.x, pt.y)}
       </span>
     );
   }
 
-  return <span>{val}</span>;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, width: '100%' }}>
+      {parsed.points.map((pt) => (
+        <div
+          key={pt.index}
+          style={{
+            fontSize: fontSizeSm + 1,
+            color: textPrimary,
+            fontWeight: fontWeightMedium,
+            lineHeight: 1.4,
+          }}
+        >
+          • Điểm {pt.index}: {formatCoordPointDms(pt.x, pt.y)}
+        </div>
+      ))}
+    </div>
+  );
 }
 
-export /**
- * 6 cột kiểm toán phê duyệt trên bảng danh sách.
- *
- * Ma trận dữ liệu Trung tâm điều hành VTS (F-293) đánh `Danh sách = TRUE` cho các trường
- * #20–#23 và #25–#26; quy chuẩn hiển thị ở `infrastructure-screen-template.md` §2.1.
- * Trước đây chỉ xem được ở màn Chi tiết nên người quản lý phải mở từng hồ sơ mới biết
- * ai gửi / ai duyệt / duyệt lúc nào.
- */
-const auditDateCell = (value?: string) => (
-  <span style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
-    {value ? dayjs(value).format('DD/MM/YYYY HH:mm') : '—'}
-  </span>
-);
+function renderHistoryValueTag(field: string, val: string | null, symbols: any[] = []) {
+  if (val === null || val === undefined || val === '—' || val === '' || val === 'Chưa có') {
+    return <span style={{ color: textTertiary }}>{val === 'Chưa có' ? 'Chưa có' : '—'}</span>;
+  }
+  const normKey = normalizeHistoryKey(field);
+  const normVal = normalizeHistoryKey(val);
 
-const auditUserCell = (name?: string) => (
-  <span style={{ fontSize: fontSizeMd, whiteSpace: 'nowrap' }}>{name || '—'}</span>
-);
+  if (normKey === 'coordinates' || normKey === 'toa do gis' || normKey.includes('toa do') || normKey.includes('coordinates')) {
+    return renderCoordinatesDisplay(val);
+  }
 
-const AUDIT_COLUMNS = [
-  {
-    key: 'submittedAt', label: 'Ngày gửi phê duyệt', dataIndex: 'submittedAt', width: 150, ellipsis: false,
-    render: (v: string) => auditDateCell(v),
-  },
-  {
-    key: 'submittedByName', label: 'Cán bộ gửi phê duyệt', dataIndex: 'submittedByName', width: 170, ellipsis: false,
-    render: (v: string) => auditUserCell(v),
-  },
-  {
-    key: 'approvedDateLevel1', label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'approvedDateLevel1', width: 150, ellipsis: false,
-    render: (v: string) => auditDateCell(v),
-  },
-  {
-    key: 'approverLevel1Name', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'approverLevel1Name', width: 170, ellipsis: false,
-    render: (v: string) => auditUserCell(v),
-  },
-  {
-    key: 'approvedDateLevel2', label: 'Ngày phê duyệt cấp Cục', dataIndex: 'approvedDateLevel2', width: 150, ellipsis: false,
-    render: (v: string) => auditDateCell(v),
-  },
-  {
-    key: 'approverLevel2Name', label: 'Cán bộ phê duyệt cấp Cục', dataIndex: 'approverLevel2Name', width: 170, ellipsis: false,
-    render: (v: string) => auditUserCell(v),
-  },
-];
+  if (normKey === 'symbolid' || normKey === 'bieu tuong' || normKey.includes('bieu tuong') || normKey.includes('map symbol')) {
+    const sym = symbols.find((s) => s.name === val || s.id === val || s.code === val || (val && String(s.name).trim().toLowerCase() === String(val).trim().toLowerCase()));
+    if (sym && sym.image) {
+      const imgSrc = sym.image.startsWith('data:') || sym.image.startsWith('http') || sym.image.startsWith('/')
+        ? sym.image
+        : `data:image/png;base64,${sym.image}`;
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <img src={imgSrc} alt="" style={{ width: 20, height: 20, objectFit: 'contain', borderRadius: 4 }} />
+          <span style={{ fontWeight: fontWeightMedium, color: textPrimary }}>{sym.name || val}</span>
+        </span>
+      );
+    }
+    return <span style={{ fontWeight: fontWeightMedium, color: textPrimary }}>{val}</span>;
+  }
 
-const VtsOperationCenterList: React.FC = () => {
-  const [loading, setLoading] = useState(false);
-  const [isError, setIsError] = useState(false);
-  const [data, setData] = useState<VtsOperationCenterListItem[]>([]);
-  const [total, setTotal] = useState(0);
+  if (normKey === 'approvalstatus' || normKey === 'trang thai phe duyet' || normKey.includes('phe duyet') || normKey.includes('trang thai')) {
+    if (normVal === 'da duyet' || normVal === 'da phe duyet' || normVal === 'approved' || normVal === 'approved_level2') {
+      return <span style={statusBadgeStyle(statusOperational)}>{val}</span>;
+    }
+    if (normVal === 'cho cuc duyet' || normVal === 'approved_level1' || normVal.includes('cap 1') || normVal.includes('cuc duyet')) {
+      return <span style={statusBadgeStyle('#0082fb')}>{val}</span>;
+    }
+    if (normVal === 'cho cang vu duyet' || normVal === 'cho phe duyet' || normVal === 'cho duyet' || normVal === 'pending' || normVal === 'pending_approval' || normVal === 'proposed' || normVal.includes('cang vu')) {
+      return <span style={statusBadgeStyle(statusAttention)}>{val}</span>;
+    }
+    if (normVal === 'tu choi' || normVal.includes('rejected') || normVal.includes('tra ve')) {
+      return <span style={statusBadgeStyle(statusCritical)}>{val}</span>;
+    }
+    return <span style={statusBadgeStyle(statusDraft)}>{val}</span>;
+  }
+
+  if (normKey === 'conditionstatus' || normKey === 'tinh trang' || normKey.includes('tinh trang')) {
+    if (normVal.includes('hoat dong tot') || normVal.includes('good') || normVal.includes('operational') || normVal.includes('hoat dong')) {
+      return <span style={statusBadgeStyle(statusOperational)}>{val}</span>;
+    }
+    if (normVal.includes('can bao duong') || normVal.includes('warning') || normVal.includes('maintenance') || normVal.includes('bao tri')) {
+      return <span style={statusBadgeStyle(statusAttention)}>{val}</span>;
+    }
+    if (normVal.includes('ngung') || normVal.includes('hong') || normVal.includes('stopped') || normVal.includes('critical') || normVal.includes('dung')) {
+      return <span style={statusBadgeStyle(statusCritical)}>{val}</span>;
+    }
+    if (normVal.includes('dang xay dung') || normVal.includes('under_construction')) {
+      return <span style={statusBadgeStyle(actionPrimary)}>{val}</span>;
+    }
+    return <span style={statusBadgeStyle(statusDraft)}>{val}</span>;
+  }
+
+  return (
+    <span title={val} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere' }}>
+      {val}
+    </span>
+  );
+}
+
+export default function VtsOperationCenterList() {
+  const currentUser = useAuthStore((s: any) => s.user);
+  const hasPerm = usePermissionStore((s: any) => s.hasPermission);
+
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
-  const [activeTab, setActiveTab] = useState<string>('ALL');
-  // Sắp xếp phía server; antd chỉ nhìn thấy trang hiện tại nên không tự sắp được.
-  const [sortField, setSortField] = useState<string | undefined>();
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [filterKeyword, setFilterKeyword] = useState('');
+  const [filterConditionStatus, setFilterConditionStatus] = useState<ConditionStatus | undefined>();
+  const [filterApprovalStatus, setFilterApprovalStatus] = useState<ApprovalStatus | undefined>();
+  const [filterOrgUnitId, setFilterOrgUnitId] = useState<string | undefined>();
+  const [filterPortId, setFilterPortId] = useState<string | undefined>();
+  const [filterVtsSystemId, setFilterVtsSystemId] = useState<string | undefined>();
+  const [filterProvinceId, setFilterProvinceId] = useState<number | undefined>();
+  const [filterUpdatedFrom, setFilterUpdatedFrom] = useState<string | undefined>();
+  const [filterUpdatedTo, setFilterUpdatedTo] = useState<string | undefined>();
 
-  // Filter sidebar states
+  const [orgUnitOptions, setOrgUnitOptions] = useState<OrgUnitTreeOption[]>([]);
+  const [portOptions, setPortOptions] = useState<Array<{ id: string; portName?: string; portCode?: string; orgUnitId?: string }>>([]);
+  const [vtsSystemOptions, setVtsSystemOptions] = useState<Array<{ id: string; name?: string; code?: string; orgUnitId?: string }>>([]);
+  const [symbols, setSymbols] = useState<any[]>([]);
+
   const [filterCollapsed, setFilterCollapsed] = useState(false);
-  // Khoảng ngày cập nhật — bộ lọc nâng cao (ma trận dữ liệu TTĐH VTS, trường #18)
-  const [updatedRange, setUpdatedRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
-  const [keyword, setKeyword] = useState<string>('');
-  const [orgUnitId, setOrgUnitId] = useState<string | undefined>();
-  const [vtsSystemId, setVtsSystemId] = useState<string | undefined>();
-  const [portId, setPortId] = useState<string | undefined>();
-  const [provinceId, setProvinceId] = useState<number | undefined>();
-  const [conditionStatus, setConditionStatus] = useState<ConditionStatus | undefined>();
+  const [filterValues, setFilterValues] = useState<Record<string, any>>({});
 
-  // Reference data
-  const [orgUnits, setOrgUnits] = useState<any[]>([]);
-  const [vtsSystems, setVtsSystems] = useState<{ id: string; name: string; orgUnitId?: string }[]>([]);
-  const [portOptions, setPortOptions] = useState<{ id: string; name: string; orgUnitId?: string }[]>([]);
+  const [dataSource, setDataSource] = useState<VtsOperationCenterListItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  // Modals & Drawers
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<VtsOperationCenterResponse | null>(null);
-  const [drawerVisible, setDrawerVisible] = useState(false);
-  const [drawerItem, setDrawerItem] = useState<VtsOperationCenterResponse | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<VtsOperationCenterResponse | null>(null);
+  const [modalMode, setModalMode] = useState<'create' | 'edit' | 'detail'>('create');
 
-  // History Drawer
-  const [historyDrawerVisible, setHistoryDrawerVisible] = useState(false);
-  const [historyTargetRecord, setHistoryTargetRecord] = useState<VtsOperationCenterListItem | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<HistoryEntry[]>([]);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [approveTargetId, setApproveTargetId] = useState<string | null>(null);
+  const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c1');
+
+  // History drawer state
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historySearchInput, setHistorySearchInput] = useState('');
   const [historySearch, setHistorySearch] = useState('');
-  const [historyDateFrom, setHistoryDateFrom] = useState('');
-  const [historyDateTo, setHistoryDateTo] = useState('');
+  const [historyDateFrom, setHistoryDateFrom] = useState<string>('');
+  const [historyDateTo, setHistoryDateTo] = useState<string>('');
 
-  // Approval Modals
-  const [approveModalVisible, setApproveModalVisible] = useState(false);
-  const [approveLevel, setApproveLevel] = useState<'C1' | 'C2'>('C1');
-  const [approveTargetId, setApproveTargetId] = useState<string>('');
-  const [approveReason, setApproveReason] = useState<string>('');
-  const [actionLoading, setActionLoading] = useState(false);
+  // Count tabs
+  const [countDraft, setCountDraft] = useState<number>(0);
+  const [countPendingApproval, setCountPendingApproval] = useState<number>(0);
+  const [countApprovedLevel1, setCountApprovedLevel1] = useState<number>(0);
+  const [countApproved, setCountApproved] = useState<number>(0);
+  const [countRejected, setCountRejected] = useState<number>(0);
+  const statusCountFilterKey = useRef<string | null>(null);
+  const listRequestId = useRef(0);
 
-  const [rejectModalVisible, setRejectModalVisible] = useState(false);
-  const [rejectTargetId, setRejectTargetId] = useState<string>('');
-  const [rejectReason, setRejectReason] = useState<string>('');
-
-  const { user } = useAuthStore();
-  const { hasPermission } = usePermissionStore();
-
-  const canCreate = hasPermission('vtsoperationcenter:create');
-  const canUpdate = hasPermission('vtsoperationcenter:update');
-  const canDelete = hasPermission('vtsoperationcenter:delete');
-  const canHistory = hasPermission('vtsoperationcenter:history');
-  const canApproveC1 = hasPermission('vtsoperationcenter:approvec1');
-  const canApproveC2 = hasPermission('vtsoperationcenter:approvec2');
-
-  const loadReferenceData = useCallback(async () => {
-    try {
-      const [vtsRes, orgRes, portRes] = await Promise.allSettled([
-        vtsSystemCRUD.getOptions(),
-        organizationService.list({ pageSize: 1000 }),
-        portCRUD.getOptions(),
-      ]);
-      if (vtsRes.status === 'fulfilled' && Array.isArray(vtsRes.value)) {
-        setVtsSystems(vtsRes.value.map((s: any) => ({ id: s.id, name: s.name || s.systemName, orgUnitId: s.orgUnitId })));
+  useEffect(() => {
+    (async () => {
+      try {
+        const [orgs, ports, systems, syms] = await Promise.all([
+          vtsSystemCRUD.getScopedOrgUnitOptions(),
+          vtsSystemCRUD.getScopedPortOptions(),
+          vtsSystemCRUD.getOptions(),
+          symbolService.getOptions().catch(() => []),
+        ]);
+        setOrgUnitOptions((orgs || []).map((o: any) => ({
+          id: String(o.id),
+          name: o.name || o.unitName || o.tenDonVi || 'Đơn vị',
+          code: o.code || o.maDonVi,
+          parentId: o.parentId ? String(o.parentId) : undefined,
+        })));
+        setPortOptions(Array.isArray(ports) ? ports : []);
+        setVtsSystemOptions(Array.isArray(systems) ? systems : []);
+        setSymbols(Array.isArray(syms) ? syms : []);
+      } catch (e) {
+        console.error('Failed to fetch lookup options', e);
       }
-      if (orgRes.status === 'fulfilled' && orgRes.value && Array.isArray(orgRes.value.data)) {
-        setOrgUnits(orgRes.value.data);
-      }
-      if (portRes.status === 'fulfilled' && Array.isArray(portRes.value)) {
-        setPortOptions(portRes.value.map((p: any) => ({ id: p.id, name: p.portName || p.portCode || p.id, orgUnitId: p.orgUnitId })));
-      }
-    } catch {
-      // ignore
-    }
+    })();
   }, []);
-
-  const filteredVtsSystems = useMemo(() => {
-    if (!orgUnitId) return vtsSystems;
-    const allowedIds = resolveOrgSubtreeIds(orgUnits, orgUnitId);
-    return vtsSystems.filter((s) => !s.orgUnitId || allowedIds.has(s.orgUnitId));
-  }, [vtsSystems, orgUnitId, orgUnits]);
 
   const filteredPortOptions = useMemo(() => {
-    if (!orgUnitId) return portOptions;
-    const allowedIds = resolveOrgSubtreeIds(orgUnits, orgUnitId);
+    if (!filterValues.orgUnitId) return portOptions;
+    const allowedIds = resolveOrgSubtreeIds(orgUnitOptions, filterValues.orgUnitId);
     return portOptions.filter((p) => !p.orgUnitId || allowedIds.has(p.orgUnitId));
-  }, [portOptions, orgUnitId, orgUnits]);
+  }, [portOptions, orgUnitOptions, filterValues.orgUnitId]);
 
-  const handleOrgUnitChange = (val?: string) => {
-    setOrgUnitId(val);
-    if (val) {
-      const allowedIds = resolveOrgSubtreeIds(orgUnits, val);
-      if (portId && !portOptions.some((p) => p.id === portId && (!p.orgUnitId || allowedIds.has(p.orgUnitId)))) {
-        setPortId(undefined);
-      }
-      if (vtsSystemId && !vtsSystems.some((v) => v.id === vtsSystemId && (!v.orgUnitId || allowedIds.has(v.orgUnitId)))) {
-        setVtsSystemId(undefined);
-      }
-    }
-  };
+  const filteredVtsSystemOptions = useMemo(() => {
+    if (!filterValues.orgUnitId) return vtsSystemOptions;
+    const allowedIds = resolveOrgSubtreeIds(orgUnitOptions, filterValues.orgUnitId);
+    return vtsSystemOptions.filter((v) => !v.orgUnitId || allowedIds.has(v.orgUnitId));
+  }, [vtsSystemOptions, orgUnitOptions, filterValues.orgUnitId]);
 
   const fetchData = useCallback(async () => {
+    const requestId = ++listRequestId.current;
+    setLoading(true);
+    setIsError(false);
     try {
-      setLoading(true);
-      setIsError(false);
-
-      const effectiveApprovalStatus = activeTab === 'ALL' ? undefined : activeTab;
-
-      const res = await vtsOperationCenterService.search({
-        keyword: keyword.trim() || undefined,
-        orgUnitId: orgUnitId || undefined,
-        vtsSystemId: vtsSystemId || undefined,
-        portId: portId || undefined,
-        provinceId: provinceId !== undefined ? provinceId : undefined,
-        conditionStatus: conditionStatus !== undefined ? conditionStatus : undefined,
-        approvalStatus: effectiveApprovalStatus || undefined,
-        updatedFrom: updatedRange?.[0] ? updatedRange[0].startOf('day').toISOString() : undefined,
-        updatedTo: updatedRange?.[1] ? updatedRange[1].endOf('day').toISOString() : undefined,
-        page,
+      const currentStatusCountFilterKey = JSON.stringify([
+        filterKeyword, filterConditionStatus, filterOrgUnitId, filterPortId, filterVtsSystemId, filterProvinceId,
+        filterUpdatedFrom, filterUpdatedTo,
+      ]);
+      const shouldIncludeCounts = statusCountFilterKey.current !== currentStatusCountFilterKey;
+      const params: VtsOperationCenterListParams = {
+        page: page,
         size: pageSize,
-        // Sắp xếp chạy ở server để áp dụng cho toàn bộ kết quả, không chỉ trang
-        // đang hiển thị (backend đã nhận sortBy/sortDir sẵn).
-        sortBy: sortField,
-        sortDir: sortField ? sortDirection : undefined,
-      });
+        keyword: filterKeyword || undefined,
+        conditionStatus: filterConditionStatus,
+        approvalStatus: filterApprovalStatus,
+        orgUnitId: filterOrgUnitId || undefined,
+        portId: filterPortId || undefined,
+        vtsSystemId: filterVtsSystemId || undefined,
+        provinceId: filterProvinceId,
+        updatedFrom: filterUpdatedFrom,
+        updatedTo: filterUpdatedTo,
+      };
 
-      setData(res.items);
-      setTotal(res.total);
-      setStatusCounts(res.statusCounts || {});
-    } catch (err: any) {
+      const res = await vtsOperationCenterService.search(params);
+      if (requestId !== listRequestId.current) return;
+      setDataSource(res.items || []);
+      setTotal(res.total || 0);
+
+      if (shouldIncludeCounts && res.statusCounts) {
+        const counts = res.statusCounts;
+        setCountDraft(Number(counts.DRAFT) || 0);
+        setCountPendingApproval(Number(counts.PENDING_APPROVAL) || 0);
+        setCountApprovedLevel1(Number(counts.APPROVED_LEVEL1) || 0);
+        setCountApproved(Number(counts.APPROVED) || 0);
+        setCountRejected((Number(counts.REJECTED_LEVEL1) || 0) + (Number(counts.REJECTED_LEVEL2) || 0));
+        statusCountFilterKey.current = currentStatusCountFilterKey;
+      }
+    } catch (err: unknown) {
+      if (requestId !== listRequestId.current) return;
       setIsError(true);
-      toast.error('Không thể tải danh sách trung tâm điều hành VTS');
+      setErrorMessage(err instanceof Error ? err.message : 'Không thể tải danh sách');
     } finally {
-      setLoading(false);
+      if (requestId === listRequestId.current) setLoading(false);
     }
   }, [
-    page,
-    pageSize,
-    keyword,
-    orgUnitId,
-    vtsSystemId,
-    portId,
-    provinceId,
-    conditionStatus,
-    activeTab,
-    sortField,
-    sortDirection,
-  , updatedRange]);
+    page, pageSize, filterKeyword, filterConditionStatus, filterApprovalStatus,
+    filterOrgUnitId, filterPortId, filterVtsSystemId, filterProvinceId,
+    filterUpdatedFrom, filterUpdatedTo,
+  ]);
 
-  const handleSort = useCallback((field: string, order: 'asc' | 'desc') => {
-    setSortField(field);
-    setSortDirection(order);
-    setPage(1);
-  }, []);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  useEffect(() => {
-    loadReferenceData();
-  }, [loadReferenceData]);
-
-  useEffect(() => {
-    fetchData();
+  const refreshList = useCallback(() => {
+    statusCountFilterKey.current = null;
+    void fetchData();
   }, [fetchData]);
-
-  const handleSearch = () => {
-    setPage(1);
-    fetchData();
-  };
-
-  const handleReset = () => {
-    setUpdatedRange(null);
-    setKeyword('');
-    setOrgUnitId(undefined);
-    setVtsSystemId(undefined);
-    setPortId(undefined);
-    setProvinceId(undefined);
-    setConditionStatus(undefined);
-    setActiveTab('ALL');
-    setPage(1);
-  };
-
-  const handleViewDetail = async (record: VtsOperationCenterListItem) => {
-    try {
-      const full = await vtsOperationCenterService.getById(record.id);
-      setDrawerItem(full);
-      setDrawerVisible(true);
-    } catch {
-      toast.error('Không thể tải chi tiết');
-    }
-  };
-
-  const handleEdit = async (record: VtsOperationCenterListItem | VtsOperationCenterResponse) => {
-    try {
-      const full = await vtsOperationCenterService.getById(record.id);
-      setSelectedItem(full);
-      setModalVisible(true);
-    } catch {
-      toast.error('Không thể tải thông tin chỉnh sửa');
-    }
-  };
 
   const handleDelete = async (id: string) => {
     try {
       await vtsOperationCenterService.delete(id);
-      toast.success('Xóa trung tâm điều hành VTS thành công');
-      fetchData();
+      toast.success('Xóa thành công');
+      refreshList();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || 'Xóa thất bại');
+      toast.error(err?.message || 'Lỗi xóa');
     }
   };
 
-  const handleViewHistory = async (record: VtsOperationCenterListItem) => {
-    setHistoryTargetRecord(record);
-    setHistoryDrawerVisible(true);
-    setLoadingHistory(true);
-    setHistorySearchInput('');
-    setHistorySearch('');
-    setHistoryDateFrom('');
-    setHistoryDateTo('');
-    try {
-      const h = await vtsOperationCenterService.getHistory(record.id);
-      setHistoryRecords(h || []);
-    } catch {
-      toast.error('Không thể tải lịch sử thay đổi');
-    } finally {
-      setLoadingHistory(false);
-    }
+  const confirmDelete = (record: VtsOperationCenterListItem) => {
+    modal.confirm({
+      title: 'Xác nhận xóa trung tâm điều hành VTS',
+      icon: <ExclamationCircleOutlined />,
+      content: 'Hồ sơ ở trạng thái Lưu tạm sẽ chuyển sang "Đã xóa (lịch sử)": không còn hiển thị trong danh sách nhưng vẫn được giữ lại để đối chiếu.',
+      okText: 'Xóa', okType: 'danger', cancelText: 'Hủy',
+      onOk: () => handleDelete(record.id),
+    });
   };
 
-  const openApproveModal = (id: string, level: 'C1' | 'C2') => {
+  const openApproveModal = (id: string, level: 'c1' | 'c2') => {
     setApproveTargetId(id);
     setApproveLevel(level);
-    setApproveReason('');
-    setApproveModalVisible(true);
+    setApproveModalOpen(true);
   };
 
-  const handleConfirmApprove = async () => {
+  const handleApprove = async (content: string) => {
     if (!approveTargetId) return;
     try {
-      setActionLoading(true);
-      if (approveLevel === 'C1') {
-        await vtsOperationCenterService.approveC1(approveTargetId, 'APPROVED', approveReason);
+      if (approveLevel === 'c1') {
+        await vtsOperationCenterService.approveC1(approveTargetId, 'APPROVED', content);
         toast.success('Phê duyệt cấp 1 thành công');
       } else {
-        await vtsOperationCenterService.approveC2(approveTargetId, 'APPROVED', approveReason);
+        await vtsOperationCenterService.approveC2(approveTargetId, 'APPROVED', content);
         toast.success('Phê duyệt cấp 2 thành công');
       }
-      setApproveModalVisible(false);
-      fetchData();
+      setApproveModalOpen(false);
+      refreshList();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || 'Lỗi phê duyệt');
-    } finally {
-      setActionLoading(false);
+      toast.error(err?.message || 'Lỗi phê duyệt');
     }
   };
 
   const openRejectModal = (id: string) => {
     setRejectTargetId(id);
     setRejectReason('');
-    setRejectModalVisible(true);
+    setRejectModalOpen(true);
   };
 
-  const handleConfirmReject = async () => {
-    if (!rejectReason.trim()) {
-      toast.warning('Vui lòng nhập lý do từ chối');
+  const handleReject = async () => {
+    if (!rejectReason.trim() || rejectReason.trim().length < 5) {
+      toast.error('Vui lòng nhập lý do từ chối');
       return;
     }
     if (!rejectTargetId) return;
     try {
-      setActionLoading(true);
       await vtsOperationCenterService.reject(rejectTargetId, rejectReason.trim());
-      toast.success('Đã từ chối phê duyệt');
-      setRejectModalVisible(false);
-      fetchData();
+      toast.success('Đã từ chối');
+      setRejectModalOpen(false);
+      refreshList();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || 'Có lỗi xảy ra');
-    } finally {
-      setActionLoading(false);
+      toast.error(err?.message || 'Lỗi từ chối');
     }
   };
 
-  const statusTabsItems = useMemo(() => {
-    const draftCount = statusCounts['DRAFT'] || 0;
-    const pendingCount = statusCounts['PENDING_APPROVAL'] || 0;
-    const approvedL1Count = statusCounts['APPROVED_LEVEL1'] || 0;
-    const approvedCount = statusCounts['APPROVED'] || 0;
-    const rejectedCount = (statusCounts['REJECTED_LEVEL1'] || 0) + (statusCounts['REJECTED_LEVEL2'] || 0);
-    const allCount = draftCount + pendingCount + approvedL1Count + approvedCount + rejectedCount;
+  const handleViewHistory = (record: VtsOperationCenterListItem) => {
+    setSelectedRecord(record as any);
+    setHistoryModalOpen(true);
+    setHistoryRecords([]);
+    setLoadingHistory(true);
+    setHistorySearchInput('');
+    setHistorySearch('');
+    setHistoryDateFrom('');
+    setHistoryDateTo('');
 
-    return [
-      { key: 'ALL', label: 'Tất cả', count: allCount, color: actionPrimary, active: activeTab === 'ALL' },
-      { key: 'DRAFT', label: 'Lưu tạm', count: draftCount, color: statusDraft, active: activeTab === 'DRAFT' },
-      { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', count: pendingCount, color: statusAttention, active: activeTab === 'PENDING_APPROVAL' },
-      { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', count: approvedL1Count, color: '#0284C7', active: activeTab === 'APPROVED_LEVEL1' },
-      { key: 'APPROVED', label: 'Đã duyệt', count: approvedCount, color: statusOperational, active: activeTab === 'APPROVED' },
-      { key: 'REJECTED_LEVEL1', label: 'Từ chối', count: rejectedCount, color: statusCritical, active: activeTab === 'REJECTED_LEVEL1' || activeTab === 'REJECTED_LEVEL2' },
-    ];
-  }, [statusCounts, activeTab]);
-
-  const sortOrderFor = (key: string): 'ascend' | 'descend' | null =>
-    (sortField === key ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null);
-
-  // Bộ so sánh trung tính: thứ tự do server quyết định, hàm này chỉ để antd hiện
-  // biểu tượng sắp xếp mà không tự sắp lại trang đang xem.
-  const serverSideSorter = () => 0;
-
-  const columns = useMemo(() => [
-    {
-      key: 'stt',
-      label: 'STT',
-      width: 60,
-      align: 'center' as const,
-      fixed: 'left' as const,
-      render: (_: any, __: any, index: number) => (page - 1) * pageSize + index + 1,
-    },
-    {
-      key: 'name',
-      label: <span>Tên/Mã TTDH VTS</span>,
-      dataIndex: 'name',
-      // list-screen-ui-standard §2: cột Tên/Mã KCHT rộng 220–260px.
-      width: 260,
-      fixed: 'left' as const,
-      sortable: true,
-      sorter: serverSideSorter,
-      sortOrder: sortOrderFor('name'),
-      ellipsis: false,
-      render: (name: string, record: VtsOperationCenterListItem) => (
-        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          <a
-            title={name}
-            onClick={() => handleViewDetail(record)}
-            style={{
-              fontWeight: fontWeightBold,
-              color: actionPrimary,
-              cursor: 'pointer',
-              display: 'block',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {name || '—'}
-          </a>
-          <span style={{ opacity: 0.85, fontSize: fontSizeMd, color: textSecondary, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {record.code || '—'}
-          </span>
-        </div>
-      ),
-    },
-    {
-      key: 'orgUnitName',
-      label: 'Đơn vị quản lý',
-      dataIndex: 'orgUnitName',
-      width: 260,
-      ellipsis: false,
-      // Tên đơn vị resolve từ cache sau truy vấn nên không sắp xếp được ở server;
-      // không bật sắp xếp để tránh chỉ sắp đúng trang đang xem.
-      render: (orgName: string) => (
-        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={orgName}>
-          <span style={{ fontWeight: fontWeightBold }}>{orgName || '—'}</span>
-        </div>
-      ),
-    },
-    {
-      key: 'portName',
-      label: 'Thuộc cảng biển',
-      dataIndex: 'portName',
-      width: 200,
-      ellipsis: false,
-      render: (pName: string) => (
-        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={pName}>
-          {pName || '—'}
-        </div>
-      ),
-    },
-    {
-      key: 'vtsSystemName',
-      label: 'Thuộc hệ thống VTS',
-      dataIndex: 'vtsSystemName',
-      width: 220,
-      ellipsis: false,
-      render: (sName: string) => (
-        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={sName}>
-          {sName || '—'}
-        </div>
-      ),
-    },
-    {
-      key: 'provinceId',
-      label: 'Địa điểm (Tỉnh/TP)',
-      dataIndex: 'provinceId',
-      width: 220,
-      ellipsis: false,
-      render: (pId: number) => {
-        const pName = pId ? getProvinceNameById(pId) || String(pId) : '—';
-        return (
-          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={pName}>
-            {pName}
-          </div>
-        );
-      },
-    },
-    {
-      key: 'conditionStatus',
-      label: 'Tình trạng',
-      dataIndex: 'conditionStatus',
-      width: 160,
-      ellipsis: false,
-      sortable: true,
-      sorter: serverSideSorter,
-      sortOrder: sortOrderFor('conditionStatus'),
-      render: (status: any) => {
-        if (!status) return '—';
-        const key = String(status);
-        const label = key === 'OPERATIONAL' ? 'Đang hoạt động' : key === 'MAINTENANCE' ? 'Đang bảo trì' : key === 'STOPPED' ? 'Dừng hoạt động' : key === 'UNDER_CONSTRUCTION' ? 'Đang xây dựng' : key;
-        const color = key === 'OPERATIONAL' ? statusOperational : key === 'MAINTENANCE' ? statusAttention : key === 'STOPPED' ? statusCritical : key === 'UNDER_CONSTRUCTION' ? actionPrimary : textSecondary;
-        return (
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '2px 10px',
-              border: `1px solid ${color}40`,
-              borderRadius: radiusPill,
-              fontSize: fontSizeMd,
-              fontWeight: fontWeightMedium,
-              background: `${color}15`,
-              color,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {label}
-          </span>
-        );
-      },
-    },
-    {
-      key: 'approvalStatus',
-      label: 'Trạng thái',
-      dataIndex: 'approvalStatus',
-      width: 180,
-      ellipsis: false,
-      sortable: true,
-      sorter: serverSideSorter,
-      sortOrder: sortOrderFor('approvalStatus'),
-      render: (status: string) => <ApprovalStatusBadge status={status} />,
-    },
-    {
-      key: 'updatedByName',
-      label: 'Cán bộ cập nhật',
-      dataIndex: 'updatedByName',
-      width: 220,
-      // Tên cán bộ cũng resolve sau truy vấn — xem ghi chú ở cột đơn vị quản lý.
-      ellipsis: false,
-      render: (_: string, record: VtsOperationCenterListItem) => {
-        const name = record.updatedByName || record.createdByName || record.updatedBy || record.createdBy || '—';
-        const date = record.updatedAt || record.createdAt;
-        return (
-          <div style={{ lineHeight: '1.35' }}>
-            <div style={{ fontWeight: fontWeightBold, color: '#0F172A', fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {name}
-            </div>
-            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
-              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
-            </div>
-          </div>
-        );
-      },
-    },
-    // ── 6 cột kiểm toán phê duyệt ─────────────────────────────────────────
-    // Chốt 26/08/2026 theo ma trận dữ liệu F-293 (#20–#23, #25–#26); quy chuẩn ở
-    // infrastructure-screen-template.md §2.1. Đặt sau "Cán bộ cập nhật", trước "Thao tác".
-    // Tất cả read-only, hiển thị HỌ VÀ TÊN cán bộ — không phơi UUID.
-    ...AUDIT_COLUMNS,
-  ], [page, pageSize, sortField, sortDirection]);
-
-  const rowActions = useCallback((record: VtsOperationCenterListItem) => {
-    const isDraft = record.approvalStatus === ApprovalStatus.DRAFT || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL2;
-    const isPendingC1 = record.approvalStatus === ApprovalStatus.PENDING_APPROVAL;
-    const isApprovedL1 = record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1;
-
-    const currentUserId = user?.userId || user?.id;
-    const isCreator = Boolean(currentUserId && record.createdBy === currentUserId);
-
-    const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }[] = [];
-
-    // 1. Xem chi tiết
-    actions.push({
-      key: 'view',
-      icon: <EyeOutlined />,
-      label: 'Xem chi tiết',
-      onClick: () => handleViewDetail(record),
+    vtsOperationCenterService.getHistory(record.id).then((res) => {
+      setHistoryRecords(res || []);
+    }).catch(() => {
+      toast.error('Không thể tải lịch sử thay đổi');
+    }).finally(() => {
+      setLoadingHistory(false);
     });
+  };
 
-    // 2. Lịch sử
-    if (canHistory) {
-      actions.push({
-        key: 'history',
-        icon: <HistoryOutlined />,
-        label: 'Lịch sử',
-        onClick: () => handleViewHistory(record),
-      });
-    }
+  const countAll = countDraft + countPendingApproval + countApprovedLevel1 + countApproved + countRejected;
 
-    // 3. Chỉnh sửa — quy tắc 12 (approval-2-level-spec.md mục 3.9)
-    if (canEditApprovalRecord(record.approvalStatus, { hasPerm: hasPermission, resource: 'vtsoperationcenter' })) {
-      actions.push({
-        key: 'edit',
-        icon: <EditOutlined />,
-        label: 'Chỉnh sửa',
-        onClick: () => handleEdit(record),
-      });
-    }
+  const statusTabs = useMemo(() => [
+    { key: 'ALL', label: 'Tất cả', count: countAll, color: actionPrimary, active: !filterApprovalStatus },
+    { key: ApprovalStatus.DRAFT, label: 'Lưu tạm', count: countDraft, color: statusDraft, active: filterApprovalStatus === ApprovalStatus.DRAFT },
+    { key: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ Cảng vụ duyệt', count: countPendingApproval, color: statusAttention, active: filterApprovalStatus === ApprovalStatus.PENDING_APPROVAL },
+    { key: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ Cục duyệt', count: countApprovedLevel1, color: '#0284C7', active: filterApprovalStatus === ApprovalStatus.APPROVED_LEVEL1 },
+    { key: ApprovalStatus.APPROVED, label: 'Đã duyệt', count: countApproved, color: statusOperational, active: filterApprovalStatus === ApprovalStatus.APPROVED },
+    { key: 'REJECTED', label: 'Từ chối', count: countRejected, color: statusCritical, active: filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL1 || filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL2 },
+  ], [countAll, filterApprovalStatus, countDraft, countPendingApproval, countApprovedLevel1, countApproved, countRejected]);
 
-    // 4. Gửi phê duyệt
-    if (canUpdate && isDraft) {
-      actions.push({
-        key: 'submit',
-        icon: <SendOutlined />,
-        label: 'Gửi phê duyệt',
-        onClick: async () => {
-          try {
-            await vtsOperationCenterService.submit(record.id);
-            toast.success('Gửi phê duyệt thành công');
-            fetchData();
-          } catch (e: any) {
-            toast.error(e?.response?.data?.message || 'Có lỗi xảy ra');
-          }
-        },
-      });
-    }
+  const handleTabChange = (key: string) => {
+    if (key === 'ALL') setFilterApprovalStatus(undefined);
+    else if (key === 'REJECTED') setFilterApprovalStatus(ApprovalStatus.REJECTED_LEVEL1);
+    else setFilterApprovalStatus(key as ApprovalStatus);
+    setPage(1);
+  };
 
-    // 5. Phê duyệt & Từ chối cấp Cảng vụ
-    if (canApproveC1 && isPendingC1) {
-      const isSelfApproval = Boolean(isCreator);
-      actions.push({
-        key: 'approveC1',
-        icon: <CheckCircleOutlined />,
-        disabled: isSelfApproval,
-        label: isSelfApproval ? 'Phê duyệt cấp Cảng vụ (không thể tự duyệt)' : 'Phê duyệt cấp Cảng vụ',
-        onClick: () => !isSelfApproval && openApproveModal(record.id, 'C1'),
-      });
-      actions.push({
-        key: 'rejectC1',
-        icon: <CloseCircleOutlined />,
-        danger: true,
-        disabled: isSelfApproval,
-        label: isSelfApproval ? 'Từ chối cấp Cảng vụ (không thể tự duyệt)' : 'Từ chối cấp Cảng vụ',
-        onClick: () => !isSelfApproval && openRejectModal(record.id),
-      });
-    }
+  const handleFilterSearch = (vals: Record<string, any>) => {
+    setFilterKeyword(vals.keyword || '');
+    setFilterConditionStatus(vals.conditionStatus);
+    setFilterOrgUnitId(vals.orgUnitId);
+    setFilterPortId(vals.portId);
+    setFilterVtsSystemId(vals.vtsSystemId);
+    setFilterProvinceId(vals.provinceId);
+    setFilterUpdatedFrom(vals.updateDateRange?.[0] ? dayjs(vals.updateDateRange[0]).startOf('day').toISOString() : undefined);
+    setFilterUpdatedTo(vals.updateDateRange?.[1] ? dayjs(vals.updateDateRange[1]).endOf('day').toISOString() : undefined);
+    setPage(1);
+  };
 
-    // 6. Phê duyệt & Từ chối cấp Cục
-    if (canApproveC2 && isApprovedL1) {
-      const isSelfApproval = Boolean(isCreator);
-      const isSameApprover = Boolean(user?.id && record.approverLevel1 === user.id);
-      const isBlocked = isSelfApproval || isSameApprover;
-      const blockedReason = isSelfApproval
-        ? ' (không thể tự duyệt)'
-        : isSameApprover
-        ? ' (người duyệt cấp Cục không được trùng người duyệt cấp Cảng vụ)'
-        : '';
+  const handleFilterReset = () => {
+    setFilterKeyword('');
+    setFilterConditionStatus(undefined);
+    setFilterOrgUnitId(undefined);
+    setFilterPortId(undefined);
+    setFilterVtsSystemId(undefined);
+    setFilterProvinceId(undefined);
+    setFilterUpdatedFrom(undefined);
+    setFilterUpdatedTo(undefined);
+    setPage(1);
+  };
 
-      actions.push({
-        key: 'approveC2',
-        icon: <CheckCircleOutlined />,
-        disabled: isBlocked,
-        label: `Phê duyệt cấp Cục${blockedReason}`,
-        onClick: () => !isBlocked && openApproveModal(record.id, 'C2'),
-      });
-      actions.push({
-        key: 'rejectC2',
-        icon: <CloseCircleOutlined />,
-        danger: true,
-        disabled: isBlocked,
-        label: `Từ chối cấp Cục${blockedReason}`,
-        onClick: () => !isBlocked && openRejectModal(record.id),
-      });
-    }
-
-    // 7. Xóa — T13/N04: chỉ hồ sơ đang "Lưu tạm" mới xóa được.
-    if (canDelete && record.approvalStatus === ApprovalStatus.DRAFT) {
-      actions.push({
-        key: 'delete',
-        icon: <DeleteOutlined />,
-        danger: true,
-        label: 'Xóa',
-        onClick: () => {
-          Modal.confirm({
-            title: 'Xác nhận xóa trung tâm điều hành VTS',
-            content: 'Hồ sơ ở trạng thái Lưu tạm sẽ chuyển sang "Đã xóa (lịch sử)": không còn hiển thị trong danh sách nhưng vẫn được giữ lại để đối chiếu.',
-            okText: 'Xóa',
-            okType: 'danger',
-            cancelText: 'Hủy',
-            onOk: () => handleDelete(record.id),
-          });
-        },
-      });
-    }
-
-    return actions;
-  }, [canUpdate, canDelete, canHistory, canApproveC1, canApproveC2, user?.id, fetchData]);
-
-  // ── History rendering (Identical to VTS System) ─────────────────
+  // ── History rendering ──────────────────────────────────────────
 
   const fmtTime = (ts: string) => {
     const d = dayjs(ts);
@@ -1088,69 +723,61 @@ const VtsOperationCenterList: React.FC = () => {
     const sorted = [...records].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
     const q = historySearch.toLowerCase().trim();
 
-    const filtered = sorted.filter((r) => {
-      if (historyDateFrom && new Date(historyTimestamp(r)) < new Date(historyDateFrom)) return false;
-      if (historyDateTo && new Date(historyTimestamp(r)) > new Date(historyDateTo)) return false;
-      if (q) {
-        const actorName = historyActor(r);
-        const txt = `${historyField(r)} ${historyOldValue(r)} ${historyNewValue(r)} ${actorName} ${r.reason || ''}`.toLowerCase();
-        if (!txt.includes(q)) return false;
-      }
-      return true;
-    });
+    const isUpdateAction = (status: string, reason?: string) => {
+      const s = String(status || '').toUpperCase();
+      const r = String(reason || '').toLowerCase();
+      return s === 'UPDATED' || s === 'UPDATE' || s === 'EDIT' || s === 'ATTACHMENT_UPLOADED' || s === 'ATTACHMENT_DELETED'
+        || r.includes('cập nhật') || r.includes('chỉnh sửa') || r.includes('tải lên') || r.includes('xóa tệp') || r.includes('xóa tài liệu');
+    };
 
-    const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
-    for (const r of filtered) {
+    const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
+    for (const r of sorted) {
       const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
       const prev = groups[groups.length - 1];
       const actor = historyActor(r);
-      if (prev && prev.tsSec === sec && prev.actor === actor) prev.items.push(r);
-      else groups.push({ tsSec: sec, ts, actor, items: [r] });
+      const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
+      const isSameGroup = prev && Math.abs(prev.tsSec - sec) <= 60 && prev.actor === actor && (prev.status === r.status || isBothUpdate) && prev.approvalLevel === r.approvalLevel;
+      if (isSameGroup) {
+        prev.items.push(r);
+      } else {
+        groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
+      }
     }
-
-    if (groups.length === 0) {
-      return (
-        <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
-          <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-          <div style={{ color: textTertiary, fontSize: fontSizeMd }}>
-            {q || historyDateFrom || historyDateTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}
-          </div>
-        </div>
-      );
-    }
-
+    if (groups.length === 0) return (
+      <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
+        <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+        <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{q || historyDateFrom || historyDateTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div>
+      </div>
+    );
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: spaceMd }}>
-        {groups.map((g, gi) => {
-          const changes = g.items.flatMap((item: any) => historyChangeRows(item)).sort((a: any, b: any) => {
-            const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
-            const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
-            return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-          });
-          const unitName = g.items[0]?.orgUnitName || g.items[0]?.unitName || historyTargetRecord?.orgUnitName || '—';
-          const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
-          const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
-
-          const formatHistoryValue = (fn: string, raw: string | null) => {
-            if (raw === null || raw === '(null)' || raw === '') return null;
-            const t = raw.trim();
-            if (t.startsWith('[') && t.endsWith(']')) {
-              if (t === '[]') return 'Không có';
-              const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
-              return `${parts.length} công trình hạ tầng`;
-            }
-            if (/^-?\d+(\.\d+)?$/.test(t)) {
-              const n = Number(t);
-              return Number.isInteger(n) ? String(n) : t;
-            }
-            return historyFieldValue(fn, raw);
-          };
-
-          if (changes.length === 0) return null;
-          const actionMeta = resolveHistoryActionMeta(g, changes);
-
-          return (
+      <div>{groups.map((g, gi) => {
+        const changes = g.items.flatMap((item: any) => historyChangeRows(item)).sort((a: any, b: any) => {
+          const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
+          const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
+          return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+        });
+        const rawUnit = g.items[0]?.orgUnitName || g.items[0]?.unitName;
+        const unitName = rawUnit && rawUnit !== '—' ? rawUnit : 'Cục Hàng hải Việt Nam';
+        const informationTitle = 'Thông tin thay đổi:';
+        const formatHistoryValue = (fn: string, raw: string | null) => {
+          if (raw === null || raw === '(null)' || raw === '') return null;
+          const t = raw.trim();
+          if (t.startsWith('[') && t.endsWith(']')) {
+            if (t === '[]') return 'Không có';
+            const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
+            return `${parts.length} công trình hạ tầng`;
+          }
+          const specialFields = ['provinceId', 'symbolId', 'conditionStatus', 'approvalStatus'];
+          if (!specialFields.includes(fn) && /^-?\d+(\.\d+)?$/.test(t)) {
+            const n = Number(t);
+            return Number.isInteger(n) ? String(n) : t;
+          }
+          return historyFieldValue(fn, raw);
+        };
+        if (changes.length === 0) return null;
+        const actionMeta = resolveHistoryActionMeta(g, changes);
+        return (
             <div
               key={gi}
               style={{
@@ -1189,15 +816,20 @@ const VtsOperationCenterList: React.FC = () => {
                 </Typography.Text>
 
                 {(() => {
-                  const isLongHistoryText = (val: string | null | undefined): boolean => {
-                    if (!val) return false;
-                    const str = String(val).trim();
-                    return str.length > 40 || str.includes('\n') || (str.includes(',') && str.length > 25);
+                  const isCoordField = (f: string, v: string | null | undefined): boolean => {
+                    const nk = normalizeHistoryKey(f);
+                    if (nk === 'coordinates' || nk === 'toa do gis' || nk.includes('toa do') || nk.includes('coordinates')) return true;
+                    if (!v) return false;
+                    const sv = String(v).trim().toUpperCase();
+                    return sv.startsWith('POINT') || sv.startsWith('LINESTRING') || sv.startsWith('POLYGON');
                   };
 
                   const renderHistoryContent = (field: string, val: string | null, _isOld: boolean = false) => {
                     if (val === null || val === undefined || val === '—' || val === '') {
                       return <span style={{ color: textTertiary }}>—</span>;
+                    }
+                    if (isCoordField(field, val)) {
+                      return renderCoordinatesDisplay(val);
                     }
                     const str = String(val).trim();
                     if (str.includes(',') && str.length > 25) {
@@ -1214,7 +846,7 @@ const VtsOperationCenterList: React.FC = () => {
                         );
                       }
                     }
-                    return renderHistoryValueTag(field, val);
+                    return renderHistoryValueTag(field, val, symbols);
                   };
 
                   const validChanges = changes.filter((c: any) => {
@@ -1235,12 +867,63 @@ const VtsOperationCenterList: React.FC = () => {
                           const ov = formatHistoryValue(fn, change.oldValue);
                           const nv = formatHistoryValue(fn, change.newValue);
 
-                          if (isCreate) {
+                          if (isListDeltaField(fn)) {
+                            const delta = parseListDelta(ov, nv);
+                            const rows: Array<{ label: string; oldVal: React.ReactNode; arrow: boolean; newVal: React.ReactNode }> = [];
+
+                            delta.modifiedPairs.forEach((p, idx) => {
+                              rows.push({
+                                label: idx === 0 && rows.length === 0 ? (fn ? `${historyFieldName(fn)}:` : '—') : '',
+                                oldVal: p.oldV,
+                                arrow: true,
+                                newVal: p.newV,
+                              });
+                            });
+
+                            delta.removed.forEach((r) => {
+                              rows.push({
+                                label: rows.length === 0 ? (fn ? `${historyFieldName(fn)}:` : '—') : '',
+                                oldVal: r,
+                                arrow: true,
+                                newVal: <span style={{ color: textTertiary }}>—</span>,
+                              });
+                            });
+
+                            delta.added.forEach((a) => {
+                              rows.push({
+                                label: rows.length === 0 ? (fn ? `${historyFieldName(fn)}:` : '—') : '',
+                                oldVal: <span style={{ color: textTertiary }}>—</span>,
+                                arrow: true,
+                                newVal: a,
+                              });
+                            });
+
+                            if (rows.length === 0) {
+                              rows.push({
+                                label: fn ? `${historyFieldName(fn)}:` : '—',
+                                oldVal: ov || '—',
+                                arrow: true,
+                                newVal: nv || '—',
+                              });
+                            }
+
                             return (
-                              <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '170px minmax(0, 1fr)', alignItems: 'flex-start', gap: spaceMd, fontSize: fontSizeMd, lineHeight: 1.6, padding: '3px 0' }}>
-                                <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                                <div style={{ minWidth: 0, overflowWrap: 'break-word' }}>{renderHistoryContent(fn, nv, false)}</div>
-                              </div>
+                              <React.Fragment key={`${fn}-${ri}`}>
+                                {rows.map((row, rIdx) => (
+                                  <div key={rIdx} style={{ display: 'grid', gridTemplateColumns: '170px minmax(100px, 1fr) 24px minmax(100px, 1fr)', alignItems: 'flex-start', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6, padding: '3px 0' }}>
+                                    <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{row.label}</div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word', color: textPrimary }}>
+                                      {row.oldVal}
+                                    </div>
+                                    <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>
+                                      {row.arrow ? '→' : ''}
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word', color: textPrimary }}>
+                                      {row.newVal}
+                                    </div>
+                                  </div>
+                                ))}
+                              </React.Fragment>
                             );
                           }
 
@@ -1261,399 +944,642 @@ const VtsOperationCenterList: React.FC = () => {
                     );
                   }
 
-                  if (reasons.length > 0) {
-                    return (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
-                        {reasons.map((r: string, ri: number) => (
-                          <div key={ri} style={{ fontSize: fontSizeMd, color: textPrimary }}>
-                            {r}
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  }
+                if (reasons.length > 0) {
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
+                      {reasons.map((r: string, ri: number) => (
+                        <div key={ri} style={{ fontSize: fontSizeMd, color: textPrimary }}>
+                          {r}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                }
 
-                  return <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có thông tin chi tiết</Typography.Text>;
-                })()}
-              </div>
+                return <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có thông tin chi tiết</Typography.Text>;
+              })()}
             </div>
-          );
-        })}
-      </div>
+          </div>
+        );
+      })}</div>
     );
   };
 
-  const historyGroupCount = useMemo(() => {
-    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...historyRecords].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
-    const groups: any[] = [];
-    for (const r of sorted) {
-      const ts = historyTimestamp(r);
-      const sec = ts ? toSec(ts) : 0;
-      const prev = groups[groups.length - 1];
-      const actor = historyActor(r);
-      if (prev && prev.tsSec === sec && prev.actor === actor) prev.items.push(r);
-      else groups.push({ tsSec: sec, ts, actor, items: [r] });
+  // Table Columns with client-side sorting (sắp xếp trực tiếp trên dữ liệu bảng)
+  const columns = useMemo(() => [
+    {
+      key: 'stt',
+      label: 'STT',
+      width: 60,
+      align: 'center' as const,
+      fixed: 'left' as const,
+      render: (_: any, __: any, index: number) => (page - 1) * pageSize + index + 1,
+    },
+    {
+      key: 'name',
+      label: 'Tên / Mã trung tâm điều hành VTS',
+      dataIndex: 'name',
+      width: 260,
+      fixed: 'left' as const,
+      sorter: clientSideStringSorter('name', 'code'),
+      render: (_: any, record: VtsOperationCenterListItem) => (
+        <div
+          style={{ cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          onClick={() => {
+            setEditingId(record.id);
+            setSelectedRecord(record as any);
+            setModalMode('detail');
+            setIsModalOpen(true);
+          }}
+        >
+          <div style={cellTitleStyle} title={record.name || ''}>{record.name || '—'}</div>
+          <div style={cellSubtitleStyle} title={record.code || ''}>{record.code || '—'}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'orgUnitName',
+      label: 'Đơn vị quản lý',
+      dataIndex: 'orgUnitName',
+      width: 220,
+      ellipsis: false,
+      sorter: clientSideStringSorter('orgUnitName'),
+      render: (v: string) => <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: fontWeightBold }} title={v}>{v || '—'}</div>,
+    },
+    {
+      key: 'portName',
+      label: 'Thuộc cảng biển',
+      dataIndex: 'portName',
+      width: 200,
+      ellipsis: false,
+      sorter: clientSideStringSorter('portName'),
+      render: (v: string) => <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>{v || '—'}</div>,
+    },
+    {
+      key: 'vtsSystemName',
+      label: 'Thuộc hệ thống VTS',
+      dataIndex: 'vtsSystemName',
+      width: 220,
+      ellipsis: false,
+      sorter: clientSideStringSorter('vtsSystemName'),
+      render: (v: string) => <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>{v || '—'}</div>,
+    },
+    {
+      key: 'province',
+      label: 'Địa điểm (Tỉnh/TP)',
+      dataIndex: 'provinceId',
+      width: 180,
+      ellipsis: false,
+      sorter: clientSideProvinceSorter('provinceName', 'provinceId'),
+      render: (_: any, r: VtsOperationCenterListItem) => {
+        const val = r.provinceName || getProvinceNameById(r.provinceId) || '—';
+        return <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>{val}</div>;
+      },
+    },
+    {
+      key: 'conditionStatus',
+      label: 'Tình trạng',
+      dataIndex: 'conditionStatus',
+      width: 160,
+      ellipsis: false,
+      sorter: clientSideBadgeSorter('conditionStatus', CONDITION_STATUS_MAP),
+      render: (v: string) => {
+        const label = CONDITION_STATUS_MAP[v as ConditionStatus] || v;
+        const color = CONDITION_COLOR[v as ConditionStatus] || textSecondary;
+        return (
+          <span style={statusBadgeStyle(color)}>
+            {label}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'approvalStatus',
+      label: 'Trạng thái',
+      dataIndex: 'approvalStatus',
+      width: 180,
+      ellipsis: false,
+      sorter: clientSideBadgeSorter('approvalStatus'),
+      render: (status: ApprovalStatus) => <ApprovalStatusBadge status={status} />,
+    },
+    {
+      key: 'updatedByName',
+      label: 'Cán bộ cập nhật',
+      dataIndex: 'updatedByName',
+      width: 220,
+      ellipsis: false,
+      sorter: clientSideUserSorter('updatedByName', 'createdByName', 'updatedAt'),
+      render: (_: any, record: VtsOperationCenterListItem) => {
+        const name = record.updatedByName || record.createdByName || '—';
+        const date = record.updatedAt || record.createdAt;
+        return (
+          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+            <div
+              title={name}
+              style={{
+                fontWeight: fontWeightBold,
+                color: '#0F172A',
+                fontSize: fontSizeMd,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {name}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'submittedByName',
+      label: 'Cán bộ gửi phê duyệt',
+      dataIndex: 'submittedByName',
+      width: 220,
+      ellipsis: false,
+      render: (_: any, record: VtsOperationCenterListItem) => {
+        const name = record.submittedByName || '—';
+        const date = record.submittedAt || (record as any).submittedDate;
+        return (
+          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+            <div
+              title={name}
+              style={{
+                fontWeight: fontWeightBold,
+                color: '#0F172A',
+                fontSize: fontSizeMd,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {name}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'approverLevel1Name',
+      label: 'Phê duyệt cấp Cảng vụ/Chi cục',
+      dataIndex: 'approverLevel1Name',
+      width: 240,
+      ellipsis: false,
+      render: (_: any, record: VtsOperationCenterListItem) => {
+        const name = record.approverLevel1Name || (record as any).approverLevel1 || '—';
+        const date = record.approvedDateLevel1;
+        return (
+          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+            <div
+              title={name}
+              style={{
+                fontWeight: fontWeightBold,
+                color: '#0F172A',
+                fontSize: fontSizeMd,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {name}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'approverLevel2Name',
+      label: 'Phê duyệt cấp Cục',
+      dataIndex: 'approverLevel2Name',
+      width: 220,
+      ellipsis: false,
+      render: (_: any, record: VtsOperationCenterListItem) => {
+        const name = record.approverLevel2Name || (record as any).approverLevel2 || '—';
+        const date = record.approvedDateLevel2;
+        return (
+          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+            <div
+              title={name}
+              style={{
+                fontWeight: fontWeightBold,
+                color: '#0F172A',
+                fontSize: fontSizeMd,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {name}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
+    },
+  ], [page, pageSize]);
+
+  const rowActions = (record: VtsOperationCenterListItem) => {
+    const isCreator = Boolean(currentUser?.id && record.createdBy === currentUser.id);
+    const isApproverL1 = Boolean(currentUser?.id && (record as any).approverLevel1 === currentUser.id);
+    const actions: any[] = [
+      {
+        key: 'detail',
+        label: 'Xem chi tiết',
+        icon: icons.view,
+        onClick: () => {
+          setEditingId(record.id);
+          setSelectedRecord(record as any);
+          setModalMode('detail');
+          setIsModalOpen(true);
+        },
+      },
+    ];
+
+    if (hasPerm('vtsoperationcenter:history')) {
+      actions.push({
+        key: 'history',
+        label: 'Lịch sử',
+        icon: icons.history,
+        onClick: () => handleViewHistory(record),
+      });
     }
-    return groups.length;
-  }, [historyRecords]);
+
+    if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'vtsoperationcenter' })) {
+      actions.push({
+        key: 'edit',
+        label: 'Chỉnh sửa',
+        icon: icons.edit,
+        onClick: () => {
+          setEditingId(record.id);
+          setSelectedRecord(record as any);
+          setModalMode('edit');
+          setIsModalOpen(true);
+        },
+      });
+    }
+
+    if (hasPerm('vtsoperationcenter:update') && (record.approvalStatus === ApprovalStatus.DRAFT || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL2)) {
+      actions.push({
+        key: 'submit',
+        label: 'Gửi duyệt',
+        icon: icons.submit,
+        onClick: async () => {
+          try {
+            await vtsOperationCenterService.submit(record.id);
+            toast.success('Gửi duyệt thành công');
+            refreshList();
+          } catch (e: any) {
+            toast.error(e?.message || 'Lỗi gửi duyệt');
+          }
+        },
+      });
+    }
+
+    if (hasPerm('vtsoperationcenter:approvec1') && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && !isCreator) {
+      actions.push({
+        key: 'approve_c1',
+        label: 'Phê duyệt cấp Cảng vụ/Chi cục',
+        icon: icons.approve,
+        onClick: () => openApproveModal(record.id, 'c1'),
+      });
+      actions.push({
+        key: 'reject_c1',
+        label: 'Từ chối cấp Cảng vụ/Chi cục',
+        icon: icons.reject,
+        danger: true,
+        onClick: () => openRejectModal(record.id),
+      });
+    }
+
+    if (hasPerm('vtsoperationcenter:approvec2') && record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 && !isApproverL1) {
+      actions.push({
+        key: 'approve_c2',
+        label: 'Phê duyệt cấp Cục',
+        icon: icons.approve,
+        onClick: () => openApproveModal(record.id, 'c2'),
+      });
+      actions.push({
+        key: 'reject_c2',
+        label: 'Từ chối cấp Cục',
+        icon: icons.reject,
+        danger: true,
+        onClick: () => openRejectModal(record.id),
+      });
+    }
+
+    if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'vtsoperationcenter' })) {
+      actions.push({
+        key: 'delete',
+        label: 'Xóa bỏ',
+        icon: icons.delete,
+        danger: true,
+        onClick: () => confirmDelete(record),
+      });
+    }
+
+    return actions;
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
-      <ScreenHeader
-        breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Trung tâm điều hành VTS' }]}
-        actions={
-          canCreate
-            ? [
-                {
-                  key: 'create',
-                  label: 'Thêm mới',
-                  icon: <PlusOutlined />,
-                  variant: 'primary' as const,
-                  onClick: () => {
-                    setSelectedItem(null);
-                    setModalVisible(true);
-                  },
-                },
-              ]
-            : []
-        }
-      />
-
-      <FilterTableLayout
-        filterCollapsed={filterCollapsed}
-        onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
-        onFilterApply={handleSearch}
-        onFilterReset={handleReset}
-        loading={loading}
-        error={isError}
-        onRetry={fetchData}
-        filterContent={
-          <>
-            {/* ── Bộ lọc thường (luôn hiển thị) ─────────────────────────── */}
-            <SidebarFilterField label="Đơn vị quản lý" style={{ marginTop: spaceMd }}>
-              <OrgUnitTreeSelect
-                organizations={orgUnits}
-                placeholder="Tất cả"
-                allowClear
-                treeDefaultExpandAll={true}
-                listHeight={256}
-                value={orgUnitId}
-                onChange={handleOrgUnitChange}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-              />
-            </SidebarFilterField>
-
-            <SidebarFilterField label="Thuộc cảng biển">
-              <Select
-                placeholder="Tất cả"
-                allowClear
-                showSearch
-                filterOption={(input, option) =>
-                  normalizeSearchText(option?.label).includes(normalizeSearchText(input))
-                }
-                value={portId}
-                onChange={setPortId}
-                options={filteredPortOptions.map((port) => ({ value: port.id, label: port.name }))}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-              />
-            </SidebarFilterField>
-
-            <SidebarFilterField label="Tên và mã trung tâm điều hành VTS">
-              <Input
-                placeholder="Tìm theo tên hoặc mã trung tâm..."
-                allowClear
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                onPressEnter={handleSearch}
-                style={{ borderRadius: radiusPill, height: 40 }}
-              />
-            </SidebarFilterField>
-
-            {/* ── Bộ lọc nâng cao (mở bằng nút phễu cạnh nút Tìm kiếm) ──── */}
-            {filterCollapsed && (
-              <>
-                <SidebarFilterField label="Tình trạng">
-                  <Select
-                    placeholder="Tất cả"
-                    allowClear
-                    value={conditionStatus}
-                    onChange={setConditionStatus}
-                    options={[
-                      { value: ConditionStatus.OPERATIONAL, label: 'Đang hoạt động' },
-                      { value: ConditionStatus.STOPPED, label: 'Dừng hoạt động' },
-                      { value: ConditionStatus.MAINTENANCE, label: 'Đang bảo trì' },
-                      { value: ConditionStatus.UNDER_CONSTRUCTION, label: 'Đang xây dựng' },
-                    ]}
-                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                  />
-                </SidebarFilterField>
-
-                <SidebarFilterField label="Thuộc hệ thống VTS">
-                  <Select
-                    placeholder="Tất cả"
-                    allowClear
-                    showSearch
-                    filterOption={(input, option) =>
-                      normalizeSearchText(option?.label).includes(normalizeSearchText(input))
-                    }
-                    value={vtsSystemId}
-                    onChange={setVtsSystemId}
-                    options={filteredVtsSystems.map((sys) => ({ value: sys.id, label: sys.name }))}
-                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                  />
-                </SidebarFilterField>
-
-                <SidebarFilterField label="Ngày cập nhật">
-                  <DatePicker.RangePicker
-                    format="DD/MM/YYYY"
-                    placeholder={['Từ ngày', 'Đến ngày']}
-                    allowClear
-                    value={updatedRange}
-                    onChange={(range) => setUpdatedRange(range as [Dayjs | null, Dayjs | null] | null)}
-                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                  />
-                </SidebarFilterField>
-
-                <SidebarFilterField label="Địa điểm (Tỉnh/TP)">
-                  <Select
-                    placeholder="Tất cả"
-                    allowClear
-                    showSearch
-                    filterOption={(input, option) =>
-                      normalizeSearchText(option?.label).includes(normalizeSearchText(input))
-                    }
-                    value={provinceId}
-                    onChange={setProvinceId}
-                    options={VIETNAM_PROVINCE_OPTIONS}
-                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                  />
-                </SidebarFilterField>
-              </>
-            )}
-          </>
-        }
-        statusTabs={statusTabsItems}
-        onStatusTabChange={(key) => {
-          setActiveTab(key);
-          setPage(1);
-        }}
-      >
-        <DataTable
-          columns={columns}
-          dataSource={data}
-          rowKey="id"
-          rowActions={rowActions}
-          loading={false}
-          onSort={handleSort}
-          scroll={{ x: 'max-content' }}
-          emptyState={
-            data.length === 0 && !loading ? (
-              <EmptyState description="Không tìm thấy trung tâm điều hành VTS nào phù hợp" />
-            ) : undefined
+    <ThemeTokenProvider tokens={themeTokenChk}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+        <ScreenHeader
+          breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Trung tâm điều hành VTS' }]}
+          actions={
+            hasPerm('vtsoperationcenter:create')
+              ? [{
+                key: 'create', label: 'Thêm mới', variant: 'primary' as const, icon: icons.create,
+                onClick: () => { setEditingId(null); setSelectedRecord(null); setModalMode('create'); setIsModalOpen(true); }
+              }]
+              : []
           }
         />
-        <Pagination
-          total={total}
-          current={page}
-          pageSize={pageSize}
-          onChange={(p, ps) => {
-            setPage(p);
-            setPageSize(ps);
-          }}
-        />
-      </FilterTableLayout>
+        <FilterTableLayout
+          filterCollapsed={filterCollapsed}
+          onToggleCollapse={() => setFilterCollapsed((value) => !value)}
+          onFilterApply={() => handleFilterSearch(filterValues)}
+          onFilterReset={() => { setFilterValues({}); handleFilterReset(); }}
+          loading={loading}
+          error={isError}
+          errorMessage={errorMessage}
+          onRetry={refreshList}
+          statusTabs={statusTabs}
+          onStatusTabChange={handleTabChange}
+          filterContent={
+            <>
+              <SidebarFilterField label="Đơn vị quản lý" style={{ marginTop: spaceMd }}>
+                <OrgUnitTreeSelect
+                  organizations={orgUnitOptions}
+                  placeholder="Tất cả"
+                  allowClear
+                  treeDefaultExpandAll={true}
+                  listHeight={256}
+                  value={filterValues.orgUnitId}
+                  onChange={(value) => {
+                    setFilterValues((prev) => ({ ...prev, orgUnitId: value, portId: undefined, vtsSystemId: undefined }));
+                  }}
+                  style={{ ...selectStyle, width: '100%' }}
+                />
+              </SidebarFilterField>
 
-      {/* Form Modal */}
-      {modalVisible && (
-        <VtsOperationCenterFormModal
-          visible={modalVisible}
-          item={selectedItem}
-          orgUnits={orgUnits}
-          vtsSystems={vtsSystems}
-          portOptions={portOptions}
-          onCancel={() => {
-            setModalVisible(false);
-            setSelectedItem(null);
-          }}
-          onSuccess={() => {
-            setModalVisible(false);
-            setSelectedItem(null);
-            fetchData();
-          }}
-        />
-      )}
-
-      {/* Detail Drawer */}
-      {drawerVisible && (
-        <VtsOperationCenterDetailDrawer
-          visible={drawerVisible}
-          item={drawerItem}
-          onClose={() => {
-            setDrawerVisible(false);
-            setDrawerItem(null);
-          }}
-          onEdit={(it) => {
-            setDrawerVisible(false);
-            handleEdit(it);
-          }}
-          onRefresh={() => {
-            fetchData();
-            if (drawerItem) {
-              vtsOperationCenterService.getById(drawerItem.id).then(setDrawerItem).catch(() => {});
-            }
-          }}
-        />
-      )}
-
-      {/* ── History Drawer (Identical to VTS System) ─────────────── */}
-      <Drawer
-        size={960}
-        placement="right"
-        open={historyDrawerVisible}
-        onClose={() => {
-          setHistoryDrawerVisible(false);
-          setHistoryTargetRecord(null);
-        }}
-        closable={false}
-        extra={
-          <Button
-            type="text"
-            aria-label="Đóng lịch sử thay đổi"
-            onClick={() => {
-              setHistoryDrawerVisible(false);
-              setHistoryTargetRecord(null);
-            }}
-            style={drawerCloseBtnStyle}
-          >
-            ✕
-          </Button>
-        }
-        footer={null}
-        styles={{
-          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-          body: { padding: '12px 24px 12px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
-        }}
-        title={
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-            <Space size={spaceSm} style={{ alignItems: 'center' }}>
-              <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
-              <span style={drawerTitleStyle}>
-                {historyTargetRecord ? `Lịch sử thay đổi — ${historyTargetRecord.name}` : 'Lịch sử thay đổi'}
-              </span>
-              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                Tổng cộng {historyGroupCount}
-              </span>
-            </Space>
-          </div>
-        }
-      >
-        <div style={{ flexShrink: 0 }}>
-          <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
-            <Input
-              placeholder="Tìm kiếm nội dung thay đổi..."
-              allowClear
-              value={historySearchInput}
-              onChange={(e) => {
-                const val = e.target.value;
-                setHistorySearchInput(val);
-                if (!val) setHistorySearch('');
-              }}
-              onPressEnter={() => setHistorySearch(historySearchInput.trim())}
-              style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
-            />
-            <DatePicker.RangePicker
-              {...getRangePickerProps({
-                value: (historyDateFrom && historyDateTo)
-                  ? [dayjs(historyDateFrom), dayjs(historyDateTo)]
-                  : (historyDateFrom ? [dayjs(historyDateFrom), null] : (historyDateTo ? [null, dayjs(historyDateTo)] : null)),
-                onChange: (dates: any) => {
-                  if (!dates || dates.length === 0 || (!dates[0] && !dates[1])) {
-                    setHistoryDateFrom('');
-                    setHistoryDateTo('');
-                  } else {
-                    setHistoryDateFrom(dates[0] ? dates[0].startOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
-                    setHistoryDateTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
+              <SidebarFilterField label="Thuộc cảng biển">
+                <Select
+                  placeholder="Tất cả cảng biển"
+                  allowClear
+                  showSearch
+                  filterOption={(input, option) =>
+                    normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
                   }
-                },
-                style: { width: 280, borderRadius: radiusPill, height: 40 },
-              })}
-            />
-            <Button
-              type="primary"
-              icon={<SearchOutlined />}
-              onClick={() => setHistorySearch(historySearchInput.trim())}
-              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}
-            >
-              Tìm kiếm
-            </Button>
+                  value={filterValues.portId}
+                  onChange={(value) => setFilterValues((prev) => ({ ...prev, portId: value }))}
+                  options={filteredPortOptions.map((p) => ({
+                    value: p.id,
+                    label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id),
+                  }))}
+                  style={{ ...selectStyle, width: '100%' }}
+                />
+              </SidebarFilterField>
+
+              <SidebarFilterField label="Tìm kiếm">
+                <Input
+                  placeholder="Tìm theo mã, tên trung tâm..."
+                  allowClear
+                  value={filterValues.keyword || ''}
+                  onChange={(event) => setFilterValues((prev) => ({ ...prev, keyword: event.target.value }))}
+                  onPressEnter={() => handleFilterSearch(filterValues)}
+                  style={inputStyle}
+                />
+              </SidebarFilterField>
+
+              {filterCollapsed && (
+                <>
+                  <SidebarFilterField label="Tình trạng">
+                    <Select
+                      placeholder="Tất cả"
+                      allowClear
+                      value={filterValues.conditionStatus}
+                      onChange={(value) => setFilterValues((prev) => ({ ...prev, conditionStatus: value }))}
+                      options={CONDITION_STATUS_OPTIONS}
+                      style={{ ...selectStyle, width: '100%' }}
+                    />
+                  </SidebarFilterField>
+
+                  <SidebarFilterField label="Thuộc hệ thống VTS">
+                    <Select
+                      placeholder="Tất cả hệ thống VTS"
+                      allowClear
+                      showSearch
+                      filterOption={(input, option) =>
+                        normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
+                      }
+                      value={filterValues.vtsSystemId}
+                      onChange={(value) => setFilterValues((prev) => ({ ...prev, vtsSystemId: value }))}
+                      options={filteredVtsSystemOptions.map((v) => ({
+                        value: v.id,
+                        label: v.code ? `${v.code} - ${v.name || ''}` : (v.name || v.id),
+                      }))}
+                      style={{ ...selectStyle, width: '100%' }}
+                    />
+                  </SidebarFilterField>
+
+                  <SidebarFilterField label="Ngày cập nhật">
+                    <DatePicker.RangePicker
+                      {...getRangePickerProps({
+                        value: filterValues.updateDateRange,
+                        onChange: (dates: any) => setFilterValues((prev) => ({ ...prev, updateDateRange: dates })),
+                      })}
+                    />
+                  </SidebarFilterField>
+
+                  <SidebarFilterField label="Địa điểm (Tỉnh / TP)">
+                    <Select
+                      placeholder="Tất cả tỉnh thành"
+                      allowClear
+                      showSearch
+                      filterOption={(input, option) =>
+                        normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
+                      }
+                      value={filterValues.provinceId}
+                      onChange={(value) => setFilterValues((prev) => ({ ...prev, provinceId: value }))}
+                      options={VIETNAM_PROVINCE_OPTIONS}
+                      style={{ ...selectStyle, width: '100%' }}
+                    />
+                  </SidebarFilterField>
+                </>
+              )}
+            </>
+          }
+        >
+          <DataTable
+            columns={columns}
+            dataSource={dataSource}
+            rowKey="id"
+            rowActions={rowActions}
+            loading={false}
+            scroll={{ x: 'max-content' }}
+          />
+          <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
+        </FilterTableLayout>
+
+        {/* Drawer Unified Form */}
+        {isModalOpen && (
+          <VtsOperationCenterForm
+            open={true}
+            editId={editingId}
+            initialData={selectedRecord}
+            mode={modalMode}
+            orgUnits={orgUnitOptions}
+            onCancel={() => { setIsModalOpen(false); setEditingId(null); setSelectedRecord(null); }}
+            onSuccess={() => { setIsModalOpen(false); setEditingId(null); setSelectedRecord(null); refreshList(); }}
+          />
+        )}
+
+        {/* History Drawer */}
+        <Drawer
+          size={960}
+          placement="right"
+          open={historyModalOpen}
+          onClose={() => setHistoryModalOpen(false)}
+          closable={false}
+          extra={<Button type="text" aria-label="Đóng lịch sử thay đổi" onClick={() => setHistoryModalOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
+          footer={null}
+          styles={{
+            header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+            body: { padding: '12px 24px 12px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
+          }}
+          title={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+              <Space size={spaceSm} style={{ alignItems: 'center' }}>
+                <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
+                <span style={drawerTitleStyle}>
+                  {selectedRecord ? `Lịch sử thay đổi — ${selectedRecord.name}` : 'Lịch sử thay đổi'}
+                </span>
+                <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: radiusSm, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
+                  {`Tổng cộng ${historyRecords.length}`}
+                </span>
+              </Space>
+            </div>
+          }
+        >
+          <style>{`.history-dt-popup .ant-picker-now-btn { color: ${actionPrimary} !important; }`}</style>
+          <div style={{ flexShrink: 0 }}>
+            <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
+              <Input
+                placeholder="Tìm kiếm nội dung thay đổi..."
+                allowClear
+                value={historySearchInput}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setHistorySearchInput(val);
+                  if (!val) setHistorySearch('');
+                }}
+                onPressEnter={() => setHistorySearch(historySearchInput.trim())}
+                style={{ ...inputStyle, flex: 1 }}
+              />
+              <DatePicker.RangePicker
+                {...getRangePickerProps({
+                  value: (historyDateFrom && historyDateTo)
+                    ? [dayjs(historyDateFrom), dayjs(historyDateTo)]
+                    : (historyDateFrom ? [dayjs(historyDateFrom), null] : (historyDateTo ? [null, dayjs(historyDateTo)] : null)),
+                  onChange: (dates: any) => {
+                    if (!dates || dates.length === 0 || (!dates[0] && !dates[1])) {
+                      setHistoryDateFrom('');
+                      setHistoryDateTo('');
+                    } else {
+                      setHistoryDateFrom(dates[0] ? dates[0].startOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
+                      setHistoryDateTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
+                    }
+                  },
+                  style: { ...inputStyle, width: 280 },
+                })}
+              />
+              <Button
+                type="primary"
+                icon={<SearchOutlined />}
+                loading={loadingHistory}
+                onClick={() => {
+                  setHistorySearch(historySearchInput.trim());
+                  if (selectedRecord) {
+                    setLoadingHistory(true);
+                    vtsOperationCenterService.getHistory(selectedRecord.id).then((res) => {
+                      setHistoryRecords(res || []);
+                    }).catch(() => {
+                      toast.error('Không thể tải lịch sử thay đổi');
+                    }).finally(() => {
+                      setLoadingHistory(false);
+                    });
+                  }
+                }}
+                style={primaryButtonStyle}
+              >
+                Tìm kiếm
+              </Button>
+            </div>
           </div>
-        </div>
+          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+            {loadingHistory && historyRecords.length === 0 ? (
+              <LoadingSkeleton rows={5} />
+            ) : (
+              renderHistoryTimeline(
+                historyRecords.filter((item) => {
+                  if (!historySearch && !historyDateFrom && !historyDateTo) return true;
+                  const q = historySearch.toLowerCase().trim();
+                  const ts = historyTimestamp(item);
+                  if (historyDateFrom && ts && dayjs(ts).isBefore(dayjs(historyDateFrom))) return false;
+                  if (historyDateTo && ts && dayjs(ts).isAfter(dayjs(historyDateTo))) return false;
+                  if (!q) return true;
+                  const act = historyActor(item).toLowerCase();
+                  const fn = historyFieldName(historyField(item)).toLowerCase();
+                  const ov = String(historyOldValue(item) || '').toLowerCase();
+                  const nv = String(historyNewValue(item) || '').toLowerCase();
+                  return act.includes(q) || fn.includes(q) || ov.includes(q) || nv.includes(q);
+                })
+              )
+            )}
+          </div>
+        </Drawer>
 
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-          {loadingHistory ? (
-            <LoadingSkeleton rows={5} />
-          ) : (
-            renderHistoryTimeline(historyRecords)
-          )}
-        </div>
-      </Drawer>
+        {/* Approval Modal */}
+        <ApprovalModal
+          visible={approveModalOpen}
+          level={approveLevel}
+          onConfirm={handleApprove}
+          onCancel={() => setApproveModalOpen(false)}
+        />
 
-      {/* Modal Approve */}
-      <Modal
-        title={`Xác nhận phê duyệt ${approveLevel === 'C1' ? 'cấp Cảng vụ/Chi cục' : 'cấp Cục'}`}
-        open={approveModalVisible}
-        onCancel={() => setApproveModalVisible(false)}
-        onOk={handleConfirmApprove}
-        confirmLoading={actionLoading}
-        okText={approveLevel === 'C1' ? 'Phê duyệt cấp Cảng vụ' : 'Phê duyệt cấp Cục'}
-        okButtonProps={{ style: { ...primaryButtonStyle, borderRadius: radiusPill, height: 40, background: approveLevel === 'C1' ? '#13C2C2' : '#1BAF7A', borderColor: approveLevel === 'C1' ? '#13C2C2' : '#1BAF7A' } }}
-        cancelButtonProps={{ style: { borderRadius: radiusPill, height: 40 } }}
-      >
-        <div style={{ marginTop: spaceFormField, marginBottom: spaceLg }}>
-          <label style={{ display: 'block', marginBottom: spaceSm, fontWeight: fontWeightMedium }}>
-            Nội dung / Ý kiến phê duyệt (không bắt buộc)
-          </label>
+        {/* Reject Modal */}
+        <Modal
+          title="Từ chối"
+          open={rejectModalOpen}
+          onOk={handleReject}
+          onCancel={() => setRejectModalOpen(false)}
+          okText="Từ chối"
+          cancelText="Hủy"
+          okButtonProps={{ danger: true }}
+        >
+          <p style={{ marginBottom: spaceFormField }}>Nhập lý do từ chối:</p>
           <Input.TextArea
             rows={3}
-            value={approveReason}
-            onChange={(e) => setApproveReason(e.target.value)}
-            placeholder="Nhập ý kiến phê duyệt nếu có..."
-            maxLength={1000}
-            showCount
-            style={{ borderRadius: radiusMd }}
-          />
-        </div>
-      </Modal>
-
-      {/* Modal Reject */}
-      <Modal
-        title="Từ chối phê duyệt"
-        open={rejectModalVisible}
-        onCancel={() => setRejectModalVisible(false)}
-        onOk={handleConfirmReject}
-        confirmLoading={actionLoading}
-        okText="Từ chối"
-        okButtonProps={{ danger: true, style: { borderRadius: radiusPill, height: 40 } }}
-        cancelButtonProps={{ style: { borderRadius: radiusPill, height: 40 } }}
-      >
-        <div style={{ marginTop: spaceFormField, marginBottom: spaceLg }}>
-          <label style={{ display: 'block', marginBottom: spaceSm, fontWeight: fontWeightMedium }}>
-            Lý do từ chối <span style={{ color: '#D83A52' }}>*</span>
-          </label>
-          <Input.TextArea
-            rows={4}
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
-            placeholder="Nhập lý do từ chối phê duyệt..."
+            placeholder="Nhập lý do từ chối..."
             maxLength={1000}
             showCount
-            style={{ borderRadius: radiusMd }}
+            style={textAreaStyle}
           />
-        </div>
-      </Modal>
-    </div>
+        </Modal>
+      </div>
+    </ThemeTokenProvider>
   );
-};
-
-export default VtsOperationCenterList;
+}

@@ -28,6 +28,7 @@ import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import toast from '../../components/ToastNotification';
+import { focusErrorTab } from '../../utils/formValidationHelper';
 import { fmtInputNumber } from '../../utils/numFmt';
 import {
   statusOperational,
@@ -881,9 +882,17 @@ export default function DryPortListPage() {
     });
   };
 
-  const handleFormFailed = () => {
-    // Lỗi validation được hiển thị trực tiếp viền đỏ + message dưới từng trường (AntD), không popup toast
+  const handleFormFailed = (errorInfo: any) => {
     setSubmitting(false);
+    focusErrorTab(
+      errorInfo,
+      {
+        general: ['orgUnitId', 'operatingUnit', 'dryPortCode', 'dryPortName', 'provinceId', 'detailedLocation', 'region', 'connectionMode', 'transportCorridor', 'teuCapacity', 'area', 'warehouseArea'],
+        status: ['portStatus', 'remarks'],
+        location: ['geometryType', 'mapSymbolId', 'coordinateSystem', 'displayRule'],
+      },
+      setCreateTabKey
+    );
   };
 
   /* ── Save logic shared by create + update (payload giữ nguyên handleSave cũ) ── */
@@ -1255,7 +1264,7 @@ export default function DryPortListPage() {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="portStatus" {...labelProps('Tình trạng')} required rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]} style={{ marginBottom: spaceFormField }} initialValue={0}>
+              <Form.Item name="portStatus" {...labelProps('Tình trạng')} required rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]} style={{ marginBottom: spaceFormField }} initialValue={1}>
                 <Select options={PORT_STATUS_OPTIONS} style={selectStyle} />
               </Form.Item>
             </Col>
@@ -1721,7 +1730,7 @@ export default function DryPortListPage() {
         }}
       >
         <style>{requiredMarkStyle}</style>
-        <Form form={createForm} layout="vertical" onFinish={handleCreateFinish} onFinishFailed={handleFormFailed} scrollToFirstError initialValues={{ portStatus: 0 }}>
+        <Form form={createForm} layout="vertical" onFinish={handleCreateFinish} onFinishFailed={handleFormFailed} scrollToFirstError initialValues={{ portStatus: 1 }}>
           <Tabs activeKey={createTabKey} onChange={setCreateTabKey}
             tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }}
             items={buildFormTabs(false, createGeometryType)} />

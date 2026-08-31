@@ -212,6 +212,9 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
       loadData();
     } else {
       form.resetFields();
+      form.setFieldsValue({
+        conditionStatus: '1',
+      });
       setRecord(null);
       setRouteRows([]);
       setCoordRows([]);
@@ -796,7 +799,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
 
   // ── Create / Edit form (#1-#46) ────────────────────────────────────
   const formContent = (
-    <Form form={form} layout="vertical" onFinish={handleSubmitForm} style={{ maxWidth: 1100 }}>
+    <Form form={form} layout="vertical" onFinish={handleSubmitForm} initialValues={{ conditionStatus: '1' }} style={{ maxWidth: 1100 }}>
       {/* Hồ sơ chính #1-#21 */}
       <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
         {sectionTitle('Hồ sơ chính (#1-#21)')}

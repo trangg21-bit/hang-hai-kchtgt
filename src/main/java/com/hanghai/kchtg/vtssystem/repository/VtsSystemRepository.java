@@ -29,8 +29,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
         SELECT new com.hanghai.kchtg.vtssystem.dto.VtsSystemOptionResponse(v.id, v.code, v.systemName, v.orgUnitId)
         FROM VtsSystem v
         WHERE v.deletedAt IS NULL
-          AND (v.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR v.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
-          AND (:scopeEnabled = false OR v.orgUnitId IN :scopeOrgUnitIds)
+          AND (:scopeEnabled = false OR v.orgUnitId IS NULL OR v.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgFiltered = false OR v.orgUnitId IS NULL OR v.orgUnitId IN :targetOrgUnitIds)
         ORDER BY LOWER(v.systemName) ASC
     """)

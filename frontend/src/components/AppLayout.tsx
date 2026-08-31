@@ -77,17 +77,16 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/ship-repair-facility': 'shiprepair:read',
   '/radar-station': 'radarstation:read',
   '/vts-system': 'vts:read',
-  '/vts-system-chk': 'vts:read',
   '/vts-operation-center': 'vtsoperationcenter:read',
-  '/vts-operation-center-chk': 'vtsoperationcenter:read',
   '/ais-system': 'aissystem:read',
-  '/ais-system-chk': 'aissystem:read',
   '/cctv': 'cctv:read',
   '/scada': 'scada:read',
   '/transmission': 'transmission:read',
   '/vts-assist': 'vtsassist:read',
   '/station/coastal': 'coastalstation:read',
   '/station/special': 'specialstation:read',
+  '/station/special-chk': 'specialstation:read',
+  '/station/inmarsat': 'specialstation:read',
   '/station/cospas-sarsat': 'coastalstationcospassarsat:read',
   '/station/lrit': 'coastalstationlrit:read',
   '/station/hanoi': 'coastalstationhaiphong:read',
@@ -157,7 +156,7 @@ export default function AppLayout() {
     selectedKey = '/' + pathSegments[0];
   } else if (['pier', 'dry-port', 'water-zone'].includes(pathSegments[0])) {
     selectedKey = '/' + pathSegments[0];
-  } else if (['navigation-channel', 'dike-revetment', 'ship-repair-facility', 'radar-station', 'vts-system', 'vts-system-chk', 'vts-operation-center', 'vts-operation-center-chk', 'ais-system', 'ais-system-chk', 'cctv', 'scada', 'transmission', 'vts-assist'].includes(pathSegments[0])) {
+  } else if (['navigation-channel', 'dike-revetment', 'ship-repair-facility', 'radar-station', 'vts-system', 'vts-operation-center', 'ais-system', 'cctv', 'scada', 'transmission', 'vts-assist'].includes(pathSegments[0])) {
     selectedKey = '/' + pathSegments[0];
   } else if (pathSegments[0] === 'reports') {
     selectedKey = location.pathname;
@@ -184,7 +183,7 @@ export default function AppLayout() {
         setOpenKeys(['asset-movement']);
       } else if (selectedKey.startsWith('/documents')) {
         setOpenKeys(['documents-incidents']);
-      } else if (['/navigation-channel', '/dike-revetment', '/ship-repair-facility', '/radar-station', '/vts-system', '/vts-system-chk', '/vts-operation-center', '/vts-operation-center-chk', '/ais-system', '/ais-system-chk', '/cctv', '/scada', '/transmission', '/vts-assist'].includes(selectedKey)) {
+      } else if (['/navigation-channel', '/dike-revetment', '/ship-repair-facility', '/radar-station', '/vts-system', '/vts-operation-center', '/ais-system', '/cctv', '/scada', '/transmission', '/vts-assist'].includes(selectedKey)) {
         setOpenKeys(['khu-nuoc-vts']);
       } else if (selectedKey.startsWith('/station')) {
         setOpenKeys(['stations']);
@@ -312,7 +311,6 @@ export default function AppLayout() {
         canAccessMenu('/radar-station') ? { key: '/radar-station', label: 'Trạm Radar' } : null,
         canAccessMenu('/vts-system') ? { key: '/vts-system', label: 'Hệ thống VTS' } : null,
         canAccessMenu('/vts-operation-center') ? { key: '/vts-operation-center', label: 'Trung tâm điều hành VTS' } : null,
-        canAccessMenu('/vts-operation-center-chk') ? { key: '/vts-operation-center-chk', label: 'Trung tâm điều hành CHK' } : null,
         canAccessMenu('/ais-system') ? { key: '/ais-system', label: 'Hệ thống trạm bờ AIS' } : null,
         canAccessMenu('/cctv') ? { key: '/cctv', label: 'Quản lý hệ thống CCTV', icon: <VideoCameraOutlined /> } : null,
         canAccessMenu('/scada') ? { key: '/scada', label: 'Quản lý hệ thống SCADA', icon: <MonitorOutlined /> } : null,
@@ -327,6 +325,7 @@ export default function AppLayout() {
       children: [
         canAccessMenu('/station/coastal') ? { key: '/station/coastal', label: 'Đài duyên hải VTS' } : null,
         canAccessMenu('/station/special') ? { key: '/station/special', label: 'Đài vệ tinh Inmarsat' } : null,
+        canAccessMenu('/station/special-chk') ? { key: '/station/special-chk', label: 'Đài vệ tinh Inmarsat (CHK)' } : null,
         canAccessMenu('/station/cospas-sarsat') ? { key: '/station/cospas-sarsat', label: 'Đài Cospas-Sarsat' } : null,
         canAccessMenu('/station/lrit') ? { key: '/station/lrit', label: 'Đài LRIT' } : null,
         canAccessMenu('/station/hanoi') ? { key: '/station/hanoi', label: 'Đài TTXLTT Hà Nội' } : null,

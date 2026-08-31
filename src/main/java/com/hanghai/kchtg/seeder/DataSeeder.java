@@ -44,7 +44,7 @@ import java.util.List;
 
 @Component
 @Order(2)
-@Profile({"local", "prod"})
+@Profile({"local", "prod", "local-h2"})
 @RequiredArgsConstructor
 @Slf4j
 public class DataSeeder implements CommandLineRunner {
@@ -174,8 +174,10 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void seedOrgUnits() {
-        if (orgUnitRepo.count() > 0) {
-            log.info("⏭️ Org units already exist, skipping...");
+        if (java.nio.file.Files.exists(java.nio.file.Paths.get("data", "uat_export", "org_units_tree.json"))
+                || java.nio.file.Files.exists(java.nio.file.Paths.get("data", "uat_export", "org_units_list.json"))
+                || orgUnitRepo.count() > 0) {
+            log.info("⏭️ Org units already exist or UAT export present, skipping DataSeeder org units...");
             return;
         }
         log.info("📦 Seeding 15 OrgUnits...");
@@ -544,21 +546,21 @@ public class DataSeeder implements CommandLineRunner {
 
         String defaultImg = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMCIgaGVpZ2h0PSIzMCI+PGNpcmNsZSBjeD0iMTUiIGN5PSIxNSIgcj0iMTAiIGZpbGw9IiMxNjc3ZmYiLz48L3N2Zz4=";
         List<MapSymbol> symbols = List.of(
-            MapSymbol.builder().name("Hướng đi").description("Ký hiệu hướng đi của tàu thuyền").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().name("Đường chính").description("Ký hiệu luồng hàng hải chính").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().name("Tọa độ").description("Ký hiệu điểm mốc tọa độ hải văn").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().name("Chia cắt").description("Ký hiệu phân làn giao thông hàng hải").image(defaultImg).status(MapSymbolStatus.INACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().name("Cửa tầng").description("Ký hiệu cửa thu nước cảng biển").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().name("Bến ngầm").description("Ký hiệu bến đậu ngầm của tàu ngầm").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().name("Địa điểm").description("Ký hiệu địa điểm cảng vụ").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().name("Phao loại A").description("Ký hiệu phao tiêu chỉ giới loại A").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().name("Phao loại B").description("Ký hiệu phao tiêu chỉ giới loại B").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().name("Đèn biển chính").description("Hải đăng cấp 1 khu vực ven bờ").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().name("Đèn biển phụ").description("Đèn báo hiệu phụ lối vào luồng").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().name("Vùng cấm").description("Ký hiệu vùng cấm neo đậu hàng hải").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().name("Vùng quay đầu").description("Ký hiệu vùng dành cho tàu quay đầu").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().name("Neo bão").description("Ký hiệu khu vực trú bão của tàu").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().name("Quét lôi").description("Ký hiệu khu vực đang rà quét chướng ngại vật").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build()
+            MapSymbol.builder().code("BT-0001").name("Hướng đi").description("Ký hiệu hướng đi của tàu thuyền").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("BT-0002").name("Đường chính").description("Ký hiệu luồng hàng hải chính").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("BT-0003").name("Tọa độ").description("Ký hiệu điểm mốc tọa độ hải văn").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("BT-0004").name("Chia cắt").description("Ký hiệu phân làn giao thông hàng hải").image(defaultImg).status(MapSymbolStatus.INACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("BT-0005").name("Cửa tầng").description("Ký hiệu cửa thu nước cảng biển").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("BT-0006").name("Bến ngầm").description("Ký hiệu bến đậu ngầm của tàu ngầm").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("BT-0007").name("Địa điểm").description("Ký hiệu địa điểm cảng vụ").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("BT-0008").name("Phao loại A").description("Ký hiệu phao tiêu chỉ giới loại A").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("BT-0009").name("Phao loại B").description("Ký hiệu phao tiêu chỉ giới loại B").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("BT-0010").name("Đèn biển chính").description("Hải đăng cấp 1 khu vực ven bờ").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("BT-0011").name("Đèn biển phụ").description("Đèn báo hiệu phụ lối vào luồng").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("BT-0012").name("Vùng cấm").description("Ký hiệu vùng cấm neo đậu hàng hải").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("BT-0013").name("Vùng quay đầu").description("Ký hiệu vùng dành cho tàu quay đầu").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("BT-0014").name("Neo bão").description("Ký hiệu khu vực trú bão của tàu").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("BT-0015").name("Quét lôi").description("Ký hiệu khu vực đang rà quét chướng ngại vật").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build()
         );
 
         mapSymbolRepo.saveAll(symbols);

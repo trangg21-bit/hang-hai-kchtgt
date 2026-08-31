@@ -34,7 +34,7 @@ public class VtsOperationCenter extends BaseApprovableEntity {
     @Column(name = "name", nullable = false, length = 255)
     private String name;
 
-    @Column(name = "vts_system_id", nullable = false)
+    @Column(name = "vts_system_id")
     private UUID vtsSystemId;
 
     @ManyToOne(fetch = FetchType.LAZY)

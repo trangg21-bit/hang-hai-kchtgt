@@ -183,7 +183,7 @@ class VtsSystemControllerTest {
     void testApproveC1_WithException() {
         ApprovalRequest req = ApprovalRequest.builder().decision(ApprovalStatus.APPROVED.name()).build();
         // @DataScope aspect intercepts before service — exception bypasses controller try-catch
-        doThrow(new IllegalStateException("Người phê duyệt C2 không được trùng với C1"))
+        doThrow(new IllegalStateException("Người phê duyệt cấp Cục không được trùng với người phê duyệt cấp Chi cục"))
                 .when(service).approveC1(eq(TEST_ID), any(), any(java.util.UUID.class));
         ResponseEntity<?> result = controller.approveC1(TEST_ID, req, mockAuth());
         assertEquals(HttpStatus.OK, result.getStatusCode());

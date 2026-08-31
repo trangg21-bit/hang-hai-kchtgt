@@ -2,25 +2,16 @@ import React, { useEffect, useState } from 'react';
 import {
   Drawer,
   Tabs,
-  Tag,
   Space,
   Button,
-  Table,
   Empty,
-  Popconfirm,
 } from 'antd';
-import {
-  FileOutlined,
-  DownloadOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  DeleteOutlined,
-} from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type {
   AisSystemResponse,
   AisSystemAttachment,
 } from '../../types/aisSystem';
+import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import { UNIT_OF_MEASURE_MAP } from '../../types/aisSystem';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { aisSystemService } from '../../services/aisSystemService';
@@ -35,14 +26,12 @@ import { colors } from '../../theme';
 import {
   radiusPill,
   radiusMd,
-  fontSizeSm,
   fontSizeMd,
   fontWeightBold,
   fontWeightMedium,
   borderDefault,
   textPrimary,
   textSecondary,
-  textTertiary,
   spaceSm,
   drawerCloseBtnStyle,
   drawerTitleStyle,
@@ -50,11 +39,10 @@ import {
   statusAttention,
   statusOperational,
   actionPrimary,
-  primaryButtonStyle,
-  outlineButtonStyle,
-} from '../../tokens';
+  DRAWER_TABLE_SCROLL_Y,
+} from '../../themetokenchk';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
-import { useAuthStore } from '../../store/authStore';
+import DetailTable from '../../components/shared/DetailTable';
 
 interface CoordinateItem {
   latitude: number | null;
@@ -145,10 +133,7 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
   visible,
   item,
   onClose,
-  onEdit,
-  onRefresh,
 }) => {
-  const user = useAuthStore((s) => s.user);
   const [detail, setDetail] = useState<AisSystemResponse | null>(null);
   const [attachments, setAttachments] = useState<AisSystemAttachment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -184,7 +169,6 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
   const parsedCoords = parseWktToCoordinates(record?.coordinates);
 
   const isDraft = record?.approvalStatus === ApprovalStatus.DRAFT || record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL2;
-  const isPendingC1 = record?.approvalStatus === ApprovalStatus.PENDING_APPROVAL;
   const isApprovedL1 = record?.approvalStatus === ApprovalStatus.APPROVED_LEVEL1;
   const isApproved = record?.approvalStatus === ApprovalStatus.APPROVED;
 
@@ -205,60 +189,6 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
   const provinceDisplay = record?.provinceId ? (getProvinceNameById(record.provinceId) || record.provinceId) : (record?.provinceName || '—');
   const uomDisplay = record?.unitOfMeasure ? (UNIT_OF_MEASURE_MAP[record.unitOfMeasure] || record.unitOfMeasureLabel || record.unitOfMeasure) : (record?.unitOfMeasureLabel || '—');
 
-  const attachmentColumns = [
-    {
-      title: 'STT',
-      width: 60,
-      align: 'center' as const,
-      render: (_: any, __: any, index: number) => index + 1,
-    },
-    {
-      title: 'Tên tệp',
-      dataIndex: 'fileName',
-      render: (text: string) => (
-        <Space>
-          <FileOutlined style={{ color: colors.sidebarBg }} />
-          <span>{text}</span>
-        </Space>
-      ),
-    },
-    {
-      title: 'Dung lượng',
-      dataIndex: 'fileSize',
-      width: 130,
-      render: (bytes: number) => {
-        if (!bytes) return '—';
-        if (bytes < 1024) return `${bytes} B`;
-        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-      },
-    },
-    {
-      title: 'Ngày tải lên',
-      dataIndex: 'uploadedDate',
-      width: 170,
-      render: (d?: string) => (d ? dayjs(d).format('DD/MM/YYYY HH:mm:ss') : '—'),
-    },
-    {
-      title: 'Thao tác',
-      width: 100,
-      align: 'center' as const,
-      render: (_: any, row: AisSystemAttachment) => (
-        <Button
-          type="link"
-          icon={<DownloadOutlined />}
-          onClick={async () => {
-            if (record?.id) {
-              await aisSystemService.downloadAttachment(record.id, row.id, row.fileName);
-            }
-          }}
-        >
-          Tải về
-        </Button>
-      ),
-    },
-  ];
-
   const tabItems = [
     {
       key: 'basic',
@@ -266,18 +196,7 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
       children: (
         <div style={{ paddingTop: 16 }}>
           <div className="detail-grid">
-            <div className="detail-row">
-              <span className="detail-label">Đơn vị quản lý</span>
-              <span className="detail-value">{record?.orgUnitName || '—'}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Thuộc TTDH VTS / Trạm Radar</span>
-              <span className="detail-value">{record?.attachedLocationName || record?.vtsOperationCenterName || record?.radarStationName || '—'}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Đơn vị khai thác</span>
-              <span className="detail-value">{record?.operatingOrgName || DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === record?.operatingOrgId)?.name || '—'}</span>
-            </div>
+            {/* 1. Mã thiết bị & 2. Tên thiết bị */}
             <div className="detail-row">
               <span className="detail-label">Mã thiết bị</span>
               <span className="detail-value" style={{ fontWeight: fontWeightBold }}>{record?.code || '—'}</span>
@@ -286,14 +205,34 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
               <span className="detail-label">Tên thiết bị</span>
               <span className="detail-value">{record?.name || '—'}</span>
             </div>
+
+            {/* 3. Đơn vị quản lý & 4. Thuộc TTDH VTS / Trạm Radar */}
+            <div className="detail-row">
+              <span className="detail-label">Đơn vị quản lý</span>
+              <span className="detail-value">{record?.orgUnitName || '—'}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Thuộc TTDH VTS / Trạm Radar</span>
+              <span className="detail-value">{record?.attachedLocationName || record?.vtsOperationCenterName || record?.radarStationName || '—'}</span>
+            </div>
+
+            {/* 5. Đơn vị khai thác & 6. Địa điểm (Tỉnh/TP) */}
+            <div className="detail-row">
+              <span className="detail-label">Đơn vị khai thác</span>
+              <span className="detail-value">{record?.operatingOrgName || DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === record?.operatingOrgId)?.name || '—'}</span>
+            </div>
             <div className="detail-row">
               <span className="detail-label">Địa điểm (Tỉnh/TP)</span>
               <span className="detail-value">{provinceDisplay}</span>
             </div>
-            <div className="detail-row">
+
+            {/* 7. Địa điểm chi tiết */}
+            <div className="detail-row detail-row--full">
               <span className="detail-label">Địa điểm chi tiết</span>
               <span className="detail-value">{record?.detailedLocation || '—'}</span>
             </div>
+
+            {/* 8. Đơn vị tính & 9. Số lượng */}
             <div className="detail-row">
               <span className="detail-label">Đơn vị tính</span>
               <span className="detail-value">{uomDisplay}</span>
@@ -302,40 +241,42 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
               <span className="detail-label">Số lượng</span>
               <span className="detail-value">{record?.quantity != null ? record.quantity : '—'}</span>
             </div>
+
+            {/* 10. Năm đưa vào sử dụng & 11. Tình trạng */}
             <div className="detail-row">
               <span className="detail-label">Năm đưa vào sử dụng</span>
               <span className="detail-value">{record?.commissioningYear || '—'}</span>
             </div>
-            <div className="detail-row detail-row--full">
+            <div className="detail-row">
               <span className="detail-label">Tình trạng</span>
               <span className="detail-value">{renderConditionStatusBadge(record?.conditionStatus)}</span>
             </div>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'device',
-      label: 'Thông tin thiết bị',
-      children: (
-        <div style={{ paddingTop: 16 }}>
-          <div className="detail-grid">
-            <div className="detail-row">
+
+            {/* 12. Model */}
+            <div className="detail-row detail-row--full">
               <span className="detail-label">Model</span>
               <span className="detail-value">{record?.model || '—'}</span>
             </div>
-            <div className="detail-row">
-              <span className="detail-label">Hãng sản xuất</span>
-              <span className="detail-value">{record?.manufacturer || '—'}</span>
-            </div>
+
+            {/* 13. Thông số kỹ thuật */}
             <div className="detail-row detail-row--full">
               <span className="detail-label">Thông số kỹ thuật</span>
               <span className="detail-value">{record?.specifications || '—'}</span>
             </div>
+
+            {/* 14. Hãng sản xuất */}
+            <div className="detail-row detail-row--full">
+              <span className="detail-label">Hãng sản xuất</span>
+              <span className="detail-value">{record?.manufacturer || '—'}</span>
+            </div>
+
+            {/* 15. Thông tin bảo trì */}
             <div className="detail-row detail-row--full">
               <span className="detail-label">Thông tin bảo trì</span>
               <span className="detail-value">{record?.maintenanceInfo || '—'}</span>
             </div>
+
+            {/* 16. Ghi chú */}
             <div className="detail-row detail-row--full">
               <span className="detail-label">Ghi chú</span>
               <span className="detail-value">{record?.note || '—'}</span>
@@ -346,7 +287,7 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
     },
     {
       key: 'gis',
-      label: 'Thông tin vị trí',
+      label: 'Vị trí (GIS)',
       children: (
         <div style={{ paddingTop: 16 }}>
           <div className="detail-grid" style={{ marginBottom: 16 }}>
@@ -374,44 +315,37 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
             <div style={{ fontSize: 13, fontWeight: fontWeightBold, color: colors.sidebarBg, marginBottom: 8 }}>
               Tọa độ các điểm đỉnh:
             </div>
-            {parsedCoords.length > 0 ? (
-              <Table
-                dataSource={parsedCoords.map((c, i) => ({ key: i, index: i + 1, ...c }))}
-                pagination={false}
-                size="middle"
-                bordered
-                columns={[
-                  { title: 'STT', dataIndex: 'index', width: 60, align: 'center' },
-                  { title: 'Kinh độ (Độ thập phân)', dataIndex: 'longitude', render: (val) => (val != null ? val.toFixed(6) : '—') },
-                  { title: 'Vĩ độ (Độ thập phân)', dataIndex: 'latitude', render: (val) => (val != null ? val.toFixed(6) : '—') },
-                  { title: 'Kinh độ (DMS)', dataIndex: 'longitude', render: (val) => ddToDms(val) },
-                  { title: 'Vĩ độ (DMS)', dataIndex: 'latitude', render: (val) => ddToDms(val) },
-                ]}
-              />
-            ) : (
-              <div style={{ color: textTertiary, fontStyle: 'italic', padding: '12px 0' }}>
-                Chưa có dữ liệu tọa độ
-              </div>
-            )}
+            <DetailTable
+              scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
+              dataSource={parsedCoords.map((c, i) => ({ key: i, index: i + 1, ...c }))}
+              rowKey="index"
+              emptyText="Chưa có dữ liệu tọa độ"
+              columns={[
+                { title: 'STT', dataIndex: 'index', width: 60, align: 'center' },
+                { title: 'Kinh độ (Độ thập phân)', dataIndex: 'longitude', render: (val) => (val != null ? val.toFixed(6) : '—') },
+                { title: 'Vĩ độ (Độ thập phân)', dataIndex: 'latitude', render: (val) => (val != null ? val.toFixed(6) : '—') },
+                { title: 'Kinh độ (DMS)', dataIndex: 'longitude', render: (val) => ddToDms(val) },
+                { title: 'Vĩ độ (DMS)', dataIndex: 'latitude', render: (val) => ddToDms(val) },
+              ]}
+            />
           </div>
         </div>
       ),
     },
     {
       key: 'attachment',
-      label: `File đính kèm (${attachments.length})`,
+      label: 'File đính kèm',
       children: (
-        <div style={{ paddingTop: 16 }}>
-          <Table
-            dataSource={attachments}
-            columns={attachmentColumns}
-            rowKey="id"
-            pagination={false}
-            size="middle"
-            bordered
-            locale={{ emptyText: 'Chưa có tệp đính kèm nào' }}
-          />
-        </div>
+        <InfrastructureAttachmentTab
+          attachments={attachments}
+          readonly={true}
+          isLoading={loading}
+          onDownload={(attId, fileName) => {
+            if (record?.id) {
+              return aisSystemService.downloadAttachment(record.id, attId, fileName);
+            }
+          }}
+        />
       ),
     },
     {

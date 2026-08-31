@@ -6,23 +6,17 @@ import {
   Select,
   Row,
   Col,
-  Upload,
   Button,
   Tabs,
-  Table,
   Space,
   Modal,
   DatePicker,
 } from 'antd';
 import {
-  UploadOutlined,
-  InboxOutlined,
   PlusOutlined,
   DeleteOutlined,
-  FileOutlined,
   EnvironmentOutlined,
 } from '@ant-design/icons';
-import type { UploadFile } from 'antd';
 import dayjs from 'dayjs';
 import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../components/org-unit';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
@@ -31,47 +25,37 @@ import { UNIT_OF_MEASURE_OPTIONS, UnitOfMeasure } from '../../types/aisSystem';
 import type {
   AisSystemResponse,
   CreateAisSystemRequest,
-  AisSystemAttachment,
 } from '../../types/aisSystem';
 import { aisSystemService } from '../../services/aisSystemService';
 import { vtsOperationCenterService } from '../../services/vtsOperationCenterService';
 import { radarStationService } from '../../services/radarStationService';
 import { organizationService } from '../../services/organizationService';
-import { vtsSystemCRUD } from '../../services/vtsSystemService';
-import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { symbolService, type Symbol as GisSymbol } from '../../services/symbolService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import toast from '../../components/ToastNotification';
+import { focusErrorTab } from '../../utils/formValidationHelper';
 import { useAuthStore } from '../../store/authStore';
 import { AppDrawer } from '../../components/shared/AppDrawer';
-import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
-import DetailTable from '../../components/shared/DetailTable';
-import { generateTempId, DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
-import { useLocation } from 'react-router-dom';
+import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
 import { colors } from '../../theme';
 import {
+  actionPrimary,
   spaceFormField,
   formFieldStyle,
   formRowGutter,
   spaceSm,
-  spaceMd,
   radiusPill,
-  radiusMd,
   inputStyle,
   selectStyle,
   textAreaStyle,
   readonlyInputStyle,
   formTreeSelectStyle,
-  drawerTabsStyle,
   drawerTabBarStyle,
   drawerTabContentStyle,
-  ATTACHMENT_HELPER_TEXT,
-  uploadHintStyle,
   borderDefault,
   surfaceCard,
   textTertiary,
   textSecondary,
-  textPrimary,
   fontSizeMd,
   fontSizeSm,
   fontWeightMedium,
@@ -79,8 +63,11 @@ import {
   statusOperational,
   outlineButtonStyle,
   primaryButtonStyle,
-  actionPrimary,
-} from '../../tokens';
+  generateTempId,
+  DRAWER_TABLE_SCROLL_Y,
+  getDatePickerProps,
+} from '../../themetokenchk';
+import DetailTable from '../../components/shared/DetailTable';
 
 interface CoordinateItem {
   latitude: number | null;
@@ -169,8 +156,6 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
   onSuccess,
 }) => {
   const [form] = Form.useForm();
-  const location = useLocation();
-  const isViewMode = location.pathname.endsWith('/view') || (!location.pathname.endsWith('/edit') && !!item && location.pathname.includes('/detail'));
   const currentUser = useAuthStore((s) => s.user);
   const canSaveAndApprove = (currentUser?.permissions || []).includes('aissystem:approvec2');
 
@@ -178,31 +163,34 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [actionType, setActionType] = useState<'DRAFT' | 'SUBMIT' | 'APPROVE' | 'UPDATE'>('DRAFT');
   const [orgUnits, setOrgUnits] = useState<any[]>(propOrgUnits || []);
-  const [operatingOrganizations, setOperatingOrganizations] = useState(DEFAULT_OPERATING_ORGANIZATIONS);
   const [opCenters, setOpCenters] = useState<{ id: string; name: string; orgUnitId?: string }[]>(propOpCenters || []);
   const [radarStations, setRadarStations] = useState<{ id: string; name: string; orgUnitId?: string }[]>([]);
   const [symbols, setSymbols] = useState<GisSymbol[]>([]);
   const [coordinateList, setCoordinateList] = useState<CoordinateItem[]>([{ latitude: null, longitude: null }]);
   const [mapModalOpen, setMapModalOpen] = useState(false);
-  const [attachmentList, setAttachmentList] = useState<any[]>([]);
+  const [attachmentList, setAttachmentList] = useState<InfrastructureAttachmentItem[]>([]);
+
+  const isEdit = !!item;
+  const formOrgUnitId = Form.useWatch('orgUnitId', form);
+  const watchedGeom = Form.useWatch('geometryType', form) || 'POINT';
 
   const handleUploadAttachment = async (file: File) => {
     if (!item?.id) {
-      const newItem = {
-        id: generateTempId(),
+      const tempId = generateTempId('temp-att');
+      const newItem: InfrastructureAttachmentItem = {
+        id: tempId,
         fileName: file.name,
         fileSize: file.size,
-        fileType: file.type || file.name.split('.').pop()?.toLowerCase(),
-        file,
+        file: file,
         uploadedDate: dayjs().toISOString(),
-        uploadedByName: currentUser?.fullName || currentUser?.username || 'Người dùng hiện tại',
+        uploadedByName: currentUser?.fullName || currentUser?.username || 'admin',
       };
       setAttachmentList((prev) => [newItem, ...prev]);
       return;
     }
 
     try {
-      await aisSystemService.uploadAttachment(item.id, file);
+      await aisSystemService.uploadAttachments(item.id, [file]);
       toast.success('Tải lên tệp đính kèm thành công');
       const atts = await aisSystemService.listAttachments(item.id);
       setAttachmentList(atts || []);
@@ -227,27 +215,32 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
   };
 
   const handleDownloadAttachment = async (attId: string, fileName?: string) => {
-    if (!attId) return;
-    if (item?.id) {
-      await aisSystemService.downloadAttachment(item.id, attId, fileName);
-    } else {
-      const found = attachmentList.find((a) => a.id === attId);
-      if (found?.file) {
-        const url = URL.createObjectURL(found.file);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = found.fileName || fileName || 'download';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+    if (!attId) {
+      toast.warning('Không tìm thấy mã tệp đính kèm');
+      return;
+    }
+    try {
+      if (item?.id) {
+        await aisSystemService.downloadAttachment(item.id, attId, fileName);
+      } else {
+        const found = attachmentList.find((a) => a.id === attId);
+        if (found?.file) {
+          const url = URL.createObjectURL(found.file);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = found.fileName || fileName || 'download';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        } else {
+          toast.info('Tệp đính kèm mới tải lên');
+        }
       }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Lỗi khi tải tệp đính kèm');
     }
   };
-
-  const isEdit = !!item;
-  const formOrgUnitId = Form.useWatch('orgUnitId', form);
-  const watchedGeom = Form.useWatch('geometryType', form) || 'POINT';
 
   useEffect(() => {
     if (propOrgUnits && propOrgUnits.length > 0) setOrgUnits(propOrgUnits);
@@ -257,13 +250,13 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
   const filteredOpCenters = useMemo(() => {
     if (!formOrgUnitId) return opCenters;
     const allowedIds = resolveOrgSubtreeIds(orgUnits, formOrgUnitId);
-    return opCenters.filter((c) => !c.orgUnitId || allowedIds.has(c.orgUnitId));
+    const filtered = opCenters.filter((c) => !c.orgUnitId || allowedIds.has(c.orgUnitId)); return filtered.length > 0 ? filtered : opCenters;
   }, [opCenters, formOrgUnitId, orgUnits]);
 
   const filteredRadarStations = useMemo(() => {
     if (!formOrgUnitId) return radarStations;
     const allowedIds = resolveOrgSubtreeIds(orgUnits, formOrgUnitId);
-    return radarStations.filter((r) => !r.orgUnitId || allowedIds.has(r.orgUnitId));
+    const filtered = radarStations.filter((r) => !r.orgUnitId || allowedIds.has(r.orgUnitId)); return filtered.length > 0 ? filtered : radarStations;
   }, [radarStations, formOrgUnitId, orgUnits]);
 
   const combinedLocationOptions = useMemo(() => [
@@ -306,16 +299,10 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
         }
       }).catch(() => {});
 
-      // 2b. Load Operating Organizations
-      vtsSystemCRUD.getOperatingOrganizationOptions().then((res) => {
-        if (Array.isArray(res) && res.length > 0) {
-          setOperatingOrganizations(res);
-        }
-      }).catch(() => {});
-
       // 3. Load Symbols
-      symbolService.list().then((syms) => {
-        if (Array.isArray(syms)) setSymbols(syms);
+      symbolService.list({ pageSize: 1000 }).then((res) => {
+        const items = res?.data || (Array.isArray(res) ? res : []);
+        if (Array.isArray(items)) setSymbols(items);
       }).catch(() => {});
 
       if (item) {
@@ -353,6 +340,11 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
         }).catch(() => {});
       } else {
         form.resetFields();
+        form.setFieldsValue({
+          conditionStatus: ConditionStatus.OPERATIONAL,
+          unitOfMeasure: UnitOfMeasure.SET,
+          quantity: 1,
+        });
         setAttachmentList([]);
         setCoordinateList([]);
         aisSystemService.generateCode().then((res) => {
@@ -432,17 +424,6 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
     );
   };
 
-  const handleDeleteExistingAttachment = async (attId: string) => {
-    if (!item?.id) return;
-    try {
-      await aisSystemService.deleteAttachment(item.id, attId);
-      setExistingAttachments((prev) => prev.filter((a) => a.id !== attId));
-      toast.success('Đã xóa tệp đính kèm');
-    } catch {
-      toast.error('Xóa tệp thất bại');
-    }
-  };
-
   const handleSubmit = async (action: 'DRAFT' | 'SUBMIT' | 'APPROVE' | 'UPDATE' = 'DRAFT') => {
     try {
       setActionType(action);
@@ -500,11 +481,11 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
       }
 
       const payload: CreateAisSystemRequest = {
-        code: values.code?.trim(),
+        code: values.code?.trim() || `AIS-${Date.now().toString().slice(-6)}`,
         name: values.name?.trim(),
         vtsOperationCenterId: vtsOpCenterId,
         radarStationId: radarStId,
-        operatingOrgId: values.operatingOrgId,
+        operatingOrgId: values.operatingOrgId || values.orgUnitId || orgUnits[0]?.id,
         orgUnitId: values.orgUnitId,
         provinceId: values.provinceId,
         detailedLocation: values.detailedLocation?.trim(),
@@ -539,9 +520,9 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
         toast.success(msg);
       }
 
-      // Upload pending files if creating new
+      // Upload pending files if in create mode
       if (savedId && !isEdit) {
-        const pendingFiles = attachmentList.map((a) => a.file).filter(Boolean);
+        const pendingFiles = attachmentList.map((a) => a.file).filter(Boolean) as File[];
         if (pendingFiles.length > 0) {
           try {
             await aisSystemService.uploadAttachments(savedId, pendingFiles);
@@ -554,7 +535,31 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
       onSuccess();
     } catch (err: any) {
       if (err?.errorFields) {
-        toast.warning('Vui lòng kiểm tra lại các trường bắt buộc');
+        focusErrorTab(
+          err,
+          {
+            basic: [
+              'code',
+              'name',
+              'locationId',
+              'operatingOrgId',
+              'orgUnitId',
+              'provinceId',
+              'detailedLocation',
+              'unitOfMeasure',
+              'quantity',
+              'model',
+              'specifications',
+              'manufacturer',
+              'commissioningYear',
+              'conditionStatus',
+              'maintenanceInfo',
+              'note',
+            ],
+            gis: ['geometryType', 'symbolId', 'refSystem'],
+          },
+          setActiveTab
+        );
         return;
       }
       toast.error(err?.response?.data?.message || err?.message || 'Có lỗi xảy ra');
@@ -569,6 +574,37 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
       label: 'Thông tin chung',
       children: (
         <div style={drawerTabContentStyle}>
+          {/* Row 1: 1. Mã thiết bị & 2. Tên thiết bị */}
+          <Row gutter={formRowGutter}>
+            <Col span={12}>
+              <Form.Item
+                name="code"
+                label="Mã thiết bị"
+                style={formFieldStyle}
+              >
+                <Input
+                  placeholder="Mã thiết bị tự sinh (AIS-xxxxxx)"
+                  disabled={true}
+                  style={readonlyInputStyle}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="name"
+                label="Tên thiết bị"
+                rules={[
+                  { required: true, message: 'Vui lòng nhập tên thiết bị' },
+                  { max: 255, message: 'Tên thiết bị tối đa 255 ký tự' },
+                ]}
+                style={formFieldStyle}
+              >
+                <Input placeholder="Nhập tên thiết bị AIS" maxLength={255} showCount style={inputStyle} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {/* Row 2: 3. Đơn vị quản lý & 4. Thuộc TTDH VTS / Trạm Radar */}
           <Row gutter={formRowGutter}>
             <Col span={12}>
               <Form.Item
@@ -578,6 +614,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                 style={formFieldStyle}
               >
                 <OrgUnitTreeSelect
+                  variant="form"
                   organizations={orgUnits}
                   placeholder="Chọn đơn vị quản lý"
                   style={formTreeSelectStyle}
@@ -616,12 +653,12 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
             </Col>
           </Row>
 
+          {/* Row 3: 5. Đơn vị khai thác & 6. Địa điểm (Tỉnh/TP) */}
           <Row gutter={formRowGutter}>
             <Col span={12}>
               <Form.Item
                 name="operatingOrgId"
                 label="Đơn vị khai thác"
-                rules={[{ required: true, message: 'Vui lòng chọn đơn vị khai thác' }]}
                 style={formFieldStyle}
               >
                 <Select
@@ -629,45 +666,15 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                   allowClear
                   placeholder="Chọn đơn vị khai thác"
                   filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
-                  options={operatingOrganizations.map((o) => ({ value: o.id, label: o.name }))}
+                  options={orgUnits.map((o) => ({ value: o.id, label: o.name }))}
                   style={selectStyle}
                 />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item
-                name="code"
-                label="Mã thiết bị"
-                style={formFieldStyle}
-              >
-                <Input
-                  placeholder="Mã thiết bị tự sinh (AIS-xxxxxx)"
-                  disabled={true}
-                  style={readonlyInputStyle}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={formRowGutter}>
-            <Col span={12}>
-              <Form.Item
-                name="name"
-                label="Tên thiết bị"
-                rules={[
-                  { required: true, message: 'Vui lòng nhập tên thiết bị' },
-                  { max: 255, message: 'Tên thiết bị tối đa 255 ký tự' },
-                ]}
-                style={formFieldStyle}
-              >
-                <Input placeholder="Nhập tên thiết bị AIS" maxLength={255} showCount style={inputStyle} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
                 name="provinceId"
                 label="Địa điểm (Tỉnh/TP)"
-                rules={[{ required: true, message: 'Vui lòng chọn Tỉnh/Thành phố' }]}
                 style={formFieldStyle}
               >
                 <Select
@@ -684,6 +691,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
             </Col>
           </Row>
 
+          {/* Row 4: 7. Địa điểm chi tiết, 8. Đơn vị tính & 9. Số lượng */}
           <Row gutter={formRowGutter}>
             <Col span={12}>
               <Form.Item
@@ -725,13 +733,21 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
             </Col>
           </Row>
 
+          {/* Row 5: 10. Năm đưa vào sử dụng & 11. Tình trạng */}
           <Row gutter={formRowGutter}>
             <Col span={12}>
-              <Form.Item name="commissioningYear" label="Năm đưa vào sử dụng" style={formFieldStyle}>
+              <Form.Item
+                name="commissioningYear"
+                label={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Năm đưa vào sử dụng</span>}
+                style={{ marginBottom: spaceFormField }}
+              >
                 <DatePicker
-                  picker="year"
-                  placeholder="Chọn năm sử dụng"
-                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                  {...getDatePickerProps({
+                    picker: 'year',
+                    format: 'YYYY',
+                    placeholder: 'Chọn năm đưa vào sử dụng',
+                    getPopupContainer: (trigger: HTMLElement) => trigger.parentElement || document.body,
+                  })}
                 />
               </Form.Item>
             </Col>
@@ -750,14 +766,8 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
               </Form.Item>
             </Col>
           </Row>
-        </div>
-      ),
-    },
-    {
-      key: 'device',
-      label: 'Thông tin thiết bị',
-      children: (
-        <div style={drawerTabContentStyle}>
+
+          {/* Row 6: 12. Model */}
           <Row gutter={formRowGutter}>
             <Col span={12}>
               <Form.Item
@@ -769,6 +779,20 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                 <Input placeholder="Nhập model" maxLength={100} showCount style={inputStyle} />
               </Form.Item>
             </Col>
+          </Row>
+
+          {/* 13. Thông số kỹ thuật */}
+          <Form.Item
+            name="specifications"
+            label="Thông số kỹ thuật"
+            rules={[{ max: 2000, message: 'Thông số kỹ thuật tối đa 2000 ký tự' }]}
+            style={formFieldStyle}
+          >
+            <Input.TextArea rows={3} placeholder="Nhập thông số kỹ thuật" maxLength={2000} showCount style={{ ...textAreaStyle, padding: '10px 16px' }} />
+          </Form.Item>
+
+          {/* Row 7: 14. Hãng sản xuất */}
+          <Row gutter={formRowGutter}>
             <Col span={12}>
               <Form.Item
                 name="manufacturer"
@@ -781,29 +805,17 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
             </Col>
           </Row>
 
-          <Row gutter={formRowGutter}>
-            <Col span={12}>
-              <Form.Item
-                name="specifications"
-                label="Thông số kỹ thuật"
-                rules={[{ max: 2000, message: 'Thông số kỹ thuật tối đa 2000 ký tự' }]}
-                style={formFieldStyle}
-              >
-                <Input.TextArea rows={3} placeholder="Nhập thông số kỹ thuật" maxLength={2000} showCount style={{ ...textAreaStyle, padding: '10px 16px' }} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="maintenanceInfo"
-                label="Thông tin bảo trì"
-                rules={[{ max: 2000, message: 'Thông tin bảo trì tối đa 2000 ký tự' }]}
-                style={formFieldStyle}
-              >
-                <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì" maxLength={2000} showCount style={{ ...textAreaStyle, padding: '10px 16px' }} />
-              </Form.Item>
-            </Col>
-          </Row>
+          {/* 15. Thông tin bảo trì */}
+          <Form.Item
+            name="maintenanceInfo"
+            label="Thông tin bảo trì"
+            rules={[{ max: 2000, message: 'Thông tin bảo trì tối đa 2000 ký tự' }]}
+            style={formFieldStyle}
+          >
+            <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì" maxLength={2000} showCount style={{ ...textAreaStyle, padding: '10px 16px' }} />
+          </Form.Item>
 
+          {/* 16. Ghi chú */}
           <Form.Item
             name="note"
             label="Ghi chú"
@@ -817,7 +829,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
     },
     {
       key: 'gis',
-      label: 'Thông tin vị trí',
+      label: 'Vị trí (GIS)',
       children: (
         <div style={drawerTabContentStyle}>
           {/* Row 1: 11. Loại đối tượng & 12. Biểu tượng */}
@@ -842,11 +854,21 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                     if (val) {
                       form.setFieldValue('coordinateSystem', 'WGS 84 / VN-2000');
                       form.setFieldValue('displayRule', 'Độ, phút, giây (DMS)');
-                      const minCount = GEOMETRY_POINT_COUNT[val] ?? 1;
                       setCoordinateList((prev) => {
-                        if (prev.length >= minCount) return prev;
-                        const added = Array.from({ length: minCount - prev.length }, () => ({ latitude: null, longitude: null }));
-                        return [...prev, ...added];
+                        if (val === 'POINT') {
+                          return prev.length > 0 ? [prev[0]] : [{ latitude: null, longitude: null }];
+                        }
+                        if (val === 'LINE') {
+                          if (prev.length >= 2) return prev;
+                          const added = Array.from({ length: 2 - prev.length }, () => ({ latitude: null, longitude: null }));
+                          return [...prev, ...added];
+                        }
+                        if (val === 'POLYGON') {
+                          if (prev.length >= 3) return prev;
+                          const added = Array.from({ length: 3 - prev.length }, () => ({ latitude: null, longitude: null }));
+                          return [...prev, ...added];
+                        }
+                        return prev;
                       });
                     } else {
                       form.setFieldValue('coordinateSystem', undefined);
@@ -870,23 +892,25 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                   showSearch
                   disabled={!watchedGeom}
                   optionFilterProp="label"
-                  style={selectStyle}
-                >
-                  {symbols.map((sym) => (
-                    <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
-                      <Space>
-                        {sym.image && (
+                  options={symbols.map((sym) => ({
+                    value: sym.id,
+                    label: (
+                      <Space size={6} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                        {sym.image ? (
                           <img
-                            src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`}
+                            src={sym.image.startsWith('data:') || sym.image.startsWith('http') || sym.image.startsWith('/') ? sym.image : `data:image/png;base64,${sym.image}`}
                             alt={sym.name}
-                            style={{ width: 18, height: 18, objectFit: 'contain' }}
+                            style={{ width: 16, height: 16, objectFit: 'contain', verticalAlign: 'middle' }}
                           />
+                        ) : (
+                          <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: actionPrimary }} />
                         )}
                         <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
                       </Space>
-                    </Select.Option>
-                  ))}
-                </Select>
+                    ),
+                  }))}
+                  style={selectStyle}
+                />
               </Form.Item>
             </Col>
           </Row>
@@ -995,21 +1019,25 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                   key: 'lng',
                   render: (_: any, r: any) => renderDms(r._idx, 'lng', r),
                 },
-                {
-                  title: '',
-                  key: 'actions',
-                  width: 50,
-                  align: 'center',
-                  render: (_: any, r: any) => (
-                    <Button
-                      type="text"
-                      danger
-                      icon={<DeleteOutlined style={{ fontSize: 16 }} />}
-                      onClick={() => setCoordinateList((p) => p.filter((_, idx) => idx !== r._idx))}
-                      title="Xóa tọa độ"
-                    />
-                  ),
-                },
+                ...(watchedGeom !== 'POINT'
+                  ? [
+                      {
+                        title: '',
+                        key: 'actions',
+                        width: 50,
+                        align: 'center' as const,
+                        render: (_: any, r: any) => (
+                          <Button
+                            type="text"
+                            danger
+                            icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                            onClick={() => setCoordinateList((p) => p.filter((_, idx) => idx !== r._idx))}
+                            title="Xóa tọa độ"
+                          />
+                        ),
+                      },
+                    ]
+                  : []),
               ]}
             />
           )}
@@ -1018,7 +1046,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
     },
     {
       key: 'attachment',
-      label: `File đính kèm (${attachmentList.length})`,
+      label: 'File đính kèm',
       children: (
         <InfrastructureAttachmentTab
           attachments={attachmentList}
@@ -1093,7 +1121,15 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
         }
         size="50%"
       >
-        <Form form={form} layout="vertical">
+        <Form
+          form={form}
+          layout="vertical"
+          initialValues={{
+            conditionStatus: ConditionStatus.OPERATIONAL,
+            unitOfMeasure: UnitOfMeasure.SET,
+            quantity: 1,
+          }}
+        >
           <Tabs
             activeKey={activeTab}
             onChange={setActiveTab}
@@ -1119,6 +1155,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
         ]}
       >
         <GisLocationSelector
+          inline={true}
           height={550}
           value={{
             geometryType: watchedGeom,

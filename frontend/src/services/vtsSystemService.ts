@@ -57,17 +57,33 @@ export const vtsSystemCRUD = {
           orgUnitId: params?.orgUnitId,
         },
       });
-      const data = res.data?.data;
-      if (Array.isArray(data)) return data;
-      if (Array.isArray(res.data)) return res.data;
+      const data = res.data?.data ?? res.data;
+      if (Array.isArray(data)) {
+        return data.map((s: any) => ({
+          id: String(s.id),
+          name: s.name || s.systemName || s.code || '',
+          code: s.code || '',
+          orgUnitId: s.orgUnitId ? String(s.orgUnitId) : undefined,
+        }));
+      }
       return [];
     } catch {
-      // Fallback if needed
-      const res = await api.get(VTS_BASE_PATH, {
-        params: { size: 1000, orgUnitId: params?.orgUnitId, includeCounts: false },
-      });
-      const data = res.data?.data?.items || res.data?.items;
-      return Array.isArray(data) ? data.map((s: any) => ({ id: s.id, name: s.systemName || s.name, code: s.code, orgUnitId: s.orgUnitId })) : [];
+      try {
+        const res = await api.get(VTS_BASE_PATH, {
+          params: { size: 1000, orgUnitId: params?.orgUnitId, includeCounts: false },
+        });
+        const data = res.data?.data?.items || res.data?.items;
+        return Array.isArray(data)
+          ? data.map((s: any) => ({
+              id: String(s.id),
+              name: s.systemName || s.name || s.code || '',
+              code: s.code || '',
+              orgUnitId: s.orgUnitId ? String(s.orgUnitId) : undefined,
+            }))
+          : [];
+      } catch {
+        return [];
+      }
     }
   },
 

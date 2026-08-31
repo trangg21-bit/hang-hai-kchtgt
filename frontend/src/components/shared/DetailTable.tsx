@@ -27,17 +27,20 @@ const getSmartColumnWidth = (col: any): number | undefined => {
     const parsed = parseInt(col.width, 10);
     if (!isNaN(parsed)) return parsed;
   }
+  if (col.width === '100%') {
+    return undefined;
+  }
   if (col.width !== undefined) return col.width;
   const key = String(col.dataIndex || col.key || col.title || '').toLowerCase();
-  if (key === 'stt' || col.title === 'STT') return 50;
-  if (key.includes('code') || key.includes('mã')) return 120;
-  if (key.includes('spec') || key.includes('thông số') || key.includes('kỹ thuật')) return 220;
-  if (key.includes('type') || key.includes('loại')) return 160;
-  if (key.includes('date') || key.includes('time') || key.includes('ngày') || key.includes('thời gian') || key.includes('năm') || key.includes('year')) return 120;
-  if (key.includes('status') || key.includes('trạng thái') || key.includes('tình trạng') || key.includes('handle')) return 140;
-  if (key.includes('cost') || key.includes('chi phí') || key.includes('price') || key.includes('amount') || key.includes('tiền')) return 150;
-  if (key.includes('org') || key.includes('unit') || key.includes('đơn vị')) return 160;
-  if (key.includes('name') || key.includes('tên')) return 220;
+  if (key === 'stt' || col.title === 'STT') return 60;
+  if (key.includes('code') || key.includes('mã')) return 140;
+  if (key.includes('spec') || key.includes('thông số') || key.includes('kỹ thuật')) return 240;
+  if (key.includes('type') || key.includes('loại')) return 260;
+  if (key.includes('date') || key.includes('time') || key.includes('ngày') || key.includes('thời gian') || key.includes('năm') || key.includes('year')) return 140;
+  if (key.includes('status') || key.includes('trạng thái') || key.includes('tình trạng') || key.includes('handle')) return 160;
+  if (key.includes('cost') || key.includes('chi phí') || key.includes('price') || key.includes('amount') || key.includes('tiền')) return 160;
+  if (key.includes('org') || key.includes('unit') || key.includes('đơn vị')) return 240;
+  if (key.includes('name') || key.includes('tên')) return undefined;
   return undefined;
 };
 

@@ -41,6 +41,8 @@ import java.util.stream.Collectors;
 import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.common.enums.AttachmentFileType;
+import com.hanghai.kchtg.common.entity.OperatingOrganization;
+import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
 import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
 import com.hanghai.kchtg.vtssystem.repository.VtsSystemListProjection;
 import com.hanghai.kchtg.vtssystem.repository.VtsZoneRepository;
@@ -96,6 +98,25 @@ public class VtsSystemService {
     private final JdbcTemplate jdbcTemplate;
     private PermissionCacheService permissionCacheService;
     private OrgUnitScopeService orgUnitScopeService;
+    private OperatingOrganizationRepository operatingOrganizationRepository;
+
+    @Autowired(required = false)
+    public void setOperatingOrganizationRepository(OperatingOrganizationRepository operatingOrganizationRepository) {
+        this.operatingOrganizationRepository = operatingOrganizationRepository;
+    }
+
+    private String resolveOperatingOrgName(UUID operatingOrgId) {
+        if (operatingOrgId == null) {
+            return null;
+        }
+        if (operatingOrganizationRepository != null) {
+            Optional<OperatingOrganization> op = operatingOrganizationRepository.findById(operatingOrgId);
+            if (op.isPresent()) {
+                return op.get().getName();
+            }
+        }
+        return orgUnitCacheService.getName(operatingOrgId);
+    }
 
     @Value("${app.upload.attachment-path:uploads/vts-attachments}")
     private String attachmentUploadPath;
@@ -222,34 +243,6 @@ public class VtsSystemService {
             saved = repository.save(saved);
         }
 
-        // Chỉ ghi lịch sử khi tạo mới ở trạng thái ĐÃ DUYỆT hoặc GỬI DUYỆT (tuyệt đối không ghi khi Lưu tạm DRAFT)
-        if (initialStatus != null && initialStatus != ApprovalStatus.DRAFT) {
-            String initialZones = (entity.getZones() != null && !entity.getZones().isEmpty())
-                    ? formatZones(entity.getZones())
-                    : null;
-            String statusLabel = initialStatus.getLabel();
-            String fields = "Trạng thái phê duyệt" + (initialZones != null ? ", Vùng VTS" : "");
-            String newVals = "Trạng thái phê duyệt=" + statusLabel
-                    + (initialZones != null ? "; Vùng VTS=" + initialZones : "");
-            ApprovalLevel approvalLevel = initialStatus == ApprovalStatus.APPROVED ? ApprovalLevel.LEVEL_2
-                    : (initialStatus == ApprovalStatus.APPROVED_LEVEL1 ? ApprovalLevel.LEVEL_2
-                    : ApprovalLevel.LEVEL_1);
-            InfrastructureHistoryStatus historyStatus = initialStatus == ApprovalStatus.APPROVED ? InfrastructureHistoryStatus.APPROVED
-                    : InfrastructureHistoryStatus.PROPOSED;
-            String reason = initialStatus == ApprovalStatus.APPROVED ? "Tạo mới và phê duyệt hệ thống VTS"
-                    : "Tạo mới và gửi phê duyệt hệ thống VTS";
-
-            historyRepository.save(InfrastructureHistory.builder()
-                    .refId(saved.getId())
-                    .refType(InfrastructureType.VTS_SYSTEM)
-                    .approvalLevel(approvalLevel)
-                    .status(historyStatus)
-                    .approvedBy(userId)
-                    .reason(reason)
-                    .changedField(fields)
-                    .newValue(newVals)
-                    .build());
-        }
         return toLightResponse(saved);
     }
 
@@ -793,13 +786,17 @@ public class VtsSystemService {
 
         UUID effectiveUserId = userId != null ? userId : entity.getCreatedBy();
 
-        if (request.getCode() != null) {
+        Map<String, String> previousValues = new LinkedHashMap<>();
+        Map<String, String> customNewValues = new LinkedHashMap<>();
+
+        if (request.getCode() != null && !request.getCode().isBlank()) {
             String requestedCode = request.getCode().trim();
             if (!requestedCode.equals(entity.getCode())) {
                 if (repository.existsByCodeAndIdNot(requestedCode, id)) {
                     throw new IllegalArgumentException("Mã hệ thống VTS đã tồn tại trong hệ thống");
                 }
-                throw new IllegalArgumentException("Mã hệ thống VTS không được phép thay đổi sau khi tạo");
+                previousValues.put(VtsSystem.Fields.code, entity.getCode());
+                entity.setCode(requestedCode);
             }
         }
         if (request.getOrgUnitId() != null && !request.getOrgUnitId().equals(entity.getOrgUnitId())) {
@@ -815,8 +812,6 @@ public class VtsSystemService {
         validateWriteGuard(request);
 
         ApprovalStatus previousApprovalStatus = entity.getApprovalStatus();
-        Map<String, String> previousValues = new LinkedHashMap<>();
-        Map<String, String> customNewValues = new LinkedHashMap<>();
         EntityUpdateUtils.copyPropertiesIfPresent(request, entity, previousValues,
                 VtsSystem.Fields.zones,
                 VtsSystem.Fields.code,
@@ -1053,7 +1048,7 @@ public class VtsSystemService {
             historyRepository.save(InfrastructureHistory.builder()
                     .refId(saved.getId())
                     .refType(InfrastructureType.VTS_SYSTEM)
-                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .approvalLevel(null)
                     .status(InfrastructureHistoryStatus.UPDATED)
                     .approvedBy(effectiveUserId)
                     .reason("Cập nhật sau phê duyệt")
@@ -1162,12 +1157,20 @@ public class VtsSystemService {
                     entry.setId(h.getId());
                     entry.setApprovalLevel(h.getApprovalLevel());
                     entry.setStatus(h.getStatus() != null ? h.getStatus().getCode() : null);
-                    // Không fallback sang UUID: thà để trống còn hơn hiện mã máy.
                     entry.setApprovedBy(h.getApprovedBy() != null ? userNameMap.get(h.getApprovedBy()) : null);
-                    entry.setOrgUnitName(h.getApprovedBy() != null && userMap.get(h.getApprovedBy()) != null
-                            && userMap.get(h.getApprovedBy()).getOrgUnit() != null
-                                    ? userMap.get(h.getApprovedBy()).getOrgUnit().getName()
-                                    : null);
+                    // Không fallback sang UUID: thà để trống còn hơn hiện mã máy.
+                    String unitName = null;
+                    if (h.getApprovedBy() != null && userMap.get(h.getApprovedBy()) != null) {
+                        User u = userMap.get(h.getApprovedBy());
+                        if (u.getOrgUnit() != null && u.getOrgUnit().getName() != null && !u.getOrgUnit().getName().isBlank()) {
+                            unitName = u.getOrgUnit().getName();
+                        } else if (u.getDepartment() != null && !u.getDepartment().isBlank()) {
+                            unitName = u.getDepartment();
+                        } else {
+                            unitName = "Cục Hàng hải Việt Nam";
+                        }
+                    }
+                    entry.setOrgUnitName(unitName != null ? unitName : "Cục Hàng hải Việt Nam");
                     entry.setApprovedDate(h.getApprovedDate());
                     entry.setReason(h.getReason());
                     entry.setChangedField(h.getChangedField());
@@ -1369,23 +1372,19 @@ public class VtsSystemService {
                 && (entity.getApproverLevel2() != null || entity.getApprovalStatus() == ApprovalStatus.APPROVED)) {
             approvalContentLevel2 = "Đã phê duyệt";
         }
-        int zoneCount = (int) zoneRepository.countByVtsSystemId(entity.getId());
-        int attachmentCount = (int) attachmentRepository.countByRefIdAndRefType(entity.getId(), InfrastructureType.VTS_SYSTEM);
 
         return VtsSystemResponse.builder()
                 .id(entity.getId())
                 .code(entity.getCode())
                 .systemName(entity.getSystemName())
                 .conditionStatus(entity.getConditionStatus())
-                .zoneCount(zoneCount)
-                .attachmentCount(attachmentCount)
                 .zones(zones)
                 .orgUnitId(entity.getOrgUnitId())
                 .orgUnitName(orgUnitCacheService.getName(entity.getOrgUnitId()))
                 .owningOrgId(entity.getOwningOrgId())
                 .owningOrgName(orgUnitCacheService.getName(entity.getOwningOrgId()))
                 .operatingOrgId(entity.getOperatingOrgId())
-                .operatingOrgName(orgUnitCacheService.getName(entity.getOperatingOrgId()))
+                .operatingOrgName(resolveOperatingOrgName(entity.getOperatingOrgId()))
                 .portId(entity.getPortId())
                 .portName(portCacheService.getName(entity.getPortId()))
                 .provinceId(entity.getProvinceId())
@@ -1476,7 +1475,7 @@ public class VtsSystemService {
                 .owningOrgId(item.getOwningOrgId())
                 .owningOrgName(orgUnitCacheService.getName(item.getOwningOrgId()))
                 .operatingOrgId(item.getOperatingOrgId())
-                .operatingOrgName(orgUnitCacheService.getName(item.getOperatingOrgId()))
+                .operatingOrgName(resolveOperatingOrgName(item.getOperatingOrgId()))
                 .portId(item.getPortId())
                 .portName(portCacheService.getName(item.getPortId()))
                 .provinceId(item.getProvinceId())
@@ -1684,9 +1683,9 @@ public class VtsSystemService {
             if (ApprovalStatus.PENDING_APPROVAL.name().equals(rawValue))
                 return "Chờ phê duyệt";
             if (ApprovalStatus.APPROVED_LEVEL1.name().equals(rawValue))
-                return "Đã phê duyệt cấp 1";
+                return "Đã phê duyệt cấp Chi cục";
             if (ApprovalStatus.APPROVED_LEVEL2.name().equals(rawValue))
-                return "Đã phê duyệt cấp 2";
+                return "Đã phê duyệt cấp Cục";
             if (ApprovalStatus.APPROVED.name().equals(rawValue))
                 return "Đã phê duyệt";
             if (ApprovalStatus.REJECTED.name().equals(rawValue))

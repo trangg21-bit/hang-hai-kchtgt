@@ -540,6 +540,9 @@ export default function DikeRevetmentList() {
     setDetailRecord(null);
     setIsDetailMode(false);
     createForm.resetFields();
+    createForm.setFieldsValue({
+      status: '2',
+    });
     setGpsCoordList([]);
     setUploadFileList([]);
     setActiveTabKey('general');
@@ -1480,7 +1483,7 @@ export default function DikeRevetmentList() {
         ) : (
           <>
             <style>{requiredMarkStyle}</style>
-            <Form form={createForm} layout="vertical" initialValues={{}}>
+            <Form form={createForm} layout="vertical" initialValues={{ status: '2' }}>
               <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={tabBarStyle}
                 items={[
                   {

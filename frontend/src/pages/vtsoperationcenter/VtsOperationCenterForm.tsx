@@ -10,7 +10,6 @@ import {
   Tabs,
   Row,
   Col,
-  Table,
   Modal,
   Drawer,
 } from 'antd';
@@ -22,6 +21,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import toast from '../../components/ToastNotification';
+import { focusErrorTab } from '../../utils/formValidationHelper';
 import { vtsOperationCenterService } from '../../services/vtsOperationCenterService';
 import { vtsSystemCRUD } from '../../services/vtsSystemService';
 import { portCRUD } from '../../services/portService';
@@ -35,23 +35,35 @@ import type {
 import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/vtsSystem';
 import {
   drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle,
-  drawerTabBarStyle,
-  requiredMarkStyle, spaceFormField, radiusMd, radiusPill, sidebarBg,
-  fontWeightBold, fontWeightMedium, spaceSm, fontSizeMd, fontSizeSm, fontSizeLg,
+  drawerTabBarStyle, drawerStyles, drawerFormScrollStyle, drawerGisControlBoxStyle, DRAWER_TABLE_SCROLL_Y,
+  requiredMarkStyle, spaceFormField, radiusPill, sidebarBg,
+  fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeSm, fontSizeLg,
   textSecondary, textTertiary, borderDefault,
   statusCritical, statusAttention, statusOperational, actionPrimary, textAreaStyle,
-  colors, readonlyInputStyle, drawerCloseBtnStyle, inputStyle, selectStyle,
+  readonlyInputStyle, drawerCloseBtnStyle, inputStyle, selectStyle,
 } from '../../themetokenchk';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
-import { useAuthStore } from '../../store/authStore';
-import { usePermissionStore } from '../../store/permissionStore';
-import { FormOrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
+
+export const DEFAULT_GIS_SYMBOLS = [
+  { id: '1', code: 'SYM-VTS', name: 'Trung tâm điều hành VTS', image: '' },
+  { id: '2', code: 'SYM-INMARSAT', name: 'Đài thông tin vệ tinh Inmarsat', image: '' },
+  { id: '3', code: 'SYM-COASTAL', name: 'Đài thông tin duyên hải', image: '' },
+  { id: '4', code: 'SYM-AIS', name: 'Trạm bờ AIS', image: '' },
+  { id: '5', code: 'SYM-RADAR', name: 'Trạm Radar hàng hải', image: '' },
+  { id: '6', code: 'SYM-BUOY', name: 'Phao báo hiệu hàng hải', image: '' },
+  { id: '7', code: 'SYM-BEACON', name: 'Trạm đèn biển (Hải đăng)', image: '' },
+  { id: '8', code: 'SYM-PORT', name: 'Cảng biển / Bến cảng', image: '' },
+  { id: '9', code: 'SYM-ANCHORAGE', name: 'Khu neo đậu / Đón trả hoa tiêu', image: '' },
+];
+import { useAuthStore, type AuthState } from '../../store/authStore';
+import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
+import { FormOrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../components/org-unit';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 
-export interface VtsOperationCenterChkFormProps {
+export interface VtsOperationCenterFormProps {
   open?: boolean;
   editId?: string | null;
   initialData?: VtsOperationCenterResponse | null;
@@ -154,7 +166,7 @@ const serializeCoordinatesToWkt = (coords: { latitude: number | null; longitude:
   return `POINT (${valid[0].longitude} ${valid[0].latitude})`;
 };
 
-export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps> = ({
+export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
   open,
   editId,
   initialData,
@@ -180,11 +192,12 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
   const [mapModalOpen, setMapModalOpen] = useState(false);
   const [attachments, setAttachments] = useState<VtsOperationCenterAttachment[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [pendingDeletedAttachments, setPendingDeletedAttachments] = useState<{ id: string; fileName: string }[]>([]);
 
   const [approvalSectionOpen, setApprovalSectionOpen] = useState(true);
 
-  const currentUser = useAuthStore((s) => s.user);
-  const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const currentUser = useAuthStore((s: AuthState) => s.user);
+  const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
 
   const isDetailMode = currentMode === 'detail';
   const isCreateMode = currentMode === 'create';
@@ -217,32 +230,19 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
       return false;
     }
 
-    if (isCreateMode) {
-      const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-      (file as any)._tempId = tempId;
-      const newAttachment: VtsOperationCenterAttachment = {
-        id: tempId,
-        fileName: file.name,
-        fileSize: file.size,
-        uploadedByName: currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
-        uploadedBy: currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
-        uploadedDate: new Date().toISOString(),
-      };
-      setPendingFiles((prev) => [...prev, file]);
-      setAttachments((prev) => [...prev, newAttachment]);
-      toast.success(`Đã thêm tệp ${file.name}`);
-      return false;
-    }
-
-    if (editId) {
-      try {
-        const uploadedList = await vtsOperationCenterService.uploadAttachments(editId, [file]);
-        setAttachments((prev) => [...prev, ...(uploadedList || [])]);
-        toast.success(`Đã tải lên tệp ${file.name}`);
-      } catch (err: any) {
-        toast.error(err?.response?.data?.message || err?.message || 'Lỗi khi tải tệp lên');
-      }
-    }
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    (file as any)._tempId = tempId;
+    const newAttachment: VtsOperationCenterAttachment = {
+      id: tempId,
+      fileName: file.name,
+      fileSize: file.size,
+      uploadedByName: currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
+      uploadedBy: currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
+      uploadedDate: new Date().toISOString(),
+    };
+    setPendingFiles((prev) => [...prev, file]);
+    setAttachments((prev) => [...prev, newAttachment]);
+    toast.success(`Đã thêm tệp ${file.name}`);
     return false;
   };
 
@@ -251,24 +251,29 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
       toast.error('Không có quyền xóa tệp đính kèm');
       return;
     }
-    if (isCreateMode) {
+    const targetAtt = attachments.find((a) => a.id === attId);
+    if (String(attId).startsWith('temp_') || pendingFiles.some((f) => (f as any)._tempId === attId)) {
       setPendingFiles((prev) => prev.filter((f) => (f as any)._tempId !== attId && f.name !== attId));
-      setAttachments((prev) => prev.filter((a) => a.id !== attId));
-      toast.success('Đã xóa tệp đính kèm');
-      return;
+    } else if (targetAtt) {
+      setPendingDeletedAttachments((prev) => [...prev, { id: attId, fileName: targetAtt.fileName }]);
     }
-    if (editId) {
-      try {
-        await vtsOperationCenterService.deleteAttachment(editId, attId);
-        setAttachments((prev) => prev.filter((a) => a.id !== attId));
-        toast.success('Đã xóa tệp đính kèm');
-      } catch (err: any) {
-        toast.error(err?.response?.data?.message || err?.message || 'Lỗi khi xóa tệp');
-      }
-    }
+    setAttachments((prev) => prev.filter((a) => a.id !== attId));
+    toast.success('Đã xóa tệp đính kèm');
   };
 
   const handleDownloadAttachment = async (attId: string, fileName?: string) => {
+    if (String(attId).startsWith('temp_')) {
+      const localFile = pendingFiles.find((f) => (f as any)._tempId === attId);
+      if (localFile) {
+        const url = URL.createObjectURL(localFile);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = localFile.name;
+        a.click();
+        URL.revokeObjectURL(url);
+        return;
+      }
+    }
     const targetId = record?.id || editId;
     if (!targetId) return;
     try {
@@ -351,7 +356,23 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
     if (open) {
       portCRUD.getOptions().then((res) => setPortOptions(Array.isArray(res) ? res : [])).catch(() => {});
       vtsSystemCRUD.getOptions().then((res) => setVtsSystemOptions(Array.isArray(res) ? res : [])).catch(() => {});
-      symbolService.getOptions().then((res) => setSymbols(Array.isArray(res) ? res : [])).catch(() => {});
+      symbolService.getOptions()
+        .then((res) => {
+          if (Array.isArray(res) && res.length > 0) {
+            setSymbols(res);
+          } else {
+            symbolService.list({ pageSize: 1000 }).then((listRes) => {
+              const items = listRes?.data || (Array.isArray(listRes) ? listRes : []);
+              setSymbols(items.length > 0 ? items : DEFAULT_GIS_SYMBOLS);
+            }).catch(() => setSymbols(DEFAULT_GIS_SYMBOLS));
+          }
+        })
+        .catch(() => {
+          symbolService.list({ pageSize: 1000 }).then((res) => {
+            const items = res?.data || (Array.isArray(res) ? res : []);
+            setSymbols(items.length > 0 ? items : DEFAULT_GIS_SYMBOLS);
+          }).catch(() => setSymbols(DEFAULT_GIS_SYMBOLS));
+        });
     }
   }, [open]);
 
@@ -360,6 +381,8 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
     setTabKey('general');
     setDetailTabKey('general');
     setApprovalSectionOpen(true);
+    setPendingFiles([]);
+    setPendingDeletedAttachments([]);
 
     if (editId) {
       if (initialData) {
@@ -391,7 +414,7 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
         setRecord(res);
         setAttachments(atts || []);
         const pts = parseWktToCoordinates(res.coordinates);
-        setCoordinateList(pts.length > 0 ? pts : [{ latitude: 20.8651, longitude: 106.6838 }]);
+        setCoordinateList(pts);
         form.setFieldsValue({
           code: res.code,
           name: res.name,
@@ -444,24 +467,26 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
   const filteredPortOptions = useMemo(() => {
     let list = portOptions;
     if (effectiveOrgUnitId) {
-      list = list.filter((p) => !p.orgUnitId || p.orgUnitId === effectiveOrgUnitId || p.id === record?.portId);
+      const allowedIds = resolveOrgSubtreeIds(orgUnits, effectiveOrgUnitId);
+      list = list.filter((p) => !p.orgUnitId || allowedIds.has(String(p.orgUnitId)) || p.id === record?.portId);
     }
     if (record?.portId && !list.some((p) => p.id === record.portId)) {
       list = [{ id: record.portId, portName: record.portName || record.portId, portCode: (record as any).portCode }, ...list];
     }
     return list;
-  }, [portOptions, effectiveOrgUnitId, record?.portId, record?.portName]);
+  }, [portOptions, effectiveOrgUnitId, orgUnits, record?.portId, record?.portName]);
 
   const filteredVtsSystemOptions = useMemo(() => {
     let list = vtsSystemOptions;
     if (effectiveOrgUnitId) {
-      list = list.filter((v) => !v.orgUnitId || v.orgUnitId === effectiveOrgUnitId || v.id === record?.vtsSystemId);
+      const allowedIds = resolveOrgSubtreeIds(orgUnits, effectiveOrgUnitId);
+      list = list.filter((v) => !v.orgUnitId || allowedIds.has(String(v.orgUnitId)) || v.id === record?.vtsSystemId);
     }
     if (record?.vtsSystemId && !list.some((v) => v.id === record.vtsSystemId)) {
       list = [{ id: record.vtsSystemId, name: record.vtsSystemName || record.vtsSystemId, code: (record as any).vtsSystemCode }, ...list];
     }
     return list;
-  }, [vtsSystemOptions, effectiveOrgUnitId, record?.vtsSystemId, record?.vtsSystemName]);
+  }, [vtsSystemOptions, effectiveOrgUnitId, orgUnits, record?.vtsSystemId, record?.vtsSystemName]);
 
   const handleFinish = async (values: any) => {
     const act = actionTypeRef.current;
@@ -481,7 +506,7 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
         note: values.note?.trim(),
         geometryType: values.geometryType || 'POINT',
         symbolId: values.symbolId,
-        coordinates: wkt || 'POINT (106.6838 20.8651)',
+        coordinates: wkt || undefined,
         coordinateSystem: values.coordinateSystem,
         displayRule: values.displayRule,
       };
@@ -502,12 +527,29 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
           await vtsOperationCenterService.approveC2(created.id, 'APPROVED', 'Lưu và phê duyệt trực tiếp');
         }
         setPendingFiles([]);
+        setPendingDeletedAttachments([]);
         toast.success('Thêm mới thành công');
       } else if (editId) {
         await vtsOperationCenterService.update(editId, payload as UpdateVtsOperationCenterRequest);
-        if (act === 'submit') {
+        if (pendingDeletedAttachments.length > 0) {
+          try {
+            await Promise.all(pendingDeletedAttachments.map((a) => vtsOperationCenterService.deleteAttachment(editId, a.id)));
+          } catch (delErr) {
+            console.warn('Failed to delete some attachments on edit', delErr);
+          }
+        }
+        if (pendingFiles.length > 0) {
+          try {
+            await vtsOperationCenterService.uploadAttachments(editId, pendingFiles);
+          } catch (uploadErr) {
+            console.warn('Failed to upload some pending files on edit', uploadErr);
+          }
+        }
+        if (act === 'submit' && (record?.approvalStatus === ApprovalStatus.DRAFT || record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL2)) {
           await vtsOperationCenterService.submit(editId);
         }
+        setPendingFiles([]);
+        setPendingDeletedAttachments([]);
         toast.success('Cập nhật thành công');
       }
       onSuccess?.();
@@ -533,20 +575,25 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
             key: 'general',
             label: 'Thông tin chung',
             children: (
-              <div style={{ maxHeight: 'calc(100vh - 210px)', overflowY: 'auto', overflowX: 'hidden', padding: '0 8px 16px 2px', boxSizing: 'border-box' }}>
+              <div style={drawerFormScrollStyle}>
                 <div className="chk-detail-grid">
-                  <div className="chk-detail-row"><span className="chk-detail-label">Mã trung tâm</span><span className="chk-detail-value">{record.code || '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Tên trung tâm</span><span className="chk-detail-value">{record.name || '—'}</span></div>
+                  <div className="chk-detail-row"><span className="chk-detail-label">Mã trung tâm điều hành VTS</span><span className="chk-detail-value">{record.code || '—'}</span></div>
+                  <div className="chk-detail-row"><span className="chk-detail-label">Tên trung tâm điều hành VTS</span><span className="chk-detail-value">{record.name || '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị quản lý</span><span className="chk-detail-value">{record.orgUnitName || '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Thuộc cảng biển</span><span className="chk-detail-value">{record.portName || '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Thuộc hệ thống VTS</span><span className="chk-detail-value">{record.vtsSystemName || '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Địa điểm (Tỉnh/TP)</span><span className="chk-detail-value">{record.provinceName || getProvinceNameById(record.provinceId) || '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Địa điểm chi tiết</span><span className="chk-detail-value">{record.detailedLocation || '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Tình trạng</span><span className="chk-detail-value">{renderConditionBadge(record.conditionStatus)}</span></div>
+                </div>
 
-                  <div className="chk-detail-row"><span className="chk-detail-label">Ngày cập nhật</span><span className="chk-detail-value">{record.updatedAt ? dayjs(record.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ cập nhật</span><span className="chk-detail-value">{record.updatedByName || record.updatedBy || record.createdByName || '—'}</span></div>
+                <div style={{ marginTop: 16, marginBottom: 10, borderTop: `1px solid ${borderDefault}`, paddingTop: 10 }}>
+                  <span style={{ color: actionPrimary, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
+                    Thông tin khác
+                  </span>
+                </div>
 
+                <div className="chk-detail-grid">
                   <div className="chk-detail-row chk-detail-row--full">
                     <span className="chk-detail-label">Vùng phủ sóng</span>
                     <span className="chk-detail-value">{record.coverage || '—'}</span>
@@ -612,11 +659,11 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
           },
           {
             key: 'gis',
-            label: `Thông tin vị trí (${coordinateList.length || 1})`,
+            label: 'Vị trí (GIS)',
             children: (
               <DetailTable
                 scrollY="calc(100vh - 428px)"
-                dataSource={coordinateList.length > 0 ? coordinateList : [{ latitude: 20.8651, longitude: 106.6838 }]}
+                dataSource={coordinateList}
                 emptyText="Chưa có tọa độ GPS nào"
                 headerNode={
                   <>
@@ -664,7 +711,7 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
                     </div>
                     <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
                       <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px' }}>
-                        Tọa độ GPS ({coordinateList.length || 1})
+                        Tọa độ GPS
                       </span>
                       <Button
                         type="primary"
@@ -709,7 +756,7 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
           },
           {
             key: 'files',
-            label: `File đính kèm (${attachments.length})`,
+            label: 'File đính kèm',
             children: (
               <InfrastructureAttachmentTab
                 attachments={attachments}
@@ -731,13 +778,7 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
       closable={false}
       open={open}
       onClose={onCancel}
-      styles={{
-        header: { padding: '16px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-        body: { padding: '0 24px 0 24px', overflow: 'hidden' },
-        ...(isDetailMode ? {} : {
-          footer: { padding: '12px 24px', borderTop: `1px solid ${borderDefault}`, display: 'flex', justifyContent: 'center', alignItems: 'center' },
-        }),
-      }}
+      styles={drawerStyles}
       title={
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={drawerTitleStyle}>
@@ -818,6 +859,32 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
             form={form}
             layout="vertical"
             onFinish={handleFinish}
+            onFinishFailed={(errorInfo) => {
+              focusErrorTab(
+                errorInfo,
+                {
+                  general: [
+                    'code',
+                    'name',
+                    'orgUnitId',
+                    'portId',
+                    'vtsSystemId',
+                    'provinceId',
+                    'detailedLocation',
+                    'conditionStatus',
+                    'coverage',
+                    'note',
+                  ],
+                  gis: [
+                    'geometryType',
+                    'symbolId',
+                    'coordinateSystem',
+                    'displayRule',
+                  ],
+                },
+                setTabKey
+              );
+            }}
             autoComplete="off"
           >
             <style>{requiredMarkStyle}</style>
@@ -831,8 +898,29 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
                   key: 'general',
                   label: 'Thông tin chung',
                   children: (
-                    <div style={{ maxHeight: 'calc(100vh - 210px)', overflowY: 'auto', overflowX: 'hidden', padding: '0 8px 16px 2px', boxSizing: 'border-box' }}>
+                    <div style={drawerFormScrollStyle}>
                       <Row gutter={[24, 0]}>
+                        <Col span={12}>
+                          <Form.Item
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Mã trung tâm điều hành VTS</span>}
+                            name="code"
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <Input placeholder="Mã tự sinh" disabled={true} style={inputStyle} />
+                          </Form.Item>
+                        </Col>
+
+                        <Col span={12}>
+                          <Form.Item
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tên trung tâm điều hành VTS</span>}
+                            name="name"
+                            rules={[{ required: true, message: 'Vui lòng nhập tên trung tâm điều hành VTS' }]}
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <Input placeholder="Nhập tên trung tâm điều hành VTS..." maxLength={255} showCount style={inputStyle} />
+                          </Form.Item>
+                        </Col>
+
                         <Col span={12}>
                           <Form.Item
                             label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị quản lý</span>}
@@ -876,7 +964,6 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
                           <Form.Item
                             label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thuộc hệ thống VTS</span>}
                             name="vtsSystemId"
-                            rules={[{ required: true, message: 'Vui lòng chọn hệ thống VTS' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select
@@ -890,27 +977,6 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
                               }))}
                               style={selectStyle}
                             />
-                          </Form.Item>
-                        </Col>
-
-                        <Col span={12}>
-                          <Form.Item
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Mã trung tâm điều hành</span>}
-                            name="code"
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Input placeholder="Mã tự sinh" disabled={true} style={inputStyle} />
-                          </Form.Item>
-                        </Col>
-
-                        <Col span={12}>
-                          <Form.Item
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tên trung tâm điều hành</span>}
-                            name="name"
-                            rules={[{ required: true, message: 'Vui lòng nhập tên trung tâm điều hành' }]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Input placeholder="Nhập tên trung tâm điều hành..." maxLength={255} showCount style={inputStyle} />
                           </Form.Item>
                         </Col>
 
@@ -954,6 +1020,14 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
                         </Col>
 
                         <Col span={24}>
+                          <div style={{ marginTop: 12, marginBottom: 12, borderTop: `1px solid ${borderDefault}`, paddingTop: 12 }}>
+                            <span style={{ color: actionPrimary, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
+                              Thông tin khác
+                            </span>
+                          </div>
+                        </Col>
+
+                        <Col span={24}>
                           <Form.Item
                             label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Vùng phủ sóng</span>}
                             name="coverage"
@@ -978,248 +1052,199 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
                 },
                 {
                   key: 'gis',
-                  label: 'Thông tin vị trí',
+                  label: 'Vị trí (GIS)',
                   children: (
-                    <div style={{ maxHeight: 'calc(100vh - 210px)', overflowY: 'auto', overflowX: 'hidden', padding: '0 8px 16px 2px', boxSizing: 'border-box' }}>
-                      <Row gutter={[24, 0]}>
-                        <Col span={12}>
-                          <Form.Item
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Loại đối tượng</span>}
-                            name="geometryType"
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Select
-                              placeholder="Chọn loại đối tượng"
-                              allowClear
-                              options={[
-                                { value: 'POINT', label: 'Đối tượng điểm' },
-                                { value: 'LINE', label: 'Đối tượng đường' },
-                                { value: 'POLYGON', label: 'Đối tượng vùng' },
-                              ]}
-                              style={selectStyle}
-                              onChange={(val) => {
-                                form.setFieldValue('geometryType', val);
-                                if (val) {
-                                  form.setFieldValue('coordinateSystem', 'WGS 84 / VN-2000');
-                                  form.setFieldValue('displayRule', 'Độ, phút, giây (DMS)');
-                                  const minCount = val === 'POLYGON' ? 3 : (val === 'LINE' ? 2 : 1);
-                                  setCoordinateList((prev) => {
-                                    if (val === 'POINT') {
-                                      return prev.length > 0 ? [prev[0]] : [{ latitude: 20.8651, longitude: 106.6838 }];
-                                    }
-                                    if (prev.length >= minCount) return prev;
-                                    const baseLat = prev[0]?.latitude ?? 20.8651;
-                                    const baseLng = prev[0]?.longitude ?? 106.6838;
-                                    const delta = 0.005;
-                                    if (prev.length === 1 && prev[0].latitude != null && prev[0].longitude != null) {
-                                      if (val === 'POLYGON') {
-                                        return [
-                                          prev[0],
-                                          { latitude: baseLat + delta, longitude: baseLng + delta },
-                                          { latitude: baseLat - delta, longitude: baseLng + delta },
-                                        ];
-                                      } else if (val === 'LINE') {
-                                        return [
-                                          prev[0],
-                                          { latitude: baseLat + delta, longitude: baseLng + delta },
-                                        ];
+                    <div>
+                      <div style={drawerGisControlBoxStyle}>
+                        <Row gutter={[24, 0]} style={{ height: 68, marginBottom: 8 }}>
+                          <Col span={12}>
+                            <Form.Item
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '18px' }}>Loại đối tượng</span>}
+                              name="geometryType"
+                              style={{ marginBottom: 0 }}
+                            >
+                              <Select
+                                placeholder="Chọn loại đối tượng"
+                                allowClear
+                                options={[
+                                  { value: 'POINT', label: 'Đối tượng điểm' },
+                                  { value: 'LINE', label: 'Đối tượng đường' },
+                                  { value: 'POLYGON', label: 'Đối tượng vùng' },
+                                ]}
+                                style={{ ...selectStyle, height: 38 }}
+                                onChange={(val) => {
+                                  form.setFieldValue('geometryType', val);
+                                  if (val) {
+                                    form.setFieldValue('coordinateSystem', 'WGS 84 / VN-2000');
+                                    form.setFieldValue('displayRule', 'Độ, phút, giây (DMS)');
+                                    setCoordinateList((prev) => {
+                                      if (val === 'POINT' && prev.length > 1) {
+                                        return [prev[0]];
                                       }
-                                    }
-                                    const added = Array.from({ length: minCount - prev.length }, (_, i) => ({
-                                      latitude: baseLat + (i + 1) * delta,
-                                      longitude: baseLng + (i + 1) * delta,
-                                    }));
-                                    return [...prev, ...added];
-                                  });
-                                } else {
-                                  form.setFieldValue('coordinateSystem', undefined);
-                                  form.setFieldValue('displayRule', undefined);
-                                  form.setFieldValue('symbolId', undefined);
-                                }
-                              }}
-                            />
-                          </Form.Item>
-                        </Col>
+                                      return prev;
+                                    });
+                                  } else {
+                                    form.setFieldValue('coordinateSystem', undefined);
+                                    form.setFieldValue('displayRule', undefined);
+                                    form.setFieldValue('symbolId', undefined);
+                                  }
+                                }}
+                              />
+                            </Form.Item>
+                          </Col>
 
-                        <Col span={12}>
-                          <Form.Item
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Biểu tượng</span>}
-                            name="symbolId"
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Select
-                              placeholder="Chọn biểu tượng bản đồ"
-                              allowClear
-                              disabled={!watchedGeometryType}
-                              options={symbols.map((sym) => ({
-                                value: sym.id,
-                                label: (
-                                  <Space size={6} style={{ display: 'inline-flex', alignItems: 'center' }}>
-                                    {sym.image ? (
-                                      <img
-                                        src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`}
-                                        alt={sym.name}
-                                        style={{ width: 16, height: 16, objectFit: 'contain', verticalAlign: 'middle' }}
-                                      />
-                                    ) : (
-                                      <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: actionPrimary }} />
-                                    )}
-                                    <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
-                                  </Space>
-                                ),
-                              }))}
-                              style={selectStyle}
-                            />
-                          </Form.Item>
-                        </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '18px' }}>Biểu tượng</span>}
+                              name="symbolId"
+                              style={{ marginBottom: 0 }}
+                            >
+                              <Select
+                                placeholder="Chọn biểu tượng bản đồ"
+                                allowClear
+                                disabled={!watchedGeometryType}
+                                options={symbols.map((sym) => ({
+                                  value: sym.id,
+                                  label: (
+                                    <Space size={6} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                      {sym.image ? (
+                                        <img
+                                          src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`}
+                                          alt={sym.name}
+                                          style={{ width: 16, height: 16, objectFit: 'contain', verticalAlign: 'middle' }}
+                                        />
+                                      ) : (
+                                        <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: actionPrimary }} />
+                                      )}
+                                      <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
+                                    </Space>
+                                  ),
+                                }))}
+                                style={{ ...selectStyle, height: 38 }}
+                              />
+                            </Form.Item>
+                          </Col>
+                        </Row>
 
-                        <Col span={12}>
-                          <Form.Item
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Hệ quy chiếu</span>}
-                            name="coordinateSystem"
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Select
-                              placeholder="Chọn hệ quy chiếu"
-                              allowClear
-                              options={[
-                                { value: 'WGS 84 / VN-2000', label: 'WGS 84 / VN-2000' },
-                                { value: 'WGS-84', label: 'WGS-84' },
-                                { value: 'VN-2000', label: 'VN-2000' },
-                              ]}
-                              style={selectStyle}
-                            />
-                          </Form.Item>
-                        </Col>
+                        <Row gutter={[24, 0]} style={{ height: 68, marginBottom: 8 }}>
+                          <Col span={12}>
+                            <Form.Item
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '18px' }}>Hệ quy chiếu</span>}
+                              name="coordinateSystem"
+                              initialValue="WGS 84 / VN-2000"
+                              style={{ marginBottom: 0 }}
+                            >
+                              <Select
+                                placeholder="Chọn hệ quy chiếu"
+                                allowClear
+                                options={[
+                                  { value: 'WGS 84 / VN-2000', label: 'WGS 84 / VN-2000' },
+                                  { value: 'WGS-84', label: 'WGS-84' },
+                                  { value: 'VN-2000', label: 'VN-2000' },
+                                ]}
+                                style={{ ...selectStyle, height: 38 }}
+                              />
+                            </Form.Item>
+                          </Col>
 
-                        <Col span={12}>
-                          <Form.Item
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Quy tắc hiển thị</span>}
-                            name="displayRule"
-                            initialValue="Độ, phút, giây (DMS)"
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Input
-                              disabled
-                              style={{ ...readonlyInputStyle, borderRadius: radiusPill, height: 40 }}
-                            />
-                          </Form.Item>
-                        </Col>
-                      </Row>
+                          <Col span={12}>
+                            <Form.Item
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '18px' }}>Quy tắc hiển thị</span>}
+                              name="displayRule"
+                              initialValue="Độ, phút, giây (DMS)"
+                              style={{ marginBottom: 0 }}
+                            >
+                              <Input
+                                disabled
+                                style={{ ...readonlyInputStyle, borderRadius: radiusPill, height: 38 }}
+                              />
+                            </Form.Item>
+                          </Col>
+                        </Row>
 
-                      <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-                        <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
-                          Tọa độ
-                        </span>
-                        <Space>
-                          <Button
-                            icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
-                            onClick={() => setMapModalOpen(true)}
-                            style={{
-                              borderRadius: radiusPill,
-                              height: 32,
-                              padding: '0 14px',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 6,
-                              borderColor: actionPrimary,
-                              color: actionPrimary,
-                            }}
-                          >
-                            Chọn vị trí trên bản đồ
-                          </Button>
-                          {watchedGeometryType && watchedGeometryType !== 'POINT' && (
+                        <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32, boxSizing: 'border-box' }}>
+                          <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
+                            Tọa độ
+                          </span>
+                          <Space>
                             <Button
+                              icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+                              onClick={() => setMapModalOpen(true)}
+                              style={{
+                                borderRadius: radiusPill,
+                                height: 32,
+                                padding: '0 14px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                borderColor: actionPrimary,
+                                color: actionPrimary,
+                              }}
+                            >
+                              Chọn vị trí trên bản đồ
+                            </Button>
+                            <Button
+                              type="primary"
                               icon={<PlusOutlined />}
-                              onClick={() => setCoordinateList((p) => [...p, { latitude: 20.8651, longitude: 106.6838 }])}
-                              style={{ borderRadius: radiusPill, height: 32 }}
+                              onClick={() => setCoordinateList((p) => [...p, { latitude: null, longitude: null }])}
+                              style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 32 }}
                             >
                               Thêm tọa độ
                             </Button>
-                          )}
-                        </Space>
+                          </Space>
+                        </div>
                       </div>
 
-                      {coordinateList.length === 0 ? (
-                        <div
-                          style={{
-                            padding: '36px 16px',
-                            textAlign: 'center',
-                            border: `1px dashed ${borderDefault}`,
-                            borderRadius: radiusMd,
-                            background: '#fafbfc',
-                          }}
-                        >
-                          <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>
-                            Chưa có tọa độ nào.
-                          </span>
-                          <Button
-                            icon={<PlusOutlined />}
-                            onClick={() => setCoordinateList([{ latitude: 20.8651, longitude: 106.6838 }])}
-                            style={{ borderRadius: radiusPill, ...outlineButtonStyle }}
-                          >
-                            Thêm tọa độ
-                          </Button>
-                        </div>
-                      ) : (
-                        <Table
-                          className="list-view-table"
-                          rowKey="_idx"
-                          size="small"
-                          bordered
-                          pagination={false}
-                          dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))}
-                          scroll={{ x: 600 }}
-                          columns={[
-                            {
-                              title: 'STT',
-                              key: 'stt',
-                              width: 60,
-                              align: 'center',
-                              render: (_: any, __: any, i: number) => (
-                                <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>
-                              ),
-                              onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '10px 8px' } }),
-                            },
-                            {
-                              title: 'Vĩ độ (N)',
-                              key: 'lat',
-                              render: (_: any, r: any) => renderDms(r._idx, 'lat', r),
-                              onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '10px 8px' } }),
-                            },
-                            {
-                              title: 'Kinh độ (E)',
-                              key: 'lng',
-                              render: (_: any, r: any) => renderDms(r._idx, 'lng', r),
-                              onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '10px 8px' } }),
-                            },
-                            {
-                              title: '',
-                              key: 'actions',
-                              width: 50,
-                              align: 'center',
-                              render: (_: any, r: any) => (
-                                <Button
-                                  type="text"
-                                  danger
-                                  size="small"
-                                  icon={<DeleteOutlined style={{ fontSize: 16 }} />}
-                                  style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                  onClick={() => setCoordinateList((p) => p.filter((_, idx) => idx !== r._idx))}
-                                  title="Xóa tọa độ"
-                                />
-                              ),
-                              onHeaderCell: () => ({ style: { background: colors.bodyBg, padding: '10px 6px' } }),
-                            },
-                          ]}
-                        />
-                      )}
+                      <DetailTable
+                        scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
+                        dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))}
+                        emptyText="Chưa có tọa độ nào"
+                        rowKey="_idx"
+                        columns={[
+                          {
+                            title: 'STT',
+                            key: 'stt',
+                            width: 60,
+                            align: 'center',
+                            render: (_: any, __: any, i: number) => (
+                              <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>
+                            ),
+                          },
+                          {
+                            title: 'Vĩ độ (N)',
+                            key: 'lat',
+                            render: (_: any, r: any) => renderDms(r._idx, 'lat', r),
+                          },
+                          {
+                            title: 'Kinh độ (E)',
+                            key: 'lng',
+                            render: (_: any, r: any) => renderDms(r._idx, 'lng', r),
+                          },
+                          {
+                            title: '',
+                            key: 'actions',
+                            width: 50,
+                            align: 'center' as const,
+                            render: (_: any, r: any) => (
+                              <Button
+                                type="text"
+                                danger
+                                size="small"
+                                icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                                style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                onClick={() => setCoordinateList((p) => p.filter((_, idx) => idx !== r._idx))}
+                                title="Xóa tọa độ"
+                              />
+                            ),
+                          },
+                        ]}
+                      />
                     </div>
                   ),
                 },
                 {
                   key: 'files',
-                  label: `File đính kèm (${attachments.length})`,
+                  label: 'File đính kèm',
                   children: (
                     <InfrastructureAttachmentTab
                       attachments={attachments}
@@ -1299,4 +1324,4 @@ export const VtsOperationCenterChkForm: React.FC<VtsOperationCenterChkFormProps>
   );
 };
 
-export default VtsOperationCenterChkForm;
+export default VtsOperationCenterForm;

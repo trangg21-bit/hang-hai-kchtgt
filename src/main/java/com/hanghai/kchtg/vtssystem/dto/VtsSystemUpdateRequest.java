@@ -3,7 +3,8 @@ package com.hanghai.kchtg.vtssystem.dto;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -25,10 +26,12 @@ public class VtsSystemUpdateRequest {
     private ApprovalStatus approvalStatus;
     private ConditionStatus conditionStatus;
     private UUID orgUnitId;
+    @NotNull(message = "Đơn vị chủ quản không được để trống")
     private UUID owningOrgId;
     private UUID operatingOrgId;
     private UUID portId;
     private List<VtsZoneDto> zones;
+    @jakarta.validation.constraints.Size(max = 50, message = "Mã hệ thống VTS tối đa 50 ký tự")
     private String code;
     private Integer provinceId;
     private String address;

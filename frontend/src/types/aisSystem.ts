@@ -68,12 +68,22 @@ export interface AisSystemResponse {
   symbolId?: string;
   approvalStatus: ApprovalStatus;
   approvalStatusLabel?: string;
+  submittedAt?: string;
+  submittedDate?: string;
+  submittedBy?: string;
+  submittedByName?: string;
   approverLevel1?: string;
   approverLevel1Name?: string;
   approvedDateLevel1?: string;
+  approvalContentLevel1?: string;
+  approvalReasonLevel1?: string;
+  rejectionReasonLevel1?: string;
   approverLevel2?: string;
   approverLevel2Name?: string;
   approvedDateLevel2?: string;
+  approvalContentLevel2?: string;
+  approvalReasonLevel2?: string;
+  rejectionReasonLevel2?: string;
   rejectionReason?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -112,6 +122,10 @@ export interface AisSystemListItem {
   conditionStatus: ConditionStatus;
   approvalStatus: ApprovalStatus;
   approvalStatusLabel?: string;
+  submittedAt?: string;
+  submittedDate?: string;
+  submittedBy?: string;
+  submittedByName?: string;
   updatedAt?: string;
   updatedBy?: string;
   updatedByName?: string;
@@ -124,6 +138,7 @@ export interface AisSystemListItem {
   approverLevel2?: string;
   approverLevel2Name?: string;
   approvedDateLevel2?: string;
+  rejectionReason?: string;
 }
 
 export interface CreateAisSystemRequest {

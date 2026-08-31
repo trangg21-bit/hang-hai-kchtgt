@@ -215,7 +215,7 @@ class BeaconStationControllerTest {
                         .content(json))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("Validation failed"));
+                .andExpect(jsonPath("$.message").value("Lỗi dữ liệu đầu vào không hợp lệ"));
 
         verify(beaconStationService, never()).create(any());
     }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Form, Select, Table, InputNumber, Button, Space, Card, Row, Col, Typography, Modal } from 'antd';
+import { Form, Select, Table, InputNumber, Button, Space, Card, Row, Col, Typography, Modal, Radio, Tooltip } from 'antd';
 import { PlusOutlined, DeleteOutlined, CompassOutlined, EnvironmentOutlined, HolderOutlined } from '@ant-design/icons';
 import { colors } from '../../theme';
 
@@ -260,54 +260,62 @@ export default function GisLocationSelector({
     };
   }, []);
 
-  // Parse WKT string into vertices list
+  // Parse WKT string into vertices list with smart cross-geometry conversion
   const parseWktToVertices = (wkt: string, geomType: string): { lng: number; lat: number }[] => {
     if (!wkt) return [];
     try {
       const trimmed = wkt.trim();
       const upper = trimmed.toUpperCase();
       const type = (geomType || 'POINT').toUpperCase();
-      if (type === 'POINT') {
-        if (upper.startsWith('MULTIPOINT')) {
-          const match = trimmed.match(/MULTIPOINT\s*\(([^)]+)\)/i);
-          if (match) {
-            return match[1].split('),(').map((pt) => {
-              const parts = pt.replace(/[()]/g, '').trim().split(/\s+/);
-              return { lng: parseFloat(parts[0]), lat: parseFloat(parts[1]) };
-            });
-          }
-        } else if (upper.startsWith('POINT')) {
-          const match = trimmed.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
-          if (match) {
-            return [{ lng: parseFloat(match[1]), lat: parseFloat(match[2]) }];
-          }
+
+      // Universal coordinate extractor across any WKT geometry format
+      let rawPoints: { lng: number; lat: number }[] = [];
+
+      if (upper.startsWith('POINT')) {
+        const match = trimmed.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
+        if (match) {
+          rawPoints = [{ lng: parseFloat(match[1]), lat: parseFloat(match[2]) }];
         }
-      } else if (type === 'LINE' && upper.startsWith('LINESTRING')) {
+      } else if (upper.startsWith('MULTIPOINT')) {
+        const match = trimmed.match(/MULTIPOINT\s*\(([^)]+)\)/i);
+        if (match) {
+          rawPoints = match[1].split('),(').map((pt) => {
+            const parts = pt.replace(/[()]/g, '').trim().split(/\s+/);
+            return { lng: parseFloat(parts[0]), lat: parseFloat(parts[1]) };
+          });
+        }
+      } else if (upper.startsWith('LINESTRING') || upper.startsWith('LINE')) {
         const match = trimmed.match(/LINESTRING\s*\(([^)]+)\)/i);
         if (match) {
-          return match[1].split(',').map((pt) => {
+          rawPoints = match[1].split(',').map((pt) => {
             const parts = pt.trim().split(/\s+/);
             return { lng: parseFloat(parts[0]), lat: parseFloat(parts[1]) };
           });
         }
-      } else if (type === 'POLYGON' && upper.startsWith('POLYGON')) {
+      } else if (upper.startsWith('POLYGON')) {
         const match = trimmed.match(/POLYGON\s*\(\(([^)]+)\)\)/i);
         if (match) {
-          const pts = match[1].split(',').map((pt) => {
+          rawPoints = match[1].split(',').map((pt) => {
             const parts = pt.trim().split(/\s+/);
             return { lng: parseFloat(parts[0]), lat: parseFloat(parts[1]) };
           });
           // Remove closing duplicate point for simplified vertices display
           if (
-            pts.length > 1 &&
-            pts[0].lng === pts[pts.length - 1].lng &&
-            pts[0].lat === pts[pts.length - 1].lat
+            rawPoints.length > 1 &&
+            rawPoints[0].lng === rawPoints[rawPoints.length - 1].lng &&
+            rawPoints[0].lat === rawPoints[rawPoints.length - 1].lat
           ) {
-            pts.pop();
+            rawPoints.pop();
           }
-          return pts;
         }
       }
+
+      // If converting to POINT from LINE/POLYGON, keep the first vertex (Đỉnh 1)
+      if (type === 'POINT' && rawPoints.length > 1) {
+        return [rawPoints[0]];
+      }
+
+      return rawPoints;
     } catch (e) {
       console.warn('Sai định dạng WKT:', wkt, e);
     }
@@ -319,25 +327,26 @@ export default function GisLocationSelector({
     // Only serialize points that have both coordinates as valid numbers
     const validPts = pts.filter((p) => p && typeof p.lng === 'number' && typeof p.lat === 'number' && !isNaN(p.lng) && !isNaN(p.lat));
     if (validPts.length === 0) return '';
-    const type = geomType.toUpperCase();
-    if (type === 'POINT') {
-      if (validPts.length === 1) {
-        return `POINT (${validPts[0].lng.toFixed(6)} ${validPts[0].lat.toFixed(6)})`;
-      }
-      const coords = validPts.map((p) => `(${p.lng.toFixed(6)} ${p.lat.toFixed(6)})`).join(',');
-      return `MULTIPOINT (${coords})`;
+    const type = (geomType || 'POINT').toUpperCase();
+    if (type === 'POINT' || validPts.length === 1) {
+      return `POINT (${validPts[0].lng.toFixed(6)} ${validPts[0].lat.toFixed(6)})`;
     } else if (type === 'LINE') {
       const coords = validPts.map((p) => `${p.lng.toFixed(6)} ${p.lat.toFixed(6)}`).join(', ');
       return `LINESTRING (${coords})`;
     } else if (type === 'POLYGON') {
-      if (validPts.length < 3) return '';
+      if (validPts.length < 3) {
+        const coords = validPts.map((p) => `${p.lng.toFixed(6)} ${p.lat.toFixed(6)}`).join(', ');
+        return `LINESTRING (${coords})`;
+      }
       const list = [...validPts];
       // Close the polygon by repeating the first vertex at the end
-      list.push(validPts[0]);
+      if (list[0].lng !== list[list.length - 1].lng || list[0].lat !== list[list.length - 1].lat) {
+        list.push(list[0]);
+      }
       const coords = list.map((p) => `${p.lng.toFixed(6)} ${p.lat.toFixed(6)}`).join(', ');
       return `POLYGON ((${coords}))`;
     }
-    return '';
+    return `POINT (${validPts[0].lng.toFixed(6)} ${validPts[0].lat.toFixed(6)})`;
   };
 
   // Trigger changes to form parent
@@ -391,13 +400,44 @@ export default function GisLocationSelector({
           layer = L.layerGroup(coords.map((c: [number, number]) => L.marker(c, { draggable: !disabled })));
         }
       } else if (internalGeom === 'LINE') {
-        if (validVertices.length < 2) return; // Polyline needs at least 2 points to draw
         const coords = validVertices.map((v) => [v.lat, v.lng]);
-        layer = L.polyline(coords, { color: colors.primary });
+        if (validVertices.length === 1) {
+          // Khi chỉ có 1 đỉnh (chuyển từ Point sang Line): vẫn vẽ Marker điểm xuất phát để người dùng thấy rõ vị trí
+          layer = L.marker(coords[0], { draggable: !disabled });
+          if (!disabled) {
+            layer.on('dragend', () => {
+              const pos = layer.getLatLng();
+              const draggedPts = [{ lat: pos.lat, lng: pos.lng }];
+              setVertices(draggedPts);
+              const draggedWkt = serializeVerticesToWkt(draggedPts, 'LINE');
+              setInternalToaDo(draggedWkt);
+              triggerChange('LINE', draggedWkt, internalBieuTuongRef.current);
+            });
+          }
+        } else {
+          layer = L.polyline(coords, { color: colors.primary });
+        }
       } else if (internalGeom === 'POLYGON') {
-        if (validVertices.length < 3) return; // Polygon needs at least 3 points to draw
         const coords = validVertices.map((v) => [v.lat, v.lng]);
-        layer = L.polygon(coords, { color: colors.primary, fillColor: colors.primary, fillOpacity: 0.2 });
+        if (validVertices.length === 1) {
+          // Khi chỉ có 1 đỉnh: vẽ Marker điểm xuất phát
+          layer = L.marker(coords[0], { draggable: !disabled });
+          if (!disabled) {
+            layer.on('dragend', () => {
+              const pos = layer.getLatLng();
+              const draggedPts = [{ lat: pos.lat, lng: pos.lng }];
+              setVertices(draggedPts);
+              const draggedWkt = serializeVerticesToWkt(draggedPts, 'POLYGON');
+              setInternalToaDo(draggedWkt);
+              triggerChange('POLYGON', draggedWkt, internalBieuTuongRef.current);
+            });
+          }
+        } else if (validVertices.length === 2) {
+          // Khi có 2 đỉnh: vẽ đường nối nét đứt thể hiện 2 đỉnh đã chọn
+          layer = L.polyline(coords, { color: colors.primary, dashArray: '6, 6' });
+        } else {
+          layer = L.polygon(coords, { color: colors.primary, fillColor: colors.primary, fillOpacity: 0.2 });
+        }
       }
 
       if (layer) {
@@ -405,7 +445,7 @@ export default function GisLocationSelector({
         drawnLayerRef.current = layer;
 
         // Giữ nguyên mức zoom hiện tại của người dùng, không tự ý zoom in làm mất ngữ cảnh
-        if (internalGeom === 'POINT' && validVertices.length === 1) {
+        if (validVertices.length === 1) {
           mapRef.current.panTo([validVertices[0].lat, validVertices[0].lng]);
         } else if (layer.getBounds) {
           const bounds = layer.getBounds();
@@ -416,8 +456,16 @@ export default function GisLocationSelector({
 
         // Bind update listeners only if not disabled
         if (!disabled) {
+          if (typeof layer.pm?.enable === 'function') {
+            try {
+              layer.pm.enable({ allowSelfIntersection: false, hideMiddleMarkers: true });
+            } catch {}
+          }
           layer.on('pm:edit', () => syncLayerToWkt(layer));
           layer.on('pm:dragend', () => syncLayerToWkt(layer));
+          layer.on('pm:markerdragend', () => syncLayerToWkt(layer));
+          layer.on('pm:vertexadded', () => syncLayerToWkt(layer));
+          layer.on('pm:vertexremoved', () => syncLayerToWkt(layer));
         }
       }
     } catch (err) {
@@ -477,18 +525,16 @@ export default function GisLocationSelector({
         });
       } else if (curGeom === 'LINE' || curGeom === 'POLYGON') {
         if (disabledRef.current) return;
-        if (
-          !mapRef.current.pm?.Draw?.Polyline?.enabled() &&
-          !mapRef.current.pm?.Draw?.Polygon?.enabled()
-        ) {
-          setVertices((prev: { lng: number; lat: number }[]) => {
-            const next = [...prev, { lat, lng }];
-            const newWkt = serializeVerticesToWkt(next, curGeom);
-            setInternalToaDo(newWkt);
-            triggerChange(curGeom, newWkt, internalBieuTuongRef.current);
-            return next;
-          });
-        }
+        setVertices((prev: { lng: number; lat: number }[]) => {
+          const validNonZero = prev.filter(
+            (p) => p && typeof p.lat === 'number' && typeof p.lng === 'number' && !isNaN(p.lat) && !isNaN(p.lng) && (p.lat !== 0 || p.lng !== 0)
+          );
+          const next = [...validNonZero, { lat, lng }];
+          const newWkt = serializeVerticesToWkt(next, curGeom);
+          setInternalToaDo(newWkt);
+          triggerChange(curGeom, newWkt, internalBieuTuongRef.current);
+          return next;
+        });
       }
     });
 
@@ -519,6 +565,9 @@ export default function GisLocationSelector({
     });
 
     if (mapRef.current.pm) {
+      if (typeof mapRef.current.pm.setGlobalOptions === 'function') {
+        mapRef.current.pm.setGlobalOptions({ hideMiddleMarkers: true });
+      }
       mapRef.current.pm.reenableMode = false;
     }
     mapRef.current.on('pm:remove', () => {
@@ -575,35 +624,44 @@ export default function GisLocationSelector({
 
     let newWkt = '';
     let parsedPts: { lng: number; lat: number }[] = [];
+    let detectedGeom = internalGeomRef.current || 'POINT';
 
     try {
       if (layer && typeof layer.getLatLng === 'function') {
         const latlng = layer.getLatLng();
         parsedPts = [{ lng: latlng.lng, lat: latlng.lat }];
-        newWkt = serializeVerticesToWkt(parsedPts, 'POINT');
-        setInternalGeom('POINT');
+        detectedGeom = 'POINT';
       } else if (layer && typeof layer.getLatLngs === 'function') {
         const latlngs = layer.getLatLngs();
         if (Array.isArray(latlngs) && Array.isArray(latlngs[0])) {
-          // Polygon
-          parsedPts = latlngs[0].map((l: any) => ({ lng: l.lng, lat: l.lat }));
-          newWkt = serializeVerticesToWkt(parsedPts, 'POLYGON');
-          setInternalGeom('POLYGON');
+          // Polygon (or nested polygon rings)
+          const ring = Array.isArray(latlngs[0][0]) ? latlngs[0][0] : latlngs[0];
+          parsedPts = ring.map((l: any) => ({ lng: l.lng, lat: l.lat }));
+          if (
+            parsedPts.length > 1 &&
+            parsedPts[0].lng === parsedPts[parsedPts.length - 1].lng &&
+            parsedPts[0].lat === parsedPts[parsedPts.length - 1].lat
+          ) {
+            parsedPts.pop();
+          }
+          detectedGeom = 'POLYGON';
         } else if (Array.isArray(latlngs)) {
           // Polyline
           parsedPts = latlngs.map((l: any) => ({ lng: l.lng, lat: l.lat }));
-          newWkt = serializeVerticesToWkt(parsedPts, 'LINE');
-          setInternalGeom('LINE');
+          detectedGeom = 'LINE';
         }
       }
     } catch (e) {
       console.error('Lỗi phân tích đối tượng vẽ:', e);
     }
 
+    newWkt = serializeVerticesToWkt(parsedPts, detectedGeom);
+    setInternalGeom(detectedGeom);
+    internalGeomRef.current = detectedGeom;
     setVertices(parsedPts);
     setInternalToaDo(newWkt);
     triggerChange(
-      parsedPts.length === 1 ? 'POINT' : internalGeomRef.current,
+      detectedGeom,
       newWkt,
       internalBieuTuongRef.current
     );
@@ -616,37 +674,19 @@ export default function GisLocationSelector({
     drawExistingShape();
   }, [drawExistingShape, mapReady, modalOpen]);
 
-  // Dynamically configure drawing toolbar based on active geometry type selected outside
+  // Remove external drawing toolbar controls so clicking on the map directly continues and connects vertices seamlessly
   useEffect(() => {
     if (!leafletLoaded || !mapReady || !mapRef.current) return;
 
     const pm = mapRef.current.pm;
-    if (pm) {
-      if (typeof pm.removeControls === 'function') {
-        try {
-          pm.removeControls();
-        } catch (e) {
-          console.error(e);
-        }
+    if (pm && typeof pm.removeControls === 'function') {
+      try {
+        pm.removeControls();
+      } catch (e) {
+        console.error(e);
       }
-      if (disabled) return;
-      pm.addControls({
-        position: 'topleft',
-        drawMarker: internalGeom === 'POINT',
-        drawPolyline: internalGeom === 'LINE',
-        drawPolygon: internalGeom === 'POLYGON',
-        drawCircle: false,
-        drawRectangle: false,
-        drawCircleMarker: false,
-        drawText: false,
-        editMode: false,
-        dragMode: false,
-        cutPolygon: false,
-        removalMode: false,
-        rotateMode: false,
-      });
     }
-  }, [leafletLoaded, mapReady, internalGeom, modalOpen]);
+  }, [leafletLoaded, mapReady, disabled, modalOpen]);
 
   // Handle manual additions and updates to the vertices grid
   const handleVertexChange = (index: number, field: 'lng' | 'lat', val: number | null) => {
@@ -657,7 +697,7 @@ export default function GisLocationSelector({
 
     const newWkt = serializeVerticesToWkt(newPts, internalGeom);
     setInternalToaDo(newWkt);
-    triggerChange(internalGeom, newWkt, internalBieuTuong);
+    triggerChange(internalGeom, newWkt, internalBieuTuongRef.current);
   };
 
   const addVertex = () => {
@@ -667,7 +707,7 @@ export default function GisLocationSelector({
 
     const newWkt = serializeVerticesToWkt(newPts, internalGeom);
     setInternalToaDo(newWkt);
-    triggerChange(internalGeom, newWkt, internalBieuTuong);
+    triggerChange(internalGeom, newWkt, internalBieuTuongRef.current);
   };
 
   const removeVertex = (index: number) => {
@@ -676,50 +716,23 @@ export default function GisLocationSelector({
 
     const newWkt = serializeVerticesToWkt(newPts, internalGeom);
     setInternalToaDo(newWkt);
-    triggerChange(internalGeom, newWkt, internalBieuTuong);
+    triggerChange(internalGeom, newWkt, internalBieuTuongRef.current);
   };
-
-
 
   // Handle configuration changes
   const handleGeomTypeChange = (newGeom: string) => {
     setInternalGeom(newGeom);
-    const minCount = newGeom === 'POLYGON' ? 3 : (newGeom === 'LINE' ? 2 : 1);
-    let newPts = [...vertices];
-    const baseLat = newPts[0]?.lat ?? 20.8651;
-    const baseLng = newPts[0]?.lng ?? 106.6838;
-    const delta = 0.005;
+    internalGeomRef.current = newGeom;
 
-    if (newGeom === 'POINT') {
-      newPts = newPts.length > 0 ? [newPts[0]] : [{ lat: baseLat, lng: baseLng }];
-    } else {
-      if (newPts.length < minCount) {
-        if (newPts.length === 1 && typeof newPts[0].lat === 'number' && typeof newPts[0].lng === 'number') {
-          if (newGeom === 'POLYGON') {
-            newPts = [
-              newPts[0],
-              { lat: baseLat + delta, lng: baseLng + delta },
-              { lat: baseLat - delta, lng: baseLng + delta },
-            ];
-          } else if (newGeom === 'LINE') {
-            newPts = [
-              newPts[0],
-              { lat: baseLat + delta, lng: baseLng + delta },
-            ];
-          }
-        } else {
-          newPts = Array.from({ length: minCount }, (_, i) => ({
-            lat: baseLat + i * delta,
-            lng: baseLng + i * delta,
-          }));
-        }
-      }
+    let newPts = [...vertices];
+    if (newGeom === 'POINT' && newPts.length > 1) {
+      newPts = [newPts[0]];
     }
 
     setVertices(newPts);
     const newWkt = serializeVerticesToWkt(newPts, newGeom);
     setInternalToaDo(newWkt);
-    triggerChange(newGeom, newWkt, internalBieuTuong);
+    triggerChange(newGeom, newWkt, internalBieuTuongRef.current);
   };
 
   const handleSymbolChange = (newSym: string) => {

@@ -93,14 +93,18 @@ export function resolveOrgFullPath(orgUnits: readonly OrgUnitTreeOption[] = [], 
 export function resolveOrgSubtreeIds(orgUnits: readonly OrgUnitTreeOption[] = [], rootOrgUnitId?: string | null): Set<string> {
   const result = new Set<string>();
   if (!rootOrgUnitId || !Array.isArray(orgUnits)) return result;
-  result.add(rootOrgUnitId);
-  const queue = [rootOrgUnitId];
+  const rootStr = String(rootOrgUnitId);
+  result.add(rootStr);
+  const queue = [rootStr];
   while (queue.length > 0) {
     const parentId = queue.shift()!;
     for (const org of orgUnits) {
-      if (org.parentId === parentId && !result.has(org.id)) {
-        result.add(org.id);
-        queue.push(org.id);
+      if (!org || org.id === undefined || org.id === null) continue;
+      const orgIdStr = String(org.id);
+      const orgParentIdStr = (org.parentId !== undefined && org.parentId !== null) ? String(org.parentId) : undefined;
+      if (orgParentIdStr === parentId && !result.has(orgIdStr)) {
+        result.add(orgIdStr);
+        queue.push(orgIdStr);
       }
     }
   }
@@ -116,21 +120,26 @@ export function buildOrgUnitTreeData(options: readonly OrgUnitTreeOption[] = [])
   const nodes = new Map<string, OrgUnitTreeNode>();
 
   safeOptions.forEach((option) => {
-    nodes.set(option.id, {
-      key: option.id,
-      value: option.id,
-      title: option.code ? `${option.code} - ${option.name}` : option.name,
+    if (!option || option.id === undefined || option.id === null) return;
+    const strId = String(option.id);
+    nodes.set(strId, {
+      key: strId,
+      value: strId,
+      title: option.code ? `${option.code} - ${option.name}` : (option.name || strId),
       children: [],
     });
   });
 
   const roots: OrgUnitTreeNode[] = [];
   safeOptions.forEach((option) => {
-    const node = nodes.get(option.id);
-    const parent = option.parentId ? nodes.get(option.parentId) : undefined;
+    if (!option || option.id === undefined || option.id === null) return;
+    const strId = String(option.id);
+    const node = nodes.get(strId);
+    const parentId = (option.parentId !== undefined && option.parentId !== null) ? String(option.parentId) : undefined;
+    const parent = parentId ? nodes.get(parentId) : undefined;
     if (!node) return;
 
-    if (parent) {
+    if (parent && parent !== node) {
       if (!parent.children) parent.children = [];
       parent.children.push(node);
     } else {
@@ -204,21 +213,36 @@ export default function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
   const treeData = useMemo(() => {
     const list = Array.isArray(organizations) ? organizations : [];
     const built = buildOrgUnitTreeData(list);
-    const base = allLabel
+    let base = allLabel
       ? [{ key: '__all__', value: '__all__', title: allLabel }, ...built]
       : built;
+
+    const byId = new Map<string, OrgUnitTreeOption>(list.map((o) => [String(o.id), o]));
+
+    const currentValue = restProps.value ? String(restProps.value) : undefined;
+    if (currentValue && currentValue !== '__all__' && !byId.has(currentValue)) {
+      base = [
+        ...base,
+        {
+          key: currentValue,
+          value: currentValue,
+          title: 'Đơn vị quản lý',
+          label: 'Đơn vị quản lý',
+        },
+      ];
+    }
+
     if (!showPath) return base;
 
     // Gắn label = đường dẫn đầy đủ (cấp cao nhất → cấp được chọn) cho từng node.
     // title giữ tên ngắn cho dropdown; label chỉ dùng để hiển thị trên thanh select.
-    const byId = new Map<string, OrgUnitTreeOption>(list.map((o) => [o.id, o]));
     const pathOf = (o: OrgUnitTreeOption): string => {
       const parts: string[] = [];
       let cur: OrgUnitTreeOption | undefined = o;
       let guard = 0;
       while (cur && guard++ < 30) {
         parts.unshift(cur.name);
-        cur = cur.parentId ? byId.get(cur.parentId) : undefined;
+        cur = cur.parentId ? byId.get(String(cur.parentId)) : undefined;
       }
       return parts.join(' / ');
     };
@@ -232,7 +256,7 @@ export default function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
         };
       });
     return annotate(base);
-  }, [organizations, showPath, allLabel]);
+  }, [organizations, showPath, allLabel, restProps.value]);
 
   return (
     <TreeSelect

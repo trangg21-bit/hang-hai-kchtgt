@@ -5,7 +5,7 @@ import { useAuthStore } from './authStore';
 const permissionSetCache = new WeakMap<object, Set<string>>();
 const EMPTY_PERMISSIONS: string[] = [];
 
-interface PermissionState {
+export interface PermissionState {
   permissions: string[];
   hasPermission: (key: string) => boolean;
   hasAnyPermission: (keys: string[]) => boolean;

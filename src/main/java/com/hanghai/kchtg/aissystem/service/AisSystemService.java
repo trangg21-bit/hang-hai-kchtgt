@@ -173,6 +173,13 @@ public class AisSystemService {
         OrgUnit orgUnit = orgUnitRepository.findById(request.getOrgUnitId())
                 .orElseThrow(() -> new IllegalArgumentException("Đơn vị quản lý không tồn tại"));
 
+        UUID symbolId = null;
+        if (request.getSymbolId() != null && !request.getSymbolId().trim().isEmpty()) {
+            try {
+                symbolId = UUID.fromString(request.getSymbolId().trim());
+            } catch (Exception ignored) {}
+        }
+
         AisSystem entity = AisSystem.builder()
                 .code(request.getCode().trim())
                 .name(request.getName().trim())
@@ -191,6 +198,7 @@ public class AisSystemService {
                 .conditionStatus(request.getConditionStatus() != null ? request.getConditionStatus() : ConditionStatus.OPERATIONAL)
                 .maintenanceInfo(request.getMaintenanceInfo())
                 .note(request.getNote())
+                .symbolId(symbolId)
                 .spatialId(request.getSpatialId())
                 .approvalStatus(initialStatus)
                 .createdBy(userId)
@@ -271,10 +279,48 @@ public class AisSystemService {
         }
 
         Map<String, String> previousValues = new LinkedHashMap<>();
+
+        String oldCoordinates = null;
+        GisGeometryType oldGeometryType = null;
+        if (entity.getSpatialId() != null) {
+            Optional<GisSpatialObject> spatialOpt = gisSpatialObjectService.findById(entity.getSpatialId());
+            if (spatialOpt.isPresent()) {
+                oldCoordinates = spatialOpt.get().getCoordinates();
+                oldGeometryType = spatialOpt.get().getGeometryType();
+            }
+        }
+
+        UUID oldSymbolId = entity.getSymbolId();
+        if (request.getSymbolId() != null) {
+            if (!request.getSymbolId().trim().isEmpty()) {
+                try {
+                    UUID newSymbolId = UUID.fromString(request.getSymbolId().trim());
+                    entity.setSymbolId(newSymbolId);
+                    if (!Objects.equals(oldSymbolId, newSymbolId)) {
+                        previousValues.put(AisSystem.Fields.symbolId, oldSymbolId != null ? oldSymbolId.toString() : "Chưa có");
+                    }
+                } catch (Exception ignored) {}
+            } else {
+                entity.setSymbolId(null);
+                if (oldSymbolId != null) {
+                    previousValues.put(AisSystem.Fields.symbolId, oldSymbolId.toString());
+                }
+            }
+        }
+
         EntityUpdateUtils.copyPropertiesIfPresent(request, entity, previousValues,
                 AisSystemRequest.Fields.geometryType,
+                AisSystemRequest.Fields.coordinates,
                 AisSystemRequest.Fields.vtsOperationCenterId,
-                AisSystemRequest.Fields.radarStationId);
+                AisSystemRequest.Fields.radarStationId,
+                AisSystemRequest.Fields.symbolId);
+
+        if (request.getCoordinates() != null && !Objects.equals(request.getCoordinates().trim(), oldCoordinates != null ? oldCoordinates.trim() : null)) {
+            previousValues.put(AisSystemRequest.Fields.coordinates, oldCoordinates != null ? oldCoordinates : "Chưa có");
+        }
+        if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType(), oldGeometryType)) {
+            previousValues.put(AisSystemRequest.Fields.geometryType, oldGeometryType != null ? oldGeometryType.name() : "Chưa có");
+        }
 
         if (request.getCoordinates() != null) {
             GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
@@ -317,6 +363,11 @@ public class AisSystemService {
                 String fieldName = getFieldDisplayName(field);
                 String oldVal = formatDisplayValue(field, entry.getValue());
                 Object rawNew = getEntityFieldValue(saved, field);
+                if (AisSystemRequest.Fields.coordinates.equals(field)) {
+                    rawNew = request.getCoordinates();
+                } else if (AisSystemRequest.Fields.geometryType.equals(field)) {
+                    rawNew = request.getGeometryType() != null ? request.getGeometryType().name() : null;
+                }
                 String newVal = formatDisplayValue(field, rawNew != null ? String.valueOf(rawNew) : null);
                 historyRepository.save(InfrastructureHistory.builder()
                         .refId(saved.getId())
@@ -354,6 +405,7 @@ public class AisSystemService {
         if (fieldName.equals(AisSystem.Fields.conditionStatus)) return entity.getConditionStatus();
         if (fieldName.equals(AisSystem.Fields.maintenanceInfo)) return entity.getMaintenanceInfo();
         if (fieldName.equals(AisSystem.Fields.note)) return entity.getNote();
+        if (fieldName.equals(AisSystem.Fields.symbolId) || "symbolId".equals(fieldName)) return entity.getSymbolId();
         if (fieldName.equals(BaseApprovableEntity.Fields.spatialId)) return entity.getSpatialId();
         return null;
     }
@@ -700,8 +752,6 @@ public class AisSystemService {
         return list.stream()
                 .map(h -> {
                     User u = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
-                    // list-screen-ui-standard §3: chỉ Họ và tên (hoặc tên đăng nhập);
-                    // không để lộ email hay UUID ra giao diện.
                     String userName = u != null
                             ? (u.getFullName() != null && !u.getFullName().trim().isEmpty() ? u.getFullName()
                                     : (u.getUsername() != null && !u.getUsername().trim().isEmpty() ? u.getUsername() : null))
@@ -749,8 +799,6 @@ public class AisSystemService {
             }
             validateAttachment(f);
             String originalFilename = Objects.requireNonNullElse(f.getOriginalFilename(), "file_" + System.currentTimeMillis());
-            // Làm sạch tên tệp trước khi ghép vào đường dẫn, rồi chốt lại bằng kiểm
-            // tra thư mục đích để không thể ghi ra ngoài thư mục của hồ sơ.
             String safeName = originalFilename.replaceAll("[^a-zA-Z0-9._-]", "_");
             String storedFileName = UUID.randomUUID() + "_" + safeName;
             Path filePath = dir.resolve(storedFileName).normalize();
@@ -822,20 +870,11 @@ public class AisSystemService {
             "image/jpeg", "image/png", "image/gif");
 
     /**
-     * N09/BR-019 — hồ sơ đang chờ duyệt bị khóa sửa, hồ sơ đã duyệt và đã xóa
-     * cũng vậy. Chỉ "Lưu tạm" và "Bị trả về" mới được thay đổi tài liệu đính kèm.
+     * N09/BR-019 & T12 — hồ sơ đang chờ duyệt bị khóa sửa.
+     * Ủy thác cho InfrastructureApprovalService.assertEditable để cho phép tài khoản có quyền cấp Cục sửa hồ sơ Đã duyệt.
      */
     private void ensureAttachmentEditable(AisSystem entity) {
-        ApprovalStatus status = entity.getApprovalStatus();
-        boolean editable = status == null
-                || status == ApprovalStatus.DRAFT
-                || status == ApprovalStatus.REJECTED_LEVEL1
-                || status == ApprovalStatus.REJECTED_LEVEL2;
-        if (!editable) {
-            throw new IllegalStateException(
-                    "Chỉ thay đổi được tài liệu đính kèm khi hồ sơ ở trạng thái Lưu tạm hoặc Bị trả về. "
-                            + "Trạng thái hiện tại: " + status.getLabel());
-        }
+        approvalService.assertEditable(entity);
     }
 
     private void validateAttachment(MultipartFile file) {
@@ -868,7 +907,6 @@ public class AisSystemService {
         try {
             Files.deleteIfExists(Paths.get(att.getFilePath()));
         } catch (IOException ignored) {}
-
         attachmentRepository.delete(att);
 
         historyRepository.save(InfrastructureHistory.builder()
@@ -882,6 +920,20 @@ public class AisSystemService {
                 .previousValue(att.getFileName())
                 .newValue(null)
                 .build());
+    }
+
+    public InfrastructureAttachment getAttachment(UUID id, UUID attId) {
+        AisSystem entity = repository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new EntityNotFoundException("Hệ thống AIS không tồn tại"));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
+
+        InfrastructureAttachment att = attachmentRepository.findById(attId)
+                .orElseThrow(() -> new EntityNotFoundException("File đính kèm không tồn tại"));
+
+        if (!Objects.equals(att.getRefId(), id) || att.getRefType() != InfrastructureType.AIS_SYSTEM) {
+            throw new IllegalArgumentException("File đính kèm không thuộc hệ thống AIS này");
+        }
+        return att;
     }
 
     private String getFieldDisplayName(String field) {
@@ -903,6 +955,7 @@ public class AisSystemService {
         if (AisSystem.Fields.conditionStatus.equals(field)) return "Tình trạng";
         if (AisSystem.Fields.maintenanceInfo.equals(field)) return "Thông tin bảo dưỡng/sửa chữa";
         if (AisSystem.Fields.note.equals(field)) return "Ghi chú";
+        if (AisSystem.Fields.symbolId.equals(field) || "symbolId".equals(field)) return "Biểu tượng";
         if (BaseApprovableEntity.Fields.approvalStatus.equals(field)) return "Trạng thái phê duyệt";
         if (AisSystemRequest.Fields.coordinates.equals(field)) return "Tọa độ GIS";
         if (AisSystemRequest.Fields.geometryType.equals(field)) return "Loại đối tượng GIS";
@@ -912,6 +965,17 @@ public class AisSystemService {
     private String formatDisplayValue(String field, String rawValue) {
         if (rawValue == null || rawValue.isEmpty() || "null".equalsIgnoreCase(rawValue) || "Chưa có".equals(rawValue)) {
             return "Chưa có";
+        }
+        if (AisSystem.Fields.symbolId.equals(field)
+                || getFieldDisplayName(AisSystem.Fields.symbolId).equals(field)
+                || "symbolId".equals(field)) {
+            try {
+                UUID symId = UUID.fromString(rawValue);
+                List<String> names = jdbcTemplate.queryForList("SELECT name FROM map_symbols WHERE id = ?", String.class, symId);
+                return (!names.isEmpty() && names.get(0) != null) ? names.get(0) : rawValue;
+            } catch (Exception e) {
+                return rawValue;
+            }
         }
         if (BaseApprovableEntity.Fields.orgUnitId.equals(field)
                 || AisSystem.Fields.operatingOrgId.equals(field)
@@ -989,18 +1053,10 @@ public class AisSystemService {
         }
         if (AisSystemRequest.Fields.coordinates.equals(field)
                 || getFieldDisplayName(AisSystemRequest.Fields.coordinates).equals(field)) {
-            if (rawValue.trim().isEmpty() || "Chưa có".equals(rawValue)) {
+            if (rawValue == null || rawValue.trim().isEmpty() || "Chưa có".equals(rawValue) || "null".equalsIgnoreCase(rawValue)) {
                 return "Chưa có";
             }
-            if (rawValue.startsWith(GisGeometryType.POLYGON.name())) {
-                int count = rawValue.split(",").length;
-                return "Vùng bản đồ (" + count + " điểm tọa độ)";
-            }
-            if (rawValue.startsWith(GisGeometryType.LINE.name()) || rawValue.startsWith("LINESTRING")) {
-                int count = rawValue.split(",").length;
-                return "Đường bản đồ (" + count + " điểm tọa độ)";
-            }
-            return rawValue;
+            return rawValue.trim();
         }
         return rawValue;
     }
@@ -1077,7 +1133,6 @@ public class AisSystemService {
 
         String coordinates = null;
         GisGeometryType geometryType = null;
-        String symbolId = null;
         if (entity.getSpatialId() != null) {
             Optional<GisSpatialObject> spatialOpt = gisSpatialObjectService.findById(entity.getSpatialId());
             if (spatialOpt.isPresent()) {
@@ -1086,6 +1141,7 @@ public class AisSystemService {
                 geometryType = spatial.getGeometryType();
             }
         }
+        String symbolId = entity.getSymbolId() != null ? entity.getSymbolId().toString() : null;
 
         return AisSystemResponse.builder()
                 .id(entity.getId())

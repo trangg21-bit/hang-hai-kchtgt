@@ -56,7 +56,7 @@ public class GlobalExceptionHandler {
         log.debug("Validation failed: {}", fieldErrors);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error("Validation failed", fieldErrors));
+                .body(ApiResponse.error("Lỗi dữ liệu đầu vào không hợp lệ", fieldErrors));
     }
 
     /**
@@ -78,7 +78,7 @@ public class GlobalExceptionHandler {
         log.debug("Constraint violation: {}", errors);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error("Validation failed", errors));
+                .body(ApiResponse.error("Lỗi dữ liệu đầu vào không hợp lệ", errors));
     }
 
     /**
@@ -338,6 +338,6 @@ public class GlobalExceptionHandler {
         log.error("Unhandled exception", ex);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("Internal server error"));
+                .body(ApiResponse.error("Lỗi hệ thống nội bộ"));
     }
 }

@@ -72,7 +72,7 @@ Khi chưa chốt, các trường liên quan giữ nguyên trạng thái *chưa t
 | BR-294-02 | Sửa hồ sơ `APPROVED` **giữ nguyên** trạng thái `APPROVED`, bản cũ ghi vào nhật ký (T12). **CẤM** hạ về `DRAFT`. |
 | BR-294-03 | Mã trung tâm bất biến. |
 | BR-294-04 | Sửa hồ sơ bị trả về xong thì gửi lại → `PENDING_APPROVAL`. |
-| BR-294-05 | Mọi thay đổi ghi `infrastructure_history` với `changedField` / `previousValue` / `newValue`. |
+| BR-294-05 | Lịch sử thay đổi chỉ ghi nhận vào `infrastructure_history` sau khi hồ sơ đã ở trạng thái Đã duyệt (`APPROVED`), ghi chi tiết từng trường `changedField` / `previousValue` / `newValue`. |
 
 ## Acceptance Criteria
 

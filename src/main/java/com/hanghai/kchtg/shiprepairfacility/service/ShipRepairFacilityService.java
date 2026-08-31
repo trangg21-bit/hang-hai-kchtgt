@@ -263,7 +263,7 @@ public class ShipRepairFacilityService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu với ID: " + id));
 
         if (entity.getApprovalStatus() != ApprovalStatus.PROPOSED) {
-            throw new RuntimeException("Chỉ có thể phê duyệt bản ghi ở trạng thái Chờ duyệt (PROPOSED) với ID: " + id);
+            throw new RuntimeException("Chỉ có thể phê duyệt bản ghi ở trạng thái Đang đề xuất");
         }
 
         if (ApprovalStatus.REJECTED.name().equalsIgnoreCase(request.getDecision())) {
@@ -319,13 +319,13 @@ public class ShipRepairFacilityService {
 
         if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
             throw new RuntimeException(
-                    "Chỉ có thể phê duyệt bản ghi ở trạng thái Chờ phê duyệt (PENDING_APPROVAL) với ID: " + id);
+                    "Chỉ có thể phê duyệt bản ghi ở trạng thái Chờ Chi cục duyệt");
         }
 
         UUID c1Actor = entity.getApproverLevel1();
         if (c1Actor != null && c1Actor.equals(approvedBy)) {
             throw new IllegalStateException(
-                    "Người phê duyệt C2 không được trùng với người phê duyệt C1 (Nguoi phe duyet C2 khong duoc trung)");
+                    "Người phê duyệt cấp Cục không được trùng với người phê duyệt cấp Chi cục");
         }
 
         if (ApprovalStatus.REJECTED.name().equalsIgnoreCase(request.getDecision())) {

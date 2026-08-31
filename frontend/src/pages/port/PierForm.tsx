@@ -122,20 +122,18 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
       return;
     }
     form.setFieldsValue({ displayRule: 'Độ, phút, giây (DMS)' });
-    if (!isEdit) {
-      form.setFieldsValue({ coordinateSystem: 1 });
-      const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 0;
-      setCoordinateList(Array.from({ length: count }, () => ({ lat: null, lng: null })));
-    } else {
-      if (form.getFieldValue('coordinateSystem') == null) form.setFieldsValue({ coordinateSystem: 1 });
-      // Chỉnh sửa: giữ tọa độ đã nhập, tự thêm dòng trống cho đủ số lượng theo loại đối tượng (điểm → 1, đường → 2, vùng → 3)
-      const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
-      setCoordinateList((prev) => {
-        if (prev.length >= count) return prev;
-        const added = Array.from({ length: count - prev.length }, () => ({ lat: null, lng: null }));
-        return [...prev, ...added];
-      });
-    }
+    if (form.getFieldValue('coordinateSystem') == null) form.setFieldsValue({ coordinateSystem: 1 });
+    const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
+    setCoordinateList((prev) => {
+      const validPrev = prev.filter((p: any) => p.lat != null && p.lng != null && !isNaN(p.lat) && !isNaN(p.lng));
+      if (watchedGeometryType === 'POINT') {
+        return validPrev.length > 0 ? [validPrev[0]] : (prev.length > 0 ? [prev[0]] : [{ lat: null, lng: null }]);
+      }
+      const base = validPrev.length > 0 ? [...validPrev] : (prev.length > 0 ? [...prev] : []);
+      if (base.length >= count) return base;
+      const added = Array.from({ length: count - base.length }, () => ({ lat: null, lng: null }));
+      return [...base, ...added];
+    });
   }, [watchedGeometryType]);
   useEffect(() => { if (!isEdit || !id) return; (async () => { try { const d: Pier = await pierCRUD.findById(id); form.setFieldsValue({ orgUnitId: d.orgUnitId, portId: d.portId, berthId: d.berthId, navigationChannelId: d.navigationChannelId, pierCode: d.pierCode, pierName: d.pierName, length: d.length, width: d.width, operationalFunction: d.operationalFunction, operationalStatus: d.operationalStatus, province: d.province, detailedLocation: d.detailedLocation, constructionGrade: d.constructionGrade, structureType: d.structureType, currentWaterDepth: d.currentWaterDepth, designBedElevation: d.designBedElevation, publishedVesselDWT: d.publishedVesselDWT, maintenanceApprovalDate: parseMonthYear(d.maintenanceApprovalDate), safetyAssessmentDate: parseMonthYear(d.safetyAssessmentDate), lastInspectionDate: parseMonthYear(d.lastInspectionDate), operatingPierCount: d.operatingPierCount, publishedPierCount: d.publishedPierCount, investmentAgreementPierCount: d.investmentAgreementPierCount, cargoThroughput: d.cargoThroughput, receivesLargeVessel: d.receivesLargeVessel, documentNumber: d.documentNumber, documentDate: d.documentDate ? dayjs(d.documentDate) : undefined, openingAnnouncementDate: d.openingAnnouncementDate ? dayjs(d.openingAnnouncementDate) : undefined, openingDecision: d.openingDecision, investmentAgreementDoc: d.investmentAgreementDoc, waterAreaNeutralScope: d.waterAreaNeutralScope, geometryType: d.geometryType || undefined, mapSymbolId: d.mapSymbolId || d.bieuTuongId, gisLocation: d.coordinates ? { geometryType: d.geometryType, coordinates: d.coordinates } : undefined, coordinateSystem: d.geometryType ? d.coordinateSystem : undefined, displayRule: d.displayRule });
         if (d.coordinates) { const pts: Array<{ lat: number; lng: number }> = []; const mm = d.coordinates.match(/MULTIPOINT\s*\(([^)]+(?:\),[^)]+)*)\)/); if (mm) { mm[1].split('),(').forEach((pt: string) => { const parts = pt.replace(/[()]/g, '').trim().split(/\s+/); pts.push({ lng: Number(parts[0]), lat: Number(parts[1]) }); }); } else { const m = d.coordinates.match(/POINT\s*\(([-\d.]+)\s+([-\d.]+)\)/); if (m) pts.push({ lng: Number(m[1]), lat: Number(m[2]) }); } if (pts.length) setCoordinateList(pts); } try { const fr = await api.get(`/v1/piers/${id}/attachments`); const files = fr.data?.data || []; setUploadedFiles(files.map((a: any) => ({ uid: a.id ?? a.uid, name: a.fileName ?? a.name, size: a.fileSize ?? a.size ?? 0, type: a.fileType ?? '', status: 'done' as const }))); } catch {} } catch { toast.error('Không thể tải thông tin cầu cảng'); } })(); }, [isEdit, id, form]);
@@ -156,6 +154,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
     try { await form.validateFields(); } catch (e: any) {
       const errFields: Array<{ name: Array<string | number> }> = e?.errorFields ?? [];
       if (errFields.some((f) => f.name[0] === 'mapSymbolId' || f.name[0] === 'coordinateSystem' || f.name[0] === 'displayRule' || f.name[0] === 'geometryType')) setActiveTabKey('location');
+      else setActiveTabKey('general');
       return;
     }
     if (vals.geometryType) {
@@ -212,7 +211,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
       <Row gutter={16}><Col span={12}><Form.Item name="lastInspectionDate" {...labelProps('Thời điểm kiểm định gần nhất')} style={{ marginBottom: spaceFormField }}><DatePicker picker="month" format="MM/YYYY" placeholder="Chọn tháng/năm" style={selectStyle} /></Form.Item></Col><Col span={12}><Form.Item name="maintenanceApprovalDate" {...labelProps('Thời điểm phê duyệt quy trình bảo trì công trình')} style={{ marginBottom: spaceFormField }}><DatePicker picker="month" format="MM/YYYY" placeholder="Chọn tháng/năm" style={selectStyle} /></Form.Item></Col></Row>
       <Row gutter={16}><Col span={12}><Form.Item name="safetyAssessmentDate" {...labelProps('Thời điểm được chấp thuận hồ sơ báo cáo đánh giá ATCT (gần nhất)')} style={{ marginBottom: spaceFormField }}><DatePicker picker="month" format="MM/YYYY" placeholder="Chọn tháng/năm" style={selectStyle} /></Form.Item></Col><Col span={12}><Form.Item name="operatingPierCount" {...labelProps('Số lượng cầu cảng đang khai thác')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.operatingPierCount ? 'error' : undefined} help={atMax.operatingPierCount ? 'Đã đạt tối đa 5 ký tự' : undefined}><InputNumber min={0} max={99999} maxLength={5} placeholder="0" style={numberStyle} /></Form.Item></Col></Row>
       <Row gutter={16}><Col span={12}><Form.Item name="publishedPierCount" {...labelProps('Số lượng cầu cảng đã công bố')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.publishedPierCount ? 'error' : undefined} help={atMax.publishedPierCount ? 'Đã đạt tối đa 5 ký tự' : undefined}><InputNumber min={0} max={99999} maxLength={5} placeholder="0" style={numberStyle} /></Form.Item></Col><Col span={12}><Form.Item name="investmentAgreementPierCount" {...labelProps('Số lượng cầu cảng đang được thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.investmentAgreementPierCount ? 'error' : undefined} help={atMax.investmentAgreementPierCount ? 'Đã đạt tối đa 5 ký tự' : undefined}><InputNumber min={0} max={99999} maxLength={5} placeholder="0" style={numberStyle} /></Form.Item></Col></Row>
-      <Row gutter={16}><Col span={12}><Form.Item name="cargoThroughput" {...labelProps('Sản lượng hàng thông qua')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.cargoThroughput ? 'error' : undefined} help={atMax.cargoThroughput ? 'Đã đạt tối đa 20 ký tự' : undefined}><InputNumber min={0} max={999999999} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} /></Form.Item></Col><Col span={12}><Form.Item name="operationalStatus" {...labelProps('Tình trạng')} style={{ marginBottom: spaceFormField }} initialValue="NOT_YET_OPERATIONAL" rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}><Select placeholder="Chọn tình trạng" options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} /></Form.Item></Col></Row>
+      <Row gutter={16}><Col span={12}><Form.Item name="cargoThroughput" {...labelProps('Sản lượng hàng thông qua')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.cargoThroughput ? 'error' : undefined} help={atMax.cargoThroughput ? 'Đã đạt tối đa 20 ký tự' : undefined}><InputNumber min={0} max={999999999} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} /></Form.Item></Col><Col span={12}><Form.Item name="operationalStatus" {...labelProps('Tình trạng')} style={{ marginBottom: spaceFormField }} initialValue="OPERATIONAL" rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}><Select placeholder="Chọn tình trạng" options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} /></Form.Item></Col></Row>
       <Row gutter={16}><Col span={12}><Form.Item name="receivesLargeVessel" {...labelProps('Tiếp nhận tàu có trọng tải lớn hơn thông số tại quyết định công bố')} style={{ marginBottom: spaceFormField }} valuePropName="checked"><Switch /></Form.Item></Col></Row>
       </div>)},
       { key: 'announcement', label: 'Thông tin phương án, công bố & phạm vi khu nước', children: (<div style={{ paddingTop: 16 }}>

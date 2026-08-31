@@ -142,7 +142,7 @@ public class VtsAssistController {
     @Valid @RequestBody ApprovalRequest request) {
     log.info("Approving VTS Assist level 1: id={}", id);
     VtsAssistResponse response = vtsAssistApprovalService.approveC1(id, request, SecurityUtils.getCurrentUserId());
-    return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 1 thành công", response));
+    return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Chi cục thành công", response));
   }
 
   @PostMapping("/{id}/approve/c2")
@@ -152,7 +152,7 @@ public class VtsAssistController {
     @Valid @RequestBody ApprovalRequest request) {
     log.info("Approving VTS Assist level 2: id={}", id);
     VtsAssistResponse response = vtsAssistApprovalService.approveC2(id, request, SecurityUtils.getCurrentUserId());
-    return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 2 thành công", response));
+    return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", response));
   }
 
   @GetMapping("/{id}/history")

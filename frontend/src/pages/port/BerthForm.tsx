@@ -28,6 +28,7 @@ import { lineObjectService } from '../../services/lineObjectService';
 import { LineObject } from '../../types/lineObject';
 import type { Symbol } from '../../services/symbolService';
 import { useAuthStore } from '../../store/authStore';
+import { adjustCoordinateListForGeometry, GEOMETRY_POINT_COUNT } from '../../utils/gisGeometry';
 import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 
 const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
@@ -43,7 +44,7 @@ const GEOMETRY_TYPE_OPTIONS = [
 ];
 const COORD_SYS_OPTIONS = [{ value: 1, label: 'WGS-84' }, { value: 2, label: 'VN-2000' }];
 // Số lượng tọa độ mặc định tương ứng với từng loại đối tượng: điểm → 1, đường → 2, vùng → 3
-const GEOMETRY_POINT_COUNT: Record<string, number> = { POINT: 1, LINE: 2, POLYGON: 3 };
+
 
 const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
   const wkt = gisLocation?.coordinates;
@@ -149,17 +150,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
   useEffect(() => {
     if (!watchedGeometryType) return;
     form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
-    // Điểm → 1 tọa độ, đường → 2 tọa độ, vùng → 3 tọa độ (cả thêm mới lẫn chỉnh sửa; chỉnh sửa giữ nguyên tọa độ đã có, thêm dòng trống cho đủ)
-    const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
-    if (!isEdit) {
-      setCoordinateList(Array.from({ length: count }, () => ({ latitude: null, longitude: null })));
-    } else {
-      setCoordinateList((prev) => {
-        if (prev.length >= count) return prev;
-        const added = Array.from({ length: count - prev.length }, () => ({ latitude: null, longitude: null }));
-        return [...prev, ...added];
-      });
-    }
+    setCoordinateList((prev) => adjustCoordinateListForGeometry(prev, watchedGeometryType));
   }, [watchedGeometryType]);
 
   // Edit mode: load existing
@@ -211,6 +202,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
     try { await form.validateFields(); } catch (e: any) {
       const errFields: Array<{ name: Array<string | number> }> = e?.errorFields ?? [];
       if (errFields.some((f) => f.name[0] === 'mapSymbolId' || f.name[0] === 'coordinateSystem' || f.name[0] === 'displayRule' || f.name[0] === 'geometryType')) setActiveTabKey('location');
+      else setActiveTabKey('general');
       return;
     }
     // Bắt buộc khi gửi duyệt (SUBMIT/APPROVED) — không bắt buộc khi lưu nháp (DRAFT) hay cập nhật (UPDATE), theo đặc tả CSV
@@ -286,7 +278,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
       <Row gutter={16}><Col span={12}><Form.Item name="totalArea" {...labelProps('Tổng diện tích (ha)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.totalArea ? 'error' : undefined} help={atMax.totalArea ? 'Đã đạt tối đa 20 ký tự' : undefined}><InputNumber min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} /></Form.Item></Col><Col span={12}><Form.Item name="designThroughput" {...labelProps('Năng lực thông qua thiết kế')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.designThroughput ? 'error' : undefined} help={atMax.designThroughput ? 'Đã đạt tối đa 20 ký tự' : undefined}><InputNumber min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} /></Form.Item></Col></Row>
       <Row gutter={16}><Col span={12}><Form.Item name="currentThroughput" {...labelProps('Năng lực thông qua hiện trạng (tấn/năm)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.currentThroughput ? 'error' : undefined} help={atMax.currentThroughput ? 'Đã đạt tối đa 20 ký tự' : undefined}><InputNumber min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} /></Form.Item></Col><Col span={12}><Form.Item name="maxVesselSize" {...labelProps('Cỡ tàu tiếp nhận lớn nhất theo quy hoạch (DWT)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.maxVesselSize ? 'error' : undefined} help={atMax.maxVesselSize ? 'Đã đạt tối đa 20 ký tự' : undefined}><InputNumber min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} /></Form.Item></Col></Row>
       <Row gutter={16}><Col span={12}><Form.Item name="plannedThroughput" {...labelProps('Quy hoạch năng lực thông qua (tấn/năm)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.plannedThroughput ? 'error' : undefined} help={atMax.plannedThroughput ? 'Đã đạt tối đa 20 ký tự' : undefined}><InputNumber min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} /></Form.Item></Col><Col span={12}><Form.Item name="latestCargoVolume" {...labelProps('Sản lượng hàng hóa thực tế thông qua trong năm gần nhất')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.latestCargoVolume ? 'error' : undefined} help={atMax.latestCargoVolume ? 'Đã đạt tối đa 20 ký tự' : undefined}><InputNumber min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} /></Form.Item></Col></Row>
-      <Row gutter={16}><Col span={12}><Form.Item name="operationalStatus" {...labelProps('Tình trạng')} style={{ marginBottom: spaceFormField }} initialValue="NOT_YET_OPERATIONAL" rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}><Select placeholder="Chọn tình trạng" options={Object.entries(BERTH_ACTIVITY_STATUS_MAP).map(([v, { label }]) => ({ value: v, label }))} style={selectStyle} /></Form.Item></Col></Row>
+      <Row gutter={16}><Col span={12}><Form.Item name="operationalStatus" {...labelProps('Tình trạng')} style={{ marginBottom: spaceFormField }} initialValue="OPERATIONAL" rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}><Select placeholder="Chọn tình trạng" options={Object.entries(BERTH_ACTIVITY_STATUS_MAP).map(([v, { label }]) => ({ value: v, label }))} style={selectStyle} /></Form.Item></Col></Row>
     </div>) },
     // Tab 2: Thông tin công bố
     { key: 'announcement', label: 'Thông tin công bố mở, đưa vào sử dụng', children: (<div style={{ paddingTop: 16 }}>

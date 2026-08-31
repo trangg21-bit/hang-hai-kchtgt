@@ -478,7 +478,9 @@ export default function BeaconStationList() {
   // ── Drawer handlers ─────────────────────────────────────────────
   const openCreateDrawer = useCallback(() => {
     setEditingRecord(null); setIsDetailMode(false); setDetailRecord(null);
-    createForm.resetFields(); setActiveTabKey('general'); setUploadedFiles([]); setDrawerVisible(true);
+    createForm.resetFields();
+    createForm.setFieldsValue({ operationalStatus: 1 });
+    setActiveTabKey('general'); setUploadedFiles([]); setDrawerVisible(true);
     (async () => {
       try {
         const code = await beaconStationCRUD.generateCode();
@@ -1348,7 +1350,7 @@ export default function BeaconStationList() {
         ) : (
           <>
             <style>{requiredMarkStyle}</style>
-            <Form form={createForm} layout="vertical" initialValues={{}}>
+            <Form form={createForm} layout="vertical" initialValues={{ operationalStatus: 1 }}>
               <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={tabBarStyle}
                 items={[
                   {

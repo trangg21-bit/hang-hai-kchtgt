@@ -65,8 +65,6 @@ export interface VtsSystemResponse {
   updatedByName?: string;
   updatedDate?: string;
   attachments?: VtsSystemAttachment[];
-  zoneCount?: number;
-  attachmentCount?: number;
   history?: HistoryEntry[];
   spatialId?: string;
   geometryType?: 'POINT' | 'LINE' | 'POLYGON';

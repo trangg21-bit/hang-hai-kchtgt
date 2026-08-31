@@ -1,4 +1,11 @@
 package com.hanghai.kchtg.aissystem.controller;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.HttpHeaders;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 
 import com.hanghai.kchtg.aissystem.dto.AisSystemListItem;
 import com.hanghai.kchtg.aissystem.dto.AisSystemOptionResponse;
@@ -190,7 +197,7 @@ public class AisSystemController {
         String decision = ApprovalUtils.resolveDecision(request);
         String reason = ApprovalUtils.resolveReason(request);
         service.approveC1(id, decision, reason, userId);
-        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 1 thành công", null));
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Chi cục thành công", null));
     }
 
     @PreAuthorize("@auth.check(authentication, 'aissystem:approvec2')")
@@ -203,7 +210,7 @@ public class AisSystemController {
         String decision = ApprovalUtils.resolveDecision(request);
         String reason = ApprovalUtils.resolveReason(request);
         service.approveC2(id, decision, reason, userId);
-        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 2 thành công", null));
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", null));
     }
 
     @PreAuthorize("@auth.checkAny(authentication, 'aissystem:approvec1', 'aissystem:approvec2')")
@@ -257,6 +264,34 @@ public class AisSystemController {
         UUID userId = getUserId(authentication);
         service.deleteAttachment(id, attId, userId);
         return ResponseEntity.ok(ApiResponse.success("Xóa tệp đính kèm thành công", null));
+    }
+
+    
+    @PreAuthorize("@auth.check(authentication, 'aissystem:read')")
+    @GetMapping("/{id}/attachments/{attId}/download")
+    public ResponseEntity<Resource> downloadAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId) {
+        InfrastructureAttachment attachment = service.getAttachment(id, attId);
+        Path path = Paths.get(attachment.getFilePath()).toAbsolutePath().normalize();
+        if (!Files.isRegularFile(path)) {
+            return ResponseEntity.notFound().build();
+        }
+        Resource resource = new FileSystemResource(path);
+        String contentType;
+        try {
+            contentType = Files.probeContentType(path);
+        } catch (Exception ignored) {
+            contentType = null;
+        }
+        MediaType mediaType = contentType == null
+                ? MediaType.APPLICATION_OCTET_STREAM
+                : MediaType.parseMediaType(contentType);
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + (attachment.getFileName() != null ? attachment.getFileName().replace("\"", "") : "attachment") + "\"")
+                .body(resource);
     }
 
     private final UserRepository userRepository;

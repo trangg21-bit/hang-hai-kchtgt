@@ -329,7 +329,7 @@ public class RadarStationService {
 
     // Aliases for legacy controllers
     public RadarStationResponse approveL1(UUID id, UUID approverId) {
-        return approveLevel1(id, approverId, "Phê duyệt Cấp 1 trạm radar");
+        return approveLevel1(id, approverId, "Phê duyệt cấp Chi cục trạm radar");
     }
 
     public RadarStationResponse reject(UUID id, String rejectReason, UUID approverId) {

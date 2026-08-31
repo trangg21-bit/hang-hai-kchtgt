@@ -243,6 +243,8 @@ export const DRAWER_TABLE_SCROLL_Y = {
   withButton: 'calc(100vh - 370px)',
   /** Tab có khung Upload Dragger (Dragger 104px + margin 10px = 114px) */
   withDragger: 'calc(100vh - 442px)',
+  /** Tab GIS trong form tạo/sửa (Top controls cố định 194px) */
+  withGisForm: 'calc(100vh - 522px)',
   /** Tab trong Drawer Xem chi tiết (Detail mode không có nút thao tác trên đầu) */
   detailView: 'calc(100vh - 296px)',
 } as const;
@@ -512,7 +514,7 @@ textarea.ant-input {
   border-radius: 8px !important;
   padding: 10px 14px !important;
 }
-.${scope} .ant-select-selector {
+.${scope} .ant-select-single .ant-select-selector {
   border-radius: 999px !important;
   padding: 0 12px !important;
   height: 40px !important;
@@ -629,6 +631,85 @@ textarea.ant-input {
 .ant-modal .ant-modal-footer .ant-btn-primary {
   background: ${sidebarBg} !important;
   border-color: ${sidebarBg} !important;
+}
+
+/* ── Chuẩn hóa ô chọn nhiều (Select mode="multiple") hiển thị toàn bộ ── */
+/* High-specificity override for multi-select using dedicated class */
+.${scope} .chk-multi-select.ant-select-multiple .ant-select-selector,
+.chk-multi-select.ant-select-multiple .ant-select-selector,
+.${scope} .ant-select-multiple.ant-select-multiple .ant-select-selector,
+.ant-select-multiple.ant-select-multiple .ant-select-selector {
+  border-radius: 12px !important;
+  padding: 8px 34px 8px 12px !important;
+  min-height: 40px !important;
+  height: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 4px !important;
+  box-sizing: border-box !important;
+}
+
+.${scope} .ant-select-multiple .ant-select-selection-overflow,
+.ant-select-multiple .ant-select-selection-overflow {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  width: 100% !important;
+  padding: 0 !important;
+}
+
+.${scope} .ant-select-multiple .ant-select-selection-placeholder,
+.ant-select-multiple .ant-select-selection-placeholder {
+  left: 12px !important;
+  font-size: 13px !important;
+}
+
+.${scope} .ant-select-multiple .ant-select-selection-item,
+.ant-select-multiple .ant-select-selection-item {
+  margin: 2px 0 !important;
+  padding: 0 10px 0 10px !important;
+  height: 28px !important;
+  line-height: 26px !important;
+  border-radius: 999px !important;
+  background: #eef3fb !important;
+  border: 1px solid #c6d9f5 !important;
+  color: ${sidebarBg} !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  white-space: nowrap !important;
+}
+
+.${scope} .ant-select-multiple .ant-select-selection-item-content,
+.ant-select-multiple .ant-select-selection-item-content {
+  margin-right: 4px !important;
+  color: ${sidebarBg} !important;
+  font-size: 12px !important;
+}
+
+.${scope} .ant-select-multiple .ant-select-selection-item-remove,
+.ant-select-multiple .ant-select-selection-item-remove {
+  color: #7e8299 !important;
+  font-size: 11px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+.${scope} .ant-select-multiple .ant-select-selection-item-remove:hover,
+.ant-select-multiple .ant-select-selection-item-remove:hover {
+  color: #f1416c !important;
+}
+
+/* ── Menu danh sách chọn trong Dropdown (lùi sâu 16px chuẩn đồng bộ) ── */
+.ant-select-dropdown .ant-select-item {
+  padding: 8px 16px !important;
+  font-size: 13px !important;
+}
+.ant-select-dropdown .ant-select-item-option-content {
+  padding-left: 2px !important;
 }
 
 /* ── Đồng bộ thanh cuộn toàn hệ thống (Table, Dropdown, Modal, Drawer) ── */
@@ -824,22 +905,32 @@ textarea.ant-input {
 
 /* ── Drawer & Detail Table Card Standard (Khóa cứng phân trang cố định đáy, đỉnh bảng đồng đều) ── */
 .ant-drawer .ant-drawer-body {
-  overflow-x: hidden !important;
-  overflow-y: scroll !important;
-  scrollbar-gutter: stable !important;
-  scrollbar-width: thin !important;
-  scrollbar-color: #cbd5e1 transparent !important;
+  overflow: hidden !important;
+  padding: 0 24px !important;
 }
-.ant-drawer .ant-drawer-body::-webkit-scrollbar {
+.ant-drawer .ant-drawer-body::-webkit-scrollbar,
+.ant-drawer .ant-tabs-content-holder div::-webkit-scrollbar,
+.ant-drawer .ant-tabs-tabpane div::-webkit-scrollbar {
   width: 6px !important;
   display: block !important;
 }
-.ant-drawer .ant-drawer-body::-webkit-scrollbar-thumb {
+.ant-drawer .ant-drawer-body::-webkit-scrollbar-thumb,
+.ant-drawer .ant-tabs-content-holder div::-webkit-scrollbar-thumb,
+.ant-drawer .ant-tabs-tabpane div::-webkit-scrollbar-thumb {
   background-color: #cbd5e1 !important;
   border-radius: 4px !important;
 }
-.ant-drawer .ant-drawer-body::-webkit-scrollbar-track {
+.ant-drawer .ant-drawer-body::-webkit-scrollbar-track,
+.ant-drawer .ant-tabs-content-holder div::-webkit-scrollbar-track,
+.ant-drawer .ant-tabs-tabpane div::-webkit-scrollbar-track {
   background: transparent !important;
+}
+.ant-drawer .ant-drawer-body::-webkit-scrollbar-button,
+.ant-drawer .ant-tabs-content-holder div::-webkit-scrollbar-button,
+.ant-drawer .ant-tabs-tabpane div::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 .ant-drawer .chk-detail-table-card,
 .chk-detail-table-card {
@@ -1149,24 +1240,34 @@ textarea.ant-input {
 .chk-form-datepicker-popup.ant-picker-dropdown {
   width: 100% !important;
   min-width: 100% !important;
-  left: 0 !important;
-  right: 0 !important;
+  max-width: 100% !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+  z-index: 1500 !important;
+  background: #ffffff !important;
 }
 
 .chk-form-datepicker-popup .ant-picker-panel-container {
   width: 100% !important;
   min-width: 100% !important;
+  max-width: 100% !important;
   border-radius: 12px !important;
   overflow: hidden !important;
   background: #ffffff !important;
+  border: 1px solid ${borderDefault} !important;
 }
 
 .chk-form-datepicker-popup .ant-picker-panel {
   width: 100% !important;
+  min-width: 100% !important;
   display: block !important;
 }
 
-.chk-form-datepicker-popup .ant-picker-date-panel {
+.chk-form-datepicker-popup .ant-picker-date-panel,
+.chk-form-datepicker-popup .ant-picker-year-panel,
+.chk-form-datepicker-popup .ant-picker-month-panel,
+.chk-form-datepicker-popup .ant-picker-decade-panel,
+.chk-form-datepicker-popup .ant-picker-quarter-panel {
   width: 100% !important;
   display: flex !important;
   flex-direction: column !important;
@@ -1174,17 +1275,18 @@ textarea.ant-input {
 
 .chk-form-datepicker-popup .ant-picker-header {
   width: 100% !important;
-  padding: 4px 12px !important;
+  padding: 6px 14px !important;
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
   border-bottom: 1px solid ${borderDefault} !important;
-  height: 34px !important;
+  height: 36px !important;
+  box-sizing: border-box !important;
 }
 
 .chk-form-datepicker-popup .ant-picker-header button {
-  padding: 0 4px !important;
-  font-size: 11px !important;
+  padding: 0 6px !important;
+  font-size: 12px !important;
 }
 
 .chk-form-datepicker-popup .ant-picker-header-view {
@@ -1194,16 +1296,23 @@ textarea.ant-input {
 
 .chk-form-datepicker-popup .ant-picker-body {
   width: 100% !important;
-  padding: 4px 8px !important;
+  padding: 8px 12px !important;
+  box-sizing: border-box !important;
 }
 
 .chk-form-datepicker-popup .ant-picker-content {
   width: 100% !important;
   table-layout: fixed !important;
+  border-collapse: collapse !important;
 }
 
-.chk-form-datepicker-popup .ant-picker-content th {
-  width: 14.285% !important;
+.chk-form-datepicker-popup .ant-picker-content tr {
+  display: table-row !important;
+  width: 100% !important;
+}
+
+.chk-form-datepicker-popup .ant-picker-date-panel .ant-picker-content th {
+  width: 14.2857% !important;
   text-align: center !important;
   padding: 2px 0 !important;
   font-weight: 600 !important;
@@ -1212,23 +1321,69 @@ textarea.ant-input {
   height: 24px !important;
 }
 
-.chk-form-datepicker-popup .ant-picker-cell {
-  width: 14.285% !important;
+.chk-form-datepicker-popup .ant-picker-date-panel .ant-picker-cell {
+  width: 14.2857% !important;
   text-align: center !important;
-  padding: 1px 0 !important;
+  padding: 2px 0 !important;
 }
 
-.chk-form-datepicker-popup .ant-picker-cell .ant-picker-cell-inner {
+.chk-form-datepicker-popup .ant-picker-date-panel .ant-picker-cell .ant-picker-cell-inner {
   margin: 0 auto !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  width: 26px !important;
-  height: 26px !important;
-  min-width: 26px !important;
-  line-height: 26px !important;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  line-height: 28px !important;
   border-radius: ${radiusPill} !important;
   font-size: 12px !important;
+}
+
+.chk-form-datepicker-popup .ant-picker-year-panel .ant-picker-cell,
+.chk-form-datepicker-popup .ant-picker-month-panel .ant-picker-cell,
+.chk-form-datepicker-popup .ant-picker-decade-panel .ant-picker-cell {
+  width: 33.333333% !important;
+  text-align: center !important;
+  padding: 6px 4px !important;
+  box-sizing: border-box !important;
+}
+
+.chk-form-datepicker-popup .ant-picker-year-panel .ant-picker-cell .ant-picker-cell-inner,
+.chk-form-datepicker-popup .ant-picker-month-panel .ant-picker-cell .ant-picker-cell-inner,
+.chk-form-datepicker-popup .ant-picker-decade-panel .ant-picker-cell .ant-picker-cell-inner {
+  margin: 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: calc(100% - 8px) !important;
+  height: 32px !important;
+  line-height: 32px !important;
+  border-radius: ${radiusPill} !important;
+  font-size: 13px !important;
+  padding: 0 8px !important;
+  box-sizing: border-box !important;
+}
+
+.chk-form-datepicker-popup .ant-picker-quarter-panel .ant-picker-cell {
+  width: 25% !important;
+  text-align: center !important;
+  padding: 6px 4px !important;
+  box-sizing: border-box !important;
+}
+
+.chk-form-datepicker-popup .ant-picker-quarter-panel .ant-picker-cell .ant-picker-cell-inner {
+  margin: 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: calc(100% - 8px) !important;
+  height: 32px !important;
+  line-height: 32px !important;
+  border-radius: ${radiusPill} !important;
+  font-size: 13px !important;
+  padding: 0 4px !important;
+  box-sizing: border-box !important;
 }
 
 .chk-form-datepicker-popup .ant-picker-cell-selected .ant-picker-cell-inner {
@@ -1338,7 +1493,7 @@ textarea.ant-input {
   table-layout: fixed !important;
 }
 
-.chk-range-datepicker-popup .ant-picker-content th {
+.chk-range-datepicker-popup .ant-picker-date-panel .ant-picker-content th {
   width: 14.285% !important;
   text-align: center !important;
   padding: 2px 0 !important;
@@ -1348,13 +1503,13 @@ textarea.ant-input {
   height: 24px !important;
 }
 
-.chk-range-datepicker-popup .ant-picker-cell {
+.chk-range-datepicker-popup .ant-picker-date-panel .ant-picker-cell {
   width: 14.285% !important;
   text-align: center !important;
   padding: 1px 0 !important;
 }
 
-.chk-range-datepicker-popup .ant-picker-cell .ant-picker-cell-inner {
+.chk-range-datepicker-popup .ant-picker-date-panel .ant-picker-cell .ant-picker-cell-inner {
   margin: 0 auto !important;
   display: flex !important;
   align-items: center !important;
@@ -1365,6 +1520,50 @@ textarea.ant-input {
   line-height: 26px !important;
   border-radius: ${radiusPill} !important;
   font-size: 12px !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-year-panel .ant-picker-cell,
+.chk-range-datepicker-popup .ant-picker-month-panel .ant-picker-cell,
+.chk-range-datepicker-popup .ant-picker-decade-panel .ant-picker-cell {
+  width: 33.333333% !important;
+  text-align: center !important;
+  padding: 8px 4px !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-year-panel .ant-picker-cell .ant-picker-cell-inner,
+.chk-range-datepicker-popup .ant-picker-month-panel .ant-picker-cell .ant-picker-cell-inner,
+.chk-range-datepicker-popup .ant-picker-decade-panel .ant-picker-cell .ant-picker-cell-inner {
+  margin: 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: calc(100% - 12px) !important;
+  max-width: 90px !important;
+  min-width: 52px !important;
+  height: 28px !important;
+  line-height: 28px !important;
+  border-radius: ${radiusPill} !important;
+  font-size: 13px !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-quarter-panel .ant-picker-cell {
+  width: 25% !important;
+  text-align: center !important;
+  padding: 8px 4px !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-quarter-panel .ant-picker-cell .ant-picker-cell-inner {
+  margin: 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: calc(100% - 10px) !important;
+  max-width: 76px !important;
+  min-width: 44px !important;
+  height: 28px !important;
+  line-height: 28px !important;
+  border-radius: ${radiusPill} !important;
+  font-size: 13px !important;
 }
 
 .chk-range-datepicker-popup .ant-picker-cell-selected .ant-picker-cell-inner,
@@ -1472,7 +1671,7 @@ textarea.ant-input {
   table-layout: fixed !important;
 }
 
-.chk-sidebar-range-datepicker-popup .ant-picker-content th {
+.chk-sidebar-range-datepicker-popup .ant-picker-date-panel .ant-picker-content th {
   width: 14.285% !important;
   text-align: center !important;
   padding: 2px 0 !important;
@@ -1482,13 +1681,13 @@ textarea.ant-input {
   height: 24px !important;
 }
 
-.chk-sidebar-range-datepicker-popup .ant-picker-cell {
+.chk-sidebar-range-datepicker-popup .ant-picker-date-panel .ant-picker-cell {
   width: 14.285% !important;
   text-align: center !important;
   padding: 1px 0 !important;
 }
 
-.chk-sidebar-range-datepicker-popup .ant-picker-cell .ant-picker-cell-inner {
+.chk-sidebar-range-datepicker-popup .ant-picker-date-panel .ant-picker-cell .ant-picker-cell-inner {
   margin: 0 auto !important;
   display: flex !important;
   align-items: center !important;
@@ -1499,6 +1698,50 @@ textarea.ant-input {
   line-height: 26px !important;
   border-radius: ${radiusPill} !important;
   font-size: 12px !important;
+}
+
+.chk-sidebar-range-datepicker-popup .ant-picker-year-panel .ant-picker-cell,
+.chk-sidebar-range-datepicker-popup .ant-picker-month-panel .ant-picker-cell,
+.chk-sidebar-range-datepicker-popup .ant-picker-decade-panel .ant-picker-cell {
+  width: 33.333333% !important;
+  text-align: center !important;
+  padding: 8px 4px !important;
+}
+
+.chk-sidebar-range-datepicker-popup .ant-picker-year-panel .ant-picker-cell .ant-picker-cell-inner,
+.chk-sidebar-range-datepicker-popup .ant-picker-month-panel .ant-picker-cell .ant-picker-cell-inner,
+.chk-sidebar-range-datepicker-popup .ant-picker-decade-panel .ant-picker-cell .ant-picker-cell-inner {
+  margin: 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: calc(100% - 12px) !important;
+  max-width: 90px !important;
+  min-width: 52px !important;
+  height: 28px !important;
+  line-height: 28px !important;
+  border-radius: ${radiusPill} !important;
+  font-size: 13px !important;
+}
+
+.chk-sidebar-range-datepicker-popup .ant-picker-quarter-panel .ant-picker-cell {
+  width: 25% !important;
+  text-align: center !important;
+  padding: 8px 4px !important;
+}
+
+.chk-sidebar-range-datepicker-popup .ant-picker-quarter-panel .ant-picker-cell .ant-picker-cell-inner {
+  margin: 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: calc(100% - 10px) !important;
+  max-width: 76px !important;
+  min-width: 44px !important;
+  height: 28px !important;
+  line-height: 28px !important;
+  border-radius: ${radiusPill} !important;
+  font-size: 13px !important;
 }
 
 .chk-sidebar-range-datepicker-popup .ant-picker-cell-selected .ant-picker-cell-inner,
@@ -1742,6 +1985,29 @@ export const drawerTabContentStyle: React.CSSProperties = {
 
 export const drawerTabsStyle: React.CSSProperties = {
   marginBottom: spaceFormField,
+};
+
+/** Cấu hình styles chuẩn cho AntD Drawer */
+export const drawerStyles = {
+  header: { padding: '16px 24px', borderBottom: `1px solid ${borderDefault}` },
+  body: { padding: '0 24px 0 24px', overflow: 'hidden' as const },
+  footer: { padding: '12px 24px', borderTop: `1px solid ${borderDefault}` },
+};
+
+/** Khung cuộn nội dung form Tab 1 trong Drawer tạo/sửa */
+export const drawerFormScrollStyle: React.CSSProperties = {
+  maxHeight: 'calc(100vh - 210px)',
+  overflowY: 'auto',
+  overflowX: 'hidden',
+  padding: '0 24px 16px 0',
+  marginRight: -24,
+  boxSizing: 'border-box',
+};
+
+/** Khung controls trên đỉnh Tab GIS trong Drawer tạo/sửa (cao cố định 194px) */
+export const drawerGisControlBoxStyle: React.CSSProperties = {
+  height: 194,
+  boxSizing: 'border-box',
 };
 
 /** Ô read-only: nền --bs-light của Metronic */

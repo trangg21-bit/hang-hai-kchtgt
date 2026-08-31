@@ -80,4 +80,7 @@ public class AisSystem extends BaseApprovableEntity {
 
     @Column(name = "note", length = 2000)
     private String note;
+
+    @Column(name = "symbol_id")
+    private UUID symbolId;
 }

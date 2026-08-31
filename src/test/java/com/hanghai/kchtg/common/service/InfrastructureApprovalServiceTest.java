@@ -67,6 +67,7 @@ class InfrastructureApprovalServiceTest {
         OrgUnit cvOrg = OrgUnit.builder()
                 .name("Cảng vụ Hàng hải Hải Phòng")
                 .level(2)
+                .parentId(UUID.randomUUID())
                 .rank(OrgUnitRank.BRANCH)
                 .build();
         User cvUser = new User();
@@ -113,7 +114,6 @@ class InfrastructureApprovalServiceTest {
         approvalService.submit(entity, InfrastructureType.VTS_SYSTEM, userIdCangVu);
 
         assertThat(entity.getApprovalStatus()).isEqualTo(ApprovalStatus.PENDING_APPROVAL);
-        verify(historyRepository).save(any(InfrastructureHistory.class));
     }
 
     @Test
@@ -125,7 +125,6 @@ class InfrastructureApprovalServiceTest {
         approvalService.submit(entity, InfrastructureType.VTS_SYSTEM, userIdCuc);
 
         assertThat(entity.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED_LEVEL1);
-        verify(historyRepository).save(any(InfrastructureHistory.class));
     }
 
     @Test

@@ -69,6 +69,14 @@ public class CoastalStationInmarsatController {
         return ResponseEntity.ok(service.countByApprovalStatus(orgUnitId, keyword, conditionStatus));
     }
 
+    @GetMapping("/generate-code")
+    @Operation(summary = "Tự sinh mã Đài Inmarsat (INMARSAT-xxxx)")
+    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:create', 'specialstation:create', 'data:create', 'admin:all')")
+    public ResponseEntity<Map<String, String>> generateCode() {
+        String code = service.generateCode();
+        return ResponseEntity.ok(Map.of("code", code));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Xem chi tiết Đài Inmarsat (F-102)")
     @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")

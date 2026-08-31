@@ -31,6 +31,7 @@ import { organizationService } from '../../../services/organizationService';
 import { symbolService, type Symbol as GisSymbol } from '../../../services/symbolService';
 import GisLocationSelector from '../../../components/gis/GisLocationSelector';
 import toast from '../../../components/ToastNotification';
+import { focusErrorTab } from '../../../utils/formValidationHelper';
 import { useAuthStore } from '../../../store/authStore';
 import { AppDrawer } from '../../../components/shared/AppDrawer';
 import { lritStationService } from '../../../services/lritStationService';
@@ -347,7 +348,39 @@ export const LritStationFormModal: React.FC<LritStationFormModalProps> = ({
       onSuccess(result);
     } catch (err: any) {
       if (err.errorFields) {
-        toast.error('Vui lòng kiểm tra lại các trường bắt buộc');
+        focusErrorTab(
+          err,
+          {
+            general: [
+              'orgUnitId',
+              'owningOrgId',
+              'operatingOrgId',
+              'code',
+              'name',
+              'provinceId',
+              'address',
+              'detailedLocation',
+              'conditionStatus',
+            ],
+            technical: [
+              'operationalLicense',
+              'licenseExpiry',
+              'inspectorName',
+              'inspectorPhone',
+              'lastInspectionDate',
+              'nextInspectionDate',
+              'coverageArea',
+              'equipmentType',
+              'communicationFrequency',
+              'servicesProvided',
+              'description',
+              'contactPerson',
+              'contactPhone',
+            ],
+            gis: ['geometryType', 'symbol', 'coordinateSystem', 'displayRule'],
+          },
+          setActiveTab
+        );
       } else {
         toast.error(err.response?.data?.message || err.message || 'Lỗi khi lưu dữ liệu');
       }

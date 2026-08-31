@@ -1,7 +1,6 @@
-import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  Button,
   Tag,
   Modal,
   Input,
@@ -13,7 +12,6 @@ import {
   Col,
   Upload,
   Tabs,
-  Tooltip,
   Table,
   DatePicker,
 } from 'antd';
@@ -28,7 +26,6 @@ import {
   HistoryOutlined,
   SendOutlined,
   UploadOutlined,
-  FileOutlined,
   ExclamationCircleOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
@@ -61,7 +58,6 @@ import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout, { type StatusTab } from '../../components/list-view/FilterTableLayout';
 import ListPageContainer from '../../components/list-view/ListPageContainer';
 import SidebarFilterField from '../../components/list-view/SidebarFilterField';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import { OrgUnitTreeSelect, normalizeSearchText, type OrgUnitTreeOption } from '../../components/org-unit';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
@@ -81,7 +77,6 @@ import {
   statusCritical,
   statusDraft,
   actionPrimary,
-  textPrimary,
   textSecondary,
   textTertiary,
   fontSizeMd,
@@ -95,19 +90,12 @@ import {
   spaceSm,
   spaceMd,
   spaceLg,
-  spaceXl,
   spaceFormField,
-  badgeBaseStyle,
   uploadHintStyle,
   inputStyle,
   selectStyle,
-  filterInputStyle,
-  dangerButtonStyle,
-  rejectReasonStyle,
-  formFieldStyle,
   formRowGutter,
   drawerTitleStyle,
-  drawerCloseBtnStyle,
 } from '../../tokens';
 
 const { TextArea } = Input;
@@ -174,10 +162,6 @@ export default function SpecialStationList() {
   const [activeDrawerTab, setActiveDrawerTab] = useState('1');
   const [form] = Form.useForm();
   const [savingAction, setSavingAction] = useState<FormSaveAction | null>(null);
-
-  // Form Cascading values
-  const formOrgUnitId = Form.useWatch('orgUnitId', form);
-
   // History & Attachments
   const [historyList, setHistoryList] = useState<CoastalStationInmarsatHistoryResponse[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);

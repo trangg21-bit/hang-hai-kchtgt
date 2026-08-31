@@ -24,6 +24,7 @@ import { shipRepairYardCRUD, portCRUD, pierCRUD } from '../../services/portServi
 import { symbolService } from '../../services/symbolService';
 import type { Symbol as IconSymbol } from '../../services/symbolService';
 import { useAuthStore } from '../../store/authStore';
+import { adjustCoordinateListForGeometry, GEOMETRY_POINT_COUNT } from '../../utils/gisGeometry';
 
 const labelProps = (text: string) => ({
   label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
@@ -79,7 +80,7 @@ const GEOMETRY_TYPE_OPTIONS = [
 ];
 const COORD_SYS_OPTIONS = [{ value: 1, label: 'WGS-84' }, { value: 2, label: 'VN-2000' }];
 // Số lượng tọa độ mặc định tương ứng với từng loại đối tượng: điểm → 1, đường → 2, vùng → 3
-const GEOMETRY_POINT_COUNT: Record<string, number> = { POINT: 1, LINE: 2, POLYGON: 3 };
+
 
 const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
   const wkt = gisLocation?.coordinates;
@@ -245,16 +246,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   useEffect(() => {
     if (!watchedGeometryType) return;
     form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
-    const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
-    if (!isEdit) {
-      setCoordinateList(Array.from({ length: count }, () => ({ latitude: null, longitude: null })));
-    } else {
-      setCoordinateList((prev) => {
-        if (prev.length >= count) return prev;
-        const added = Array.from({ length: count - prev.length }, () => ({ latitude: null, longitude: null }));
-        return [...prev, ...added];
-      });
-    }
+    setCoordinateList((prev) => adjustCoordinateListForGeometry(prev, watchedGeometryType));
   }, [watchedGeometryType]);
 
   // Edit mode: load existing
@@ -314,7 +306,12 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   const handleSave = useCallback(async (saveAction: SaveAction) => {
     let values: any;
     try { values = await form.validateFields(); }
-    catch { return false; }
+    catch (e: any) {
+      const errFields: Array<{ name: Array<string | number> }> = e?.errorFields ?? [];
+      if (errFields.some((f) => f.name[0] === 'mapSymbolId' || f.name[0] === 'coordinateSystem' || f.name[0] === 'displayRule' || f.name[0] === 'geometryType')) setActiveTabKey('location');
+      else setActiveTabKey('general');
+      return false;
+    }
     const manualCoords = coordinateList.filter(c => c.latitude != null && c.longitude != null);
     if (values.geometryType && manualCoords.length === 0) {
       toast.error('Vui lòng nhập ít nhất 1 tọa độ GPS');
@@ -426,7 +423,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
           </Form.Item>
         </Col>
         <Col span={12}>
-          <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} required style={{ marginBottom: spaceFormField }} initialValue="NOT_YET_OPERATIONAL" rules={[{ required: true, message: 'Tình trạng không được để trống' }]}>
+          <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} required style={{ marginBottom: spaceFormField }} initialValue="OPERATIONAL" rules={[{ required: true, message: 'Tình trạng không được để trống' }]}>
             <Select placeholder="Chọn tình trạng" options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />
           </Form.Item>
         </Col>

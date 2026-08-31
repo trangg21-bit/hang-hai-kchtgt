@@ -130,8 +130,10 @@ public class VtsOperationCenterService {
             throw new IllegalArgumentException("Mã trung tâm điều hành VTS '" + request.getCode() + "' đã tồn tại");
         }
 
-        VtsSystem vtsSystem = vtsSystemRepository.findById(request.getVtsSystemId())
-                .orElseThrow(() -> new IllegalArgumentException("Hệ thống VTS không tồn tại"));
+        if (request.getVtsSystemId() != null) {
+            vtsSystemRepository.findById(request.getVtsSystemId())
+                    .orElseThrow(() -> new IllegalArgumentException("Hệ thống VTS không tồn tại"));
+        }
 
         OrgUnit orgUnit = orgUnitRepository.findById(request.getOrgUnitId())
                 .orElseThrow(() -> new IllegalArgumentException("Đơn vị quản lý không tồn tại"));
@@ -139,7 +141,7 @@ public class VtsOperationCenterService {
         VtsOperationCenter entity = VtsOperationCenter.builder()
                 .code(request.getCode().trim())
                 .name(request.getName().trim())
-                .vtsSystemId(vtsSystem.getId())
+                .vtsSystemId(request.getVtsSystemId())
                 .portId(request.getPortId())
                 .orgUnitId(orgUnit.getId())
                 .provinceId(request.getProvinceId())
@@ -173,18 +175,6 @@ public class VtsOperationCenterService {
             saved = repository.save(saved);
         }
 
-        // Chỉ ghi lịch sử khi tạo mới ở trạng thái ĐÃ DUYỆT hoặc GỬI DUYỆT (tuyệt đối không ghi khi Lưu tạm DRAFT)
-        if (saved.getApprovalStatus() != null && saved.getApprovalStatus() != ApprovalStatus.DRAFT) {
-            historyRepository.save(InfrastructureHistory.builder()
-                    .refId(saved.getId())
-                    .refType(InfrastructureType.VTS_OPERATION_CENTER)
-                    .approvalLevel(saved.getApprovalStatus() == ApprovalStatus.APPROVED ? ApprovalLevel.LEVEL_2 : ApprovalLevel.LEVEL_0)
-                    .status(saved.getApprovalStatus() == ApprovalStatus.APPROVED ? InfrastructureHistoryStatus.APPROVED : InfrastructureHistoryStatus.PROPOSED)
-                    .approvedBy(userId)
-                    .reason("Tạo mới và phê duyệt trung tâm điều hành VTS: " + saved.getName())
-                    .build());
-        }
-
         return toResponse(saved);
     }
 
@@ -207,15 +197,37 @@ public class VtsOperationCenterService {
                     "Mã trung tâm điều hành VTS '" + request.getCode() + "' đã được sử dụng");
         }
 
-        VtsSystem vtsSystem = vtsSystemRepository.findById(request.getVtsSystemId())
-                .orElseThrow(() -> new IllegalArgumentException("Hệ thống VTS không tồn tại"));
+        if (request.getVtsSystemId() != null) {
+            vtsSystemRepository.findById(request.getVtsSystemId())
+                    .orElseThrow(() -> new IllegalArgumentException("Hệ thống VTS không tồn tại"));
+        }
 
-        OrgUnit orgUnit = orgUnitRepository.findById(request.getOrgUnitId())
-                .orElseThrow(() -> new IllegalArgumentException("Đơn vị quản lý không tồn tại"));
+        if (request.getOrgUnitId() != null) {
+            orgUnitRepository.findById(request.getOrgUnitId())
+                    .orElseThrow(() -> new IllegalArgumentException("Đơn vị quản lý không tồn tại"));
+        }
+
+        String oldCoordinates = null;
+        GisGeometryType oldGeometryType = null;
+        if (entity.getSpatialId() != null) {
+            Optional<GisSpatialObject> spatialOpt = gisSpatialObjectService.findById(entity.getSpatialId());
+            if (spatialOpt.isPresent()) {
+                oldCoordinates = spatialOpt.get().getCoordinates();
+                oldGeometryType = spatialOpt.get().getGeometryType();
+            }
+        }
 
         Map<String, String> previousValues = new LinkedHashMap<>();
         EntityUpdateUtils.copyPropertiesIfPresent(request, entity, previousValues,
-                VtsOperationCenterRequest.Fields.geometryType);
+                VtsOperationCenterRequest.Fields.geometryType,
+                VtsOperationCenterRequest.Fields.coordinates);
+
+        if (request.getCoordinates() != null && !Objects.equals(request.getCoordinates().trim(), oldCoordinates != null ? oldCoordinates.trim() : null)) {
+            previousValues.put(VtsOperationCenterRequest.Fields.coordinates, oldCoordinates != null ? oldCoordinates : "Chưa có");
+        }
+        if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType(), oldGeometryType)) {
+            previousValues.put(VtsOperationCenterRequest.Fields.geometryType, oldGeometryType != null ? oldGeometryType.name() : "Chưa có");
+        }
 
         if (request.getCoordinates() != null) {
             GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
@@ -250,6 +262,11 @@ public class VtsOperationCenterService {
                 String fieldName = getFieldDisplayName(field);
                 String oldVal = formatDisplayValue(field, entry.getValue());
                 Object rawNew = getEntityFieldValue(saved, field);
+                if (VtsOperationCenterRequest.Fields.coordinates.equals(field)) {
+                    rawNew = request.getCoordinates();
+                } else if (VtsOperationCenterRequest.Fields.geometryType.equals(field)) {
+                    rawNew = request.getGeometryType() != null ? request.getGeometryType().name() : null;
+                }
                 String newVal = formatDisplayValue(field, rawNew != null ? String.valueOf(rawNew) : null);
                 historyRepository.save(InfrastructureHistory.builder()
                         .refId(saved.getId())
@@ -280,6 +297,7 @@ public class VtsOperationCenterService {
         if (fieldName.equals(VtsOperationCenter.Fields.coverage)) return entity.getCoverage();
         if (fieldName.equals(VtsOperationCenter.Fields.conditionStatus)) return entity.getConditionStatus();
         if (fieldName.equals(VtsOperationCenter.Fields.note)) return entity.getNote();
+        if (fieldName.equals(VtsOperationCenter.Fields.symbolId)) return entity.getSymbolId();
         if (fieldName.equals(BaseApprovableEntity.Fields.spatialId)) return entity.getSpatialId();
         return null;
     }
@@ -537,7 +555,7 @@ public class VtsOperationCenterService {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         Map<UUID, User> userMap = userIds.isEmpty() ? Collections.emptyMap() :
-                userRepository.findAllById(userIds).stream()
+                userRepository.findAllByIdInWithOrgUnit(userIds).stream()
                         .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
 
         return list.stream()
@@ -549,7 +567,19 @@ public class VtsOperationCenterService {
                             ? (u.getFullName() != null && !u.getFullName().trim().isEmpty() ? u.getFullName()
                                     : (u.getUsername() != null && !u.getUsername().trim().isEmpty() ? u.getUsername() : null))
                             : null;
-                    String orgUnitName = u != null && u.getOrgUnit() != null ? u.getOrgUnit().getName() : null;
+                    String orgUnitName = null;
+                    if (u != null) {
+                        if (u.getOrgUnit() != null && u.getOrgUnit().getName() != null && !u.getOrgUnit().getName().isBlank()) {
+                            orgUnitName = u.getOrgUnit().getName();
+                        } else if (u.getDepartment() != null && !u.getDepartment().isBlank()) {
+                            orgUnitName = u.getDepartment();
+                        } else {
+                            orgUnitName = "Cục Hàng hải Việt Nam";
+                        }
+                    }
+                    if (orgUnitName == null) {
+                        orgUnitName = "Cục Hàng hải Việt Nam";
+                    }
                     HistoryEntry entry = new HistoryEntry();
                     entry.setId(h.getId());
                     entry.setApprovalLevel(h.getApprovalLevel());
@@ -738,6 +768,21 @@ public class VtsOperationCenterService {
         }
     }
 
+    
+    public InfrastructureAttachment getAttachment(UUID id, UUID attId) {
+        VtsOperationCenter entity = repository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new EntityNotFoundException("Trung tâm điều hành VTS không tồn tại"));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
+
+        InfrastructureAttachment att = attachmentRepository.findById(attId)
+                .orElseThrow(() -> new EntityNotFoundException("File đính kèm không tồn tại"));
+
+        if (!Objects.equals(att.getRefId(), id) || att.getRefType() != InfrastructureType.VTS_OPERATION_CENTER) {
+            throw new IllegalArgumentException("File đính kèm không thuộc trung tâm điều hành VTS này");
+        }
+        return att;
+    }
+
     private String getFieldDisplayName(String field) {
         if (field == null) return "";
         if (VtsOperationCenter.Fields.name.equals(field)) return "Tên trung tâm điều hành VTS";
@@ -820,10 +865,10 @@ public class VtsOperationCenterService {
         if (BaseApprovableEntity.Fields.approvalStatus.equals(field)
                 || getFieldDisplayName(BaseApprovableEntity.Fields.approvalStatus).equals(field)) {
             if (ApprovalStatus.DRAFT.name().equals(rawValue)) return "Lưu tạm";
-            if (ApprovalStatus.PROPOSED.name().equals(rawValue) || ApprovalStatus.PENDING_APPROVAL.name().equals(rawValue)) return "Chờ Cảng vụ duyệt";
+            if (ApprovalStatus.PROPOSED.name().equals(rawValue) || ApprovalStatus.PENDING_APPROVAL.name().equals(rawValue)) return "Chờ Chi cục duyệt";
             if (ApprovalStatus.APPROVED_LEVEL1.name().equals(rawValue)) return "Chờ Cục duyệt";
             if (ApprovalStatus.APPROVED.name().equals(rawValue) || ApprovalStatus.APPROVED_LEVEL2.name().equals(rawValue)) return "Đã duyệt";
-            if (ApprovalStatus.REJECTED_LEVEL1.name().equals(rawValue)) return "Bị Cảng vụ trả về";
+            if (ApprovalStatus.REJECTED_LEVEL1.name().equals(rawValue)) return "Bị Chi cục trả về";
             if (ApprovalStatus.REJECTED_LEVEL2.name().equals(rawValue) || ApprovalStatus.REJECTED.name().equals(rawValue)) return "Bị Cục trả về";
             return rawValue;
         }
@@ -836,18 +881,10 @@ public class VtsOperationCenterService {
         }
         if (VtsOperationCenterRequest.Fields.coordinates.equals(field)
                 || getFieldDisplayName(VtsOperationCenterRequest.Fields.coordinates).equals(field)) {
-            if (rawValue.trim().isEmpty() || "Chưa có".equals(rawValue)) {
+            if (rawValue == null || rawValue.trim().isEmpty() || "Chưa có".equals(rawValue) || "null".equalsIgnoreCase(rawValue)) {
                 return "Chưa có";
             }
-            if (rawValue.startsWith(GisGeometryType.POLYGON.name())) {
-                int count = rawValue.split(",").length;
-                return "Vùng bản đồ (" + count + " điểm tọa độ)";
-            }
-            if (rawValue.startsWith(GisGeometryType.LINE.name()) || rawValue.startsWith("LINESTRING")) {
-                int count = rawValue.split(",").length;
-                return "Đường bản đồ (" + count + " điểm tọa độ)";
-            }
-            return rawValue;
+            return rawValue.trim();
         }
         return rawValue;
     }

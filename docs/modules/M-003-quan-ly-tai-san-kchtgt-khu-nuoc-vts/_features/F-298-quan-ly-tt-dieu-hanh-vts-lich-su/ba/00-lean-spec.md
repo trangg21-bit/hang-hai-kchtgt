@@ -23,24 +23,24 @@ phân cấp theo đơn vị gửi).
 
 ## Summary
 
-Hiển thị nhật ký toàn vòng đời hồ sơ Trung tâm điều hành VTS: tạo mới, cập nhật từng trường, gửi duyệt, duyệt/từ chối từng cấp, xóa. Dữ liệu lấy từ bảng dùng chung `infrastructure_history` với `refType = VTS_OPERATION_CENTER`.
+Hiển thị nhật ký thay đổi của hồ sơ Trung tâm điều hành VTS sau khi đã được phê duyệt bước cuối (Đã duyệt / `APPROVED`): cập nhật từng trường thông tin, tọa độ GIS, biểu tượng, tải lên / xóa tài liệu đính kèm. Dữ liệu lấy từ bảng dùng chung `infrastructure_history` với `refType = VTS_OPERATION_CENTER`.
 ## Scope
 
 | | Items |
 |---|---|
-| In scope | Dòng thời gian 2 cột; diff từng trường `<giá trị cũ> → <giá trị mới>` với tên trường tiếng Việt; khung lý do từ chối; phân trang. |
+| In scope | Dòng thời gian 2 cột; diff từng trường `<giá trị cũ> → <giá trị mới>` với tên trường tiếng Việt; phân trang. |
 | Out of scope | Khôi phục về phiên bản cũ; so sánh hai phiên bản bất kỳ; xuất nhật ký ra tệp. |
 | Assumptions | Quy trình phê duyệt 2 cấp và bảng `infrastructure_history` đã có sẵn dùng chung. Ma trận trường lấy từ đặc tả nghiệp vụ do PMO cung cấp 26/08/2026, **không** suy ra từ code. |
 ## 4. Ma trận dữ liệu
 | # | Tên trường | Trường kỹ thuật | Vai trò |
 |---|---|---|---|
 | 1 | Thời điểm | `approvedDate` | Hiển thị `HH:mm DD/MM/YYYY` |
-| 2 | Hành động | `status` | Badge: Tạo mới / Chỉnh sửa / Gửi duyệt / Phê duyệt cấp Cảng vụ / Phê duyệt cấp Cục / Trả về cấp Cảng vụ / Trả về cấp Cục / Xóa |
-| 3 | Cấp phê duyệt | `approvalLevel` | LEVEL_0 / LEVEL_1 / LEVEL_2 |
+| 2 | Hành động | `status` | Badge: Tạo mới / Chỉnh sửa / Xóa |
+| 3 | Cấp phê duyệt | `approvalLevel` | LEVEL_2 |
 | 4 | Cán bộ thực hiện | `approvedBy` | Hiển thị **họ và tên**, không hiển thị UUID |
 | 5 | Trường thay đổi | `changedField` | Tên trường **tiếng Việt** rõ nghĩa |
 | 6 | Giá trị cũ → mới | `previousValue` / `newValue` | Diff trực quan; bỏ qua khi `ov === nv` |
-| 7 | Lý do | `reason` | Khung cảnh báo riêng khi là lý do từ chối |
+| 7 | Lý do | `reason` | Ghi chú lý do thay đổi |
 
 > Ma trận 41 trường đầy đủ (cả 5 cột Danh sách / Bộ lọc / Chi tiết / Tạo mới / Sửa)
 > xem `F-293-quan-ly-tt-dieu-hanh-vts-tao-moi/ba/00-lean-spec.md`.
@@ -59,7 +59,7 @@ Khi chưa chốt, các trường liên quan giữ nguyên trạng thái *chưa t
 | BR-ID | Rule |
 |---|---|
 | BR-298-01 | Nhật ký chỉ đọc, không sửa/xóa được. |
-| BR-298-02 | Ghi vào bảng dùng chung `infrastructure_history`, `refType = VTS_OPERATION_CENTER`. |
+| BR-298-02 | Ghi vào bảng dùng chung `infrastructure_history` sau khi hồ sơ đã được phê duyệt bước cuối (`APPROVED`), `refType = VTS_OPERATION_CENTER`. Không ghi log chuyển trạng thái khi đang ở vòng duyệt. |
 | BR-298-03 | Gom nhóm các thay đổi trong cùng 1 giây của cùng 1 người; lọc bỏ trường rỗng và trường không đổi (`ov === nv`). |
 | BR-298-04 | Hiển thị **họ và tên** cán bộ, không phơi UUID ra giao diện. |
 | BR-298-05 | Tên trường trong diff phải là nhãn tiếng Việt của ma trận, không phải tên cột CSDL. |
