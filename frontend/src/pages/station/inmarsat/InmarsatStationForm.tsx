@@ -42,6 +42,7 @@ import { usePermissionStore } from '../../../store/permissionStore';
 import { FormOrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../../components/org-unit';
 import DetailTable from '../../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../../components/shared/InfrastructureAttachmentTab';
+import ApprovalStatusBadge from '../../../components/shared/ApprovalStatusBadge';
 import GisLocationSelector from '../../../components/gis/GisLocationSelector';
 import { symbolService } from '../../../services/symbolService';
 import dayjs from 'dayjs';

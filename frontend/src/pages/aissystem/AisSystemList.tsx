@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { Modal, Input, Button, Select, DatePicker, Space } from 'antd';
+import { Modal, Input, Select, DatePicker } from 'antd';
 import { aisSystemService } from '../../services/aisSystemService';
 import { vtsSystemCRUD } from '../../services/vtsSystemService';
 import { vtsOperationCenterService } from '../../services/vtsOperationCenterService';
@@ -8,12 +8,11 @@ import { organizationService } from '../../services/organizationService';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import type { AisSystemListItem, AisSystemResponse } from '../../types/aisSystem';
 import { UNIT_OF_MEASURE_MAP, UnitOfMeasure } from '../../types/aisSystem';
-import { ConditionStatus, ApprovalStatus, CONDITION_STATUS_MAP, CONDITION_STATUS_OPTIONS } from '../../types/vtsSystem';
+import { ConditionStatus, ApprovalStatus, CONDITION_STATUS_MAP } from '../../types/vtsSystem';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
-import { ScreenHeader, DataTable } from '../../components/list-view';
+import { ScreenHeader } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
-import Pagination from '../../components/list-view/Pagination';
 import AisSystemForm from './AisSystemForm';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
@@ -21,13 +20,13 @@ import CommonHistoryDrawer from '../../components/shared/CommonHistoryDrawer';
 import toast from '../../components/ToastNotification';
 import {
   actionPrimary, textSecondary, textTertiary,
-  fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeSm,
-  spaceFormField, spaceMd,
+  fontWeightBold, fontWeightMedium, fontSizeMd,
+  spaceMd,
   statusOperational, statusCritical, statusAttention,
-  selectStyle, borderDefault, statusBadgeStyle, icons,
-  inputStyle, textAreaStyle, clientSideStringSorter,
+  selectStyle, statusBadgeStyle, icons,
+  inputStyle, clientSideStringSorter,
   clientSideProvinceSorter, clientSideUserSorter, clientSideBadgeSorter,
-  getRangePickerProps, getDatePickerProps,
+  getDatePickerProps,
 } from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import dayjs from 'dayjs';
@@ -56,10 +55,7 @@ export function AisSystemList() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
-  // Status counts
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
-
-  // Filter state
   const [filterApprovalStatus, setFilterApprovalStatus] = useState<ApprovalStatus | undefined>(undefined);
   const [filterValues, setFilterValues] = useState<{
     keyword?: string;
@@ -72,24 +68,20 @@ export function AisSystemList() {
     updateDateRange?: [dayjs.Dayjs | null, dayjs.Dayjs | null];
   }>({});
 
-  // Dropdown reference data
   const [orgUnitOptions, setOrgUnitOptions] = useState<OrgUnitTreeOption[]>([]);
   const [operatingOrganizations, setOperatingOrganizations] = useState<any[]>(DEFAULT_OPERATING_ORGANIZATIONS);
   const [opCenters, setOpCenters] = useState<{ id: string; name: string; orgUnitId?: string }[]>([]);
   const [radarStations, setRadarStations] = useState<{ id: string; name: string; orgUnitId?: string }[]>([]);
 
-  // Modal / Drawer state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit' | 'detail'>('create');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<AisSystemResponse | null>(null);
 
-  // History Drawer
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Approval modals
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c1');
   const [actionTargetRecord, setActionTargetRecord] = useState<AisSystemListItem | null>(null);
@@ -97,29 +89,37 @@ export function AisSystemList() {
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
 
-  // Load dropdown lists
   const loadReferenceData = useCallback(async () => {
     try {
       const [orgRes, opRes, radarRes, operatingRes] = await Promise.allSettled([
-        organizationService.list({ pageSize: 1000 }),
+        organizationService.getAll(),
         vtsOperationCenterService.getOptions(),
         radarStationService.getOptions(),
-        vtsSystemCRUD.getOperatingOrganizationOptions(),
+        vtsSystemCRUD.getOperatingOrganizations(),
       ]);
-      if (orgRes.status === 'fulfilled' && orgRes.value && Array.isArray(orgRes.value.data)) {
-        setOrgUnitOptions(orgRes.value.data);
+
+      if (orgRes.status === 'fulfilled' && Array.isArray(orgRes.value)) {
+        setOrgUnitOptions(orgRes.value);
       }
       if (opRes.status === 'fulfilled' && Array.isArray(opRes.value)) {
-        setOpCenters(opRes.value.map((c: any) => ({ id: c.id, name: c.name, orgUnitId: c.orgUnitId })));
+        setOpCenters(opRes.value.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          orgUnitId: item.orgUnitId || item.managementUnitId || item.operatingUnitId,
+        })));
       }
       if (radarRes.status === 'fulfilled' && Array.isArray(radarRes.value)) {
-        setRadarStations(radarRes.value.map((r: any) => ({ id: r.id, name: r.stationName || r.code || r.id, orgUnitId: r.orgUnitId })));
+        setRadarStations(radarRes.value.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          orgUnitId: item.orgUnitId || item.managementUnitId || item.operatingUnitId,
+        })));
       }
-      if (operatingRes.status === 'fulfilled' && Array.isArray(operatingRes.value) && operatingRes.value.length > 0) {
+      if (operatingRes.status === 'fulfilled' && Array.isArray(operatingRes.value)) {
         setOperatingOrganizations(operatingRes.value);
       }
     } catch {
-      // ignore
+      // Ignored
     }
   }, []);
 
@@ -128,8 +128,8 @@ export function AisSystemList() {
   }, [loadReferenceData]);
 
   const operatingUnitOptions = useMemo(() => {
-    const list: Array<{ value: string; label: string }> = [];
     const seen = new Set<string>();
+    const list: { value: string; label: string }[] = [];
 
     if (Array.isArray(orgUnitOptions)) {
       orgUnitOptions.forEach((o) => {
@@ -175,7 +175,6 @@ export function AisSystemList() {
     },
   ], [filteredOpCenters, filteredRadarStations]);
 
-  // Fetch list data
   const fetchData = useCallback(async () => {
     setLoading(true);
     setIsError(false);
@@ -296,7 +295,7 @@ export function AisSystemList() {
       content: (
         <div>
           <p>Bạn có chắc chắn muốn xóa hệ thống AIS <strong>{record.name}</strong> ({record.code})?</p>
-          <p style={{ color: textSecondary, fontSize: fontSizeSm }}>Hành động này không thể hoàn tác.</p>
+          <p style={{ color: textSecondary, fontSize: '14px' }}>Hành động này không thể hoàn tác.</p>
         </div>
       ),
       okText: 'Xác nhận xóa',
@@ -398,11 +397,6 @@ export function AisSystemList() {
       dataIndex: 'vtsOperationCenterName',
       width: 220,
       ellipsis: false,
-      sorter: (a: AisSystemListItem, b: AisSystemListItem) => {
-        const aVal = a.attachedLocationName || a.vtsOperationCenterName || a.radarStationName || '';
-        const bVal = b.attachedLocationName || b.vtsOperationCenterName || b.radarStationName || '';
-        return aVal.localeCompare(bVal, 'vi');
-      },
       render: (_: any, record: AisSystemListItem) => {
         const val = record.attachedLocationName || record.vtsOperationCenterName || record.radarStationName || '—';
         return <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>{val}</div>;
@@ -421,6 +415,18 @@ export function AisSystemList() {
       },
     },
     {
+      key: 'province',
+      label: 'Địa điểm (Tỉnh/TP)',
+      dataIndex: 'provinceId',
+      width: 180,
+      ellipsis: false,
+      sorter: clientSideProvinceSorter('provinceName', 'provinceId'),
+      render: (_: any, r: AisSystemListItem) => {
+        const val = r.provinceName || getProvinceNameById(r.provinceId) || '—';
+        return <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>{val}</div>;
+      },
+    },
+    {
       key: 'unitOfMeasure',
       label: 'Đơn vị tính',
       dataIndex: 'unitOfMeasure',
@@ -429,7 +435,7 @@ export function AisSystemList() {
       ellipsis: false,
       sorter: clientSideStringSorter('unitOfMeasure'),
       render: (v: string) => {
-        const label = UNIT_OF_MEASURE_MAP[v as UnitOfMeasure] || v || '—';
+        const label = UNIT_OF_MEASURE_MAP[v as unknown as UnitOfMeasure] || v || '—';
         return <span style={{ fontWeight: fontWeightMedium }}>{label}</span>;
       },
     },
@@ -476,10 +482,134 @@ export function AisSystemList() {
       label: 'Trạng thái',
       dataIndex: 'approvalStatus',
       width: 180,
-      align: 'center' as const,
       ellipsis: false,
       sorter: clientSideBadgeSorter('approvalStatus'),
       render: (status: ApprovalStatus) => <ApprovalStatusBadge status={status} />,
+    },
+    {
+      key: 'updatedByName',
+      label: 'Cán bộ cập nhật',
+      dataIndex: 'updatedByName',
+      width: 220,
+      ellipsis: false,
+      sorter: clientSideUserSorter('updatedByName', 'createdByName', 'updatedAt'),
+      render: (_: any, record: AisSystemListItem) => {
+        const name = record.updatedByName || record.createdByName || '—';
+        const date = record.updatedAt || record.createdAt;
+        return (
+          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+            <div
+              title={name}
+              style={{
+                fontWeight: fontWeightBold,
+                color: '#0F172A',
+                fontSize: fontSizeMd,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {name}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'submittedByName',
+      label: 'Cán bộ gửi phê duyệt',
+      dataIndex: 'submittedByName',
+      width: 220,
+      ellipsis: false,
+      render: (_: any, record: AisSystemListItem) => {
+        const name = record.submittedByName || '—';
+        const date = record.submittedAt || (record as any).submittedDate;
+        return (
+          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+            <div
+              title={name}
+              style={{
+                fontWeight: fontWeightBold,
+                color: '#0F172A',
+                fontSize: fontSizeMd,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {name}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'approverLevel1Name',
+      label: 'Phê duyệt cấp Cảng vụ/Chi cục',
+      dataIndex: 'approverLevel1Name',
+      width: 240,
+      ellipsis: false,
+      render: (_: any, record: AisSystemListItem) => {
+        const name = record.approverLevel1Name || (record as any).approverLevel1 || '—';
+        const date = record.approvedDateLevel1;
+        return (
+          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+            <div
+              title={name}
+              style={{
+                fontWeight: fontWeightBold,
+                color: '#0F172A',
+                fontSize: fontSizeMd,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {name}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'approverLevel2Name',
+      label: 'Phê duyệt cấp Cục',
+      dataIndex: 'approverLevel2Name',
+      width: 220,
+      ellipsis: false,
+      render: (_: any, record: AisSystemListItem) => {
+        const name = record.approverLevel2Name || (record as any).approverLevel2 || '—';
+        const date = record.approvedDateLevel2;
+        return (
+          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+            <div
+              title={name}
+              style={{
+                fontWeight: fontWeightBold,
+                color: '#0F172A',
+                fontSize: fontSizeMd,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {name}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
     },
     {
       key: 'rejectionReason',
@@ -488,7 +618,7 @@ export function AisSystemList() {
       width: 220,
       ellipsis: false,
       render: (v: string, record: AisSystemListItem) => {
-        const reason = v || record.rejectionReasonLevel2 || record.rejectionReasonLevel1 || '—';
+        const reason = v || (record as any).rejectionReasonLevel2 || (record as any).rejectionReasonLevel1 || '—';
         return (
           <div
             title={reason}
