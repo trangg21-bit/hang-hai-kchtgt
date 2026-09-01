@@ -985,70 +985,74 @@ export function AisSystemList() {
                 />
               </SidebarFilterField>
 
-              <SidebarFilterField label="Thuộc TTDH VTS / Trạm Radar">
-                <Select
-                  placeholder="Tất cả"
-                  allowClear
-                  showSearch
-                  filterOption={(input, option) =>
-                    normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
-                  }
-                  value={filterValues.vtsOperationCenterId}
-                  onChange={(value) => setFilterValues((prev) => ({ ...prev, vtsOperationCenterId: value }))}
-                  options={combinedLocationOptions}
-                  style={{ ...selectStyle, width: '100%' }}
-                />
-              </SidebarFilterField>
+              {filterCollapsed && (
+                <>
+                  <SidebarFilterField label="Thuộc TTDH VTS / Trạm Radar">
+                    <Select
+                      placeholder="Tất cả"
+                      allowClear
+                      showSearch
+                      filterOption={(input, option) =>
+                        normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
+                      }
+                      value={filterValues.vtsOperationCenterId}
+                      onChange={(value) => setFilterValues((prev) => ({ ...prev, vtsOperationCenterId: value }))}
+                      options={combinedLocationOptions}
+                      style={{ ...selectStyle, width: '100%' }}
+                    />
+                  </SidebarFilterField>
 
-              <SidebarFilterField label="Đơn vị khai thác">
-                <Select
-                  placeholder="Tất cả đơn vị khai thác"
-                  allowClear
-                  showSearch
-                  filterOption={(input, option) =>
-                    normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
-                  }
-                  value={filterValues.operatingOrgId}
-                  onChange={(value) => setFilterValues((prev) => ({ ...prev, operatingOrgId: value }))}
-                  options={operatingUnitOptions}
-                  style={{ ...selectStyle, width: '100%' }}
-                />
-              </SidebarFilterField>
+                  <SidebarFilterField label="Đơn vị khai thác">
+                    <Select
+                      placeholder="Tất cả đơn vị khai thác"
+                      allowClear
+                      showSearch
+                      filterOption={(input, option) =>
+                        normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
+                      }
+                      value={filterValues.operatingOrgId}
+                      onChange={(value) => setFilterValues((prev) => ({ ...prev, operatingOrgId: value }))}
+                      options={operatingUnitOptions}
+                      style={{ ...selectStyle, width: '100%' }}
+                    />
+                  </SidebarFilterField>
 
-              <SidebarFilterField label="Tình trạng">
-                <Select
-                  placeholder="Tất cả tình trạng"
-                  allowClear
-                  value={filterValues.conditionStatus}
-                  onChange={(value) => setFilterValues((prev) => ({ ...prev, conditionStatus: value }))}
-                  options={CONDITION_STATUS_OPTIONS}
-                  style={{ ...selectStyle, width: '100%' }}
-                />
-              </SidebarFilterField>
+                  <SidebarFilterField label="Tình trạng">
+                    <Select
+                      placeholder="Tất cả tình trạng"
+                      allowClear
+                      value={filterValues.conditionStatus}
+                      onChange={(value) => setFilterValues((prev) => ({ ...prev, conditionStatus: value }))}
+                      options={CONDITION_STATUS_OPTIONS}
+                      style={{ ...selectStyle, width: '100%' }}
+                    />
+                  </SidebarFilterField>
 
-              <SidebarFilterField label="Khoảng ngày cập nhật">
-                <DatePicker.RangePicker
-                  {...getRangePickerProps({
-                    value: filterValues.updateDateRange,
-                    onChange: (dates: any) => setFilterValues((prev) => ({ ...prev, updateDateRange: dates })),
-                  })}
-                />
-              </SidebarFilterField>
+                  <SidebarFilterField label="Khoảng ngày cập nhật">
+                    <DatePicker.RangePicker
+                      {...getRangePickerProps({
+                        value: filterValues.updateDateRange,
+                        onChange: (dates: any) => setFilterValues((prev) => ({ ...prev, updateDateRange: dates })),
+                      })}
+                    />
+                  </SidebarFilterField>
 
-              <SidebarFilterField label="Địa điểm (Tỉnh / TP)">
-                <Select
-                  placeholder="Tất cả tỉnh thành"
-                  allowClear
-                  showSearch
-                  filterOption={(input, option) =>
-                    normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
-                  }
-                  value={filterValues.provinceId}
-                  onChange={(value) => setFilterValues((prev) => ({ ...prev, provinceId: value }))}
-                  options={VIETNAM_PROVINCE_OPTIONS}
-                  style={{ ...selectStyle, width: '100%' }}
-                />
-              </SidebarFilterField>
+                  <SidebarFilterField label="Địa điểm (Tỉnh / TP)">
+                    <Select
+                      placeholder="Tất cả tỉnh thành"
+                      allowClear
+                      showSearch
+                      filterOption={(input, option) =>
+                        normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
+                      }
+                      value={filterValues.provinceId}
+                      onChange={(value) => setFilterValues((prev) => ({ ...prev, provinceId: value }))}
+                      options={VIETNAM_PROVINCE_OPTIONS}
+                      style={{ ...selectStyle, width: '100%' }}
+                    />
+                  </SidebarFilterField>
+                </>
+              )}
             </>
           }
         >
