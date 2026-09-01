@@ -8,10 +8,10 @@ import { organizationService } from '../../services/organizationService';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import type { AisSystemListItem, AisSystemResponse } from '../../types/aisSystem';
 import { UNIT_OF_MEASURE_MAP, UnitOfMeasure } from '../../types/aisSystem';
-import { ConditionStatus, ApprovalStatus, CONDITION_STATUS_MAP } from '../../types/vtsSystem';
+import { ConditionStatus, ApprovalStatus, CONDITION_STATUS_MAP, CONDITION_STATUS_OPTIONS } from '../../types/vtsSystem';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
-import { ScreenHeader } from '../../components/list-view';
+import { ScreenHeader, DataTable, Pagination } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import AisSystemForm from './AisSystemForm';
 import ApprovalModal from '../../components/shared/ApprovalModal';
@@ -21,12 +21,12 @@ import toast from '../../components/ToastNotification';
 import {
   actionPrimary, textSecondary, textTertiary,
   fontWeightBold, fontWeightMedium, fontSizeMd,
-  spaceMd,
+  spaceMd, spaceFormField,
   statusOperational, statusCritical, statusAttention,
   selectStyle, statusBadgeStyle, icons,
-  inputStyle, clientSideStringSorter,
+  inputStyle, textAreaStyle, clientSideStringSorter,
   clientSideProvinceSorter, clientSideUserSorter, clientSideBadgeSorter,
-  getDatePickerProps,
+  getRangePickerProps, getDatePickerProps,
 } from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import dayjs from 'dayjs';
