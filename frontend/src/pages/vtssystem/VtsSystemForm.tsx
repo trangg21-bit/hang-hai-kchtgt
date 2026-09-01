@@ -320,6 +320,10 @@ export default function VtsSystemForm({
   const [otherInfraLoaded, setOtherInfraLoaded] = useState(false);
   const [isLoadingOtherInfra, setIsLoadingOtherInfra] = useState(false);
 
+  const [operationPlanList] = useState<any[]>([]);
+  const [maintenancePlanList] = useState<any[]>([]);
+  const [incidentList] = useState<any[]>([]);
+
   const isCreateMode = propMode === 'create';
   const isEditMode = propMode === 'edit';
   const isDetailMode = propMode === 'detail';
@@ -1025,6 +1029,195 @@ export default function VtsSystemForm({
                       },
                     ]}
                   />
+                </div>
+              ),
+            },
+            {
+              key: 'operationMaintenance',
+              label: 'Vận hành & bảo trì',
+              children: (
+                <div style={drawerFormScrollStyle}>
+                  {/* 1. Thông tin vận hành khai thác */}
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ marginBottom: 8 }}>
+                      <span style={{ color: actionPrimary, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
+                        Thông tin vận hành khai thác
+                      </span>
+                    </div>
+                    <DetailTable
+                      dataSource={operationPlanList}
+                      emptyText="Chưa có dữ liệu"
+                      rowKey={(r: any) => r.id || r.planCode || r.code || Math.random().toString()}
+                      columns={[
+                        {
+                          title: 'STT',
+                          width: 60,
+                          align: 'center',
+                          render: (_: any, __: any, index: number) => index + 1,
+                        },
+                        {
+                          title: 'Mã kế hoạch vận hành khai thác',
+                          dataIndex: 'planCode',
+                          key: 'planCode',
+                          width: 240,
+                          render: (v: string, r: any) => <span style={{ color: textPrimary }}>{v || r.code || '—'}</span>,
+                        },
+                        {
+                          title: 'Tên kế hoạch vận hành khai thác',
+                          dataIndex: 'planName',
+                          key: 'planName',
+                          width: 260,
+                          render: (v: string, r: any) => (
+                            <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: textPrimary }} title={v || r.name}>
+                              {v || r.name || '—'}
+                            </span>
+                          ),
+                        },
+                        {
+                          title: 'Ngày bắt đầu vận hành khai thác dự kiến',
+                          dataIndex: 'startDate',
+                          key: 'startDate',
+                          width: 260,
+                          render: (v: any, r: any) => (
+                            <span style={{ color: textPrimary }}>
+                              {v ? dayjs(v).format('DD/MM/YYYY') : (r.startTime ? dayjs(r.startTime).format('DD/MM/YYYY') : '—')}
+                            </span>
+                          ),
+                        },
+                        {
+                          title: 'Ngày kết thúc vận hành khai thác dự kiến',
+                          dataIndex: 'endDate',
+                          key: 'endDate',
+                          width: 260,
+                          render: (v: any, r: any) => (
+                            <span style={{ color: textPrimary }}>
+                              {v ? dayjs(v).format('DD/MM/YYYY') : (r.endTime ? dayjs(r.endTime).format('DD/MM/YYYY') : '—')}
+                            </span>
+                          ),
+                        },
+                      ]}
+                    />
+                  </div>
+
+                  {/* 2. Thông tin bảo trì */}
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ marginBottom: 8 }}>
+                      <span style={{ color: actionPrimary, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
+                        Thông tin bảo trì
+                      </span>
+                    </div>
+                    <DetailTable
+                      dataSource={maintenancePlanList}
+                      emptyText="Chưa có dữ liệu"
+                      rowKey={(r: any) => r.id || r.planCode || r.code || Math.random().toString()}
+                      columns={[
+                        {
+                          title: 'STT',
+                          width: 60,
+                          align: 'center',
+                          render: (_: any, __: any, index: number) => index + 1,
+                        },
+                        {
+                          title: 'Mã kế hoạch bảo trì',
+                          dataIndex: 'planCode',
+                          key: 'planCode',
+                          width: 240,
+                          render: (v: string, r: any) => <span style={{ color: textPrimary }}>{v || r.code || '—'}</span>,
+                        },
+                        {
+                          title: 'Tên kế hoạch bảo trì',
+                          dataIndex: 'planName',
+                          key: 'planName',
+                          width: 260,
+                          render: (v: string, r: any) => (
+                            <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: textPrimary }} title={v || r.name}>
+                              {v || r.name || '—'}
+                            </span>
+                          ),
+                        },
+                        {
+                          title: 'Thời gian bắt đầu bảo trì dự kiến',
+                          dataIndex: 'startTime',
+                          key: 'startTime',
+                          width: 240,
+                          render: (v: any, r: any) => (
+                            <span style={{ color: textPrimary }}>
+                              {v ? dayjs(v).format('DD/MM/YYYY') : (r.startDate ? dayjs(r.startDate).format('DD/MM/YYYY') : '—')}
+                            </span>
+                          ),
+                        },
+                        {
+                          title: 'Thời gian kết thúc bảo trì dự kiến',
+                          dataIndex: 'endTime',
+                          key: 'endTime',
+                          width: 240,
+                          render: (v: any, r: any) => (
+                            <span style={{ color: textPrimary }}>
+                              {v ? dayjs(v).format('DD/MM/YYYY') : (r.endDate ? dayjs(r.endDate).format('DD/MM/YYYY') : '—')}
+                            </span>
+                          ),
+                        },
+                      ]}
+                    />
+                  </div>
+
+                  {/* 3. Thông tin sự cố */}
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ marginBottom: 8 }}>
+                      <span style={{ color: actionPrimary, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
+                        Thông tin sự cố
+                      </span>
+                    </div>
+                    <DetailTable
+                      dataSource={incidentList}
+                      emptyText="Chưa có dữ liệu"
+                      rowKey={(r: any) => r.id || r.incidentCode || r.code || Math.random().toString()}
+                      columns={[
+                        {
+                          title: 'STT',
+                          width: 60,
+                          align: 'center',
+                          render: (_: any, __: any, index: number) => index + 1,
+                        },
+                        {
+                          title: 'Mã sự cố',
+                          dataIndex: 'incidentCode',
+                          key: 'incidentCode',
+                          width: 200,
+                          render: (v: string, r: any) => <span style={{ color: textPrimary }}>{v || r.code || '—'}</span>,
+                        },
+                        {
+                          title: 'Loại sự cố',
+                          dataIndex: 'incidentType',
+                          key: 'incidentType',
+                          width: 220,
+                          render: (v: string, r: any) => <span style={{ color: textPrimary }}>{v || r.type || '—'}</span>,
+                        },
+                        {
+                          title: 'Địa điểm xảy ra sự cố',
+                          dataIndex: 'location',
+                          key: 'location',
+                          width: 260,
+                          render: (v: string, r: any) => (
+                            <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: textPrimary }} title={v || r.address}>
+                              {v || r.address || '—'}
+                            </span>
+                          ),
+                        },
+                        {
+                          title: 'Thời gian xảy ra sự cố',
+                          dataIndex: 'incidentTime',
+                          key: 'incidentTime',
+                          width: 200,
+                          render: (v: any, r: any) => (
+                            <span style={{ color: textPrimary }}>
+                              {v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : (r.time ? dayjs(r.time).format('DD/MM/YYYY HH:mm:ss') : '—')}
+                            </span>
+                          ),
+                        },
+                      ]}
+                    />
+                  </div>
                 </div>
               ),
             },
