@@ -128,6 +128,7 @@ api.interceptors.response.use(
     const isDocumentEntityRequest = error.config?.url?.includes('/v1/documents/entity/');
     const isHistoryRequest = error.config?.url?.includes('/history');
     const isGenerateCodeRequest = error.config?.url?.includes('/generate-code');
+    const isAttachmentListRequest = error.config?.url?.includes('/attachments') && (error.config?.method?.toLowerCase() === 'get' || !error.config?.method);
 
     // API danh mục nền (dropdown form): 403 do thiếu quyền module nền là trạng thái chấp nhận được
     // (dropdown rỗng) — không spam toast lỗi mỗi lần mở màn cho user chỉ có quyền module KCHT.
@@ -162,12 +163,12 @@ api.interceptors.response.use(
           window.location.href = '/login';
         }
       } else {
-        if (!isAuthRequest && !isDocumentEntityRequest && !isHistoryRequest && !isSilentForbiddenPath && !isGenerateCodeRequest) {
+        if (!isAuthRequest && !isDocumentEntityRequest && !isHistoryRequest && !isSilentForbiddenPath && !isGenerateCodeRequest && !isAttachmentListRequest) {
           showUniqueError(friendlyMsg);
         }
       }
     } else {
-      if (!isAuthRequest && !isGenerateCodeRequest) {
+      if (!isAuthRequest && !isGenerateCodeRequest && !isAttachmentListRequest) {
         showUniqueError(friendlyMsg);
       }
     }
