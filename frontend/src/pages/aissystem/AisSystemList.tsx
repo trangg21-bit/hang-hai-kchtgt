@@ -608,7 +608,7 @@ export function AisSystemList() {
   };
 
   return (
-    <ThemeTokenProvider tokens={themeTokenChk}>
+    <ThemeTokenProvider>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', background: '#F8FAFC' }}>
         <ScreenHeader
           title="Quản lý Hệ thống trạm bờ AIS"
