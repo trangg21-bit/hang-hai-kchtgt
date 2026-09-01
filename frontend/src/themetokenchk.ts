@@ -238,13 +238,13 @@ export const scrollbarThumbHover = 'rgba(0, 0, 0, 0.25)';
  */
 export const DRAWER_TABLE_SCROLL_Y = {
   /** Tab chỉ có bảng thuần (không có nút hay upload phía trên) */
-  pureTable: 'calc(100vh - 328px)',
+  pureTable: 'calc(100vh - 260px)',
   /** Tab có nút bấm ở trên (Button 32px + margin 10px = 42px) */
-  withButton: 'calc(100vh - 370px)',
+  withButton: 'calc(100vh - 302px)',
   /** Tab có khung Upload Dragger (Dragger 104px + margin 10px = 114px) */
-  withDragger: 'calc(100vh - 442px)',
+  withDragger: 'calc(100vh - 374px)',
   /** Tab GIS trong form tạo/sửa (Top controls cố định 194px) */
-  withGisForm: 'calc(100vh - 522px)',
+  withGisForm: 'calc(100vh - 454px)',
   /** Tab trong Drawer Xem chi tiết (Detail mode không có nút thao tác trên đầu) */
   detailView: 'calc(100vh - 296px)',
 } as const;
