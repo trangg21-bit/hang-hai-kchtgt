@@ -289,46 +289,46 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
       key: 'gis',
       label: 'Vị trí (GIS)',
       children: (
-        <div style={{ paddingTop: 16 }}>
-          <div className="detail-grid" style={{ marginBottom: 16 }}>
-            <div className="detail-row">
-              <span className="detail-label">Loại đối tượng</span>
-              <span className="detail-value">
-                {record?.geometryType === 'POINT' ? 'Điểm (Point)' : record?.geometryType === 'LINE' ? 'Đường (LineString)' : record?.geometryType === 'POLYGON' ? 'Vùng (Polygon)' : (record?.geometryType || 'Điểm (Point)')}
+        <div>
+          <div className="chk-detail-grid" style={{ marginBottom: 12 }}>
+            <div className="chk-detail-row">
+              <span className="chk-detail-label">Loại đối tượng</span>
+              <span className="chk-detail-value">
+                {record?.geometryType === 'POINT' ? 'Đối tượng điểm' : record?.geometryType === 'LINE' ? 'Đối tượng đường' : record?.geometryType === 'POLYGON' ? 'Đối tượng vùng' : (record?.geometryType || 'Đối tượng điểm')}
               </span>
             </div>
-            <div className="detail-row">
-              <span className="detail-label">Biểu tượng</span>
-              <span className="detail-value">{record?.symbolId || 'Mặc định'}</span>
+            <div className="chk-detail-row">
+              <span className="chk-detail-label">Biểu tượng bản đồ</span>
+              <span className="chk-detail-value">{record?.symbolId || 'Hệ thống AIS'}</span>
             </div>
-            <div className="detail-row">
-              <span className="detail-label">Hệ quy chiếu</span>
-              <span className="detail-value">WGS 84 (EPSG:4326) / VN-2000</span>
+            <div className="chk-detail-row">
+              <span className="chk-detail-label">Hệ quy chiếu</span>
+              <span className="chk-detail-value">WGS 84 / VN-2000</span>
             </div>
-            <div className="detail-row">
-              <span className="detail-label">Quy tắc hiển thị</span>
-              <span className="detail-value">Độ, phút, giây (DMS)</span>
+            <div className="chk-detail-row">
+              <span className="chk-detail-label">Quy tắc hiển thị</span>
+              <span className="chk-detail-value">Độ, phút, giây (DMS)</span>
             </div>
           </div>
 
-          <div>
-            <div style={{ fontSize: 13, fontWeight: fontWeightBold, color: colors.sidebarBg, marginBottom: 8 }}>
-              Tọa độ các điểm đỉnh:
-            </div>
-            <DetailTable
-              scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
-              dataSource={parsedCoords.map((c, i) => ({ key: i, index: i + 1, ...c }))}
-              rowKey="index"
-              emptyText="Chưa có dữ liệu tọa độ"
-              columns={[
-                { title: 'STT', dataIndex: 'index', width: 60, align: 'center' },
-                { title: 'Kinh độ (Độ thập phân)', dataIndex: 'longitude', render: (val) => (val != null ? val.toFixed(6) : '—') },
-                { title: 'Vĩ độ (Độ thập phân)', dataIndex: 'latitude', render: (val) => (val != null ? val.toFixed(6) : '—') },
-                { title: 'Kinh độ (DMS)', dataIndex: 'longitude', render: (val) => ddToDms(val) },
-                { title: 'Vĩ độ (DMS)', dataIndex: 'latitude', render: (val) => ddToDms(val) },
-              ]}
-            />
+          <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+            <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: 13, lineHeight: '32px' }}>
+              Tọa độ GPS
+            </span>
           </div>
+          <DetailTable
+            scrollY="calc(100vh - 422px)"
+            dataSource={parsedCoords.map((c, i) => ({ key: i, index: i + 1, ...c }))}
+            rowKey="index"
+            emptyText="Chưa có dữ liệu tọa độ"
+            columns={[
+              { title: 'STT', dataIndex: 'index', width: 60, align: 'center' },
+              { title: 'Kinh độ (Độ thập phân)', dataIndex: 'longitude', render: (val) => (val != null ? val.toFixed(6) : '—') },
+              { title: 'Vĩ độ (Độ thập phân)', dataIndex: 'latitude', render: (val) => (val != null ? val.toFixed(6) : '—') },
+              { title: 'Kinh độ (DMS)', dataIndex: 'longitude', render: (val) => ddToDms(val) },
+              { title: 'Vĩ độ (DMS)', dataIndex: 'latitude', render: (val) => ddToDms(val) },
+            ]}
+          />
         </div>
       ),
     },
