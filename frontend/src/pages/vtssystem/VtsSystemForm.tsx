@@ -1014,7 +1014,7 @@ export default function VtsSystemForm({
               label: 'Danh sách KCHT khác thuộc VTS',
               children: (
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, height: 38, marginBottom: 12 }}>
                     <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, whiteSpace: 'nowrap' }}>
                       Loại đối tượng
                     </span>
@@ -1032,11 +1032,11 @@ export default function VtsSystemForm({
                         { value: 'RADAR_STATION', label: 'Trạm Radar VTS' },
                         { value: 'AIS_SYSTEM', label: 'Trạm AIS / Hệ thống AIS' },
                       ]}
-                      style={{ ...selectStyle, width: 280 }}
+                      style={{ ...selectStyle, width: 280, height: 38 }}
                     />
                   </div>
                   <DetailTable
-                    scrollY="calc(100vh - 338px)"
+                    scrollY="calc(100vh - 346px)"
                     dataSource={filteredOtherInfra}
                     emptyText={isLoadingOtherInfra ? 'Đang tải dữ liệu KCHT khác...' : 'Chưa có kết cấu hạ tầng khác thuộc hệ thống VTS'}
                     rowKey={(r: any) => r.id || `${r.type}-${r.name}`}
@@ -1082,7 +1082,7 @@ export default function VtsSystemForm({
               children: (
                 <Tabs
                   defaultActiveKey="operation"
-                  tabBarStyle={{ ...drawerTabBarStyle, marginTop: 0, marginBottom: 8 }}
+                  tabBarStyle={{ ...drawerTabBarStyle, marginTop: 0, marginBottom: 12 }}
                   animated={false}
                   items={[
                     {
@@ -1090,7 +1090,7 @@ export default function VtsSystemForm({
                       label: 'Thông tin vận hành khai thác',
                       children: (
                         <DetailTable
-                          scrollY="calc(100vh - 342px)"
+                          scrollY="calc(100vh - 346px)"
                           dataSource={operationPlanList}
                           emptyText="Chưa có dữ liệu"
                           rowKey={(r: any) => r.id || r.planCode || r.code || Math.random().toString()}
@@ -1150,7 +1150,7 @@ export default function VtsSystemForm({
                       label: 'Thông tin bảo trì',
                       children: (
                         <DetailTable
-                          scrollY="calc(100vh - 342px)"
+                          scrollY="calc(100vh - 346px)"
                           dataSource={maintenancePlanList}
                           emptyText="Chưa có dữ liệu"
                           rowKey={(r: any) => r.id || r.planCode || r.code || Math.random().toString()}
@@ -1210,7 +1210,7 @@ export default function VtsSystemForm({
                       label: 'Thông tin sự cố',
                       children: (
                         <DetailTable
-                          scrollY="calc(100vh - 342px)"
+                          scrollY="calc(100vh - 346px)"
                           dataSource={incidentList}
                           emptyText="Chưa có dữ liệu"
                           rowKey={(r: any) => r.id || r.incidentCode || r.code || Math.random().toString()}
