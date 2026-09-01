@@ -18,7 +18,6 @@ import {
   textTertiary,
   borderDefault,
   radiusSm,
-  radiusPill,
   spaceXs,
   spaceSm,
   spaceMd,

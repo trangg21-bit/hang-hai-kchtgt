@@ -389,6 +389,13 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
         }
       } else if (resultId) {
         await inmarsatStationService.update(resultId, payload);
+        if (pendingFiles.length > 0) {
+          try {
+            await Promise.all(pendingFiles.map((f) => inmarsatStationService.uploadAttachment(resultId!, f)));
+          } catch {
+            toast.error('Lỗi khi tải tệp đính kèm');
+          }
+        }
       }
 
       if (resultId) {
@@ -468,9 +475,23 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
       toast.error('Không có quyền xóa tệp đính kèm');
       return;
     }
-    setPendingFiles((prev) => prev.filter((f) => (f as any)._tempId !== attId && f.name !== attId));
-    setAttachments((prev) => prev.filter((a) => a.id !== attId));
-    toast.success('Đã xóa tệp đính kèm');
+    const isTemp = String(attId).startsWith('temp_') || String(attId).startsWith('temp-');
+    if (isTemp) {
+      setPendingFiles((prev) => prev.filter((f) => (f as any)._tempId !== attId && f.name !== attId));
+      setAttachments((prev) => prev.filter((a) => a.id !== attId));
+      toast.success('Đã xóa tệp đính kèm');
+      return;
+    }
+    const targetId = record?.id || editId;
+    if (targetId) {
+      try {
+        await inmarsatStationService.deleteAttachment(targetId, attId);
+        setAttachments((prev) => prev.filter((a) => a.id !== attId));
+        toast.success('Đã xóa tệp đính kèm');
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || 'Không thể xóa tệp đính kèm');
+      }
+    }
   };
 
   const handleDownloadAttachment = async (attId: string, fileName?: string) => {
@@ -642,14 +663,14 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                             <div className="chk-detail-row">
                               <span className="chk-detail-label">Loại đối tượng</span>
                               <span className="chk-detail-value">
-                                {record?.geometryType === 'LINE' || (record as any)?.objectType === 'LINE' ? 'Đối tượng đường' : record?.geometryType === 'POLYGON' || (record as any)?.objectType === 'POLYGON' ? 'Đối tượng vùng' : 'Đối tượng điểm'}
+                                {record?.objectType === 'LINE' ? 'Đối tượng đường' : record?.objectType === 'POLYGON' ? 'Đối tượng vùng' : 'Đối tượng điểm'}
                               </span>
                             </div>
                             <div className="chk-detail-row">
                               <span className="chk-detail-label">Biểu tượng bản đồ</span>
                               <span className="chk-detail-value">
                                 {(() => {
-                                  const symId = record?.symbolId || (record as any)?.symbol;
+                                  const symId = record?.symbol;
                                   const sym = symbols.find((s) => s.id === symId || s.code === symId || (symId && String(s.id) === String(symId)));
                                   if (sym) {
                                     const imgSrc = sym.image
@@ -676,7 +697,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                                   return (
                                     <Space size={8} align="center" style={{ display: 'inline-flex', alignItems: 'center' }}>
                                       <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', backgroundColor: actionPrimary }} />
-                                      <span>{(record as any)?.symbolName || (record?.symbolId ? `Biểu tượng (${record.symbolId})` : 'Đài thông tin vệ tinh Inmarsat')}</span>
+                                      <span>{record?.symbol ? `Biểu tượng (${record.symbol})` : 'Đài thông tin vệ tinh Inmarsat'}</span>
                                     </Space>
                                   );
                                 })()}

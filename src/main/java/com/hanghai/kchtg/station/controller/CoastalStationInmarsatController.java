@@ -155,6 +155,76 @@ public class CoastalStationInmarsatController {
         return ResponseEntity.ok(history);
     }
 
+    // ── Attachment endpoints (InfrastructureAttachment, ref_type INMARSAT_STATION) ──
+
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:create', 'coastalstationinmarsat:update', 'specialstation:create', 'specialstation:update', 'data:create', 'data:update', 'admin:all')")
+    @PostMapping(value = "/{id}/attachments", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Tải lên tài liệu đính kèm")
+    public ResponseEntity<com.hanghai.kchtg.common.dto.ApiResponse<List<CoastalStationInmarsatAttachmentResponse>>> uploadAttachments(
+            @PathVariable UUID id,
+            @RequestParam("files") List<org.springframework.web.multipart.MultipartFile> files,
+            org.springframework.security.core.Authentication authentication) {
+        UUID userId = getUserId(authentication);
+        List<CoastalStationInmarsatAttachmentResponse> uploaded = service.uploadAttachments(id, files, userId);
+        return ResponseEntity.ok(com.hanghai.kchtg.common.dto.ApiResponse.success("Tải lên tệp đính kèm thành công", uploaded));
+    }
+
+    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
+    @GetMapping("/{id}/attachments")
+    @Operation(summary = "Lấy danh sách tài liệu đính kèm")
+    public ResponseEntity<com.hanghai.kchtg.common.dto.ApiResponse<List<CoastalStationInmarsatAttachmentResponse>>> listAttachments(
+            @PathVariable UUID id) {
+        List<CoastalStationInmarsatAttachmentResponse> list = service.listAttachments(id);
+        return ResponseEntity.ok(com.hanghai.kchtg.common.dto.ApiResponse.success("Lấy danh sách tệp đính kèm thành công", list));
+    }
+
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:update', 'specialstation:update', 'data:update', 'admin:all')")
+    @DeleteMapping("/{id}/attachments/{attId}")
+    @Operation(summary = "Xóa tài liệu đính kèm")
+    public ResponseEntity<com.hanghai.kchtg.common.dto.ApiResponse<Void>> deleteAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId,
+            org.springframework.security.core.Authentication authentication) {
+        UUID userId = getUserId(authentication);
+        service.deleteAttachment(id, attId, userId);
+        return ResponseEntity.ok(com.hanghai.kchtg.common.dto.ApiResponse.success("Xóa tệp đính kèm thành công", null));
+    }
+
+    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
+    @GetMapping("/{id}/attachments/{attId}/download")
+    @Operation(summary = "Tải xuống tài liệu đính kèm")
+    public ResponseEntity<org.springframework.core.io.Resource> downloadAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId) {
+        com.hanghai.kchtg.common.entity.InfrastructureAttachment attachment = service.getAttachment(id, attId);
+        java.nio.file.Path path = java.nio.file.Paths.get(attachment.getFilePath()).toAbsolutePath().normalize();
+        if (!java.nio.file.Files.isRegularFile(path)) {
+            return ResponseEntity.notFound().build();
+        }
+        org.springframework.core.io.Resource resource = new org.springframework.core.io.FileSystemResource(path);
+        String contentType;
+        try {
+            contentType = java.nio.file.Files.probeContentType(path);
+        } catch (Exception ignored) {
+            contentType = null;
+        }
+        org.springframework.http.MediaType mediaType = contentType == null
+                ? org.springframework.http.MediaType.APPLICATION_OCTET_STREAM
+                : org.springframework.http.MediaType.parseMediaType(contentType);
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + (attachment.getFileName() != null ? attachment.getFileName().replace("\"", "") : "attachment") + "\"")
+                .body(resource);
+    }
+
+    private UUID getUserId(org.springframework.security.core.Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User u) {
+            return u.getId();
+        }
+        return com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId();
+    }
+
     // Dropdown dùng liên module nên chỉ yêu cầu đã đăng nhập; phạm vi dữ liệu do
     // data scope trong truy vấn đảm nhiệm (giống các module KCHT khác).
     @PreAuthorize("isAuthenticated()")

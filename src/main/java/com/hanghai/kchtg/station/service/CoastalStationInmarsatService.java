@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.station.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
@@ -20,6 +21,7 @@ import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -47,6 +49,10 @@ public class CoastalStationInmarsatService {
     private final OrgUnitScopeService orgUnitScopeService;
     private final OrgUnitCacheService orgUnitCacheService;
     private final UserRepository userRepository;
+    private final InfrastructureAttachmentRepository attachmentRepository;
+
+    @Value("${app.upload.attachment-path:uploads/inmarsat-attachments}")
+    private String attachmentPath;
 
     private Scope resolveEffectiveScope(UUID selectedOrgUnitId) {
         Scope userScope = orgUnitScopeService.currentUserScope();
@@ -547,7 +553,7 @@ public class CoastalStationInmarsatService {
                 entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
             }
             case APPROVED_LEVEL2, APPROVED -> {
-                entity.setStatus(StationStatus.OPERATIONAL);
+                entity.setStatus(StationStatus.APPROVED_L2);
                 entity.setApprovalLevel(ApprovalLevel.LEVEL_2);
             }
             case REJECTED, REJECTED_LEVEL1, REJECTED_LEVEL2 -> {
@@ -627,7 +633,6 @@ public class CoastalStationInmarsatService {
                     r.setReason(h.getReason());
                     r.setApprovalLevel(h.getApprovalLevel());
                     r.setChangedBy(h.getChangedBy());
-                    r.setChangedByName(h.getChangedByName());
                     r.setChangedAt(h.getChangedAt());
                     return r;
                 })
@@ -713,6 +718,86 @@ public class CoastalStationInmarsatService {
         return userRepository.findById(userId)
                 .map(User::getFullName)
                 .orElse(null);
+    }
+
+    public List<CoastalStationInmarsatAttachmentResponse> uploadAttachments(UUID id, List<org.springframework.web.multipart.MultipartFile> files, UUID userId) {
+        CoastalStationInmarsat entity = getStationById(id);
+        validateAllowedOrgUnit(entity.getOrgUnitId());
+
+        long existingCount = attachmentRepository.findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.INMARSAT_STATION).size();
+        if (existingCount + files.size() > 10) {
+            throw new IllegalArgumentException("Tối đa 10 file đính kèm theo quy định");
+        }
+
+        java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath != null ? attachmentPath : "uploads/inmarsat-attachments").toAbsolutePath().normalize();
+        List<com.hanghai.kchtg.common.entity.InfrastructureAttachment> savedAttachments = new ArrayList<>();
+        for (org.springframework.web.multipart.MultipartFile file : files) {
+            String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
+            String storageFileName = System.currentTimeMillis() + "_" + originalFilename;
+
+            try {
+                java.nio.file.Path dir = basePath.resolve(InfrastructureType.INMARSAT_STATION.name()).resolve(id.toString());
+                java.nio.file.Files.createDirectories(dir);
+                java.nio.file.Path filePath = dir.resolve(storageFileName);
+                file.transferTo(filePath.toFile());
+            } catch (Exception e) {
+                log.warn("Không thể lưu file {} cho đài inmarsat {}: {}", originalFilename, id, e.getMessage());
+                throw new RuntimeException("Không thể lưu file: " + originalFilename);
+            }
+
+            com.hanghai.kchtg.common.entity.InfrastructureAttachment attachment = com.hanghai.kchtg.common.entity.InfrastructureAttachment.builder()
+                    .refId(id)
+                    .refType(InfrastructureType.INMARSAT_STATION)
+                    .fileName(originalFilename)
+                    .filePath(basePath.resolve(InfrastructureType.INMARSAT_STATION.name()).resolve(id.toString()).resolve(storageFileName).toString())
+                    .fileSize(file.getSize())
+                    .fileType(com.hanghai.kchtg.common.enums.AttachmentFileType.fromValue(file.getContentType()))
+                    .uploadedBy(userId)
+                    .build();
+            savedAttachments.add(attachmentRepository.save(attachment));
+        }
+        return savedAttachments.stream().map(this::toAttachmentResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<CoastalStationInmarsatAttachmentResponse> listAttachments(UUID id) {
+        return attachmentRepository.findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.INMARSAT_STATION)
+                .stream().map(this::toAttachmentResponse).toList();
+    }
+
+    public void deleteAttachment(UUID id, UUID attachmentId, UUID userId) {
+        CoastalStationInmarsat entity = getStationById(id);
+        validateAllowedOrgUnit(entity.getOrgUnitId());
+
+        com.hanghai.kchtg.common.entity.InfrastructureAttachment attachment = attachmentRepository.findByIdAndRefIdAndRefType(attachmentId, id, InfrastructureType.INMARSAT_STATION)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy file đính kèm với ID: " + attachmentId));
+        try {
+            java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
+        } catch (Exception e) {
+            log.warn("Không thể xóa file vật lý {}: {}", attachment.getFilePath(), e.getMessage());
+        }
+        attachmentRepository.delete(attachment);
+    }
+
+    public com.hanghai.kchtg.common.entity.InfrastructureAttachment getAttachment(UUID id, UUID attachmentId) {
+        return attachmentRepository.findByIdAndRefIdAndRefType(attachmentId, id, InfrastructureType.INMARSAT_STATION)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy file đính kèm với ID: " + attachmentId));
+    }
+
+    private CoastalStationInmarsatAttachmentResponse toAttachmentResponse(com.hanghai.kchtg.common.entity.InfrastructureAttachment a) {
+        String uploadedByName = a.getUploadedBy() != null
+                ? userRepository.findById(a.getUploadedBy()).map(User::getFullName).orElse(a.getUploadedBy().toString())
+                : "Cán bộ quản lý";
+        return CoastalStationInmarsatAttachmentResponse.builder()
+                .id(a.getId())
+                .fileName(a.getFileName())
+                .filePath(a.getFilePath())
+                .fileSize(a.getFileSize())
+                .documentType(a.getFileType() != null ? a.getFileType().getCode() : "OTHER")
+                .uploadedBy(a.getUploadedBy())
+                .uploadedByName(uploadedByName)
+                .uploadedDate(a.getUploadedDate())
+                .build();
     }
 
     private void validateCoordinates(BigDecimal longitude, BigDecimal latitude) {
