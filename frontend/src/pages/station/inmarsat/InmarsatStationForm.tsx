@@ -252,7 +252,10 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
           setRecord(res);
           setAttachments(atts || []);
           let pts: { latitude: number | null; longitude: number | null }[] = [];
-          if (res.latitude != null && res.longitude != null) {
+          if (res.coordinates) {
+            pts = parseWktToCoordinates(res.coordinates);
+          }
+          if (pts.length === 0 && res.latitude != null && res.longitude != null) {
             pts = [{ latitude: Number(res.latitude), longitude: Number(res.longitude) }];
           }
           setCoordinateList(adjustCoordinateListForGeometry(pts, res.objectType || 'POINT'));
@@ -377,6 +380,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
         displayRule: values.displayRule,
         latitude: firstCoord?.latitude != null ? firstCoord.latitude : undefined,
         longitude: firstCoord?.longitude != null ? firstCoord.longitude : undefined,
+        coordinates: serializeCoordinatesToWkt(coordinateList, values.geometryType || 'POINT'),
       };
 
       let resultId = editId || record?.id;

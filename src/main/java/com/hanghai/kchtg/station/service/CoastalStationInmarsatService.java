@@ -17,6 +17,8 @@ import com.hanghai.kchtg.station.entity.CoastalStationInmarsat;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.station.entity.StationHistoryActionType;
 import com.hanghai.kchtg.station.entity.StationStatus;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.station.repository.CoastalStationInmarsatRepository;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -53,6 +55,7 @@ public class CoastalStationInmarsatService {
     private final UserRepository userRepository;
     private final InfrastructureAttachmentRepository attachmentRepository;
     private final OperatingOrganizationRepository operatingOrganizationRepository;
+    private final GisSpatialObjectService gisSpatialObjectService;
 
     @Value("${app.upload.attachment-path:uploads/inmarsat-attachments}")
     private String attachmentPath;
@@ -233,10 +236,22 @@ public class CoastalStationInmarsatService {
         entity.setLatitude(request.getLatitude());
         entity.setLongitude(request.getLongitude());
 
-        // Mặc định tạo mới là DRAFT (Lưu tạm) - chưa ghi lịch sử biến động cho hồ sơ nháp
-        entity.setApprovalStatus(ApprovalStatus.DRAFT);
+        CoastalStationInmarsat saved = repository.save(entity);
 
-        return repository.save(entity);
+        if (request.getCoordinates() != null && !request.getCoordinates().isBlank()) {
+            UUID spatialId = gisSpatialObjectService.syncSpatialObject(
+                    null,
+                    "Đài Inmarsat " + saved.getName(),
+                    "INMARSAT_" + saved.getId(),
+                    "LINE".equalsIgnoreCase(request.getObjectType()) ? GisGeometryType.LINE : ("POLYGON".equalsIgnoreCase(request.getObjectType()) ? GisGeometryType.POLYGON : GisGeometryType.POINT),
+                    request.getCoordinates(),
+                    saved.getId(),
+                    InfrastructureType.INMARSAT_STATION);
+            saved.setSpatialId(spatialId);
+            saved = repository.save(saved);
+        }
+
+        return saved;
     }
 
     public CoastalStationInmarsat updateStation(UUID id, CoastalStationInmarsatUpdateRequest request) {
@@ -324,11 +339,22 @@ public class CoastalStationInmarsatService {
                     || (request.getLatitude() == null && entity.getLatitude() != null);
             boolean lngChanged = (request.getLongitude() != null && (entity.getLongitude() == null || request.getLongitude().compareTo(entity.getLongitude()) != 0))
                     || (request.getLongitude() == null && entity.getLongitude() != null);
-            if (latChanged || lngChanged) {
-                String oldCoord = (entity.getLatitude() != null && entity.getLongitude() != null)
+
+            String oldCoord = gisSpatialObjectService != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
+            if (oldCoord == null || oldCoord.isBlank()) {
+                oldCoord = (entity.getLatitude() != null && entity.getLongitude() != null)
                         ? entity.getLatitude() + ", " + entity.getLongitude()
                         : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
-                oldValues.put("Tọa độ GPS", oldCoord);
+            }
+            String newCoord = request.getCoordinates();
+            if (newCoord == null || newCoord.isBlank()) {
+                newCoord = (request.getLatitude() != null && request.getLongitude() != null)
+                        ? request.getLatitude() + ", " + request.getLongitude()
+                        : (request.getLatitude() != null ? "Vĩ độ: " + request.getLatitude() : (request.getLongitude() != null ? "Kinh độ: " + request.getLongitude() : null));
+            }
+            boolean coordsChanged = (newCoord != null && !Objects.equals(newCoord, oldCoord)) || latChanged || lngChanged;
+            if (coordsChanged) {
+                oldValues.put("Tọa độ", oldCoord != null ? oldCoord : "—");
             }
         }
 
@@ -377,23 +403,28 @@ public class CoastalStationInmarsatService {
         if (request.getLatitude() != null) entity.setLatitude(request.getLatitude());
         if (request.getLongitude() != null) entity.setLongitude(request.getLongitude());
 
+        if (request.getCoordinates() != null && !request.getCoordinates().isBlank()) {
+            UUID spatialId = gisSpatialObjectService.syncSpatialObject(
+                    entity.getSpatialId(),
+                    "Đài Inmarsat " + entity.getName(),
+                    "INMARSAT_" + entity.getId(),
+                    "LINE".equalsIgnoreCase(request.getObjectType()) ? GisGeometryType.LINE : ("POLYGON".equalsIgnoreCase(request.getObjectType()) ? GisGeometryType.POLYGON : GisGeometryType.POINT),
+                    request.getCoordinates(),
+                    entity.getId(),
+                    InfrastructureType.INMARSAT_STATION);
+            entity.setSpatialId(spatialId);
+        }
+
         CoastalStationInmarsat saved = repository.save(entity);
         if (wasApproved && !oldValues.isEmpty()) {
+            final CoastalStationInmarsat finalSaved = saved;
             UUID currentUserId = SecurityUtils.getCurrentUserId();
-            for (Map.Entry<String, String> entry : oldValues.entrySet()) {
-                String fieldName = entry.getKey();
-                String oldVal = entry.getValue();
-                String newVal = getNewValueDisplay(fieldName, saved);
-                historyService.recordHistory(
-                        InfrastructureType.INMARSAT_STATION,
-                        saved.getId(),
-                        StationHistoryActionType.UPDATE,
-                        fieldName,
-                        oldVal,
-                        newVal,
-                        "Cập nhật " + fieldName,
-                        currentUserId);
-            }
+            historyService.recordDeltaChanges(
+                    InfrastructureType.INMARSAT_STATION,
+                    finalSaved.getId(),
+                    oldValues,
+                    field -> getNewValueDisplay(field, finalSaved),
+                    currentUserId);
         }
         return saved;
     }
@@ -421,9 +452,13 @@ public class CoastalStationInmarsatService {
             case "Biểu tượng" -> entity.getSymbol() != null ? entity.getSymbol() : "—";
             case "Hệ quy chiếu" -> entity.getCoordinateSystem() != null ? entity.getCoordinateSystem() : "—";
             case "Quy tắc hiển thị" -> entity.getDisplayRule() != null ? entity.getDisplayRule() : "—";
-            case "Tọa độ GPS" -> (entity.getLatitude() != null && entity.getLongitude() != null)
-                    ? entity.getLatitude() + ", " + entity.getLongitude()
-                    : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
+            case "Tọa độ", "Tọa độ GPS" -> {
+                String c = gisSpatialObjectService != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
+                if (c != null && !c.isBlank()) yield c;
+                yield (entity.getLatitude() != null && entity.getLongitude() != null)
+                        ? entity.getLatitude() + ", " + entity.getLongitude()
+                        : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
+            }
             default -> "—";
         };
     }
@@ -696,6 +731,11 @@ public class CoastalStationInmarsatService {
         String approverNameL2 = resolveUserName(entity.getApproverLevel2());
         String approvedByName = resolveUserName(entity.getApprovedBy());
 
+        String coords = gisSpatialObjectService != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
+        if (coords == null && entity.getLatitude() != null && entity.getLongitude() != null) {
+            coords = "POINT(" + entity.getLongitude() + " " + entity.getLatitude() + ")";
+        }
+
         return CoastalStationInmarsatResponse.builder()
                 .id(entity.getId())
                 .orgUnitId(effectiveOrgUnitId)
@@ -730,6 +770,7 @@ public class CoastalStationInmarsatService {
                 .displayRule(entity.getDisplayRule())
                 .latitude(entity.getLatitude())
                 .longitude(entity.getLongitude())
+                .coordinates(coords)
                 .approvalStatus(entity.getApprovalStatus())
                 .approvalLevel(entity.getApprovalLevel())
                 .submittedAt(entity.getSubmittedAt())

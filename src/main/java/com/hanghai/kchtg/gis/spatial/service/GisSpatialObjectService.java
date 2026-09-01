@@ -137,4 +137,10 @@ public class GisSpatialObjectService {
         if (id == null) return Optional.empty();
         return repository.findById(id);
     }
+
+    @Transactional(readOnly = true)
+    public String getCoordinatesBySpatialId(UUID spatialId) {
+        if (spatialId == null) return null;
+        return repository.findById(spatialId).map(GisSpatialObject::getCoordinates).orElse(null);
+    }
 }

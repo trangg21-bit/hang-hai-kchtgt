@@ -245,6 +245,15 @@ public class RadarStationService {
             if (request.getNote() != null && !Objects.equals(request.getNote().trim(), entity.getNote())) {
                 oldValues.put("Ghi chú", entity.getNote() != null ? entity.getNote() : "—");
             }
+
+            String oldCoord = gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId());
+            String newCoord = trimToNull(request.getCoordinates());
+            if (newCoord == null && request.getLongitude() != null && request.getLatitude() != null) {
+                newCoord = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
+            }
+            if (newCoord != null && !Objects.equals(newCoord, oldCoord)) {
+                oldValues.put("Tọa độ", oldCoord != null ? oldCoord : "—");
+            }
         }
 
         if (wasApproved) {
@@ -289,10 +298,12 @@ public class RadarStationService {
                     objType,
                     coordinates,
                     refId,
-                    InfrastructureType.RADAR_STATION_LEGACY
+                    InfrastructureType.RADAR_STATION
             );
-            saved.setSpatialId(spatialObj.getId());
-            saved = repository.save(saved);
+            if (saved.getSpatialId() == null) {
+                saved.setSpatialId(spatialObj.getId());
+                saved = repository.save(saved);
+            }
         }
 
         if (wasApproved && !oldValues.isEmpty()) {
@@ -330,6 +341,10 @@ public class RadarStationService {
             case "Chiều cao tháp" -> entity.getTowerHeight() != null ? String.valueOf(entity.getTowerHeight()) : "—";
             case "Tầm phủ radar" -> entity.getRadarRange() != null ? String.valueOf(entity.getRadarRange()) : "—";
             case "Ghi chú" -> entity.getNote() != null ? entity.getNote() : "—";
+            case "Tọa độ", "Tọa độ GPS" -> {
+                String c = gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId());
+                yield c != null && !c.isBlank() ? c : "—";
+            }
             default -> "—";
         };
     }

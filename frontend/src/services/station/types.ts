@@ -81,6 +81,7 @@ export interface CoastalStationInmarsatRequest {
   displayRule?: string;
   latitude?: number;
   longitude?: number;
+  coordinates?: string;
 }
 
 export interface CoastalStationInmarsatUpdateRequest extends CoastalStationInmarsatRequest {}
@@ -120,6 +121,7 @@ export interface CoastalStationInmarsatResponse {
   displayRule?: string;
   latitude?: number;
   longitude?: number;
+  coordinates?: string;
   approvalStatus?: string;
   approvalLevel?: string;
   submittedAt?: string;

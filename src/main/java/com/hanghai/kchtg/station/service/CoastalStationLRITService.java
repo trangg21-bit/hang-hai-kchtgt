@@ -346,11 +346,22 @@ public class CoastalStationLRITService {
                     || (request.getLatitude() == null && entity.getLatitude() != null);
             boolean lngChanged = (request.getLongitude() != null && (entity.getLongitude() == null || request.getLongitude().compareTo(entity.getLongitude()) != 0))
                     || (request.getLongitude() == null && entity.getLongitude() != null);
-            if (latChanged || lngChanged) {
-                String oldCoord = (entity.getLatitude() != null && entity.getLongitude() != null)
+
+            String oldCoord = gisSpatialObjectService != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
+            if (oldCoord == null || oldCoord.isBlank()) {
+                oldCoord = (entity.getLatitude() != null && entity.getLongitude() != null)
                         ? entity.getLatitude() + ", " + entity.getLongitude()
                         : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
-                oldValues.put("Tọa độ GPS", oldCoord);
+            }
+            String newCoord = request.getCoordinates();
+            if (newCoord == null || newCoord.isBlank()) {
+                newCoord = (request.getLatitude() != null && request.getLongitude() != null)
+                        ? request.getLatitude() + ", " + request.getLongitude()
+                        : (request.getLatitude() != null ? "Vĩ độ: " + request.getLatitude() : (request.getLongitude() != null ? "Kinh độ: " + request.getLongitude() : null));
+            }
+            boolean coordsChanged = (newCoord != null && !Objects.equals(newCoord, oldCoord)) || latChanged || lngChanged;
+            if (coordsChanged) {
+                oldValues.put("Tọa độ", oldCoord != null ? oldCoord : "—");
             }
         }
 
@@ -454,9 +465,13 @@ public class CoastalStationLRITService {
             case "Biểu tượng" -> entity.getSymbol() != null ? entity.getSymbol() : "—";
             case "Hệ quy chiếu" -> entity.getCoordinateSystem() != null ? entity.getCoordinateSystem() : "—";
             case "Quy tắc hiển thị" -> entity.getDisplayRule() != null ? entity.getDisplayRule() : "—";
-            case "Tọa độ GPS" -> (entity.getLatitude() != null && entity.getLongitude() != null)
-                    ? entity.getLatitude() + ", " + entity.getLongitude()
-                    : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
+            case "Tọa độ", "Tọa độ GPS" -> {
+                String c = gisSpatialObjectService != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
+                if (c != null && !c.isBlank()) yield c;
+                yield (entity.getLatitude() != null && entity.getLongitude() != null)
+                        ? entity.getLatitude() + ", " + entity.getLongitude()
+                        : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
+            }
             default -> "—";
         };
     }
