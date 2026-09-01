@@ -279,6 +279,98 @@ const ZoneCellInput = React.memo(({
   );
 });
 
+// Mock 30 bản ghi cho TAB 4: Danh sách KCHT khác thuộc VTS
+const MOCK_OTHER_INFRASTRUCTURES = Array.from({ length: 30 }, (_, i) => {
+  const index = i + 1;
+  const pad = index < 10 ? `0${index}` : `${index}`;
+  if (index % 3 === 1) {
+    return {
+      id: `mock-infra-vts-${index}`,
+      type: 'VTS_OPERATION_CENTER',
+      typeLabel: 'Trung tâm điều hành VTS',
+      name: `Trung tâm Quản lý điều hành VTS Luồng Hàng hải Khu vực ${pad}`,
+    };
+  } else if (index % 3 === 2) {
+    return {
+      id: `mock-infra-radar-${index}`,
+      type: 'RADAR_STATION',
+      typeLabel: 'Trạm Radar VTS',
+      name: `Trạm Radar cảnh giới & giám sát luồng hàng hải VTS-${pad}`,
+    };
+  } else {
+    return {
+      id: `mock-infra-ais-${index}`,
+      type: 'AIS_SYSTEM',
+      typeLabel: 'Trạm AIS / Hệ thống AIS',
+      name: `Hệ thống Trạm AIS bờ thu phát nhận dạng tàu thuyền AIS-VTS-${pad}`,
+    };
+  }
+});
+
+// Mock 30 bản ghi cho TAB 5 - Sub-tab 1: Thông tin vận hành khai thác
+const MOCK_OPERATION_PLANS = Array.from({ length: 30 }, (_, i) => {
+  const index = i + 1;
+  const pad = index < 10 ? `0${index}` : `${index}`;
+  const year = 2024 + Math.floor(index / 10);
+  const month = ((index - 1) % 12) + 1;
+  const monthPad = month < 10 ? `0${month}` : `${month}`;
+  return {
+    id: `mock-op-${index}`,
+    planCode: `KH-VHKT-${year}/${pad}`,
+    planName: `Kế hoạch điều hành luồng hàng hải & giám sát an toàn giao thông đợt ${index}`,
+    startDate: `${year}-${monthPad}-01`,
+    endDate: `${year}-${monthPad}-28`,
+  };
+});
+
+// Mock 30 bản ghi cho TAB 5 - Sub-tab 2: Thông tin bảo trì
+const MOCK_MAINTENANCE_PLANS = Array.from({ length: 30 }, (_, i) => {
+  const index = i + 1;
+  const pad = index < 10 ? `0${index}` : `${index}`;
+  const year = 2024 + Math.floor(index / 10);
+  const month = ((index - 1) % 12) + 1;
+  const monthPad = month < 10 ? `0${month}` : `${month}`;
+  return {
+    id: `mock-maint-${index}`,
+    planCode: `KH-BT-${year}/VTS-${pad}`,
+    planName: `Kế hoạch bảo dưỡng, hiệu chuẩn định kỳ hệ thống cảm biến Radar & AIS đợt ${index}`,
+    startTime: `${year}-${monthPad}-05`,
+    endTime: `${year}-${monthPad}-12`,
+  };
+});
+
+// Mock 30 bản ghi cho TAB 5 - Sub-tab 3: Thông tin sự cố
+const MOCK_INCIDENTS = Array.from({ length: 30 }, (_, i) => {
+  const index = i + 1;
+  const pad = index < 10 ? `0${index}` : `${index}`;
+  const types = [
+    'Mất kết nối đường truyền vi ba',
+    'Cảnh báo suy hao tín hiệu Anten Radar',
+    'Gián đoạn nguồn điện lưới khu vực trạm',
+    'Lỗi đồng bộ dữ liệu vết mục tiêu AIS',
+    'Cảnh báo nhiệt độ máy chủ xử lý vượt ngưỡng',
+  ];
+  const locations = [
+    'Trạm Radar VTS Mũi Nghinh Phong',
+    'Trạm Radar VTS Cần Giờ',
+    'Trung tâm Quản lý điều hành VTS',
+    'Trạm AIS VTS Vũng Tàu',
+    'Trạm Radar VTS Cát Lái',
+  ];
+  const year = 2025;
+  const month = ((index - 1) % 12) + 1;
+  const monthPad = month < 10 ? `0${month}` : `${month}`;
+  const day = ((index * 3) % 25) + 1;
+  const dayPad = day < 10 ? `0${day}` : `${day}`;
+  return {
+    id: `mock-inc-${index}`,
+    incidentCode: `SC-${year}-${pad}`,
+    incidentType: types[(index - 1) % types.length],
+    location: locations[(index - 1) % locations.length],
+    incidentTime: `${year}-${monthPad}-${dayPad} 14:30:00`,
+  };
+});
+
 export default function VtsSystemForm({
   open = true,
   editId = null,
@@ -315,13 +407,13 @@ export default function VtsSystemForm({
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
 
   const [otherInfraTypeFilter, setOtherInfraTypeFilter] = useState<string>('ALL');
-  const [otherInfraList, setOtherInfraList] = useState<Array<{ id: string; type: string; typeLabel: string; name: string }>>([]);
+  const [otherInfraList, setOtherInfraList] = useState<Array<{ id: string; type: string; typeLabel: string; name: string }>>(MOCK_OTHER_INFRASTRUCTURES);
   const [otherInfraLoaded, setOtherInfraLoaded] = useState(false);
   const [isLoadingOtherInfra, setIsLoadingOtherInfra] = useState(false);
 
-  const [operationPlanList] = useState<any[]>([]);
-  const [maintenancePlanList] = useState<any[]>([]);
-  const [incidentList] = useState<any[]>([]);
+  const [operationPlanList] = useState<any[]>(MOCK_OPERATION_PLANS);
+  const [maintenancePlanList] = useState<any[]>(MOCK_MAINTENANCE_PLANS);
+  const [incidentList] = useState<any[]>(MOCK_INCIDENTS);
 
   const isCreateMode = propMode === 'create';
   const isEditMode = propMode === 'edit';
@@ -556,7 +648,10 @@ export default function VtsSystemForm({
           });
         }
 
-        setOtherInfraList(combined);
+        setOtherInfraList(combined.length > 0 ? combined : MOCK_OTHER_INFRASTRUCTURES);
+        setOtherInfraLoaded(true);
+      }).catch(() => {
+        setOtherInfraList(MOCK_OTHER_INFRASTRUCTURES);
         setOtherInfraLoaded(true);
       }).finally(() => {
         setIsLoadingOtherInfra(false);
