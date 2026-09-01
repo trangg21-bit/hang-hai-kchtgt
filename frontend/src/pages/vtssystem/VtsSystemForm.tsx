@@ -309,7 +309,6 @@ export default function VtsSystemForm({
   const [attachmentList, setAttachmentList] = useState<any[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [pendingDeletedAttachments, setPendingDeletedAttachments] = useState<{ id: string; fileName: string }[]>([]);
-  const [approvalSectionOpen, setApprovalSectionOpen] = useState(true);
   const [zonesLoaded, setZonesLoaded] = useState(false);
   const [filesLoaded, setFilesLoaded] = useState(false);
   const [isLoadingZones, setIsLoadingZones] = useState(false);
@@ -870,57 +869,7 @@ export default function VtsSystemForm({
 
                     {/* 13. Ghi chú */}
                     <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Ghi chú</span><span className="chk-detail-value">{record.note || '—'}</span></div>
-
-                    {/* Cán bộ và thời gian cập nhật */}
-                    <div className="chk-detail-row"><span className="chk-detail-label">Ngày cập nhật</span><span className="chk-detail-value">{record.updatedDate ? dayjs(record.updatedDate).format('DD/MM/YYYY HH:mm:ss') : (record.createdDate ? dayjs(record.createdDate).format('DD/MM/YYYY HH:mm:ss') : '—')}</span></div>
-                    <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ cập nhật</span><span className="chk-detail-value">{record.updatedByName || record.createdByName || '—'}</span></div>
-                    <div style={{ border: 'none' }} />
                   </div>
-
-                  {/* ── Thông tin phê duyệt (Toggle Dropdown) ── */}
-                  <div style={{ marginTop: 16, marginBottom: 6 }}>
-                    <button
-                      type="button"
-                      onClick={() => setApprovalSectionOpen(!approvalSectionOpen)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        padding: '4px 0',
-                        color: actionPrimary,
-                        fontWeight: fontWeightBold,
-                        fontSize: fontSizeMd,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6,
-                      }}
-                    >
-                      <span style={{ fontSize: 10, color: actionPrimary }}>{approvalSectionOpen ? '▼' : '▶'}</span>
-                      <span>Thông tin phê duyệt</span>
-                    </button>
-                  </div>
-
-                  {approvalSectionOpen && (
-                    <div className="chk-detail-grid">
-                      <div className="chk-detail-row"><span className="chk-detail-label">Ngày gửi duyệt</span><span className="chk-detail-value">{record.submittedDate ? dayjs(record.submittedDate).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                      <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ gửi duyệt</span><span className="chk-detail-value">{record.submittedByName || record.createdByName || '—'}</span></div>
-
-                      <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt Cảng vụ</span><span className="chk-detail-value">{record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                      <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt Cảng vụ</span><span className="chk-detail-value">{record.approverLevel1Name || record.approverLevel1 || '—'}</span></div>
-
-                      <div className="chk-detail-row"><span className="chk-detail-label">Nội dung Cảng vụ/Chi cục phê duyệt</span><span className="chk-detail-value">{record.approvalContentLevel1 || record.rejectionReason || '—'}</span></div>
-                      <div style={{ border: 'none' }} />
-
-                      <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt Cục</span><span className="chk-detail-value">{record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                      <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt Cục</span><span className="chk-detail-value">{record.approverLevel2Name || record.approverLevel2 || '—'}</span></div>
-
-                      <div className="chk-detail-row"><span className="chk-detail-label">Nội dung Cục phê duyệt</span><span className="chk-detail-value">{record.approvalContentLevel2 || record.rejectionReason || '—'}</span></div>
-                      <div style={{ border: 'none' }} />
-
-                      <div className="chk-detail-row"><span className="chk-detail-label">Trạng thái</span><span className="chk-detail-value">{renderApprovalBadge(record.approvalStatus)}</span></div>
-                      <div style={{ border: 'none' }} />
-                    </div>
-                  )}
                 </div>
               ),
             },
@@ -1217,6 +1166,94 @@ export default function VtsSystemForm({
                         },
                       ]}
                     />
+                  </div>
+                </div>
+              ),
+            },
+            {
+              key: 'handlingAndTracking',
+              label: 'Xử lý & theo dõi',
+              children: (
+                <div style={drawerFormScrollStyle}>
+                  <div className="chk-detail-grid">
+                    {/* 30. Trạng thái phê duyệt */}
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label">Trạng thái phê duyệt</span>
+                      <span className="chk-detail-value">{renderApprovalBadge(record.approvalStatus)}</span>
+                    </div>
+                    <div style={{ border: 'none' }} />
+
+                    {/* 31. Ngày cập nhật & 32. Cán bộ cập nhật */}
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label">Ngày cập nhật</span>
+                      <span className="chk-detail-value">
+                        {record.updatedDate
+                          ? dayjs(record.updatedDate).format('DD/MM/YYYY HH:mm:ss')
+                          : record.createdDate
+                          ? dayjs(record.createdDate).format('DD/MM/YYYY HH:mm:ss')
+                          : '—'}
+                      </span>
+                    </div>
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label">Cán bộ cập nhật</span>
+                      <span className="chk-detail-value">{record.updatedByName || record.createdByName || '—'}</span>
+                    </div>
+
+                    {/* 33. Ngày gửi phê duyệt & 34. Cán bộ gửi phê duyệt */}
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label">Ngày gửi phê duyệt</span>
+                      <span className="chk-detail-value">
+                        {record.submittedDate ? dayjs(record.submittedDate).format('DD/MM/YYYY HH:mm:ss') : '—'}
+                      </span>
+                    </div>
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label">Cán bộ gửi phê duyệt</span>
+                      <span className="chk-detail-value">{record.submittedByName || record.createdByName || '—'}</span>
+                    </div>
+
+                    {/* 35. Ngày phê duyệt cấp Cảng vụ/Chi cục & 36. Cán bộ phê duyệt cấp Cảng vụ/Chi cục */}
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
+                      <span className="chk-detail-value">
+                        {record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}
+                      </span>
+                    </div>
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
+                      <span className="chk-detail-value">
+                        {record.approverLevel1Name || record.approverLevel1 || '—'}
+                      </span>
+                    </div>
+
+                    {/* 37. Nội dung phê duyệt (Cảng vụ/Chi cục) */}
+                    <div className="chk-detail-row chk-detail-row--full">
+                      <span className="chk-detail-label">Nội dung phê duyệt</span>
+                      <span className="chk-detail-value">
+                        {record.approvalContentLevel1 || record.approvalReasonLevel1 || record.rejectionReasonLevel1 || '—'}
+                      </span>
+                    </div>
+
+                    {/* 38. Ngày phê duyệt cấp Cục & 39. Cán bộ phê duyệt cấp Cục */}
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label">Ngày phê duyệt cấp Cục</span>
+                      <span className="chk-detail-value">
+                        {record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}
+                      </span>
+                    </div>
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label">Cán bộ phê duyệt cấp Cục</span>
+                      <span className="chk-detail-value">
+                        {record.approverLevel2Name || record.approverLevel2 || '—'}
+                      </span>
+                    </div>
+
+                    {/* 40. Nội dung phê duyệt (Cục) */}
+                    <div className="chk-detail-row chk-detail-row--full">
+                      <span className="chk-detail-label">Nội dung phê duyệt</span>
+                      <span className="chk-detail-value">
+                        {record.approvalContentLevel2 || record.approvalReasonLevel2 || record.rejectionReasonLevel2 || record.rejectionReason || '—'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ),
