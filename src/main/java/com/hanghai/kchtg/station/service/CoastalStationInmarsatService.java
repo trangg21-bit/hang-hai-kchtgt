@@ -270,9 +270,6 @@ public class CoastalStationInmarsatService {
             if (request.getProvinceId() != null && !Objects.equals(request.getProvinceId(), entity.getProvinceId())) {
                 oldValues.put("Địa điểm (Tỉnh/TP)", entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : "—");
             }
-            if (request.getLocationAddress() != null && !Objects.equals(request.getLocationAddress(), entity.getLocationAddress())) {
-                oldValues.put("Địa chỉ", entity.getLocationAddress() != null ? entity.getLocationAddress() : "—");
-            }
             if (request.getLocationDetail() != null && !Objects.equals(request.getLocationDetail(), entity.getLocationDetail())) {
                 oldValues.put("Địa điểm chi tiết", entity.getLocationDetail() != null ? entity.getLocationDetail() : "—");
             }
@@ -303,14 +300,35 @@ public class CoastalStationInmarsatService {
             if (request.getNotes() != null && !Objects.equals(request.getNotes(), entity.getNotes())) {
                 oldValues.put("Ghi chú", entity.getNotes() != null ? entity.getNotes() : "—");
             }
-            if (request.getDescription() != null && !Objects.equals(request.getDescription(), entity.getDescription())) {
-                oldValues.put("Mô tả", entity.getDescription() != null ? entity.getDescription() : "—");
-            }
             if (request.getContactPerson() != null && !Objects.equals(request.getContactPerson(), entity.getContactPerson())) {
                 oldValues.put("Người liên hệ", entity.getContactPerson() != null ? entity.getContactPerson() : "—");
             }
             if (request.getContactPhone() != null && !Objects.equals(request.getContactPhone(), entity.getContactPhone())) {
                 oldValues.put("Số điện thoại liên hệ", entity.getContactPhone() != null ? entity.getContactPhone() : "—");
+            }
+
+            // GIS fields tracking
+            if (request.getObjectType() != null && !Objects.equals(request.getObjectType(), entity.getObjectType())) {
+                oldValues.put("Loại đối tượng", formatObjectTypeDisplay(entity.getObjectType()));
+            }
+            if (request.getSymbol() != null && !Objects.equals(request.getSymbol(), entity.getSymbol())) {
+                oldValues.put("Biểu tượng", entity.getSymbol() != null ? entity.getSymbol() : "—");
+            }
+            if (request.getCoordinateSystem() != null && !Objects.equals(request.getCoordinateSystem(), entity.getCoordinateSystem())) {
+                oldValues.put("Hệ quy chiếu", entity.getCoordinateSystem() != null ? entity.getCoordinateSystem() : "—");
+            }
+            if (request.getDisplayRule() != null && !Objects.equals(request.getDisplayRule(), entity.getDisplayRule())) {
+                oldValues.put("Quy tắc hiển thị", entity.getDisplayRule() != null ? entity.getDisplayRule() : "—");
+            }
+            boolean latChanged = (request.getLatitude() != null && (entity.getLatitude() == null || request.getLatitude().compareTo(entity.getLatitude()) != 0))
+                    || (request.getLatitude() == null && entity.getLatitude() != null);
+            boolean lngChanged = (request.getLongitude() != null && (entity.getLongitude() == null || request.getLongitude().compareTo(entity.getLongitude()) != 0))
+                    || (request.getLongitude() == null && entity.getLongitude() != null);
+            if (latChanged || lngChanged) {
+                String oldCoord = (entity.getLatitude() != null && entity.getLongitude() != null)
+                        ? entity.getLatitude() + ", " + entity.getLongitude()
+                        : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
+                oldValues.put("Tọa độ GPS", oldCoord);
             }
         }
 
@@ -387,7 +405,6 @@ public class CoastalStationInmarsatService {
             case "Đơn vị quản lý" -> entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId()) : "—";
             case "Đơn vị khai thác" -> entity.getOperatingOrgId() != null ? resolveOperatingOrgName(entity.getOperatingOrgId()) : "—";
             case "Địa điểm (Tỉnh/TP)" -> entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : "—";
-            case "Địa chỉ" -> entity.getLocationAddress() != null ? entity.getLocationAddress() : "—";
             case "Địa điểm chi tiết" -> entity.getLocationDetail() != null ? entity.getLocationDetail() : "—";
             case "Tình trạng" -> entity.getConditionStatus() != null ? entity.getConditionStatus() : "—";
             case "Vùng phủ sóng" -> entity.getCoverageZone() != null ? entity.getCoverageZone() : "—";
@@ -398,10 +415,26 @@ public class CoastalStationInmarsatService {
             case "Mã SAR" -> entity.getSarCode() != null ? entity.getSarCode() : "—";
             case "Hệ thống vệ tinh" -> entity.getSatelliteSystem() != null ? entity.getSatelliteSystem() : "—";
             case "Ghi chú" -> entity.getNotes() != null ? entity.getNotes() : "—";
-            case "Mô tả" -> entity.getDescription() != null ? entity.getDescription() : "—";
             case "Người liên hệ" -> entity.getContactPerson() != null ? entity.getContactPerson() : "—";
             case "Số điện thoại liên hệ" -> entity.getContactPhone() != null ? entity.getContactPhone() : "—";
+            case "Loại đối tượng" -> formatObjectTypeDisplay(entity.getObjectType());
+            case "Biểu tượng" -> entity.getSymbol() != null ? entity.getSymbol() : "—";
+            case "Hệ quy chiếu" -> entity.getCoordinateSystem() != null ? entity.getCoordinateSystem() : "—";
+            case "Quy tắc hiển thị" -> entity.getDisplayRule() != null ? entity.getDisplayRule() : "—";
+            case "Tọa độ GPS" -> (entity.getLatitude() != null && entity.getLongitude() != null)
+                    ? entity.getLatitude() + ", " + entity.getLongitude()
+                    : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
             default -> "—";
+        };
+    }
+
+    private String formatObjectTypeDisplay(String objectType) {
+        if (objectType == null || objectType.isBlank()) return "—";
+        return switch (objectType.toUpperCase()) {
+            case "POINT" -> "Đối tượng điểm";
+            case "LINE" -> "Đối tượng đường";
+            case "POLYGON" -> "Đối tượng vùng";
+            default -> objectType;
         };
     }
 

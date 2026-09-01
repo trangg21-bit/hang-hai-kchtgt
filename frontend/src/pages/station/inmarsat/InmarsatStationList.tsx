@@ -40,36 +40,55 @@ const INMARSAT_FIELD_MAP: Record<string, string> = {
   deviceCode: 'Mã đài',
   name: 'Tên đài',
   stationName: 'Tên đài',
+  'Tên đài': 'Tên đài',
   orgUnitId: 'Đơn vị quản lý',
   orgUnitName: 'Đơn vị quản lý',
+  'Đơn vị quản lý': 'Đơn vị quản lý',
   operatingOrgId: 'Đơn vị khai thác',
   operatingOrgName: 'Đơn vị khai thác',
+  'Đơn vị khai thác': 'Đơn vị khai thác',
   provinceId: 'Địa điểm (Tỉnh/TP)',
+  'Địa điểm (Tỉnh/TP)': 'Địa điểm (Tỉnh/TP)',
   locationDetail: 'Địa điểm chi tiết',
   locationAddress: 'Địa điểm chi tiết',
+  'Địa điểm chi tiết': 'Địa điểm chi tiết',
   conditionStatus: 'Tình trạng',
+  'Tình trạng': 'Tình trạng',
   coverageZone: 'Vùng phủ sóng',
+  'Vùng phủ sóng': 'Vùng phủ sóng',
+  coverageArea: 'Khu vực phủ sóng',
+  'Khu vực phủ sóng': 'Khu vực phủ sóng',
   services: 'Dịch vụ cung cấp',
-  frequency: 'Tần số liên lạc',
+  'Dịch vụ cung cấp': 'Dịch vụ cung cấp',
+  frequency: 'Tần số',
+  'Tần số': 'Tần số',
   notes: 'Ghi chú',
   note: 'Ghi chú',
   description: 'Ghi chú',
+  'Ghi chú': 'Ghi chú',
   latitude: 'Vĩ độ',
   longitude: 'Kinh độ',
-  symbol: 'Ký hiệu GIS',
-  geometryType: 'Đối tượng không gian',
-  objectType: 'Đối tượng không gian',
+  'Tọa độ GPS': 'Tọa độ GPS',
+  symbol: 'Biểu tượng',
+  'Biểu tượng': 'Biểu tượng',
+  geometryType: 'Loại đối tượng',
+  objectType: 'Loại đối tượng',
+  'Loại đối tượng': 'Loại đối tượng',
+  coordinateSystem: 'Hệ quy chiếu',
+  'Hệ quy chiếu': 'Hệ quy chiếu',
+  displayRule: 'Quy tắc hiển thị',
+  'Quy tắc hiển thị': 'Quy tắc hiển thị',
   approvalStatus: 'Trạng thái phê duyệt',
   approvalLevel: 'Cấp phê duyệt',
 };
 
 const formatHistoryValue = (field: string, val: any): string => {
   if (val === null || val === undefined || val === '') return '—';
-  if (field === 'provinceId') {
+  if (field === 'provinceId' || field === 'Địa điểm (Tỉnh/TP)') {
     return getProvinceNameById(val) || String(val);
   }
-  if (field === 'conditionStatus') {
-    return CONDITION_STATUS_MAP[val] || String(val);
+  if (field === 'conditionStatus' || field === 'Tình trạng') {
+    return CONDITION_STATUS_MAP[val as ConditionStatus] || String(val);
   }
   return String(val);
 };
