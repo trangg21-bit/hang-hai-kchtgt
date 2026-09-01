@@ -45,9 +45,9 @@ import InfrastructureAttachmentTab from '../../../components/shared/Infrastructu
 import GisLocationSelector from '../../../components/gis/GisLocationSelector';
 import { symbolService } from '../../../services/symbolService';
 import dayjs from 'dayjs';
-import ApprovalStatusBadge from '../../../components/shared/ApprovalStatusBadge';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
 import { parseWktToCoordinates, serializeCoordinatesToWkt, ddToDms, dmsToDd, adjustCoordinateListForGeometry } from '../../../utils/gisGeometry';
+import { focusErrorTab } from '../../../utils/formValidationHelper';
 
 export const INMARSAT_SERVICE_OPTIONS = [
   { value: 'Inmarsat-C', label: 'Inmarsat-C' },
@@ -251,11 +251,11 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
         .then(([res, atts]) => {
           setRecord(res);
           setAttachments(atts || []);
+          let pts: { latitude: number | null; longitude: number | null }[] = [];
           if (res.latitude != null && res.longitude != null) {
-            setCoordinateList([{ latitude: Number(res.latitude), longitude: Number(res.longitude) }]);
-          } else {
-            setCoordinateList([]);
+            pts = [{ latitude: Number(res.latitude), longitude: Number(res.longitude) }];
           }
+          setCoordinateList(adjustCoordinateListForGeometry(pts, res.objectType || 'POINT'));
           form.setFieldsValue({
             code: res.code || res.deviceCode,
             name: res.name || res.stationName,
@@ -829,7 +829,21 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
               ]}
             />
           ) : (
-            <Form form={form} layout="vertical" onFinish={handleFinish}>
+            <Form
+              form={form}
+              layout="vertical"
+              onFinish={handleFinish}
+              onFinishFailed={({ errorFields }) => {
+                focusErrorTab(
+                  { errorFields },
+                  {
+                    general: ['name', 'orgUnitId', 'operatingOrgId', 'provinceId', 'conditionStatus', 'locationDetail', 'services', 'coverageZone', 'frequency', 'notes'],
+                    gis: ['geometryType', 'symbol', 'coordinateSystem', 'displayRule'],
+                  },
+                  setTabKey
+                );
+              }}
+            >
               <style>{requiredMarkStyle}</style>
               <style>{`
                 #inmarsat-services-select .ant-select {
@@ -1012,7 +1026,6 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                             <Form.Item
                               name="locationDetail"
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm chi tiết</span>}
-                              rules={[{ required: true, message: 'Vui lòng nhập địa điểm chi tiết' }]}
                               style={{ marginBottom: spaceFormField }}
                             >
                               <Input
