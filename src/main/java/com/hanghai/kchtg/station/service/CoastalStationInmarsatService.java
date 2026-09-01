@@ -1,7 +1,9 @@
 package com.hanghai.kchtg.station.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.OperatingOrganization;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
+import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
@@ -50,6 +52,7 @@ public class CoastalStationInmarsatService {
     private final OrgUnitCacheService orgUnitCacheService;
     private final UserRepository userRepository;
     private final InfrastructureAttachmentRepository attachmentRepository;
+    private final OperatingOrganizationRepository operatingOrganizationRepository;
 
     @Value("${app.upload.attachment-path:uploads/inmarsat-attachments}")
     private String attachmentPath;
@@ -261,7 +264,7 @@ public class CoastalStationInmarsatService {
                 oldValues.put("Đơn vị quản lý", oldName != null ? oldName : "—");
             }
             if (request.getOperatingOrgId() != null && !Objects.equals(request.getOperatingOrgId(), entity.getOperatingOrgId())) {
-                String oldName = entity.getOperatingOrgId() != null ? orgUnitCacheService.getName(entity.getOperatingOrgId()) : "—";
+                String oldName = entity.getOperatingOrgId() != null ? resolveOperatingOrgName(entity.getOperatingOrgId()) : "—";
                 oldValues.put("Đơn vị khai thác", oldName != null ? oldName : "—");
             }
             if (request.getProvinceId() != null && !Objects.equals(request.getProvinceId(), entity.getProvinceId())) {
@@ -382,7 +385,7 @@ public class CoastalStationInmarsatService {
         return switch (fieldName) {
             case "Tên đài" -> entity.getName() != null ? entity.getName() : "—";
             case "Đơn vị quản lý" -> entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId()) : "—";
-            case "Đơn vị khai thác" -> entity.getOperatingOrgId() != null ? orgUnitCacheService.getName(entity.getOperatingOrgId()) : "—";
+            case "Đơn vị khai thác" -> entity.getOperatingOrgId() != null ? resolveOperatingOrgName(entity.getOperatingOrgId()) : "—";
             case "Địa điểm (Tỉnh/TP)" -> entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : "—";
             case "Địa chỉ" -> entity.getLocationAddress() != null ? entity.getLocationAddress() : "—";
             case "Địa điểm chi tiết" -> entity.getLocationDetail() != null ? entity.getLocationDetail() : "—";
@@ -639,12 +642,19 @@ public class CoastalStationInmarsatService {
                 .toList();
     }
 
+    private String resolveOperatingOrgName(UUID operatingOrgId) {
+        if (operatingOrgId == null) return null;
+        return operatingOrganizationRepository.findById(operatingOrgId)
+                .map(OperatingOrganization::getName)
+                .orElseGet(() -> orgUnitCacheService.getName(operatingOrgId));
+    }
+
     // --- BUILD RESPONSE DTO ---
 
     public CoastalStationInmarsatResponse buildResponse(CoastalStationInmarsat entity) {
         UUID effectiveOrgUnitId = entity.getOrgUnitId() != null ? entity.getOrgUnitId() : entity.getUnitId();
         String orgUnitName = effectiveOrgUnitId != null ? orgUnitCacheService.getName(effectiveOrgUnitId) : null;
-        String operatingOrgName = entity.getOperatingOrgId() != null ? orgUnitCacheService.getName(entity.getOperatingOrgId()) : null;
+        String operatingOrgName = resolveOperatingOrgName(entity.getOperatingOrgId());
 
         String createdByName = resolveUserName(entity.getCreatedBy());
         String updatedByName = resolveUserName(entity.getUpdatedBy());

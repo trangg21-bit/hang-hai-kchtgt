@@ -408,11 +408,14 @@ export const InmarsatStationList = () => {
       dataIndex: 'operatingOrgName',
       width: 180,
       sorter: clientSideStringSorter('operatingOrgName'),
-      render: (val: string) => (
-        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>
-          {val || '—'}
-        </div>
-      ),
+      render: (val: string, record: CoastalStationInmarsatResponse) => {
+        const name = val || DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === record.operatingOrgId || String(o.id) === String(record.operatingOrgId))?.name || '—';
+        return (
+          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>
+            {name}
+          </div>
+        );
+      },
     },
     {
       key: 'provinceId',
