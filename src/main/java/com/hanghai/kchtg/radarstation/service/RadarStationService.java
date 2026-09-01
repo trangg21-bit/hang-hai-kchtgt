@@ -569,6 +569,21 @@ public class RadarStationService {
                     .uploadedBy(userId)
                     .build();
             savedAttachments.add(attachmentRepository.save(attachment));
+
+            if (historyRepository != null) {
+                historyRepository.save(InfrastructureHistory.builder()
+                        .refId(id)
+                        .refType(InfrastructureType.RADAR_STATION)
+                        .approvalLevel(ApprovalLevel.LEVEL_0)
+                        .status(InfrastructureHistoryStatus.UPDATED)
+                        .approvedBy(userId)
+                        .approvedDate(LocalDateTime.now())
+                        .reason("Tải lên tài liệu đính kèm: " + originalFilename)
+                        .changedField("Tài liệu đính kèm")
+                        .previousValue("—")
+                        .newValue(originalFilename)
+                        .build());
+            }
         }
         return savedAttachments.stream().map(this::toAttachmentResponse).toList();
     }
@@ -586,12 +601,28 @@ public class RadarStationService {
 
         InfrastructureAttachment attachment = attachmentRepository.findByIdAndRefIdAndRefType(attachmentId, id, InfrastructureType.RADAR_STATION)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy file đính kèm với ID: " + attachmentId));
+        String fileName = attachment.getFileName();
         try {
             java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
         } catch (Exception e) {
             log.warn("Không thể xóa file vật lý {}: {}", attachment.getFilePath(), e.getMessage());
         }
         attachmentRepository.delete(attachment);
+
+        if (historyRepository != null) {
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(id)
+                    .refType(InfrastructureType.RADAR_STATION)
+                    .approvalLevel(ApprovalLevel.LEVEL_0)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(userId)
+                    .approvedDate(LocalDateTime.now())
+                    .reason("Xóa tài liệu đính kèm: " + fileName)
+                    .changedField("Tài liệu đính kèm")
+                    .previousValue(fileName)
+                    .newValue("—")
+                    .build());
+        }
     }
 
     private RadarStationAttachmentResponse toAttachmentResponse(InfrastructureAttachment a) {

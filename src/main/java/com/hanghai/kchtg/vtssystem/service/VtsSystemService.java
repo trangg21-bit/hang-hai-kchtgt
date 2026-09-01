@@ -1219,6 +1219,21 @@ public class VtsSystemService {
         entity.setUpdatedBy(effectiveUserId);
         repository.save(entity);
 
+        if (historyRepository != null) {
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(vtsSystemId)
+                    .refType(InfrastructureType.VTS_SYSTEM)
+                    .approvalLevel(ApprovalLevel.LEVEL_0)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(effectiveUserId)
+                    .approvedDate(LocalDateTime.now())
+                    .reason("Tải lên tài liệu đính kèm: " + originalName)
+                    .changedField("Tài liệu đính kèm")
+                    .previousValue("—")
+                    .newValue(originalName)
+                    .build());
+        }
+
         return toAttachmentResponse(saved);
     }
 
@@ -1229,6 +1244,7 @@ public class VtsSystemService {
         InfrastructureAttachment attachment = attachmentRepository
                 .findByIdAndRefIdAndRefType(attachmentId, vtsSystemId, InfrastructureType.VTS_SYSTEM)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy tài liệu đính kèm"));
+        String fileName = attachment.getFileName();
         try {
             Files.deleteIfExists(Paths.get(attachment.getFilePath()));
         } catch (IOException ex) {
@@ -1239,6 +1255,21 @@ public class VtsSystemService {
         UUID effectiveUserId = SecurityUtils.getCurrentUserId();
         entity.setUpdatedBy(effectiveUserId);
         repository.save(entity);
+
+        if (historyRepository != null) {
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(vtsSystemId)
+                    .refType(InfrastructureType.VTS_SYSTEM)
+                    .approvalLevel(ApprovalLevel.LEVEL_0)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(effectiveUserId)
+                    .approvedDate(LocalDateTime.now())
+                    .reason("Xóa tài liệu đính kèm: " + fileName)
+                    .changedField("Tài liệu đính kèm")
+                    .previousValue(fileName)
+                    .newValue("—")
+                    .build());
+        }
     }
 
     public InfrastructureAttachment getAttachment(UUID vtsSystemId, UUID attachmentId) {

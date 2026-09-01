@@ -832,9 +832,10 @@ public class AisSystemService {
                     .approvalLevel(ApprovalLevel.LEVEL_0)
                     .status(InfrastructureHistoryStatus.UPDATED)
                     .approvedBy(userId)
+                    .approvedDate(LocalDateTime.now())
                     .reason("Tải lên tài liệu đính kèm: " + originalFilename)
                     .changedField("Tài liệu đính kèm")
-                    .previousValue(null)
+                    .previousValue("—")
                     .newValue(originalFilename)
                     .build());
         }
@@ -915,10 +916,11 @@ public class AisSystemService {
                 .approvalLevel(ApprovalLevel.LEVEL_0)
                 .status(InfrastructureHistoryStatus.UPDATED)
                 .approvedBy(userId)
+                .approvedDate(LocalDateTime.now())
                 .reason("Xóa tài liệu đính kèm: " + att.getFileName())
                 .changedField("Tài liệu đính kèm")
                 .previousValue(att.getFileName())
-                .newValue(null)
+                .newValue("—")
                 .build());
     }
 

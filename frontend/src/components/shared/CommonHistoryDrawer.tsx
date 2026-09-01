@@ -135,6 +135,10 @@ const DEFAULT_FIELD_MAP: Record<string, string> = {
   dryPortName: 'Tên cảng cạn',
   beaconName: 'Tên báo hiệu',
   beaconCode: 'Mã báo hiệu',
+  attachments: 'Tài liệu đính kèm',
+  attachmentList: 'Tài liệu đính kèm',
+  fileName: 'Tên tệp tin',
+  fileSize: 'Kích thước tệp',
 };
 
 function renderCommonHistoryValueTag(field: string, val: string) {

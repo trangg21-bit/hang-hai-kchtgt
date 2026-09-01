@@ -654,16 +654,17 @@ public class VtsOperationCenterService {
             InfrastructureAttachment saved = attachmentRepository.save(attachment);
             uploaded.add(toAttachmentResponse(saved));
 
-            if (entity.getApprovalStatus() == ApprovalStatus.APPROVED || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2) {
+            if (historyRepository != null) {
                 historyRepository.save(InfrastructureHistory.builder()
                         .refId(id)
                         .refType(InfrastructureType.VTS_OPERATION_CENTER)
-                        .approvalLevel(ApprovalLevel.LEVEL_2)
+                        .approvalLevel(ApprovalLevel.LEVEL_0)
                         .status(InfrastructureHistoryStatus.UPDATED)
                         .approvedBy(userId)
+                        .approvedDate(LocalDateTime.now())
                         .reason("Tải lên tài liệu đính kèm: " + originalFilename)
                         .changedField("Tài liệu đính kèm")
-                        .previousValue(null)
+                        .previousValue("—")
                         .newValue(originalFilename)
                         .build());
             }
@@ -753,17 +754,18 @@ public class VtsOperationCenterService {
 
         attachmentRepository.delete(att);
 
-        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2) {
+        if (historyRepository != null) {
             historyRepository.save(InfrastructureHistory.builder()
                     .refId(id)
                     .refType(InfrastructureType.VTS_OPERATION_CENTER)
-                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .approvalLevel(ApprovalLevel.LEVEL_0)
                     .status(InfrastructureHistoryStatus.UPDATED)
                     .approvedBy(userId)
+                    .approvedDate(LocalDateTime.now())
                     .reason("Xóa tài liệu đính kèm: " + att.getFileName())
                     .changedField("Tài liệu đính kèm")
                     .previousValue(att.getFileName())
-                    .newValue(null)
+                    .newValue("—")
                     .build());
         }
     }

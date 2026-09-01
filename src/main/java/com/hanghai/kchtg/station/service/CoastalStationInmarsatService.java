@@ -839,6 +839,19 @@ public class CoastalStationInmarsatService {
                     .uploadedBy(userId)
                     .build();
             savedAttachments.add(attachmentRepository.save(attachment));
+
+            if (historyService != null) {
+                historyService.recordHistory(
+                        InfrastructureType.INMARSAT_STATION,
+                        id,
+                        com.hanghai.kchtg.station.entity.StationHistoryActionType.UPDATE,
+                        "Tài liệu đính kèm",
+                        "—",
+                        originalFilename,
+                        "Tải lên tài liệu đính kèm: " + originalFilename,
+                        userId
+                );
+            }
         }
         return savedAttachments.stream().map(this::toAttachmentResponse).toList();
     }
@@ -855,12 +868,26 @@ public class CoastalStationInmarsatService {
 
         com.hanghai.kchtg.common.entity.InfrastructureAttachment attachment = attachmentRepository.findByIdAndRefIdAndRefType(attachmentId, id, InfrastructureType.INMARSAT_STATION)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy file đính kèm với ID: " + attachmentId));
+        String fileName = attachment.getFileName();
         try {
             java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
         } catch (Exception e) {
             log.warn("Không thể xóa file vật lý {}: {}", attachment.getFilePath(), e.getMessage());
         }
         attachmentRepository.delete(attachment);
+
+        if (historyService != null) {
+            historyService.recordHistory(
+                    InfrastructureType.INMARSAT_STATION,
+                    id,
+                    com.hanghai.kchtg.station.entity.StationHistoryActionType.UPDATE,
+                    "Tài liệu đính kèm",
+                    fileName,
+                    "—",
+                    "Xóa tài liệu đính kèm: " + fileName,
+                    userId
+            );
+        }
     }
 
     public com.hanghai.kchtg.common.entity.InfrastructureAttachment getAttachment(UUID id, UUID attachmentId) {
