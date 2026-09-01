@@ -654,12 +654,12 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                   label: 'Vị trí (GIS)',
                   children: (
                     <DetailTable
-                      scrollY="calc(100vh - 428px)"
+                      scrollY="calc(100vh - 422px)"
                       dataSource={coordinateList}
                       emptyText="Chưa có tọa độ GPS nào"
                       headerNode={
                         <>
-                          <div className="chk-detail-grid" style={{ marginBottom: 16 }}>
+                          <div className="chk-detail-grid" style={{ marginBottom: 12 }}>
                             <div className="chk-detail-row">
                               <span className="chk-detail-label">Loại đối tượng</span>
                               <span className="chk-detail-value">
@@ -712,7 +712,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                               <span className="chk-detail-value">{(record as any)?.displayRule || 'Độ, phút, giây (DMS)'}</span>
                             </div>
                           </div>
-                          <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+                          <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
                             <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px' }}>
                               Tọa độ GPS
                             </span>
@@ -738,7 +738,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                       columns={[
                         {
                           title: 'STT',
-                          width: 50,
+                          width: 60,
                           align: 'center',
                           render: (_: any, __: any, i: number) => i + 1,
                         },

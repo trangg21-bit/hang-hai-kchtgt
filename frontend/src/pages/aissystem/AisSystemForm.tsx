@@ -698,12 +698,12 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
             label: 'Vị trí (GIS)',
             children: (
               <DetailTable
-                scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
+                scrollY="calc(100vh - 422px)"
                 dataSource={coordinateList}
                 emptyText="Chưa có tọa độ GPS nào"
                 headerNode={
                   <>
-                    <div className="chk-detail-grid" style={{ marginBottom: 16 }}>
+                    <div className="chk-detail-grid" style={{ marginBottom: 12 }}>
                       <div className="chk-detail-row"><span className="chk-detail-label">Loại đối tượng</span><span className="chk-detail-value">{record?.geometryType === 'LINE' ? 'Đối tượng đường' : record?.geometryType === 'POLYGON' ? 'Đối tượng vùng' : 'Đối tượng điểm'}</span></div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label">Biểu tượng</span>
@@ -745,7 +745,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                       <div className="chk-detail-row"><span className="chk-detail-label">Hệ quy chiếu</span><span className="chk-detail-value">WGS 84 / VN-2000</span></div>
                       <div className="chk-detail-row"><span className="chk-detail-label">Quy tắc hiển thị</span><span className="chk-detail-value">Độ, phút, giây (DMS)</span></div>
                     </div>
-                    <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+                    <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
                       <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px' }}>
                         Tọa độ GPS
                       </span>
