@@ -1036,7 +1036,7 @@ export default function VtsSystemForm({
                     />
                   </div>
                   <DetailTable
-                    scrollY={DRAWER_TABLE_SCROLL_Y.withButton}
+                    scrollY="calc(100vh - 338px)"
                     dataSource={filteredOtherInfra}
                     emptyText={isLoadingOtherInfra ? 'Đang tải dữ liệu KCHT khác...' : 'Chưa có kết cấu hạ tầng khác thuộc hệ thống VTS'}
                     rowKey={(r: any) => r.id || `${r.type}-${r.name}`}
@@ -1082,7 +1082,7 @@ export default function VtsSystemForm({
               children: (
                 <Tabs
                   defaultActiveKey="operation"
-                  tabBarStyle={{ ...drawerTabBarStyle, marginTop: 0, marginBottom: 12 }}
+                  tabBarStyle={{ ...drawerTabBarStyle, marginTop: 0, marginBottom: 8 }}
                   animated={false}
                   items={[
                     {
@@ -1090,7 +1090,7 @@ export default function VtsSystemForm({
                       label: 'Thông tin vận hành khai thác',
                       children: (
                         <DetailTable
-                          scrollY={DRAWER_TABLE_SCROLL_Y.withButton}
+                          scrollY="calc(100vh - 342px)"
                           dataSource={operationPlanList}
                           emptyText="Chưa có dữ liệu"
                           rowKey={(r: any) => r.id || r.planCode || r.code || Math.random().toString()}
@@ -1150,7 +1150,7 @@ export default function VtsSystemForm({
                       label: 'Thông tin bảo trì',
                       children: (
                         <DetailTable
-                          scrollY={DRAWER_TABLE_SCROLL_Y.withButton}
+                          scrollY="calc(100vh - 342px)"
                           dataSource={maintenancePlanList}
                           emptyText="Chưa có dữ liệu"
                           rowKey={(r: any) => r.id || r.planCode || r.code || Math.random().toString()}
@@ -1210,7 +1210,7 @@ export default function VtsSystemForm({
                       label: 'Thông tin sự cố',
                       children: (
                         <DetailTable
-                          scrollY={DRAWER_TABLE_SCROLL_Y.withButton}
+                          scrollY="calc(100vh - 342px)"
                           dataSource={incidentList}
                           emptyText="Chưa có dữ liệu"
                           rowKey={(r: any) => r.id || r.incidentCode || r.code || Math.random().toString()}
