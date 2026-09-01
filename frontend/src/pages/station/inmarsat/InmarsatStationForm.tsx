@@ -44,7 +44,8 @@ import DetailTable from '../../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../../components/shared/InfrastructureAttachmentTab';
 import GisLocationSelector from '../../../components/gis/GisLocationSelector';
 import { symbolService } from '../../../services/symbolService';
-import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
+import dayjs from 'dayjs';
+import ApprovalStatusBadge from '../../../components/shared/ApprovalStatusBadge';
 import { parseWktToCoordinates, serializeCoordinatesToWkt, ddToDms, dmsToDd } from '../../../utils/gisGeometry';
 
 export const INMARSAT_SERVICE_OPTIONS = [
@@ -158,6 +159,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
   const [record, setRecord] = useState<CoastalStationInmarsatResponse | null>(initialData || null);
   const [attachments, setAttachments] = useState<any[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [approvalSectionOpen, setApprovalSectionOpen] = useState(false);
 
   // Symbols & GIS
   const [symbols, setSymbols] = useState<any[]>([]);
@@ -626,8 +628,9 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                       </div>
 
                       {/* ── Thông tin khác (8-11) ── */}
-                      <div style={{ marginTop: 16, marginBottom: 10, borderTop: `1px solid ${borderDefault}`, paddingTop: 10 }}>
-                        <span style={{ color: actionPrimary, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
+                      <div style={{ marginTop: 20, marginBottom: 12, borderTop: `1px solid ${borderDefault}`, paddingTop: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ display: 'inline-block', width: 4, height: 16, borderRadius: 2, backgroundColor: actionPrimary }} />
+                        <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                           Thông tin khác
                         </span>
                       </div>
@@ -646,6 +649,55 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                           <span className="chk-detail-value">{record.notes || record.description || (record as any).note || '—'}</span>
                         </div>
                       </div>
+
+                      {/* ── Thông tin phê duyệt (Toggle Dropdown) ── */}
+                      <div style={{ marginTop: 20, marginBottom: 10, borderTop: `1px solid ${borderDefault}`, paddingTop: 14 }}>
+                        <button
+                          type="button"
+                          onClick={() => setApprovalSectionOpen(!approvalSectionOpen)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '4px 0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                          }}
+                        >
+                          <span style={{ display: 'inline-block', width: 4, height: 16, borderRadius: 2, backgroundColor: actionPrimary }} />
+                          <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                            Thông tin phê duyệt
+                          </span>
+                          <span style={{ fontSize: 11, color: actionPrimary, marginLeft: 4 }}>{approvalSectionOpen ? '▲' : '▼'}</span>
+                        </button>
+                      </div>
+
+                      {approvalSectionOpen && (
+                        <div className="chk-detail-grid">
+                          <div className="chk-detail-row"><span className="chk-detail-label">Ngày gửi duyệt</span><span className="chk-detail-value">{record.submittedDate ? dayjs(record.submittedDate).format('DD/MM/YYYY HH:mm:ss') : (record.submittedAt ? dayjs(record.submittedAt).format('DD/MM/YYYY HH:mm:ss') : '—')}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ gửi duyệt</span><span className="chk-detail-value">{record.submittedByName || record.submittedBy || '—'}</span></div>
+
+                          <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt Cảng vụ</span><span className="chk-detail-value">{record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt Cảng vụ</span><span className="chk-detail-value">{record.approverLevel1Name || record.approverLevel1 || '—'}</span></div>
+
+                          <div className="chk-detail-row"><span className="chk-detail-label">Nội dung Cảng vụ phê duyệt</span><span className="chk-detail-value">{record.approvalReasonLevel1 || record.rejectionReasonLevel1 || '—'}</span></div>
+                          <div style={{ border: 'none' }} />
+
+                          <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt Cục</span><span className="chk-detail-value">{record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt Cục</span><span className="chk-detail-value">{record.approverLevel2Name || record.approverLevel2 || '—'}</span></div>
+
+                          <div className="chk-detail-row"><span className="chk-detail-label">Nội dung Cục phê duyệt</span><span className="chk-detail-value">{record.approvalReasonLevel2 || record.rejectionReasonLevel2 || '—'}</span></div>
+                          <div style={{ border: 'none' }} />
+
+                          <div className="chk-detail-row"><span className="chk-detail-label">Trạng thái phê duyệt</span><span className="chk-detail-value"><ApprovalStatusBadge status={record.approvalStatus} /></span></div>
+                          <div style={{ border: 'none' }} />
+
+                          {record.rejectionReason && (
+                            <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Lý do từ chối</span><span className="chk-detail-value" style={{ color: statusCritical }}>{record.rejectionReason}</span></div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ),
                 },
@@ -1009,8 +1061,9 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                         </Row>
 
                         <Col span={24}>
-                          <div style={{ marginTop: 12, marginBottom: 12, borderTop: `1px solid ${borderDefault}`, paddingTop: 12 }}>
-                            <span style={{ color: actionPrimary, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
+                          <div style={{ marginTop: 16, marginBottom: 14, borderTop: `1px solid ${borderDefault}`, paddingTop: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ display: 'inline-block', width: 4, height: 16, borderRadius: 2, backgroundColor: actionPrimary }} />
+                            <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                               Thông tin khác
                             </span>
                           </div>

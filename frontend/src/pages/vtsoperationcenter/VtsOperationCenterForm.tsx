@@ -587,8 +587,9 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                   <div className="chk-detail-row"><span className="chk-detail-label">Tình trạng</span><span className="chk-detail-value">{renderConditionBadge(record.conditionStatus)}</span></div>
                 </div>
 
-                <div style={{ marginTop: 16, marginBottom: 10, borderTop: `1px solid ${borderDefault}`, paddingTop: 10 }}>
-                  <span style={{ color: actionPrimary, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
+                <div style={{ marginTop: 20, marginBottom: 12, borderTop: `1px solid ${borderDefault}`, paddingTop: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ display: 'inline-block', width: 4, height: 16, borderRadius: 2, backgroundColor: actionPrimary }} />
+                  <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                     Thông tin khác
                   </span>
                 </div>
@@ -605,7 +606,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                 </div>
 
                 {/* ── Thông tin phê duyệt (Toggle Dropdown) ── */}
-                <div style={{ marginTop: 16, marginBottom: 6 }}>
+                <div style={{ marginTop: 20, marginBottom: 10, borderTop: `1px solid ${borderDefault}`, paddingTop: 14 }}>
                   <button
                     type="button"
                     onClick={() => setApprovalSectionOpen(!approvalSectionOpen)}
@@ -614,16 +615,16 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                       border: 'none',
                       cursor: 'pointer',
                       padding: '4px 0',
-                      color: actionPrimary,
-                      fontWeight: fontWeightBold,
-                      fontSize: fontSizeMd,
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 6,
+                      gap: 8,
                     }}
                   >
-                    <span style={{ fontSize: 10, color: actionPrimary }}>{approvalSectionOpen ? '▼' : '▶'}</span>
-                    <span>Thông tin phê duyệt</span>
+                    <span style={{ display: 'inline-block', width: 4, height: 16, borderRadius: 2, backgroundColor: actionPrimary }} />
+                    <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                      Thông tin phê duyệt
+                    </span>
+                    <span style={{ fontSize: 11, color: actionPrimary, marginLeft: 4 }}>{approvalSectionOpen ? '▲' : '▼'}</span>
                   </button>
                 </div>
 
@@ -1020,8 +1021,9 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                         </Col>
 
                         <Col span={24}>
-                          <div style={{ marginTop: 12, marginBottom: 12, borderTop: `1px solid ${borderDefault}`, paddingTop: 12 }}>
-                            <span style={{ color: actionPrimary, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
+                          <div style={{ marginTop: 16, marginBottom: 14, borderTop: `1px solid ${borderDefault}`, paddingTop: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ display: 'inline-block', width: 4, height: 16, borderRadius: 2, backgroundColor: actionPrimary }} />
+                            <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                               Thông tin khác
                             </span>
                           </div>
