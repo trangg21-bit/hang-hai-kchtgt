@@ -755,26 +755,44 @@ export default function VtsSystemForm({
               children: (
                 <div style={drawerFormScrollStyle}>
                   <div className="chk-detail-grid">
+                    {/* 1. Mã hệ thống VTS */}
                     <div className="chk-detail-row"><span className="chk-detail-label">Mã hệ thống VTS</span><span className="chk-detail-value">{record.code || '—'}</span></div>
+                    {/* 2. Tên hệ thống VTS */}
                     <div className="chk-detail-row"><span className="chk-detail-label">Tên hệ thống VTS</span><span className="chk-detail-value">{record.systemName || '—'}</span></div>
                     
+                    {/* 3. Đơn vị quản lý */}
                     <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị quản lý</span><span className="chk-detail-value">{record.orgUnitName || '—'}</span></div>
+                    {/* 4. Đơn vị chủ quản */}
                     <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị chủ quản</span><span className="chk-detail-value">{record.owningOrgName || '—'}</span></div>
 
+                    {/* 5. Đơn vị vận hành */}
                     <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị vận hành</span><span className="chk-detail-value">{getOperatingOrgDisplayName(record)}</span></div>
+                    {/* 6. Thuộc cảng biển */}
                     <div className="chk-detail-row"><span className="chk-detail-label">Thuộc cảng biển</span><span className="chk-detail-value">{record.portName || '—'}</span></div>
 
+                    {/* 7. Địa điểm (Tỉnh/TP) */}
                     <div className="chk-detail-row"><span className="chk-detail-label">Địa điểm (Tỉnh/TP)</span><span className="chk-detail-value">{record.province || (record.provinceId ? getProvinceNameById(record.provinceId) : '—')}</span></div>
+                    {/* 8. Địa điểm chi tiết */}
                     <div className="chk-detail-row"><span className="chk-detail-label">Địa điểm chi tiết</span><span className="chk-detail-value">{record.address || '—'}</span></div>
 
+                    {/* 9. Thời gian bắt đầu hoạt động */}
                     <div className="chk-detail-row"><span className="chk-detail-label">Thời gian bắt đầu hoạt động</span><span className="chk-detail-value">{record.operationStartDate ? dayjs(record.operationStartDate).format('DD/MM/YYYY') : '—'}</span></div>
-                    <div className="chk-detail-row"><span className="chk-detail-label">Tình trạng</span><span className="chk-detail-value">{renderConditionStatusBadge(record.conditionStatus)}</span></div>
+                    <div style={{ border: 'none' }} />
 
+                    {/* 10. Phạm vi áp dụng */}
                     <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Phạm vi áp dụng</span><span className="chk-detail-value">{record.scope || '—'}</span></div>
+
+                    {/* 11. Thông báo hàng hải */}
                     <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Thông báo hàng hải</span><span className="chk-detail-value">{record.maritimeNotice || '—'}</span></div>
 
+                    {/* 12. Tình trạng */}
+                    <div className="chk-detail-row"><span className="chk-detail-label">Tình trạng</span><span className="chk-detail-value">{renderConditionStatusBadge(record.conditionStatus)}</span></div>
+                    <div style={{ border: 'none' }} />
+
+                    {/* 13. Ghi chú */}
                     <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Ghi chú</span><span className="chk-detail-value">{record.note || '—'}</span></div>
 
+                    {/* Cán bộ và thời gian cập nhật */}
                     <div className="chk-detail-row"><span className="chk-detail-label">Ngày cập nhật</span><span className="chk-detail-value">{record.updatedDate ? dayjs(record.updatedDate).format('DD/MM/YYYY HH:mm:ss') : (record.createdDate ? dayjs(record.createdDate).format('DD/MM/YYYY HH:mm:ss') : '—')}</span></div>
                     <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ cập nhật</span><span className="chk-detail-value">{record.updatedByName || record.createdByName || '—'}</span></div>
                     <div style={{ border: 'none' }} />
