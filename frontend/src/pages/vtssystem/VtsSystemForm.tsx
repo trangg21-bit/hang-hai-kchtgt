@@ -16,6 +16,9 @@ import dayjs from 'dayjs';
 import toast from '../../components/ToastNotification';
 import { focusErrorTab } from '../../utils/formValidationHelper';
 import { vtsSystemCRUD, vtsSystemApproval } from '../../services/vtsSystemService';
+import { vtsOperationCenterService } from '../../services/vtsOperationCenterService';
+import { radarStationService } from '../../services/radarStationService';
+import { aisSystemService } from '../../services/aisSystemService';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import type {
   VtsSystemResponse,
@@ -312,6 +315,11 @@ export default function VtsSystemForm({
   const [isLoadingZones, setIsLoadingZones] = useState(false);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
 
+  const [otherInfraTypeFilter, setOtherInfraTypeFilter] = useState<string>('ALL');
+  const [otherInfraList, setOtherInfraList] = useState<Array<{ id: string; type: string; typeLabel: string; name: string }>>([]);
+  const [otherInfraLoaded, setOtherInfraLoaded] = useState(false);
+  const [isLoadingOtherInfra, setIsLoadingOtherInfra] = useState(false);
+
   const isCreateMode = propMode === 'create';
   const isEditMode = propMode === 'edit';
   const isDetailMode = propMode === 'detail';
@@ -490,6 +498,73 @@ export default function VtsSystemForm({
         .finally(() => setIsLoadingFiles(false));
     }
   }, [editId, detailTabKey, tabKey, filesLoaded, isDetailMode]);
+
+  // Lazy load other infrastructure when user switches to 'otherInfra' tab in detail mode
+  useEffect(() => {
+    if (!editId || otherInfraLoaded) return;
+    if (isDetailMode && detailTabKey === 'otherInfra') {
+      setIsLoadingOtherInfra(true);
+      Promise.allSettled([
+        vtsOperationCenterService.search({ vtsSystemId: editId, size: 100 } as any),
+        radarStationService.search({ vtsSystemId: editId, size: 100 } as any),
+        aisSystemService.search({ vtsSystemId: editId, size: 100 } as any),
+      ]).then((results) => {
+        const combined: Array<{ id: string; type: string; typeLabel: string; name: string }> = [];
+
+        // 1. Trung tâm điều hành VTS
+        if (results[0].status === 'fulfilled' && results[0].value) {
+          const res = results[0].value as any;
+          const items = Array.isArray(res?.data?.items) ? res.data.items : (Array.isArray(res?.items) ? res.items : (Array.isArray(res?.data) ? res.data : []));
+          items.forEach((item: any) => {
+            combined.push({
+              id: item.id,
+              type: 'VTS_OPERATION_CENTER',
+              typeLabel: 'Trung tâm điều hành VTS',
+              name: item.name || item.code || '—',
+            });
+          });
+        }
+
+        // 2. Trạm Radar VTS
+        if (results[1].status === 'fulfilled' && results[1].value) {
+          const res = results[1].value as any;
+          const items = Array.isArray(res?.data?.items) ? res.data.items : (Array.isArray(res?.items) ? res.items : (Array.isArray(res?.data) ? res.data : []));
+          items.forEach((item: any) => {
+            combined.push({
+              id: item.id,
+              type: 'RADAR_STATION',
+              typeLabel: 'Trạm Radar VTS',
+              name: item.name || item.code || '—',
+            });
+          });
+        }
+
+        // 3. Trạm AIS / Hệ thống AIS
+        if (results[2].status === 'fulfilled' && results[2].value) {
+          const res = results[2].value as any;
+          const items = Array.isArray(res?.data?.items) ? res.data.items : (Array.isArray(res?.items) ? res.items : (Array.isArray(res?.data) ? res.data : []));
+          items.forEach((item: any) => {
+            combined.push({
+              id: item.id,
+              type: 'AIS_SYSTEM',
+              typeLabel: 'Trạm AIS / Hệ thống AIS',
+              name: item.name || item.code || '—',
+            });
+          });
+        }
+
+        setOtherInfraList(combined);
+        setOtherInfraLoaded(true);
+      }).finally(() => {
+        setIsLoadingOtherInfra(false);
+      });
+    }
+  }, [editId, detailTabKey, otherInfraLoaded, isDetailMode]);
+
+  const filteredOtherInfra = useMemo(() => {
+    if (!otherInfraTypeFilter || otherInfraTypeFilter === 'ALL') return otherInfraList;
+    return otherInfraList.filter((item) => item.type === otherInfraTypeFilter);
+  }, [otherInfraList, otherInfraTypeFilter]);
 
   const populateForm = (data: VtsSystemResponse) => {
     form.setFieldsValue({
@@ -884,6 +959,73 @@ export default function VtsSystemForm({
                   isLoading={isLoadingFiles}
                   onDownload={handleDownloadAttachment}
                 />
+              ),
+            },
+            {
+              key: 'otherInfra',
+              label: 'Danh sách KCHT khác thuộc VTS',
+              children: (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                    <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, whiteSpace: 'nowrap' }}>
+                      Loại đối tượng
+                    </span>
+                    <Select
+                      allowClear
+                      showSearch
+                      placeholder="Chọn loại đối tượng"
+                      value={otherInfraTypeFilter === 'ALL' ? undefined : otherInfraTypeFilter}
+                      onChange={(val) => setOtherInfraTypeFilter(val || 'ALL')}
+                      filterOption={(input, option) =>
+                        normalizeSearchText(String(option?.label || '')).includes(normalizeSearchText(input))
+                      }
+                      options={[
+                        { value: 'VTS_OPERATION_CENTER', label: 'Trung tâm điều hành VTS' },
+                        { value: 'RADAR_STATION', label: 'Trạm Radar VTS' },
+                        { value: 'AIS_SYSTEM', label: 'Trạm AIS / Hệ thống AIS' },
+                      ]}
+                      style={{ ...selectStyle, width: 280 }}
+                    />
+                  </div>
+                  <DetailTable
+                    scrollY={DRAWER_TABLE_SCROLL_Y.withButton}
+                    dataSource={filteredOtherInfra}
+                    emptyText={isLoadingOtherInfra ? 'Đang tải dữ liệu KCHT khác...' : 'Chưa có kết cấu hạ tầng khác thuộc hệ thống VTS'}
+                    rowKey={(r: any) => r.id || `${r.type}-${r.name}`}
+                    columns={[
+                      {
+                        title: 'STT',
+                        width: 60,
+                        align: 'center',
+                        render: (_: any, __: any, index: number) => index + 1,
+                      },
+                      {
+                        title: 'Loại đối tượng',
+                        dataIndex: 'typeLabel',
+                        key: 'typeLabel',
+                        width: 240,
+                        render: (v: string) => (
+                          <span style={{ fontWeight: fontWeightMedium, color: textPrimary }}>
+                            {v || '—'}
+                          </span>
+                        ),
+                      },
+                      {
+                        title: 'Tên kết cấu hạ tầng',
+                        dataIndex: 'name',
+                        key: 'name',
+                        render: (v: string) => (
+                          <span
+                            style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: textPrimary }}
+                            title={v}
+                          >
+                            {v || '—'}
+                          </span>
+                        ),
+                      },
+                    ]}
+                  />
+                </div>
               ),
             },
           ]}
