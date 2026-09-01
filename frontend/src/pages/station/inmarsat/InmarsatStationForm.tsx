@@ -47,7 +47,7 @@ import { symbolService } from '../../../services/symbolService';
 import dayjs from 'dayjs';
 import ApprovalStatusBadge from '../../../components/shared/ApprovalStatusBadge';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
-import { parseWktToCoordinates, serializeCoordinatesToWkt, ddToDms, dmsToDd } from '../../../utils/gisGeometry';
+import { parseWktToCoordinates, serializeCoordinatesToWkt, ddToDms, dmsToDd, adjustCoordinateListForGeometry } from '../../../utils/gisGeometry';
 
 export const INMARSAT_SERVICE_OPTIONS = [
   { value: 'Inmarsat-C', label: 'Inmarsat-C' },
@@ -1141,11 +1141,12 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                                     if (val) {
                                       form.setFieldValue('coordinateSystem', 'WGS 84 / VN-2000');
                                       form.setFieldValue('displayRule', 'Độ, phút, giây (DMS)');
-                                      setCoordinateList((prev) => (val === 'POINT' && prev.length > 1 ? [prev[0]] : prev));
+                                      setCoordinateList((prev) => adjustCoordinateListForGeometry(prev, val));
                                     } else {
                                       form.setFieldValue('coordinateSystem', undefined);
                                       form.setFieldValue('displayRule', undefined);
                                       form.setFieldValue('symbol', undefined);
+                                      setCoordinateList([]);
                                     }
                                   }}
                                 />

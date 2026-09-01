@@ -58,6 +58,7 @@ import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import {
   parseWktToCoordinates,
   serializeCoordinatesToWkt,
+  adjustCoordinateListForGeometry,
 } from '../../utils/gisGeometry';
 
 export interface AisSystemFormProps {
@@ -1198,16 +1199,12 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                                   if (val) {
                                     form.setFieldValue('coordinateSystem', 'WGS 84 / VN-2000');
                                     form.setFieldValue('displayRule', 'Độ, phút, giây (DMS)');
-                                    setCoordinateList((prev) => {
-                                      if (val === 'POINT' && prev.length > 1) {
-                                        return [prev[0]];
-                                      }
-                                      return prev;
-                                    });
+                                    setCoordinateList((prev) => adjustCoordinateListForGeometry(prev, val));
                                   } else {
                                     form.setFieldValue('coordinateSystem', undefined);
                                     form.setFieldValue('displayRule', undefined);
                                     form.setFieldValue('symbolId', undefined);
+                                    setCoordinateList([]);
                                   }
                                 }}
                               />

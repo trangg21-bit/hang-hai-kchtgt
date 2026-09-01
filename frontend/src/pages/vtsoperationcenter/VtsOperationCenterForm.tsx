@@ -62,6 +62,7 @@ import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import { adjustCoordinateListForGeometry } from '../../utils/gisGeometry';
 
 export interface VtsOperationCenterFormProps {
   open?: boolean;
@@ -1079,16 +1080,12 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                                   if (val) {
                                     form.setFieldValue('coordinateSystem', 'WGS 84 / VN-2000');
                                     form.setFieldValue('displayRule', 'Độ, phút, giây (DMS)');
-                                    setCoordinateList((prev) => {
-                                      if (val === 'POINT' && prev.length > 1) {
-                                        return [prev[0]];
-                                      }
-                                      return prev;
-                                    });
+                                    setCoordinateList((prev) => adjustCoordinateListForGeometry(prev, val));
                                   } else {
                                     form.setFieldValue('coordinateSystem', undefined);
                                     form.setFieldValue('displayRule', undefined);
                                     form.setFieldValue('symbolId', undefined);
+                                    setCoordinateList([]);
                                   }
                                 }}
                               />
