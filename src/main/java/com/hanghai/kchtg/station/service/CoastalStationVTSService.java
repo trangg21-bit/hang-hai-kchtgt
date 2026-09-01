@@ -48,6 +48,8 @@ public class CoastalStationVTSService {
         entity.setLocationAddress(request.getLocationAddress());
         entity.setContactPerson(request.getContactPerson());
         entity.setContactPhone(request.getContactPhone());
+        entity.setLatitude(request.getLatitude());
+        entity.setLongitude(request.getLongitude());
         entity.setIsActive(true);
 
         CoastalStationVTS saved = repository.save(entity);
@@ -96,6 +98,15 @@ public class CoastalStationVTSService {
             if (request.getContactPhone() != null && !java.util.Objects.equals(request.getContactPhone(), entity.getContactPhone())) {
                 oldValues.put("Số điện thoại liên hệ", entity.getContactPhone() != null ? entity.getContactPhone() : "—");
             }
+
+            boolean latChanged = (request.getLatitude() != null && !java.util.Objects.equals(request.getLatitude(), entity.getLatitude()));
+            boolean lngChanged = (request.getLongitude() != null && !java.util.Objects.equals(request.getLongitude(), entity.getLongitude()));
+            if (latChanged || lngChanged) {
+                String oldCoord = (entity.getLatitude() != null && entity.getLongitude() != null)
+                        ? entity.getLatitude() + ", " + entity.getLongitude()
+                        : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
+                oldValues.put("Tọa độ", oldCoord);
+            }
         }
 
         validateCoordinates(request.getLongitude(), request.getLatitude());
@@ -114,6 +125,10 @@ public class CoastalStationVTSService {
             entity.setContactPerson(request.getContactPerson());
         if (request.getContactPhone() != null)
             entity.setContactPhone(request.getContactPhone());
+        if (request.getLatitude() != null)
+            entity.setLatitude(request.getLatitude());
+        if (request.getLongitude() != null)
+            entity.setLongitude(request.getLongitude());
 
         CoastalStationVTS saved = repository.save(entity);
 
@@ -147,6 +162,9 @@ public class CoastalStationVTSService {
             case "Địa điểm chi tiết" -> entity.getLocationAddress() != null ? entity.getLocationAddress() : "—";
             case "Người liên hệ" -> entity.getContactPerson() != null ? entity.getContactPerson() : "—";
             case "Số điện thoại liên hệ" -> entity.getContactPhone() != null ? entity.getContactPhone() : "—";
+            case "Tọa độ", "Tọa độ GPS" -> (entity.getLatitude() != null && entity.getLongitude() != null)
+                    ? entity.getLatitude() + ", " + entity.getLongitude()
+                    : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
             default -> "—";
         };
     }

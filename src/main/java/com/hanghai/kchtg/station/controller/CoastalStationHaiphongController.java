@@ -199,4 +199,66 @@ public class CoastalStationHaiphongController {
     public ResponseEntity<List<CoastalStationHaiphongHistoryResponse>> getHistory(@PathVariable UUID id) {
         return ResponseEntity.ok(service.getHistory(id));
     }
+
+    // ── Attachment endpoints (InfrastructureAttachment, ref_type HANOI_STATION) ──
+
+    @PostMapping(value = "/{id}/attachments", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Tải lên tài liệu đính kèm cho Đài TTXLTT")
+    @PreAuthorize("hasAnyAuthority('coastalstationhaiphong:update', 'specialstation:update', 'data:update', 'admin:all')")
+    public ResponseEntity<com.hanghai.kchtg.common.dto.ApiResponse<List<CoastalStationHaiphongAttachmentResponse>>> uploadAttachments(
+            @PathVariable UUID id,
+            @RequestParam("files") List<org.springframework.web.multipart.MultipartFile> files) {
+        UUID userId = com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId();
+        List<CoastalStationHaiphongAttachmentResponse> uploaded = service.uploadAttachments(id, files, userId);
+        return ResponseEntity.ok(com.hanghai.kchtg.common.dto.ApiResponse.success("Tải lên tệp đính kèm thành công", uploaded));
+    }
+
+    @GetMapping("/{id}/attachments")
+    @Operation(summary = "Lấy danh sách tài liệu đính kèm của Đài TTXLTT")
+    @PreAuthorize("hasAnyAuthority('coastalstationhaiphong:read', 'specialstation:read', 'data:read', 'admin:all')")
+    public ResponseEntity<com.hanghai.kchtg.common.dto.ApiResponse<List<CoastalStationHaiphongAttachmentResponse>>> listAttachments(
+            @PathVariable UUID id) {
+        List<CoastalStationHaiphongAttachmentResponse> list = service.listAttachments(id);
+        return ResponseEntity.ok(com.hanghai.kchtg.common.dto.ApiResponse.success("Danh sách tài liệu đính kèm", list));
+    }
+
+    @DeleteMapping("/{id}/attachments/{attId}")
+    @Operation(summary = "Xóa tài liệu đính kèm của Đài TTXLTT")
+    @PreAuthorize("hasAnyAuthority('coastalstationhaiphong:update', 'specialstation:update', 'data:update', 'admin:all')")
+    public ResponseEntity<com.hanghai.kchtg.common.dto.ApiResponse<Void>> deleteAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId) {
+        UUID userId = com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId();
+        service.deleteAttachment(id, attId, userId);
+        return ResponseEntity.ok(com.hanghai.kchtg.common.dto.ApiResponse.success("Xóa tài liệu đính kèm thành công", null));
+    }
+
+    @GetMapping("/{id}/attachments/{attId}/download")
+    @Operation(summary = "Tải xuống tài liệu đính kèm của Đài TTXLTT")
+    @PreAuthorize("hasAnyAuthority('coastalstationhaiphong:read', 'specialstation:read', 'data:read', 'admin:all')")
+    public ResponseEntity<org.springframework.core.io.Resource> downloadAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId) {
+        com.hanghai.kchtg.common.entity.InfrastructureAttachment attachment = service.getAttachment(id, attId);
+        java.nio.file.Path path = java.nio.file.Paths.get(attachment.getFilePath()).toAbsolutePath().normalize();
+        try {
+            org.springframework.core.io.Resource resource = new org.springframework.core.io.UrlResource(path.toUri());
+            if (!resource.exists() || !resource.isReadable()) {
+                return ResponseEntity.notFound().build();
+            }
+            String contentType = "application/octet-stream";
+            try {
+                contentType = java.nio.file.Files.probeContentType(path);
+                if (contentType == null) contentType = "application/octet-stream";
+            } catch (Exception ignored) {}
+
+            return ResponseEntity.ok()
+                    .contentType(org.springframework.http.MediaType.parseMediaType(contentType))
+                    .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"" + (attachment.getFileName() != null ? attachment.getFileName().replace("\"", "") : "attachment") + "\"")
+                    .body(resource);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 }

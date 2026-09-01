@@ -51,6 +51,7 @@ public class CoastalStationLRITService {
     private final OperatingOrganizationRepository operatingOrganizationRepository;
     private final UserRepository userRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
+    private final com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository attachmentRepository;
 
     private Scope resolveEffectiveScope(UUID selectedOrgUnitId) {
         Scope userScope = orgUnitScopeService.currentUserScope();
@@ -659,5 +660,114 @@ public class CoastalStationLRITService {
         return userRepository.findById(userId)
                 .map(u -> (u.getFullName() != null && !u.getFullName().isBlank()) ? u.getFullName() : u.getUsername())
                 .orElse(null);
+    }
+
+    // ── Attachment handling ──
+
+    public List<CoastalStationLRITAttachmentResponse> uploadAttachments(
+            UUID id,
+            List<org.springframework.web.multipart.MultipartFile> files,
+            UUID userId) {
+        CoastalStationLRIT entity = getStationById(id);
+        validateAllowedOrgUnit(entity.getOrgUnitId());
+
+        java.nio.file.Path basePath = java.nio.file.Paths.get("uploads", "lrit-attachments");
+        List<com.hanghai.kchtg.common.entity.InfrastructureAttachment> savedAttachments = new ArrayList<>();
+
+        for (org.springframework.web.multipart.MultipartFile file : files) {
+            if (file.isEmpty()) continue;
+
+            String originalFilename = file.getOriginalFilename();
+            String storageFileName = System.currentTimeMillis() + "_" + (originalFilename != null ? originalFilename : "unnamed");
+            java.nio.file.Path targetDir = basePath.resolve(InfrastructureType.LRIT_STATION.name()).resolve(id.toString());
+            java.nio.file.Path targetPath = targetDir.resolve(storageFileName);
+
+            try {
+                java.nio.file.Files.createDirectories(targetDir);
+                file.transferTo(targetPath);
+            } catch (java.io.IOException e) {
+                throw new RuntimeException("Không thể lưu file: " + originalFilename, e);
+            }
+
+            com.hanghai.kchtg.common.entity.InfrastructureAttachment attachment = com.hanghai.kchtg.common.entity.InfrastructureAttachment.builder()
+                    .refId(id)
+                    .refType(InfrastructureType.LRIT_STATION)
+                    .fileName(originalFilename)
+                    .filePath(basePath.resolve(InfrastructureType.LRIT_STATION.name()).resolve(id.toString()).resolve(storageFileName).toString())
+                    .fileSize(file.getSize())
+                    .fileType(com.hanghai.kchtg.common.enums.AttachmentFileType.fromValue(file.getContentType()))
+                    .uploadedBy(userId)
+                    .build();
+            savedAttachments.add(attachmentRepository.save(attachment));
+
+            if (historyService != null) {
+                historyService.recordHistory(
+                        InfrastructureType.LRIT_STATION,
+                        id,
+                        com.hanghai.kchtg.station.entity.StationHistoryActionType.UPDATE,
+                        "Tài liệu đính kèm",
+                        "—",
+                        originalFilename,
+                        "Tải lên tài liệu đính kèm: " + originalFilename,
+                        userId
+                );
+            }
+        }
+        return savedAttachments.stream().map(this::toAttachmentResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<CoastalStationLRITAttachmentResponse> listAttachments(UUID id) {
+        return attachmentRepository.findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.LRIT_STATION)
+                .stream().map(this::toAttachmentResponse).toList();
+    }
+
+    public void deleteAttachment(UUID id, UUID attachmentId, UUID userId) {
+        CoastalStationLRIT entity = getStationById(id);
+        validateAllowedOrgUnit(entity.getOrgUnitId());
+
+        com.hanghai.kchtg.common.entity.InfrastructureAttachment attachment = attachmentRepository.findByIdAndRefIdAndRefType(attachmentId, id, InfrastructureType.LRIT_STATION)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy file đính kèm với ID: " + attachmentId));
+        String fileName = attachment.getFileName();
+        try {
+            java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
+        } catch (Exception e) {
+            log.warn("Không thể xóa file vật lý {}: {}", attachment.getFilePath(), e.getMessage());
+        }
+        attachmentRepository.delete(attachment);
+
+        if (historyService != null) {
+            historyService.recordHistory(
+                    InfrastructureType.LRIT_STATION,
+                    id,
+                    com.hanghai.kchtg.station.entity.StationHistoryActionType.UPDATE,
+                    "Tài liệu đính kèm",
+                    fileName,
+                    "—",
+                    "Xóa tài liệu đính kèm: " + fileName,
+                    userId
+            );
+        }
+    }
+
+    public com.hanghai.kchtg.common.entity.InfrastructureAttachment getAttachment(UUID id, UUID attachmentId) {
+        return attachmentRepository.findByIdAndRefIdAndRefType(attachmentId, id, InfrastructureType.LRIT_STATION)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy file đính kèm với ID: " + attachmentId));
+    }
+
+    private CoastalStationLRITAttachmentResponse toAttachmentResponse(com.hanghai.kchtg.common.entity.InfrastructureAttachment a) {
+        String uploadedByName = a.getUploadedBy() != null
+                ? userRepository.findById(a.getUploadedBy()).map(User::getFullName).orElse(a.getUploadedBy().toString())
+                : null;
+        return CoastalStationLRITAttachmentResponse.builder()
+                .id(a.getId())
+                .fileName(a.getFileName())
+                .filePath(a.getFilePath())
+                .fileSize(a.getFileSize())
+                .documentType(a.getFileType() != null ? a.getFileType().name() : null)
+                .uploadedBy(a.getUploadedBy())
+                .uploadedByName(uploadedByName)
+                .uploadedDate(a.getUploadedDate())
+                .build();
     }
 }

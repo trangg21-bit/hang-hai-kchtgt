@@ -82,7 +82,7 @@ public class AccessLog {
     @Column(name = "severity", length = 20, nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'info'")
     private LogSeverity severity = LogSeverity.INFO;
 
-    @Column(name = "target_resource", length = 100)
+    @Column(name = "target_resource", length = 500)
     private String targetResource;
 
     @Column(name = "request_path", length = 500)
