@@ -43,6 +43,7 @@ import { FormOrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from
 import DetailTable from '../../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../../components/shared/InfrastructureAttachmentTab';
 import GisLocationSelector from '../../../components/gis/GisLocationSelector';
+import { symbolService } from '../../../services/symbolService';
 import dayjs from 'dayjs';
 import ApprovalStatusBadge from '../../../components/shared/ApprovalStatusBadge';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';

@@ -1324,7 +1324,7 @@ export default function VtsSystemForm({
                     <div className="chk-detail-row chk-detail-row--full">
                       <span className="chk-detail-label">Nội dung phê duyệt</span>
                       <span className="chk-detail-value">
-                        {record.approvalContentLevel1 || record.approvalReasonLevel1 || record.rejectionReasonLevel1 || '—'}
+                        {record.approvalContentLevel1 || '—'}
                       </span>
                     </div>
 
@@ -1346,7 +1346,7 @@ export default function VtsSystemForm({
                     <div className="chk-detail-row chk-detail-row--full">
                       <span className="chk-detail-label">Nội dung phê duyệt</span>
                       <span className="chk-detail-value">
-                        {record.approvalContentLevel2 || record.approvalReasonLevel2 || record.rejectionReasonLevel2 || record.rejectionReason || '—'}
+                        {record.approvalContentLevel2 || record.rejectionReason || '—'}
                       </span>
                     </div>
                   </div>
