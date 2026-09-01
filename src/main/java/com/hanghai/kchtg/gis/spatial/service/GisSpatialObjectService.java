@@ -6,6 +6,8 @@ import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialStatus;
 import com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository;
+import com.hanghai.kchtg.mapicon.entity.MapSymbol;
+import com.hanghai.kchtg.mapicon.repository.MapSymbolRepository;
 import com.hanghai.kchtg.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +24,7 @@ import java.util.UUID;
 public class GisSpatialObjectService {
 
     private final GisSpatialObjectRepository repository;
+    private final MapSymbolRepository mapSymbolRepository;
 
     /**
      * Tự động ánh xạ loại hình học và loại hạ tầng KCHT sang GisSpatialObjectType chuẩn
@@ -143,4 +146,29 @@ public class GisSpatialObjectService {
         if (spatialId == null) return null;
         return repository.findById(spatialId).map(GisSpatialObject::getCoordinates).orElse(null);
     }
+
+    @Transactional(readOnly = true)
+    public String getSymbolDisplayName(String symbolCodeOrId) {
+        if (symbolCodeOrId == null || symbolCodeOrId.isBlank() || "—".equals(symbolCodeOrId) || "null".equalsIgnoreCase(symbolCodeOrId)) {
+            return "—";
+        }
+        String trimmed = symbolCodeOrId.trim();
+        try {
+            try {
+                UUID symId = UUID.fromString(trimmed);
+                Optional<MapSymbol> sym = mapSymbolRepository.findById(symId);
+                if (sym.isPresent() && sym.get().getName() != null) {
+                    return sym.get().getName();
+                }
+            } catch (IllegalArgumentException notUuid) {
+                Optional<MapSymbol> sym = mapSymbolRepository.findByCode(trimmed);
+                if (sym.isPresent() && sym.get().getName() != null) {
+                    return sym.get().getName();
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return trimmed;
+    }
 }
+

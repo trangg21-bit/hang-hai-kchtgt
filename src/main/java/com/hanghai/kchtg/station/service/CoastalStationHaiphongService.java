@@ -346,7 +346,7 @@ public class CoastalStationHaiphongService {
                 oldValues.put("Loại đối tượng", formatObjectTypeDisplay(entity.getGeometryType()));
             }
             if (request.getSymbol() != null && !Objects.equals(request.getSymbol(), entity.getSymbol())) {
-                oldValues.put("Biểu tượng", entity.getSymbol() != null ? entity.getSymbol() : "—");
+                oldValues.put("Biểu tượng", gisSpatialObjectService != null ? gisSpatialObjectService.getSymbolDisplayName(entity.getSymbol()) : (entity.getSymbol() != null ? entity.getSymbol() : "—"));
             }
             if (request.getCoordinateSystem() != null && !Objects.equals(request.getCoordinateSystem(), entity.getCoordinateSystem())) {
                 oldValues.put("Hệ quy chiếu", entity.getCoordinateSystem() != null ? entity.getCoordinateSystem() : "—");
@@ -480,7 +480,7 @@ public class CoastalStationHaiphongService {
             case "Người liên hệ" -> entity.getContactPerson() != null ? entity.getContactPerson() : "—";
             case "Số điện thoại liên hệ" -> entity.getContactPhone() != null ? entity.getContactPhone() : "—";
             case "Loại đối tượng" -> formatObjectTypeDisplay(entity.getGeometryType());
-            case "Biểu tượng" -> entity.getSymbol() != null ? entity.getSymbol() : "—";
+            case "Biểu tượng" -> gisSpatialObjectService != null ? gisSpatialObjectService.getSymbolDisplayName(entity.getSymbol()) : (entity.getSymbol() != null ? entity.getSymbol() : "—");
             case "Hệ quy chiếu" -> entity.getCoordinateSystem() != null ? entity.getCoordinateSystem() : "—";
             case "Quy tắc hiển thị" -> entity.getDisplayRule() != null ? entity.getDisplayRule() : "—";
             case "Tọa độ", "Tọa độ GPS" -> {

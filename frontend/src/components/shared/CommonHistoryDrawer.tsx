@@ -6,6 +6,7 @@ import {
   FileOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { symbolService, type SymbolOption } from '../../services/symbolService';
 import { colors, getRangePickerProps } from '../../themetokenchk';
 import {
   actionPrimary,
@@ -206,6 +207,63 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
   const [keyword, setKeyword] = useState('');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
+  const [symbols, setSymbols] = useState<SymbolOption[]>([]);
+
+  useEffect(() => {
+    symbolService.getOptions().then((opts) => {
+      setSymbols(opts || []);
+    }).catch(() => setSymbols([]));
+  }, []);
+
+  const { symbolByCode, symbolById, symbolByName } = useMemo(() => {
+    const byCode = new Map<string, SymbolOption>();
+    const byId = new Map<string, SymbolOption>();
+    const byName = new Map<string, SymbolOption>();
+
+    (symbols || []).forEach((sym) => {
+      if (sym.code) {
+        byCode.set(sym.code.trim().toUpperCase(), sym);
+        byCode.set(sym.code.trim().toLowerCase(), sym);
+      }
+      if (sym.id) {
+        byId.set(String(sym.id).trim().toLowerCase(), sym);
+      }
+      if (sym.name) {
+        byName.set(sym.name.trim().toLowerCase(), sym);
+        const norm = sym.name.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+        byName.set(norm, sym);
+      }
+    });
+
+    return { symbolByCode: byCode, symbolById: byId, symbolByName: byName };
+  }, [symbols]);
+
+  const renderSymbolValue = (val: string) => {
+    if (!val || val === '—' || val === 'null' || val === '(null)') {
+      return <span style={{ color: textTertiary }}>—</span>;
+    }
+    const trimmed = String(val).trim();
+    const upper = trimmed.toUpperCase();
+    const lower = trimmed.toLowerCase();
+    const norm = lower.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+
+    const sym = symbolByCode.get(upper) || symbolByCode.get(lower) || symbolById.get(lower) || symbolByName.get(lower) || symbolByName.get(norm);
+
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: textPrimary, fontWeight: fontWeightBold, verticalAlign: 'middle' }}>
+        {sym?.image ? (
+          <img
+            src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`}
+            alt=""
+            style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4, flexShrink: 0 }}
+          />
+        ) : (
+          <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: actionPrimary, flexShrink: 0 }} />
+        )}
+        <span>{sym?.name || trimmed}</span>
+      </span>
+    );
+  };
 
   useEffect(() => {
     if (!open) {
@@ -569,6 +627,15 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                           const renderFormattedContent = (content: string, _isOld: boolean = false) => {
                             if (!content || content === '—') return <span style={{ color: textTertiary }}>—</span>;
                             const str = String(content).trim();
+                            const normLabel = (label || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+                            const normField = (change.field || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+                            const isSymbolField = normLabel.includes('bieu tuong') || normLabel.includes('symbol') || normLabel.includes('icon')
+                              || normField.includes('bieu tuong') || normField === 'symbol' || normField === 'mapsymbolid' || normField === 'symbolid' || normField === 'mapsymbol' || normField === 'icon';
+
+                            if (isSymbolField) {
+                              return renderSymbolValue(str);
+                            }
+
                             if (str.includes(',') && str.length > 25) {
                               const items = str.split(',').map((s) => s.trim()).filter(Boolean);
                               if (items.length > 1) {
