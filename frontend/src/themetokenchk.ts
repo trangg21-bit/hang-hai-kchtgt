@@ -245,8 +245,8 @@ export const DRAWER_TABLE_SCROLL_Y = {
   withDragger: 'calc(100vh - 442px)',
   /** Tab GIS trong form tạo/sửa (Top controls cố định 194px) */
   withGisForm: 'calc(100vh - 522px)',
-  /** Tab trong Drawer Xem chi tiết (Detail mode không có nút thao tác trên đầu) */
-  detailView: 'calc(100vh - 296px)',
+  /** Tab trong Drawer Xem chi tiết (Đồng bộ tọa độ Y chính xác tuyệt đối với Thêm mới / Sửa) */
+  detailView: 'calc(100vh - 360px)',
 } as const;
 
 /** --info-color của chk, ghi đè --kt-info của Metronic (#7239ea tím). */

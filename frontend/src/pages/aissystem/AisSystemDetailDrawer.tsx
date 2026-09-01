@@ -317,7 +317,7 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
             </span>
           </div>
           <DetailTable
-            scrollY="calc(100vh - 422px)"
+            scrollY="calc(100vh - 486px)"
             dataSource={parsedCoords.map((c, i) => ({ key: i, index: i + 1, ...c }))}
             rowKey="index"
             emptyText="Chưa có dữ liệu tọa độ"

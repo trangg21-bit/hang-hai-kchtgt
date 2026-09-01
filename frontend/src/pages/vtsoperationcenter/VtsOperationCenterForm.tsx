@@ -662,7 +662,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
             label: 'Vị trí (GIS)',
             children: (
               <DetailTable
-                scrollY="calc(100vh - 422px)"
+                scrollY="calc(100vh - 486px)"
                 dataSource={coordinateList}
                 emptyText="Chưa có tọa độ GPS nào"
                 headerNode={
