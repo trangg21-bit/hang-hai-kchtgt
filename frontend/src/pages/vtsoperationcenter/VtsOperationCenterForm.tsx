@@ -1,22 +1,16 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
+  Drawer,
   Form,
-  Button,
   Input,
-  InputNumber,
   Select,
-  Spin,
-  Space,
+  Button,
   Tabs,
+  Space,
   Row,
   Col,
-  Modal,
-  Drawer,
 } from 'antd';
 import {
-  PlusOutlined,
-  DeleteOutlined,
-  CloseOutlined,
   EnvironmentOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -38,9 +32,9 @@ import {
   drawerTabBarStyle, drawerStyles, drawerFormScrollStyle, drawerGisControlBoxStyle, DRAWER_TABLE_SCROLL_Y,
   requiredMarkStyle, spaceFormField, radiusPill, sidebarBg,
   fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeSm, fontSizeLg,
-  textSecondary, textTertiary, borderDefault,
+  textPrimary, textSecondary, textTertiary, borderDefault,
   statusCritical, statusAttention, statusOperational, actionPrimary, textAreaStyle,
-  readonlyInputStyle, drawerCloseBtnStyle, inputStyle, selectStyle,
+  readonlyInputStyle, drawerCloseBtnStyle, inputStyle, selectStyle, statusBadgeStyle,
 } from '../../themetokenchk';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
 
@@ -167,6 +161,116 @@ const serializeCoordinatesToWkt = (coords: { latitude: number | null; longitude:
   return `POINT (${valid[0].longitude} ${valid[0].latitude})`;
 };
 
+const renderApprovalBadge = (status?: ApprovalStatus | string) => {
+  const map: Record<string, { label: string; color: string }> = {
+    DRAFT: { label: 'Lưu tạm', color: textTertiary },
+    PENDING_APPROVAL: { label: 'Chờ Cảng vụ duyệt', color: statusAttention },
+    APPROVED_LEVEL1: { label: 'Chờ Cục duyệt', color: '#0082fb' },
+    APPROVED: { label: 'Đã duyệt', color: statusOperational },
+    REJECTED_LEVEL1: { label: 'Từ chối (C1)', color: statusCritical },
+    REJECTED_LEVEL2: { label: 'Từ chối (C2)', color: statusCritical },
+    ARCHIVED: { label: 'Lưu trữ', color: textTertiary },
+  };
+  const item = map[String(status || '').toUpperCase()] || { label: String(status || '—'), color: textSecondary };
+  return (
+    <span style={statusBadgeStyle(item.color)}>
+      {item.label}
+    </span>
+  );
+};
+
+// Mock 30 bản ghi cho TAB 4: Danh sách KCHT khác thuộc VTS
+const MOCK_OTHER_INFRASTRUCTURES = Array.from({ length: 30 }, (_, i) => {
+  const index = i + 1;
+  const pad = index < 10 ? `0${index}` : `${index}`;
+  if (index % 3 === 1) {
+    return {
+      id: `mock-infra-vts-${index}`,
+      type: 'VTS_OPERATION_CENTER',
+      typeLabel: 'Trung tâm điều hành VTS',
+      name: `Trung tâm Quản lý điều hành VTS Luồng Hàng hải Khu vực ${pad}`,
+    };
+  } else if (index % 3 === 2) {
+    return {
+      id: `mock-infra-radar-${index}`,
+      type: 'RADAR_STATION',
+      typeLabel: 'Trạm Radar VTS',
+      name: `Trạm Radar cảnh giới & giám sát luồng hàng hải VTS-${pad}`,
+    };
+  } else {
+    return {
+      id: `mock-infra-ais-${index}`,
+      type: 'AIS_SYSTEM',
+      typeLabel: 'Trạm AIS / Hệ thống AIS',
+      name: `Hệ thống Trạm AIS bờ thu phát nhận dạng tàu thuyền AIS-VTS-${pad}`,
+    };
+  }
+});
+
+// Mock 30 bản ghi cho TAB 5 - Sub-tab 1: Thông tin vận hành khai thác
+const MOCK_OPERATION_PLANS = Array.from({ length: 30 }, (_, i) => {
+  const index = i + 1;
+  const pad = index < 10 ? `0${index}` : `${index}`;
+  const year = 2024 + Math.floor(index / 10);
+  const month = ((index - 1) % 12) + 1;
+  const monthPad = month < 10 ? `0${month}` : `${month}`;
+  return {
+    id: `mock-op-${index}`,
+    planCode: `KH-VHKT-${year}/${pad}`,
+    planName: `Kế hoạch điều hành luồng hàng hải & giám sát an toàn giao thông đợt ${index}`,
+    startDate: `${year}-${monthPad}-01`,
+    endDate: `${year}-${monthPad}-28`,
+  };
+});
+
+// Mock 30 bản ghi cho TAB 5 - Sub-tab 2: Thông tin bảo trì
+const MOCK_MAINTENANCE_PLANS = Array.from({ length: 30 }, (_, i) => {
+  const index = i + 1;
+  const pad = index < 10 ? `0${index}` : `${index}`;
+  const year = 2024 + Math.floor(index / 10);
+  const month = ((index - 1) % 12) + 1;
+  const monthPad = month < 10 ? `0${month}` : `${month}`;
+  return {
+    id: `mock-maint-${index}`,
+    planCode: `KH-BT-${year}/VTS-${pad}`,
+    planName: `Kế hoạch bảo dưỡng, hiệu chuẩn định kỳ hệ thống cảm biến Radar & AIS đợt ${index}`,
+    startTime: `${year}-${monthPad}-05`,
+    endTime: `${year}-${monthPad}-12`,
+  };
+});
+
+// Mock 30 bản ghi cho TAB 5 - Sub-tab 3: Thông tin sự cố
+const MOCK_INCIDENTS = Array.from({ length: 30 }, (_, i) => {
+  const index = i + 1;
+  const pad = index < 10 ? `0${index}` : `${index}`;
+  const types = [
+    'Mất kết nối đường truyền vi ba',
+    'Cảnh báo suy hao tín hiệu Anten Radar',
+    'Gián đoạn nguồn điện lưới khu vực trạm',
+    'Lỗi đồng bộ dữ liệu vết mục tiêu AIS',
+    'Cảnh báo nhiệt độ máy chủ xử lý vượt ngưỡng',
+  ];
+  const locations = [
+    'Trạm Radar VTS Mũi Nghinh Phong',
+    'Trạm Radar VTS Cần Giờ',
+    'Trung tâm Quản lý điều hành VTS',
+    'Trạm AIS VTS Vũng Tàu',
+    'Trạm Radar VTS Cát Lái',
+  ];
+  const year = 2025;
+  const month = ((index - 1) % 12) + 1;
+  const monthPad = month < 10 ? `0${month}` : `${month}`;
+  const day = ((index * 3) % 25) + 1;
+  const dayPad = day < 10 ? `0${day}` : `${day}`;
+  return {
+    id: `mock-inc-${index}`,
+    incidentCode: `SC-${year}-${pad}`,
+    incidentType: types[(index - 1) % types.length],
+    location: locations[(index - 1) % locations.length],
+    incidentTime: `${year}-${monthPad}-${dayPad} 14:30:00`,
+  };
+});
+
 export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
   open,
   editId,
@@ -194,6 +298,19 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
   const [attachments, setAttachments] = useState<VtsOperationCenterAttachment[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [pendingDeletedAttachments, setPendingDeletedAttachments] = useState<{ id: string; fileName: string }[]>([]);
+
+  const [otherInfraTypeFilter, setOtherInfraTypeFilter] = useState<string>('ALL');
+  const [otherInfraList] = useState<Array<{ id: string; type: string; typeLabel: string; name: string }>>(MOCK_OTHER_INFRASTRUCTURES);
+  const [operationPlanList] = useState<any[]>(MOCK_OPERATION_PLANS);
+  const [maintenancePlanList] = useState<any[]>(MOCK_MAINTENANCE_PLANS);
+  const [incidentList] = useState<any[]>(MOCK_INCIDENTS);
+
+  const filteredOtherInfra = useMemo(() => {
+    if (!otherInfraTypeFilter || otherInfraTypeFilter === 'ALL') {
+      return otherInfraList;
+    }
+    return otherInfraList.filter((item) => item.type === otherInfraTypeFilter);
+  }, [otherInfraList, otherInfraTypeFilter]);
 
   const [approvalSectionOpen, setApprovalSectionOpen] = useState(true);
 
@@ -605,57 +722,6 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                     <span className="chk-detail-value">{record.note || '—'}</span>
                   </div>
                 </div>
-
-                {/* ── Thông tin phê duyệt (Toggle Dropdown) ── */}
-                <div style={{ marginTop: 20, marginBottom: 10, borderTop: `1px solid ${borderDefault}`, paddingTop: 14 }}>
-                  <button
-                    type="button"
-                    onClick={() => setApprovalSectionOpen(!approvalSectionOpen)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      padding: '4px 0',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                    }}
-                  >
-                    <span style={{ display: 'inline-block', width: 4, height: 16, borderRadius: 2, backgroundColor: actionPrimary }} />
-                    <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                      Thông tin phê duyệt
-                    </span>
-                    <span style={{ fontSize: 11, color: actionPrimary, marginLeft: 4 }}>{approvalSectionOpen ? '▲' : '▼'}</span>
-                  </button>
-                </div>
-
-                {approvalSectionOpen && (
-                  <div className="chk-detail-grid">
-                    <div className="chk-detail-row"><span className="chk-detail-label">Ngày gửi duyệt</span><span className="chk-detail-value">{record.submittedDate ? dayjs(record.submittedDate).format('DD/MM/YYYY HH:mm:ss') : (record.submittedAt ? dayjs(record.submittedAt).format('DD/MM/YYYY HH:mm:ss') : '—')}</span></div>
-                    <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ gửi duyệt</span><span className="chk-detail-value">{record.submittedByName || record.submittedBy || '—'}</span></div>
-
-                    <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt Cảng vụ</span><span className="chk-detail-value">{record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                    <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt Cảng vụ</span><span className="chk-detail-value">{record.approverLevel1Name || record.approverLevel1 || '—'}</span></div>
-
-                    <div className="chk-detail-row"><span className="chk-detail-label">Nội dung Cảng vụ phê duyệt</span><span className="chk-detail-value">{record.approvalReasonLevel1 || record.rejectionReasonLevel1 || '—'}</span></div>
-                    <div style={{ border: 'none' }} />
-
-                    <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt Cục</span><span className="chk-detail-value">{record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                    <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt Cục</span><span className="chk-detail-value">{record.approverLevel2Name || record.approverLevel2 || '—'}</span></div>
-
-                    <div className="chk-detail-row"><span className="chk-detail-label">Nội dung Cục phê duyệt</span><span className="chk-detail-value">{record.approvalReasonLevel2 || record.rejectionReasonLevel2 || '—'}</span></div>
-                    <div style={{ border: 'none' }} />
-
-                    <div className="chk-detail-row"><span className="chk-detail-label">Trạng thái phê duyệt</span><span className="chk-detail-value"><ApprovalStatusBadge status={record.approvalStatus} /></span></div>
-                    <div style={{ border: 'none' }} />
-
-                    {record.rejectionReason && (
-                      <>
-                        <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Lý do từ chối</span><span className="chk-detail-value" style={{ color: statusCritical }}>{record.rejectionReason}</span></div>
-                      </>
-                    )}
-                  </div>
-                )}
               </div>
             ),
           },
@@ -765,6 +831,359 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                 readonly={true}
                 onDownload={handleDownloadAttachment}
               />
+            ),
+          },
+          {
+            key: 'infrastructure',
+            label: 'Kết cấu hạ tầng',
+            children: (
+              <div>
+                <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontWeight: fontWeightBold, color: sidebarBg, fontSize: fontSizeMd }}>
+                    Loại kết cấu hạ tầng:
+                  </span>
+                  <Select
+                    allowClear
+                    showSearch
+                    placeholder="Chọn loại đối tượng"
+                    value={otherInfraTypeFilter === 'ALL' ? undefined : otherInfraTypeFilter}
+                    onChange={(val) => setOtherInfraTypeFilter(val || 'ALL')}
+                    filterOption={(input, option) =>
+                      normalizeSearchText(String(option?.label || '')).includes(normalizeSearchText(input))
+                    }
+                    options={[
+                      { value: 'VTS_OPERATION_CENTER', label: 'Trung tâm điều hành VTS' },
+                      { value: 'RADAR_STATION', label: 'Trạm Radar VTS' },
+                      { value: 'AIS_SYSTEM', label: 'Trạm AIS / Hệ thống AIS' },
+                    ]}
+                    style={{ ...selectStyle, width: 280, height: 38 }}
+                  />
+                </div>
+                <DetailTable
+                  scrollY="calc(100vh - 378px)"
+                  dataSource={filteredOtherInfra}
+                  emptyText="Chưa có kết cấu hạ tầng khác thuộc trung tâm điều hành VTS"
+                  rowKey={(r: any) => r.id || `${r.type}-${r.name}`}
+                  columns={[
+                    {
+                      title: 'STT',
+                      width: 60,
+                      align: 'center',
+                      render: (_: any, __: any, index: number) => index + 1,
+                    },
+                    {
+                      title: 'Loại đối tượng',
+                      dataIndex: 'typeLabel',
+                      key: 'typeLabel',
+                      width: 240,
+                      render: (v: string) => (
+                        <span style={{ fontWeight: fontWeightMedium, color: textPrimary }}>
+                          {v || '—'}
+                        </span>
+                      ),
+                    },
+                    {
+                      title: 'Tên kết cấu hạ tầng',
+                      dataIndex: 'name',
+                      key: 'name',
+                      render: (v: string) => (
+                        <span
+                          style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: textPrimary }}
+                          title={v}
+                        >
+                          {v || '—'}
+                        </span>
+                      ),
+                    },
+                  ]}
+                />
+              </div>
+            ),
+          },
+          {
+            key: 'operationMaintenance',
+            label: 'Vận hành & bảo trì',
+            children: (
+              <Tabs
+                defaultActiveKey="operation"
+                tabBarStyle={{ ...drawerTabBarStyle, marginTop: 0, marginBottom: 12 }}
+                animated={false}
+                items={[
+                  {
+                    key: 'operation',
+                    label: 'Thông tin vận hành khai thác',
+                    children: (
+                      <DetailTable
+                        scrollY="calc(100vh - 378px)"
+                        dataSource={operationPlanList}
+                        emptyText="Chưa có dữ liệu"
+                        rowKey={(r: any) => r.id || r.planCode || r.code || Math.random().toString()}
+                        columns={[
+                          {
+                            title: 'STT',
+                            width: 60,
+                            align: 'center',
+                            render: (_: any, __: any, index: number) => index + 1,
+                          },
+                          {
+                            title: 'Mã kế hoạch',
+                            dataIndex: 'planCode',
+                            key: 'planCode',
+                            width: 240,
+                            render: (v: string, r: any) => <span style={{ color: textPrimary }}>{v || r.code || '—'}</span>,
+                          },
+                          {
+                            title: 'Tên kế hoạch',
+                            dataIndex: 'planName',
+                            key: 'planName',
+                            width: 260,
+                            render: (v: string, r: any) => (
+                              <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: textPrimary }} title={v || r.name}>
+                                {v || r.name || '—'}
+                              </span>
+                            ),
+                          },
+                          {
+                            title: 'Ngày bắt đầu',
+                            dataIndex: 'startDate',
+                            key: 'startDate',
+                            width: 260,
+                            render: (v: any, r: any) => (
+                              <span style={{ color: textPrimary }}>
+                                {v ? dayjs(v).format('DD/MM/YYYY') : (r.startTime ? dayjs(r.startTime).format('DD/MM/YYYY') : '—')}
+                              </span>
+                            ),
+                          },
+                          {
+                            title: 'Ngày kết thúc',
+                            dataIndex: 'endDate',
+                            key: 'endDate',
+                            width: 260,
+                            render: (v: any, r: any) => (
+                              <span style={{ color: textPrimary }}>
+                                {v ? dayjs(v).format('DD/MM/YYYY') : (r.endTime ? dayjs(r.endTime).format('DD/MM/YYYY') : '—')}
+                              </span>
+                            ),
+                          },
+                        ]}
+                      />
+                    ),
+                  },
+                  {
+                    key: 'maintenance',
+                    label: 'Thông tin bảo trì',
+                    children: (
+                      <DetailTable
+                        scrollY="calc(100vh - 378px)"
+                        dataSource={maintenancePlanList}
+                        emptyText="Chưa có dữ liệu"
+                        rowKey={(r: any) => r.id || r.planCode || r.code || Math.random().toString()}
+                        columns={[
+                          {
+                            title: 'STT',
+                            width: 60,
+                            align: 'center',
+                            render: (_: any, __: any, index: number) => index + 1,
+                          },
+                          {
+                            title: 'Mã kế hoạch',
+                            dataIndex: 'planCode',
+                            key: 'planCode',
+                            width: 240,
+                            render: (v: string, r: any) => <span style={{ color: textPrimary }}>{v || r.code || '—'}</span>,
+                          },
+                          {
+                            title: 'Tên kế hoạch',
+                            dataIndex: 'planName',
+                            key: 'planName',
+                            width: 260,
+                            render: (v: string, r: any) => (
+                              <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: textPrimary }} title={v || r.name}>
+                                {v || r.name || '—'}
+                              </span>
+                            ),
+                          },
+                          {
+                            title: 'Thời gian bắt đầu',
+                            dataIndex: 'startTime',
+                            key: 'startTime',
+                            width: 240,
+                            render: (v: any, r: any) => (
+                              <span style={{ color: textPrimary }}>
+                                {v ? dayjs(v).format('DD/MM/YYYY') : (r.startDate ? dayjs(r.startDate).format('DD/MM/YYYY') : '—')}
+                              </span>
+                            ),
+                          },
+                          {
+                            title: 'Thời gian kết thúc',
+                            dataIndex: 'endTime',
+                            key: 'endTime',
+                            width: 240,
+                            render: (v: any, r: any) => (
+                              <span style={{ color: textPrimary }}>
+                                {v ? dayjs(v).format('DD/MM/YYYY') : (r.endDate ? dayjs(r.endDate).format('DD/MM/YYYY') : '—')}
+                              </span>
+                            ),
+                          },
+                        ]}
+                      />
+                    ),
+                  },
+                  {
+                    key: 'incident',
+                    label: 'Thông tin sự cố',
+                    children: (
+                      <DetailTable
+                        scrollY="calc(100vh - 378px)"
+                        dataSource={incidentList}
+                        emptyText="Chưa có dữ liệu"
+                        rowKey={(r: any) => r.id || r.incidentCode || r.code || Math.random().toString()}
+                        columns={[
+                          {
+                            title: 'STT',
+                            width: 60,
+                            align: 'center',
+                            render: (_: any, __: any, index: number) => index + 1,
+                          },
+                          {
+                            title: 'Mã sự cố',
+                            dataIndex: 'incidentCode',
+                            key: 'incidentCode',
+                            width: 200,
+                            render: (v: string, r: any) => <span style={{ color: textPrimary }}>{v || r.code || '—'}</span>,
+                          },
+                          {
+                            title: 'Loại sự cố',
+                            dataIndex: 'incidentType',
+                            key: 'incidentType',
+                            width: 220,
+                            render: (v: string, r: any) => <span style={{ color: textPrimary }}>{v || r.type || '—'}</span>,
+                          },
+                          {
+                            title: 'Địa điểm',
+                            dataIndex: 'location',
+                            key: 'location',
+                            width: 260,
+                            render: (v: string, r: any) => (
+                              <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: textPrimary }} title={v || r.address}>
+                                {v || r.address || '—'}
+                              </span>
+                            ),
+                          },
+                          {
+                            title: 'Thời gian',
+                            dataIndex: 'incidentTime',
+                            key: 'incidentTime',
+                            width: 200,
+                            render: (v: any, r: any) => (
+                              <span style={{ color: textPrimary }}>
+                                {v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : (r.time ? dayjs(r.time).format('DD/MM/YYYY HH:mm:ss') : '—')}
+                              </span>
+                            ),
+                          },
+                        ]}
+                      />
+                    ),
+                  },
+                ]}
+              />
+            ),
+          },
+          {
+            key: 'handlingAndTracking',
+            label: 'Xử lý & theo dõi',
+            children: (
+              <div style={drawerFormScrollStyle}>
+                <div className="chk-detail-grid">
+                  {/* 31. Trạng thái */}
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Trạng thái</span>
+                    <span className="chk-detail-value">{renderApprovalBadge(record.approvalStatus)}</span>
+                  </div>
+                  <div style={{ border: 'none' }} />
+
+                  {/* 32. Ngày cập nhật & 33. Cán bộ cập nhật */}
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Ngày cập nhật</span>
+                    <span className="chk-detail-value">
+                      {record.updatedDate || record.updatedAt
+                        ? dayjs(record.updatedDate || record.updatedAt).format('DD/MM/YYYY HH:mm:ss')
+                        : record.createdAt
+                        ? dayjs(record.createdAt).format('DD/MM/YYYY HH:mm:ss')
+                        : '—'}
+                    </span>
+                  </div>
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Cán bộ cập nhật</span>
+                    <span className="chk-detail-value">{record.updatedByName || record.createdByName || '—'}</span>
+                  </div>
+
+                  {/* 34. Ngày gửi phê duyệt & 35. Cán bộ gửi phê duyệt */}
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Ngày gửi phê duyệt</span>
+                    <span className="chk-detail-value">
+                      {record.submittedDate || record.submittedAt ? dayjs(record.submittedDate || record.submittedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}
+                    </span>
+                  </div>
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Cán bộ gửi phê duyệt</span>
+                    <span className="chk-detail-value">{record.submittedByName || record.createdByName || '—'}</span>
+                  </div>
+
+                  {/* 36. Ngày phê duyệt cấp Cảng vụ/Chi cục & 37. Cán bộ phê duyệt cấp Cảng vụ/Chi cục */}
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
+                    <span className="chk-detail-value">
+                      {record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}
+                    </span>
+                  </div>
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
+                    <span className="chk-detail-value">
+                      {record.approverLevel1Name || record.approverLevel1 || '—'}
+                    </span>
+                  </div>
+
+                  {/* 38. Nội dung phê duyệt */}
+                  <div className="chk-detail-row chk-detail-row--full">
+                    <span className="chk-detail-label">Nội dung phê duyệt</span>
+                    <span className="chk-detail-value">
+                      {record.approvalContentLevel1 || record.approvalReasonLevel1 || record.rejectionReasonLevel1 || '—'}
+                    </span>
+                  </div>
+
+                  {/* 39. Ngày phê duyệt cấp Cục & 40. Cán bộ phê duyệt cấp Cục */}
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Ngày phê duyệt cấp Cục</span>
+                    <span className="chk-detail-value">
+                      {record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}
+                    </span>
+                  </div>
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Cán bộ phê duyệt cấp Cục</span>
+                    <span className="chk-detail-value">
+                      {record.approverLevel2Name || record.approverLevel2 || '—'}
+                    </span>
+                  </div>
+
+                  {/* 41. Nội dung phê duyệt */}
+                  <div className="chk-detail-row chk-detail-row--full">
+                    <span className="chk-detail-label">Nội dung phê duyệt</span>
+                    <span className="chk-detail-value">
+                      {record.approvalContentLevel2 || record.approvalReasonLevel2 || record.rejectionReasonLevel2 || record.rejectionReason || '—'}
+                    </span>
+                  </div>
+
+                  {record.rejectionReason && (
+                    <div className="chk-detail-row chk-detail-row--full">
+                      <span className="chk-detail-label">Lý do từ chối</span>
+                      <span className="chk-detail-value" style={{ color: statusCritical }}>
+                        {record.rejectionReason}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
             ),
           },
         ]}
