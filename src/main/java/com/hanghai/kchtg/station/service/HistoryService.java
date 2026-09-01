@@ -72,6 +72,34 @@ public class HistoryService {
         recordHistory(refType, refId, action, null, previousValue, newValue, null, changedBy);
     }
 
+    @Transactional
+    public void recordDeltaChanges(
+            InfrastructureType refType,
+            UUID refId,
+            Map<String, String> oldValues,
+            java.util.function.Function<String, String> newValueResolver,
+            UUID changedBy) {
+        if (refType == null || refId == null || oldValues == null || oldValues.isEmpty()) {
+            return;
+        }
+        for (Map.Entry<String, String> entry : oldValues.entrySet()) {
+            String fieldName = entry.getKey();
+            String oldVal = entry.getValue() != null && !entry.getValue().isBlank() ? entry.getValue() : "—";
+            String newVal = newValueResolver != null ? newValueResolver.apply(fieldName) : "—";
+            if (newVal == null || newVal.isBlank()) newVal = "—";
+
+            recordHistory(
+                    refType,
+                    refId,
+                    StationHistoryActionType.UPDATE,
+                    fieldName,
+                    oldVal,
+                    newVal,
+                    "Cập nhật " + fieldName,
+                    changedBy);
+        }
+    }
+
     @Transactional(readOnly = true)
     public List<CoastalStationVTSHistoryResponse> getHistory(InfrastructureType refType, UUID refId,
                                                              String stationCode) {

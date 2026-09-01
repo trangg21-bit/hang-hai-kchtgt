@@ -32,6 +32,10 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
+import com.hanghai.kchtg.common.entity.OperatingOrganization;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -43,6 +47,8 @@ public class CoastalStationHaiphongService {
     private final HistoryService historyService;
     private final OrgUnitScopeService orgUnitScopeService;
     private final OrgUnitRepository orgUnitRepository;
+    private final OrgUnitCacheService orgUnitCacheService;
+    private final OperatingOrganizationRepository operatingOrganizationRepository;
     private final UserRepository userRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
 
@@ -261,6 +267,105 @@ public class CoastalStationHaiphongService {
 
         approvalService.assertEditable(entity);
 
+        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+
+        Map<String, String> oldValues = new LinkedHashMap<>();
+        if (wasApproved) {
+            if (request.getName() != null && !Objects.equals(request.getName(), entity.getName())) {
+                oldValues.put("Tên đài", entity.getName() != null ? entity.getName() : "—");
+            }
+            if (request.getOrgUnitId() != null && !Objects.equals(request.getOrgUnitId(), entity.getOrgUnitId())) {
+                String oldName = entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId()) : "—";
+                oldValues.put("Đơn vị quản lý", oldName != null ? oldName : "—");
+            }
+            if (request.getOperatingOrgId() != null && !Objects.equals(request.getOperatingOrgId(), entity.getOperatingOrgId())) {
+                String oldName = entity.getOperatingOrgId() != null ? resolveOperatingOrgName(entity.getOperatingOrgId()) : "—";
+                oldValues.put("Đơn vị khai thác", oldName != null ? oldName : "—");
+            }
+            if (request.getProvinceId() != null && !Objects.equals(request.getProvinceId(), entity.getProvinceId())) {
+                oldValues.put("Địa điểm (Tỉnh/TP)", entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : "—");
+            }
+            if (request.getLocationAddress() != null && !Objects.equals(request.getLocationAddress(), entity.getLocationAddress())) {
+                oldValues.put("Địa điểm chi tiết", entity.getLocationAddress() != null ? entity.getLocationAddress() : "—");
+            }
+            if (request.getConditionStatus() != null && !Objects.equals(request.getConditionStatus(), entity.getConditionStatus())) {
+                oldValues.put("Tình trạng", entity.getConditionStatus() != null ? entity.getConditionStatus() : "—");
+            }
+            if (request.getPortName() != null && !Objects.equals(request.getPortName(), entity.getPortName())) {
+                oldValues.put("Cảng biển", entity.getPortName() != null ? entity.getPortName() : "—");
+            }
+            if (request.getDistrict() != null && !Objects.equals(request.getDistrict(), entity.getDistrict())) {
+                oldValues.put("Quận/Huyện", entity.getDistrict() != null ? entity.getDistrict() : "—");
+            }
+            if (request.getWard() != null && !Objects.equals(request.getWard(), entity.getWard())) {
+                oldValues.put("Phường/Xã", entity.getWard() != null ? entity.getWard() : "—");
+            }
+            if (request.getOperationalLicense() != null && !Objects.equals(request.getOperationalLicense(), entity.getOperationalLicense())) {
+                oldValues.put("Giấy phép hoạt động", entity.getOperationalLicense() != null ? entity.getOperationalLicense() : "—");
+            }
+            if (request.getLicenseExpiry() != null && !Objects.equals(request.getLicenseExpiry(), entity.getLicenseExpiry())) {
+                oldValues.put("Hạn giấy phép", entity.getLicenseExpiry() != null ? String.valueOf(entity.getLicenseExpiry()) : "—");
+            }
+            if (request.getInspectorName() != null && !Objects.equals(request.getInspectorName(), entity.getInspectorName())) {
+                oldValues.put("Cán bộ kiểm định", entity.getInspectorName() != null ? entity.getInspectorName() : "—");
+            }
+            if (request.getInspectorPhone() != null && !Objects.equals(request.getInspectorPhone(), entity.getInspectorPhone())) {
+                oldValues.put("SĐT cán bộ kiểm định", entity.getInspectorPhone() != null ? entity.getInspectorPhone() : "—");
+            }
+            if (request.getLastInspectionDate() != null && !Objects.equals(request.getLastInspectionDate(), entity.getLastInspectionDate())) {
+                oldValues.put("Ngày kiểm định gần nhất", entity.getLastInspectionDate() != null ? String.valueOf(entity.getLastInspectionDate()) : "—");
+            }
+            if (request.getNextInspectionDate() != null && !Objects.equals(request.getNextInspectionDate(), entity.getNextInspectionDate())) {
+                oldValues.put("Ngày kiểm định tiếp theo", entity.getNextInspectionDate() != null ? String.valueOf(entity.getNextInspectionDate()) : "—");
+            }
+            if (request.getCoverageArea() != null && !Objects.equals(request.getCoverageArea(), entity.getCoverageArea())) {
+                oldValues.put("Vùng phủ sóng", entity.getCoverageArea() != null ? entity.getCoverageArea() : "—");
+            }
+            if (request.getEquipmentType() != null && !Objects.equals(request.getEquipmentType(), entity.getEquipmentType())) {
+                oldValues.put("Loại thiết bị", entity.getEquipmentType() != null ? entity.getEquipmentType() : "—");
+            }
+            if (request.getCommunicationFrequency() != null && !Objects.equals(request.getCommunicationFrequency(), entity.getCommunicationFrequency())) {
+                oldValues.put("Tần số liên lạc", entity.getCommunicationFrequency() != null ? entity.getCommunicationFrequency() : "—");
+            }
+            if (request.getServicesProvided() != null && !Objects.equals(request.getServicesProvided(), entity.getServicesProvided())) {
+                oldValues.put("Dịch vụ cung cấp", entity.getServicesProvided() != null ? entity.getServicesProvided() : "—");
+            }
+            if (request.getDescription() != null && !Objects.equals(request.getDescription(), entity.getDescription())) {
+                oldValues.put("Ghi chú", entity.getDescription() != null ? entity.getDescription() : "—");
+            }
+            if (request.getContactPerson() != null && !Objects.equals(request.getContactPerson(), entity.getContactPerson())) {
+                oldValues.put("Người liên hệ", entity.getContactPerson() != null ? entity.getContactPerson() : "—");
+            }
+            if (request.getContactPhone() != null && !Objects.equals(request.getContactPhone(), entity.getContactPhone())) {
+                oldValues.put("Số điện thoại liên hệ", entity.getContactPhone() != null ? entity.getContactPhone() : "—");
+            }
+
+            // GIS fields
+            if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType(), entity.getGeometryType())) {
+                oldValues.put("Loại đối tượng", formatObjectTypeDisplay(entity.getGeometryType()));
+            }
+            if (request.getSymbol() != null && !Objects.equals(request.getSymbol(), entity.getSymbol())) {
+                oldValues.put("Biểu tượng", entity.getSymbol() != null ? entity.getSymbol() : "—");
+            }
+            if (request.getCoordinateSystem() != null && !Objects.equals(request.getCoordinateSystem(), entity.getCoordinateSystem())) {
+                oldValues.put("Hệ quy chiếu", entity.getCoordinateSystem() != null ? entity.getCoordinateSystem() : "—");
+            }
+            if (request.getDisplayRule() != null && !Objects.equals(request.getDisplayRule(), entity.getDisplayRule())) {
+                oldValues.put("Quy tắc hiển thị", entity.getDisplayRule() != null ? entity.getDisplayRule() : "—");
+            }
+            boolean latChanged = (request.getLatitude() != null && (entity.getLatitude() == null || request.getLatitude().compareTo(entity.getLatitude()) != 0))
+                    || (request.getLatitude() == null && entity.getLatitude() != null);
+            boolean lngChanged = (request.getLongitude() != null && (entity.getLongitude() == null || request.getLongitude().compareTo(entity.getLongitude()) != 0))
+                    || (request.getLongitude() == null && entity.getLongitude() != null);
+            if (latChanged || lngChanged) {
+                String oldCoord = (entity.getLatitude() != null && entity.getLongitude() != null)
+                        ? entity.getLatitude() + ", " + entity.getLongitude()
+                        : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
+                oldValues.put("Tọa độ GPS", oldCoord);
+            }
+        }
+
         if (request.getOrgUnitId() != null) {
             validateAllowedOrgUnit(request.getOrgUnitId());
             entity.setOrgUnitId(request.getOrgUnitId());
@@ -318,15 +423,70 @@ public class CoastalStationHaiphongService {
 
         CoastalStationHaiphong updated = repository.save(entity);
 
-        historyService.recordHistory(
-                InfrastructureType.HANOI_STATION,
-                updated.getId(),
-                StationHistoryActionType.UPDATE,
-                null,
-                "Cập nhật thông tin Đài TTXLTT: " + updated.getName(),
-                SecurityUtils.getCurrentUserId());
+        if (wasApproved && !oldValues.isEmpty()) {
+            UUID currentUserId = SecurityUtils.getCurrentUserId();
+            historyService.recordDeltaChanges(
+                    InfrastructureType.HANOI_STATION,
+                    updated.getId(),
+                    oldValues,
+                    field -> getNewValueDisplay(field, updated),
+                    currentUserId);
+        }
 
         return updated;
+    }
+
+    private String resolveOperatingOrgName(UUID operatingOrgId) {
+        if (operatingOrgId == null) return "—";
+        return operatingOrganizationRepository.findById(operatingOrgId)
+                .map(OperatingOrganization::getName)
+                .orElse("—");
+    }
+
+    private String getNewValueDisplay(String fieldName, CoastalStationHaiphong entity) {
+        if (entity == null || fieldName == null) return "—";
+        return switch (fieldName) {
+            case "Tên đài" -> entity.getName() != null ? entity.getName() : "—";
+            case "Đơn vị quản lý" -> entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId()) : "—";
+            case "Đơn vị khai thác" -> entity.getOperatingOrgId() != null ? resolveOperatingOrgName(entity.getOperatingOrgId()) : "—";
+            case "Địa điểm (Tỉnh/TP)" -> entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : "—";
+            case "Địa điểm chi tiết" -> entity.getLocationAddress() != null ? entity.getLocationAddress() : "—";
+            case "Tình trạng" -> entity.getConditionStatus() != null ? entity.getConditionStatus() : "—";
+            case "Cảng biển" -> entity.getPortName() != null ? entity.getPortName() : "—";
+            case "Quận/Huyện" -> entity.getDistrict() != null ? entity.getDistrict() : "—";
+            case "Phường/Xã" -> entity.getWard() != null ? entity.getWard() : "—";
+            case "Giấy phép hoạt động" -> entity.getOperationalLicense() != null ? entity.getOperationalLicense() : "—";
+            case "Hạn giấy phép" -> entity.getLicenseExpiry() != null ? String.valueOf(entity.getLicenseExpiry()) : "—";
+            case "Cán bộ kiểm định" -> entity.getInspectorName() != null ? entity.getInspectorName() : "—";
+            case "SĐT cán bộ kiểm định" -> entity.getInspectorPhone() != null ? entity.getInspectorPhone() : "—";
+            case "Ngày kiểm định gần nhất" -> entity.getLastInspectionDate() != null ? String.valueOf(entity.getLastInspectionDate()) : "—";
+            case "Ngày kiểm định tiếp theo" -> entity.getNextInspectionDate() != null ? String.valueOf(entity.getNextInspectionDate()) : "—";
+            case "Vùng phủ sóng" -> entity.getCoverageArea() != null ? entity.getCoverageArea() : "—";
+            case "Loại thiết bị" -> entity.getEquipmentType() != null ? entity.getEquipmentType() : "—";
+            case "Tần số liên lạc" -> entity.getCommunicationFrequency() != null ? entity.getCommunicationFrequency() : "—";
+            case "Dịch vụ cung cấp" -> entity.getServicesProvided() != null ? entity.getServicesProvided() : "—";
+            case "Ghi chú" -> entity.getDescription() != null ? entity.getDescription() : "—";
+            case "Người liên hệ" -> entity.getContactPerson() != null ? entity.getContactPerson() : "—";
+            case "Số điện thoại liên hệ" -> entity.getContactPhone() != null ? entity.getContactPhone() : "—";
+            case "Loại đối tượng" -> formatObjectTypeDisplay(entity.getGeometryType());
+            case "Biểu tượng" -> entity.getSymbol() != null ? entity.getSymbol() : "—";
+            case "Hệ quy chiếu" -> entity.getCoordinateSystem() != null ? entity.getCoordinateSystem() : "—";
+            case "Quy tắc hiển thị" -> entity.getDisplayRule() != null ? entity.getDisplayRule() : "—";
+            case "Tọa độ GPS" -> (entity.getLatitude() != null && entity.getLongitude() != null)
+                    ? entity.getLatitude() + ", " + entity.getLongitude()
+                    : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
+            default -> "—";
+        };
+    }
+
+    private String formatObjectTypeDisplay(String objectType) {
+        if (objectType == null || objectType.isBlank()) return "—";
+        return switch (objectType.toUpperCase()) {
+            case "POINT" -> "Đối tượng điểm";
+            case "LINE" -> "Đối tượng đường";
+            case "POLYGON" -> "Đối tượng vùng";
+            default -> objectType;
+        };
     }
 
     public void deleteStation(UUID id) {
