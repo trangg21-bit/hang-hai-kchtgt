@@ -9,9 +9,15 @@ import {
   Space,
   Row,
   Col,
+  InputNumber,
+  Spin,
+  Modal,
 } from 'antd';
 import {
   EnvironmentOutlined,
+  PlusOutlined,
+  DeleteOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import toast from '../../components/ToastNotification';
@@ -54,7 +60,6 @@ import { usePermissionStore, type PermissionState } from '../../store/permission
 import { FormOrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../components/org-unit';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
-import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { adjustCoordinateListForGeometry } from '../../utils/gisGeometry';
 
@@ -312,8 +317,6 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
     return otherInfraList.filter((item) => item.type === otherInfraTypeFilter);
   }, [otherInfraList, otherInfraTypeFilter]);
 
-  const [approvalSectionOpen, setApprovalSectionOpen] = useState(true);
-
   const currentUser = useAuthStore((s: AuthState) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
 
@@ -498,7 +501,6 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
     if (!open) return;
     setTabKey('general');
     setDetailTabKey('general');
-    setApprovalSectionOpen(true);
     setPendingFiles([]);
     setPendingDeletedAttachments([]);
 
