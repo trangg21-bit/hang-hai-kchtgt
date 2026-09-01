@@ -105,7 +105,7 @@ public class CoastalStationVTSService {
                 String oldCoord = (entity.getLatitude() != null && entity.getLongitude() != null)
                         ? entity.getLatitude() + ", " + entity.getLongitude()
                         : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
-                oldValues.put("Tọa độ", oldCoord);
+                oldValues.put("Tọa độ GIS", oldCoord);
             }
         }
 
@@ -162,7 +162,7 @@ public class CoastalStationVTSService {
             case "Địa điểm chi tiết" -> entity.getLocationAddress() != null ? entity.getLocationAddress() : "—";
             case "Người liên hệ" -> entity.getContactPerson() != null ? entity.getContactPerson() : "—";
             case "Số điện thoại liên hệ" -> entity.getContactPhone() != null ? entity.getContactPhone() : "—";
-            case "Tọa độ", "Tọa độ GPS" -> (entity.getLatitude() != null && entity.getLongitude() != null)
+            case "Tọa độ", "Tọa độ GIS", "Tọa độ GPS" -> (entity.getLatitude() != null && entity.getLongitude() != null)
                     ? entity.getLatitude() + ", " + entity.getLongitude()
                     : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
             default -> "—";

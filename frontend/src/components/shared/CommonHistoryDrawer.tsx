@@ -139,7 +139,131 @@ const DEFAULT_FIELD_MAP: Record<string, string> = {
   attachmentList: 'Tài liệu đính kèm',
   fileName: 'Tên tệp tin',
   fileSize: 'Kích thước tệp',
+  coordinates: 'Tọa độ GIS',
+  geometryType: 'Loại đối tượng GIS',
+  objectType: 'Loại đối tượng GIS',
+  symbol: 'Biểu tượng',
+  symbolId: 'Biểu tượng',
+  mapSymbolId: 'Biểu tượng',
+  mapIcon: 'Biểu tượng',
 };
+
+function formatCoordPointDms(xStr: string, yStr?: string): string {
+  const x = Number(xStr);
+  const y = yStr !== undefined && yStr !== '' ? Number(yStr) : NaN;
+
+  const toDmsString = (val: number, isLat: boolean) => {
+    if (isNaN(val)) return '';
+    const abs = Math.abs(val);
+    const d = Math.floor(abs);
+    const minFloat = (abs - d) * 60;
+    const m = Math.floor(minFloat);
+    const s = Math.round((minFloat - m) * 60 * 10) / 10;
+    const dir = isLat ? (val >= 0 ? 'N' : 'S') : (val >= 0 ? 'E' : 'W');
+    return `${d}° ${m}' ${s.toFixed(1)}" ${dir}`;
+  };
+
+  if (!isNaN(x) && !isNaN(y)) {
+    let lat = y;
+    let lng = x;
+    if (x < 35 && y > 50) {
+      lat = x;
+      lng = y;
+    }
+    const latDms = toDmsString(lat, true);
+    const lngDms = toDmsString(lng, false);
+    return `${latDms}, ${lngDms}`;
+  }
+
+  if (!isNaN(x)) {
+    const isLat = x <= 35 && x >= -35;
+    return toDmsString(x, isLat);
+  }
+
+  return xStr;
+}
+
+function parseCoordinatesPoints(raw: string | null): { typeName?: string; points: Array<{ x: string; y: string; index: number }> } | null {
+  if (!raw || raw === '—' || raw === 'Chưa có' || raw === '(null)' || raw === '(trống)') return null;
+  const str = raw.trim();
+
+  if (/^(Đường|Vùng|Điểm)\s+bản\s+đồ\s*\(\d+\s+điểm/i.test(str)) {
+    return { typeName: str, points: [] };
+  }
+
+  let typeName = '';
+  let inner = str;
+
+  if (/^POINT\s*\(/i.test(str)) {
+    typeName = 'Điểm';
+    inner = str.replace(/^POINT\s*\(/i, '').replace(/\)\s*$/, '');
+  } else if (/^LINESTRING\s*\(/i.test(str)) {
+    typeName = 'Đường';
+    inner = str.replace(/^LINESTRING\s*\(/i, '').replace(/\)\s*$/, '');
+  } else if (/^LINE\s*\(/i.test(str)) {
+    typeName = 'Đường';
+    inner = str.replace(/^LINE\s*\(/i, '').replace(/\)\s*$/, '');
+  } else if (/^POLYGON\s*\(\(/i.test(str)) {
+    typeName = 'Vùng';
+    inner = str.replace(/^POLYGON\s*\(\(/i, '').replace(/\)\)\s*$/, '');
+  } else if (/^MULTIPOINT\s*\(/i.test(str)) {
+    typeName = 'Tập hợp điểm';
+    inner = str.replace(/^MULTIPOINT\s*\(/i, '').replace(/\)\s*$/, '');
+  } else if (str.startsWith('(') && str.endsWith(')')) {
+    inner = str.slice(1, -1);
+  }
+
+  const pointStrings = inner.split(',').map((s) => s.trim()).filter(Boolean);
+  if (pointStrings.length === 0) return null;
+
+  const points = pointStrings.map((ps, idx) => {
+    const clean = ps.replace(/[()]/g, '').trim();
+    const parts = clean.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return { x: parts[0], y: parts[1], index: idx + 1 };
+    }
+    return { x: clean, y: '', index: idx + 1 };
+  });
+
+  return { typeName, points };
+}
+
+function renderCoordinatesDisplay(val: string | null) {
+  if (!val || val === '—' || val === 'Chưa có' || val === '(null)' || val === '(trống)') {
+    return <span style={{ color: textTertiary }}>{val === 'Chưa có' ? 'Chưa có' : '—'}</span>;
+  }
+  const parsed = parseCoordinatesPoints(val);
+  if (!parsed || parsed.points.length === 0) {
+    return <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{parsed?.typeName || val}</span>;
+  }
+
+  if (parsed.points.length === 1) {
+    const pt = parsed.points[0];
+    return (
+      <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>
+        {formatCoordPointDms(pt.x, pt.y)}
+      </span>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, width: '100%' }}>
+      {parsed.points.map((pt) => (
+        <div
+          key={pt.index}
+          style={{
+            fontSize: fontSizeSm + 1,
+            color: textPrimary,
+            fontWeight: fontWeightBold,
+            lineHeight: 1.4,
+          }}
+        >
+          • Điểm {pt.index}: {formatCoordPointDms(pt.x, pt.y)}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function renderCommonHistoryValueTag(field: string, val: string) {
   if (!val || val === '—') {
@@ -638,6 +762,14 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
 
                             if (isSymbolField) {
                               return renderSymbolValue(str);
+                            }
+
+                            const isCoordField = normLabel.includes('toa do') || normLabel.includes('coordinate')
+                              || normField.includes('toa do') || normField.includes('coordinate')
+                              || /^POINT\s*\(/i.test(str) || /^LINESTRING\s*\(/i.test(str) || /^LINE\s*\(/i.test(str) || /^POLYGON\s*\(\(/i.test(str) || /^MULTIPOINT\s*\(/i.test(str);
+
+                            if (isCoordField) {
+                              return renderCoordinatesDisplay(str);
                             }
 
                             if (str.includes(',') && str.length > 25) {

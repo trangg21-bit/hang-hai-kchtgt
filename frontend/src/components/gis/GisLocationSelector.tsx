@@ -379,16 +379,36 @@ export default function GisLocationSelector({
     const validVertices = vertices.filter((v) => v && typeof v.lat === 'number' && typeof v.lng === 'number' && !isNaN(v.lat) && !isNaN(v.lng));
     if (validVertices.length === 0) return;
 
+    const createPinIcon = (index?: number) => {
+      const label = index !== undefined ? `${index}` : '';
+      const html = `
+        <div style="position: relative; width: 28px; height: 34px; transform: translate(-50%, -100%);">
+          <svg viewBox="0 0 28 34" width="28" height="34" style="filter: drop-shadow(0 2px 5px rgba(0,0,0,0.35)); display: block;">
+            <path d="M14 0C6.27 0 0 6.27 0 14c0 10.5 14 20 14 20s14-9.5 14-20c0-7.73-6.27-14-14-14z" fill="${colors.primary}" />
+            <circle cx="14" cy="13" r="8" fill="#ffffff" />
+          </svg>
+          ${label ? `<span style="position: absolute; top: 3px; left: 0; right: 0; text-align: center; font-size: 11px; font-weight: 700; color: ${colors.primary}; line-height: 20px; font-family: sans-serif;">${label}</span>` : ''}
+        </div>
+      `;
+      return L.divIcon({
+        className: 'custom-map-pin',
+        html,
+        iconSize: [28, 34],
+        iconAnchor: [14, 34],
+      });
+    };
+
     try {
       let layer: any;
 
       if (internalGeom === 'POINT') {
         const coords = validVertices.map((v) => [v.lat, v.lng]);
         if (coords.length === 1) {
-          layer = L.marker(coords[0], { draggable: !disabled });
+          const marker = L.marker(coords[0], { icon: createPinIcon(1), draggable: !disabled });
+          layer = marker;
           if (!disabled) {
-            layer.on('dragend', () => {
-              const pos = layer.getLatLng();
+            marker.on('dragend', () => {
+              const pos = marker.getLatLng();
               const draggedPts = [{ lat: pos.lat, lng: pos.lng }];
               setVertices(draggedPts);
               const draggedWkt = serializeVerticesToWkt(draggedPts, 'POINT');
@@ -397,13 +417,12 @@ export default function GisLocationSelector({
             });
           }
         } else {
-          layer = L.layerGroup(coords.map((c: [number, number]) => L.marker(c, { draggable: !disabled })));
+          layer = L.layerGroup(coords.map((c: [number, number], idx: number) => L.marker(c, { icon: createPinIcon(idx + 1), draggable: !disabled })));
         }
       } else if (internalGeom === 'LINE') {
         const coords = validVertices.map((v) => [v.lat, v.lng]);
         if (validVertices.length === 1) {
-          // Khi chỉ có 1 đỉnh (chuyển từ Point sang Line): vẫn vẽ Marker điểm xuất phát để người dùng thấy rõ vị trí
-          layer = L.marker(coords[0], { draggable: !disabled });
+          layer = L.marker(coords[0], { icon: createPinIcon(1), draggable: !disabled });
           if (!disabled) {
             layer.on('dragend', () => {
               const pos = layer.getLatLng();
@@ -415,13 +434,28 @@ export default function GisLocationSelector({
             });
           }
         } else {
-          layer = L.polyline(coords, { color: colors.primary });
+          const polyline = L.polyline(coords, { color: colors.primary, weight: 3 });
+          const vertexMarkers = validVertices.map((v, idx) => {
+            const m = L.marker([v.lat, v.lng], { icon: createPinIcon(idx + 1), draggable: !disabled });
+            if (!disabled) {
+              m.on('dragend', () => {
+                const pos = m.getLatLng();
+                const updated = [...validVertices];
+                updated[idx] = { lat: pos.lat, lng: pos.lng };
+                setVertices(updated);
+                const updatedWkt = serializeVerticesToWkt(updated, 'LINE');
+                setInternalToaDo(updatedWkt);
+                triggerChange('LINE', updatedWkt, internalBieuTuongRef.current);
+              });
+            }
+            return m;
+          });
+          layer = L.featureGroup([polyline, ...vertexMarkers]);
         }
       } else if (internalGeom === 'POLYGON') {
         const coords = validVertices.map((v) => [v.lat, v.lng]);
         if (validVertices.length === 1) {
-          // Khi chỉ có 1 đỉnh: vẽ Marker điểm xuất phát
-          layer = L.marker(coords[0], { draggable: !disabled });
+          layer = L.marker(coords[0], { icon: createPinIcon(1), draggable: !disabled });
           if (!disabled) {
             layer.on('dragend', () => {
               const pos = layer.getLatLng();
@@ -433,10 +467,41 @@ export default function GisLocationSelector({
             });
           }
         } else if (validVertices.length === 2) {
-          // Khi có 2 đỉnh: vẽ đường nối nét đứt thể hiện 2 đỉnh đã chọn
-          layer = L.polyline(coords, { color: colors.primary, dashArray: '6, 6' });
+          const polyline = L.polyline(coords, { color: colors.primary, dashArray: '6, 6', weight: 2 });
+          const vertexMarkers = validVertices.map((v, idx) => {
+            const m = L.marker([v.lat, v.lng], { icon: createPinIcon(idx + 1), draggable: !disabled });
+            if (!disabled) {
+              m.on('dragend', () => {
+                const pos = m.getLatLng();
+                const updated = [...validVertices];
+                updated[idx] = { lat: pos.lat, lng: pos.lng };
+                setVertices(updated);
+                const updatedWkt = serializeVerticesToWkt(updated, 'POLYGON');
+                setInternalToaDo(updatedWkt);
+                triggerChange('POLYGON', updatedWkt, internalBieuTuongRef.current);
+              });
+            }
+            return m;
+          });
+          layer = L.featureGroup([polyline, ...vertexMarkers]);
         } else {
-          layer = L.polygon(coords, { color: colors.primary, fillColor: colors.primary, fillOpacity: 0.2 });
+          const polygon = L.polygon(coords, { color: colors.primary, fillColor: colors.primary, fillOpacity: 0.2, weight: 2 });
+          const vertexMarkers = validVertices.map((v, idx) => {
+            const m = L.marker([v.lat, v.lng], { icon: createPinIcon(idx + 1), draggable: !disabled });
+            if (!disabled) {
+              m.on('dragend', () => {
+                const pos = m.getLatLng();
+                const updated = [...validVertices];
+                updated[idx] = { lat: pos.lat, lng: pos.lng };
+                setVertices(updated);
+                const updatedWkt = serializeVerticesToWkt(updated, 'POLYGON');
+                setInternalToaDo(updatedWkt);
+                triggerChange('POLYGON', updatedWkt, internalBieuTuongRef.current);
+              });
+            }
+            return m;
+          });
+          layer = L.featureGroup([polygon, ...vertexMarkers]);
         }
       }
 
@@ -444,13 +509,13 @@ export default function GisLocationSelector({
         layer.addTo(mapRef.current);
         drawnLayerRef.current = layer;
 
-        // Giữ nguyên mức zoom hiện tại của người dùng, không tự ý zoom in làm mất ngữ cảnh
+        // Auto zoom and center to the drawn vertices
         if (validVertices.length === 1) {
-          mapRef.current.panTo([validVertices[0].lat, validVertices[0].lng]);
+          mapRef.current.setView([validVertices[0].lat, validVertices[0].lng], Math.max(mapRef.current.getZoom(), 13));
         } else if (layer.getBounds) {
           const bounds = layer.getBounds();
           if (bounds && bounds.isValid && bounds.isValid()) {
-            mapRef.current.panTo(bounds.getCenter());
+            mapRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
           }
         }
 

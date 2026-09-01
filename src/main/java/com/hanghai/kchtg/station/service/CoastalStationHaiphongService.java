@@ -344,7 +344,7 @@ public class CoastalStationHaiphongService {
 
             // GIS fields
             if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType(), entity.getGeometryType())) {
-                oldValues.put("Loại đối tượng", formatObjectTypeDisplay(entity.getGeometryType()));
+                oldValues.put("Loại đối tượng GIS", formatObjectTypeDisplay(entity.getGeometryType()));
             }
             if (request.getSymbol() != null && !Objects.equals(request.getSymbol(), entity.getSymbol())) {
                 oldValues.put("Biểu tượng", gisSpatialObjectService != null ? gisSpatialObjectService.getSymbolDisplayName(entity.getSymbol()) : (entity.getSymbol() != null ? entity.getSymbol() : "—"));
@@ -374,7 +374,7 @@ public class CoastalStationHaiphongService {
             }
             boolean coordsChanged = (newCoord != null && !Objects.equals(newCoord, oldCoord)) || latChanged || lngChanged;
             if (coordsChanged) {
-                oldValues.put("Tọa độ", oldCoord != null ? oldCoord : "—");
+                oldValues.put("Tọa độ GIS", oldCoord != null ? oldCoord : "—");
             }
         }
 
@@ -480,11 +480,11 @@ public class CoastalStationHaiphongService {
             case "Ghi chú" -> entity.getDescription() != null ? entity.getDescription() : "—";
             case "Người liên hệ" -> entity.getContactPerson() != null ? entity.getContactPerson() : "—";
             case "Số điện thoại liên hệ" -> entity.getContactPhone() != null ? entity.getContactPhone() : "—";
-            case "Loại đối tượng" -> formatObjectTypeDisplay(entity.getGeometryType());
+            case "Loại đối tượng", "Loại đối tượng GIS" -> formatObjectTypeDisplay(entity.getGeometryType());
             case "Biểu tượng" -> gisSpatialObjectService != null ? gisSpatialObjectService.getSymbolDisplayName(entity.getSymbol()) : (entity.getSymbol() != null ? entity.getSymbol() : "—");
             case "Hệ quy chiếu" -> entity.getCoordinateSystem() != null ? entity.getCoordinateSystem() : "—";
             case "Quy tắc hiển thị" -> entity.getDisplayRule() != null ? entity.getDisplayRule() : "—";
-            case "Tọa độ", "Tọa độ GPS" -> {
+            case "Tọa độ", "Tọa độ GIS", "Tọa độ GPS" -> {
                 String c = gisSpatialObjectService != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
                 if (c != null && !c.isBlank()) yield c;
                 yield (entity.getLatitude() != null && entity.getLongitude() != null)
