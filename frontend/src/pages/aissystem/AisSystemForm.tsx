@@ -944,23 +944,33 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                         <Col span={12}>
                           <Form.Item
                             name="code"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Mã thiết bị AIS</span>}
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Mã thiết bị</span>}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <Input disabled placeholder="Mã tự động..." style={{ ...readonlyInputStyle, borderRadius: radiusPill, height: 40 }} />
+                            <Input.TextArea
+                              autoSize={{ minRows: 1, maxRows: 2 }}
+                              disabled
+                              placeholder="Mã tự động sinh..."
+                              style={{ ...readonlyInputStyle, borderRadius: radiusPill, minHeight: 40, padding: '8px 16px' }}
+                            />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
                           <Form.Item
                             name="name"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tên thiết bị AIS</span>}
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tên thiết bị (bắt buộc)</span>}
                             rules={[
-                              { required: true, message: 'Vui lòng nhập tên thiết bị AIS' },
+                              { required: true, message: 'Vui lòng nhập tên thiết bị' },
                               { max: 255, message: 'Tên tối đa 255 ký tự' },
                             ]}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <Input placeholder="Nhập tên thiết bị AIS..." maxLength={255} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                            <Input.TextArea
+                              autoSize={{ minRows: 1, maxRows: 2 }}
+                              placeholder="Nhập tên thiết bị..."
+                              maxLength={255}
+                              style={{ ...inputStyle, borderRadius: radiusPill, minHeight: 40, padding: '8px 16px' }}
+                            />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -969,7 +979,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                         <Col span={12}>
                           <Form.Item
                             name="orgUnitId"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị quản lý</span>}
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị quản lý (bắt buộc khi tạo)</span>}
                             rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
@@ -988,7 +998,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                         <Col span={12}>
                           <Form.Item
                             name="locationId"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thuộc TTDH VTS / Trạm Radar</span>}
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thuộc TTDH VTS / Trạm Radar (bắt buộc)</span>}
                             rules={[{ required: true, message: 'Vui lòng chọn TTDH VTS hoặc Trạm Radar' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
@@ -1009,7 +1019,6 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                           <Form.Item
                             name="operatingOrgId"
                             label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị khai thác</span>}
-                            rules={[{ required: true, message: 'Vui lòng chọn đơn vị khai thác' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select
@@ -1055,7 +1064,8 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                         <Col span={6}>
                           <Form.Item
                             name="unitOfMeasure"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị tính</span>}
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị tính (bắt buộc)</span>}
+                            rules={[{ required: true, message: 'Vui lòng chọn đơn vị tính' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select
@@ -1068,7 +1078,8 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                         <Col span={6}>
                           <Form.Item
                             name="quantity"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Số lượng</span>}
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Số lượng (bắt buộc)</span>}
+                            rules={[{ required: true, message: 'Vui lòng nhập số lượng' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <InputNumber min={1} precision={0} style={{ ...inputStyle, width: '100%', borderRadius: radiusPill, height: 40 }} />
@@ -1097,7 +1108,8 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                         <Col span={12}>
                           <Form.Item
                             name="conditionStatus"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tình trạng</span>}
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tình trạng (bắt buộc)</span>}
+                            rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select
