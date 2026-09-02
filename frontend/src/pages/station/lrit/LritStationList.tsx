@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { Typography, Modal, Input, Button, DatePicker, Space, Select } from 'antd';
+import { Typography, Modal, Input, Drawer, Button, DatePicker, Space, Select } from 'antd';
 import {
   EyeOutlined,
   EditOutlined,
@@ -9,6 +9,7 @@ import {
   CloseCircleOutlined,
   HistoryOutlined,
   ExclamationCircleOutlined,
+  SearchOutlined,
   PlusOutlined,
 } from '@ant-design/icons';
 import { lritStationService, type LritStationListParams } from '../../../services/lritStationService';
@@ -33,7 +34,7 @@ import {
   statusOperational, statusDraft, statusCritical, statusAttention,
   surfacePage, spaceXs, spaceXl, drawerTitleStyle, drawerCloseBtnStyle, selectStyle,
   borderDefault, statusBadgeStyle, cellTitleStyle, cellSubtitleStyle,
-  inputStyle, primaryButtonStyle, clientSideStringSorter,
+  inputStyle, primaryButtonStyle, textAreaStyle, clientSideStringSorter,
   clientSideProvinceSorter, clientSideUserSorter, clientSideBadgeSorter,
   getRangePickerProps,
 } from '../../../themetokenchk';
@@ -43,6 +44,7 @@ import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../../types/co
 import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../../components/org-unit';
 import SidebarFilterField from '../../../components/list-view/SidebarFilterField';
 import { canEditApprovalRecord, canDeleteApprovalRecord, normalizeApprovalStatus } from '../../../utils/approvalEditPolicy';
+import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import * as themeTokenChk from '../../../themetokenchk';
 import { ThemeTokenProvider } from '../../../context/ThemeTokenContext';
 import { deduplicateAttachmentHistoryChanges } from '../../../utils/historyAttachmentDedup';
