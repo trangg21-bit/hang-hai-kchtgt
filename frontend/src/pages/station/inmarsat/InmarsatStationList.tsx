@@ -364,12 +364,19 @@ export const InmarsatStationList = () => {
     }
   };
 
-  // Status tabs definition — backend trả keys: DRAFT, PENDING_APPROVAL, APPROVED_LEVEL1, APPROVED, REJECTED, ALL
-  const totalDraft = Number(statusCounts?.DRAFT ?? statusCounts?.draft ?? 0);
-  const totalProposed = Number(statusCounts?.PENDING_APPROVAL ?? statusCounts?.PROPOSED ?? statusCounts?.pending ?? 0);
-  const totalApprovedL1 = Number(statusCounts?.APPROVED_LEVEL1 ?? statusCounts?.approved_level1 ?? 0);
-  const totalApprovedL2 = Number(statusCounts?.APPROVED ?? statusCounts?.APPROVED_LEVEL2 ?? statusCounts?.approved ?? 0);
-  const totalRejected = Number(statusCounts?.REJECTED ?? statusCounts?.rejected ?? 0);
+  // Backend trả về số đếm theo ĐÚNG mã đang lưu trong CSDL, gồm cả mã cũ
+  // (PROPOSED, APPROVED_LEVEL2, REJECTED). Phải CỘNG các mã cùng nghĩa chứ không
+  // dùng `??`: `??` chỉ lấy khóa đầu tiên khác null nên khi cả hai mã cùng có dữ
+  // liệu thì tab đếm thiếu. Riêng "Từ chối" trước đây chỉ đọc mã cũ `REJECTED`
+  // trong khi luồng từ chối luôn ghi REJECTED_LEVEL1/LEVEL2, nên tab luôn bằng 0.
+  const sumCounts = (...keys: string[]) =>
+    keys.reduce((sum, key) => sum + Number(statusCounts?.[key] ?? 0), 0);
+
+  const totalDraft = sumCounts('DRAFT', 'draft');
+  const totalProposed = sumCounts('PENDING_APPROVAL', 'PROPOSED', 'pending');
+  const totalApprovedL1 = sumCounts('APPROVED_LEVEL1', 'approved_level1');
+  const totalApprovedL2 = sumCounts('APPROVED', 'APPROVED_LEVEL2', 'approved');
+  const totalRejected = sumCounts('REJECTED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2', 'rejected');
   const totalAll = totalDraft + totalProposed + totalApprovedL1 + totalApprovedL2 + totalRejected;
 
   const statusTabs = [
