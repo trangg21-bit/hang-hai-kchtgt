@@ -71,7 +71,15 @@ public class CoastalStationInmarsatController {
         return ResponseEntity.ok(data);
     }
 
-
+    @GetMapping("/counts")
+    @Operation(summary = "Thống kê số lượng bản ghi theo tab trạng thái phê duyệt")
+    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
+    public ResponseEntity<Map<String, Long>> getCounts(
+            @RequestParam(required = false) UUID orgUnitId,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String conditionStatus) {
+        return ResponseEntity.ok(service.countByApprovalStatus(orgUnitId, keyword, conditionStatus));
+    }
 
     @GetMapping("/generate-code")
     @Operation(summary = "Tự sinh mã Đài Inmarsat (INMARSAT-xxxx)")
@@ -81,7 +89,7 @@ public class CoastalStationInmarsatController {
         return ResponseEntity.ok(Map.of("code", code));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:[0-9a-fA-F-]{36}}")
     @Operation(summary = "Xem chi tiết Đài Inmarsat (F-102)")
     @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
     public ResponseEntity<CoastalStationInmarsatResponse> getStationById(@PathVariable UUID id) {

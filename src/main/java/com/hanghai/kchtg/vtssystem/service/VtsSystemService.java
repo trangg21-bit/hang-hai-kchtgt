@@ -807,8 +807,7 @@ public class VtsSystemService {
                 if (repository.existsByCodeAndIdNot(requestedCode, id)) {
                     throw new IllegalArgumentException("Mã hệ thống VTS đã tồn tại trong hệ thống");
                 }
-                previousValues.put(VtsSystem.Fields.code, entity.getCode());
-                entity.setCode(requestedCode);
+                throw new IllegalArgumentException("Mã hệ thống VTS không được phép thay đổi sau khi tạo");
             }
         }
         if (request.getOrgUnitId() != null && !request.getOrgUnitId().equals(entity.getOrgUnitId())) {

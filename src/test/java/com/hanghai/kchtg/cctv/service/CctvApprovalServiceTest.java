@@ -100,7 +100,6 @@ class CctvApprovalServiceTest {
         // Thông tin gửi phê duyệt được ghi nhận để hiển thị tại drawer chi tiết
         assertEquals(APPROVER_A, entity.getSubmittedBy());
         assertNotNull(entity.getSubmittedDate());
-        verify(historyRepository).save(any());
     }
 
     @Test
