@@ -36,8 +36,23 @@ public interface CoastalStationInmarsatRepository extends JpaRepository<CoastalS
     @Query("SELECT c FROM CoastalStationInmarsat c WHERE c.deletedAt IS NULL")
     List<CoastalStationInmarsat> findByDeletedAtIsNull();
 
+    /**
+     * Danh sách đài Inmarsat.
+     *
+     * KHÔNG đặt ORDER BY cố định: JPA nối ORDER BY của {@link Pageable} vào SAU
+     * mệnh đề có sẵn, nên cố định ở đây là vô hiệu hóa cột người dùng chọn.
+     *
+     * Các join chỉ phục vụ sắp xếp theo tên hiển thị. Đơn vị quản lý đọc từ
+     * org_unit_id, thiếu thì lùi về unit_id; đơn vị khai thác đọc từ
+     * operating_organization, thiếu thì lùi về org_units (xem buildResponse) —
+     * nên phải join cả cặp và sắp bằng COALESCE cho khớp chữ trên bảng.
+     */
     @Query("""
         SELECT t FROM CoastalStationInmarsat t
+        LEFT JOIN OrgUnit o ON o.id = t.orgUnitId
+        LEFT JOIN OrgUnit ou ON ou.id = t.unitId
+        LEFT JOIN OperatingOrganization oo ON oo.id = t.operatingOrgId
+        LEFT JOIN OrgUnit oorg ON oorg.id = t.operatingOrgId
         WHERE t.deletedAt IS NULL
           AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
           AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds OR t.unitId IN :scopeOrgUnitIds)
@@ -62,7 +77,6 @@ public interface CoastalStationInmarsatRepository extends JpaRepository<CoastalS
           AND (:updatedBy IS NULL OR t.updatedBy = :updatedBy)
           AND (CAST(:updatedFrom AS timestamp) IS NULL OR t.updatedAt >= :updatedFrom)
           AND (CAST(:updatedTo AS timestamp) IS NULL OR t.updatedAt <= :updatedTo)
-        ORDER BY t.createdAt DESC
     """)
     Page<CoastalStationInmarsat> searchPaged(
         @Param("scopeEnabled") boolean scopeEnabled,

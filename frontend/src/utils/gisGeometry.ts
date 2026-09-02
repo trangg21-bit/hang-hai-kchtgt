@@ -286,9 +286,14 @@ export const adjustCoordinateListForGeometry = (
     return [base[0]];
   }
 
-  if (base.length >= minCount) return base;
-  const added = Array.from({ length: minCount - base.length }, () => ({ latitude: null, longitude: null }));
-  return [...base, ...added];
+  // Count actually filled points
+  const filledCount = base.filter((c) => c.latitude != null || c.longitude != null).length;
+  const targetCount = Math.max(minCount, filledCount);
+  const trimmed = base.slice(0, targetCount);
+
+  if (trimmed.length >= minCount) return trimmed;
+  const added = Array.from({ length: minCount - trimmed.length }, () => ({ latitude: null, longitude: null }));
+  return [...trimmed, ...added];
 };
 
 

@@ -289,9 +289,7 @@ public class CoastalStationInmarsatService {
         CoastalStationInmarsat entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy đài Inmarsat với id: " + id));
 
-        if (entity.getOrgUnitId() != null) {
-            validateAllowedOrgUnit(entity.getOrgUnitId());
-        }
+        validateAllowedOrgUnit(entity.getOrgUnitId() != null ? entity.getOrgUnitId() : entity.getUnitId());
 
         // Quy tắc 12: Kiểm tra quyền chỉnh sửa hồ sơ
         approvalService.assertEditable(entity);
@@ -535,9 +533,10 @@ public class CoastalStationInmarsatService {
     public CoastalStationInmarsat getStationById(UUID id) {
         CoastalStationInmarsat entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy đài Inmarsat với id: " + id));
-        if (entity.getOrgUnitId() != null) {
-            validateAllowedOrgUnit(entity.getOrgUnitId());
-        }
+        // Kiểm tra cả khi hồ sơ chưa gán đơn vị: bỏ qua thì bản ghi org_unit_id NULL
+        // trở thành cửa hậu — danh sách đã lọc nó ra khỏi tầm nhìn của người dùng bị
+        // giới hạn phạm vi, nhưng truy cập thẳng theo ID vẫn lọt.
+        validateAllowedOrgUnit(entity.getOrgUnitId() != null ? entity.getOrgUnitId() : entity.getUnitId());
         return entity;
     }
 

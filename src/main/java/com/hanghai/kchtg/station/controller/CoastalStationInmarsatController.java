@@ -11,7 +11,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -39,6 +41,55 @@ public class CoastalStationInmarsatController {
 
     private final CoastalStationInmarsatService service;
 
+    /**
+     * Các cột được phép sắp xếp. Thuộc tính đến từ client nên phải qua danh sách
+     * trắng: tên lạ sẽ làm truy vấn ném lỗi 500.
+     *
+     * Cột tên hiển thị trỏ vào alias của LEFT JOIN trong
+     * {@code CoastalStationInmarsatRepository.searchPaged}; các cột có cả trường
+     * mới lẫn trường cũ (name/stationName, code/deviceCode, orgUnitId/unitId)
+     * sắp bằng COALESCE cho khớp đúng chữ hiển thị trên bảng.
+     */
+    /** Trần số bản ghi mỗi trang cho endpoint danh sách. */
+    private static final int MAX_PAGE_SIZE = 200;
+
+    private static final Map<String, String> SORTABLE_LIST_FIELDS = Map.ofEntries(
+            Map.entry("name", "COALESCE(t.name, t.stationName)"),
+            Map.entry("stationName", "COALESCE(t.name, t.stationName)"),
+            Map.entry("code", "COALESCE(t.code, t.deviceCode)"),
+            Map.entry("deviceCode", "COALESCE(t.code, t.deviceCode)"),
+            Map.entry("orgUnitName", "COALESCE(o.name, ou.name)"),
+            Map.entry("orgUnitId", "t.orgUnitId"),
+            Map.entry("operatingOrgName", "COALESCE(oo.name, oorg.name)"),
+            Map.entry("operatingOrgId", "t.operatingOrgId"),
+            Map.entry("province", "t.provinceId"),
+            Map.entry("provinceId", "t.provinceId"),
+            Map.entry("locationAddress", "t.locationAddress"),
+            Map.entry("conditionStatus", "t.conditionStatus"),
+            Map.entry("approvalStatus", "t.approvalStatus"),
+            Map.entry("updatedAt", "t.updatedAt"),
+            Map.entry("updatedDate", "t.updatedAt"),
+            Map.entry("createdAt", "t.createdAt"));
+
+    /**
+     * Dùng {@link JpaSort#unsafe} vì thuộc tính đã qualify sẵn theo alias và có
+     * trường hợp là biểu thức COALESCE — {@code Sort.by} từ chối cả hai. An toàn
+     * vì giá trị luôn lấy từ danh sách trắng, không phải chuỗi thô của client.
+     */
+    private static Sort resolveListSort(Sort requested) {
+        Sort defaultSort = JpaSort.unsafe(Sort.Direction.DESC, "t.createdAt");
+        if (requested == null || requested.isUnsorted()) {
+            return defaultSort;
+        }
+        Sort.Order order = requested.stream().findFirst().orElse(null);
+        String property = order == null ? null : SORTABLE_LIST_FIELDS.get(order.getProperty().trim());
+        if (property == null) {
+            return defaultSort;
+        }
+        // Chốt thêm createdAt để thứ tự ổn định khi giá trị sắp xếp trùng nhau.
+        return JpaSort.unsafe(order.getDirection(), property).and(defaultSort);
+    }
+
     @GetMapping
     @Operation(summary = "Tìm kiếm phân trang danh sách Đài Inmarsat (F-102)")
     @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
@@ -57,9 +108,15 @@ public class CoastalStationInmarsatController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime updatedTo,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
+        // Chặn trần số bản ghi mỗi trang: `size` đến từ client, không giới hạn thì
+        // một request `size=100000` kéo cả bảng ra khỏi CSDL.
+        int safeSize = Math.min(Math.max(pageable.getPageSize(), 1), MAX_PAGE_SIZE);
+        Pageable sanitizedPageable = PageRequest.of(
+                pageable.getPageNumber(), safeSize, resolveListSort(pageable.getSort()));
+
         Page<CoastalStationInmarsatResponse> results = service.searchPaged(
                 orgUnitId, keyword, name, code, operatingOrgId, provinceId, conditionStatus, approvalStatus,
-                updatedBy, updatedFrom, updatedTo, pageable);
+                updatedBy, updatedFrom, updatedTo, sanitizedPageable);
 
         // Số đếm tab dùng đúng bộ lọc của danh sách (trừ trạng thái phê duyệt).
         Map<String, Long> statusCounts = service.countByApprovalStatus(

@@ -1603,7 +1603,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
 
                       <DetailTable
                         scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
-                        dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))}
+                        dataSource={((watchedGeometryType === 'POINT' || !watchedGeometryType) ? coordinateList.slice(0, 1) : coordinateList).map((c, i) => ({ ...c, _idx: i }))}
                         emptyText="Chưa có tọa độ nào"
                         rowKey="_idx"
                         columns={[
@@ -1633,6 +1633,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                             align: 'center' as const,
                             render: (_: any, r: any) => {
                               const geom = (watchedGeometryType || form.getFieldValue('geometryType') || 'POINT').toUpperCase();
+                              if (geom === 'POINT') return null;
                               const minCount = geom.includes('LINE') ? 2 : (geom.includes('POLYGON') ? 3 : 1);
                               const canDelete = coordinateList.length > minCount;
                               if (!canDelete) return null;

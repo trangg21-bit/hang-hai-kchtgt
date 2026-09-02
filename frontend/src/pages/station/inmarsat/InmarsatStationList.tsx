@@ -21,8 +21,7 @@ import {
   statusOperational, statusCritical, statusAttention, statusDraft,
   selectStyle,
   statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
-  inputStyle, clientSideStringSorter,
-  clientSideProvinceSorter, clientSideBadgeSorter,
+  inputStyle,
   getRangePickerProps,
 } from '../../../themetokenchk';
 import * as themeTokenChk from '../../../themetokenchk';
@@ -122,6 +121,11 @@ export const InmarsatStationList = () => {
   const [filterConditionStatus, setFilterConditionStatus] = useState<string | undefined>();
   const [filterDateRange, setFilterDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
 
+  // Sắp xếp chạy ở server để áp dụng cho toàn bộ kết quả; nếu để antd tự sắp thì
+  // chỉ các dòng của trang hiện tại được sắp, gây hiểu nhầm là đã sắp cả danh sách.
+  const [sortField, setSortField] = useState<string | undefined>();
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
   // Reference data
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
 
@@ -200,6 +204,7 @@ export const InmarsatStationList = () => {
         updatedTo: filterDateRange?.[1] ? filterDateRange[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss') : undefined,
         page,
         size: pageSize,
+        sort: sortField ? `${sortField},${sortDirection}` : undefined,
       });
 
       setData(res.items);
@@ -212,7 +217,20 @@ export const InmarsatStationList = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, filterName, filterCode, filterOrgUnitId, filterProvinceId, filterConditionStatus, filterDateRange, page, pageSize]);
+  }, [activeTab, filterName, filterCode, filterOrgUnitId, filterProvinceId, filterConditionStatus, filterDateRange, page, pageSize, sortField, sortDirection]);
+
+  const handleSort = useCallback((field: string, order: 'asc' | 'desc') => {
+    setSortField(field);
+    setSortDirection(order);
+    setPage(1);
+  }, []);
+
+  const sortOrderFor = (key: string): 'ascend' | 'descend' | null =>
+    (sortField === key ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null);
+
+  // Bộ so sánh trung tính: thứ tự do server quyết định, hàm này chỉ để antd hiện
+  // biểu tượng sắp xếp mà không tự sắp lại các dòng của trang hiện tại.
+  const serverSideSorter = () => 0;
 
   useEffect(() => {
     fetchData();
@@ -300,8 +318,10 @@ export const InmarsatStationList = () => {
 
   const handleConfirmReject = async () => {
     if (!targetRecord) return;
-    if (!rejectReason.trim()) {
-      toast.error('Vui lòng nhập lý do từ chối');
+    // approval-2-level-spec §3.4 (quy tắc 5): tối thiểu 10 ký tự — backend cũng
+    // chặn đúng ngưỡng này, kiểm tra tại chỗ để người dùng không phải chờ lỗi server.
+    if (!rejectReason.trim() || rejectReason.trim().length < 10) {
+      toast.error('Lý do từ chối phải có ít nhất 10 ký tự');
       return;
     }
     try {
@@ -408,7 +428,9 @@ export const InmarsatStationList = () => {
       dataIndex: 'name',
       width: 260,
       fixed: 'left' as const,
-      sorter: clientSideStringSorter('name', 'code'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('name'),
       render: (_: any, record: CoastalStationInmarsatResponse) => (
         <div
           style={{ cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
@@ -424,7 +446,9 @@ export const InmarsatStationList = () => {
       label: 'Đơn vị quản lý',
       dataIndex: 'orgUnitName',
       width: 200,
-      sorter: clientSideStringSorter('orgUnitName'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('orgUnitName'),
       render: (val: string) => (
         <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>
           {val || '—'}
@@ -436,7 +460,9 @@ export const InmarsatStationList = () => {
       label: 'Đơn vị khai thác',
       dataIndex: 'operatingOrgName',
       width: 180,
-      sorter: clientSideStringSorter('operatingOrgName'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('operatingOrgName'),
       render: (val: string, record: CoastalStationInmarsatResponse) => {
         const name = getOperatingOrgName(record.operatingOrgId, val);
         return (
@@ -451,7 +477,9 @@ export const InmarsatStationList = () => {
       label: 'Địa điểm (Tỉnh/TP)',
       dataIndex: 'provinceId',
       width: 160,
-      sorter: clientSideProvinceSorter('provinceId'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('provinceId'),
       render: (pId: number) => {
         const pName = getProvinceNameById(pId);
         return (
@@ -467,7 +495,9 @@ export const InmarsatStationList = () => {
       dataIndex: 'conditionStatus',
       width: 160,
       align: 'center' as const,
-      sorter: clientSideBadgeSorter('conditionStatus', CONDITION_STATUS_MAP),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('conditionStatus'),
       render: (st: string) => {
         const enumKey = (st || ConditionStatus.OPERATIONAL) as ConditionStatus;
         const color = CONDITION_COLOR[enumKey] || statusOperational;
@@ -494,7 +524,9 @@ export const InmarsatStationList = () => {
       dataIndex: 'approvalStatus',
       width: 180,
       align: 'center' as const,
-      sorter: clientSideBadgeSorter('approvalStatus'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('approvalStatus'),
       render: (st: string) => <ApprovalStatusBadge status={st} />,
     },
     {
@@ -766,6 +798,7 @@ export const InmarsatStationList = () => {
                 dataSource={data}
                 columns={columns}
                 rowKey="id"
+                onSort={handleSort}
                 scroll={{ x: 'max-content' }}
                 emptyText="Không có dữ liệu Đài Inmarsat"
                 rowActions={(rec) => {
