@@ -564,6 +564,7 @@ export default function UsersPage() {
               <Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>{editingUser ? 'Cập nhật' : 'Tạo mới'}</Button>
             </div>
           }
+        >
           <Tabs
             tabBarStyle={drawerTabBarStyle}
             animated={false}

@@ -17,7 +17,6 @@ import {
 import {
   CloseOutlined,
   EnvironmentOutlined,
-  PlusOutlined,
   DeleteOutlined,
 } from '@ant-design/icons';
 import toast from '../../../components/ToastNotification';
@@ -38,7 +37,7 @@ import {
   fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd, fontSizeLg,
   textPrimary, textSecondary, textTertiary, borderDefault,
   statusCritical, statusOperational, statusAttention, actionPrimary, textAreaStyle,
-  readonlyInputStyle, drawerCloseBtnStyle, selectStyle, inputStyle, requiredMarkStyle,
+  readonlyInputStyle, drawerCloseBtnStyle, selectStyle, requiredMarkStyle,
 } from '../../../themetokenchk';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../../types/common';
 import { useAuthStore } from '../../../store/authStore';
@@ -610,8 +609,8 @@ export default function LritStationForm({
             children: (
               <div style={drawerFormScrollStyle}>
                 <div className="chk-detail-grid">
-                  <div className="chk-detail-row"><span className="chk-detail-label">Mã đài LRIT</span><span className="chk-detail-value">{record.code || '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Tên đài LRIT</span><span className="chk-detail-value">{record.name || '—'}</span></div>
+                  <div className="chk-detail-row"><span className="chk-detail-label">Mã đài</span><span className="chk-detail-value">{record.code || '—'}</span></div>
+                  <div className="chk-detail-row"><span className="chk-detail-label">Tên đài</span><span className="chk-detail-value">{record.name || '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị quản lý</span><span className="chk-detail-value">{record.orgUnitName || '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị khai thác</span><span className="chk-detail-value">{getOperatingOrganizationDisplayName(record.operatingOrgId, record.operatingOrgName)}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Địa điểm (Tỉnh/TP)</span><span className="chk-detail-value">{record.provinceId ? getProvinceNameById(record.provinceId) : '—'}</span></div>
@@ -619,7 +618,7 @@ export default function LritStationForm({
                   <div className="chk-detail-row"><span className="chk-detail-label">Tình trạng</span><span className="chk-detail-value">{renderConditionBadge(record.conditionStatus)}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Dịch vụ cung cấp</span><span className="chk-detail-value">{renderServicesBadges(record.services || record.servicesProvided)}</span></div>
                   <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Vùng phủ sóng</span><span className="chk-detail-value">{record.coverageArea || '—'}</span></div>
-                  <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Ghi chú / Mô tả</span><span className="chk-detail-value">{record.description || '—'}</span></div>
+                  <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Ghi chú</span><span className="chk-detail-value">{record.description || '—'}</span></div>
                 </div>
               </div>
             ),
@@ -868,11 +867,12 @@ export default function LritStationForm({
                         rules={[{ required: true, message: 'Vui lòng nhập tên đài' }]}
                         style={{ marginBottom: spaceFormField }}
                       >
-                        <Input
+                        <Input.TextArea
                           placeholder="Nhập tên đài"
+                          rows={2}
                           maxLength={255}
                           showCount
-                          style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }}
+                          style={{ ...textAreaStyle, borderRadius: radiusSm }}
                         />
                       </Form.Item>
                     </Col>
@@ -945,11 +945,12 @@ export default function LritStationForm({
                         rules={[{ required: true, message: 'Vui lòng nhập địa điểm chi tiết' }]}
                         style={{ marginBottom: spaceFormField }}
                       >
-                        <Input
+                        <Input.TextArea
                           placeholder="Nhập địa điểm chi tiết"
+                          rows={2}
                           maxLength={500}
                           showCount
-                          style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }}
+                          style={{ ...textAreaStyle, borderRadius: radiusSm }}
                         />
                       </Form.Item>
                     </Col>
