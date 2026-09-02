@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, memo, type FC } from 'react';
+import { useState, useCallback, useEffect, useMemo, memo, type FC, type ReactNode } from 'react';
 import { Typography, Modal, Form, Input, Select, Spin, Button, Row, Col, Drawer, Tree, Checkbox, Tabs, Empty } from 'antd';
 import {
   PlusOutlined, LockOutlined, UnlockOutlined, KeyOutlined,
@@ -16,8 +16,8 @@ import { userService } from '../services/userService';
 import { normalizeSearchText, OrgUnitTreeSelect } from '../components/org-unit';
 import { getVisiblePermissionKeys, mergePermissionKeys, usePermissions } from '../hooks/usePermissions';
 import {
-  actionPrimary, textSecondary, textPrimary, textTertiary, fontSizeSm, fontSizeMd,
-  fontWeightBold, fontWeightMedium, radiusPill, radiusMd, borderDefault,
+  actionPrimary, textSecondary, textPrimary, textTertiary, fontSizeSm, fontSizeMd, fontSizeLg,
+  fontWeightBold, fontWeightMedium, radiusPill, radiusMd, radiusTextArea, borderDefault,
   spaceFormField, spaceMd, spaceSm, spaceXs, inputStyle,
   selectStyle, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, drawerStyles, drawerFormScrollStyle,
   drawerTabBarStyle, primaryButtonStyle, outlineButtonStyle,
