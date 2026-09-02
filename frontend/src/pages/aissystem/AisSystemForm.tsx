@@ -332,7 +332,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
       setAttachments([]);
       setPendingFiles([]);
       setPendingDeletedAttachments([]);
-      setCoordinateList([]);
+      setCoordinateList([{ latitude: null, longitude: null }]);
 
       aisSystemService.generateCode().then((res) => {
         form.setFieldsValue({

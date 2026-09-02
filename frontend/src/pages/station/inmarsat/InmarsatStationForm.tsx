@@ -318,7 +318,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
     if (isCreateMode) {
       setRecord(null);
       setAttachments([]);
-      setCoordinateList([]);
+      setCoordinateList([{ latitude: null, longitude: null }]);
       form.resetFields();
       form.setFieldsValue({
         conditionStatus: ConditionStatus.OPERATIONAL,
@@ -353,7 +353,8 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
           if (pts.length === 0 && res.latitude != null && res.longitude != null) {
             pts = [{ latitude: Number(res.latitude), longitude: Number(res.longitude) }];
           }
-          setCoordinateList(pts.length > 0 ? adjustCoordinateListForGeometry(pts, res.objectType || 'POINT') : []);
+          const geom = res.geometryType || res.objectType || 'POINT';
+          setCoordinateList(adjustCoordinateListForGeometry(pts, geom));
           form.setFieldsValue({
             code: res.code || res.deviceCode,
             name: res.name || res.stationName,

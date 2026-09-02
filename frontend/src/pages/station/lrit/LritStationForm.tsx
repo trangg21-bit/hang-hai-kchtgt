@@ -286,9 +286,7 @@ export default function LritStationForm({
         coordinateSystem: 'WGS 84 / VN-2000',
         displayRule: 'Độ, phút, giây (DMS)',
       });
-      // Giống Trung tâm điều hành VTS: chưa chọn vị trí thì không tạo một
-      // điểm giả. Một hàng rỗng ở đây từng bị serialize thành POINT(0 0).
-      setCoordinateList([]);
+      setCoordinateList([{ latitude: null, longitude: null }]);
       setAttachments([]);
       setPendingFiles([]);
       setPendingDeletedAttachments([]);

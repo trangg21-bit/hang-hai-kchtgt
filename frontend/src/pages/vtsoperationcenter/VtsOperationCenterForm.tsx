@@ -486,7 +486,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
     } else if (isCreateMode) {
       setRecord(null);
       setAttachments([]);
-      setCoordinateList([]);
+      setCoordinateList([{ latitude: null, longitude: null }]);
       form.resetFields();
       vtsOperationCenterService.generateCode().then((res) => {
         form.setFieldsValue({
