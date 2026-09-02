@@ -51,7 +51,7 @@ const PermissionSearchBar: FC<{ onSearch: (val: string) => void }> = memo(({ onS
         />
       }
       placeholder="Tìm theo tên hoặc mã quyền"
-      style={{ borderRadius: radiusPill, height: 40, margin: `${spaceMd}px 0` }}
+      style={{ borderRadius: radiusPill, height: 40 }}
     />
   );
 });
@@ -812,38 +812,52 @@ export default function GroupList() {
           </>
         }
       >
-        <Spin spinning={permissionLoading}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginTop: spaceMd, marginBottom: spaceSm }}>
-            Danh sách chức năng
-          </div>
-          <PermissionSearchBar onSearch={setAppliedPermissionSearch} />
-          {permissionTreeData.length === 0 && !permissionLoading ? (
-            <Empty description="Không tìm thấy quyền phù hợp" />
-          ) : (
-            <div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd }}>
-              <div style={{ marginBottom: spaceMd }}>
-                <Checkbox
-                  checked={allGroupPermissionsSelected}
-                  indeterminate={!allGroupPermissionsSelected && someGroupPermissionsSelected}
-                  disabled={permissionLoading || allGroupPermissionKeys.length === 0}
-                  onChange={(event) => setSelectedPermissionKeys(event.target.checked ? allGroupPermissionKeys : [])}
-                >
-                  HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI
-                </Checkbox>
-              </div>
-              <Tree
-                checkable
-                defaultExpandAll
-                height={460}
-                treeData={permissionTreeData}
-                checkedKeys={getVisiblePermissionKeys(selectedPermissionKeys, permissionTreeData)}
-                onCheck={(checked) => {
-                  const keys = Array.isArray(checked) ? checked : checked.checked;
-                  setSelectedPermissionKeys(mergePermissionKeys(selectedPermissionKeys, keys.map(String), permissionTreeData));
-                }}
-              />
+        <Spin spinning={permissionLoading} wrapperClassName="chk-h-full">
+          <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 150px)', padding: '16px 0 8px 0' }}>
+            <div style={{ flexShrink: 0, marginBottom: spaceMd }}>
+              <PermissionSearchBar onSearch={setAppliedPermissionSearch} />
             </div>
-          )}
+            {permissionTreeData.length === 0 && !permissionLoading ? (
+              <Empty description="Không tìm thấy quyền phù hợp" />
+            ) : (
+              <div style={{
+                border: `1px solid ${borderDefault}`,
+                borderRadius: radiusMd,
+                padding: spaceMd,
+                flex: 1,
+                minHeight: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                background: surfaceCard,
+              }}>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceMd, flexShrink: 0 }}>
+                  Danh sách chức năng
+                </div>
+                <div style={{ marginBottom: spaceMd, flexShrink: 0 }}>
+                  <Checkbox
+                    checked={allGroupPermissionsSelected}
+                    indeterminate={!allGroupPermissionsSelected && someGroupPermissionsSelected}
+                    disabled={permissionLoading || allGroupPermissionKeys.length === 0}
+                    onChange={(event) => setSelectedPermissionKeys(event.target.checked ? allGroupPermissionKeys : [])}
+                  >
+                    HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI
+                  </Checkbox>
+                </div>
+                <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                  <Tree
+                    checkable
+                    defaultExpandAll
+                    treeData={permissionTreeData}
+                    checkedKeys={getVisiblePermissionKeys(selectedPermissionKeys, permissionTreeData)}
+                    onCheck={(checked) => {
+                      const keys = Array.isArray(checked) ? checked : checked.checked;
+                      setSelectedPermissionKeys(mergePermissionKeys(selectedPermissionKeys, keys.map(String), permissionTreeData));
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </Spin>
       </ManagementDrawer>
 

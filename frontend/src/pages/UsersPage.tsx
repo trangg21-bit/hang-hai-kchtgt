@@ -68,7 +68,7 @@ const PermissionSearchBar: FC<{ onSearch: (val: string) => void }> = memo(({ onS
         />
       }
       placeholder="Tìm theo tên hoặc mã quyền"
-      style={{ borderRadius: radiusPill, height: 40, margin: `${spaceMd}px 0` }}
+      style={{ borderRadius: radiusPill, height: 40 }}
     />
   );
 });
@@ -791,15 +791,26 @@ export default function UsersPage() {
             </div>
           }
         >
-          <Spin spinning={permissionLoading || permissionCatalogLoading}>
-            <div style={drawerFormScrollStyle}>
-              <PermissionSearchBar onSearch={setAppliedPermissionSearch} />
+          <Spin spinning={permissionLoading || permissionCatalogLoading} wrapperClassName="chk-h-full">
+            <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 150px)', padding: '16px 0 8px 0' }}>
+              <div style={{ flexShrink: 0, marginBottom: spaceMd }}>
+                <PermissionSearchBar onSearch={setAppliedPermissionSearch} />
+              </div>
               {permissionTreeData.length === 0 && !permissionLoading ? (
                 <Empty description="Không tìm thấy quyền phù hợp" />
               ) : (
-                <div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceMd }}>Danh sách chức năng</div>
-                  <div style={{ marginBottom: spaceMd }}>
+                <div style={{
+                  border: `1px solid ${borderDefault}`,
+                  borderRadius: radiusMd,
+                  padding: spaceMd,
+                  flex: 1,
+                  minHeight: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  background: surfaceCard,
+                }}>
+                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceMd, flexShrink: 0 }}>Danh sách chức năng</div>
+                  <div style={{ marginBottom: spaceMd, flexShrink: 0 }}>
                     <Checkbox
                       checked={allPermissionsSelected}
                       indeterminate={!allPermissionsSelected && somePermissionsSelected}
@@ -809,20 +820,21 @@ export default function UsersPage() {
                       HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI
                     </Checkbox>
                   </div>
-                  <Tree
-                    checkable
-                    defaultExpandAll
-                    height={460}
-                    treeData={permissionTreeData}
-                    checkedKeys={getVisiblePermissionKeys(selectedPermissionKeys, permissionTreeData)}
-                    onCheck={(checked) => {
-                      const keys = Array.isArray(checked) ? checked : checked.checked;
-                      setSelectedPermissionKeys(
-                        mergePermissionKeys(selectedPermissionKeys, keys.map(String), permissionTreeData)
-                          .filter((key) => !key.startsWith('group_')),
-                      );
-                    }}
-                  />
+                  <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                    <Tree
+                      checkable
+                      defaultExpandAll
+                      treeData={permissionTreeData}
+                      checkedKeys={getVisiblePermissionKeys(selectedPermissionKeys, permissionTreeData)}
+                      onCheck={(checked) => {
+                        const keys = Array.isArray(checked) ? checked : checked.checked;
+                        setSelectedPermissionKeys(
+                          mergePermissionKeys(selectedPermissionKeys, keys.map(String), permissionTreeData)
+                            .filter((key) => !key.startsWith('group_')),
+                        );
+                      }}
+                    />
+                  </div>
                 </div>
               )}
             </div>
