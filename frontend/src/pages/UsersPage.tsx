@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect, useMemo, memo, type ReactNode, type FC } from 'react';
-import { Typography, Modal, Form, Input, Select, Spin, Button, Row, Col, Drawer, Tree, Checkbox, Tabs } from 'antd';
+import { useState, useCallback, useEffect, useMemo, memo, type FC } from 'react';
+import { Typography, Modal, Form, Input, Select, Spin, Button, Row, Col, Drawer, Tree, Checkbox, Tabs, Empty } from 'antd';
 import {
   PlusOutlined, LockOutlined, UnlockOutlined, KeyOutlined,
   ExclamationCircleOutlined, CloseOutlined, SearchOutlined,
@@ -16,12 +16,12 @@ import { userService } from '../services/userService';
 import { normalizeSearchText, OrgUnitTreeSelect } from '../components/org-unit';
 import { getVisiblePermissionKeys, mergePermissionKeys, usePermissions } from '../hooks/usePermissions';
 import {
-  actionPrimary, textSecondary, textPrimary, textTertiary, fontSizeSm, fontSizeMd, fontSizeLg,
-  fontWeightBold, fontWeightMedium, radiusPill, radiusTextArea, radiusMd, radiusSm, borderDefault,
-  spaceFormField, spaceMd, spaceSm, spaceXs, spaceXl, formFieldStyle, formRowGutter, inputStyle,
+  actionPrimary, textSecondary, textPrimary, textTertiary, fontSizeSm, fontSizeMd,
+  fontWeightBold, fontWeightMedium, radiusPill, radiusMd, borderDefault,
+  spaceFormField, spaceMd, spaceSm, spaceXs, inputStyle,
   selectStyle, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, drawerStyles, drawerFormScrollStyle,
-  drawerTabBarStyle, primaryButtonStyle, outlineButtonStyle, detailRowStyle, detailLabelColStyle, detailValueStyle,
-  statusOperational, statusCritical, statusDraft, statusAttention, textAreaStyle, icons,
+  drawerTabBarStyle, primaryButtonStyle, outlineButtonStyle,
+  statusOperational, statusCritical, statusDraft, statusAttention, textAreaStyle, icons, surfaceCard,
 } from '../themetokenchk';
 import { colors } from '../themetokenchk';
 import * as themeTokenChk from '../themetokenchk';
@@ -109,7 +109,7 @@ export default function UsersPage() {
     let isMounted = true;
     (async () => {
       try {
-        const orgs = await organizationService.getTree({ allowMockFallback: false });
+        const orgs = await organizationService.getTree();
         if (isMounted) setOrganizations(orgs);
       } catch (err) {
         console.error('Không thể tải danh sách đơn vị trực thuộc', err);
@@ -119,7 +119,7 @@ export default function UsersPage() {
     return () => { isMounted = false; };
   }, []);
 
-  const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const hasPerm = usePermissionStore((s: any) => s.hasPermission);
 
   const { data, isLoading, isError, error, refetch } = useUsers({
     page, pageSize, search: search || undefined, fullName: fullName || undefined,
@@ -915,6 +915,7 @@ export default function UsersPage() {
                           <div className="chk-detail-row"><span className="chk-detail-label">Địa chỉ</span><span className="chk-detail-value">{detailUser.address || '—'}</span></div>
                           <div className="chk-detail-row"><span className="chk-detail-label">Phòng ban</span><span className="chk-detail-value">{detailUser.department || '—'}</span></div>
                           <div className="chk-detail-row"><span className="chk-detail-label">Chức vụ</span><span className="chk-detail-value">{detailUser.position || '—'}</span></div>
+                          <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Nhóm nghiệp vụ</span><span className="chk-detail-value">{detailUser.groupNames?.length ? detailUser.groupNames.join(', ') : '—'}</span></div>
                           <div className="chk-detail-row"><span className="chk-detail-label">Nhóm nghiệp vụ</span><span className="chk-detail-value">{detailUser.groupNames?.length ? detailUser.groupNames.join(', ') : '—'}</span></div>
                           <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Ghi chú</span><span className="chk-detail-value">{detailUser.note || '—'}</span></div>
                         </div>

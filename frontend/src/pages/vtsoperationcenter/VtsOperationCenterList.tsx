@@ -69,7 +69,31 @@ function normalizeHistoryKey(value: string): string {
   return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
 }
 
-function historyFieldValue(fn: string, val: string | null): string {
+function isProvinceHistoryField(field: string): boolean {
+  const normalized = normalizeHistoryKey(field);
+  return normalized === 'provinceid'
+    || normalized === 'province'
+    || normalized === 'tinh/thanh pho'
+    || normalized === 'dia diem (tinh/tp)';
+}
+
+function isVtsSystemHistoryField(field: string): boolean {
+  const normalized = normalizeHistoryKey(field);
+  return normalized === 'vtssystemid'
+    || normalized === 'vtssystemname'
+    || normalized === 'thuoc he thong vts';
+}
+
+function isConditionHistoryField(field: string): boolean {
+  const normalized = normalizeHistoryKey(field);
+  return normalized === 'conditionstatus' || normalized === 'tinh trang';
+}
+
+function historyFieldValue(
+  fn: string,
+  val: string | null,
+  vtsSystems: Array<{ id: string; name?: string; code?: string }> = [],
+): string {
   if (!val || val === '(null)' || val === 'null' || val === '') return '(trống)';
   const displayValue = val.split(';').map((part) => {
     const separator = part.indexOf('=');
@@ -99,12 +123,16 @@ function historyFieldValue(fn: string, val: string | null): string {
       return normalizedValue;
     }).join('; ');
   }
-  if (fn === 'provinceId') {
+  if (isProvinceHistoryField(fn)) {
     const num = Number(displayValue);
     if (!isNaN(num)) return getProvinceNameById(num) || displayValue;
     return displayValue;
   }
-  if (fn === 'conditionStatus') {
+  if (isVtsSystemHistoryField(fn)) {
+    const system = vtsSystems.find((item) => String(item.id) === displayValue);
+    if (system) return system.name || system.code || displayValue;
+  }
+  if (isConditionHistoryField(fn)) {
     return CONDITION_STATUS_MAP[displayValue as ConditionStatus] || displayValue;
   }
   return displayValue;
@@ -355,19 +383,25 @@ function renderCoordinatesDisplay(val: string | null) {
   );
 }
 
-function renderHistoryValueTag(field: string, val: string | null, symbols: any[] = []) {
+function renderHistoryValueTag(
+  field: string,
+  val: string | null,
+  symbols: any[] = [],
+  vtsSystems: Array<{ id: string; name?: string; code?: string }> = [],
+) {
   if (val === null || val === undefined || val === '—' || val === '' || val === 'Chưa có') {
     return <span style={{ color: textTertiary }}>{val === 'Chưa có' ? 'Chưa có' : '—'}</span>;
   }
   const normKey = normalizeHistoryKey(field);
-  const normVal = normalizeHistoryKey(val);
+  const displayValue = historyFieldValue(field, val, vtsSystems);
+  const normVal = normalizeHistoryKey(displayValue);
 
   if (normKey === 'coordinates' || normKey === 'toa do gis' || normKey.includes('toa do') || normKey.includes('coordinates')) {
-    return renderCoordinatesDisplay(val);
+      return renderCoordinatesDisplay(val);
   }
 
   if (normKey === 'symbolid' || normKey === 'bieu tuong' || normKey.includes('bieu tuong') || normKey.includes('map symbol')) {
-    const sym = symbols.find((s) => s.name === val || s.id === val || s.code === val || (val && String(s.name).trim().toLowerCase() === String(val).trim().toLowerCase()));
+    const sym = symbols.find((s) => s.name === val || s.id === val || s.code === val || s.name === displayValue || s.code === displayValue || (val && String(s.name).trim().toLowerCase() === String(val).trim().toLowerCase()));
     if (sym && sym.image) {
       const imgSrc = sym.image.startsWith('data:') || sym.image.startsWith('http') || sym.image.startsWith('/')
         ? sym.image
@@ -375,48 +409,48 @@ function renderHistoryValueTag(field: string, val: string | null, symbols: any[]
       return (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <img src={imgSrc} alt="" style={{ width: 20, height: 20, objectFit: 'contain', borderRadius: 4 }} />
-          <span style={{ fontWeight: fontWeightMedium, color: textPrimary }}>{sym.name || val}</span>
+          <span style={{ fontWeight: fontWeightMedium, color: textPrimary }}>{sym.name || displayValue}</span>
         </span>
       );
     }
-    return <span style={{ fontWeight: fontWeightMedium, color: textPrimary }}>{val}</span>;
+    return <span style={{ fontWeight: fontWeightMedium, color: textPrimary }}>{displayValue}</span>;
   }
 
   if (normKey === 'approvalstatus' || normKey === 'trang thai phe duyet' || normKey.includes('phe duyet') || normKey.includes('trang thai')) {
     if (normVal === 'da duyet' || normVal === 'da phe duyet' || normVal === 'approved' || normVal === 'approved_level2') {
-      return <span style={statusBadgeStyle(statusOperational)}>{val}</span>;
+      return <span style={statusBadgeStyle(statusOperational)}>{displayValue}</span>;
     }
     if (normVal === 'cho cuc duyet' || normVal === 'approved_level1' || normVal.includes('cap 1') || normVal.includes('cuc duyet')) {
-      return <span style={statusBadgeStyle('#0082fb')}>{val}</span>;
+      return <span style={statusBadgeStyle('#0082fb')}>{displayValue}</span>;
     }
     if (normVal === 'cho cang vu duyet' || normVal === 'cho phe duyet' || normVal === 'cho duyet' || normVal === 'pending' || normVal === 'pending_approval' || normVal === 'proposed' || normVal.includes('cang vu')) {
-      return <span style={statusBadgeStyle(statusAttention)}>{val}</span>;
+      return <span style={statusBadgeStyle(statusAttention)}>{displayValue}</span>;
     }
     if (normVal === 'tu choi' || normVal.includes('rejected') || normVal.includes('tra ve')) {
-      return <span style={statusBadgeStyle(statusCritical)}>{val}</span>;
+      return <span style={statusBadgeStyle(statusCritical)}>{displayValue}</span>;
     }
-    return <span style={statusBadgeStyle(statusDraft)}>{val}</span>;
+    return <span style={statusBadgeStyle(statusDraft)}>{displayValue}</span>;
   }
 
   if (normKey === 'conditionstatus' || normKey === 'tinh trang' || normKey.includes('tinh trang')) {
-    if (normVal.includes('hoat dong tot') || normVal.includes('good') || normVal.includes('operational') || normVal.includes('hoat dong')) {
-      return <span style={statusBadgeStyle(statusOperational)}>{val}</span>;
+    if (normVal.includes('ngung') || normVal.includes('hong') || normVal.includes('stopped') || normVal.includes('critical') || normVal.includes('dung')) {
+      return <span style={statusBadgeStyle(statusCritical)}>{displayValue}</span>;
     }
     if (normVal.includes('can bao duong') || normVal.includes('warning') || normVal.includes('maintenance') || normVal.includes('bao tri')) {
-      return <span style={statusBadgeStyle(statusAttention)}>{val}</span>;
-    }
-    if (normVal.includes('ngung') || normVal.includes('hong') || normVal.includes('stopped') || normVal.includes('critical') || normVal.includes('dung')) {
-      return <span style={statusBadgeStyle(statusCritical)}>{val}</span>;
+      return <span style={statusBadgeStyle(statusAttention)}>{displayValue}</span>;
     }
     if (normVal.includes('dang xay dung') || normVal.includes('under_construction')) {
-      return <span style={statusBadgeStyle(actionPrimary)}>{val}</span>;
+      return <span style={statusBadgeStyle(actionPrimary)}>{displayValue}</span>;
     }
-    return <span style={statusBadgeStyle(statusDraft)}>{val}</span>;
+    if (normVal.includes('hoat dong tot') || normVal.includes('good') || normVal.includes('operational') || normVal.includes('hoat dong')) {
+      return <span style={statusBadgeStyle(statusOperational)}>{displayValue}</span>;
+    }
+    return <span style={statusBadgeStyle(statusDraft)}>{displayValue}</span>;
   }
 
   return (
-    <span title={val} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere' }}>
-      {val}
+    <span title={displayValue} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere' }}>
+      {displayValue}
     </span>
   );
 }
@@ -791,12 +825,7 @@ export default function VtsOperationCenterList() {
             const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
             return `${parts.length} công trình hạ tầng`;
           }
-          const specialFields = ['provinceId', 'symbolId', 'conditionStatus', 'approvalStatus'];
-          if (!specialFields.includes(fn) && /^-?\d+(\.\d+)?$/.test(t)) {
-            const n = Number(t);
-            return Number.isInteger(n) ? String(n) : t;
-          }
-          return historyFieldValue(fn, raw);
+          return historyFieldValue(fn, raw, vtsSystemOptions);
         };
         if (changes.length === 0) return null;
         const actionMeta = resolveHistoryActionMeta(g, changes);
@@ -869,7 +898,7 @@ export default function VtsOperationCenterList() {
                         );
                       }
                     }
-                    return renderHistoryValueTag(field, val, symbols);
+                    return renderHistoryValueTag(field, val, symbols, vtsSystemOptions);
                   };
 
                   // Deduplicate changes correctly using raw values

@@ -16,7 +16,7 @@ import type { Group, GroupMember, CreateGroupPayload, UpdateGroupPayload } from 
 import { vtsSystemCRUD } from '../../services/vtsSystemService';
 import { userService } from '../../services/userService';
 import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
-import { actionPrimary, textPrimary, textSecondary, statusDraft, statusCritical, statusOperational, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, radiusMd, radiusPill, borderDefault, spaceFormField, spaceMd, spaceSm, primaryButtonStyle, outlineButtonStyle } from '../../tokens';
+import { actionPrimary, textPrimary, textSecondary, statusDraft, statusOperational, fontSizeMd, fontWeightMedium, fontWeightBold, radiusMd, radiusPill, borderDefault, spaceFormField, spaceMd, spaceSm, primaryButtonStyle, outlineButtonStyle, surfaceCard } from '../../tokens';
 import { colors } from '../../theme';
 import toast, { modal } from '../../components/ToastNotification';
 import { normalizeSearchText } from '../../components/org-unit';
@@ -57,7 +57,7 @@ const PermissionSearchBar: FC<{ onSearch: (val: string) => void }> = memo(({ onS
 });
 
 export default function GroupList() {
-  const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const hasPerm = usePermissionStore((s: any) => s.hasPermission);
 
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');

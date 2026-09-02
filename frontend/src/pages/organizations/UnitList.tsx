@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import dayjs from 'dayjs';
 import { Typography, Form, Input, Select, Spin, Button, Row, Col, Drawer, Dropdown, Tabs } from 'antd';
 import {
@@ -19,8 +19,8 @@ import SidebarFilterField from '../../components/list-view/SidebarFilterField';
 import toast, { modal } from '../../components/ToastNotification';
 import {
   actionPrimary, textPrimary, textSecondary, textTertiary,
-  fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd, fontSizeLg,
-  radiusSm, radiusMd, radiusPill, spaceFormField, spaceMd, spaceSm, spaceXs, spaceLg,
+  fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd,
+  radiusMd, radiusPill, spaceFormField, spaceMd, spaceSm, spaceXs, spaceLg,
   statusOperational, statusCritical, surfaceCard, borderDefault,
   drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, drawerStyles, drawerFormScrollStyle, drawerTabBarStyle,
   primaryButtonStyle, outlineButtonStyle, inputStyle, selectStyle, textAreaStyle, icons,
@@ -57,7 +57,7 @@ type SortField = 'name' | 'rank' | 'updatedAt' | 'updatedBy' | 'status';
 type SortOrder = 'ascend' | 'descend' | null;
 
 export default function UnitList() {
-  const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const [nameInput, setNameInput] = useState('');
   const [searchName, setSearchName] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('');
