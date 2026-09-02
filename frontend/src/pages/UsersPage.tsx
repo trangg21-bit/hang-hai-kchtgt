@@ -915,7 +915,7 @@ export default function UsersPage() {
                           <div className="chk-detail-row"><span className="chk-detail-label">Địa chỉ</span><span className="chk-detail-value">{detailUser.address || '—'}</span></div>
                           <div className="chk-detail-row"><span className="chk-detail-label">Phòng ban</span><span className="chk-detail-value">{detailUser.department || '—'}</span></div>
                           <div className="chk-detail-row"><span className="chk-detail-label">Chức vụ</span><span className="chk-detail-value">{detailUser.position || '—'}</span></div>
-                          <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Nhóm nghiệp vụ</span><span className="chk-detail-value">{detailUser.groupNames?.length ? detailUser.groupNames.join(', ') : '—'}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Nhóm nghiệp vụ</span><span className="chk-detail-value">{detailUser.groupNames?.length ? detailUser.groupNames.join(', ') : '—'}</span></div>
                           <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Ghi chú</span><span className="chk-detail-value">{detailUser.note || '—'}</span></div>
                         </div>
 
