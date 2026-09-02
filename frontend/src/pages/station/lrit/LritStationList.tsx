@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { Typography, Modal, Input, Button, Space, Select } from 'antd';
+import { Typography, Modal, Input, Button, DatePicker, Space, Select } from 'antd';
 import {
   EyeOutlined,
   EditOutlined,
@@ -8,6 +8,8 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   HistoryOutlined,
+  ExclamationCircleOutlined,
+  PlusOutlined,
 } from '@ant-design/icons';
 import { lritStationService, type LritStationListParams } from '../../../services/lritStationService';
 import { organizationService } from '../../../services/organizationService';
@@ -23,7 +25,7 @@ import LritStationForm from './LritStationForm';
 import { getOperatingOrganizationDisplayName } from '../../../utils/operatingOrganizationDisplay';
 import ApprovalModal from '../../../components/shared/ApprovalModal';
 import ApprovalStatusBadge from '../../../components/shared/ApprovalStatusBadge';
-import toast from '../../../components/ToastNotification';
+import toast, { modal } from '../../../components/ToastNotification';
 import {
   actionPrimary, textPrimary, textSecondary, textTertiary,
   fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd, fontSizeLg,
@@ -31,7 +33,7 @@ import {
   statusOperational, statusDraft, statusCritical, statusAttention,
   surfacePage, spaceXs, spaceXl, drawerTitleStyle, drawerCloseBtnStyle, selectStyle,
   borderDefault, statusBadgeStyle, cellTitleStyle, cellSubtitleStyle,
-  primaryButtonStyle, clientSideStringSorter,
+  inputStyle, primaryButtonStyle, clientSideStringSorter,
   clientSideProvinceSorter, clientSideUserSorter, clientSideBadgeSorter,
   getRangePickerProps,
 } from '../../../themetokenchk';
@@ -39,7 +41,10 @@ import { colors } from '../../../themetokenchk';
 import dayjs from 'dayjs';
 import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
 import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../../components/org-unit';
-import { canEditApprovalRecord, normalizeApprovalStatus } from '../../../utils/approvalEditPolicy';
+import SidebarFilterField from '../../../components/list-view/SidebarFilterField';
+import { canEditApprovalRecord, canDeleteApprovalRecord, normalizeApprovalStatus } from '../../../utils/approvalEditPolicy';
+import * as themeTokenChk from '../../../themetokenchk';
+import { ThemeTokenProvider } from '../../../context/ThemeTokenContext';
 import { deduplicateAttachmentHistoryChanges } from '../../../utils/historyAttachmentDedup';
 
 const CONDITION_COLOR: Record<ConditionStatus, string> = {
