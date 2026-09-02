@@ -405,6 +405,7 @@ export const LritStationList: React.FC = () => {
   const [filterOrgUnitId, setFilterOrgUnitId] = useState<string | undefined>(undefined);
   const [filterUpdatedFrom, setFilterUpdatedFrom] = useState<string | undefined>(undefined);
   const [filterUpdatedTo, setFilterUpdatedTo] = useState<string | undefined>(undefined);
+  const [filterCollapsed, setFilterCollapsed] = useState<boolean>(false);
 
   // Modal / Drawer state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -1104,7 +1105,9 @@ export const LritStationList: React.FC = () => {
         <FilterTableLayout
           onFilterApply={() => handleFilterSearch(filterValues)}
           onFilterReset={handleFilterReset}
-          hideFilterToggle={true}
+          filterCollapsed={filterCollapsed}
+          onToggleCollapse={() => setFilterCollapsed((prev) => !prev)}
+          hideFilterToggle={false}
           loading={loading}
           statusTabs={statusTabsConfig}
           onStatusTabChange={handleTabChange}
@@ -1147,7 +1150,8 @@ export const LritStationList: React.FC = () => {
               </SidebarFilterField>
 
               {/* ── Bộ lọc nâng cao ── */}
-              <>
+              {filterCollapsed && (
+                <>
                   <SidebarFilterField label="Khoảng ngày cập nhật">
                     <DatePicker.RangePicker
                       {...getRangePickerProps({
@@ -1172,7 +1176,8 @@ export const LritStationList: React.FC = () => {
                       style={{ ...selectStyle, width: '100%' }}
                     />
                   </SidebarFilterField>
-              </>
+                </>
+              )}
             </>
           }
         >
