@@ -45,6 +45,9 @@ public class CoastalStationInmarsatController {
     public ResponseEntity<Map<String, Object>> search(
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) String keyword,
+            // Bộ lọc riêng theo Tên đài / Mã đài (khác `keyword` là tìm chung nhiều cột)
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String code,
             @RequestParam(required = false) UUID operatingOrgId,
             @RequestParam(required = false) Integer provinceId,
             @RequestParam(required = false) String conditionStatus,
@@ -55,10 +58,12 @@ public class CoastalStationInmarsatController {
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
         Page<CoastalStationInmarsatResponse> results = service.searchPaged(
-                orgUnitId, keyword, operatingOrgId, provinceId, conditionStatus, approvalStatus,
+                orgUnitId, keyword, name, code, operatingOrgId, provinceId, conditionStatus, approvalStatus,
                 updatedBy, updatedFrom, updatedTo, pageable);
-        
-        Map<String, Long> statusCounts = service.countByApprovalStatus(orgUnitId, keyword, conditionStatus);
+
+        // Số đếm tab dùng đúng bộ lọc của danh sách (trừ trạng thái phê duyệt).
+        Map<String, Long> statusCounts = service.countByApprovalStatus(
+                orgUnitId, keyword, name, code, conditionStatus, provinceId, updatedFrom, updatedTo);
 
         Map<String, Object> data = new HashMap<>();
         data.put("content", results.getContent());

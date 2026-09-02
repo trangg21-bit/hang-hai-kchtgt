@@ -1119,14 +1119,16 @@ export default function HanoiStationForm({
                         >
                           Chọn vị trí trên bản đồ
                         </Button>
-                        <Button
-                          type="primary"
-                          icon={<PlusOutlined />}
-                          onClick={() => setCoordinateList((p) => [...p, { latitude: null, longitude: null }])}
-                          style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 32 }}
-                        >
-                          Thêm tọa độ
-                        </Button>
+                        {watchedGeometryType && watchedGeometryType !== 'POINT' && (
+                          <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={() => setCoordinateList((p) => [...p, { latitude: null, longitude: null }])}
+                            style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 32 }}
+                          >
+                            Thêm tọa độ
+                          </Button>
+                        )}
                       </Space>
                     </div>
                   </div>

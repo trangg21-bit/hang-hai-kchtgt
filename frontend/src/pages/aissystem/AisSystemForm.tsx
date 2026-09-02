@@ -1317,14 +1317,16 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                             >
                               Chọn vị trí trên bản đồ
                             </Button>
-                            <Button
-                              type="primary"
-                              icon={<PlusOutlined />}
-                              onClick={() => setCoordinateList((p) => [...p, { latitude: null, longitude: null }])}
-                              style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 32 }}
-                            >
-                              Thêm tọa độ
-                            </Button>
+                            {watchedGeometryType && watchedGeometryType !== 'POINT' && (
+                              <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                onClick={() => setCoordinateList((p) => [...p, { latitude: null, longitude: null }])}
+                                style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 32 }}
+                              >
+                                Thêm tọa độ
+                              </Button>
+                            )}
                           </Space>
                         </div>
                       </div>
@@ -1366,8 +1368,14 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                                 size="small"
                                 icon={<DeleteOutlined style={{ fontSize: 16 }} />}
                                 style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                onClick={() => setCoordinateList((p) => p.filter((_, idx) => idx !== r._idx))}
-                                title="Xóa tọa độ"
+                                onClick={() => {
+                                  if (!watchedGeometryType || watchedGeometryType === 'POINT') {
+                                    setCoordinateList([{ latitude: null, longitude: null }]);
+                                  } else {
+                                    setCoordinateList((p) => p.filter((_, idx) => idx !== r._idx));
+                                  }
+                                }}
+                                title={!watchedGeometryType || watchedGeometryType === 'POINT' ? 'Xóa giá trị tọa độ' : 'Xóa tọa độ'}
                               />
                             ),
                           },

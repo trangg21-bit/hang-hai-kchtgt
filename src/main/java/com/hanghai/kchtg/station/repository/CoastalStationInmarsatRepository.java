@@ -49,6 +49,10 @@ public interface CoastalStationInmarsatRepository extends JpaRepository<CoastalS
             CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, t.deviceCode, ''))) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(COALESCE(t.locationAddress, ''))) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(COALESCE(t.contactPerson, ''))) AS string) LIKE CAST(:keyword AS string))
+          AND (CAST(:name AS string) IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(COALESCE(t.name, t.stationName, ''))) AS string) LIKE CAST(:name AS string))
+          AND (CAST(:code AS string) IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, t.deviceCode, ''))) AS string) LIKE CAST(:code AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus
                OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
@@ -63,6 +67,8 @@ public interface CoastalStationInmarsatRepository extends JpaRepository<CoastalS
         @Param("scopeOrgUnitIds") List<UUID> scopeOrgUnitIds,
         @Param("orgUnitId") UUID orgUnitId,
         @Param("keyword") String keyword,
+        @Param("name") String name,
+        @Param("code") String code,
         @Param("operatingOrgId") UUID operatingOrgId,
         @Param("provinceId") Integer provinceId,
         @Param("conditionStatus") String conditionStatus,
@@ -84,15 +90,32 @@ public interface CoastalStationInmarsatRepository extends JpaRepository<CoastalS
                 CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, t.deviceCode, ''))) AS string) LIKE CAST(:keyword AS string) OR
                 CAST(function('immutable_unaccent', LOWER(COALESCE(t.locationAddress, ''))) AS string) LIKE CAST(:keyword AS string)
               ))
+          AND (CAST(:name AS string) IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(COALESCE(t.name, t.stationName, ''))) AS string) LIKE CAST(:name AS string))
+          AND (CAST(:code AS string) IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, t.deviceCode, ''))) AS string) LIKE CAST(:code AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
+          AND (:provinceId IS NULL OR t.provinceId = :provinceId)
+          AND (CAST(:updatedFrom AS timestamp) IS NULL OR t.updatedAt >= :updatedFrom)
+          AND (CAST(:updatedTo AS timestamp) IS NULL OR t.updatedAt <= :updatedTo)
         GROUP BY t.approvalStatus
     """)
+    /**
+     * Số đếm trên tab trạng thái phải áp DÙNG bộ lọc như danh sách (trừ chính
+     * trạng thái phê duyệt), nếu không thì bật bộ lọc nâng cao là số trên tab
+     * lệch hẳn với số dòng trong bảng.
+     */
     List<Object[]> countByApprovalStatus(
         @Param("scopeEnabled") boolean scopeEnabled,
         @Param("scopeOrgUnitIds") List<UUID> scopeOrgUnitIds,
         @Param("orgUnitId") UUID orgUnitId,
         @Param("keyword") String keyword,
-        @Param("conditionStatus") String conditionStatus
+        @Param("name") String name,
+        @Param("code") String code,
+        @Param("conditionStatus") String conditionStatus,
+        @Param("provinceId") Integer provinceId,
+        @Param("updatedFrom") LocalDateTime updatedFrom,
+        @Param("updatedTo") LocalDateTime updatedTo
     );
 
     @Query("""

@@ -99,10 +99,31 @@ public class CoastalStationInmarsatService {
 
     // --- TÌM KIẾM PHÂN TRANG & THỐNG KÊ TAB (F-102) ---
 
+    /**
+     * Chuẩn hóa từ khóa cho vế LIKE.
+     *
+     * Truy vấn so sánh với {@code immutable_unaccent(LOWER(...))} — tức là chuỗi
+     * ĐÃ bỏ dấu — nên từ khóa cũng phải bỏ dấu, nếu không thì gõ tiếng Việt có
+     * dấu (cách gõ tự nhiên) sẽ không bao giờ khớp và màn hình luôn báo không có
+     * dữ liệu.
+     */
+    private static String toKeywordLike(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return null;
+        }
+        String normalized = java.text.Normalizer
+                .normalize(keyword.trim().toLowerCase(java.util.Locale.ROOT), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('đ', 'd');
+        return "%" + normalized + "%";
+    }
+
     @Transactional(readOnly = true)
     public Page<CoastalStationInmarsatResponse> searchPaged(
             UUID orgUnitId,
             String keyword,
+            String name,
+            String code,
             UUID operatingOrgId,
             Integer provinceId,
             String conditionStatus,
@@ -113,15 +134,14 @@ public class CoastalStationInmarsatService {
             Pageable pageable) {
 
         Scope effectiveScope = resolveEffectiveScope(orgUnitId);
-        String kw = (keyword != null && !keyword.trim().isEmpty())
-                ? "%" + keyword.trim().toLowerCase() + "%"
-                : null;
 
         Page<CoastalStationInmarsat> page = repository.searchPaged(
                 !effectiveScope.unrestricted(),
                 effectiveScope.orgUnitIds(),
                 orgUnitId,
-                kw,
+                toKeywordLike(keyword),
+                toKeywordLike(name),
+                toKeywordLike(code),
                 operatingOrgId,
                 provinceId,
                 conditionStatus,
@@ -137,17 +157,32 @@ public class CoastalStationInmarsatService {
 
     @Transactional(readOnly = true)
     public Map<String, Long> countByApprovalStatus(UUID orgUnitId, String keyword, String conditionStatus) {
+        return countByApprovalStatus(orgUnitId, keyword, null, null, conditionStatus, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> countByApprovalStatus(
+            UUID orgUnitId,
+            String keyword,
+            String name,
+            String code,
+            String conditionStatus,
+            Integer provinceId,
+            LocalDateTime updatedFrom,
+            LocalDateTime updatedTo) {
         Scope effectiveScope = resolveEffectiveScope(orgUnitId);
-        String kw = (keyword != null && !keyword.trim().isEmpty())
-                ? "%" + keyword.trim().toLowerCase() + "%"
-                : null;
 
         List<Object[]> rows = repository.countByApprovalStatus(
                 !effectiveScope.unrestricted(),
                 effectiveScope.orgUnitIds(),
                 orgUnitId,
-                kw,
-                conditionStatus
+                toKeywordLike(keyword),
+                toKeywordLike(name),
+                toKeywordLike(code),
+                conditionStatus,
+                provinceId,
+                updatedFrom,
+                updatedTo
         );
 
         Map<String, Long> counts = new HashMap<>();

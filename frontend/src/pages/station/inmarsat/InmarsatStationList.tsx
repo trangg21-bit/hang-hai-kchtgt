@@ -113,7 +113,10 @@ export const InmarsatStationList = () => {
   const [filterCollapsed, setFilterCollapsed] = useState<boolean>(false);
 
   const [filterOrgUnitId, setFilterOrgUnitId] = useState<string | undefined>();
-  const [filterKeyword, setFilterKeyword] = useState<string>('');
+  // Tên đài (bộ lọc thường) và Mã đài (bộ lọc nâng cao) là hai điều kiện riêng,
+  // không dùng chung ô "từ khóa" tìm nhiều cột như trước.
+  const [filterName, setFilterName] = useState<string>('');
+  const [filterCode, setFilterCode] = useState<string>('');
 
   const [filterProvinceId, setFilterProvinceId] = useState<number | undefined>();
   const [filterConditionStatus, setFilterConditionStatus] = useState<string | undefined>();
@@ -184,13 +187,17 @@ export const InmarsatStationList = () => {
       else if (activeTab === 'rejected') approvalStatusParam = 'REJECTED';
 
       const res = await inmarsatStationService.search({
-        keyword: filterKeyword?.trim() || undefined,
+        name: filterName?.trim() || undefined,
+        code: filterCode?.trim() || undefined,
         orgUnitId: filterOrgUnitId,
         provinceId: filterProvinceId,
         conditionStatus: filterConditionStatus,
         approvalStatus: approvalStatusParam,
-        updatedFrom: filterDateRange?.[0] ? filterDateRange[0].startOf('day').toISOString() : undefined,
-        updatedTo: filterDateRange?.[1] ? filterDateRange[1].endOf('day').toISOString() : undefined,
+        // Backend nhận LocalDateTime và BỎ QUA offset, nên `toISOString()` (giờ UTC)
+        // làm cửa sổ lọc lệch đúng bằng chênh lệch múi giờ (VN: -7h): hồ sơ cập nhật
+        // sau 17h bị đẩy nhầm sang ngày hôm sau. Gửi thẳng giờ địa phương.
+        updatedFrom: filterDateRange?.[0] ? filterDateRange[0].startOf('day').format('YYYY-MM-DDTHH:mm:ss') : undefined,
+        updatedTo: filterDateRange?.[1] ? filterDateRange[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss') : undefined,
         page,
         size: pageSize,
       });
@@ -205,7 +212,7 @@ export const InmarsatStationList = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, filterKeyword, filterOrgUnitId, filterProvinceId, filterConditionStatus, filterDateRange, page, pageSize]);
+  }, [activeTab, filterName, filterCode, filterOrgUnitId, filterProvinceId, filterConditionStatus, filterDateRange, page, pageSize]);
 
   useEffect(() => {
     fetchData();
@@ -649,7 +656,8 @@ export const InmarsatStationList = () => {
           onStatusTabChange={(k) => { setActiveTab(k); setPage(1); }}
           onFilterReset={() => {
             setFilterOrgUnitId(undefined);
-            setFilterKeyword('');
+            setFilterName('');
+            setFilterCode('');
             setFilterProvinceId(undefined);
             setFilterConditionStatus(undefined);
             setFilterDateRange(null);
@@ -677,21 +685,53 @@ export const InmarsatStationList = () => {
                 />
               </SidebarFilterField>
 
-              <SidebarFilterField label="Tìm kiếm">
+              <SidebarFilterField label="Tên đài">
                 <Input
-                  placeholder="Tìm theo mã đài, tên đài"
+                  placeholder="Nhập tên đài"
                   allowClear
-                  value={filterKeyword}
-                  onChange={(e) => setFilterKeyword(e.target.value)}
+                  value={filterName}
+                  onChange={(e) => setFilterName(e.target.value)}
                   onPressEnter={() => { setPage(1); fetchData(); }}
                   prefix={icons.search}
                   style={inputStyle}
                 />
               </SidebarFilterField>
 
+              <SidebarFilterField label="Tình trạng">
+                <Select
+                  placeholder="Tất cả tình trạng"
+                  allowClear
+                  value={filterConditionStatus}
+                  onChange={(val) => setFilterConditionStatus(val)}
+                  options={CONDITION_STATUS_OPTIONS}
+                  style={{ ...selectStyle, width: '100%' }}
+                />
+              </SidebarFilterField>
+
               {/* ── BỘ LỌC NÂNG CAO ── */}
               {filterCollapsed && (
                 <>
+                  <SidebarFilterField label="Mã đài">
+                    <Input
+                      placeholder="Nhập mã đài"
+                      allowClear
+                      value={filterCode}
+                      onChange={(e) => setFilterCode(e.target.value)}
+                      onPressEnter={() => { setPage(1); fetchData(); }}
+                      prefix={icons.search}
+                      style={inputStyle}
+                    />
+                  </SidebarFilterField>
+
+                  <SidebarFilterField label="Ngày cập nhật">
+                    <DatePicker.RangePicker
+                      {...getRangePickerProps({
+                        value: filterDateRange,
+                        onChange: (dates: any) => { setFilterDateRange(dates); setPage(1); },
+                      })}
+                    />
+                  </SidebarFilterField>
+
                   <SidebarFilterField label="Địa điểm (Tỉnh/Thành phố)">
                     <Select
                       placeholder="Tất cả tỉnh thành"
@@ -704,26 +744,6 @@ export const InmarsatStationList = () => {
                       onChange={(val) => setFilterProvinceId(val)}
                       options={VIETNAM_PROVINCE_OPTIONS}
                       style={{ ...selectStyle, width: '100%' }}
-                    />
-                  </SidebarFilterField>
-
-                  <SidebarFilterField label="Tình trạng">
-                    <Select
-                      placeholder="Tất cả tình trạng"
-                      allowClear
-                      value={filterConditionStatus}
-                      onChange={(val) => setFilterConditionStatus(val)}
-                      options={CONDITION_STATUS_OPTIONS}
-                      style={{ ...selectStyle, width: '100%' }}
-                    />
-                  </SidebarFilterField>
-
-                  <SidebarFilterField label="Khoảng ngày cập nhật">
-                    <DatePicker.RangePicker
-                      {...getRangePickerProps({
-                        value: filterDateRange,
-                        onChange: (dates: any) => { setFilterDateRange(dates); setPage(1); },
-                      })}
                     />
                   </SidebarFilterField>
                 </>

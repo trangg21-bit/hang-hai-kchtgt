@@ -20,6 +20,10 @@ function buildSearchParams(params: Record<string, string | number | undefined>) 
 
 export interface InmarsatListParams {
   keyword?: string;
+  /** Lọc riêng theo Tên đài (bộ lọc thường của màn danh sách) */
+  name?: string;
+  /** Lọc riêng theo Mã đài (bộ lọc nâng cao) */
+  code?: string;
   orgUnitId?: string;
   operatingOrgId?: string;
   provinceId?: number;
@@ -49,6 +53,8 @@ export const inmarsatStationService = {
   async search(params?: InmarsatListParams): Promise<InmarsatSearchResponse> {
     const sp = buildSearchParams({
       keyword: params?.keyword,
+      name: params?.name,
+      code: params?.code,
       orgUnitId: params?.orgUnitId,
       operatingOrgId: params?.operatingOrgId,
       provinceId: params?.provinceId,
