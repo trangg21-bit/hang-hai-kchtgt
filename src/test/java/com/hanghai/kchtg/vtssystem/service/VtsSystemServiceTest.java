@@ -427,6 +427,11 @@ class VtsSystemServiceTest {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(
                         "admin", null, List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
+        // Phê duyệt cũng kiểm tra phạm vi đơn vị như sửa/xóa, nên phải nạp được
+        // tài khoản đang đăng nhập; admin Cục xem toàn quốc → không giới hạn scope.
+        com.hanghai.kchtg.user.entity.User adminUser = mock(com.hanghai.kchtg.user.entity.User.class);
+        when(adminUser.getAllPermissions()).thenReturn(java.util.Set.of("orgunit:scope_all"));
+        when(userRepository.findByUsernameWithRelations("admin")).thenReturn(Optional.of(adminUser));
         try {
             ApprovalRequest req = ApprovalRequest.builder().decision("APPROVED").build();
             when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
@@ -588,7 +593,7 @@ class VtsSystemServiceTest {
 
     @Test
     void testGetAttachments() {
-        when(repository.existsById(TEST_ID)).thenReturn(true);
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(attachmentRepository.findByRefIdAndRefTypeOrderByUploadedDateDesc(TEST_ID, InfrastructureType.VTS_SYSTEM))
                 .thenReturn(List.of());
 

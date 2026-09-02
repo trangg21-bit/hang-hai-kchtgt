@@ -258,6 +258,43 @@ class VtsSystemRepositoryTest {
         assertEquals(2, result.getTotalElements());
     }
 
+    /**
+     * Mọi cột trong danh sách cho phép sắp xếp của
+     * {@code VtsSystemService.SORTABLE_LIST_FIELDS} phải chạy được trên
+     * {@code searchList}. Trước đây map trỏ tới các alias {@code o}, {@code own},
+     * {@code p} không hề tồn tại trong câu truy vấn, nên bấm sắp xếp ở 3 cột
+     * "Đơn vị quản lý" / "Đơn vị chủ quản" / "Thuộc cảng biển" là màn danh sách
+     * trả HTTP 500.
+     */
+    @Test
+    void testSearchList_EverySortablePropertyResolves() {
+        repository.save(createVtsSystem("VTS-S1"));
+        entityManager.flush();
+
+        List<String> sortableProperties = List.of(
+                "t.systemName", "t.code", "t.address", "t.operationStartDate",
+                "t.conditionStatus", "t.approvalStatus", "t.rejectionReason",
+                "o.name", "t.orgUnitId",
+                "own.name", "t.owningOrgId",
+                "op.name", "t.operatingOrgId",
+                "p.portName", "t.portId",
+                "t.updatedAt", "t.updatedBy", "t.createdAt");
+
+        for (String property : sortableProperties) {
+            for (org.springframework.data.domain.Sort.Direction direction
+                    : org.springframework.data.domain.Sort.Direction.values()) {
+                var pageable = org.springframework.data.domain.PageRequest.of(0, 20,
+                        org.springframework.data.domain.Sort.by(direction, property)
+                                .and(org.springframework.data.domain.Sort.by(
+                                        org.springframework.data.domain.Sort.Direction.DESC, "t.createdAt")));
+                assertDoesNotThrow(
+                        () -> repository.searchList(false, List.of(), null, null, null, null, null, null, pageable)
+                                .getContent(),
+                        "Không sắp xếp được theo " + property + " " + direction);
+            }
+        }
+    }
+
     // Helper methods
 
     private VtsSystem createVtsSystem(String code) {

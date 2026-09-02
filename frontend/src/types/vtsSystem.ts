@@ -153,6 +153,8 @@ export interface ListParams {
   page?: number;
   size?: number;
   keyword?: string;
+  systemName?: string;
+  code?: string;
   conditionStatus?: ConditionStatus;
   approvalStatus?: ApprovalStatus;
   orgUnitId?: string;

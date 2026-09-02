@@ -26,8 +26,7 @@ import {
   statusOperational, statusDraft, statusCritical, statusAttention,
   surfacePage, spaceXs, spaceXl, drawerTitleStyle, drawerCloseBtnStyle, selectStyle,
   borderDefault, statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
-  inputStyle, primaryButtonStyle, textAreaStyle, clientSideStringSorter,
-  clientSideProvinceSorter, clientSideUserSorter, clientSideBadgeSorter,
+  inputStyle, primaryButtonStyle, textAreaStyle,
   getRangePickerProps,
 } from '../../themetokenchk';
 import { colors } from '../../themetokenchk';
@@ -428,6 +427,10 @@ export default function VtsOperationCenterList() {
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  // Sắp xếp chạy ở server để áp dụng cho toàn bộ kết quả; nếu để antd tự sắp thì
+  // chỉ 20 dòng của trang hiện tại được sắp, gây hiểu nhầm là đã sắp cả danh sách.
+  const [sortField, setSortField] = useState<string | undefined>();
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [filterKeyword, setFilterKeyword] = useState('');
   const [filterConditionStatus, setFilterConditionStatus] = useState<ConditionStatus | undefined>();
   const [filterApprovalStatus, setFilterApprovalStatus] = useState<ApprovalStatus | undefined>();
@@ -541,6 +544,8 @@ export default function VtsOperationCenterList() {
         provinceId: filterProvinceId,
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
+        sortBy: sortField,
+        sortDir: sortField ? sortDirection.toUpperCase() : undefined,
       };
 
       const res = await vtsOperationCenterService.search(params);
@@ -567,10 +572,23 @@ export default function VtsOperationCenterList() {
   }, [
     page, pageSize, filterKeyword, filterConditionStatus, filterApprovalStatus,
     filterOrgUnitId, filterPortId, filterVtsSystemId, filterProvinceId,
-    filterUpdatedFrom, filterUpdatedTo,
+    filterUpdatedFrom, filterUpdatedTo, sortField, sortDirection,
   ]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  const handleSort = useCallback((field: string, order: 'asc' | 'desc') => {
+    setSortField(field);
+    setSortDirection(order);
+    setPage(1);
+  }, []);
+
+  const sortOrderFor = (key: string): 'ascend' | 'descend' | null =>
+    (sortField === key ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null);
+
+  // Bộ so sánh trung tính: thứ tự do server quyết định, hàm này chỉ để antd hiện
+  // biểu tượng sắp xếp mà không tự sắp lại 20 dòng của trang hiện tại.
+  const serverSideSorter = () => 0;
 
   const refreshList = useCallback(() => {
     statusCountFilterKey.current = null;
@@ -627,8 +645,9 @@ export default function VtsOperationCenterList() {
   };
 
   const handleReject = async () => {
-    if (!rejectReason.trim() || rejectReason.trim().length < 5) {
-      toast.error('Vui lòng nhập lý do từ chối');
+    // approval-2-level-spec §3.4 (quy tắc 5): lý do từ chối tối thiểu 10 ký tự.
+    if (!rejectReason.trim() || rejectReason.trim().length < 10) {
+      toast.error('Lý do từ chối phải có ít nhất 10 ký tự');
       return;
     }
     if (!rejectTargetId) return;
@@ -686,8 +705,11 @@ export default function VtsOperationCenterList() {
     setFilterPortId(vals.portId);
     setFilterVtsSystemId(vals.vtsSystemId);
     setFilterProvinceId(vals.provinceId);
-    setFilterUpdatedFrom(vals.updateDateRange?.[0] ? dayjs(vals.updateDateRange[0]).startOf('day').toISOString() : undefined);
-    setFilterUpdatedTo(vals.updateDateRange?.[1] ? dayjs(vals.updateDateRange[1]).endOf('day').toISOString() : undefined);
+    // Backend nhận LocalDateTime và BỎ QUA offset, nên `toISOString()` (giờ UTC)
+    // làm cửa sổ lọc lệch đúng bằng chênh lệch múi giờ (VN: -7h): hồ sơ cập nhật
+    // sau 17h bị đẩy nhầm sang ngày hôm sau. Gửi thẳng giờ địa phương.
+    setFilterUpdatedFrom(vals.updateDateRange?.[0] ? dayjs(vals.updateDateRange[0]).startOf('day').format('YYYY-MM-DDTHH:mm:ss') : undefined);
+    setFilterUpdatedTo(vals.updateDateRange?.[1] ? dayjs(vals.updateDateRange[1]).endOf('day').format('YYYY-MM-DDTHH:mm:ss') : undefined);
     setPage(1);
   };
 
@@ -1007,7 +1029,9 @@ export default function VtsOperationCenterList() {
       dataIndex: 'name',
       width: 260,
       fixed: 'left' as const,
-      sorter: clientSideStringSorter('name', 'code'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('name'),
       render: (_: any, record: VtsOperationCenterListItem) => (
         <div
           style={{ cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
@@ -1029,7 +1053,9 @@ export default function VtsOperationCenterList() {
       dataIndex: 'orgUnitName',
       width: 220,
       ellipsis: false,
-      sorter: clientSideStringSorter('orgUnitName'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('orgUnitName'),
       render: (v: string) => <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: fontWeightBold }} title={v}>{v || '—'}</div>,
     },
     {
@@ -1038,7 +1064,9 @@ export default function VtsOperationCenterList() {
       dataIndex: 'portName',
       width: 200,
       ellipsis: false,
-      sorter: clientSideStringSorter('portName'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('portName'),
       render: (v: string) => <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>{v || '—'}</div>,
     },
     {
@@ -1047,7 +1075,9 @@ export default function VtsOperationCenterList() {
       dataIndex: 'vtsSystemName',
       width: 220,
       ellipsis: false,
-      sorter: clientSideStringSorter('vtsSystemName'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('vtsSystemName'),
       render: (v: string) => <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>{v || '—'}</div>,
     },
     {
@@ -1056,7 +1086,10 @@ export default function VtsOperationCenterList() {
       dataIndex: 'provinceId',
       width: 180,
       ellipsis: false,
-      sorter: clientSideProvinceSorter('provinceName', 'provinceId'),
+      sortable: true,
+      sorter: serverSideSorter,
+      // DataTable lấy khóa sắp xếp từ `dataIndex` nên cột này gửi lên `provinceId`.
+      sortOrder: sortOrderFor('provinceId'),
       render: (_: any, r: VtsOperationCenterListItem) => {
         const val = r.provinceName || getProvinceNameById(r.provinceId) || '—';
         return <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>{val}</div>;
@@ -1068,7 +1101,9 @@ export default function VtsOperationCenterList() {
       dataIndex: 'conditionStatus',
       width: 160,
       ellipsis: false,
-      sorter: clientSideBadgeSorter('conditionStatus', CONDITION_STATUS_MAP),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('conditionStatus'),
       render: (v: string) => {
         const label = CONDITION_STATUS_MAP[v as ConditionStatus] || v;
         const color = CONDITION_COLOR[v as ConditionStatus] || textSecondary;
@@ -1085,7 +1120,9 @@ export default function VtsOperationCenterList() {
       dataIndex: 'approvalStatus',
       width: 180,
       ellipsis: false,
-      sorter: clientSideBadgeSorter('approvalStatus'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('approvalStatus'),
       render: (status: ApprovalStatus) => <ApprovalStatusBadge status={status} />,
     },
     {
@@ -1094,7 +1131,9 @@ export default function VtsOperationCenterList() {
       dataIndex: 'updatedByName',
       width: 220,
       ellipsis: false,
-      sorter: clientSideUserSorter('updatedByName', 'createdByName', 'updatedAt'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('updatedByName'),
       render: (_: any, record: VtsOperationCenterListItem) => {
         const name = record.updatedByName || record.createdByName || '—';
         const date = record.updatedAt || record.createdAt;
@@ -1213,7 +1252,7 @@ export default function VtsOperationCenterList() {
         );
       },
     },
-  ], [page, pageSize]);
+  ], [page, pageSize, sortField, sortDirection]);
 
   const rowActions = (record: VtsOperationCenterListItem) => {
     const isCreator = Boolean(currentUser?.id && record.createdBy === currentUser.id);
@@ -1453,6 +1492,7 @@ export default function VtsOperationCenterList() {
             rowKey="id"
             rowActions={rowActions}
             loading={loading}
+            onSort={handleSort}
             scroll={{ x: 'max-content' }}
           />
           <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />

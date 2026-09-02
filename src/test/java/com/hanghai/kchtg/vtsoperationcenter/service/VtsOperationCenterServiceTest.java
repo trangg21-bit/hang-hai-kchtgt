@@ -233,4 +233,35 @@ class VtsOperationCenterServiceTest {
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
     }
+
+    /**
+     * Truy vấn so khớp với `immutable_unaccent(LOWER(...))` nên từ khóa gửi xuống
+     * CSDL phải được bỏ dấu. Nếu giữ nguyên dấu thì người dùng gõ tiếng Việt bình
+     * thường sẽ không bao giờ ra kết quả.
+     */
+    @Test
+    void testSearch_KeywordIsUnaccentedBeforeQuery() {
+        when(repository.search(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.search("Hải Phòng", null, null, null, null, null, null, null, null, PageRequest.of(0, 20));
+
+        org.mockito.ArgumentCaptor<String> keyword = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(repository).search(anyBoolean(), any(), any(), any(), any(), any(), any(), any(),
+                keyword.capture(), any(), any(), any());
+        assertEquals("%hai phong%", keyword.getValue());
+    }
+
+    @Test
+    void testCountByStatus_KeywordIsUnaccentedBeforeQuery() {
+        when(repository.countByApprovalStatus(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(List.of());
+
+        service.countByStatus("Đà Nẵng", null, null, null, null, null, null, null);
+
+        org.mockito.ArgumentCaptor<String> keyword = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(repository).countByApprovalStatus(anyBoolean(), any(), any(), any(), any(), any(), any(),
+                keyword.capture(), any(), any());
+        assertEquals("%da nang%", keyword.getValue());
+    }
 }

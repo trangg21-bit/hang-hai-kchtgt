@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo, memo, type ReactNode, type FC } from 'react';
-import { Typography, Modal, Form, Input, Select, Spin, Button, Row, Col, Drawer, Empty, Tree, Checkbox, Tabs } from 'antd';
+import { Typography, Modal, Form, Input, Select, Spin, Button, Row, Col, Drawer, Tree, Checkbox, Tabs } from 'antd';
 import {
   PlusOutlined, EditOutlined, LockOutlined, UnlockOutlined, KeyOutlined,
   ExclamationCircleOutlined, CheckOutlined, CloseOutlined, EyeOutlined, SearchOutlined,
@@ -7,9 +7,6 @@ import {
 import dayjs from 'dayjs';
 import { useUsers, useUser, useCreateUser, useUpdateUser, useDeleteUser, useToggleLockUser, useResetPassword, useForgotPassword, useChangeStatusUser } from '../hooks/useUsers';
 import { usePermissionStore } from '../store/permissionStore';
-import LoadingSkeleton from '../components/LoadingSkeleton';
-import EmptyState from '../components/EmptyState';
-import ErrorState from '../components/ErrorState';
 import { ScreenHeader, DataTable } from '../components/list-view';
 import FilterTableLayout from '../components/list-view/FilterTableLayout';
 import Pagination from '../components/list-view/Pagination';
@@ -427,12 +424,7 @@ export default function UsersPage() {
   ], [page, pageSize, sortField, sortOrder]);
 
   const renderContent = () => {
-    if (isLoading) return <LoadingSkeleton rows={8} />;
-    if (isError) return <ErrorState message={error?.message || 'Không thể tải danh sách người dùng'} onRetry={() => refetch()} />;
     const tableData = data?.data || [];
-    const emptyDescription = search || fullName || filterStatus || filterOrganizationId
-      ? 'Không tìm thấy người dùng nào phù hợp'
-      : 'Chưa có người dùng nào';
     return (
       <>
         <DataTable
@@ -440,14 +432,12 @@ export default function UsersPage() {
           dataSource={tableData}
           rowKey="id"
           rowActions={rowActions}
-          loading={false}
+          loading={isLoading}
           onSort={handleSort}
           scroll={{ x: 'max-content' }}
-          emptyState={tableData.length === 0 ? <EmptyState description={emptyDescription} /> : undefined}
         />
-        {tableData.length > 0 && (
-          <Pagination total={data?.total || 0} current={page} pageSize={pageSize} onChange={handlePageChange} />
-        )}
+        {/* Luôn hiển thị phân trang cố định ở đáy giống Trung tâm VTS (Tổng cộng: 0) */}
+        <Pagination total={data?.total || 0} current={page} pageSize={pageSize} onChange={handlePageChange} />
       </>
     );
   };

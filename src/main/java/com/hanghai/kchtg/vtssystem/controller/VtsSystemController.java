@@ -67,6 +67,8 @@ public class VtsSystemController {
             @RequestParam(required = false) UUID portId,
             @RequestParam(required = false) Integer provinceId,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String systemName,
+            @RequestParam(required = false) String code,
             @RequestParam(required = false) ConditionStatus conditionStatus,
             @RequestParam(required = false) ApprovalStatus approvalStatus,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate operationStartDateFrom,
@@ -79,7 +81,7 @@ public class VtsSystemController {
             @RequestParam(defaultValue = "true") boolean includeCounts,
             @RequestParam(required = false) String sort) {
         VtsSystemListResponse responses = service.findAllWithSearchAndCounts(
-                orgUnitId, portId, provinceId, keyword, conditionStatus, approvalStatus,
+                orgUnitId, portId, provinceId, keyword, systemName, code, conditionStatus, approvalStatus,
                 operationStartDateFrom, operationStartDateTo, updatedFrom, updatedTo,
                 year, page, size, includeCounts, sort);
         return ResponseEntity.ok(ApiResponse.success("Danh sách hệ thống VTS", responses));
@@ -88,7 +90,7 @@ public class VtsSystemController {
     public ResponseEntity<ApiResponse<VtsSystemListResponse>> findAll(
             UUID orgUnitId, String keyword, ConditionStatus conditionStatus, ApprovalStatus approvalStatus,
             Integer year, int page, int size, boolean includeCounts, String sort) {
-        return findAll(orgUnitId, null, null, keyword, conditionStatus, approvalStatus, null, null, null, null, year, page, size, includeCounts, sort);
+        return findAll(orgUnitId, null, null, keyword, null, null, conditionStatus, approvalStatus, null, null, null, null, year, page, size, includeCounts, sort);
     }
 
     @PreAuthorize("isAuthenticated()")

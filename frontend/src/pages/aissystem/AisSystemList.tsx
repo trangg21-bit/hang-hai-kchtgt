@@ -23,8 +23,7 @@ import {
   spaceMd, spaceFormField,
   statusOperational, statusCritical, statusAttention,
   selectStyle, statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
-  inputStyle, textAreaStyle, clientSideStringSorter,
-  clientSideProvinceSorter, clientSideBadgeSorter,
+  inputStyle, textAreaStyle,
   getRangePickerProps, getSidebarDatePickerProps,
 } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
@@ -54,6 +53,10 @@ export function AisSystemList() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  // Sắp xếp chạy ở server để áp dụng cho toàn bộ kết quả; nếu để antd tự sắp thì
+  // chỉ 20 dòng của trang hiện tại được sắp, gây hiểu nhầm là đã sắp cả danh sách.
+  const [sortField, setSortField] = useState<string | undefined>();
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [filterApprovalStatus, setFilterApprovalStatus] = useState<ApprovalStatus | undefined>(undefined);
@@ -194,11 +197,14 @@ export function AisSystemList() {
       }
       let updatedFrom: string | undefined = undefined;
       let updatedTo: string | undefined = undefined;
+      // Backend nhận LocalDateTime và BỎ QUA offset, nên `toISOString()` (giờ UTC)
+      // làm cửa sổ lọc lệch đúng bằng chênh lệch múi giờ (VN: -7h): hồ sơ cập nhật
+      // sau 17h bị đẩy nhầm sang ngày hôm sau. Gửi thẳng giờ địa phương.
       if (appliedFilterValues.updateDateRange && appliedFilterValues.updateDateRange[0]) {
-        updatedFrom = appliedFilterValues.updateDateRange[0].startOf('day').toISOString();
+        updatedFrom = appliedFilterValues.updateDateRange[0].startOf('day').format('YYYY-MM-DDTHH:mm:ss');
       }
       if (appliedFilterValues.updateDateRange && appliedFilterValues.updateDateRange[1]) {
-        updatedTo = appliedFilterValues.updateDateRange[1].endOf('day').toISOString();
+        updatedTo = appliedFilterValues.updateDateRange[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss');
       }
 
       const res = await aisSystemService.search({
@@ -215,6 +221,8 @@ export function AisSystemList() {
         updatedTo,
         page,
         size: pageSize,
+        sortBy: sortField,
+        sortDir: sortField ? sortDirection.toUpperCase() : undefined,
       });
 
       setDataSource(res.items || []);
@@ -227,11 +235,24 @@ export function AisSystemList() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, appliedFilterValues, filterApprovalStatus]);
+  }, [page, pageSize, appliedFilterValues, filterApprovalStatus, sortField, sortDirection]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handleSort = useCallback((field: string, order: 'asc' | 'desc') => {
+    setSortField(field);
+    setSortDirection(order);
+    setPage(1);
+  }, []);
+
+  const sortOrderFor = (key: string): 'ascend' | 'descend' | null =>
+    (sortField === key ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null);
+
+  // Bộ so sánh trung tính: thứ tự do server quyết định, hàm này chỉ để antd hiện
+  // biểu tượng sắp xếp mà không tự sắp lại 20 dòng của trang hiện tại.
+  const serverSideSorter = () => 0;
 
   const refreshList = useCallback(() => {
     fetchData();
@@ -348,8 +369,9 @@ export function AisSystemList() {
 
   const handleReject = async () => {
     if (!actionTargetRecord) return;
-    if (!rejectReason.trim()) {
-      toast.warning('Vui lòng nhập lý do từ chối');
+    // approval-2-level-spec §3.4 (quy tắc 5): lý do từ chối tối thiểu 10 ký tự.
+    if (!rejectReason.trim() || rejectReason.trim().length < 10) {
+      toast.warning('Lý do từ chối phải có ít nhất 10 ký tự');
       return;
     }
     try {
@@ -378,7 +400,9 @@ export function AisSystemList() {
       dataIndex: 'name',
       width: 260,
       fixed: 'left' as const,
-      sorter: clientSideStringSorter('name', 'code'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('name'),
       render: (_: any, record: AisSystemListItem) => (
         <div
           style={{ cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
@@ -400,7 +424,9 @@ export function AisSystemList() {
       dataIndex: 'orgUnitName',
       width: 200,
       ellipsis: false,
-      sorter: clientSideStringSorter('orgUnitName'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('orgUnitName'),
       render: (v: string) => (
         <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v || '—'}>
           {v || '—'}
@@ -424,7 +450,9 @@ export function AisSystemList() {
       dataIndex: 'operatingOrgName',
       width: 200,
       ellipsis: false,
-      sorter: clientSideStringSorter('operatingOrgName'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('operatingOrgName'),
       render: (v: string, record: AisSystemListItem) => {
         const val = v || record.operatingOrgName || operatingUnitOptions.find((o) => o.value === String(record.operatingOrgId))?.label || DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === record.operatingOrgId)?.name || '—';
         return <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>{val}</div>;
@@ -436,7 +464,10 @@ export function AisSystemList() {
       dataIndex: 'provinceId',
       width: 180,
       ellipsis: false,
-      sorter: clientSideProvinceSorter('provinceName', 'provinceId'),
+      sortable: true,
+      sorter: serverSideSorter,
+      // DataTable lấy khóa sắp xếp từ `dataIndex` nên cột này gửi lên `provinceId`.
+      sortOrder: sortOrderFor('provinceId'),
       render: (_: any, r: AisSystemListItem) => {
         const val = r.provinceName || getProvinceNameById(r.provinceId) || '—';
         return <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>{val}</div>;
@@ -449,7 +480,9 @@ export function AisSystemList() {
       width: 130,
       align: 'center' as const,
       ellipsis: false,
-      sorter: clientSideStringSorter('unitOfMeasure'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('unitOfMeasure'),
       render: (v: string) => {
         const label = UNIT_OF_MEASURE_MAP[v as unknown as UnitOfMeasure] || v || '—';
         return <span style={{ fontWeight: fontWeightMedium }}>{label}</span>;
@@ -462,7 +495,9 @@ export function AisSystemList() {
       width: 110,
       align: 'center' as const,
       ellipsis: false,
-      sorter: (a: AisSystemListItem, b: AisSystemListItem) => (a.quantity ?? 0) - (b.quantity ?? 0),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('quantity'),
       render: (v: number) => <span style={{ fontWeight: fontWeightBold }}>{v ?? 1}</span>,
     },
     {
@@ -472,7 +507,9 @@ export function AisSystemList() {
       width: 170,
       align: 'center' as const,
       ellipsis: false,
-      sorter: (a: AisSystemListItem, b: AisSystemListItem) => (a.commissioningYear ?? 0) - (b.commissioningYear ?? 0),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('commissioningYear'),
       render: (v: number) => <span>{v || '—'}</span>,
     },
     {
@@ -482,7 +519,9 @@ export function AisSystemList() {
       width: 160,
       align: 'center' as const,
       ellipsis: false,
-      sorter: clientSideBadgeSorter('conditionStatus', CONDITION_STATUS_MAP),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('conditionStatus'),
       render: (v: string) => {
         const label = CONDITION_STATUS_MAP[v as ConditionStatus] || v;
         const color = CONDITION_COLOR[v as ConditionStatus] || textSecondary;
@@ -493,7 +532,7 @@ export function AisSystemList() {
         );
       },
     },
-  ], [page, pageSize, operatingUnitOptions]);
+  ], [page, pageSize, operatingUnitOptions, sortField, sortDirection]);
 
   const rowActions = (record: AisSystemListItem) => {
     const isCreator = Boolean(currentUser?.id && record.createdBy === currentUser.id);
@@ -722,6 +761,7 @@ export function AisSystemList() {
             rowKey="id"
             rowActions={rowActions}
             loading={loading}
+            onSort={handleSort}
             scroll={{ x: 'max-content' }}
           />
           <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />

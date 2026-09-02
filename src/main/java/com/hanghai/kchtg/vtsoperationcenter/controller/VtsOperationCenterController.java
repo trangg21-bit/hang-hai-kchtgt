@@ -74,28 +74,36 @@ public class VtsOperationCenterController {
 
     /**
      * Các cột được phép sắp xếp. `sortBy` đến từ client nên phải qua danh sách
-     * trắng: tên thuộc tính lạ sẽ làm truy vấn ném lỗi 500, và các cột hiển thị
-     * tên (đơn vị, cán bộ) được resolve sau truy vấn nên không sắp xếp được ở DB.
+     * trắng: tên thuộc tính lạ sẽ làm truy vấn ném lỗi 500.
+     *
+     * Cột hiển thị tên (đơn vị quản lý, cảng biển, hệ thống VTS, cán bộ cập nhật)
+     * trỏ vào alias của các LEFT JOIN trong {@code VtsOperationCenterRepository.search}
+     * để sắp theo đúng chữ người dùng nhìn thấy, thay vì theo UUID.
+     *
+     * Ngoại lệ: Tỉnh/TP chỉ có mã số trong CSDL (chưa có entity Province để join)
+     * nên sắp theo mã tỉnh — trùng với thứ tự mã hành chính.
      */
     private static final Map<String, String> SORTABLE_LIST_FIELDS = Map.ofEntries(
-            Map.entry("name", "name"),
-            Map.entry("code", "code"),
-            Map.entry("vtsSystemId", "vtsSystemId"),
-            Map.entry("vtsSystemName", "vtsSystemId"),
-            Map.entry("portId", "portId"),
-            Map.entry("portName", "portId"),
-            Map.entry("orgUnitId", "orgUnitId"),
-            Map.entry("orgUnitName", "orgUnitId"),
-            Map.entry("detailedLocation", "detailedLocation"),
-            Map.entry("conditionStatus", "conditionStatus"),
-            Map.entry("approvalStatus", "approvalStatus"),
-            Map.entry("provinceId", "provinceId"),
-            Map.entry("updatedAt", "updatedAt"),
-            Map.entry("updatedDate", "updatedAt"),
-            Map.entry("createdAt", "createdAt"));
+            Map.entry("name", "t.name"),
+            Map.entry("code", "t.code"),
+            Map.entry("vtsSystemId", "t.vtsSystemId"),
+            Map.entry("vtsSystemName", "vs.systemName"),
+            Map.entry("portId", "t.portId"),
+            Map.entry("portName", "p.portName"),
+            Map.entry("orgUnitId", "t.orgUnitId"),
+            Map.entry("orgUnitName", "o.name"),
+            Map.entry("detailedLocation", "t.detailedLocation"),
+            Map.entry("conditionStatus", "t.conditionStatus"),
+            Map.entry("approvalStatus", "t.approvalStatus"),
+            Map.entry("province", "t.provinceId"),
+            Map.entry("provinceId", "t.provinceId"),
+            Map.entry("updatedByName", "u.fullName"),
+            Map.entry("updatedAt", "t.updatedAt"),
+            Map.entry("updatedDate", "t.updatedAt"),
+            Map.entry("createdAt", "t.createdAt"));
 
     private static Sort resolveListSort(String sortBy, String sortDir) {
-        Sort defaultSort = Sort.by(Sort.Direction.DESC, "createdAt");
+        Sort defaultSort = Sort.by(Sort.Direction.DESC, "t.createdAt");
         String property = sortBy == null ? null : SORTABLE_LIST_FIELDS.get(sortBy.trim());
         if (property == null) {
             return defaultSort;

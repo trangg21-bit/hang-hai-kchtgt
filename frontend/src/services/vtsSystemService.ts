@@ -110,6 +110,8 @@ export const vtsSystemCRUD = {
             page: params?.page || 0,
             size: params?.size || 20,
             keyword: params?.keyword,
+            systemName: params?.systemName,
+            code: params?.code,
             conditionStatus: params?.conditionStatus,
             approvalStatus: params?.approvalStatus,
             year: params?.year,

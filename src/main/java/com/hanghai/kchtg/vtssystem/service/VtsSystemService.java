@@ -310,6 +310,24 @@ public class VtsSystemService {
         }
     }
 
+    /**
+     * Nạp hồ sơ theo ID và chặn nếu nằm ngoài phạm vi đơn vị của người gọi.
+     *
+     * Hibernate {@code @Filter(orgUnitFilter)} chỉ áp cho truy vấn, KHÔNG áp cho
+     * {@code findById}, nên mọi thao tác nhận ID từ client đều phải tự kiểm tra —
+     * nếu không, người dùng có quyền hành động (duyệt, sửa tệp đính kèm) vẫn tác
+     * động được lên hồ sơ của đơn vị khác chỉ bằng cách đoán/biết UUID.
+     */
+    private VtsSystem loadWithinScope(UUID id) {
+        VtsSystem entity = repository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Hệ thống VTS với ID: " + id));
+        DataScopeContext scope = resolveDataScope();
+        if (scope.enabled()) {
+            validateAllowedOrgUnit(scope, entity.getOrgUnitId(), "Đơn vị quản lý");
+        }
+        return entity;
+    }
+
     private void validateWriteGuard(VtsSystemCreateRequest request) {
         if (request == null)
             return;
@@ -583,7 +601,7 @@ public class VtsSystemService {
     }
 
     public List<VtsSystemAttachmentResponse> getAttachments(UUID id) {
-        ensureExists(id);
+        loadWithinScope(id);
         List<InfrastructureAttachment> attachments = attachmentRepository
                 .findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.VTS_SYSTEM);
         Set<UUID> uploaderIds = attachments.stream()
@@ -734,22 +752,37 @@ public class VtsSystemService {
             LocalDateTime updatedFrom, LocalDateTime updatedTo,
             Integer year, int page, int size,
             boolean includeCounts, String sort) {
+        return findAllWithSearchAndCounts(orgUnitId, portId, provinceId, keyword, null, null,
+                conditionStatus, approvalStatus, operationStartDateFrom, operationStartDateTo,
+                updatedFrom, updatedTo, year, page, size, includeCounts, sort);
+    }
+
+    public VtsSystemListResponse findAllWithSearchAndCounts(
+            UUID orgUnitId, UUID portId, Integer provinceId, String keyword, String systemName, String code,
+            ConditionStatus conditionStatus, ApprovalStatus approvalStatus,
+            LocalDate operationStartDateFrom, LocalDate operationStartDateTo,
+            LocalDateTime updatedFrom, LocalDateTime updatedTo,
+            Integer year, int page, int size,
+            boolean includeCounts, String sort) {
         DataScopeContext scope = resolveDataScopeForFilter(orgUnitId);
         String keywordLike = toKeywordLike(keyword);
+        String systemNameLike = toKeywordLike(systemName);
+        String codeLike = toKeywordLike(code);
         LocalDate fromDate = operationStartDateFrom != null ? operationStartDateFrom
                 : (year != null ? LocalDate.of(year, 1, 1) : null);
         LocalDate toDate = operationStartDateTo != null ? operationStartDateTo
                 : (year != null ? LocalDate.of(year, 12, 31) : null);
 
         Page<VtsSystemListItemResponse> pageResult = findAllListItems(
-                orgUnitId, portId, provinceId, keyword, conditionStatus, approvalStatus,
+                orgUnitId, portId, provinceId, keyword, systemName, code, conditionStatus, approvalStatus,
                 fromDate, toDate, updatedFrom, updatedTo, page, size, scope, sort);
 
         return VtsSystemListResponse.builder()
                 .items(pageResult.getContent())
                 .total(pageResult.getTotalElements())
                 .statusCounts(includeCounts
-                        ? countByApprovalStatus(scope, null, portId, provinceId, keywordLike, conditionStatus, fromDate, toDate, updatedFrom, updatedTo)
+                        ? countByApprovalStatus(scope, null, portId, provinceId, keywordLike, systemNameLike, codeLike,
+                                conditionStatus, fromDate, toDate, updatedFrom, updatedTo)
                         : Collections.emptyMap())
                 .build();
     }
@@ -760,16 +793,19 @@ public class VtsSystemService {
      */
     private Page<VtsSystemListItemResponse> findAllListItems(
             UUID orgUnitId, UUID portId, Integer provinceId, String keyword,
+            String systemName, String code,
             ConditionStatus conditionStatus, ApprovalStatus approvalStatus,
             LocalDate fromDate, LocalDate toDate, LocalDateTime updatedFrom, LocalDateTime updatedTo,
             int page, int size, DataScopeContext scope, String sort) {
         String keywordLike = toKeywordLike(keyword);
+        String systemNameLike = toKeywordLike(systemName);
+        String codeLike = toKeywordLike(code);
         Pageable pageable = PageRequest.of(page, size, resolveListSort(sort));
         if (scope.enabled() && scope.orgUnitIds().isEmpty()) {
             return Page.empty(pageable);
         }
         Page<VtsSystemListProjection> rawPage = repository.searchList(
-                scope.enabled(), scope.orgUnitIds(), orgUnitId, portId, provinceId, keywordLike,
+                scope.enabled(), scope.orgUnitIds(), orgUnitId, portId, provinceId, keywordLike, systemNameLike, codeLike,
                 conditionStatus, approvalStatus, fromDate, toDate, updatedFrom, updatedTo, pageable);
 
         // Batch resolve user names in a single query to eliminate N+1 queries
@@ -1104,8 +1140,7 @@ public class VtsSystemService {
 
     public VtsSystemResponse approveC1(UUID id, ApprovalRequest request, UUID userId) {
         validateDecision(request);
-        VtsSystem entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Hệ thống VTS với ID: " + id));
+        VtsSystem entity = loadWithinScope(id);
 
         approvalService.approveC1(entity, InfrastructureType.VTS_SYSTEM, request.getDecision(), request.getReason(),
                 userId);
@@ -1115,8 +1150,7 @@ public class VtsSystemService {
 
     public VtsSystemResponse approveC2(UUID id, ApprovalRequest request, UUID userId) {
         validateDecision(request);
-        VtsSystem entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Hệ thống VTS với ID: " + id));
+        VtsSystem entity = loadWithinScope(id);
 
         approvalService.approveC2(entity, InfrastructureType.VTS_SYSTEM, request.getDecision(), request.getReason(),
                 userId);
@@ -1193,8 +1227,7 @@ public class VtsSystemService {
     }
 
     public VtsSystemAttachmentResponse uploadAttachment(UUID vtsSystemId, MultipartFile file, UUID userId) {
-        VtsSystem entity = repository.findById(vtsSystemId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Hệ thống VTS với ID: " + vtsSystemId));
+        VtsSystem entity = loadWithinScope(vtsSystemId);
         ensureAttachmentEditable(entity);
         ensureAttachmentQuota(vtsSystemId);
         validateAttachment(file);
@@ -1252,8 +1285,7 @@ public class VtsSystemService {
     }
 
     public void deleteAttachment(UUID vtsSystemId, UUID attachmentId) {
-        VtsSystem entity = repository.findById(vtsSystemId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Hệ thống VTS với ID: " + vtsSystemId));
+        VtsSystem entity = loadWithinScope(vtsSystemId);
         ensureAttachmentEditable(entity);
         InfrastructureAttachment attachment = attachmentRepository
                 .findByIdAndRefIdAndRefType(attachmentId, vtsSystemId, InfrastructureType.VTS_SYSTEM)
@@ -1290,7 +1322,7 @@ public class VtsSystemService {
     }
 
     public InfrastructureAttachment getAttachment(UUID vtsSystemId, UUID attachmentId) {
-        ensureExists(vtsSystemId);
+        loadWithinScope(vtsSystemId);
         return attachmentRepository.findByIdAndRefIdAndRefType(attachmentId, vtsSystemId, InfrastructureType.VTS_SYSTEM)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy tài liệu đính kèm"));
     }
@@ -1816,17 +1848,20 @@ public class VtsSystemService {
 
     @Transactional(readOnly = true)
     public java.util.Map<String, Long> countByApprovalStatus() {
-        return countByApprovalStatus(resolveDataScopeForFilter(null), null, null, null, null, null, null, null, null, null);
+        return countByApprovalStatus(resolveDataScopeForFilter(null), null, null, null, null, null, null,
+                null, null, null, null, null);
     }
 
     @Transactional(readOnly = true)
     public java.util.Map<String, Long> countByApprovalStatus(UUID orgUnitId, String keyword,
             ConditionStatus conditionStatus) {
-        return countByApprovalStatus(resolveDataScopeForFilter(orgUnitId), orgUnitId, null, null, keyword, conditionStatus, null, null, null, null);
+        return countByApprovalStatus(resolveDataScopeForFilter(orgUnitId), orgUnitId, null, null, keyword, null, null,
+                conditionStatus, null, null, null, null);
     }
 
     private java.util.Map<String, Long> countByApprovalStatus(
             DataScopeContext scope, UUID orgUnitId, UUID portId, Integer provinceId, String keyword,
+            String systemName, String code,
             ConditionStatus conditionStatus, LocalDate fromDate, LocalDate toDate,
             LocalDateTime updatedFrom, LocalDateTime updatedTo) {
         if (scope.enabled() && scope.orgUnitIds().isEmpty()) {
@@ -1834,7 +1869,7 @@ public class VtsSystemService {
         }
         java.util.Map<String, Long> counts = new java.util.LinkedHashMap<>();
         List<Object[]> rows = repository.countByApprovalStatus(
-                scope.enabled(), scope.orgUnitIds(), orgUnitId, portId, provinceId, keyword, conditionStatus,
+                scope.enabled(), scope.orgUnitIds(), orgUnitId, portId, provinceId, keyword, systemName, code, conditionStatus,
                 fromDate, toDate, updatedFrom, updatedTo);
         for (Object[] row : rows) {
             counts.put(((ApprovalStatus) row[0]).name(), (Long) row[1]);

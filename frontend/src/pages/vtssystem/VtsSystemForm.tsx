@@ -30,7 +30,7 @@ import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS, CONDITION_ST
 import {
   drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle,
   requiredMarkStyle, inputStyle,
-  drawerTabBarStyle, drawerStyles, drawerFormScrollStyle, spaceFormField, radiusPill, sidebarBg,
+  drawerTabBarStyle, drawerStyles, drawerFormScrollStyle, spaceFormField, spaceMd, radiusPill, sidebarBg,
   fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeSm,
   textSecondary, textTertiary, textPrimary,
   statusCritical, statusAttention, statusOperational, actionPrimary, textAreaStyle,
@@ -40,8 +40,8 @@ import {
   DRAWER_TABLE_SCROLL_Y,
 } from '../../themetokenchk';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
-import { useAuthStore } from '../../store/authStore';
-import { usePermissionStore } from '../../store/permissionStore';
+import { useAuthStore, type AuthState } from '../../store/authStore';
+import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../components/org-unit';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
@@ -118,12 +118,19 @@ const CONDITION_COLOR: Record<string, string> = {
   [ConditionStatus.OPERATIONAL]: statusOperational,
   [ConditionStatus.STOPPED]: statusCritical,
   [ConditionStatus.MAINTENANCE]: statusAttention,
+  [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
 };
 
 export const ConditionStatusBadge: React.FC<{ status?: ConditionStatus | number }> = React.memo(({ status }) => {
-  const normStatus = status != null ? Number(status) : ConditionStatus.OPERATIONAL;
-  const label = CONDITION_STATUS_MAP[normStatus] || 'Đang hoạt động';
-  const color = CONDITION_COLOR[normStatus] || statusOperational;
+  const legacyConditionStatusMap: Record<string, ConditionStatus> = {
+    '0': ConditionStatus.STOPPED,
+    '1': ConditionStatus.OPERATIONAL,
+    '2': ConditionStatus.MAINTENANCE,
+    '3': ConditionStatus.UNDER_CONSTRUCTION,
+  };
+  const normalizedStatus = legacyConditionStatusMap[String(status)] || String(status ?? ConditionStatus.OPERATIONAL);
+  const label = CONDITION_STATUS_MAP[normalizedStatus] || normalizedStatus;
+  const color = CONDITION_COLOR[normalizedStatus] || textSecondary;
 
   return (
     <span
@@ -290,9 +297,9 @@ export default function VtsSystemForm({
   onCancel,
   onSuccess,
 }: VtsSystemFormProps) {
-  const currentUser = useAuthStore((state) => state.user);
+  const currentUser = useAuthStore((state: AuthState) => state.user);
   const userPermissions = (currentUser?.permissions as string[]) || [];
-  const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
 
   const [form] = Form.useForm();
   const [record, setRecord] = useState<VtsSystemResponse | null>(initialData);
@@ -760,7 +767,7 @@ export default function VtsSystemForm({
         portId: values.portId,
         code: values.code,
         systemName: values.systemName,
-        provinceId: values.provinceId ? Number(values.provinceId) : undefined,
+        provinceId: Number(values.provinceId),
         address: values.address,
         operationStartDate: values.operationStartDate ? dayjs(values.operationStartDate).format('YYYY-MM-DD') : undefined,
         scope: values.scope,

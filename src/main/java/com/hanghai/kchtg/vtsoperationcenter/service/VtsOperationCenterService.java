@@ -57,6 +57,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -110,6 +111,25 @@ public class VtsOperationCenterService {
                 .filter(userScope::allows)
                 .toList();
         return Scope.restricted(intersected);
+    }
+
+    /**
+     * Chuẩn hóa từ khóa cho vế LIKE.
+     *
+     * Truy vấn so sánh với {@code immutable_unaccent(LOWER(...))} — tức là chuỗi
+     * ĐÃ bỏ dấu — nên từ khóa cũng phải bỏ dấu, nếu không thì gõ tiếng Việt có
+     * dấu (cách gõ tự nhiên) sẽ không bao giờ khớp và màn hình luôn báo không có
+     * dữ liệu.
+     */
+    private static String toKeywordLike(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return null;
+        }
+        String normalized = Normalizer
+                .normalize(keyword.trim().toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('đ', 'd');
+        return "%" + normalized + "%";
     }
 
     private void validateAllowedOrgUnit(UUID orgUnitId) {
@@ -369,7 +389,7 @@ public class VtsOperationCenterService {
             return new PageImpl<>(List.of(), pageable, 0);
         }
 
-        String kw = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
+        String kw = toKeywordLike(keyword);
         Page<VtsOperationCenter> page = repository.search(
                 !scope.unrestricted(),
                 scope.orgUnitIds(),
@@ -460,7 +480,7 @@ public class VtsOperationCenterService {
             return emptyCounts;
         }
 
-        String kw = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
+        String kw = toKeywordLike(keyword);
         List<Object[]> rows = repository.countByApprovalStatus(
                 !scope.unrestricted(),
                 scope.orgUnitIds(),

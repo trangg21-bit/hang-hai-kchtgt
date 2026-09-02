@@ -7,7 +7,7 @@ status: proposed
 classification: local
 priority: medium
 created: "2026-07-07T03:33:22Z"
-last-updated: "2026-08-23"
+last-updated: "2026-09-02"
 locked-fields: []
 consumed_by_modules: []
 ---
@@ -33,59 +33,24 @@ consumed_by_modules: []
 
 Tính năng tra cứu lịch sử thay đổi của một Đài LRIT sau khi hồ sơ đã được phê duyệt cấp cuối. Tạo mới, cập nhật hoặc thao tác tệp ở trạng thái nháp/từ chối không tạo và không hiển thị lịch sử. Mỗi bản ghi lịch sử chứa: actionType, changedField, previousValue, newValue, changedBy, changedAt. Dịch vụ đa chọn chỉ hiển thị phần thực sự thêm/xóa; tọa độ GIS hiển thị thống nhất theo loại hình và từng điểm DMS. API GET `/api/v1/stations/lrit/{id}/history` trả về danh sách CoastalStationLRITHistoryResponse.
 
-## 2. Trường dữ liệu
+## 2. Trường dữ liệu & Ma trận CRUD & Filter
 
-Bảng mô tả các trường liên quan đến lịch sử thay đổi, trích từ sheet Excel \"Đài LRIT\":
+F-115 chỉ đặc tả màn hình lịch sử; không lặp lại ma trận dữ liệu của hồ sơ Đài LRIT tại F-110, F-111 và F-114.
 
-| # | Tên trường (theo Excel) | Loại điều khiển | Bắt buộc | Danh sách | Bộ lọc | Xem chi tiết | Tạo mới | Sửa | Ghi chú |
-|---|---|---|---|---|---|---|---|---|---|
-| **Thông tin cơ bản** | | | | | | | | | |
-| 1 | Đơn vị quản lý (bắt buộc) | SelectOrgCode | Có | Có | Có | Có | Có | Có | FK → org_unit |
-| 2 | Đơn vị khai thác | SelectCateOther | Có | Không | Có | Có | Có | Có | |
-| 3 | Mã đài | Input (disabled, tự sinh LRIT-{seq}) | Có | Có | Có | Có | Có | Có | Tự sinh, bất biến |
-| 4 | Tên đài (bắt buộc) | InputTextArea | Có | Có | Có | Có | Có | Có | |
-| 5 | Địa điểm (Tỉnh/TP) (bắt buộc) | SelectCateOther | Có | Có | Có | Có | Có | Có | |
-| 6 | Địa điểm chi tiết (bắt buộc) | InputTextArea | Có | Không | Có | Có | Có | Có | |
-| 7 | Tình trạng (bắt buộc) | SelectAppParams | Có | Có | Có | Có | Có | Có | Enum trạng thái kỹ thuật |
-| **Thông tin đặc thù LRIT** | | | | | | | | | |
-| 8 | Vùng phủ sóng | InputTextArea | Không | Không | Có | Có | Có | Có | |
-| 9 | Dịch vụ cung cấp | SelectAppParams (multi-select) | Không | Không | Có | Có | Có | Có | |
-| 10 | Ghi chú | InputTextArea | Không | Không | Có | Có | Có | Có | |
-| **Vị trí (GIS)** | | | | | | | | | |
-| 11 | Loại đối tượng | Select (Điểm/Đường/Vùng) | Không | Không | Không | Có | Có | Có | GIS |
-| 12 | Biểu tượng | Select | Không | Không | Không | Có | Có | Có | GIS |
-| 13 | Hệ quy chiếu | Text | Không | Không | Không | Có | Có | Có | GIS (WGS84) |
-| 14 | Quy tắc hiển thị | Text | Không | Không | Không | Có | Có | Có | GIS |
-| 15 | Tọa độ | LongLatTable | Không | Không | Không | Có | Có | Có | GIS |
-| **File đính kèm** | | | | | | | | | |
-| 16 | File đính kèm | UploadFileTable | Không | Không | Có | Có | Có | Có | |
-| **Trạng thái & Kiểm toán** (chỉ hiển thị, không tạo/sửa) | | | | | | | | | |
-| 17 | Trạng thái | Badge (read-only) | Có | Có | Có | Có | Không | Không | 7 trạng thái |
-| 18 | Ngày cập nhật | Text (read-only) | Có | Có | Có | Có | Không | Không | |
-| 19 | Cán bộ cập nhật | Text (read-only) | Có | Không | Có | Có | Không | Không | |
-| 20 | Ngày gửi phê duyệt | Text (read-only) | Có | Không | Có | Có | Không | Không | |
-| 21 | Cán bộ gửi phê duyệt | Text (read-only) | Có | Không | Có | Có | Không | Không | |
-| 22 | Ngày phê duyệt cấp Cảng vụ/Chi cục | Text (read-only) | Có | Không | Có | Có | Không | Không | Cấp L1 |
-| 23 | Cán bộ phê duyệt cấp Cảng vụ/Chi cục | Text (read-only) | Có | Không | Có | Có | Không | Không | Cấp L1 |
-| 24 | Nội dung phê duyệt | Text (read-only) | Không | Không | Có | Có | Không | Không | Cấp L1 |
-| 25 | Ngày phê duyệt cấp Cục | Text (read-only) | Có | Không | Có | Có | Không | Không | Cấp L2 |
-| 26 | Cán bộ phê duyệt cấp Cục | Text (read-only) | Có | Không | Có | Có | Không | Không | Cấp L2 |
-| 27 | Nội dung phê duyệt | Text (read-only) | Không | Không | Có | Có | Không | Không | Cấp L2 |
-| **Thông tin vận hành khai thác** (read-only) | | | | | | | | | |
-| 28 | Mã kế hoạch | Text (read-only) | Không | Không | Có | Có | Không | Không | |
-| 29 | Tên kế hoạch | Text (read-only) | Không | Không | Có | Có | Không | Không | |
-| 30 | Ngày bắt đầu | Text (read-only) | Không | Không | Có | Có | Không | Không | |
-| 31 | Ngày kết thúc | Text (read-only) | Không | Không | Có | Có | Không | Không | |
-| **Thông tin bảo trì** (read-only) | | | | | | | | | |
-| 32 | Mã kế hoạch | Text (read-only) | Không | Không | Có | Có | Không | Không | |
-| 33 | Tên kế hoạch | Text (read-only) | Không | Không | Có | Có | Không | Không | |
-| 34 | Thời gian bắt đầu | Text (read-only) | Không | Không | Có | Có | Không | Không | |
-| 35 | Thời gian kết thúc | Text (read-only) | Không | Không | Có | Có | Không | Không | |
-| **Thông tin sự cố** (read-only) | | | | | | | | | |
-| 36 | Mã sự cố | Text (read-only) | Không | Không | Có | Có | Không | Không | |
-| 37 | Loại sự cố | Text (read-only) | Không | Không | Có | Có | Không | Không | |
-| 38 | Địa điểm | Text (read-only) | Không | Không | Có | Có | Không | Không | |
-| 39 | Thời gian | Text (read-only) | Không | Không | Có | Có | Không | Không | |
+| STT | Tên trường | Loại điều khiển | Danh sách | Bộ lọc | Xem chi tiết | Tạo mới | Sửa |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| KHU VỰC TRA CỨU | Nội dung thay đổi | InputText | FALSE | TRUE | FALSE | FALSE | FALSE |
+| 1 | Từ ngày | DatePicker | FALSE | TRUE | FALSE | FALSE | FALSE |
+| 2 | Đến ngày | DatePicker | FALSE | TRUE | FALSE | FALSE | FALSE |
+| DANH SÁCH LỊCH SỬ | Thời điểm thay đổi | Text (read-only) | TRUE | FALSE | TRUE | FALSE | FALSE |
+| 3 | Loại thao tác | Badge (read-only) | TRUE | FALSE | TRUE | FALSE | FALSE |
+| 4 | Cán bộ cập nhật | Text (read-only) | TRUE | FALSE | TRUE | FALSE | FALSE |
+| 5 | Đơn vị của cán bộ cập nhật | Text (read-only) | TRUE | FALSE | TRUE | FALSE | FALSE |
+| CHI TIẾT THAY ĐỔI | Tên trường thay đổi | Text (read-only) | FALSE | FALSE | TRUE | FALSE | FALSE |
+| 6 | Giá trị trước thay đổi | Text / danh sách DMS (read-only) | FALSE | FALSE | TRUE | FALSE | FALSE |
+| 7 | Giá trị sau thay đổi | Text / danh sách DMS (read-only) | FALSE | FALSE | TRUE | FALSE | FALSE |
+
+Ghi chú triển khai: chỉ dữ liệu phát sinh **sau khi hồ sơ đã được phê duyệt cấp cuối** mới được trả về. Dịch vụ đa chọn hiển thị delta thực tế (thêm/xóa); tọa độ GIS hiển thị theo loại đối tượng và từng điểm ở định dạng DMS.
 
 ## 3. Trạng thái và phê duyệt
 
@@ -131,8 +96,8 @@ Bảng mô tả các trường liên quan đến lịch sử thay đổi, trích
 
 | # | Điểm cần khai báo | Khai báo của chức năng này |
 |---|---|---|
-| 1 | Trạng thái riêng | Có — 7 trạng thái; lịch sử ghi nhận mọi trạng thái chuyển đổi |
-| 2 | Có bước phê duyệt không | Có — 2 cấp; lịch sử ghi APPROVE_L1/APPROVE_L2/REJECT |
+| 1 | Trạng thái riêng | Có — 7 trạng thái nghiệp vụ; F-115 chỉ truy vấn thay đổi sau phê duyệt cấp cuối, không hiển thị log tạo mới hoặc log phê duyệt/từ chối |
+| 2 | Có bước phê duyệt không | Có — 2 cấp; phê duyệt là điều kiện mở lịch sử, không phải một dòng lịch sử hiển thị |
 | 3 | Lọc cha-con / theo đơn vị | Có — theo `orgUnitId`; đơn vị cha xem con, Cục xem toàn bộ |
 | 4 | Trường chỉ hiện trong điều kiện nào | Không |
 | 5 | Quyền riêng | `coastal_station_lrit:read` |

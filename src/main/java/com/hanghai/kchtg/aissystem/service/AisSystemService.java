@@ -107,6 +107,25 @@ public class AisSystemService {
         return Scope.restricted(intersected);
     }
 
+    /**
+     * Chuẩn hóa từ khóa cho vế LIKE.
+     *
+     * Truy vấn so sánh với {@code immutable_unaccent(LOWER(...))} — tức là chuỗi
+     * ĐÃ bỏ dấu — nên từ khóa cũng phải bỏ dấu, nếu không thì gõ tiếng Việt có
+     * dấu (cách gõ tự nhiên) sẽ không bao giờ khớp và màn hình luôn báo không có
+     * dữ liệu.
+     */
+    private static String toKeywordLike(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return null;
+        }
+        String normalized = java.text.Normalizer
+                .normalize(keyword.trim().toLowerCase(Locale.ROOT), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('đ', 'd');
+        return "%" + normalized + "%";
+    }
+
     private void validateAllowedOrgUnit(UUID orgUnitId) {
         Scope userScope = orgUnitScopeService.currentUserScope();
         if (!userScope.unrestricted() && (orgUnitId == null || !userScope.allows(orgUnitId))) {
@@ -459,9 +478,9 @@ public class AisSystemService {
             return new PageImpl<>(List.of(), pageable, 0);
         }
 
-        String kw = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
-        String n = (name != null && !name.trim().isEmpty()) ? "%" + name.trim().toLowerCase() + "%" : null;
-        String c = (code != null && !code.trim().isEmpty()) ? "%" + code.trim().toLowerCase() + "%" : null;
+        String kw = toKeywordLike(keyword);
+        String n = toKeywordLike(name);
+        String c = toKeywordLike(code);
 
         Page<AisSystem> page = repository.search(
                 !scope.unrestricted(),
@@ -603,9 +622,9 @@ public class AisSystemService {
             return emptyCounts;
         }
 
-        String kw = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
-        String n = (name != null && !name.trim().isEmpty()) ? "%" + name.trim().toLowerCase() + "%" : null;
-        String c = (code != null && !code.trim().isEmpty()) ? "%" + code.trim().toLowerCase() + "%" : null;
+        String kw = toKeywordLike(keyword);
+        String n = toKeywordLike(name);
+        String c = toKeywordLike(code);
 
         List<Object[]> rows = repository.countByApprovalStatus(
                 !scope.unrestricted(),

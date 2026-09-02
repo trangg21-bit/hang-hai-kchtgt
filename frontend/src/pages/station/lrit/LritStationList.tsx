@@ -130,6 +130,30 @@ function historyField(item: any): string {
   return item.changedField || item.fieldName || '';
 }
 
+function renderPersonTimeCell(personName?: string, timestamp?: string) {
+  const isUuid = (value?: string | null) => !!value && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-/.test(value);
+  const person = isUuid(personName) ? '—' : (personName || '—');
+  const time = timestamp ? dayjs(timestamp).format('DD/MM/YYYY HH:mm:ss') : '—';
+  return (
+    <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+      <div
+        style={{
+          fontWeight: fontWeightBold,
+          color: textPrimary,
+          fontSize: fontSizeMd,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+        title={person}
+      >
+        {person}
+      </div>
+      <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>{time}</div>
+    </div>
+  );
+}
+
 function historyOldValue(item: any): string | null {
   return item.previousValue ?? item.oldValue ?? null;
 }
@@ -955,17 +979,29 @@ export const LritStationList: React.FC = () => {
       width: 220,
       sorter: clientSideUserSorter('updatedByName', 'createdByName', 'updatedAt', 'createdAt'),
       render: (_: any, r: LritStationItem) => {
-        const isUuid = (v?: string | null) => !!v && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-/.test(v);
-        const raw = r.updatedByName || r.createdByName;
-        const u = isUuid(raw) ? '—' : (raw || '—');
-        const d = r.updatedAt || r.createdAt ? dayjs(r.updatedAt || r.createdAt).format('DD/MM/YYYY HH:mm:ss') : '—';
-        return (
-          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
-            <div style={{ fontWeight: fontWeightBold, color: '#0F172A', fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={u}>{u}</div>
-            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>{d}</div>
-          </div>
-        );
+        return renderPersonTimeCell(r.updatedByName || r.createdByName, r.updatedAt || r.createdAt);
       },
+    },
+    {
+      key: 'submittedInfo',
+      label: 'Cán bộ gửi phê duyệt',
+      width: 220,
+      sorter: clientSideUserSorter('submittedByName', 'submittedBy', 'submittedAt'),
+      render: (_: any, r: LritStationItem) => renderPersonTimeCell(r.submittedByName || r.submittedBy, r.submittedAt),
+    },
+    {
+      key: 'approvedLevel1Info',
+      label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
+      width: 320,
+      sorter: clientSideUserSorter('approverLevel1Name', 'approverLevel1', 'approvedDateLevel1'),
+      render: (_: any, r: LritStationItem) => renderPersonTimeCell(r.approverLevel1Name || r.approverLevel1, r.approvedDateLevel1),
+    },
+    {
+      label: 'Cán bộ phê duyệt cấp Cục',
+      key: 'approvedLevel2Info',
+      width: 220,
+      sorter: clientSideUserSorter('approverLevel2Name', 'approverLevel2', 'approvedDateLevel2'),
+      render: (_: any, r: LritStationItem) => renderPersonTimeCell(r.approverLevel2Name || r.approverLevel2, r.approvedDateLevel2),
     },
   ], [page, pageSize]);
 

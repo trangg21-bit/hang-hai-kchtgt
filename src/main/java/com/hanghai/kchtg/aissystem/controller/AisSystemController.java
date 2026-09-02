@@ -27,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import com.hanghai.kchtg.security.annotation.DataScope;
@@ -53,28 +54,53 @@ public class AisSystemController {
 
     /**
      * Các cột được phép sắp xếp. `sortBy` đến từ client nên phải qua danh sách
-     * trắng: tên thuộc tính lạ sẽ làm truy vấn ném lỗi 500, và các cột hiển thị
-     * tên (đơn vị, cán bộ) được resolve sau truy vấn nên không sắp xếp được ở DB.
+     * trắng: tên thuộc tính lạ sẽ làm truy vấn ném lỗi 500.
+     *
+     * Cột hiển thị tên (đơn vị quản lý, đơn vị vận hành, trung tâm điều hành)
+     * trỏ vào alias của các LEFT JOIN trong {@code AisSystemRepository.search} để
+     * sắp theo đúng chữ người dùng nhìn thấy. Riêng "Đơn vị vận hành khai thác"
+     * lấy tên từ `operating_organization`, thiếu thì mới lùi về `org_units`
+     * (xem {@code AisSystemService.toListItem}) nên phải sắp bằng COALESCE.
+     *
+     * Ngoại lệ: Tỉnh/TP chỉ có mã số trong CSDL (chưa có entity Province để join)
+     * nên sắp theo mã tỉnh — trùng với thứ tự mã hành chính.
      */
-    private static final Map<String, String> SORTABLE_LIST_FIELDS = Map.of(
-            "name", "name",
-            "code", "code",
-            "detailedLocation", "detailedLocation",
-            "conditionStatus", "conditionStatus",
-            "approvalStatus", "approvalStatus",
-            "provinceId", "provinceId",
-            "updatedDate", "updatedAt",
-            "createdAt", "createdAt");
+    private static final Map<String, String> SORTABLE_LIST_FIELDS = Map.ofEntries(
+            Map.entry("name", "t.name"),
+            Map.entry("code", "t.code"),
+            Map.entry("detailedLocation", "t.detailedLocation"),
+            Map.entry("conditionStatus", "t.conditionStatus"),
+            Map.entry("approvalStatus", "t.approvalStatus"),
+            Map.entry("province", "t.provinceId"),
+            Map.entry("provinceId", "t.provinceId"),
+            Map.entry("unitOfMeasure", "t.unitOfMeasure"),
+            Map.entry("quantity", "t.quantity"),
+            Map.entry("commissioningYear", "t.commissioningYear"),
+            Map.entry("orgUnitName", "o.name"),
+            Map.entry("orgUnitId", "t.orgUnitId"),
+            Map.entry("operatingOrgName", "COALESCE(oo.name, oorg.name)"),
+            Map.entry("operatingOrgId", "t.operatingOrgId"),
+            Map.entry("vtsOperationCenterName", "voc.name"),
+            Map.entry("vtsOperationCenterId", "t.vtsOperationCenterId"),
+            Map.entry("updatedDate", "t.updatedAt"),
+            Map.entry("updatedAt", "t.updatedAt"),
+            Map.entry("createdAt", "t.createdAt"));
 
+    /**
+     * Dùng {@link JpaSort#unsafe} vì thuộc tính đã được qualify sẵn theo alias và
+     * có trường hợp là biểu thức COALESCE — {@code Sort.by} sẽ từ chối cả hai.
+     * An toàn vì giá trị luôn lấy từ danh sách trắng ở trên, không phải chuỗi thô
+     * của client.
+     */
     private static Sort resolveListSort(String sortBy, String sortDir) {
-        Sort defaultSort = Sort.by(Sort.Direction.DESC, "createdAt");
+        Sort defaultSort = JpaSort.unsafe(Sort.Direction.DESC, "t.createdAt");
         String property = sortBy == null ? null : SORTABLE_LIST_FIELDS.get(sortBy.trim());
         if (property == null) {
             return defaultSort;
         }
         Sort.Direction direction = "ASC".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
         // Chốt thêm createdAt để thứ tự ổn định khi giá trị sắp xếp trùng nhau.
-        return Sort.by(direction, property).and(defaultSort);
+        return JpaSort.unsafe(direction, property).and(defaultSort);
     }
 
     private final AisSystemService service;

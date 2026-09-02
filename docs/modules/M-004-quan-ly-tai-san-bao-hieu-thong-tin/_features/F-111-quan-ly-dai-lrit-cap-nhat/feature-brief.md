@@ -7,7 +7,7 @@ status: proposed
 classification: local
 priority: medium
 created: "2026-07-07T03:33:22Z"
-last-updated: "2026-09-01"
+last-updated: "2026-09-02"
 locked-fields: []
 consumed_by_modules: []
 ---
@@ -35,41 +35,59 @@ Tính năng cho phép operator cập nhật thông tin Đài LRIT đã tồn t�
 
 ## 2. Trường dữ liệu & Ma trận CRUD 5 Tab
 
-Bảng mô tả các trường theo chuẩn 5 Tab của Đài LRIT:
+Ma trận này là nguồn xác định phạm vi hiển thị của các màn Danh sách, Tạo mới, Sửa và Xem chi tiết Đài LRIT. TRUE ở cột **Danh sách** nghĩa là trường phải có cột riêng hoặc được hiển thị rõ trong cột gộp; TRUE ở **Bộ lọc** nghĩa là có điều khiển lọc tương ứng.
 
-| STT | Tên trường | Loại điều khiển | Bắt buộc | Danh sách | Bộ lọc | Xem chi tiết | Tạo mới | Sửa | Ghi chú |
-|---|---|---|---|---|---|---|---|---|---|
-| **TAB 1** | **Thông tin chung** | | | | | | | | |
-| 1 | Mã đài | Input (disabled, tự sinh `LRIT-{seq}`) | Có | Có | Có | Có | Có (Disabled) | Có (Disabled) | Tự sinh, bất biến |
-| 2 | Tên đài | InputTextArea | Có | Có | Có | Có | Có | Có | Bắt buộc |
-| 3 | Đơn vị quản lý | SelectOrgCode (TreeSelect) | Có | Có | Có | Có | Có | Có | Phân cấp theo DataScope |
-| 4 | Đơn vị khai thác | SelectCateOther | Không | Có | Không | Có | Có | Có | Danh mục đơn vị khai thác |
-| 5 | Địa điểm (Tỉnh/TP) | SelectCateOther | Có | Có | Có | Có | Có | Có | Danh mục 63 Tỉnh/TP |
-| 6 | Địa điểm chi tiết | InputTextArea | Có | Không | Không | Có | Có | Có | Bắt buộc |
-| 7 | Tình trạng | SelectAppParams | Có | Có | Có | Có | Có | Có | `ConditionStatus` |
-| 8 | Vùng phủ sóng | InputTextArea | Không | Không | Không | Có | Có | Có | Thông số đặc thù LRIT |
-| 9 | Dịch vụ cung cấp | Select multi-select trong khung bo góc, mỗi dịch vụ hiển thị một dòng, tên dài ellipsis | Không | Không | Không | Có | Có | Có | `INMARSAT`, `COSPAS-SARSAT`, `DSC`, `LRIT`,... |
-| 10 | Ghi chú | InputTextArea | Không | Không | Không | Có | Có | Có | |
-| **TAB 2** | **Vị trí (GIS)** | | | | | | | | |
-| 11 | Loại đối tượng | Select (Điểm/Đường/Vùng) | Không | Không | Không | Có | Có | Có | `geometryType` |
-| 12 | Biểu tượng | Select (kèm icon bản đồ) | Không | Không | Không | Có | Có | Có | `symbol` |
-| 13 | Hệ quy chiếu | Text (WGS 84 / VN-2000) | Không | Không | Không | Có | Có | Có | GIS |
-| 14 | Quy tắc hiển thị | Text (Độ, phút, giây (DMS)) | Không | Không | Không | Có | Có | Có | GIS |
-| 15 | Tọa độ | LongLatTable + Modal Bản đồ | Không | Không | Không | Có | Có | Có | Có thể nhập/chọn hoặc xóa toàn bộ; hệ thống đồng bộ WKT, latitude/longitude và spatial object |
-| **TAB 3** | **File đính kèm** | | | | | | | | |
-| 16 | File đính kèm | UploadFileTable | Không | Không | Không | Có | Có | Có | $\le 20\text{MB}$, tối đa 10 tệp |
-| **TAB 4** | **Vận hành & bảo trì** (Chỉ hiển thị trang Xem chi tiết) | | | | | | | | |
-| 17 | Kế hoạch vận hành khai thác | DetailTable (read-only) | Không | Không | Không | Có | Không | Không | Mã KH, Tên KH, Ngày BĐ, Ngày KT |
-| 18 | Kế hoạch bảo trì | DetailTable (read-only) | Không | Không | Không | Có | Không | Không | Mã KH, Tên KH, Thời gian BĐ, Thời gian KT |
-| 19 | Thông tin sự cố | DetailTable (read-only) | Không | Không | Không | Có | Không | Không | Mã sự cố, Loại sự cố, Địa điểm, Thời gian |
-| **TAB 5** | **Xử lý & theo dõi** (Chỉ hiển thị trang Xem chi tiết & Danh sách) | | | | | | | | |
-| 20 | Trạng thái | Badge (read-only) | Có | Có | Có | Có | Không | Không | 6 tab trạng thái |
-| 21 | Ngày cập nhật & Cán bộ cập nhật | Text (read-only) | Có | Có | Có | Có | Không | Không | |
-| 22 | Ngày gửi phê duyệt & Cán bộ gửi phê duyệt | Text (read-only) | Có | Có | Không | Có | Không | Không | |
-| 23 | Ngày phê duyệt & Cán bộ duyệt cấp Cảng vụ | Text (read-only) | Có | Có | Không | Có | Không | Không | Cấp L1 |
-| 24 | Nội dung phê duyệt cấp 1 | Text (read-only) | Không | Không | Không | Có | Không | Không | Cấp L1 |
-| 25 | Ngày phê duyệt & Cán bộ duyệt cấp Cục | Text (read-only) | Có | Có | Không | Có | Không | Không | Cấp L2 |
-| 26 | Nội dung phê duyệt cấp 2 | Text (read-only) | Không | Không | Không | Có | Không | Không | Cấp L2 |
+| STT | Tên trường | Loại điều khiển | Danh sách | Bộ lọc | Xem chi tiết | Tạo mới | Sửa |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| TAB 1 | Thông tin chung |  | FALSE | FALSE | FALSE | FALSE | FALSE |
+| 1 | Mã đài | Input (disabled, tự sinh LRIT-{seq}) | TRUE | TRUE | TRUE | TRUE | TRUE |
+| 2 | Tên đài (bắt buộc) | InputTextArea | TRUE | TRUE | TRUE | TRUE | TRUE |
+| 3 | Đơn vị quản lý (bắt buộc) | SelectOrgCode | TRUE | TRUE | TRUE | TRUE | TRUE |
+| 4 | Đơn vị khai thác | SelectCateOther | TRUE | FALSE | TRUE | TRUE | TRUE |
+| 5 | Địa điểm (Tỉnh/TP) (bắt buộc) | SelectCateOther | TRUE | TRUE | TRUE | TRUE | TRUE |
+| 6 | Địa điểm chi tiết (bắt buộc) | InputTextArea | FALSE | FALSE | TRUE | TRUE | TRUE |
+| 7 | Tình trạng (bắt buộc) | SelectAppParams | TRUE | TRUE | TRUE | TRUE | TRUE |
+| 8 | Vùng phủ sóng | InputTextArea | FALSE | FALSE | TRUE | TRUE | TRUE |
+| 9 | Dịch vụ cung cấp | SelectAppParams (multi-select) | FALSE | FALSE | TRUE | TRUE | TRUE |
+| 10 | Ghi chú | InputTextArea | FALSE | FALSE | TRUE | TRUE | TRUE |
+| TAB 2 | Vị trí (GIS) |  | FALSE | FALSE | TRUE | TRUE | TRUE |
+| 9 | Loại đối tượng | Select (Điểm/Đường/Vùng) | FALSE | FALSE | TRUE | TRUE | TRUE |
+| 10 | Biểu tượng | Select | FALSE | FALSE | TRUE | TRUE | TRUE |
+| 11 | Hệ quy chiếu | Text | FALSE | FALSE | TRUE | TRUE | TRUE |
+| 12 | Quy tắc hiển thị | Text | FALSE | FALSE | TRUE | TRUE | TRUE |
+| 13 | Tọa độ | LongLatTable | FALSE | FALSE | TRUE | TRUE | TRUE |
+| TAB 3 | File đính kèm |  | FALSE | FALSE | FALSE | TRUE | TRUE |
+| 16 | File đính kèm | UploadFileTable | FALSE | FALSE | TRUE | TRUE | TRUE |
+| TAB 4 | Vận hành & bảo trì |  | FALSE | FALSE | FALSE | FALSE | FALSE |
+|  | Thông tin vận hành khai thác |  | FALSE | FALSE | TRUE | FALSE | FALSE |
+| 15 | Mã kế hoạch | Text (read-only) | FALSE | FALSE | TRUE | FALSE | FALSE |
+| 16 | Tên kế hoạch | Text (read-only) | FALSE | FALSE | TRUE | FALSE | FALSE |
+| 17 | Ngày bắt đầu | Text (read-only) | FALSE | FALSE | TRUE | FALSE | FALSE |
+| 18 | Ngày kết thúc | Text (read-only) | FALSE | FALSE | TRUE | FALSE | FALSE |
+|  | Thông tin bảo trì |  | FALSE | FALSE | TRUE | FALSE | FALSE |
+| 19 | Mã kế hoạch | Text (read-only) | FALSE | FALSE | TRUE | FALSE | FALSE |
+| 20 | Tên kế hoạch | Text (read-only) | FALSE | FALSE | TRUE | FALSE | FALSE |
+| 21 | Thời gian bắt đầu | Text (read-only) | FALSE | FALSE | TRUE | FALSE | FALSE |
+| 22 | Thời gian kết thúc | Text (read-only) | FALSE | FALSE | TRUE | FALSE | FALSE |
+|  | Thông tin sự cố |  | FALSE | FALSE | TRUE | FALSE | FALSE |
+| 23 | Mã sự cố | Text (read-only) | FALSE | FALSE | TRUE | FALSE | FALSE |
+| 24 | Loại sự cố | Text (read-only) | FALSE | FALSE | TRUE | FALSE | FALSE |
+| 25 | Địa điểm | Text (read-only) | FALSE | FALSE | TRUE | FALSE | FALSE |
+| 26 | Thời gian | Text (read-only) | FALSE | FALSE | TRUE | FALSE | FALSE |
+| TAB 5 | Xử lý & theo dõi (chỉ ở trang Chi tiết/Danh sách) |  | FALSE | FALSE | FALSE | FALSE | FALSE |
+| 29 | Trạng thái | Badge (read-only) | TRUE | TRUE | TRUE | FALSE | FALSE |
+| 30 | Ngày cập nhật | Text (read-only) | TRUE | TRUE | TRUE | FALSE | FALSE |
+| 31 | Cán bộ cập nhật | Text (read-only) | TRUE | FALSE | TRUE | FALSE | FALSE |
+| 32 | Ngày gửi phê duyệt | Text (read-only) | TRUE | FALSE | TRUE | FALSE | FALSE |
+| 33 | Cán bộ gửi phê duyệt | Text (read-only) | TRUE | FALSE | TRUE | FALSE | FALSE |
+| 34 | Ngày phê duyệt cấp Cảng vụ/Chi cục | Text (read-only) | TRUE | FALSE | TRUE | FALSE | FALSE |
+| 35 | Cán bộ phê duyệt cấp Cảng vụ/Chi cục | Text (read-only) | TRUE | FALSE | TRUE | FALSE | FALSE |
+| 36 | Nội dung phê duyệt | Text (read-only) | FALSE | FALSE | TRUE | FALSE | FALSE |
+| 37 | Ngày phê duyệt cấp Cục | Text (read-only) | TRUE | FALSE | TRUE | FALSE | FALSE |
+| 38 | Cán bộ phê duyệt cấp Cục | Text (read-only) | TRUE | FALSE | TRUE | FALSE | FALSE |
+| 39 | Nội dung phê duyệt | Text (read-only) | FALSE | FALSE | TRUE | FALSE | FALSE |
+
+Ghi chú triển khai: bộ lọc **Mã đài** và **Tên đài** dùng chung một ô từ khóa; cột gộp **Tên / Mã đài thông tin LRIT** hiển thị đủ hai giá trị. Mỗi cặp **cán bộ + thời gian** ở Tab 5 dùng một cột, xếp cán bộ ở dòng trên và thời gian ở dòng dưới. Tọa độ tạo mới mặc định rỗng, không tự sinh điểm 0,0.
 
 ## 3. Trạng thái và phê duyệt
 
