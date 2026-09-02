@@ -72,6 +72,14 @@ public class CoastalStationHaiphongController {
         return ResponseEntity.ok(service.findApprovedOptions(orgUnitId));
     }
 
+    @GetMapping("/generate-code")
+    @Operation(summary = "Tự sinh mã Đài TTXLTT (TTXLTT-xxxx)")
+    @PreAuthorize("hasAnyAuthority('coastalstationhaiphong:create', 'specialstation:create', 'data:create', 'admin:all')")
+    public ResponseEntity<Map<String, String>> generateCode() {
+        String code = service.generateCode();
+        return ResponseEntity.ok(Map.of("code", code));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Xem chi tiết Đài TTXLTT")
     @PreAuthorize("hasAnyAuthority('coastalstationhaiphong:read', 'specialstation:read', 'data:read', 'admin:all')")
@@ -262,3 +270,5 @@ public class CoastalStationHaiphongController {
         }
     }
 }
+
+

@@ -9,15 +9,19 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.FieldNameConstants;
 import lombok.experimental.SuperBuilder;
 
 import java.util.UUID;
 
+
 @Entity
 @Table(name = "ais_system")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
@@ -25,6 +29,8 @@ import java.util.UUID;
 @EqualsAndHashCode(callSuper = true)
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
 public class AisSystem extends BaseApprovableEntity {
+
+
 
     @Column(name = "code", nullable = false, unique = true, length = 50)
     private String code;

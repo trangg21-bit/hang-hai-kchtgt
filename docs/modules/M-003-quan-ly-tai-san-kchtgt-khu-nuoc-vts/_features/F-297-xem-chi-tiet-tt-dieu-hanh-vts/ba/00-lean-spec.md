@@ -3,7 +3,9 @@ feature-id: F-297
 document: lean-spec
 output-mode: lean
 module-id: M-003
-last-updated: 2026-08-26
+last-updated: 2026-09-01
+implementation-audit: 2026-09-01
+implementation-note: "Tab KCHT khác tải dữ liệu thực từ Radar/AIS theo vtsOperationCenterId; các nhóm vận hành, bảo trì, sự cố được ẩn khi chưa có API nguồn, không dùng dữ liệu mock."
 ---
 # Xem chi tiết Trung tâm điều hành VTS
 ## Bối cảnh

@@ -73,6 +73,14 @@ public class CoastalStationLRITController {
         return ResponseEntity.ok(service.findApprovedOptions(orgUnitId));
     }
 
+    @GetMapping("/generate-code")
+    @Operation(summary = "Tự sinh mã Đài LRIT (LRIT-xxxx)")
+    @PreAuthorize("hasAnyAuthority('coastalstationlrit:create', 'specialstation:create', 'data:create', 'admin:all')")
+    public ResponseEntity<Map<String, String>> generateCode() {
+        String code = service.generateCode();
+        return ResponseEntity.ok(Map.of("code", code));
+    }
+
     @GetMapping("/{id:[0-9a-fA-F-]{36}}")
     @Operation(summary = "Xem chi tiết Đài LRIT")
     @PreAuthorize("hasAnyAuthority('coastalstationlrit:read', 'specialstation:read', 'data:read', 'admin:all')")
@@ -132,16 +140,24 @@ public class CoastalStationLRITController {
     @PostMapping("/{id:[0-9a-fA-F-]{36}}/approve-c1")
     @Operation(summary = "Phê duyệt cấp 1 (Cảng vụ / Chi cục)")
     @PreAuthorize("hasAnyAuthority('coastalstationlrit:approvec1', 'coastalstationlrit:approve', 'specialstation:approve', 'data:approvec1', 'data:approve', 'admin:all')")
-    public ResponseEntity<CoastalStationLRITResponse> approveLevel1(@PathVariable UUID id) {
-        CoastalStationLRIT entity = service.approveLevel1(id);
+    public ResponseEntity<CoastalStationLRITResponse> approveLevel1(
+            @PathVariable UUID id,
+            @RequestBody(required = false) CoastalStationLRITApprovalRequest request) {
+        CoastalStationLRIT entity = request == null || request.getContent() == null
+                ? service.approveLevel1(id)
+                : service.approveLevel1(id, request.getContent());
         return ResponseEntity.ok(service.buildResponse(entity));
     }
 
     @PostMapping("/{id:[0-9a-fA-F-]{36}}/approve-c2")
     @Operation(summary = "Phê duyệt cấp 2 (Cục Hàng hải Việt Nam)")
     @PreAuthorize("hasAnyAuthority('coastalstationlrit:approvec2', 'coastalstationlrit:approve', 'specialstation:approve', 'data:approvec2', 'data:approve', 'admin:all')")
-    public ResponseEntity<CoastalStationLRITResponse> approveLevel2(@PathVariable UUID id) {
-        CoastalStationLRIT entity = service.approveLevel2(id);
+    public ResponseEntity<CoastalStationLRITResponse> approveLevel2(
+            @PathVariable UUID id,
+            @RequestBody(required = false) CoastalStationLRITApprovalRequest request) {
+        CoastalStationLRIT entity = request == null || request.getContent() == null
+                ? service.approveLevel2(id)
+                : service.approveLevel2(id, request.getContent());
         return ResponseEntity.ok(service.buildResponse(entity));
     }
 
@@ -170,18 +186,21 @@ public class CoastalStationLRITController {
     // Legacy adaptors for existing test cases
     @GetMapping("/list")
     @Operation(summary = "Get all active LRIT stations")
+    @PreAuthorize("hasAnyAuthority('coastalstationlrit:read', 'specialstation:read', 'data:read', 'admin:all')")
     public ResponseEntity<List<CoastalStationLRIT>> getAllStations() {
         return ResponseEntity.ok(service.getAllStations());
     }
 
     @GetMapping("/search")
     @Operation(summary = "Search LRIT stations by keyword")
+    @PreAuthorize("hasAnyAuthority('coastalstationlrit:read', 'specialstation:read', 'data:read', 'admin:all')")
     public ResponseEntity<List<CoastalStationLRIT>> searchStations(@RequestParam String keyword) {
         return ResponseEntity.ok(service.searchStations(keyword));
     }
 
     @GetMapping("/by-terminal/{terminalId}")
     @Operation(summary = "Find an LRIT station by terminal ID")
+    @PreAuthorize("hasAnyAuthority('coastalstationlrit:read', 'specialstation:read', 'data:read', 'admin:all')")
     public ResponseEntity<CoastalStationLRIT> findByTerminalId(@PathVariable String terminalId) {
         Optional<CoastalStationLRIT> station = service.findByTerminalId(terminalId);
         return station.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
@@ -189,6 +208,7 @@ public class CoastalStationLRITController {
 
     @GetMapping("/by-imo/{imoNumber}")
     @Operation(summary = "Find an LRIT station by IMO number")
+    @PreAuthorize("hasAnyAuthority('coastalstationlrit:read', 'specialstation:read', 'data:read', 'admin:all')")
     public ResponseEntity<CoastalStationLRIT> findByImoNumber(@PathVariable String imoNumber) {
         Optional<CoastalStationLRIT> station = service.findByImoNumber(imoNumber);
         return station.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
@@ -196,6 +216,7 @@ public class CoastalStationLRITController {
 
     @PostMapping("/{id}/approve")
     @Operation(summary = "Approve an LRIT station (Legacy)")
+    @PreAuthorize("hasAnyAuthority('coastalstationlrit:approve', 'coastalstationlrit:approvec1', 'coastalstationlrit:approvec2', 'specialstation:approve', 'data:approve', 'admin:all')")
     public ResponseEntity<CoastalStationLRIT> approveStation(
             @PathVariable UUID id,
             @Valid @RequestBody CoastalStationLRITApprovalRequest request) {
@@ -205,6 +226,7 @@ public class CoastalStationLRITController {
 
     @GetMapping("/{id}/history")
     @Operation(summary = "Get change history for an LRIT station")
+    @PreAuthorize("hasAnyAuthority('coastalstationlrit:read', 'specialstation:read', 'data:read', 'admin:all')")
     public ResponseEntity<List<CoastalStationLRITHistoryResponse>> getHistory(@PathVariable UUID id) {
         return ResponseEntity.ok(service.getHistory(id));
     }
@@ -271,3 +293,4 @@ public class CoastalStationLRITController {
         }
     }
 }
+

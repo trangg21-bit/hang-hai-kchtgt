@@ -12,6 +12,7 @@ import {
   InputNumber,
   Spin,
   Modal,
+  Alert,
 } from 'antd';
 import {
   EnvironmentOutlined,
@@ -26,6 +27,8 @@ import { vtsOperationCenterService } from '../../services/vtsOperationCenterServ
 import { vtsSystemCRUD } from '../../services/vtsSystemService';
 import { portCRUD } from '../../services/portService';
 import { symbolService } from '../../services/symbolService';
+import { radarStationCRUD } from '../../services/radarStationService';
+import { aisSystemService } from '../../services/aisSystemService';
 import type {
   VtsOperationCenterResponse,
   CreateVtsOperationCenterRequest,
@@ -69,6 +72,9 @@ export interface VtsOperationCenterFormProps {
   initialData?: VtsOperationCenterResponse | null;
   mode?: 'create' | 'edit' | 'detail';
   orgUnits?: any[];
+  portOptions?: any[];
+  vtsSystemOptions?: any[];
+  symbols?: any[];
   onCancel?: () => void;
   onSuccess?: () => void;
 }
@@ -184,104 +190,15 @@ const renderApprovalBadge = (status?: ApprovalStatus | string) => {
   );
 };
 
-// Mock 30 bản ghi cho TAB 4: Danh sách KCHT khác thuộc VTS
-const MOCK_OTHER_INFRASTRUCTURES = Array.from({ length: 30 }, (_, i) => {
-  const index = i + 1;
-  const pad = index < 10 ? `0${index}` : `${index}`;
-  if (index % 3 === 1) {
-    return {
-      id: `mock-infra-vts-${index}`,
-      type: 'VTS_OPERATION_CENTER',
-      typeLabel: 'Trung tâm điều hành VTS',
-      name: `Trung tâm Quản lý điều hành VTS Luồng Hàng hải Khu vực ${pad}`,
-    };
-  } else if (index % 3 === 2) {
-    return {
-      id: `mock-infra-radar-${index}`,
-      type: 'RADAR_STATION',
-      typeLabel: 'Trạm Radar VTS',
-      name: `Trạm Radar cảnh giới & giám sát luồng hàng hải VTS-${pad}`,
-    };
-  } else {
-    return {
-      id: `mock-infra-ais-${index}`,
-      type: 'AIS_SYSTEM',
-      typeLabel: 'Trạm AIS / Hệ thống AIS',
-      name: `Hệ thống Trạm AIS bờ thu phát nhận dạng tàu thuyền AIS-VTS-${pad}`,
-    };
-  }
-});
-
-// Mock 30 bản ghi cho TAB 5 - Sub-tab 1: Thông tin vận hành khai thác
-const MOCK_OPERATION_PLANS = Array.from({ length: 30 }, (_, i) => {
-  const index = i + 1;
-  const pad = index < 10 ? `0${index}` : `${index}`;
-  const year = 2024 + Math.floor(index / 10);
-  const month = ((index - 1) % 12) + 1;
-  const monthPad = month < 10 ? `0${month}` : `${month}`;
-  return {
-    id: `mock-op-${index}`,
-    planCode: `KH-VHKT-${year}/${pad}`,
-    planName: `Kế hoạch điều hành luồng hàng hải & giám sát an toàn giao thông đợt ${index}`,
-    startDate: `${year}-${monthPad}-01`,
-    endDate: `${year}-${monthPad}-28`,
-  };
-});
-
-// Mock 30 bản ghi cho TAB 5 - Sub-tab 2: Thông tin bảo trì
-const MOCK_MAINTENANCE_PLANS = Array.from({ length: 30 }, (_, i) => {
-  const index = i + 1;
-  const pad = index < 10 ? `0${index}` : `${index}`;
-  const year = 2024 + Math.floor(index / 10);
-  const month = ((index - 1) % 12) + 1;
-  const monthPad = month < 10 ? `0${month}` : `${month}`;
-  return {
-    id: `mock-maint-${index}`,
-    planCode: `KH-BT-${year}/VTS-${pad}`,
-    planName: `Kế hoạch bảo dưỡng, hiệu chuẩn định kỳ hệ thống cảm biến Radar & AIS đợt ${index}`,
-    startTime: `${year}-${monthPad}-05`,
-    endTime: `${year}-${monthPad}-12`,
-  };
-});
-
-// Mock 30 bản ghi cho TAB 5 - Sub-tab 3: Thông tin sự cố
-const MOCK_INCIDENTS = Array.from({ length: 30 }, (_, i) => {
-  const index = i + 1;
-  const pad = index < 10 ? `0${index}` : `${index}`;
-  const types = [
-    'Mất kết nối đường truyền vi ba',
-    'Cảnh báo suy hao tín hiệu Anten Radar',
-    'Gián đoạn nguồn điện lưới khu vực trạm',
-    'Lỗi đồng bộ dữ liệu vết mục tiêu AIS',
-    'Cảnh báo nhiệt độ máy chủ xử lý vượt ngưỡng',
-  ];
-  const locations = [
-    'Trạm Radar VTS Mũi Nghinh Phong',
-    'Trạm Radar VTS Cần Giờ',
-    'Trung tâm Quản lý điều hành VTS',
-    'Trạm AIS VTS Vũng Tàu',
-    'Trạm Radar VTS Cát Lái',
-  ];
-  const year = 2025;
-  const month = ((index - 1) % 12) + 1;
-  const monthPad = month < 10 ? `0${month}` : `${month}`;
-  const day = ((index * 3) % 25) + 1;
-  const dayPad = day < 10 ? `0${day}` : `${day}`;
-  return {
-    id: `mock-inc-${index}`,
-    incidentCode: `SC-${year}-${pad}`,
-    incidentType: types[(index - 1) % types.length],
-    location: locations[(index - 1) % locations.length],
-    incidentTime: `${year}-${monthPad}-${dayPad} 14:30:00`,
-  };
-});
-
 export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
   open,
   editId,
   initialData,
   mode = 'create',
   orgUnits = [],
+  portOptions: providedPortOptions = [],
+  vtsSystemOptions: providedVtsSystemOptions = [],
+  symbols: providedSymbols = [],
   onCancel,
   onSuccess,
 }) => {
@@ -295,9 +212,9 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
   const actionTypeRef = useRef<'draft' | 'submit' | 'approve' | 'update'>('draft');
   const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve' | 'update'>('draft');
 
-  const [portOptions, setPortOptions] = useState<any[]>([]);
-  const [vtsSystemOptions, setVtsSystemOptions] = useState<any[]>([]);
-  const [symbols, setSymbols] = useState<any[]>([]);
+  const [portOptions, setPortOptions] = useState<any[]>(providedPortOptions);
+  const [vtsSystemOptions, setVtsSystemOptions] = useState<any[]>(providedVtsSystemOptions);
+  const [symbols, setSymbols] = useState<any[]>(providedSymbols);
   const [coordinateList, setCoordinateList] = useState<{ latitude: number | null; longitude: number | null }[]>([]);
   const [mapModalOpen, setMapModalOpen] = useState(false);
   const [attachments, setAttachments] = useState<VtsOperationCenterAttachment[]>([]);
@@ -305,10 +222,14 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
   const [pendingDeletedAttachments, setPendingDeletedAttachments] = useState<{ id: string; fileName: string }[]>([]);
 
   const [otherInfraTypeFilter, setOtherInfraTypeFilter] = useState<string>('ALL');
-  const [otherInfraList] = useState<Array<{ id: string; type: string; typeLabel: string; name: string }>>(MOCK_OTHER_INFRASTRUCTURES);
-  const [operationPlanList] = useState<any[]>(MOCK_OPERATION_PLANS);
-  const [maintenancePlanList] = useState<any[]>(MOCK_MAINTENANCE_PLANS);
-  const [incidentList] = useState<any[]>(MOCK_INCIDENTS);
+  const [otherInfraList, setOtherInfraList] = useState<Array<{ id: string; type: string; typeLabel: string; name: string; code?: string }>>([]);
+  const [otherInfraLoading, setOtherInfraLoading] = useState(false);
+  const [otherInfraError, setOtherInfraError] = useState<string | null>(null);
+  // These related modules do not expose a confirmed API contract yet. Keep
+  // their sources empty until the corresponding backend endpoints exist.
+  const operationPlanList: Array<Record<string, unknown>> = [];
+  const maintenancePlanList: Array<Record<string, unknown>> = [];
+  const incidentList: Array<Record<string, unknown>> = [];
 
   const filteredOtherInfra = useMemo(() => {
     if (!otherInfraTypeFilter || otherInfraTypeFilter === 'ALL') {
@@ -475,8 +396,14 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
 
   useEffect(() => {
     if (open) {
-      portCRUD.getOptions().then((res) => setPortOptions(Array.isArray(res) ? res : [])).catch(() => {});
-      vtsSystemCRUD.getOptions().then((res) => setVtsSystemOptions(Array.isArray(res) ? res : [])).catch(() => {});
+      if (providedPortOptions.length > 0) setPortOptions(providedPortOptions);
+      else portCRUD.getOptions().then((res) => setPortOptions(Array.isArray(res) ? res : [])).catch(() => {});
+      if (providedVtsSystemOptions.length > 0) setVtsSystemOptions(providedVtsSystemOptions);
+      else vtsSystemCRUD.getOptions().then((res) => setVtsSystemOptions(Array.isArray(res) ? res : [])).catch(() => {});
+      if (providedSymbols.length > 0) {
+        setSymbols(providedSymbols);
+        return;
+      }
       symbolService.getOptions()
         .then((res) => {
           if (Array.isArray(res) && res.length > 0) {
@@ -495,12 +422,15 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
           }).catch(() => setSymbols(DEFAULT_GIS_SYMBOLS));
         });
     }
-  }, [open]);
+  }, [open, providedPortOptions, providedVtsSystemOptions, providedSymbols]);
 
   useEffect(() => {
     if (!open) return;
     setTabKey('general');
     setDetailTabKey('general');
+    setOtherInfraTypeFilter('ALL');
+    setOtherInfraList([]);
+    setOtherInfraError(null);
     setPendingFiles([]);
     setPendingDeletedAttachments([]);
 
@@ -527,12 +457,9 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
         });
       }
       setIsLoading(true);
-      Promise.all([
-        vtsOperationCenterService.getById(editId),
-        vtsOperationCenterService.listAttachments(editId).catch(() => []),
-      ]).then(([res, atts]) => {
+      vtsOperationCenterService.getById(editId).then((res) => {
         setRecord(res);
-        setAttachments(atts || []);
+        setAttachments(res.attachments || []);
         const pts = parseWktToCoordinates(res.coordinates);
         setCoordinateList(pts);
         form.setFieldsValue({
@@ -571,7 +498,9 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
         });
       }).catch(() => {
         form.setFieldsValue({
-          code: 'TT-VTS-AUTO',
+          // The backend also generates the code. Do not use a fixed fallback
+          // that can collide with an existing record.
+          code: undefined,
           conditionStatus: ConditionStatus.OPERATIONAL,
           geometryType: 'POINT',
           coordinateSystem: 'WGS 84 / VN-2000',
@@ -580,6 +509,45 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
       });
     }
   }, [open, editId, isCreateMode, form]);
+
+  useEffect(() => {
+    if (!open || !isDetailMode || detailTabKey !== 'infrastructure' || !record?.id) return;
+    let cancelled = false;
+    setOtherInfraLoading(true);
+    setOtherInfraError(null);
+    setOtherInfraList([]);
+
+    Promise.allSettled([
+      radarStationCRUD.searchPaged({ vtsOperationCenterId: record.id, page: 1, size: 100 }),
+      aisSystemService.search({ vtsOperationCenterId: record.id, page: 1, size: 100 }),
+    ]).then(([radarResult, aisResult]) => {
+      if (cancelled) return;
+      const failed = [radarResult, aisResult].some((result) => result.status === 'rejected');
+      const radarItems = radarResult.status === 'fulfilled' ? radarResult.value.items || [] : [];
+      const aisItems = aisResult.status === 'fulfilled' ? aisResult.value.items || [] : [];
+      setOtherInfraList([
+        ...radarItems.map((item: any) => ({
+          id: String(item.id),
+          type: 'RADAR_STATION',
+          typeLabel: 'Trạm Radar VTS',
+          code: item.code,
+          name: item.name || item.stationName || item.code || String(item.id),
+        })),
+        ...aisItems.map((item: any) => ({
+          id: String(item.id),
+          type: 'AIS_SYSTEM',
+          typeLabel: 'Trạm AIS / Hệ thống AIS',
+          code: item.code,
+          name: item.name || item.systemName || item.code || String(item.id),
+        })),
+      ]);
+      if (failed) setOtherInfraError('Một số loại kết cấu hạ tầng chưa tải được dữ liệu.');
+    }).finally(() => {
+      if (!cancelled) setOtherInfraLoading(false);
+    });
+
+    return () => { cancelled = true; };
+  }, [open, isDetailMode, detailTabKey, record?.id]);
 
   const selectedOrgUnitId = Form.useWatch('orgUnitId', form);
   const effectiveOrgUnitId = selectedOrgUnitId || record?.orgUnitId;
@@ -611,6 +579,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
   const handleFinish = async (values: any) => {
     const act = actionTypeRef.current;
     setIsSubmitting(true);
+    let attachmentPartialFailure = false;
     try {
       const wkt = serializeCoordinatesToWkt(coordinateList, values.geometryType || 'POINT');
       const payload: CreateVtsOperationCenterRequest = {
@@ -637,40 +606,46 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
           try {
             await vtsOperationCenterService.uploadAttachments(created.id, pendingFiles);
           } catch {
-            toast.warning('Đã tạo trung tâm nhưng không tải lên được một số tệp đính kèm');
+            attachmentPartialFailure = true;
           }
         }
         if (act === 'submit' && created?.id) {
           await vtsOperationCenterService.submit(created.id);
         } else if (act === 'approve' && created?.id) {
-          await vtsOperationCenterService.submit(created.id).catch(() => {});
+          await vtsOperationCenterService.submit(created.id);
           await vtsOperationCenterService.approveC2(created.id, 'APPROVED', 'Lưu và phê duyệt trực tiếp');
         }
         setPendingFiles([]);
         setPendingDeletedAttachments([]);
-        toast.success('Thêm mới thành công');
+        toast[attachmentPartialFailure ? 'warning' : 'success'](
+          attachmentPartialFailure
+            ? 'Đã tạo trung tâm nhưng một số tệp đính kèm chưa được tải lên'
+            : 'Thêm mới thành công',
+        );
       } else if (editId) {
         await vtsOperationCenterService.update(editId, payload as UpdateVtsOperationCenterRequest);
         if (pendingDeletedAttachments.length > 0) {
-          try {
-            await Promise.all(pendingDeletedAttachments.map((a) => vtsOperationCenterService.deleteAttachment(editId, a.id)));
-          } catch (delErr) {
-            console.warn('Failed to delete some attachments on edit', delErr);
-          }
+          const deletionResults = await Promise.allSettled(
+            pendingDeletedAttachments.map((a) => vtsOperationCenterService.deleteAttachment(editId, a.id)),
+          );
+          if (deletionResults.some((result) => result.status === 'rejected')) attachmentPartialFailure = true;
         }
         if (pendingFiles.length > 0) {
-          try {
-            await vtsOperationCenterService.uploadAttachments(editId, pendingFiles);
-          } catch (uploadErr) {
-            console.warn('Failed to upload some pending files on edit', uploadErr);
-          }
+          const uploadResults = await Promise.allSettled([
+            vtsOperationCenterService.uploadAttachments(editId, pendingFiles),
+          ]);
+          if (uploadResults.some((result) => result.status === 'rejected')) attachmentPartialFailure = true;
         }
         if (act === 'submit' && (record?.approvalStatus === ApprovalStatus.DRAFT || record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL2)) {
           await vtsOperationCenterService.submit(editId);
         }
         setPendingFiles([]);
         setPendingDeletedAttachments([]);
-        toast.success('Cập nhật thành công');
+        toast[attachmentPartialFailure ? 'warning' : 'success'](
+          attachmentPartialFailure
+            ? 'Đã lưu thông tin nhưng một số tệp đính kèm chưa được xử lý'
+            : 'Cập nhật thành công',
+        );
       }
       onSuccess?.();
     } catch (err: any) {
@@ -690,7 +665,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
         onChange={setDetailTabKey}
         tabBarStyle={drawerTabBarStyle}
         animated={false}
-        items={[
+        items={([
           {
             key: 'general',
             label: 'Thông tin chung',
@@ -840,6 +815,14 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
             label: 'Kết cấu hạ tầng',
             children: (
               <div>
+                {otherInfraError && (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    message={otherInfraError}
+                    style={{ marginBottom: spaceMd }}
+                  />
+                )}
                 <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span style={{ fontWeight: fontWeightBold, color: sidebarBg, fontSize: fontSizeMd }}>
                     Loại kết cấu hạ tầng:
@@ -864,8 +847,9 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                 <DetailTable
                   scrollY="calc(100vh - 378px)"
                   dataSource={filteredOtherInfra}
+                  loading={otherInfraLoading}
                   emptyText="Chưa có kết cấu hạ tầng khác thuộc trung tâm điều hành VTS"
-                  rowKey={(r: any) => r.id || `${r.type}-${r.name}`}
+                  rowKey={(r: any) => r.id || `${r.type}-${r.code || r.name}`}
                   columns={[
                     {
                       title: 'STT',
@@ -1188,7 +1172,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
               </div>
             ),
           },
-        ]}
+        ] as any[]).filter((item) => item.key !== 'operationMaintenance')}
       />
     );
   };

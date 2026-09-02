@@ -275,23 +275,22 @@ export const adjustCoordinateListForGeometry = (
   prevCoords: { latitude: number | null; longitude: number | null }[],
   newGeomType: string
 ): { latitude: number | null; longitude: number | null }[] => {
-  const validPrev = (prevCoords || []).filter(
-    (p) => p.latitude != null && p.longitude != null && !isNaN(p.latitude) && !isNaN(p.longitude)
-  );
   const geom = (newGeomType || 'POINT').toUpperCase();
-  const minCount = GEOMETRY_POINT_COUNT[geom] ?? 1;
+  const minCount = GEOMETRY_POINT_COUNT[geom] ?? (geom.includes('LINE') ? 2 : (geom.includes('POLYGON') ? 3 : 1));
+
+  const base = (prevCoords && prevCoords.length > 0)
+    ? [...prevCoords]
+    : [{ latitude: null, longitude: null }];
 
   if (geom === 'POINT') {
-    return validPrev.length > 0
-      ? [validPrev[0]]
-      : (prevCoords && prevCoords.length > 0 ? [prevCoords[0]] : [{ latitude: null, longitude: null }]);
+    return [base[0]];
   }
 
-  const base = validPrev.length > 0 ? [...validPrev] : (prevCoords && prevCoords.length > 0 ? [...prevCoords] : []);
   if (base.length >= minCount) return base;
   const added = Array.from({ length: minCount - base.length }, () => ({ latitude: null, longitude: null }));
   return [...base, ...added];
 };
+
 
 export function ddToDms(dd: number | null | undefined): { d: number | null; m: number | null; s: number | null } {
   if (dd == null || isNaN(dd)) return { d: null, m: null, s: null };

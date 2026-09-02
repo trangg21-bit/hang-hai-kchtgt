@@ -15,19 +15,19 @@ import { ScreenHeader, DataTable, Pagination } from '../../components/list-view'
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import AisSystemForm from './AisSystemForm';
 import ApprovalModal from '../../components/shared/ApprovalModal';
-import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import CommonHistoryDrawer from '../../components/shared/CommonHistoryDrawer';
 import toast from '../../components/ToastNotification';
 import {
-  actionPrimary, textSecondary, textTertiary,
-  fontWeightBold, fontWeightMedium, fontSizeMd,
+  actionPrimary, textSecondary,
+  fontWeightBold, fontWeightMedium,
   spaceMd, spaceFormField,
   statusOperational, statusCritical, statusAttention,
-  selectStyle, statusBadgeStyle, icons,
+  selectStyle, statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
   inputStyle, textAreaStyle, clientSideStringSorter,
-  clientSideProvinceSorter, clientSideUserSorter, clientSideBadgeSorter,
-  getRangePickerProps, getDatePickerProps,
+  clientSideProvinceSorter, clientSideBadgeSorter,
+  getRangePickerProps, getSidebarDatePickerProps,
 } from '../../themetokenchk';
+import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import dayjs from 'dayjs';
 import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
@@ -67,6 +67,7 @@ export function AisSystemList() {
     conditionStatus?: ConditionStatus;
     updateDateRange?: [dayjs.Dayjs | null, dayjs.Dayjs | null];
   }>({});
+  const [appliedFilterValues, setAppliedFilterValues] = useState<typeof filterValues>({});
 
   const [orgUnitOptions, setOrgUnitOptions] = useState<OrgUnitTreeOption[]>([]);
   const [operatingOrganizations, setOperatingOrganizations] = useState<any[]>(DEFAULT_OPERATING_ORGANIZATIONS);
@@ -95,7 +96,7 @@ export function AisSystemList() {
         organizationService.getAll(),
         vtsOperationCenterService.getOptions(),
         radarStationService.getOptions(),
-        vtsSystemCRUD.getOperatingOrganizations(),
+        vtsSystemCRUD.getOperatingOrganizationOptions(),
       ]);
 
       if (orgRes.status === 'fulfilled' && Array.isArray(orgRes.value)) {
@@ -182,33 +183,33 @@ export function AisSystemList() {
     try {
       let filterOpCenterId: string | undefined = undefined;
       let filterRadarStationId: string | undefined = undefined;
-      if (filterValues.vtsOperationCenterId) {
-        if (filterValues.vtsOperationCenterId.startsWith('op_')) {
-          filterOpCenterId = filterValues.vtsOperationCenterId.replace('op_', '');
-        } else if (filterValues.vtsOperationCenterId.startsWith('radar_')) {
-          filterRadarStationId = filterValues.vtsOperationCenterId.replace('radar_', '');
+      if (appliedFilterValues.vtsOperationCenterId) {
+        if (appliedFilterValues.vtsOperationCenterId.startsWith('op_')) {
+          filterOpCenterId = appliedFilterValues.vtsOperationCenterId.replace('op_', '');
+        } else if (appliedFilterValues.vtsOperationCenterId.startsWith('radar_')) {
+          filterRadarStationId = appliedFilterValues.vtsOperationCenterId.replace('radar_', '');
         } else {
-          filterOpCenterId = filterValues.vtsOperationCenterId;
+          filterOpCenterId = appliedFilterValues.vtsOperationCenterId;
         }
       }
       let updatedFrom: string | undefined = undefined;
       let updatedTo: string | undefined = undefined;
-      if (filterValues.updateDateRange && filterValues.updateDateRange[0]) {
-        updatedFrom = filterValues.updateDateRange[0].startOf('day').toISOString();
+      if (appliedFilterValues.updateDateRange && appliedFilterValues.updateDateRange[0]) {
+        updatedFrom = appliedFilterValues.updateDateRange[0].startOf('day').toISOString();
       }
-      if (filterValues.updateDateRange && filterValues.updateDateRange[1]) {
-        updatedTo = filterValues.updateDateRange[1].endOf('day').toISOString();
+      if (appliedFilterValues.updateDateRange && appliedFilterValues.updateDateRange[1]) {
+        updatedTo = appliedFilterValues.updateDateRange[1].endOf('day').toISOString();
       }
 
       const res = await aisSystemService.search({
-        keyword: filterValues.keyword?.trim() || undefined,
-        orgUnitId: filterValues.orgUnitId || undefined,
+        keyword: appliedFilterValues.keyword?.trim() || undefined,
+        orgUnitId: appliedFilterValues.orgUnitId || undefined,
         vtsOperationCenterId: filterOpCenterId,
         radarStationId: filterRadarStationId,
-        operatingOrgId: filterValues.operatingOrgId || undefined,
-        provinceId: filterValues.provinceId,
-        commissioningYear: filterValues.commissioningYear,
-        conditionStatus: filterValues.conditionStatus ? (Number(filterValues.conditionStatus) as any) : undefined,
+        operatingOrgId: appliedFilterValues.operatingOrgId || undefined,
+        provinceId: appliedFilterValues.provinceId,
+        commissioningYear: appliedFilterValues.commissioningYear,
+        conditionStatus: appliedFilterValues.conditionStatus ? (Number(appliedFilterValues.conditionStatus) as any) : undefined,
         approvalStatus: filterApprovalStatus,
         updatedFrom,
         updatedTo,
@@ -226,7 +227,7 @@ export function AisSystemList() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, filterValues, filterApprovalStatus]);
+  }, [page, pageSize, appliedFilterValues, filterApprovalStatus]);
 
   useEffect(() => {
     fetchData();
@@ -266,11 +267,13 @@ export function AisSystemList() {
   const handleFilterSearch = (vals: typeof filterValues) => {
     setPage(1);
     setFilterValues(vals);
+    setAppliedFilterValues(vals);
   };
 
   const handleFilterReset = () => {
     setPage(1);
     setFilterValues({});
+    setAppliedFilterValues({});
     setFilterApprovalStatus(undefined);
   };
 
@@ -370,16 +373,15 @@ export function AisSystemList() {
       render: (_: any, __: any, index: number) => (page - 1) * pageSize + index + 1,
     },
     {
-      key: 'orgUnitName',
-      label: 'Đơn vị quản lý',
-      dataIndex: 'orgUnitName',
-      width: 220,
-      ellipsis: false,
-      sorter: clientSideStringSorter('orgUnitName'),
-      render: (v: string, record: AisSystemListItem) => (
+      key: 'name',
+      label: 'Tên / Mã thiết bị',
+      dataIndex: 'name',
+      width: 260,
+      fixed: 'left' as const,
+      sorter: clientSideStringSorter('name', 'code'),
+      render: (_: any, record: AisSystemListItem) => (
         <div
-          style={{ cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: fontWeightBold }}
-          title={v || '—'}
+          style={{ cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
           onClick={() => {
             setEditingId(record.id);
             setSelectedRecord(record as any);
@@ -387,6 +389,20 @@ export function AisSystemList() {
             setIsModalOpen(true);
           }}
         >
+          <div style={cellTitleStyle} title={record.name || ''}>{record.name || '—'}</div>
+          <div style={cellSubtitleStyle} title={record.code || ''}>{record.code || '—'}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'orgUnitName',
+      label: 'Đơn vị quản lý',
+      dataIndex: 'orgUnitName',
+      width: 200,
+      ellipsis: false,
+      sorter: clientSideStringSorter('orgUnitName'),
+      render: (v: string) => (
+        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v || '—'}>
           {v || '—'}
         </div>
       ),
@@ -474,163 +490,6 @@ export function AisSystemList() {
           <span style={statusBadgeStyle(color)}>
             {label}
           </span>
-        );
-      },
-    },
-    {
-      key: 'approvalStatus',
-      label: 'Trạng thái',
-      dataIndex: 'approvalStatus',
-      width: 180,
-      ellipsis: false,
-      sorter: clientSideBadgeSorter('approvalStatus'),
-      render: (status: ApprovalStatus) => <ApprovalStatusBadge status={status} />,
-    },
-    {
-      key: 'updatedByName',
-      label: 'Cán bộ cập nhật',
-      dataIndex: 'updatedByName',
-      width: 220,
-      ellipsis: false,
-      sorter: clientSideUserSorter('updatedByName', 'createdByName', 'updatedAt'),
-      render: (_: any, record: AisSystemListItem) => {
-        const name = record.updatedByName || record.createdByName || '—';
-        const date = record.updatedAt || record.createdAt;
-        return (
-          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
-            <div
-              title={name}
-              style={{
-                fontWeight: fontWeightBold,
-                color: '#0F172A',
-                fontSize: fontSizeMd,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {name}
-            </div>
-            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
-              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      key: 'submittedByName',
-      label: 'Cán bộ gửi phê duyệt',
-      dataIndex: 'submittedByName',
-      width: 220,
-      ellipsis: false,
-      render: (_: any, record: AisSystemListItem) => {
-        const name = record.submittedByName || '—';
-        const date = record.submittedAt || (record as any).submittedDate;
-        return (
-          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
-            <div
-              title={name}
-              style={{
-                fontWeight: fontWeightBold,
-                color: '#0F172A',
-                fontSize: fontSizeMd,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {name}
-            </div>
-            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
-              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      key: 'approverLevel1Name',
-      label: 'Phê duyệt cấp Cảng vụ/Chi cục',
-      dataIndex: 'approverLevel1Name',
-      width: 240,
-      ellipsis: false,
-      render: (_: any, record: AisSystemListItem) => {
-        const name = record.approverLevel1Name || (record as any).approverLevel1 || '—';
-        const date = record.approvedDateLevel1;
-        return (
-          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
-            <div
-              title={name}
-              style={{
-                fontWeight: fontWeightBold,
-                color: '#0F172A',
-                fontSize: fontSizeMd,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {name}
-            </div>
-            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
-              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      key: 'approverLevel2Name',
-      label: 'Phê duyệt cấp Cục',
-      dataIndex: 'approverLevel2Name',
-      width: 220,
-      ellipsis: false,
-      render: (_: any, record: AisSystemListItem) => {
-        const name = record.approverLevel2Name || (record as any).approverLevel2 || '—';
-        const date = record.approvedDateLevel2;
-        return (
-          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
-            <div
-              title={name}
-              style={{
-                fontWeight: fontWeightBold,
-                color: '#0F172A',
-                fontSize: fontSizeMd,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {name}
-            </div>
-            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
-              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      key: 'rejectionReason',
-      label: 'Lý do từ chối',
-      dataIndex: 'rejectionReason',
-      width: 220,
-      ellipsis: false,
-      render: (v: string, record: AisSystemListItem) => {
-        const reason = v || (record as any).rejectionReasonLevel2 || (record as any).rejectionReasonLevel1 || '—';
-        return (
-          <div
-            title={reason}
-            style={{
-              color: reason !== '—' ? statusCritical : textTertiary,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {reason}
-          </div>
         );
       },
     },
@@ -738,13 +597,11 @@ export function AisSystemList() {
   };
 
   return (
-    <ThemeTokenProvider>
+    <ThemeTokenProvider tokens={themeTokenChk}>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', background: '#F8FAFC' }}>
         <ScreenHeader
-          title="Quản lý Hệ thống trạm bờ AIS"
           breadcrumb={[
-            { label: 'Trang chủ', path: '/' },
-            { label: 'Quản lý tài sản KCHT', path: '/infrastructure' },
+            { label: 'Tài sản KCHTGT' },
             { label: 'Hệ thống trạm bờ AIS' },
           ]}
           actions={
@@ -759,7 +616,7 @@ export function AisSystemList() {
         <FilterTableLayout
           hideFilterToggle={true}
           onFilterApply={() => handleFilterSearch(filterValues)}
-          onFilterReset={() => { setFilterValues({}); handleFilterReset(); }}
+          onFilterReset={handleFilterReset}
           loading={loading}
           error={isError}
           errorMessage={errorMessage}
@@ -798,9 +655,9 @@ export function AisSystemList() {
                 />
               </SidebarFilterField>
 
-              <SidebarFilterField label="Tìm kiếm từ khóa">
+              <SidebarFilterField label="Tìm kiếm">
                 <Input
-                  placeholder="Tìm theo mã, tên thiết bị..."
+                  placeholder="Tìm theo mã, tên thiết bị"
                   allowClear
                   value={filterValues.keyword}
                   onChange={(e) => setFilterValues((prev) => ({ ...prev, keyword: e.target.value }))}
@@ -826,10 +683,10 @@ export function AisSystemList() {
 
               <SidebarFilterField label="Năm đưa vào sử dụng">
                 <DatePicker
-                  {...getDatePickerProps({
+                  {...getSidebarDatePickerProps({
                     picker: 'year',
                     format: 'YYYY',
-                    placeholder: 'Tất cả năm...',
+                    placeholder: 'Tất cả năm',
                     value: filterValues.commissioningYear ? dayjs(String(filterValues.commissioningYear), 'YYYY') : null,
                     onChange: (date: any) => setFilterValues((prev) => ({ ...prev, commissioningYear: date ? date.year() : undefined })),
                   })}
@@ -864,7 +721,7 @@ export function AisSystemList() {
             dataSource={dataSource}
             rowKey="id"
             rowActions={rowActions}
-            loading={false}
+            loading={loading}
             scroll={{ x: 'max-content' }}
           />
           <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
@@ -877,6 +734,9 @@ export function AisSystemList() {
             initialData={selectedRecord}
             mode={modalMode}
             orgUnits={orgUnitOptions}
+            opCenterOptions={opCenters}
+            radarStationOptions={radarStations}
+            operatingOrganizationOptions={operatingOrganizations}
             onCancel={() => { setIsModalOpen(false); setEditingId(null); setSelectedRecord(null); }}
             onSuccess={() => { setIsModalOpen(false); setEditingId(null); setSelectedRecord(null); refreshList(); }}
           />
@@ -911,7 +771,7 @@ export function AisSystemList() {
             rows={3}
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
-            placeholder="Nhập lý do từ chối..."
+            placeholder="Nhập lý do từ chối"
             maxLength={1000}
             showCount
             style={textAreaStyle}

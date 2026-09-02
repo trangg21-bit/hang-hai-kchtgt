@@ -158,7 +158,7 @@ class AisSystemServiceTest {
         assertEquals("AIS-000001", response.getCode());
         assertEquals("Thiết bị AIS Bờ Hải Phòng", response.getName());
         verify(repository).save(any(AisSystem.class));
-        verify(historyRepository).save(any());
+        verify(historyRepository, never()).save(any());
     }
 
     @Test

@@ -9,6 +9,14 @@ import type {
 } from '../types/hanoiStation';
 import type { HistoryEntry } from '../types/radarStation';
 
+export type {
+  HanoiStationItem,
+  CreateHanoiStationRequest,
+  UpdateHanoiStationRequest,
+  HanoiStationListParams,
+  HanoiStationSearchResponse,
+};
+
 const BASE_PATH = '/v1/stations/haiphong';
 
 function buildSearchParams(params: Record<string, string | number | undefined>) {
@@ -20,6 +28,11 @@ function buildSearchParams(params: Record<string, string | number | undefined>) 
 }
 
 export const hanoiStationService = {
+  async generateCode(): Promise<{ code: string }> {
+    const res = await api.get(`${BASE_PATH}/generate-code`);
+    return res.data?.data || res.data || { code: 'TTXLTT-0001' };
+  },
+
   async getById(id: string): Promise<HanoiStationItem> {
     const res = await api.get(`${BASE_PATH}/${id}`);
     return toSingle<HanoiStationItem>(res.data?.data || res.data) || ({} as HanoiStationItem);
@@ -94,13 +107,15 @@ export const hanoiStationService = {
     return toSingle<HanoiStationItem>(res.data?.data || res.data) || ({} as HanoiStationItem);
   },
 
-  async approveC1(id: string): Promise<HanoiStationItem> {
-    const res = await api.post(`${BASE_PATH}/${id}/approve-c1`);
+  async approveC1(id: string, statusOrContent?: string, maybeContent?: string): Promise<HanoiStationItem> {
+    const content = maybeContent !== undefined ? maybeContent : statusOrContent;
+    const res = await api.post(`${BASE_PATH}/${id}/approve-c1`, { content: content || 'Đã phê duyệt cấp 1' });
     return toSingle<HanoiStationItem>(res.data?.data || res.data) || ({} as HanoiStationItem);
   },
 
-  async approveC2(id: string): Promise<HanoiStationItem> {
-    const res = await api.post(`${BASE_PATH}/${id}/approve-c2`);
+  async approveC2(id: string, statusOrContent?: string, maybeContent?: string): Promise<HanoiStationItem> {
+    const content = maybeContent !== undefined ? maybeContent : statusOrContent;
+    const res = await api.post(`${BASE_PATH}/${id}/approve-c2`, { content: content || 'Đã phê duyệt cấp 2' });
     return toSingle<HanoiStationItem>(res.data?.data || res.data) || ({} as HanoiStationItem);
   },
 
@@ -109,8 +124,53 @@ export const hanoiStationService = {
     return toSingle<HanoiStationItem>(res.data?.data || res.data) || ({} as HanoiStationItem);
   },
 
+  async approveL1(id: string, statusOrContent?: string, maybeContent?: string): Promise<HanoiStationItem> {
+    return this.approveC1(id, statusOrContent, maybeContent);
+  },
+
+  async approveL2(id: string, statusOrContent?: string, maybeContent?: string): Promise<HanoiStationItem> {
+    return this.approveC2(id, statusOrContent, maybeContent);
+  },
+
   async getHistory(id: string): Promise<HistoryEntry[]> {
     const res = await api.get(`${BASE_PATH}/${id}/history`);
     return toArray<HistoryEntry>(res.data?.data || res.data);
+  },
+
+  async getAttachments(id: string): Promise<any[]> {
+    try {
+      const res = await api.get(`${BASE_PATH}/${id}/attachments`);
+      const data = res.data?.data || res.data;
+      return toArray<any>(data);
+    } catch {
+      return [];
+    }
+  },
+
+  async uploadAttachment(id: string, file: File): Promise<any> {
+    const formData = new FormData();
+    formData.append('files', file);
+    const res = await api.post(`${BASE_PATH}/${id}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data?.data || res.data;
+  },
+
+  async deleteAttachment(id: string, attId: string): Promise<void> {
+    await api.delete(`${BASE_PATH}/${id}/attachments/${attId}`);
+  },
+
+  async downloadAttachment(id: string, attId: string, fileName?: string): Promise<void> {
+    const res = await api.get(`${BASE_PATH}/${id}/attachments/${attId}/download`, {
+      responseType: 'blob',
+    });
+    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', fileName || 'attachment');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
   },
 };

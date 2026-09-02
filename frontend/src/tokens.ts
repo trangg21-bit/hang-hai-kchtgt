@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  EyeOutlined, EditOutlined, DeleteOutlined, HistoryOutlined, SendOutlined,
+  DeleteOutlined, HistoryOutlined, SendOutlined,
   CheckOutlined, CloseOutlined, PlusOutlined, SearchOutlined, ReloadOutlined,
 } from '@ant-design/icons';
 import { colors } from './theme';
@@ -175,6 +175,7 @@ export const selectStyle: React.CSSProperties = {
 /** TextArea nhiều dòng — bo cong tròn đồng bộ 100% với ô Input/Dropdown viên thuốc */
 export const textAreaStyle: React.CSSProperties = {
   borderRadius: 20,
+  resize: 'none',
 };
 
 /** Nút chính: "Tạo mới", "Lưu", "Phê duyệt", "Tìm kiếm" */
@@ -343,6 +344,27 @@ export const requiredMarkStyle =
  * Helper chuẩn hóa props cho DatePicker (đơn) và RangePicker (khoảng ngày)
  */
 export const getDatePickerProps = (extraProps?: Record<string, any>) => {
+  const { classNames: extraClassNames, getPopupContainer, ...rest } = extraProps || {};
+  return {
+    format: 'DD/MM/YYYY',
+    getPopupContainer: getPopupContainer || ((trigger: HTMLElement) => trigger.closest('.ant-form-item-control-input-content') || trigger.parentElement || document.body),
+    classNames: {
+      ...extraClassNames,
+      popup: {
+        ...extraClassNames?.popup,
+        root: [
+          'chk-form-datepicker-popup',
+          typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
+          typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
+        ].filter(Boolean).join(' '),
+      },
+    },
+    style: { ...inputStyle, width: '100%' },
+    ...rest,
+  };
+};
+
+export const getSidebarDatePickerProps = (extraProps?: Record<string, any>) => {
   const { classNames: extraClassNames, ...rest } = extraProps || {};
   return {
     format: 'DD/MM/YYYY',
@@ -351,7 +373,7 @@ export const getDatePickerProps = (extraProps?: Record<string, any>) => {
       popup: {
         ...extraClassNames?.popup,
         root: [
-          'chk-form-datepicker-popup',
+          'chk-sidebar-datepicker-popup',
           typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
           typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
         ].filter(Boolean).join(' '),

@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Modal, Input, Select, DatePicker } from 'antd';
 import { inmarsatStationService } from '../../../services/inmarsatStationService';
 import { organizationService } from '../../../services/organizationService';
-import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
+
 import type { CoastalStationInmarsatResponse } from '../../../services/station/types';
 import { ConditionStatus, CONDITION_STATUS_MAP, CONDITION_STATUS_OPTIONS } from '../../../types/vtsSystem';
 import { useAuthStore } from '../../../store/authStore';
@@ -10,7 +10,7 @@ import { usePermissionStore } from '../../../store/permissionStore';
 import { ScreenHeader, DataTable } from '../../../components/list-view';
 import FilterTableLayout from '../../../components/list-view/FilterTableLayout';
 import Pagination from '../../../components/list-view/Pagination';
-import InmarsatStationForm from './InmarsatStationForm';
+import InmarsatStationForm, { getOperatingOrgName } from './InmarsatStationForm';
 import ApprovalModal from '../../../components/shared/ApprovalModal';
 import ApprovalStatusBadge from '../../../components/shared/ApprovalStatusBadge';
 import toast from '../../../components/ToastNotification';
@@ -111,9 +111,10 @@ export const InmarsatStationList = () => {
   // Filters
   const [activeTab, setActiveTab] = useState<string>('all');
   const [filterCollapsed, setFilterCollapsed] = useState<boolean>(false);
+
   const [filterOrgUnitId, setFilterOrgUnitId] = useState<string | undefined>();
   const [filterKeyword, setFilterKeyword] = useState<string>('');
-  const [filterOperatingOrgId, setFilterOperatingOrgId] = useState<string | undefined>();
+
   const [filterProvinceId, setFilterProvinceId] = useState<number | undefined>();
   const [filterConditionStatus, setFilterConditionStatus] = useState<string | undefined>();
   const [filterDateRange, setFilterDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
@@ -177,15 +178,14 @@ export const InmarsatStationList = () => {
     try {
       let approvalStatusParam: string | undefined = undefined;
       if (activeTab === 'draft') approvalStatusParam = 'DRAFT';
-      else if (activeTab === 'proposed') approvalStatusParam = 'PROPOSED';
+      else if (activeTab === 'proposed') approvalStatusParam = 'PENDING_APPROVAL';
       else if (activeTab === 'approved_level1') approvalStatusParam = 'APPROVED_LEVEL1';
-      else if (activeTab === 'approved_level2') approvalStatusParam = 'APPROVED_LEVEL2';
+      else if (activeTab === 'approved_level2') approvalStatusParam = 'APPROVED';
       else if (activeTab === 'rejected') approvalStatusParam = 'REJECTED';
 
       const res = await inmarsatStationService.search({
         keyword: filterKeyword?.trim() || undefined,
         orgUnitId: filterOrgUnitId,
-        operatingOrgId: filterOperatingOrgId,
         provinceId: filterProvinceId,
         conditionStatus: filterConditionStatus,
         approvalStatus: approvalStatusParam,
@@ -205,7 +205,7 @@ export const InmarsatStationList = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, filterKeyword, filterOrgUnitId, filterOperatingOrgId, filterProvinceId, filterConditionStatus, filterDateRange, page, pageSize]);
+  }, [activeTab, filterKeyword, filterOrgUnitId, filterProvinceId, filterConditionStatus, filterDateRange, page, pageSize]);
 
   useEffect(() => {
     fetchData();
@@ -357,21 +357,21 @@ export const InmarsatStationList = () => {
     }
   };
 
-  // Status tabs definition
-  const totalDraft = Number(statusCounts?.draft ?? statusCounts?.DRAFT ?? 0);
-  const totalProposed = Number(statusCounts?.proposed ?? statusCounts?.PROPOSED ?? statusCounts?.pending ?? 0);
-  const totalApprovedL1 = Number(statusCounts?.approved_level1 ?? statusCounts?.APPROVED_LEVEL1 ?? 0);
-  const totalApprovedL2 = Number(statusCounts?.approved_level2 ?? statusCounts?.APPROVED_LEVEL2 ?? statusCounts?.approved ?? 0);
-  const totalRejected = Number(statusCounts?.rejected ?? statusCounts?.REJECTED ?? 0);
+  // Status tabs definition — backend trả keys: DRAFT, PENDING_APPROVAL, APPROVED_LEVEL1, APPROVED, REJECTED, ALL
+  const totalDraft = Number(statusCounts?.DRAFT ?? statusCounts?.draft ?? 0);
+  const totalProposed = Number(statusCounts?.PENDING_APPROVAL ?? statusCounts?.PROPOSED ?? statusCounts?.pending ?? 0);
+  const totalApprovedL1 = Number(statusCounts?.APPROVED_LEVEL1 ?? statusCounts?.approved_level1 ?? 0);
+  const totalApprovedL2 = Number(statusCounts?.APPROVED ?? statusCounts?.APPROVED_LEVEL2 ?? statusCounts?.approved ?? 0);
+  const totalRejected = Number(statusCounts?.REJECTED ?? statusCounts?.rejected ?? 0);
   const totalAll = totalDraft + totalProposed + totalApprovedL1 + totalApprovedL2 + totalRejected;
 
   const statusTabs = [
-    { key: 'all', label: 'Tất cả', count: totalAll || total, color: actionPrimary },
-    { key: 'draft', label: 'Lưu tạm', count: totalDraft, color: statusDraft },
-    { key: 'proposed', label: 'Chờ Cảng vụ duyệt', count: totalProposed, color: statusAttention },
-    { key: 'approved_level1', label: 'Chờ Cục duyệt', count: totalApprovedL1, color: actionPrimary },
-    { key: 'approved_level2', label: 'Đã duyệt', count: totalApprovedL2, color: statusOperational },
-    { key: 'rejected', label: 'Từ chối', count: totalRejected, color: statusCritical },
+    { key: 'all', label: 'Tất cả', count: totalAll || total, color: actionPrimary, active: activeTab === 'all' },
+    { key: 'draft', label: 'Lưu tạm', count: totalDraft, color: statusDraft, active: activeTab === 'draft' },
+    { key: 'proposed', label: 'Chờ Cảng vụ duyệt', count: totalProposed, color: statusAttention, active: activeTab === 'proposed' },
+    { key: 'approved_level1', label: 'Chờ Cục duyệt', count: totalApprovedL1, color: actionPrimary, active: activeTab === 'approved_level1' },
+    { key: 'approved_level2', label: 'Đã duyệt', count: totalApprovedL2, color: statusOperational, active: activeTab === 'approved_level2' },
+    { key: 'rejected', label: 'Từ chối', count: totalRejected, color: statusCritical, active: activeTab === 'rejected' },
   ];
 
   // Table columns definition
@@ -390,24 +390,20 @@ export const InmarsatStationList = () => {
     },
     {
       key: 'name',
-      label: 'Tên/Mã đài Inmarsat',
+      label: 'Tên / Mã đài',
       dataIndex: 'name',
       width: 260,
       fixed: 'left' as const,
       sorter: clientSideStringSorter('name', 'code'),
-      render: (_: any, record: CoastalStationInmarsatResponse) => {
-        const title = record.name || record.stationName || '—';
-        const sub = record.code || record.deviceCode || '—';
-        return (
-          <div
-            style={{ cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-            onClick={() => handleOpenDetail(record)}
-          >
-            <div style={cellTitleStyle} title={title}>{title}</div>
-            <div style={cellSubtitleStyle} title={sub}>{sub}</div>
-          </div>
-        );
-      },
+      render: (_: any, record: CoastalStationInmarsatResponse) => (
+        <div
+          style={{ cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          onClick={() => handleOpenDetail(record)}
+        >
+          <div style={cellTitleStyle} title={record.name || record.stationName || ''}>{record.name || record.stationName || '—'}</div>
+          <div style={cellSubtitleStyle} title={record.code || record.deviceCode || ''}>{record.code || record.deviceCode || '—'}</div>
+        </div>
+      ),
     },
     {
       key: 'orgUnitName',
@@ -428,7 +424,7 @@ export const InmarsatStationList = () => {
       width: 180,
       sorter: clientSideStringSorter('operatingOrgName'),
       render: (val: string, record: CoastalStationInmarsatResponse) => {
-        const name = val || DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === record.operatingOrgId || String(o.id) === String(record.operatingOrgId))?.name || '—';
+        const name = getOperatingOrgName(record.operatingOrgId, val);
         return (
           <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>
             {name}
@@ -456,6 +452,7 @@ export const InmarsatStationList = () => {
       label: 'Tình trạng',
       dataIndex: 'conditionStatus',
       width: 160,
+      align: 'center' as const,
       sorter: clientSideBadgeSorter('conditionStatus', CONDITION_STATUS_MAP),
       render: (st: string) => {
         const enumKey = (st || ConditionStatus.OPERATIONAL) as ConditionStatus;
@@ -482,6 +479,7 @@ export const InmarsatStationList = () => {
       label: 'Trạng thái phê duyệt',
       dataIndex: 'approvalStatus',
       width: 180,
+      align: 'center' as const,
       sorter: clientSideBadgeSorter('approvalStatus'),
       render: (st: string) => <ApprovalStatusBadge status={st} />,
     },
@@ -492,7 +490,9 @@ export const InmarsatStationList = () => {
       width: 220,
       sorter: (a: any, b: any) => (a.updatedAt ? new Date(a.updatedAt).getTime() : 0) - (b.updatedAt ? new Date(b.updatedAt).getTime() : 0),
       render: (val: string, record: CoastalStationInmarsatResponse) => {
-        const name = val || (record as any).createdByName || '—';
+        const isUuid = (v?: string | null) => !!v && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-/.test(v);
+        const raw = val || (record as any).createdByName;
+        const name = isUuid(raw) ? '—' : (raw || '—');
         const date = record.updatedAt || record.createdAt;
         return (
           <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
@@ -516,6 +516,109 @@ export const InmarsatStationList = () => {
         );
       },
     },
+    {
+      key: 'submittedByName',
+      label: 'Cán bộ gửi phê duyệt',
+      dataIndex: 'submittedByName',
+      width: 220,
+      sorter: (a: any, b: any) => (a.submittedDate || a.submittedAt ? new Date(a.submittedDate || a.submittedAt).getTime() : 0) - (b.submittedDate || b.submittedAt ? new Date(b.submittedDate || b.submittedAt).getTime() : 0),
+      render: (val: string, record: CoastalStationInmarsatResponse) => {
+        const raw = val || record.submittedBy;
+        const isUuid = !!raw && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-/.test(raw);
+        const name = isUuid ? null : raw;
+        const date = record.submittedDate || record.submittedAt;
+        if (!name && !date) return <span style={{ color: textSecondary }}>—</span>;
+        return (
+          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+            <div
+              title={name || '—'}
+              style={{
+                fontWeight: fontWeightBold,
+                color: '#0F172A',
+                fontSize: fontSizeMd,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {name || '—'}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'approverNameLevel1',
+      label: 'Phê duyệt cấp Cảng vụ/Chi cục',
+      dataIndex: 'approverNameLevel1',
+      width: 240,
+      sorter: (a: any, b: any) => (a.approvedDateLevel1 ? new Date(a.approvedDateLevel1).getTime() : 0) - (b.approvedDateLevel1 ? new Date(b.approvedDateLevel1).getTime() : 0),
+      render: (val: string, record: CoastalStationInmarsatResponse) => {
+        const raw = val || record.approverLevel1Name || record.approverLevel1;
+        const isUuid = !!raw && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-/.test(raw);
+        const name = isUuid ? null : raw;
+        const date = record.approvedDateLevel1;
+        if (!name && !date) return <span style={{ color: textSecondary }}>—</span>;
+        return (
+          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+            <div
+              title={name || '—'}
+              style={{
+                fontWeight: fontWeightBold,
+                color: '#0F172A',
+                fontSize: fontSizeMd,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {name || '—'}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'approverNameLevel2',
+      label: 'Phê duyệt cấp Cục',
+      dataIndex: 'approverNameLevel2',
+      width: 220,
+      sorter: (a: any, b: any) => (a.approvedDateLevel2 ? new Date(a.approvedDateLevel2).getTime() : 0) - (b.approvedDateLevel2 ? new Date(b.approvedDateLevel2).getTime() : 0),
+      render: (val: string, record: CoastalStationInmarsatResponse) => {
+        const raw = val || record.approverLevel2Name || record.approverLevel2;
+        const isUuid = !!raw && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-/.test(raw);
+        const name = isUuid ? null : raw;
+        const date = record.approvedDateLevel2;
+        if (!name && !date) return <span style={{ color: textSecondary }}>—</span>;
+        return (
+          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+            <div
+              title={name || '—'}
+              style={{
+                fontWeight: fontWeightBold,
+                color: '#0F172A',
+                fontSize: fontSizeMd,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {name || '—'}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
+    },
+
   ];
 
   return (
@@ -524,7 +627,7 @@ export const InmarsatStationList = () => {
         {/* Header */}
         <ScreenHeader
           breadcrumb={[
-            { label: 'Đài duyên hải & Vệ tinh' },
+            { label: 'Tài sản KCHTGT' },
             { label: 'Đài vệ tinh Inmarsat' },
           ]}
           actions={
@@ -547,7 +650,6 @@ export const InmarsatStationList = () => {
           onFilterReset={() => {
             setFilterOrgUnitId(undefined);
             setFilterKeyword('');
-            setFilterOperatingOrgId(undefined);
             setFilterProvinceId(undefined);
             setFilterConditionStatus(undefined);
             setFilterDateRange(null);
@@ -560,7 +662,6 @@ export const InmarsatStationList = () => {
           loading={loading}
           filterContent={
             <>
-              {/* ── BỘ LỌC CƠ BẢN ── */}
               <SidebarFilterField label="Đơn vị quản lý" style={{ marginTop: spaceMd }}>
                 <OrgUnitTreeSelect
                   organizations={filteredOrgUnits}
@@ -571,7 +672,6 @@ export const InmarsatStationList = () => {
                   value={filterOrgUnitId}
                   onChange={(val) => {
                     setFilterOrgUnitId(val);
-                    setFilterOperatingOrgId(undefined);
                   }}
                   style={{ ...selectStyle, width: '100%' }}
                 />
@@ -579,7 +679,7 @@ export const InmarsatStationList = () => {
 
               <SidebarFilterField label="Tìm kiếm">
                 <Input
-                  placeholder="Tìm kiếm"
+                  placeholder="Tìm theo mã đài, tên đài"
                   allowClear
                   value={filterKeyword}
                   onChange={(e) => setFilterKeyword(e.target.value)}
@@ -589,9 +689,24 @@ export const InmarsatStationList = () => {
                 />
               </SidebarFilterField>
 
-              {/* ── BỘ LỌC NÂNG CAO (KHI MỞ RỘNG) ── */}
+              {/* ── BỘ LỌC NÂNG CAO ── */}
               {filterCollapsed && (
                 <>
+                  <SidebarFilterField label="Địa điểm (Tỉnh/Thành phố)">
+                    <Select
+                      placeholder="Tất cả tỉnh thành"
+                      allowClear
+                      showSearch
+                      filterOption={(input, option) =>
+                        normalizeSearchText(String(option?.label || '')).includes(normalizeSearchText(input))
+                      }
+                      value={filterProvinceId}
+                      onChange={(val) => setFilterProvinceId(val)}
+                      options={VIETNAM_PROVINCE_OPTIONS}
+                      style={{ ...selectStyle, width: '100%' }}
+                    />
+                  </SidebarFilterField>
+
                   <SidebarFilterField label="Tình trạng">
                     <Select
                       placeholder="Tất cả tình trạng"
@@ -609,36 +724,6 @@ export const InmarsatStationList = () => {
                         value: filterDateRange,
                         onChange: (dates: any) => { setFilterDateRange(dates); setPage(1); },
                       })}
-                    />
-                  </SidebarFilterField>
-
-                  <SidebarFilterField label="Địa điểm (Tỉnh/Thành phố)">
-                    <Select
-                      placeholder="Tất cả tỉnh thành"
-                      allowClear
-                      showSearch
-                      filterOption={(input, option) =>
-                        normalizeSearchText(String(option?.label || '')).includes(normalizeSearchText(input))
-                      }
-                      value={filterProvinceId}
-                      onChange={(val) => setFilterProvinceId(val)}
-                      options={VIETNAM_PROVINCE_OPTIONS}
-                      style={{ ...selectStyle, width: '100%' }}
-                    />
-                  </SidebarFilterField>
-
-                  <SidebarFilterField label="Đơn vị khai thác">
-                    <Select
-                      placeholder="Tất cả đơn vị khai thác"
-                      allowClear
-                      showSearch
-                      filterOption={(input, option) =>
-                        normalizeSearchText(String(option?.label || '')).includes(normalizeSearchText(input))
-                      }
-                      value={filterOperatingOrgId}
-                      onChange={(val) => setFilterOperatingOrgId(val)}
-                      options={DEFAULT_OPERATING_ORGANIZATIONS.map((o) => ({ value: o.id, label: o.name }))}
-                      style={{ ...selectStyle, width: '100%' }}
                     />
                   </SidebarFilterField>
                 </>

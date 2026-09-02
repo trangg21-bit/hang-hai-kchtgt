@@ -174,7 +174,12 @@ public class VtsSystemService {
         validateWriteGuard(request);
         String normalizedCode = request.getCode().trim();
         if (repository.existsByCode(normalizedCode)) {
-            throw new IllegalArgumentException("Mã hệ thống VTS đã tồn tại trong hệ thống");
+            if (normalizedCode.matches("VTS-\\d{6}")) {
+                normalizedCode = generateCode();
+                request.setCode(normalizedCode);
+            } else {
+                throw new IllegalArgumentException("Mã hệ thống VTS đã tồn tại trong hệ thống");
+            }
         }
         ApprovalStatus initialStatus = request.getApprovalStatus() != null ? request.getApprovalStatus() : ApprovalStatus.DRAFT;
         if (initialStatus == ApprovalStatus.PENDING_APPROVAL && approvalService.isDepartmentLevelUser(userId)) {
@@ -579,11 +584,16 @@ public class VtsSystemService {
 
     public List<VtsSystemAttachmentResponse> getAttachments(UUID id) {
         ensureExists(id);
-        List<VtsSystemAttachmentResponse> attachments = attachmentRepository
-                .findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.VTS_SYSTEM).stream()
-                .map(this::toAttachmentResponse)
+        List<InfrastructureAttachment> attachments = attachmentRepository
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.VTS_SYSTEM);
+        Set<UUID> uploaderIds = attachments.stream()
+                .map(InfrastructureAttachment::getUploadedBy)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> uploaderNames = resolveUserNames(uploaderIds);
+        return attachments.stream()
+                .map(a -> toAttachmentResponse(a, uploaderNames.get(a.getUploadedBy())))
                 .collect(Collectors.toList());
-        return attachments;
     }
 
     private void ensureExists(UUID id) {
@@ -763,10 +773,12 @@ public class VtsSystemService {
                 conditionStatus, approvalStatus, fromDate, toDate, updatedFrom, updatedTo, pageable);
 
         // Batch resolve user names in a single query to eliminate N+1 queries
-        Set<UUID> userIds = rawPage.getContent().stream()
-                .map(VtsSystemListProjection::getUpdatedBy)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+        Set<UUID> userIds = new LinkedHashSet<>();
+        for (VtsSystemListProjection item : rawPage.getContent()) {
+            if (item.getUpdatedBy() != null) userIds.add(item.getUpdatedBy());
+            if (item.getCreatedBy() != null) userIds.add(item.getCreatedBy());
+            if (item.getApproverLevel1() != null) userIds.add(item.getApproverLevel1());
+        }
         Map<UUID, String> userNameMap = resolveUserNames(userIds);
 
         return rawPage.map(item -> toListItemResponse(item, userNameMap));
@@ -1219,11 +1231,14 @@ public class VtsSystemService {
         entity.setUpdatedBy(effectiveUserId);
         repository.save(entity);
 
-        if (historyRepository != null) {
+        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+
+        if (historyRepository != null && wasApproved) {
             historyRepository.save(InfrastructureHistory.builder()
                     .refId(vtsSystemId)
                     .refType(InfrastructureType.VTS_SYSTEM)
-                    .approvalLevel(ApprovalLevel.LEVEL_0)
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
                     .status(InfrastructureHistoryStatus.UPDATED)
                     .approvedBy(effectiveUserId)
                     .approvedDate(LocalDateTime.now())
@@ -1256,11 +1271,14 @@ public class VtsSystemService {
         entity.setUpdatedBy(effectiveUserId);
         repository.save(entity);
 
-        if (historyRepository != null) {
+        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+
+        if (historyRepository != null && wasApproved) {
             historyRepository.save(InfrastructureHistory.builder()
                     .refId(vtsSystemId)
                     .refType(InfrastructureType.VTS_SYSTEM)
-                    .approvalLevel(ApprovalLevel.LEVEL_0)
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
                     .status(InfrastructureHistoryStatus.UPDATED)
                     .approvedBy(effectiveUserId)
                     .approvedDate(LocalDateTime.now())
@@ -1324,15 +1342,21 @@ public class VtsSystemService {
 
     private VtsSystemResponse toResponse(VtsSystem entity, boolean includeZones, boolean includeAttachments,
             boolean includeSpatial, boolean includeCreatedByName) {
-        List<VtsSystemAttachmentResponse> attachments = includeAttachments
-                ? attachmentRepository
-                        .findByRefIdAndRefTypeOrderByUploadedDateDesc(entity.getId(), InfrastructureType.VTS_SYSTEM)
-                        .stream()
-                        .map(this::toAttachmentResponse)
-                        .collect(Collectors.toList())
-                : Collections.emptyList();
+        List<VtsSystemAttachmentResponse> attachments = Collections.emptyList();
+        if (includeAttachments && entity.getId() != null) {
+            List<InfrastructureAttachment> atts = attachmentRepository
+                    .findByRefIdAndRefTypeOrderByUploadedDateDesc(entity.getId(), InfrastructureType.VTS_SYSTEM);
+            Set<UUID> uploaderIds = atts.stream()
+                    .map(InfrastructureAttachment::getUploadedBy)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            Map<UUID, String> uploaderNames = resolveUserNames(uploaderIds);
+            attachments = atts.stream()
+                    .map(a -> toAttachmentResponse(a, uploaderNames.get(a.getUploadedBy())))
+                    .collect(Collectors.toList());
+        }
 
-        List<VtsZoneDto> zones = includeZones
+        List<VtsZoneDto> zones = includeZones && entity.getId() != null
                 ? zoneRepository.findByVtsSystemIdOrderByCreatedAtAsc(entity.getId()).stream()
                         .map(this::toZoneDto)
                         .collect(Collectors.toList())
@@ -1350,56 +1374,33 @@ public class VtsSystemService {
         }
 
         String createdByName = null;
-        if (includeCreatedByName && entity.getCreatedBy() != null) {
-            createdByName = userRepository.findByIdWithRelations(entity.getCreatedBy())
-                    .map(this::formatUserDisplayName)
-                    .orElse(null);
-        }
-
         String updatedByName = null;
-        if (includeCreatedByName && entity.getUpdatedBy() != null) {
-            updatedByName = userRepository.findByIdWithRelations(entity.getUpdatedBy())
-                    .map(this::formatUserDisplayName)
-                    .orElse(null);
-        }
-
+        String submittedByName = null;
         String approverLevel1Name = null;
-        if (includeCreatedByName && entity.getApproverLevel1() != null) {
-            approverLevel1Name = userRepository.findByIdWithRelations(entity.getApproverLevel1())
-                    .map(this::formatUserDisplayName)
-                    .orElse(null);
-        }
-
         String approverLevel2Name = null;
-        if (includeCreatedByName && entity.getApproverLevel2() != null) {
-            approverLevel2Name = userRepository.findByIdWithRelations(entity.getApproverLevel2())
-                    .map(this::formatUserDisplayName)
-                    .orElse(null);
+
+        if (includeCreatedByName) {
+            Set<UUID> userIds = new LinkedHashSet<>();
+            if (entity.getCreatedBy() != null) userIds.add(entity.getCreatedBy());
+            if (entity.getUpdatedBy() != null) userIds.add(entity.getUpdatedBy());
+            if (entity.getSubmittedBy() != null) userIds.add(entity.getSubmittedBy());
+            if (entity.getApproverLevel1() != null) userIds.add(entity.getApproverLevel1());
+            if (entity.getApproverLevel2() != null) userIds.add(entity.getApproverLevel2());
+
+            Map<UUID, String> userNameMap = resolveUserNames(userIds);
+            createdByName = userNameMap.get(entity.getCreatedBy());
+            updatedByName = userNameMap.get(entity.getUpdatedBy());
+            submittedByName = userNameMap.get(entity.getSubmittedBy());
+            approverLevel1Name = userNameMap.get(entity.getApproverLevel1());
+            approverLevel2Name = userNameMap.get(entity.getApproverLevel2());
         }
 
-        String approvalContentLevel1 = null;
-        String approvalContentLevel2 = null;
-        // Chỉ đọc nhật ký khi dựng bản chi tiết. Bản rút gọn (toLightResponse) được
-        // dùng cho các API trả về nhiều bản ghi; nếu vẫn nạp toàn bộ nhật ký của
-        // từng bản thì mỗi dòng phát sinh thêm một truy vấn không phân trang (N+1).
-        if (includeCreatedByName && entity.getId() != null) {
-            List<InfrastructureHistory> histories = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
-                    InfrastructureType.VTS_SYSTEM, entity.getId());
-            for (InfrastructureHistory h : histories) {
-                if (h.getApprovalLevel() == ApprovalLevel.LEVEL_1 && approvalContentLevel1 == null
-                        && h.getReason() != null && !h.getReason().isBlank()) {
-                    approvalContentLevel1 = h.getReason();
-                }
-                if (h.getApprovalLevel() == ApprovalLevel.LEVEL_2 && approvalContentLevel2 == null
-                        && h.getReason() != null && !h.getReason().isBlank()) {
-                    approvalContentLevel2 = h.getReason();
-                }
-            }
-        }
-        if (approvalContentLevel1 == null && entity.getApproverLevel1() != null) {
+        String approvalContentLevel1 = entity.getLevel1ApprovalContent();
+        if ((approvalContentLevel1 == null || approvalContentLevel1.isBlank()) && entity.getApproverLevel1() != null) {
             approvalContentLevel1 = "Đã phê duyệt";
         }
-        if (approvalContentLevel2 == null
+        String approvalContentLevel2 = entity.getLevel2ApprovalContent();
+        if ((approvalContentLevel2 == null || approvalContentLevel2.isBlank())
                 && (entity.getApproverLevel2() != null || entity.getApprovalStatus() == ApprovalStatus.APPROVED)) {
             approvalContentLevel2 = "Đã phê duyệt";
         }
@@ -1437,8 +1438,8 @@ public class VtsSystemService {
                 .createdBy(entity.getCreatedBy())
                 .createdByName(createdByName)
                 .createdDate(entity.getCreatedAt())
-                .submittedByName(createdByName)
-                .submittedDate(entity.getCreatedAt())
+                .submittedByName(submittedByName)
+                .submittedDate(entity.getSubmittedAt())
                 .updatedBy(entity.getUpdatedBy())
                 .updatedByName(updatedByName)
                 .updatedDate(entity.getUpdatedAt())
@@ -1485,12 +1486,16 @@ public class VtsSystemService {
 
     private VtsSystemListItemResponse toListItemResponse(VtsSystemListProjection item, Map<UUID, String> userNameMap) {
         UUID updatedBy = item.getUpdatedBy();
-        String updatedByName = null;
-        if (updatedBy != null) {
-            updatedByName = userNameMap.containsKey(updatedBy)
-                    ? userNameMap.get(updatedBy)
-                    : resolveUserName(updatedBy);
+        String updatedByName = updatedBy != null ? userNameMap.get(updatedBy) : null;
+        UUID createdBy = item.getCreatedBy();
+        String createdByName = createdBy != null ? userNameMap.get(createdBy) : null;
+        UUID approverLevel1 = item.getApproverLevel1();
+
+        String operatingOrgName = item.getOperatingOrgName();
+        if (operatingOrgName == null && item.getOperatingOrgId() != null) {
+            operatingOrgName = resolveOperatingOrgName(item.getOperatingOrgId());
         }
+
         return VtsSystemListItemResponse.builder()
                 .id(item.getId())
                 .code(item.getCode())
@@ -1500,13 +1505,16 @@ public class VtsSystemService {
                 .orgUnitId(item.getOrgUnitId())
                 .orgUnitName(orgUnitCacheService.getName(item.getOrgUnitId()))
                 .approvalStatus(item.getApprovalStatus())
-                .approverLevel1(item.getApproverLevel1())
+                .rejectionReason(item.getRejectionReason())
+                .approverLevel1(approverLevel1)
+                .createdBy(createdBy)
+                .createdByName(createdByName)
                 .updatedDate(item.getUpdatedDate())
                 .updatedByName(updatedByName)
                 .owningOrgId(item.getOwningOrgId())
                 .owningOrgName(orgUnitCacheService.getName(item.getOwningOrgId()))
                 .operatingOrgId(item.getOperatingOrgId())
-                .operatingOrgName(resolveOperatingOrgName(item.getOperatingOrgId()))
+                .operatingOrgName(operatingOrgName)
                 .portId(item.getPortId())
                 .portName(portCacheService.getName(item.getPortId()))
                 .provinceId(item.getProvinceId())
@@ -1522,10 +1530,7 @@ public class VtsSystemService {
         return GisSpatialObjectType.LINE_OTHER;
     }
 
-    private VtsSystemAttachmentResponse toAttachmentResponse(InfrastructureAttachment attachment) {
-        String uploadedByName = attachment.getUploadedBy() != null
-                ? resolveUserName(attachment.getUploadedBy())
-                : null;
+    private VtsSystemAttachmentResponse toAttachmentResponse(InfrastructureAttachment attachment, String uploadedByName) {
         return VtsSystemAttachmentResponse.builder()
                 .id(attachment.getId())
                 .fileName(attachment.getFileName())
@@ -1537,6 +1542,13 @@ public class VtsSystemService {
                 .uploadedByName(uploadedByName)
                 .uploadedDate(attachment.getUploadedDate())
                 .build();
+    }
+
+    private VtsSystemAttachmentResponse toAttachmentResponse(InfrastructureAttachment attachment) {
+        String uploadedByName = attachment.getUploadedBy() != null
+                ? resolveUserName(attachment.getUploadedBy())
+                : null;
+        return toAttachmentResponse(attachment, uploadedByName);
     }
 
     /** Số tệp đính kèm tối đa cho một hồ sơ (khớp giới hạn hiển thị ở giao diện). */

@@ -61,14 +61,7 @@ export const inmarsatStationService = {
       sort: params?.sort,
     });
 
-    const [listRes, countRes] = await Promise.all([
-      api.get(`${BASE_PATH}?${sp}`),
-      api.get(`${BASE_PATH}/counts?${buildSearchParams({
-        keyword: params?.keyword,
-        orgUnitId: params?.orgUnitId,
-        conditionStatus: params?.conditionStatus,
-      })}`).catch(() => ({ data: {} })),
-    ]);
+    const listRes = await api.get(`${BASE_PATH}?${sp}`);
 
     const pageData = listRes.data || {};
     const content = Array.isArray(pageData) ? pageData : (pageData.content || pageData.items || pageData.data || []);
@@ -79,15 +72,11 @@ export const inmarsatStationService = {
       total: totalElements,
       page: (pageData.number !== undefined ? pageData.number + 1 : params?.page) || 1,
       size: pageData.size || params?.size || 10,
-      statusCounts: countRes.data || {},
+      statusCounts: pageData.statusCounts || {},
     };
   },
 
-  async getCounts(params?: { orgUnitId?: string; keyword?: string; conditionStatus?: string }): Promise<Record<string, number>> {
-    const sp = buildSearchParams(params || {});
-    const res = await api.get(`${BASE_PATH}/counts?${sp}`);
-    return res.data || {};
-  },
+
 
   async create(payload: CoastalStationInmarsatRequest): Promise<CoastalStationInmarsatResponse> {
     const res = await api.post(BASE_PATH, payload);

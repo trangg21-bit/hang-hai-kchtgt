@@ -31,7 +31,7 @@ consumed_by_modules: []
 
 ## 1. Mô tả ngắn
 
-Tính năng tra cứu lịch sử thay đổi của một Đài LRIT. Ghi nhận mọi action: CREATE, UPDATE, SOFT_DELETE, APPROVE_L1, APPROVE_L2, REJECT. Mỗi bản ghi lịch sử chứa: actionType, changedField, previousValue, newValue, changedBy, changedAt. Lịch sử không bị xóa theo bản ghi (soft-delete vẫn giữ lịch sử). Hiển thị dạng timeline trên UI, API GET `/api/v1/stations/lrit/{id}/history` trả về danh sách CoastalStationLRITHistoryResponse.
+Tính năng tra cứu lịch sử thay đổi của một Đài LRIT sau khi hồ sơ đã được phê duyệt cấp cuối. Tạo mới, cập nhật hoặc thao tác tệp ở trạng thái nháp/từ chối không tạo và không hiển thị lịch sử. Mỗi bản ghi lịch sử chứa: actionType, changedField, previousValue, newValue, changedBy, changedAt. Dịch vụ đa chọn chỉ hiển thị phần thực sự thêm/xóa; tọa độ GIS hiển thị thống nhất theo loại hình và từng điểm DMS. API GET `/api/v1/stations/lrit/{id}/history` trả về danh sách CoastalStationLRITHistoryResponse.
 
 ## 2. Trường dữ liệu
 
@@ -89,14 +89,7 @@ Bảng mô tả các trường liên quan đến lịch sử thay đổi, trích
 
 ## 3. Trạng thái và phê duyệt
 
-- Lịch sử ghi nhận mọi action type:
-  - **CREATE**: Khi tạo mới bản ghi (trạng thái DRAFT).
-  - **UPDATE**: Khi cập nhật thông tin (trạng thái DRAFT hoặc REJECTED).
-  - **SOFT_DELETE**: Khi xóa mềm bản ghi.
-  - **APPROVE_L1**: Khi Approver L1 phê duyệt.
-  - **APPROVE_L2**: Khi Approver L2 phê duyệt cuối.
-  - **REJECT**: Khi bị từ chối ở bất kỳ cấp nào.
-- Lịch sử không bị xóa theo bản ghi (soft-delete vẫn giữ lịch sử).
+- Lịch sử chỉ ghi và hiển thị các thay đổi phát sinh sau phê duyệt cấp cuối; không hiển thị action CREATE, phê duyệt/từ chối hoặc thao tác nháp.
 - Danh sách lịch sử sắp xếp theo thời gian giảm dần (mới nhất trước).
 - Mỗi bản ghi lịch sử chứa: actionType, changedField, previousValue, newValue, changedBy, changedAt.
 
@@ -108,7 +101,7 @@ Bảng mô tả các trường liên quan đến lịch sử thay đổi, trích
 
 | ID | Quy tắc | Áp dụng |
 |---|---|---|
-| BR-115-01 | Lịch sử ghi nhận mọi action: CREATE, UPDATE, SOFT_DELETE, APPROVE_L1, APPROVE_L2, REJECT | History |
+| BR-115-01 | Lịch sử chỉ ghi/hiển thị thay đổi sau phê duyệt cấp cuối; danh sách đa chọn hiển thị delta thực tế, tọa độ GIS hiển thị nhất quán DMS | History |
 | BR-115-02 | Lịch sử không bị xóa theo bản ghi (soft-delete vẫn giữ) | History |
 | BR-115-03 | Sắp xếp theo thời gian giảm dần (mới nhất trước) | History |
 | BR-115-04 | Hiển thị dạng timeline trên UI | History |
@@ -117,7 +110,7 @@ Bảng mô tả các trường liên quan đến lịch sử thay đổi, trích
 ### 4.2. Acceptance Criteria kế thừa (nếu có)
 
 - **AC-115-01** — Tra cứu hợp lệ: HTTP 200, trả về danh sách lịch sử đầy đủ.
-- **AC-115-02** — Danh sách bao gồm tất cả action types (CREATE, UPDATE, SOFT_DELETE, APPROVE_L1, APPROVE_L2, REJECT).
+- **AC-115-02** — Hồ sơ chưa duyệt trả lịch sử rỗng; dịch vụ giữ nguyên không bị hiển thị là xóa/thêm lại.
 - **AC-115-03** — Hiển thị chính xác changedField, previousValue, newValue, changedBy, changedAt.
 - **AC-115-04** — Soft-delete bản ghi vẫn giữ lịch sử trong danh sách.
 

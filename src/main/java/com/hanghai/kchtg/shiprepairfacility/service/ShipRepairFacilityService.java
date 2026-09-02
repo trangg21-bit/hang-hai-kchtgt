@@ -85,16 +85,6 @@ public class ShipRepairFacilityService {
             saved = repository.save(saved);
         }
 
-        historyRepository.save(InfrastructureHistory.builder()
-                .refId(saved.getId())
-                .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
-                .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(InfrastructureHistoryStatus.CREATED)
-                .approvedBy(createdBy)
-                .approvedDate(LocalDateTime.now())
-                .reason("Tạo mới cơ sở sửa chữa, đóng tàu")
-                .build());
-
         return toResponse(saved);
     }
 

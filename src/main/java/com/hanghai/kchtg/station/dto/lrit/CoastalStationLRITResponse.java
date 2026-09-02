@@ -70,6 +70,7 @@ public class CoastalStationLRITResponse {
     private LocalDateTime submittedAt;
     private UUID submittedBy;
     private String submittedByName;
+    private String approvalContentLevel1;
 
     private UUID approverLevel1;
     private String approverLevel1Name;
@@ -78,6 +79,7 @@ public class CoastalStationLRITResponse {
     private UUID approverLevel2;
     private String approverLevel2Name;
     private LocalDateTime approvedDateLevel2;
+    private String approvalContentLevel2;
 
     private String rejectionReason;
 

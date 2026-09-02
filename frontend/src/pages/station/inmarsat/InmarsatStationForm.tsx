@@ -32,7 +32,7 @@ import {
   drawerTabBarStyle, drawerStyles, drawerFormScrollStyle, drawerGisControlBoxStyle, DRAWER_TABLE_SCROLL_Y,
   requiredMarkStyle, spaceFormField, radiusPill, sidebarBg,
   fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd, fontSizeLg,
-  textSecondary, textTertiary, borderDefault,
+  textPrimary, textSecondary, textTertiary, borderDefault,
   statusCritical, statusOperational, statusAttention, actionPrimary, textAreaStyle,
   readonlyInputStyle, drawerCloseBtnStyle, selectStyle, inputStyle,
 } from '../../../themetokenchk';
@@ -42,6 +42,7 @@ import { usePermissionStore } from '../../../store/permissionStore';
 import { FormOrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../../components/org-unit';
 import DetailTable from '../../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../../components/shared/InfrastructureAttachmentTab';
+import ServiceMultiSelect from '../../../components/shared/ServiceMultiSelect';
 import ApprovalStatusBadge from '../../../components/shared/ApprovalStatusBadge';
 import GisLocationSelector from '../../../components/gis/GisLocationSelector';
 import { symbolService } from '../../../services/symbolService';
@@ -51,13 +52,13 @@ import { parseWktToCoordinates, serializeCoordinatesToWkt, ddToDms, dmsToDd, adj
 import { focusErrorTab } from '../../../utils/formValidationHelper';
 
 export const INMARSAT_SERVICE_OPTIONS = [
-  { value: 'Inmarsat-C', label: 'Inmarsat-C' },
-  { value: 'Inmarsat-F77', label: 'Inmarsat-F77' },
-  { value: 'FleetBroadband', label: 'FleetBroadband' },
-  { value: 'SafetyNET', label: 'SafetyNET' },
-  { value: 'Fleet Safety', label: 'Fleet Safety' },
-  { value: 'LRIT Tracking', label: 'LRIT Tracking' },
-  { value: 'EGC', label: 'EGC' },
+  { value: 'Inmarsat-C', label: 'Inmarsat-C — Dịch vụ thông tin vệ tinh Inmarsat-C' },
+  { value: 'Inmarsat-F77', label: 'Inmarsat-F77 — Dịch vụ thoại và dữ liệu hàng hải' },
+  { value: 'FleetBroadband', label: 'FleetBroadband — Dịch vụ băng rộng hàng hải' },
+  { value: 'SafetyNET', label: 'SafetyNET — Phát thông tin an toàn hàng hải' },
+  { value: 'Fleet Safety', label: 'Fleet Safety — Dịch vụ an toàn đội tàu' },
+  { value: 'LRIT Tracking', label: 'LRIT Tracking — Nhận dạng và theo dõi tầm xa' },
+  { value: 'EGC', label: 'EGC — Điện báo gọi nhóm nâng cao' },
 ];
 
 export const DEFAULT_GIS_SYMBOLS = [
@@ -114,33 +115,125 @@ const renderConditionBadge = (status?: ConditionStatus | string) => {
 
 const renderServicesBadges = (services?: string[] | string) => {
   if (!services) return '—';
-  const list = Array.isArray(services)
-    ? services
-    : (typeof services === 'string' ? services.split(',').map((s) => s.trim()).filter(Boolean) : []);
+  let list: string[] = [];
+  if (Array.isArray(services)) {
+    list = services;
+  } else if (typeof services === 'string') {
+    try {
+      const parsed = JSON.parse(services);
+      if (Array.isArray(parsed)) list = parsed;
+      else list = [String(parsed)];
+    } catch {
+      list = services.split(',').map((s) => s.trim()).filter(Boolean);
+    }
+  }
   if (list.length === 0) return '—';
   return (
-    <Space size={[6, 6]} wrap>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 8px', alignItems: 'center' }}>
       {list.map((srv) => (
         <span
           key={srv}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            padding: '2px 10px',
-            border: `1px solid ${actionPrimary}40`,
+            padding: '0 10px',
+            height: '28px',
+            lineHeight: '26px',
             borderRadius: radiusPill,
-            fontSize: fontSizeMd,
-            fontWeight: fontWeightMedium,
-            background: `${actionPrimary}15`,
-            color: actionPrimary,
+            background: '#eef3fb',
+            border: '1px solid #c6d9f5',
+            color: '#12468C',
+            fontSize: '12px',
+            fontWeight: 500,
+            whiteSpace: 'nowrap',
           }}
         >
           {srv}
         </span>
       ))}
-    </Space>
+    </div>
   );
 };
+
+export const getOperatingOrgName = (idOrCode?: string | null, name?: string | null): string => {
+  const isUuid = (val?: string | null) =>
+    !!val && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(val);
+
+  if (name && name !== '—' && !isUuid(name)) {
+    return name;
+  }
+  const key = isUuid(name) ? name : idOrCode;
+  if (!key) return '—';
+
+  const found = DEFAULT_OPERATING_ORGANIZATIONS.find(
+    (o) => o.id === key || String(o.id) === String(key) || o.code === key
+  );
+  if (found) return found.name;
+  return name && !isUuid(name) ? name : '—';
+};
+
+// Mock 30 bản ghi cho TAB 4 - Sub-tab 1: Thông tin vận hành khai thác
+const MOCK_OPERATION_PLANS = Array.from({ length: 30 }, (_, i) => {
+  const index = i + 1;
+  const pad = index < 10 ? `0${index}` : `${index}`;
+  const year = 2024 + Math.floor(index / 10);
+  const month = ((index - 1) % 12) + 1;
+  const monthPad = month < 10 ? `0${month}` : `${month}`;
+  return {
+    id: `mock-inmarsat-op-${index}`,
+    planCode: `KH-VHKT-${year}/INMARSAT-${pad}`,
+    planName: `Kế hoạch duy trì phát sóng và thông tin an toàn hàng hải đài Inmarsat đợt ${index}`,
+    startDate: `${year}-${monthPad}-01`,
+    endDate: `${year}-${monthPad}-28`,
+  };
+});
+
+// Mock 30 bản ghi cho TAB 4 - Sub-tab 2: Thông tin bảo trì
+const MOCK_MAINTENANCE_PLANS = Array.from({ length: 30 }, (_, i) => {
+  const index = i + 1;
+  const pad = index < 10 ? `0${index}` : `${index}`;
+  const year = 2024 + Math.floor(index / 10);
+  const month = ((index - 1) % 12) + 1;
+  const monthPad = month < 10 ? `0${month}` : `${month}`;
+  return {
+    id: `mock-inmarsat-maint-${index}`,
+    planCode: `KH-BT-${year}/INMARSAT-${pad}`,
+    planName: `Kế hoạch bảo dưỡng định kỳ hệ thống thiết bị đài thông tin vệ tinh Inmarsat đợt ${index}`,
+    startTime: `${year}-${monthPad}-05`,
+    endTime: `${year}-${monthPad}-12`,
+  };
+});
+
+// Mock 30 bản ghi cho TAB 4 - Sub-tab 3: Thông tin sự cố
+const MOCK_INCIDENTS = Array.from({ length: 30 }, (_, i) => {
+  const index = i + 1;
+  const pad = index < 10 ? `0${index}` : `${index}`;
+  const types = [
+    'Mất kết nối đường truyền vệ tinh Inmarsat',
+    'Cảnh báo suy hao tín hiệu Anten Inmarsat-C',
+    'Gián đoạn nguồn điện lưới khu vực đài',
+    'Lỗi đồng bộ dịch vụ SafetyNET / EGC',
+    'Cảnh báo nhiệt độ máy chủ thu phát vượt ngưỡng',
+  ];
+  const locations = [
+    'Đài Inmarsat Hải Phòng',
+    'Đài Inmarsat Đà Nẵng',
+    'Đài Inmarsat TP. Hồ Chí Minh',
+    'Đài Inmarsat Vũng Tàu',
+  ];
+  const year = 2024 + Math.floor(index / 10);
+  const month = ((index - 1) % 12) + 1;
+  const monthPad = month < 10 ? `0${month}` : `${month}`;
+  const day = ((index * 3) % 25) + 1;
+  const dayPad = day < 10 ? `0${day}` : `${day}`;
+  return {
+    id: `mock-inmarsat-inc-${index}`,
+    incidentCode: `SC-INMARSAT-${year}/${pad}`,
+    incidentType: types[i % types.length],
+    location: locations[i % locations.length],
+    incidentTime: `${year}-${monthPad}-${dayPad} 08:30:00`,
+  };
+});
 
 export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
   open = true,
@@ -161,7 +254,11 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
   const [record, setRecord] = useState<CoastalStationInmarsatResponse | null>(initialData || null);
   const [attachments, setAttachments] = useState<any[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [pendingDeletedAttachments, setPendingDeletedAttachments] = useState<{ id: string; fileName: string }[]>([]);
   const [approvalSectionOpen, setApprovalSectionOpen] = useState(false);
+  const [operationPlanList] = useState<any[]>(MOCK_OPERATION_PLANS);
+  const [maintenancePlanList] = useState<any[]>(MOCK_MAINTENANCE_PLANS);
+  const [incidentList] = useState<any[]>(MOCK_INCIDENTS);
 
   // Symbols & GIS
   const [symbols, setSymbols] = useState<any[]>([]);
@@ -169,7 +266,6 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
   const [coordinateList, setCoordinateList] = useState<{ latitude: number | null; longitude: number | null }[]>([]);
 
   const watchedGeometryType = Form.useWatch('geometryType', form);
-  const watchedServices = Form.useWatch('services', form);
 
   // Permissions & user
   const { user } = useAuthStore();
@@ -220,6 +316,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
     if (!open) return;
     setTabKey('general');
     setPendingFiles([]);
+    setPendingDeletedAttachments([]);
 
     if (isCreateMode) {
       setRecord(null);
@@ -259,7 +356,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
           if (pts.length === 0 && res.latitude != null && res.longitude != null) {
             pts = [{ latitude: Number(res.latitude), longitude: Number(res.longitude) }];
           }
-          setCoordinateList(adjustCoordinateListForGeometry(pts, res.objectType || 'POINT'));
+          setCoordinateList(pts.length > 0 ? adjustCoordinateListForGeometry(pts, res.objectType || 'POINT') : []);
           form.setFieldsValue({
             code: res.code || res.deviceCode,
             name: res.name || res.stationName,
@@ -272,12 +369,20 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
             services: Array.isArray(res.services)
               ? res.services
               : (typeof res.services === 'string' && res.services.trim()
-                  ? res.services.split(',').map((s: string) => s.trim()).filter(Boolean)
+                  ? (() => {
+                      try {
+                        const parsed = JSON.parse(res.services);
+                        if (Array.isArray(parsed)) return parsed;
+                        return [String(parsed)];
+                      } catch {
+                        return res.services.split(',').map((s: string) => s.trim()).filter(Boolean);
+                      }
+                    })()
                   : []),
             frequency: res.frequency,
             notes: res.notes || res.description || (res as any).note,
-            geometryType: res.objectType || 'POINT',
-            symbol: res.symbol,
+            geometryType: res.geometryType || res.objectType || 'POINT',
+            symbol: res.symbolId || res.symbol,
             coordinateSystem: res.coordinateSystem || 'WGS 84 / VN-2000',
             displayRule: res.displayRule || 'Độ, phút, giây (DMS)',
           });
@@ -354,8 +459,16 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
     const act = actionTypeRef.current;
     setIsSubmitting(true);
     try {
-      const validCoords = coordinateList.filter((c) => c.latitude != null && c.longitude != null);
+      const geomType = values.geometryType || 'POINT';
+      const validCoords = coordinateList.filter((c) => c.latitude != null && c.longitude != null && !isNaN(c.latitude) && !isNaN(c.longitude));
+      const minPoints = geomType === 'LINE' ? 2 : (geomType === 'POLYGON' ? 3 : 1);
+      if (validCoords.length > 0 && validCoords.length < minPoints) {
+        toast.error(`Đối tượng kiểu ${geomType === 'LINE' ? 'đường' : 'vùng'} yêu cầu tối thiểu ${minPoints} điểm tọa độ`);
+        setIsSubmitting(false);
+        return;
+      }
       const firstCoord = validCoords[0];
+
 
       const payload: CoastalStationInmarsatRequest = {
         code: values.code?.trim(),
@@ -397,6 +510,13 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
         }
       } else if (resultId) {
         await inmarsatStationService.update(resultId, payload);
+        if (pendingDeletedAttachments.length > 0) {
+          try {
+            await Promise.all(pendingDeletedAttachments.map((a) => inmarsatStationService.deleteAttachment(resultId!, a.id)));
+          } catch (delErr) {
+            console.warn('Failed to delete some attachments on edit', delErr);
+          }
+        }
         if (pendingFiles.length > 0) {
           try {
             await Promise.all(pendingFiles.map((f) => inmarsatStationService.uploadAttachment(resultId!, f)));
@@ -405,6 +525,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
           }
         }
       }
+      setPendingDeletedAttachments([]);
 
       if (resultId) {
         if (act === 'submit') {
@@ -483,23 +604,15 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
       toast.error('Không có quyền xóa tệp đính kèm');
       return;
     }
+    const targetAtt = attachments.find((a) => a.id === attId);
     const isTemp = String(attId).startsWith('temp_') || String(attId).startsWith('temp-');
     if (isTemp) {
       setPendingFiles((prev) => prev.filter((f) => (f as any)._tempId !== attId && f.name !== attId));
-      setAttachments((prev) => prev.filter((a) => a.id !== attId));
-      toast.success('Đã xóa tệp đính kèm');
-      return;
+    } else if (targetAtt) {
+      setPendingDeletedAttachments((prev) => [...prev, { id: attId, fileName: targetAtt.fileName }]);
     }
-    const targetId = record?.id || editId;
-    if (targetId) {
-      try {
-        await inmarsatStationService.deleteAttachment(targetId, attId);
-        setAttachments((prev) => prev.filter((a) => a.id !== attId));
-        toast.success('Đã xóa tệp đính kèm');
-      } catch (err: any) {
-        toast.error(err?.response?.data?.message || 'Không thể xóa tệp đính kèm');
-      }
-    }
+    setAttachments((prev) => prev.filter((a) => a.id !== attId));
+    toast.success('Đã xóa tệp đính kèm');
   };
 
   const handleDownloadAttachment = async (attId: string, fileName?: string) => {
@@ -626,7 +739,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                         <div className="chk-detail-row"><span className="chk-detail-label">Mã đài</span><span className="chk-detail-value">{record.code || record.deviceCode || '—'}</span></div>
                         <div className="chk-detail-row"><span className="chk-detail-label">Tên đài</span><span className="chk-detail-value">{record.name || record.stationName || '—'}</span></div>
                         <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị quản lý</span><span className="chk-detail-value">{record.orgUnitName || '—'}</span></div>
-                        <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị khai thác</span><span className="chk-detail-value">{record.operatingOrgName || DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === record.operatingOrgId || String(o.id) === String(record.operatingOrgId))?.name || '—'}</span></div>
+                        <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị khai thác</span><span className="chk-detail-value">{getOperatingOrgName(record.operatingOrgId, record.operatingOrgName)}</span></div>
                         <div className="chk-detail-row"><span className="chk-detail-label">Địa điểm (Tỉnh/TP)</span><span className="chk-detail-value">{getProvinceNameById(record.provinceId) || '—'}</span></div>
                         <div className="chk-detail-row"><span className="chk-detail-label">Địa điểm chi tiết</span><span className="chk-detail-value">{record.locationDetail || record.locationAddress || '—'}</span></div>
                         <div className="chk-detail-row"><span className="chk-detail-label">Tình trạng</span><span className="chk-detail-value">{renderConditionBadge(record.conditionStatus)}</span></div>
@@ -634,7 +747,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                       </div>
 
                       {/* ── Thông tin khác (8-11) ── */}
-                      <div style={{ marginTop: 20, marginBottom: 12, borderTop: `1px solid ${borderDefault}`, paddingTop: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ marginTop: 20, marginBottom: 12, paddingTop: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ display: 'inline-block', width: 4, height: 16, borderRadius: 2, backgroundColor: actionPrimary }} />
                         <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                           Thông tin khác
@@ -656,54 +769,8 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                         </div>
                       </div>
 
-                      {/* ── Thông tin phê duyệt (Toggle Dropdown) ── */}
-                      <div style={{ marginTop: 20, marginBottom: 10, borderTop: `1px solid ${borderDefault}`, paddingTop: 14 }}>
-                        <button
-                          type="button"
-                          onClick={() => setApprovalSectionOpen(!approvalSectionOpen)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: '4px 0',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                          }}
-                        >
-                          <span style={{ display: 'inline-block', width: 4, height: 16, borderRadius: 2, backgroundColor: actionPrimary }} />
-                          <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                            Thông tin phê duyệt
-                          </span>
-                          <span style={{ fontSize: 11, color: actionPrimary, marginLeft: 4 }}>{approvalSectionOpen ? '▲' : '▼'}</span>
-                        </button>
-                      </div>
 
-                      {approvalSectionOpen && (
-                        <div className="chk-detail-grid">
-                          <div className="chk-detail-row"><span className="chk-detail-label">Ngày gửi duyệt</span><span className="chk-detail-value">{record.submittedDate ? dayjs(record.submittedDate).format('DD/MM/YYYY HH:mm:ss') : (record.submittedAt ? dayjs(record.submittedAt).format('DD/MM/YYYY HH:mm:ss') : '—')}</span></div>
-                          <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ gửi duyệt</span><span className="chk-detail-value">{record.submittedByName || record.submittedBy || '—'}</span></div>
 
-                          <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt Cảng vụ</span><span className="chk-detail-value">{record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                          <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt Cảng vụ</span><span className="chk-detail-value">{record.approverLevel1Name || record.approverLevel1 || '—'}</span></div>
-
-                          <div className="chk-detail-row"><span className="chk-detail-label">Nội dung Cảng vụ phê duyệt</span><span className="chk-detail-value">{record.approvalReasonLevel1 || record.rejectionReasonLevel1 || '—'}</span></div>
-                          <div style={{ border: 'none' }} />
-
-                          <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt Cục</span><span className="chk-detail-value">{record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                          <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt Cục</span><span className="chk-detail-value">{record.approverLevel2Name || record.approverLevel2 || '—'}</span></div>
-
-                          <div className="chk-detail-row"><span className="chk-detail-label">Nội dung Cục phê duyệt</span><span className="chk-detail-value">{record.approvalReasonLevel2 || record.rejectionReasonLevel2 || '—'}</span></div>
-                          <div style={{ border: 'none' }} />
-
-                          <div className="chk-detail-row"><span className="chk-detail-label">Trạng thái phê duyệt</span><span className="chk-detail-value"><ApprovalStatusBadge status={record.approvalStatus} /></span></div>
-                          <div style={{ border: 'none' }} />
-
-                          {record.rejectionReason && (
-                            <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Lý do từ chối</span><span className="chk-detail-value" style={{ color: statusCritical }}>{record.rejectionReason}</span></div>
-                          )}
-                        </div>
-                      )}
                     </div>
                   ),
                 },
@@ -721,14 +788,17 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                             <div className="chk-detail-row">
                               <span className="chk-detail-label">Loại đối tượng</span>
                               <span className="chk-detail-value">
-                                {record?.objectType === 'LINE' ? 'Đối tượng đường' : record?.objectType === 'POLYGON' ? 'Đối tượng vùng' : 'Đối tượng điểm'}
+                                {record?.objectType
+                                  ? (record.objectType === 'LINE' ? 'Đối tượng đường' : record.objectType === 'POLYGON' ? 'Đối tượng vùng' : 'Đối tượng điểm')
+                                  : '—'}
                               </span>
                             </div>
                             <div className="chk-detail-row">
                               <span className="chk-detail-label">Biểu tượng bản đồ</span>
                               <span className="chk-detail-value">
                                 {(() => {
-                                  const symId = record?.symbol;
+                                  const symId = record?.symbolId || record?.symbol;
+                                  if (!symId) return '—';
                                   const sym = symbols.find((s) => s.id === symId || s.code === symId || (symId && String(s.id) === String(symId)));
                                   if (sym) {
                                     const imgSrc = sym.image
@@ -752,22 +822,17 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                                       </Space>
                                     );
                                   }
-                                  return (
-                                    <Space size={8} align="center" style={{ display: 'inline-flex', alignItems: 'center' }}>
-                                      <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', backgroundColor: actionPrimary }} />
-                                      <span>{record?.symbol ? `Biểu tượng (${record.symbol})` : 'Đài thông tin vệ tinh Inmarsat'}</span>
-                                    </Space>
-                                  );
+                                  return <span>Biểu tượng ({symId})</span>;
                                 })()}
                               </span>
                             </div>
                             <div className="chk-detail-row">
                               <span className="chk-detail-label">Hệ quy chiếu</span>
-                              <span className="chk-detail-value">{record?.coordinateSystem || 'WGS 84 / VN-2000'}</span>
+                              <span className="chk-detail-value">{record?.coordinateSystem || '—'}</span>
                             </div>
                             <div className="chk-detail-row">
                               <span className="chk-detail-label">Quy tắc hiển thị</span>
-                              <span className="chk-detail-value">{(record as any)?.displayRule || 'Độ, phút, giây (DMS)'}</span>
+                              <span className="chk-detail-value">{(record as any)?.displayRule || '—'}</span>
                             </div>
                           </div>
                           <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
@@ -831,6 +896,195 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                     />
                   ),
                 },
+                {
+                  key: 'operationMaintenance',
+                  label: 'Vận hành & bảo trì',
+                  children: (
+                    <Tabs
+                      defaultActiveKey="operation"
+                      tabBarStyle={{ ...drawerTabBarStyle, marginTop: 0, marginBottom: 12 }}
+                      animated={false}
+                      items={[
+                        {
+                          key: 'operation',
+                          label: 'Thông tin vận hành khai thác',
+                          children: (
+                            <DetailTable
+                              scrollY="calc(100vh - 378px)"
+                              dataSource={operationPlanList}
+                              emptyText="Chưa có dữ liệu"
+                              rowKey={(r: any) => r.id || r.planCode || r.code || Math.random().toString()}
+                              columns={[
+                                {
+                                  title: 'STT',
+                                  width: 60,
+                                  align: 'center',
+                                  render: (_: any, __: any, index: number) => index + 1,
+                                },
+                                {
+                                  title: 'Mã kế hoạch',
+                                  dataIndex: 'planCode',
+                                  key: 'planCode',
+                                  width: 240,
+                                  render: (v: string, r: any) => <span style={{ color: textPrimary }}>{v || r.code || '—'}</span>,
+                                },
+                                {
+                                  title: 'Tên kế hoạch',
+                                  dataIndex: 'planName',
+                                  key: 'planName',
+                                  width: 260,
+                                  render: (v: string, r: any) => (
+                                    <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: textPrimary }} title={v || r.name}>
+                                      {v || r.name || '—'}
+                                    </span>
+                                  ),
+                                },
+                                {
+                                  title: 'Ngày bắt đầu',
+                                  dataIndex: 'startDate',
+                                  key: 'startDate',
+                                  width: 260,
+                                  render: (v: any, r: any) => (
+                                    <span style={{ color: textPrimary }}>
+                                      {v ? dayjs(v).format('DD/MM/YYYY') : (r.startTime ? dayjs(r.startTime).format('DD/MM/YYYY') : '—')}
+                                    </span>
+                                  ),
+                                },
+                                {
+                                  title: 'Ngày kết thúc',
+                                  dataIndex: 'endDate',
+                                  key: 'endDate',
+                                  width: 260,
+                                  render: (v: any, r: any) => (
+                                    <span style={{ color: textPrimary }}>
+                                      {v ? dayjs(v).format('DD/MM/YYYY') : (r.endTime ? dayjs(r.endTime).format('DD/MM/YYYY') : '—')}
+                                    </span>
+                                  ),
+                                },
+                              ]}
+                            />
+                          ),
+                        },
+                        {
+                          key: 'maintenance',
+                          label: 'Thông tin bảo trì',
+                          children: (
+                            <DetailTable
+                              scrollY="calc(100vh - 378px)"
+                              dataSource={maintenancePlanList}
+                              emptyText="Chưa có dữ liệu"
+                              rowKey={(r: any) => r.id || r.planCode || r.code || Math.random().toString()}
+                              columns={[
+                                {
+                                  title: 'STT',
+                                  width: 60,
+                                  align: 'center',
+                                  render: (_: any, __: any, index: number) => index + 1,
+                                },
+                                {
+                                  title: 'Mã kế hoạch',
+                                  dataIndex: 'planCode',
+                                  key: 'planCode',
+                                  width: 240,
+                                  render: (v: string, r: any) => <span style={{ color: textPrimary }}>{v || r.code || '—'}</span>,
+                                },
+                                {
+                                  title: 'Tên kế hoạch',
+                                  dataIndex: 'planName',
+                                  key: 'planName',
+                                  width: 260,
+                                  render: (v: string, r: any) => (
+                                    <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: textPrimary }} title={v || r.name}>
+                                      {v || r.name || '—'}
+                                    </span>
+                                  ),
+                                },
+                                {
+                                  title: 'Thời gian bắt đầu',
+                                  dataIndex: 'startTime',
+                                  key: 'startTime',
+                                  width: 240,
+                                  render: (v: any, r: any) => (
+                                    <span style={{ color: textPrimary }}>
+                                      {v ? dayjs(v).format('DD/MM/YYYY') : (r.startDate ? dayjs(r.startDate).format('DD/MM/YYYY') : '—')}
+                                    </span>
+                                  ),
+                                },
+                                {
+                                  title: 'Thời gian kết thúc',
+                                  dataIndex: 'endTime',
+                                  key: 'endTime',
+                                  width: 240,
+                                  render: (v: any, r: any) => (
+                                    <span style={{ color: textPrimary }}>
+                                      {v ? dayjs(v).format('DD/MM/YYYY') : (r.endDate ? dayjs(r.endDate).format('DD/MM/YYYY') : '—')}
+                                    </span>
+                                  ),
+                                },
+                              ]}
+                            />
+                          ),
+                        },
+                        {
+                          key: 'incident',
+                          label: 'Thông tin sự cố',
+                          children: (
+                            <DetailTable
+                              scrollY="calc(100vh - 378px)"
+                              dataSource={incidentList}
+                              emptyText="Chưa có dữ liệu"
+                              rowKey={(r: any) => r.id || r.incidentCode || r.code || Math.random().toString()}
+                              columns={[
+                                {
+                                  title: 'STT',
+                                  width: 60,
+                                  align: 'center',
+                                  render: (_: any, __: any, index: number) => index + 1,
+                                },
+                                {
+                                  title: 'Mã sự cố',
+                                  dataIndex: 'incidentCode',
+                                  key: 'incidentCode',
+                                  width: 200,
+                                  render: (v: string, r: any) => <span style={{ color: textPrimary }}>{v || r.code || '—'}</span>,
+                                },
+                                {
+                                  title: 'Loại sự cố',
+                                  dataIndex: 'incidentType',
+                                  key: 'incidentType',
+                                  width: 220,
+                                  render: (v: string, r: any) => <span style={{ color: textPrimary }}>{v || r.type || '—'}</span>,
+                                },
+                                {
+                                  title: 'Địa điểm',
+                                  dataIndex: 'location',
+                                  key: 'location',
+                                  width: 260,
+                                  render: (v: string, r: any) => (
+                                    <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: textPrimary }} title={v || r.address}>
+                                      {v || r.address || '—'}
+                                    </span>
+                                  ),
+                                },
+                                {
+                                  title: 'Thời gian',
+                                  dataIndex: 'incidentTime',
+                                  key: 'incidentTime',
+                                  width: 200,
+                                  render: (v: any, r: any) => (
+                                    <span style={{ color: textPrimary }}>
+                                      {v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : (r.time ? dayjs(r.time).format('DD/MM/YYYY HH:mm:ss') : '—')}
+                                    </span>
+                                  ),
+                                },
+                              ]}
+                            />
+                          ),
+                        },
+                      ]}
+                    />
+                  ),
+                },
               ]}
             />
           ) : (
@@ -850,90 +1104,6 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
               }}
             >
               <style>{requiredMarkStyle}</style>
-              <style>{`
-                #inmarsat-services-select .ant-select {
-                  border-radius: 20px !important;
-                  padding: 5px 32px 5px 12px !important;
-                  min-height: 40px !important;
-                  height: auto !important;
-                  box-sizing: border-box !important;
-                  position: relative !important;
-                }
-                #inmarsat-services-select .ant-select-content {
-                  display: flex !important;
-                  flex-wrap: wrap !important;
-                  gap: 0 !important;
-                  width: 100% !important;
-                  align-items: center !important;
-                  position: relative !important;
-                  padding: 0 !important;
-                  margin: 0 !important;
-                }
-                #inmarsat-services-select .ant-select-content-item {
-                  flex-shrink: 0 !important;
-                  margin: 0 !important;
-                  padding: 0 !important;
-                }
-                #inmarsat-services-select .ant-select-content-item-prefix {
-                  position: absolute !important;
-                  left: 0 !important;
-                  top: 50% !important;
-                  transform: translateY(-50%) !important;
-                  pointer-events: none !important;
-                  padding: 0 !important;
-                  margin: 0 !important;
-                  width: 100% !important;
-                }
-                #inmarsat-services-select .ant-select-placeholder {
-                  padding: 0 !important;
-                  margin: 0 !important;
-                  left: 0 !important;
-                  font-size: 13px !important;
-                  color: rgba(0, 0, 0, 0.25) !important;
-                  line-height: 28px !important;
-                }
-                #inmarsat-services-select .ant-select-content-item-suffix {
-                  margin: 0 !important;
-                  padding: 0 !important;
-                }
-                #inmarsat-services-select input.ant-select-input {
-                  margin: 0 !important;
-                  padding: 0 !important;
-                  font-size: 13px !important;
-                }
-                #inmarsat-services-select .ant-select-selection-item {
-                  margin: 2px 6px 2px 0 !important;
-                  padding: 0 10px !important;
-                  height: 28px !important;
-                  line-height: 26px !important;
-                  border-radius: 999px !important;
-                  background: #eef3fb !important;
-                  border: 1px solid #c6d9f5 !important;
-                  color: #12468C !important;
-                  font-size: 12px !important;
-                  font-weight: 500 !important;
-                  display: inline-flex !important;
-                  align-items: center !important;
-                  white-space: nowrap !important;
-                }
-                #inmarsat-services-select .ant-select-selection-item-content {
-                  margin-right: 4px !important;
-                }
-                #inmarsat-services-select .ant-select-selection-item-remove {
-                  color: #7e8299 !important;
-                  font-size: 11px !important;
-                }
-                #inmarsat-services-select .ant-select-selection-item-remove:hover {
-                  color: #f1416c !important;
-                }
-                #inmarsat-services-select .ant-select-suffix {
-                  position: absolute !important;
-                  right: 12px !important;
-                  top: 14px !important;
-                  margin: 0 !important;
-                  pointer-events: none !important;
-                }
-              `}</style>
               <Tabs
                 activeKey={tabKey}
                 onChange={setTabKey}
@@ -967,7 +1137,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                               style={{ marginBottom: spaceFormField }}
                             >
                               <Input
-                                placeholder="Nhập tên đài vệ tinh Inmarsat..."
+                                placeholder="Nhập tên đài"
                                 maxLength={255}
                                 showCount
                                 style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }}
@@ -1031,10 +1201,11 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                             <Form.Item
                               name="locationDetail"
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm chi tiết</span>}
+                              rules={[{ required: true, message: 'Vui lòng nhập địa điểm chi tiết' }]}
                               style={{ marginBottom: spaceFormField }}
                             >
                               <Input
-                                placeholder="Nhập địa điểm chi tiết..."
+                                placeholder="Nhập địa điểm chi tiết"
                                 maxLength={500}
                                 showCount
                                 style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }}
@@ -1060,21 +1231,13 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Dịch vụ cung cấp</span>}
                               style={{ marginBottom: spaceFormField }}
                             >
-                              <div id="inmarsat-services-select">
-                                <Select
-                                  mode="multiple"
-                                  showSearch
-                                  placeholder="Chọn dịch vụ cung cấp..."
-                                  options={INMARSAT_SERVICE_OPTIONS}
-                                  value={watchedServices || []}
-                                  onChange={(val) => form.setFieldValue('services', val)}
-                                  suffixIcon={<DownOutlined style={{ fontSize: 11, color: '#93A3B3', pointerEvents: 'none' }} />}
-                                  filterOption={(input, option) =>
-                                    normalizeSearchText(String(option?.label || '')).includes(normalizeSearchText(input))
-                                  }
-                                  style={{ width: '100%' }}
-                                />
-                              </div>
+                              <ServiceMultiSelect
+                                options={INMARSAT_SERVICE_OPTIONS}
+                                placeholder="Chọn dịch vụ cung cấp"
+                                filterOption={(input, option) =>
+                                  normalizeSearchText(String(option?.label || '')).includes(normalizeSearchText(input))
+                                }
+                              />
                             </Form.Item>
                           </Col>
                         </Row>
@@ -1095,13 +1258,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Vùng phủ sóng</span>}
                               style={{ marginBottom: spaceFormField }}
                             >
-                              <Input.TextArea
-                                placeholder="Nhập vùng phủ sóng..."
-                                rows={3}
-                                maxLength={500}
-                                showCount
-                                style={textAreaStyle}
-                              />
+                              <Input.TextArea placeholder="Mô tả phạm vi hoặc vùng phủ sóng của đài Inmarsat" rows={3} maxLength={2000} showCount style={textAreaStyle} />
                             </Form.Item>
                           </Col>
                           <Col span={24}>
@@ -1110,13 +1267,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tần số liên lạc</span>}
                               style={{ marginBottom: spaceFormField }}
                             >
-                              <Input.TextArea
-                                placeholder="Nhập tần số liên lạc..."
-                                rows={3}
-                                maxLength={500}
-                                showCount
-                                style={textAreaStyle}
-                              />
+                              <Input.TextArea placeholder="Nhập tần số liên lạc" rows={3} maxLength={2000} showCount style={textAreaStyle} />
                             </Form.Item>
                           </Col>
                           <Col span={24}>
@@ -1125,7 +1276,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Ghi chú</span>}
                               style={{ marginBottom: 0 }}
                             >
-                              <Input.TextArea rows={3} placeholder="Nhập ghi chú nếu có..." maxLength={1000} showCount style={{ ...textAreaStyle, padding: '10px 16px' }} />
+                              <Input.TextArea placeholder="Nhập ghi chú thêm nếu có..." rows={3} maxLength={2000} showCount style={textAreaStyle} />
                             </Form.Item>
                           </Col>
                         </Row>
@@ -1300,17 +1451,29 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                               key: 'actions',
                               width: 50,
                               align: 'center' as const,
-                              render: (_: any, r: any) => (
-                                <Button
-                                  type="text"
-                                  danger
-                                  size="small"
-                                  icon={<DeleteOutlined style={{ fontSize: 16 }} />}
-                                  style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                  onClick={() => setCoordinateList((p) => p.filter((_, idx) => idx !== r._idx))}
-                                  title="Xóa tọa độ"
-                                />
-                              ),
+                              render: (_: any, r: any) => {
+                                const geom = form.getFieldValue('geometryType') || watchedGeometryType || 'POINT';
+                                const minCount = geom === 'LINE' ? 2 : (geom === 'POLYGON' ? 3 : 1);
+                                const canDelete = coordinateList.length > minCount;
+                                return (
+                                  <Button
+                                    type="text"
+                                    danger
+                                    size="small"
+                                    disabled={!canDelete}
+                                    icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                                    style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                    onClick={() => {
+                                      if (canDelete) {
+                                        setCoordinateList((p) => p.filter((_, idx) => idx !== r._idx));
+                                      } else {
+                                        toast.warning(`Kiểu ${geom === 'LINE' ? 'đường' : (geom === 'POLYGON' ? 'vùng' : 'điểm')} tối thiểu phải có ${minCount} điểm tọa độ`);
+                                      }
+                                    }}
+                                    title={canDelete ? "Xóa tọa độ" : `Tối thiểu ${minCount} điểm tọa độ`}
+                                  />
+                                );
+                              },
                             },
                           ]}
                         />

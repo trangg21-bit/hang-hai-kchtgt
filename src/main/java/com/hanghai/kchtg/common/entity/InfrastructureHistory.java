@@ -59,6 +59,13 @@ public class InfrastructureHistory {
     @Column(name = "new_value", columnDefinition = "TEXT")
     private String newValue;
 
+    @PrePersist
+    public void prePersist() {
+        if (this.approvedDate == null) {
+            this.approvedDate = LocalDateTime.now();
+        }
+    }
+
     public InfrastructureHistory() {}
 
     public InfrastructureHistory(UUID id, UUID refId, InfrastructureType refType, ApprovalLevel approvalLevel,

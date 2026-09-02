@@ -7,6 +7,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { symbolService, type SymbolOption } from '../../services/symbolService';
+import { getProvinceNameById } from '../../types/common';
 import { colors, getRangePickerProps } from '../../themetokenchk';
 import {
   actionPrimary,
@@ -32,6 +33,7 @@ import {
   inputStyle,
   primaryButtonStyle,
 } from '../../themetokenchk';
+import { deduplicateAttachmentHistoryChanges } from '../../utils/historyAttachmentDedup';
 
 export interface HistoryChangeItem {
   field: string;
@@ -97,9 +99,17 @@ const DEFAULT_ACTION_MAP: Record<string, { label: string; color: string; bg: str
   APPROVED: { label: 'Phê duyệt C2', color: statusOperational, bg: `${statusOperational}15` },
   APPROVE_L1: { label: 'Phê duyệt C1', color: statusAttention, bg: `${statusAttention}15` },
   APPROVE_L2: { label: 'Phê duyệt C2', color: statusOperational, bg: `${statusOperational}15` },
+  APPROVED_LEVEL1: { label: 'Phê duyệt C1', color: '#0284C7', bg: '#0284C715' },
+  APPROVED_LEVEL2: { label: 'Phê duyệt C2', color: statusOperational, bg: `${statusOperational}15` },
+  SUBMIT: { label: 'Gửi duyệt', color: '#EDA100', bg: '#EDA10015' },
+  SUBMITTED: { label: 'Gửi duyệt', color: '#EDA100', bg: '#EDA10015' },
+  PROPOSED: { label: 'Gửi duyệt', color: '#EDA100', bg: '#EDA10015' },
+  UNDER_REVIEW: { label: 'Phê duyệt C1', color: '#0284C7', bg: '#0284C715' },
 
   REJECT: { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}15` },
   REJECTED: { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}15` },
+  REJECTED_LEVEL1: { label: 'Từ chối C1', color: statusCritical, bg: `${statusCritical}15` },
+  REJECTED_LEVEL2: { label: 'Từ chối C2', color: statusCritical, bg: `${statusCritical}15` },
 
   INVALIDATE: { label: 'Vô hiệu hóa', color: '#7c3aed', bg: '#7c3aed15' },
   LOCK: { label: 'Khóa tài khoản', color: '#d97706', bg: '#d9770615' },
@@ -124,6 +134,27 @@ const DEFAULT_FIELD_MAP: Record<string, string> = {
   conditionStatus: 'Tình trạng',
   operationalStatus: 'Trạng thái hoạt động',
   approvalStatus: 'Trạng thái phê duyệt',
+  province: 'Địa điểm (Tỉnh/TP)',
+  provinceId: 'Địa điểm (Tỉnh/TP)',
+  provinceName: 'Địa điểm (Tỉnh/TP)',
+  operatingOrgId: 'Đơn vị khai thác',
+  operatingOrgName: 'Đơn vị khai thác',
+  operatingUnitId: 'Đơn vị khai thác',
+  operatingUnitName: 'Đơn vị khai thác',
+  vtsOperationCenterId: 'Thuộc TTDH VTS',
+  vtsOperationCenterName: 'Thuộc TTDH VTS',
+  radarStationId: 'Thuộc Trạm Radar',
+  radarStationName: 'Thuộc Trạm Radar',
+  detailedLocation: 'Địa điểm chi tiết',
+  locationDetail: 'Địa điểm chi tiết',
+  unitOfMeasure: 'Đơn vị tính',
+  quantity: 'Số lượng',
+  commissioningYear: 'Năm đưa vào sử dụng',
+  specifications: 'Thông số kỹ thuật',
+  manufacturer: 'Hãng sản xuất',
+  maintenanceInfo: 'Thông tin bảo trì',
+  note: 'Ghi chú',
+  notes: 'Ghi chú',
   orgUnitId: 'Đơn vị quản lý',
   orgUnitName: 'Tên đơn vị quản lý',
   facilityName: 'Tên cơ sở',
@@ -234,31 +265,20 @@ function renderCoordinatesDisplay(val: string | null) {
   }
   const parsed = parseCoordinatesPoints(val);
   if (!parsed || parsed.points.length === 0) {
-    return <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{parsed?.typeName || val}</span>;
+    return <span style={{ color: textPrimary }}>{parsed?.typeName || val}</span>;
   }
-
-  if (parsed.points.length === 1) {
-    const pt = parsed.points[0];
-    return (
-      <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>
-        {formatCoordPointDms(pt.x, pt.y)}
-      </span>
-    );
-  }
-
+  const { typeName, points } = parsed;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, width: '100%' }}>
-      {parsed.points.map((pt) => (
-        <div
-          key={pt.index}
-          style={{
-            fontSize: fontSizeSm + 1,
-            color: textPrimary,
-            fontWeight: fontWeightBold,
-            lineHeight: 1.4,
-          }}
-        >
-          • Điểm {pt.index}: {formatCoordPointDms(pt.x, pt.y)}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs, width: '100%' }}>
+      {typeName && (
+        <span style={{ fontSize: fontSizeSm, fontWeight: fontWeightBold, color: actionPrimary }}>
+          {typeName} ({points.length} điểm)
+        </span>
+      )}
+      {points.map((pt) => (
+        <div key={pt.index} style={{ fontSize: fontSizeSm, color: textPrimary, lineHeight: 1.5 }}>
+          {points.length > 1 && <span style={{ color: textSecondary, marginRight: spaceXs }}>#{pt.index}:</span>}
+          <span>{formatCoordPointDms(pt.x, pt.y)}</span>
         </div>
       ))}
     </div>
@@ -415,11 +435,11 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
   };
 
   const getRecordTimestamp = (r: CommonHistoryEntry): string => {
-    return r.changedAt || r.createdAt || r.timestamp || '';
+    return r.changedAt || r.createdAt || r.timestamp || r.approvedDate || '';
   };
 
   const getRecordActor = (r: CommonHistoryEntry): string => {
-    return r.changedByName || r.actor || r.changedBy || '—';
+    return r.changedByName || r.actor || r.changedBy || r.approvedBy || '—';
   };
 
   const formatTimestamp = (ts: string) => {
@@ -435,6 +455,11 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
       const custom = formatValue(field, val);
       if (custom !== undefined) return custom;
     }
+    const fLower = (field || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+    if (fLower.includes('tinh') || fLower.includes('province') || fLower.includes('thanh pho') || fLower === 'provinceid') {
+      const provName = getProvinceNameById(val);
+      if (provName) return provName;
+    }
     if (typeof val === 'boolean') return val ? 'Có' : 'Không';
     if (typeof val === 'object') return JSON.stringify(val);
     return String(val);
@@ -445,11 +470,17 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
     const q = keyword.toLowerCase().trim();
 
     const filtered = (records || []).filter((r) => {
+      const act = (r.action || r.status || '').toUpperCase();
+      const reason = (r.reason || r.note || r.description || '').toLowerCase();
+      // Nghiệp vụ: Lịch sử thay đổi chỉ hiển thị cập nhật trên hồ sơ đã duyệt, không hiển thị log Tạo mới / Lưu tạm
+      if (act === 'CREATED' || act === 'CREATE' || act === 'DRAFT' || act === 'PROPOSED' || reason.startsWith('tạo mới')) {
+        return false;
+      }
+
       const ts = getRecordTimestamp(r);
       const actor = getRecordActor(r).toLowerCase();
-      const note = (r.note || r.description || '').toLowerCase();
-      const act = (r.action || '').toLowerCase();
-      const actLabel = resolveAction(r.action).label.toLowerCase();
+      const note = (r.note || r.reason || r.description || '').toLowerCase();
+      const actLabel = resolveAction(r.action || r.status).label.toLowerCase();
 
       // Keyword search
       if (q) {
@@ -461,6 +492,11 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
             const nv = String(c.newValue || '').toLowerCase();
             return fName.includes(q) || ov.includes(q) || nv.includes(q);
           });
+        } else if (!match && r.changedField) {
+          const fName = (combinedFieldMap[r.changedField] || r.changedField).toLowerCase();
+          const ov = String(r.previousValue || '').toLowerCase();
+          const nv = String(r.newValue || '').toLowerCase();
+          match = fName.includes(q) || ov.includes(q) || nv.includes(q);
         }
         if (!match) return false;
       }
@@ -611,14 +647,22 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
               // Extract all changes from items in the group
               const groupChanges: HistoryChangeItem[] = [];
               const groupNotes: string[] = [];
-              let primaryAction = group.items[0]?.action || 'UPDATE';
+              let primaryAction = group.items[0]?.action || group.items[0]?.status || 'UPDATE';
 
               group.items.forEach((item) => {
                 if (item.action) primaryAction = item.action;
+                else if (item.status) primaryAction = item.status;
                 if (item.note) groupNotes.push(item.note);
-                if (item.description && item.description !== item.note) groupNotes.push(item.description);
+                if (item.reason && !groupNotes.includes(item.reason)) groupNotes.push(item.reason);
+                if (item.description && !groupNotes.includes(item.description)) groupNotes.push(item.description);
                 if (item.changes && Array.isArray(item.changes)) {
                   groupChanges.push(...item.changes);
+                } else if (item.changedField) {
+                  groupChanges.push({
+                    field: item.changedField,
+                    oldValue: item.previousValue,
+                    newValue: item.newValue,
+                  });
                 }
               });
 
@@ -628,7 +672,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
               const rawUnit = group.unitName;
               const unitName = rawUnit && rawUnit !== '—' ? rawUnit : 'Cục Hàng hải Việt Nam';
 
-              const validChanges = groupChanges.filter((change) => {
+              const validChanges = deduplicateAttachmentHistoryChanges(groupChanges).filter((change) => {
                 const ov = resolveFieldValue(change.field, change.oldValue);
                 const nv = resolveFieldValue(change.field, change.newValue);
                 if (ov !== '—' && nv !== '—' && String(ov).trim() === String(nv).trim()) {

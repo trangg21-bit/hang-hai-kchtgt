@@ -23,6 +23,7 @@ const COMMON_OPTIONS_BASE_PATH = '/common/options';
 
 const inFlightGetByIdPromises = new Map<string, Promise<VtsSystemResponse>>();
 let inFlightListPromise: { key: string; promise: Promise<{ items: VtsSystemListItem[]; total: number; statusCounts: Record<string, number> }> } | null = null;
+let cachedOperatingOrgs: Array<{ id: string; name: string; code: string }> | null = null;
 
 export const vtsSystemCRUD = {
   async getScopedOrgUnitOptions(): Promise<Array<{ id: string; name: string; code?: string; path?: string; parentId?: string }>> {
@@ -40,13 +41,20 @@ export const vtsSystemCRUD = {
   },
 
   async getOperatingOrganizationOptions(): Promise<Array<{ id: string; name: string; code: string }>> {
+    if (cachedOperatingOrgs && cachedOperatingOrgs.length > 0) {
+      return cachedOperatingOrgs;
+    }
     try {
       const res = await api.get(`${COMMON_OPTIONS_BASE_PATH}/operating-organizations`);
       const data = res.data?.data;
-      if (Array.isArray(data) && data.length > 0) return data;
+      if (Array.isArray(data) && data.length > 0) {
+        cachedOperatingOrgs = data;
+        return data;
+      }
     } catch {
       // ignore
     }
+    cachedOperatingOrgs = DEFAULT_OPERATING_ORGANIZATIONS;
     return DEFAULT_OPERATING_ORGANIZATIONS;
   },
 

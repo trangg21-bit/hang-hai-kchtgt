@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -41,7 +42,7 @@ public class CoastalStationInmarsatController {
     @GetMapping
     @Operation(summary = "Tìm kiếm phân trang danh sách Đài Inmarsat (F-102)")
     @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
-    public ResponseEntity<Page<CoastalStationInmarsatResponse>> search(
+    public ResponseEntity<Map<String, Object>> search(
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) UUID operatingOrgId,
@@ -56,18 +57,21 @@ public class CoastalStationInmarsatController {
         Page<CoastalStationInmarsatResponse> results = service.searchPaged(
                 orgUnitId, keyword, operatingOrgId, provinceId, conditionStatus, approvalStatus,
                 updatedBy, updatedFrom, updatedTo, pageable);
-        return ResponseEntity.ok(results);
+        
+        Map<String, Long> statusCounts = service.countByApprovalStatus(orgUnitId, keyword, conditionStatus);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("content", results.getContent());
+        data.put("totalElements", results.getTotalElements());
+        data.put("totalPages", results.getTotalPages());
+        data.put("number", results.getNumber());
+        data.put("size", results.getSize());
+        data.put("statusCounts", statusCounts);
+
+        return ResponseEntity.ok(data);
     }
 
-    @GetMapping("/counts")
-    @Operation(summary = "Thống kê số lượng bản ghi theo tab trạng thái phê duyệt")
-    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
-    public ResponseEntity<Map<String, Long>> getCounts(
-            @RequestParam(required = false) UUID orgUnitId,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String conditionStatus) {
-        return ResponseEntity.ok(service.countByApprovalStatus(orgUnitId, keyword, conditionStatus));
-    }
+
 
     @GetMapping("/generate-code")
     @Operation(summary = "Tự sinh mã Đài Inmarsat (INMARSAT-xxxx)")

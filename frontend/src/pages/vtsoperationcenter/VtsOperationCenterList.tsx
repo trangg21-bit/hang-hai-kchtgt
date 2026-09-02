@@ -39,6 +39,7 @@ import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/appr
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import { deduplicateAttachmentHistoryChanges } from '../../utils/historyAttachmentDedup';
 
 const CONDITION_COLOR: Record<ConditionStatus, string> = {
   [ConditionStatus.OPERATIONAL]: statusOperational,
@@ -207,12 +208,18 @@ function parseListDelta(oldVal: string | null, newVal: string | null) {
   const oldParts = splitParts(oldVal);
   const newParts = splitParts(newVal);
 
+  const normalizeListItem = (value: string) => normalizeHistoryKey(value).replace(/\s+/g, ' ');
+  const oldPlain = oldParts.filter((part) => !part.startsWith('Xóa ') && !part.startsWith('Cũ: '));
+  const newPlain = newParts.filter((part) => !part.startsWith('Thêm ') && !part.startsWith('Mới: '));
+  const oldPlainKeys = new Set(oldPlain.map(normalizeListItem));
+  const newPlainKeys = new Set(newPlain.map(normalizeListItem));
+
   oldParts.forEach((part) => {
     if (part.startsWith('Xóa ')) {
       removed.push(part.replace('Xóa ', '').trim());
     } else if (part.startsWith('Cũ: ')) {
       modifiedOld.push(part.replace('Cũ: ', '').trim());
-    } else if (part !== '—') {
+    } else if (part !== '—' && !newPlainKeys.has(normalizeListItem(part))) {
       removed.push(part);
     }
   });
@@ -222,7 +229,7 @@ function parseListDelta(oldVal: string | null, newVal: string | null) {
       added.push(part.replace('Thêm ', '').trim());
     } else if (part.startsWith('Mới: ')) {
       modifiedNew.push(part.replace('Mới: ', '').trim());
-    } else if (part !== '—') {
+    } else if (part !== '—' && !oldPlainKeys.has(normalizeListItem(part))) {
       added.push(part);
     }
   });
@@ -328,36 +335,21 @@ function renderCoordinatesDisplay(val: string | null) {
     return <span style={{ color: textTertiary }}>{val === 'Chưa có' ? 'Chưa có' : '—'}</span>;
   }
   const parsed = parseCoordinatesPoints(val);
-  if (!parsed) {
-    return <span style={{ color: textPrimary, fontWeight: fontWeightMedium }}>{val}</span>;
+  if (!parsed || parsed.points.length === 0) {
+    return <span style={{ color: textPrimary }}>{parsed?.typeName || val}</span>;
   }
-
-  if (parsed.points.length === 0) {
-    return <span style={{ color: textPrimary, fontWeight: fontWeightMedium }}>{parsed.typeName || val}</span>;
-  }
-
-  if (parsed.points.length === 1) {
-    const pt = parsed.points[0];
-    return (
-      <span style={{ color: textPrimary, fontWeight: fontWeightMedium }}>
-        {formatCoordPointDms(pt.x, pt.y)}
-      </span>
-    );
-  }
-
+  const { typeName, points } = parsed;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, width: '100%' }}>
-      {parsed.points.map((pt) => (
-        <div
-          key={pt.index}
-          style={{
-            fontSize: fontSizeSm + 1,
-            color: textPrimary,
-            fontWeight: fontWeightMedium,
-            lineHeight: 1.4,
-          }}
-        >
-          • Điểm {pt.index}: {formatCoordPointDms(pt.x, pt.y)}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs, width: '100%' }}>
+      {typeName && (
+        <span style={{ fontSize: fontSizeSm, fontWeight: fontWeightBold, color: actionPrimary }}>
+          {typeName} ({points.length} điểm)
+        </span>
+      )}
+      {points.map((pt) => (
+        <div key={pt.index} style={{ fontSize: fontSizeSm, color: textPrimary, lineHeight: 1.5 }}>
+          {points.length > 1 && <span style={{ color: textSecondary, marginRight: spaceXs }}>#{pt.index}:</span>}
+          <span>{formatCoordPointDms(pt.x, pt.y)}</span>
         </div>
       ))}
     </div>
@@ -737,7 +729,7 @@ export default function VtsOperationCenterList() {
       const prev = groups[groups.length - 1];
       const actor = historyActor(r);
       const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
-      const isSameGroup = prev && Math.abs(prev.tsSec - sec) <= 60 && prev.actor === actor && (prev.status === r.status || isBothUpdate) && prev.approvalLevel === r.approvalLevel;
+      const isSameGroup = prev && Math.abs(prev.tsSec - sec) <= 60 && prev.actor === actor && (prev.status === r.status || isBothUpdate);
       if (isSameGroup) {
         prev.items.push(r);
       } else {
@@ -752,7 +744,7 @@ export default function VtsOperationCenterList() {
     );
     return (
       <div>{groups.map((g, gi) => {
-        const changes = g.items.flatMap((item: any) => historyChangeRows(item)).sort((a: any, b: any) => {
+        const changes = deduplicateAttachmentHistoryChanges(g.items.flatMap((item: any) => historyChangeRows(item))).sort((a: any, b: any) => {
           const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
           const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
           return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
@@ -849,7 +841,41 @@ export default function VtsOperationCenterList() {
                     return renderHistoryValueTag(field, val, symbols);
                   };
 
-                  const validChanges = changes.filter((c: any) => {
+                  // Deduplicate changes correctly using raw values
+                  const listFields = new Set<string>();
+                  changes.forEach((c: any) => {
+                    if (isListDeltaField(c.field)) {
+                      const ov = typeof c.oldValue === 'string' ? c.oldValue.trim() : '';
+                      const nv = typeof c.newValue === 'string' ? c.newValue.trim() : '';
+                      if (ov.startsWith('[') || nv.startsWith('[')) {
+                        listFields.add(normalizeHistoryKey(c.field || ''));
+                      }
+                    }
+                  });
+
+                  const dedupedChanges = changes.filter((c: any) => {
+                    if (isListDeltaField(c.field)) {
+                      const normKey = normalizeHistoryKey(c.field || '');
+                      if (listFields.has(normKey)) {
+                        const ov = typeof c.oldValue === 'string' ? c.oldValue.trim() : '';
+                        const nv = typeof c.newValue === 'string' ? c.newValue.trim() : '';
+                        if (!ov.startsWith('[') && !nv.startsWith('[')) {
+                          return false;
+                        }
+                      }
+                    }
+                    return true;
+                  });
+
+                  const uniqueChangesMap = new Map<string, any>();
+                  dedupedChanges.forEach((c: any) => {
+                    const key = `${c.field}::${c.oldValue}::${c.newValue}`;
+                    if (!uniqueChangesMap.has(key)) {
+                      uniqueChangesMap.set(key, c);
+                    }
+                  });
+
+                  const validChanges = Array.from(uniqueChangesMap.values()).filter((c: any) => {
                     if (!c.field && !c.oldValue && !c.newValue) return false;
                     const ov = formatHistoryValue(c.field, c.oldValue);
                     const nv = formatHistoryValue(c.field, c.newValue);
@@ -1426,7 +1452,7 @@ export default function VtsOperationCenterList() {
             dataSource={dataSource}
             rowKey="id"
             rowActions={rowActions}
-            loading={false}
+            loading={loading}
             scroll={{ x: 'max-content' }}
           />
           <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
@@ -1440,6 +1466,9 @@ export default function VtsOperationCenterList() {
             initialData={selectedRecord}
             mode={modalMode}
             orgUnits={orgUnitOptions}
+            portOptions={portOptions}
+            vtsSystemOptions={vtsSystemOptions}
+            symbols={symbols}
             onCancel={() => { setIsModalOpen(false); setEditingId(null); setSelectedRecord(null); }}
             onSuccess={() => { setIsModalOpen(false); setEditingId(null); setSelectedRecord(null); refreshList(); }}
           />
@@ -1510,16 +1539,6 @@ export default function VtsOperationCenterList() {
                 loading={loadingHistory}
                 onClick={() => {
                   setHistorySearch(historySearchInput.trim());
-                  if (selectedRecord) {
-                    setLoadingHistory(true);
-                    vtsOperationCenterService.getHistory(selectedRecord.id).then((res) => {
-                      setHistoryRecords(res || []);
-                    }).catch(() => {
-                      toast.error('Không thể tải lịch sử thay đổi');
-                    }).finally(() => {
-                      setLoadingHistory(false);
-                    });
-                  }
                 }}
                 style={primaryButtonStyle}
               >

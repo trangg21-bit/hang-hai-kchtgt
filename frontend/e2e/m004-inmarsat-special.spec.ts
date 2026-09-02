@@ -626,9 +626,9 @@ const SEED_INMARSAT_STATIONS = [
 ];
 
 /* ------------------------------------------------------------------ */
-/*  Bộ Test Suite Toàn Diện Cho Màn Hình Inmarsat /station/special    */
+/*  Bộ Test Suite Toàn Diện Cho Màn Hình Inmarsat /station/inmarsat    */
 /* ------------------------------------------------------------------ */
-test.describe.serial('E2E Đài vệ tinh Inmarsat (/station/special) - 35 Records & Full Flows', () => {
+test.describe.serial('E2E Đài vệ tinh Inmarsat (/station/inmarsat) - 35 Records & Full Flows', () => {
   let token: string;
   let seededIds: string[] = [];
 
@@ -741,7 +741,7 @@ test.describe.serial('E2E Đài vệ tinh Inmarsat (/station/special) - 35 Recor
     await page.evaluate((jwt) => {
       localStorage.setItem('auth_token', jwt);
     }, token);
-    await page.goto('/station/special');
+    await page.goto('/station/inmarsat');
     await page.waitForLoadState('domcontentloaded');
   }
 
@@ -768,9 +768,9 @@ test.describe.serial('E2E Đài vệ tinh Inmarsat (/station/special) - 35 Recor
   /* ------------------------------------------------------------------ */
   /* Test 2: UI Truy cập màn hình & kiểm tra giao diện cơ bản           */
   /* ------------------------------------------------------------------ */
-  test('UI: Truy cập /station/special, kiểm tra Header, Breadcrumb và Bảng', async ({ page }) => {
+  test('UI: Truy cập /station/inmarsat, kiểm tra Header, Breadcrumb và Bảng', async ({ page }) => {
     await doLoginUI(page);
-    await page.goto('/station/special');
+    await page.goto('/station/inmarsat');
     await expect(page.getByText('Quản lý nhà trạm')).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('Đài vệ tinh Inmarsat').first()).toBeVisible();
     await expect(page.getByRole('button', { name: /thêm đài inmarsat/i })).toBeVisible();
@@ -787,7 +787,7 @@ test.describe.serial('E2E Đài vệ tinh Inmarsat (/station/special) - 35 Recor
   /* ------------------------------------------------------------------ */
   test('UI: Test bộ lọc thường & Tìm kiếm tiếng Việt không dấu', async ({ page }) => {
     await doLoginUI(page);
-    await page.goto('/station/special');
+    await page.goto('/station/inmarsat');
 
     // 1. Kiểm tra ô Tìm kiếm có prefix & placeholder
     const searchInput = page.locator('main').getByPlaceholder('Tìm kiếm');
@@ -816,7 +816,7 @@ test.describe.serial('E2E Đài vệ tinh Inmarsat (/station/special) - 35 Recor
   /* ------------------------------------------------------------------ */
   test('UI: Test mở rộng bộ lọc nâng cao (Filter Toggle) và Reset', async ({ page }) => {
     await doLoginUI(page);
-    await page.goto('/station/special');
+    await page.goto('/station/inmarsat');
 
     // Ban đầu bộ lọc nâng cao ẩn (không thấy ô Tình trạng)
     const conditionField = page.getByText('Tình trạng');
@@ -846,7 +846,7 @@ test.describe.serial('E2E Đài vệ tinh Inmarsat (/station/special) - 35 Recor
   /* ------------------------------------------------------------------ */
   test('UI: Tạo mới đài Inmarsat qua Form 4-Tab và Lưu tạm', async ({ page }) => {
     await doLoginUI(page);
-    await page.goto('/station/special');
+    await page.goto('/station/inmarsat');
 
     // Click nút Thêm đài Inmarsat
     const createBtn = page.getByRole('button', { name: /thêm đài inmarsat/i });
@@ -911,7 +911,7 @@ test.describe.serial('E2E Đài vệ tinh Inmarsat (/station/special) - 35 Recor
   /* ------------------------------------------------------------------ */
   test('UI: Xem chi tiết Đài Inmarsat qua menu dòng 3 chấm', async ({ page }) => {
     await doLoginUI(page);
-    await page.goto('/station/special');
+    await page.goto('/station/inmarsat');
 
     // Mở menu thao tác của dòng đầu tiên
     const firstRow = page.locator('.ant-table-row').first();
@@ -933,7 +933,7 @@ test.describe.serial('E2E Đài vệ tinh Inmarsat (/station/special) - 35 Recor
   /* ------------------------------------------------------------------ */
   test('UI: Kiểm tra Phân trang hoạt động chính xác với 30+ bản ghi', async ({ page }) => {
     await doLoginUI(page);
-    await page.goto('/station/special');
+    await page.goto('/station/inmarsat');
 
     // Chờ bảng nạp xong
     await expect(page.locator('.ant-table-row').first()).toBeVisible({ timeout: 10000 });

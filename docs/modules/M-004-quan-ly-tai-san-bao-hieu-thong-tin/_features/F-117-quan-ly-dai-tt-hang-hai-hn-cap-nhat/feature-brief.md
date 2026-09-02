@@ -32,50 +32,42 @@ consumed_by_modules: []
 
 Tính năng cho phép cán bộ nghiệp vụ cập nhật thông tin một Đài Thông tin Hàng hải Hà Nội đã tồn tại. Form cập nhật bao gồm các nhóm thông tin: cơ bản (đơn vị quản lý, đơn vị khai thác, tên đài, địa điểm, tình trạng), đặc thù TTXLTT (dịch vụ cung cấp, ghi chú), GIS (loại đối tượng, biểu tượng, hệ quy chiếu, quy tắc hiển thị, tọa độ) và file đính kèm. Mã đài không được chỉnh sửa (immutable). Bản ghi cập nhật giữ nguyên trạng thái hiện tại (không tự động gửi duyệt lại).
 
-## 2. Trường dữ liệu
+## 2. Trường dữ liệu & Ma trận CRUD 5 Tab
 
-Bảng mô tả các trường trên form cập nhật:
+Bảng mô tả các trường theo chuẩn 5 Tab của Đài TTXLTT Hàng hải:
 
-| # | Tên trường (theo Excel) | Loại điều khiển | Bắt buộc | Danh sách | Bộ lọc | Xem chi tiết | Tạo mới | Sửa | Ghi chú |
+| STT | Tên trường | Loại điều khiển | Bắt buộc | Danh sách | Bộ lọc | Xem chi tiết | Tạo mới | Sửa | Ghi chú |
 |---|---|---|---|---|---|---|---|---|---|
-| 1 | Đơn vị quản lý (bắt buộc) | SelectOrgCode | Có | Có | Có | Có | — | Có | Mặc định theo đơn vị user; Admin Cục chọn được |
-| 2 | Đơn vị khai thác | SelectCateOther | Không | Có | — | Có | — | Có | Có thể khác đơn vị quản lý |
-| 3 | Mã đài | Input (disabled, tự sinh TTXLTT-{seq}) | Có | Có | Có | Có | — | Không | Immutable, không chỉnh sửa |
-| 4 | Tên đài (bắt buộc) | InputTextArea | Có | Có | Có | Có | — | Có | Tối đa 255 ký tự |
-| 5 | Địa điểm (Tỉnh/TP) (bắt buộc) | SelectCateOther | Có | Có | Có | Có | — | Có | — |
-| 6 | Địa điểm chi tiết (bắt buộc) | InputTextArea | Có | Có | Có | Có | — | Có | Tối đa 500 ký tự |
-| 7 | Tình trạng (bắt buộc) | SelectAppParams | Có | Có | Có | Có | — | Có | Chưa khai thác / Đang khai thác / Dừng khai thác |
-| 8 | Dịch vụ cung cấp | SelectAppParams (multi-select) | Không | — | — | Có | — | Có | 9 dịch vụ cố định |
-| 9 | Ghi chú | InputTextArea | Không | — | — | Có | — | Có | Tối đa 2000 ký tự |
-| 10 | Loại đối tượng | Select (Điểm/Đường/Vùng) | Không | — | — | Có | — | Có | GIS |
-| 11 | Biểu tượng | Select | Không | — | — | Có | — | Có | Icon bản đồ |
-| 12 | Hệ quy chiếu | Text | Không | — | — | Có | — | Có | Hệ tọa độ |
-| 13 | Quy tắc hiển thị | Text | Không | — | — | Có | — | Có | Cách hiển thị trên bản đồ |
-| 14 | Tọa độ | LongLatTable | Không | — | — | Có | — | Có | WGS84, bảng động thêm/xóa dòng |
-| 15 | File đính kèm | UploadFileTable | Không | — | — | Có | — | Có | Quyết định thành lập, hồ sơ kỹ thuật, ảnh hiện trạng |
-| 16 | Trạng thái | Badge (read-only) | Có | Có | Có | Có | — | — | Chỉ hiển thị, không chỉnh sửa |
-| 17 | Ngày cập nhật | Text (read-only) | Có | Có | Có | Có | — | — | — |
-| 18 | Cán bộ cập nhật | Text (read-only) | Có | — | — | Có | — | — | — |
-| 19 | Ngày gửi phê duyệt | Text (read-only) | Có | — | — | Có | — | — | — |
-| 20 | Cán bộ gửi phê duyệt | Text (read-only) | Có | — | — | Có | — | — | — |
-| 21 | Ngày phê duyệt cấp Cảng vụ/Chi cục | Text (read-only) | Có | — | — | Có | — | — | — |
-| 22 | Cán bộ phê duyệt cấp Cảng vụ/Chi cục | Text (read-only) | Có | — | — | Có | — | — | — |
-| 23 | Nội dung phê duyệt | Text (read-only) | Không | — | — | Có | — | — | Cấp C1 |
-| 24 | Ngày phê duyệt cấp Cục | Text (read-only) | Có | — | — | Có | — | — | — |
-| 25 | Cán bộ phê duyệt cấp Cục | Text (read-only) | Có | — | — | Có | — | — | — |
-| 26 | Nội dung phê duyệt | Text (read-only) | Không | — | — | Có | — | — | Cấp C2 |
-| 27 | Mã kế hoạch (vận hành) | Text (read-only) | Không | — | — | Có | — | — | Read-only vận hành |
-| 28 | Tên kế hoạch (vận hành) | Text (read-only) | Không | — | — | Có | — | — | Read-only vận hành |
-| 29 | Ngày bắt đầu (vận hành) | Text (read-only) | Không | — | — | Có | — | — | Read-only vận hành |
-| 30 | Ngày kết thúc (vận hành) | Text (read-only) | Không | — | — | Có | — | — | Read-only vận hành |
-| 31 | Mã kế hoạch (bảo trì) | Text (read-only) | Không | — | — | Có | — | — | Read-only bảo trì |
-| 32 | Tên kế hoạch (bảo trì) | Text (read-only) | Không | — | — | Có | — | — | Read-only bảo trì |
-| 33 | Thời gian bắt đầu (bảo trì) | Text (read-only) | Không | — | — | Có | — | — | Read-only bảo trì |
-| 34 | Thời gian kết thúc (bảo trì) | Text (read-only) | Không | — | — | Có | — | — | Read-only bảo trì |
-| 35 | Mã sự cố | Text (read-only) | Không | — | — | Có | — | — | Read-only sự cố |
-| 36 | Loại sự cố | Text (read-only) | Không | — | — | Có | — | — | Read-only sự cố |
-| 37 | Địa điểm (sự cố) | Text (read-only) | Không | — | — | Có | — | — | Read-only sự cố |
-| 38 | Thời gian (sự cố) | Text (read-only) | Không | — | — | Có | — | — | Read-only sự cố |
+| **TAB 1** | **Thông tin chung** | | | | | | | | |
+| 1 | Mã đài | Input (disabled, tự sinh `TTXLTT-{seq}`) | Có | Có | Có | Có | Có (Disabled) | Có (Disabled) | Tự sinh, bất biến |
+| 2 | Tên đài | InputTextArea | Có | Có | Có | Có | Có | Có | Bắt buộc |
+| 3 | Đơn vị quản lý | SelectOrgCode (TreeSelect) | Có | Có | Có | Có | Có | Có | Phân cấp theo DataScope |
+| 4 | Đơn vị khai thác | SelectCateOther | Không | Có | Không | Có | Có | Có | Danh mục đơn vị khai thác |
+| 5 | Địa điểm (Tỉnh/TP) | SelectCateOther | Có | Có | Có | Có | Có | Có | Danh mục 63 Tỉnh/TP |
+| 6 | Địa điểm chi tiết | InputTextArea | Có | Không | Có | Có | Có | Có | Bắt buộc (có lọc trên sidebar) |
+| 7 | Tình trạng | SelectAppParams | Có | Có | Có | Có | Có | Có | `ConditionStatus` |
+| 8 | Dịch vụ cung cấp | Select multi-select trong khung bo tròn, mỗi dịch vụ một dòng và tên dài ellipsis | Không | Không | Không | Có | Có | Có | `INMARSAT`, `COSPAS-SARSAT`, `DSC`, `RTP`,... |
+| 9 | Ghi chú | InputTextArea | Không | Không | Không | Có | Có | Có | |
+| **TAB 2** | **Vị trí (GIS)** | | | | | | | | |
+| 10 | Loại đối tượng | Select (Điểm/Đường/Vùng) | Không | Không | Không | Có | Có | Có | `geometryType` |
+| 11 | Biểu tượng | Select (kèm icon bản đồ) | Không | Không | Không | Có | Có | Có | `symbol` |
+| 12 | Hệ quy chiếu | Text (WGS 84 / VN-2000) | Không | Không | Không | Có | Có | Có | GIS |
+| 13 | Quy tắc hiển thị | Text (Độ, phút, giây (DMS)) | Không | Không | Không | Có | Có | Có | GIS |
+| 14 | Tọa độ | LongLatTable + Modal Bản đồ | Không | Không | Không | Có | Có | Có | Bảng tọa độ DMS |
+| **TAB 3** | **File đính kèm** | | | | | | | | |
+| 15 | File đính kèm | UploadFileTable | Không | Không | Không | Có | Có | Có | $\le 20\text{MB}$, tối đa 10 tệp |
+| **TAB 4** | **Vận hành & bảo trì** (Chỉ hiển thị trang Xem chi tiết) | | | | | | | | |
+| 16 | Kế hoạch vận hành khai thác | DetailTable (read-only) | Không | Không | Không | Có | Không | Không | Mã KH, Tên KH, Ngày BĐ, Ngày KT |
+| 17 | Kế hoạch bảo trì | DetailTable (read-only) | Không | Không | Không | Có | Không | Không | Mã KH, Tên KH, Thời gian BĐ, Thời gian KT |
+| 18 | Thông tin sự cố | DetailTable (read-only) | Không | Không | Không | Có | Không | Không | Mã sự cố, Loại sự cố, Địa điểm, Thời gian |
+| **TAB 5** | **Xử lý & theo dõi** (Chỉ hiển thị trang Xem chi tiết & Danh sách) | | | | | | | | |
+| 19 | Trạng thái | Badge (read-only) | Có | Có | Có | Có | Không | Không | 6 tab trạng thái |
+| 20 | Ngày cập nhật & Cán bộ cập nhật | Text (read-only) | Có | Có | Có | Có | Không | Không | |
+| 21 | Ngày gửi phê duyệt & Cán bộ gửi phê duyệt | Text (read-only) | Có | Có | Không | Có | Không | Không | |
+| 22 | Ngày phê duyệt & Cán bộ duyệt cấp Cảng vụ | Text (read-only) | Có | Có | Không | Có | Không | Không | Cấp L1 |
+| 23 | Nội dung phê duyệt cấp 1 | Text (read-only) | Không | Không | Không | Có | Không | Không | Cấp L1 |
+| 24 | Ngày phê duyệt & Cán bộ duyệt cấp Cục | Text (read-only) | Có | Có | Không | Có | Không | Không | Cấp L2 |
+| 25 | Nội dung phê duyệt cấp 2 | Text (read-only) | Không | Không | Không | Có | Không | Không | Cấp L2 |
 
 ## 3. Trạng thái và phê duyệt
 

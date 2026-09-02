@@ -156,15 +156,6 @@ public class RadarStationService {
             saved = repository.save(saved);
         }
 
-        historyRepository.save(InfrastructureHistory.builder()
-                .refId(saved.getId())
-                .refType(InfrastructureType.RADAR_STATION)
-                .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status("submit".equals(action) ? InfrastructureHistoryStatus.PROPOSED : InfrastructureHistoryStatus.CREATED)
-                .approvedBy(createdBy)
-                .reason("submit".equals(action) ? "Tạo mới và gửi phê duyệt trạm radar" : "Tạo mới trạm radar (Lưu tạm)")
-                .build());
-
         return toResponse(saved);
     }
 

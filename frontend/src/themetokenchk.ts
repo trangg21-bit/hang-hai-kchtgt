@@ -2,9 +2,10 @@ import React from 'react';
 import {
   DeleteOutlined, HistoryOutlined, SendOutlined,
   CheckOutlined, CloseOutlined, PlusOutlined, SearchOutlined, ReloadOutlined,
-  EnvironmentOutlined,
+  EnvironmentOutlined, EyeOutlined, EditOutlined, CheckCircleOutlined, CloseCircleOutlined,
 } from '@ant-design/icons';
 import { colors as baseColors } from './theme';
+
 
 // ============================================================
 // themetokenchk.ts — Bộ theme token thứ hai, dựng theo phong cách UI của
@@ -272,13 +273,13 @@ export const clientSideDateSorter = (key: string, fallbackKey?: string) => (a: a
 };
 
 /** Hàm so sánh sắp xếp cột Cán bộ cập nhật (ưu tiên Họ và tên A-Z, sau đó theo ngày) */
-export const clientSideUserSorter = (nameKey = 'updatedByName', fallbackNameKey = 'createdByName', dateKey = 'updatedAt') => (a: any, b: any) => {
+export const clientSideUserSorter = (nameKey = 'updatedByName', fallbackNameKey = 'createdByName', dateKey = 'updatedAt', fallbackDateKey = 'createdAt') => (a: any, b: any) => {
   const nameA = a[nameKey] || (fallbackNameKey ? a[fallbackNameKey] : '') || '';
   const nameB = b[nameKey] || (fallbackNameKey ? b[fallbackNameKey] : '') || '';
   const cmp = String(nameA).localeCompare(String(nameB), 'vi');
   if (cmp !== 0) return cmp;
-  const timeA = a[dateKey] ? new Date(a[dateKey]).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
-  const timeB = b[dateKey] ? new Date(b[dateKey]).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+  const timeA = a[dateKey] ? new Date(a[dateKey]).getTime() : (fallbackDateKey && a[fallbackDateKey] ? new Date(a[fallbackDateKey]).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0));
+  const timeB = b[dateKey] ? new Date(b[dateKey]).getTime() : (fallbackDateKey && b[fallbackDateKey] ? new Date(b[fallbackDateKey]).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0));
   return timeA - timeB;
 };
 
@@ -512,9 +513,11 @@ export const themeScopedCss = (scope: string): string => `
 .${scope} textarea.ant-input,
 .${scope} .ant-input-textarea,
 .${scope} .ant-input-textarea > textarea,
+.${scope} .ant-input-textarea-show-count,
+.${scope} .ant-input-textarea-show-count textarea,
 textarea.ant-input {
-  border-radius: 8px !important;
-  padding: 10px 14px !important;
+  border-radius: 20px !important;
+  padding: 10px 16px !important;
 }
 .${scope} .ant-select-single .ant-select-selector {
   border-radius: 999px !important;
@@ -703,6 +706,104 @@ textarea.ant-input {
 .${scope} .ant-select-multiple .ant-select-selection-item-remove:hover,
 .ant-select-multiple .ant-select-selection-item-remove:hover {
   color: #f1416c !important;
+}
+
+/* Dịch vụ cung cấp: giữ toàn bộ lựa chọn theo từng dòng như mẫu nghiệp vụ */
+.${scope} .chk-multi-select.ant-select-multiple .ant-select-selector,
+.chk-multi-select.ant-select-multiple .ant-select-selector {
+  border-radius: ${radiusMd}px !important;
+  padding: ${spaceMd}px 34px ${spaceMd}px ${spaceMd}px !important;
+  min-height: ${controlHeight}px !important;
+  height: auto !important;
+  align-items: stretch !important;
+}
+
+.${scope} .chk-multi-select.ant-select-multiple .ant-select-selection-overflow,
+.chk-multi-select.ant-select-multiple .ant-select-selection-overflow {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: ${spaceSm}px !important;
+}
+
+.${scope} .chk-multi-select.ant-select-multiple .ant-select-selection-item,
+.chk-multi-select.ant-select-multiple .ant-select-selection-item {
+  flex: 0 0 100% !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  height: auto !important;
+  min-height: 32px !important;
+  line-height: 32px !important;
+  border: 0 !important;
+  border-radius: ${radiusMd}px !important;
+  background: transparent !important;
+}
+
+.${scope} .chk-multi-select.ant-select-multiple .ant-select-selection-item-content,
+.chk-multi-select.ant-select-multiple .ant-select-selection-item-content {
+  display: block !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  margin-right: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Ant Design v6: DOM mới dùng ant-select-content/ant-select-content-item */
+.${scope} .chk-multi-select.ant-select-multiple,
+.chk-multi-select.ant-select-multiple {
+  min-height: ${controlHeight}px !important;
+  height: auto !important;
+  padding: ${spaceSm}px 34px ${spaceSm}px ${spaceSm}px !important;
+  border-radius: ${controlHeight / 2}px !important;
+  box-sizing: border-box !important;
+  align-items: stretch !important;
+}
+
+.${scope} .chk-multi-select.ant-select-multiple .ant-select-content,
+.chk-multi-select.ant-select-multiple .ant-select-content {
+  display: flex !important;
+  flex-direction: column !important;
+  flex-wrap: nowrap !important;
+  align-items: stretch !important;
+  gap: ${spaceXs}px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+}
+
+.${scope} .chk-multi-select.ant-select-multiple .ant-select-content::before,
+.chk-multi-select.ant-select-multiple .ant-select-content::before {
+  display: none !important;
+  content: none !important;
+}
+
+.${scope} .chk-multi-select.ant-select-multiple .ant-select-content-item:not(.ant-select-content-item-suffix),
+.chk-multi-select.ant-select-multiple .ant-select-content-item:not(.ant-select-content-item-suffix) {
+  display: block !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+}
+
+.${scope} .chk-multi-select.ant-select-multiple .ant-select-content-item:not(.ant-select-content-item-suffix) > span,
+.chk-multi-select.ant-select-multiple .ant-select-content-item:not(.ant-select-content-item-suffix) > span {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.${scope} .chk-multi-select.ant-select-multiple .ant-select-content-item-suffix,
+.chk-multi-select.ant-select-multiple .ant-select-content-item-suffix {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 /* ── Menu danh sách chọn trong Dropdown (lùi sâu 16px chuẩn đồng bộ) ── */
@@ -1262,6 +1363,7 @@ textarea.ant-input {
 .chk-form-datepicker-popup .ant-picker-panel {
   width: 100% !important;
   min-width: 100% !important;
+  max-width: 100% !important;
   display: block !important;
 }
 
@@ -1271,6 +1373,8 @@ textarea.ant-input {
 .chk-form-datepicker-popup .ant-picker-decade-panel,
 .chk-form-datepicker-popup .ant-picker-quarter-panel {
   width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
   display: flex !important;
   flex-direction: column !important;
 }
@@ -1761,16 +1865,135 @@ textarea.ant-input {
   border-radius: ${radiusPill} !important;
   border-color: ${actionPrimary} !important;
 }
+
+/* ── Sidebar Compact 1-Panel DatePicker Styling (280px) ── */
+.chk-sidebar-datepicker-popup.ant-picker-dropdown {
+  border-radius: 12px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18) !important;
+  z-index: 1500 !important;
+  background: #ffffff !important;
+  width: 280px !important;
+  min-width: 280px !important;
+  max-width: 280px !important;
+}
+
+.chk-sidebar-datepicker-popup .ant-picker-panel-container {
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  background: #ffffff !important;
+  border: 1px solid ${borderDefault} !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+  padding-bottom: 10px !important;
+  width: 280px !important;
+  min-width: 280px !important;
+  max-width: 280px !important;
+}
+
+.chk-sidebar-datepicker-popup .ant-picker-panel {
+  width: 280px !important;
+  min-width: 280px !important;
+  max-width: 280px !important;
+  display: block !important;
+  background: #ffffff !important;
+}
+
+.chk-sidebar-datepicker-popup .ant-picker-date-panel,
+.chk-sidebar-datepicker-popup .ant-picker-year-panel,
+.chk-sidebar-datepicker-popup .ant-picker-month-panel,
+.chk-sidebar-datepicker-popup .ant-picker-decade-panel,
+.chk-sidebar-datepicker-popup .ant-picker-quarter-panel {
+  width: 280px !important;
+  min-width: 280px !important;
+  max-width: 280px !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.chk-sidebar-datepicker-popup .ant-picker-header {
+  width: 100% !important;
+  padding: 6px 14px !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  border-bottom: 1px solid ${borderDefault} !important;
+  height: 36px !important;
+}
+
+.chk-sidebar-datepicker-popup .ant-picker-header button {
+  padding: 0 6px !important;
+  font-size: 12px !important;
+}
+
+.chk-sidebar-datepicker-popup .ant-picker-header-view {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+
+.chk-sidebar-datepicker-popup .ant-picker-body {
+  width: 100% !important;
+  padding: 8px 10px !important;
+}
+
+.chk-sidebar-datepicker-popup .ant-picker-content {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.chk-sidebar-datepicker-popup .ant-picker-year-panel .ant-picker-cell,
+.chk-sidebar-datepicker-popup .ant-picker-month-panel .ant-picker-cell,
+.chk-sidebar-datepicker-popup .ant-picker-decade-panel .ant-picker-cell {
+  width: 33.333333% !important;
+  text-align: center !important;
+  padding: 8px 4px !important;
+}
+
+.chk-sidebar-datepicker-popup .ant-picker-year-panel .ant-picker-cell .ant-picker-cell-inner,
+.chk-sidebar-datepicker-popup .ant-picker-month-panel .ant-picker-cell .ant-picker-cell-inner,
+.chk-sidebar-datepicker-popup .ant-picker-decade-panel .ant-picker-cell .ant-picker-cell-inner {
+  margin: 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: calc(100% - 12px) !important;
+  max-width: 90px !important;
+  min-width: 52px !important;
+  height: 28px !important;
+  line-height: 28px !important;
+  border-radius: ${radiusPill} !important;
+  font-size: 13px !important;
+}
 `;
 
 /**
  * Helper chuẩn hóa props cho DatePicker (đơn) và RangePicker (khoảng ngày)
  * Đảm bảo kích thước đồng nhất:
- * - DatePicker đơn: popupClassName="chk-form-datepicker-popup", co dãn ôm khít 100% chiều rộng ô input.
+ * - DatePicker đơn trong form: popupClassName="chk-form-datepicker-popup", co dãn ôm khít 100% chiều rộng ô input.
+ * - DatePicker đơn trên Sidebar: popupClassName="chk-sidebar-datepicker-popup", khóa chuẩn 280px theo Sidebar.
  * - DatePicker.RangePicker: popupClassName="chk-range-datepicker-popup", kích thước x2 (2 panel cạnh nhau 560px), ô ngày 26px đồng bộ.
  * - DatePicker.RangePicker (Sidebar): popupClassName="chk-sidebar-range-datepicker-popup", kích thước 1 panel ôm trọn thanh Sidebar 280px.
  */
 export const getDatePickerProps = (extraProps?: Record<string, any>) => {
+  const { classNames: extraClassNames, getPopupContainer, ...rest } = extraProps || {};
+  return {
+    format: 'DD/MM/YYYY',
+    getPopupContainer: getPopupContainer || ((trigger: HTMLElement) => trigger.closest('.ant-form-item-control-input-content') || trigger.parentElement || document.body),
+    classNames: {
+      ...extraClassNames,
+      popup: {
+        ...extraClassNames?.popup,
+        root: [
+          'chk-form-datepicker-popup',
+          typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
+          typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
+        ].filter(Boolean).join(' '),
+      },
+    },
+    style: { ...inputStyle, width: '100%' },
+    ...rest,
+  };
+};
+
+export const getSidebarDatePickerProps = (extraProps?: Record<string, any>) => {
   const { classNames: extraClassNames, ...rest } = extraProps || {};
   return {
     format: 'DD/MM/YYYY',
@@ -1779,7 +2002,7 @@ export const getDatePickerProps = (extraProps?: Record<string, any>) => {
       popup: {
         ...extraClassNames?.popup,
         root: [
-          'chk-form-datepicker-popup',
+          'chk-sidebar-datepicker-popup',
           typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
           typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
         ].filter(Boolean).join(' '),
@@ -1895,6 +2118,7 @@ export const selectStyle: React.CSSProperties = {
 export const textAreaStyle: React.CSSProperties = {
   borderRadius: 20,
   padding: '10px 16px',
+  resize: 'none',
 };
 
 /** Nút chính: nền navy đậm, bo tròn viên thuốc */

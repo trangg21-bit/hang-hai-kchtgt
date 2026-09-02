@@ -10,6 +10,7 @@ import {
   Col,
   Drawer,
   DatePicker,
+  Alert,
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, CloseOutlined, FileTextOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -41,7 +42,7 @@ import {
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
-import { OrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
+import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../components/org-unit';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 
@@ -279,98 +280,6 @@ const ZoneCellInput = React.memo(({
   );
 });
 
-// Mock 30 bản ghi cho TAB 4: Danh sách KCHT khác thuộc VTS
-const MOCK_OTHER_INFRASTRUCTURES = Array.from({ length: 30 }, (_, i) => {
-  const index = i + 1;
-  const pad = index < 10 ? `0${index}` : `${index}`;
-  if (index % 3 === 1) {
-    return {
-      id: `mock-infra-vts-${index}`,
-      type: 'VTS_OPERATION_CENTER',
-      typeLabel: 'Trung tâm điều hành VTS',
-      name: `Trung tâm Quản lý điều hành VTS Luồng Hàng hải Khu vực ${pad}`,
-    };
-  } else if (index % 3 === 2) {
-    return {
-      id: `mock-infra-radar-${index}`,
-      type: 'RADAR_STATION',
-      typeLabel: 'Trạm Radar VTS',
-      name: `Trạm Radar cảnh giới & giám sát luồng hàng hải VTS-${pad}`,
-    };
-  } else {
-    return {
-      id: `mock-infra-ais-${index}`,
-      type: 'AIS_SYSTEM',
-      typeLabel: 'Trạm AIS / Hệ thống AIS',
-      name: `Hệ thống Trạm AIS bờ thu phát nhận dạng tàu thuyền AIS-VTS-${pad}`,
-    };
-  }
-});
-
-// Mock 30 bản ghi cho TAB 5 - Sub-tab 1: Thông tin vận hành khai thác
-const MOCK_OPERATION_PLANS = Array.from({ length: 30 }, (_, i) => {
-  const index = i + 1;
-  const pad = index < 10 ? `0${index}` : `${index}`;
-  const year = 2024 + Math.floor(index / 10);
-  const month = ((index - 1) % 12) + 1;
-  const monthPad = month < 10 ? `0${month}` : `${month}`;
-  return {
-    id: `mock-op-${index}`,
-    planCode: `KH-VHKT-${year}/${pad}`,
-    planName: `Kế hoạch điều hành luồng hàng hải & giám sát an toàn giao thông đợt ${index}`,
-    startDate: `${year}-${monthPad}-01`,
-    endDate: `${year}-${monthPad}-28`,
-  };
-});
-
-// Mock 30 bản ghi cho TAB 5 - Sub-tab 2: Thông tin bảo trì
-const MOCK_MAINTENANCE_PLANS = Array.from({ length: 30 }, (_, i) => {
-  const index = i + 1;
-  const pad = index < 10 ? `0${index}` : `${index}`;
-  const year = 2024 + Math.floor(index / 10);
-  const month = ((index - 1) % 12) + 1;
-  const monthPad = month < 10 ? `0${month}` : `${month}`;
-  return {
-    id: `mock-maint-${index}`,
-    planCode: `KH-BT-${year}/VTS-${pad}`,
-    planName: `Kế hoạch bảo dưỡng, hiệu chuẩn định kỳ hệ thống cảm biến Radar & AIS đợt ${index}`,
-    startTime: `${year}-${monthPad}-05`,
-    endTime: `${year}-${monthPad}-12`,
-  };
-});
-
-// Mock 30 bản ghi cho TAB 5 - Sub-tab 3: Thông tin sự cố
-const MOCK_INCIDENTS = Array.from({ length: 30 }, (_, i) => {
-  const index = i + 1;
-  const pad = index < 10 ? `0${index}` : `${index}`;
-  const types = [
-    'Mất kết nối đường truyền vi ba',
-    'Cảnh báo suy hao tín hiệu Anten Radar',
-    'Gián đoạn nguồn điện lưới khu vực trạm',
-    'Lỗi đồng bộ dữ liệu vết mục tiêu AIS',
-    'Cảnh báo nhiệt độ máy chủ xử lý vượt ngưỡng',
-  ];
-  const locations = [
-    'Trạm Radar VTS Mũi Nghinh Phong',
-    'Trạm Radar VTS Cần Giờ',
-    'Trung tâm Quản lý điều hành VTS',
-    'Trạm AIS VTS Vũng Tàu',
-    'Trạm Radar VTS Cát Lái',
-  ];
-  const year = 2025;
-  const month = ((index - 1) % 12) + 1;
-  const monthPad = month < 10 ? `0${month}` : `${month}`;
-  const day = ((index * 3) % 25) + 1;
-  const dayPad = day < 10 ? `0${day}` : `${day}`;
-  return {
-    id: `mock-inc-${index}`,
-    incidentCode: `SC-${year}-${pad}`,
-    incidentType: types[(index - 1) % types.length],
-    location: locations[(index - 1) % locations.length],
-    incidentTime: `${year}-${monthPad}-${dayPad} 14:30:00`,
-  };
-});
-
 export default function VtsSystemForm({
   open = true,
   editId = null,
@@ -407,13 +316,14 @@ export default function VtsSystemForm({
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
 
   const [otherInfraTypeFilter, setOtherInfraTypeFilter] = useState<string>('ALL');
-  const [otherInfraList, setOtherInfraList] = useState<Array<{ id: string; type: string; typeLabel: string; name: string }>>(MOCK_OTHER_INFRASTRUCTURES);
+  const [otherInfraList, setOtherInfraList] = useState<Array<{ id: string; type: string; typeLabel: string; name: string }>>([]);
   const [otherInfraLoaded, setOtherInfraLoaded] = useState(false);
   const [isLoadingOtherInfra, setIsLoadingOtherInfra] = useState(false);
+  const [otherInfraError, setOtherInfraError] = useState<string | null>(null);
 
-  const [operationPlanList] = useState<any[]>(MOCK_OPERATION_PLANS);
-  const [maintenancePlanList] = useState<any[]>(MOCK_MAINTENANCE_PLANS);
-  const [incidentList] = useState<any[]>(MOCK_INCIDENTS);
+  const [operationPlanList] = useState<any[]>([]);
+  const [maintenancePlanList] = useState<any[]>([]);
+  const [incidentList] = useState<any[]>([]);
 
   const isCreateMode = propMode === 'create';
   const isEditMode = propMode === 'edit';
@@ -472,22 +382,33 @@ export default function VtsSystemForm({
     let mounted = true;
     const fetchLookups = async () => {
       try {
-        const [orgs, ports, opOrgs] = await Promise.all([
-          vtsSystemCRUD.getScopedOrgUnitOptions(),
-          vtsSystemCRUD.getScopedPortOptions(),
+        const promises: Promise<any>[] = [
           vtsSystemCRUD.getOperatingOrganizationOptions(),
-        ]);
+          vtsSystemCRUD.getScopedPortOptions(),
+        ];
+        if (!propOrgUnits || propOrgUnits.length === 0) {
+          promises.push(vtsSystemCRUD.getScopedOrgUnitOptions());
+        }
+
+        const results = await Promise.all(promises);
         if (!mounted) return;
-        if (orgs && orgs.length > 0) setOrganizations(orgs);
-        if (ports && ports.length > 0) setRawPorts(ports);
+
+        const opOrgs = results[0];
+        const ports = results[1];
         if (opOrgs && opOrgs.length > 0) setOperatingOrganizations(opOrgs);
+        if (ports && ports.length > 0) setRawPorts(ports);
+
+        if (!propOrgUnits || propOrgUnits.length === 0) {
+          const orgs = results[2];
+          if (orgs && orgs.length > 0) setOrganizations(orgs);
+        }
       } catch (err) {
         console.warn('Failed to load lookups in VtsSystemForm', err);
       }
     };
     fetchLookups();
     return () => { mounted = false; };
-  }, []);
+  }, [propOrgUnits]);
 
   // Load record detail or generate code on create
   useEffect(() => {
@@ -599,12 +520,23 @@ export default function VtsSystemForm({
     if (!editId || otherInfraLoaded) return;
     if (isDetailMode && detailTabKey === 'otherInfra') {
       setIsLoadingOtherInfra(true);
+      setOtherInfraError(null);
       Promise.allSettled([
-        vtsOperationCenterService.search({ vtsSystemId: editId, size: 100 } as any),
-        radarStationService.search({ vtsSystemId: editId, size: 100 } as any),
-        aisSystemService.search({ vtsSystemId: editId, size: 100 } as any),
+        vtsOperationCenterService.search({ vtsSystemId: editId, size: 50 } as any),
+        radarStationService.search({ vtsSystemId: editId, size: 50 } as any),
+        aisSystemService.search({ vtsSystemId: editId, size: 50 } as any),
       ]).then((results) => {
         const combined: Array<{ id: string; type: string; typeLabel: string; name: string }> = [];
+        const failedCount = results.filter((result) => result.status === 'rejected').length;
+        const truncated = results.some((result) => {
+          if (result.status !== 'fulfilled') return false;
+          const response = result.value as any;
+          const data = response?.data || response;
+          const items = Array.isArray(data?.items) ? data.items
+            : (Array.isArray(data?.content) ? data.content : (Array.isArray(data) ? data : []));
+          const total = Number(data?.total ?? data?.totalElements ?? response?.total ?? response?.totalElements ?? items.length);
+          return total > items.length;
+        });
 
         // 1. Trung tâm điều hành VTS
         if (results[0].status === 'fulfilled' && results[0].value) {
@@ -648,10 +580,18 @@ export default function VtsSystemForm({
           });
         }
 
-        setOtherInfraList(combined.length > 0 ? combined : MOCK_OTHER_INFRASTRUCTURES);
+        setOtherInfraList(combined);
+        if (failedCount === results.length) {
+          setOtherInfraError('Không tải được danh sách kết cấu hạ tầng liên quan.');
+        } else if (failedCount > 0) {
+          setOtherInfraError('Một số nhóm kết cấu hạ tầng liên quan không tải được; dữ liệu đang hiển thị có thể chưa đầy đủ.');
+        } else if (truncated) {
+          setOtherInfraError('Danh sách đang hiển thị tối đa 50 bản ghi cho mỗi nhóm.');
+        }
         setOtherInfraLoaded(true);
       }).catch(() => {
-        setOtherInfraList(MOCK_OTHER_INFRASTRUCTURES);
+        setOtherInfraList([]);
+        setOtherInfraError('Không tải được danh sách kết cấu hạ tầng liên quan.');
         setOtherInfraLoaded(true);
       }).finally(() => {
         setIsLoadingOtherInfra(false);
@@ -718,6 +658,7 @@ export default function VtsSystemForm({
         return prev;
       });
     }
+
     if (data.zones && data.zones.length > 0) {
       setZoneList(
         data.zones.map((z: any, idx: number) => ({
@@ -733,6 +674,7 @@ export default function VtsSystemForm({
       setZoneList([]);
       setZonesLoaded(true);
     }
+
     if (data.attachments && data.attachments.length > 0) {
       setAttachmentList(data.attachments);
       setFilesLoaded(true);
@@ -799,13 +741,14 @@ export default function VtsSystemForm({
   const filteredPortOptions = useMemo(() => {
     let list = rawPorts;
     if (effectiveOrgUnitId) {
-      list = list.filter((p) => String(p.orgUnitId || '') === String(effectiveOrgUnitId));
+      const allowedOrgIds = resolveOrgSubtreeIds(organizations, effectiveOrgUnitId);
+      list = list.filter((p) => p.orgUnitId && allowedOrgIds.has(String(p.orgUnitId)));
     }
     return list.map((p) => ({
       value: p.id,
       label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id),
     }));
-  }, [rawPorts, effectiveOrgUnitId]);
+  }, [rawPorts, effectiveOrgUnitId, organizations]);
 
   const handleSubmitForm = async (values: any) => {
     setIsSubmitting(true);
@@ -830,19 +773,12 @@ export default function VtsSystemForm({
           name: z.name,
           conditionStatus: z.conditionStatus || z.status || ConditionStatus.OPERATIONAL,
         })),
-        addedAttachmentNames: pendingFiles.map((f) => f.name),
-        removedAttachmentNames: pendingDeletedAttachments.map((a) => a.fileName),
       };
-
-      const targetStatus =
-        actionTypeRef.current === 'approve'
-          ? ApprovalStatus.APPROVED
-          : ApprovalStatus.DRAFT;
 
       if (isCreateMode) {
         const created = await vtsSystemCRUD.create({
           ...payload,
-          approvalStatus: targetStatus,
+          approvalStatus: ApprovalStatus.DRAFT,
         });
         if (pendingFiles.length > 0 && created?.id) {
           try {
@@ -853,6 +789,9 @@ export default function VtsSystemForm({
         }
         if (actionTypeRef.current === 'submit' && created?.id) {
           await vtsSystemApproval.submit(created.id);
+        } else if (actionTypeRef.current === 'approve' && created?.id) {
+          await vtsSystemApproval.submit(created.id).catch(() => {});
+          await vtsSystemApproval.approveC2(created.id, { decision: 'APPROVED', reason: 'Lưu và phê duyệt trực tiếp' });
         }
         const msg =
           actionTypeRef.current === 'draft'
@@ -1035,6 +974,7 @@ export default function VtsSystemForm({
                       style={{ ...selectStyle, width: 280, height: 38 }}
                     />
                   </div>
+                  {otherInfraError && <Alert type="warning" showIcon message={otherInfraError} style={{ marginBottom: spaceMd }} />}
                   <DetailTable
                     scrollY="calc(100vh - 378px)"
                     dataSource={filteredOtherInfra}
@@ -1529,9 +1469,6 @@ export default function VtsSystemForm({
                               style={selectStyle}
                               onChange={(val) => {
                                 form.setFieldValue('orgUnitId', val);
-                                if (!form.getFieldValue('owningOrgId')) {
-                                  form.setFieldValue('owningOrgId', val);
-                                }
                                 const curPort = form.getFieldValue('portId');
                                 if (curPort && !rawPorts.some((p) => p.id === curPort && String(p.orgUnitId) === String(val))) {
                                   form.setFieldValue('portId', undefined);

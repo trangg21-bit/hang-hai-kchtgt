@@ -40,7 +40,7 @@ import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS, CONDITION_ST
 import {
   drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle,
   drawerTabBarStyle, drawerStyles, drawerFormScrollStyle, drawerGisControlBoxStyle,
-  spaceFormField, radiusPill, sidebarBg,
+  spaceFormField, spaceXs, radiusPill, sidebarBg,
   fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeSm, fontSizeLg,
   textSecondary, textTertiary, borderDefault,
   statusCritical, statusAttention, statusOperational, actionPrimary, textAreaStyle,
@@ -67,6 +67,9 @@ export interface AisSystemFormProps {
   initialData?: AisSystemResponse | null;
   mode?: 'create' | 'edit' | 'detail' | 'view';
   orgUnits?: any[];
+  opCenterOptions?: { id: string; name: string; orgUnitId?: string }[];
+  radarStationOptions?: { id: string; name: string; orgUnitId?: string }[];
+  operatingOrganizationOptions?: any[];
   onCancel?: () => void;
   onSuccess?: () => void;
   onClose?: () => void;
@@ -123,6 +126,9 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
   initialData,
   mode = 'create',
   orgUnits = [],
+  opCenterOptions,
+  radarStationOptions,
+  operatingOrganizationOptions,
   onCancel,
   onSuccess,
   onClose,
@@ -150,7 +156,6 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [pendingDeletedAttachments, setPendingDeletedAttachments] = useState<{ id: string; fileName: string }[]>([]);
-
   const [approvalSectionOpen, setApprovalSectionOpen] = useState(true);
 
   const currentUser = useAuthStore((s: AuthState) => s.user);
@@ -184,13 +189,21 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
 
   // Load dropdown lists
   useEffect(() => {
-    vtsOperationCenterService.getOptions().then((res) => {
-      if (Array.isArray(res)) setOpCenters(res.map((c) => ({ id: c.id, name: c.name, orgUnitId: c.orgUnitId })));
-    }).catch(() => {});
+    if (opCenterOptions && opCenterOptions.length > 0) {
+      setOpCenters(opCenterOptions);
+    } else {
+      vtsOperationCenterService.getOptions().then((res) => {
+        if (Array.isArray(res)) setOpCenters(res.map((c) => ({ id: c.id, name: c.name, orgUnitId: c.orgUnitId })));
+      }).catch(() => {});
+    }
 
-    radarStationService.getOptions().then((res) => {
-      if (Array.isArray(res)) setRadarStations(res.map((r) => ({ id: r.id, name: r.stationName || r.code || r.id, orgUnitId: r.orgUnitId })));
-    }).catch(() => {});
+    if (radarStationOptions && radarStationOptions.length > 0) {
+      setRadarStations(radarStationOptions);
+    } else {
+      radarStationService.getOptions().then((res) => {
+        if (Array.isArray(res)) setRadarStations(res.map((r) => ({ id: r.id, name: r.stationName || r.code || r.id, orgUnitId: r.orgUnitId })));
+      }).catch(() => {});
+    }
 
     symbolService.getOptions().then((res) => {
       if (Array.isArray(res) && res.length > 0) setSymbols(res);
@@ -207,10 +220,14 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
       }).catch(() => {});
     });
 
-    vtsSystemCRUD.getOperatingOrganizationOptions().then((res) => {
-      if (Array.isArray(res) && res.length > 0) setOperatingOrganizations(res);
-    }).catch(() => {});
-  }, []);
+    if (operatingOrganizationOptions && operatingOrganizationOptions.length > 0) {
+      setOperatingOrganizations(operatingOrganizationOptions);
+    } else {
+      vtsSystemCRUD.getOperatingOrganizationOptions().then((res) => {
+        if (Array.isArray(res) && res.length > 0) setOperatingOrganizations(res);
+      }).catch(() => {});
+    }
+  }, [opCenterOptions, radarStationOptions, operatingOrganizationOptions]);
 
   const operatingUnitOptions = useMemo(() => {
     const list: Array<{ value: string; label: string }> = [];
@@ -266,21 +283,18 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
 
     if (targetId) {
       setIsLoading(true);
-      Promise.all([
-        aisSystemService.getById(targetId),
-        aisSystemService.listAttachments(targetId),
-      ])
-        .then(([full, atts]) => {
+      aisSystemService.getById(targetId)
+        .then((full) => {
           setRecord(full);
-          setAttachments(atts || []);
+          setAttachments(full.attachments || []);
           const initialLocId = full.vtsOperationCenterId ? `op_${full.vtsOperationCenterId}` : full.radarStationId ? `radar_${full.radarStationId}` : undefined;
           form.setFieldsValue({
             code: full.code,
             name: full.name,
             locationId: initialLocId,
-            operatingOrgId: full.operatingOrgId,
+            operatingOrgId: full.operatingOrgId != null ? String(full.operatingOrgId) : undefined,
             orgUnitId: full.orgUnitId,
-            provinceId: full.provinceId,
+            provinceId: full.provinceId != null ? String(full.provinceId) : undefined,
             unitOfMeasure: full.unitOfMeasure ?? UnitOfMeasure.SET,
             quantity: full.quantity ?? 1,
             model: full.model,
@@ -604,31 +618,37 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
             children: (
               <div style={drawerFormScrollStyle}>
                 <div className="chk-detail-grid">
-                  <div className="chk-detail-row"><span className="chk-detail-label">Mã thiết bị AIS</span><span className="chk-detail-value">{record.code || '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Tên thiết bị AIS</span><span className="chk-detail-value">{record.name || '—'}</span></div>
+                  <div className="chk-detail-row"><span className="chk-detail-label">Mã thiết bị</span><span className="chk-detail-value">{record.code || '—'}</span></div>
+                  <div className="chk-detail-row"><span className="chk-detail-label">Tên thiết bị</span><span className="chk-detail-value">{record.name || '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị quản lý</span><span className="chk-detail-value">{record.orgUnitName || '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Thuộc TTDH VTS / Trạm Radar</span><span className="chk-detail-value">{record.vtsOperationCenterName || record.radarStationName || '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị khai thác</span><span className="chk-detail-value">{record.operatingOrgName || operatingUnitOptions.find((o) => o.value === String(record.operatingOrgId))?.label || '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Địa điểm (Tỉnh/TP)</span><span className="chk-detail-value">{record.provinceName || getProvinceNameById(record.provinceId) || '—'}</span></div>
+
                   <div className="chk-detail-row"><span className="chk-detail-label">Địa điểm chi tiết</span><span className="chk-detail-value">{record.detailedLocation || '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Tình trạng</span><span className="chk-detail-value">{renderConditionBadge(record.conditionStatus)}</span></div>
-                </div>
-
-                <div style={{ marginTop: 16, marginBottom: 10, borderTop: `1px solid ${borderDefault}`, paddingTop: 10 }}>
-                  <span style={{ color: actionPrimary, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
-                    Thông tin kỹ thuật & Khác
-                  </span>
-                </div>
-
-                <div className="chk-detail-grid">
-                  <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị tính</span><span className="chk-detail-value">{record.unitOfMeasure != null ? (UNIT_OF_MEASURE_MAP[record.unitOfMeasure] || record.unitOfMeasure) : '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Số lượng</span><span className="chk-detail-value">{record.quantity ?? '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Năm đưa vào sử dụng</span><span className="chk-detail-value">{record.commissioningYear || '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Model / Ký hiệu</span><span className="chk-detail-value">{record.model || '—'}</span></div>
-                  <div className="chk-detail-row chk-detail-row--full">
-                    <span className="chk-detail-label">Hãng sản xuất</span>
-                    <span className="chk-detail-value">{record.manufacturer || '—'}</span>
+                  <div style={{ display: 'flex', gap: 24, padding: 0 }}>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', minHeight: 38, padding: '8px 0', borderBottom: `1px solid ${borderDefault}` }}>
+                      <span style={{ width: 95, flexShrink: 0, color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: 1.5 }}>
+                        Đơn vị tính:
+                      </span>
+                      <span className="chk-detail-value">
+                        {record.unitOfMeasure != null ? (UNIT_OF_MEASURE_MAP[record.unitOfMeasure] || record.unitOfMeasure) : '—'}
+                      </span>
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', minHeight: 38, padding: '8px 0', borderBottom: `1px solid ${borderDefault}` }}>
+                      <span style={{ width: 75, flexShrink: 0, color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: 1.5 }}>
+                        Số lượng:
+                      </span>
+                      <span className="chk-detail-value">
+                        {record.quantity ?? '—'}
+                      </span>
+                    </div>
                   </div>
+
+                  <div className="chk-detail-row"><span className="chk-detail-label">Năm đưa vào sử dụng</span><span className="chk-detail-value">{record.commissioningYear || '—'}</span></div>
+                  <div className="chk-detail-row"><span className="chk-detail-label">Tình trạng</span><span className="chk-detail-value">{renderConditionBadge(record.conditionStatus)}</span></div>
+                  <div className="chk-detail-row"><span className="chk-detail-label">Model</span><span className="chk-detail-value">{record.model || '—'}</span></div>
+                  <div className="chk-detail-row"><span className="chk-detail-label">Hãng sản xuất</span><span className="chk-detail-value">{record.manufacturer || '—'}</span></div>
                   <div className="chk-detail-row chk-detail-row--full">
                     <span className="chk-detail-label">Thông số kỹ thuật</span>
                     <span className="chk-detail-value">{record.specifications || '—'}</span>
@@ -643,52 +663,40 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                   </div>
                 </div>
 
-                {/* ── Thông tin phê duyệt (Toggle Dropdown) ── */}
-                <div style={{ marginTop: 16, marginBottom: 6 }}>
+                <div style={{ marginTop: spaceMd, marginBottom: spaceSm }}>
                   <button
                     type="button"
-                    onClick={() => setApprovalSectionOpen(!approvalSectionOpen)}
+                    onClick={() => setApprovalSectionOpen((openState) => !openState)}
                     style={{
                       background: 'none',
                       border: 'none',
                       cursor: 'pointer',
-                      padding: '4px 0',
+                      padding: `${spaceXs}px 0`,
                       color: actionPrimary,
                       fontWeight: fontWeightBold,
                       fontSize: fontSizeMd,
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 6,
+                      gap: spaceSm,
                     }}
                   >
-                    <span style={{ fontSize: 10, color: actionPrimary }}>{approvalSectionOpen ? '▼' : '▶'}</span>
+                    <span aria-hidden="true">{approvalSectionOpen ? '▼' : '▶'}</span>
                     <span>Thông tin phê duyệt</span>
                   </button>
                 </div>
 
                 {approvalSectionOpen && (
                   <div className="chk-detail-grid">
-                    <div className="chk-detail-row"><span className="chk-detail-label">Ngày gửi duyệt</span><span className="chk-detail-value">{record.submittedDate ? dayjs(record.submittedDate).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                    <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ gửi duyệt</span><span className="chk-detail-value">{record.submittedByName || record.submittedBy || '—'}</span></div>
-
-                    <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt Cảng vụ</span><span className="chk-detail-value">{record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                    <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt Cảng vụ</span><span className="chk-detail-value">{record.approverLevel1Name || record.approverLevel1 || '—'}</span></div>
-
-                    <div className="chk-detail-row"><span className="chk-detail-label">Nội dung Cảng vụ phê duyệt</span><span className="chk-detail-value">{record.approvalReasonLevel1 || record.rejectionReasonLevel1 || '—'}</span></div>
-                    <div style={{ border: 'none' }} />
-
-                    <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt Cục</span><span className="chk-detail-value">{record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                    <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt Cục</span><span className="chk-detail-value">{record.approverLevel2Name || record.approverLevel2 || '—'}</span></div>
-
-                    <div className="chk-detail-row"><span className="chk-detail-label">Nội dung Cục phê duyệt</span><span className="chk-detail-value">{record.approvalReasonLevel2 || record.rejectionReasonLevel2 || '—'}</span></div>
-                    <div style={{ border: 'none' }} />
-
+                    <div className="chk-detail-row"><span className="chk-detail-label">Ngày gửi phê duyệt</span><span className="chk-detail-value">{record.submittedAt ? dayjs(record.submittedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
+                    <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ gửi phê duyệt</span><span className="chk-detail-value">{record.submittedByName || record.submittedBy || '—'}</span></div>
+                    <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt cấp C1</span><span className="chk-detail-value">{record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
+                    <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt cấp C1</span><span className="chk-detail-value">{record.approverLevel1Name || record.approverLevel1 || '—'}</span></div>
+                    <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Nội dung phê duyệt cấp C1</span><span className="chk-detail-value">{record.approvalContentLevel1 || record.approvalReasonLevel1 || '—'}</span></div>
+                    <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt cấp C2</span><span className="chk-detail-value">{record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
+                    <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt cấp C2</span><span className="chk-detail-value">{record.approverLevel2Name || record.approverLevel2 || '—'}</span></div>
+                    <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Nội dung phê duyệt cấp C2</span><span className="chk-detail-value">{record.approvalContentLevel2 || record.approvalReasonLevel2 || record.rejectionReason || '—'}</span></div>
                     <div className="chk-detail-row"><span className="chk-detail-label">Trạng thái phê duyệt</span><span className="chk-detail-value"><ApprovalStatusBadge status={record.approvalStatus} /></span></div>
-                    <div style={{ border: 'none' }} />
-
-                    {record.rejectionReason && (
-                      <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Lý do từ chối</span><span className="chk-detail-value" style={{ color: statusCritical }}>{record.rejectionReason}</span></div>
-                    )}
+                    {record.rejectionReason && <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Lý do từ chối</span><span className="chk-detail-value" style={{ color: statusCritical }}>{record.rejectionReason}</span></div>}
                   </div>
                 )}
               </div>
@@ -947,29 +955,28 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                             label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Mã thiết bị</span>}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <Input.TextArea
-                              autoSize={{ minRows: 1, maxRows: 2 }}
+                            <Input
                               disabled
-                              placeholder="Mã tự động sinh..."
-                              style={{ ...readonlyInputStyle, borderRadius: radiusPill, minHeight: 40, padding: '8px 16px' }}
+                              placeholder="Mã tự động sinh"
+                              style={{ ...readonlyInputStyle, borderRadius: radiusPill, height: 40 }}
                             />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
                           <Form.Item
                             name="name"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tên thiết bị (bắt buộc)</span>}
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tên thiết bị</span>}
                             rules={[
                               { required: true, message: 'Vui lòng nhập tên thiết bị' },
                               { max: 255, message: 'Tên tối đa 255 ký tự' },
                             ]}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <Input.TextArea
-                              autoSize={{ minRows: 1, maxRows: 2 }}
-                              placeholder="Nhập tên thiết bị..."
+                            <Input
+                              placeholder="Nhập tên thiết bị"
                               maxLength={255}
-                              style={{ ...inputStyle, borderRadius: radiusPill, minHeight: 40, padding: '8px 16px' }}
+                              showCount
+                              style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }}
                             />
                           </Form.Item>
                         </Col>
@@ -979,13 +986,13 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                         <Col span={12}>
                           <Form.Item
                             name="orgUnitId"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị quản lý (bắt buộc khi tạo)</span>}
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị quản lý</span>}
                             rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <FormOrgUnitTreeSelect
                               organizations={orgUnits}
-                              placeholder="Chọn đơn vị quản lý..."
+                              placeholder="Chọn đơn vị quản lý"
                               disabled={isEditMode}
                               allowClear
                               treeDefaultExpandAll
@@ -998,12 +1005,12 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                         <Col span={12}>
                           <Form.Item
                             name="locationId"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thuộc TTDH VTS / Trạm Radar (bắt buộc)</span>}
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thuộc TTDH VTS / Trạm Radar</span>}
                             rules={[{ required: true, message: 'Vui lòng chọn TTDH VTS hoặc Trạm Radar' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select
-                              placeholder="Chọn TTDH VTS hoặc Trạm Radar..."
+                              placeholder="Chọn TTDH VTS hoặc Trạm Radar"
                               allowClear
                               showSearch
                               filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}
@@ -1022,7 +1029,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select
-                              placeholder="Chọn đơn vị khai thác..."
+                              placeholder="Chọn đơn vị khai thác"
                               allowClear
                               showSearch
                               filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}
@@ -1039,7 +1046,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select
-                              placeholder="Chọn Tỉnh/Thành phố..."
+                              placeholder="Chọn Tỉnh/Thành phố"
                               allowClear
                               showSearch
                               filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}
@@ -1058,18 +1065,18 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                             rules={[{ max: 500, message: 'Địa điểm chi tiết tối đa 500 ký tự' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <Input placeholder="Nhập địa điểm chi tiết..." maxLength={500} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                            <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
                           </Form.Item>
                         </Col>
                         <Col span={6}>
                           <Form.Item
                             name="unitOfMeasure"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị tính (bắt buộc)</span>}
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị tính</span>}
                             rules={[{ required: true, message: 'Vui lòng chọn đơn vị tính' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select
-                              placeholder="Chọn đơn vị tính..."
+                              placeholder="Chọn đơn vị tính"
                               options={UNIT_OF_MEASURE_OPTIONS}
                               style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
                             />
@@ -1078,7 +1085,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                         <Col span={6}>
                           <Form.Item
                             name="quantity"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Số lượng (bắt buộc)</span>}
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Số lượng</span>}
                             rules={[{ required: true, message: 'Vui lòng nhập số lượng' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
@@ -1098,7 +1105,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                               {...getDatePickerProps({
                                 picker: 'year',
                                 format: 'YYYY',
-                                placeholder: 'Chọn năm đưa vào sử dụng...',
+                                placeholder: 'Chọn năm đưa vào sử dụng',
                                 getPopupContainer: (trigger: HTMLElement) => trigger.parentElement || document.body,
                               })}
                               style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
@@ -1108,12 +1115,12 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                         <Col span={12}>
                           <Form.Item
                             name="conditionStatus"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tình trạng (bắt buộc)</span>}
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tình trạng</span>}
                             rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select
-                              placeholder="Chọn tình trạng..."
+                              placeholder="Chọn tình trạng"
                               options={CONDITION_STATUS_OPTIONS}
                               style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
                             />
@@ -1125,11 +1132,11 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                         <Col span={12}>
                           <Form.Item
                             name="model"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Model / Ký hiệu</span>}
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Model</span>}
                             rules={[{ max: 255, message: 'Model tối đa 255 ký tự' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <Input placeholder="Nhập model..." maxLength={255} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                            <Input placeholder="Nhập model" maxLength={255} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -1139,7 +1146,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                             rules={[{ max: 255, message: 'Hãng sản xuất tối đa 255 ký tự' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <Input placeholder="Nhập hãng sản xuất..." maxLength={255} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                            <Input placeholder="Nhập hãng sản xuất" maxLength={255} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -1152,7 +1159,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                             rules={[{ max: 2000, message: 'Thông số kỹ thuật tối đa 2000 ký tự' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <Input.TextArea rows={3} placeholder="Nhập thông số kỹ thuật..." maxLength={2000} showCount style={{ ...textAreaStyle, padding: '10px 16px' }} />
+                            <Input.TextArea rows={3} placeholder="Nhập thông số kỹ thuật" maxLength={2000} showCount style={{ ...textAreaStyle, padding: '10px 16px' }} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -1165,7 +1172,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                             rules={[{ max: 2000, message: 'Thông tin bảo trì tối đa 2000 ký tự' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì, bảo dưỡng..." maxLength={2000} showCount style={{ ...textAreaStyle, padding: '10px 16px' }} />
+                            <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì, bảo dưỡng" maxLength={2000} showCount style={{ ...textAreaStyle, padding: '10px 16px' }} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -1178,7 +1185,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                             rules={[{ max: 2000, message: 'Ghi chú tối đa 2000 ký tự' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <Input.TextArea rows={3} placeholder="Nhập ghi chú nếu có..." maxLength={2000} showCount style={{ ...textAreaStyle, padding: '10px 16px' }} />
+                            <Input.TextArea rows={3} placeholder="Nhập ghi chú (nếu có)" maxLength={2000} showCount style={{ ...textAreaStyle, padding: '10px 16px' }} />
                           </Form.Item>
                         </Col>
                       </Row>

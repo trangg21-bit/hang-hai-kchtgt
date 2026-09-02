@@ -3,7 +3,9 @@ feature-id: F-298
 document: lean-spec
 output-mode: lean
 module-id: M-003
-last-updated: 2026-08-26
+last-updated: 2026-09-01
+implementation-audit: 2026-09-01
+implementation-note: "Lịch sử lọc tại client trên một lần tải; các dòng file đính kèm trùng do log legacy được loại bỏ theo delta file trước khi hiển thị."
 ---
 # Lịch sử thay đổi Trung tâm điều hành VTS
 ## Bối cảnh

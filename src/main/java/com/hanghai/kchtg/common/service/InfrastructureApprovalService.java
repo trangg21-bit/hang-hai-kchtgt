@@ -99,6 +99,9 @@ public class InfrastructureApprovalService {
         }
         entity.setApproverLevel2(null);
         entity.setApprovedDateLevel2(null);
+
+        // Lịch sử chỉ ghi khi bản ghi được phê duyệt cấp cuối cùng (APPROVED)
+        // — không ghi ở bước submit.
     }
 
     /**
@@ -131,6 +134,7 @@ public class InfrastructureApprovalService {
             entity.setApprovedDateLevel1(null);
             // #54 — nội dung trả về vẫn được ghi
             entity.setLevel1ApprovalContent(reason.trim());
+            // Lịch sử chỉ ghi khi phê duyệt cấp cuối — không ghi reject L1.
         } else if (isApproveDecision(decision)) {
             // Đồng ý vòng 1 (T06) -> Chuyển sang Chờ Cục duyệt (APPROVED_LEVEL1)
             entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
@@ -139,6 +143,7 @@ public class InfrastructureApprovalService {
             entity.setApprovedDateLevel1(LocalDateTime.now());
             // #54 — nội dung phê duyệt
             entity.setLevel1ApprovalContent(reason);
+            // Lịch sử chỉ ghi khi phê duyệt cấp cuối — không ghi approve L1.
         } else {
             throw new IllegalArgumentException("Quyết định phê duyệt cấp Chi cục không hợp lệ");
         }
@@ -182,6 +187,7 @@ public class InfrastructureApprovalService {
             entity.setApprovedDateLevel2(null);
             // #57 — nội dung trả về vẫn được ghi
             entity.setLevel2ApprovalContent(reason.trim());
+            // Lịch sử chỉ ghi khi phê duyệt cấp cuối — không ghi reject L2.
         } else if (isApproveDecision(decision)) {
             // Đồng ý vòng 2 (T08) -> Đã duyệt (APPROVED)
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
@@ -190,6 +196,7 @@ public class InfrastructureApprovalService {
             entity.setApprovedDateLevel2(LocalDateTime.now());
             // #57 — nội dung phê duyệt
             entity.setLevel2ApprovalContent(reason);
+            // Lịch sử chỉ ghi khi CHỈNH SỬA dữ liệu trên bản ghi đã duyệt — không ghi khi chỉ bấm nút duyệt.
         } else {
             throw new IllegalArgumentException("Quyết định phê duyệt cấp Cục không hợp lệ");
         }
@@ -289,9 +296,7 @@ public class InfrastructureApprovalService {
 
         entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
 
-        recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_0,
-                InfrastructureHistoryStatus.DELETED, userId, null,
-                "Trạng thái phê duyệt", currentStatus.getLabel(), ApprovalStatus.ARCHIVED.getLabel());
+        // Lịch sử chỉ ghi khi phê duyệt cấp cuối — không ghi xóa nháp.
     }
 
     /**
@@ -326,9 +331,7 @@ public class InfrastructureApprovalService {
         entity.setApproverLevel2(userId);
         entity.setApprovedDateLevel2(LocalDateTime.now());
 
-        recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_2,
-                InfrastructureHistoryStatus.APPROVED, userId, "Tích hợp hệ thống ngoài lưu thẳng Đã duyệt",
-                "Trạng thái phê duyệt", currentStatus.getLabel(), ApprovalStatus.APPROVED.getLabel());
+        // Lịch sử chỉ ghi khi chỉnh sửa dữ liệu — không ghi khi chỉ chuyển trạng thái.
     }
 
     /**

@@ -7,7 +7,7 @@ status: proposed
 classification: local
 priority: medium
 created: "2026-07-07T03:33:06Z"
-last-updated: "2026-08-24"
+last-updated: "2026-09-01"
 locked-fields: []
 consumed_by_modules: []
 ---
@@ -47,7 +47,7 @@ Bảng mô tả toàn bộ 40 trường hiển thị trên màn chi tiết (theo
 | 6 | Địa điểm chi tiết | Có | InputTextArea | |
 | 7 | Tình trạng | Có | SelectAppParams | |
 | 8 | Vùng phủ sóng | Không | InputTextArea | Thông tin đặc thù Inmarsat |
-| 9 | Dịch vụ cung cấp | Không | SelectAppParams (multi-select) | Thông tin đặc thù Inmarsat |
+| 9 | Dịch vụ cung cấp | Không | Select multi-select trong khung bo góc, mỗi dịch vụ hiển thị một dòng, tên dài ellipsis | Thông tin đặc thù Inmarsat |
 | 10 | Tần số liên lạc | Không | InputTextArea | Thông tin đặc thù Inmarsat |
 | 11 | Ghi chú | Không | InputTextArea | |
 | 12 | Loại đối tượng | Không | Select (Điểm/Đường/Vùng) | GIS |

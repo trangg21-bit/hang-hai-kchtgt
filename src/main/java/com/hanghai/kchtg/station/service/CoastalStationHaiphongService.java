@@ -78,12 +78,6 @@ public class CoastalStationHaiphongService {
         }
     }
 
-    private void validateNotSelfApproval(UUID createdBy, UUID currentUserId) {
-        if (createdBy != null && currentUserId != null && createdBy.equals(currentUserId)) {
-            throw new IllegalStateException("Bạn không thể tự phê duyệt bản ghi do chính mình tạo (Nguyên tắc 4 mắt)");
-        }
-    }
-
     @Transactional(readOnly = true)
     public String generateCode() {
         long next = repository.count() + 1;
@@ -418,15 +412,24 @@ public class CoastalStationHaiphongService {
         if (request.getSymbol() != null) entity.setSymbol(request.getSymbol());
         if (request.getCoordinateSystem() != null) entity.setCoordinateSystem(request.getCoordinateSystem());
         if (request.getDisplayRule() != null) entity.setDisplayRule(request.getDisplayRule());
+        GisGeometryType geomType = "LINE".equalsIgnoreCase(request.getGeometryType()) ? GisGeometryType.LINE : ("POLYGON".equalsIgnoreCase(request.getGeometryType()) ? GisGeometryType.POLYGON : GisGeometryType.POINT);
+
         if (request.getLatitude() != null) entity.setLatitude(request.getLatitude());
         if (request.getLongitude() != null) entity.setLongitude(request.getLongitude());
 
         if (request.getCoordinates() != null && !request.getCoordinates().isBlank()) {
+            if (entity.getLatitude() == null || entity.getLongitude() == null) {
+                BigDecimal[] pt = extractFirstCoordinate(request.getCoordinates());
+                if (pt != null) {
+                    entity.setLatitude(pt[0]);
+                    entity.setLongitude(pt[1]);
+                }
+            }
             UUID spatialId = gisSpatialObjectService.syncSpatialObject(
                     entity.getSpatialId(),
                     "Đài TTXLTT " + entity.getName(),
                     "HAIPHONG_" + entity.getId(),
-                    GisGeometryType.POINT,
+                    geomType,
                     request.getCoordinates(),
                     entity.getId(),
                     InfrastructureType.HANOI_STATION);
@@ -448,11 +451,24 @@ public class CoastalStationHaiphongService {
         return updated;
     }
 
+    private BigDecimal[] extractFirstCoordinate(String wkt) {
+        if (wkt == null || wkt.isBlank()) return null;
+        try {
+            java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("([0-9]+\\.?[0-9]*)\\s+([0-9]+\\.?[0-9]*)").matcher(wkt);
+            if (matcher.find()) {
+                BigDecimal lng = new BigDecimal(matcher.group(1));
+                BigDecimal lat = new BigDecimal(matcher.group(2));
+                return new BigDecimal[]{lat, lng};
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
     private String resolveOperatingOrgName(UUID operatingOrgId) {
-        if (operatingOrgId == null) return "—";
+        if (operatingOrgId == null) return null;
         return operatingOrganizationRepository.findById(operatingOrgId)
                 .map(OperatingOrganization::getName)
-                .orElse("—");
+                .orElseGet(() -> orgUnitCacheService.getName(operatingOrgId));
     }
 
     private String getNewValueDisplay(String fieldName, CoastalStationHaiphong entity) {
@@ -464,15 +480,6 @@ public class CoastalStationHaiphongService {
             case "Địa điểm (Tỉnh/TP)" -> entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : "—";
             case "Địa điểm chi tiết" -> entity.getLocationAddress() != null ? entity.getLocationAddress() : "—";
             case "Tình trạng" -> entity.getConditionStatus() != null ? entity.getConditionStatus() : "—";
-            case "Cảng biển" -> entity.getPortName() != null ? entity.getPortName() : "—";
-            case "Quận/Huyện" -> entity.getDistrict() != null ? entity.getDistrict() : "—";
-            case "Phường/Xã" -> entity.getWard() != null ? entity.getWard() : "—";
-            case "Giấy phép hoạt động" -> entity.getOperationalLicense() != null ? entity.getOperationalLicense() : "—";
-            case "Hạn giấy phép" -> entity.getLicenseExpiry() != null ? String.valueOf(entity.getLicenseExpiry()) : "—";
-            case "Cán bộ kiểm định" -> entity.getInspectorName() != null ? entity.getInspectorName() : "—";
-            case "SĐT cán bộ kiểm định" -> entity.getInspectorPhone() != null ? entity.getInspectorPhone() : "—";
-            case "Ngày kiểm định gần nhất" -> entity.getLastInspectionDate() != null ? String.valueOf(entity.getLastInspectionDate()) : "—";
-            case "Ngày kiểm định tiếp theo" -> entity.getNextInspectionDate() != null ? String.valueOf(entity.getNextInspectionDate()) : "—";
             case "Vùng phủ sóng" -> entity.getCoverageArea() != null ? entity.getCoverageArea() : "—";
             case "Loại thiết bị" -> entity.getEquipmentType() != null ? entity.getEquipmentType() : "—";
             case "Tần số liên lạc" -> entity.getCommunicationFrequency() != null ? entity.getCommunicationFrequency() : "—";
@@ -535,19 +542,27 @@ public class CoastalStationHaiphongService {
     }
 
     public CoastalStationHaiphong approveLevel1(UUID id) {
+        return approveLevel1(id, null);
+    }
+
+    public CoastalStationHaiphong approveLevel1(UUID id, String content) {
         CoastalStationHaiphong entity = getStationById(id);
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         validateAllowedOrgUnit(entity.getOrgUnitId());
-        validateNotSelfApproval(entity.getCreatedBy(), currentUserId);
-        approvalService.approveC1(entity, InfrastructureType.HANOI_STATION, "Duyệt cấp 1", "Đủ điều kiện", currentUserId);
+        String approvalContent = content == null || content.isBlank() ? "Đủ điều kiện" : content.trim();
+        approvalService.approveC1(entity, InfrastructureType.HANOI_STATION, ApprovalStatus.APPROVED_LEVEL1.name(), approvalContent, currentUserId);
         return repository.save(entity);
     }
 
     public CoastalStationHaiphong approveLevel2(UUID id) {
+        return approveLevel2(id, null);
+    }
+
+    public CoastalStationHaiphong approveLevel2(UUID id, String content) {
         CoastalStationHaiphong entity = getStationById(id);
         UUID currentUserId = SecurityUtils.getCurrentUserId();
-        validateNotSelfApproval(entity.getCreatedBy(), currentUserId);
-        approvalService.approveC2(entity, InfrastructureType.HANOI_STATION, "Duyệt cấp 2", "Đồng ý ban hành", currentUserId);
+        String approvalContent = content == null || content.isBlank() ? "Đồng ý ban hành" : content.trim();
+        approvalService.approveC2(entity, InfrastructureType.HANOI_STATION, ApprovalStatus.APPROVED_LEVEL2.name(), approvalContent, currentUserId);
         entity.setStatus(StationStatus.APPROVED_L2);
         return repository.save(entity);
     }
@@ -591,8 +606,40 @@ public class CoastalStationHaiphongService {
         return repository.findByPortName(portName);
     }
 
+    @Transactional(readOnly = true)
     public List<CoastalStationHaiphongHistoryResponse> getHistory(UUID id) {
-        return List.of();
+        CoastalStationHaiphong entity = getStationById(id);
+        String code = entity.getCode() != null ? entity.getCode() : entity.getStationCode();
+        return historyService.getHistory(InfrastructureType.HANOI_STATION, entity.getId(), code).stream()
+                .filter(h -> {
+                    if (h.getActionType() == null) return false;
+                    StationHistoryActionType act = h.getActionType();
+                    if (act == StationHistoryActionType.APPROVE_L1 || act == StationHistoryActionType.APPROVE_L2 || act == StationHistoryActionType.REJECT) {
+                        return false;
+                    }
+                    String changedField = h.getChangedField();
+                    String newVal = h.getNewValue();
+                    if ((changedField == null || "Thông tin".equals(changedField))
+                            && newVal != null && (newVal.contains("Phê duyệt") || newVal.contains("Cập nhật thông tin đài TTXLTT"))) {
+                        return false;
+                    }
+                    return true;
+                })
+                .map(h -> {
+                    CoastalStationHaiphongHistoryResponse r = new CoastalStationHaiphongHistoryResponse();
+                    r.setId(h.getId());
+                    r.setStationCode(h.getStationCode());
+                    r.setActionType(h.getActionType());
+                    r.setChangedField(h.getChangedField());
+                    r.setPreviousValue(h.getPreviousValue());
+                    r.setNewValue(h.getNewValue());
+                    r.setReason(h.getReason());
+                    r.setApprovalLevel(h.getApprovalLevel());
+                    r.setChangedBy(h.getChangedBy());
+                    r.setChangedAt(h.getChangedAt());
+                    return r;
+                })
+                .toList();
     }
 
     // --- RESPONSE BUILDER ---
@@ -615,6 +662,11 @@ public class CoastalStationHaiphongService {
         String updatedByName = resolveUserName(entity.getUpdatedBy());
         String approver1Name = resolveUserName(entity.getApproverLevel1());
         String approver2Name = resolveUserName(entity.getApproverLevel2());
+
+        String coords = gisSpatialObjectService != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
+        if (coords == null && entity.getLatitude() != null && entity.getLongitude() != null) {
+            coords = "POINT(" + entity.getLongitude() + " " + entity.getLatitude() + ")";
+        }
 
         return CoastalStationHaiphongResponse.builder()
                 .id(entity.getId())
@@ -653,6 +705,7 @@ public class CoastalStationHaiphongService {
                 .displayRule(entity.getDisplayRule())
                 .latitude(entity.getLatitude())
                 .longitude(entity.getLongitude())
+                .coordinates(coords)
                 .approvalStatus(entity.getApprovalStatus())
                 .submittedAt(entity.getSubmittedAt())
                 .submittedBy(entity.getSubmittedBy())

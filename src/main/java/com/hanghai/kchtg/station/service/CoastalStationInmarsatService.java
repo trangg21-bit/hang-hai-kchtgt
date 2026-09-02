@@ -85,11 +85,6 @@ public class CoastalStationInmarsatService {
         }
     }
 
-    private void validateNotSelfApproval(UUID createdBy, UUID currentUserId) {
-        if (createdBy != null && currentUserId != null && createdBy.equals(currentUserId)) {
-            throw new IllegalStateException("Bạn không thể tự phê duyệt bản ghi do chính mình tạo (Nguyên tắc 4 mắt)");
-        }
-    }
 
     @Transactional(readOnly = true)
     public String generateCode() {
@@ -495,19 +490,10 @@ public class CoastalStationInmarsatService {
                             + status.getLabel());
         }
 
-        String code = entity.getCode() != null ? entity.getCode() : entity.getDeviceCode();
         entity.softDelete(SecurityUtils.getCurrentUserId());
         entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         entity.setStatus(StationStatus.DELETED);
         repository.save(entity);
-
-        historyService.recordHistory(
-                InfrastructureType.INMARSAT_STATION,
-                entity.getId(),
-                StationHistoryActionType.DELETE,
-                "Hoạt động",
-                "Xóa mềm đài Inmarsat",
-                SecurityUtils.getCurrentUserId());
     }
 
     @Transactional(readOnly = true)
@@ -588,17 +574,7 @@ public class CoastalStationInmarsatService {
                     rejectionReason.trim(), currentUserId);
         }
         syncStationStatus(entity);
-        CoastalStationInmarsat saved = repository.save(entity);
-        historyService.recordHistory(
-                InfrastructureType.INMARSAT_STATION,
-                saved.getId(),
-                StationHistoryActionType.REJECT,
-                "Trạng thái phê duyệt",
-                isLevel2 ? "Chờ Cục duyệt" : "Chờ Cảng vụ duyệt",
-                "Từ chối",
-                rejectionReason.trim(),
-                currentUserId);
-        return saved;
+        return repository.save(entity);
     }
 
     /**
@@ -840,7 +816,9 @@ public class CoastalStationInmarsatService {
                     .build();
             savedAttachments.add(attachmentRepository.save(attachment));
 
-            if (historyService != null) {
+            boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                    || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+            if (historyService != null && wasApproved) {
                 historyService.recordHistory(
                         InfrastructureType.INMARSAT_STATION,
                         id,
@@ -876,7 +854,9 @@ public class CoastalStationInmarsatService {
         }
         attachmentRepository.delete(attachment);
 
-        if (historyService != null) {
+        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+        if (historyService != null && wasApproved) {
             historyService.recordHistory(
                     InfrastructureType.INMARSAT_STATION,
                     id,

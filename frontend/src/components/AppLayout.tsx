@@ -84,8 +84,6 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/transmission': 'transmission:read',
   '/vts-assist': 'vtsassist:read',
   '/station/coastal': 'coastalstation:read',
-  '/station/special': 'specialstation:read',
-  '/station/special-chk': 'specialstation:read',
   '/station/inmarsat': 'specialstation:read',
   '/station/cospas-sarsat': 'coastalstationcospassarsat:read',
   '/station/lrit': 'coastalstationlrit:read',
@@ -324,8 +322,7 @@ export default function AppLayout() {
       label: 'Đài duyên hải & Vệ tinh',
       children: [
         canAccessMenu('/station/coastal') ? { key: '/station/coastal', label: 'Đài duyên hải VTS' } : null,
-        canAccessMenu('/station/special') ? { key: '/station/special', label: 'Đài vệ tinh Inmarsat' } : null,
-        canAccessMenu('/station/special-chk') ? { key: '/station/special-chk', label: 'Đài vệ tinh Inmarsat (CHK)' } : null,
+        canAccessMenu('/station/inmarsat') ? { key: '/station/inmarsat', label: 'Đài vệ tinh Inmarsat' } : null,
         canAccessMenu('/station/cospas-sarsat') ? { key: '/station/cospas-sarsat', label: 'Đài Cospas-Sarsat' } : null,
         canAccessMenu('/station/lrit') ? { key: '/station/lrit', label: 'Đài LRIT' } : null,
         canAccessMenu('/station/hanoi') ? { key: '/station/hanoi', label: 'Đài TTXLTT Hà Nội' } : null,

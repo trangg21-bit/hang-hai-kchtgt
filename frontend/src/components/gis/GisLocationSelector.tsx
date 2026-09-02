@@ -184,6 +184,7 @@ export default function GisLocationSelector({
   const mapRef = useRef<any>(null);
   const drawnLayerRef = useRef<any>(null);
   const isUpdatingFromMap = useRef(false);
+  const hasCenteredOnLoadRef = useRef(false);
 
   const internalGeomRef = useRef(internalGeom);
   const internalBieuTuongRef = useRef(internalBieuTuong);
@@ -509,13 +510,16 @@ export default function GisLocationSelector({
         layer.addTo(mapRef.current);
         drawnLayerRef.current = layer;
 
-        // Auto zoom and center to the drawn vertices
-        if (validVertices.length === 1) {
-          mapRef.current.setView([validVertices[0].lat, validVertices[0].lng], Math.max(mapRef.current.getZoom(), 13));
-        } else if (layer.getBounds) {
-          const bounds = layer.getBounds();
-          if (bounds && bounds.isValid && bounds.isValid()) {
-            mapRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+        // Auto center to drawn vertices once on initial load (without forced zoom-in, keep overview zoom 6)
+        if (!hasCenteredOnLoadRef.current) {
+          hasCenteredOnLoadRef.current = true;
+          if (validVertices.length === 1) {
+            mapRef.current.setView([validVertices[0].lat, validVertices[0].lng], 6);
+          } else if (layer.getBounds) {
+            const bounds = layer.getBounds();
+            if (bounds && bounds.isValid && bounds.isValid()) {
+              mapRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 6 });
+            }
           }
         }
 
@@ -927,7 +931,7 @@ export default function GisLocationSelector({
                     {
                       title: 'STT',
                       key: 'index',
-                      width: 46,
+                      width: 50,
                       align: 'center',
                       render: (_, __, i) => (
                         <Space size={2}>
@@ -942,6 +946,7 @@ export default function GisLocationSelector({
                       title: 'Vĩ độ (N) *',
                       dataIndex: 'lat',
                       key: 'lat',
+                      width: '45%',
                       render: (val, _, i) => (
                         <DmsInput
                           value={val}
@@ -955,6 +960,7 @@ export default function GisLocationSelector({
                       title: 'Kinh độ (E) *',
                       dataIndex: 'lng',
                       key: 'lng',
+                      width: '45%',
                       render: (val, _, i) => (
                         <DmsInput
                           value={val}

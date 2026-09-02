@@ -7,7 +7,7 @@ status: proposed
 classification: local
 priority: medium
 created: "2026-07-07T03:33:22Z"
-last-updated: "2026-08-23"
+last-updated: "2026-09-01"
 locked-fields: []
 consumed_by_modules: []
 ---
@@ -33,59 +33,43 @@ consumed_by_modules: []
 
 Tính năng xem chi tiết toàn bộ thông tin một Đài LRIT theo ID. Hiển thị đầy đủ 39 trường theo Excel, chia thành 8 khối: Thông tin cơ bản, Thông tin đặc thù LRIT, Vị trí (GIS), File đính kèm, Trạng thái & Kiểm toán, Thông tin vận hành khai thác (read-only), Thông tin bảo trì (read-only), Thông tin sự cố (read-only). Hiển thị badge trạng thái (7 màu), badge phê duyệt (2 cấp), và các nút hành động phù hợp với quyền người dùng (Sửa, Gửi phê duyệt, Xóa, Phê duyệt/Từ chối). API GET `/api/v1/stations/lrit/{id}` trả về CoastalStationLRITResponse.
 
-## 2. Trường dữ liệu
+## 2. Trường dữ liệu & Ma trận CRUD 5 Tab
 
-Bảng mô tả toàn bộ 39 trường hiển thị trên trang chi tiết, trích từ sheet Excel \"Đài LRIT\":
+Bảng mô tả các trường theo chuẩn 5 Tab của Đài LRIT:
 
-| # | Tên trường (theo Excel) | Loại điều khiển | Bắt buộc | Danh sách | Bộ lọc | Xem chi tiết | Tạo mới | Sửa | Ghi chú |
+| STT | Tên trường | Loại điều khiển | Bắt buộc | Danh sách | Bộ lọc | Xem chi tiết | Tạo mới | Sửa | Ghi chú |
 |---|---|---|---|---|---|---|---|---|---|
-| **Thông tin cơ bản** | | | | | | | | | |
-| 1 | Đơn vị quản lý (bắt buộc) | SelectOrgCode | Có | Có | Có | Có | Có | Có | FK → org_unit |
-| 2 | Đơn vị khai thác | SelectCateOther | Có | Không | Có | Có | Có | Có | Danh mục khác |
-| 3 | Mã đài | Input (disabled, tự sinh LRIT-{seq}) | Có | Có | Có | Có | Có | Có | Tự sinh, bất biến |
-| 4 | Tên đài (bắt buộc) | InputTextArea | Có | Có | Có | Có | Có | Có | |
-| 5 | Địa điểm (Tỉnh/TP) (bắt buộc) | SelectCateOther | Có | Có | Có | Có | Có | Có | |
-| 6 | Địa điểm chi tiết (bắt buộc) | InputTextArea | Có | Không | Có | Có | Có | Có | |
-| 7 | Tình trạng (bắt buộc) | SelectAppParams | Có | Có | Có | Có | Có | Có | Enum trạng thái kỹ thuật |
-| **Thông tin đặc thù LRIT** | | | | | | | | | |
-| 8 | Vùng phủ sóng | InputTextArea | Không | Không | Có | Có | Có | Có | |
-| 9 | Dịch vụ cung cấp | SelectAppParams (multi-select) | Không | Không | Có | Có | Có | Có | INMARSAT, COSPAS-SARSAT, DSC, RTP, MSI RTP, MSI NAVTEX, MSI EGC, LRIT, Kết nối TT hàng hải |
-| 10 | Ghi chú | InputTextArea | Không | Không | Có | Có | Có | Có | |
-| **Vị trí (GIS)** | | | | | | | | | |
-| 11 | Loại đối tượng | Select (Điểm/Đường/Vùng) | Không | Không | Không | Có | Có | Có | GIS |
-| 12 | Biểu tượng | Select | Không | Không | Không | Có | Có | Có | GIS |
-| 13 | Hệ quy chiếu | Text | Không | Không | Không | Có | Có | Có | GIS (WGS84) |
-| 14 | Quy tắc hiển thị | Text | Không | Không | Không | Có | Có | Có | GIS |
-| 15 | Tọa độ | LongLatTable | Không | Không | Không | Có | Có | Có | GIS |
-| **File đính kèm** | | | | | | | | | |
-| 16 | File đính kèm | UploadFileTable | Không | Không | Có | Có | Có | Có | |
-| **Trạng thái & Kiểm toán** (chỉ hiển thị, không tạo/sửa) | | | | | | | | | |
-| 17 | Trạng thái | Badge (read-only) | Có | Có | Có | Có | Không | Không | 7 màu: DRAFT=xám, PROPOSED=vàng, PENDING_APPROVAL=tím, APPROVED_LEVEL1=xanh dương, APPROVED_LEVEL2=xanh lá, APPROVED=xanh đậm, REJECTED=đỏ |
-| 18 | Ngày cập nhật | Text (read-only) | Có | Có | Có | Có | Không | Không | |
-| 19 | Cán bộ cập nhật | Text (read-only) | Có | Không | Có | Có | Không | Không | |
-| 20 | Ngày gửi phê duyệt | Text (read-only) | Có | Không | Có | Có | Không | Không | |
-| 21 | Cán bộ gửi phê duyệt | Text (read-only) | Có | Không | Có | Có | Không | Không | |
-| 22 | Ngày phê duyệt cấp Cảng vụ/Chi cục | Text (read-only) | Có | Không | Có | Có | Không | Không | Cấp L1 |
-| 23 | Cán bộ phê duyệt cấp Cảng vụ/Chi cục | Text (read-only) | Có | Không | Có | Có | Không | Không | Cấp L1 |
-| 24 | Nội dung phê duyệt | Text (read-only) | Không | Không | Có | Có | Không | Không | Cấp L1 |
-| 25 | Ngày phê duyệt cấp Cục | Text (read-only) | Có | Không | Có | Có | Không | Không | Cấp L2 |
-| 26 | Cán bộ phê duyệt cấp Cục | Text (read-only) | Có | Không | Có | Có | Không | Không | Cấp L2 |
-| 27 | Nội dung phê duyệt | Text (read-only) | Không | Không | Có | Có | Không | Không | Cấp L2 |
-| **Thông tin vận hành khai thác** (read-only) | | | | | | | | | |
-| 28 | Mã kế hoạch | Text (read-only) | Không | Không | Có | Có | Không | Không | |
-| 29 | Tên kế hoạch | Text (read-only) | Không | Không | Có | Có | Không | Không | |
-| 30 | Ngày bắt đầu | Text (read-only) | Không | Không | Có | Có | Không | Không | |
-| 31 | Ngày kết thúc | Text (read-only) | Không | Không | Có | Có | Không | Không | |
-| **Thông tin bảo trì** (read-only) | | | | | | | | | |
-| 32 | Mã kế hoạch | Text (read-only) | Không | Không | Có | Có | Không | Không | |
-| 33 | Tên kế hoạch | Text (read-only) | Không | Không | Có | Có | Không | Không | |
-| 34 | Thời gian bắt đầu | Text (read-only) | Không | Không | Có | Có | Không | Không | |
-| 35 | Thời gian kết thúc | Text (read-only) | Không | Không | Có | Có | Không | Không | |
-| **Thông tin sự cố** (read-only) | | | | | | | | | |
-| 36 | Mã sự cố | Text (read-only) | Không | Không | Có | Có | Không | Không | |
-| 37 | Loại sự cố | Text (read-only) | Không | Không | Có | Có | Không | Không | |
-| 38 | Địa điểm | Text (read-only) | Không | Không | Có | Có | Không | Không | |
-| 39 | Thời gian | Text (read-only) | Không | Không | Có | Có | Không | Không | |
+| **TAB 1** | **Thông tin chung** | | | | | | | | |
+| 1 | Mã đài | Input (disabled, tự sinh `LRIT-{seq}`) | Có | Có | Có | Có | Có (Disabled) | Có (Disabled) | Tự sinh, bất biến |
+| 2 | Tên đài | InputTextArea | Có | Có | Có | Có | Có | Có | Bắt buộc |
+| 3 | Đơn vị quản lý | SelectOrgCode (TreeSelect) | Có | Có | Có | Có | Có | Có | Phân cấp theo DataScope |
+| 4 | Đơn vị khai thác | SelectCateOther | Không | Có | Không | Có | Có | Có | Danh mục đơn vị khai thác |
+| 5 | Địa điểm (Tỉnh/TP) | SelectCateOther | Có | Có | Có | Có | Có | Có | Danh mục 63 Tỉnh/TP |
+| 6 | Địa điểm chi tiết | InputTextArea | Có | Không | Không | Có | Có | Có | Bắt buộc |
+| 7 | Tình trạng | SelectAppParams | Có | Có | Có | Có | Có | Có | `ConditionStatus` |
+| 8 | Vùng phủ sóng | InputTextArea | Không | Không | Không | Có | Có | Có | Thông số đặc thù LRIT |
+| 9 | Dịch vụ cung cấp | Select multi-select trong khung bo góc, mỗi dịch vụ hiển thị một dòng, tên dài ellipsis | Không | Không | Không | Có | Có | Có | `INMARSAT`, `COSPAS-SARSAT`, `DSC`, `LRIT`,... |
+| 10 | Ghi chú | InputTextArea | Không | Không | Không | Có | Có | Có | |
+| **TAB 2** | **Vị trí (GIS)** | | | | | | | | |
+| 11 | Loại đối tượng | Select (Điểm/Đường/Vùng) | Không | Không | Không | Có | Có | Có | `geometryType` |
+| 12 | Biểu tượng | Select (kèm icon bản đồ) | Không | Không | Không | Có | Có | Có | `symbol` |
+| 13 | Hệ quy chiếu | Text (WGS 84 / VN-2000) | Không | Không | Không | Có | Có | Có | GIS |
+| 14 | Quy tắc hiển thị | Text (Độ, phút, giây (DMS)) | Không | Không | Không | Có | Có | Có | GIS |
+| 15 | Tọa độ | LongLatTable + Modal Bản đồ | Không | Không | Không | Có | Có | Có | Bảng tọa độ DMS |
+| **TAB 3** | **File đính kèm** | | | | | | | | |
+| 16 | File đính kèm | UploadFileTable | Không | Không | Không | Có | Có | Có | $\le 20\text{MB}$, tối đa 10 tệp |
+| **TAB 4** | **Vận hành & bảo trì** (Chỉ hiển thị trang Xem chi tiết) | | | | | | | | |
+| 17 | Kế hoạch vận hành khai thác | DetailTable (read-only) | Không | Không | Không | Có | Không | Không | Mã KH, Tên KH, Ngày BĐ, Ngày KT |
+| 18 | Kế hoạch bảo trì | DetailTable (read-only) | Không | Không | Không | Có | Không | Không | Mã KH, Tên KH, Thời gian BĐ, Thời gian KT |
+| 19 | Thông tin sự cố | DetailTable (read-only) | Không | Không | Không | Có | Không | Không | Mã sự cố, Loại sự cố, Địa điểm, Thời gian |
+| **TAB 5** | **Xử lý & theo dõi** (Chỉ hiển thị trang Xem chi tiết & Danh sách) | | | | | | | | |
+| 20 | Trạng thái | Badge (read-only) | Có | Có | Có | Có | Không | Không | 6 tab trạng thái |
+| 21 | Ngày cập nhật & Cán bộ cập nhật | Text (read-only) | Có | Có | Có | Có | Không | Không | |
+| 22 | Ngày gửi phê duyệt & Cán bộ gửi phê duyệt | Text (read-only) | Có | Có | Không | Có | Không | Không | |
+| 23 | Ngày phê duyệt & Cán bộ duyệt cấp Cảng vụ | Text (read-only) | Có | Có | Không | Có | Không | Không | Cấp L1 |
+| 24 | Nội dung phê duyệt cấp 1 | Text (read-only) | Không | Không | Không | Có | Không | Không | Cấp L1 |
+| 25 | Ngày phê duyệt & Cán bộ duyệt cấp Cục | Text (read-only) | Có | Có | Không | Có | Không | Không | Cấp L2 |
+| 26 | Nội dung phê duyệt cấp 2 | Text (read-only) | Không | Không | Không | Có | Không | Không | Cấp L2 |
 
 ## 3. Trạng thái và phê duyệt
 

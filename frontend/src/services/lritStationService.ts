@@ -9,6 +9,14 @@ import type {
 } from '../types/lritStation';
 import type { HistoryEntry } from '../types/radarStation';
 
+export type {
+  LritStationItem,
+  CreateLritStationRequest,
+  UpdateLritStationRequest,
+  LritStationListParams,
+  LritStationSearchResponse,
+};
+
 const BASE_PATH = '/v1/stations/lrit';
 
 function buildSearchParams(params: Record<string, string | number | undefined>) {
@@ -20,6 +28,11 @@ function buildSearchParams(params: Record<string, string | number | undefined>) 
 }
 
 export const lritStationService = {
+  async generateCode(): Promise<{ code: string }> {
+    const res = await api.get(`${BASE_PATH}/generate-code`);
+    return res.data?.data || res.data || { code: 'LRIT-0001' };
+  },
+
   async getById(id: string): Promise<LritStationItem> {
     const res = await api.get(`${BASE_PATH}/${id}`);
     return toSingle<LritStationItem>(res.data?.data || res.data) || ({} as LritStationItem);
@@ -94,13 +107,17 @@ export const lritStationService = {
     return toSingle<LritStationItem>(res.data?.data || res.data) || ({} as LritStationItem);
   },
 
-  async approveC1(id: string): Promise<LritStationItem> {
-    const res = await api.post(`${BASE_PATH}/${id}/approve-c1`);
+  async approveC1(id: string, statusOrContent?: string, maybeContent?: string): Promise<LritStationItem> {
+    const content = maybeContent !== undefined ? maybeContent : statusOrContent;
+    const body = content ? { content } : {};
+    const res = await api.post(`${BASE_PATH}/${id}/approve-c1`, body);
     return toSingle<LritStationItem>(res.data?.data || res.data) || ({} as LritStationItem);
   },
 
-  async approveC2(id: string): Promise<LritStationItem> {
-    const res = await api.post(`${BASE_PATH}/${id}/approve-c2`);
+  async approveC2(id: string, statusOrContent?: string, maybeContent?: string): Promise<LritStationItem> {
+    const content = maybeContent !== undefined ? maybeContent : statusOrContent;
+    const body = content ? { content } : {};
+    const res = await api.post(`${BASE_PATH}/${id}/approve-c2`, body);
     return toSingle<LritStationItem>(res.data?.data || res.data) || ({} as LritStationItem);
   },
 
@@ -109,8 +126,53 @@ export const lritStationService = {
     return toSingle<LritStationItem>(res.data?.data || res.data) || ({} as LritStationItem);
   },
 
+  async approveL1(id: string, statusOrContent?: string, maybeContent?: string): Promise<LritStationItem> {
+    return this.approveC1(id, statusOrContent, maybeContent);
+  },
+
+  async approveL2(id: string, statusOrContent?: string, maybeContent?: string): Promise<LritStationItem> {
+    return this.approveC2(id, statusOrContent, maybeContent);
+  },
+
   async getHistory(id: string): Promise<HistoryEntry[]> {
     const res = await api.get(`${BASE_PATH}/${id}/history`);
     return toArray<HistoryEntry>(res.data?.data || res.data);
+  },
+
+  async getAttachments(id: string): Promise<any[]> {
+    try {
+      const res = await api.get(`${BASE_PATH}/${id}/attachments`);
+      const data = res.data?.data || res.data;
+      return toArray<any>(data);
+    } catch {
+      return [];
+    }
+  },
+
+  async uploadAttachment(id: string, file: File): Promise<any> {
+    const formData = new FormData();
+    formData.append('files', file);
+    const res = await api.post(`${BASE_PATH}/${id}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data?.data || res.data;
+  },
+
+  async deleteAttachment(id: string, attId: string): Promise<void> {
+    await api.delete(`${BASE_PATH}/${id}/attachments/${attId}`);
+  },
+
+  async downloadAttachment(id: string, attId: string, fileName?: string): Promise<void> {
+    const res = await api.get(`${BASE_PATH}/${id}/attachments/${attId}/download`, {
+      responseType: 'blob',
+    });
+    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', fileName || 'attachment');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
   },
 };

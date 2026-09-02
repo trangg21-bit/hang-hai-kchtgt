@@ -88,6 +88,9 @@ export interface VtsSystemListItem {
   provinceId?: number;
   operationStartDate?: string;
   approvalStatus: ApprovalStatus;
+  rejectionReason?: string;
+  createdBy?: string;
+  createdByName?: string;
   approverLevel1?: string;
   updatedDate?: string;
   updatedByName?: string;

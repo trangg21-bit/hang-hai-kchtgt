@@ -191,8 +191,8 @@ test.describe('M-004 Station UI smoke', () => {
     ).toBeVisible({ timeout: 15_000 });
   });
 
-  test('/station/special route accessible (no permission wall)', async ({ page }) => {
-    await page.goto('/station/special');
+  test('/station/inmarsat route accessible (no permission wall)', async ({ page }) => {
+    await page.goto('/station/inmarsat');
     await expect(page.getByText('Không có quyền truy cập')).toHaveCount(0);
     await expect(
       page.getByText('Quản lý trạm thông tin vệ tinh Inmarsat'),

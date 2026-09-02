@@ -29,6 +29,7 @@ import {
 } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import { deduplicateAttachmentHistoryChanges } from '../../utils/historyAttachmentDedup';
 import dayjs from 'dayjs';
 import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { OrgUnitTreeSelect, normalizeSearchText, type OrgUnitTreeOption } from '../../components/org-unit';
@@ -241,12 +242,18 @@ function parseListDelta(oldVal: string | null, newVal: string | null) {
   const oldParts = splitParts(oldVal);
   const newParts = splitParts(newVal);
 
+  const normalizeListItem = (value: string) => normalizeHistoryKey(value).replace(/\s+/g, ' ');
+  const oldPlain = oldParts.filter((part) => !part.startsWith('Xóa ') && !part.startsWith('Cũ: '));
+  const newPlain = newParts.filter((part) => !part.startsWith('Thêm ') && !part.startsWith('Mới: '));
+  const oldPlainKeys = new Set(oldPlain.map(normalizeListItem));
+  const newPlainKeys = new Set(newPlain.map(normalizeListItem));
+
   oldParts.forEach((part) => {
     if (part.startsWith('Xóa ')) {
       removed.push(part.replace('Xóa ', '').trim());
     } else if (part.startsWith('Cũ: ')) {
       modifiedOld.push(part.replace('Cũ: ', '').trim());
-    } else if (part !== '—') {
+    } else if (part !== '—' && !newPlainKeys.has(normalizeListItem(part))) {
       removed.push(part);
     }
   });
@@ -256,7 +263,7 @@ function parseListDelta(oldVal: string | null, newVal: string | null) {
       added.push(part.replace('Thêm ', '').trim());
     } else if (part.startsWith('Mới: ')) {
       modifiedNew.push(part.replace('Mới: ', '').trim());
-    } else if (part !== '—') {
+    } else if (part !== '—' && !oldPlainKeys.has(normalizeListItem(part))) {
       added.push(part);
     }
   });
@@ -362,36 +369,21 @@ function renderCoordinatesDisplay(val: string | null) {
     return <span style={{ color: textTertiary }}>{val === 'Chưa có' ? 'Chưa có' : '—'}</span>;
   }
   const parsed = parseCoordinatesPoints(val);
-  if (!parsed) {
-    return <span style={{ color: textPrimary, fontWeight: fontWeightMedium }}>{val}</span>;
+  if (!parsed || parsed.points.length === 0) {
+    return <span style={{ color: textPrimary }}>{parsed?.typeName || val}</span>;
   }
-
-  if (parsed.points.length === 0) {
-    return <span style={{ color: textPrimary, fontWeight: fontWeightMedium }}>{parsed.typeName || val}</span>;
-  }
-
-  if (parsed.points.length === 1) {
-    const pt = parsed.points[0];
-    return (
-      <span style={{ color: textPrimary, fontWeight: fontWeightMedium }}>
-        {formatCoordPointDms(pt.x, pt.y)}
-      </span>
-    );
-  }
-
+  const { typeName, points } = parsed;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, width: '100%' }}>
-      {parsed.points.map((pt) => (
-        <div
-          key={pt.index}
-          style={{
-            fontSize: fontSizeSm + 1,
-            color: textPrimary,
-            fontWeight: fontWeightMedium,
-            lineHeight: 1.4,
-          }}
-        >
-          • Điểm {pt.index}: {formatCoordPointDms(pt.x, pt.y)}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs, width: '100%' }}>
+      {typeName && (
+        <span style={{ fontSize: fontSizeSm, fontWeight: fontWeightBold, color: actionPrimary }}>
+          {typeName} ({points.length} điểm)
+        </span>
+      )}
+      {points.map((pt) => (
+        <div key={pt.index} style={{ fontSize: fontSizeSm, color: textPrimary, lineHeight: 1.5 }}>
+          {points.length > 1 && <span style={{ color: textSecondary, marginRight: spaceXs }}>#{pt.index}:</span>}
+          <span>{formatCoordPointDms(pt.x, pt.y)}</span>
         </div>
       ))}
     </div>
@@ -1079,7 +1071,7 @@ export default function VtsSystemList() {
   const countAllFiltered = countDraft + countPendingApproval + countApprovedLevel1 + countApproved + countRejected;
 
   const statusTabs = useMemo(() => [
-    { key: 'all', label: 'Tất cả', count: filterApprovalStatus ? countAllFiltered : total, active: !filterApprovalStatus },
+    { key: 'all', label: 'Tất cả', count: filterApprovalStatus ? countAllFiltered : total, color: actionPrimary, active: !filterApprovalStatus },
     { key: ApprovalStatus.DRAFT, label: 'Lưu tạm', count: countDraft, color: statusDraft, active: filterApprovalStatus === ApprovalStatus.DRAFT },
     { key: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ Cảng vụ duyệt', count: countPendingApproval, color: statusAttention, active: filterApprovalStatus === ApprovalStatus.PENDING_APPROVAL },
     { key: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ Cục duyệt', count: countApprovedLevel1, color: '#0284C7', active: filterApprovalStatus === ApprovalStatus.APPROVED_LEVEL1 },
@@ -1164,7 +1156,7 @@ export default function VtsSystemList() {
       const prev = groups[groups.length - 1];
       const actor = historyActor(r);
       const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
-      const isSameGroup = prev && Math.abs(prev.tsSec - sec) <= 60 && prev.actor === actor && (prev.status === r.status || isBothUpdate) && prev.approvalLevel === r.approvalLevel;
+      const isSameGroup = prev && Math.abs(prev.tsSec - sec) <= 60 && prev.actor === actor && (prev.status === r.status || isBothUpdate);
       if (isSameGroup) {
         prev.items.push(r);
       } else {
@@ -1276,14 +1268,48 @@ export default function VtsSystemList() {
                     return renderHistoryValueTag(field, val);
                   };
 
-                  const validChanges = changes.filter((c: any) => {
+                  // Deduplicate changes correctly using raw values
+                  const listFields = new Set<string>();
+                  changes.forEach((c: any) => {
+                    if (isListDeltaField(c.field)) {
+                      const ov = typeof c.oldValue === 'string' ? c.oldValue.trim() : '';
+                      const nv = typeof c.newValue === 'string' ? c.newValue.trim() : '';
+                      if (ov.startsWith('[') || nv.startsWith('[')) {
+                        listFields.add(normalizeHistoryKey(c.field || ''));
+                      }
+                    }
+                  });
+
+                  const dedupedChanges = changes.filter((c: any) => {
+                    if (isListDeltaField(c.field)) {
+                      const normKey = normalizeHistoryKey(c.field || '');
+                      if (listFields.has(normKey)) {
+                        const ov = typeof c.oldValue === 'string' ? c.oldValue.trim() : '';
+                        const nv = typeof c.newValue === 'string' ? c.newValue.trim() : '';
+                        if (!ov.startsWith('[') && !nv.startsWith('[')) {
+                          return false;
+                        }
+                      }
+                    }
+                    return true;
+                  });
+
+                  const uniqueChangesMap = new Map<string, any>();
+                  dedupedChanges.forEach((c: any) => {
+                    const key = `${c.field}::${c.oldValue}::${c.newValue}`;
+                    if (!uniqueChangesMap.has(key)) {
+                      uniqueChangesMap.set(key, c);
+                    }
+                  });
+
+                  const validChanges = deduplicateAttachmentHistoryChanges(Array.from(uniqueChangesMap.values()).filter((c: any) => {
                     if (!c.field && !c.oldValue && !c.newValue) return false;
                     const ov = formatHistoryValue(c.field, c.oldValue);
                     const nv = formatHistoryValue(c.field, c.newValue);
                     if (ov == null && nv == null) return false;
                     if (ov !== null && nv !== null && String(ov).trim() === String(nv).trim()) return false;
                     return true;
-                  });
+                  }));
                   const reasons = g.items.map((i: any) => i.reason || i.ghiChu || i.note).filter(Boolean);
 
                   if (validChanges.length > 0) {
@@ -1531,7 +1557,7 @@ export default function VtsSystemList() {
           dataSource={dataSource}
           rowKey="id"
           rowActions={rowActions}
-          loading={false}
+          loading={loading}
           onSort={handleSort}
           scroll={{ x: 'max-content' }}
         />
