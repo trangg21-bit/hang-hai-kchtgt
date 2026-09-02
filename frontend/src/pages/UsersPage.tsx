@@ -907,7 +907,7 @@ export default function UsersPage() {
                           <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Ghi chú</span><span className="chk-detail-value">{detailUser.note || '—'}</span></div>
                         </div>
 
-                        <div style={{ marginTop: 20, marginBottom: 12, borderTop: `1px solid ${borderDefault}`, paddingTop: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ marginTop: 20, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span style={{ display: 'inline-block', width: 4, height: 16, borderRadius: 2, backgroundColor: actionPrimary }} />
                           <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                             Thông tin hệ thống
@@ -919,7 +919,7 @@ export default function UsersPage() {
                           <div className="chk-detail-row"><span className="chk-detail-label">Ngày tạo</span><span className="chk-detail-value">{detailUser.createdAt ? dayjs(detailUser.createdAt).format('DD/MM/YYYY HH:mm') : '—'}</span></div>
                           <div className="chk-detail-row"><span className="chk-detail-label">Người cập nhật</span><span className="chk-detail-value">{detailUser.updatedByName || '—'}</span></div>
                           <div className="chk-detail-row"><span className="chk-detail-label">Ngày cập nhật</span><span className="chk-detail-value">{detailUser.updatedAt ? dayjs(detailUser.updatedAt).format('DD/MM/YYYY HH:mm') : '—'}</span></div>
-                          <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Đăng nhập gần nhất</span><span className="chk-detail-value">{detailUser.lastLoginAt ? dayjs(detailUser.lastLoginAt).format('DD/MM/YYYY HH:mm') : '—'}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Đăng nhập gần nhất</span><span className="chk-detail-value">{detailUser.lastLoginAt ? dayjs(detailUser.lastLoginAt).format('DD/MM/YYYY HH:mm') : '—'}</span></div>
                         </div>
                       </div>
                     </div>

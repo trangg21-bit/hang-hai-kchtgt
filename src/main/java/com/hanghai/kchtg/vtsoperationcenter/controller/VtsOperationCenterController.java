@@ -134,6 +134,8 @@ public class VtsOperationCenterController {
     @GetMapping
     public ResponseEntity<ApiResponse<Map<String, Object>>> search(
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String code,
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) UUID vtsSystemId,
             @RequestParam(required = false) UUID portId,
@@ -152,8 +154,10 @@ public class VtsOperationCenterController {
 
         PageRequest pageRequest = PageRequest.of(page, size, resolveListSort(sortBy, sortDir));
 
-        Page<VtsOperationCenterListItem> resultPage = service.search(keyword, orgUnitId, vtsSystemId, portId, provinceId, conditionStatus, approvalStatus, updatedFrom, updatedTo, pageRequest);
-        Map<String, Long> statusCounts = service.countByStatus(keyword, orgUnitId, vtsSystemId, portId, provinceId, conditionStatus, updatedFrom, updatedTo);
+        Page<VtsOperationCenterListItem> resultPage = service.search(keyword, name, code, orgUnitId, vtsSystemId, portId,
+                provinceId, conditionStatus, approvalStatus, updatedFrom, updatedTo, pageRequest);
+        Map<String, Long> statusCounts = service.countByStatus(keyword, name, code, orgUnitId, vtsSystemId, portId,
+                provinceId, conditionStatus, updatedFrom, updatedTo);
 
         Map<String, Object> data = new HashMap<>();
         data.put("content", resultPage.getContent());

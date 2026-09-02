@@ -21,6 +21,8 @@ function buildSearchParams(params: Record<string, string | number | undefined>) 
 
 export interface VtsOperationCenterListParams {
   keyword?: string;
+  name?: string;
+  code?: string;
   orgUnitId?: string;
   vtsSystemId?: string;
   portId?: string;
@@ -78,6 +80,8 @@ export const vtsOperationCenterService = {
       try {
         const sp = buildSearchParams({
           keyword: params?.keyword,
+          name: params?.name,
+          code: params?.code,
           orgUnitId: params?.orgUnitId,
           vtsSystemId: params?.vtsSystemId,
           portId: params?.portId,

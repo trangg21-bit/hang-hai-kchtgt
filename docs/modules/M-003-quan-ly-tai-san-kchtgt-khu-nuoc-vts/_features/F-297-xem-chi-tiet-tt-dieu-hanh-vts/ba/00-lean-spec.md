@@ -90,6 +90,22 @@ Toàn bộ 41 trường dữ liệu hiển thị trong Drawer Xem chi tiết đ�
 
 > Ma trận 41 trường đầy đủ xem `F-293-quan-ly-tt-dieu-hanh-vts-tao-moi/ba/00-lean-spec.md`.
 
+## 4.1 Ma trận bộ lọc danh sách
+
+| Nhóm | Trường | Query parameter | Ghi chú |
+|---|---|---|---|
+| Thường | Đơn vị | `orgUnitId` | TreeSelect theo DataScope. |
+| Thường | Thuộc cảng biển | `portId` | Danh sách cảng được giới hạn theo đơn vị đã chọn. |
+| Thường | Tên trung tâm điều hành VTS | `name` | Tìm không dấu, chỉ trên tên trung tâm. |
+| Nâng cao | Trạng thái | `approvalStatus` | Đồng bộ với StatusTabs của luồng phê duyệt. |
+| Nâng cao | Thuộc hệ thống VTS | `vtsSystemId` | Chọn hệ thống VTS cha. |
+| Nâng cao | Mã trung tâm điều hành VTS | `code` | Tìm không dấu, chỉ trên mã trung tâm. |
+| Nâng cao | Tình trạng | `conditionStatus` | Tình trạng vận hành. |
+| Nâng cao | Ngày cập nhật | `updatedFrom`, `updatedTo` | Khoảng ngày, gửi theo giờ địa phương. |
+| Nâng cao | Địa điểm (Tỉnh/Thành phố) | `provinceId` | Dropdown hỗ trợ tìm kiếm không dấu. |
+
+Mọi điều kiện được áp dụng theo quan hệ **AND**. API thực thi: `GET /api/v1/vts-operation-center`.
+
 ## ⚠️ Hai quyết định còn mở — phải chốt TRƯỚC khi code
 
 | # | Vấn đề | Vì sao phải chốt | Trạng thái |

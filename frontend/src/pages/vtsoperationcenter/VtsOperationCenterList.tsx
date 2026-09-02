@@ -431,7 +431,8 @@ export default function VtsOperationCenterList() {
   // chỉ 20 dòng của trang hiện tại được sắp, gây hiểu nhầm là đã sắp cả danh sách.
   const [sortField, setSortField] = useState<string | undefined>();
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [filterKeyword, setFilterKeyword] = useState('');
+  const [filterName, setFilterName] = useState('');
+  const [filterCode, setFilterCode] = useState('');
   const [filterConditionStatus, setFilterConditionStatus] = useState<ConditionStatus | undefined>();
   const [filterApprovalStatus, setFilterApprovalStatus] = useState<ApprovalStatus | undefined>();
   const [filterOrgUnitId, setFilterOrgUnitId] = useState<string | undefined>();
@@ -528,14 +529,15 @@ export default function VtsOperationCenterList() {
     setIsError(false);
     try {
       const currentStatusCountFilterKey = JSON.stringify([
-        filterKeyword, filterConditionStatus, filterOrgUnitId, filterPortId, filterVtsSystemId, filterProvinceId,
+        filterName, filterCode, filterConditionStatus, filterOrgUnitId, filterPortId, filterVtsSystemId, filterProvinceId,
         filterUpdatedFrom, filterUpdatedTo,
       ]);
       const shouldIncludeCounts = statusCountFilterKey.current !== currentStatusCountFilterKey;
       const params: VtsOperationCenterListParams = {
         page: page,
         size: pageSize,
-        keyword: filterKeyword || undefined,
+        name: filterName || undefined,
+        code: filterCode || undefined,
         conditionStatus: filterConditionStatus,
         approvalStatus: filterApprovalStatus,
         orgUnitId: filterOrgUnitId || undefined,
@@ -570,7 +572,7 @@ export default function VtsOperationCenterList() {
       if (requestId === listRequestId.current) setLoading(false);
     }
   }, [
-    page, pageSize, filterKeyword, filterConditionStatus, filterApprovalStatus,
+    page, pageSize, filterName, filterCode, filterConditionStatus, filterApprovalStatus,
     filterOrgUnitId, filterPortId, filterVtsSystemId, filterProvinceId,
     filterUpdatedFrom, filterUpdatedTo, sortField, sortDirection,
   ]);
@@ -692,15 +694,21 @@ export default function VtsOperationCenterList() {
   ], [countAll, filterApprovalStatus, countDraft, countPendingApproval, countApprovedLevel1, countApproved, countRejected]);
 
   const handleTabChange = (key: string) => {
-    if (key === 'ALL') setFilterApprovalStatus(undefined);
-    else if (key === 'REJECTED') setFilterApprovalStatus(ApprovalStatus.REJECTED_LEVEL1);
-    else setFilterApprovalStatus(key as ApprovalStatus);
+    const approvalStatus = key === 'ALL'
+      ? undefined
+      : key === 'REJECTED'
+        ? ApprovalStatus.REJECTED_LEVEL1
+        : key as ApprovalStatus;
+    setFilterApprovalStatus(approvalStatus);
+    setFilterValues((prev) => ({ ...prev, approvalStatus }));
     setPage(1);
   };
 
   const handleFilterSearch = (vals: Record<string, any>) => {
-    setFilterKeyword(vals.keyword || '');
+    setFilterName(vals.name?.trim() || '');
+    setFilterCode(vals.code?.trim() || '');
     setFilterConditionStatus(vals.conditionStatus);
+    setFilterApprovalStatus(vals.approvalStatus);
     setFilterOrgUnitId(vals.orgUnitId);
     setFilterPortId(vals.portId);
     setFilterVtsSystemId(vals.vtsSystemId);
@@ -714,7 +722,8 @@ export default function VtsOperationCenterList() {
   };
 
   const handleFilterReset = () => {
-    setFilterKeyword('');
+    setFilterName('');
+    setFilterCode('');
     setFilterConditionStatus(undefined);
     setFilterOrgUnitId(undefined);
     setFilterPortId(undefined);
@@ -1416,12 +1425,12 @@ export default function VtsOperationCenterList() {
                 />
               </SidebarFilterField>
 
-              <SidebarFilterField label="Tìm kiếm">
+              <SidebarFilterField label="Tên trung tâm điều hành VTS">
                 <Input
-                  placeholder="Tìm theo mã, tên trung tâm..."
+                  placeholder="Nhập tên trung tâm điều hành VTS"
                   allowClear
-                  value={filterValues.keyword || ''}
-                  onChange={(event) => setFilterValues((prev) => ({ ...prev, keyword: event.target.value }))}
+                  value={filterValues.name || ''}
+                  onChange={(event) => setFilterValues((prev) => ({ ...prev, name: event.target.value }))}
                   onPressEnter={() => handleFilterSearch(filterValues)}
                   style={inputStyle}
                 />
@@ -1429,13 +1438,19 @@ export default function VtsOperationCenterList() {
 
               {filterCollapsed && (
                 <>
-                  <SidebarFilterField label="Tình trạng">
+                  <SidebarFilterField label="Trạng thái">
                     <Select
                       placeholder="Tất cả"
                       allowClear
-                      value={filterValues.conditionStatus}
-                      onChange={(value) => setFilterValues((prev) => ({ ...prev, conditionStatus: value }))}
-                      options={CONDITION_STATUS_OPTIONS}
+                      value={filterValues.approvalStatus}
+                      onChange={(value) => setFilterValues((prev) => ({ ...prev, approvalStatus: value }))}
+                      options={[
+                        { value: ApprovalStatus.DRAFT, label: 'Lưu tạm' },
+                        { value: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ Cảng vụ duyệt' },
+                        { value: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ Cục duyệt' },
+                        { value: ApprovalStatus.APPROVED, label: 'Đã duyệt' },
+                        { value: ApprovalStatus.REJECTED_LEVEL1, label: 'Từ chối' },
+                      ]}
                       style={{ ...selectStyle, width: '100%' }}
                     />
                   </SidebarFilterField>
@@ -1454,6 +1469,28 @@ export default function VtsOperationCenterList() {
                         value: v.id,
                         label: v.code ? `${v.code} - ${v.name || ''}` : (v.name || v.id),
                       }))}
+                      style={{ ...selectStyle, width: '100%' }}
+                    />
+                  </SidebarFilterField>
+
+                  <SidebarFilterField label="Mã trung tâm điều hành VTS">
+                    <Input
+                      placeholder="Nhập mã trung tâm điều hành VTS"
+                      allowClear
+                      value={filterValues.code || ''}
+                      onChange={(event) => setFilterValues((prev) => ({ ...prev, code: event.target.value }))}
+                      onPressEnter={() => handleFilterSearch(filterValues)}
+                      style={inputStyle}
+                    />
+                  </SidebarFilterField>
+
+                  <SidebarFilterField label="Tình trạng">
+                    <Select
+                      placeholder="Tất cả"
+                      allowClear
+                      value={filterValues.conditionStatus}
+                      onChange={(value) => setFilterValues((prev) => ({ ...prev, conditionStatus: value }))}
+                      options={CONDITION_STATUS_OPTIONS}
                       style={{ ...selectStyle, width: '100%' }}
                     />
                   </SidebarFilterField>

@@ -174,8 +174,12 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
             CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(t.address)) AS string) LIKE CAST(:keyword AS string))
+          AND (CAST(:systemName AS string) IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:systemName AS string))
+          AND (CAST(:code AS string) IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:code AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
-          AND (:approvalStatus IS NULL 
+          AND (:approvalStatus IS NULL
                OR t.approvalStatus = :approvalStatus
                OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)))
           AND (CAST(:fromDate AS java.time.LocalDate) IS NULL OR t.operationStartDate >= :fromDate)

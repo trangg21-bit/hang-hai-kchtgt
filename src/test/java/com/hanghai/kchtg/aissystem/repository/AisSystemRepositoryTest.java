@@ -143,6 +143,8 @@ class AisSystemRepositoryTest {
         entity.setOrgUnitId(UUID.randomUUID());
         entity.setOperatingOrgId(UUID.randomUUID());
         entity.setDetailedLocation("Địa điểm " + code);
+        entity.setQuantity(1);
+        entity.setUnitOfMeasure(com.hanghai.kchtg.common.enums.UnitOfMeasure.SET);
         return entity;
     }
 }

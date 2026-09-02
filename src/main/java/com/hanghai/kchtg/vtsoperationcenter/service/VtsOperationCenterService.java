@@ -383,6 +383,24 @@ public class VtsOperationCenterService {
             LocalDateTime updatedFrom,
             LocalDateTime updatedTo,
             Pageable pageable) {
+        return search(keyword, null, null, orgUnitId, vtsSystemId, portId, provinceId, conditionStatus,
+                approvalStatus, updatedFrom, updatedTo, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<VtsOperationCenterListItem> search(
+            String keyword,
+            String name,
+            String code,
+            UUID orgUnitId,
+            UUID vtsSystemId,
+            UUID portId,
+            Integer provinceId,
+            ConditionStatus conditionStatus,
+            ApprovalStatus approvalStatus,
+            LocalDateTime updatedFrom,
+            LocalDateTime updatedTo,
+            Pageable pageable) {
 
         Scope scope = resolveEffectiveScope(orgUnitId);
         if (!scope.unrestricted() && scope.orgUnitIds().isEmpty()) {
@@ -390,19 +408,13 @@ public class VtsOperationCenterService {
         }
 
         String kw = toKeywordLike(keyword);
-        Page<VtsOperationCenter> page = repository.search(
-                !scope.unrestricted(),
-                scope.orgUnitIds(),
-                null,
-                vtsSystemId,
-                portId,
-                provinceId,
-                conditionStatus,
-                approvalStatus,
-                kw,
-                updatedFrom,
-                updatedTo,
-                pageable);
+        String nameLike = toKeywordLike(name);
+        String codeLike = toKeywordLike(code);
+        Page<VtsOperationCenter> page = nameLike == null && codeLike == null
+                ? repository.search(!scope.unrestricted(), scope.orgUnitIds(), null, vtsSystemId, portId, provinceId,
+                        conditionStatus, approvalStatus, kw, updatedFrom, updatedTo, pageable)
+                : repository.search(!scope.unrestricted(), scope.orgUnitIds(), null, vtsSystemId, portId, provinceId,
+                        conditionStatus, approvalStatus, kw, nameLike, codeLike, updatedFrom, updatedTo, pageable);
 
         List<VtsOperationCenter> content = page.getContent();
         if (content.isEmpty()) {
@@ -469,6 +481,22 @@ public class VtsOperationCenterService {
             ConditionStatus conditionStatus,
             LocalDateTime updatedFrom,
             LocalDateTime updatedTo) {
+        return countByStatus(keyword, null, null, orgUnitId, vtsSystemId, portId, provinceId, conditionStatus,
+                updatedFrom, updatedTo);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> countByStatus(
+            String keyword,
+            String name,
+            String code,
+            UUID orgUnitId,
+            UUID vtsSystemId,
+            UUID portId,
+            Integer provinceId,
+            ConditionStatus conditionStatus,
+            LocalDateTime updatedFrom,
+            LocalDateTime updatedTo) {
 
         Scope scope = resolveEffectiveScope(orgUnitId);
         if (!scope.unrestricted() && scope.orgUnitIds().isEmpty()) {
@@ -481,17 +509,13 @@ public class VtsOperationCenterService {
         }
 
         String kw = toKeywordLike(keyword);
-        List<Object[]> rows = repository.countByApprovalStatus(
-                !scope.unrestricted(),
-                scope.orgUnitIds(),
-                null,
-                vtsSystemId,
-                portId,
-                provinceId,
-                conditionStatus,
-                kw,
-                updatedFrom,
-                updatedTo);
+        String nameLike = toKeywordLike(name);
+        String codeLike = toKeywordLike(code);
+        List<Object[]> rows = nameLike == null && codeLike == null
+                ? repository.countByApprovalStatus(!scope.unrestricted(), scope.orgUnitIds(), null, vtsSystemId, portId,
+                        provinceId, conditionStatus, kw, updatedFrom, updatedTo)
+                : repository.countByApprovalStatus(!scope.unrestricted(), scope.orgUnitIds(), null, vtsSystemId, portId,
+                        provinceId, conditionStatus, kw, nameLike, codeLike, updatedFrom, updatedTo);
 
         Map<String, Long> counts = new HashMap<>();
         counts.put("ALL", 0L);

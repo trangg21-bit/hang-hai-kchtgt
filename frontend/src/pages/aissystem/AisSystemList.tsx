@@ -61,16 +61,19 @@ export function AisSystemList() {
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [filterApprovalStatus, setFilterApprovalStatus] = useState<ApprovalStatus | undefined>(undefined);
   const [filterValues, setFilterValues] = useState<{
-    keyword?: string;
+    name?: string;
+    code?: string;
     orgUnitId?: string;
     vtsOperationCenterId?: string;
     operatingOrgId?: string;
     provinceId?: number;
     commissioningYear?: number;
     conditionStatus?: ConditionStatus;
+    approvalStatus?: ApprovalStatus;
     updateDateRange?: [dayjs.Dayjs | null, dayjs.Dayjs | null];
   }>({});
   const [appliedFilterValues, setAppliedFilterValues] = useState<typeof filterValues>({});
+  const [filterCollapsed, setFilterCollapsed] = useState(false);
 
   const [orgUnitOptions, setOrgUnitOptions] = useState<OrgUnitTreeOption[]>([]);
   const [operatingOrganizations, setOperatingOrganizations] = useState<any[]>(DEFAULT_OPERATING_ORGANIZATIONS);
@@ -208,14 +211,15 @@ export function AisSystemList() {
       }
 
       const res = await aisSystemService.search({
-        keyword: appliedFilterValues.keyword?.trim() || undefined,
+        name: appliedFilterValues.name?.trim() || undefined,
+        code: appliedFilterValues.code?.trim() || undefined,
         orgUnitId: appliedFilterValues.orgUnitId || undefined,
         vtsOperationCenterId: filterOpCenterId,
         radarStationId: filterRadarStationId,
         operatingOrgId: appliedFilterValues.operatingOrgId || undefined,
         provinceId: appliedFilterValues.provinceId,
         commissioningYear: appliedFilterValues.commissioningYear,
-        conditionStatus: appliedFilterValues.conditionStatus ? (Number(appliedFilterValues.conditionStatus) as any) : undefined,
+        conditionStatus: appliedFilterValues.conditionStatus || undefined,
         approvalStatus: filterApprovalStatus,
         updatedFrom,
         updatedTo,
@@ -276,19 +280,20 @@ export function AisSystemList() {
 
   const handleTabChange = (key: string) => {
     setPage(1);
-    if (key === 'ALL') {
-      setFilterApprovalStatus(undefined);
-    } else if (key === 'REJECTED') {
-      setFilterApprovalStatus(ApprovalStatus.REJECTED_LEVEL1);
-    } else {
-      setFilterApprovalStatus(key as ApprovalStatus);
-    }
+    const approvalStatus = key === 'ALL'
+      ? undefined
+      : key === 'REJECTED'
+        ? ApprovalStatus.REJECTED_LEVEL1
+        : key as ApprovalStatus;
+    setFilterApprovalStatus(approvalStatus);
+    setFilterValues((prev) => ({ ...prev, approvalStatus }));
   };
 
   const handleFilterSearch = (vals: typeof filterValues) => {
     setPage(1);
     setFilterValues(vals);
     setAppliedFilterValues(vals);
+    setFilterApprovalStatus(vals.approvalStatus);
   };
 
   const handleFilterReset = () => {
@@ -653,7 +658,8 @@ export function AisSystemList() {
           }
         />
         <FilterTableLayout
-          hideFilterToggle={true}
+          filterCollapsed={filterCollapsed}
+          onToggleCollapse={() => setFilterCollapsed((value) => !value)}
           onFilterApply={() => handleFilterSearch(filterValues)}
           onFilterReset={handleFilterReset}
           loading={loading}
@@ -679,79 +685,111 @@ export function AisSystemList() {
                 />
               </SidebarFilterField>
 
-              <SidebarFilterField label="Thuộc TTDH VTS / Trạm Radar">
-                <Select
-                  placeholder="Tất cả TTDH / Trạm Radar"
-                  allowClear
-                  showSearch
-                  filterOption={(input, option) =>
-                    normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
-                  }
-                  value={filterValues.vtsOperationCenterId}
-                  onChange={(value) => setFilterValues((prev) => ({ ...prev, vtsOperationCenterId: value }))}
-                  options={combinedLocationOptions}
-                  style={{ ...selectStyle, width: '100%' }}
-                />
-              </SidebarFilterField>
-
-              <SidebarFilterField label="Tìm kiếm">
+              <SidebarFilterField label="Tên thiết bị">
                 <Input
-                  placeholder="Tìm theo mã, tên thiết bị"
+                  placeholder="Nhập tên thiết bị"
                   allowClear
-                  value={filterValues.keyword}
-                  onChange={(e) => setFilterValues((prev) => ({ ...prev, keyword: e.target.value }))}
+                  value={filterValues.name}
+                  onChange={(e) => setFilterValues((prev) => ({ ...prev, name: e.target.value }))}
                   onPressEnter={() => handleFilterSearch(filterValues)}
                   style={inputStyle}
                 />
               </SidebarFilterField>
 
-              <SidebarFilterField label="Địa điểm (Tỉnh / TP)">
+              <SidebarFilterField label="Trạng thái">
                 <Select
-                  placeholder="Tất cả tỉnh thành"
+                  placeholder="Tất cả"
                   allowClear
-                  showSearch
-                  filterOption={(input, option) =>
-                    normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
-                  }
-                  value={filterValues.provinceId}
-                  onChange={(value) => setFilterValues((prev) => ({ ...prev, provinceId: value }))}
-                  options={VIETNAM_PROVINCE_OPTIONS}
+                  value={filterValues.approvalStatus}
+                  onChange={(value) => setFilterValues((prev) => ({ ...prev, approvalStatus: value }))}
+                  options={[
+                    { value: ApprovalStatus.DRAFT, label: 'Lưu tạm' },
+                    { value: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ Cảng vụ duyệt' },
+                    { value: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ Cục duyệt' },
+                    { value: ApprovalStatus.APPROVED, label: 'Đã duyệt' },
+                    { value: ApprovalStatus.REJECTED_LEVEL1, label: 'Từ chối' },
+                  ]}
                   style={{ ...selectStyle, width: '100%' }}
                 />
               </SidebarFilterField>
 
-              <SidebarFilterField label="Năm đưa vào sử dụng">
-                <DatePicker
-                  {...getSidebarDatePickerProps({
-                    picker: 'year',
-                    format: 'YYYY',
-                    placeholder: 'Tất cả năm',
-                    value: filterValues.commissioningYear ? dayjs(String(filterValues.commissioningYear), 'YYYY') : null,
-                    onChange: (date: any) => setFilterValues((prev) => ({ ...prev, commissioningYear: date ? date.year() : undefined })),
-                  })}
-                  style={{ ...selectStyle, width: '100%' }}
-                />
-              </SidebarFilterField>
+              {filterCollapsed && (
+                <>
+                  <SidebarFilterField label="Thuộc TTDH VTS / Trạm Radar">
+                    <Select
+                      placeholder="Tất cả TTDH / Trạm Radar"
+                      allowClear
+                      showSearch
+                      filterOption={(input, option) =>
+                        normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
+                      }
+                      value={filterValues.vtsOperationCenterId}
+                      onChange={(value) => setFilterValues((prev) => ({ ...prev, vtsOperationCenterId: value }))}
+                      options={combinedLocationOptions}
+                      style={{ ...selectStyle, width: '100%' }}
+                    />
+                  </SidebarFilterField>
 
-              <SidebarFilterField label="Tình trạng">
-                <Select
-                  placeholder="Tất cả tình trạng"
-                  allowClear
-                  value={filterValues.conditionStatus}
-                  onChange={(value) => setFilterValues((prev) => ({ ...prev, conditionStatus: value }))}
-                  options={CONDITION_STATUS_OPTIONS}
-                  style={{ ...selectStyle, width: '100%' }}
-                />
-              </SidebarFilterField>
+                  <SidebarFilterField label="Mã thiết bị">
+                    <Input
+                      placeholder="Nhập mã thiết bị"
+                      allowClear
+                      value={filterValues.code}
+                      onChange={(e) => setFilterValues((prev) => ({ ...prev, code: e.target.value }))}
+                      onPressEnter={() => handleFilterSearch(filterValues)}
+                      style={inputStyle}
+                    />
+                  </SidebarFilterField>
 
-              <SidebarFilterField label="Khoảng ngày cập nhật">
-                <DatePicker.RangePicker
-                  {...getRangePickerProps({
-                    value: filterValues.updateDateRange,
-                    onChange: (dates: any) => setFilterValues((prev) => ({ ...prev, updateDateRange: dates })),
-                  })}
-                />
-              </SidebarFilterField>
+                  <SidebarFilterField label="Tình trạng">
+                    <Select
+                      placeholder="Tất cả tình trạng"
+                      allowClear
+                      value={filterValues.conditionStatus}
+                      onChange={(value) => setFilterValues((prev) => ({ ...prev, conditionStatus: value }))}
+                      options={CONDITION_STATUS_OPTIONS}
+                      style={{ ...selectStyle, width: '100%' }}
+                    />
+                  </SidebarFilterField>
+
+                  <SidebarFilterField label="Năm đưa vào sử dụng">
+                    <DatePicker
+                      {...getSidebarDatePickerProps({
+                        picker: 'year',
+                        format: 'YYYY',
+                        placeholder: 'Tất cả năm',
+                        value: filterValues.commissioningYear ? dayjs(String(filterValues.commissioningYear), 'YYYY') : null,
+                        onChange: (date: any) => setFilterValues((prev) => ({ ...prev, commissioningYear: date ? date.year() : undefined })),
+                      })}
+                      style={{ ...selectStyle, width: '100%' }}
+                    />
+                  </SidebarFilterField>
+
+                  <SidebarFilterField label="Ngày cập nhật">
+                    <DatePicker.RangePicker
+                      {...getRangePickerProps({
+                        value: filterValues.updateDateRange,
+                        onChange: (dates: any) => setFilterValues((prev) => ({ ...prev, updateDateRange: dates })),
+                      })}
+                    />
+                  </SidebarFilterField>
+
+                  <SidebarFilterField label="Địa điểm (Tỉnh / TP)">
+                    <Select
+                      placeholder="Tất cả tỉnh thành"
+                      allowClear
+                      showSearch
+                      filterOption={(input, option) =>
+                        normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
+                      }
+                      value={filterValues.provinceId}
+                      onChange={(value) => setFilterValues((prev) => ({ ...prev, provinceId: value }))}
+                      options={VIETNAM_PROVINCE_OPTIONS}
+                      style={{ ...selectStyle, width: '100%' }}
+                    />
+                  </SidebarFilterField>
+                </>
+              )}
             </>
           }
         >

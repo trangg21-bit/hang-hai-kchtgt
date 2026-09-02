@@ -78,6 +78,10 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
             CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(t.detailedLocation)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(t.coverage)) AS string) LIKE CAST(:keyword AS string))
+          AND (CAST(:name AS string) IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(t.name)) AS string) LIKE CAST(:name AS string))
+          AND (CAST(:code AS string) IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:code AS string))
     """)
     Page<VtsOperationCenter> search(
         @Param("scopeEnabled") boolean scopeEnabled,
@@ -89,14 +93,16 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
         @Param("conditionStatus") ConditionStatus conditionStatus,
         @Param("approvalStatus") ApprovalStatus approvalStatus,
         @Param("keyword") String keyword,
+        @Param("name") String name,
+        @Param("code") String code,
         @Param("updatedFrom") LocalDateTime updatedFrom,
         @Param("updatedTo") LocalDateTime updatedTo,
         Pageable pageable
     );
 
     default Page<VtsOperationCenter> search(
-        boolean scopeEnabled,
-        List<UUID> scopeOrgUnitIds,
+            boolean scopeEnabled,
+            List<UUID> scopeOrgUnitIds,
         UUID orgUnitId,
         UUID vtsSystemId,
         UUID portId,
@@ -106,7 +112,26 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
         String keyword,
         Pageable pageable
     ) {
-        return search(scopeEnabled, scopeOrgUnitIds, orgUnitId, vtsSystemId, portId, provinceId, conditionStatus, approvalStatus, keyword, null, null, pageable);
+        return search(scopeEnabled, scopeOrgUnitIds, orgUnitId, vtsSystemId, portId, provinceId, conditionStatus,
+                approvalStatus, keyword, null, null, null, null, pageable);
+    }
+
+    default Page<VtsOperationCenter> search(
+            boolean scopeEnabled,
+            List<UUID> scopeOrgUnitIds,
+            UUID orgUnitId,
+            UUID vtsSystemId,
+            UUID portId,
+            Integer provinceId,
+            ConditionStatus conditionStatus,
+            ApprovalStatus approvalStatus,
+            String keyword,
+            LocalDateTime updatedFrom,
+            LocalDateTime updatedTo,
+            Pageable pageable
+    ) {
+        return search(scopeEnabled, scopeOrgUnitIds, orgUnitId, vtsSystemId, portId, provinceId, conditionStatus,
+                approvalStatus, keyword, null, null, updatedFrom, updatedTo, pageable);
     }
 
     @Query("""
@@ -126,6 +151,10 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
                 CAST(function('immutable_unaccent', LOWER(t.detailedLocation)) AS string) LIKE CAST(:keyword AS string) OR
                 CAST(function('immutable_unaccent', LOWER(t.coverage)) AS string) LIKE CAST(:keyword AS string)
               ))
+          AND (CAST(:name AS string) IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(t.name)) AS string) LIKE CAST(:name AS string))
+          AND (CAST(:code AS string) IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:code AS string))
         GROUP BY t.approvalStatus
     """)
     List<Object[]> countByApprovalStatus(
@@ -137,9 +166,27 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
         @Param("provinceId") Integer provinceId,
         @Param("conditionStatus") ConditionStatus conditionStatus,
         @Param("keyword") String keyword,
+        @Param("name") String name,
+        @Param("code") String code,
         @Param("updatedFrom") LocalDateTime updatedFrom,
         @Param("updatedTo") LocalDateTime updatedTo
     );
+
+    default List<Object[]> countByApprovalStatus(
+            boolean scopeEnabled,
+            List<UUID> scopeOrgUnitIds,
+            UUID orgUnitId,
+            UUID vtsSystemId,
+            UUID portId,
+            Integer provinceId,
+            ConditionStatus conditionStatus,
+            String keyword,
+            LocalDateTime updatedFrom,
+            LocalDateTime updatedTo
+    ) {
+        return countByApprovalStatus(scopeEnabled, scopeOrgUnitIds, orgUnitId, vtsSystemId, portId, provinceId,
+                conditionStatus, keyword, null, null, updatedFrom, updatedTo);
+    }
 
     List<VtsOperationCenter> findByVtsSystemIdAndDeletedAtIsNull(UUID vtsSystemId);
 
