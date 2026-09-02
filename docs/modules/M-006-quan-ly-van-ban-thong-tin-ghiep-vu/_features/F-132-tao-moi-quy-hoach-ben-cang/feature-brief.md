@@ -1,7 +1,7 @@
 ---
-id: F-134
-name: Cập nhật quy hoạch bến cảng
-slug: cap-nhat-quy-hoach-ben-cang
+id: F-132
+name: Tạo mới quy hoạch bến cảng
+slug: tao-moi-quy-hoach-ben-cang
 module-id: M-006
 status: proposed
 classification: local
@@ -12,10 +12,10 @@ locked-fields: []
 consumed_by_modules: []
 ---
 
-# Đặc tả nghiệp vụ: Cập nhật quy hoạch bến cảng
+# Đặc tả nghiệp vụ: Tạo mới quy hoạch bến cảng
 
 **Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu này)
-**Chức năng:** F-134
+**Chức năng:** F-132
 **Module:** M-006 — Quản lý văn bản & thông tin nghiệp vụ
 **Loại:** chức năng thường (có trạng thái ban hành, không khai báo luồng duyệt C1/C2 trong Excel)
 **Tham chiếu:** tài liệu nền chung của module (chưa có `ba/01-base-pattern.md` cho M-006) + TKCT + nguồn sự thật Excel `HH_Tính năng & danh sách các trường thông tin_2.9.xlsx` sheet `30->43` cụm #38 "TT quy hoạch bến cảng hàng hải".
@@ -26,11 +26,11 @@ consumed_by_modules: []
 
 ## 1. Mô tả ngắn
 
-Chức năng cập nhật hồ sơ quy hoạch bến cảng hàng hải đã tồn tại: sửa thông tin chung, kế hoạch quy hoạch, dự báo hàng hóa, danh mục quy hoạch chi tiết và tệp đính kèm. Cùng F-132 (tạo mới) và F-133 (tra cứu) dùng chung ma trận #38. Người dùng: cán bộ đơn vị quản lý / Cục (cập nhật hồ sơ quy hoạch).
+Chức năng tạo mới hồ sơ quy hoạch bến cảng hàng hải: nhập thông tin chung (quyết định, nhóm cảng biển/cảng cạn), kế hoạch quy hoạch, dự báo hàng hóa thông qua cảng, danh mục quy hoạch chi tiết (hiện trạng và sau quy hoạch) và tệp đính kèm. Cùng với F-133 (tra cứu) và F-134 (cập nhật) dùng chung ma trận #38. Người dùng: cán bộ đơn vị quản lý / Cục (tạo hồ sơ quy hoạch).
 
 ## 2. Trường dữ liệu
 
-Nguồn: ma trận Excel cụm #38 (41 trường), dùng chung cho F-132/133/134. **Cột áp dụng cho F-134 = Sửa.** Cờ: ✓ = có, — = không. Cột **Bắt buộc** không có trong Excel → **không xác định ở cấp Excel**.
+Nguồn: ma trận Excel cụm #38 (41 trường), dùng chung cho F-132/133/134. **Cột áp dụng cho F-132 = Tạo mới.** Cờ: ✓ = có, — = không. Cột **Bắt buộc** không có trong Excel → **không xác định ở cấp Excel**.
 
 | # | Nhóm (TAB) | Trường | Loại điều khiển | DS | Lọc | Xem | Tạo | Sửa |
 |---|---|---|---|---|---|---|---|---|
@@ -79,8 +79,8 @@ Nguồn: ma trận Excel cụm #38 (41 trường), dùng chung cho F-132/133/134
 ## 3. Trạng thái và phê duyệt
 
 - Ma trận Excel cụm #38 **không có trường "Trạng thái"** và **không khai báo luồng phê duyệt C1/C2**.
-- Trạng thái ban hành (Hiện hành/Đã thay thế/Lịch sử theo legacy F-132) cần **SA chốt**; lưu dạng số.
-- **Không có bước phê duyệt** (cập nhật nội dung hồ sơ, không phát sinh approval log).
+- Brief cũ (F-132 legacy) tham chiếu trạng thái ban hành `HIEN_HANH` (Hiện hành) / `DA_THAY_THE` (Đã thay thế) / `LICH_SU` (Lịch sử) — cần **SA chốt** việc bổ sung trường trạng thái và quy trình ban hành (lưu tạm → ban hành → lịch sử).
+- Trạng thái lưu dạng số (theo tài liệu nền mục 3.7).
 
 ## 4. Quy tắc và phân quyền riêng
 
@@ -88,16 +88,16 @@ Nguồn: ma trận Excel cụm #38 (41 trường), dùng chung cho F-132/133/134
 
 | ID | Quy tắc | Áp dụng |
 |---|---|---|
-| BR-134-01 | "Nhóm" (Cảng biển/cảng cạn) quyết định hiển thị nhánh trường "Nếu Nhóm = Cảng biển" hay "Nếu Nhóm = Cảng cạn". | Update |
-| BR-134-02 | "Tổng cộng" (dự báo hàng hóa) tự tính (disabled), không cho sửa tay. | Update |
-| BR-134-03 | "Đơn vị quản lý" là trường đơn vị phân quyền dữ liệu; khi sửa phải validate đơn vị trong phạm vi người dùng. | Update |
-| BR-134-04 | Người cập nhật / Ngày cập nhật do hệ thống tự điền khi lưu. | Update |
+| BR-132-01 | "Nhóm" (Cảng biển/cảng cạn) quyết định hiển thị nhánh trường "Nếu Nhóm = Cảng biển" hay "Nếu Nhóm = Cảng cạn". | Create |
+| BR-132-02 | "Tổng cộng" (dự báo hàng hóa) tự tính từ các dòng hàng container/tổng hợp rời/lỏng khí (disabled). | Create / Update |
+| BR-132-03 | "Đơn vị quản lý" là trường đơn vị phân quyền dữ liệu; khi tạo phải gán đơn vị trong phạm vi người dùng. | Create / Update |
+| BR-132-04 | Người cập nhật / Ngày cập nhật do hệ thống tự điền. | Create / Update |
 
 ### 4.4. Phân quyền riêng
 
 | Thao tác | Quyền (`<resource>:<action>`) |
 |---|---|
-| Cập nhật | `portplanning:update` |
+| Tạo mới | `portplanning:create` |
 
 **Admin Cục:** full quyền + xem metadata người tạo/người sửa/thời gian.
 
@@ -105,11 +105,11 @@ Nguồn: ma trận Excel cụm #38 (41 trường), dùng chung cho F-132/133/134
 
 | # | Điểm cần khai báo | Khai báo của chức năng này |
 |---|---|---|
-| 1 | Trạng thái riêng | Có — trạng thái ban hành (theo legacy; Excel không khai báo → SA chốt) |
+| 1 | Trạng thái riêng | Có — trạng thái ban hành (Hiện hành/Đã thay thế/Lịch sử theo legacy; Excel không khai báo → SA chốt) |
 | 2 | Có bước phê duyệt không | Không — Excel không khai báo luồng duyệt C1/C2 |
 | 3 | Lọc cha-con / theo đơn vị | Theo đơn vị — trường `orgUnitId` (Đơn vị quản lý) |
-| 4 | Trường chỉ hiện trong điều kiện nào | Có — nhánh "Nếu Nhóm = Cảng biển" / "Nếu Nhóm = Cảng cạn" theo "Nhóm" |
-| 5 | Quyền riêng | `portplanning:update` |
+| 4 | Trường chỉ hiện trong điều kiện nào | Có — nhánh "Nếu Nhóm = Cảng biển" / "Nếu Nhóm = Cảng cạn" theo giá trị "Nhóm" |
+| 5 | Quyền riêng | `portplanning:create` |
 | 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
 | 7 | Tải lên tệp | Có — Upload/Attachment (File đính kèm) |
 | 8 | Giao diện khác mẫu chung | Không — theo list-screen + form/drawer convention |
@@ -118,8 +118,18 @@ Nguồn: ma trận Excel cụm #38 (41 trường), dùng chung cho F-132/133/134
 
 | Method | Đường dẫn | Mô tả | Quyền |
 |---|---|---|---|
-| PUT | `/api/portplannings/{id}` | Cập nhật hồ sơ quy hoạch bến cảng | `portplanning:update` |
+| POST | `/api/portplannings` | Tạo mới hồ sơ quy hoạch bến cảng | `portplanning:create` |
 
 ## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
 
-Dùng chung cấu trúc bảng với F-132 (xem F-132 §7): bảng `port_planning` + bảng con `port_planning_cargo_forecast`, `port_planning_detail`, `port_planning_file`. Quy ước 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường cần loại bỏ.
+Quy ước: 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường cần loại bỏ.
+
+**Bảng `port_planning` (quy hoạch bến cảng hàng hải):** 🔴 `org_unit_id` (Đơn vị quản lý), 🔴 `decision_no` (Số quyết định), 🔴 `decision_date` (Ngày quyết định), 🔴 `seaport_id` (Cảng biển quy hoạch), 🔴 `group` (Nhóm: cảng biển/cảng cạn), 🔴 `transport_corridor` (Hành lang vận tải), 🔴 `area` (Khu vực), 🔴 `planning_year` (Dự báo quy hoạch đến năm), 🔴 `planning_content`, 🔴 `land_water_demand`, 🔴 `capital_demand`, 🔴 `implementation_solution`, 🔴 `priority_project`, 🔴 `implementation_org`, 🔴 `updated_by`, 🔴 `updated_at`.
+
+**Bảng con `port_planning_cargo_forecast` (dự báo hàng hóa):** 🔴 `port_planning_id`, 🔴 `port_category` (Phân loại), 🔴 `port_name` (Cảng, bến cảng, cầu cảng), 🔴 `container_min`, 🔴 `container_max`, 🔴 `general_cargo_min`, 🔴 `general_cargo_max`, 🔴 `liquid_min`, 🔴 `liquid_max`, 🔴 `total_min`, 🔴 `total_max`, 🔴 `note`.
+
+**Bảng con `port_planning_detail` (danh mục quy hoạch chi tiết — hiện trạng/sau quy hoạch):** 🔴 `port_planning_id`, 🔴 `phase` (Hiện trạng / Sau quy hoạch), 🔴 `port_category`, 🔴 `port_name`, 🔴 `exploitation_function` (Công năng khai thác), 🔴 `classification` (Phân loại), 🔴 `berth_count` (Số lượng cầu cảng), 🔴 `length` (Chiều dài), 🔴 `ship_size` (Cỡ tàu), 🔴 `capacity` (Dự kiến công suất), 🔴 `land_area` (Diện tích vùng đất), 🔴 `water_area` (Diện tích vùng nước), 🔴 `note`.
+
+**Bảng con `port_planning_file` (tệp đính kèm):** 🔴 `port_planning_id`, 🔴 `file_name`.
+
+> Ghi chú: brief cũ F-132 có 3 file con (Bang-B Kế hoạch quy hoạch / Bang-C Dự báo hàng hóa / Bang-D Danh mục quy hoạch chi tiết) ở định dạng 11-mục legacy — SA hợp nhất về ma trận #38 ở trên; các trường 🔴 là đề xuất, chưa đối chiếu với schema đang chạy.

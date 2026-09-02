@@ -5,82 +5,125 @@ slug: quan-ly-thong-tin-bao-tri
 module-id: M-006
 status: proposed
 classification: local
-priority: high
-created: 2026-06-16T04:41:29Z
-last-updated: 2026-07-21T08:29:20Z
+priority: medium
+created: 2026-09-02
+last-updated: 2026-09-02
 locked-fields: []
 consumed_by_modules: []
-source-paths:
-  - src/main/java/com/hanghai/kchtg/vanban/entity/KeHoachBaoTri.java
-  - src/main/java/com/hanghai/kchtg/vanban/controller/KeHoachBaoTriController.java
-  - src/main/java/com/hanghai/kchtg/vanban/service/KeHoachBaoTriService.java
-  - src/main/java/com/hanghai/kchtg/vanban/repository/KeHoachBaoTriRepository.java
-  - src/main/java/com/hanghai/kchtg/vanban/dto/KeHoachBaoTriResponse.java
-  - src/main/java/com/hanghai/kchtg/vanban/dto/KeHoachBaoTriCreateRequest.java
-  - src/test/java/com/hanghai/kchtg/vanban/KeHoachBaoTriControllerTest.java
 ---
-# Feature: Quản lý thông tin bảo trì
 
-## Description
+# Đặc tả nghiệp vụ: Quản lý thông tin bảo trì
 
-Hệ thống quản lý thông tin bảo trì kết cấu hạ tầng cảng biển (KCHT), bao gồm việc lập kế hoạch bảo trì định kỳ, theo dõi tiến độ thực hiện, ghi nhận kết quả bảo trì, quản lý hồ sơ thiết bị và tính toán chi phí bảo trì cho các cầu cảng, thiết bị xếp dỡ và các hạng mục hạ tầng cảng biển.
+**Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu này)
+**Chức năng:** F-130
+**Module:** M-006 — Quản lý văn bản & thông tin nghiệp vụ
+**Loại:** chức năng thường (không có bước phê duyệt)
+**Tham chiếu:** tài liệu nền chung của module (chưa có `ba/01-base-pattern.md` cho M-006) + TKCT + nguồn sự thật Excel `HH_Tính năng & danh sách các trường thông tin_2.9.xlsx` sheet `30->43` cụm #36 "Thông tin bảo trì".
 
-## Business Intent
+> **⚠️ Data Scope:** Trường "Đơn vị quản lý" (`orgUnitId`, `SelectOrgCode`) là trường đơn vị phân quyền dữ liệu — xem mục 5 dòng 3 và AGENTS.md mục Data Scope Convention.
 
-Đảm bảo các thiết bị và hạng mục kết cấu hạ tầng cảng biển luôn được bảo trì đúng định kỳ, giảm thiểu thời gian ngừng hoạt động ngoài dự kiến, kéo dài tuổi thọ thiết bị và đảm bảo an toàn lao động trong quá trình khai thác vận hành cảng, từ đó nâng cao năng lực cạnh tranh của cảng biển.
+---
 
-## Flow Summary
+## 1. Mô tả ngắn
 
-Quản lý bảo trì đăng ký kế hoạch bảo trì định kỳ cho từng thiết bị hoặc hạng mục KCHT, chọn loại bảo trì (định kỳ, sửa chữa lớn, sửa chữa khẩn cấp). Hệ thống tự động nhắc lịch bảo trì dựa trên chu kỳ được quy định. Khi bảo trì được thực hiện, kỹ thuật viên ghi nhận kết quả, thay thế phụ tùng và thời gian ngừng hoạt động. Hệ thống tổng hợp báo cáo bảo trì theo thiết bị, theo kỳ và theo chi phí, giúp nhà quản lý đánh giá hiệu quả công tác bảo trì và dự báo ngân sách.
+Chức năng quản lý kế hoạch bảo trì KCHT: lập kế hoạch bảo trì (đơn vị, loại công việc, thời gian dự kiến), liệt kê danh sách công trình và kinh phí bảo trì, đính kèm tệp kế hoạch; khi kế hoạch ở trạng thái "Hoàn thành" thì ghi nhận kết quả xác nhận bảo trì thực tế kèm tệp xác nhận. Người dùng: cán bộ đơn vị quản lý KCHT (tạo/sửa), lãnh đạo/cục tra cứu.
 
-## Acceptance Criteria
+## 2. Trường dữ liệu
 
-- Người dùng có thể tạo kế hoạch bảo trì cho từng thiết bị hoặc hạng mục KCHT với đầy đủ thông tin (loại bảo trì, thời gian dự kiến, phụ tùng cần thiết)
-- Hệ thống tự động gửi nhắc nhở khi đến kỳ bảo trì định kỳ theo chu kỳ đã quy định
-- Kỹ thuật viên có thể ghi nhận kết quả bảo trì thực tế, bao gồm thời gian ngừng hoạt động và phụ tùng đã thay thế
-- Hệ thống tự động sinh báo cáo bảo trì theo thiết bị, theo kỳ và theo chi phí
-- Chỉ Admin mới được phép xóa kế hoạch bảo trì đã hoàn thành
+Nguồn: ma trận Excel cụm #36 (25 trường). Cờ: ✓ = có, — = không. Cột **Bắt buộc** không có trong Excel → **không xác định ở cấp Excel**.
 
-## In Scope
+| # | Nhóm (TAB) | Trường | Loại điều khiển | DS | Lọc | Xem | Tạo | Sửa |
+|---|---|---|---|---|---|---|---|---|
+| 1 | Kế hoạch bảo trì | Đơn vị quản lý | SelectOrgCode | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 2 | Kế hoạch bảo trì | Đơn vị bảo trì | SelectOrgCode | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 3 | Kế hoạch bảo trì | Loại kết cấu hạ tầng bảo trì | Select | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 4 | Kế hoạch bảo trì | Mã kế hoạch bảo trì | Input Text (disabled, tự sinh) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 5 | Kế hoạch bảo trì | Tên kế hoạch bảo trì | InputTextArea | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 6 | Kế hoạch bảo trì | Thời gian bắt đầu bảo trì dự kiến | DatePicker | ✓ | — | ✓ | ✓ | ✓ |
+| 7 | Kế hoạch bảo trì | Thời gian kết thúc bảo trì dự kiến | DatePicker | ✓ | — | ✓ | ✓ | ✓ |
+| 8 | Kế hoạch bảo trì | Tên công việc bảo trì | InputTextArea | — | — | ✓ | ✓ | ✓ |
+| 9 | Kế hoạch bảo trì | Loại công việc bảo trì | Select | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 10 | Kế hoạch bảo trì | Nội dung bảo trì | InputTextArea | — | — | ✓ | ✓ | ✓ |
+| 11 | Kế hoạch bảo trì | Trạng thái bảo trì | Select | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 12 | Kế hoạch bảo trì | Ghi chú | InputTextArea | — | — | ✓ | ✓ | ✓ |
+| 13 | File kế hoạch bảo trì | Tên file | Upload/Attachment | — | — | ✓ | ✓ | ✓ |
+| 14 | Danh sách công trình | Mã kết cấu hạ tầng | Select | — | — | ✓ | ✓ | ✓ |
+| 15 | Danh sách công trình | Tên kết cấu hạ tầng | Input Text (disabled) | — | — | ✓ | ✓ | ✓ |
+| 16 | Danh sách công trình | Thuộc cảng biển | Input Text (disabled) | — | — | ✓ | ✓ | ✓ |
+| 17 | Danh sách công trình | Địa điểm | InputTextArea (disabled) | — | — | ✓ | ✓ | ✓ |
+| 18 | Danh sách công trình | Kinh phí bảo trì | InputDecimal | — | — | ✓ | ✓ | ✓ |
+| 19 | Xác nhận bảo trì (hiện khi trạng thái = Hoàn thành) | Thời gian bắt đầu bảo trì | DatePicker | — | — | ✓ | — | ✓ |
+| 20 | Xác nhận bảo trì (hiện khi trạng thái = Hoàn thành) | Thời gian kết thúc bảo trì | DatePicker | — | — | ✓ | — | ✓ |
+| 21 | Xác nhận bảo trì (hiện khi trạng thái = Hoàn thành) | Nội dung kết quả bảo trì | InputTextArea | — | — | ✓ | — | ✓ |
+| 22 | Xác nhận bảo trì (hiện khi trạng thái = Hoàn thành) | Ghi chú (kết quả) | InputTextArea | — | — | ✓ | — | ✓ |
+| 23 | File xác nhận bảo trì | Tên file | Upload/Attachment | — | — | ✓ | — | ✓ |
+| 24 | Trạng thái | Cán bộ cập nhật | Text (hiển thị, không nhập) | — | — | ✓ | — | — |
+| 25 | Trạng thái | Ngày cập nhật | DatePicker (hiển thị, không nhập) | — | — | ✓ | — | — |
 
-- Lập kế hoạch bảo trì định kỳ cho thiết bị và hạng mục KCHT
-- Theo dõi tiến độ thực hiện bảo trì (đang diễn ra, hoàn thành, trì hoãn)
-- Ghi nhận kết quả bảo trì, phụ tùng thay thế và thời gian ngừng hoạt động
-- Quản lý lịch sử bảo trì của từng thiết bị
-- Sinh báo cáo bảo trì theo chu kỳ và theo chi phí
+> Ghi chú nhóm: theo vị trí TAB trong Excel, "Kinh phí bảo trì" (số 18) nằm trong nhóm "Danh sách công trình" (không phải nhóm "Xác nhận bảo trì" như tóm tắt 18–22). Xem diff-report.md.
 
-## Out of Scope
+## 3. Trạng thái và phê duyệt
 
-- Quản lý kho phụ tùng và nhập xuất kho vật tư
-- Tích hợp trực tiếp với hệ thống quản lý bảo trì CMMS chuyên dụng
-- Quản lý hợp đồng bảo trì với nhà thầu bên ngoài
-- Tự động phát hiện hư hỏng dựa trên cảm biến IoT
+- Excel cụm #36 **không khai báo luồng phê duyệt**. Trạng thái nghiệp vụ ở trường "Trạng thái bảo trì" (số 11); TAB "Xác nhận bảo trì" chỉ hiển thị khi **trạng thái = Hoàn thành**.
+- Trạng thái lưu dạng số; bộ giá trị cụ thể chưa được Excel khai báo → **SA chốt**.
+- **Không có bước phê duyệt**.
 
-## Roles + Permissions
+## 4. Quy tắc và phân quyền riêng
 
-| Role | Permissions |
-|------|-------------|
-| User | Xem kế hoạch bảo trì, Xem báo cáo bảo trì |
-| Technician | Tạo, Chỉnh sửa kế hoạch bảo trì, Ghi nhận kết quả bảo trì |
-| Admin | Phê duyệt, Xóa, Vô hiệu hóa kế hoạch, Quản lý phân quyền |
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
 
-## Entities
+| ID | Quy tắc | Áp dụng |
+|---|---|---|
+| BR-130-01 | Mã kế hoạch bảo trì tự sinh, không cho nhập tay. | Create |
+| BR-130-02 | TAB "Xác nhận bảo trì" chỉ hiển thị/ghi nhận khi trạng thái = Hoàn thành. | Update |
+| BR-130-03 | "Đơn vị quản lý" là trường đơn vị phân quyền dữ liệu; khi tạo phải gán đơn vị trong phạm vi người dùng. | Create / Update |
+| BR-130-04 | Trường Tên KCHT / Thuộc cảng biển / Địa điểm trong danh sách công trình tự điền từ mã KCHT (disabled). | Create / Update |
+| BR-130-05 | Cán bộ cập nhật / Ngày cập nhật do hệ thống tự điền. | Create / Update |
 
-- **KeHoachBaoTri**: id, thietBiId, loaiBaoTri, ngayBatDauDuKien, ngayKetThucDuKien, tinhTrang, chiPhiDuKien, nguoiTao, ngayTao, nguoiSuaDoi, ngaySuaDoi
-- **KetQuaBaoTri**: id, keHoachId, thoiGianBatDauThucTe, thoiGianKetThucThucTe, moTaKetQua, phuTonThayThe, thoiGianNgungHoatDong, nguoiGhiNhan, ngayGhiNhan
-- **BaoCaoBaoTri**: id, loaiBaoCao, kyBatDau, kyKetThuc, tongChiPhi, duongDanFile, nguoiTao, ngayTao
+### 4.4. Phân quyền riêng
 
-## Business Rules
+| Thao tác | Quyền (`<resource>:<action>`) |
+|---|---|
+| Xem danh sách / chi tiết | `maintenanceplan:read` |
+| Tạo mới | `maintenanceplan:create` |
+| Sửa | `maintenanceplan:update` |
+| Xóa | `maintenanceplan:delete` |
 
-1. Kế hoạch bảo trì phải có loại bảo trì hợp lệ (định kỳ, sửa chữa lớn, sửa chữa khẩn cấp)
-2. Thời gian kết thúc dự kiến phải lớn hơn thời gian bắt đầu dự kiến
-3. Kết quả bảo trì chỉ được ghi nhận sau khi kế hoạch bảo trì ở trạng thái "Đang diễn ra"
-4. Chi phí bảo trì thực tế được tính tự động từ tổng chi phí phụ tùng và nhân công ghi nhận
+**Admin Cục:** full quyền + xem metadata người tạo/người sửa/thời gian.
 
-## Testing Strategy
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
 
-- Test đơn vị hàm tạo kế hoạch bảo trì và tự động nhắc lịch theo chu kỳ
-- Test tích hợp luồng đăng ký → nhắc lịch → ghi nhận kết quả → sinh báo cáo
-- Test báo cáo bảo trì với dữ liệu mẫu cho nhiều thiết bị và kỳ khác nhau
-- Test cảnh báo nhắc lịch với các chu kỳ khác nhau (7 ngày, 30 ngày, 90 ngày)
-- Test phân quyền: Technician không được phép xóa, Admin mới có quyền xóa
+| # | Điểm cần khai báo | Khai báo của chức năng này |
+|---|---|---|
+| 1 | Trạng thái riêng | Có — "Trạng thái bảo trì" (giá trị chưa khai báo, SA chốt) |
+| 2 | Có bước phê duyệt không | Không — Excel không khai báo luồng duyệt |
+| 3 | Lọc cha-con / theo đơn vị | Theo đơn vị — trường `orgUnitId` (Đơn vị quản lý) |
+| 4 | Trường chỉ hiện trong điều kiện nào | Có — TAB "Xác nhận bảo trì" hiện khi trạng thái = Hoàn thành |
+| 5 | Quyền riêng | `maintenanceplan:read/create/update/delete` |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
+| 7 | Tải lên tệp | Có — Upload/Attachment (file kế hoạch + file xác nhận) |
+| 8 | Giao diện khác mẫu chung | Không — theo list-screen + form/drawer convention |
+
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+| Method | Đường dẫn | Mô tả | Quyền |
+|---|---|---|---|
+| GET | `/api/maintenanceplans` | Danh sách kế hoạch bảo trì | `maintenanceplan:read` |
+| GET | `/api/maintenanceplans/{id}` | Chi tiết kế hoạch bảo trì | `maintenanceplan:read` |
+| POST | `/api/maintenanceplans` | Tạo mới kế hoạch bảo trì | `maintenanceplan:create` |
+| PUT | `/api/maintenanceplans/{id}` | Sửa / ghi nhận xác nhận bảo trì | `maintenanceplan:update` |
+| DELETE | `/api/maintenanceplans/{id}` | Xóa mềm | `maintenanceplan:delete` |
+
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+Quy ước: 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường cần loại bỏ.
+
+**Bảng `maintenance_plan` (kế hoạch bảo trì):** 🔴 `org_unit_id` (Đơn vị quản lý), 🔴 `maintenance_unit_id` (Đơn vị bảo trì), 🔴 `infrastructure_type` (Loại KCHT bảo trì), 🔴 `code` (Mã kế hoạch — tự sinh), 🔴 `name` (Tên kế hoạch), 🔴 `expected_start_date`, 🔴 `expected_end_date`, 🔴 `work_name` (Tên công việc), 🔴 `work_type` (Loại công việc), 🔴 `content` (Nội dung bảo trì), 🔴 `status` (Trạng thái bảo trì), 🔴 `note` (Ghi chú), 🔴 `updated_by`, 🔴 `updated_at`.
+
+**Bảng con `maintenance_work` (danh sách công trình):** 🔴 `maintenance_plan_id` (FK), 🔴 `infrastructure_id` (Mã KCHT), 🔴 `name` (Tên KCHT), 🔴 `port_name` (Thuộc cảng biển), 🔴 `location` (Địa điểm), 🔴 `cost` (Kinh phí bảo trì).
+
+**Bảng con `maintenance_plan_file` (tệp):** 🔴 `maintenance_plan_id`, 🔴 `file_name`.
+
+**Bảng con `maintenance_confirmation` (xác nhận bảo trì — hiện khi Hoàn thành):** 🔴 `maintenance_plan_id`, 🔴 `actual_start_date`, 🔴 `actual_end_date`, 🔴 `result_content`, 🔴 `result_note`.
+
+> Ghi chú: brief cũ (F-130 legacy) chưa có §2/§7 — SA đối chiếu tên bảng/entity với schema hiện có; các trường 🔴 là đề xuất từ ma trận Excel.
