@@ -95,6 +95,12 @@ public class CoastalStationVTS extends BaseEntity implements com.hanghai.kchtg.c
     private String contactPerson;
     private String contactPhone;
 
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
+
     /** ApprovableEntity: đơn vị quản lý của họ nhà trạm lưu ở cột unit_id. */
     @Override
     public UUID getOrgUnitId() {

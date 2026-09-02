@@ -7,7 +7,7 @@ status: proposed
 classification: local
 priority: high
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-06-26T00:00:00Z
+last-updated: 2026-09-01T00:00:00Z
 locked-fields: []
 consumed_by_modules: []
 ---
@@ -52,6 +52,8 @@ Lãnh đạo cấp Phòng nhận được thông báo yêu cầu phê duyệt, t
 | Admin | Xem toàn bộ, Quản lý workflow |
 
 ## Architecture Notes
+
+API phê duyệt LRIT nhận nội dung phê duyệt tùy chọn ở request body và lưu vào `level1_approval_content`/`level2_approval_content`; các lần chuyển trạng thái được ghi vào `infrastructure_history`.
 Dùng state machine cho workflow phê duyệt: `pending_1` → `pending_2` → `approved` hoặc `pending_1` → `rejected`. Bảng `approval_workflow` lưu các bước phê duyệt, bao gồm approver_id, approved_at, comment, decision. Tích hợp NotificationService để gửi thông báo ở mỗi bước.
 
 ## Entities

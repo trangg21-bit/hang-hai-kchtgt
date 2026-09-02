@@ -7,7 +7,7 @@ status: proposed
 classification: local
 priority: high
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-06-26T00:00:00Z
+last-updated: 2026-09-01T00:00:00Z
 locked-fields: []
 consumed_by_modules: []
 ---
@@ -52,7 +52,7 @@ Chuyên viên truy cập trang chi tiết Đại LRIT, chọn tab "Lịch sử t
 | Admin | Xem lịch sử toàn bộ, Xuất dữ liệu |
 
 ## Architecture Notes
-Lịch sử được lưu trong bảng `coastal_station_lrit_history` với các trường entity_id, action_type, changed_by, changed_at, old_values(JSON), new_values(JSON), comment. Query lấy tất cả sự kiện cho một entity_id, sắp xếp theo changed_at DESC. Dùng pagination để tránh tải quá nhiều dữ liệu.
+Lịch sử được lưu tập trung trong bảng `infrastructure_history` với `ref_type = LRIT_STATION`, `ref_id = coastal_station_lrit.id`, trạng thái, cấp phê duyệt, người thực hiện, thời gian và cặp giá trị trước/sau. API `/api/v1/stations/lrit/{id}/history` truy vấn theo `ref_type/ref_id`, sắp xếp `approved_date DESC`; frontend gom nhóm theo thời điểm/người thực hiện và loại bỏ bản ghi đính kèm legacy trùng trước khi hiển thị.
 
 ## Entities
 - **CoastalStationLRIT**: id, device_code, station_name, antenna_type, receive_frequency, receive_range_km, status

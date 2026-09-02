@@ -7,7 +7,7 @@ status: proposed
 classification: local
 priority: high
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-06-26T00:00:00Z
+last-updated: 2026-09-01T00:00:00Z
 locked-fields: []
 consumed_by_modules: []
 ---
@@ -34,7 +34,7 @@ Chuyên viên đăng nhập hệ thống, truy cập menu Quản lý Đại LRIT
 - Validate dữ liệu đầu vào (kiểu dữ liệu, khoảng giá trị, trường bắt buộc)
 - Tự động chuyển trạng thái bản ghi sang "Chờ phê duyệt"
 - Gửi thông báo phê duyệt đến lãnh đạo cấp Phòng
-- Lưu lịch tạo mới vào bảng audit trail
+- Lưu lịch tạo mới vào bảng audit trail `infrastructure_history`
 
 ## Out of Scope
 - Quy trình phê duyệt (thuộc F-113)

@@ -159,15 +159,6 @@ public class RadarStationService {
             saved = repository.save(saved);
         }
 
-        historyRepository.save(InfrastructureHistory.builder()
-                .refId(saved.getId())
-                .refType(InfrastructureType.RADAR_STATION)
-                .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status("submit".equals(action) ? InfrastructureHistoryStatus.PROPOSED : InfrastructureHistoryStatus.CREATED)
-                .approvedBy(createdBy)
-                .reason("submit".equals(action) ? "Tạo mới và gửi phê duyệt trạm radar" : "Tạo mới trạm radar (Lưu tạm)")
-                .build());
-
         return toResponse(saved);
     }
 
@@ -215,6 +206,50 @@ public class RadarStationService {
         boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
                 || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
 
+        Map<String, String> oldValues = new LinkedHashMap<>();
+        if (wasApproved) {
+            if (request.getStationName() != null && !Objects.equals(request.getStationName().trim(), entity.getStationName())) {
+                oldValues.put("Tên trạm radar", entity.getStationName() != null ? entity.getStationName() : "—");
+            }
+            if (request.getStationType() != null && !Objects.equals(request.getStationType().trim(), entity.getStationType())) {
+                oldValues.put("Loại trạm", entity.getStationType() != null ? entity.getStationType() : "—");
+            }
+            if (request.getOrgUnitId() != null && !Objects.equals(request.getOrgUnitId(), entity.getOrgUnitId())) {
+                String oldOrg = entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId()) : "—";
+                oldValues.put("Đơn vị quản lý", oldOrg != null ? oldOrg : "—");
+            }
+            if (request.getProvinceId() != null && !Objects.equals(request.getProvinceId(), entity.getProvinceId())) {
+                oldValues.put("Địa điểm (Tỉnh/TP)", entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : "—");
+            }
+            if (request.getLocation() != null && !Objects.equals(request.getLocation().trim(), entity.getLocation())) {
+                oldValues.put("Địa điểm chi tiết", entity.getLocation() != null ? entity.getLocation() : "—");
+            }
+            if (request.getConditionStatus() != null && !Objects.equals(request.getConditionStatus().trim(), entity.getConditionStatus())) {
+                oldValues.put("Tình trạng", entity.getConditionStatus() != null ? entity.getConditionStatus() : "—");
+            }
+            if (request.getCoverage() != null && !Objects.equals(request.getCoverage().trim(), entity.getCoverage())) {
+                oldValues.put("Vùng phủ sóng", entity.getCoverage() != null ? entity.getCoverage() : "—");
+            }
+            if (request.getTowerHeight() != null && !Objects.equals(request.getTowerHeight(), entity.getTowerHeight())) {
+                oldValues.put("Chiều cao tháp", entity.getTowerHeight() != null ? String.valueOf(entity.getTowerHeight()) : "—");
+            }
+            if (request.getRadarRange() != null && !Objects.equals(request.getRadarRange(), entity.getRadarRange())) {
+                oldValues.put("Tầm phủ radar", entity.getRadarRange() != null ? String.valueOf(entity.getRadarRange()) : "—");
+            }
+            if (request.getNote() != null && !Objects.equals(request.getNote().trim(), entity.getNote())) {
+                oldValues.put("Ghi chú", entity.getNote() != null ? entity.getNote() : "—");
+            }
+
+            String oldCoord = gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId());
+            String newCoord = trimToNull(request.getCoordinates());
+            if (newCoord == null && request.getLongitude() != null && request.getLatitude() != null) {
+                newCoord = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
+            }
+            if (newCoord != null && !Objects.equals(newCoord, oldCoord)) {
+                oldValues.put("Tọa độ", oldCoord != null ? oldCoord : "—");
+            }
+        }
+
         if (wasApproved) {
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
         }
@@ -257,24 +292,55 @@ public class RadarStationService {
                     objType,
                     coordinates,
                     refId,
-                    InfrastructureType.RADAR_STATION_LEGACY
+                    InfrastructureType.RADAR_STATION
             );
-            saved.setSpatialId(spatialObj.getId());
-            saved = repository.save(saved);
+            if (saved.getSpatialId() == null) {
+                saved.setSpatialId(spatialObj.getId());
+                saved = repository.save(saved);
+            }
         }
 
-        if (wasApproved) {
-            historyRepository.save(InfrastructureHistory.builder()
-                    .refId(saved.getId())
-                    .refType(InfrastructureType.RADAR_STATION)
-                    .approvalLevel(ApprovalLevel.LEVEL_2)
-                    .status(InfrastructureHistoryStatus.UPDATED)
-                    .approvedBy(updatedBy)
-                    .reason("Cập nhật thông tin trạm radar sau phê duyệt")
-                    .build());
+        if (wasApproved && !oldValues.isEmpty()) {
+            for (Map.Entry<String, String> entry : oldValues.entrySet()) {
+                String fieldName = entry.getKey();
+                String oldVal = entry.getValue();
+                String newVal = getRadarNewValueDisplay(fieldName, saved);
+                historyRepository.save(InfrastructureHistory.builder()
+                        .refId(saved.getId())
+                        .refType(InfrastructureType.RADAR_STATION)
+                        .approvalLevel(ApprovalLevel.LEVEL_2)
+                        .status(InfrastructureHistoryStatus.UPDATED)
+                        .approvedBy(updatedBy)
+                        .changedField(fieldName)
+                        .previousValue(oldVal)
+                        .newValue(newVal)
+                        .reason("Cập nhật " + fieldName)
+                        .build());
+            }
         }
 
         return toResponse(saved);
+    }
+
+    private String getRadarNewValueDisplay(String fieldName, RadarStation entity) {
+        if (entity == null || fieldName == null) return "—";
+        return switch (fieldName) {
+            case "Tên trạm radar" -> entity.getStationName() != null ? entity.getStationName() : "—";
+            case "Loại trạm" -> entity.getStationType() != null ? entity.getStationType() : "—";
+            case "Đơn vị quản lý" -> entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId()) : "—";
+            case "Địa điểm (Tỉnh/TP)" -> entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : "—";
+            case "Địa điểm chi tiết" -> entity.getLocation() != null ? entity.getLocation() : "—";
+            case "Tình trạng" -> entity.getConditionStatus() != null ? entity.getConditionStatus() : "—";
+            case "Vùng phủ sóng" -> entity.getCoverage() != null ? entity.getCoverage() : "—";
+            case "Chiều cao tháp" -> entity.getTowerHeight() != null ? String.valueOf(entity.getTowerHeight()) : "—";
+            case "Tầm phủ radar" -> entity.getRadarRange() != null ? String.valueOf(entity.getRadarRange()) : "—";
+            case "Ghi chú" -> entity.getNote() != null ? entity.getNote() : "—";
+            case "Tọa độ", "Tọa độ GPS" -> {
+                String c = gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId());
+                yield c != null && !c.isBlank() ? c : "—";
+            }
+            default -> "—";
+        };
     }
 
     public void delete(UUID id, UUID userId) {
@@ -332,7 +398,7 @@ public class RadarStationService {
 
     // Aliases for legacy controllers
     public RadarStationResponse approveL1(UUID id, UUID approverId) {
-        return approveLevel1(id, approverId, "Phê duyệt Cấp 1 trạm radar");
+        return approveLevel1(id, approverId, "Phê duyệt cấp Chi cục trạm radar");
     }
 
     public RadarStationResponse reject(UUID id, String rejectReason, UUID approverId) {
@@ -530,6 +596,21 @@ public class RadarStationService {
                     .uploadedBy(userId)
                     .build();
             savedAttachments.add(attachmentRepository.save(attachment));
+
+            if (historyRepository != null) {
+                historyRepository.save(InfrastructureHistory.builder()
+                        .refId(id)
+                        .refType(InfrastructureType.RADAR_STATION)
+                        .approvalLevel(ApprovalLevel.LEVEL_0)
+                        .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
+                        .approvedBy(userId)
+                        .approvedDate(LocalDateTime.now())
+                        .reason("Tải lên tài liệu đính kèm: " + originalFilename)
+                        .changedField("Tài liệu đính kèm")
+                        .previousValue("—")
+                        .newValue(originalFilename)
+                        .build());
+            }
         }
         return savedAttachments.stream().map(this::toAttachmentResponse).toList();
     }
@@ -547,12 +628,28 @@ public class RadarStationService {
 
         InfrastructureAttachment attachment = attachmentRepository.findByIdAndRefIdAndRefType(attachmentId, id, InfrastructureType.RADAR_STATION)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy file đính kèm với ID: " + attachmentId));
+        String fileName = attachment.getFileName();
         try {
             java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
         } catch (Exception e) {
             log.warn("Không thể xóa file vật lý {}: {}", attachment.getFilePath(), e.getMessage());
         }
         attachmentRepository.delete(attachment);
+
+        if (historyRepository != null) {
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(id)
+                    .refType(InfrastructureType.RADAR_STATION)
+                    .approvalLevel(ApprovalLevel.LEVEL_0)
+                    .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
+                    .approvedBy(userId)
+                    .approvedDate(LocalDateTime.now())
+                    .reason("Xóa tài liệu đính kèm: " + fileName)
+                    .changedField("Tài liệu đính kèm")
+                    .previousValue(fileName)
+                    .newValue("—")
+                    .build());
+        }
     }
 
     private RadarStationAttachmentResponse toAttachmentResponse(InfrastructureAttachment a) {

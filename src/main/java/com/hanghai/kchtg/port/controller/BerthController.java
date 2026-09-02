@@ -127,7 +127,7 @@ public class BerthController {
             @PathVariable UUID id,
             @RequestParam(required = false) String reason) {
         berthApprovalService.approveC1(id, reason, SecurityUtils.getCurrentUserId());
-        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cảng vụ thành công", null));
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Chi cục thành công", null));
     }
 
     @PostMapping("/{id}/approve/c2")

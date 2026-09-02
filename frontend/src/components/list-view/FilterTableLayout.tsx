@@ -60,6 +60,8 @@ export default function FilterTableLayout({
   children,
 }: FilterTableLayoutProps) {
   const { cardStyle, borderDefault, textSecondary, actionPrimary, buttonRadius, fontSizeMd, statusTabsPadding } = useThemeToken();
+  const handleApply = onFilterApply ?? (() => {});
+  const handleReset = onFilterReset ?? (() => {});
   return (
     <div style={{ display: 'flex', gap: 5, alignItems: 'stretch', flex: 1, minHeight: 0 }}>
       {/* ── Left: Vertical Filter Panel ── */}
@@ -83,19 +85,19 @@ export default function FilterTableLayout({
         <div style={{ borderTop: `1px solid ${borderDefault}`, padding: '12px 16px', display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
           <Button
             icon={<ReloadOutlined />}
-            onClick={onFilterReset}
+            onClick={handleReset}
             shape="circle"
             style={{ color: textSecondary, borderColor: borderDefault, width: 38, height: 38, fontSize: fontSizeMd, flexShrink: 0 }}
           />
           <Button
             type="primary"
             icon={<SearchOutlined />}
-            onClick={onFilterApply}
+            onClick={handleApply}
             style={{ background: actionPrimary, borderColor: actionPrimary, borderRadius: buttonRadius, height: 40, fontSize: fontSizeMd, padding: '0 14px' }}
           >
             Tìm kiếm
           </Button>
-          {!hideFilterToggle && (
+          {!hideFilterToggle ? (
             <Button
               icon={<FilterOutlined />}
               onClick={onToggleCollapse}
@@ -110,6 +112,8 @@ export default function FilterTableLayout({
                 flexShrink: 0,
               }}
             />
+          ) : (
+            <div style={{ width: 38, height: 38, flexShrink: 0, visibility: 'hidden' }} aria-hidden="true" />
           )}
         </div>
       </div>

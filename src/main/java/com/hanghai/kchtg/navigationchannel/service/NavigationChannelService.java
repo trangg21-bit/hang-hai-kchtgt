@@ -529,17 +529,19 @@ public class NavigationChannelService {
                 .collect(Collectors.toSet());
         Map<UUID, String> userNames = resolveUserNames(userIds);
 
-        return history.stream().map(h -> HistoryEntry.builder()
-                .id(h.getId())
-                .navigationChannelId(h.getRefId())
-                .approvalLevel(h.getApprovalLevel())
-                .status(h.getStatus() != null ? h.getStatus().getCode() : null)
-                .approvedBy(h.getApprovedBy() != null
-                        ? userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
-                        : null)
-                .approvedDate(h.getApprovedDate())
-                .reason(h.getReason())
-                .build()).collect(Collectors.toList());
+        return history.stream().map(h -> {
+            HistoryEntry entry = new HistoryEntry();
+            entry.setId(h.getId());
+            entry.setNavigationChannelId(h.getRefId());
+            entry.setApprovalLevel(h.getApprovalLevel());
+            entry.setStatus(h.getStatus() != null ? h.getStatus().getCode() : null);
+            entry.setApprovedBy(h.getApprovedBy() != null
+                    ? userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
+                    : null);
+            entry.setApprovedDate(h.getApprovedDate());
+            entry.setReason(h.getReason());
+            return entry;
+        }).collect(Collectors.toList());
     }
 
     private Map<UUID, String> resolveUserNames(Collection<UUID> userIds) {

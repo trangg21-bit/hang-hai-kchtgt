@@ -25,6 +25,8 @@ public class GroupResponse {
     GroupStatus status;
     UUID organizationId;
     String organizationName;
+    String createdByName;
+    String updatedByName;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
     Long memberCount;
@@ -42,6 +44,8 @@ public class GroupResponse {
                 entity.getStatus(),
                 entity.getOrganizationId(),
                 null, // organizationName — resolved by caller (service layer)
+                null,
+                null,
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),
                 0L

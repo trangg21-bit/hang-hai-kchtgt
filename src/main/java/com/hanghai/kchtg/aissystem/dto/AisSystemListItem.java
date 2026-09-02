@@ -45,6 +45,9 @@ public class AisSystemListItem {
     private ConditionStatus conditionStatus;
     private ApprovalStatus approvalStatus;
     private String approvalStatusLabel;
+    private LocalDateTime submittedAt;
+    private UUID submittedBy;
+    private String submittedByName;
     private LocalDateTime updatedAt;
     private UUID updatedBy;
     private String updatedByName;

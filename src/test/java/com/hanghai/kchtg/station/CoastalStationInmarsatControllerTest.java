@@ -119,7 +119,7 @@ class CoastalStationInmarsatControllerTest {
     void testSearchPaged() throws Exception {
         UUID id = UUID.randomUUID();
         CoastalStationInmarsatResponse resp = makeResponse(id);
-        when(service.searchPaged(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(service.searchPaged(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(resp), PageRequest.of(0, 10), 1));
 
         mockMvc.perform(get(BASE)
@@ -343,7 +343,7 @@ class CoastalStationInmarsatControllerTest {
         CoastalStationInmarsatHistoryResponse history = new CoastalStationInmarsatHistoryResponse();
         history.setId(UUID.randomUUID());
         history.setDeviceCode("INM-001");
-        when(service.getHistory(id)).thenReturn(List.of(history));
+        when(service.getHistory(eq(id), any(), any(), any(), any(), any())).thenReturn(List.of(history));
 
         mockMvc.perform(get(BASE + "/{id}/history", id))
                 .andExpect(status().isOk())

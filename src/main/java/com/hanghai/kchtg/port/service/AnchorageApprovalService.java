@@ -42,7 +42,7 @@ public class AnchorageApprovalService {
 
         if ("CANG_VU".equals(cap)) {
             if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1) {
-                throw new IllegalStateException("Không thể phê duyệt cấp Cảng vụ: trạng thái hiện tại không hợp lệ");
+                throw new IllegalStateException("Không thể phê duyệt cấp Chi cục: trạng thái hiện tại không hợp lệ");
             }
             entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL2);
             entity.setPortAuthorityApprovedAt(LocalDateTime.now());
@@ -53,7 +53,7 @@ public class AnchorageApprovalService {
             }
         } else if ("CUC".equals(cap)) {
             if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL2) {
-                throw new IllegalStateException("Không thể phê duyệt cấp Cục: cần phê duyệt cấp Cảng vụ trước");
+                throw new IllegalStateException("Không thể phê duyệt cấp Cục: cần phê duyệt cấp Chi cục trước");
             }
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
             entity.setDepartmentApprovedAt(LocalDateTime.now());

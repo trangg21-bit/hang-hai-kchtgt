@@ -100,6 +100,15 @@ export const symbolService = {
     };
   },
 
+  async getAll(): Promise<Symbol[]> {
+    try {
+      const res = await this.list({ pageSize: 100 });
+      return res.data || [];
+    } catch {
+      return [];
+    }
+  },
+
   async getById(id: string): Promise<Symbol> {
     const resp = await api.get(`/symbols/${id}`);
     return mapSymbol(extractData(resp));

@@ -48,6 +48,8 @@ public class CoastalStationVTSService {
         entity.setLocationAddress(request.getLocationAddress());
         entity.setContactPerson(request.getContactPerson());
         entity.setContactPhone(request.getContactPhone());
+        entity.setLatitude(request.getLatitude());
+        entity.setLongitude(request.getLongitude());
         entity.setIsActive(true);
 
         CoastalStationVTS saved = repository.save(entity);
@@ -73,7 +75,39 @@ public class CoastalStationVTSService {
         boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
                 || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
 
-        String previousCode = entity.getCode();
+        java.util.Map<String, String> oldValues = new java.util.LinkedHashMap<>();
+        if (wasApproved) {
+            if (request.getStationName() != null && !java.util.Objects.equals(request.getStationName(), entity.getName())) {
+                oldValues.put("Tên đài", entity.getName() != null ? entity.getName() : "—");
+            }
+            if (request.getFrequencyBand() != null && !java.util.Objects.equals(request.getFrequencyBand(), entity.getFrequencyBand())) {
+                oldValues.put("Băng tần", entity.getFrequencyBand() != null ? entity.getFrequencyBand() : "—");
+            }
+            if (request.getTransmitPower() != null && !java.util.Objects.equals(request.getTransmitPower(), entity.getTransmitPower())) {
+                oldValues.put("Công suất phát", entity.getTransmitPower() != null ? String.valueOf(entity.getTransmitPower()) : "—");
+            }
+            if (request.getEquipmentType() != null && !java.util.Objects.equals(request.getEquipmentType(), entity.getEquipmentType())) {
+                oldValues.put("Loại thiết bị", entity.getEquipmentType() != null ? entity.getEquipmentType() : "—");
+            }
+            if (request.getLocationAddress() != null && !java.util.Objects.equals(request.getLocationAddress(), entity.getLocationAddress())) {
+                oldValues.put("Địa điểm chi tiết", entity.getLocationAddress() != null ? entity.getLocationAddress() : "—");
+            }
+            if (request.getContactPerson() != null && !java.util.Objects.equals(request.getContactPerson(), entity.getContactPerson())) {
+                oldValues.put("Người liên hệ", entity.getContactPerson() != null ? entity.getContactPerson() : "—");
+            }
+            if (request.getContactPhone() != null && !java.util.Objects.equals(request.getContactPhone(), entity.getContactPhone())) {
+                oldValues.put("Số điện thoại liên hệ", entity.getContactPhone() != null ? entity.getContactPhone() : "—");
+            }
+
+            boolean latChanged = (request.getLatitude() != null && !java.util.Objects.equals(request.getLatitude(), entity.getLatitude()));
+            boolean lngChanged = (request.getLongitude() != null && !java.util.Objects.equals(request.getLongitude(), entity.getLongitude()));
+            if (latChanged || lngChanged) {
+                String oldCoord = (entity.getLatitude() != null && entity.getLongitude() != null)
+                        ? entity.getLatitude() + ", " + entity.getLongitude()
+                        : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
+                oldValues.put("Tọa độ GIS", oldCoord);
+            }
+        }
 
         validateCoordinates(request.getLongitude(), request.getLatitude());
 
@@ -91,6 +125,10 @@ public class CoastalStationVTSService {
             entity.setContactPerson(request.getContactPerson());
         if (request.getContactPhone() != null)
             entity.setContactPhone(request.getContactPhone());
+        if (request.getLatitude() != null)
+            entity.setLatitude(request.getLatitude());
+        if (request.getLongitude() != null)
+            entity.setLongitude(request.getLongitude());
 
         CoastalStationVTS saved = repository.save(entity);
 
@@ -101,14 +139,34 @@ public class CoastalStationVTSService {
             saved = repository.save(saved);
         }
 
-        historyService.recordHistory(
-                InfrastructureType.COASTAL_RADIO_STATION,
-                saved.getId(),
-                StationHistoryActionType.UPDATE,
-                previousCode,
-                wasApproved ? "Cập nhật sau phê duyệt" : "Station updated",
-                SecurityUtils.getCurrentUserId());
+        if (wasApproved && !oldValues.isEmpty()) {
+            final CoastalStationVTS finalSaved = saved;
+            UUID currentUserId = SecurityUtils.getCurrentUserId();
+            historyService.recordDeltaChanges(
+                    InfrastructureType.COASTAL_RADIO_STATION,
+                    finalSaved.getId(),
+                    oldValues,
+                    field -> getNewValueDisplay(field, finalSaved),
+                    currentUserId);
+        }
         return saved;
+    }
+
+    private String getNewValueDisplay(String fieldName, CoastalStationVTS entity) {
+        if (entity == null || fieldName == null) return "—";
+        return switch (fieldName) {
+            case "Tên đài" -> entity.getName() != null ? entity.getName() : "—";
+            case "Băng tần" -> entity.getFrequencyBand() != null ? entity.getFrequencyBand() : "—";
+            case "Công suất phát" -> entity.getTransmitPower() != null ? String.valueOf(entity.getTransmitPower()) : "—";
+            case "Loại thiết bị" -> entity.getEquipmentType() != null ? entity.getEquipmentType() : "—";
+            case "Địa điểm chi tiết" -> entity.getLocationAddress() != null ? entity.getLocationAddress() : "—";
+            case "Người liên hệ" -> entity.getContactPerson() != null ? entity.getContactPerson() : "—";
+            case "Số điện thoại liên hệ" -> entity.getContactPhone() != null ? entity.getContactPhone() : "—";
+            case "Tọa độ", "Tọa độ GIS", "Tọa độ GPS" -> (entity.getLatitude() != null && entity.getLongitude() != null)
+                    ? entity.getLatitude() + ", " + entity.getLongitude()
+                    : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
+            default -> "—";
+        };
     }
 
     public void deleteStation(UUID id) {

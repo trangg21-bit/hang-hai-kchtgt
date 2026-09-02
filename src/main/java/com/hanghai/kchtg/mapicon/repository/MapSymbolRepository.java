@@ -36,4 +36,8 @@ public interface MapSymbolRepository extends JpaRepository<MapSymbol, UUID> {
 
     @Query("SELECT MAX(CAST(SUBSTRING(s.code, 4) AS integer)) FROM MapSymbol s")
     Integer findMaxCodeNumber();
+
+    @Query("SELECT s FROM MapSymbol s WHERE s.code = :code AND s.deletedAt IS NULL")
+    java.util.Optional<MapSymbol> findByCode(@Param("code") String code);
 }
+

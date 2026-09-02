@@ -32,6 +32,10 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
+import com.hanghai.kchtg.common.entity.OperatingOrganization;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -43,8 +47,11 @@ public class CoastalStationHaiphongService {
     private final HistoryService historyService;
     private final OrgUnitScopeService orgUnitScopeService;
     private final OrgUnitRepository orgUnitRepository;
+    private final OrgUnitCacheService orgUnitCacheService;
+    private final OperatingOrganizationRepository operatingOrganizationRepository;
     private final UserRepository userRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
+    private final com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository attachmentRepository;
 
     private Scope resolveEffectiveScope(UUID selectedOrgUnitId) {
         Scope userScope = orgUnitScopeService.currentUserScope();
@@ -64,16 +71,33 @@ public class CoastalStationHaiphongService {
         return Scope.restricted(intersected);
     }
 
+    /**
+     * Chuẩn hóa từ khóa cho vế LIKE.
+     *
+     * Truy vấn so sánh với {@code immutable_unaccent(LOWER(...))} — tức là chuỗi
+     * ĐÃ bỏ dấu — nên từ khóa cũng phải bỏ dấu, nếu không thì gõ tiếng Việt có dấu
+     * (cách gõ tự nhiên) sẽ không bao giờ khớp và màn hình luôn báo không có dữ liệu.
+     */
+    private static String toKeywordLike(String keyword) {
+        String normalized = normalizeHistoryKeyword(keyword);
+        return normalized == null ? null : "%" + normalized + "%";
+    }
+
+    /** Bỏ dấu từ khóa, KHÔNG bọc `%` — truy vấn nhật ký tự nối `%` bằng CONCAT. */
+    private static String normalizeHistoryKeyword(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return null;
+        }
+        return java.text.Normalizer
+                .normalize(keyword.trim().toLowerCase(java.util.Locale.ROOT), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('đ', 'd');
+    }
+
     private void validateAllowedOrgUnit(UUID orgUnitId) {
         Scope userScope = orgUnitScopeService.currentUserScope();
         if (!userScope.unrestricted() && (orgUnitId == null || !userScope.orgUnitIds().contains(orgUnitId))) {
             throw new AccessDeniedException("Bạn không có quyền thao tác trên đơn vị quản lý này");
-        }
-    }
-
-    private void validateNotSelfApproval(UUID createdBy, UUID currentUserId) {
-        if (createdBy != null && currentUserId != null && createdBy.equals(currentUserId)) {
-            throw new IllegalStateException("Bạn không thể tự phê duyệt bản ghi do chính mình tạo (Nguyên tắc 4 mắt)");
         }
     }
 
@@ -107,8 +131,7 @@ public class CoastalStationHaiphongService {
         boolean scopeEnabled = !scope.unrestricted();
         List<UUID> scopeOrgUnitIds = scope.orgUnitIds();
 
-        String kw = (keyword != null && !keyword.trim().isEmpty())
-                ? "%" + keyword.trim().toLowerCase() + "%" : null;
+        String kw = toKeywordLike(keyword);
 
         Page<CoastalStationHaiphong> page = repository.searchPaged(
                 scopeEnabled, scopeOrgUnitIds, orgUnitId, kw, operatingOrgId, provinceId,
@@ -119,15 +142,27 @@ public class CoastalStationHaiphongService {
 
     @Transactional(readOnly = true)
     public Map<String, Long> countByApprovalStatus(UUID orgUnitId, String keyword, String conditionStatus) {
+        return countByApprovalStatus(orgUnitId, keyword, conditionStatus, null, null, null, null, null);
+    }
+
+    /**
+     * Số đếm trên tab phải nhận CÙNG bộ lọc như danh sách, nếu không thì lọc theo
+     * tỉnh hay khoảng ngày xong bảng trống mà tab vẫn báo có bản ghi.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Long> countByApprovalStatus(
+            UUID orgUnitId, String keyword, String conditionStatus,
+            UUID operatingOrgId, Integer provinceId, UUID updatedBy,
+            LocalDateTime updatedFrom, LocalDateTime updatedTo) {
         Scope scope = resolveEffectiveScope(orgUnitId);
         boolean scopeEnabled = !scope.unrestricted();
         List<UUID> scopeOrgUnitIds = scope.orgUnitIds();
 
-        String kw = (keyword != null && !keyword.trim().isEmpty())
-                ? "%" + keyword.trim().toLowerCase() + "%" : null;
+        String kw = toKeywordLike(keyword);
 
         List<Object[]> rawCounts = repository.countByApprovalStatus(
-                scopeEnabled, scopeOrgUnitIds, orgUnitId, kw, conditionStatus);
+                scopeEnabled, scopeOrgUnitIds, orgUnitId, kw, conditionStatus,
+                operatingOrgId, provinceId, updatedBy, updatedFrom, updatedTo);
 
         Map<ApprovalStatus, Long> countsByStatus = new EnumMap<>(ApprovalStatus.class);
         for (Object[] row : rawCounts) {
@@ -261,6 +296,116 @@ public class CoastalStationHaiphongService {
 
         approvalService.assertEditable(entity);
 
+        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+
+        Map<String, String> oldValues = new LinkedHashMap<>();
+        if (wasApproved) {
+            if (request.getName() != null && !Objects.equals(request.getName(), entity.getName())) {
+                oldValues.put("Tên đài", entity.getName() != null ? entity.getName() : "—");
+            }
+            if (request.getOrgUnitId() != null && !Objects.equals(request.getOrgUnitId(), entity.getOrgUnitId())) {
+                String oldName = entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId()) : "—";
+                oldValues.put("Đơn vị quản lý", oldName != null ? oldName : "—");
+            }
+            if (request.getOperatingOrgId() != null && !Objects.equals(request.getOperatingOrgId(), entity.getOperatingOrgId())) {
+                String oldName = entity.getOperatingOrgId() != null ? resolveOperatingOrgName(entity.getOperatingOrgId()) : "—";
+                oldValues.put("Đơn vị khai thác", oldName != null ? oldName : "—");
+            }
+            if (request.getProvinceId() != null && !Objects.equals(request.getProvinceId(), entity.getProvinceId())) {
+                oldValues.put("Địa điểm (Tỉnh/TP)", entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : "—");
+            }
+            if (request.getLocationAddress() != null && !Objects.equals(request.getLocationAddress(), entity.getLocationAddress())) {
+                oldValues.put("Địa điểm chi tiết", entity.getLocationAddress() != null ? entity.getLocationAddress() : "—");
+            }
+            if (request.getConditionStatus() != null && !Objects.equals(request.getConditionStatus(), entity.getConditionStatus())) {
+                oldValues.put("Tình trạng", entity.getConditionStatus() != null ? entity.getConditionStatus() : "—");
+            }
+            if (request.getPortName() != null && !Objects.equals(request.getPortName(), entity.getPortName())) {
+                oldValues.put("Cảng biển", entity.getPortName() != null ? entity.getPortName() : "—");
+            }
+            if (request.getDistrict() != null && !Objects.equals(request.getDistrict(), entity.getDistrict())) {
+                oldValues.put("Quận/Huyện", entity.getDistrict() != null ? entity.getDistrict() : "—");
+            }
+            if (request.getWard() != null && !Objects.equals(request.getWard(), entity.getWard())) {
+                oldValues.put("Phường/Xã", entity.getWard() != null ? entity.getWard() : "—");
+            }
+            if (request.getOperationalLicense() != null && !Objects.equals(request.getOperationalLicense(), entity.getOperationalLicense())) {
+                oldValues.put("Giấy phép hoạt động", entity.getOperationalLicense() != null ? entity.getOperationalLicense() : "—");
+            }
+            if (request.getLicenseExpiry() != null && !Objects.equals(request.getLicenseExpiry(), entity.getLicenseExpiry())) {
+                oldValues.put("Hạn giấy phép", entity.getLicenseExpiry() != null ? String.valueOf(entity.getLicenseExpiry()) : "—");
+            }
+            if (request.getInspectorName() != null && !Objects.equals(request.getInspectorName(), entity.getInspectorName())) {
+                oldValues.put("Cán bộ kiểm định", entity.getInspectorName() != null ? entity.getInspectorName() : "—");
+            }
+            if (request.getInspectorPhone() != null && !Objects.equals(request.getInspectorPhone(), entity.getInspectorPhone())) {
+                oldValues.put("SĐT cán bộ kiểm định", entity.getInspectorPhone() != null ? entity.getInspectorPhone() : "—");
+            }
+            if (request.getLastInspectionDate() != null && !Objects.equals(request.getLastInspectionDate(), entity.getLastInspectionDate())) {
+                oldValues.put("Ngày kiểm định gần nhất", entity.getLastInspectionDate() != null ? String.valueOf(entity.getLastInspectionDate()) : "—");
+            }
+            if (request.getNextInspectionDate() != null && !Objects.equals(request.getNextInspectionDate(), entity.getNextInspectionDate())) {
+                oldValues.put("Ngày kiểm định tiếp theo", entity.getNextInspectionDate() != null ? String.valueOf(entity.getNextInspectionDate()) : "—");
+            }
+            if (request.getCoverageArea() != null && !Objects.equals(request.getCoverageArea(), entity.getCoverageArea())) {
+                oldValues.put("Vùng phủ sóng", entity.getCoverageArea() != null ? entity.getCoverageArea() : "—");
+            }
+            if (request.getEquipmentType() != null && !Objects.equals(request.getEquipmentType(), entity.getEquipmentType())) {
+                oldValues.put("Loại thiết bị", entity.getEquipmentType() != null ? entity.getEquipmentType() : "—");
+            }
+            if (request.getCommunicationFrequency() != null && !Objects.equals(request.getCommunicationFrequency(), entity.getCommunicationFrequency())) {
+                oldValues.put("Tần số liên lạc", entity.getCommunicationFrequency() != null ? entity.getCommunicationFrequency() : "—");
+            }
+            if (request.getServicesProvided() != null && !Objects.equals(request.getServicesProvided(), entity.getServicesProvided())) {
+                oldValues.put("Dịch vụ cung cấp", entity.getServicesProvided() != null ? entity.getServicesProvided() : "—");
+            }
+            if (request.getDescription() != null && !Objects.equals(request.getDescription(), entity.getDescription())) {
+                oldValues.put("Ghi chú", entity.getDescription() != null ? entity.getDescription() : "—");
+            }
+            if (request.getContactPerson() != null && !Objects.equals(request.getContactPerson(), entity.getContactPerson())) {
+                oldValues.put("Người liên hệ", entity.getContactPerson() != null ? entity.getContactPerson() : "—");
+            }
+            if (request.getContactPhone() != null && !Objects.equals(request.getContactPhone(), entity.getContactPhone())) {
+                oldValues.put("Số điện thoại liên hệ", entity.getContactPhone() != null ? entity.getContactPhone() : "—");
+            }
+
+            // GIS fields
+            if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType(), entity.getGeometryType())) {
+                oldValues.put("Loại đối tượng GIS", formatObjectTypeDisplay(entity.getGeometryType()));
+            }
+            if (request.getSymbol() != null && !Objects.equals(request.getSymbol(), entity.getSymbol())) {
+                oldValues.put("Biểu tượng", gisSpatialObjectService != null ? gisSpatialObjectService.getSymbolDisplayName(entity.getSymbol()) : (entity.getSymbol() != null ? entity.getSymbol() : "—"));
+            }
+            if (request.getCoordinateSystem() != null && !Objects.equals(request.getCoordinateSystem(), entity.getCoordinateSystem())) {
+                oldValues.put("Hệ quy chiếu", entity.getCoordinateSystem() != null ? entity.getCoordinateSystem() : "—");
+            }
+            if (request.getDisplayRule() != null && !Objects.equals(request.getDisplayRule(), entity.getDisplayRule())) {
+                oldValues.put("Quy tắc hiển thị", entity.getDisplayRule() != null ? entity.getDisplayRule() : "—");
+            }
+            boolean latChanged = (request.getLatitude() != null && (entity.getLatitude() == null || request.getLatitude().compareTo(entity.getLatitude()) != 0))
+                    || (request.getLatitude() == null && entity.getLatitude() != null);
+            boolean lngChanged = (request.getLongitude() != null && (entity.getLongitude() == null || request.getLongitude().compareTo(entity.getLongitude()) != 0))
+                    || (request.getLongitude() == null && entity.getLongitude() != null);
+
+            String oldCoord = gisSpatialObjectService != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
+            if (oldCoord == null || oldCoord.isBlank()) {
+                oldCoord = (entity.getLatitude() != null && entity.getLongitude() != null)
+                        ? entity.getLatitude() + ", " + entity.getLongitude()
+                        : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
+            }
+            String newCoord = request.getCoordinates();
+            if (newCoord == null || newCoord.isBlank()) {
+                newCoord = (request.getLatitude() != null && request.getLongitude() != null)
+                        ? request.getLatitude() + ", " + request.getLongitude()
+                        : (request.getLatitude() != null ? "Vĩ độ: " + request.getLatitude() : (request.getLongitude() != null ? "Kinh độ: " + request.getLongitude() : null));
+            }
+            boolean coordsChanged = (newCoord != null && !Objects.equals(newCoord, oldCoord)) || latChanged || lngChanged;
+            if (coordsChanged) {
+                oldValues.put("Tọa độ GIS", oldCoord != null ? oldCoord : "—");
+            }
+        }
+
         if (request.getOrgUnitId() != null) {
             validateAllowedOrgUnit(request.getOrgUnitId());
             entity.setOrgUnitId(request.getOrgUnitId());
@@ -301,15 +446,24 @@ public class CoastalStationHaiphongService {
         if (request.getSymbol() != null) entity.setSymbol(request.getSymbol());
         if (request.getCoordinateSystem() != null) entity.setCoordinateSystem(request.getCoordinateSystem());
         if (request.getDisplayRule() != null) entity.setDisplayRule(request.getDisplayRule());
+        GisGeometryType geomType = "LINE".equalsIgnoreCase(request.getGeometryType()) ? GisGeometryType.LINE : ("POLYGON".equalsIgnoreCase(request.getGeometryType()) ? GisGeometryType.POLYGON : GisGeometryType.POINT);
+
         if (request.getLatitude() != null) entity.setLatitude(request.getLatitude());
         if (request.getLongitude() != null) entity.setLongitude(request.getLongitude());
 
         if (request.getCoordinates() != null && !request.getCoordinates().isBlank()) {
+            if (entity.getLatitude() == null || entity.getLongitude() == null) {
+                BigDecimal[] pt = extractFirstCoordinate(request.getCoordinates());
+                if (pt != null) {
+                    entity.setLatitude(pt[0]);
+                    entity.setLongitude(pt[1]);
+                }
+            }
             UUID spatialId = gisSpatialObjectService.syncSpatialObject(
                     entity.getSpatialId(),
                     "Đài TTXLTT " + entity.getName(),
                     "HAIPHONG_" + entity.getId(),
-                    GisGeometryType.POINT,
+                    geomType,
                     request.getCoordinates(),
                     entity.getId(),
                     InfrastructureType.HANOI_STATION);
@@ -318,15 +472,78 @@ public class CoastalStationHaiphongService {
 
         CoastalStationHaiphong updated = repository.save(entity);
 
-        historyService.recordHistory(
-                InfrastructureType.HANOI_STATION,
-                updated.getId(),
-                StationHistoryActionType.UPDATE,
-                null,
-                "Cập nhật thông tin Đài TTXLTT: " + updated.getName(),
-                SecurityUtils.getCurrentUserId());
+        if (wasApproved && !oldValues.isEmpty()) {
+            UUID currentUserId = SecurityUtils.getCurrentUserId();
+            historyService.recordDeltaChanges(
+                    InfrastructureType.HANOI_STATION,
+                    updated.getId(),
+                    oldValues,
+                    field -> getNewValueDisplay(field, updated),
+                    currentUserId);
+        }
 
         return updated;
+    }
+
+    private BigDecimal[] extractFirstCoordinate(String wkt) {
+        if (wkt == null || wkt.isBlank()) return null;
+        try {
+            java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("([0-9]+\\.?[0-9]*)\\s+([0-9]+\\.?[0-9]*)").matcher(wkt);
+            if (matcher.find()) {
+                BigDecimal lng = new BigDecimal(matcher.group(1));
+                BigDecimal lat = new BigDecimal(matcher.group(2));
+                return new BigDecimal[]{lat, lng};
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private String resolveOperatingOrgName(UUID operatingOrgId) {
+        if (operatingOrgId == null) return null;
+        return operatingOrganizationRepository.findById(operatingOrgId)
+                .map(OperatingOrganization::getName)
+                .orElseGet(() -> orgUnitCacheService.getName(operatingOrgId));
+    }
+
+    private String getNewValueDisplay(String fieldName, CoastalStationHaiphong entity) {
+        if (entity == null || fieldName == null) return "—";
+        return switch (fieldName) {
+            case "Tên đài" -> entity.getName() != null ? entity.getName() : "—";
+            case "Đơn vị quản lý" -> entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId()) : "—";
+            case "Đơn vị khai thác" -> entity.getOperatingOrgId() != null ? resolveOperatingOrgName(entity.getOperatingOrgId()) : "—";
+            case "Địa điểm (Tỉnh/TP)" -> entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : "—";
+            case "Địa điểm chi tiết" -> entity.getLocationAddress() != null ? entity.getLocationAddress() : "—";
+            case "Tình trạng" -> entity.getConditionStatus() != null ? entity.getConditionStatus() : "—";
+            case "Vùng phủ sóng" -> entity.getCoverageArea() != null ? entity.getCoverageArea() : "—";
+            case "Loại thiết bị" -> entity.getEquipmentType() != null ? entity.getEquipmentType() : "—";
+            case "Tần số liên lạc" -> entity.getCommunicationFrequency() != null ? entity.getCommunicationFrequency() : "—";
+            case "Dịch vụ cung cấp" -> entity.getServicesProvided() != null ? entity.getServicesProvided() : "—";
+            case "Ghi chú" -> entity.getDescription() != null ? entity.getDescription() : "—";
+            case "Người liên hệ" -> entity.getContactPerson() != null ? entity.getContactPerson() : "—";
+            case "Số điện thoại liên hệ" -> entity.getContactPhone() != null ? entity.getContactPhone() : "—";
+            case "Loại đối tượng", "Loại đối tượng GIS" -> formatObjectTypeDisplay(entity.getGeometryType());
+            case "Biểu tượng" -> gisSpatialObjectService != null ? gisSpatialObjectService.getSymbolDisplayName(entity.getSymbol()) : (entity.getSymbol() != null ? entity.getSymbol() : "—");
+            case "Hệ quy chiếu" -> entity.getCoordinateSystem() != null ? entity.getCoordinateSystem() : "—";
+            case "Quy tắc hiển thị" -> entity.getDisplayRule() != null ? entity.getDisplayRule() : "—";
+            case "Tọa độ", "Tọa độ GIS", "Tọa độ GPS" -> {
+                String c = gisSpatialObjectService != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
+                if (c != null && !c.isBlank()) yield c;
+                yield (entity.getLatitude() != null && entity.getLongitude() != null)
+                        ? entity.getLatitude() + ", " + entity.getLongitude()
+                        : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
+            }
+            default -> "—";
+        };
+    }
+
+    private String formatObjectTypeDisplay(String objectType) {
+        if (objectType == null || objectType.isBlank()) return "—";
+        return switch (objectType.toUpperCase()) {
+            case "POINT" -> "Đối tượng điểm";
+            case "LINE" -> "Đối tượng đường";
+            case "POLYGON" -> "Đối tượng vùng";
+            default -> objectType;
+        };
     }
 
     public void deleteStation(UUID id) {
@@ -359,19 +576,27 @@ public class CoastalStationHaiphongService {
     }
 
     public CoastalStationHaiphong approveLevel1(UUID id) {
+        return approveLevel1(id, null);
+    }
+
+    public CoastalStationHaiphong approveLevel1(UUID id, String content) {
         CoastalStationHaiphong entity = getStationById(id);
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         validateAllowedOrgUnit(entity.getOrgUnitId());
-        validateNotSelfApproval(entity.getCreatedBy(), currentUserId);
-        approvalService.approveC1(entity, InfrastructureType.HANOI_STATION, "Duyệt cấp 1", "Đủ điều kiện", currentUserId);
+        String approvalContent = content == null || content.isBlank() ? "Đủ điều kiện" : content.trim();
+        approvalService.approveC1(entity, InfrastructureType.HANOI_STATION, ApprovalStatus.APPROVED_LEVEL1.name(), approvalContent, currentUserId);
         return repository.save(entity);
     }
 
     public CoastalStationHaiphong approveLevel2(UUID id) {
+        return approveLevel2(id, null);
+    }
+
+    public CoastalStationHaiphong approveLevel2(UUID id, String content) {
         CoastalStationHaiphong entity = getStationById(id);
         UUID currentUserId = SecurityUtils.getCurrentUserId();
-        validateNotSelfApproval(entity.getCreatedBy(), currentUserId);
-        approvalService.approveC2(entity, InfrastructureType.HANOI_STATION, "Duyệt cấp 2", "Đồng ý ban hành", currentUserId);
+        String approvalContent = content == null || content.isBlank() ? "Đồng ý ban hành" : content.trim();
+        approvalService.approveC2(entity, InfrastructureType.HANOI_STATION, ApprovalStatus.APPROVED_LEVEL2.name(), approvalContent, currentUserId);
         entity.setStatus(StationStatus.APPROVED_L2);
         return repository.save(entity);
     }
@@ -415,8 +640,64 @@ public class CoastalStationHaiphongService {
         return repository.findByPortName(portName);
     }
 
+    @Transactional(readOnly = true)
     public List<CoastalStationHaiphongHistoryResponse> getHistory(UUID id) {
-        return List.of();
+        return getHistory(id, null, null, null, null, null);
+    }
+
+    /**
+     * Nhật ký thay đổi, lọc và phân trang Ở SERVER.
+     *
+     * Trước đây hàm này tải TOÀN BỘ nhật ký rồi lọc bằng Java và không phân trang —
+     * hồ sơ sửa nhiều lần là drawer nặng dần, và nếu phân trang mà vẫn lọc ở Java
+     * thì biên trang sai. Nay điều kiện trạng thái, mốc "sau phê duyệt cấp cuối",
+     * mẫu câu nhiễu của dữ liệu cũ, từ khóa và khoảng ngày đều nằm trong truy vấn.
+     */
+    @Transactional(readOnly = true)
+    public List<CoastalStationHaiphongHistoryResponse> getHistory(UUID id, Integer page, Integer pageSize,
+            String keyword, LocalDateTime fromDate, LocalDateTime toDate) {
+        CoastalStationHaiphong entity = getStationById(id);
+        String code = entity.getCode() != null ? entity.getCode() : entity.getStationCode();
+        LocalDateTime finalApprovalAt = entity.getApprovedDate() != null
+                ? entity.getApprovedDate()
+                : entity.getApprovedDateLevel2();
+
+        // Nhật ký thay đổi chỉ có ý nghĩa sau khi hồ sơ đã được phê duyệt cấp cuối.
+        if (finalApprovalAt == null) {
+            return List.of();
+        }
+        LocalDateTime effectiveFrom = (fromDate == null || fromDate.isBefore(finalApprovalAt))
+                ? finalApprovalAt
+                : fromDate;
+        org.springframework.data.domain.Pageable pageable =
+                (page != null && pageSize != null && page >= 0 && pageSize > 0)
+                        ? org.springframework.data.domain.PageRequest.of(page, pageSize)
+                        : org.springframework.data.domain.Pageable.unpaged();
+
+        return historyService.getHistory(
+                        InfrastructureType.HANOI_STATION, entity.getId(), code,
+                        List.of(com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus.CREATED,
+                                com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus.APPROVED,
+                                com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus.REJECTED),
+                        new String[] { "Thông tin", "Phê duyệt", "Cập nhật thông tin đài TTXLTT" },
+                        keyword, effectiveFrom, toDate, pageable)
+                .stream()
+                .filter(h -> h.getActionType() != null)
+                .map(h -> {
+                    CoastalStationHaiphongHistoryResponse r = new CoastalStationHaiphongHistoryResponse();
+                    r.setId(h.getId());
+                    r.setStationCode(h.getStationCode());
+                    r.setActionType(h.getActionType());
+                    r.setChangedField(h.getChangedField());
+                    r.setPreviousValue(h.getPreviousValue());
+                    r.setNewValue(h.getNewValue());
+                    r.setReason(h.getReason());
+                    r.setApprovalLevel(h.getApprovalLevel());
+                    r.setChangedBy(h.getChangedBy());
+                    r.setChangedAt(h.getChangedAt());
+                    return r;
+                })
+                .toList();
     }
 
     // --- RESPONSE BUILDER ---
@@ -439,6 +720,11 @@ public class CoastalStationHaiphongService {
         String updatedByName = resolveUserName(entity.getUpdatedBy());
         String approver1Name = resolveUserName(entity.getApproverLevel1());
         String approver2Name = resolveUserName(entity.getApproverLevel2());
+
+        String coords = gisSpatialObjectService != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
+        if (coords == null && entity.getLatitude() != null && entity.getLongitude() != null) {
+            coords = "POINT(" + entity.getLongitude() + " " + entity.getLatitude() + ")";
+        }
 
         return CoastalStationHaiphongResponse.builder()
                 .id(entity.getId())
@@ -477,6 +763,7 @@ public class CoastalStationHaiphongService {
                 .displayRule(entity.getDisplayRule())
                 .latitude(entity.getLatitude())
                 .longitude(entity.getLongitude())
+                .coordinates(coords)
                 .approvalStatus(entity.getApprovalStatus())
                 .submittedAt(entity.getSubmittedAt())
                 .submittedBy(entity.getSubmittedBy())
@@ -501,5 +788,114 @@ public class CoastalStationHaiphongService {
         return userRepository.findById(userId)
                 .map(u -> (u.getFullName() != null && !u.getFullName().isBlank()) ? u.getFullName() : u.getUsername())
                 .orElse(null);
+    }
+
+    // ── Attachment handling ──
+
+    public List<CoastalStationHaiphongAttachmentResponse> uploadAttachments(
+            UUID id,
+            List<org.springframework.web.multipart.MultipartFile> files,
+            UUID userId) {
+        CoastalStationHaiphong entity = getStationById(id);
+        validateAllowedOrgUnit(entity.getOrgUnitId());
+
+        java.nio.file.Path basePath = java.nio.file.Paths.get("uploads", "haiphong-attachments");
+        List<com.hanghai.kchtg.common.entity.InfrastructureAttachment> savedAttachments = new ArrayList<>();
+
+        for (org.springframework.web.multipart.MultipartFile file : files) {
+            if (file.isEmpty()) continue;
+
+            String originalFilename = file.getOriginalFilename();
+            String storageFileName = System.currentTimeMillis() + "_" + (originalFilename != null ? originalFilename : "unnamed");
+            java.nio.file.Path targetDir = basePath.resolve(InfrastructureType.HANOI_STATION.name()).resolve(id.toString());
+            java.nio.file.Path targetPath = targetDir.resolve(storageFileName);
+
+            try {
+                java.nio.file.Files.createDirectories(targetDir);
+                file.transferTo(targetPath);
+            } catch (java.io.IOException e) {
+                throw new RuntimeException("Không thể lưu file: " + originalFilename, e);
+            }
+
+            com.hanghai.kchtg.common.entity.InfrastructureAttachment attachment = com.hanghai.kchtg.common.entity.InfrastructureAttachment.builder()
+                    .refId(id)
+                    .refType(InfrastructureType.HANOI_STATION)
+                    .fileName(originalFilename)
+                    .filePath(basePath.resolve(InfrastructureType.HANOI_STATION.name()).resolve(id.toString()).resolve(storageFileName).toString())
+                    .fileSize(file.getSize())
+                    .fileType(com.hanghai.kchtg.common.enums.AttachmentFileType.fromValue(file.getContentType()))
+                    .uploadedBy(userId)
+                    .build();
+            savedAttachments.add(attachmentRepository.save(attachment));
+
+            if (historyService != null) {
+                historyService.recordHistory(
+                        InfrastructureType.HANOI_STATION,
+                        id,
+                        com.hanghai.kchtg.station.entity.StationHistoryActionType.UPDATE,
+                        "Tài liệu đính kèm",
+                        "—",
+                        originalFilename,
+                        "Tải lên tài liệu đính kèm: " + originalFilename,
+                        userId
+                );
+            }
+        }
+        return savedAttachments.stream().map(this::toAttachmentResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<CoastalStationHaiphongAttachmentResponse> listAttachments(UUID id) {
+        return attachmentRepository.findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.HANOI_STATION)
+                .stream().map(this::toAttachmentResponse).toList();
+    }
+
+    public void deleteAttachment(UUID id, UUID attachmentId, UUID userId) {
+        CoastalStationHaiphong entity = getStationById(id);
+        validateAllowedOrgUnit(entity.getOrgUnitId());
+
+        com.hanghai.kchtg.common.entity.InfrastructureAttachment attachment = attachmentRepository.findByIdAndRefIdAndRefType(attachmentId, id, InfrastructureType.HANOI_STATION)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy file đính kèm với ID: " + attachmentId));
+        String fileName = attachment.getFileName();
+        try {
+            java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
+        } catch (Exception e) {
+            log.warn("Không thể xóa file vật lý {}: {}", attachment.getFilePath(), e.getMessage());
+        }
+        attachmentRepository.delete(attachment);
+
+        if (historyService != null) {
+            historyService.recordHistory(
+                    InfrastructureType.HANOI_STATION,
+                    id,
+                    com.hanghai.kchtg.station.entity.StationHistoryActionType.UPDATE,
+                    "Tài liệu đính kèm",
+                    fileName,
+                    "—",
+                    "Xóa tài liệu đính kèm: " + fileName,
+                    userId
+            );
+        }
+    }
+
+    public com.hanghai.kchtg.common.entity.InfrastructureAttachment getAttachment(UUID id, UUID attachmentId) {
+        return attachmentRepository.findByIdAndRefIdAndRefType(attachmentId, id, InfrastructureType.HANOI_STATION)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy file đính kèm với ID: " + attachmentId));
+    }
+
+    private CoastalStationHaiphongAttachmentResponse toAttachmentResponse(com.hanghai.kchtg.common.entity.InfrastructureAttachment a) {
+        String uploadedByName = a.getUploadedBy() != null
+                ? userRepository.findById(a.getUploadedBy()).map(User::getFullName).orElse(a.getUploadedBy().toString())
+                : null;
+        return CoastalStationHaiphongAttachmentResponse.builder()
+                .id(a.getId())
+                .fileName(a.getFileName())
+                .filePath(a.getFilePath())
+                .fileSize(a.getFileSize())
+                .documentType(a.getFileType() != null ? a.getFileType().name() : null)
+                .uploadedBy(a.getUploadedBy())
+                .uploadedByName(uploadedByName)
+                .uploadedDate(a.getUploadedDate())
+                .build();
     }
 }

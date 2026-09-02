@@ -222,7 +222,7 @@ class BuoyControllerTest {
                         .content(json))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("Validation failed"));
+                .andExpect(jsonPath("$.message").value("Lỗi dữ liệu đầu vào không hợp lệ"));
 
         verify(buoyService, never()).create(any());
     }

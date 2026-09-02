@@ -52,31 +52,6 @@ public class ApprovalWorkflowService {
 
         log.info("APPROVE: {} [{}] approved by {}", entityType, entityId, decidedBy);
 
-        UUID userUuid = null;
-        try {
-            if (decidedBy != null) userUuid = UUID.fromString(decidedBy);
-        } catch (Exception ignored) {}
-
-        UUID refUuid = null;
-        try {
-            if (entityId != null) refUuid = UUID.fromString(entityId);
-        } catch (Exception ignored) {}
-
-        if (refUuid != null && historyRepository != null) {
-            historyRepository.save(InfrastructureHistory.builder()
-                    .refId(refUuid)
-                    .refType(ChangeHistoryService.resolveInfrastructureType(entityType))
-                    .approvalLevel(ApprovalLevel.LEVEL_2)
-                    .status(InfrastructureHistoryStatus.APPROVED)
-                    .approvedBy(userUuid)
-                    .approvedDate(LocalDateTime.now())
-                    .reason("Phê duyệt hồ sơ")
-                    .changedField("Trạng thái phê duyệt")
-                    .previousValue(currentStatus)
-                    .newValue(ApprovalStatus.APPROVED.getLabel())
-                    .build());
-        }
-
         return ApprovalStatus.APPROVED;
     }
 
@@ -107,31 +82,6 @@ public class ApprovalWorkflowService {
         }
 
         log.info("REJECT: {} [{}] rejected by {} — reason: {}", entityType, entityId, decidedBy, reason);
-
-        UUID userUuid = null;
-        try {
-            if (decidedBy != null) userUuid = UUID.fromString(decidedBy);
-        } catch (Exception ignored) {}
-
-        UUID refUuid = null;
-        try {
-            if (entityId != null) refUuid = UUID.fromString(entityId);
-        } catch (Exception ignored) {}
-
-        if (refUuid != null && historyRepository != null) {
-            historyRepository.save(InfrastructureHistory.builder()
-                    .refId(refUuid)
-                    .refType(ChangeHistoryService.resolveInfrastructureType(entityType))
-                    .approvalLevel(ApprovalLevel.LEVEL_1)
-                    .status(InfrastructureHistoryStatus.REJECTED)
-                    .approvedBy(userUuid)
-                    .approvedDate(LocalDateTime.now())
-                    .reason(reason)
-                    .changedField("Trạng thái phê duyệt")
-                    .previousValue(currentStatus)
-                    .newValue(ApprovalStatus.REJECTED.getLabel())
-                    .build());
-        }
 
         return ApprovalStatus.REJECTED;
     }

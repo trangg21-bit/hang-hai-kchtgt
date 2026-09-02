@@ -76,6 +76,43 @@ public class CoastalStationCospasSarsatService {
         boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
                 || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
 
+        java.util.Map<String, String> oldValues = new java.util.LinkedHashMap<>();
+        if (wasApproved) {
+            if (request.getStationName() != null && !java.util.Objects.equals(request.getStationName(), entity.getName())) {
+                oldValues.put("Tên đài", entity.getName() != null ? entity.getName() : "—");
+            }
+            if (request.getFrequency() != null && !java.util.Objects.equals(request.getFrequency(), entity.getFrequency())) {
+                oldValues.put("Tần số", entity.getFrequency() != null ? entity.getFrequency() : "—");
+            }
+            if (request.getCoverageArea() != null && !java.util.Objects.equals(request.getCoverageArea(), entity.getCoverageArea())) {
+                oldValues.put("Vùng phủ sóng", entity.getCoverageArea() != null ? entity.getCoverageArea() : "—");
+            }
+            if (request.getBeaconProtocol() != null && !java.util.Objects.equals(request.getBeaconProtocol(), entity.getBeaconProtocol())) {
+                oldValues.put("Giao thức phát", entity.getBeaconProtocol() != null ? entity.getBeaconProtocol() : "—");
+            }
+            if (request.getEmergencyChannel() != null && !java.util.Objects.equals(request.getEmergencyChannel(), entity.getEmergencyChannel())) {
+                oldValues.put("Kênh khẩn cấp", entity.getEmergencyChannel() != null ? entity.getEmergencyChannel() : "—");
+            }
+            if (request.getAntennaType() != null && !java.util.Objects.equals(request.getAntennaType(), entity.getAntennaType())) {
+                oldValues.put("Loại anten", entity.getAntennaType() != null ? entity.getAntennaType() : "—");
+            }
+            if (request.getLocationAddress() != null && !java.util.Objects.equals(request.getLocationAddress(), entity.getLocationAddress())) {
+                oldValues.put("Địa điểm chi tiết", entity.getLocationAddress() != null ? entity.getLocationAddress() : "—");
+            }
+            if (request.getContactPerson() != null && !java.util.Objects.equals(request.getContactPerson(), entity.getContactPerson())) {
+                oldValues.put("Người liên hệ", entity.getContactPerson() != null ? entity.getContactPerson() : "—");
+            }
+            if (request.getContactPhone() != null && !java.util.Objects.equals(request.getContactPhone(), entity.getContactPhone())) {
+                oldValues.put("Số điện thoại liên hệ", entity.getContactPhone() != null ? entity.getContactPhone() : "—");
+            }
+            if (request.getSignalRange() != null && !java.util.Objects.equals(request.getSignalRange(), entity.getSignalRange())) {
+                oldValues.put("Cự ly tín hiệu", entity.getSignalRange() != null ? String.valueOf(entity.getSignalRange()) : "—");
+            }
+            if (request.getOperatingMode() != null && !java.util.Objects.equals(request.getOperatingMode(), entity.getOperatingMode())) {
+                oldValues.put("Chế độ hoạt động", entity.getOperatingMode() != null ? entity.getOperatingMode() : "—");
+            }
+        }
+
         if (request.getStationName() != null)
             entity.setName(request.getStationName());
         if (request.getFrequency() != null)
@@ -107,14 +144,35 @@ public class CoastalStationCospasSarsatService {
             saved = repository.save(saved);
         }
 
-        historyService.recordHistory(
-                InfrastructureType.COSPAS_SARSAT_STATION,
-                saved.getId(),
-                StationHistoryActionType.UPDATE,
-                null,
-                wasApproved ? "Cập nhật sau phê duyệt" : "Cospas-Sarsat station updated",
-                SecurityUtils.getCurrentUserId());
+        if (wasApproved && !oldValues.isEmpty()) {
+            final CoastalStationCospasSarsat finalSaved = saved;
+            UUID currentUserId = SecurityUtils.getCurrentUserId();
+            historyService.recordDeltaChanges(
+                    InfrastructureType.COSPAS_SARSAT_STATION,
+                    finalSaved.getId(),
+                    oldValues,
+                    field -> getNewValueDisplay(field, finalSaved),
+                    currentUserId);
+        }
         return saved;
+    }
+
+    private String getNewValueDisplay(String fieldName, CoastalStationCospasSarsat entity) {
+        if (entity == null || fieldName == null) return "—";
+        return switch (fieldName) {
+            case "Tên đài" -> entity.getName() != null ? entity.getName() : "—";
+            case "Tần số" -> entity.getFrequency() != null ? entity.getFrequency() : "—";
+            case "Vùng phủ sóng" -> entity.getCoverageArea() != null ? entity.getCoverageArea() : "—";
+            case "Giao thức phát" -> entity.getBeaconProtocol() != null ? entity.getBeaconProtocol() : "—";
+            case "Kênh khẩn cấp" -> entity.getEmergencyChannel() != null ? entity.getEmergencyChannel() : "—";
+            case "Loại anten" -> entity.getAntennaType() != null ? entity.getAntennaType() : "—";
+            case "Địa điểm chi tiết" -> entity.getLocationAddress() != null ? entity.getLocationAddress() : "—";
+            case "Người liên hệ" -> entity.getContactPerson() != null ? entity.getContactPerson() : "—";
+            case "Số điện thoại liên hệ" -> entity.getContactPhone() != null ? entity.getContactPhone() : "—";
+            case "Cự ly tín hiệu" -> entity.getSignalRange() != null ? String.valueOf(entity.getSignalRange()) : "—";
+            case "Chế độ hoạt động" -> entity.getOperatingMode() != null ? entity.getOperatingMode() : "—";
+            default -> "—";
+        };
     }
 
     public void deleteStation(UUID id) {

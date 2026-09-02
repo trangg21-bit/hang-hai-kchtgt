@@ -25,7 +25,7 @@ public class InfrastructureSchemaMigrator implements CommandLineRunner {
             "vts_system", "vts_operation_center", "ais_system", "radar_station",
             "ship_repair_facility", "coastal_station_vts", "coastal_station_lrit",
             "coastal_station_haiphong", "coastal_station_cospas_sarsat",
-            "coastal_station_inmarsat", "buoy_station", "cctv", "scada", "beacon_station", "buoy"
+            "coastal_station_inmarsat", "buoy_station", "cctv", "scada", "beacon_light", "buoy"
     };
 
     private static final String[] DATE_INFRA_TABLES = {
@@ -165,7 +165,7 @@ public class InfrastructureSchemaMigrator implements CommandLineRunner {
     private void patchInfrastructureHistoryTable() {
         try {
             jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS infrastructure_history (" +
-                    "id UUID PRIMARY KEY DEFAULT gen_random_uuid(), " +
+                    "id UUID PRIMARY KEY, " +
                     "ref_id UUID NOT NULL, " +
                     "ref_type VARCHAR(64) NOT NULL, " +
                     "approval_level VARCHAR(32), " +
@@ -186,7 +186,7 @@ public class InfrastructureSchemaMigrator implements CommandLineRunner {
     private void patchCctvTable() {
         try {
             jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS cctv (" +
-                    "id UUID PRIMARY KEY DEFAULT gen_random_uuid(), " +
+                    "id UUID PRIMARY KEY, " +
                     "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, " +
                     "deleted_at TIMESTAMP, " +
                     "updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, " +

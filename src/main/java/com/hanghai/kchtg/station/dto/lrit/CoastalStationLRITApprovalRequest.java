@@ -14,4 +14,5 @@ public class CoastalStationLRITApprovalRequest {
     private String stationId;
     private Boolean approved;
     private String rejectionReason;
+    private String content;
 }

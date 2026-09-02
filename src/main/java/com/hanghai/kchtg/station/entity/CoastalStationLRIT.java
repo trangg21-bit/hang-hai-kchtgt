@@ -146,6 +146,12 @@ public class CoastalStationLRIT extends BaseEntity implements ApprovableEntity {
     @Column(name = "submitted_by")
     private UUID submittedBy;
 
+    @Column(name = "level1_approval_content", length = 2000)
+    private String level1ApprovalContent;
+
+    @Column(name = "level2_approval_content", length = 2000)
+    private String level2ApprovalContent;
+
     @Column(name = "approver_level1")
     protected UUID approverLevel1;
 

@@ -11,7 +11,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -35,12 +37,76 @@ public class CoastalStationLRITController {
 
     private final CoastalStationLRITService service;
 
+    /** Trần số bản ghi mỗi trang cho endpoint danh sách. */
+    private static final int MAX_PAGE_SIZE = 200;
+
+    /**
+     * Các cột được phép sắp xếp. Thuộc tính đến từ client nên phải qua danh sách
+     * trắng — trước đây `sort=abcxyz,asc` làm cả màn trả HTTP 500.
+     *
+     * Cột tên hiển thị trỏ vào alias của LEFT JOIN trong
+     * {@code CoastalStationLRITRepository.searchPaged}; các cột có cả trường mới
+     * lẫn trường cũ (name/stationName, code/stationCode, orgUnitId/unitId) sắp
+     * bằng COALESCE cho khớp đúng chữ hiển thị trên bảng.
+     */
+    private static final Map<String, String> SORTABLE_LIST_FIELDS = Map.ofEntries(
+            Map.entry("name", "COALESCE(t.name, t.stationName)"),
+            Map.entry("stationName", "COALESCE(t.name, t.stationName)"),
+            Map.entry("code", "COALESCE(t.code, t.stationCode)"),
+            Map.entry("stationCode", "COALESCE(t.code, t.stationCode)"),
+            Map.entry("terminalId", "t.terminalId"),
+            Map.entry("orgUnitName", "COALESCE(o.name, ou.name)"),
+            Map.entry("orgUnitId", "t.orgUnitId"),
+            Map.entry("operatingOrgName", "COALESCE(oo.name, oorg.name)"),
+            Map.entry("operatingOrgId", "t.operatingOrgId"),
+            Map.entry("province", "t.provinceId"),
+            Map.entry("provinceId", "t.provinceId"),
+            Map.entry("locationAddress", "t.locationAddress"),
+            Map.entry("conditionStatus", "t.conditionStatus"),
+            Map.entry("approvalStatus", "t.approvalStatus"),
+            Map.entry("updatedByName", "uu.fullName"),
+            Map.entry("submittedByName", "us.fullName"),
+            Map.entry("approverLevel1Name", "ua1.fullName"),
+            Map.entry("approverLevel2Name", "ua2.fullName"),
+            // Bốn cột cán bộ trên bảng gộp tên + thời gian nên không có dataIndex;
+            // client gửi lên chính KHÓA CỘT, thiếu bốn dòng này thì bấm sắp xếp
+            // các cột đó không có tác dụng gì.
+            Map.entry("updatedInfo", "uu.fullName"),
+            Map.entry("submittedInfo", "us.fullName"),
+            Map.entry("approvedLevel1Info", "ua1.fullName"),
+            Map.entry("approvedLevel2Info", "ua2.fullName"),
+            Map.entry("updatedAt", "t.updatedAt"),
+            Map.entry("updatedDate", "t.updatedAt"),
+            Map.entry("createdAt", "t.createdAt"));
+
+    /**
+     * Dùng {@link JpaSort#unsafe} vì thuộc tính đã qualify sẵn theo alias và có
+     * trường hợp là biểu thức COALESCE — {@code Sort.by} từ chối cả hai. An toàn
+     * vì giá trị luôn lấy từ danh sách trắng, không phải chuỗi thô của client.
+     */
+    private static Sort resolveListSort(Sort requested) {
+        Sort defaultSort = JpaSort.unsafe(Sort.Direction.DESC, "t.createdAt");
+        if (requested == null || requested.isUnsorted()) {
+            return defaultSort;
+        }
+        Sort.Order order = requested.stream().findFirst().orElse(null);
+        String property = order == null ? null : SORTABLE_LIST_FIELDS.get(order.getProperty().trim());
+        if (property == null) {
+            return defaultSort;
+        }
+        // Chốt thêm createdAt để thứ tự ổn định khi giá trị sắp xếp trùng nhau.
+        return JpaSort.unsafe(order.getDirection(), property).and(defaultSort);
+    }
+
     @GetMapping
     @Operation(summary = "Tìm kiếm phân trang danh sách Đài LRIT")
     @PreAuthorize("hasAnyAuthority('coastalstationlrit:read', 'specialstation:read', 'data:read', 'admin:all')")
     public ResponseEntity<Page<CoastalStationLRITResponse>> search(
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) String keyword,
+            // Bộ lọc riêng theo Tên đài / Mã đài (khác `keyword` là tìm chung nhiều cột)
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String code,
             @RequestParam(required = false) UUID operatingOrgId,
             @RequestParam(required = false) Integer provinceId,
             @RequestParam(required = false) String conditionStatus,
@@ -50,9 +116,15 @@ public class CoastalStationLRITController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime updatedTo,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
+        // Chặn trần số bản ghi mỗi trang: "size" đến từ client, không giới hạn thì
+        // một request "size=100000" kéo cả bảng ra khỏi CSDL.
+        int safeSize = Math.min(Math.max(pageable.getPageSize(), 1), MAX_PAGE_SIZE);
+        Pageable sanitizedPageable = PageRequest.of(
+                pageable.getPageNumber(), safeSize, resolveListSort(pageable.getSort()));
+
         Page<CoastalStationLRITResponse> results = service.searchPaged(
-                orgUnitId, keyword, operatingOrgId, provinceId, conditionStatus, approvalStatus,
-                updatedBy, updatedFrom, updatedTo, pageable);
+                orgUnitId, keyword, name, code, operatingOrgId, provinceId, conditionStatus, approvalStatus,
+                updatedBy, updatedFrom, updatedTo, sanitizedPageable);
         return ResponseEntity.ok(results);
     }
 
@@ -62,8 +134,16 @@ public class CoastalStationLRITController {
     public ResponseEntity<Map<String, Long>> getCounts(
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String conditionStatus) {
-        return ResponseEntity.ok(service.countByApprovalStatus(orgUnitId, keyword, conditionStatus));
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String code,
+            @RequestParam(required = false) String conditionStatus,
+            // Số đếm tab phải áp cùng bộ lọc như danh sách, nếu không thì bật bộ lọc
+            // nâng cao là số trên tab lệch hẳn với số dòng trong bảng.
+            @RequestParam(required = false) Integer provinceId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime updatedFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime updatedTo) {
+        return ResponseEntity.ok(service.countByApprovalStatus(
+                orgUnitId, keyword, name, code, conditionStatus, provinceId, updatedFrom, updatedTo));
     }
 
     @GetMapping("/options")
@@ -71,6 +151,14 @@ public class CoastalStationLRITController {
     @PreAuthorize("hasAnyAuthority('coastalstationlrit:read', 'specialstation:read', 'data:read', 'admin:all')")
     public ResponseEntity<List<CoastalStationLRITResponse>> getOptions(@RequestParam(required = false) UUID orgUnitId) {
         return ResponseEntity.ok(service.findApprovedOptions(orgUnitId));
+    }
+
+    @GetMapping("/generate-code")
+    @Operation(summary = "Tự sinh mã Đài LRIT (LRIT-xxxx)")
+    @PreAuthorize("hasAnyAuthority('coastalstationlrit:create', 'specialstation:create', 'data:create', 'admin:all')")
+    public ResponseEntity<Map<String, String>> generateCode() {
+        String code = service.generateCode();
+        return ResponseEntity.ok(Map.of("code", code));
     }
 
     @GetMapping("/{id:[0-9a-fA-F-]{36}}")
@@ -132,16 +220,24 @@ public class CoastalStationLRITController {
     @PostMapping("/{id:[0-9a-fA-F-]{36}}/approve-c1")
     @Operation(summary = "Phê duyệt cấp 1 (Cảng vụ / Chi cục)")
     @PreAuthorize("hasAnyAuthority('coastalstationlrit:approvec1', 'coastalstationlrit:approve', 'specialstation:approve', 'data:approvec1', 'data:approve', 'admin:all')")
-    public ResponseEntity<CoastalStationLRITResponse> approveLevel1(@PathVariable UUID id) {
-        CoastalStationLRIT entity = service.approveLevel1(id);
+    public ResponseEntity<CoastalStationLRITResponse> approveLevel1(
+            @PathVariable UUID id,
+            @RequestBody(required = false) CoastalStationLRITApprovalRequest request) {
+        CoastalStationLRIT entity = request == null || request.getContent() == null
+                ? service.approveLevel1(id)
+                : service.approveLevel1(id, request.getContent());
         return ResponseEntity.ok(service.buildResponse(entity));
     }
 
     @PostMapping("/{id:[0-9a-fA-F-]{36}}/approve-c2")
     @Operation(summary = "Phê duyệt cấp 2 (Cục Hàng hải Việt Nam)")
     @PreAuthorize("hasAnyAuthority('coastalstationlrit:approvec2', 'coastalstationlrit:approve', 'specialstation:approve', 'data:approvec2', 'data:approve', 'admin:all')")
-    public ResponseEntity<CoastalStationLRITResponse> approveLevel2(@PathVariable UUID id) {
-        CoastalStationLRIT entity = service.approveLevel2(id);
+    public ResponseEntity<CoastalStationLRITResponse> approveLevel2(
+            @PathVariable UUID id,
+            @RequestBody(required = false) CoastalStationLRITApprovalRequest request) {
+        CoastalStationLRIT entity = request == null || request.getContent() == null
+                ? service.approveLevel2(id)
+                : service.approveLevel2(id, request.getContent());
         return ResponseEntity.ok(service.buildResponse(entity));
     }
 
@@ -170,18 +266,21 @@ public class CoastalStationLRITController {
     // Legacy adaptors for existing test cases
     @GetMapping("/list")
     @Operation(summary = "Get all active LRIT stations")
+    @PreAuthorize("hasAnyAuthority('coastalstationlrit:read', 'specialstation:read', 'data:read', 'admin:all')")
     public ResponseEntity<List<CoastalStationLRIT>> getAllStations() {
         return ResponseEntity.ok(service.getAllStations());
     }
 
     @GetMapping("/search")
     @Operation(summary = "Search LRIT stations by keyword")
+    @PreAuthorize("hasAnyAuthority('coastalstationlrit:read', 'specialstation:read', 'data:read', 'admin:all')")
     public ResponseEntity<List<CoastalStationLRIT>> searchStations(@RequestParam String keyword) {
         return ResponseEntity.ok(service.searchStations(keyword));
     }
 
     @GetMapping("/by-terminal/{terminalId}")
     @Operation(summary = "Find an LRIT station by terminal ID")
+    @PreAuthorize("hasAnyAuthority('coastalstationlrit:read', 'specialstation:read', 'data:read', 'admin:all')")
     public ResponseEntity<CoastalStationLRIT> findByTerminalId(@PathVariable String terminalId) {
         Optional<CoastalStationLRIT> station = service.findByTerminalId(terminalId);
         return station.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
@@ -189,6 +288,7 @@ public class CoastalStationLRITController {
 
     @GetMapping("/by-imo/{imoNumber}")
     @Operation(summary = "Find an LRIT station by IMO number")
+    @PreAuthorize("hasAnyAuthority('coastalstationlrit:read', 'specialstation:read', 'data:read', 'admin:all')")
     public ResponseEntity<CoastalStationLRIT> findByImoNumber(@PathVariable String imoNumber) {
         Optional<CoastalStationLRIT> station = service.findByImoNumber(imoNumber);
         return station.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
@@ -196,6 +296,7 @@ public class CoastalStationLRITController {
 
     @PostMapping("/{id}/approve")
     @Operation(summary = "Approve an LRIT station (Legacy)")
+    @PreAuthorize("hasAnyAuthority('coastalstationlrit:approve', 'coastalstationlrit:approvec1', 'coastalstationlrit:approvec2', 'specialstation:approve', 'data:approve', 'admin:all')")
     public ResponseEntity<CoastalStationLRIT> approveStation(
             @PathVariable UUID id,
             @Valid @RequestBody CoastalStationLRITApprovalRequest request) {
@@ -205,7 +306,81 @@ public class CoastalStationLRITController {
 
     @GetMapping("/{id}/history")
     @Operation(summary = "Get change history for an LRIT station")
-    public ResponseEntity<List<CoastalStationLRITHistoryResponse>> getHistory(@PathVariable UUID id) {
-        return ResponseEntity.ok(service.getHistory(id));
+    @PreAuthorize("hasAnyAuthority('coastalstationlrit:read', 'specialstation:read', 'data:read', 'admin:all')")
+    public ResponseEntity<List<CoastalStationLRITHistoryResponse>> getHistory(
+            @PathVariable UUID id,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "pageSize", required = false) Integer pageSize,
+            // Lọc nhật ký ở server để drawer phân trang được mà ô tìm kiếm vẫn quét
+            // toàn bộ nhật ký, không chỉ phần đã tải về.
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "fromDate", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+            @RequestParam(value = "toDate", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate) {
+        return ResponseEntity.ok(service.getHistory(id, page, pageSize, keyword, fromDate, toDate));
+    }
+
+    // ── Attachment endpoints (InfrastructureAttachment, ref_type LRIT_STATION) ──
+
+    @PostMapping(value = "/{id}/attachments", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Tải lên tài liệu đính kèm cho Đài LRIT")
+    @PreAuthorize("hasAnyAuthority('coastalstationlrit:update', 'specialstation:update', 'data:update', 'admin:all')")
+    public ResponseEntity<com.hanghai.kchtg.common.dto.ApiResponse<List<CoastalStationLRITAttachmentResponse>>> uploadAttachments(
+            @PathVariable UUID id,
+            @RequestParam("files") List<org.springframework.web.multipart.MultipartFile> files) {
+        UUID userId = com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId();
+        List<CoastalStationLRITAttachmentResponse> uploaded = service.uploadAttachments(id, files, userId);
+        return ResponseEntity.ok(com.hanghai.kchtg.common.dto.ApiResponse.success("Tải lên tệp đính kèm thành công", uploaded));
+    }
+
+    @GetMapping("/{id}/attachments")
+    @Operation(summary = "Lấy danh sách tài liệu đính kèm của Đài LRIT")
+    @PreAuthorize("hasAnyAuthority('coastalstationlrit:read', 'specialstation:read', 'data:read', 'admin:all')")
+    public ResponseEntity<com.hanghai.kchtg.common.dto.ApiResponse<List<CoastalStationLRITAttachmentResponse>>> listAttachments(
+            @PathVariable UUID id) {
+        List<CoastalStationLRITAttachmentResponse> list = service.listAttachments(id);
+        return ResponseEntity.ok(com.hanghai.kchtg.common.dto.ApiResponse.success("Danh sách tài liệu đính kèm", list));
+    }
+
+    @DeleteMapping("/{id}/attachments/{attId}")
+    @Operation(summary = "Xóa tài liệu đính kèm của Đài LRIT")
+    @PreAuthorize("hasAnyAuthority('coastalstationlrit:update', 'specialstation:update', 'data:update', 'admin:all')")
+    public ResponseEntity<com.hanghai.kchtg.common.dto.ApiResponse<Void>> deleteAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId) {
+        UUID userId = com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId();
+        service.deleteAttachment(id, attId, userId);
+        return ResponseEntity.ok(com.hanghai.kchtg.common.dto.ApiResponse.success("Xóa tài liệu đính kèm thành công", null));
+    }
+
+    @GetMapping("/{id}/attachments/{attId}/download")
+    @Operation(summary = "Tải xuống tài liệu đính kèm của Đài LRIT")
+    @PreAuthorize("hasAnyAuthority('coastalstationlrit:read', 'specialstation:read', 'data:read', 'admin:all')")
+    public ResponseEntity<org.springframework.core.io.Resource> downloadAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId) {
+        com.hanghai.kchtg.common.entity.InfrastructureAttachment attachment = service.getAttachment(id, attId);
+        java.nio.file.Path path = java.nio.file.Paths.get(attachment.getFilePath()).toAbsolutePath().normalize();
+        try {
+            org.springframework.core.io.Resource resource = new org.springframework.core.io.UrlResource(path.toUri());
+            if (!resource.exists() || !resource.isReadable()) {
+                return ResponseEntity.notFound().build();
+            }
+            String contentType = "application/octet-stream";
+            try {
+                contentType = java.nio.file.Files.probeContentType(path);
+                if (contentType == null) contentType = "application/octet-stream";
+            } catch (Exception ignored) {}
+
+            return ResponseEntity.ok()
+                    .contentType(org.springframework.http.MediaType.parseMediaType(contentType))
+                    .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"" + (attachment.getFileName() != null ? attachment.getFileName().replace("\"", "") : "attachment") + "\"")
+                    .body(resource);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }
+

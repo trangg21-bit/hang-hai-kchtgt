@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * Database projection for the VTS list. Detail-only columns are not selected.
+ * Database projection for the VTS list. Detail-only collections are not selected.
  */
 public interface VtsSystemListProjection {
     UUID getId();
@@ -25,7 +25,11 @@ public interface VtsSystemListProjection {
 
     ApprovalStatus getApprovalStatus();
 
+    String getRejectionReason();
+
     UUID getApproverLevel1();
+
+    UUID getCreatedBy();
 
     LocalDateTime getUpdatedDate();
 
@@ -34,6 +38,8 @@ public interface VtsSystemListProjection {
     UUID getOwningOrgId();
 
     UUID getOperatingOrgId();
+
+    String getOperatingOrgName();
 
     UUID getPortId();
 

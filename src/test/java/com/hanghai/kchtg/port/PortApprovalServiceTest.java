@@ -147,10 +147,10 @@ class PortApprovalServiceTest {
     @Test
     @DisplayName("F-011: approve — throws IllegalStateException when not in PENDING (via workflow)")
     void approve_wrongStatus_throwsViaWorkflow() {
-        testEntity.setApprovalStatus(ApprovalStatus.APPROVED);
+        testEntity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
         doThrow(new IllegalStateException("Cannot approve: already approved"))
-                .when(approvalWorkflowService).approve(eq("APPROVED"), any(), any(), any());
+                .when(approvalWorkflowService).approve(eq(ApprovalStatus.PENDING_APPROVAL.name()), any(), any(), any());
 
         assertThrows(IllegalStateException.class, () -> approvalService.approve(testId, "user-1", null));
         verify(portRepository, never()).save(any());

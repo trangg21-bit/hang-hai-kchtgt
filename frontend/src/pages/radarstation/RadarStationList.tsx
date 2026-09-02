@@ -14,12 +14,9 @@ import {
   Col,
   Upload,
   Tabs,
-  Tooltip,
-  Popconfirm,
   Table,
 } from 'antd';
-import toast, { message } from '../../components/ToastNotification';
-import type { ColumnsType } from 'antd/es/table';
+import toast from '../../components/ToastNotification';
 import {
   PlusOutlined,
   EditOutlined,
@@ -61,7 +58,7 @@ import EmptyState from '../../components/EmptyState';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
 import { symbolService } from '../../services/symbolService';
-import { usePermissionStore } from '../../store/permissionStore';
+import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { colors } from '../../theme';
@@ -117,8 +114,11 @@ import {
   historyAccentBarStyle,
   historyInfoTitleStyle,
   historyChangeRowStyle,
+  historyCreateRowStyle,
   historyFieldLabelStyle,
   historyNewValueStyle,
+  historyOldValueStyle,
+  historyArrowStyle,
 } from '../../tokens';
 
 // ── Constants ────────────────────────────────────────────────────────
@@ -170,14 +170,6 @@ const CONDITION_STATUS_STYLE_MAP: Record<string, { color: string; label: string 
   '2': { color: statusAttention, label: 'Chưa hoạt động' },
 };
 
-// Cấp phê duyệt trong lịch sử (approvalLevel 1/2 hoặc C1/C2)
-const APPROVAL_LEVEL_LABEL: Record<string, string> = {
-  '1': 'Cấp 1',
-  '2': 'Cấp 2',
-  C1: 'Cấp 1',
-  C2: 'Cấp 2',
-};
-
 const getProvinceLabel = (provinceId?: string): string =>
   provinceId
     ? VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(provinceId))?.label || provinceId
@@ -204,7 +196,7 @@ const tabBarStyle: React.CSSProperties = {
 // ── Component ────────────────────────────────────────────────────────
 
 export default function RadarStationList() {
-  const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
   const isInIframe = window.self !== window.top;
 
   // ── Filter state ─────────────────────────────────────────────────
@@ -418,6 +410,9 @@ export default function RadarStationList() {
     setIsDetailMode(false);
     setDetailRecord(null);
     createForm.resetFields();
+    createForm.setFieldsValue({
+      conditionStatus: '1',
+    });
     setActiveTabKey('general');
     setUploadedFiles([]);
     setPreviewCode('');
@@ -797,7 +792,7 @@ export default function RadarStationList() {
     },
     {
       key: 'operatingUnitId', label: 'Đơn vị khai thác', dataIndex: 'operatingUnitId', width: 180, ellipsis: true,
-      render: (v: string | undefined, record: RadarStationResponse) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v ? orgNameById(v) : '—'}</span>,
+      render: (v: string | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v ? orgNameById(v) : '—'}</span>,
     },
     {
       key: 'provinceId', label: 'Địa điểm Tỉnh/TP', dataIndex: 'provinceId', width: 150,
@@ -1338,7 +1333,7 @@ export default function RadarStationList() {
         ) : (
           <>
             <style>{requiredMarkStyle}</style>
-            <Form form={createForm} layout="vertical" initialValues={{}}>
+            <Form form={createForm} layout="vertical" initialValues={{ conditionStatus: '1' }}>
               <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={tabBarStyle}
                 items={[
                   {

@@ -11,7 +11,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,12 +41,64 @@ public class CoastalStationInmarsatController {
 
     private final CoastalStationInmarsatService service;
 
+    /**
+     * Các cột được phép sắp xếp. Thuộc tính đến từ client nên phải qua danh sách
+     * trắng: tên lạ sẽ làm truy vấn ném lỗi 500.
+     *
+     * Cột tên hiển thị trỏ vào alias của LEFT JOIN trong
+     * {@code CoastalStationInmarsatRepository.searchPaged}; các cột có cả trường
+     * mới lẫn trường cũ (name/stationName, code/deviceCode, orgUnitId/unitId)
+     * sắp bằng COALESCE cho khớp đúng chữ hiển thị trên bảng.
+     */
+    /** Trần số bản ghi mỗi trang cho endpoint danh sách. */
+    private static final int MAX_PAGE_SIZE = 200;
+
+    private static final Map<String, String> SORTABLE_LIST_FIELDS = Map.ofEntries(
+            Map.entry("name", "COALESCE(t.name, t.stationName)"),
+            Map.entry("stationName", "COALESCE(t.name, t.stationName)"),
+            Map.entry("code", "COALESCE(t.code, t.deviceCode)"),
+            Map.entry("deviceCode", "COALESCE(t.code, t.deviceCode)"),
+            Map.entry("orgUnitName", "COALESCE(o.name, ou.name)"),
+            Map.entry("orgUnitId", "t.orgUnitId"),
+            Map.entry("operatingOrgName", "COALESCE(oo.name, oorg.name)"),
+            Map.entry("operatingOrgId", "t.operatingOrgId"),
+            Map.entry("province", "t.provinceId"),
+            Map.entry("provinceId", "t.provinceId"),
+            Map.entry("locationAddress", "t.locationAddress"),
+            Map.entry("conditionStatus", "t.conditionStatus"),
+            Map.entry("approvalStatus", "t.approvalStatus"),
+            Map.entry("updatedAt", "t.updatedAt"),
+            Map.entry("updatedDate", "t.updatedAt"),
+            Map.entry("createdAt", "t.createdAt"));
+
+    /**
+     * Dùng {@link JpaSort#unsafe} vì thuộc tính đã qualify sẵn theo alias và có
+     * trường hợp là biểu thức COALESCE — {@code Sort.by} từ chối cả hai. An toàn
+     * vì giá trị luôn lấy từ danh sách trắng, không phải chuỗi thô của client.
+     */
+    private static Sort resolveListSort(Sort requested) {
+        Sort defaultSort = JpaSort.unsafe(Sort.Direction.DESC, "t.createdAt");
+        if (requested == null || requested.isUnsorted()) {
+            return defaultSort;
+        }
+        Sort.Order order = requested.stream().findFirst().orElse(null);
+        String property = order == null ? null : SORTABLE_LIST_FIELDS.get(order.getProperty().trim());
+        if (property == null) {
+            return defaultSort;
+        }
+        // Chốt thêm createdAt để thứ tự ổn định khi giá trị sắp xếp trùng nhau.
+        return JpaSort.unsafe(order.getDirection(), property).and(defaultSort);
+    }
+
     @GetMapping
     @Operation(summary = "Tìm kiếm phân trang danh sách Đài Inmarsat (F-102)")
     @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
-    public ResponseEntity<Page<CoastalStationInmarsatResponse>> search(
+    public ResponseEntity<Map<String, Object>> search(
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) String keyword,
+            // Bộ lọc riêng theo Tên đài / Mã đài (khác `keyword` là tìm chung nhiều cột)
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String code,
             @RequestParam(required = false) UUID operatingOrgId,
             @RequestParam(required = false) Integer provinceId,
             @RequestParam(required = false) String conditionStatus,
@@ -53,10 +108,29 @@ public class CoastalStationInmarsatController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime updatedTo,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
+        // Chặn trần số bản ghi mỗi trang: `size` đến từ client, không giới hạn thì
+        // một request `size=100000` kéo cả bảng ra khỏi CSDL.
+        int safeSize = Math.min(Math.max(pageable.getPageSize(), 1), MAX_PAGE_SIZE);
+        Pageable sanitizedPageable = PageRequest.of(
+                pageable.getPageNumber(), safeSize, resolveListSort(pageable.getSort()));
+
         Page<CoastalStationInmarsatResponse> results = service.searchPaged(
-                orgUnitId, keyword, operatingOrgId, provinceId, conditionStatus, approvalStatus,
-                updatedBy, updatedFrom, updatedTo, pageable);
-        return ResponseEntity.ok(results);
+                orgUnitId, keyword, name, code, operatingOrgId, provinceId, conditionStatus, approvalStatus,
+                updatedBy, updatedFrom, updatedTo, sanitizedPageable);
+
+        // Số đếm tab dùng đúng bộ lọc của danh sách (trừ trạng thái phê duyệt).
+        Map<String, Long> statusCounts = service.countByApprovalStatus(
+                orgUnitId, keyword, name, code, conditionStatus, provinceId, updatedFrom, updatedTo);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("content", results.getContent());
+        data.put("totalElements", results.getTotalElements());
+        data.put("totalPages", results.getTotalPages());
+        data.put("number", results.getNumber());
+        data.put("size", results.getSize());
+        data.put("statusCounts", statusCounts);
+
+        return ResponseEntity.ok(data);
     }
 
     @GetMapping("/counts")
@@ -69,7 +143,15 @@ public class CoastalStationInmarsatController {
         return ResponseEntity.ok(service.countByApprovalStatus(orgUnitId, keyword, conditionStatus));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/generate-code")
+    @Operation(summary = "Tự sinh mã Đài Inmarsat (INMARSAT-xxxx)")
+    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:create', 'specialstation:create', 'data:create', 'admin:all')")
+    public ResponseEntity<Map<String, String>> generateCode() {
+        String code = service.generateCode();
+        return ResponseEntity.ok(Map.of("code", code));
+    }
+
+    @GetMapping("/{id:[0-9a-fA-F-]{36}}")
     @Operation(summary = "Xem chi tiết Đài Inmarsat (F-102)")
     @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
     public ResponseEntity<CoastalStationInmarsatResponse> getStationById(@PathVariable UUID id) {
@@ -142,9 +224,90 @@ public class CoastalStationInmarsatController {
     @GetMapping("/{id}/history")
     @Operation(summary = "Xem lịch sử thay đổi Đài Inmarsat (F-103)")
     @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
-    public ResponseEntity<List<CoastalStationInmarsatHistoryResponse>> getHistory(@PathVariable UUID id) {
-        List<CoastalStationInmarsatHistoryResponse> history = service.getHistory(id);
+    public ResponseEntity<List<CoastalStationInmarsatHistoryResponse>> getHistory(
+            @PathVariable UUID id,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "pageSize", required = false) Integer pageSize,
+            // Lọc nhật ký ở server để drawer phân trang được mà ô tìm kiếm vẫn quét
+            // toàn bộ nhật ký, không chỉ phần đã tải về.
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "fromDate", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+            @RequestParam(value = "toDate", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate) {
+        List<CoastalStationInmarsatHistoryResponse> history =
+                service.getHistory(id, page, pageSize, keyword, fromDate, toDate);
         return ResponseEntity.ok(history);
+    }
+
+    // ── Attachment endpoints (InfrastructureAttachment, ref_type INMARSAT_STATION) ──
+
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:create', 'coastalstationinmarsat:update', 'specialstation:create', 'specialstation:update', 'data:create', 'data:update', 'admin:all')")
+    @PostMapping(value = "/{id}/attachments", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Tải lên tài liệu đính kèm")
+    public ResponseEntity<com.hanghai.kchtg.common.dto.ApiResponse<List<CoastalStationInmarsatAttachmentResponse>>> uploadAttachments(
+            @PathVariable UUID id,
+            @RequestParam("files") List<org.springframework.web.multipart.MultipartFile> files,
+            org.springframework.security.core.Authentication authentication) {
+        UUID userId = getUserId(authentication);
+        List<CoastalStationInmarsatAttachmentResponse> uploaded = service.uploadAttachments(id, files, userId);
+        return ResponseEntity.ok(com.hanghai.kchtg.common.dto.ApiResponse.success("Tải lên tệp đính kèm thành công", uploaded));
+    }
+
+    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
+    @GetMapping("/{id}/attachments")
+    @Operation(summary = "Lấy danh sách tài liệu đính kèm")
+    public ResponseEntity<com.hanghai.kchtg.common.dto.ApiResponse<List<CoastalStationInmarsatAttachmentResponse>>> listAttachments(
+            @PathVariable UUID id) {
+        List<CoastalStationInmarsatAttachmentResponse> list = service.listAttachments(id);
+        return ResponseEntity.ok(com.hanghai.kchtg.common.dto.ApiResponse.success("Lấy danh sách tệp đính kèm thành công", list));
+    }
+
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:update', 'specialstation:update', 'data:update', 'admin:all')")
+    @DeleteMapping("/{id}/attachments/{attId}")
+    @Operation(summary = "Xóa tài liệu đính kèm")
+    public ResponseEntity<com.hanghai.kchtg.common.dto.ApiResponse<Void>> deleteAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId,
+            org.springframework.security.core.Authentication authentication) {
+        UUID userId = getUserId(authentication);
+        service.deleteAttachment(id, attId, userId);
+        return ResponseEntity.ok(com.hanghai.kchtg.common.dto.ApiResponse.success("Xóa tệp đính kèm thành công", null));
+    }
+
+    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
+    @GetMapping("/{id}/attachments/{attId}/download")
+    @Operation(summary = "Tải xuống tài liệu đính kèm")
+    public ResponseEntity<org.springframework.core.io.Resource> downloadAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId) {
+        com.hanghai.kchtg.common.entity.InfrastructureAttachment attachment = service.getAttachment(id, attId);
+        java.nio.file.Path path = java.nio.file.Paths.get(attachment.getFilePath()).toAbsolutePath().normalize();
+        if (!java.nio.file.Files.isRegularFile(path)) {
+            return ResponseEntity.notFound().build();
+        }
+        org.springframework.core.io.Resource resource = new org.springframework.core.io.FileSystemResource(path);
+        String contentType;
+        try {
+            contentType = java.nio.file.Files.probeContentType(path);
+        } catch (Exception ignored) {
+            contentType = null;
+        }
+        org.springframework.http.MediaType mediaType = contentType == null
+                ? org.springframework.http.MediaType.APPLICATION_OCTET_STREAM
+                : org.springframework.http.MediaType.parseMediaType(contentType);
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + (attachment.getFileName() != null ? attachment.getFileName().replace("\"", "") : "attachment") + "\"")
+                .body(resource);
+    }
+
+    private UUID getUserId(org.springframework.security.core.Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User u) {
+            return u.getId();
+        }
+        return com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId();
     }
 
     // Dropdown dùng liên module nên chỉ yêu cầu đã đăng nhập; phạm vi dữ liệu do

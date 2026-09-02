@@ -1,35 +1,36 @@
 package com.hanghai.kchtg.aissystem.entity;
 
-import com.hanghai.kchtg.common.entity.ApprovableEntity;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.BaseEntity;
+import com.hanghai.kchtg.common.entity.BaseApprovableEntity;
 import com.hanghai.kchtg.common.enums.UnitOfMeasure;
-import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
 import com.hanghai.kchtg.vtsoperationcenter.entity.VtsOperationCenter;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.FieldNameConstants;
 import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
+
 
 @Entity
 @Table(name = "ais_system")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
 @FieldNameConstants
 @EqualsAndHashCode(callSuper = true)
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
-public class AisSystem extends BaseEntity implements ApprovableEntity {
+public class AisSystem extends BaseApprovableEntity {
+
+
 
     @Column(name = "code", nullable = false, unique = true, length = 50)
     private String code;
@@ -59,12 +60,10 @@ public class AisSystem extends BaseEntity implements ApprovableEntity {
 
     @Enumerated(EnumType.ORDINAL)
     @Column(name = "unit_of_measure", nullable = false, columnDefinition = "SMALLINT")
-    @Builder.Default
-    private UnitOfMeasure unitOfMeasure = UnitOfMeasure.SET;
+    private UnitOfMeasure unitOfMeasure;
 
     @Column(name = "quantity", nullable = false)
-    @Builder.Default
-    private Integer quantity = 1;
+    private Integer quantity;
 
     @Column(name = "model", length = 100)
     private String model;
@@ -80,8 +79,7 @@ public class AisSystem extends BaseEntity implements ApprovableEntity {
 
     @Enumerated(EnumType.ORDINAL)
     @Column(name = "condition_status", nullable = false, columnDefinition = "SMALLINT")
-    @Builder.Default
-    private ConditionStatus conditionStatus = ConditionStatus.OPERATIONAL;
+    private ConditionStatus conditionStatus;
 
     @Column(name = "maintenance_info", length = 2000)
     private String maintenanceInfo;
@@ -89,39 +87,6 @@ public class AisSystem extends BaseEntity implements ApprovableEntity {
     @Column(name = "note", length = 2000)
     private String note;
 
-    @Column(name = "org_unit_id")
-    private UUID orgUnitId;
-
-    @Column(name = "province_id")
-    private Integer provinceId;
-
-    @Column(name = "spatial_id")
-    private UUID spatialId;
-
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "approval_status", nullable = false, columnDefinition = "SMALLINT")
-    @Builder.Default
-    private ApprovalStatus approvalStatus = ApprovalStatus.PROPOSED;
-
-    @Column(name = "approver_level1")
-    private UUID approverLevel1;
-
-    @Column(name = "approved_date_level1")
-    private LocalDateTime approvedDateLevel1;
-
-    @Column(name = "approver_level2")
-    private UUID approverLevel2;
-
-    @Column(name = "approved_date_level2")
-    private LocalDateTime approvedDateLevel2;
-
-    @Column(name = "rejection_reason", length = 1000)
-    private String rejectionReason;
-
-    @PrePersist
-    protected void onPrePersist() {
-        if (this.approvalStatus == null) {
-            this.approvalStatus = ApprovalStatus.PROPOSED;
-        }
-    }
+    @Column(name = "symbol_id")
+    private UUID symbolId;
 }

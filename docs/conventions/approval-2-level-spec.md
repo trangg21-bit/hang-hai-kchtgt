@@ -102,10 +102,11 @@ Bảng chuyển trạng thái (khớp mục 7 tài liệu gốc — **mỗi dòn
 
 - Từ chối ở bất kỳ vòng nào đều **bắt buộc nhập lý do**, tối thiểu **10 ký tự**.
 
-### 3.5. Nhật ký phê duyệt + lịch sử thay đổi — quy tắc 7, 11
+### 3.5. Nhật ký phê duyệt + lịch sử thay đổi — quy tắc 7, 11, 12
 
-- Mỗi lần **gửi duyệt** và mỗi lần **duyệt/từ chối** đều phải ghi lại **người thực hiện + thời điểm** (để truy vết).
-- Mọi thay đổi trên hồ sơ đều ghi nhật ký (bản cũ lưu trong nhật ký thay đổi).
+- Lịch sử thay đổi (`infrastructure_history`) **chỉ lưu lịch sử sau khi hồ sơ đã qua phê duyệt bước cuối (`APPROVED` / Đã duyệt)**.
+- Trong các giai đoạn trước đó (`DRAFT`, `PENDING_APPROVAL`, `APPROVED_LEVEL1`, `REJECTED_LEVEL1`, `REJECTED_LEVEL2`), thông tin người gửi/duyệt và thời điểm phê duyệt được lưu trực tiếp vào các trường metadata của thực thể (`submittedAt`, `submittedBy`, `approverLevel1`, `approvedDateLevel1`, `approverLevel2`, `approvedDateLevel2`, `level1ApprovalContent`, `level2ApprovalContent`, `rejectionReason`) và hiển thị tại mục "Thông tin phê duyệt" trong Drawer chi tiết; không ghi dòng trạng thái chuyển tiếp vào bảng `infrastructure_history`.
+- **Sau khi hồ sơ ĐÃ DUYỆT**: Mọi thao tác chỉnh sửa thông tin, cập nhật tọa độ GIS, biểu tượng, tải lên / xóa tài liệu đính kèm (T12) đều được ghi nhận chi tiết (*Giá trị cũ $\rightarrow$ Giá trị mới*) vào bảng `infrastructure_history` để phục vụ thanh tra và kiểm toán.
 
 ### 3.6. Xóa mềm — quy tắc 11
 

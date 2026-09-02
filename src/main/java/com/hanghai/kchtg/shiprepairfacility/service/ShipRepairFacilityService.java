@@ -85,16 +85,6 @@ public class ShipRepairFacilityService {
             saved = repository.save(saved);
         }
 
-        historyRepository.save(InfrastructureHistory.builder()
-                .refId(saved.getId())
-                .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
-                .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(InfrastructureHistoryStatus.CREATED)
-                .approvedBy(createdBy)
-                .approvedDate(LocalDateTime.now())
-                .reason("Tạo mới cơ sở sửa chữa, đóng tàu")
-                .build());
-
         return toResponse(saved);
     }
 
@@ -263,7 +253,7 @@ public class ShipRepairFacilityService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu với ID: " + id));
 
         if (entity.getApprovalStatus() != ApprovalStatus.PROPOSED) {
-            throw new RuntimeException("Chỉ có thể phê duyệt bản ghi ở trạng thái Chờ duyệt (PROPOSED) với ID: " + id);
+            throw new RuntimeException("Chỉ có thể phê duyệt bản ghi ở trạng thái Đang đề xuất");
         }
 
         if (ApprovalStatus.REJECTED.name().equalsIgnoreCase(request.getDecision())) {
@@ -319,13 +309,13 @@ public class ShipRepairFacilityService {
 
         if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
             throw new RuntimeException(
-                    "Chỉ có thể phê duyệt bản ghi ở trạng thái Chờ phê duyệt (PENDING_APPROVAL) với ID: " + id);
+                    "Chỉ có thể phê duyệt bản ghi ở trạng thái Chờ Chi cục duyệt");
         }
 
         UUID c1Actor = entity.getApproverLevel1();
         if (c1Actor != null && c1Actor.equals(approvedBy)) {
             throw new IllegalStateException(
-                    "Người phê duyệt C2 không được trùng với người phê duyệt C1 (Nguoi phe duyet C2 khong duoc trung)");
+                    "Người phê duyệt cấp Cục không được trùng với người phê duyệt cấp Chi cục");
         }
 
         if (ApprovalStatus.REJECTED.name().equalsIgnoreCase(request.getDecision())) {
@@ -363,17 +353,18 @@ public class ShipRepairFacilityService {
                 .collect(Collectors.toSet());
         Map<UUID, String> userNames = resolveUserNames(userIds);
 
-        return historyList.stream().map(h -> HistoryEntry.builder()
-                .id(h.getId())
-                .approvalLevel(h.getApprovalLevel())
-                .status(h.getStatus() != null ? h.getStatus().getCode() : null)
-                .approvedBy(h.getApprovedBy() != null
-                        ? userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
-                        : null)
-                .approvedDate(h.getApprovedDate())
-                .reason(h.getReason())
-                .build())
-                .toList();
+        return historyList.stream().map(h -> {
+            HistoryEntry entry = new HistoryEntry();
+            entry.setId(h.getId());
+            entry.setApprovalLevel(h.getApprovalLevel());
+            entry.setStatus(h.getStatus() != null ? h.getStatus().getCode() : null);
+            entry.setApprovedBy(h.getApprovedBy() != null
+                    ? userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
+                    : null);
+            entry.setApprovedDate(h.getApprovedDate());
+            entry.setReason(h.getReason());
+            return entry;
+        }).toList();
     }
 
     private Map<UUID, String> resolveUserNames(Collection<UUID> userIds) {

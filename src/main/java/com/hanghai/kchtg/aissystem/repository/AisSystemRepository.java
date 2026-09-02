@@ -26,8 +26,22 @@ public interface AisSystemRepository extends JpaRepository<AisSystem, UUID> {
 
     boolean existsByCodeAndIdNotAndDeletedAtIsNull(String code, UUID id);
 
+    /**
+     * Danh sách hệ thống AIS.
+     *
+     * KHÔNG đặt ORDER BY cố định: JPA nối ORDER BY của {@link Pageable} vào SAU
+     * mệnh đề có sẵn, nên cố định ở đây là vô hiệu hóa cột người dùng chọn.
+     *
+     * Các join chỉ phục vụ sắp xếp theo tên hiển thị. Đơn vị vận hành khai thác
+     * có thể trỏ sang `operating_organization` hoặc `org_units` (xem toListItem)
+     * nên join cả hai và sắp bằng COALESCE để khớp đúng chữ hiển thị trên bảng.
+     */
     @Query("""
         SELECT t FROM AisSystem t
+        LEFT JOIN OrgUnit o ON o.id = t.orgUnitId
+        LEFT JOIN OperatingOrganization oo ON oo.id = t.operatingOrgId
+        LEFT JOIN OrgUnit oorg ON oorg.id = t.operatingOrgId
+        LEFT JOIN VtsOperationCenter voc ON voc.id = t.vtsOperationCenterId
         WHERE t.deletedAt IS NULL
           AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
@@ -37,9 +51,9 @@ public interface AisSystemRepository extends JpaRepository<AisSystem, UUID> {
           AND (:provinceId IS NULL OR t.provinceId = :provinceId)
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:commissioningYear IS NULL OR t.commissioningYear = :commissioningYear)
-          AND (:approvalStatus IS NULL 
+          AND (:approvalStatus IS NULL
                OR t.approvalStatus = :approvalStatus
-               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2)))
+               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)))
           AND (CAST(:updatedFrom AS timestamp) IS NULL OR t.updatedAt >= :updatedFrom)
           AND (CAST(:updatedTo AS timestamp) IS NULL OR t.updatedAt <= :updatedTo)
           AND (CAST(:name AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(t.name)) AS string) LIKE CAST(:name AS string))
@@ -50,7 +64,6 @@ public interface AisSystemRepository extends JpaRepository<AisSystem, UUID> {
             CAST(function('immutable_unaccent', LOWER(t.model)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(t.manufacturer)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(t.detailedLocation)) AS string) LIKE CAST(:keyword AS string))
-        ORDER BY t.createdAt DESC
     """)
     Page<AisSystem> search(
         @Param("scopeEnabled") boolean scopeEnabled,

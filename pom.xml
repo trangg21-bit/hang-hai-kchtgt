@@ -247,8 +247,8 @@
                         <configuration>
                             <rules>
                                 <requireJavaVersion>
-                                    <version>[17,18)</version>
-                                    <message>This project must be built with Java 17 (set JAVA_HOME to a JDK 17). Newer JDKs (e.g. 25) break JaCoCo coverage and Mockito/ByteBuddy inline mocking in tests.</message>
+                                    <version>[17,23)</version>
+                                    <message>This project must be built with Java 17 to 21 (set JAVA_HOME to a JDK 17 or 21).</message>
                                 </requireJavaVersion>
                             </rules>
                         </configuration>
@@ -261,6 +261,7 @@
                 <configuration>
                     <source>17</source>
                     <target>17</target>
+                    <encoding>UTF-8</encoding>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>

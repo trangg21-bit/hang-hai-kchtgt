@@ -8,7 +8,7 @@ import type { UploadFile } from 'antd';
 import { PlusOutlined, DeleteOutlined, FileOutlined, InboxOutlined, DownloadOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import { colors } from '../../themetokenchk';
 import {
-  textPrimary, textSecondary, textTertiary, borderDefault, actionPrimary, statusCritical,
+  textPrimary, textTertiary, borderDefault, actionPrimary, statusCritical,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
   radiusPill, radiusMd, spaceSm, spaceMd, spaceFormField,
   surfaceCard, readonlyInputStyle, sidebarBg,
@@ -29,6 +29,7 @@ import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { LineObject } from '../../types/lineObject';
 import type { Symbol as IconSymbol } from '../../services/symbolService';
 import { useAuthStore } from '../../store/authStore';
+import { GEOMETRY_POINT_COUNT } from '../../utils/gisGeometry';
 
 const labelProps = (text: string) => ({
   label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
@@ -57,7 +58,7 @@ const GEOMETRY_TYPE_OPTIONS = [
 ];
 const COORD_SYS_OPTIONS = [{ value: 1, label: 'WGS-84' }, { value: 2, label: 'VN-2000' }];
 // Số lượng tọa độ mặc định tương ứng với từng loại đối tượng: điểm → 1, đường → 2, vùng → 3
-const GEOMETRY_POINT_COUNT: Record<string, number> = { POINT: 1, LINE: 2, POLYGON: 3 };
+
 
 const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
   const wkt = gisLocation?.coordinates;
@@ -98,11 +99,11 @@ const renderDmsGroup = (
 ) => {
   return (
     <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
-      <InputNumber value={dVal} min={0} max={maxDeg} placeholder="Độ" onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(v, mVal, sVal)} style={{ flex: 1, minWidth: 0, borderRadius: '999px 0 0 999px', height: 32 }} controls={false} />
+      <InputNumber value={dVal} min={0} max={maxDeg} placeholder="Độ" onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(v, mVal ?? null, sVal ?? null)} style={{ flex: 1, minWidth: 0, borderRadius: '999px 0 0 999px', height: 32 }} controls={false} />
       <span style={dmsUnitStyle}>°</span>
-      <InputNumber value={mVal} min={0} max={59} placeholder="Phút" onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(dVal, v, sVal)} style={{ flex: 1, minWidth: 0, height: 32 }} controls={false} />
+      <InputNumber value={mVal} min={0} max={59} placeholder="Phút" onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(dVal ?? null, v, sVal ?? null)} style={{ flex: 1, minWidth: 0, height: 32 }} controls={false} />
       <span style={dmsUnitStyle}>'</span>
-      <InputNumber value={sVal} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber} onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(dVal, mVal, v)} style={{ flex: 1.2, minWidth: 0, height: 32 }} controls={false} />
+      <InputNumber value={sVal} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber} onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(dVal ?? null, mVal ?? null, v)} style={{ flex: 1.2, minWidth: 0, height: 32 }} controls={false} />
       <span style={dmsUnitEndStyle}>"</span>
     </Space.Compact>
   );
@@ -465,7 +466,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
           </Form.Item>
         </Col>
         <Col span={12}>
-          <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} required style={{ marginBottom: spaceFormField }} initialValue="NOT_YET_OPERATIONAL" rules={[{ required: true, message: 'Tình trạng không được để trống' }]}>
+          <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} required style={{ marginBottom: spaceFormField }} initialValue="OPERATIONAL" rules={[{ required: true, message: 'Tình trạng không được để trống' }]}>
             <Select placeholder="Chọn tình trạng" options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />
           </Form.Item>
         </Col>

@@ -67,6 +67,8 @@ public class CoastalStationInmarsatUpdateRequest {
     @DecimalMax(value = "180.0", message = "Kinh độ phải từ -180 đến 180")
     private BigDecimal longitude;
 
+    private String coordinates;
+
     public String getEffectiveCode() {
         if (code != null && !code.isBlank()) return code.trim();
         if (deviceCode != null && !deviceCode.isBlank()) return deviceCode.trim();

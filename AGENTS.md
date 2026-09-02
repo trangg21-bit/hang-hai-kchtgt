@@ -31,6 +31,13 @@ This project is built on **spring-boot**. Its CLI/generator is `mvn`. Prefer the
 - When unsure of the exact command or its current-version syntax, resolve live docs via context7 (`resolve-library-id` → `get-library-docs`) BEFORE generating.
 - Main / project manager MUST carry these constraints into every worker task brief (workers do not read this file).
 
+## Automatic IDE Lint & Error Cleanup (MANDATORY — tự động dọn sạch cảnh báo và lỗi IDE)
+
+Trợ lý AI **BẮT BUỘC TỰ ĐỘNG** kiểm tra và dọn sạch 100% các lỗi và cảnh báo (zero errors & zero warnings) mà IDE (VS Code, IntelliJ...), TypeScript Language Server và ESLint phát hiện trên mọi file đang mở hoặc được chỉnh sửa:
+1. **Loại bỏ toàn bộ Unused Imports & Unused Variables**: Xóa triệt để các package, component, token (`surfaceCard`, `uploadHintStyle`, `colors`, `inputStyle`, `Card`, `DatePicker`...), biến hoặc state (`navigate`, `detailZonePage`, `pendingFiles`...) được khai báo nhưng không dùng.
+2. **Khớp 100% Interface & Property Access**: Tuyệt đối không truy cập các trường không tồn tại trong interface TypeScript (như `createdAt` thay vì `createdDate`, `record.approvalReasonLevel1` thay vì `record.approvalContentLevel1`).
+3. **Tự động rà soát & sửa lỗi chủ động**: Không chờ User phải nhắc nhở; mỗi khi thao tác trên bất kỳ file nào, AI phải tự động rà soát từ trên xuống dưới để đảm bảo file đạt trạng thái hoàn hảo không có gạch chân đỏ (error) hay gạch chân vàng/xám (warning) trong IDE.
+
 ## UI Theme Convention (MANDATORY — mọi agent làm frontend PHẢI đọc)
 
 ### Single source of truth
@@ -253,9 +260,18 @@ import { spaceFormField, radiusPill } from '../tokens';
 - **KHÔNG** hardcode margin-bottom Form.Item — dùng `spaceFormField` (12px)
 - **KHÔNG** hardcode border-radius — dùng `radiusPill` (999px) cho Input, Select, Button
 - `height: 40` cho mọi Input, Select
-- `labelProps()` helper cho label style nhất quán
-- Modal/Drawer footer: Cancel (outlined) + Submit (primary), cả hai pill radius
-- **Quy tắc Tab Lịch sử trong Form Drawer**: Tab "Lịch sử & Phê duyệt" **BẮT BUỘC chỉ hiển thị khi `drawerMode !== 'create'`** (chỉ hiện khi Xem chi tiết `view` hoặc Chỉnh sửa `edit`); khi Thêm mới (`create`), tab này **BẮT BUỘC ĐƯỢC ẨN ĐI** (`...(drawerMode !== 'create' ? [tabHistory] : [])`).
+- **Cấu trúc Tab trong Drawer**: Các tab thông tin được thiết kế linh hoạt, phản ánh đúng đặc thù nghiệp vụ của từng loại tài sản KCHT. Toàn bộ thông tin phê duyệt, cán bộ xét duyệt và nội dung phê duyệt **BẮT BUỘC nằm trong mục toggle 'Thông tin phê duyệt' tại Tab 'Thông tin chung'**; **TUYỆT ĐỐI KHÔNG** tạo thêm tab riêng *"Thông tin log cập nhật"* trong Drawer chi tiết. Lịch sử thay đổi chi tiết chỉ được mở từ nút "Lịch sử" trên menu hành động dòng (`rowActions`).
+- **Quy chuẩn Khoảng cách Cố định từ Phân trang xuống Vạch kẻ Footer Drawer (MANDATORY DRAWER PAGINATION & SCROLL_Y STANDARD)**:
+  - Khoảng cách từ thanh phân trang (`Tổng cộng: ...`) xuống đường vạch kẻ footer của Drawer **BẮT BUỘC LUÔN LUÔN CỐ ĐỊNH** (khoảng cách chuẩn 16px - 20px, `marginTop: 8px, marginBottom: 8px` trong `DetailTable`).
+  - Chiều cao thân bảng `.ant-table-body` được khóa cứng bằng `height`, `min-height`, `max-height` đồng bộ trong `DetailTable` để khi chuyển sang trang có ít bản ghi (Page 2 có 1, 2, 4 dòng), thanh phân trang **ĐỨNG IM 100%, KHÔNG BỊ NHẢY LÊN TRÊN**.
+  - **Tổng cao độ từ đỉnh Tab Pane đến đáy thanh phân trang BẮT BUỘC BẰNG NHAU TRÊN MỌI TAB**: $H_{\text{top}} + H_{\text{thead}} (38\text{px}) + \text{scrollY} = \mathbf{100\text{vh} - 290\text{px}}$.
+  - **BẮT BUỘC sử dụng hằng số `DRAWER_TABLE_SCROLL_Y` từ `themetokenchk.ts` cho MỌI màn hình**:
+    - `DRAWER_TABLE_SCROLL_Y.pureTable = 'calc(100vh - 328px)'` (Tab chỉ có bảng thuần).
+    - `DRAWER_TABLE_SCROLL_Y.withButton = 'calc(100vh - 370px)'` (Tab có nút bấm trên đầu cao 32px + margin 10px).
+    - `DRAWER_TABLE_SCROLL_Y.withDragger = 'calc(100vh - 442px)'` (Tab có khung Upload Dragger khóa cứng `height: 104px, boxSizing: 'border-box'` + margin 10px).
+    - `DRAWER_TABLE_SCROLL_Y.detailView = 'calc(100vh - 296px)'` (Tab trong Drawer Xem chi tiết).
+  - **Tuyệt đối CẤM** để phát sinh thanh cuộn dọc ngoài Drawer body. Chuyển qua lại giữa các Tab trong Drawer thì thanh phân trang **BẮT BUỘC đứng im tuyệt đối tại cùng 1 tọa độ Y duy nhất (sai số = 0px)**.
+- **Quy chuẩn Dropdown Popup DatePicker & RangePicker**: Mọi ô chọn ngày tháng **BẮT BUỘC** sử dụng helper từ `themetokenchk.ts`: `getDatePickerProps` (cho DatePicker đơn: `popupClassName="chk-form-datepicker-popup"`, co dãn ôm khít 100% theo chiều rộng ô input, ô ngày `26px × 26px`, nút Hôm nay không bị cắt) và `getRangePickerProps` (cho DatePicker.RangePicker chọn khoảng ngày: `popupClassName="chk-range-datepicker-popup"`, kích thước x2 gồm 2 panel cạnh nhau `560px`, ô ngày `26px` đồng bộ). Tuyệt đối không để cố định pixel hoặc lệch kích thước giữa các màn hình.
 - **Quy chuẩn Lịch sử thay đổi (Audit Trail)**: Mở từ menu dòng (`rowActions` -> "Lịch sử"), truy vấn từ bảng tập trung duy nhất `infrastructure_history` (bỏ hoàn toàn `change_logs`, `approval_logs`).
 
 ### Reference Implementation
@@ -512,6 +528,20 @@ _Ghi lại các lưu ý, quy trình hoặc yêu cầu đặc biệt của bạn 
 1. **Nguyên tắc chung**:
    - **TUÂN THỦ TUYỆT ĐỐ TÀI LIỆU BRIEF (FEATURE BRIEF & LEAN SPEC)**:
      - AI chỉ được phép lập trình, xây dựng giao diện và xử lý logic nghiệp vụ theo đúng cấu trúc cột, trường dữ liệu, acceptance criteria và business rules đã định nghĩa trong tài liệu brief (`feature-brief.md` và `00-lean-spec.md`).
+   - **QUY CHUẨN PHÂN BỔ TỶ LỆ CỘT BẢNG CON TRONG DRAWER (DRAWER CHILD TABLE COLUMN PROPORTIONS STANDARD)**:
+      - Mọi bảng con nằm trong các Tab của Drawer (Xem chi tiết, Thêm mới, Chỉnh sửa: Vùng VTS, Tọa độ GIS, Phân loại/Trang thiết bị, Cổng/Bến/Kho...) **BẮT BUỘC** tuân thủ quy chuẩn phân bổ tỷ trọng chiều rộng cột tại `docs/conventions/drawer-table-layout-standard.md`:
+        1. **Bố cục 3 cột dữ liệu (STT + Mã + Tên + Tình trạng/Trạng thái + Action)**:
+           - `STT`: `width: 60px`, `align: 'center'`, cố định.
+           - `Mã` (`code` / `Mã vùng`...): `width: 200px` (~`22%` độ rộng bảng), căn trái.
+           - `Tên` (`name` / `Tên vùng VTS`...): **`width: 440px` (chiếm tỷ trọng chính ~`50%` độ rộng bảng)**, căn trái, hiển thị trọn vẹn hoặc có tooltip ellipsis.
+           - `Tình trạng / Trạng thái` (`conditionStatus` / `status`): `width: 180px` (~`20%` độ rộng bảng), căn trái vừa khít Pill Badge.
+           - `Thao tác` (Chế độ sửa/tạo): `width: 60px`, `align: 'center'`.
+        2. **Bố cục 2 cột dữ liệu (STT + Tên/Chỉ tiêu + Giá trị/Mô tả)**:
+           - `STT`: `width: 60px` (`align: 'center'`).
+           - `Tên / Chỉ tiêu`: `width: 300px` (~`35%`).
+           - `Giá trị / Mô tả chi tiết`: `width: 520px` (~`58%`).
+        3. **Bố cục Tọa độ GIS**: `STT` (60px) + `Kinh độ DMS` (240px) + `Vĩ độ DMS` (240px) + `Độ thập phân` (180px) + `Action` (60px).
+        4. **Tự động hóa thông minh**: Hàm `getSmartColumnWidth` trong `DetailTable.tsx` đã được cấu hình trọng số chuẩn (`STT`: 60, `Mã`: 200, `Tên/Mô tả`: 440, `Tình trạng`: 180). Tuyệt đối **CẤM** để cột Tên bị ép nhỏ bằng cột Mã ngắn hoặc để bảng bị lệch khoảng trắng sang một bên.
    - Luôn kiểm tra cấu trúc dữ liệu thực tế và các màn hình quản lý CRUD trước khi đề xuất chỉnh sửa logic báo cáo hoặc nghiệp vụ.
    - Không tự động gán dữ liệu giả lập (placeholder/hardcoded) cho các cột khi database thực tế không hỗ trợ trường tương ứng.
    - **TẠO SCRIPT SQL CHO THAY ĐỔI DB**: Khi thao tác liên quan đến thay đổi cấu trúc DB (schema, index, migrations...), bắt buộc phải tạo script SQL Flyway tương ứng (đặt trong thư mục `src/main/resources/db/migration/`) để khi đưa lên môi trường khác (UAT, Production) cấu trúc DB sẽ khớp 100%.

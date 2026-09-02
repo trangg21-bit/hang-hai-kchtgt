@@ -1,4 +1,11 @@
 package com.hanghai.kchtg.aissystem.controller;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.HttpHeaders;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 
 import com.hanghai.kchtg.aissystem.dto.AisSystemListItem;
 import com.hanghai.kchtg.aissystem.dto.AisSystemOptionResponse;
@@ -20,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import com.hanghai.kchtg.security.annotation.DataScope;
@@ -44,30 +52,58 @@ import java.util.UUID;
 @DataScope
 public class AisSystemController {
 
+    /** Trần số bản ghi mỗi trang cho endpoint danh sách. */
+    private static final int MAX_PAGE_SIZE = 200;
+
     /**
      * Các cột được phép sắp xếp. `sortBy` đến từ client nên phải qua danh sách
-     * trắng: tên thuộc tính lạ sẽ làm truy vấn ném lỗi 500, và các cột hiển thị
-     * tên (đơn vị, cán bộ) được resolve sau truy vấn nên không sắp xếp được ở DB.
+     * trắng: tên thuộc tính lạ sẽ làm truy vấn ném lỗi 500.
+     *
+     * Cột hiển thị tên (đơn vị quản lý, đơn vị vận hành, trung tâm điều hành)
+     * trỏ vào alias của các LEFT JOIN trong {@code AisSystemRepository.search} để
+     * sắp theo đúng chữ người dùng nhìn thấy. Riêng "Đơn vị vận hành khai thác"
+     * lấy tên từ `operating_organization`, thiếu thì mới lùi về `org_units`
+     * (xem {@code AisSystemService.toListItem}) nên phải sắp bằng COALESCE.
+     *
+     * Ngoại lệ: Tỉnh/TP chỉ có mã số trong CSDL (chưa có entity Province để join)
+     * nên sắp theo mã tỉnh — trùng với thứ tự mã hành chính.
      */
-    private static final Map<String, String> SORTABLE_LIST_FIELDS = Map.of(
-            "name", "name",
-            "code", "code",
-            "detailedLocation", "detailedLocation",
-            "conditionStatus", "conditionStatus",
-            "approvalStatus", "approvalStatus",
-            "provinceId", "provinceId",
-            "updatedDate", "updatedAt",
-            "createdAt", "createdAt");
+    private static final Map<String, String> SORTABLE_LIST_FIELDS = Map.ofEntries(
+            Map.entry("name", "t.name"),
+            Map.entry("code", "t.code"),
+            Map.entry("detailedLocation", "t.detailedLocation"),
+            Map.entry("conditionStatus", "t.conditionStatus"),
+            Map.entry("approvalStatus", "t.approvalStatus"),
+            Map.entry("province", "t.provinceId"),
+            Map.entry("provinceId", "t.provinceId"),
+            Map.entry("unitOfMeasure", "t.unitOfMeasure"),
+            Map.entry("quantity", "t.quantity"),
+            Map.entry("commissioningYear", "t.commissioningYear"),
+            Map.entry("orgUnitName", "o.name"),
+            Map.entry("orgUnitId", "t.orgUnitId"),
+            Map.entry("operatingOrgName", "COALESCE(oo.name, oorg.name)"),
+            Map.entry("operatingOrgId", "t.operatingOrgId"),
+            Map.entry("vtsOperationCenterName", "voc.name"),
+            Map.entry("vtsOperationCenterId", "t.vtsOperationCenterId"),
+            Map.entry("updatedDate", "t.updatedAt"),
+            Map.entry("updatedAt", "t.updatedAt"),
+            Map.entry("createdAt", "t.createdAt"));
 
+    /**
+     * Dùng {@link JpaSort#unsafe} vì thuộc tính đã được qualify sẵn theo alias và
+     * có trường hợp là biểu thức COALESCE — {@code Sort.by} sẽ từ chối cả hai.
+     * An toàn vì giá trị luôn lấy từ danh sách trắng ở trên, không phải chuỗi thô
+     * của client.
+     */
     private static Sort resolveListSort(String sortBy, String sortDir) {
-        Sort defaultSort = Sort.by(Sort.Direction.DESC, "createdAt");
+        Sort defaultSort = JpaSort.unsafe(Sort.Direction.DESC, "t.createdAt");
         String property = sortBy == null ? null : SORTABLE_LIST_FIELDS.get(sortBy.trim());
         if (property == null) {
             return defaultSort;
         }
         Sort.Direction direction = "ASC".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
         // Chốt thêm createdAt để thứ tự ổn định khi giá trị sắp xếp trùng nhau.
-        return Sort.by(direction, property).and(defaultSort);
+        return JpaSort.unsafe(direction, property).and(defaultSort);
     }
 
     private final AisSystemService service;
@@ -125,18 +161,26 @@ public class AisSystemController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "DESC") String sortDir) {
+            @RequestParam(defaultValue = "DESC") String sortDir,
+            @RequestParam(defaultValue = "true") boolean includeCounts) {
 
-        PageRequest pageRequest = PageRequest.of(page, size, resolveListSort(sortBy, sortDir));
+        // Chặn trần số bản ghi mỗi trang:  đến từ client, không giới hạn thì một
+        // request  kéo cả bảng ra khỏi CSDL.
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        PageRequest pageRequest = PageRequest.of(page, safeSize, resolveListSort(sortBy, sortDir));
 
         Page<AisSystemListItem> resultPage = service.search(
                 keyword, name, code, orgUnitId, vtsOperationCenterId, radarStationId, operatingOrgId,
                 provinceId, conditionStatus, commissioningYear, approvalStatus,
                 updatedFrom, updatedTo, pageRequest);
-        Map<String, Long> statusCounts = service.countByStatus(
-                keyword, name, code, orgUnitId, vtsOperationCenterId, radarStationId, operatingOrgId,
-                provinceId, conditionStatus, commissioningYear,
-                updatedFrom, updatedTo);
+        // Số đếm theo trạng thái không đổi khi người dùng chỉ lật trang hay đổi cột
+        // sắp xếp, nên client tắt cờ này để khỏi chạy thêm một truy vấn GROUP BY.
+        Map<String, Long> statusCounts = includeCounts
+                ? service.countByStatus(
+                        keyword, name, code, orgUnitId, vtsOperationCenterId, radarStationId, operatingOrgId,
+                        provinceId, conditionStatus, commissioningYear,
+                        updatedFrom, updatedTo)
+                : Map.of();
 
         Map<String, Object> data = new HashMap<>();
         data.put("content", resultPage.getContent());
@@ -190,7 +234,7 @@ public class AisSystemController {
         String decision = ApprovalUtils.resolveDecision(request);
         String reason = ApprovalUtils.resolveReason(request);
         service.approveC1(id, decision, reason, userId);
-        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 1 thành công", null));
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Chi cục thành công", null));
     }
 
     @PreAuthorize("@auth.check(authentication, 'aissystem:approvec2')")
@@ -203,7 +247,7 @@ public class AisSystemController {
         String decision = ApprovalUtils.resolveDecision(request);
         String reason = ApprovalUtils.resolveReason(request);
         service.approveC2(id, decision, reason, userId);
-        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 2 thành công", null));
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", null));
     }
 
     @PreAuthorize("@auth.checkAny(authentication, 'aissystem:approvec1', 'aissystem:approvec2')")
@@ -223,8 +267,15 @@ public class AisSystemController {
     public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
             @PathVariable UUID id,
             @RequestParam(value = "page", required = false) Integer page,
-            @RequestParam(value = "pageSize", required = false) Integer pageSize) {
-        List<HistoryEntry> history = service.getHistory(id, page, pageSize);
+            @RequestParam(value = "pageSize", required = false) Integer pageSize,
+            // Lọc nhật ký ở server để drawer phân trang được mà ô tìm kiếm vẫn quét
+            // toàn bộ nhật ký, không chỉ phần đã tải về.
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "fromDate", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+            @RequestParam(value = "toDate", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate) {
+        List<HistoryEntry> history = service.getHistory(id, page, pageSize, keyword, fromDate, toDate);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử thành công", history));
     }
 
@@ -257,6 +308,34 @@ public class AisSystemController {
         UUID userId = getUserId(authentication);
         service.deleteAttachment(id, attId, userId);
         return ResponseEntity.ok(ApiResponse.success("Xóa tệp đính kèm thành công", null));
+    }
+
+    
+    @PreAuthorize("@auth.check(authentication, 'aissystem:read')")
+    @GetMapping("/{id}/attachments/{attId}/download")
+    public ResponseEntity<Resource> downloadAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId) {
+        InfrastructureAttachment attachment = service.getAttachment(id, attId);
+        Path path = Paths.get(attachment.getFilePath()).toAbsolutePath().normalize();
+        if (!Files.isRegularFile(path)) {
+            return ResponseEntity.notFound().build();
+        }
+        Resource resource = new FileSystemResource(path);
+        String contentType;
+        try {
+            contentType = Files.probeContentType(path);
+        } catch (Exception ignored) {
+            contentType = null;
+        }
+        MediaType mediaType = contentType == null
+                ? MediaType.APPLICATION_OCTET_STREAM
+                : MediaType.parseMediaType(contentType);
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + (attachment.getFileName() != null ? attachment.getFileName().replace("\"", "") : "attachment") + "\"")
+                .body(resource);
     }
 
     private final UserRepository userRepository;

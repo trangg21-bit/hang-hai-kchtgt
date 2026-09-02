@@ -6,6 +6,7 @@ import com.hanghai.kchtg.vtssystem.dto.VtsSystemCreateRequest;
 import com.hanghai.kchtg.vtssystem.dto.VtsSystemListResponse;
 import com.hanghai.kchtg.vtssystem.dto.VtsSystemResponse;
 import com.hanghai.kchtg.vtssystem.dto.VtsSystemUpdateRequest;
+import com.hanghai.kchtg.vtssystem.dto.VtsZoneDto;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.vtssystem.service.VtsSystemService;
 import org.junit.jupiter.api.BeforeEach;
@@ -182,7 +183,7 @@ class VtsSystemControllerTest {
     void testApproveC1_WithException() {
         ApprovalRequest req = ApprovalRequest.builder().decision(ApprovalStatus.APPROVED.name()).build();
         // @DataScope aspect intercepts before service — exception bypasses controller try-catch
-        doThrow(new IllegalStateException("Người phê duyệt C2 không được trùng với C1"))
+        doThrow(new IllegalStateException("Người phê duyệt cấp Cục không được trùng với người phê duyệt cấp Chi cục"))
                 .when(service).approveC1(eq(TEST_ID), any(), any(java.util.UUID.class));
         ResponseEntity<?> result = controller.approveC1(TEST_ID, req, mockAuth());
         assertEquals(HttpStatus.OK, result.getStatusCode());
@@ -224,6 +225,57 @@ class VtsSystemControllerTest {
                 .thenReturn(Collections.emptyList());
         ResponseEntity<?> result = controller.getHistory(TEST_ID, 0, 10, "key", null, null);
         assertEquals(HttpStatus.OK, result.getStatusCode());
+    }
+
+    @Test
+    void testGetZones_WithoutPagination() {
+        when(service.getZones(TEST_ID)).thenReturn(List.of(VtsZoneDto.builder().code("Z1").name("Zone 1").build()));
+        ResponseEntity<?> result = controller.getZones(TEST_ID, null, null);
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+    }
+
+    @Test
+    void testGetZones_WithPagination() {
+        when(service.getZones(eq(TEST_ID), any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(VtsZoneDto.builder().code("Z1").name("Zone 1").build())));
+        ResponseEntity<?> result = controller.getZones(TEST_ID, 0, 10);
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+    }
+
+    @Test
+    void testCreateZone() {
+        VtsZoneDto dto = VtsZoneDto.builder().code("Z1").name("Zone 1").conditionStatus(com.hanghai.kchtg.vtssystem.entity.ConditionStatus.OPERATIONAL).build();
+        when(service.createZone(eq(TEST_ID), any(), any())).thenReturn(dto);
+        ResponseEntity<?> result = controller.createZone(TEST_ID, dto, mockAuth());
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+    }
+
+    @Test
+    void testUpdateZone() {
+        UUID zoneId = UUID.randomUUID();
+        VtsZoneDto dto = VtsZoneDto.builder().code("Z1").name("Zone 1").conditionStatus(com.hanghai.kchtg.vtssystem.entity.ConditionStatus.OPERATIONAL).build();
+        when(service.updateZone(eq(TEST_ID), eq(zoneId), any(), any())).thenReturn(dto);
+        ResponseEntity<?> result = controller.updateZone(TEST_ID, zoneId, dto, mockAuth());
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+    }
+
+    @Test
+    void testDeleteZone() {
+        UUID zoneId = UUID.randomUUID();
+        doNothing().when(service).deleteZone(eq(TEST_ID), eq(zoneId), any());
+        ResponseEntity<?> result = controller.deleteZone(TEST_ID, zoneId, mockAuth());
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+    }
+
+    @Test
+    void testJsonDeserialization_FromUserPayload() throws Exception {
+        String json = "{\"orgUnitId\":\"ee741b58-6dbd-4012-8d08-e52b4d4f1b62\",\"owningOrgId\":\"ee741b58-6dbd-4012-8d08-e52b4d4f1b62\",\"operatingOrgId\":\"ee741b58-6dbd-4012-8d08-e52b4d4f1b62\",\"code\":\"VTS26-14\",\"systemName\":\"Hệ thống VTS Vịnh Bái Tử Long\",\"provinceId\":58,\"operationStartDate\":\"2024-01-15\",\"scope\":\"Toàn bộ vùng nước luồng hàng hải Hệ thống VTS Vịnh Bái Tử Long\",\"maritimeNotice\":\"TBHH số 113/TBHH-TCTBĐATHH\",\"conditionStatus\":\"OPERATIONAL\",\"zones\":[{\"code\":\"VZ-BTL-014\",\"name\":\"Vùng luồng Nam Bái Tử Long\",\"conditionStatus\":\"OPERATIONAL\"}]}";
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        mapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+        VtsSystemUpdateRequest req = mapper.readValue(json, VtsSystemUpdateRequest.class);
+        assertNotNull(req);
+        assertEquals("VTS26-14", req.getCode());
+        assertEquals(1, req.getZones().size());
     }
 
     private Authentication mockAuth() {

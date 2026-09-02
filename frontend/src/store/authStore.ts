@@ -15,7 +15,7 @@ interface JwtPayload {
   exp?: number;
 }
 
-interface User {
+export interface User {
   username: string;
   fullName: string;
   permissions: string[];
@@ -24,9 +24,12 @@ interface User {
   userId?: string;
   id?: string;
   email?: string;
+  orgUnitId?: string | number;
+  unitType?: string;
+  [key: string]: any;
 }
 
-interface AuthState {
+export interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   token: string | null;

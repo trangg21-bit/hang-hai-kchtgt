@@ -81,12 +81,8 @@ const ShipRepairFacilityForm = lazy(() => import('./pages/shiprepair/ShipRepairF
 const RadarStationList = lazy(() => import('./pages/radarstation/RadarStationList'));
 const RadarStationForm = lazy(() => import('./pages/radarstation/RadarStationForm'));
 const VtsSystemList = lazy(() => import('./pages/vtssystem/VtsSystemList'));
-const VtsSystemForm = lazy(() => import('./pages/vtssystem/VtsSystemForm'));
-const VtsSystemChkList = lazy(() => import('./pages/vtssystemchk/VtsSystemChkList'));
 const VtsOperationCenterList = lazy(() => import('./pages/vtsoperationcenter/VtsOperationCenterList'));
-const VtsOperationCenterChkList = lazy(() => import('./pages/vtsoperationcenterchk/VtsOperationCenterChkList'));
 const AisSystemList = lazy(() => import('./pages/aissystem/AisSystemList'));
-const AisSystemChkList = lazy(() => import('./pages/aissystemchk/AisSystemChkList'));
 
 // M-005 & M-006: Biến động tài sản & Văn bản pháp lý
 const AssetIncreaseList = lazy(() => import('./pages/assetmovement/AssetIncreaseList'));
@@ -101,7 +97,7 @@ const PortPlanningList = lazy(() => import('./pages/document/PortPlanningList'))
 // M-015: Đài duyên hải
 const BuoyStationListPage = lazy(() => import('./services/buoy-station/BuoyStationListPage'));
 const CoastalStationList = lazy(() => import('./pages/station/CoastalStationList'));
-const SpecialStationList = lazy(() => import('./pages/station/SpecialStationList'));
+const InmarsatStationList = lazy(() => import('./pages/station/inmarsat/InmarsatStationList'));
 const CospasSarsatStationList = lazy(() => import('./pages/station/CospasSarsatStationList'));
 const LritStationList = lazy(() => import('./pages/station/lrit/LritStationList'));
 const HanoiStationList = lazy(() => import('./pages/station/hanoi/HanoiStationList'));
@@ -270,21 +266,12 @@ export default function App() {
 
                 {/* Hệ thống VTS */}
                 <Route path="/vts-system" element={<PermissionGuard permission="vts:read"><VtsSystemList /></PermissionGuard>} />
-                <Route path="/vts-system/create" element={<PermissionGuard permission="vts:create"><VtsSystemForm /></PermissionGuard>} />
-                <Route path="/vts-system/:id" element={<PermissionGuard permission="vts:read"><VtsSystemForm /></PermissionGuard>} />
-
-                {/* Hệ thống VTS CHK */}
-                <Route path="/vts-system-chk" element={<PermissionGuard permission="vts:read"><VtsSystemChkList /></PermissionGuard>} />
 
                 {/* Trung tâm điều hành VTS */}
                 <Route path="/vts-operation-center" element={<PermissionGuard permission="vtsoperationcenter:read"><VtsOperationCenterList /></PermissionGuard>} />
 
-                {/* Trung tâm điều hành CHK */}
-                <Route path="/vts-operation-center-chk" element={<PermissionGuard permission="vtsoperationcenter:read"><VtsOperationCenterChkList /></PermissionGuard>} />
-
                 {/* Hệ thống trạm bờ AIS */}
                 <Route path="/ais-system" element={<PermissionGuard permission="aissystem:read"><AisSystemList /></PermissionGuard>} />
-                <Route path="/ais-system-chk" element={<PermissionGuard permission="aissystem:read"><AisSystemChkList /></PermissionGuard>} />
 
                 {/* M-005: Biến động tài sản */}
                 <Route path="/asset/increase" element={<PermissionGuard permission="assetincrease:manage"><AssetIncreaseList /></PermissionGuard>} />
@@ -302,7 +289,7 @@ export default function App() {
 
                 {/* M-015: Đài duyên hải */}
                 <Route path="/station/coastal" element={<PermissionGuard permission="coastalstation:read"><CoastalStationList /></PermissionGuard>} />
-                <Route path="/station/special" element={<PermissionGuard permission="specialstation:read"><SpecialStationList /></PermissionGuard>} />
+                <Route path="/station/inmarsat" element={<PermissionGuard permission={['specialstation:read', 'coastalstationinmarsat:read', 'coastalstation:read', 'data:read']}><InmarsatStationList /></PermissionGuard>} />
                 <Route path="/station/cospas-sarsat" element={<PermissionGuard permission="coastalstationcospassarsat:read"><CospasSarsatStationList /></PermissionGuard>} />
                 <Route path="/station/lrit" element={<PermissionGuard permission="coastalstationlrit:read"><LritStationList /></PermissionGuard>} />
                 <Route path="/station/hanoi" element={<PermissionGuard permission="coastalstationhaiphong:read"><HanoiStationList /></PermissionGuard>} />

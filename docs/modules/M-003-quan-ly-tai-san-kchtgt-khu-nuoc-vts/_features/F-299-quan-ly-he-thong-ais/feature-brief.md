@@ -7,10 +7,12 @@ status: approved
 classification: local
 priority: high
 created: 2026-08-26
-last-updated: 2026-08-26
+last-updated: 2026-09-01
 locked-fields: []
 consumed_by_modules: [M-007, M-019, M-021, M-022]
 ---
+
+> Implementation audit 2026-09-01: màn hình AIS dùng bộ lọc đã áp dụng để tránh gọi API theo từng lần gõ; form dùng attachments trong response chi tiết và nhận lại danh mục đã tải từ màn danh sách. BE batch-load tên đơn vị, người dùng và người tải file trong luồng danh sách/chi tiết; lịch sử dùng `infrastructure_history`. Lịch sử chỉ được ghi và hiển thị cho thay đổi phát sinh sau phê duyệt cấp cuối; tạo mới và thao tác file ở trạng thái nháp không tạo audit log.
 
 # Đặc tả nghiệp vụ: Quản lý Hệ thống AIS
 

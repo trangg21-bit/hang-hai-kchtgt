@@ -92,6 +92,7 @@ import {
   historyNewValueStyle,
   historyArrowStyle,
   icons,
+  getRangePickerProps,
 } from '../../themetokenchk';
 import { usePermissionStore } from '../../store/permissionStore';
 import { colors } from '../../themetokenchk';
@@ -474,6 +475,7 @@ export default function PortListPage() {
   const [deleteTarget, setDeleteTarget] = useState<CangBienResponse | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historySearchInput, setHistorySearchInput] = useState('');
   const [historySearch, setHistorySearch] = useState('');
   const historySearchRef = useRef('');
   const [historyDateFrom, setHistoryDateFrom] = useState<string>('');
@@ -1261,6 +1263,7 @@ export default function PortListPage() {
       setLoadingHistory(false);
       setSelectedRecord(record);
       setHistoryModalVisible(true);
+      setHistorySearchInput('');
       setHistorySearch('');
       historySearchRef.current = '';
       setHistoryDateFrom('');
@@ -1766,32 +1769,68 @@ export default function PortListPage() {
               <Typography.Text style={historyInfoTitleStyle}>
                 {informationTitle}
               </Typography.Text>
-              {orderedChanges.length > 0 ? <div>{orderedChanges.map((change, ri: number) => {
-                const fn = change.field;
-                const ov = formatHistoryValue(fn, change.oldValue);
-                const nv = formatHistoryValue(fn, change.newValue);
-                const renderCell = (rawVal: string | null) => {
-                  if (fn === 'mapSymbolId' && rawVal && rawVal !== '(null)') {
-                    const img = symbolImageMap.get(rawVal);
-                    const name = symbolMap.get(rawVal) || rawVal;
-                    return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}{name}</span>;
-                  }
-                  return null;
-                };
-                return isCreate ? (
-                  <div key={`${fn}-${ri}`} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                    <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                    <span title={nv ?? '—'} style={historyNewValueStyle}>{renderCell(change.newValue) ?? (nv ?? '—')}</span>
-                  </div>
-                ) : (
-                  <div key={`${fn}-${ri}`} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                    <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                    <span title={ov ?? '—'} style={historyOldValueStyle}>{renderCell(change.oldValue) ?? (ov ?? '—')}</span>
-                    <span style={historyArrowStyle}>→</span>
-                    <span title={nv ?? '—'} style={historyNewValueStyle}>{renderCell(change.newValue) ?? (nv ?? '—')}</span>
-                  </div>
-                );
-              })}</div> : <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có thông tin chi tiết</Typography.Text>}
+              {orderedChanges.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {orderedChanges.map((change, ri: number) => {
+                    const fn = change.field;
+                    const ov = formatHistoryValue(fn, change.oldValue);
+                    const nv = formatHistoryValue(fn, change.newValue);
+
+                    if (ov !== null && nv !== null && String(ov).trim() === String(nv).trim()) {
+                      return null;
+                    }
+
+                    const isLongHistoryText = (val: string | null | undefined): boolean => {
+                      if (!val || val === '—') return false;
+                      const str = String(val).trim();
+                      return str.length > 40 || str.includes('\n') || (str.includes(',') && str.length > 25);
+                    };
+
+                    const renderFormattedContent = (content: string | null, _isOld: boolean = false) => {
+                      if (!content || content === '—') return <span style={{ color: textTertiary }}>—</span>;
+                      if (fn === 'mapSymbolId' && content && content !== '(null)') {
+                        const img = symbolImageMap.get(content);
+                        const name = symbolMap.get(content) || content;
+                        return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}{name}</span>;
+                      }
+                      const str = String(content).trim();
+                      if (str.includes(',') && str.length > 25) {
+                        const items = str.split(',').map((s) => s.trim()).filter(Boolean);
+                        if (items.length > 1) {
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+                              {items.map((item, idx) => (
+                                <div key={idx} style={{ color: textPrimary, fontWeight: fontWeightMedium, lineHeight: '20px', wordBreak: 'break-word' }}>
+                                  {item}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        }
+                      }
+                      return content;
+                    };
+
+                    if (isCreate) {
+                      return (
+                        <div key={`${fn}-${ri}`} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
+                          <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
+                          <span title={nv ?? '—'} style={historyNewValueStyle}>{renderFormattedContent(nv, false)}</span>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={`${fn}-${ri}`} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
+                        <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
+                        <span title={ov ?? '—'} style={historyOldValueStyle}>{renderFormattedContent(ov, true)}</span>
+                        <span style={historyArrowStyle}>→</span>
+                        <span title={nv ?? '—'} style={historyNewValueStyle}>{renderFormattedContent(nv, false)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có thông tin chi tiết</Typography.Text>}
             </div>
           </div>
         );
@@ -1890,7 +1929,7 @@ export default function PortListPage() {
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
                   <DatePicker.RangePicker format="DD/MM/YYYY"
-                    placeholder={['Từ ngày', 'Đến ngày']} allowClear className="port-range-picker" popupClassName="range-single-panel"
+                    placeholder={['Từ ngày', 'Đến ngày']} allowClear className="port-range-picker" classNames={{ popup: { root: 'range-single-panel' } }}
                     value={[filterValues.updatedFrom ? dayjs(filterValues.updatedFrom) : null, filterValues.updatedTo ? dayjs(filterValues.updatedTo) : null]}
                     onChange={(dates) => setFilterValues((prev) => ({ ...prev, updatedFrom: dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined, updatedTo: dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined }))}
                     style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} />
@@ -2221,20 +2260,48 @@ export default function PortListPage() {
           )}
           {!loadingHistory && (
             <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
-              <Input placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
-                onChange={e => setHistorySearch(e.target.value)} style={{ flex: 1, borderRadius: radiusPill, height: 40 }} />
+              <Input
+                placeholder="Tìm kiếm nội dung thay đổi..."
+                allowClear
+                value={historySearchInput}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setHistorySearchInput(val);
+                  if (!val) setHistorySearch('');
+                }}
+                onPressEnter={() => setHistorySearch(historySearchInput.trim())}
+                style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
+              />
               {historyMode === 'all' && <Select placeholder="Chọn cảng biển" allowClear showSearch value={historyEntityFilter || undefined}
                 onChange={v => setHistoryEntityFilter(v || '')}
                 filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
                 style={{ width: 200, borderRadius: radiusPill, height: 40 }}
                 options={Object.entries(historyEntityNames).map(([id, name]) => ({ value: id, label: name }))} />}
-              <DatePicker placeholder="Từ ngày" classNames={{ popup: { root: 'history-dt-popup' } }} value={historyDateFrom ? dayjs(historyDateFrom) : null}
-                onChange={d => setHistoryDateFrom(d ? d.format('YYYY-MM-DD HH:mm') : '')}
-                style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
-              <DatePicker placeholder="Đến ngày" classNames={{ popup: { root: 'history-dt-popup' } }} value={historyDateTo ? dayjs(historyDateTo) : null}
-                onChange={d => setHistoryDateTo(d ? d.format('YYYY-MM-DD HH:mm') : '')}
-                style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
-              <Button type="primary" icon={<SearchOutlined />} onClick={() => setHistoryReloadToken((t) => t + 1)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Tìm kiếm</Button>
+              <DatePicker.RangePicker
+                {...getRangePickerProps({
+                  value: (historyDateFrom && historyDateTo)
+                    ? [dayjs(historyDateFrom), dayjs(historyDateTo)]
+                    : (historyDateFrom ? [dayjs(historyDateFrom), null] : (historyDateTo ? [null, dayjs(historyDateTo)] : null)),
+                  onChange: (dates: any) => {
+                    if (!dates || dates.length === 0 || (!dates[0] && !dates[1])) {
+                      setHistoryDateFrom('');
+                      setHistoryDateTo('');
+                    } else {
+                      setHistoryDateFrom(dates[0] ? dates[0].startOf('day').format('YYYY-MM-DD HH:mm') : '');
+                      setHistoryDateTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DD HH:mm') : '');
+                    }
+                  },
+                  style: { width: 280, borderRadius: radiusPill, height: 40 },
+                })}
+              />
+              <Button
+                type="primary"
+                icon={<SearchOutlined />}
+                onClick={() => setHistorySearch(historySearchInput.trim())}
+                style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}
+              >
+                Tìm kiếm
+              </Button>
             </div>
           )}
         </div>

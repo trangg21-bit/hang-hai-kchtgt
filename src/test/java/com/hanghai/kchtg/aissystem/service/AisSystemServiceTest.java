@@ -158,7 +158,7 @@ class AisSystemServiceTest {
         assertEquals("AIS-000001", response.getCode());
         assertEquals("Thiết bị AIS Bờ Hải Phòng", response.getName());
         verify(repository).save(any(AisSystem.class));
-        verify(historyRepository).save(any());
+        verify(historyRepository, never()).save(any());
     }
 
     @Test
@@ -316,5 +316,36 @@ class AisSystemServiceTest {
 
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
+    }
+
+    /**
+     * Truy vấn so khớp với `immutable_unaccent(LOWER(...))` nên từ khóa gửi xuống
+     * CSDL phải được bỏ dấu. Nếu giữ nguyên dấu thì người dùng gõ tiếng Việt bình
+     * thường sẽ không bao giờ ra kết quả.
+     */
+    @Test
+    void testSearch_KeywordIsUnaccentedBeforeQuery() {
+        when(repository.search(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.search("Bình Định", ORG_UNIT_ID, null, null, null, null, null, null, PageRequest.of(0, 20));
+
+        org.mockito.ArgumentCaptor<String> keyword = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(repository).search(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                keyword.capture(), any(), any(), any(), any(), any());
+        assertEquals("%binh dinh%", keyword.getValue());
+    }
+
+    @Test
+    void testCountByStatus_KeywordIsUnaccentedBeforeQuery() {
+        when(repository.countByApprovalStatus(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(List.of());
+
+        service.countByStatus("Đà Nẵng", ORG_UNIT_ID, null, null, null, null);
+
+        org.mockito.ArgumentCaptor<String> keyword = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(repository).countByApprovalStatus(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(),
+                keyword.capture(), any(), any(), any(), any());
+        assertEquals("%da nang%", keyword.getValue());
     }
 }
