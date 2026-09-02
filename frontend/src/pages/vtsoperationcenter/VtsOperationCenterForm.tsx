@@ -1631,23 +1631,24 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                             key: 'actions',
                             width: 50,
                             align: 'center' as const,
-                            render: (_: any, r: any) => (
-                              <Button
-                                type="text"
-                                danger
-                                size="small"
-                                icon={<DeleteOutlined style={{ fontSize: 16 }} />}
-                                style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                onClick={() => {
-                                  if (!watchedGeometryType || watchedGeometryType === 'POINT') {
-                                    setCoordinateList([{ latitude: null, longitude: null }]);
-                                  } else {
-                                    setCoordinateList((p) => p.filter((_, idx) => idx !== r._idx));
-                                  }
-                                }}
-                                title={!watchedGeometryType || watchedGeometryType === 'POINT' ? 'Xóa giá trị tọa độ' : 'Xóa tọa độ'}
-                              />
-                            ),
+                            render: (_: any, r: any) => {
+                              const geom = (watchedGeometryType || form.getFieldValue('geometryType') || 'POINT').toUpperCase();
+                              const minCount = geom.includes('LINE') ? 2 : (geom.includes('POLYGON') ? 3 : 1);
+                              const canDelete = coordinateList.length > minCount;
+                              if (!canDelete) return null;
+
+                              return (
+                                <Button
+                                  type="text"
+                                  danger
+                                  size="small"
+                                  icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                                  style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                  onClick={() => setCoordinateList((p) => p.filter((_, idx) => idx !== r._idx))}
+                                  title="Xóa tọa độ"
+                                />
+                              );
+                            },
                           },
                         ]}
                       />

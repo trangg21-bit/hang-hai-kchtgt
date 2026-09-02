@@ -1454,25 +1454,20 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                               width: 50,
                               align: 'center' as const,
                               render: (_: any, r: any) => {
-                                const geom = form.getFieldValue('geometryType') || watchedGeometryType || 'POINT';
-                                const minCount = geom === 'LINE' ? 2 : (geom === 'POLYGON' ? 3 : 1);
+                                const geom = (watchedGeometryType || form.getFieldValue('geometryType') || 'POINT').toUpperCase();
+                                const minCount = geom.includes('LINE') ? 2 : (geom.includes('POLYGON') ? 3 : 1);
                                 const canDelete = coordinateList.length > minCount;
+                                if (!canDelete) return null;
+
                                 return (
                                   <Button
                                     type="text"
                                     danger
                                     size="small"
-                                    disabled={!canDelete}
                                     icon={<DeleteOutlined style={{ fontSize: 16 }} />}
                                     style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                    onClick={() => {
-                                      if (canDelete) {
-                                        setCoordinateList((p) => p.filter((_, idx) => idx !== r._idx));
-                                      } else {
-                                        toast.warning(`Kiểu ${geom === 'LINE' ? 'đường' : (geom === 'POLYGON' ? 'vùng' : 'điểm')} tối thiểu phải có ${minCount} điểm tọa độ`);
-                                      }
-                                    }}
-                                    title={canDelete ? "Xóa tọa độ" : `Tối thiểu ${minCount} điểm tọa độ`}
+                                    onClick={() => setCoordinateList((p) => p.filter((_, idx) => idx !== r._idx))}
+                                    title="Xóa tọa độ"
                                   />
                                 );
                               },
