@@ -65,6 +65,7 @@ Khi chưa chốt, các trường liên quan giữ nguyên trạng thái *chưa t
 | BR-298-03 | Gom nhóm các thay đổi trong cùng 1 giây của cùng 1 người; lọc bỏ trường rỗng và trường không đổi (`ov === nv`). |
 | BR-298-04 | Hiển thị **họ và tên** cán bộ, không phơi UUID ra giao diện. |
 | BR-298-05 | Tên trường trong diff phải là nhãn tiếng Việt của ma trận, không phải tên cột CSDL. |
+| BR-298-06 | Giá trị tham chiếu trong diff phải hiển thị nhãn nghiệp vụ: `provinceId` là tên Tỉnh/Thành phố, `vtsSystemId` là tên Hệ thống VTS; tuyệt đối không hiển thị ID. Badge Tình trạng dùng cùng màu với bảng danh sách (Dừng hoạt động = đỏ, Bảo trì = vàng, Đang xây dựng = xanh dương, Đang hoạt động = xanh lá). |
 
 ## Acceptance Criteria
 
