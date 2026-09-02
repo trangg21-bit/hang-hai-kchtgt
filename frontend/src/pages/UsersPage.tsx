@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useEffect, useMemo, memo, type ReactNode, type FC } from 'react';
 import { Typography, Modal, Form, Input, Select, Spin, Button, Row, Col, Drawer, Tree, Checkbox, Tabs } from 'antd';
 import {
-  PlusOutlined, EditOutlined, LockOutlined, UnlockOutlined, KeyOutlined,
-  ExclamationCircleOutlined, CheckOutlined, CloseOutlined, EyeOutlined, SearchOutlined,
+  PlusOutlined, LockOutlined, UnlockOutlined, KeyOutlined,
+  ExclamationCircleOutlined, CloseOutlined, SearchOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useUsers, useUser, useCreateUser, useUpdateUser, useDeleteUser, useToggleLockUser, useResetPassword, useForgotPassword, useChangeStatusUser } from '../hooks/useUsers';
@@ -21,7 +21,7 @@ import {
   spaceFormField, spaceMd, spaceSm, spaceXs, spaceXl, formFieldStyle, formRowGutter, inputStyle,
   selectStyle, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, drawerStyles, drawerFormScrollStyle,
   drawerTabBarStyle, primaryButtonStyle, outlineButtonStyle, detailRowStyle, detailLabelColStyle, detailValueStyle,
-  statusOperational, statusCritical, statusDraft, statusAttention, textAreaStyle,
+  statusOperational, statusCritical, statusDraft, statusAttention, textAreaStyle, icons,
 } from '../themetokenchk';
 import { colors } from '../themetokenchk';
 import * as themeTokenChk from '../themetokenchk';
@@ -366,7 +366,7 @@ export default function UsersPage() {
     }[] = [];
 
     if (hasPerm('user:read')) {
-      actions.push({ key: 'view', label: 'Xem chi tiết tài khoản', icon: <EyeOutlined />, onClick: () => setDetailUserId(record.id) });
+      actions.push({ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => setDetailUserId(record.id) });
     }
 
     if (hasPerm('user:manage')) {
@@ -375,10 +375,10 @@ export default function UsersPage() {
 
     const s = (record.status || '').toUpperCase();
     if (s === 'PENDING_APPROVAL' || s === 'PENDING_VERIFICATION') {
-      if (hasPerm('user:approve')) actions.push({ key: 'approve', label: 'Phê duyệt tài khoản', icon: <CheckOutlined />, onClick: () => handleApprove(record) });
-      if (hasPerm('user:approve')) actions.push({ key: 'reject', label: 'Từ chối tài khoản', icon: <CloseOutlined />, onClick: () => handleReject(record), danger: true });
+      if (hasPerm('user:approve')) actions.push({ key: 'approve', label: 'Phê duyệt tài khoản', icon: icons.approve, onClick: () => handleApprove(record) });
+      if (hasPerm('user:approve')) actions.push({ key: 'reject', label: 'Từ chối tài khoản', icon: icons.reject, onClick: () => handleReject(record), danger: true });
     } else {
-      if (hasPerm('user:update') || hasPerm('user:manage')) actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
+      if (hasPerm('user:update') || hasPerm('user:manage')) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => openEditModal(record) });
       if (hasPerm('user:lock') || hasPerm('user:manage')) actions.push({ key: 'lock', label: record.status === 'locked' ? 'Mở khóa' : 'Khóa', icon: record.status === 'locked' ? <UnlockOutlined /> : <LockOutlined />, onClick: () => handleToggleLock(record) });
       // Intentionally hidden per TRI-1786688745847-4d03: reset-password, forgot-password, delete row actions.
       // Handlers/modals/hooks (handleResetPassword, handleForgotPassword, handleDelete) remain intact.
