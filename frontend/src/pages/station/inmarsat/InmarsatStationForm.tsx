@@ -16,7 +16,6 @@ import {
 import {
   CloseOutlined,
   EnvironmentOutlined,
-  DownOutlined,
   PlusOutlined,
   DeleteOutlined,
 } from '@ant-design/icons';
@@ -43,7 +42,6 @@ import { FormOrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from
 import DetailTable from '../../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../../components/shared/InfrastructureAttachmentTab';
 import ServiceMultiSelect from '../../../components/shared/ServiceMultiSelect';
-import ApprovalStatusBadge from '../../../components/shared/ApprovalStatusBadge';
 import GisLocationSelector from '../../../components/gis/GisLocationSelector';
 import { symbolService } from '../../../services/symbolService';
 import dayjs from 'dayjs';
@@ -255,7 +253,6 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
   const [attachments, setAttachments] = useState<any[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [pendingDeletedAttachments, setPendingDeletedAttachments] = useState<{ id: string; fileName: string }[]>([]);
-  const [approvalSectionOpen, setApprovalSectionOpen] = useState(false);
   const [operationPlanList] = useState<any[]>(MOCK_OPERATION_PLANS);
   const [maintenancePlanList] = useState<any[]>(MOCK_MAINTENANCE_PLANS);
   const [incidentList] = useState<any[]>(MOCK_INCIDENTS);
