@@ -1,24 +1,36 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
-import type { ReactNode } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import dayjs from 'dayjs';
-import { Typography, Form, Input, Select, Spin, Button, Row, Col, Drawer, Dropdown } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined, EyeOutlined, MoreOutlined, DownOutlined, RightOutlined } from '@ant-design/icons';
+import { Typography, Form, Input, Select, Spin, Button, Row, Col, Drawer, Dropdown, Tabs } from 'antd';
+import {
+  PlusOutlined,
+  ExclamationCircleOutlined,
+  MoreOutlined,
+  DownOutlined,
+  RightOutlined,
+  CloseOutlined,
+} from '@ant-design/icons';
 import { organizationService, RANK_OPTIONS, RANK_LABELS, fromApiOperationalStatus } from '../../services/organizationService';
 import { userService } from '../../services/userService';
-
 import type { Organization, OrgUnitRankName } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
 import { ScreenHeader } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
-import EmptyState from '../../components/EmptyState';
+import SidebarFilterField from '../../components/list-view/SidebarFilterField';
 import toast, { modal } from '../../components/ToastNotification';
-import { statusOperational, statusCritical, actionPrimary, textPrimary, textSecondary, textTertiary, surfaceCard, borderDefault, fontSizeSm, fontSizeMd, fontWeightMedium, fontWeightBold, radiusMd, radiusPill, spaceFormField, spaceMd, spaceLg, spaceSm, spaceXs, drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, detailLabelColStyle, detailValueStyle } from '../../tokens';
-import { colors } from '../../theme';
+import {
+  actionPrimary, textPrimary, textSecondary, textTertiary,
+  fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd, fontSizeLg,
+  radiusSm, radiusMd, radiusPill, spaceFormField, spaceMd, spaceSm, spaceXs, spaceLg,
+  statusOperational, statusCritical, surfaceCard, borderDefault,
+  drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, drawerStyles, drawerFormScrollStyle, drawerTabBarStyle,
+  primaryButtonStyle, outlineButtonStyle, inputStyle, selectStyle, textAreaStyle, icons,
+} from '../../themetokenchk';
+import { colors } from '../../themetokenchk';
+import * as themeTokenChk from '../../themetokenchk';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import { normalizeSearchText } from '../../components/org-unit';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
 import { formLabelProps as labelProps } from '../../components/shared/formLabel';
-
-const { confirm } = modal;
 
 const STATUS_COLORS: Record<string, string> = { active: statusOperational, inactive: statusCritical };
 const STATUS_LABELS: Record<string, string> = { active: 'Sử dụng', inactive: 'Không sử dụng' };
@@ -148,6 +160,7 @@ export default function UnitList() {
     form.setFieldsValue({ operationalStatus: 'active' });
     setModalOpen(true);
   }, [form]);
+
   const openEditModal = useCallback((org: Organization) => {
     setIsViewing(false);
     setEditingOrg(org);
@@ -157,7 +170,8 @@ export default function UnitList() {
       parentId: org.parentId,
       provinceId: org.provinceId != null ? String(org.provinceId) : undefined,
       detailAddress: org.detailAddress ?? '',
-      phone: org.phone, description: org.description,
+      phone: org.phone,
+      description: org.description,
       operationalStatus: opStatus,
       rank: org.rank,
     });
@@ -173,7 +187,8 @@ export default function UnitList() {
       parentId: org.parentId,
       provinceId: org.provinceId != null ? String(org.provinceId) : undefined,
       detailAddress: org.detailAddress ?? '',
-      phone: org.phone, description: org.description,
+      phone: org.phone,
+      description: org.description,
       operationalStatus: opStatus,
       rank: org.rank,
       updatedAt: fmtDate(org.updatedAt),
@@ -181,9 +196,11 @@ export default function UnitList() {
     });
     setModalOpen(true);
   }, [form, userMap]);
+
   const handleSubmit = useCallback(async () => {
     try {
-      const values = await form.validateFields(); setSubmitting(true);
+      const values = await form.validateFields();
+      setSubmitting(true);
       const parentId = values.parentId || undefined;
       if (editingOrg) {
         await organizationService.update(editingOrg.id, {
@@ -191,28 +208,33 @@ export default function UnitList() {
           parentId,
           provinceId: values.provinceId != null ? Number(values.provinceId) : undefined,
           detailAddress: values.detailAddress,
-          phone: values.phone, description: values.description,
+          phone: values.phone,
+          description: values.description,
           operationalStatus: values.operationalStatus,
           rank: values.rank,
         });
-        toast.success('Đã cập nhật');
+        toast.success('Đã cập nhật đơn vị thành công');
       } else {
         await organizationService.create({
           name: values.name,
           parentId,
           provinceId: values.provinceId != null ? Number(values.provinceId) : undefined,
           detailAddress: values.detailAddress,
-          phone: values.phone, description: values.description,
+          phone: values.phone,
+          description: values.description,
           operationalStatus: values.operationalStatus,
           rank: values.rank,
         });
-        toast.success('Đã tạo mới');
+        toast.success('Đã tạo mới đơn vị thành công');
       }
-      setModalOpen(false); fetchOrgs();
+      setModalOpen(false);
+      fetchOrgs();
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Thao tác thất bại';
       toast.error(msg);
-    } finally { setSubmitting(false); }
+    } finally {
+      setSubmitting(false);
+    }
   }, [editingOrg, form, fetchOrgs]);
 
   const parentOptions = useMemo(() => {
@@ -236,35 +258,36 @@ export default function UnitList() {
   }, [allOrgs, editingOrg]);
 
   const handleDelete = useCallback((org: Organization) => {
-    confirm({
-      title: 'Xác nhận xóa',
+    modal.confirm({
+      title: 'Xác nhận xóa đơn vị',
       icon: <ExclamationCircleOutlined />,
-      content: `Xóa "${org.name}"?`,
+      content: `Bạn có chắc chắn muốn xóa đơn vị "${org.name}"? Hành động này không thể hoàn tác.`,
       okText: 'Xóa',
       okType: 'danger',
       cancelText: 'Hủy',
       onOk: async () => {
         try {
           await organizationService.delete(org.id);
-          toast.success('Đã xóa');
+          toast.success('Xóa đơn vị thành công');
           fetchOrgs();
         } catch (err: any) {
-          const msg = err?.response?.data?.message || err?.message || 'Xóa thất bại';
+          const msg = err?.response?.data?.message || err?.message || 'Xóa đơn vị thất bại';
           toast.error(msg);
         }
       }
     });
   }, [fetchOrgs]);
+
   const getActions = (record: Organization) => {
     const items: any[] = [];
     if (hasPerm('orgunit:read')) {
-      items.push({ key: 'view', label: 'Xem', icon: <EyeOutlined />, onClick: () => openViewModal(record) });
+      items.push({ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openViewModal(record) });
     }
-    if (hasPerm('orgunit:update') || hasPerm('orgunit:edit')) {
-      items.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
+    if (hasPerm('orgunit:update') || hasPerm('orgunit:edit') || hasPerm('orgunit:manage')) {
+      items.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => openEditModal(record) });
     }
-    if (hasPerm('orgunit:delete')) {
-      items.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
+    if (hasPerm('orgunit:delete') || hasPerm('orgunit:manage')) {
+      items.push({ key: 'delete', label: 'Xóa bỏ', icon: icons.delete, onClick: () => handleDelete(record), danger: true });
     }
     return items;
   };
@@ -302,6 +325,7 @@ export default function UnitList() {
   const handleFilterSearch = useCallback(() => {
     setSearchName(nameInput.trim());
   }, [nameInput]);
+
   const handleFilterReset = useCallback(() => {
     setNameInput('');
     setSearchName('');
@@ -325,26 +349,29 @@ export default function UnitList() {
       .map(org => {
         const parts: string[] = [org.name];
         let cur = org;
-        while (cur.parentId) { const p = allOrgs.find(o => o.id === cur.parentId); if (p) { parts.unshift(p.name); cur = p; } else break; }
+        while (cur.parentId) {
+          const p = allOrgs.find(o => o.id === cur.parentId);
+          if (p) {
+            parts.unshift(p.name);
+            cur = p;
+          } else break;
+        }
         return { ...org, _path: parts.join(' › ') };
       });
   }, [allOrgs, filterStatus, searchName, compareOrgs, getStatusKey]);
 
   const filterContent = (
     <>
-      <div style={{ marginBottom: 12, marginTop: 4 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>
-          Tên đơn vị
-        </div>
+      <SidebarFilterField label="Tên đơn vị" style={{ marginTop: spaceMd }}>
         <Input
           placeholder="Tìm theo tên đơn vị..."
           value={nameInput}
           onChange={(e) => setNameInput(e.target.value)}
           onPressEnter={handleFilterSearch}
           allowClear
-          style={{ borderRadius: radiusPill, height: 40 }}
+          style={{ ...inputStyle, borderRadius: radiusPill, height: 38 }}
         />
-      </div>
+      </SidebarFilterField>
     </>
   );
 
@@ -354,23 +381,10 @@ export default function UnitList() {
   }, [allOrgs, getStatusKey]);
 
   const statusTabs = [
-    { key: 'all', label: 'Tất cả', count: countByStatus(''), color: colors.sidebarBg },
-    { key: 'active', label: 'Sử dụng', count: countByStatus('active'), color: statusOperational },
-    { key: 'inactive', label: 'Không sử dụng', count: countByStatus('inactive'), color: statusCritical },
+    { key: 'all', label: 'Tất cả', count: countByStatus(''), color: colors.primary, active: !filterStatus },
+    { key: 'active', label: 'Sử dụng', count: countByStatus('active'), color: statusOperational, active: filterStatus === 'active' },
+    { key: 'inactive', label: 'Không sử dụng', count: countByStatus('inactive'), color: statusCritical, active: filterStatus === 'inactive' },
   ];
-
-  const unitDetailItems: [string, ReactNode][] = editingOrg ? [
-    ['Tên đơn vị', editingOrg.name || '—'],
-    ['Cấp đơn vị', RANK_LABELS[editingOrg.rank as OrgUnitRankName] ?? '—'],
-    ['Đơn vị cha', editingOrg.parentOrgName || '—'],
-    ['Tỉnh/Thành phố', editingOrg.provinceId ? (getProvinceNameById(editingOrg.provinceId) || String(editingOrg.provinceId)) : '—'],
-    ['Địa điểm chi tiết', editingOrg.detailAddress || '—'],
-    ['Số điện thoại', editingOrg.phone || '—'],
-    ['Trạng thái', editingOrg.operationalStatus === 'inactive' ? 'Không sử dụng' : 'Sử dụng'],
-    ['Ghi chú', editingOrg.description || '—'],
-    ['Cán bộ cập nhật', fmtUser(editingOrg.updatedBy, userMap)],
-    ['Ngày cập nhật', fmtDate(editingOrg.updatedAt)],
-  ] : [];
 
   const treeRows = searchResults
     ? searchResults.map((org) => ({ org, depth: 0, hasChildren: false }))
@@ -394,10 +408,10 @@ export default function UnitList() {
 
   const headerActions = useMemo(() => {
     const actions: any[] = [];
-    if (hasPerm('orgunit:create')) {
+    if (hasPerm('orgunit:create') || hasPerm('orgunit:manage')) {
       actions.push({
         key: 'create',
-        label: 'Thêm đơn vị',
+        label: 'Thêm mới',
         variant: 'primary' as const,
         icon: <PlusOutlined />,
         onClick: openCreateModal,
@@ -407,186 +421,278 @@ export default function UnitList() {
   }, [hasPerm, openCreateModal]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <ScreenHeader
-        breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Quản lý đơn vị' }]}
-        actions={headerActions}
-      />
-      <FilterTableLayout
-        hideFilterToggle
-        onFilterApply={handleFilterSearch}
-        onFilterReset={handleFilterReset}
-        loading={isLoading}
-        error={isError}
-        onRetry={fetchOrgs}
-        filterContent={filterContent}
-        statusTabs={statusTabs}
-        onStatusTabChange={(key) => {
-          const status = key === 'all' ? '' : key;
-          setFilterStatus(status);
-        }}
-      >
-        {!isLoading && !isError && allOrgs.length === 0 && <EmptyState description="Chưa có đơn vị nào" />}
-        {!isLoading && !isError && allOrgs.length > 0 && treeRows.length === 0 && (
-          <EmptyState description="Không tìm thấy đơn vị nào phù hợp" />
-        )}
-        {!isLoading && !isError && treeRows.length > 0 && (
-          <div style={{ width: '100%', height: '100%', flex: 1, minHeight: 0, overflowY: 'auto', border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: 0, background: surfaceCard }}>
-            <div style={{ width: '100%' }}>
-              <div style={{ display: 'flex', alignItems: 'center', minHeight: 40, borderBottom: `1px solid ${borderDefault}`, padding: `0 ${spaceMd}px`, position: 'sticky', top: 0, background: surfaceCard, zIndex: 2 }}>
-                {renderSortHeader('Tên đơn vị', 'name', { flex: 1, minWidth: 0, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd })}
-                {renderSortHeader('Cấp đơn vị', 'rank', { width: 220, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd })}
-                {renderSortHeader('Ngày cập nhật', 'updatedAt', { width: 180, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd })}
-                {renderSortHeader('Cán bộ cập nhật', 'updatedBy', { width: 175, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd })}
-                {renderSortHeader('Trạng thái', 'status', { width: 140, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, justifyContent: 'center' })}
-                <div style={{ width: 40 }} aria-hidden="true" />
+    <ThemeTokenProvider tokens={themeTokenChk}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+        <ScreenHeader
+          breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Quản lý đơn vị' }]}
+          actions={headerActions}
+        />
+        <FilterTableLayout
+          hideFilterToggle
+          onFilterApply={handleFilterSearch}
+          onFilterReset={handleFilterReset}
+          loading={isLoading}
+          error={isError}
+          onRetry={fetchOrgs}
+          filterContent={filterContent}
+          statusTabs={statusTabs}
+          onStatusTabChange={(key) => {
+            const status = key === 'all' ? '' : key;
+            setFilterStatus(status);
+          }}
+        >
+          {!isLoading && !isError && treeRows.length === 0 && (
+            <div style={{ width: '100%', height: '100%', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ textAlign: 'center', marginTop: 10, marginBottom: 10, fontSize: fontSizeMd, color: '#7E6B3F' }}>
+                Không có kết quả tìm kiếm
               </div>
-              {treeRows.map(({ org, depth, hasChildren }) => {
-                const statusKey = getStatusKey(org);
-                const color = STATUS_COLORS[statusKey] || textTertiary;
-                return (
-                  <div key={org.id} style={{ display: 'flex', alignItems: 'center', minHeight: 44, padding: `0 ${spaceMd}px`, borderBottom: `1px solid ${borderDefault}` }}>
-                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', paddingLeft: depth * spaceLg, paddingRight: spaceSm }}>
-                      <Button
-                        type="text"
-                        size="small"
-                        disabled={!hasChildren}
-                        onClick={() => { if (hasChildren) toggleExpand(org.id); }}
-                        aria-label={hasChildren ? 'Mở hoặc thu gọn đơn vị con' : undefined}
-                        icon={hasChildren
-                          ? (expandedKeys.has(org.id) ? <DownOutlined /> : <RightOutlined />)
-                          : undefined}
-                        style={{ width: 24, minWidth: 24, height: 24, padding: 0, color: hasChildren ? actionPrimary : 'transparent', fontSize: fontSizeSm }}
-                      >
-                      </Button>
-                      <Typography.Text style={{ flex: 1, minWidth: 0, marginLeft: spaceXs, whiteSpace: 'normal', wordBreak: 'break-word', color: textPrimary, fontWeight: depth === 0 ? fontWeightBold : fontWeightMedium }}>
-                        {org.name}
-                      </Typography.Text>
-                    </div>
-                    <div style={{ width: 220, color: textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{RANK_LABELS[org.rank as OrgUnitRankName] ?? '—'}</div>
-                    <div style={{ width: 180, color: textTertiary }}>{fmtDate(org.updatedAt)}</div>
-                    <div style={{ width: 175, color: textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtUser(org.updatedBy, userMap)}</div>
-                    <div style={{ width: 140, textAlign: 'center' }}>
-                      <span style={{ display: 'inline-flex', padding: `${spaceXs}px ${spaceSm}px`, borderRadius: radiusPill, color, background: `${color}15`, fontWeight: fontWeightMedium, whiteSpace: 'nowrap' }}>
-                        {STATUS_LABELS[statusKey]}
-                      </span>
-                    </div>
-                    <div style={{ width: 40, textAlign: 'center' }}>
-                      <Dropdown menu={{ items: getActions(org) }} trigger={['click']}>
-                        <Button type="text" aria-label="Thao tác" icon={<MoreOutlined />} style={{ width: 28, minWidth: 28, height: 28, padding: 0, color: textSecondary, border: `1px solid ${borderDefault}`, borderRadius: radiusPill }} />
-                      </Dropdown>
-                    </div>
-                  </div>
-                );
-              })}
             </div>
-          </div>
-        )}
-      </FilterTableLayout>
-      <Drawer
-        {...drawerProps}
-        title={<span style={drawerTitleStyle}>{isViewing ? 'Chi tiết đơn vị' : (editingOrg ? 'Sửa thông tin đơn vị' : 'Thêm mới đơn vị')}</span>}
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        extra={<Button type="text" onClick={() => setModalOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
-        footer={
-          isViewing ? null : (
-            <div style={drawerFooterStyle}>
-              <Button onClick={() => setModalOpen(false)} style={outlineButtonStyle}>Hủy</Button>
-              <Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>{editingOrg ? 'Cập nhật' : 'Tạo mới'}</Button>
-            </div>
-          )
-        }
-      >
-        <Spin spinning={submitting}>
-          {isViewing && editingOrg ? (
-            <div style={{ paddingTop: spaceMd }}>
-              <div style={{ borderTop: `1px solid ${borderDefault}` }}>
-                {Array.from({ length: Math.ceil(unitDetailItems.length / 2) }, (_, rowIndex) => {
-                  const left = unitDetailItems[rowIndex * 2];
-                  const right = unitDetailItems[rowIndex * 2 + 1];
+          )}
+          {!isLoading && !isError && treeRows.length > 0 && (
+            <div style={{ width: '100%', height: '100%', flex: 1, minHeight: 0, overflowY: 'auto', border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: 0, background: surfaceCard }}>
+              <div style={{ width: '100%' }}>
+                <div style={{ display: 'flex', alignItems: 'center', minHeight: 40, borderBottom: `1px solid ${borderDefault}`, padding: `0 ${spaceMd}px`, position: 'sticky', top: 0, background: '#FAFAFA', zIndex: 2 }}>
+                  {renderSortHeader('TÊN ĐƠN VỊ', 'name', { flex: 1, minWidth: 0, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd })}
+                  {renderSortHeader('CẤP ĐƠN VỊ', 'rank', { width: 220, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd })}
+                  {renderSortHeader('NGÀY CẬP NHẬT', 'updatedAt', { width: 180, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd })}
+                  {renderSortHeader('CÁN BỘ CẬP NHẬT', 'updatedBy', { width: 175, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd })}
+                  {renderSortHeader('TRẠNG THÁI', 'status', { width: 140, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, justifyContent: 'center' })}
+                  <div style={{ width: 60, textAlign: 'center', color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>THAO TÁC</div>
+                </div>
+                {treeRows.map(({ org, depth, hasChildren }) => {
+                  const statusKey = getStatusKey(org);
+                  const color = STATUS_COLORS[statusKey] || textTertiary;
                   return (
-                    <div key={`${left?.[0] || 'detail'}-${rowIndex}`} style={{ display: 'grid', gridTemplateColumns: '180px minmax(0, 1fr) 180px minmax(0, 1fr)', borderBottom: `1px solid ${borderDefault}` }}>
-                      {[left, right].map((item, itemIndex) => item ? (
-                        <span key={item[0]} style={{ display: 'contents' }}>
-                          <span style={{ ...detailLabelColStyle, width: 'auto', padding: `${spaceSm}px ${spaceFormField}px`, whiteSpace: 'normal' }}>{item[0]}:</span>
-                          <span style={{ ...detailValueStyle, minWidth: 0, padding: `${spaceSm}px ${spaceFormField}px`, color: item[1] === '—' ? textSecondary : textPrimary, wordBreak: 'break-word' }}>{item[1]}</span>
+                    <div key={org.id} style={{ display: 'flex', alignItems: 'center', minHeight: 44, padding: `0 ${spaceMd}px`, borderBottom: `1px solid ${borderDefault}` }}>
+                      <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', paddingLeft: depth * spaceLg, paddingRight: spaceSm }}>
+                        <Button
+                          type="text"
+                          size="small"
+                          disabled={!hasChildren}
+                          onClick={() => { if (hasChildren) toggleExpand(org.id); }}
+                          aria-label={hasChildren ? 'Mở hoặc thu gọn đơn vị con' : undefined}
+                          icon={hasChildren
+                            ? (expandedKeys.has(org.id) ? <DownOutlined /> : <RightOutlined />)
+                            : undefined}
+                          style={{ width: 24, minWidth: 24, height: 24, padding: 0, color: hasChildren ? actionPrimary : 'transparent', fontSize: fontSizeSm }}
+                        />
+                        <Typography.Text style={{ flex: 1, minWidth: 0, marginLeft: spaceXs, whiteSpace: 'normal', wordBreak: 'break-word', color: textPrimary, fontWeight: depth === 0 ? fontWeightBold : fontWeightMedium }}>
+                          {org.name}
+                        </Typography.Text>
+                      </div>
+                      <div style={{ width: 220, color: textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{RANK_LABELS[org.rank as OrgUnitRankName] ?? '—'}</div>
+                      <div style={{ width: 180, color: textTertiary }}>{fmtDate(org.updatedAt)}</div>
+                      <div style={{ width: 175, color: textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtUser(org.updatedBy, userMap)}</div>
+                      <div style={{ width: 140, textAlign: 'center' }}>
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '2px 10px',
+                            borderRadius: radiusPill,
+                            fontSize: fontSizeSm,
+                            fontWeight: fontWeightMedium,
+                            backgroundColor: `${color}15`,
+                            border: `1px solid ${color}40`,
+                            color,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {STATUS_LABELS[statusKey]}
                         </span>
-                      ) : (
-                        <span key={`empty-${itemIndex}`} style={{ gridColumn: 'span 2' }} />
-                      ))}
+                      </div>
+                      <div style={{ width: 60, textAlign: 'center' }}>
+                        <Dropdown menu={{ items: getActions(org) }} trigger={['click']}>
+                          <Button
+                            type="text"
+                            aria-label="Thao tác"
+                            icon={<MoreOutlined style={{ fontSize: 16 }} />}
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: '50%',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: textSecondary,
+                            }}
+                          />
+                        </Dropdown>
+                      </div>
                     </div>
                   );
                 })}
               </div>
             </div>
-          ) : (
-            <Form form={form} layout="vertical" style={{ marginTop: 16 }} labelCol={{ style: { padding: 0, marginBottom: 4 } }}>
-            <Row gutter={spaceMd}>
-              <Col span={24}>
-                <Form.Item name="name" {...labelProps('Tên đơn vị')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập tên đơn vị' }]}>
-                  <Input placeholder="Nhập tên đơn vị" style={{ borderRadius: radiusPill, height: 40 }} />
-                </Form.Item>
-              </Col>
-            </Row>
-            <Row gutter={spaceMd}>
-              <Col span={12}>
-                <Form.Item name="parentId" {...labelProps('Đơn vị cha')} style={{ marginBottom: spaceFormField }}>
-                  <Select
-                    placeholder="Chọn đơn vị cha (Để trống = Đơn vị cấp cao nhất)"
-                    allowClear
-                    showSearch
-                    optionFilterProp="label"
-                    filterOption={(input, option) => normalizeSearchText(String(option?.label ?? '')).includes(normalizeSearchText(input))}
-                    style={{ borderRadius: radiusPill, height: 40 }}
-                    options={parentOptions}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item name="rank" {...labelProps('Cấp đơn vị')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn cấp đơn vị' }]}>
-                  <Select placeholder="Chọn cấp đơn vị" style={{ borderRadius: radiusPill, height: 40 }} options={RANK_OPTIONS} />
-                </Form.Item>
-              </Col>
-            </Row>
-            <Row gutter={spaceMd}>
-              <Col span={12}>
-                <Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành phố)')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn địa điểm (Tỉnh/Thành phố)' }]}>
-                  <Select
-                    showSearch
-                    placeholder="Chọn địa điểm"
-                    optionFilterProp="label"
-                    filterOption={(input, option) => normalizeSearchText(String(option?.label ?? '')).includes(normalizeSearchText(input))}
-                    options={VIETNAM_PROVINCE_OPTIONS}
-                    style={{ borderRadius: radiusPill, height: 40 }}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item name="detailAddress" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }}>
-                  <Input placeholder="Số nhà, đường, phường/xã..." style={{ borderRadius: radiusPill, height: 40 }} />
-                </Form.Item>
-              </Col>
-            </Row>
-            <Row gutter={spaceMd}>
-              <Col span={12}>
-                <Form.Item name="phone" {...labelProps('Số điện thoại')} style={{ marginBottom: spaceFormField }} rules={[{ pattern: /^0\d{9,10}$/, message: 'SĐT không hợp lệ' }]}>
-                  <Input placeholder="0901234567" style={{ borderRadius: radiusPill, height: 40 }} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item name="operationalStatus" {...labelProps('Trạng thái')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}>
-                  <Select style={{ borderRadius: radiusPill, height: 40 }} options={[{ value: 'active', label: 'Sử dụng' }, { value: 'inactive', label: 'Không sử dụng' }]} />
-                </Form.Item>
-              </Col>
-            </Row>
-            <Form.Item name="description" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }}>
-              <Input.TextArea rows={2} placeholder="Ghi chú thêm..." />
-            </Form.Item>
-            </Form>
           )}
-        </Spin>
-      </Drawer>
-    </div>
+        </FilterTableLayout>
+
+        <Drawer
+          size="50%"
+          placement="right"
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          closable={false}
+          styles={drawerStyles}
+          title={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={drawerTitleStyle}>
+                {isViewing ? `Xem chi tiết — ${editingOrg?.name || 'Đơn vị'}` : (editingOrg ? 'Chỉnh sửa đơn vị' : 'Thêm mới đơn vị')}
+              </span>
+              <Button
+                type="text"
+                onClick={() => setModalOpen(false)}
+                style={{
+                  ...drawerCloseBtnStyle,
+                  borderRadius: '50%',
+                  width: 32,
+                  height: 32,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <CloseOutlined style={{ fontSize: 14, color: textSecondary }} />
+              </Button>
+            </div>
+          }
+          footer={
+            isViewing ? null : (
+              <div style={drawerFooterStyle}>
+                <Button onClick={() => setModalOpen(false)} style={outlineButtonStyle}>Hủy</Button>
+                <Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>{editingOrg ? 'Cập nhật' : 'Tạo mới'}</Button>
+              </div>
+            )
+          }
+        >
+          <Spin spinning={submitting}>
+            {isViewing && editingOrg ? (
+              <Tabs
+                tabBarStyle={drawerTabBarStyle}
+                animated={false}
+                items={[
+                  {
+                    key: 'general',
+                    label: 'Thông tin chung',
+                    children: (
+                      <div style={drawerFormScrollStyle}>
+                        <div style={{ paddingTop: spaceMd }}>
+                          <div className="chk-detail-grid">
+                            <div className="chk-detail-row"><span className="chk-detail-label">Tên đơn vị</span><span className="chk-detail-value">{editingOrg.name || '—'}</span></div>
+                            <div className="chk-detail-row"><span className="chk-detail-label">Cấp đơn vị</span><span className="chk-detail-value">{RANK_LABELS[editingOrg.rank as OrgUnitRankName] ?? '—'}</span></div>
+                            <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị cha</span><span className="chk-detail-value">{editingOrg.parentOrgName || '—'}</span></div>
+                            <div className="chk-detail-row">
+                              <span className="chk-detail-label">Trạng thái</span>
+                              <span className="chk-detail-value">
+                                <span
+                                  style={{
+                                    display: 'inline-block',
+                                    padding: '2px 10px',
+                                    borderRadius: radiusPill,
+                                    fontSize: fontSizeSm,
+                                    fontWeight: fontWeightMedium,
+                                    backgroundColor: editingOrg.operationalStatus === 'inactive' ? `${statusCritical}15` : `${statusOperational}15`,
+                                    border: editingOrg.operationalStatus === 'inactive' ? `1px solid ${statusCritical}40` : `1px solid ${statusOperational}40`,
+                                    color: editingOrg.operationalStatus === 'inactive' ? statusCritical : statusOperational,
+                                  }}
+                                >
+                                  {editingOrg.operationalStatus === 'inactive' ? 'Không sử dụng' : 'Sử dụng'}
+                                </span>
+                              </span>
+                            </div>
+                            <div className="chk-detail-row"><span className="chk-detail-label">Địa điểm (Tỉnh/TP)</span><span className="chk-detail-value">{editingOrg.provinceId ? (getProvinceNameById(editingOrg.provinceId) || String(editingOrg.provinceId)) : '—'}</span></div>
+                            <div className="chk-detail-row"><span className="chk-detail-label">Số điện thoại</span><span className="chk-detail-value">{editingOrg.phone || '—'}</span></div>
+                            <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Địa điểm chi tiết</span><span className="chk-detail-value">{editingOrg.detailAddress || '—'}</span></div>
+                            <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Ghi chú</span><span className="chk-detail-value">{editingOrg.description || '—'}</span></div>
+                          </div>
+
+                          <div style={{ marginTop: 20, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ display: 'inline-block', width: 4, height: 16, borderRadius: 2, backgroundColor: actionPrimary }} />
+                            <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                              Thông tin hệ thống
+                            </span>
+                          </div>
+
+                          <div className="chk-detail-grid">
+                            <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ cập nhật</span><span className="chk-detail-value">{fmtUser(editingOrg.updatedBy, userMap)}</span></div>
+                            <div className="chk-detail-row"><span className="chk-detail-label">Ngày cập nhật</span><span className="chk-detail-value">{fmtDate(editingOrg.updatedAt)}</span></div>
+                          </div>
+                        </div>
+                      </div>
+                    ),
+                  },
+                ]}
+              />
+            ) : (
+              <div style={drawerFormScrollStyle}>
+                <Form form={form} layout="vertical" style={{ marginTop: 16 }} labelCol={{ style: { padding: 0, marginBottom: 4 } }}>
+                  <Row gutter={spaceMd}>
+                    <Col span={24}>
+                      <Form.Item name="name" {...labelProps('Tên đơn vị')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập tên đơn vị' }]}>
+                        <Input placeholder="Nhập tên đơn vị" style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  <Row gutter={spaceMd}>
+                    <Col span={12}>
+                      <Form.Item name="parentId" {...labelProps('Đơn vị cha')} style={{ marginBottom: spaceFormField }}>
+                        <Select
+                          placeholder="Chọn đơn vị cha (Để trống = Cấp cao nhất)"
+                          allowClear
+                          showSearch
+                          optionFilterProp="label"
+                          filterOption={(input, option) => normalizeSearchText(String(option?.label ?? '')).includes(normalizeSearchText(input))}
+                          style={{ ...selectStyle, borderRadius: radiusPill, height: 40, width: '100%' }}
+                          options={parentOptions}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item name="rank" {...labelProps('Cấp đơn vị')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn cấp đơn vị' }]}>
+                        <Select placeholder="Chọn cấp đơn vị" style={{ ...selectStyle, borderRadius: radiusPill, height: 40, width: '100%' }} options={RANK_OPTIONS} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  <Row gutter={spaceMd}>
+                    <Col span={12}>
+                      <Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành phố)')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn địa điểm (Tỉnh/Thành phố)' }]}>
+                        <Select
+                          showSearch
+                          placeholder="Chọn địa điểm"
+                          optionFilterProp="label"
+                          filterOption={(input, option) => normalizeSearchText(String(option?.label ?? '')).includes(normalizeSearchText(input))}
+                          options={VIETNAM_PROVINCE_OPTIONS}
+                          style={{ ...selectStyle, borderRadius: radiusPill, height: 40, width: '100%' }}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item name="detailAddress" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }}>
+                        <Input placeholder="Số nhà, đường, phường/xã..." style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  <Row gutter={spaceMd}>
+                    <Col span={12}>
+                      <Form.Item name="phone" {...labelProps('Số điện thoại')} style={{ marginBottom: spaceFormField }} rules={[{ pattern: /^0\d{9,10}$/, message: 'SĐT không hợp lệ' }]}>
+                        <Input placeholder="0901234567" style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item name="operationalStatus" {...labelProps('Trạng thái')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}>
+                        <Select style={{ ...selectStyle, borderRadius: radiusPill, height: 40, width: '100%' }} options={[{ value: 'active', label: 'Sử dụng' }, { value: 'inactive', label: 'Không sử dụng' }]} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  <Form.Item name="description" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }}>
+                    <Input.TextArea rows={3} placeholder="Ghi chú thêm..." maxLength={1000} showCount style={textAreaStyle} />
+                  </Form.Item>
+                </Form>
+              </div>
+            )}
+          </Spin>
+        </Drawer>
+      </div>
+    </ThemeTokenProvider>
   );
 }
+
