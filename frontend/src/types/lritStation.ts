@@ -90,6 +90,10 @@ export type UpdateLritStationRequest = CreateLritStationRequest;
 
 export interface LritStationListParams {
   keyword?: string;
+  /** Lọc riêng theo Tên đài (bộ lọc thường) */
+  name?: string;
+  /** Lọc riêng theo Mã đài (bộ lọc nâng cao) */
+  code?: string;
   orgUnitId?: string;
   operatingOrgId?: string;
   provinceId?: number;

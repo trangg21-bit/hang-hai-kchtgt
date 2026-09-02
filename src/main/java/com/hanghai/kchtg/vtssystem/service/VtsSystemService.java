@@ -85,6 +85,9 @@ public class VtsSystemService {
     private record DataScopeContext(boolean enabled, List<UUID> orgUnitIds) {
     }
 
+    /** Trần bản ghi cho endpoint /search (trả danh sách phẳng, không phân trang). */
+    private static final int MAX_SEARCH_RESULTS = 200;
+
     private final VtsSystemRepository repository;
     private final InfrastructureHistoryRepository historyRepository;
     private final InfrastructureApprovalService approvalService;
@@ -155,14 +158,23 @@ public class VtsSystemService {
         this.permissionCacheService = permissionCacheService;
     }
 
+    /**
+     * Sinh mã kế tiếp từ mã lớn nhất đang có thay vì đếm bản ghi rồi thử từng mã:
+     * cách cũ chạy `count()` + `existsByCode()` lặp lại, và sau vài lần xóa mềm thì
+     * số bản ghi không còn khớp số thứ tự nên vòng lặp phải quay nhiều vòng.
+     */
     public String generateCode() {
-        long count = repository.count();
-        String candidate;
-        int i = 1;
-        do {
-            candidate = String.format("VTS-%06d", count + i);
-            i++;
-        } while (repository.existsByCode(candidate));
+        String maxCode = repository.findMaxGeneratedCode();
+        long next = 1;
+        if (maxCode != null && maxCode.matches("VTS-\\d{6}")) {
+            next = Long.parseLong(maxCode.substring(4)) + 1;
+        }
+        String candidate = String.format("VTS-%06d", next);
+        // Vẫn kiểm tra một lần: dữ liệu cũ có thể chứa mã không đúng khuôn mẫu.
+        while (repository.existsByCode(candidate)) {
+            next++;
+            candidate = String.format("VTS-%06d", next);
+        }
         return candidate;
     }
 
@@ -405,6 +417,7 @@ public class VtsSystemService {
         return getById(id, false, false);
     }
 
+    @Transactional(readOnly = true)
     public VtsSystemResponse getById(UUID id, boolean includeZones, boolean includeAttachments) {
         VtsSystem entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Hệ thống VTS với ID: " + id));
@@ -425,6 +438,7 @@ public class VtsSystemService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
     public List<VtsZoneDto> getZones(UUID id) {
         ensureExists(id);
         List<VtsZoneDto> zones = zoneRepository.findByVtsSystemIdOrderByCreatedAtAsc(id).stream()
@@ -433,6 +447,7 @@ public class VtsSystemService {
         return zones;
     }
 
+    @Transactional(readOnly = true)
     public Page<VtsZoneDto> getZones(UUID id, Pageable pageable) {
         ensureExists(id);
         return zoneRepository.findByVtsSystemId(id, pageable).map(this::toZoneDto);
@@ -600,6 +615,7 @@ public class VtsSystemService {
         }
     }
 
+    @Transactional(readOnly = true)
     public List<VtsSystemAttachmentResponse> getAttachments(UUID id) {
         loadWithinScope(id);
         List<InfrastructureAttachment> attachments = attachmentRepository
@@ -620,6 +636,7 @@ public class VtsSystemService {
         }
     }
 
+    @Transactional(readOnly = true)
     public List<VtsSystemResponse> findByApprovalStatus(ApprovalStatus approvalStatus) {
         return repository.findByApprovalStatusAndIsDeletedFalse(approvalStatus).stream()
                 .map(this::toLightResponse)
@@ -672,7 +689,9 @@ public class VtsSystemService {
             Map.entry("operatingOrgId", "t.operatingOrgId"),
             Map.entry("portName", "p.portName"),
             Map.entry("portId", "t.portId"),
-            Map.entry("updatedByName", "t.updatedAt"),
+            // Sắp theo họ tên cán bộ (join User) chứ không theo thời điểm cập nhật:
+            // cột hiển thị là tên người, sắp theo ngày làm người dùng hiểu sai.
+            Map.entry("updatedByName", "u.fullName"),
             Map.entry("updatedBy", "t.updatedBy"),
             Map.entry("updatedDate", "t.updatedAt"),
             Map.entry("updatedAt", "t.updatedAt"),
@@ -757,6 +776,7 @@ public class VtsSystemService {
                 updatedFrom, updatedTo, year, page, size, includeCounts, sort);
     }
 
+    @Transactional(readOnly = true)
     public VtsSystemListResponse findAllWithSearchAndCounts(
             UUID orgUnitId, UUID portId, Integer provinceId, String keyword, String systemName, String code,
             ConditionStatus conditionStatus, ApprovalStatus approvalStatus,
@@ -817,7 +837,34 @@ public class VtsSystemService {
         }
         Map<UUID, String> userNameMap = resolveUserNames(userIds);
 
-        return rawPage.map(item -> toListItemResponse(item, userNameMap));
+        // Cột "Đơn vị vận hành khai thác" lấy tên từ LEFT JOIN trong truy vấn; dòng
+        // nào trống là do operating_org_id trỏ sang bảng khác. Gom một lượt thay vì
+        // findById từng dòng như trước (N+1 thật sự có xảy ra với dữ liệu hiện tại).
+        Set<UUID> missingOperatingOrgIds = new LinkedHashSet<>();
+        for (VtsSystemListProjection item : rawPage.getContent()) {
+            if (item.getOperatingOrgName() == null && item.getOperatingOrgId() != null) {
+                missingOperatingOrgIds.add(item.getOperatingOrgId());
+            }
+        }
+        Map<UUID, String> operatingOrgNameMap = resolveOperatingOrgNames(missingOperatingOrgIds);
+
+        return rawPage.map(item -> toListItemResponse(item, userNameMap, operatingOrgNameMap));
+    }
+
+    /** Nạp tên đơn vị vận hành theo lô; thiếu ở bảng riêng thì lùi về cache đơn vị. */
+    private Map<UUID, String> resolveOperatingOrgNames(Collection<UUID> operatingOrgIds) {
+        if (operatingOrgIds == null || operatingOrgIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<UUID, String> names = new java.util.HashMap<>();
+        if (operatingOrganizationRepository != null) {
+            operatingOrganizationRepository.findAllById(operatingOrgIds)
+                    .forEach(org -> names.put(org.getId(), org.getName()));
+        }
+        for (UUID id : operatingOrgIds) {
+            names.computeIfAbsent(id, orgUnitCacheService::getName);
+        }
+        return names;
     }
 
     public VtsSystemResponse update(UUID id, VtsSystemUpdateRequest request, UUID userId) {
@@ -1166,6 +1213,7 @@ public class VtsSystemService {
         return getHistory(id, page, pageSize, null, null, null);
     }
 
+    @Transactional(readOnly = true)
     public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize, String keyword,
             LocalDateTime fromDate, LocalDateTime toDate) {
         // Check the parent VTS first so a user cannot read history by guessing an ID
@@ -1271,7 +1319,7 @@ public class VtsSystemService {
                     .refId(vtsSystemId)
                     .refType(InfrastructureType.VTS_SYSTEM)
                     .approvalLevel(ApprovalLevel.LEVEL_2)
-                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
                     .approvedBy(effectiveUserId)
                     .approvedDate(LocalDateTime.now())
                     .reason("Tải lên tài liệu đính kèm: " + originalName)
@@ -1310,7 +1358,7 @@ public class VtsSystemService {
                     .refId(vtsSystemId)
                     .refType(InfrastructureType.VTS_SYSTEM)
                     .approvalLevel(ApprovalLevel.LEVEL_2)
-                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
                     .approvedBy(effectiveUserId)
                     .approvedDate(LocalDateTime.now())
                     .reason("Xóa tài liệu đính kèm: " + fileName)
@@ -1321,6 +1369,7 @@ public class VtsSystemService {
         }
     }
 
+    @Transactional(readOnly = true)
     public InfrastructureAttachment getAttachment(UUID vtsSystemId, UUID attachmentId) {
         loadWithinScope(vtsSystemId);
         return attachmentRepository.findByIdAndRefIdAndRefType(attachmentId, vtsSystemId, InfrastructureType.VTS_SYSTEM)
@@ -1335,7 +1384,9 @@ public class VtsSystemService {
     public List<VtsSystemResponse> search(UUID orgUnitId, String keyword, ConditionStatus conditionStatus,
             ApprovalStatus approvalStatus, Integer year) {
         String keywordLike = toKeywordLike(keyword);
-        Pageable pageable = PageRequest.of(0, 100);
+        // Endpoint /search trả về danh sách phẳng (không phân trang) nên phải có
+        // trần cứng, nếu không một từ khóa rỗng sẽ kéo cả bảng.
+        Pageable pageable = PageRequest.of(0, MAX_SEARCH_RESULTS);
         Page<VtsSystem> pageResult;
         DataScopeContext scope = resolveDataScopeForFilter(orgUnitId);
         if (scope.enabled() && scope.orgUnitIds().isEmpty()) {
@@ -1512,10 +1563,11 @@ public class VtsSystemService {
     }
 
     private VtsSystemListItemResponse toListItemResponse(VtsSystemListProjection item) {
-        return toListItemResponse(item, Collections.emptyMap());
+        return toListItemResponse(item, Collections.emptyMap(), Collections.emptyMap());
     }
 
-    private VtsSystemListItemResponse toListItemResponse(VtsSystemListProjection item, Map<UUID, String> userNameMap) {
+    private VtsSystemListItemResponse toListItemResponse(VtsSystemListProjection item, Map<UUID, String> userNameMap,
+            Map<UUID, String> operatingOrgNameMap) {
         UUID updatedBy = item.getUpdatedBy();
         String updatedByName = updatedBy != null ? userNameMap.get(updatedBy) : null;
         UUID createdBy = item.getCreatedBy();
@@ -1524,7 +1576,7 @@ public class VtsSystemService {
 
         String operatingOrgName = item.getOperatingOrgName();
         if (operatingOrgName == null && item.getOperatingOrgId() != null) {
-            operatingOrgName = resolveOperatingOrgName(item.getOperatingOrgId());
+            operatingOrgName = operatingOrgNameMap.get(item.getOperatingOrgId());
         }
 
         return VtsSystemListItemResponse.builder()
@@ -1901,9 +1953,16 @@ public class VtsSystemService {
             return new DataScopeContext(true, List.of());
         }
 
-        boolean nationwide = currentUser.getAllPermissions().contains("orgunit:scope_all")
-                || currentUser.getAllPermissions().contains("admin:all")
-                || currentUser.getAllPermissions().contains("*");
+        // Đọc qua cache quyền thay vì `getAllPermissions()`: hàm này chạy ở mọi
+        // request danh sách và `getAllPermissions()` duyệt lại toàn bộ nhóm/vai trò
+        // (kèm nguy cơ lazy-load) trong khi DataScopeAspect đã resolve đúng tập
+        // quyền đó ngay trước đó.
+        Set<String> permissions = permissionCacheService != null
+                ? permissionCacheService.getEffectivePermissions(currentUser)
+                : currentUser.getAllPermissions();
+        boolean nationwide = permissions.contains("orgunit:scope_all")
+                || permissions.contains("admin:all")
+                || permissions.contains("*");
         if (nationwide) {
             return new DataScopeContext(false, List.of());
         }

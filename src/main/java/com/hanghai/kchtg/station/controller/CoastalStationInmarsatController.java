@@ -224,8 +224,19 @@ public class CoastalStationInmarsatController {
     @GetMapping("/{id}/history")
     @Operation(summary = "Xem lịch sử thay đổi Đài Inmarsat (F-103)")
     @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
-    public ResponseEntity<List<CoastalStationInmarsatHistoryResponse>> getHistory(@PathVariable UUID id) {
-        List<CoastalStationInmarsatHistoryResponse> history = service.getHistory(id);
+    public ResponseEntity<List<CoastalStationInmarsatHistoryResponse>> getHistory(
+            @PathVariable UUID id,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "pageSize", required = false) Integer pageSize,
+            // Lọc nhật ký ở server để drawer phân trang được mà ô tìm kiếm vẫn quét
+            // toàn bộ nhật ký, không chỉ phần đã tải về.
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "fromDate", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+            @RequestParam(value = "toDate", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate) {
+        List<CoastalStationInmarsatHistoryResponse> history =
+                service.getHistory(id, page, pageSize, keyword, fromDate, toDate);
         return ResponseEntity.ok(history);
     }
 

@@ -186,8 +186,7 @@ export default function HanoiStationForm({
   const [mapModalOpen, setMapModalOpen] = useState(false);
   const [coordinateList, setCoordinateList] = useState<Array<{ latitude: number | null; longitude: number | null }>>([]);
   const [symbols, setSymbols] = useState<any[]>(DEFAULT_GIS_SYMBOLS);
-
-  const watchedGeometryType = Form.useWatch('geometryType', form);
+  const [geometryTypeState, setGeometryTypeState] = useState<string>('POINT');
 
   // Attachments
   const [attachments, setAttachments] = useState<any[]>([]);
@@ -252,6 +251,7 @@ export default function HanoiStationForm({
       setPendingFiles([]);
       setPendingDeletedAttachments([]);
       setTabKey('general');
+      setGeometryTypeState('POINT');
       return;
     }
 
@@ -273,6 +273,7 @@ export default function HanoiStationForm({
     } else {
       // Create mode - auto generate code
       form.resetFields();
+      setGeometryTypeState('POINT');
       form.setFieldsValue({
         code: 'Đang tạo mã...',
         orgUnitId: undefined,
@@ -310,6 +311,8 @@ export default function HanoiStationForm({
       serviceList = data.servicesProvided.split(/[,;]+/).map((s) => s.trim()).filter(Boolean);
     }
 
+    const geom = data.geometryType || 'POINT';
+    setGeometryTypeState(geom);
     form.setFieldsValue({
       orgUnitId: data.orgUnitId,
       operatingOrgId: data.operatingOrgId,
@@ -320,15 +323,12 @@ export default function HanoiStationForm({
       conditionStatus: data.conditionStatus || ConditionStatus.OPERATIONAL,
       services: serviceList,
       description: data.description,
-      geometryType: data.geometryType || 'POINT',
+      geometryType: geom,
       symbol: data.symbol || undefined,
       coordinateSystem: data.coordinateSystem || 'WGS 84 / VN-2000',
       displayRule: data.displayRule || 'Độ, phút, giây (DMS)',
     });
 
-
-
-    const geom = data.geometryType || 'POINT';
     let initialCoords: { latitude: number | null; longitude: number | null }[] = [];
     if (data.coordinates) {
       const coords = parseWktToCoordinates(data.coordinates);
@@ -360,11 +360,11 @@ export default function HanoiStationForm({
         return;
       }
 
-      const wkt = serializeCoordinatesToWkt(
-        coordinateList.map((p) => ({ latitude: p.latitude || 0, longitude: p.longitude || 0 })),
-        geomType
-      );
-      const firstPt = coordinateList[0];
+      // Chỉ dựng WKT từ các điểm ĐÃ nhập. Trước đây `|| 0` biến dòng tọa độ còn
+      // trống thành (0, 0) — điểm giữa Đại Tây Dương — nên hồ sơ chưa chọn vị trí
+      // vẫn bị lưu kèm một tọa độ rác.
+      const wkt = serializeCoordinatesToWkt(validCoords, geomType);
+      const firstPt = validCoords[0];
 
 
       const servicesArray = Array.isArray(values.services) ? values.services : [];
@@ -1017,6 +1017,7 @@ export default function HanoiStationForm({
                             style={{ ...selectStyle, height: 38 }}
                             onChange={(val) => {
                               form.setFieldValue('geometryType', val);
+                              setGeometryTypeState(val || 'POINT');
                               if (val) {
                                 form.setFieldValue('coordinateSystem', 'WGS 84 / VN-2000');
                                 form.setFieldValue('displayRule', 'Độ, phút, giây (DMS)');
@@ -1025,7 +1026,7 @@ export default function HanoiStationForm({
                                 form.setFieldValue('coordinateSystem', undefined);
                                 form.setFieldValue('displayRule', undefined);
                                 form.setFieldValue('symbol', undefined);
-                                setCoordinateList([]);
+                                setCoordinateList([{ latitude: null, longitude: null }]);
                               }
                             }}
                           />
@@ -1041,7 +1042,7 @@ export default function HanoiStationForm({
                           <Select
                             placeholder="Chọn biểu tượng bản đồ"
                             allowClear
-                            disabled={!watchedGeometryType}
+                            disabled={!geometryTypeState}
                             options={symbols.map((sym) => ({
                               value: sym.code || sym.id,
                               label: (
@@ -1119,7 +1120,7 @@ export default function HanoiStationForm({
                         >
                           Chọn vị trí trên bản đồ
                         </Button>
-                        {watchedGeometryType && watchedGeometryType !== 'POINT' && (
+                        {geometryTypeState !== 'POINT' && (
                           <Button
                             type="primary"
                             icon={<PlusOutlined />}
@@ -1135,7 +1136,7 @@ export default function HanoiStationForm({
 
                   <DetailTable
                     scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
-                    dataSource={((watchedGeometryType === 'POINT' || !watchedGeometryType) ? coordinateList.slice(0, 1) : coordinateList).map((c, i) => ({ ...c, _idx: i }))}
+                    dataSource={(geometryTypeState === 'POINT' ? coordinateList.slice(0, 1) : coordinateList).map((c, i) => ({ ...c, _idx: i }))}
                     emptyText="Chưa có tọa độ nào"
                     rowKey="_idx"
                     columns={[
@@ -1164,7 +1165,7 @@ export default function HanoiStationForm({
                         width: 50,
                         align: 'center' as const,
                         render: (_: any, r: any) => {
-                          const geom = (watchedGeometryType || form.getFieldValue('geometryType') || 'POINT').toUpperCase();
+                          const geom = (geometryTypeState || 'POINT').toUpperCase();
                           if (geom === 'POINT') return null;
                           const minCount = geom.includes('LINE') ? 2 : (geom.includes('POLYGON') ? 3 : 1);
                           const canDelete = coordinateList.length > minCount;
@@ -1210,7 +1211,7 @@ export default function HanoiStationForm({
   return (
     <Drawer
       rootClassName="vtssystemchk-theme-scope"
-      size="50%"
+      width="50%"
       placement="right"
       closable={false}
       open={open}
@@ -1329,14 +1330,13 @@ export default function HanoiStationForm({
             height={560}
             disabled={isDetailMode}
             value={{
-              geometryType: watchedGeometryType || 'POINT',
-              coordinates: serializeCoordinatesToWkt(
-                coordinateList.map((p) => ({ latitude: p.latitude || 0, longitude: p.longitude || 0 })),
-                watchedGeometryType || 'POINT'
-              ),
+              geometryType: geometryTypeState || 'POINT',
+              // Không ép null thành 0: dòng tọa độ trống mà quy thành (0, 0) sẽ làm
+              // bản đồ cắm sẵn một điểm ở vịnh Guinea dù người dùng chưa chọn gì.
+              coordinates: serializeCoordinatesToWkt(coordinateList, geometryTypeState || 'POINT'),
               symbolId: form.getFieldValue('symbol'),
             }}
-            defaultGeometryType={(watchedGeometryType as any) || 'POINT'}
+            defaultGeometryType={(geometryTypeState as any) || 'POINT'}
             onChange={(val) => {
               if (isDetailMode) return;
               if (val.coordinates) {
@@ -1345,6 +1345,7 @@ export default function HanoiStationForm({
               }
               if (val.geometryType) {
                 form.setFieldValue('geometryType', val.geometryType);
+                setGeometryTypeState(val.geometryType);
               }
             }}
           />

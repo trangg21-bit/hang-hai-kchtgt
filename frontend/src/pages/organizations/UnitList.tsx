@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import dayjs from 'dayjs';
-import { Typography, Form, Input, Select, Spin, Button, Row, Col, Drawer, Dropdown, Tabs } from 'antd';
+import { Form, Input, Select, Spin, Button, Row, Col, Drawer, Dropdown, Tabs } from 'antd';
 import {
   PlusOutlined,
   ExclamationCircleOutlined,
@@ -8,6 +8,7 @@ import {
   DownOutlined,
   RightOutlined,
   CloseOutlined,
+  UnorderedListOutlined,
 } from '@ant-design/icons';
 import { organizationService, RANK_OPTIONS, RANK_LABELS, fromApiOperationalStatus } from '../../services/organizationService';
 import { userService } from '../../services/userService';
@@ -34,13 +35,13 @@ import { formLabelProps as labelProps } from '../../components/shared/formLabel'
 
 const STATUS_COLORS: Record<string, string> = { active: statusOperational, inactive: statusCritical };
 const STATUS_LABELS: Record<string, string> = { active: 'Sử dụng', inactive: 'Không sử dụng' };
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function fmtUser(s?: string, userMap?: Map<string, string>) {
-  if (!s) return '—';
+function fmtUser(s?: string, userMap?: Map<string, string>, name?: string) {
+  if (name && name !== '—') return name;
+  if (!s || s === '—') return '—';
   const resolved = userMap?.get(s);
   if (resolved) return resolved;
-  return UUID_RE.test(s) ? 'Hệ thống' : s;
+  return '—';
 }
 
 function fmtDate(iso?: string) {
@@ -52,9 +53,6 @@ function fmtDate(iso?: string) {
     return iso;
   }
 }
-
-type SortField = 'name' | 'rank' | 'updatedAt' | 'updatedBy' | 'status';
-type SortOrder = 'ascend' | 'descend' | null;
 
 export default function UnitList() {
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
@@ -72,51 +70,13 @@ export default function UnitList() {
   const [submitting, setSubmitting] = useState(false);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
 
-  const [sortField, setSortField] = useState<SortField | null>(null);
-  const [sortOrder, setSortOrder] = useState<SortOrder>(null);
-
-  const handleSort = (field: SortField) => {
-    if (sortField !== field) {
-      setSortField(field);
-      setSortOrder('ascend');
-    } else if (sortOrder === 'ascend') {
-      setSortOrder('descend');
-    } else {
-      setSortField(null);
-      setSortOrder(null);
-    }
-  };
-
   const getStatusKey = useCallback((org: Organization) => (
     fromApiOperationalStatus(org.operationalStatus) === 'inactive' ? 'inactive' : 'active'
   ), []);
 
   const compareOrgs = useCallback((a: Organization, b: Organization): number => {
-    if (!sortField || !sortOrder) {
-      return a.name.localeCompare(b.name, 'vi');
-    }
-    let cmp = 0;
-    if (sortField === 'name') {
-      cmp = a.name.localeCompare(b.name, 'vi');
-    } else if (sortField === 'rank') {
-      const rA = RANK_LABELS[a.rank as OrgUnitRankName] ?? '';
-      const rB = RANK_LABELS[b.rank as OrgUnitRankName] ?? '';
-      cmp = rA.localeCompare(rB, 'vi');
-    } else if (sortField === 'updatedAt') {
-      const tA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
-      const tB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
-      cmp = tA - tB;
-    } else if (sortField === 'updatedBy') {
-      const uA = fmtUser(a.updatedBy, userMap);
-      const uB = fmtUser(b.updatedBy, userMap);
-      cmp = uA.localeCompare(uB, 'vi');
-    } else if (sortField === 'status') {
-      const sA = getStatusKey(a);
-      const sB = getStatusKey(b);
-      cmp = sA.localeCompare(sB, 'vi');
-    }
-    return sortOrder === 'descend' ? -cmp : cmp;
-  }, [sortField, sortOrder, userMap, getStatusKey]);
+    return a.name.localeCompare(b.name, 'vi');
+  }, []);
 
   const toggleExpand = useCallback((id: string) => {
     setExpandedKeys(prev => {
@@ -191,8 +151,8 @@ export default function UnitList() {
       description: org.description,
       operationalStatus: opStatus,
       rank: org.rank,
-      updatedAt: fmtDate(org.updatedAt),
-      updatedBy: fmtUser(org.updatedBy, userMap),
+      updatedAt: fmtDate(org.updatedAt || org.createdAt),
+      updatedBy: fmtUser(org.updatedBy, userMap, (org as any).updatedByName || (org as any).createdByName),
     });
     setModalOpen(true);
   }, [form, userMap]);
@@ -337,7 +297,7 @@ export default function UnitList() {
     const hasFilter = nameQuery || filterStatus;
     if (!hasFilter) return null;
     return allOrgs
-      .filter(o => {
+      .filter((o) => {
         if (nameQuery && !normalizeSearchText(o.name).includes(nameQuery)) return false;
         if (filterStatus) {
           const stKey = getStatusKey(o);
@@ -346,11 +306,11 @@ export default function UnitList() {
         return true;
       })
       .sort(compareOrgs)
-      .map(org => {
+      .map((org) => {
         const parts: string[] = [org.name];
         let cur = org;
         while (cur.parentId) {
-          const p = allOrgs.find(o => o.id === cur.parentId);
+          const p = allOrgs.find((o) => o.id === cur.parentId);
           if (p) {
             parts.unshift(p.name);
             cur = p;
@@ -364,7 +324,7 @@ export default function UnitList() {
     <>
       <SidebarFilterField label="Tên đơn vị" style={{ marginTop: spaceMd }}>
         <Input
-          placeholder="Tìm theo tên đơn vị..."
+          placeholder="Nhập tên đơn vị"
           value={nameInput}
           onChange={(e) => setNameInput(e.target.value)}
           onPressEnter={handleFilterSearch}
@@ -389,22 +349,6 @@ export default function UnitList() {
   const treeRows = searchResults
     ? searchResults.map((org) => ({ org, depth: 0, hasChildren: false }))
     : visibleRows;
-
-  const renderSortHeader = (label: string, field: SortField, style: React.CSSProperties) => {
-    const isActive = sortField === field;
-    return (
-      <div
-        style={{ ...style, cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
-        onClick={() => handleSort(field)}
-      >
-        <span>{label}</span>
-        <span style={{ display: 'inline-flex', flexDirection: 'column', fontSize: 9, lineHeight: 1 }}>
-          <span style={{ color: isActive && sortOrder === 'ascend' ? actionPrimary : '#bfbfbf' }}>▲</span>
-          <span style={{ color: isActive && sortOrder === 'descend' ? actionPrimary : '#bfbfbf' }}>▼</span>
-        </span>
-      </div>
-    );
-  };
 
   const headerActions = useMemo(() => {
     const actions: any[] = [];
@@ -449,22 +393,26 @@ export default function UnitList() {
             </div>
           )}
           {!isLoading && !isError && treeRows.length > 0 && (
-            <div style={{ width: '100%', height: '100%', flex: 1, minHeight: 0, overflowY: 'auto', border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: 0, background: surfaceCard }}>
-              <div style={{ width: '100%' }}>
-                <div style={{ display: 'flex', alignItems: 'center', minHeight: 40, borderBottom: `1px solid ${borderDefault}`, padding: `0 ${spaceMd}px`, position: 'sticky', top: 0, background: '#FAFAFA', zIndex: 2 }}>
-                  {renderSortHeader('TÊN ĐƠN VỊ', 'name', { flex: 1, minWidth: 0, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd })}
-                  {renderSortHeader('CẤP ĐƠN VỊ', 'rank', { width: 220, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd })}
-                  {renderSortHeader('NGÀY CẬP NHẬT', 'updatedAt', { width: 180, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd })}
-                  {renderSortHeader('CÁN BỘ CẬP NHẬT', 'updatedBy', { width: 175, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd })}
-                  {renderSortHeader('TRẠNG THÁI', 'status', { width: 140, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, justifyContent: 'center' })}
-                  <div style={{ width: 60, textAlign: 'center', color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>THAO TÁC</div>
+            <div style={{ width: '100%', height: '100%', flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'auto', border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: 0, background: surfaceCard }}>
+              <div style={{ minWidth: 920, width: '100%' }}>
+                <div style={{ display: 'flex', alignItems: 'center', minHeight: 40, borderBottom: `1px solid ${borderDefault}`, padding: `0 ${spaceMd}px`, position: 'sticky', top: 0, background: '#F8FAFC', zIndex: 2 }}>
+                  <div style={{ flex: 1, minWidth: 260, color: textSecondary, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>TÊN ĐƠN VỊ</div>
+                  <div style={{ width: 240, minWidth: 240, flexShrink: 0, color: textSecondary, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>CẤP ĐƠN VỊ</div>
+                  <div style={{ width: 220, minWidth: 220, flexShrink: 0, color: textSecondary, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>CÁN BỘ CẬP NHẬT</div>
+                  <div style={{ width: 140, minWidth: 140, flexShrink: 0, color: textSecondary, fontWeight: fontWeightBold, fontSize: fontSizeMd, textAlign: 'center' }}>TRẠNG THÁI</div>
+                  <div style={{ width: 60, minWidth: 60, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: textSecondary, fontSize: fontSizeMd }}>
+                    <UnorderedListOutlined />
+                  </div>
                 </div>
                 {treeRows.map(({ org, depth, hasChildren }) => {
                   const statusKey = getStatusKey(org);
                   const color = STATUS_COLORS[statusKey] || textTertiary;
+                  const rankLabel = RANK_LABELS[org.rank as OrgUnitRankName] ?? '—';
+                  const updatedAtText = fmtDate(org.updatedAt || org.createdAt);
+                  const updatedByText = fmtUser(org.updatedBy, userMap, (org as any).updatedByName || (org as any).createdByName);
                   return (
-                    <div key={org.id} style={{ display: 'flex', alignItems: 'center', minHeight: 44, padding: `0 ${spaceMd}px`, borderBottom: `1px solid ${borderDefault}` }}>
-                      <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', paddingLeft: depth * spaceLg, paddingRight: spaceSm }}>
+                    <div key={org.id} style={{ display: 'flex', alignItems: 'center', minHeight: 48, padding: `0 ${spaceMd}px`, borderBottom: `1px solid ${borderDefault}` }}>
+                      <div style={{ flex: 1, minWidth: 260, display: 'flex', alignItems: 'center', paddingLeft: depth * spaceLg, paddingRight: spaceSm, overflow: 'hidden' }}>
                         <Button
                           type="text"
                           size="small"
@@ -476,15 +424,78 @@ export default function UnitList() {
                             : undefined}
                           style={{ width: 24, minWidth: 24, height: 24, padding: 0, color: hasChildren ? actionPrimary : 'transparent', fontSize: fontSizeSm }}
                         />
-                        <Typography.Text style={{ flex: 1, minWidth: 0, marginLeft: spaceXs, whiteSpace: 'normal', wordBreak: 'break-word', color: textPrimary, fontWeight: depth === 0 ? fontWeightBold : fontWeightMedium }}>
-                          {org.name}
-                        </Typography.Text>
-                      </div>
-                      <div style={{ width: 220, color: textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{RANK_LABELS[org.rank as OrgUnitRankName] ?? '—'}</div>
-                      <div style={{ width: 180, color: textTertiary }}>{fmtDate(org.updatedAt)}</div>
-                      <div style={{ width: 175, color: textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtUser(org.updatedBy, userMap)}</div>
-                      <div style={{ width: 140, textAlign: 'center' }}>
                         <span
+                          title={org.name}
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            marginLeft: spaceXs,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            color: textPrimary,
+                            fontWeight: depth === 0 ? fontWeightBold : fontWeightMedium,
+                            fontSize: fontSizeMd,
+                          }}
+                        >
+                          {org.name}
+                        </span>
+                      </div>
+                      <div
+                        title={rankLabel}
+                        style={{
+                          width: 240,
+                          minWidth: 240,
+                          flexShrink: 0,
+                          color: textSecondary,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          fontSize: fontSizeMd,
+                          paddingRight: 8,
+                        }}
+                      >
+                        {rankLabel}
+                      </div>
+                      <div
+                        style={{
+                          width: 220,
+                          minWidth: 220,
+                          flexShrink: 0,
+                          lineHeight: '1.35',
+                          overflow: 'hidden',
+                          paddingRight: 8,
+                        }}
+                      >
+                        <div
+                          title={updatedByText}
+                          style={{
+                            fontWeight: fontWeightBold,
+                            color: '#0F172A',
+                            fontSize: fontSizeMd,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {updatedByText}
+                        </div>
+                        <div
+                          title={updatedAtText}
+                          style={{
+                            fontSize: fontSizeMd,
+                            color: textSecondary,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {updatedAtText}
+                        </div>
+                      </div>
+                      <div style={{ width: 140, minWidth: 140, flexShrink: 0, textAlign: 'center' }}>
+                        <span
+                          title={STATUS_LABELS[statusKey]}
                           style={{
                             display: 'inline-block',
                             padding: '2px 10px',
@@ -500,7 +511,7 @@ export default function UnitList() {
                           {STATUS_LABELS[statusKey]}
                         </span>
                       </div>
-                      <div style={{ width: 60, textAlign: 'center' }}>
+                      <div style={{ width: 60, minWidth: 60, flexShrink: 0, textAlign: 'center' }}>
                         <Dropdown menu={{ items: getActions(org) }} trigger={['click']}>
                           <Button
                             type="text"
@@ -527,7 +538,7 @@ export default function UnitList() {
         </FilterTableLayout>
 
         <Drawer
-          size="50%"
+          width="50%"
           placement="right"
           open={modalOpen}
           onClose={() => setModalOpen(false)}
@@ -565,130 +576,124 @@ export default function UnitList() {
           }
         >
           <Spin spinning={submitting}>
-            {isViewing && editingOrg ? (
-              <Tabs
-                tabBarStyle={drawerTabBarStyle}
-                animated={false}
-                items={[
-                  {
-                    key: 'general',
-                    label: 'Thông tin chung',
-                    children: (
-                      <div style={drawerFormScrollStyle}>
-                        <div style={{ paddingTop: spaceMd }}>
-                          <div className="chk-detail-grid">
-                            <div className="chk-detail-row"><span className="chk-detail-label">Tên đơn vị</span><span className="chk-detail-value">{editingOrg.name || '—'}</span></div>
-                            <div className="chk-detail-row"><span className="chk-detail-label">Cấp đơn vị</span><span className="chk-detail-value">{RANK_LABELS[editingOrg.rank as OrgUnitRankName] ?? '—'}</span></div>
-                            <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị cha</span><span className="chk-detail-value">{editingOrg.parentOrgName || '—'}</span></div>
-                            <div className="chk-detail-row">
-                              <span className="chk-detail-label">Trạng thái</span>
-                              <span className="chk-detail-value">
-                                <span
-                                  style={{
-                                    display: 'inline-block',
-                                    padding: '2px 10px',
-                                    borderRadius: radiusPill,
-                                    fontSize: fontSizeSm,
-                                    fontWeight: fontWeightMedium,
-                                    backgroundColor: editingOrg.operationalStatus === 'inactive' ? `${statusCritical}15` : `${statusOperational}15`,
-                                    border: editingOrg.operationalStatus === 'inactive' ? `1px solid ${statusCritical}40` : `1px solid ${statusOperational}40`,
-                                    color: editingOrg.operationalStatus === 'inactive' ? statusCritical : statusOperational,
-                                  }}
-                                >
-                                  {editingOrg.operationalStatus === 'inactive' ? 'Không sử dụng' : 'Sử dụng'}
-                                </span>
+            <Tabs
+              tabBarStyle={drawerTabBarStyle}
+              animated={false}
+              items={[
+                {
+                  key: 'general',
+                  label: 'Thông tin chung',
+                  children: isViewing && editingOrg ? (
+                    <div style={drawerFormScrollStyle}>
+                      <div style={{ paddingTop: spaceMd }}>
+                        <div className="chk-detail-grid">
+                          <div className="chk-detail-row"><span className="chk-detail-label">Tên đơn vị</span><span className="chk-detail-value">{editingOrg.name || '—'}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Cấp đơn vị</span><span className="chk-detail-value">{RANK_LABELS[editingOrg.rank as OrgUnitRankName] ?? '—'}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị cha</span><span className="chk-detail-value">{editingOrg.parentOrgName || '—'}</span></div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label">Trạng thái</span>
+                            <span className="chk-detail-value">
+                              <span
+                                style={{
+                                  display: 'inline-block',
+                                  padding: '2px 10px',
+                                  borderRadius: radiusPill,
+                                  fontSize: fontSizeSm,
+                                  fontWeight: fontWeightMedium,
+                                  backgroundColor: editingOrg.operationalStatus === 'inactive' ? `${statusCritical}15` : `${statusOperational}15`,
+                                  border: editingOrg.operationalStatus === 'inactive' ? `1px solid ${statusCritical}40` : `1px solid ${statusOperational}40`,
+                                  color: editingOrg.operationalStatus === 'inactive' ? statusCritical : statusOperational,
+                                }}
+                              >
+                                {editingOrg.operationalStatus === 'inactive' ? 'Không sử dụng' : 'Sử dụng'}
                               </span>
-                            </div>
-                            <div className="chk-detail-row"><span className="chk-detail-label">Địa điểm (Tỉnh/TP)</span><span className="chk-detail-value">{editingOrg.provinceId ? (getProvinceNameById(editingOrg.provinceId) || String(editingOrg.provinceId)) : '—'}</span></div>
-                            <div className="chk-detail-row"><span className="chk-detail-label">Số điện thoại</span><span className="chk-detail-value">{editingOrg.phone || '—'}</span></div>
-                            <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Địa điểm chi tiết</span><span className="chk-detail-value">{editingOrg.detailAddress || '—'}</span></div>
-                            <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Ghi chú</span><span className="chk-detail-value">{editingOrg.description || '—'}</span></div>
-                          </div>
-
-                          <div style={{ marginTop: 20, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ display: 'inline-block', width: 4, height: 16, borderRadius: 2, backgroundColor: actionPrimary }} />
-                            <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                              Thông tin hệ thống
                             </span>
                           </div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Địa điểm (Tỉnh/TP)</span><span className="chk-detail-value">{editingOrg.provinceId ? (getProvinceNameById(editingOrg.provinceId) || String(editingOrg.provinceId)) : '—'}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Số điện thoại</span><span className="chk-detail-value">{editingOrg.phone || '—'}</span></div>
+                          <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Địa điểm chi tiết</span><span className="chk-detail-value">{editingOrg.detailAddress || '—'}</span></div>
+                          <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Ghi chú</span><span className="chk-detail-value">{editingOrg.description || '—'}</span></div>
+                        </div>
 
-                          <div className="chk-detail-grid">
-                            <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ cập nhật</span><span className="chk-detail-value">{fmtUser(editingOrg.updatedBy, userMap)}</span></div>
-                            <div className="chk-detail-row"><span className="chk-detail-label">Ngày cập nhật</span><span className="chk-detail-value">{fmtDate(editingOrg.updatedAt)}</span></div>
-                          </div>
+                        <div style={{ marginTop: 20, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ display: 'inline-block', width: 4, height: 16, borderRadius: 2, backgroundColor: actionPrimary }} />
+                          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                            Thông tin hệ thống
+                          </span>
+                        </div>
+
+                        <div className="chk-detail-grid">
+                          <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ cập nhật</span><span className="chk-detail-value">{fmtUser(editingOrg.updatedBy, userMap, (editingOrg as any).updatedByName || (editingOrg as any).createdByName)}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Ngày cập nhật</span><span className="chk-detail-value">{fmtDate(editingOrg.updatedAt || editingOrg.createdAt)}</span></div>
                         </div>
                       </div>
-                    ),
-                  },
-                ]}
-              />
-            ) : (
-              <div style={drawerFormScrollStyle}>
-                <Form form={form} layout="vertical" style={{ marginTop: 16 }} labelCol={{ style: { padding: 0, marginBottom: 4 } }}>
-                  <Row gutter={spaceMd}>
-                    <Col span={24}>
-                      <Form.Item name="name" {...labelProps('Tên đơn vị')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập tên đơn vị' }]}>
-                        <Input placeholder="Nhập tên đơn vị" style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
-                      </Form.Item>
-                    </Col>
-                  </Row>
-                  <Row gutter={spaceMd}>
-                    <Col span={12}>
-                      <Form.Item name="parentId" {...labelProps('Đơn vị cha')} style={{ marginBottom: spaceFormField }}>
-                        <Select
-                          placeholder="Chọn đơn vị cha (Để trống = Cấp cao nhất)"
-                          allowClear
-                          showSearch
-                          optionFilterProp="label"
-                          filterOption={(input, option) => normalizeSearchText(String(option?.label ?? '')).includes(normalizeSearchText(input))}
-                          style={{ ...selectStyle, borderRadius: radiusPill, height: 40, width: '100%' }}
-                          options={parentOptions}
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col span={12}>
-                      <Form.Item name="rank" {...labelProps('Cấp đơn vị')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn cấp đơn vị' }]}>
-                        <Select placeholder="Chọn cấp đơn vị" style={{ ...selectStyle, borderRadius: radiusPill, height: 40, width: '100%' }} options={RANK_OPTIONS} />
-                      </Form.Item>
-                    </Col>
-                  </Row>
-                  <Row gutter={spaceMd}>
-                    <Col span={12}>
-                      <Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành phố)')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn địa điểm (Tỉnh/Thành phố)' }]}>
-                        <Select
-                          showSearch
-                          placeholder="Chọn địa điểm"
-                          optionFilterProp="label"
-                          filterOption={(input, option) => normalizeSearchText(String(option?.label ?? '')).includes(normalizeSearchText(input))}
-                          options={VIETNAM_PROVINCE_OPTIONS}
-                          style={{ ...selectStyle, borderRadius: radiusPill, height: 40, width: '100%' }}
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col span={12}>
-                      <Form.Item name="detailAddress" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }}>
-                        <Input placeholder="Số nhà, đường, phường/xã..." style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
-                      </Form.Item>
-                    </Col>
-                  </Row>
-                  <Row gutter={spaceMd}>
-                    <Col span={12}>
-                      <Form.Item name="phone" {...labelProps('Số điện thoại')} style={{ marginBottom: spaceFormField }} rules={[{ pattern: /^0\d{9,10}$/, message: 'SĐT không hợp lệ' }]}>
-                        <Input placeholder="0901234567" style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
-                      </Form.Item>
-                    </Col>
-                    <Col span={12}>
-                      <Form.Item name="operationalStatus" {...labelProps('Trạng thái')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}>
-                        <Select style={{ ...selectStyle, borderRadius: radiusPill, height: 40, width: '100%' }} options={[{ value: 'active', label: 'Sử dụng' }, { value: 'inactive', label: 'Không sử dụng' }]} />
-                      </Form.Item>
-                    </Col>
-                  </Row>
-                  <Form.Item name="description" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }}>
-                    <Input.TextArea rows={3} placeholder="Ghi chú thêm..." maxLength={1000} showCount style={textAreaStyle} />
-                  </Form.Item>
-                </Form>
-              </div>
-            )}
+                    </div>
+                  ) : (
+                    <div style={drawerFormScrollStyle}>
+                      <Form form={form} layout="vertical" style={{ marginTop: 16 }} labelCol={{ style: { padding: 0, marginBottom: 4 } }}>
+                        <Row gutter={[24, 0]}>
+                          <Col span={12}>
+                            <Form.Item name="name" {...labelProps('Tên đơn vị')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập tên đơn vị' }, { max: 255, message: 'Tên đơn vị tối đa 255 ký tự' }]}>
+                              <Input placeholder="Nhập tên đơn vị" maxLength={255} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item name="rank" {...labelProps('Cấp đơn vị')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn cấp đơn vị' }]}>
+                              <Select placeholder="Chọn cấp đơn vị" style={{ ...selectStyle, borderRadius: radiusPill, height: 40, width: '100%' }} options={RANK_OPTIONS} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item name="parentId" {...labelProps('Đơn vị cha')} style={{ marginBottom: spaceFormField }}>
+                              <Select
+                                placeholder="Chọn đơn vị cha"
+                                allowClear
+                                showSearch
+                                optionFilterProp="label"
+                                filterOption={(input, option) => normalizeSearchText(String(option?.label ?? '')).includes(normalizeSearchText(input))}
+                                style={{ ...selectStyle, borderRadius: radiusPill, height: 40, width: '100%' }}
+                                options={parentOptions}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item name="operationalStatus" {...labelProps('Trạng thái')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}>
+                              <Select placeholder="Chọn trạng thái" style={{ ...selectStyle, borderRadius: radiusPill, height: 40, width: '100%' }} options={[{ value: 'active', label: 'Sử dụng' }, { value: 'inactive', label: 'Không sử dụng' }]} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành phố)')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn địa điểm (Tỉnh/Thành phố)' }]}>
+                              <Select
+                                showSearch
+                                placeholder="Chọn địa điểm (Tỉnh/Thành phố)"
+                                optionFilterProp="label"
+                                filterOption={(input, option) => normalizeSearchText(String(option?.label ?? '')).includes(normalizeSearchText(input))}
+                                options={VIETNAM_PROVINCE_OPTIONS}
+                                style={{ ...selectStyle, borderRadius: radiusPill, height: 40, width: '100%' }}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item name="phone" {...labelProps('Số điện thoại')} style={{ marginBottom: spaceFormField }} rules={[{ pattern: /^0\d{9,10}$/, message: 'Số điện thoại không hợp lệ (10-11 số)' }]}>
+                              <Input placeholder="Nhập số điện thoại" maxLength={15} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={24}>
+                            <Form.Item name="detailAddress" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }} rules={[{ max: 500, message: 'Địa điểm chi tiết tối đa 500 ký tự' }]}>
+                              <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={24}>
+                            <Form.Item name="description" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }} rules={[{ max: 1000, message: 'Ghi chú tối đa 1000 ký tự' }]}>
+                              <Input.TextArea rows={3} placeholder="Nhập ghi chú" maxLength={1000} showCount style={textAreaStyle} />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                      </Form>
+                    </div>
+                  ),
+                },
+              ]}
+            />
           </Spin>
         </Drawer>
       </div>

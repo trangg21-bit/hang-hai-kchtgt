@@ -522,7 +522,7 @@ export default function UsersPage() {
         </FilterTableLayout>
 
         <Drawer
-          size="50%"
+          width="50%"
           placement="right"
           closable={false}
           open={modalOpen}
@@ -743,7 +743,7 @@ export default function UsersPage() {
         </Modal>
 
         <Drawer
-          size="50%"
+          width="50%"
           placement="right"
           closable={false}
           open={Boolean(permissionUser)}
@@ -842,7 +842,7 @@ export default function UsersPage() {
         </Drawer>
 
         <Drawer
-          size="50%"
+          width="50%"
           placement="right"
           closable={false}
           open={detailUserId !== null}

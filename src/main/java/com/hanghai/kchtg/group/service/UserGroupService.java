@@ -198,7 +198,9 @@ public class UserGroupService {
         List<GroupResponse> items = pageResult.getContent().stream()
                 .map(g -> UserGroupResponse.from(g,
                         groupMemberRepository.countByUserGroupIdAndStatus(g.getId(), GroupMemberStatus.ACTIVE),
-                        orgUnitCacheService.getName(g.getOrganizationId())))
+                        orgUnitCacheService.getName(g.getOrganizationId()),
+                        resolveUserDisplayName(g.getCreatedBy()),
+                        resolveUserDisplayName(g.getUpdatedBy())))
                 .map(this::toGroupResponse)
                 .toList();
 
@@ -254,7 +256,9 @@ public class UserGroupService {
         List<GroupResponse> items = pageResult.getContent().stream()
                 .map(g -> UserGroupResponse.from(g,
                         groupMemberRepository.countByUserGroupIdAndStatus(g.getId(), GroupMemberStatus.ACTIVE),
-                        orgUnitCacheService.getName(g.getOrganizationId())))
+                        orgUnitCacheService.getName(g.getOrganizationId()),
+                        resolveUserDisplayName(g.getCreatedBy()),
+                        resolveUserDisplayName(g.getUpdatedBy())))
                 .map(this::toGroupResponse)
                 .toList();
 
@@ -546,6 +550,8 @@ public class UserGroupService {
                 response.getStatus(),
                 response.getOrganizationId(),
                 response.getOrganizationName(),
+                response.getCreatedByName(),
+                response.getUpdatedByName(),
                 response.getCreatedAt(),
                 response.getUpdatedAt(),
                 response.getMemberCount());

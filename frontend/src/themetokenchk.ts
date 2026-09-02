@@ -155,10 +155,10 @@ export const inputRadius = radiusPill;
 export const cardRadius = radiusLg;
 
 /** .p-datatable thead th { background-color: var(--panel-border-color) } */
-export const tableHeaderBg = borderDefault;
+export const tableHeaderBg = '#F8FAFC';
 
 /** .p-datatable thead th { color: var(--primary-color) } */
-export const tableHeaderColor = actionPrimary;
+export const tableHeaderColor = textSecondary;
 
 // th: PrimeNG header padding chuẩn gọn gàng
 export const tableHeaderPadding = '10px 12px';
@@ -2921,5 +2921,33 @@ export const pagedTablePaginationStyle = `
     margin-left: 12px !important;
   }
 `;
+
+/** Preset cho khu vực bảng / danh sách rỗng (Empty State chuẩn Theme CHK) */
+export const emptyStateContainerStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '48px 16px',
+  textAlign: 'center',
+  userSelect: 'none',
+  width: '100%',
+};
+
+export const emptyStateTitleStyle: React.CSSProperties = {
+  fontSize: fontSizeLg,
+  fontWeight: fontWeightBold,
+  color: colors.sidebarBg,
+  marginTop: 14,
+  marginBottom: 4,
+};
+
+export const emptyStateDescriptionStyle: React.CSSProperties = {
+  fontSize: fontSizeMd,
+  color: textTertiary,
+  maxWidth: 420,
+  lineHeight: '20px',
+};
+
 
 

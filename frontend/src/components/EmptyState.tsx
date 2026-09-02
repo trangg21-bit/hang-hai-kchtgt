@@ -1,30 +1,27 @@
-import { Empty, Button } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import React from 'react';
+import { fontSizeMd } from '../themetokenchk';
 
 interface Props {
-  description?: string;
-  ctaText?: string;
-  onCta?: () => void;
-  image?: React.ReactNode;
+  description?: React.ReactNode;
+  [key: string]: any;
 }
 
 export default function EmptyState({
-  description = 'Chưa có dữ liệu',
-  ctaText,
-  onCta,
-  image,
+  description = 'Không có kết quả tìm kiếm',
 }: Props) {
   return (
-    <Empty
-      image={image || Empty.PRESENTED_IMAGE_SIMPLE}
-      description={description}
-      style={{ padding: '60px 0' }}
+    <div
+      style={{
+        textAlign: 'center',
+        marginTop: 10,
+        marginBottom: 10,
+        fontSize: fontSizeMd,
+        color: '#7E6B3F',
+      }}
     >
-      {ctaText && onCta && (
-        <Button type="primary" icon={<PlusOutlined />} onClick={onCta}>
-          {ctaText}
-        </Button>
-      )}
-    </Empty>
+      {description}
+    </div>
   );
 }
+
+

@@ -41,6 +41,8 @@ export const lritStationService = {
   async search(params?: LritStationListParams): Promise<LritStationSearchResponse> {
     const sp = buildSearchParams({
       keyword: params?.keyword,
+      name: params?.name,
+      code: params?.code,
       orgUnitId: params?.orgUnitId,
       operatingOrgId: params?.operatingOrgId,
       provinceId: params?.provinceId,
@@ -72,10 +74,12 @@ export const lritStationService = {
     };
   },
 
-  async getCounts(params?: { orgUnitId?: string; keyword?: string; conditionStatus?: string }): Promise<Record<string, number>> {
+  async getCounts(params?: LritStationListParams): Promise<Record<string, number>> {
     const sp = buildSearchParams({
       orgUnitId: params?.orgUnitId,
       keyword: params?.keyword,
+      name: params?.name,
+      code: params?.code,
       conditionStatus: params?.conditionStatus,
     });
     const res = await api.get(`${BASE_PATH}/counts?${sp}`);
@@ -134,8 +138,27 @@ export const lritStationService = {
     return this.approveC2(id, statusOrContent, maybeContent);
   },
 
-  async getHistory(id: string): Promise<HistoryEntry[]> {
-    const res = await api.get(`${BASE_PATH}/${id}/history`);
+  /**
+   * Nhật ký thay đổi. Truyền `page`/`pageSize` để drawer cuộn tải thêm, và
+   * `keyword`/`fromDate`/`toDate` để lọc ở server — lọc phía client sẽ chỉ soi
+   * được phần đã tải.
+   */
+  async getHistory(
+    id: string,
+    page?: number,
+    pageSize?: number,
+    filters?: { keyword?: string; fromDate?: string; toDate?: string },
+  ): Promise<HistoryEntry[]> {
+    const params: Record<string, string | number> = {};
+    if (page !== undefined && pageSize !== undefined) {
+      params.page = page;
+      params.pageSize = pageSize;
+    }
+    if (filters?.keyword) params.keyword = filters.keyword;
+    if (filters?.fromDate) params.fromDate = filters.fromDate;
+    if (filters?.toDate) params.toDate = filters.toDate;
+
+    const res = await api.get(`${BASE_PATH}/${id}/history`, { params });
     return toArray<HistoryEntry>(res.data?.data || res.data);
   },
 

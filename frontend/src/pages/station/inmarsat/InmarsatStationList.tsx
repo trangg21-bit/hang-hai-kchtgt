@@ -92,6 +92,9 @@ const formatHistoryValue = (field: string, val: any): string => {
   return String(val);
 };
 
+/** Số bản ghi nhật ký mỗi lần cuộn tải thêm trong drawer lịch sử. */
+const HISTORY_PAGE_SIZE = 20;
+
 const CONDITION_COLOR: Record<ConditionStatus, string> = {
   [ConditionStatus.OPERATIONAL]: statusOperational,
   [ConditionStatus.STOPPED]: statusCritical,
@@ -146,6 +149,15 @@ export const InmarsatStationList = () => {
   const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyList, setHistoryList] = useState<CommonHistoryEntry[]>([]);
+  const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
+  const [hasMoreHistory, setHasMoreHistory] = useState(true);
+  // Số trang nhật ký đã tải. Không suy ra từ độ dài mảng vì backend có thể trả ít
+  // hơn pageSize khi lọc, làm lệch số trang → sót/lặp bản ghi.
+  const [historyPage, setHistoryPage] = useState(0);
+  const [historyTargetId, setHistoryTargetId] = useState<string | null>(null);
+  const [historyFilters, setHistoryFilters] = useState<{ keyword: string; fromDate: string; toDate: string }>(
+    { keyword: '', fromDate: '', toDate: '' },
+  );
 
   // Permissions & user
   const { user } = useAuthStore();
@@ -337,23 +349,22 @@ export const InmarsatStationList = () => {
     }
   };
 
-  const handleOpenHistory = async (rec: CoastalStationInmarsatResponse) => {
+  const handleOpenHistory = (rec: CoastalStationInmarsatResponse) => {
     setSelectedRecord(rec);
+    setHistoryTargetId(rec.id);
     setHistoryDrawerOpen(true);
-    setHistoryLoading(true);
-    try {
-      const logs = await inmarsatStationService.getHistory(rec.id);
-      const filteredLogs = (logs || []).filter((h: any) => {
-        const act = String(h.actionType || h.action || '').toUpperCase();
-        if (['APPROVE_L1', 'APPROVE_L2', 'APPROVE', 'SUBMIT'].includes(act)) return false;
-        const field = h.changedField || h.field || '';
-        const nv = String(h.newValue || '');
-        if ((!field || field === 'Thông tin') && (!h.previousValue || h.previousValue === '—') && nv.includes('Cập nhật thông tin')) {
-          return false;
-        }
-        return true;
-      });
-      const mapped: CommonHistoryEntry[] = filteredLogs.map((h: any) => {
+    setHistoryList([]);
+    setHistoryLoading(false);
+    setLoadingMoreHistory(false);
+    setHasMoreHistory(true);
+    setHistoryPage(0);
+    setHistoryFilters({ keyword: '', fromDate: '', toDate: '' });
+  };
+
+  // Backend đã loại các dòng của quy trình phê duyệt và lọc theo từ khóa/ngày, ở
+  // đây chỉ ánh xạ sang cấu trúc mà drawer dùng chung mong đợi.
+  const mapHistoryEntries = useCallback((logs: any[]): CommonHistoryEntry[] => {
+      return (logs || []).map((h: any) => {
         let changes: HistoryChangeItem[] = [];
         if (h.changes && Array.isArray(h.changes)) {
           changes = h.changes;
@@ -375,14 +386,57 @@ export const InmarsatStationList = () => {
           changes,
         };
       });
-      setHistoryList(mapped);
-    } catch {
+  }, []);
+
+  // Nạp lại trang đầu mỗi khi mở drawer hoặc đổi điều kiện lọc.
+  useEffect(() => {
+    if (!historyDrawerOpen || !historyTargetId) return;
+    let cancelled = false;
+    (async () => {
+      setHistoryLoading(true);
+      setLoadingMoreHistory(false);
+      setHasMoreHistory(true);
       setHistoryList([]);
-      toast.error('Không thể tải lịch sử thay đổi');
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
+      setHistoryPage(0);
+      try {
+        const logs = await inmarsatStationService.getHistory(historyTargetId, 0, HISTORY_PAGE_SIZE, {
+          keyword: historyFilters.keyword || undefined,
+          fromDate: historyFilters.fromDate || undefined,
+          toDate: historyFilters.toDate || undefined,
+        });
+        if (cancelled) return;
+        setHistoryList(mapHistoryEntries(logs));
+        setHasMoreHistory((logs || []).length === HISTORY_PAGE_SIZE);
+      } catch {
+        if (!cancelled) {
+          setHistoryList([]);
+          toast.error('Không thể tải lịch sử thay đổi');
+        }
+      } finally {
+        if (!cancelled) setHistoryLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [historyDrawerOpen, historyTargetId, historyFilters, mapHistoryEntries]);
+
+  const loadMoreHistory = useCallback(async () => {
+    if (!historyTargetId || historyLoading || loadingMoreHistory || !hasMoreHistory) return;
+    setLoadingMoreHistory(true);
+    try {
+      const nextPage = historyPage + 1;
+      const logs = await inmarsatStationService.getHistory(historyTargetId, nextPage, HISTORY_PAGE_SIZE, {
+        keyword: historyFilters.keyword || undefined,
+        fromDate: historyFilters.fromDate || undefined,
+        toDate: historyFilters.toDate || undefined,
+      });
+      if (logs && logs.length > 0) {
+        setHistoryList((prev) => [...prev, ...mapHistoryEntries(logs)]);
+      }
+      setHistoryPage(nextPage);
+      setHasMoreHistory((logs || []).length === HISTORY_PAGE_SIZE);
+    } catch { /* giữ nguyên phần đã tải, người dùng cuộn lại sẽ thử tiếp */ }
+    finally { setLoadingMoreHistory(false); }
+  }, [historyTargetId, historyLoading, loadingMoreHistory, hasMoreHistory, historyPage, historyFilters, mapHistoryEntries]);
 
   // Backend trả về số đếm theo ĐÚNG mã đang lưu trong CSDL, gồm cả mã cũ
   // (PROPOSED, APPROVED_LEVEL2, REJECTED). Phải CỘNG các mã cùng nghĩa chứ không
@@ -952,6 +1006,10 @@ export const InmarsatStationList = () => {
           loading={historyLoading}
           fieldLabelMap={INMARSAT_FIELD_MAP}
           formatValue={formatHistoryValue}
+          serverFiltered
+          onFilterChange={setHistoryFilters}
+          onLoadMore={loadMoreHistory}
+          loadingMore={loadingMoreHistory}
         />
       </div>
     </ThemeTokenProvider>

@@ -71,6 +71,29 @@ public class CoastalStationHaiphongService {
         return Scope.restricted(intersected);
     }
 
+    /**
+     * Chuẩn hóa từ khóa cho vế LIKE.
+     *
+     * Truy vấn so sánh với {@code immutable_unaccent(LOWER(...))} — tức là chuỗi
+     * ĐÃ bỏ dấu — nên từ khóa cũng phải bỏ dấu, nếu không thì gõ tiếng Việt có dấu
+     * (cách gõ tự nhiên) sẽ không bao giờ khớp và màn hình luôn báo không có dữ liệu.
+     */
+    private static String toKeywordLike(String keyword) {
+        String normalized = normalizeHistoryKeyword(keyword);
+        return normalized == null ? null : "%" + normalized + "%";
+    }
+
+    /** Bỏ dấu từ khóa, KHÔNG bọc `%` — truy vấn nhật ký tự nối `%` bằng CONCAT. */
+    private static String normalizeHistoryKeyword(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return null;
+        }
+        return java.text.Normalizer
+                .normalize(keyword.trim().toLowerCase(java.util.Locale.ROOT), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('đ', 'd');
+    }
+
     private void validateAllowedOrgUnit(UUID orgUnitId) {
         Scope userScope = orgUnitScopeService.currentUserScope();
         if (!userScope.unrestricted() && (orgUnitId == null || !userScope.orgUnitIds().contains(orgUnitId))) {
@@ -108,8 +131,7 @@ public class CoastalStationHaiphongService {
         boolean scopeEnabled = !scope.unrestricted();
         List<UUID> scopeOrgUnitIds = scope.orgUnitIds();
 
-        String kw = (keyword != null && !keyword.trim().isEmpty())
-                ? "%" + keyword.trim().toLowerCase() + "%" : null;
+        String kw = toKeywordLike(keyword);
 
         Page<CoastalStationHaiphong> page = repository.searchPaged(
                 scopeEnabled, scopeOrgUnitIds, orgUnitId, kw, operatingOrgId, provinceId,
@@ -120,15 +142,27 @@ public class CoastalStationHaiphongService {
 
     @Transactional(readOnly = true)
     public Map<String, Long> countByApprovalStatus(UUID orgUnitId, String keyword, String conditionStatus) {
+        return countByApprovalStatus(orgUnitId, keyword, conditionStatus, null, null, null, null, null);
+    }
+
+    /**
+     * Số đếm trên tab phải nhận CÙNG bộ lọc như danh sách, nếu không thì lọc theo
+     * tỉnh hay khoảng ngày xong bảng trống mà tab vẫn báo có bản ghi.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Long> countByApprovalStatus(
+            UUID orgUnitId, String keyword, String conditionStatus,
+            UUID operatingOrgId, Integer provinceId, UUID updatedBy,
+            LocalDateTime updatedFrom, LocalDateTime updatedTo) {
         Scope scope = resolveEffectiveScope(orgUnitId);
         boolean scopeEnabled = !scope.unrestricted();
         List<UUID> scopeOrgUnitIds = scope.orgUnitIds();
 
-        String kw = (keyword != null && !keyword.trim().isEmpty())
-                ? "%" + keyword.trim().toLowerCase() + "%" : null;
+        String kw = toKeywordLike(keyword);
 
         List<Object[]> rawCounts = repository.countByApprovalStatus(
-                scopeEnabled, scopeOrgUnitIds, orgUnitId, kw, conditionStatus);
+                scopeEnabled, scopeOrgUnitIds, orgUnitId, kw, conditionStatus,
+                operatingOrgId, provinceId, updatedBy, updatedFrom, updatedTo);
 
         Map<ApprovalStatus, Long> countsByStatus = new EnumMap<>(ApprovalStatus.class);
         for (Object[] row : rawCounts) {
@@ -608,23 +642,47 @@ public class CoastalStationHaiphongService {
 
     @Transactional(readOnly = true)
     public List<CoastalStationHaiphongHistoryResponse> getHistory(UUID id) {
+        return getHistory(id, null, null, null, null, null);
+    }
+
+    /**
+     * Nhật ký thay đổi, lọc và phân trang Ở SERVER.
+     *
+     * Trước đây hàm này tải TOÀN BỘ nhật ký rồi lọc bằng Java và không phân trang —
+     * hồ sơ sửa nhiều lần là drawer nặng dần, và nếu phân trang mà vẫn lọc ở Java
+     * thì biên trang sai. Nay điều kiện trạng thái, mốc "sau phê duyệt cấp cuối",
+     * mẫu câu nhiễu của dữ liệu cũ, từ khóa và khoảng ngày đều nằm trong truy vấn.
+     */
+    @Transactional(readOnly = true)
+    public List<CoastalStationHaiphongHistoryResponse> getHistory(UUID id, Integer page, Integer pageSize,
+            String keyword, LocalDateTime fromDate, LocalDateTime toDate) {
         CoastalStationHaiphong entity = getStationById(id);
         String code = entity.getCode() != null ? entity.getCode() : entity.getStationCode();
-        return historyService.getHistory(InfrastructureType.HANOI_STATION, entity.getId(), code).stream()
-                .filter(h -> {
-                    if (h.getActionType() == null) return false;
-                    StationHistoryActionType act = h.getActionType();
-                    if (act == StationHistoryActionType.APPROVE_L1 || act == StationHistoryActionType.APPROVE_L2 || act == StationHistoryActionType.REJECT) {
-                        return false;
-                    }
-                    String changedField = h.getChangedField();
-                    String newVal = h.getNewValue();
-                    if ((changedField == null || "Thông tin".equals(changedField))
-                            && newVal != null && (newVal.contains("Phê duyệt") || newVal.contains("Cập nhật thông tin đài TTXLTT"))) {
-                        return false;
-                    }
-                    return true;
-                })
+        LocalDateTime finalApprovalAt = entity.getApprovedDate() != null
+                ? entity.getApprovedDate()
+                : entity.getApprovedDateLevel2();
+
+        // Nhật ký thay đổi chỉ có ý nghĩa sau khi hồ sơ đã được phê duyệt cấp cuối.
+        if (finalApprovalAt == null) {
+            return List.of();
+        }
+        LocalDateTime effectiveFrom = (fromDate == null || fromDate.isBefore(finalApprovalAt))
+                ? finalApprovalAt
+                : fromDate;
+        org.springframework.data.domain.Pageable pageable =
+                (page != null && pageSize != null && page >= 0 && pageSize > 0)
+                        ? org.springframework.data.domain.PageRequest.of(page, pageSize)
+                        : org.springframework.data.domain.Pageable.unpaged();
+
+        return historyService.getHistory(
+                        InfrastructureType.HANOI_STATION, entity.getId(), code,
+                        List.of(com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus.CREATED,
+                                com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus.APPROVED,
+                                com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus.REJECTED),
+                        new String[] { "Thông tin", "Phê duyệt", "Cập nhật thông tin đài TTXLTT" },
+                        keyword, effectiveFrom, toDate, pageable)
+                .stream()
+                .filter(h -> h.getActionType() != null)
                 .map(h -> {
                     CoastalStationHaiphongHistoryResponse r = new CoastalStationHaiphongHistoryResponse();
                     r.setId(h.getId());

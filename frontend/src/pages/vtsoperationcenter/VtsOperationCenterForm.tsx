@@ -245,7 +245,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
   const isCreateMode = currentMode === 'create';
   const isEditMode = currentMode === 'edit';
 
-  const watchedGeometryType = Form.useWatch('geometryType', form);
+  const [geometryTypeState, setGeometryTypeState] = useState<string>('POINT');
 
   const attachmentsEditable = isCreateMode ||
     record?.approvalStatus === ApprovalStatus.DRAFT ||
@@ -438,7 +438,9 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
       if (initialData) {
         setRecord(initialData);
         const pts = parseWktToCoordinates(initialData.coordinates);
-        if (pts.length > 0) setCoordinateList(pts);
+        const geom = initialData.geometryType || 'POINT';
+        setGeometryTypeState(geom);
+        setCoordinateList(adjustCoordinateListForGeometry(pts, geom));
         form.setFieldsValue({
           code: initialData.code,
           name: initialData.name,
@@ -450,7 +452,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
           coverage: initialData.coverage,
           conditionStatus: initialData.conditionStatus || ConditionStatus.OPERATIONAL,
           note: initialData.note,
-          geometryType: initialData.geometryType || 'POINT',
+          geometryType: geom,
           symbolId: initialData.symbolId,
           coordinateSystem: (initialData as any).coordinateSystem || 'WGS 84 / VN-2000',
           displayRule: (initialData as any).displayRule || 'Độ, phút, giây (DMS)',
@@ -461,7 +463,9 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
         setRecord(res);
         setAttachments(res.attachments || []);
         const pts = parseWktToCoordinates(res.coordinates);
-        setCoordinateList(pts);
+        const geom = res.geometryType || 'POINT';
+        setGeometryTypeState(geom);
+        setCoordinateList(adjustCoordinateListForGeometry(pts, geom));
         form.setFieldsValue({
           code: res.code,
           name: res.name,
@@ -473,7 +477,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
           coverage: res.coverage,
           conditionStatus: res.conditionStatus || ConditionStatus.OPERATIONAL,
           note: res.note,
-          geometryType: res.geometryType || 'POINT',
+          geometryType: geom,
           symbolId: res.symbolId,
           coordinateSystem: (res as any).coordinateSystem || 'WGS 84 / VN-2000',
           displayRule: (res as any).displayRule || 'Độ, phút, giây (DMS)',
@@ -487,6 +491,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
       setRecord(null);
       setAttachments([]);
       setCoordinateList([{ latitude: null, longitude: null }]);
+      setGeometryTypeState('POINT');
       form.resetFields();
       vtsOperationCenterService.generateCode().then((res) => {
         form.setFieldsValue({
@@ -498,8 +503,6 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
         });
       }).catch(() => {
         form.setFieldsValue({
-          // The backend also generates the code. Do not use a fixed fallback
-          // that can collide with an existing record.
           code: undefined,
           conditionStatus: ConditionStatus.OPERATIONAL,
           geometryType: 'POINT',
@@ -1180,7 +1183,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
   return (
     <Drawer
       rootClassName="vtssystemchk-theme-scope"
-      size="50%"
+      width="50%"
       placement="right"
       closable={false}
       open={open}
@@ -1482,6 +1485,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                                 style={{ ...selectStyle, height: 38 }}
                                 onChange={(val) => {
                                   form.setFieldValue('geometryType', val);
+                                  setGeometryTypeState(val || 'POINT');
                                   if (val) {
                                     form.setFieldValue('coordinateSystem', 'WGS 84 / VN-2000');
                                     form.setFieldValue('displayRule', 'Độ, phút, giây (DMS)');
@@ -1490,7 +1494,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                                     form.setFieldValue('coordinateSystem', undefined);
                                     form.setFieldValue('displayRule', undefined);
                                     form.setFieldValue('symbolId', undefined);
-                                    setCoordinateList([]);
+                                    setCoordinateList([{ latitude: null, longitude: null }]);
                                   }
                                 }}
                               />
@@ -1506,7 +1510,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                               <Select
                                 placeholder="Chọn biểu tượng bản đồ"
                                 allowClear
-                                disabled={!watchedGeometryType}
+                                disabled={!geometryTypeState}
                                 options={symbols.map((sym) => ({
                                   value: sym.id,
                                   label: (
@@ -1587,7 +1591,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                             >
                               Chọn vị trí trên bản đồ
                             </Button>
-                            {watchedGeometryType && watchedGeometryType !== 'POINT' && (
+                            {geometryTypeState !== 'POINT' && (
                               <Button
                                 type="primary"
                                 icon={<PlusOutlined />}
@@ -1603,7 +1607,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
 
                       <DetailTable
                         scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
-                        dataSource={((watchedGeometryType === 'POINT' || !watchedGeometryType) ? coordinateList.slice(0, 1) : coordinateList).map((c, i) => ({ ...c, _idx: i }))}
+                        dataSource={(geometryTypeState === 'POINT' ? coordinateList.slice(0, 1) : coordinateList).map((c, i) => ({ ...c, _idx: i }))}
                         emptyText="Chưa có tọa độ nào"
                         rowKey="_idx"
                         columns={[
@@ -1632,7 +1636,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                             width: 50,
                             align: 'center' as const,
                             render: (_: any, r: any) => {
-                              const geom = (watchedGeometryType || form.getFieldValue('geometryType') || 'POINT').toUpperCase();
+                              const geom = (geometryTypeState || 'POINT').toUpperCase();
                               if (geom === 'POINT') return null;
                               const minCount = geom.includes('LINE') ? 2 : (geom.includes('POLYGON') ? 3 : 1);
                               const canDelete = coordinateList.length > minCount;
@@ -1712,11 +1716,11 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
             height={560}
             disabled={isDetailMode}
             value={{
-              geometryType: watchedGeometryType || 'POINT',
-              coordinates: serializeCoordinatesToWkt(coordinateList, watchedGeometryType || 'POINT'),
+              geometryType: geometryTypeState || 'POINT',
+              coordinates: serializeCoordinatesToWkt(coordinateList, geometryTypeState || 'POINT'),
               symbolId: form.getFieldValue('symbolId'),
             }}
-            defaultGeometryType={(watchedGeometryType as any) || 'POINT'}
+            defaultGeometryType={(geometryTypeState as any) || 'POINT'}
             onChange={(val) => {
               if (isDetailMode) return;
               if (val?.coordinates) {
@@ -1725,6 +1729,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
               }
               if (val?.geometryType) {
                 form.setFieldValue('geometryType', val.geometryType);
+                setGeometryTypeState(val.geometryType);
               }
               if (val?.symbolId) {
                 form.setFieldValue('symbolId', val.symbolId);

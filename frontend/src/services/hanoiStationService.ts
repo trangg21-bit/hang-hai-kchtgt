@@ -54,14 +54,17 @@ export const hanoiStationService = {
       sortBy: params?.sortBy,
       sortDir: params?.sortDir,
     });
+    // Số trên tab chỉ đổi khi bộ lọc đổi — lật trang hay đổi tab mà vẫn gọi
+    // /counts là nhân đôi số request cho cùng một kết quả.
+    const wantCounts = params?.includeCounts !== false;
     const [res, countsRes] = await Promise.all([
       api.get(`${BASE_PATH}?${sp}`),
-      api.get(`${BASE_PATH}/counts?${sp}`),
+      wantCounts ? api.get(`${BASE_PATH}/counts?${sp}`) : Promise.resolve(null),
     ]);
     const data = res.data?.data || res.data || {};
     const items = data.content || (Array.isArray(data) ? data : []);
     const total = data.totalElements ?? items.length;
-    const counts = countsRes.data?.data || countsRes.data || {};
+    const counts = countsRes ? (countsRes.data?.data || countsRes.data || {}) : undefined;
 
     return {
       items,
@@ -132,8 +135,22 @@ export const hanoiStationService = {
     return this.approveC2(id, statusOrContent, maybeContent);
   },
 
-  async getHistory(id: string): Promise<HistoryEntry[]> {
-    const res = await api.get(`${BASE_PATH}/${id}/history`);
+  async getHistory(
+    id: string,
+    page?: number,
+    pageSize?: number,
+    filters?: { keyword?: string; fromDate?: string; toDate?: string },
+  ): Promise<HistoryEntry[]> {
+    const params: Record<string, string | number> = {};
+    if (page !== undefined && pageSize !== undefined) {
+      params.page = page;
+      params.pageSize = pageSize;
+    }
+    if (filters?.keyword) params.keyword = filters.keyword;
+    if (filters?.fromDate) params.fromDate = filters.fromDate;
+    if (filters?.toDate) params.toDate = filters.toDate;
+
+    const res = await api.get(`${BASE_PATH}/${id}/history`, { params });
     return toArray<HistoryEntry>(res.data?.data || res.data);
   },
 

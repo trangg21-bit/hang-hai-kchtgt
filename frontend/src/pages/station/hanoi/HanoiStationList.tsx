@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Typography, Modal, Input, Drawer, Button, DatePicker, Space, Select } from 'antd';
 import {
   EyeOutlined,
@@ -33,8 +33,7 @@ import {
   statusOperational, statusDraft, statusCritical, statusAttention,
   surfacePage, spaceXs, spaceXl, drawerTitleStyle, drawerCloseBtnStyle, selectStyle,
   borderDefault, statusBadgeStyle, cellTitleStyle, cellSubtitleStyle,
-  inputStyle, primaryButtonStyle, textAreaStyle, clientSideStringSorter,
-  clientSideProvinceSorter, clientSideUserSorter, clientSideBadgeSorter,
+  inputStyle, primaryButtonStyle, textAreaStyle,
   getRangePickerProps,
 } from '../../../themetokenchk';
 import { colors } from '../../../themetokenchk';
@@ -47,6 +46,10 @@ import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import * as themeTokenChk from '../../../themetokenchk';
 import { ThemeTokenProvider } from '../../../context/ThemeTokenContext';
 import { deduplicateAttachmentHistoryChanges } from '../../../utils/historyAttachmentDedup';
+import { renderCommonHistoryValueTag } from '../../../components/shared/CommonHistoryDrawer';
+
+/** Số bản ghi nhật ký mỗi lần cuộn tải thêm trong drawer lịch sử. */
+const HISTORY_PAGE_SIZE = 20;
 
 const CONDITION_COLOR: Record<ConditionStatus, string> = {
   [ConditionStatus.OPERATIONAL]: statusOperational,
@@ -107,15 +110,19 @@ function historyFieldValue(fn: string, val: string | null): string {
       return normalizedValue;
     }).join('; ');
   }
-  if (fn === 'provinceId') {
+  // Backend ghi nhật ký theo NHÃN tiếng Việt ("Tình trạng", "Địa điểm (Tỉnh/TP)")
+  // chứ không theo tên trường, nên nếu chỉ so khớp 'conditionStatus'/'provinceId'
+  // thì không bao giờ trúng và màn hình hiện nguyên mã enum / nguyên số ID tỉnh.
+  const normFieldKey = normalizeHistoryKey(fn);
+  if (fn === 'provinceId' || normFieldKey === 'dia diem (tinh/tp)' || normFieldKey === 'tinh/thanh pho') {
     const num = Number(displayValue);
     if (!isNaN(num)) return getProvinceNameById(num) || displayValue;
     return displayValue;
   }
-  if (fn === 'conditionStatus') {
+  if (fn === 'conditionStatus' || normFieldKey === 'tinh trang') {
     return CONDITION_STATUS_MAP[displayValue as ConditionStatus] || displayValue;
   }
-  if (fn === 'operatingOrgId' || fn === 'operatingOrgName') {
+  if (fn === 'operatingOrgId' || fn === 'operatingOrgName' || normFieldKey === 'don vi khai thac') {
     return getOperatingOrgName(displayValue);
   }
   return displayValue;
@@ -393,18 +400,31 @@ function renderHistoryValueTag(field: string, val: string | null, symbols: any[]
   if (val === null || val === undefined || val === '—' || val === '') {
     return <span style={{ color: textTertiary }}>—</span>;
   }
-  if (field === 'symbol' || field === 'symbolId') {
-    const sym = symbols.find((s) => s.id === val || s.code === val);
+  const normField = normalizeHistoryKey(field);
+  // Nhật ký gọi trường này là "Biểu tượng" và đã lưu sẵn TÊN biểu tượng, nên tra
+  // theo id/code như trước thì không bao giờ khớp — mất icon so với các màn khác.
+  if (normField === 'symbol' || normField === 'symbolid' || normField.includes('bieu tuong')) {
+    const raw = String(val).trim();
+    const normVal = normalizeHistoryKey(raw);
+    const sym = symbols.find((s) => s.id === raw
+      || s.code === raw
+      || normalizeHistoryKey(String(s.code || '')) === normVal
+      || normalizeHistoryKey(String(s.name || '')) === normVal);
     if (sym?.image) {
       const src = sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`;
       return (
         <Space size={4}>
-          <img src={src} alt="" style={{ width: 16, height: 16, objectFit: 'contain' }} />
+          <img src={src} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} />
           <span>{sym.name}</span>
         </Space>
       );
     }
     return <span>{sym?.name || val}</span>;
+  }
+  // Tình trạng / trạng thái dùng chung bộ tô màu với các màn hình khác để một
+  // giá trị chỉ có duy nhất một cách hiển thị trong toàn hệ thống.
+  if (normField.includes('tinh trang') || normField.includes('trang thai') || normField.includes('status')) {
+    return renderCommonHistoryValueTag(field, val);
   }
   return <span style={{ color: textPrimary }}>{val}</span>;
 }
@@ -417,9 +437,15 @@ export const HanoiStationList: React.FC = () => {
   const [pageSize, setPageSize] = useState(20);
 
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  // Bộ lọc (không tính tab) của lần đếm gần nhất — dùng để biết khi nào cần gọi lại.
+  const statusCountFilterKey = useRef<string | null>(null);
 
   const [filterValues, setFilterValues] = useState<Record<string, any>>({});
   const [filterKeyword, setFilterKeyword] = useState('');
+  // Sắp xếp chạy ở server để áp dụng cho toàn bộ kết quả; nếu để antd tự sắp thì
+  // chỉ các dòng của trang hiện tại được sắp, gây hiểu nhầm là đã sắp cả danh sách.
+  const [sortField, setSortField] = useState<string | undefined>();
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [filterProvinceId, setFilterProvinceId] = useState<number | undefined>(undefined);
   const [filterConditionStatus, setFilterConditionStatus] = useState<string | undefined>(undefined);
   const [filterApprovalStatus, setFilterApprovalStatus] = useState<ApprovalStatus | undefined>(undefined);
@@ -444,6 +470,10 @@ export const HanoiStationList: React.FC = () => {
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
+  const [hasMoreHistory, setHasMoreHistory] = useState(true);
+  const [historyPage, setHistoryPage] = useState(0);
+  const [historyTargetId, setHistoryTargetId] = useState<string | null>(null);
   const [historySearch, setHistorySearch] = useState('');
   const [historySearchInput, setHistorySearchInput] = useState('');
   const [historyDateFrom, setHistoryDateFrom] = useState('');
@@ -482,6 +512,13 @@ export const HanoiStationList: React.FC = () => {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
+      // Số trên tab tính cho MỌI trạng thái phê duyệt, nên đổi tab hay lật trang
+      // không được làm thay đổi phạm vi đếm — khóa này chỉ gồm các bộ lọc còn lại.
+      const currentStatusCountFilterKey = JSON.stringify([
+        filterKeyword, filterOrgUnitId, filterProvinceId,
+        filterConditionStatus, filterUpdatedFrom, filterUpdatedTo,
+      ]);
+      const shouldIncludeCounts = statusCountFilterKey.current !== currentStatusCountFilterKey;
       const params: HanoiStationListParams = {
         page,
         size: pageSize,
@@ -492,28 +529,48 @@ export const HanoiStationList: React.FC = () => {
         approvalStatus: filterApprovalStatus,
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
-        sortBy: 'createdAt',
-        sortDir: 'DESC',
+        sortBy: sortField || 'createdAt',
+        sortDir: sortField ? sortDirection.toUpperCase() : 'DESC',
+        includeCounts: shouldIncludeCounts,
       };
       const res = await hanoiStationService.search(params);
 
       setData(res.items || []);
       setTotal(res.total || 0);
-      setStatusCounts(res.statusCounts || {});
+      // Khi bỏ qua lần gọi đếm thì giữ nguyên số cũ, không xóa trắng tab.
+      if (res.statusCounts) {
+        setStatusCounts(res.statusCounts);
+        statusCountFilterKey.current = currentStatusCountFilterKey;
+      }
     } catch {
       toast.error('Không thể tải danh sách Đài TTXLTT');
     } finally {
       setLoading(false);
     }
-  }, [filterKeyword, filterOrgUnitId, filterProvinceId, filterConditionStatus, filterApprovalStatus, filterUpdatedFrom, filterUpdatedTo, page, pageSize]);
+  }, [filterKeyword, filterOrgUnitId, filterProvinceId, filterConditionStatus, filterApprovalStatus, filterUpdatedFrom, filterUpdatedTo, page, pageSize, sortField, sortDirection]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   const refreshList = () => {
+    // Sau khi tạo/sửa/duyệt thì số trên tab đã đổi, buộc nạp lại lần đếm kế tiếp.
+    statusCountFilterKey.current = null;
     fetchData();
   };
+
+  const handleSort = useCallback((field: string, order: 'asc' | 'desc') => {
+    setSortField(field);
+    setSortDirection(order);
+    setPage(1);
+  }, []);
+
+  const sortOrderFor = (key: string): 'ascend' | 'descend' | null =>
+    (sortField === key ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null);
+
+  // Bộ so sánh trung tính: thứ tự do server quyết định, hàm này chỉ để antd hiện
+  // biểu tượng sắp xếp mà không tự sắp lại các dòng của trang hiện tại.
+  const serverSideSorter = () => 0;
 
   const countDraft = Number(statusCounts.DRAFT ?? statusCounts.draft ?? 0);
   const countPendingApproval = Number(statusCounts.PENDING_APPROVAL ?? statusCounts.pending ?? 0);
@@ -543,8 +600,10 @@ export const HanoiStationList: React.FC = () => {
     setFilterConditionStatus(vals.conditionStatus);
     setFilterOrgUnitId(vals.orgUnitId);
     setFilterProvinceId(vals.provinceId);
-    setFilterUpdatedFrom(vals.updateDateRange?.[0] ? dayjs(vals.updateDateRange[0]).startOf('day').toISOString() : undefined);
-    setFilterUpdatedTo(vals.updateDateRange?.[1] ? dayjs(vals.updateDateRange[1]).endOf('day').toISOString() : undefined);
+    // Gửi giờ ĐỊA PHƯƠNG, không dùng toISOString(): backend nhận LocalDateTime nên
+    // bỏ qua phần bù múi giờ, làm khoảng lọc lệch 7 tiếng so với ngày người dùng chọn.
+    setFilterUpdatedFrom(vals.updateDateRange?.[0] ? dayjs(vals.updateDateRange[0]).startOf('day').format('YYYY-MM-DDTHH:mm:ss') : undefined);
+    setFilterUpdatedTo(vals.updateDateRange?.[1] ? dayjs(vals.updateDateRange[1]).endOf('day').format('YYYY-MM-DDTHH:mm:ss') : undefined);
     setPage(1);
   };
 
@@ -608,8 +667,9 @@ export const HanoiStationList: React.FC = () => {
   };
 
   const handleReject = async () => {
-    if (!rejectReason.trim() || rejectReason.trim().length < 5) {
-      toast.error('Vui lòng nhập lý do từ chối (tối thiểu 5 ký tự)');
+    // Quy trình phê duyệt 2 cấp (§3.4): lý do từ chối tối thiểu 10 ký tự.
+    if (!rejectReason.trim() || rejectReason.trim().length < 10) {
+      toast.error('Lý do từ chối phải có ít nhất 10 ký tự');
       return;
     }
     if (!rejectTargetId) return;
@@ -626,19 +686,72 @@ export const HanoiStationList: React.FC = () => {
   const handleOpenHistory = (record: HanoiStationItem) => {
     setSelectedRecord(record);
     setHistoryModalOpen(true);
-    setLoadingHistory(true);
+    setHistoryRecords([]);
     setHistorySearch('');
     setHistorySearchInput('');
     setHistoryDateFrom('');
     setHistoryDateTo('');
+    setHistoryTargetId(record.id);
+    setLoadingHistory(false);
+    setLoadingMoreHistory(false);
+    setHasMoreHistory(true);
+    setHistoryPage(0);
+  };
 
-    hanoiStationService.getHistory(record.id).then((res) => {
-      setHistoryRecords(res || []);
-    }).catch(() => {
-      toast.error('Không thể tải lịch sử thay đổi');
-    }).finally(() => {
-      setLoadingHistory(false);
-    });
+  // Nạp lại trang đầu mỗi khi mở drawer hoặc đổi điều kiện lọc. Lọc chạy ở server
+  // nên ô tìm kiếm quét đúng toàn bộ nhật ký, không riêng phần đã tải.
+  useEffect(() => {
+    if (!historyModalOpen || !historyTargetId) return;
+    let cancelled = false;
+    (async () => {
+      setLoadingHistory(true);
+      setLoadingMoreHistory(false);
+      setHasMoreHistory(true);
+      setHistoryRecords([]);
+      setHistoryPage(0);
+      try {
+        const res = await hanoiStationService.getHistory(historyTargetId, 0, HISTORY_PAGE_SIZE, {
+          keyword: historySearch || undefined,
+          fromDate: historyDateFrom || undefined,
+          toDate: historyDateTo || undefined,
+        });
+        if (cancelled) return;
+        const items = res || [];
+        setHistoryRecords(items);
+        setHasMoreHistory(items.length === HISTORY_PAGE_SIZE);
+      } catch {
+        if (!cancelled) toast.error('Không thể tải lịch sử thay đổi');
+      } finally {
+        if (!cancelled) setLoadingHistory(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [historyModalOpen, historyTargetId, historySearch, historyDateFrom, historyDateTo]);
+
+  const loadMoreHistory = useCallback(async () => {
+    if (!historyTargetId || loadingHistory || loadingMoreHistory || !hasMoreHistory) return;
+    setLoadingMoreHistory(true);
+    try {
+      const nextPage = historyPage + 1;
+      const res = await hanoiStationService.getHistory(historyTargetId, nextPage, HISTORY_PAGE_SIZE, {
+        keyword: historySearch || undefined,
+        fromDate: historyDateFrom || undefined,
+        toDate: historyDateTo || undefined,
+      });
+      if (res && res.length > 0) {
+        setHistoryRecords((prev) => [...prev, ...res]);
+      }
+      setHistoryPage(nextPage);
+      setHasMoreHistory((res || []).length === HISTORY_PAGE_SIZE);
+    } catch { /* giữ nguyên phần đã tải, người dùng cuộn lại sẽ thử tiếp */ }
+    finally { setLoadingMoreHistory(false); }
+  }, [historyTargetId, loadingHistory, loadingMoreHistory, hasMoreHistory, historyPage, historySearch, historyDateFrom, historyDateTo]);
+
+  const handleHistoryScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) {
+      loadMoreHistory();
+    }
   };
 
   const fmtTime = (ts: string) => {
@@ -665,7 +778,10 @@ export const HanoiStationList: React.FC = () => {
       const prev = groups[groups.length - 1];
       const actor = historyActor(r);
       const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
-      const isSameGroup = prev && Math.abs(prev.tsSec - sec) <= 60 && prev.actor === actor && (prev.status === r.status || isBothUpdate);
+      // Gộp theo ĐÚNG giây: một lần bấm Lưu ghi ra nhiều dòng cùng thời điểm.
+      // Cửa sổ 60 giây như trước làm hai lần sửa cách nhau chưa tới một phút bị
+      // nhập thành một bản ghi lịch sử duy nhất.
+      const isSameGroup = prev && prev.tsSec === sec && prev.actor === actor && (prev.status === r.status || isBothUpdate);
       if (isSameGroup) {
         prev.items.push(r);
       } else {
@@ -691,7 +807,11 @@ export const HanoiStationList: React.FC = () => {
         const formatHistoryValue = (fn: string, raw: string | null) => {
           if (raw === null || raw === '(null)' || raw === '') return null;
           const t = raw.trim();
-          const specialFields = ['provinceId', 'symbol', 'symbolId', 'conditionStatus', 'approvalStatus'];
+          // Nhật ký dùng nhãn tiếng Việt làm tên trường, nên danh sách "trường đặc
+          // biệt" phải có cả nhãn; nếu không, ID tỉnh lọt vào nhánh rút gọn số và
+          // được in nguyên là 89 thay vì tên tỉnh.
+          const specialFields = ['provinceId', 'symbol', 'symbolId', 'conditionStatus', 'approvalStatus',
+            'Địa điểm (Tỉnh/TP)', 'Tỉnh/Thành phố', 'Tình trạng', 'Trạng thái phê duyệt', 'Biểu tượng'];
           if (!specialFields.includes(fn) && /^-?\d+(\.\d+)?$/.test(t)) {
             const n = Number(t);
             return Number.isInteger(n) ? String(n) : t;
@@ -883,7 +1003,9 @@ export const HanoiStationList: React.FC = () => {
       dataIndex: 'name',
       width: 260,
       fixed: 'left' as const,
-      sorter: clientSideStringSorter('name', 'code'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('name'),
       render: (_: any, record: HanoiStationItem) => (
         <div
           style={{ cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
@@ -904,7 +1026,9 @@ export const HanoiStationList: React.FC = () => {
       label: 'Đơn vị quản lý',
       dataIndex: 'orgUnitName',
       width: 220,
-      sorter: clientSideStringSorter('orgUnitName'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('orgUnitName'),
       render: (v: string) => <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: fontWeightBold }} title={v}>{v || '—'}</div>,
     },
     {
@@ -912,7 +1036,9 @@ export const HanoiStationList: React.FC = () => {
       label: 'Đơn vị khai thác',
       dataIndex: 'operatingOrgName',
       width: 200,
-      sorter: clientSideStringSorter('operatingOrgName'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('operatingOrgName'),
       render: (v: string, record: HanoiStationItem) => {
         const name = getOperatingOrgName(record.operatingOrgId, v);
         return <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</div>;
@@ -923,7 +1049,9 @@ export const HanoiStationList: React.FC = () => {
       label: 'Địa điểm (Tỉnh/TP)',
       dataIndex: 'provinceId',
       width: 180,
-      sorter: clientSideProvinceSorter('provinceName', 'provinceId'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('provinceId'),
       render: (_: any, r: HanoiStationItem) => {
         const val = r.provinceId ? getProvinceNameById(r.provinceId) : '—';
         return <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>{val}</div>;
@@ -935,7 +1063,9 @@ export const HanoiStationList: React.FC = () => {
       dataIndex: 'conditionStatus',
       width: 160,
       align: 'center' as const,
-      sorter: clientSideBadgeSorter('conditionStatus', CONDITION_STATUS_MAP),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('conditionStatus'),
       render: (v: string) => {
         const enumKey = (v || ConditionStatus.OPERATIONAL) as ConditionStatus;
         const label = CONDITION_STATUS_MAP[enumKey] || v;
@@ -953,38 +1083,48 @@ export const HanoiStationList: React.FC = () => {
       dataIndex: 'approvalStatus',
       width: 180,
       align: 'center' as const,
-      sorter: clientSideBadgeSorter('approvalStatus'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('approvalStatus'),
       render: (status: ApprovalStatus) => <ApprovalStatusBadge status={status} />,
     },
     {
       key: 'updatedInfo',
       label: 'Cán bộ cập nhật / Thời gian',
       width: 220,
-      sorter: clientSideUserSorter('updatedByName', 'createdByName', 'updatedAt', 'createdAt'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('updatedInfo'),
       render: (_: any, r: HanoiStationItem) => renderPersonTimeCell(r.updatedByName || r.createdByName, r.updatedAt || r.createdAt),
     },
     {
       key: 'submittedInfo',
       label: 'Cán bộ gửi phê duyệt',
       width: 220,
-      sorter: clientSideUserSorter('submittedByName', 'submittedBy', 'submittedAt'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('submittedInfo'),
       render: (_: any, r: HanoiStationItem) => renderPersonTimeCell(r.submittedByName || r.submittedBy, r.submittedAt),
     },
     {
       key: 'approvedLevel1Info',
       label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
       width: 320,
-      sorter: clientSideUserSorter('approverLevel1Name', 'approverLevel1', 'approvedDateLevel1'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('approvedLevel1Info'),
       render: (_: any, r: HanoiStationItem) => renderPersonTimeCell(r.approverLevel1Name || r.approverLevel1, r.approvedDateLevel1),
     },
     {
       key: 'approvedLevel2Info',
       label: 'Cán bộ phê duyệt cấp Cục',
       width: 220,
-      sorter: clientSideUserSorter('approverLevel2Name', 'approverLevel2', 'approvedDateLevel2'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('approvedLevel2Info'),
       render: (_: any, r: HanoiStationItem) => renderPersonTimeCell(r.approverLevel2Name || r.approverLevel2, r.approvedDateLevel2),
     },
-  ], [page, pageSize]);
+  ], [page, pageSize, sortField, sortDirection]);
 
   const getRowActions = (record: HanoiStationItem) => {
     const isCreator = Boolean(user?.id && (record.createdBy === user.id || record.createdBy === user.username));
@@ -1215,7 +1355,8 @@ export const HanoiStationList: React.FC = () => {
             dataSource={data}
             rowKey="id"
             rowActions={getRowActions}
-            loading={false}
+            loading={loading}
+            onSort={handleSort}
             scroll={{ x: 'max-content' }}
           />
           <Pagination
@@ -1315,16 +1456,6 @@ export const HanoiStationList: React.FC = () => {
                 loading={loadingHistory}
                 onClick={() => {
                   setHistorySearch(historySearchInput.trim());
-                  if (selectedRecord) {
-                    setLoadingHistory(true);
-                    hanoiStationService.getHistory(selectedRecord.id).then((res) => {
-                      setHistoryRecords(res || []);
-                    }).catch(() => {
-                      toast.error('Không thể tải lịch sử thay đổi');
-                    }).finally(() => {
-                      setLoadingHistory(false);
-                    });
-                  }
                 }}
                 style={primaryButtonStyle}
               >
@@ -1332,25 +1463,21 @@ export const HanoiStationList: React.FC = () => {
               </Button>
             </div>
           </div>
-          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+          {/* Cuộn tới đáy thì tải thêm một trang nhật ký. Không lọc lại ở client:
+              từ khóa và khoảng ngày đã được áp ở server nên lọc lần nữa chỉ làm
+              rơi mất bản ghi của các trang chưa tải. */}
+          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>
             {loadingHistory && historyRecords.length === 0 ? (
               <LoadingSkeleton columnCount={4} rowCount={5} />
             ) : (
-              renderHistoryTimeline(
-                historyRecords.filter((item) => {
-                  if (!historySearch && !historyDateFrom && !historyDateTo) return true;
-                  const q = historySearch.toLowerCase().trim();
-                  const ts = historyTimestamp(item);
-                  if (historyDateFrom && ts && dayjs(ts).isBefore(dayjs(historyDateFrom))) return false;
-                  if (historyDateTo && ts && dayjs(ts).isAfter(dayjs(historyDateTo))) return false;
-                  if (!q) return true;
-                  const act = historyActor(item).toLowerCase();
-                  const fn = historyFieldName(historyField(item)).toLowerCase();
-                  const ov = String(historyOldValue(item) || '').toLowerCase();
-                  const nv = String(historyNewValue(item) || '').toLowerCase();
-                  return act.includes(q) || fn.includes(q) || ov.includes(q) || nv.includes(q);
-                })
-              )
+              <>
+                {renderHistoryTimeline(historyRecords)}
+                {loadingMoreHistory && (
+                  <div style={{ padding: spaceMd, textAlign: 'center', color: textSecondary, fontSize: fontSizeMd }}>
+                    Đang tải thêm…
+                  </div>
+                )}
+              </>
             )}
           </div>
         </Drawer>

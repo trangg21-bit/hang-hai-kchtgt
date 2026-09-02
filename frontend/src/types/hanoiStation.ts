@@ -109,6 +109,12 @@ export interface HanoiStationListParams {
   size?: number;
   sortBy?: string;
   sortDir?: string;
+  /**
+   * Có gọi kèm endpoint đếm theo tab hay không. Số trên tab không phụ thuộc
+   * trang hay tab đang chọn, nên chỉ cần nạp lại khi bộ lọc đổi — mặc định true
+   * để giữ nguyên hành vi cũ cho nơi gọi khác.
+   */
+  includeCounts?: boolean;
 }
 
 export interface HanoiStationSearchResponse {

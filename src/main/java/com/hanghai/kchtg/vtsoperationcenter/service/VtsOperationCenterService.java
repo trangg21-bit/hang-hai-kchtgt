@@ -122,14 +122,22 @@ public class VtsOperationCenterService {
      * dữ liệu.
      */
     private static String toKeywordLike(String keyword) {
+        String normalized = normalizeHistoryKeyword(keyword);
+        return normalized == null ? null : "%" + normalized + "%";
+    }
+
+    /**
+     * Bỏ dấu từ khóa, KHÔNG bọc `%`. Truy vấn nhật ký tự nối `%` bằng CONCAT nên
+     * bọc sẵn ở đây sẽ thành `%%tu khoa%%` và khớp sai.
+     */
+    private static String normalizeHistoryKeyword(String keyword) {
         if (keyword == null || keyword.trim().isEmpty()) {
             return null;
         }
-        String normalized = Normalizer
+        return Normalizer
                 .normalize(keyword.trim().toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
                 .replaceAll("\\p{M}+", "")
                 .replace('đ', 'd');
-        return "%" + normalized + "%";
     }
 
     private void validateAllowedOrgUnit(UUID orgUnitId) {
@@ -585,15 +593,40 @@ public class VtsOperationCenterService {
      */
     @Transactional(readOnly = true)
     public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize) {
+        return getHistory(id, page, pageSize, null, null, null);
+    }
+
+    /**
+     * Nhật ký của một hồ sơ, lọc và phân trang Ở SERVER.
+     *
+     * Drawer lịch sử trước đây tải toàn bộ nhật ký rồi lọc từ khóa/ngày ngay trên
+     * trình duyệt — hồ sơ sửa nhiều lần là tải nặng dần. Đưa cả ba điều kiện
+     * xuống CSDL để drawer chỉ cuộn lấy thêm từng trang mà ô tìm kiếm vẫn quét
+     * đúng toàn bộ nhật ký chứ không riêng phần đã tải.
+     */
+    @Transactional(readOnly = true)
+    public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize, String keyword,
+            LocalDateTime fromDate, LocalDateTime toDate) {
         VtsOperationCenter parent = repository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Trung tâm điều hành VTS không tồn tại"));
         validateAllowedOrgUnit(parent.getOrgUnitId());
 
-        List<InfrastructureHistory> list = (page != null && pageSize != null && pageSize > 0)
-                ? historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
-                        InfrastructureType.VTS_OPERATION_CENTER, id, PageRequest.of(page, pageSize))
-                : historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
-                        InfrastructureType.VTS_OPERATION_CENTER, id);
+        String normalizedKeyword = normalizeHistoryKeyword(keyword);
+        boolean paged = page != null && pageSize != null && pageSize > 0;
+        List<InfrastructureHistory> list;
+        if (normalizedKeyword == null && fromDate == null && toDate == null) {
+            // Mở drawer ở trạng thái mặc định thì không chạy biểu thức tìm kiếm —
+            // giữ cho các cột nhật ký kiểu BYTEA cũ vẫn đọc được khi chưa migrate.
+            list = paged
+                    ? historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+                            InfrastructureType.VTS_OPERATION_CENTER, id, PageRequest.of(page, pageSize))
+                    : historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+                            InfrastructureType.VTS_OPERATION_CENTER, id);
+        } else {
+            list = historyRepository.searchHistory(
+                    InfrastructureType.VTS_OPERATION_CENTER, id, normalizedKeyword, fromDate, toDate,
+                    paged ? PageRequest.of(page, pageSize) : Pageable.unpaged());
+        }
         Set<UUID> userIds = list.stream()
                 .map(InfrastructureHistory::getApprovedBy)
                 .filter(Objects::nonNull)
@@ -711,7 +744,7 @@ public class VtsOperationCenterService {
                         .refId(id)
                         .refType(InfrastructureType.VTS_OPERATION_CENTER)
                         .approvalLevel(ApprovalLevel.LEVEL_0)
-                        .status(InfrastructureHistoryStatus.UPDATED)
+                        .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
                         .approvedBy(userId)
                         .approvedDate(LocalDateTime.now())
                         .reason("Tải lên tài liệu đính kèm: " + originalFilename)
@@ -821,7 +854,7 @@ public class VtsOperationCenterService {
                     .refId(id)
                     .refType(InfrastructureType.VTS_OPERATION_CENTER)
                     .approvalLevel(ApprovalLevel.LEVEL_0)
-                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
                     .approvedBy(userId)
                     .approvedDate(LocalDateTime.now())
                     .reason("Xóa tài liệu đính kèm: " + att.getFileName())

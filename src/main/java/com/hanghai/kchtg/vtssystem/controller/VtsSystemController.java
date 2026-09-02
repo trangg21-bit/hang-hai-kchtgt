@@ -37,6 +37,9 @@ import java.util.UUID;
 @DataScope
 public class VtsSystemController {
 
+    /** Trần số bản ghi mỗi trang cho endpoint danh sách. */
+    private static final int MAX_PAGE_SIZE = 200;
+
     private final VtsSystemService service;
 
     public VtsSystemController(VtsSystemService service) {
@@ -80,10 +83,13 @@ public class VtsSystemController {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "true") boolean includeCounts,
             @RequestParam(required = false) String sort) {
+        // Chặn trần số bản ghi mỗi trang: `size` đến từ client, không giới hạn thì
+        // một request `size=100000` kéo cả bảng ra khỏi CSDL.
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         VtsSystemListResponse responses = service.findAllWithSearchAndCounts(
                 orgUnitId, portId, provinceId, keyword, systemName, code, conditionStatus, approvalStatus,
                 operationStartDateFrom, operationStartDateTo, updatedFrom, updatedTo,
-                year, page, size, includeCounts, sort);
+                year, page, safeSize, includeCounts, sort);
         return ResponseEntity.ok(ApiResponse.success("Danh sách hệ thống VTS", responses));
     }
 

@@ -51,6 +51,7 @@ public class CoastalStationLRITService {
     private final OperatingOrganizationRepository operatingOrganizationRepository;
     private final UserRepository userRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
     private final com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository attachmentRepository;
 
     private Scope resolveEffectiveScope(UUID selectedOrgUnitId) {
@@ -69,6 +70,29 @@ public class CoastalStationLRITService {
                 .filter(userScope.orgUnitIds()::contains)
                 .toList();
         return Scope.restricted(intersected);
+    }
+
+    /**
+     * Chuẩn hóa từ khóa cho vế LIKE.
+     *
+     * Truy vấn so sánh với {@code immutable_unaccent(LOWER(...))} — tức là chuỗi
+     * ĐÃ bỏ dấu — nên từ khóa cũng phải bỏ dấu, nếu không thì gõ tiếng Việt có dấu
+     * (cách gõ tự nhiên) sẽ không bao giờ khớp và màn hình luôn báo không có dữ liệu.
+     */
+    private static String toKeywordLike(String keyword) {
+        String normalized = normalizeHistoryKeyword(keyword);
+        return normalized == null ? null : "%" + normalized + "%";
+    }
+
+    /** Bỏ dấu từ khóa, KHÔNG bọc `%` — truy vấn nhật ký tự nối `%` bằng CONCAT. */
+    private static String normalizeHistoryKeyword(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return null;
+        }
+        return java.text.Normalizer
+                .normalize(keyword.trim().toLowerCase(java.util.Locale.ROOT), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('đ', 'd');
     }
 
     private void validateAllowedOrgUnit(UUID orgUnitId) {
@@ -95,6 +119,8 @@ public class CoastalStationLRITService {
     public Page<CoastalStationLRITResponse> searchPaged(
             UUID orgUnitId,
             String keyword,
+            String name,
+            String code,
             UUID operatingOrgId,
             Integer provinceId,
             String conditionStatus,
@@ -108,11 +134,9 @@ public class CoastalStationLRITService {
         boolean scopeEnabled = !scope.unrestricted();
         List<UUID> scopeOrgUnitIds = scope.orgUnitIds();
 
-        String kw = (keyword != null && !keyword.trim().isEmpty())
-                ? "%" + keyword.trim().toLowerCase() + "%" : null;
-
         Page<CoastalStationLRIT> page = repository.searchPaged(
-                scopeEnabled, scopeOrgUnitIds, orgUnitId, kw, operatingOrgId, provinceId,
+                scopeEnabled, scopeOrgUnitIds, orgUnitId, toKeywordLike(keyword), toKeywordLike(name), toKeywordLike(code),
+                operatingOrgId, provinceId,
                 conditionStatus, approvalStatus, updatedBy, updatedFrom, updatedTo, pageable);
 
         return page.map(this::buildResponse);
@@ -120,15 +144,19 @@ public class CoastalStationLRITService {
 
     @Transactional(readOnly = true)
     public Map<String, Long> countByApprovalStatus(UUID orgUnitId, String keyword, String conditionStatus) {
+        return countByApprovalStatus(orgUnitId, keyword, null, null, conditionStatus, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> countByApprovalStatus(UUID orgUnitId, String keyword, String name, String code,
+            String conditionStatus, Integer provinceId, LocalDateTime updatedFrom, LocalDateTime updatedTo) {
         Scope scope = resolveEffectiveScope(orgUnitId);
         boolean scopeEnabled = !scope.unrestricted();
         List<UUID> scopeOrgUnitIds = scope.orgUnitIds();
 
-        String kw = (keyword != null && !keyword.trim().isEmpty())
-                ? "%" + keyword.trim().toLowerCase() + "%" : null;
-
         List<Object[]> rawCounts = repository.countByApprovalStatus(
-                scopeEnabled, scopeOrgUnitIds, orgUnitId, kw, conditionStatus);
+                scopeEnabled, scopeOrgUnitIds, orgUnitId, toKeywordLike(keyword), toKeywordLike(name), toKeywordLike(code),
+                conditionStatus, provinceId, updatedFrom, updatedTo);
 
         Map<ApprovalStatus, Long> countsByStatus = new EnumMap<>(ApprovalStatus.class);
         for (Object[] row : rawCounts) {
@@ -268,13 +296,13 @@ public class CoastalStationLRITService {
                 oldValues.put("Đơn vị khai thác", oldName != null ? oldName : "—");
             }
             if (request.getProvinceId() != null && !Objects.equals(request.getProvinceId(), entity.getProvinceId())) {
-                oldValues.put("Địa điểm (Tỉnh/TP)", entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : "—");
+                oldValues.put("Địa điểm (Tỉnh/TP)", formatProvinceDisplay(entity.getProvinceId()));
             }
             if (request.getLocationAddress() != null && !Objects.equals(request.getLocationAddress(), entity.getLocationAddress())) {
                 oldValues.put("Địa điểm chi tiết", entity.getLocationAddress() != null ? entity.getLocationAddress() : "—");
             }
             if (request.getConditionStatus() != null && !Objects.equals(request.getConditionStatus(), entity.getConditionStatus())) {
-                oldValues.put("Tình trạng", entity.getConditionStatus() != null ? entity.getConditionStatus() : "—");
+                oldValues.put("Tình trạng", formatConditionStatusDisplay(entity.getConditionStatus()));
             }
             if (request.getTerminalId() != null && !Objects.equals(request.getTerminalId(), entity.getTerminalId())) {
                 oldValues.put("Mã Terminal", entity.getTerminalId() != null ? entity.getTerminalId() : "—");
@@ -470,9 +498,9 @@ public class CoastalStationLRITService {
             case "Tên đài" -> entity.getName() != null ? entity.getName() : "—";
             case "Đơn vị quản lý" -> entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId()) : "—";
             case "Đơn vị khai thác" -> entity.getOperatingOrgId() != null ? resolveOperatingOrgName(entity.getOperatingOrgId()) : "—";
-            case "Địa điểm (Tỉnh/TP)" -> entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : "—";
+            case "Địa điểm (Tỉnh/TP)" -> formatProvinceDisplay(entity.getProvinceId());
             case "Địa điểm chi tiết" -> entity.getLocationAddress() != null ? entity.getLocationAddress() : "—";
-            case "Tình trạng" -> entity.getConditionStatus() != null ? entity.getConditionStatus() : "—";
+            case "Tình trạng" -> formatConditionStatusDisplay(entity.getConditionStatus());
             case "Mã Terminal" -> entity.getTerminalId() != null ? entity.getTerminalId() : "—";
             case "Số IMO" -> entity.getImoNumber() != null ? entity.getImoNumber() : "—";
             case "Chu kỳ báo cáo" -> entity.getReportingInterval() != null ? String.valueOf(entity.getReportingInterval()) : "—";
@@ -499,6 +527,37 @@ public class CoastalStationLRITService {
             }
             default -> "—";
         };
+    }
+
+    /**
+     * Nhật ký phải lưu GIÁ TRỊ NGƯỜI DÙNG ĐỌC ĐƯỢC, không lưu mã enum.
+     *
+     * Trước đây trường này ghi thẳng {@code OPERATIONAL}/{@code STOPPED} nên màn
+     * hình lịch sử hiện tiếng Anh, và tìm kiếm nhật ký theo "dừng hoạt động"
+     * không bao giờ khớp vì trong CSDL không có chuỗi đó.
+     */
+    private String formatConditionStatusDisplay(String conditionStatus) {
+        if (conditionStatus == null || conditionStatus.isBlank()) return "—";
+        return switch (conditionStatus.trim().toUpperCase()) {
+            case "OPERATIONAL", "1" -> "Đang hoạt động";
+            case "STOPPED", "0" -> "Dừng hoạt động";
+            case "MAINTENANCE" -> "Đang bảo trì";
+            case "UNDER_CONSTRUCTION", "2" -> "Đang xây dựng";
+            default -> conditionStatus;
+        };
+    }
+
+    /** Tương tự: lưu tên tỉnh/thành thay cho số ID vốn vô nghĩa với người đọc. */
+    private String formatProvinceDisplay(Integer provinceId) {
+        if (provinceId == null) return "—";
+        try {
+            List<String> names = jdbcTemplate.queryForList(
+                    "SELECT name FROM provinces WHERE id = ?", String.class, provinceId);
+            if (!names.isEmpty() && names.get(0) != null) return names.get(0);
+        } catch (Exception e) {
+            log.debug("Không tra được tên tỉnh {} cho nhật ký LRIT", provinceId, e);
+        }
+        return String.valueOf(provinceId);
     }
 
     private String formatObjectTypeDisplay(String objectType) {
@@ -612,6 +671,20 @@ public class CoastalStationLRITService {
 
     @Transactional(readOnly = true)
     public List<CoastalStationLRITHistoryResponse> getHistory(UUID id) {
+        return getHistory(id, null, null, null, null, null);
+    }
+
+    /**
+     * Nhật ký thay đổi, lọc và phân trang Ở SERVER.
+     *
+     * Trước đây hàm này tải TOÀN BỘ nhật ký rồi lọc bằng Java và không phân trang —
+     * hồ sơ sửa nhiều lần là drawer nặng dần, và nếu phân trang mà vẫn lọc ở Java
+     * thì biên trang sai. Nay điều kiện trạng thái, mốc "sau phê duyệt cấp cuối",
+     * mẫu câu nhiễu của dữ liệu cũ, từ khóa và khoảng ngày đều nằm trong truy vấn.
+     */
+    @Transactional(readOnly = true)
+    public List<CoastalStationLRITHistoryResponse> getHistory(UUID id, Integer page, Integer pageSize,
+            String keyword, LocalDateTime fromDate, LocalDateTime toDate) {
         CoastalStationLRIT entity = getStationById(id);
         String code = entity.getCode() != null ? entity.getCode() : entity.getStationCode();
         LocalDateTime finalApprovalAt = entity.getApprovedDate() != null
@@ -619,29 +692,26 @@ public class CoastalStationLRITService {
                 : entity.getApprovedDateLevel2();
 
         // Nhật ký thay đổi chỉ có ý nghĩa sau khi hồ sơ đã được phê duyệt cấp cuối.
-        // Điều kiện này cũng ẩn các dòng CREATE/đính kèm nháp đã được ghi bởi phiên bản cũ.
         if (finalApprovalAt == null) {
             return List.of();
         }
-        return historyService.getHistory(InfrastructureType.LRIT_STATION, entity.getId(), code).stream()
-                .filter(h -> {
-                    if (h.getActionType() == null) return false;
-                    StationHistoryActionType act = h.getActionType();
-                    if (act == StationHistoryActionType.CREATE
-                            || act == StationHistoryActionType.APPROVE_L1
-                            || act == StationHistoryActionType.APPROVE_L2
-                            || act == StationHistoryActionType.REJECT) {
-                        return false;
-                    }
-                    if (h.getChangedAt() == null || h.getChangedAt().isBefore(finalApprovalAt)) return false;
-                    String changedField = h.getChangedField();
-                    String newVal = h.getNewValue();
-                    if ((changedField == null || "Thông tin".equals(changedField))
-                            && newVal != null && (newVal.contains("Phê duyệt") || newVal.contains("Cập nhật thông tin đài LRIT"))) {
-                        return false;
-                    }
-                    return true;
-                })
+        LocalDateTime effectiveFrom = (fromDate == null || fromDate.isBefore(finalApprovalAt))
+                ? finalApprovalAt
+                : fromDate;
+        org.springframework.data.domain.Pageable pageable =
+                (page != null && pageSize != null && page >= 0 && pageSize > 0)
+                        ? org.springframework.data.domain.PageRequest.of(page, pageSize)
+                        : org.springframework.data.domain.Pageable.unpaged();
+
+        return historyService.getHistory(
+                        InfrastructureType.LRIT_STATION, entity.getId(), code,
+                        List.of(com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus.CREATED,
+                                com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus.APPROVED,
+                                com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus.REJECTED),
+                        new String[] { "Thông tin", "Phê duyệt", "Cập nhật thông tin đài LRIT" },
+                        keyword, effectiveFrom, toDate, pageable)
+                .stream()
+                .filter(h -> h.getActionType() != null)
                 .map(h -> {
                     CoastalStationLRITHistoryResponse r = new CoastalStationLRITHistoryResponse();
                     r.setId(h.getId());

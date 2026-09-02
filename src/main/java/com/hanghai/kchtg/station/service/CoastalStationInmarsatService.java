@@ -6,6 +6,7 @@ import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
@@ -27,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -686,23 +688,39 @@ public class CoastalStationInmarsatService {
 
     @Transactional(readOnly = true)
     public List<CoastalStationInmarsatHistoryResponse> getHistory(UUID id) {
+        return getHistory(id, null, null, null, null, null);
+    }
+
+    /**
+     * Nhật ký thay đổi, lọc và phân trang Ở SERVER.
+     *
+     * Trước đây hàm này tải TOÀN BỘ nhật ký rồi lọc bằng Java và không hề phân
+     * trang — hồ sơ sửa nhiều lần là drawer nặng dần. Các điều kiện loại dòng của
+     * quy trình phê duyệt (theo trạng thái và theo mẫu câu của dữ liệu cũ), từ
+     * khóa và khoảng ngày đều đã đẩy xuống CSDL nên biên trang chính xác.
+     */
+    @Transactional(readOnly = true)
+    public List<CoastalStationInmarsatHistoryResponse> getHistory(UUID id, Integer page, Integer pageSize,
+            String keyword, LocalDateTime fromDate, LocalDateTime toDate) {
         CoastalStationInmarsat entity = getStationById(id);
         String code = entity.getCode() != null ? entity.getCode() : entity.getDeviceCode();
-        return historyService.getHistory(InfrastructureType.INMARSAT_STATION, entity.getId(), code).stream()
-                .filter(h -> {
-                    if (h.getActionType() == null) return false;
-                    StationHistoryActionType act = h.getActionType();
-                    if (act == StationHistoryActionType.APPROVE_L1 || act == StationHistoryActionType.APPROVE_L2 || act == StationHistoryActionType.REJECT) {
-                        return false;
-                    }
-                    String changedField = h.getChangedField();
-                    String newVal = h.getNewValue();
-                    if ((changedField == null || "Thông tin".equals(changedField))
-                            && newVal != null && (newVal.contains("Phê duyệt") || newVal.contains("Cập nhật thông tin đài Inmarsat"))) {
-                        return false;
-                    }
-                    return true;
-                })
+
+        Pageable pageable = (page != null && pageSize != null && page >= 0 && pageSize > 0)
+                ? PageRequest.of(page, pageSize)
+                : Pageable.unpaged();
+
+        return historyService.getHistory(
+                        InfrastructureType.INMARSAT_STATION, entity.getId(), code,
+                        // Khớp đúng tập dòng mà CommonHistoryDrawer vốn tự ẩn (tạo mới /
+                        // phê duyệt / từ chối) — phải loại ngay ở CSDL, nếu để drawer lọc
+                        // sau khi phân trang thì trang bị hụt và cuộn-tải-thêm dừng sớm.
+                        List.of(InfrastructureHistoryStatus.CREATED,
+                                InfrastructureHistoryStatus.APPROVED,
+                                InfrastructureHistoryStatus.REJECTED),
+                        new String[] { "Thông tin", "Phê duyệt", "Cập nhật thông tin đài Inmarsat" },
+                        keyword, fromDate, toDate, pageable)
+                .stream()
+                .filter(h -> h.getActionType() != null)
                 .map(h -> {
                     CoastalStationInmarsatHistoryResponse r = new CoastalStationInmarsatHistoryResponse();
                     r.setId(h.getId());

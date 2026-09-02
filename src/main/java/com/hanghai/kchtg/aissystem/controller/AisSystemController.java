@@ -52,6 +52,9 @@ import java.util.UUID;
 @DataScope
 public class AisSystemController {
 
+    /** Trần số bản ghi mỗi trang cho endpoint danh sách. */
+    private static final int MAX_PAGE_SIZE = 200;
+
     /**
      * Các cột được phép sắp xếp. `sortBy` đến từ client nên phải qua danh sách
      * trắng: tên thuộc tính lạ sẽ làm truy vấn ném lỗi 500.
@@ -158,18 +161,26 @@ public class AisSystemController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "DESC") String sortDir) {
+            @RequestParam(defaultValue = "DESC") String sortDir,
+            @RequestParam(defaultValue = "true") boolean includeCounts) {
 
-        PageRequest pageRequest = PageRequest.of(page, size, resolveListSort(sortBy, sortDir));
+        // Chặn trần số bản ghi mỗi trang:  đến từ client, không giới hạn thì một
+        // request  kéo cả bảng ra khỏi CSDL.
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        PageRequest pageRequest = PageRequest.of(page, safeSize, resolveListSort(sortBy, sortDir));
 
         Page<AisSystemListItem> resultPage = service.search(
                 keyword, name, code, orgUnitId, vtsOperationCenterId, radarStationId, operatingOrgId,
                 provinceId, conditionStatus, commissioningYear, approvalStatus,
                 updatedFrom, updatedTo, pageRequest);
-        Map<String, Long> statusCounts = service.countByStatus(
-                keyword, name, code, orgUnitId, vtsOperationCenterId, radarStationId, operatingOrgId,
-                provinceId, conditionStatus, commissioningYear,
-                updatedFrom, updatedTo);
+        // Số đếm theo trạng thái không đổi khi người dùng chỉ lật trang hay đổi cột
+        // sắp xếp, nên client tắt cờ này để khỏi chạy thêm một truy vấn GROUP BY.
+        Map<String, Long> statusCounts = includeCounts
+                ? service.countByStatus(
+                        keyword, name, code, orgUnitId, vtsOperationCenterId, radarStationId, operatingOrgId,
+                        provinceId, conditionStatus, commissioningYear,
+                        updatedFrom, updatedTo)
+                : Map.of();
 
         Map<String, Object> data = new HashMap<>();
         data.put("content", resultPage.getContent());
@@ -256,8 +267,15 @@ public class AisSystemController {
     public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
             @PathVariable UUID id,
             @RequestParam(value = "page", required = false) Integer page,
-            @RequestParam(value = "pageSize", required = false) Integer pageSize) {
-        List<HistoryEntry> history = service.getHistory(id, page, pageSize);
+            @RequestParam(value = "pageSize", required = false) Integer pageSize,
+            // Lọc nhật ký ở server để drawer phân trang được mà ô tìm kiếm vẫn quét
+            // toàn bộ nhật ký, không chỉ phần đã tải về.
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "fromDate", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+            @RequestParam(value = "toDate", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate) {
+        List<HistoryEntry> history = service.getHistory(id, page, pageSize, keyword, fromDate, toDate);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử thành công", history));
     }
 

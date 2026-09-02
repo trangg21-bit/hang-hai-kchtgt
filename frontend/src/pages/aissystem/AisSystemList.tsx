@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Modal, Input, Select, DatePicker } from 'antd';
 import { aisSystemService } from '../../services/aisSystemService';
 import { vtsSystemCRUD } from '../../services/vtsSystemService';
@@ -34,6 +34,9 @@ import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds, type OrgU
 import SidebarFilterField from '../../components/list-view/SidebarFilterField';
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
 
+/** Số bản ghi nhật ký mỗi lần cuộn tải thêm trong drawer lịch sử. */
+const HISTORY_PAGE_SIZE = 20;
+
 const CONDITION_COLOR: Record<ConditionStatus, string> = {
   [ConditionStatus.OPERATIONAL]: statusOperational,
   [ConditionStatus.STOPPED]: statusCritical,
@@ -59,6 +62,9 @@ export function AisSystemList() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  // Khóa bộ lọc đã dùng cho lần đếm gần nhất — dùng để bỏ truy vấn đếm khi chỉ
+  // lật trang hoặc đổi cột sắp xếp.
+  const statusCountFilterKey = useRef<string | null>(null);
   const [filterApprovalStatus, setFilterApprovalStatus] = useState<ApprovalStatus | undefined>(undefined);
   const [filterValues, setFilterValues] = useState<{
     name?: string;
@@ -88,6 +94,15 @@ export function AisSystemList() {
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
+  const [hasMoreHistory, setHasMoreHistory] = useState(true);
+  // Số trang nhật ký đã tải. Không suy ra từ `historyRecords.length` vì backend có
+  // thể trả ít hơn pageSize khi lọc, làm lệch số trang → sót/lặp bản ghi.
+  const [historyPage, setHistoryPage] = useState(0);
+  const [historyTargetId, setHistoryTargetId] = useState<string | null>(null);
+  const [historyFilters, setHistoryFilters] = useState<{ keyword: string; fromDate: string; toDate: string }>(
+    { keyword: '', fromDate: '', toDate: '' },
+  );
 
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c1');
@@ -210,6 +225,17 @@ export function AisSystemList() {
         updatedTo = appliedFilterValues.updateDateRange[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss');
       }
 
+      // Số trên tab tính cho MỌI trạng thái phê duyệt, nên đổi tab không được làm
+      // thay đổi phạm vi đếm — khóa này chỉ gồm các bộ lọc còn lại.
+      const currentStatusCountFilterKey = JSON.stringify([
+        appliedFilterValues.name, appliedFilterValues.code,
+        appliedFilterValues.orgUnitId, filterOpCenterId, filterRadarStationId,
+        appliedFilterValues.operatingOrgId, appliedFilterValues.provinceId,
+        appliedFilterValues.commissioningYear, appliedFilterValues.conditionStatus,
+        updatedFrom, updatedTo,
+      ]);
+      const shouldIncludeCounts = statusCountFilterKey.current !== currentStatusCountFilterKey;
+
       const res = await aisSystemService.search({
         name: appliedFilterValues.name?.trim() || undefined,
         code: appliedFilterValues.code?.trim() || undefined,
@@ -227,11 +253,17 @@ export function AisSystemList() {
         size: pageSize,
         sortBy: sortField,
         sortDir: sortField ? sortDirection.toUpperCase() : undefined,
+        // Chỉ yêu cầu backend đếm lại khi bộ lọc đổi; lật trang hay đổi sắp xếp
+        // không làm thay đổi số trên tab nên bỏ được truy vấn GROUP BY.
+        includeCounts: shouldIncludeCounts,
       });
 
       setDataSource(res.items || []);
       setTotal(res.total || 0);
-      setStatusCounts(res.statusCounts || {});
+      if (shouldIncludeCounts) {
+        setStatusCounts(res.statusCounts || {});
+        statusCountFilterKey.current = currentStatusCountFilterKey;
+      }
     } catch (err: any) {
       setIsError(true);
       setErrorMessage(err?.message || 'Không thể tải danh sách hệ thống AIS');
@@ -259,6 +291,8 @@ export function AisSystemList() {
   const serverSideSorter = () => 0;
 
   const refreshList = useCallback(() => {
+    // Sau khi tạo/duyệt/xóa thì số trên tab đã đổi — buộc đếm lại.
+    statusCountFilterKey.current = null;
     fetchData();
   }, [fetchData]);
 
@@ -303,19 +337,66 @@ export function AisSystemList() {
     setFilterApprovalStatus(undefined);
   };
 
-  const handleViewHistory = async (record: AisSystemListItem) => {
+  const handleViewHistory = (record: AisSystemListItem) => {
     setSelectedRecord(record as any);
+    setHistoryTargetId(record.id);
     setHistoryModalOpen(true);
-    setLoadingHistory(true);
-    try {
-      const records = await aisSystemService.getHistory(record.id);
-      setHistoryRecords(records || []);
-    } catch {
-      toast.error('Không thể tải lịch sử thay đổi');
-    } finally {
-      setLoadingHistory(false);
-    }
+    setHistoryRecords([]);
+    setLoadingHistory(false);
+    setLoadingMoreHistory(false);
+    setHasMoreHistory(true);
+    setHistoryPage(0);
+    setHistoryFilters({ keyword: '', fromDate: '', toDate: '' });
   };
+
+  // Nạp lại trang đầu mỗi khi mở drawer hoặc đổi điều kiện lọc. Lọc chạy ở server
+  // nên ô tìm kiếm quét đúng toàn bộ nhật ký, không riêng phần đã tải.
+  useEffect(() => {
+    if (!historyModalOpen || !historyTargetId) return;
+    let cancelled = false;
+    (async () => {
+      setLoadingHistory(true);
+      setLoadingMoreHistory(false);
+      setHasMoreHistory(true);
+      setHistoryRecords([]);
+      setHistoryPage(0);
+      try {
+        const records = await aisSystemService.getHistory(historyTargetId, 0, HISTORY_PAGE_SIZE, {
+          keyword: historyFilters.keyword || undefined,
+          fromDate: historyFilters.fromDate || undefined,
+          toDate: historyFilters.toDate || undefined,
+        });
+        if (cancelled) return;
+        const items = records || [];
+        setHistoryRecords(items);
+        setHasMoreHistory(items.length === HISTORY_PAGE_SIZE);
+      } catch {
+        if (!cancelled) toast.error('Không thể tải lịch sử thay đổi');
+      } finally {
+        if (!cancelled) setLoadingHistory(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [historyModalOpen, historyTargetId, historyFilters]);
+
+  const loadMoreHistory = useCallback(async () => {
+    if (!historyTargetId || loadingHistory || loadingMoreHistory || !hasMoreHistory) return;
+    setLoadingMoreHistory(true);
+    try {
+      const nextPage = historyPage + 1;
+      const records = await aisSystemService.getHistory(historyTargetId, nextPage, HISTORY_PAGE_SIZE, {
+        keyword: historyFilters.keyword || undefined,
+        fromDate: historyFilters.fromDate || undefined,
+        toDate: historyFilters.toDate || undefined,
+      });
+      if (records && records.length > 0) {
+        setHistoryRecords((prev) => [...prev, ...records]);
+      }
+      setHistoryPage(nextPage);
+      setHasMoreHistory((records || []).length === HISTORY_PAGE_SIZE);
+    } catch { /* giữ nguyên phần đã tải, người dùng cuộn lại sẽ thử tiếp */ }
+    finally { setLoadingMoreHistory(false); }
+  }, [historyTargetId, loadingHistory, loadingMoreHistory, hasMoreHistory, historyPage, historyFilters]);
 
   const confirmDelete = (record: AisSystemListItem) => {
     Modal.confirm({
@@ -642,7 +723,7 @@ export function AisSystemList() {
 
   return (
     <ThemeTokenProvider tokens={themeTokenChk}>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', background: '#F8FAFC' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
         <ScreenHeader
           breadcrumb={[
             { label: 'Tài sản KCHTGT' },
@@ -826,6 +907,10 @@ export function AisSystemList() {
           entityName={selectedRecord?.name || (selectedRecord as any)?.code || 'Hệ thống AIS'}
           records={historyRecords}
           loading={loadingHistory}
+          serverFiltered
+          onFilterChange={setHistoryFilters}
+          onLoadMore={loadMoreHistory}
+          loadingMore={loadingMoreHistory}
         />
 
         <ApprovalModal

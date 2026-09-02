@@ -69,14 +69,14 @@ describe('hanoiStationService Unit Tests', () => {
     it('should call POST /v1/stations/haiphong/:id/approve-c1', async () => {
       (api.post as any).mockResolvedValueOnce({ data: { data: { id: 'uuid-1', approvalStatus: 3 } } });
       const res = await hanoiStationService.approveC1('uuid-1');
-      expect(api.post).toHaveBeenCalledWith('/v1/stations/haiphong/uuid-1/approve-c1');
+      expect(api.post).toHaveBeenCalledWith('/v1/stations/haiphong/uuid-1/approve-c1', { content: 'Đã phê duyệt cấp 1' });
       expect(res.approvalStatus).toBe(3);
     });
 
     it('should call POST /v1/stations/haiphong/:id/approve-c2', async () => {
       (api.post as any).mockResolvedValueOnce({ data: { data: { id: 'uuid-1', approvalStatus: 5 } } });
       const res = await hanoiStationService.approveC2('uuid-1');
-      expect(api.post).toHaveBeenCalledWith('/v1/stations/haiphong/uuid-1/approve-c2');
+      expect(api.post).toHaveBeenCalledWith('/v1/stations/haiphong/uuid-1/approve-c2', { content: 'Đã phê duyệt cấp 2' });
       expect(res.approvalStatus).toBe(5);
     });
 

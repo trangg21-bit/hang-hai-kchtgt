@@ -157,6 +157,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [pendingDeletedAttachments, setPendingDeletedAttachments] = useState<{ id: string; fileName: string }[]>([]);
   const [approvalSectionOpen, setApprovalSectionOpen] = useState(true);
+  const [geometryTypeState, setGeometryTypeState] = useState<string>('POINT');
 
   const currentUser = useAuthStore((s: AuthState) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
@@ -165,7 +166,6 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
   const isCreateMode = currentMode === 'create';
   const isEditMode = currentMode === 'edit';
 
-  const watchedGeometryType = Form.useWatch('geometryType', form);
   const watchedOrgUnitId = Form.useWatch('orgUnitId', form);
 
   const handleClose = () => {
@@ -273,6 +273,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
       setPendingFiles([]);
       setPendingDeletedAttachments([]);
       setCoordinateList([]);
+      setGeometryTypeState('POINT');
       return;
     }
 
@@ -288,6 +289,8 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
           setRecord(full);
           setAttachments(full.attachments || []);
           const initialLocId = full.vtsOperationCenterId ? `op_${full.vtsOperationCenterId}` : full.radarStationId ? `radar_${full.radarStationId}` : undefined;
+          const geom = full.geometryType || 'POINT';
+          setGeometryTypeState(geom);
           form.setFieldsValue({
             code: full.code,
             name: full.name,
@@ -305,13 +308,13 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
             specifications: full.specifications,
             maintenanceInfo: full.maintenanceInfo,
             note: full.note,
-            geometryType: full.geometryType || 'POINT',
+            geometryType: geom,
             symbolId: full.symbolId || undefined,
             coordinateSystem: full.geometryType ? 'WGS 84 / VN-2000' : undefined,
             displayRule: full.geometryType ? 'Độ, phút, giây (DMS)' : undefined,
           });
           const parsedCoords = parseWktToCoordinates(full.coordinates);
-          setCoordinateList(parsedCoords);
+          setCoordinateList(adjustCoordinateListForGeometry(parsedCoords, geom));
         })
         .catch(() => {
           toast.error('Không thể tải thông tin hệ thống AIS');
@@ -320,6 +323,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
     } else {
       // Create mode
       form.resetFields();
+      setGeometryTypeState('POINT');
       form.setFieldsValue({
         conditionStatus: ConditionStatus.OPERATIONAL,
         unitOfMeasure: UnitOfMeasure.SET,
@@ -824,7 +828,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
   return (
     <Drawer
       rootClassName="vtssystemchk-theme-scope"
-      size="50%"
+      width="50%"
       placement="right"
       closable={false}
       open={open}
@@ -1215,6 +1219,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                                 style={{ ...selectStyle, height: 38 }}
                                 onChange={(val) => {
                                   form.setFieldValue('geometryType', val);
+                                  setGeometryTypeState(val || 'POINT');
                                   if (val) {
                                     form.setFieldValue('coordinateSystem', 'WGS 84 / VN-2000');
                                     form.setFieldValue('displayRule', 'Độ, phút, giây (DMS)');
@@ -1223,7 +1228,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                                     form.setFieldValue('coordinateSystem', undefined);
                                     form.setFieldValue('displayRule', undefined);
                                     form.setFieldValue('symbolId', undefined);
-                                    setCoordinateList([]);
+                                    setCoordinateList([{ latitude: null, longitude: null }]);
                                   }
                                 }}
                               />
@@ -1239,7 +1244,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                               <Select
                                 placeholder="Chọn biểu tượng bản đồ"
                                 allowClear
-                                disabled={!watchedGeometryType}
+                                disabled={!geometryTypeState}
                                 options={symbols.map((sym) => ({
                                   value: sym.id,
                                   label: (
@@ -1317,7 +1322,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                             >
                               Chọn vị trí trên bản đồ
                             </Button>
-                            {watchedGeometryType && watchedGeometryType !== 'POINT' && (
+                            {geometryTypeState !== 'POINT' && (
                               <Button
                                 type="primary"
                                 icon={<PlusOutlined />}
@@ -1333,7 +1338,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
 
                       <DetailTable
                         scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
-                        dataSource={((watchedGeometryType === 'POINT' || !watchedGeometryType) ? coordinateList.slice(0, 1) : coordinateList).map((c, i) => ({ ...c, _idx: i }))}
+                        dataSource={(geometryTypeState === 'POINT' ? coordinateList.slice(0, 1) : coordinateList).map((c, i) => ({ ...c, _idx: i }))}
                         emptyText="Chưa có tọa độ nào"
                         rowKey="_idx"
                         columns={[
@@ -1362,7 +1367,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                             width: 50,
                             align: 'center' as const,
                             render: (_: any, r: any) => {
-                              const geom = (watchedGeometryType || form.getFieldValue('geometryType') || 'POINT').toUpperCase();
+                              const geom = (geometryTypeState || 'POINT').toUpperCase();
                               if (geom === 'POINT') return null;
                               const minCount = geom.includes('LINE') ? 2 : (geom.includes('POLYGON') ? 3 : 1);
                               const canDelete = coordinateList.length > minCount;
@@ -1442,11 +1447,11 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
             height={560}
             disabled={isDetailMode}
             value={{
-              geometryType: watchedGeometryType || 'POINT',
-              coordinates: serializeCoordinatesToWkt(coordinateList, watchedGeometryType || 'POINT'),
+              geometryType: geometryTypeState || 'POINT',
+              coordinates: serializeCoordinatesToWkt(coordinateList, geometryTypeState || 'POINT'),
               symbolId: form.getFieldValue('symbolId'),
             }}
-            defaultGeometryType={(watchedGeometryType as any) || 'POINT'}
+            defaultGeometryType={(geometryTypeState as any) || 'POINT'}
             onChange={(val) => {
               if (isDetailMode) return;
               if (val?.coordinates) {
@@ -1455,6 +1460,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
               }
               if (val?.geometryType) {
                 form.setFieldValue('geometryType', val.geometryType);
+                setGeometryTypeState(val.geometryType);
               }
               if (val?.symbolId) {
                 form.setFieldValue('symbolId', val.symbolId);

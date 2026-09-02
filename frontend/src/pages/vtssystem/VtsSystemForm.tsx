@@ -470,6 +470,22 @@ export default function VtsSystemForm({
         if (!mounted) return;
         setRecord(data);
         populateForm(data);
+        // Chi tiết đã kèm sẵn vùng VTS và tài liệu đính kèm — dùng luôn thay vì
+        // để hai effect lazy-load gọi lại /zones và /attachments khi đổi tab.
+        if (Array.isArray(data.zones)) {
+          setZoneList(data.zones.map((z: any, idx: number) => ({
+            ...z,
+            code: z.code || `VTS-Z0${idx + 1}`,
+            name: z.name || '',
+            conditionStatus: z.conditionStatus || z.status || ConditionStatus.OPERATIONAL,
+            status: z.conditionStatus || z.status || ConditionStatus.OPERATIONAL,
+          })));
+          setZonesLoaded(true);
+        }
+        if (Array.isArray(data.attachments)) {
+          setAttachmentList(data.attachments);
+          setFilesLoaded(true);
+        }
       })
       .catch((err) => {
         if (!mounted) return;
@@ -1309,7 +1325,7 @@ export default function VtsSystemForm({
   return (
     <Drawer
       rootClassName="vtssystemchk-theme-scope"
-      size="50%"
+      width="50%"
       placement="right"
       closable={false}
       open={open}

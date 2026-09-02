@@ -11,7 +11,7 @@ import type { HistoryEntry } from '../types/radarStation';
 
 const BASE_PATH = '/v1/vts-operation-center';
 
-function buildSearchParams(params: Record<string, string | number | undefined>) {
+function buildSearchParams(params: Record<string, string | number | boolean | undefined>) {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
     if (v !== undefined && v !== '') sp.set(k, String(v));
@@ -36,6 +36,8 @@ export interface VtsOperationCenterListParams {
   size?: number;
   sortBy?: string;
   sortDir?: string;
+  /** Bỏ qua truy vấn đếm theo trạng thái khi chỉ lật trang / đổi sắp xếp */
+  includeCounts?: boolean;
 }
 
 export interface VtsOperationCenterSearchResponse {
@@ -94,6 +96,7 @@ export const vtsOperationCenterService = {
           size: params?.size || 20,
           sortBy: params?.sortBy,
           sortDir: params?.sortDir,
+          includeCounts: params?.includeCounts,
         });
         const res = await api.get(`${BASE_PATH}?${sp}`);
         const data = res.data?.data || {};
@@ -149,8 +152,27 @@ export const vtsOperationCenterService = {
     await api.post(`${BASE_PATH}/${id}/reject`, { reason });
   },
 
-  async getHistory(id: string): Promise<HistoryEntry[]> {
-    const res = await api.get(`${BASE_PATH}/${id}/history`);
+  /**
+   * Nhật ký thay đổi. Truyền `page`/`pageSize` để drawer cuộn tải thêm, và
+   * `keyword`/`fromDate`/`toDate` để lọc ở server — lọc phía client sẽ chỉ soi
+   * được phần đã tải.
+   */
+  async getHistory(
+    id: string,
+    page?: number,
+    pageSize?: number,
+    filters?: { keyword?: string; fromDate?: string; toDate?: string },
+  ): Promise<HistoryEntry[]> {
+    const params: Record<string, string | number> = {};
+    if (page !== undefined && pageSize !== undefined) {
+      params.page = page;
+      params.pageSize = pageSize;
+    }
+    if (filters?.keyword) params.keyword = filters.keyword;
+    if (filters?.fromDate) params.fromDate = filters.fromDate;
+    if (filters?.toDate) params.toDate = filters.toDate;
+
+    const res = await api.get(`${BASE_PATH}/${id}/history`, { params });
     return toArray<HistoryEntry>(res.data);
   },
 

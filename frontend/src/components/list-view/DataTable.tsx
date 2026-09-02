@@ -1,10 +1,11 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Table, Empty, Dropdown, Button, Tooltip } from 'antd';
+import { Table, Dropdown, Button, Tooltip } from 'antd';
 import { MoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
 import { layout } from '../../theme';
 import { useThemeToken, THEME_SCOPE_CLASS, type ThemeToken } from '../../context/ThemeTokenContext';
+import EmptyState from '../EmptyState';
 
 const ACTION_COLUMN_WIDTH = 60;
 
@@ -419,7 +420,7 @@ const DataTable: React.FC<DataTableProps> = ({
         className="list-view-table"
         pagination={false}
         tableLayout={tableLayout}
-        locale={{ emptyText: emptyState || tableEmptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
+        locale={{ emptyText: emptyState || tableEmptyState || <EmptyState description="Không có dữ liệu" /> }}
         onChange={handleTableChange}
         scroll={tableScroll}
         style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1, height: '100%' }}

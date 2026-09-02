@@ -1167,7 +1167,10 @@ export default function VtsSystemList() {
       const prev = groups[groups.length - 1];
       const actor = historyActor(r);
       const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
-      const isSameGroup = prev && Math.abs(prev.tsSec - sec) <= 60 && prev.actor === actor && (prev.status === r.status || isBothUpdate);
+      // Gộp theo ĐÚNG giây: một lần bấm Lưu ghi ra nhiều dòng cùng thời điểm.
+      // Cửa sổ 60 giây như trước làm hai lần sửa cách nhau chưa tới một phút bị
+      // nhập thành một bản ghi lịch sử duy nhất.
+      const isSameGroup = prev && prev.tsSec === sec && prev.actor === actor && (prev.status === r.status || isBothUpdate);
       if (isSameGroup) {
         prev.items.push(r);
       } else {

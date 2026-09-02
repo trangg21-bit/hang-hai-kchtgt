@@ -18,6 +18,7 @@ import {
   CloseOutlined,
   EnvironmentOutlined,
   DeleteOutlined,
+  PlusOutlined,
 } from '@ant-design/icons';
 import toast from '../../../components/ToastNotification';
 import { lritStationService } from '../../../services/lritStationService';
@@ -37,7 +38,7 @@ import {
   fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd, fontSizeLg,
   textPrimary, textSecondary, textTertiary, borderDefault,
   statusCritical, statusOperational, statusAttention, actionPrimary, textAreaStyle,
-  readonlyInputStyle, drawerCloseBtnStyle, selectStyle, requiredMarkStyle,
+  readonlyInputStyle, drawerCloseBtnStyle, selectStyle, inputStyle, requiredMarkStyle,
 } from '../../../themetokenchk';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../../types/common';
 import { useAuthStore } from '../../../store/authStore';
@@ -181,8 +182,7 @@ export default function LritStationForm({
   const [mapModalOpen, setMapModalOpen] = useState(false);
   const [coordinateList, setCoordinateList] = useState<Array<{ latitude: number | null; longitude: number | null }>>([]);
   const [symbols, setSymbols] = useState<any[]>(DEFAULT_GIS_SYMBOLS);
-
-  const watchedGeometryType = Form.useWatch('geometryType', form);
+  const [geometryTypeState, setGeometryTypeState] = useState<string>('POINT');
 
   // Attachments
   const [attachments, setAttachments] = useState<any[]>([]);
@@ -247,6 +247,7 @@ export default function LritStationForm({
       setPendingFiles([]);
       setPendingDeletedAttachments([]);
       setTabKey('general');
+      setGeometryTypeState('POINT');
       return;
     }
 
@@ -268,6 +269,7 @@ export default function LritStationForm({
     } else {
       // Create mode - auto generate code
       form.resetFields();
+      setGeometryTypeState('POINT');
       form.setFieldsValue({
         code: 'Đang tạo mã...',
         orgUnitId: undefined,
@@ -309,6 +311,8 @@ export default function LritStationForm({
       serviceList = data.servicesProvided.split(/[,;]+/).map((s) => s.trim()).filter(Boolean);
     }
 
+    const geom = data.geometryType || 'POINT';
+    setGeometryTypeState(geom);
     form.setFieldsValue({
       orgUnitId: data.orgUnitId,
       operatingOrgId: data.operatingOrgId,
@@ -320,15 +324,12 @@ export default function LritStationForm({
       coverageArea: data.coverageArea,
       services: serviceList,
       description: data.description,
-      geometryType: data.geometryType || 'POINT',
+      geometryType: geom,
       symbol: data.symbol || undefined,
       coordinateSystem: data.coordinateSystem || 'WGS 84 / VN-2000',
       displayRule: data.displayRule || 'Độ, phút, giây (DMS)',
     });
 
-
-
-    const geom = data.geometryType || 'POINT';
     let initialCoords: { latitude: number | null; longitude: number | null }[] = [];
     if (data.coordinates) {
       const coords = parseWktToCoordinates(data.coordinates);
@@ -336,9 +337,7 @@ export default function LritStationForm({
     } else if (data.latitude != null && data.longitude != null) {
       initialCoords = [{ latitude: Number(data.latitude), longitude: Number(data.longitude) }];
     }
-    setCoordinateList(initialCoords.length > 0
-      ? adjustCoordinateListForGeometry(initialCoords, geom)
-      : []);
+    setCoordinateList(adjustCoordinateListForGeometry(initialCoords, geom));
 
     if (data.id) {
       lritStationService.getAttachments(data.id)
@@ -865,12 +864,11 @@ export default function LritStationForm({
                         rules={[{ required: true, message: 'Vui lòng nhập tên đài' }]}
                         style={{ marginBottom: spaceFormField }}
                       >
-                        <Input.TextArea
+                        <Input
                           placeholder="Nhập tên đài"
-                          rows={2}
                           maxLength={255}
                           showCount
-                          style={{ ...textAreaStyle, borderRadius: radiusSm }}
+                          style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }}
                         />
                       </Form.Item>
                     </Col>
@@ -943,12 +941,11 @@ export default function LritStationForm({
                         rules={[{ required: true, message: 'Vui lòng nhập địa điểm chi tiết' }]}
                         style={{ marginBottom: spaceFormField }}
                       >
-                        <Input.TextArea
+                        <Input
                           placeholder="Nhập địa điểm chi tiết"
-                          rows={2}
                           maxLength={500}
                           showCount
-                          style={{ ...textAreaStyle, borderRadius: radiusSm }}
+                          style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }}
                         />
                       </Form.Item>
                     </Col>
@@ -1047,6 +1044,7 @@ export default function LritStationForm({
                             style={{ ...selectStyle, height: 38 }}
                             onChange={(val) => {
                               form.setFieldValue('geometryType', val);
+                              setGeometryTypeState(val || 'POINT');
                               if (val) {
                                 form.setFieldValue('coordinateSystem', 'WGS 84 / VN-2000');
                                 form.setFieldValue('displayRule', 'Độ, phút, giây (DMS)');
@@ -1055,7 +1053,7 @@ export default function LritStationForm({
                                 form.setFieldValue('coordinateSystem', undefined);
                                 form.setFieldValue('displayRule', undefined);
                                 form.setFieldValue('symbol', undefined);
-                                setCoordinateList([]);
+                                setCoordinateList([{ latitude: null, longitude: null }]);
                               }
                             }}
                           />
@@ -1071,7 +1069,7 @@ export default function LritStationForm({
                           <Select
                             placeholder="Chọn biểu tượng bản đồ"
                             allowClear
-                            disabled={!watchedGeometryType}
+                            disabled={!geometryTypeState}
                             options={symbols.map((sym) => ({
                               value: sym.code || sym.id,
                               label: (
@@ -1149,7 +1147,7 @@ export default function LritStationForm({
                         >
                           Chọn vị trí trên bản đồ
                         </Button>
-                        {watchedGeometryType && watchedGeometryType !== 'POINT' && (
+                        {geometryTypeState !== 'POINT' && (
                           <Button
                             type="primary"
                             icon={<PlusOutlined />}
@@ -1165,7 +1163,7 @@ export default function LritStationForm({
 
                   <DetailTable
                     scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
-                    dataSource={((watchedGeometryType === 'POINT' || !watchedGeometryType) ? coordinateList.slice(0, 1) : coordinateList).map((c, i) => ({ ...c, _idx: i }))}
+                    dataSource={(geometryTypeState === 'POINT' ? coordinateList.slice(0, 1) : coordinateList).map((c, i) => ({ ...c, _idx: i }))}
                     emptyText="Chưa có tọa độ nào"
                     rowKey="_idx"
                     columns={[
@@ -1194,7 +1192,7 @@ export default function LritStationForm({
                         width: 50,
                         align: 'center' as const,
                         render: (_: any, r: any) => {
-                          const geom = (watchedGeometryType || form.getFieldValue('geometryType') || 'POINT').toUpperCase();
+                          const geom = (geometryTypeState || 'POINT').toUpperCase();
                           if (geom === 'POINT') return null;
                           const minCount = geom.includes('LINE') ? 2 : (geom.includes('POLYGON') ? 3 : 1);
                           const canDelete = coordinateList.length > minCount;
@@ -1240,7 +1238,7 @@ export default function LritStationForm({
   return (
     <Drawer
       rootClassName="vtssystemchk-theme-scope"
-      size="50%"
+      width="50%"
       placement="right"
       closable={false}
       open={open}
@@ -1359,11 +1357,11 @@ export default function LritStationForm({
             height={560}
             disabled={isDetailMode}
             value={{
-              geometryType: watchedGeometryType || 'POINT',
-              coordinates: serializeCoordinatesToWkt(coordinateList, watchedGeometryType || 'POINT'),
+              geometryType: geometryTypeState || 'POINT',
+              coordinates: serializeCoordinatesToWkt(coordinateList, geometryTypeState || 'POINT'),
               symbolId: form.getFieldValue('symbol'),
             }}
-            defaultGeometryType={(watchedGeometryType as any) || 'POINT'}
+            defaultGeometryType={(geometryTypeState as any) || 'POINT'}
             onChange={(val) => {
               if (isDetailMode) return;
               if (val.coordinates !== undefined) {
@@ -1372,6 +1370,7 @@ export default function LritStationForm({
               }
               if (val.geometryType) {
                 form.setFieldValue('geometryType', val.geometryType);
+                setGeometryTypeState(val.geometryType);
               }
             }}
           />

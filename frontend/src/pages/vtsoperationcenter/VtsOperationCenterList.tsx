@@ -40,6 +40,9 @@ import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import { deduplicateAttachmentHistoryChanges } from '../../utils/historyAttachmentDedup';
 
+/** Số bản ghi nhật ký mỗi lần cuộn tải thêm trong drawer lịch sử. */
+const HISTORY_PAGE_SIZE = 20;
+
 const CONDITION_COLOR: Record<ConditionStatus, string> = {
   [ConditionStatus.OPERATIONAL]: statusOperational,
   [ConditionStatus.STOPPED]: statusCritical,
@@ -511,6 +514,11 @@ export default function VtsOperationCenterList() {
   const [historySearch, setHistorySearch] = useState('');
   const [historyDateFrom, setHistoryDateFrom] = useState<string>('');
   const [historyDateTo, setHistoryDateTo] = useState<string>('');
+  const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
+  const [hasMoreHistory, setHasMoreHistory] = useState(true);
+  // Số trang nhật ký đã tải. Không suy ra từ `historyRecords.length` vì backend
+  // có thể trả ít hơn pageSize khi lọc, làm lệch số trang → sót/lặp bản ghi.
+  const [historyPage, setHistoryPage] = useState(0);
 
   // Count tabs
   const [countDraft, setCountDraft] = useState<number>(0);
@@ -582,6 +590,9 @@ export default function VtsOperationCenterList() {
         updatedTo: filterUpdatedTo,
         sortBy: sortField,
         sortDir: sortField ? sortDirection.toUpperCase() : undefined,
+        // Chỉ yêu cầu backend đếm lại khi bộ lọc đổi; lật trang hay đổi sắp xếp
+        // không làm thay đổi số trên tab nên bỏ được truy vấn GROUP BY.
+        includeCounts: shouldIncludeCounts,
       };
 
       const res = await vtsOperationCenterService.search(params);
@@ -701,19 +712,70 @@ export default function VtsOperationCenterList() {
     setSelectedRecord(record as any);
     setHistoryModalOpen(true);
     setHistoryRecords([]);
-    setLoadingHistory(true);
+    setLoadingHistory(false);
+    setLoadingMoreHistory(false);
+    setHasMoreHistory(true);
     setHistorySearchInput('');
     setHistorySearch('');
     setHistoryDateFrom('');
     setHistoryDateTo('');
+    setHistoryPage(0);
+  };
 
-    vtsOperationCenterService.getHistory(record.id).then((res) => {
-      setHistoryRecords(res || []);
-    }).catch(() => {
-      toast.error('Không thể tải lịch sử thay đổi');
-    }).finally(() => {
-      setLoadingHistory(false);
-    });
+  // Nạp lại trang đầu mỗi khi mở drawer hoặc đổi điều kiện lọc. Lọc chạy ở server
+  // nên ô tìm kiếm quét đúng toàn bộ nhật ký, không riêng phần đã tải.
+  useEffect(() => {
+    if (!historyModalOpen || !selectedRecord) return;
+    let cancelled = false;
+    (async () => {
+      setLoadingHistory(true);
+      setLoadingMoreHistory(false);
+      setHasMoreHistory(true);
+      setHistoryRecords([]);
+      setHistoryPage(0);
+      try {
+        const history = await vtsOperationCenterService.getHistory(selectedRecord.id, 0, HISTORY_PAGE_SIZE, {
+          keyword: historySearch || undefined,
+          fromDate: historyDateFrom || undefined,
+          toDate: historyDateTo || undefined,
+        });
+        if (cancelled) return;
+        const items = history || [];
+        setHistoryRecords(items);
+        setHasMoreHistory(items.length === HISTORY_PAGE_SIZE);
+      } catch {
+        if (!cancelled) toast.error('Không thể tải lịch sử thay đổi');
+      } finally {
+        if (!cancelled) setLoadingHistory(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [historyModalOpen, selectedRecord?.id, historySearch, historyDateFrom, historyDateTo]);
+
+  const loadMoreHistory = async () => {
+    if (!selectedRecord || loadingHistory || loadingMoreHistory || !hasMoreHistory) return;
+    setLoadingMoreHistory(true);
+    try {
+      const nextPage = historyPage + 1;
+      const history = await vtsOperationCenterService.getHistory(selectedRecord.id, nextPage, HISTORY_PAGE_SIZE, {
+        keyword: historySearch || undefined,
+        fromDate: historyDateFrom || undefined,
+        toDate: historyDateTo || undefined,
+      });
+      if (history && history.length > 0) {
+        setHistoryRecords((prev) => [...prev, ...history]);
+      }
+      setHistoryPage(nextPage);
+      setHasMoreHistory((history || []).length === HISTORY_PAGE_SIZE);
+    } catch { /* giữ nguyên phần đã tải, người dùng cuộn lại sẽ thử tiếp */ }
+    finally { setLoadingMoreHistory(false); }
+  };
+
+  const handleHistoryScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) {
+      loadMoreHistory();
+    }
   };
 
   const countAll = countDraft + countPendingApproval + countApprovedLevel1 + countApproved + countRejected;
@@ -794,7 +856,10 @@ export default function VtsOperationCenterList() {
       const prev = groups[groups.length - 1];
       const actor = historyActor(r);
       const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
-      const isSameGroup = prev && Math.abs(prev.tsSec - sec) <= 60 && prev.actor === actor && (prev.status === r.status || isBothUpdate);
+      // Gộp theo ĐÚNG giây: một lần bấm Lưu ghi ra nhiều dòng cùng thời điểm.
+      // Cửa sổ 60 giây như trước làm hai lần sửa cách nhau chưa tới một phút bị
+      // nhập thành một bản ghi lịch sử duy nhất.
+      const isSameGroup = prev && prev.tsSec === sec && prev.actor === actor && (prev.status === r.status || isBothUpdate);
       if (isSameGroup) {
         prev.items.push(r);
       } else {
@@ -1601,7 +1666,8 @@ export default function VtsOperationCenterList() {
                   {selectedRecord ? `Lịch sử thay đổi — ${selectedRecord.name}` : 'Lịch sử thay đổi'}
                 </span>
                 <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: radiusSm, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                  {`Tổng cộng ${historyRecords.length}`}
+                  {/* Nhật ký nạp theo trang nên đây là số đã tải, không phải tổng. */}
+                  {`Đã tải ${historyRecords.length}`}
                 </span>
               </Space>
             </div>
@@ -1652,25 +1718,21 @@ export default function VtsOperationCenterList() {
               </Button>
             </div>
           </div>
-          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+          {/* Cuộn tới đáy thì tải thêm một trang nhật ký. Không lọc lại ở client:
+              từ khóa và khoảng ngày đã được áp ở server nên lọc lần nữa chỉ làm
+              rơi mất bản ghi của các trang chưa tải. */}
+          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>
             {loadingHistory && historyRecords.length === 0 ? (
               <LoadingSkeleton rows={5} />
             ) : (
-              renderHistoryTimeline(
-                historyRecords.filter((item) => {
-                  if (!historySearch && !historyDateFrom && !historyDateTo) return true;
-                  const q = historySearch.toLowerCase().trim();
-                  const ts = historyTimestamp(item);
-                  if (historyDateFrom && ts && dayjs(ts).isBefore(dayjs(historyDateFrom))) return false;
-                  if (historyDateTo && ts && dayjs(ts).isAfter(dayjs(historyDateTo))) return false;
-                  if (!q) return true;
-                  const act = historyActor(item).toLowerCase();
-                  const fn = historyFieldName(historyField(item)).toLowerCase();
-                  const ov = String(historyOldValue(item) || '').toLowerCase();
-                  const nv = String(historyNewValue(item) || '').toLowerCase();
-                  return act.includes(q) || fn.includes(q) || ov.includes(q) || nv.includes(q);
-                })
-              )
+              <>
+                {renderHistoryTimeline(historyRecords)}
+                {loadingMoreHistory && (
+                  <div style={{ padding: spaceMd, textAlign: 'center', color: textTertiary, fontSize: fontSizeMd }}>
+                    Đang tải thêm…
+                  </div>
+                )}
+              </>
             )}
           </div>
         </Drawer>

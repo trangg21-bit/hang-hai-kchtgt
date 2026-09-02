@@ -69,6 +69,16 @@ export interface CommonHistoryDrawerProps {
   formatValue?: (fieldName: string, value: any) => string;
   width?: string | number;
   size?: 'default' | 'large' | '50%' | string;
+  /**
+   * Bật chế độ lọc ở server. Khi bật, drawer KHÔNG tự lọc `records` theo từ khóa
+   * và khoảng ngày nữa mà báo điều kiện ra ngoài qua `onFilterChange` — bắt buộc
+   * nếu màn có phân trang, vì lọc phía client chỉ soi được phần đã tải.
+   */
+  serverFiltered?: boolean;
+  onFilterChange?: (filters: { keyword: string; fromDate: string; toDate: string }) => void;
+  /** Gọi khi người dùng cuộn tới đáy để tải thêm một trang nhật ký. */
+  onLoadMore?: () => void;
+  loadingMore?: boolean;
 }
 
 const DEFAULT_ACTION_MAP: Record<string, { label: string; color: string; bg: string }> = {
@@ -285,7 +295,7 @@ function renderCoordinatesDisplay(val: string | null) {
   );
 }
 
-function renderCommonHistoryValueTag(field: string, val: string) {
+export function renderCommonHistoryValueTag(field: string, val: string) {
   if (!val || val === '—') {
     return <span style={{ color: textTertiary }}>—</span>;
   }
@@ -293,6 +303,30 @@ function renderCommonHistoryValueTag(field: string, val: string) {
   const normVal = val.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
 
   if (normKey.includes('trang thai') || normKey.includes('status') || normKey.includes('hieu luc') || normKey.includes('tinh trang')) {
+    // Các giá trị PHỦ ĐỊNH phải xét TRƯỚC: "dừng hoạt động" cũng chứa "hoạt động"
+    // nên nếu để nhánh xanh chạy trước thì nó bị tô như đang hoạt động.
+    if (normVal.includes('dung hoat dong') || normVal.includes('ngung hoat dong')
+        || normVal.includes('tam dung') || normVal.includes('khong hoat dong')) {
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: statusCritical, background: `${statusCritical}18`, border: `1px solid ${statusCritical}40` }}>
+          {val}
+        </span>
+      );
+    }
+    if (normVal.includes('bao tri') || normVal.includes('sua chua') || normVal.includes('maintenance')) {
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: statusAttention, background: `${statusAttention}18`, border: `1px solid ${statusAttention}40` }}>
+          {val}
+        </span>
+      );
+    }
+    if (normVal.includes('xay dung') || normVal.includes('construction')) {
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: actionPrimary, background: `${actionPrimary}18`, border: `1px solid ${actionPrimary}40` }}>
+          {val}
+        </span>
+      );
+    }
     if (normVal.includes('da phe duyet') || normVal.includes('con hieu luc') || normVal.includes('hoat dong') || normVal.includes('active') || normVal.includes('approved') || normVal.includes('valid')) {
       return (
         <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: statusOperational, background: `${statusOperational}18`, border: `1px solid ${statusOperational}40` }}>
@@ -350,11 +384,31 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
   formatValue,
   width,
   size,
+  serverFiltered = false,
+  onFilterChange,
+  onLoadMore,
+  loadingMore = false,
 }) => {
   const [searchInput, setSearchInput] = useState('');
   const [keyword, setKeyword] = useState('');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
+
+  // Ở chế độ lọc phía server, mỗi lần điều kiện đổi thì đẩy ra ngoài để màn cha
+  // nạp lại từ trang đầu.
+  useEffect(() => {
+    if (!serverFiltered || !onFilterChange) return;
+    onFilterChange({ keyword, fromDate: dateFrom, toDate: dateTo });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverFiltered, keyword, dateFrom, dateTo]);
+
+  const handleBodyScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (!onLoadMore) return;
+    const el = e.currentTarget;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) {
+      onLoadMore();
+    }
+  };
   const [symbols, setSymbols] = useState<SymbolOption[]>([]);
 
   useEffect(() => {
@@ -467,7 +521,11 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
 
   // Filter and group records
   const { filteredGroups, totalCount } = useMemo(() => {
-    const q = keyword.toLowerCase().trim();
+    // Ở chế độ lọc phía server, từ khóa và khoảng ngày đã được áp ở CSDL — lọc
+    // lại tại đây sẽ cắt mất bản ghi của các trang chưa tải về.
+    const q = serverFiltered ? '' : keyword.toLowerCase().trim();
+    const clientDateFrom = serverFiltered ? '' : dateFrom;
+    const clientDateTo = serverFiltered ? '' : dateTo;
 
     const filtered = (records || []).filter((r) => {
       const act = (r.action || r.status || '').toUpperCase();
@@ -502,11 +560,11 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
       }
 
       // Date range filter
-      if (dateFrom && ts) {
-        if (dayjs(ts).isBefore(dayjs(dateFrom))) return false;
+      if (clientDateFrom && ts) {
+        if (dayjs(ts).isBefore(dayjs(clientDateFrom))) return false;
       }
-      if (dateTo && ts) {
-        if (dayjs(ts).isAfter(dayjs(dateTo))) return false;
+      if (clientDateTo && ts) {
+        if (dayjs(ts).isAfter(dayjs(clientDateTo))) return false;
       }
 
       return true;
@@ -536,7 +594,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
     }
 
     return { filteredGroups: groups, totalCount: filtered.length };
-  }, [records, keyword, dateFrom, dateTo, combinedFieldMap]);
+  }, [records, keyword, dateFrom, dateTo, combinedFieldMap, serverFiltered]);
 
   return (
     <Drawer
@@ -627,7 +685,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
       </div>
 
       {/* ── Timeline Body ─────────────────────────────────── */}
-      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleBodyScroll}>
         {loading ? (
           <div style={{ padding: spaceMd }}>
             <Skeleton active paragraph={{ rows: 6 }} />
@@ -917,6 +975,11 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                 </div>
               );
             })}
+          </div>
+        )}
+        {loadingMore && (
+          <div style={{ padding: spaceMd, textAlign: 'center', color: textTertiary, fontSize: fontSizeMd }}>
+            Đang tải thêm…
           </div>
         )}
       </div>

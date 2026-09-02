@@ -16,7 +16,6 @@ import type {
 
 import { organizationService } from './organizationService';
 import { portCRUD } from './portService';
-import { MOCK_ORGANIZATIONS } from './mockData';
 
 const VTS_BASE_PATH = '/v1/vts-system';
 const COMMON_OPTIONS_BASE_PATH = '/common/options';
@@ -26,14 +25,17 @@ let inFlightListPromise: { key: string; promise: Promise<{ items: VtsSystemListI
 let cachedOperatingOrgs: Array<{ id: string; name: string; code: string }> | null = null;
 
 export const vtsSystemCRUD = {
+  /**
+   * Danh sách đơn vị cho bộ lọc.
+   *
+   * KHÔNG fallback sang dữ liệu giả: trước đây khi API lỗi hoặc trả rỗng, bộ lọc
+   * âm thầm hiển thị `MOCK_ORGANIZATIONS`, người dùng chọn phải đơn vị không tồn
+   * tại và luôn ra 0 kết quả mà không hiểu vì sao. Trả về mảng rỗng để giao diện
+   * thể hiện đúng là "không lấy được dữ liệu".
+   */
   async getScopedOrgUnitOptions(): Promise<Array<{ id: string; name: string; code?: string; path?: string; parentId?: string }>> {
-    try {
-      const orgs = await organizationService.getAll();
-      if (Array.isArray(orgs) && orgs.length > 0) return orgs;
-    } catch {
-      // ignore
-    }
-    return MOCK_ORGANIZATIONS;
+    const orgs = await organizationService.getAll();
+    return Array.isArray(orgs) ? orgs : [];
   },
 
   async getScopedPortOptions(): Promise<Array<{ id: string; portCode?: string; portName?: string; orgUnitId?: string }>> {

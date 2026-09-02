@@ -524,7 +524,7 @@ class VtsSystemServiceTest {
     @Test
     void testSearch() {
         when(repository.search(false, List.of(), null, null, null, null,
-                org.springframework.data.domain.PageRequest.of(0, 100))).thenReturn(org.springframework.data.domain.Page.empty());
+                org.springframework.data.domain.PageRequest.of(0, 200))).thenReturn(org.springframework.data.domain.Page.empty());
         List<VtsSystemResponse> responses = service.search(null, null, null, null);
         assertNotNull(responses);
         assertTrue(responses.isEmpty());
@@ -713,7 +713,7 @@ class VtsSystemServiceTest {
                 null,
                 java.time.LocalDate.of(2025, 1, 1),
                 java.time.LocalDate.of(2026, 1, 1),
-                org.springframework.data.domain.PageRequest.of(0, 100)))
+                org.springframework.data.domain.PageRequest.of(0, 200)))
                 .thenReturn(org.springframework.data.domain.Page.empty());
 
         List<VtsSystemResponse> responses = service.search(null, null, null, null, 2025);

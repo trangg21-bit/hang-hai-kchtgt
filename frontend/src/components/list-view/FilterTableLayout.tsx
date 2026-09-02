@@ -101,7 +101,7 @@ export default function FilterTableLayout({
           >
             Tìm kiếm
           </Button>
-          {!hideFilterToggle && (
+          {!hideFilterToggle ? (
             <Button
               icon={<FilterOutlined />}
               onClick={onToggleCollapse}
@@ -116,6 +116,8 @@ export default function FilterTableLayout({
                 flexShrink: 0,
               }}
             />
+          ) : (
+            <div style={{ width: 38, height: 38, flexShrink: 0, visibility: 'hidden' }} aria-hidden="true" />
           )}
         </div>
       </div>

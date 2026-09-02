@@ -256,6 +256,28 @@ public class InfrastructureApprovalService {
      *
      * @throws IllegalStateException nếu hồ sơ không ở trạng thái Lưu tạm
      */
+    /**
+     * approval-2-level-spec §3.6 (quy tắc 11): hồ sơ "Lưu tạm" chỉ do **người
+     * nhập** xóa. Trước đây chỉ kiểm tra trạng thái, nên bất kỳ ai có quyền
+     * {@code <resource>:delete} trong cùng phạm vi đơn vị đều xóa được bản nháp
+     * của đồng nghiệp.
+     *
+     * Nới hai trường hợp để không chặn nhầm: tài khoản cấp Cục (vai trò quản trị
+     * dữ liệu toàn quốc) và hồ sơ cũ không còn lưu người tạo.
+     */
+    public void assertDeletableBy(ApprovableEntity entity, UUID userId) {
+        if (entity == null || entity.getCreatedBy() == null) {
+            return;
+        }
+        if (userId != null && userId.equals(entity.getCreatedBy())) {
+            return;
+        }
+        if (isDepartmentLevelUser(userId)) {
+            return;
+        }
+        throw new IllegalStateException("Chỉ người nhập hồ sơ mới được xóa bản Lưu tạm này");
+    }
+
     public void assertDeletable(ApprovableEntity entity) {
         if (entity == null) {
             throw new IllegalArgumentException("Dữ liệu hồ sơ không được để trống");
@@ -292,6 +314,7 @@ public class InfrastructureApprovalService {
         }
 
         assertDeletable(entity);
+        assertDeletableBy(entity, userId);
         ApprovalStatus currentStatus = entity.getApprovalStatus();
 
         entity.setApprovalStatus(ApprovalStatus.ARCHIVED);

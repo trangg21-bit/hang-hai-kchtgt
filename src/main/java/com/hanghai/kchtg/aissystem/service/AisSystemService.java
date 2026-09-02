@@ -47,6 +47,7 @@ import jakarta.persistence.EntityNotFoundException;
 import java.util.stream.Stream;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -116,14 +117,22 @@ public class AisSystemService {
      * dữ liệu.
      */
     private static String toKeywordLike(String keyword) {
+        String normalized = normalizeHistoryKeyword(keyword);
+        return normalized == null ? null : "%" + normalized + "%";
+    }
+
+    /**
+     * Bỏ dấu từ khóa, KHÔNG bọc `%`. Truy vấn nhật ký tự nối `%` bằng CONCAT nên
+     * bọc sẵn ở đây sẽ thành `%%tu khoa%%` và khớp sai.
+     */
+    private static String normalizeHistoryKeyword(String keyword) {
         if (keyword == null || keyword.trim().isEmpty()) {
             return null;
         }
-        String normalized = java.text.Normalizer
+        return java.text.Normalizer
                 .normalize(keyword.trim().toLowerCase(Locale.ROOT), java.text.Normalizer.Form.NFD)
                 .replaceAll("\\p{M}+", "")
                 .replace('đ', 'd');
-        return "%" + normalized + "%";
     }
 
     private void validateAllowedOrgUnit(UUID orgUnitId) {
@@ -789,6 +798,20 @@ public class AisSystemService {
      */
     @Transactional(readOnly = true)
     public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize) {
+        return getHistory(id, page, pageSize, null, null, null);
+    }
+
+    /**
+     * Nhật ký thay đổi, lọc và phân trang Ở SERVER.
+     *
+     * Trước đây hàm này tải TOÀN BỘ nhật ký của hồ sơ rồi lọc + cắt trang bằng
+     * Java: vừa nặng dần theo số lần sửa, vừa khiến ô tìm kiếm của drawer chỉ soi
+     * được phần đã tải. Nay điều kiện trạng thái, mốc "sau phê duyệt cấp cuối",
+     * từ khóa và khoảng ngày đều đẩy xuống CSDL nên biên trang là chính xác.
+     */
+    @Transactional(readOnly = true)
+    public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize, String keyword,
+            LocalDateTime fromDate, LocalDateTime toDate) {
         AisSystem parent = repository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Hệ thống AIS không tồn tại"));
         validateAllowedOrgUnit(parent.getOrgUnitId());
@@ -798,22 +821,21 @@ public class AisSystemService {
             return List.of();
         }
 
-        List<InfrastructureHistory> list = historyRepository
-                .findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.AIS_SYSTEM, id)
-                .stream()
-                // Chỉ hiển thị thay đổi phát sinh sau phê duyệt cấp cuối; ẩn log CREATE/duyệt
-                // hoặc log nháp do phiên bản cũ đã ghi vào infrastructure_history.
-                .filter(history -> history.getStatus() != InfrastructureHistoryStatus.CREATED
-                        && history.getStatus() != InfrastructureHistoryStatus.APPROVED
-                        && history.getStatus() != InfrastructureHistoryStatus.REJECTED
-                        && history.getApprovedDate() != null
-                        && !history.getApprovedDate().isBefore(finalApprovalAt))
-                .toList();
-        if (page != null && pageSize != null && page >= 0 && pageSize > 0) {
-            int fromIndex = Math.min(page * pageSize, list.size());
-            int toIndex = Math.min(fromIndex + pageSize, list.size());
-            list = list.subList(fromIndex, toIndex);
-        }
+        // Chỉ hiển thị thay đổi phát sinh sau phê duyệt cấp cuối; ẩn log CREATE/duyệt
+        // hoặc log nháp do phiên bản cũ đã ghi vào infrastructure_history.
+        LocalDateTime effectiveFrom = (fromDate == null || fromDate.isBefore(finalApprovalAt))
+                ? finalApprovalAt
+                : fromDate;
+        Pageable pageable = (page != null && pageSize != null && page >= 0 && pageSize > 0)
+                ? PageRequest.of(page, pageSize)
+                : Pageable.unpaged();
+
+        List<InfrastructureHistory> list = historyRepository.searchChangeHistory(
+                InfrastructureType.AIS_SYSTEM, id,
+                List.of(InfrastructureHistoryStatus.CREATED,
+                        InfrastructureHistoryStatus.APPROVED,
+                        InfrastructureHistoryStatus.REJECTED),
+                normalizeHistoryKeyword(keyword), effectiveFrom, toDate, pageable);
         Set<UUID> userIds = list.stream()
                 .map(InfrastructureHistory::getApprovedBy)
                 .filter(Objects::nonNull)
@@ -910,7 +932,10 @@ public class AisSystemService {
                         .refId(id)
                         .refType(InfrastructureType.AIS_SYSTEM)
                         .approvalLevel(ApprovalLevel.LEVEL_2)
-                        .status(InfrastructureHistoryStatus.UPDATED)
+                        // Ghi đúng loại thao tác thay vì UPDATED chung chung: giao diện
+                        // lấy nhãn + màu của dòng nhật ký từ trạng thái này, ghi UPDATED
+                        // thì thao tác tệp cũng hiện là "Cập nhật" màu xanh.
+                        .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
                         .approvedBy(userId)
                         .approvedDate(LocalDateTime.now())
                         .reason("Tải lên tài liệu đính kèm: " + originalFilename)
@@ -1010,7 +1035,7 @@ public class AisSystemService {
                     .refId(id)
                     .refType(InfrastructureType.AIS_SYSTEM)
                     .approvalLevel(ApprovalLevel.LEVEL_2)
-                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
                     .approvedBy(userId)
                     .approvedDate(LocalDateTime.now())
                     .reason("Xóa tài liệu đính kèm: " + att.getFileName())

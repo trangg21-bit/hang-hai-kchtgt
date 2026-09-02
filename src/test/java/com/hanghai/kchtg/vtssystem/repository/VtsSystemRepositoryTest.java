@@ -278,6 +278,7 @@ class VtsSystemRepositoryTest {
                 "own.name", "t.owningOrgId",
                 "op.name", "t.operatingOrgId",
                 "p.portName", "t.portId",
+                "u.fullName",
                 "t.updatedAt", "t.updatedBy", "t.createdAt");
 
         for (String property : sortableProperties) {

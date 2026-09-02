@@ -261,8 +261,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
   const [symbols, setSymbols] = useState<any[]>([]);
   const [mapModalOpen, setMapModalOpen] = useState(false);
   const [coordinateList, setCoordinateList] = useState<{ latitude: number | null; longitude: number | null }[]>([]);
-
-  const watchedGeometryType = Form.useWatch('geometryType', form);
+  const [geometryTypeState, setGeometryTypeState] = useState<string>('POINT');
 
   // Permissions & user
   const { user } = useAuthStore();
@@ -319,6 +318,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
       setRecord(null);
       setAttachments([]);
       setCoordinateList([{ latitude: null, longitude: null }]);
+      setGeometryTypeState('POINT');
       form.resetFields();
       form.setFieldsValue({
         conditionStatus: ConditionStatus.OPERATIONAL,
@@ -354,6 +354,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
             pts = [{ latitude: Number(res.latitude), longitude: Number(res.longitude) }];
           }
           const geom = res.geometryType || res.objectType || 'POINT';
+          setGeometryTypeState(geom);
           setCoordinateList(adjustCoordinateListForGeometry(pts, geom));
           form.setFieldsValue({
             code: res.code || res.deviceCode,
@@ -638,7 +639,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
   return (
     <Drawer
       rootClassName="vtssystemchk-theme-scope"
-      size="50%"
+      width="50%"
       placement="right"
       closable={false}
       open={open}
@@ -1305,6 +1306,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                                   style={{ ...selectStyle, height: 38 }}
                                   onChange={(val) => {
                                     form.setFieldValue('geometryType', val);
+                                    setGeometryTypeState(val || 'POINT');
                                     if (val) {
                                       form.setFieldValue('coordinateSystem', 'WGS 84 / VN-2000');
                                       form.setFieldValue('displayRule', 'Độ, phút, giây (DMS)');
@@ -1313,7 +1315,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                                       form.setFieldValue('coordinateSystem', undefined);
                                       form.setFieldValue('displayRule', undefined);
                                       form.setFieldValue('symbol', undefined);
-                                      setCoordinateList([]);
+                                      setCoordinateList([{ latitude: null, longitude: null }]);
                                     }
                                   }}
                                 />
@@ -1329,7 +1331,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                                 <Select
                                   placeholder="Chọn biểu tượng bản đồ"
                                   allowClear
-                                  disabled={!watchedGeometryType}
+                                  disabled={!geometryTypeState}
                                   options={symbols.map((sym) => ({
                                     value: sym.code || sym.id,
                                     label: (
@@ -1407,7 +1409,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                               >
                                 Chọn vị trí trên bản đồ
                               </Button>
-                              {watchedGeometryType && watchedGeometryType !== 'POINT' && (
+                              {geometryTypeState !== 'POINT' && (
                                 <Button
                                   type="primary"
                                   icon={<PlusOutlined />}
@@ -1423,7 +1425,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
 
                         <DetailTable
                           scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
-                          dataSource={((watchedGeometryType === 'POINT' || !watchedGeometryType) ? coordinateList.slice(0, 1) : coordinateList).map((c, i) => ({ ...c, _idx: i }))}
+                          dataSource={(geometryTypeState === 'POINT' ? coordinateList.slice(0, 1) : coordinateList).map((c, i) => ({ ...c, _idx: i }))}
                           emptyText="Chưa có tọa độ nào"
                           rowKey="_idx"
                           columns={[
@@ -1452,7 +1454,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                               width: 50,
                               align: 'center' as const,
                               render: (_: any, r: any) => {
-                                const geom = (watchedGeometryType || form.getFieldValue('geometryType') || 'POINT').toUpperCase();
+                                const geom = (geometryTypeState || 'POINT').toUpperCase();
                                 if (geom === 'POINT') return null;
                                 const minCount = geom.includes('LINE') ? 2 : (geom.includes('POLYGON') ? 3 : 1);
                                 const canDelete = coordinateList.length > minCount;
@@ -1531,11 +1533,11 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
             height={560}
             disabled={isDetailMode}
             value={{
-              geometryType: watchedGeometryType || 'POINT',
-              coordinates: serializeCoordinatesToWkt(coordinateList, watchedGeometryType || 'POINT'),
+              geometryType: geometryTypeState || 'POINT',
+              coordinates: serializeCoordinatesToWkt(coordinateList, geometryTypeState || 'POINT'),
               symbolId: form.getFieldValue('symbol'),
             }}
-            defaultGeometryType={(watchedGeometryType as any) || 'POINT'}
+            defaultGeometryType={(geometryTypeState as any) || 'POINT'}
             onChange={(val) => {
               if (isDetailMode) return;
               if (val.coordinates) {
@@ -1544,6 +1546,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
               }
               if (val.geometryType) {
                 form.setFieldValue('geometryType', val.geometryType);
+                setGeometryTypeState(val.geometryType);
               }
             }}
           />

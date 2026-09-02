@@ -100,14 +100,57 @@ public class HistoryService {
         }
     }
 
+    /**
+     * Bỏ dấu từ khóa, KHÔNG bọc `%`. Truy vấn nhật ký tự nối `%` bằng CONCAT nên
+     * bọc sẵn ở đây sẽ thành `%%tu khoa%%` và khớp sai.
+     */
+    private static String normalizeHistoryKeyword(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return null;
+        }
+        return java.text.Normalizer
+                .normalize(keyword.trim().toLowerCase(java.util.Locale.ROOT), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('đ', 'd');
+    }
+
     @Transactional(readOnly = true)
     public List<CoastalStationVTSHistoryResponse> getHistory(InfrastructureType refType, UUID refId,
                                                              String stationCode) {
+        return getHistory(refType, refId, stationCode, null, null, null, null, null, null);
+    }
+
+    /**
+     * Nhật ký thay đổi của một đài, lọc và phân trang Ở SERVER.
+     *
+     * `excludedStatuses` và cặp mẫu câu "nhiễu" cho phép caller loại các dòng của
+     * quy trình phê duyệt ngay trong truy vấn — cần thiết để biên trang chính xác,
+     * vì lọc bằng Java sau khi đã cắt trang sẽ làm trang bị hụt.
+     */
+    @Transactional(readOnly = true)
+    public List<CoastalStationVTSHistoryResponse> getHistory(
+            InfrastructureType refType, UUID refId, String stationCode,
+            java.util.Collection<InfrastructureHistoryStatus> excludedStatuses,
+            String[] noisePatterns,
+            String keyword,
+            java.time.LocalDateTime fromDate,
+            java.time.LocalDateTime toDate,
+            org.springframework.data.domain.Pageable pageable) {
         if (refType == null || refId == null) {
             return List.of();
         }
-        List<InfrastructureHistory> rows =
-                historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(refType, refId);
+        List<InfrastructureHistory> rows;
+        if (excludedStatuses == null || excludedStatuses.isEmpty()) {
+            rows = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(refType, refId);
+        } else {
+            rows = historyRepository.searchChangeHistoryExcludingNoise(
+                    refType, refId, excludedStatuses,
+                    noisePatterns != null && noisePatterns.length > 0 ? noisePatterns[0] : null,
+                    noisePatterns != null && noisePatterns.length > 1 ? noisePatterns[1] : null,
+                    noisePatterns != null && noisePatterns.length > 2 ? noisePatterns[2] : null,
+                    normalizeHistoryKeyword(keyword), fromDate, toDate,
+                    pageable != null ? pageable : org.springframework.data.domain.Pageable.unpaged());
+        }
 
         Map<UUID, String> userNames = resolveUserNames(rows.stream()
                 .map(InfrastructureHistory::getApprovedBy)
