@@ -1187,8 +1187,6 @@ export default function HanoiStationForm({
                   />
                 </div>
               ),
-            },
-            {
               key: 'files',
               label: 'File đính kèm',
               children: (

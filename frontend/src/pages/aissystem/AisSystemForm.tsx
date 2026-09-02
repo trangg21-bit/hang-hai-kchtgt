@@ -40,7 +40,7 @@ import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS, CONDITION_ST
 import {
   drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle,
   drawerTabBarStyle, drawerStyles, drawerFormScrollStyle, drawerGisControlBoxStyle,
-  spaceFormField, spaceXs, radiusPill, sidebarBg,
+  spaceFormField, spaceXs, spaceSm, spaceMd, radiusPill, sidebarBg,
   fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeSm, fontSizeLg,
   textSecondary, textTertiary, borderDefault,
   statusCritical, statusAttention, statusOperational, actionPrimary, textAreaStyle,
