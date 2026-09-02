@@ -337,15 +337,16 @@ public class AccessLogInterceptor implements HandlerInterceptor {
     }
 
     /**
-     * Resolve the organisational unit name of the user via
+     * Resolve the organisational unit id (UUID) of the user via
      * {@link UserRepository#findByUsernameWithRelations(String)} to avoid
      * LazyInitializationException on the OrgUnit relationship.
+     * Lưu orgUnitId (UUID) theo chuẩn dự án — filter frontend gửi UUID.
      */
     private String resolveOrgUnit(String username) {
         if (username == null || "anonymousUser".equals(username)) return null;
         try {
             var user = userRepository.findByUsernameWithRelations(username).orElse(null);
-            return user != null && user.getOrgUnit() != null ? user.getOrgUnit().getName() : null;
+            return user != null && user.getOrgUnit() != null ? user.getOrgUnit().getId().toString() : null;
         } catch (Exception e) {
             return null;
         }

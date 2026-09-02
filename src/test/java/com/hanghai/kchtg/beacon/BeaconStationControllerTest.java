@@ -351,7 +351,7 @@ class BeaconStationControllerTest {
         UUID id = UUID.randomUUID();
         BeaconStationResponse approved = makeResponse(id, "Đã duyệt L1", "LIGHTHOUSE", "APPROVED_L1");
         approved.setApprovedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
-        when(beaconStationService.approveL1(eq(id), any(java.util.UUID.class))).thenReturn(approved);
+        when(beaconStationService.approveL1(eq(id), any(java.util.UUID.class), any())).thenReturn(approved);
 
         mockMvc.perform(post("/api/beacon-stations/{id}/approve-l1", id)
                         .param("approverId", "00000000-0000-0000-0000-000000000002"))
@@ -360,14 +360,14 @@ class BeaconStationControllerTest {
                 .andExpect(jsonPath("$.data.status").value("APPROVED_L1"))
                 .andExpect(jsonPath("$.data.approvedBy").value("00000000-0000-0000-0000-000000000002"));
 
-        verify(beaconStationService).approveL1(eq(id), any(java.util.UUID.class));
+        verify(beaconStationService).approveL1(eq(id), any(java.util.UUID.class), any());
     }
 
     @Test
     @DisplayName("POST /api/beacon-stations/{id}/approve-l1 — returns 400 when not PENDING_APPROVAL")
     void testApproveL1WrongStatus() throws Exception {
         UUID id = UUID.randomUUID();
-        when(beaconStationService.approveL1(eq(id), any(java.util.UUID.class)))
+        when(beaconStationService.approveL1(eq(id), any(java.util.UUID.class), any()))
                 .thenThrow(new IllegalStateException("Không ở trạng thái chờ phê duyệt L1"));
 
         mockMvc.perform(post("/api/beacon-stations/{id}/approve-l1", id)

@@ -144,10 +144,23 @@ public class BeaconStationController {
     @PostMapping("/{id}/approve-l1")
     @PreAuthorize("@auth.check(authentication, 'beaconstation:approvec1') or @auth.check(authentication, 'beaconstation:approvel1') or @auth.check(authentication, 'data:approvec1') or @auth.check(authentication, 'data:approvel1')")
     public ResponseEntity<ApiResponse<BeaconStationResponse>> approveL1(
-                    @PathVariable UUID id, @RequestParam java.util.UUID approverId) {
+                    @PathVariable UUID id,
+                    @RequestParam java.util.UUID approverId,
+                    @RequestParam(required = false) String note) {
             return ResponseEntity.ok(ApiResponse.success(
                             "Phê duyệt L1 thành công",
-                            beaconStationService.approveL1(id, approverId)));
+                            beaconStationService.approveL1(id, approverId, note)));
+    }
+
+    @PostMapping("/{id}/approve-l2")
+    @PreAuthorize("@auth.check(authentication, 'beaconstation:approvec2') or @auth.check(authentication, 'data:approvec2')")
+    public ResponseEntity<ApiResponse<BeaconStationResponse>> approveL2(
+                    @PathVariable UUID id,
+                    @RequestParam java.util.UUID approverId,
+                    @RequestParam(required = false) String note) {
+            return ResponseEntity.ok(ApiResponse.success(
+                            "Phê duyệt L2 thành công",
+                            beaconStationService.approveL2(id, approverId, note)));
     }
 
     @PostMapping("/{id}/reject")

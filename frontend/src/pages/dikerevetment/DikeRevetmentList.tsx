@@ -82,6 +82,7 @@ import {
   spaceSm,
   spaceMd,
   spaceFormField,
+  spaceXl,
   inputStyle,
   selectStyle,
   primaryButtonStyle,
@@ -107,6 +108,9 @@ import {
   historyOldValueStyle,
   historyNewValueStyle,
   historyArrowStyle,
+  historyGroupGridStyle,
+  historyTimeStyle,
+  historyInfoTitleStyle,
 } from '../../tokens';
 
 // ── Field name translation (lịch sử thay đổi) ───────────────────────
@@ -417,6 +421,10 @@ export default function DikeRevetmentList() {
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
   const [historyTo, setHistoryTo] = useState('');
+  const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
+  const [hasMoreHistory, setHasMoreHistory] = useState(true);
+  const [historyPage, setHistoryPage] = useState(0);
+  const [historyReloadToken, setHistoryReloadToken] = useState(0);
 
   // ── Init: organizations + users ──────────────────────────────────
   useEffect(() => {
@@ -707,7 +715,8 @@ export default function DikeRevetmentList() {
   const confirmDelete = async () => {
     if (!deletingRecord) return;
     const expected = deletingRecord.dikeRevetmentName || deletingRecord.code || '';
-    if (deleteConfirmText.trim() !== 'XÓA' && deleteConfirmText.trim() !== expected) {
+    const confirmText = deleteConfirmText.trim();
+    if (confirmText.toUpperCase() !== 'XÓA' && confirmText.toLowerCase() !== expected.toLowerCase()) {
       message.error('Vui lòng nhập đúng tên công trình hoặc gõ XÓA để xác nhận');
       return;
     }
@@ -805,15 +814,10 @@ export default function DikeRevetmentList() {
     setHistoryFrom('');
     setHistoryTo('');
     setHistoryOpen(true);
-    setHistoryLoading(true);
-    try {
-      const hist = await dikeRevetmentApproval.getHistory(record.id);
-      setHistoryRecords(hist || []);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Không tải được lịch sử');
-    } finally {
-      setHistoryLoading(false);
-    }
+    setHistoryLoading(false);
+    setLoadingMoreHistory(false);
+    setHasMoreHistory(true);
+    setHistoryPage(0);
   }, []);
 
   const formatHistoryValue = (fn: string, val: any): string => {
@@ -825,89 +829,138 @@ export default function DikeRevetmentList() {
     return String(val);
   };
 
+  const HISTORY_PAGE_SIZE = 20;
+
+  const historyTimestamp = (item: any): string => item.approvedDate || item.changedAt || item.createdAt || '';
+  const historyField = (item: any): string => item.changedField || item.fieldName || '';
+  const historyOldValue = (item: any): string | null => item.previousValue ?? item.oldValue ?? null;
+  const historyNewValue = (item: any): string | null => item.newValue ?? null;
+  const historyActor = (item: any): string => { const raw = item?.approvedBy || item?.changedBy || ''; return raw || '—'; };
+  const resolveHistoryActionMeta = (item: any): { label: string; color: string } => {
+    const rawStatus = String(item?.status ?? item?.action ?? '').toUpperCase();
+    const rawReason = String(item?.reason ?? '').toLowerCase();
+    if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) return { label: 'Thêm mới', color: '#1BAF7A' };
+    if (rawStatus === 'APPROVED' || rawStatus === 'APPROVED_LEVEL2' || rawStatus === 'APPROVED_LEVEL1' || rawReason.includes('phê duyệt') || rawReason.includes('phe duyet')) return { label: 'Phê duyệt', color: '#1BAF7A' };
+    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi')) return { label: 'Từ chối', color: '#E34948' };
+    if (rawStatus === 'PROPOSED' || rawStatus === 'PENDING_APPROVAL' || rawReason.includes('gửi phê duyệt') || rawReason.includes('gui phe duyet')) return { label: 'Gửi phê duyệt', color: '#EDA100' };
+    if (rawStatus === 'DELETED' || rawStatus === 'SOFT_DELETE' || rawReason.includes('xóa mềm')) return { label: 'Xóa mềm', color: '#E34948' };
+    return { label: 'Chỉnh sửa', color: '#0E6FD6' };
+  };
+
+  useEffect(() => {
+    if (!historyOpen || !historyTarget) return;
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setHistoryLoading(true);
+      setLoadingMoreHistory(false);
+      setHasMoreHistory(true);
+      setHistoryRecords([]);
+      setHistoryPage(0);
+      try {
+        const hist = await dikeRevetmentApproval.getHistory(historyTarget.id, 0, HISTORY_PAGE_SIZE, {
+          keyword: historySearch,
+          fromDate: historyFrom,
+          toDate: historyTo,
+        });
+        if (cancelled) return;
+        const items = hist || [];
+        setHistoryRecords(items);
+        setHasMoreHistory(items.length === HISTORY_PAGE_SIZE);
+      } catch (err) {
+        if (!cancelled) toast.error(err instanceof Error ? err.message : 'Không tải được lịch sử');
+      } finally {
+        if (!cancelled) setHistoryLoading(false);
+      }
+    }, historySearch.trim() ? 300 : 0);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [historyOpen, historyTarget?.id, historySearch, historyFrom, historyTo, historyReloadToken]);
+
+  const loadMoreHistory = async () => {
+    if (!historyTarget || historyLoading || loadingMoreHistory || !hasMoreHistory) return;
+    setLoadingMoreHistory(true);
+    try {
+      const nextPage = historyPage + 1;
+      const hist = await dikeRevetmentApproval.getHistory(historyTarget.id, nextPage, HISTORY_PAGE_SIZE, {
+        keyword: historySearch,
+        fromDate: historyFrom,
+        toDate: historyTo,
+      });
+      if (hist && hist.length > 0) setHistoryRecords((prev) => [...prev, ...hist]);
+      setHistoryPage(nextPage);
+      setHasMoreHistory((hist || []).length === HISTORY_PAGE_SIZE);
+    } catch { /* ignore */ } finally { setLoadingMoreHistory(false); }
+  };
+
+  const handleHistoryScroll = (e: any) => {
+    const el = e.currentTarget;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) loadMoreHistory();
+  };
+
   const renderHistoryTimeline = (records: any[]) => {
     if (!records || records.length === 0) {
       return (
-        <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có lịch sử thay đổi</Typography.Text>
-      );
-    }
-    const filtered = records.filter((h: any) => {
-      if (historySearch) {
-        const haystack = `${h.fieldChanged || ''} ${h.oldValue || ''} ${h.newValue || ''} ${h.actionType || ''}`.toLowerCase();
-        if (!haystack.includes(historySearch.toLowerCase())) return false;
-      }
-      if (historyFrom && h.changedAt && dayjs(h.changedAt).isBefore(dayjs(historyFrom))) return false;
-      if (historyTo && h.changedAt && dayjs(h.changedAt).isAfter(dayjs(historyTo))) return false;
-      return true;
-    });
-    if (filtered.length === 0) {
-      return (
-        <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có lịch sử thay đổi</Typography.Text>
-      );
-    }
-    return filtered.map((h: any) => {
-      const actionType: string = h.actionType || '';
-      const badgeColor = HISTORY_ACTION_COLOR[actionType] || textTertiary;
-      const actionLabel = APPROVAL_STATUS_MAP[actionType] || actionType;
-      const isCreate = actionType === 'TAO_MOI';
-      const isDelete = actionType === 'XOA_MEM';
-      const isReject = actionType === 'TU_CHOI';
-      const changeKey = h.id != null ? String(h.id) : `${h.changedAt ?? 'x'}-${h.actionType ?? 'x'}`;
-      const changeItems = Array.isArray(h.changes) ? h.changes : [];
-
-      return (
-        <div key={changeKey} style={{ ...historyInfoCardStyle, marginBottom: spaceMd }}>
-          <div style={historyAccentBarStyle(badgeColor)} />
-          <div style={{ padding: spaceMd }}>
-            <div style={historyMetaRowStyle}>
-              <span style={historyBadgeStyle(badgeColor)}>{actionLabel}</span>
-              <span style={{ marginLeft: 'auto', color: textTertiary, fontSize: fontSizeSm }}>
-                {formatDate(h.changedAt)}
-              </span>
-            </div>
-            {h.changedByName && (
-              <div style={{ marginTop: spaceXs }}>
-                <span style={{ color: textSecondary, fontSize: fontSizeSm }}>Người thực hiện: </span>
-                <span style={{ color: textPrimary, fontSize: fontSizeSm, fontWeight: fontWeightMedium }}>{h.changedByName}</span>
-              </div>
-            )}
-            <div style={{ marginTop: spaceSm }}>
-              {isDelete ? (
-                <div style={{ color: statusCritical, fontSize: fontSizeMd, fontWeight: fontWeightMedium }}>
-                  Công trình đã bị xóa mềm
-                </div>
-              ) : isReject ? (
-                <div style={historyChangeRowStyle}>
-                  <div style={historyFieldLabelStyle}>Lý do từ chối:</div>
-                  <span title={h.reason || h.note} style={historyNewValueStyle}>{h.reason || h.note || '—'}</span>
-                </div>
-              ) : changeItems.length > 0 ? (
-                changeItems.map((chg: any) => {
-                  const fn = chg.fieldChanged || '';
-                  const ov = formatHistoryValue(fn, chg.oldValue);
-                  const nv = formatHistoryValue(fn, chg.newValue);
-                    return isCreate ? (
-                    <div key={`${changeKey}-${chg.fieldChanged ?? 'v'}`} style={historyCreateRowStyle}>
-                      <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                      <span title={nv} style={historyNewValueStyle}>{nv}</span>
-                    </div>
-                  ) : (
-                    <div key={`${changeKey}-${chg.fieldChanged ?? 'v'}`} style={historyChangeRowStyle}>
-                      <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                      <span title={ov} style={historyOldValueStyle}>{ov}</span>
-                      <span style={historyArrowStyle}>→</span>
-                      <span title={nv} style={historyNewValueStyle}>{nv}</span>
-                    </div>
-                  );
-                })
-              ) : (
-                <div style={{ color: textSecondary, fontSize: fontSizeMd }}>{actionLabel}</div>
-              )}
-            </div>
-          </div>
+        <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
+          <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+          <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{historySearch || historyFrom || historyTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div>
         </div>
       );
-    });
+    }
+    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
+    const sorted = [...records].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
+    const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
+    for (const r of sorted) {
+      const ts = historyTimestamp(r);
+      const sec = ts ? toSec(ts) : 0;
+      const prev = groups[groups.length - 1];
+      if (prev && prev.tsSec === sec && prev.actor === historyActor(r) && prev.status === r.status && prev.approvalLevel === r.approvalLevel) prev.items.push(r);
+      else groups.push({ tsSec: sec, ts, actor: historyActor(r), status: r.status, approvalLevel: r.approvalLevel, items: [r] });
+    }
+    const fmtTime = (ts: string) => { const d = new Date(ts); return `${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`; };
+    return (
+      <div>
+        {groups.map((g, gi) => {
+          const rec0 = g.items[0] || {};
+          const actionMeta = resolveHistoryActionMeta(rec0);
+          const unitName = rec0.orgUnitName || '—';
+          const changes = g.items.map((item: any) => ({ field: historyField(item) || '—', oldValue: historyOldValue(item), newValue: historyNewValue(item) }));
+          const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
+          const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
+          return (
+            <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
+              <div style={{ minWidth: 0, paddingTop: spaceXs }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
+                  <Typography.Text style={historyTimeStyle}>{g.ts ? fmtTime(g.ts) : '—'}</Typography.Text>
+                  <span style={{ flexShrink: 0 }}><span style={historyBadgeStyle(actionMeta.color)}>{actionMeta.label}</span></span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
+                  <Typography.Text style={historyMetaRowStyle}>Người thực hiện: {g.actor || '—'}</Typography.Text>
+                  <Typography.Text style={historyMetaRowStyle}>Đơn vị: {unitName}</Typography.Text>
+                </div>
+              </div>
+              <div style={historyInfoCardStyle}>
+                <div style={historyAccentBarStyle(actionMeta.color)} />
+                <Typography.Text style={historyInfoTitleStyle}>{informationTitle}</Typography.Text>
+                <div>
+                  {changes.map((c, ri) => isCreate ? (
+                    <div key={ri} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
+                      <div style={historyFieldLabelStyle}>{c.field ? `${historyFieldName(c.field)}:` : '—'}</div>
+                      <span title={c.newValue ?? '—'} style={historyNewValueStyle}>{c.newValue ?? '—'}</span>
+                    </div>
+                  ) : (
+                    <div key={ri} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
+                      <div style={historyFieldLabelStyle}>{c.field ? `${historyFieldName(c.field)}:` : '—'}</div>
+                      <span title={c.oldValue ?? '—'} style={historyOldValueStyle}>{c.oldValue ?? '—'}</span>
+                      <span style={historyArrowStyle}>→</span>
+                      <span title={c.newValue ?? '—'} style={historyNewValueStyle}>{c.newValue ?? '—'}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   // ── Columns & row actions ────────────────────────────────────────
@@ -1015,6 +1068,7 @@ export default function DikeRevetmentList() {
     const canRead = hasPerm('dikerevetment:read');
     const canUpdate = hasPerm('dikerevetment:update');
     const canDelete = hasPerm('dikerevetment:delete');
+    const isDraft = record.approvalStatus === 'DRAFT';
     const isProposed = record.approvalStatus === 'PROPOSED';
     const isPending = record.approvalStatus === 'PENDING_APPROVAL';
     const isRejected = record.approvalStatus === 'REJECTED';
@@ -1061,8 +1115,8 @@ export default function DikeRevetmentList() {
         onClick: () => openRejectModal(record),
       });
     }
-    // F-046: chỉ xóa bản ghi PROPOSED (xóa mềm)
-    if (canDelete && isProposed) {
+    // F-046: cho xóa mềm bản ghi chưa vào quy trình duyệt (Nháp/Lưu tạm, PROPOSED, REJECTED)
+    if (canDelete && (isDraft || isProposed || isRejected)) {
       actions.push({
         key: 'delete',
         label: 'Xóa',
@@ -1876,12 +1930,16 @@ export default function DikeRevetmentList() {
           <DatePicker placeholder="Đến ngày" value={historyTo ? dayjs(historyTo) : null}
             onChange={(d) => setHistoryTo(d ? d.format('YYYY-MM-DD HH:mm:ss') : '')}
             style={{ width: 170, ...selectStyle }} format="DD/MM/YYYY HH:mm:ss" showTime />
+          <Button type="primary" loading={historyLoading} onClick={() => setHistoryReloadToken((t) => t + 1)}>Tìm kiếm</Button>
         </Space>
-        <div style={{ maxHeight: 500, overflowY: 'auto', marginTop: spaceFormField }}>
+        <div style={{ maxHeight: 500, overflowY: 'auto', marginTop: spaceFormField }} onScroll={handleHistoryScroll}>
           {historyLoading ? (
             <LoadingSkeleton rows={5} />
           ) : (
-            renderHistoryTimeline(historyRecords)
+            <>
+              {renderHistoryTimeline(historyRecords)}
+              {loadingMoreHistory && <div style={{ textAlign: 'center', padding: `${spaceMd}px 0`, color: textTertiary, fontSize: fontSizeMd }}>Đang tải thêm...</div>}
+            </>
           )}
         </div>
       </Modal>

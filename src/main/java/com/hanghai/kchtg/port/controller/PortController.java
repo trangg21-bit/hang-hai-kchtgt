@@ -3,16 +3,19 @@ package com.hanghai.kchtg.port.controller;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.port.dto.port.*;
 import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
 import com.hanghai.kchtg.port.service.PortApprovalService;
 import com.hanghai.kchtg.port.service.PortService;
+import com.hanghai.kchtg.vtssystem.dto.HistoryEntry;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -177,10 +180,20 @@ public class PortController {
 
     @GetMapping("/{id}/history")
     @PreAuthorize("@auth.check(authentication, 'port:history')")
-    public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
+            @PathVariable UUID id,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "pageSize", required = false) Integer pageSize,
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "fromDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+            @RequestParam(value = "toDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate) {
         log.info("Getting Port history: id={}", id);
-        Object history = portApprovalService.getHistory(id);
+        List<HistoryEntry> history = portApprovalService.getHistory(id, page, pageSize, keyword, fromDate, toDate);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử cảng biển thành công", history));
+    }
+
+    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(UUID id) {
+        return getHistory(id, null, null, null, null, null);
     }
 
     // ── Child guard API (Feature 1) ────────────────────────────────────

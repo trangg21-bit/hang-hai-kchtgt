@@ -33,6 +33,7 @@ interface AuthState {
   login: (username: string, _password: string, token: string) => void;
   logout: () => Promise<void>;
   replaceAccessToken: (newToken: string, reqToken?: string | null) => void;
+  refreshPermissions: () => Promise<void>;
   syncFromStorage: (storedToken: string | null) => void;
 }
 
@@ -109,6 +110,8 @@ export const useAuthStore = create<AuthState>((set, get) => {
         token,
       });
       localStorage.setItem('auth_token', token);
+      // Quyền không còn nằm trong JWT — nạp từ /users/me để gate UI chính xác.
+      void get().refreshPermissions();
     },
 
     replaceAccessToken: (newToken: string, reqToken?: string | null) => {
@@ -180,6 +183,8 @@ export const useAuthStore = create<AuthState>((set, get) => {
           token: newToken,
         });
         localStorage.setItem('auth_token', newToken);
+        // Quyền có thể đã thay đổi (permission_version mới) — nạp lại từ server.
+        void get().refreshPermissions();
       }
     },
 
@@ -226,6 +231,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
           isAuthenticated: true,
           token: storedToken,
         });
+        void get().refreshPermissions();
       } else {
         // Same user session -> upgrade token if newer
         get().replaceAccessToken(storedToken);
@@ -239,6 +245,19 @@ export const useAuthStore = create<AuthState>((set, get) => {
       set({ user: null, isAuthenticated: false, token: null });
       localStorage.removeItem('auth_token');
     },
+
+    refreshPermissions: async () => {
+      try {
+        const res = await api.get('/users/me');
+        const body = (res.data?.data ?? res.data) as { permissionCodes?: string[] } | undefined;
+        const perms: string[] = Array.isArray(body?.permissionCodes) ? body.permissionCodes : [];
+        const state = get();
+        if (!state.user) return;
+        set({ user: { ...state.user, permissions: perms } });
+      } catch {
+        // Không lấy được quyền thì giữ nguyên trạng thái hiện tại, không chặn UI.
+      }
+    },
   };
 });
 
@@ -249,4 +268,13 @@ if (typeof window !== 'undefined') {
       useAuthStore.getState().syncFromStorage(event.newValue);
     }
   });
+}
+
+// Quyền không còn được đọc từ claim 'permissions' của JWT — khi khôi phục phiên
+// từ localStorage, nạp lại permissionCodes từ /users/me để gate UI chính xác.
+if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+  const restoredToken = localStorage.getItem('auth_token');
+  if (restoredToken) {
+    useAuthStore.getState().refreshPermissions();
+  }
 }

@@ -508,15 +508,15 @@ class BeaconStationServiceTest {
             when(beaconStationRepo.findById(id)).thenReturn(Optional.of(entity));
             when(beaconStationRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-            BeaconStationResponse result = service.approveL1(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
+            BeaconStationResponse result = service.approveL1(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"), null);
 
             verify(beaconStationRepo).save(beaconStationCaptor.capture());
             BeaconStation saved = beaconStationCaptor.getValue();
-            assertThat(saved.getStatus()).isEqualTo(ApprovalStatus.APPROVED.name());
-            assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED);
-            assertThat(saved.getApprovedBy()).isEqualTo(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
-            assertThat(saved.getApprovedDate()).isNotNull();
-            assertThat(result.getStatus()).isEqualTo(ApprovalStatus.APPROVED.name());
+            assertThat(saved.getStatus()).isEqualTo(ApprovalStatus.APPROVED_LEVEL1.name());
+            assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED_LEVEL1);
+            assertThat(saved.getApproverLevel1()).isEqualTo(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
+            assertThat(saved.getApprovedDateLevel1()).isNotNull();
+            assertThat(result.getStatus()).isEqualTo(ApprovalStatus.APPROVED_LEVEL1.name());
             verify(historyRepo).save(any());
         }
 
@@ -528,7 +528,7 @@ class BeaconStationServiceTest {
             entity.setApprovedBy(null);
             when(beaconStationRepo.findById(id)).thenReturn(Optional.of(entity));
 
-            assertThatThrownBy(() -> service.approveL1(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002")))
+            assertThatThrownBy(() -> service.approveL1(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"), null))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("Không ở trạng thái chờ phê duyệt L1");
         }

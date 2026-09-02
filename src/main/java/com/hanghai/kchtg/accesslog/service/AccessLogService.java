@@ -102,9 +102,10 @@ public class AccessLogService {
                 predicates.add(cb.like(cb.lower(root.get("detail")), keywordPattern));
             }
 
-            // Email filter
+            // Email filter (case-insensitive LIKE — tìm kiếm tương đối theo yêu cầu)
             if (filter.getEmail() != null && !filter.getEmail().isBlank()) {
-                predicates.add(cb.equal(root.get("email"), filter.getEmail().trim()));
+                String emailPattern = "%" + filter.getEmail().trim().toLowerCase() + "%";
+                predicates.add(cb.like(cb.lower(root.get("email")), emailPattern));
             }
 
             // orgUnit filter

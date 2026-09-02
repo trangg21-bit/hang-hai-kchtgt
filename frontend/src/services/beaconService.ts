@@ -178,10 +178,17 @@ export const approval = {
     await buoyApi.submitBuoyForApproval(entityId);
   },
 
-  async approveL1(entityId: string, approverId: string): Promise<unknown> {
-    const res = await api.post(`/beacon-stations/${entityId}/approve-l1`, null, {
-      params: { approverId },
-    });
+  async approveL1(entityId: string, approverId: string, note?: string): Promise<unknown> {
+    const params: Record<string, string> = { approverId };
+    if (note) params.note = note;
+    const res = await api.post(`/beacon-stations/${entityId}/approve-l1`, null, { params });
+    return res.data.data;
+  },
+
+  async approveL2(entityId: string, approverId: string, note?: string): Promise<unknown> {
+    const params: Record<string, string> = { approverId };
+    if (note) params.note = note;
+    const res = await api.post(`/beacon-stations/${entityId}/approve-l2`, null, { params });
     return res.data.data;
   },
 

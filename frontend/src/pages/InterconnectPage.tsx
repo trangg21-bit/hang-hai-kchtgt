@@ -1,9 +1,11 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Tabs, Modal, Form, Input, Select, Button, Spin, Alert, DatePicker, Typography, Drawer, Row, Col } from 'antd';
 import { SearchOutlined, ReloadOutlined, EyeOutlined, EditOutlined, HistoryOutlined, FilterOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { ScreenHeader, DataTable, Pagination } from '../components/list-view';
+import { ScreenHeader, DataTable, Pagination, StatusTabs } from '../components/list-view';
 import FilterTableLayout from '../components/list-view/FilterTableLayout';
+import api from '../services/api';
+import { OrgUnitTreeSelect } from '../components/org-unit';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import EmptyState from '../components/EmptyState';
 import { interconnectService } from '../services/interconnectService';
@@ -31,6 +33,8 @@ import {
   spaceMd,
   radiusPill,
   radiusMd,
+  cardStyle,
+  statusTabsPadding,
   fontMono,
   drawerProps,
   drawerTitleStyle,
@@ -39,8 +43,10 @@ import {
   primaryButtonStyle,
   outlineButtonStyle,
   requiredMarkStyle,
-} from '../tokens';
-import { colors } from '../theme';
+} from '../themetokenchk';
+import { colors } from '../themetokenchk';
+import * as themeTokenChk from '../themetokenchk';
+import { ThemeTokenProvider } from '../context/ThemeTokenContext';
 import toast from '../components/ToastNotification';
 
 // ============================================================
@@ -114,6 +120,50 @@ export default function InterconnectPage() {
   const [integrationsLoading, setIntegrationsLoading] = useState(false);
   const [integrationsError, setIntegrationsError] = useState<string | null>(null);
   const [integrationFilterValues, setIntegrationFilterValues] = useState<IntegrationFilters>({});
+
+  const [orgUnits, setOrgUnits] = useState<{ id: string; name: string; code?: string; parentId?: string }[]>([]);
+  const [loadingOrgs, setLoadingOrgs] = useState(false);
+
+  const loadOrgOptions = useCallback(async () => {
+    setLoadingOrgs(true);
+    try {
+      const res = await api.get('/common/options/org-units');
+      const items = res.data?.data;
+      const orgs = (Array.isArray(items) ? items : []).map((o: { id?: string; name?: string; code?: string; parentId?: string | null }) => ({
+        id: String(o.id),
+        name: o.name || 'Đơn vị',
+        code: o.code || undefined,
+        parentId: o.parentId ? String(o.parentId) : undefined,
+      }));
+      setOrgUnits(orgs);
+    } catch (error) {
+      console.error('Lỗi tải danh sách đơn vị:', error);
+    } finally {
+      setLoadingOrgs(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadOrgOptions();
+  }, [loadOrgOptions]);
+
+  const integrationTableWrapRef = useRef<HTMLDivElement>(null);
+  const [integrationTableBodyHeight, setIntegrationTableBodyHeight] = useState(540);
+
+  // Giảm chiều cao thân DataTable để cạnh đáy thẳng hàng với divider (border-top) của panel filter
+  useEffect(() => {
+    const el = integrationTableWrapRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const paginationHeight = el.querySelector<HTMLElement>('.list-view-pagination')?.getBoundingClientRect().height ?? 55;
+        const available = entry.contentRect.height - paginationHeight - 6;
+        setIntegrationTableBodyHeight(Math.max(200, Math.floor(available)));
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   const [integrationStatusTab, setIntegrationStatusTab] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -152,7 +202,7 @@ export default function InterconnectPage() {
   const [sharingLogs, setSharingLogs] = useState<DataSharingLog[]>([]);
   const [sharingLoading, setSharingLoading] = useState(false);
   const [sharingError, setSharingError] = useState<string | null>(null);
-  const [sharingFilterValues, setSharingFilterValues] = useState<SharingFilters>({});
+  const [sharingFilterValues] = useState<SharingFilters>({});
   const [sharingStatusTab, setSharingStatusTab] = useState('');
   const [sharingPage, setSharingPage] = useState(1);
   const [sharingPageSize, setSharingPageSize] = useState(20);
@@ -255,20 +305,6 @@ export default function InterconnectPage() {
     setPage(1);
     fetchIntegrations({});
   }, [fetchIntegrations]);
-
-  // ============================================================
-  // Sharing filter handlers
-  // ============================================================
-  const handleSharingApply = useCallback(() => {
-    setSharingStatusTab('');
-    setSharingPage(1);
-  }, []);
-
-  const handleSharingReset = useCallback(() => {
-    setSharingFilterValues({});
-    setSharingStatusTab('');
-    setSharingPage(1);
-  }, []);
 
   // ============================================================
   // Open transaction history modal
@@ -458,7 +494,7 @@ export default function InterconnectPage() {
       return [
         {
           key: 'history',
-          label: 'Lịch sử giao dịch',
+          label: 'Xem lịch sử kết nối',
           icon: <HistoryOutlined />,
           onClick: () => handleOpenHistory(record),
         },
@@ -601,7 +637,7 @@ export default function InterconnectPage() {
       },
       {
         key: 'referenceNumber',
-        label: 'Số TC',
+        label: 'Số tham chiếu',
         dataIndex: 'referenceNumber',
         width: 140,
         render: (val: string) =>
@@ -627,7 +663,7 @@ export default function InterconnectPage() {
       },
       {
         key: 'purpose',
-        label: 'Mục đích',
+        label: 'Mục đích gửi',
         dataIndex: 'purpose',
         width: 240,
         render: (val: string) =>
@@ -770,7 +806,6 @@ export default function InterconnectPage() {
     const handleTxFilterReset = () => {
       const emptyFilters: TransactionFilters = {};
       setTransactionFilters(emptyFilters);
-      setShowAdvancedSearch(false);
       if (selectedConnectionId) fetchTransactions(selectedConnectionId, emptyFilters);
     };
 
@@ -795,10 +830,10 @@ export default function InterconnectPage() {
                 marginBottom: 4,
               }}
             >
-              Loại
+              Loại gửi
             </div>
             <Input
-              placeholder="Nhập loại gửi"
+              placeholder="Tìm theo loại gửi..."
               allowClear
               value={transactionFilters.type || ''}
               onChange={(e) =>
@@ -819,10 +854,10 @@ export default function InterconnectPage() {
                 marginBottom: 4,
               }}
             >
-              Số TC
+              Số tham chiếu
             </div>
             <Input
-              placeholder="Nhập số TC"
+              placeholder="Tìm theo số tham chiếu..."
               prefix={<SearchOutlined style={{ color: colors.sidebarBg }} />}
               allowClear
               value={transactionFilters.referenceNumber || ''}
@@ -837,7 +872,7 @@ export default function InterconnectPage() {
             />
           </div>
 
-          {/* From date */}
+          {/* Date range (Thời gian gửi) */}
           <div style={{ flex: '1 1 140px', minWidth: 120 }}>
             <div
               style={{
@@ -847,36 +882,18 @@ export default function InterconnectPage() {
                 marginBottom: 4,
               }}
             >
-              Từ ngày
+              Thời gian gửi (Từ ngày - đến ngày)
             </div>
-            <DatePicker
-              value={transactionFilters.from || null}
-              onChange={(date) =>
-                setTransactionFilters((prev) => ({ ...prev, from: date }))
+            <DatePicker.RangePicker
+              value={[transactionFilters.from ?? null, transactionFilters.to ?? null]}
+              onChange={(dates) =>
+                setTransactionFilters((prev) => ({
+                  ...prev,
+                  from: dates?.[0] ?? null,
+                  to: dates?.[1] ?? null,
+                }))
               }
-              placeholder="Từ ngày"
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-            />
-          </div>
-
-          {/* To date */}
-          <div style={{ flex: '1 1 140px', minWidth: 120 }}>
-            <div
-              style={{
-                fontSize: fontSizeMd,
-                color: colors.sidebarBg,
-                fontWeight: fontWeightBold,
-                marginBottom: 4,
-              }}
-            >
-              Đến ngày
-            </div>
-            <DatePicker
-              value={transactionFilters.to || null}
-              onChange={(date) =>
-                setTransactionFilters((prev) => ({ ...prev, to: date }))
-              }
-              placeholder="Đến ngày"
+              placeholder={['Từ ngày', 'Đến ngày']}
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
             />
           </div>
@@ -887,21 +904,21 @@ export default function InterconnectPage() {
           <Row gutter={[spaceMd, spaceSm]} style={{ marginTop: spaceSm }}>
             <Col xs={24} sm={8}>
               <div style={{ fontSize: fontSizeMd, color: colors.sidebarBg, fontWeight: fontWeightBold, marginBottom: 4 }}>Mã nhận</div>
-              <Input placeholder="Nhập mã nhận" allowClear
+              <Input placeholder="Tìm theo mã nhận..." allowClear
                 value={transactionFilters.receiverCode || ''}
                 onChange={(e) => setTransactionFilters((prev) => ({ ...prev, receiverCode: e.target.value }))}
                 style={{ borderRadius: radiusPill, height: 40 }} />
             </Col>
             <Col xs={24} sm={8}>
-              <div style={{ fontSize: fontSizeMd, color: colors.sidebarBg, fontWeight: fontWeightBold, marginBottom: 4 }}>ID giao dịch</div>
-              <Input placeholder="Nhập ID giao dịch" allowClear
+              <div style={{ fontSize: fontSizeMd, color: colors.sidebarBg, fontWeight: fontWeightBold, marginBottom: 4 }}>ID</div>
+              <Input placeholder="Tìm theo ID..." allowClear
                 value={transactionFilters.transactionId || ''}
                 onChange={(e) => setTransactionFilters((prev) => ({ ...prev, transactionId: e.target.value }))}
                 style={{ borderRadius: radiusPill, height: 40 }} />
             </Col>
             <Col xs={24} sm={8}>
-              <div style={{ fontSize: fontSizeMd, color: colors.sidebarBg, fontWeight: fontWeightBold, marginBottom: 4 }}>Mục đích</div>
-              <Input placeholder="Nhập mục đích" allowClear
+              <div style={{ fontSize: fontSizeMd, color: colors.sidebarBg, fontWeight: fontWeightBold, marginBottom: 4 }}>Mục đích gửi</div>
+              <Input placeholder="Tìm theo mục đích gửi..." allowClear
                 value={transactionFilters.purpose || ''}
                 onChange={(e) => setTransactionFilters((prev) => ({ ...prev, purpose: e.target.value }))}
                 style={{ borderRadius: radiusPill, height: 40 }} />
@@ -942,7 +959,7 @@ export default function InterconnectPage() {
       {...drawerProps}
       title={
         <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
-          Lịch sử giao dịch — {historyConnectionName}
+          Lịch sử kết nối liên thông chia sẻ dữ liệu — {historyConnectionName}
         </span>
       }
       open={historyDrawerOpen}
@@ -983,6 +1000,7 @@ export default function InterconnectPage() {
     return (
       <FilterTableLayout
         hideFilterToggle
+        filterTopOffset={10}
         onFilterApply={handleIntegrationApply}
         onFilterReset={handleIntegrationReset}
         loading={integrationsLoading}
@@ -995,7 +1013,7 @@ export default function InterconnectPage() {
                 Tên kết nối
               </div>
               <Input
-                placeholder="Nhập tên kết nối"
+                placeholder="Tìm theo tên kết nối..."
                 allowClear
                 value={integrationFilterValues.connectionName || ''}
                 onChange={(e) => setIntegrationFilterValues((prev) => ({ ...prev, connectionName: e.target.value }))}
@@ -1007,12 +1025,21 @@ export default function InterconnectPage() {
               <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
                 Hệ thống gửi
               </div>
-              <Input
-                placeholder="Nhập hệ thống gửi"
+              <OrgUnitTreeSelect
+                organizations={orgUnits}
+                placeholder="Chọn đơn vị"
                 allowClear
-                value={integrationFilterValues.senderSystem || ''}
-                onChange={(e) => setIntegrationFilterValues((prev) => ({ ...prev, senderSystem: e.target.value }))}
-                onPressEnter={handleIntegrationApply}
+                showPath
+                allLabel="Tất cả"
+                treeDefaultExpandAll={false}
+                value={integrationFilterValues.senderSystem
+                  ? (orgUnits.find((o) => o.name === integrationFilterValues.senderSystem)?.id || '__all__')
+                  : '__all__'}
+                onChange={(val) => {
+                  const unit = orgUnits.find((o) => o.id === val);
+                  setIntegrationFilterValues((prev) => ({ ...prev, senderSystem: unit?.name || '' }));
+                }}
+                loading={loadingOrgs}
                 style={{ borderRadius: radiusPill, height: 40 }}
               />
             </div>
@@ -1025,36 +1052,39 @@ export default function InterconnectPage() {
         }}
       >
         <style>{`.list-view-table .ant-table-cell { padding-block: 8.5px !important; }`}</style>
-        {integrationsError ? null : !integrationsLoading && filteredIntegrations.length === 0 ? (
-          <DataTable
-            dataSource={[]}
-            rowKey="id"
-            emptyState={
-              <div style={{ padding: '40px 0', textAlign: 'center' }}>
-                <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div>
-                <div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>Không tìm thấy kết nối nào phù hợp</div>
-              </div>
-            }
+        <div ref={integrationTableWrapRef} style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+          {integrationsError ? null : !integrationsLoading && filteredIntegrations.length === 0 ? (
+            <DataTable
+              dataSource={[]}
+              rowKey="id"
+              emptyState={
+                <div style={{ padding: '40px 0', textAlign: 'center' }}>
+                  <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div>
+                  <div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>Không tìm thấy kết nối nào phù hợp</div>
+                </div>
+              }
+            />
+          ) : !integrationsLoading && !integrationsError && filteredIntegrations.length > 0 ? (
+            <DataTable
+              fill
+              columns={integrationColumns}
+              dataSource={paginatedData}
+              rowKey="id"
+              rowActions={integrationRowActions}
+              loading={false}
+              scroll={{ x: 1200, y: integrationTableBodyHeight }}
+            />
+          ) : null}
+          <Pagination
+            total={filteredIntegrations.length}
+            current={page}
+            pageSize={pageSize}
+            onChange={(p, ps) => {
+              setPage(p);
+              setPageSize(ps);
+            }}
           />
-        ) : !integrationsLoading && !integrationsError && filteredIntegrations.length > 0 ? (
-          <DataTable
-            columns={integrationColumns}
-            dataSource={paginatedData}
-            rowKey="id"
-            rowActions={integrationRowActions}
-            loading={false}
-            scroll={{ x: 1200 }}
-          />
-        ) : null}
-        <Pagination
-          total={filteredIntegrations.length}
-          current={page}
-          pageSize={pageSize}
-          onChange={(p, ps) => {
-            setPage(p);
-            setPageSize(ps);
-          }}
-        />
+        </div>
       </FilterTableLayout>
     );
   };
@@ -1064,49 +1094,20 @@ export default function InterconnectPage() {
   // ============================================================
   const renderSharingTab = () => {
     return (
-      <FilterTableLayout
-        hideFilterToggle
-        onFilterApply={handleSharingApply}
-        onFilterReset={handleSharingReset}
-        loading={sharingLoading}
-        error={sharingError !== null}
-        onRetry={fetchSharingLogs}
-        filterContent={
-          <>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                Tên kết nối
-              </div>
-              <Input
-                placeholder="Nhập tên kết nối"
-                allowClear
-                value={sharingFilterValues.connectionName || ''}
-                onChange={(e) => setSharingFilterValues((prev) => ({ ...prev, connectionName: e.target.value }))}
-                onPressEnter={handleSharingApply}
-                style={{ borderRadius: radiusPill, height: 40 }}
-              />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                Hệ thống gửi
-              </div>
-              <Input
-                placeholder="Nhập hệ thống gửi"
-                allowClear
-                value={sharingFilterValues.senderSystem || ''}
-                onChange={(e) => setSharingFilterValues((prev) => ({ ...prev, senderSystem: e.target.value }))}
-                onPressEnter={handleSharingApply}
-                style={{ borderRadius: radiusPill, height: 40 }}
-              />
-            </div>
-          </>
-        }
-        statusTabs={sharingStatusTabs}
-        onStatusTabChange={(key) => {
-          setSharingStatusTab(key === 'all' ? '' : key);
-          setSharingPage(1);
-        }}
-      >
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+        {/* StatusTabs card — giữ lại, filter panel đã bỏ */}
+        <div style={{ ...cardStyle, marginBottom: 5, padding: statusTabsPadding, flexShrink: 0 }}>
+          <StatusTabs
+            tabs={sharingStatusTabs}
+            onChange={(key) => {
+              setSharingStatusTab(key === 'all' ? '' : key);
+              setSharingPage(1);
+            }}
+          />
+        </div>
+        {/* DataTable card — full width, không còn filter panel trái */}
+        <div style={{ ...cardStyle, padding: 10, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+          <div style={{ height: '100%', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
         <style>{`.list-view-table .ant-table-cell { padding-block: 8.5px !important; }`}</style>
         {sharingError ? null : !sharingLoading && filteredSharingLogs.length === 0 ? (
           <DataTable
@@ -1138,7 +1139,9 @@ export default function InterconnectPage() {
             setSharingPageSize(ps);
           }}
         />
-      </FilterTableLayout>
+          </div>
+        </div>
+      </div>
     );
   };
 
@@ -1146,7 +1149,8 @@ export default function InterconnectPage() {
   // Main render
   // ============================================================
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+    <ThemeTokenProvider tokens={themeTokenChk}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader
         breadcrumb={[
           { label: 'Quản trị hệ thống' },
@@ -1155,17 +1159,19 @@ export default function InterconnectPage() {
       />
 
       <Tabs
+        className="interconnect-tabs"
         activeKey={activeTab}
         onChange={setActiveTab}
+        tabBarStyle={{ ...cardStyle, padding: statusTabsPadding, marginBottom: 5, flexShrink: 0 }}
         items={[
           {
             key: 'integration',
-            label: 'Tích hợp dữ liệu',
+            label: <span style={{ color: activeTab === 'integration' ? 'rgb(39, 62, 124)' : undefined }}>Tích hợp dữ liệu</span>,
             children: renderIntegrationTab(),
           },
           {
             key: 'sharing',
-            label: 'Chia sẻ dữ liệu',
+            label: <span style={{ color: activeTab === 'sharing' ? 'rgb(39, 62, 124)' : undefined }}>Chia sẻ dữ liệu</span>,
             children: renderSharingTab(),
           },
         ]}
@@ -1178,6 +1184,43 @@ export default function InterconnectPage() {
         .ant-tabs-body { display: flex; flex-direction: column; flex: 1; min-height: 0; }
         .ant-tabs-content { display: flex; flex-direction: column; flex: 1; min-height: 0; }
         .ant-tabs-content-hidden { display: none !important; }
+
+        /* Section tabs (Tích hợp dữ liệu / Chia sẻ dữ liệu) — match the StatusTabs block UI */
+        .interconnect-tabs .ant-tabs-nav::before,
+        .interconnect-tabs .ant-tabs-ink-bar { display: none !important; }
+        .interconnect-tabs {
+          --tab-selected: rgb(39, 62, 124);
+          --ant-tabs-item-selected-color: var(--tab-selected);
+          --ant-tabs-item-hover-color: var(--tab-selected);
+          --ant-tabs-item-active-color: var(--tab-selected);
+        }
+        .interconnect-tabs .ant-tabs-nav-list {
+          display: flex; justify-content: flex-start; align-items: center; flex-wrap: wrap;
+          gap: 16px; margin: 0;
+        }
+        .interconnect-tabs .ant-tabs-tab {
+          display: inline-flex; align-items: center; gap: 8px;
+          border: none; background: transparent;
+          border-radius: 6px 6px 0 0;
+          padding: 12px 16px;
+          margin: 0 !important;
+          font-size: 13px; font-weight: 500;
+          color: #5E6278;
+          border-bottom: 2px solid transparent;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .interconnect-tabs .ant-tabs-tab-active {
+          background: rgba(39, 62, 124, 0.06);
+          color: var(--tab-selected);
+          font-weight: 600;
+          border-bottom: 2px solid var(--tab-selected);
+        }
+        .interconnect-tabs .ant-tabs-tab .ant-tabs-tab-btn {
+          color: inherit; font-weight: inherit; font-size: 13px;
+        }
+        .interconnect-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+          color: var(--tab-selected); font-weight: 600;
+        }
       `}</style>
 
       {/* ================================================ */}
@@ -1327,8 +1370,8 @@ export default function InterconnectPage() {
                   ['Hệ thống gửi', sharingDetail.senderSystem],
                   ['Hệ thống nhận', sharingDetail.receiverSystem],
                   ['Trạng thái', renderStatusTag(sharingDetail.status)],
-                ].map(([label, value], i) => (
-                  <div key={i} className="detail-row">
+                ].map(([label, value]) => (
+                  <div key={label} className="detail-row">
                     <span className="detail-label">{label}</span>
                     <span className="detail-value">{value}</span>
                   </div>
@@ -1360,6 +1403,7 @@ export default function InterconnectPage() {
           )}
         </Spin>
       </Drawer>
-    </div>
+      </div>
+    </ThemeTokenProvider>
   );
 }

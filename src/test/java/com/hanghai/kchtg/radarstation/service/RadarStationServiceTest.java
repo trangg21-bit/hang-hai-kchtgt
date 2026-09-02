@@ -219,7 +219,7 @@ class RadarStationServiceTest {
         when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.RADAR_STATION, TEST_ID))
                 .thenReturn(List.of(history));
 
-        List<com.hanghai.kchtg.radarstation.dto.HistoryEntry> entries = service.getHistory(TEST_ID);
+        List<com.hanghai.kchtg.vtssystem.dto.HistoryEntry> entries = service.getHistory(TEST_ID);
         assertNotNull(entries);
         assertEquals(1, entries.size());
     }

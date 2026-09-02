@@ -3,6 +3,7 @@ package com.hanghai.kchtg.dikerevetment.controller;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.dikerevetment.dto.*;
+import com.hanghai.kchtg.vtssystem.dto.HistoryEntry;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
 import com.hanghai.kchtg.dikerevetment.service.DikeRevetmentService;
 import com.hanghai.kchtg.user.entity.User;
@@ -12,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -228,8 +230,18 @@ public class DikeRevetmentController {
 
     @GetMapping("/{id}/history")
     @PreAuthorize("@auth.check(authentication, 'dikerevetment:history')")
-    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.success(service.getHistory(id)));
+    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
+            @PathVariable UUID id,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "pageSize", required = false) Integer pageSize,
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "fromDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+            @RequestParam(value = "toDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate) {
+        return ResponseEntity.ok(ApiResponse.success(service.getHistory(id, page, pageSize, keyword, fromDate, toDate)));
+    }
+
+    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(UUID id) {
+        return getHistory(id, null, null, null, null, null);
     }
 
     private LocalDateTime parseLocalDateTime(String dateStr) {

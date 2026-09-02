@@ -274,6 +274,10 @@ export default function RadarStationList() {
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
   const [historyTo, setHistoryTo] = useState('');
+  const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
+  const [hasMoreHistory, setHasMoreHistory] = useState(true);
+  const [historyPage, setHistoryPage] = useState(0);
+  const [historyReloadToken, setHistoryReloadToken] = useState(0);
   const [logOpen, setLogOpen] = useState(false);
   const [kchtOpen, setKchtOpen] = useState(true);
   const [operationOpen, setOperationOpen] = useState(true);
@@ -527,16 +531,11 @@ export default function RadarStationList() {
     setHistorySearch('');
     setHistoryFrom('');
     setHistoryTo('');
-    setHistoryLoading(true);
+    setHistoryLoading(false);
     setHistoryRecords([]);
-    try {
-      const res = await radarStationApproval.getHistory(r.id);
-      setHistoryRecords(res || []);
-    } catch {
-      toast.error('Không thể tải lịch sử');
-    } finally {
-      setHistoryLoading(false);
-    }
+    setLoadingMoreHistory(false);
+    setHasMoreHistory(true);
+    setHistoryPage(0);
   }, []);
 
   // ── Delete handlers ─────────────────────────────────────────────
@@ -1135,62 +1134,135 @@ export default function RadarStationList() {
   ];
 
   // ── History timeline render ─────────────────────────────────────
+  const HISTORY_PAGE_SIZE = 20;
+
+  const historyTimestamp = (item: any): string => item.approvedDate || item.changedAt || item.createdAt || '';
+  const historyField = (item: any): string => item.changedField || item.fieldName || '';
+  const historyOldValue = (item: any): string | null => item.previousValue ?? item.oldValue ?? null;
+  const historyNewValue = (item: any): string | null => item.newValue ?? null;
+  const historyActor = (item: any): string => { const raw = item?.approvedBy || item?.changedBy || ''; return raw || '—'; };
+  const resolveHistoryActionMeta = (item: any): { label: string; color: string } => {
+    const rawStatus = String(item?.status ?? item?.action ?? '').toUpperCase();
+    const rawReason = String(item?.reason ?? '').toLowerCase();
+    if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi')) return { label: 'Thêm mới', color: '#1BAF7A' };
+    if (rawStatus === 'APPROVED' || rawStatus === 'APPROVED_LEVEL2' || rawStatus === 'APPROVED_LEVEL1' || rawReason.includes('phê duyệt') || rawReason.includes('phe duyet')) return { label: 'Phê duyệt', color: '#1BAF7A' };
+    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi')) return { label: 'Từ chối', color: '#E34948' };
+    if (rawStatus === 'PROPOSED' || rawStatus === 'PENDING_APPROVAL' || rawReason.includes('gửi phê duyệt') || rawReason.includes('gui phe duyet')) return { label: 'Gửi phê duyệt', color: '#EDA100' };
+    if (rawStatus === 'DELETED' || rawStatus === 'SOFT_DELETE') return { label: 'Xóa mềm', color: '#E34948' };
+    return { label: 'Chỉnh sửa', color: '#0E6FD6' };
+  };
+
+  useEffect(() => {
+    if (!historyOpen || !historyTarget) return;
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setHistoryLoading(true);
+      setLoadingMoreHistory(false);
+      setHasMoreHistory(true);
+      setHistoryRecords([]);
+      setHistoryPage(0);
+      try {
+        const hist = await radarStationApproval.getHistory(historyTarget.id, 0, HISTORY_PAGE_SIZE, {
+          keyword: historySearch,
+          fromDate: historyFrom,
+          toDate: historyTo,
+        });
+        if (cancelled) return;
+        const items = hist || [];
+        setHistoryRecords(items);
+        setHasMoreHistory(items.length === HISTORY_PAGE_SIZE);
+      } catch { if (!cancelled) toast.error('Không thể tải lịch sử'); } finally { if (!cancelled) setHistoryLoading(false); }
+    }, historySearch.trim() ? 300 : 0);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [historyOpen, historyTarget?.id, historySearch, historyFrom, historyTo, historyReloadToken]);
+
+  const loadMoreHistory = async () => {
+    if (!historyTarget || historyLoading || loadingMoreHistory || !hasMoreHistory) return;
+    setLoadingMoreHistory(true);
+    try {
+      const nextPage = historyPage + 1;
+      const hist = await radarStationApproval.getHistory(historyTarget.id, nextPage, HISTORY_PAGE_SIZE, {
+        keyword: historySearch,
+        fromDate: historyFrom,
+        toDate: historyTo,
+      });
+      if (hist && hist.length > 0) setHistoryRecords((prev) => [...prev, ...hist]);
+      setHistoryPage(nextPage);
+      setHasMoreHistory((hist || []).length === HISTORY_PAGE_SIZE);
+    } catch { /* ignore */ } finally { setLoadingMoreHistory(false); }
+  };
+
+  const handleHistoryScroll = (e: any) => {
+    const el = e.currentTarget;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) loadMoreHistory();
+  };
+
   function renderHistoryTimeline(records: HistoryEntry[]) {
-    const q = historySearch.toLowerCase().trim();
-    const fromMs = historyFrom ? dayjs(historyFrom).valueOf() : null;
-    const toMs = historyTo ? dayjs(historyTo).valueOf() : null;
-    const sorted = [...records].sort(
-      (a, b) => new Date(b.approvedDate || 0).getTime() - new Date(a.approvedDate || 0).getTime(),
-    );
-    const filtered = sorted.filter((r) => {
-      const hay = `${r.approvedBy || ''} ${r.reason || ''} ${r.status || ''}`.toLowerCase();
-      if (q && !hay.includes(q)) return false;
-      const ms = r.approvedDate ? new Date(r.approvedDate).getTime() : 0;
-      if (fromMs && ms < fromMs) return false;
-      if (toMs && ms > toMs) return false;
-      return true;
-    });
-    if (filtered.length === 0) {
+    if (!records || records.length === 0) {
       return (
         <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
           <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-          <div style={{ color: textTertiary, fontSize: fontSizeMd }}>
-            {q || historyFrom || historyTo ? 'Không tìm thấy kết quả' : 'Chưa có thay đổi'}
-          </div>
+          <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{historySearch || historyFrom || historyTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div>
         </div>
       );
     }
-    return filtered.map((r, idx) => {
-      const rejected = r.status === 'REJECTED';
-      const color = rejected ? statusCritical : statusOperational;
-      const actionLabel = rejected ? 'Từ chối' : 'Phê duyệt';
-      const level = APPROVAL_LEVEL_LABEL[String(r.approvalLevel)] || '';
-      return (
-        <div key={r.id || `${r.approvedDate}-${idx}`} style={historyGroupGridStyle}>
-          <div>
-            <div style={historyTimeStyle}>{r.approvedDate ? dayjs(r.approvedDate).format('DD/MM/YYYY HH:mm') : '—'}</div>
-            <div style={{ marginTop: spaceXs }}>
-              <span style={historyBadgeStyle(color)}>{actionLabel}{level ? ` ${level}` : ''}</span>
-            </div>
-            <Typography.Text style={{ ...historyMetaRowStyle, marginTop: spaceXs }}>
-              Người duyệt: {r.approvedBy || '—'}
-            </Typography.Text>
-          </div>
-          <div style={historyInfoCardStyle}>
-            <div style={historyAccentBarStyle(color)} />
-            <Typography.Text style={historyInfoTitleStyle}>Thông tin phê duyệt:</Typography.Text>
-            {r.reason && r.reason !== '(null)' ? (
-              <div style={{ ...historyChangeRowStyle, paddingTop: 0 }}>
-                <div style={historyFieldLabelStyle}>Lý do từ chối:</div>
-                <span title={r.reason} style={historyNewValueStyle}>{r.reason}</span>
+    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
+    const safe = records as any[];
+    const sorted = [...safe].sort((a, b) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
+    const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
+    for (const r of sorted) {
+      const ts = historyTimestamp(r);
+      const sec = ts ? toSec(ts) : 0;
+      const prev = groups[groups.length - 1];
+      if (prev && prev.tsSec === sec && prev.actor === historyActor(r) && prev.status === r.status && prev.approvalLevel === r.approvalLevel) prev.items.push(r);
+      else groups.push({ tsSec: sec, ts, actor: historyActor(r), status: r.status, approvalLevel: r.approvalLevel, items: [r] });
+    }
+    const fmtTime = (ts: string) => { const d = new Date(ts); return `${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`; };
+    return (
+      <div>
+        {groups.map((g, gi) => {
+          const rec0 = g.items[0] || {};
+          const actionMeta = resolveHistoryActionMeta(rec0);
+          const unitName = rec0.orgUnitName || '—';
+          const changes = g.items.map((item: any) => ({ field: historyField(item) || '—', oldValue: historyOldValue(item), newValue: historyNewValue(item) }));
+          const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
+          const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
+          return (
+            <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
+              <div style={{ minWidth: 0, paddingTop: spaceXs }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
+                  <Typography.Text style={historyTimeStyle}>{g.ts ? fmtTime(g.ts) : '—'}</Typography.Text>
+                  <span style={{ flexShrink: 0 }}><span style={historyBadgeStyle(actionMeta.color)}>{actionMeta.label}</span></span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
+                  <Typography.Text style={historyMetaRowStyle}>Người thực hiện: {g.actor || '—'}</Typography.Text>
+                  <Typography.Text style={historyMetaRowStyle}>Đơn vị: {unitName}</Typography.Text>
+                </div>
               </div>
-            ) : (
-              <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có ghi chú</Typography.Text>
-            )}
-          </div>
-        </div>
-      );
-    });
+              <div style={historyInfoCardStyle}>
+                <div style={historyAccentBarStyle(actionMeta.color)} />
+                <Typography.Text style={historyInfoTitleStyle}>{informationTitle}</Typography.Text>
+                <div>
+                  {changes.map((c, ri) => isCreate ? (
+                    <div key={ri} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
+                      <div style={historyFieldLabelStyle}>{c.field ? `${c.field}:` : '—'}</div>
+                      <span title={c.newValue ?? '—'} style={historyNewValueStyle}>{c.newValue ?? '—'}</span>
+                    </div>
+                  ) : (
+                    <div key={ri} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
+                      <div style={historyFieldLabelStyle}>{c.field ? `${c.field}:` : '—'}</div>
+                      <span title={c.oldValue ?? '—'} style={historyOldValueStyle}>{c.oldValue ?? '—'}</span>
+                      <span style={historyArrowStyle}>→</span>
+                      <span title={c.newValue ?? '—'} style={historyNewValueStyle}>{c.newValue ?? '—'}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
   }
 
   // ── JSX ─────────────────────────────────────────────────────────
@@ -1627,12 +1699,16 @@ export default function RadarStationList() {
           <DatePicker placeholder="Đến ngày" value={historyTo ? dayjs(historyTo) : null}
             onChange={(d) => setHistoryTo(d ? d.format('YYYY-MM-DD HH:mm') : '')}
             style={{ width: 170, ...selectStyle }} format="DD/MM/YYYY HH:mm" showTime />
+          <Button type="primary" loading={historyLoading} onClick={() => setHistoryReloadToken((t) => t + 1)}>Tìm kiếm</Button>
         </Space>
-        <div style={{ maxHeight: 500, overflowY: 'auto', marginTop: spaceFormField }}>
+        <div style={{ maxHeight: 500, overflowY: 'auto', marginTop: spaceFormField }} onScroll={handleHistoryScroll}>
           {historyLoading ? (
             <LoadingSkeleton rows={5} />
           ) : (
-            renderHistoryTimeline(historyRecords)
+            <>
+              {renderHistoryTimeline(historyRecords)}
+              {loadingMoreHistory && <div style={{ textAlign: 'center', padding: `${spaceMd}px 0`, color: textTertiary, fontSize: fontSizeMd }}>Đang tải thêm...</div>}
+            </>
           )}
         </div>
       </Modal>

@@ -103,6 +103,17 @@ export interface BeaconStation {
   coordinateSystem?: number;
   displayRule?: string;
   updatedBy?: string;
+  submittedBy?: string;
+  submittedAt?: string;
+  submittedByName?: string;
+  approverLevel1?: string;
+  approverLevel1Name?: string;
+  approvedDateLevel1?: string;
+  approvalContentLevel1?: string;
+  approverLevel2?: string;
+  approverLevel2Name?: string;
+  approvedDateLevel2?: string;
+  approvalContentLevel2?: string;
   shape?: string;
   structure?: string;
   towerHeight?: number;

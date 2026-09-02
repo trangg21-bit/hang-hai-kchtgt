@@ -182,8 +182,15 @@ export const dikeRevetmentApproval = {
     return this.rejectLevel1(id, reason);
   },
 
-  async getHistory(id: string): Promise<HistoryEntry[]> {
-    const res = await api.get(`${BASE_PATH}/${id}/history`);
+  async getHistory(id: string, page?: number, pageSize?: number, filters?: { keyword?: string; fromDate?: string; toDate?: string }): Promise<HistoryEntry[]> {
+    const sp = new URLSearchParams();
+    if (page !== undefined && page !== null) sp.set('page', String(page));
+    if (pageSize !== undefined && pageSize !== null) sp.set('pageSize', String(pageSize));
+    if (filters?.keyword?.trim()) sp.set('keyword', filters.keyword.trim());
+    if (filters?.fromDate) sp.set('fromDate', filters.fromDate);
+    if (filters?.toDate) sp.set('toDate', filters.toDate);
+    const query = sp.toString() ? `?${sp.toString()}` : '';
+    const res = await api.get(`${BASE_PATH}/${id}/history${query}`);
     return toArray<HistoryEntry>(res.data);
   },
 };

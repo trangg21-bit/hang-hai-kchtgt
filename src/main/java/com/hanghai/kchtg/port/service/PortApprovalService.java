@@ -20,6 +20,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.text.Normalizer;
+import java.time.LocalDateTime;
+
+import com.hanghai.kchtg.vtssystem.dto.HistoryEntry;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 /**
  * Approval service for Port entity.
@@ -159,67 +165,94 @@ public class PortApprovalService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getHistory(UUID id) {
-        Port entity = portRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển với id: " + id));
+    public List<HistoryEntry> getHistory(UUID id) {
+        return getHistory(id, null, null);
+    }
 
-        String entityId = id.toString();
-        String entityType = "Port";
+    @Transactional(readOnly = true)
+    public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize) {
+        return getHistory(id, page, pageSize, null, null, null);
+    }
 
-        List<InfrastructureHistory> list =
-                historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SEAPORT, id);
-
+    @Transactional(readOnly = true)
+    public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize, String keyword,
+            LocalDateTime fromDate, LocalDateTime toDate) {
+        ensureExists(id);
+        List<InfrastructureHistory> list;
+        if (page != null && pageSize != null && pageSize > 0) {
+            Pageable pageable = PageRequest.of(page, pageSize);
+            String normalizedKeyword = normalizeSearchKeyword(keyword);
+            if (normalizedKeyword == null && fromDate == null && toDate == null) {
+                list = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+                        InfrastructureType.SEAPORT, id, pageable);
+            } else {
+                list = historyRepository.searchHistory(InfrastructureType.SEAPORT, id, normalizedKeyword,
+                        fromDate, toDate, pageable);
+            }
+        } else {
+            list = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SEAPORT, id);
+        }
         Set<UUID> userIds = list.stream()
                 .map(InfrastructureHistory::getApprovedBy)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-        Map<UUID, String> userNameMap = userIds.isEmpty() ? Collections.emptyMap() :
-                userRepository.findAllById(userIds).stream()
-                        .collect(Collectors.toMap(
-                                User::getId,
-                                u -> u.getFullName() != null && !u.getFullName().isBlank() ? u.getFullName() : u.getUsername(),
-                                (a, b) -> a));
+        Map<UUID, User> userMap = resolveUsers(userIds);
+        Map<UUID, String> userNameMap = new HashMap<>();
+        userMap.forEach((userId, user) -> userNameMap.put(userId, formatUserIdentity(user)));
 
-        List<Map<String, Object>> changeHistory = list.stream()
-                .filter(h -> h.getChangedField() != null)
-                .map(h -> {
-                    Map<String, Object> m = new HashMap<>();
-                    m.put("id", h.getId());
-                    m.put("entityType", entityType);
-                    m.put("entityId", entityId);
-                    m.put("fieldName", h.getChangedField());
-                    m.put("oldValue", h.getPreviousValue() != null ? h.getPreviousValue() : "");
-                    m.put("newValue", h.getNewValue() != null ? h.getNewValue() : "");
-                    m.put("changedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
-                    m.put("changedAt", h.getApprovedDate());
-                    return m;
-                })
-                .toList();
+        return list.stream()
+                .map(h -> HistoryEntry.builder()
+                        .id(h.getId())
+                        .approvalLevel(h.getApprovalLevel())
+                        .status(h.getStatus() != null ? h.getStatus().getCode() : null)
+                        .approvedBy(h.getApprovedBy() != null ? userNameMap.get(h.getApprovedBy()) : null)
+                        .orgUnitName(h.getApprovedBy() != null && userMap.get(h.getApprovedBy()) != null
+                                && userMap.get(h.getApprovedBy()).getOrgUnit() != null
+                                        ? userMap.get(h.getApprovedBy()).getOrgUnit().getName()
+                                        : null)
+                        .approvedDate(h.getApprovedDate())
+                        .reason(h.getReason())
+                        .changedField(h.getChangedField())
+                        .previousValue(h.getPreviousValue())
+                        .newValue(h.getNewValue())
+                        .build())
+                .collect(Collectors.toList());
+    }
 
-        List<Map<String, Object>> approvalLog = list.stream()
-                .filter(h -> h.getStatus() != null && h.getChangedField() == null)
-                .map(h -> {
-                    Map<String, Object> m = new HashMap<>();
-                    m.put("id", h.getId());
-                    m.put("entityType", entityType);
-                    m.put("entityId", entityId);
-                    m.put("decision", h.getStatus().name());
-                    m.put("reason", h.getReason() != null ? h.getReason() : "");
-                    m.put("decidedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
-                    m.put("decidedAt", h.getApprovedDate());
-                    m.put("cap", h.getApprovalLevel() != null ? h.getApprovalLevel().name() : "");
-                    return m;
-                })
-                .toList();
+    private void ensureExists(UUID id) {
+        if (!portRepository.existsById(id)) {
+            throw new EntityNotFoundException("Không tìm thấy cảng biển với id: " + id);
+        }
+    }
 
-        return Map.of(
-                "entityId", entityId,
-                "entityType", entityType,
-                "currentApprovalStatus", entity.getApprovalStatus() != null ? entity.getApprovalStatus().name() : "",
-                "changeHistory", changeHistory,
-                "approvalLog", approvalLog,
-                "histories", list
-        );
+    private static String normalizeSearchKeyword(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return null;
+        }
+        return Normalizer.normalize(keyword.trim().toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('đ', 'd');
+    }
+
+    private Map<UUID, User> resolveUsers(Collection<UUID> userIds) {
+        if (userIds == null || userIds.isEmpty())
+            return Collections.emptyMap();
+        Set<UUID> nonNullIds = userIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        if (nonNullIds.isEmpty())
+            return Collections.emptyMap();
+        return userRepository.findAllByIdInWithOrgUnit(nonNullIds).stream()
+                .collect(Collectors.toMap(User::getId, user -> user, (first, second) -> first));
+    }
+
+    private String formatUserIdentity(User user) {
+        if (user == null) return null;
+        if (user.getFullName() != null && !user.getFullName().trim().isEmpty()) {
+            return user.getFullName().trim();
+        }
+        if (user.getUsername() != null && !user.getUsername().trim().isEmpty()) {
+            return user.getUsername().trim();
+        }
+        return null;
     }
 
     @Transactional(readOnly = true)
