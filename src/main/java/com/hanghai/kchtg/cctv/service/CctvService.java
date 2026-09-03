@@ -17,7 +17,6 @@ import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.vtsoperationcenter.entity.VtsOperationCenter;
 import com.hanghai.kchtg.vtsoperationcenter.repository.VtsOperationCenterRepository;
 import com.hanghai.kchtg.security.SecurityUtils;

@@ -17,7 +17,6 @@ import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.vtsoperationcenter.entity.VtsOperationCenter;
 import com.hanghai.kchtg.vtsoperationcenter.repository.VtsOperationCenterRepository;
 import com.hanghai.kchtg.security.SecurityUtils;
@@ -142,9 +141,6 @@ public class TransmissionService {
       .coordinateSystem(request.getCoordinateSystem())
       .displayRule(request.getDisplayRule())
       .spatialId(request.getSpatialId())
-      .securityLevel(request.getSecurityLevel() != null
-        ? request.getSecurityLevel()
-        : RecordSecurityLevel.NORMAL)
       .build();
 
     // Persist trước để entity.getId() có giá trị khi ghi infrastructure_history (ref_id NOT NULL).
@@ -441,7 +437,6 @@ public class TransmissionService {
 
     return TransmissionResponse.builder()
       .id(entity.getId())
-      .securityLevel(entity.getSecurityLevel())
       .deviceCode(entity.getDeviceCode())
       .deviceName(entity.getDeviceName())
       .detailedLocation(entity.getDetailedLocation())
