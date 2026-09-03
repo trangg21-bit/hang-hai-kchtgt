@@ -27,7 +27,7 @@ import {
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 import { usePermissionStore } from '../store/permissionStore';
-import { layout } from '../themetokenchk';
+import { layout } from '../theme';
 import * as themeTokenChk from '../themetokenchk';
 import { ThemeTokenProvider } from '../context/ThemeTokenContext';
 import type { MenuProps } from 'antd';
