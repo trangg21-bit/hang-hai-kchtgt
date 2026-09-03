@@ -1972,7 +1972,7 @@ export default function PortListPage() {
               })}
               rowKey="id" rowActions={rowActions} loading={false}
               onSort={(key: string, order: 'asc' | 'desc') => { setSortField(key); setSortOrder(order === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
-              scroll={{ x: 'max-content', y: 550 }}
+              scroll={{ x: 'max-content' }}
             />
             <Pagination total={total} current={page} pageSize={pageSize}
               onChange={(p, ps) => { setPage(p); setPageSize(ps); }}
