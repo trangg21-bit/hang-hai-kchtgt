@@ -13,6 +13,40 @@ export interface MapGeometryLocation {
   coordinates: LngLat[];
 }
 
+export interface ScreenPoint {
+  x: number;
+  y: number;
+}
+
+export interface MapHitGeometry {
+  type: EditableGeometryType;
+  coordinates: LngLat | LngLat[] | LngLat[][];
+}
+
+export interface MapGeometryHitTarget<T> {
+  geometry: MapHitGeometry;
+  value: T;
+}
+
+export interface MapGeometryHit<T> extends MapGeometryHitTarget<T> {
+  distance: number;
+}
+
+export interface MapGeometryBounds {
+  minLongitude: number;
+  minLatitude: number;
+  maxLongitude: number;
+  maxLatitude: number;
+}
+
+interface GeoJsonGeometryLike {
+  type?: unknown;
+  coordinates?: unknown;
+  geometry?: unknown;
+  geometries?: unknown;
+  features?: unknown;
+}
+
 const isLngLat = (value: unknown): value is LngLat => {
   if (!Array.isArray(value) || value.length < 2) return false;
   const longitude = Number(value[0]);
@@ -63,6 +97,19 @@ export const parseWktToCoords = (value: string): LngLat | LngLat[] | LngLat[][] 
     return match ? parseCoordinatePair(match[1]) : null;
   }
 
+  // Some legacy GIS records store polygon vertices as MULTIPOINT even though
+  // the accompanying geometry type is POLYGON. Keep all vertices so the map
+  // can still draw the area and use it as a click target.
+  if (/^MULTIPOINT\s*\(/i.test(wkt)) {
+    const match = wkt.match(/^MULTIPOINT\s*\((.*)\)\s*$/i);
+    if (!match) return null;
+    const coordinates = match[1]
+      .replace(/[()]/g, '')
+      .split(',')
+      .map(parseCoordinatePair);
+    return normalizeLineCoordinates(coordinates);
+  }
+
   if (/^LINESTRING\s*\(/i.test(wkt)) {
     const match = wkt.match(/^LINESTRING\s*\(([^)]+)\)\s*$/i);
     if (!match) return null;
@@ -81,6 +128,79 @@ export const parseWktToCoords = (value: string): LngLat | LngLat[] | LngLat[][] 
   return null;
 };
 
+/**
+ * Convert GeoJSON, including multi-geometries and collections, to the simple
+ * geometries used by the shared screen-space map hit tester.
+ */
+export const geoJsonToMapHitGeometries = (value: unknown): MapHitGeometry[] => {
+  if (!value || typeof value !== 'object') return [];
+  const geometry = value as GeoJsonGeometryLike;
+  const type = String(geometry.type ?? '').toUpperCase();
+
+  if (type === 'FEATURE') return geoJsonToMapHitGeometries(geometry.geometry);
+  if (type === 'FEATURECOLLECTION') {
+    return Array.isArray(geometry.features)
+      ? geometry.features.flatMap(geoJsonToMapHitGeometries)
+      : [];
+  }
+  if (type === 'GEOMETRYCOLLECTION') {
+    return Array.isArray(geometry.geometries)
+      ? geometry.geometries.flatMap(geoJsonToMapHitGeometries)
+      : [];
+  }
+
+  if (type === 'POINT') {
+    const coordinates = normalizePointCoordinates(geometry.coordinates);
+    return coordinates ? [{ type: 'Point', coordinates }] : [];
+  }
+  if (type === 'MULTIPOINT') {
+    if (!Array.isArray(geometry.coordinates)) return [];
+    return geometry.coordinates.flatMap((coordinate) => {
+      const normalized = normalizePointCoordinates(coordinate);
+      return normalized ? [{ type: 'Point' as const, coordinates: normalized }] : [];
+    });
+  }
+  if (type === 'LINESTRING') {
+    const coordinates = normalizeLineCoordinates(geometry.coordinates);
+    return coordinates ? [{ type: 'LineString', coordinates }] : [];
+  }
+  if (type === 'MULTILINESTRING') {
+    if (!Array.isArray(geometry.coordinates)) return [];
+    return geometry.coordinates.flatMap((coordinates) => {
+      const normalized = normalizeLineCoordinates(coordinates);
+      return normalized ? [{ type: 'LineString' as const, coordinates: normalized }] : [];
+    });
+  }
+  if (type === 'POLYGON') {
+    const coordinates = normalizePolygonCoordinates(geometry.coordinates);
+    return coordinates ? [{ type: 'Polygon', coordinates }] : [];
+  }
+  if (type === 'MULTIPOLYGON') {
+    if (!Array.isArray(geometry.coordinates)) return [];
+    return geometry.coordinates.flatMap((coordinates) => {
+      const normalized = normalizePolygonCoordinates(coordinates);
+      return normalized ? [{ type: 'Polygon' as const, coordinates: normalized }] : [];
+    });
+  }
+
+  return [];
+};
+
+export const getMapHitGeometryBounds = (
+  geometry: MapHitGeometry,
+): MapGeometryBounds | null => {
+  const coordinates = flattenGeometryCoordinates(geometry.coordinates);
+  if (coordinates.length === 0) return null;
+  const longitudes = coordinates.map(([longitude]) => longitude);
+  const latitudes = coordinates.map(([, latitude]) => latitude);
+  return {
+    minLongitude: Math.min(...longitudes),
+    minLatitude: Math.min(...latitudes),
+    maxLongitude: Math.max(...longitudes),
+    maxLatitude: Math.max(...latitudes),
+  };
+};
+
 const flattenGeometryCoordinates = (
   value: LngLat | LngLat[] | LngLat[][] | null,
 ): LngLat[] => {
@@ -94,6 +214,117 @@ const flattenGeometryCoordinates = (
   const polygon = normalizePolygonCoordinates(value);
   return polygon?.flat() || [];
 };
+
+const distanceToSegment = (
+  point: ScreenPoint,
+  start: ScreenPoint,
+  end: ScreenPoint,
+): number => {
+  const deltaX = end.x - start.x;
+  const deltaY = end.y - start.y;
+  if (deltaX === 0 && deltaY === 0) {
+    return Math.hypot(point.x - start.x, point.y - start.y);
+  }
+
+  const position = Math.max(0, Math.min(1, (
+    ((point.x - start.x) * deltaX) + ((point.y - start.y) * deltaY)
+  ) / ((deltaX * deltaX) + (deltaY * deltaY))));
+  const closestX = start.x + (position * deltaX);
+  const closestY = start.y + (position * deltaY);
+  return Math.hypot(point.x - closestX, point.y - closestY);
+};
+
+const getLineDistance = (point: ScreenPoint, coordinates: ScreenPoint[]): number => {
+  let minimumDistance = Number.POSITIVE_INFINITY;
+  for (let index = 1; index < coordinates.length; index += 1) {
+    minimumDistance = Math.min(
+      minimumDistance,
+      distanceToSegment(point, coordinates[index - 1], coordinates[index]),
+    );
+  }
+  return minimumDistance;
+};
+
+const isPointInRing = (point: ScreenPoint, ring: ScreenPoint[]): boolean => {
+  let inside = false;
+  for (let current = 0, previous = ring.length - 1; current < ring.length; previous = current, current += 1) {
+    const currentPoint = ring[current];
+    const previousPoint = ring[previous];
+    const crossesLatitude = (currentPoint.y > point.y) !== (previousPoint.y > point.y);
+    const intersectionX = (
+      ((previousPoint.x - currentPoint.x) * (point.y - currentPoint.y))
+      / ((previousPoint.y - currentPoint.y) || Number.EPSILON)
+    ) + currentPoint.x;
+    if (crossesLatitude && point.x < intersectionX) inside = !inside;
+  }
+  return inside;
+};
+
+const getRingBoundaryDistance = (point: ScreenPoint, ring: ScreenPoint[]): number => {
+  if (ring.length < 2) return Number.POSITIVE_INFINITY;
+  const closedRing = ring[0].x === ring[ring.length - 1].x
+    && ring[0].y === ring[ring.length - 1].y
+    ? ring
+    : [...ring, ring[0]];
+  return getLineDistance(point, closedRing);
+};
+
+const getGeometryTypePriority = (type: EditableGeometryType): number => {
+  if (type === 'Point') return 0;
+  if (type === 'LineString') return 1;
+  return 2;
+};
+
+/**
+ * Hit-test currently rendered geometries in screen pixels. Keeping this
+ * independent from Leaflet panes prevents one full-screen Canvas from making
+ * the other data sources unreachable.
+ */
+export const findMapGeometryHits = <T>(
+  clickPoint: ScreenPoint,
+  targets: MapGeometryHitTarget<T>[],
+  project: (coordinate: LngLat) => ScreenPoint,
+  tolerance = 8,
+): MapGeometryHit<T>[] => targets
+  .map((target): MapGeometryHit<T> | null => {
+    const { geometry } = target;
+
+    if (geometry.type === 'Point') {
+      const coordinate = normalizePointCoordinates(geometry.coordinates);
+      if (!coordinate) return null;
+      const projectedPoint = project(coordinate);
+      const distance = Math.hypot(
+        clickPoint.x - projectedPoint.x,
+        clickPoint.y - projectedPoint.y,
+      );
+      return distance <= tolerance ? { ...target, distance } : null;
+    }
+
+    if (geometry.type === 'LineString') {
+      const coordinates = normalizeLineCoordinates(geometry.coordinates);
+      if (!coordinates) return null;
+      const distance = getLineDistance(clickPoint, coordinates.map(project));
+      return distance <= tolerance ? { ...target, distance } : null;
+    }
+
+    const rings = normalizePolygonCoordinates(geometry.coordinates);
+    if (!rings) return null;
+    const projectedRings = rings.map((ring) => ring.map(project));
+    const isInsideOuterRing = isPointInRing(clickPoint, projectedRings[0]);
+    const isInsideHole = projectedRings.slice(1).some((ring) => isPointInRing(clickPoint, ring));
+    const boundaryDistance = Math.min(
+      ...projectedRings.map((ring) => getRingBoundaryDistance(clickPoint, ring)),
+    );
+    if ((isInsideOuterRing && !isInsideHole) || boundaryDistance <= tolerance) {
+      return { ...target, distance: isInsideOuterRing && !isInsideHole ? 0 : boundaryDistance };
+    }
+    return null;
+  })
+  .filter((hit): hit is MapGeometryHit<T> => hit !== null)
+  .sort((left, right) => (
+    getGeometryTypePriority(left.geometry.type) - getGeometryTypePriority(right.geometry.type)
+    || left.distance - right.distance
+  ));
 
 /**
  * Chuẩn hóa vị trí dùng chung cho marker và thao tác focus trên bản đồ.

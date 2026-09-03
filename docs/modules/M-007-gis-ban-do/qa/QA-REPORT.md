@@ -109,3 +109,38 @@ Execute unit tests and E2E validation for all 5 features of the GIS/Bản đồ 
 - Kiểm tra trực tiếp tại `/gis/map`: bảng hiển thị 20 dòng, phân trang 2 trang, tổng cộng 31; không còn trạng thái "Đã xảy ra lỗi".
 - Cột checkbox chọn dòng được cấp đủ chiều rộng; kiểm tra trực tiếp xác nhận header không còn sinh dấu `…` thừa cạnh checkbox.
 - Bộ lọc Đơn vị quản lý khóa cả grid item, form và TreeSelect theo chiều rộng panel. Kiểm tra trực tiếp ở breakpoint desktop 560px xác nhận đường dẫn dài được rút gọn bằng `…`; icon xổ xuống và toàn bộ hàng nút vẫn nằm trong panel. Thuộc tính hover giữ toàn bộ đường dẫn đơn vị.
+
+### Tinh chỉnh khả năng đọc và hiển thị bản đồ
+
+- Nội dung bảng tra cứu dùng token cỡ chữ nội dung chuẩn `fontSizeMd` thay cho chế độ bảng dày đặc 10px; kiểm tra trên cấu hình local hiện tại hiển thị 14px.
+- Bỏ khoảng đệm 24px giữa thanh cuộn ngang và phân trang; phân trang vẫn giữ khoảng đệm nội bộ để không dính sát bảng.
+- Không còn vẽ marker tại đỉnh hoặc tâm của đường/vùng ở bất kỳ mức zoom nào. Điểm thật vẫn dùng marker; đường và vùng mở popup khi bấm trực tiếp lên hình học thật.
+- Quy hoạch cảng biển và KCHT dùng chung một bộ phân giải click theo tọa độ màn hình, không còn phụ thuộc thứ tự pane/Canvas. Hình học quy hoạch được hit-test từ đúng GeoJSON đang hiển thị và được lập chỉ mục không gian; hình học KCHT dùng cùng sai số 8px. Khi hai nguồn hoặc nhiều đối tượng chồng lấn, popup trung gian cho phép chọn rõ “Quy hoạch cảng biển” hoặc từng KCHT nên không lớp nào che mất tính năng của lớp còn lại.
+- Các lớp đường/vùng tương tác trong suốt đã được loại bỏ. Lớp quy hoạch chỉ vẽ bằng SVG không tương tác, KCHT đường/vùng chỉ vẽ hình học không tương tác; một listener click cấp bản đồ xử lý cả hai nguồn. Marker điểm gọi trực tiếp cùng bộ phân giải và chặn phát sinh click kép.
+- Kết quả API dùng cặp trường chuẩn `geometryType`/`coordinates`; frontend vẫn hỗ trợ fallback `loaiHinhHoc`/`toaDo` cho dữ liệu cũ và WKT `MULTIPOINT` legacy. Cùng một nguồn hình học được dùng cho zoom, vẽ và xử lý popup để tránh trạng thái zoom đúng vị trí nhưng không có lớp tương tác.
+- Marker kết quả dạng điểm được thu gọn còn 16px; marker có biểu tượng danh mục còn 28px. Đối tượng điểm GIS độc lập dùng bán kính 4px và chấm hiển thị 12px trong vùng bấm 28px, viền trắng để không che nhãn bản đồ; đường/vùng không còn marker tâm giả. Toàn bộ màu, bo góc và bóng dùng semantic token.
+- Hồi quy click bản đồ: 17/17 unit test pass cho Point/LineString/Polygon, polygon có lỗ, GeoJSON multi/collection, chỉ mục bounding box, planning-only, KCHT-only, nhiều KCHT và Planning + KCHT chồng lấn. Vite production build pass với 4.121 module.
+
+---
+
+## Regression 2026-09-03 — GitLab #90
+
+### Hành vi đã đồng bộ
+
+- Select nhiều Loại KCHT chỉ hiển thị tối đa hai thẻ trên một dòng; các lựa chọn còn lại thu gọn thành `+N`, tránh đẩy lệch nhãn và trường Địa điểm.
+- Font tiêu đề và nội dung bảng kết quả được khóa theo `fontSizeMd`; màn hình mặc định và trạng thái sau Đặt lại không vẽ toàn bộ lớp KCHT thủ công.
+- Phóng to, thu nhỏ và toàn màn hình được gom thành cụm dọc bên phải, bên dưới nút Quản lý lớp bản đồ.
+- Chuột phải mở popup tọa độ gồm kinh độ, vĩ độ, mức thu phóng và nút sao chép liên kết. URL chia sẻ giữ các tham số bộ lọc hiện có và khôi phục đúng tâm/zoom khi mở lại.
+- Ba công cụ đa giác, vùng tròn và chỉnh sửa được đặt ở góc trái dưới, tự dịch sang phải khi panel tra cứu mở. Vùng tròn được chuyển thành polygon đóng 32 cạnh trước khi lưu để tương thích mô hình dữ liệu vùng hiện tại.
+- Popup Quy hoạch cảng biển được thu gọn còn khoảng 296–320px, giảm khoảng cách dòng và chiều cao tùy chọn; giới hạn nội dung cuộn 310–330px.
+- Các lớp KCHT và Quy hoạch cảng biển tiếp tục dùng bộ phân giải click chung; điều khiển zoom, chuột phải và công cụ vẽ không thay đổi thứ tự hay khả năng hit-test của hai nguồn.
+
+### Kiểm thử hồi quy
+
+| Phạm vi | Kết quả |
+|---|---|
+| `mapInteraction.test.ts` | 4/4 pass: tạo/đọc URL vị trí, từ chối tọa độ không hợp lệ, chuyển vùng tròn thành polygon đóng |
+| `gisGeometry.test.ts` + `planningGis.test.ts` | 17/17 pass: hit-test và phân giải click KCHT/QHCB không hồi quy |
+| TypeScript `--noEmit` | Pass |
+| Vite production build | Pass sau rebase main mới nhất, 4.119 module được biên dịch |
+| Toàn bộ Vitest | 101 test pass; riêng suite `AppLayout.test.tsx` không khởi tạo do lỗi đóng gói ESM/CJS sẵn có giữa `@ant-design/icons` và `@ant-design/colors` |
