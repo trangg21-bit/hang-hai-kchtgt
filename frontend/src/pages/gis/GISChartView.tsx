@@ -1218,7 +1218,8 @@ const fetchAndFormatPopupDetails = async (record: any) => {
       
       const orgId = data.orgUnitId || data.orgUnitId || data.unitId || data.donViQuanLy || data.unitId;
       if (orgId) {
-        orgUnitNameResolved = data.donViQuanLy || data.orgName || data.orgUnitName || '';
+        const rawOrgName = data.donViQuanLy || data.orgName || data.orgUnitName || '';
+        orgUnitNameResolved = rawOrgName.split(' > ').pop()?.trim() || rawOrgName;
       }
       if (data.portId || data.tenCangBien) {
         cangBienNameResolved = data.tenCangBien || (data.portId ? await resolveName(data.portId, 'Port') : '');
@@ -4763,6 +4764,7 @@ export default function GISChartView() {
       <Modal
         open={!!activeModalUrl}
         footer={null}
+        closable={false}
         onCancel={() => setActiveModalUrl(null)}
         width={850}
         destroyOnHidden
