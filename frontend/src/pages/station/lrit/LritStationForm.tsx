@@ -39,6 +39,7 @@ import {
   textPrimary, textSecondary, textTertiary, borderDefault,
   statusCritical, statusOperational, statusAttention, actionPrimary, textAreaStyle,
   readonlyInputStyle, drawerCloseBtnStyle, selectStyle, inputStyle, requiredMarkStyle,
+  statusBadgeStyle, getConditionStatusColor, getConditionStatusLabel,
 } from '../../../themetokenchk';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../../types/common';
 import { useAuthStore } from '../../../store/authStore';
@@ -86,24 +87,12 @@ const CONDITION_COLOR: Record<string, string> = {
   [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
 };
 
-const renderConditionBadge = (status?: ConditionStatus | string) => {
-  if (!status) return '—';
-  const label = CONDITION_STATUS_MAP[status as ConditionStatus] || status;
-  const color = CONDITION_COLOR[status as ConditionStatus] || textSecondary;
+const renderConditionBadge = (status?: ConditionStatus | string | number) => {
+  if (!status && status !== 0) return '—';
+  const label = getConditionStatusLabel(status);
+  const color = getConditionStatusColor(status);
   return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        padding: '2px 10px',
-        borderRadius: radiusPill,
-        fontSize: fontSizeMd,
-        fontWeight: fontWeightMedium,
-        background: `${color}15`,
-        border: `1px solid ${color}40`,
-        color,
-      }}
-    >
+    <span style={statusBadgeStyle(color)}>
       {label}
     </span>
   );
@@ -251,19 +240,27 @@ export default function LritStationForm({
       return;
     }
 
-    if (initialData) {
-      setRecord(initialData);
-      populateFormData(initialData);
-    } else if (editId) {
+    const currentId = editId || initialData?.id;
+    if (currentId) {
+      if (initialData) {
+        setRecord(initialData);
+        populateFormData(initialData);
+      }
       setLoading(true);
-      lritStationService.getById(editId)
-        .then((res) => {
+      Promise.all([
+        lritStationService.getById(currentId),
+        lritStationService.getAttachments(currentId),
+      ])
+        .then(([res, atts]) => {
           setRecord(res);
+          setAttachments(atts || []);
           populateFormData(res);
         })
         .catch(() => {
-          toast.error('Không thể tải thông tin đài LRIT');
-          onClose?.();
+          if (!initialData) {
+            toast.error('Không thể tải thông tin đài LRIT');
+            onClose?.();
+          }
         })
         .finally(() => setLoading(false));
     } else {
@@ -311,8 +308,32 @@ export default function LritStationForm({
       serviceList = data.servicesProvided.split(/[,;]+/).map((s) => s.trim()).filter(Boolean);
     }
 
-    const geom = data.geometryType || 'POINT';
+    let initialCoords: { latitude: number | null; longitude: number | null }[] = [];
+    if (data.coordinates) {
+      const coords = parseWktToCoordinates(data.coordinates);
+      initialCoords = coords.map((c) => ({ latitude: c.latitude ?? null, longitude: c.longitude ?? null }));
+    } else if (data.latitude != null && data.longitude != null) {
+      initialCoords = [{ latitude: Number(data.latitude), longitude: Number(data.longitude) }];
+    }
+
+    let geom = data.geometryType || (data as any).objectType;
+    if (!geom || geom === 'POINT') {
+      if (data.coordinates) {
+        const uc = data.coordinates.toUpperCase();
+        if (uc.startsWith('LINE')) geom = 'LINE';
+        else if (uc.startsWith('POLYGON')) geom = 'POLYGON';
+      }
+    }
+    if (!geom || geom === 'POINT') {
+      if (initialCoords.length > 2) geom = 'POLYGON';
+      else if (initialCoords.length > 1) geom = 'LINE';
+      else geom = 'POINT';
+    }
+    data.geometryType = geom;
+    (data as any).objectType = geom;
     setGeometryTypeState(geom);
+    setCoordinateList(adjustCoordinateListForGeometry(initialCoords, geom));
+
     form.setFieldsValue({
       orgUnitId: data.orgUnitId,
       operatingOrgId: data.operatingOrgId,
@@ -329,15 +350,6 @@ export default function LritStationForm({
       coordinateSystem: data.coordinateSystem || 'WGS 84 / VN-2000',
       displayRule: data.displayRule || 'Độ, phút, giây (DMS)',
     });
-
-    let initialCoords: { latitude: number | null; longitude: number | null }[] = [];
-    if (data.coordinates) {
-      const coords = parseWktToCoordinates(data.coordinates);
-      initialCoords = coords.map((c) => ({ latitude: c.latitude ?? null, longitude: c.longitude ?? null }));
-    } else if (data.latitude != null && data.longitude != null) {
-      initialCoords = [{ latitude: Number(data.latitude), longitude: Number(data.longitude) }];
-    }
-    setCoordinateList(adjustCoordinateListForGeometry(initialCoords, geom));
 
     if (data.id) {
       lritStationService.getAttachments(data.id)
@@ -530,6 +542,13 @@ export default function LritStationForm({
     }
   };
 
+  const isUuidString = (val?: string | null) => !!val && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-/.test(val);
+  const formatPersonDisplayName = (name?: string | null, fallbackName?: string | null) => {
+    if (name && !isUuidString(name)) return name;
+    if (fallbackName && !isUuidString(fallbackName)) return fallbackName;
+    return '—';
+  };
+
   // DMS helper for coordinates
   const updateGpsPoint = (i: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => {
     const decimal = (d == null && m == null && s == null) ? null : dmsToDd(d ?? 0, m ?? 0, s ?? 0);
@@ -631,7 +650,15 @@ export default function LritStationForm({
                 headerNode={
                   <>
                     <div className="chk-detail-grid" style={{ marginBottom: 12 }}>
-                      <div className="chk-detail-row"><span className="chk-detail-label">Loại đối tượng</span><span className="chk-detail-value">{record?.geometryType === 'LINE' ? 'Đối tượng đường' : record?.geometryType === 'POLYGON' ? 'Đối tượng vùng' : 'Đối tượng điểm'}</span></div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label">Loại đối tượng</span>
+                        <span className="chk-detail-value">
+                          {(() => {
+                            const g = (geometryTypeState || record?.geometryType || (record as any)?.objectType || '').toUpperCase();
+                            return g.startsWith('LINE') ? 'Đối tượng đường' : g.startsWith('POLYGON') ? 'Đối tượng vùng' : 'Đối tượng điểm';
+                          })()}
+                        </span>
+                      </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label">Biểu tượng</span>
                         <span className="chk-detail-value">
@@ -788,15 +815,15 @@ export default function LritStationForm({
                 <div className="chk-detail-grid">
                   <div className="chk-detail-row"><span className="chk-detail-label">Trạng thái</span><span className="chk-detail-value"><ApprovalStatusBadge status={record.approvalStatus || 'DRAFT'} /></span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Ngày cập nhật</span><span className="chk-detail-value">{record.updatedAt || record.createdAt ? dayjs(record.updatedAt || record.createdAt).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ cập nhật</span><span className="chk-detail-value">{record.updatedByName || record.createdByName || '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Ngày gửi phê duyệt</span><span className="chk-detail-value">{record.submittedAt ? dayjs(record.submittedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ gửi phê duyệt</span><span className="chk-detail-value">{record.submittedByName || record.submittedBy || '—'}</span></div>
+                  <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ cập nhật</span><span className="chk-detail-value">{formatPersonDisplayName(record.updatedByName, record.createdByName)}</span></div>
+                  <div className="chk-detail-row"><span className="chk-detail-label">Ngày gửi phê duyệt</span><span className="chk-detail-value">{record.submittedAt || record.createdAt ? dayjs(record.submittedAt || record.createdAt).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
+                  <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ gửi phê duyệt</span><span className="chk-detail-value">{formatPersonDisplayName(record.submittedByName, record.createdByName)}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span><span className="chk-detail-value">{record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span><span className="chk-detail-value">{record.approverLevel1Name || record.approverLevel1 || '—'}</span></div>
-                  <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Nội dung phê duyệt</span><span className="chk-detail-value">{record.approvalContentLevel1 || '—'}</span></div>
+                  <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span><span className="chk-detail-value">{formatPersonDisplayName(record.approverLevel1Name)}</span></div>
+                  <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Nội dung phê duyệt</span><span className="chk-detail-value">{record.approvalContentLevel1 || (record as any).level1ApprovalContent || '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt cấp Cục</span><span className="chk-detail-value">{record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt cấp Cục</span><span className="chk-detail-value">{record.approverLevel2Name || record.approverLevel2 || '—'}</span></div>
-                  <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Nội dung phê duyệt</span><span className="chk-detail-value">{record.approvalContentLevel2 || '—'}</span></div>
+                  <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt cấp Cục</span><span className="chk-detail-value">{formatPersonDisplayName(record.approverLevel2Name)}</span></div>
+                  <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Nội dung phê duyệt</span><span className="chk-detail-value">{record.approvalContentLevel2 || (record as any).level2ApprovalContent || '—'}</span></div>
                   {record.rejectionReason && (
                     <div className="chk-detail-row chk-detail-row--full">
                       <span className="chk-detail-label" style={{ color: statusCritical }}>Lý do từ chối</span>

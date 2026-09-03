@@ -32,6 +32,8 @@ import {
   fontWeightBold,
   inputStyle,
   primaryButtonStyle,
+  statusBadgeStyle,
+  getConditionStatusColor,
 } from '../../themetokenchk';
 import { deduplicateAttachmentHistoryChanges } from '../../utils/historyAttachmentDedup';
 
@@ -302,55 +304,68 @@ export function renderCommonHistoryValueTag(field: string, val: string) {
   const normKey = field.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
   const normVal = val.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
 
-  if (normKey.includes('trang thai') || normKey.includes('status') || normKey.includes('hieu luc') || normKey.includes('tinh trang')) {
+  // 1. Tình trạng hoạt động (ConditionStatus)
+  if (normKey === 'conditionstatus' || normKey === 'tinh trang' || normKey.includes('tinh trang')) {
+    const color = getConditionStatusColor(val);
+    if (color && color !== textSecondary) {
+      return (
+        <span style={statusBadgeStyle(color)}>
+          {val}
+        </span>
+      );
+    }
+  }
+
+  // 2. Trạng thái phê duyệt (ApprovalStatus) & Trạng thái chung
+  if (normKey.includes('trang thai') || normKey.includes('status') || normKey.includes('hieu luc')) {
     // Các giá trị PHỦ ĐỊNH phải xét TRƯỚC: "dừng hoạt động" cũng chứa "hoạt động"
-    // nên nếu để nhánh xanh chạy trước thì nó bị tô như đang hoạt động.
     if (normVal.includes('dung hoat dong') || normVal.includes('ngung hoat dong')
-        || normVal.includes('tam dung') || normVal.includes('khong hoat dong')) {
+        || normVal.includes('tam dung') || normVal.includes('khong hoat dong')
+        || normVal === 'stopped' || normVal === 'not_operational') {
       return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: statusCritical, background: `${statusCritical}18`, border: `1px solid ${statusCritical}40` }}>
+        <span style={statusBadgeStyle(statusCritical)}>
           {val}
         </span>
       );
     }
-    if (normVal.includes('bao tri') || normVal.includes('sua chua') || normVal.includes('maintenance')) {
+    if (normVal.includes('bao tri') || normVal.includes('bao duong') || normVal.includes('sua chua') || normVal.includes('maintenance')) {
       return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: statusAttention, background: `${statusAttention}18`, border: `1px solid ${statusAttention}40` }}>
+        <span style={statusBadgeStyle(statusAttention)}>
           {val}
         </span>
       );
     }
-    if (normVal.includes('xay dung') || normVal.includes('construction')) {
+    if (normVal.includes('xay dung') || normVal.includes('construction') || normVal.includes('under_construction')) {
       return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: actionPrimary, background: `${actionPrimary}18`, border: `1px solid ${actionPrimary}40` }}>
+        <span style={statusBadgeStyle(actionPrimary)}>
           {val}
         </span>
       );
     }
     if (normVal.includes('da phe duyet') || normVal.includes('con hieu luc') || normVal.includes('hoat dong') || normVal.includes('active') || normVal.includes('approved') || normVal.includes('valid')) {
       return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: statusOperational, background: `${statusOperational}18`, border: `1px solid ${statusOperational}40` }}>
+        <span style={statusBadgeStyle(statusOperational)}>
           {val}
         </span>
       );
     }
     if (normVal.includes('tu choi') || normVal.includes('het hieu luc') || normVal.includes('hong') || normVal.includes('inactive') || normVal.includes('rejected') || normVal.includes('expired')) {
       return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: statusCritical, background: `${statusCritical}18`, border: `1px solid ${statusCritical}40` }}>
+        <span style={statusBadgeStyle(statusCritical)}>
           {val}
         </span>
       );
     }
-    if (normVal.includes('dang xem xet') || normVal.includes('chua co hieu luc') || normVal.includes('review') || normVal.includes('under_review') || normVal.includes('da phe duyet cap 1') || normVal.includes('cap 1')) {
+    if (normVal.includes('dang xem xet') || normVal.includes('chua co hieu luc') || normVal.includes('review') || normVal.includes('under_review') || normVal.includes('da phe duyet cap 1') || normVal.includes('cap 1') || normVal.includes('approved_level1')) {
       return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: actionPrimary, background: `${actionPrimary}18`, border: `1px solid ${actionPrimary}40` }}>
+        <span style={statusBadgeStyle(actionPrimary)}>
           {val}
         </span>
       );
     }
-    if (normVal.includes('cho phe duyet') || normVal.includes('can bao duong') || normVal.includes('pending') || normVal.includes('draft') || normVal.includes('warning') || normVal.includes('proposed')) {
+    if (normVal.includes('cho phe duyet') || normVal.includes('can bao duong') || normVal.includes('pending') || normVal.includes('draft') || normVal.includes('warning') || normVal.includes('proposed') || normVal.includes('cho')) {
       return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: statusAttention, background: `${statusAttention}18`, border: `1px solid ${statusAttention}40` }}>
+        <span style={statusBadgeStyle(statusAttention)}>
           {val}
         </span>
       );

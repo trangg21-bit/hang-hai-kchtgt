@@ -384,7 +384,76 @@ export const renderSeverityBadge = (severity?: string): React.ReactNode => {
   } else if (severity.includes('Nhẹ') || severity.includes('Thấp')) {
     color = statusOperational;
   }
-  return React.createElement('span', { style: statusBadgeStyle(color) }, severity);
+};
+
+/** Bảng màu chuẩn semantic cho 4 trạng thái Tình trạng hoạt động (ConditionStatus). */
+export const CONDITION_STATUS_COLOR_MAP: Record<string, string> = {
+  OPERATIONAL: statusOperational,
+  STOPPED: statusCritical,
+  MAINTENANCE: statusAttention,
+  UNDER_CONSTRUCTION: actionPrimary,
+};
+
+/** Lấy màu ngữ nghĩa chuẩn cho Tình trạng hoạt động (ConditionStatus). */
+export const getConditionStatusColor = (status?: any): string => {
+  if (status == null || status === '' || status === '—') return textSecondary;
+  const s = String(status).trim();
+  const norm = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+
+  // 1. Dừng hoạt động / Ngừng hoạt động / Tạm dừng / Hỏng
+  if (norm.includes('dung hoat dong') || norm.includes('ngung hoat dong')
+      || norm.includes('tam dung') || norm.includes('khong hoat dong')
+      || norm.includes('dung') || norm.includes('ngung') || norm.includes('hong')
+      || norm === 'stopped' || norm === 'not_operational' || norm === '0') {
+    return statusCritical;
+  }
+  // 2. Đang bảo trì / Đang bảo dưỡng / Sửa chữa / Cần bảo dưỡng
+  if (norm.includes('bao tri') || norm.includes('bao duong') || norm.includes('sua chua')
+      || norm.includes('maintenance') || norm.includes('warning') || norm === '2') {
+    return statusAttention;
+  }
+  // 3. Đang xây dựng / Xây dựng
+  if (norm.includes('xay dung') || norm.includes('construction') || norm === 'under_construction' || norm === '3') {
+    return actionPrimary;
+  }
+  // 4. Đang hoạt động / Hoạt động
+  if (norm.includes('hoat dong') || norm === 'operational' || norm === 'active' || norm === 'good' || norm === '1') {
+    return statusOperational;
+  }
+  return textSecondary;
+};
+
+/** Lấy nhãn tiếng Việt chuẩn cho Tình trạng hoạt động (ConditionStatus). */
+export const getConditionStatusLabel = (status?: any): string => {
+  if (status == null || status === '' || status === '—') return '—';
+  const s = String(status).trim();
+  const norm = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+
+  if (norm.includes('dung hoat dong') || norm.includes('ngung hoat dong')
+      || norm.includes('tam dung') || norm.includes('khong hoat dong')
+      || norm.includes('dung') || norm.includes('ngung') || norm.includes('hong')
+      || norm === 'stopped' || norm === 'not_operational' || norm === '0') {
+    return 'Dừng hoạt động';
+  }
+  if (norm.includes('bao tri') || norm.includes('bao duong') || norm.includes('sua chua')
+      || norm.includes('maintenance') || norm.includes('warning') || norm === '2') {
+    return 'Đang bảo trì';
+  }
+  if (norm.includes('xay dung') || norm.includes('construction') || norm === 'under_construction' || norm === '3') {
+    return 'Đang xây dựng';
+  }
+  if (norm.includes('hoat dong') || norm === 'operational' || norm === 'active' || norm === 'good' || norm === '1') {
+    return 'Đang hoạt động';
+  }
+  return s;
+};
+
+/** Render Pill Badge chuẩn cho Tình trạng hoạt động (ConditionStatus). */
+export const renderConditionStatusPillBadge = (status?: any): React.ReactNode => {
+  if (status == null || status === '' || status === '—') return '—';
+  const label = getConditionStatusLabel(status);
+  const color = getConditionStatusColor(status);
+  return React.createElement('span', { style: statusBadgeStyle(color) }, label);
 };
 
 /** Theme Ant Design cho vùng CHK — xem chú thích ở tokens.ts. */

@@ -39,6 +39,9 @@ import {
   statusOperational,
   actionPrimary,
   DRAWER_TABLE_SCROLL_Y,
+  statusBadgeStyle,
+  getConditionStatusColor,
+  getConditionStatusLabel,
 } from '../../themetokenchk';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import DetailTable from '../../components/shared/DetailTable';
@@ -94,27 +97,13 @@ const CONDITION_COLOR: Record<string, string> = {
   [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
 };
 
-const renderConditionStatusBadge = (status?: ConditionStatus | string) => {
-  if (!status) return '—';
-  const label = CONDITION_STATUS_MAP[status as ConditionStatus] || status;
-  const color = CONDITION_COLOR[status as ConditionStatus] || textSecondary;
+const renderConditionStatusBadge = (status?: ConditionStatus | string | number) => {
+  if (!status && status !== 0) return '—';
+  const label = getConditionStatusLabel(status);
+  const color = getConditionStatusColor(status);
 
   return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        padding: '2px 10px',
-        border: `1px solid ${color}40`,
-        borderRadius: radiusPill,
-        fontSize: fontSizeMd,
-        fontWeight: fontWeightMedium,
-        background: `${color}15`,
-        color,
-        marginLeft: -6,
-      }}
-    >
+    <span style={{ ...statusBadgeStyle(color), marginLeft: -6 }}>
       {label}
     </span>
   );

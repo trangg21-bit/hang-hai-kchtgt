@@ -37,6 +37,8 @@ import {
   generateTempId,
   getDatePickerProps,
   DRAWER_TABLE_SCROLL_Y,
+  getConditionStatusColor,
+  getConditionStatusLabel,
 } from '../../themetokenchk';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
 import { useAuthStore, type AuthState } from '../../store/authStore';
@@ -120,16 +122,9 @@ const CONDITION_COLOR: Record<string, string> = {
   [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
 };
 
-export const ConditionStatusBadge: React.FC<{ status?: ConditionStatus | number }> = React.memo(({ status }) => {
-  const legacyConditionStatusMap: Record<string, ConditionStatus> = {
-    '0': ConditionStatus.STOPPED,
-    '1': ConditionStatus.OPERATIONAL,
-    '2': ConditionStatus.MAINTENANCE,
-    '3': ConditionStatus.UNDER_CONSTRUCTION,
-  };
-  const normalizedStatus = legacyConditionStatusMap[String(status)] || String(status ?? ConditionStatus.OPERATIONAL);
-  const label = CONDITION_STATUS_MAP[normalizedStatus] || normalizedStatus;
-  const color = CONDITION_COLOR[normalizedStatus] || textSecondary;
+export const ConditionStatusBadge: React.FC<{ status?: ConditionStatus | number | string }> = React.memo(({ status }) => {
+  const label = getConditionStatusLabel(status);
+  const color = getConditionStatusColor(status);
 
   return (
     <span
@@ -153,11 +148,10 @@ export const ConditionStatusBadge: React.FC<{ status?: ConditionStatus | number 
   );
 });
 
-export const renderConditionStatusBadge = (status?: ConditionStatus | string) => {
+export const renderConditionStatusBadge = (status?: ConditionStatus | string | number) => {
   if (status == null || status === '') return <span>—</span>;
-  const key = String(status);
-  const label = (key === '1' || key === 'OPERATIONAL') ? 'Đang hoạt động' : (key === '2' || key === 'MAINTENANCE') ? 'Đang bảo trì' : (key === '0' || key === 'STOPPED') ? 'Dừng hoạt động' : (key === '3' || key === 'UNDER_CONSTRUCTION') ? 'Đang xây dựng' : key;
-  const color = (key === '1' || key === 'OPERATIONAL') ? statusOperational : (key === '2' || key === 'MAINTENANCE') ? statusAttention : (key === '0' || key === 'STOPPED') ? statusCritical : (key === '3' || key === 'UNDER_CONSTRUCTION') ? actionPrimary : textSecondary;
+  const label = getConditionStatusLabel(status);
+  const color = getConditionStatusColor(status);
   return (
     <span
       style={{

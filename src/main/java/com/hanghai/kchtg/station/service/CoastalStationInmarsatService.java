@@ -309,18 +309,6 @@ public class CoastalStationInmarsatService {
             saved = repository.save(saved);
         }
 
-        if (historyService != null) {
-            historyService.recordHistory(
-                    InfrastructureType.INMARSAT_STATION,
-                    saved.getId(),
-                    StationHistoryActionType.CREATE,
-                    null,
-                    null,
-                    saved.getName(),
-                    "Tạo mới hồ sơ",
-                    currentUser != null ? currentUser.getId() : null);
-        }
-
         return saved;
     }
 
@@ -617,19 +605,6 @@ public class CoastalStationInmarsatService {
         entity.setApproverLevel1(currentUserId);
         entity.setApprovedDateLevel1(now);
         entity.setLevel1ApprovalContent("Đã phê duyệt cấp Cảng vụ/Chi cục");
-
-        if (historyService != null) {
-            historyService.recordHistory(
-                    InfrastructureType.INMARSAT_STATION,
-                    entity.getId(),
-                    StationHistoryActionType.APPROVE_L1,
-                    "Trạng thái phê duyệt",
-                    "Chờ phê duyệt cấp Cảng vụ/Chi cục",
-                    "Chờ phê duyệt cấp Cục",
-                    "Đã phê duyệt cấp Cảng vụ/Chi cục",
-                    currentUserId);
-        }
-
         syncStationStatus(entity);
         return repository.save(entity);
     }
@@ -637,46 +612,25 @@ public class CoastalStationInmarsatService {
     public CoastalStationInmarsat approveLevel2(UUID id) {
         CoastalStationInmarsat entity = getStationById(id);
         UUID currentUserId = SecurityUtils.getCurrentUserId();
-        boolean wasDirectApprove = entity.getApproverLevel1() == null;
-        LocalDateTime now = LocalDateTime.now();
-
-        // Khi Cấp Cục phê duyệt trực tiếp, tự động điền luôn thông tin Cấp 1
-        // và lưu audit log cho cả bước Cấp 1
-        if (wasDirectApprove) {
-            entity.setApproverLevel1(currentUserId);
-            entity.setApprovedDateLevel1(now);
-            entity.setLevel1ApprovalContent("Cấp Cục phê duyệt trực tiếp (đồng thuận cả 2 cấp)");
-
-            if (historyService != null) {
-                historyService.recordHistory(
-                        InfrastructureType.INMARSAT_STATION,
-                        entity.getId(),
-                        StationHistoryActionType.APPROVE_L1,
-                        "Trạng thái phê duyệt",
-                        "Chờ phê duyệt cấp Cảng vụ/Chi cục",
-                        "Chờ phê duyệt cấp Cục",
-                        "Cấp Cục phê duyệt trực tiếp (đồng thuận cả 2 cấp)",
-                        currentUserId);
-            }
-        }
-
         approvalService.approveC2(entity, InfrastructureType.INMARSAT_STATION, "APPROVED", null, currentUserId);
+        LocalDateTime now = LocalDateTime.now();
         entity.setApproverLevel2(currentUserId);
         entity.setApprovedDateLevel2(now);
         entity.setApprovedBy(currentUserId);
         entity.setApprovedDate(now);
         entity.setLevel2ApprovalContent("Đã phê duyệt cấp Cục");
 
-        if (historyService != null) {
-            historyService.recordHistory(
-                    InfrastructureType.INMARSAT_STATION,
-                    entity.getId(),
-                    StationHistoryActionType.APPROVE_L2,
-                    "Trạng thái phê duyệt",
-                    "Chờ phê duyệt cấp Cục",
-                    "Đã phê duyệt",
-                    "Đã phê duyệt cấp Cục",
-                    currentUserId);
+        // Khi Cấp Cục phê duyệt trực tiếp, nếu chưa có thông tin người gửi thì tự động điền
+        if (entity.getSubmittedBy() == null) {
+            entity.setSubmittedBy(currentUserId);
+            entity.setSubmittedAt(now);
+        }
+
+        // Hướng 2: Khi Cấp Cục phê duyệt trực tiếp, tự động điền luôn thông tin Cấp 1
+        if (entity.getApproverLevel1() == null) {
+            entity.setApproverLevel1(currentUserId);
+            entity.setApprovedDateLevel1(now);
+            entity.setLevel1ApprovalContent("Cấp Cục phê duyệt trực tiếp (đồng thuận cả 2 cấp)");
         }
 
         syncStationStatus(entity);
@@ -830,7 +784,8 @@ public class CoastalStationInmarsatService {
 
         String createdByName = resolveUserName(entity.getCreatedBy());
         String updatedByName = resolveUserName(entity.getUpdatedBy());
-        String submittedByName = resolveUserName(entity.getSubmittedBy());
+        UUID effectiveSubmittedBy = entity.getSubmittedBy() != null ? entity.getSubmittedBy() : entity.getCreatedBy();
+        String submittedByName = resolveUserName(effectiveSubmittedBy);
         String approverNameL1 = resolveUserName(entity.getApproverLevel1());
         String approverNameL2 = resolveUserName(entity.getApproverLevel2());
         String approvedByName = resolveUserName(entity.getApprovedBy());
@@ -890,8 +845,8 @@ public class CoastalStationInmarsatService {
                 .coordinates(coords)
                 .approvalStatus(entity.getApprovalStatus())
                 .approvalLevel(entity.getApprovalLevel())
-                .submittedAt(entity.getSubmittedAt())
-                .submittedBy(entity.getSubmittedBy())
+                .submittedAt(entity.getSubmittedAt() != null ? entity.getSubmittedAt() : entity.getCreatedAt())
+                .submittedBy(effectiveSubmittedBy)
                 .submittedByName(submittedByName)
                 .approverLevel1(entity.getApproverLevel1())
                 .approverNameLevel1(approverNameL1)
@@ -1054,9 +1009,9 @@ public class CoastalStationInmarsatService {
     private String resolveConditionStatusLabel(ConditionStatus status) {
         if (status == null) return "—";
         return switch (status) {
-            case OPERATIONAL -> "Hoạt động";
+            case OPERATIONAL -> "Đang hoạt động";
             case STOPPED -> "Dừng hoạt động";
-            case MAINTENANCE -> "Đang bảo dưỡng";
+            case MAINTENANCE -> "Đang bảo trì";
             case UNDER_CONSTRUCTION -> "Đang xây dựng";
         };
     }

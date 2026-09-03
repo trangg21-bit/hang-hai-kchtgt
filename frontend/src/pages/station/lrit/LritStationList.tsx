@@ -29,6 +29,7 @@ import {
   borderDefault, statusBadgeStyle, cellTitleStyle, cellSubtitleStyle,
   inputStyle, primaryButtonStyle, textAreaStyle,
   getRangePickerProps, icons,
+  getConditionStatusColor, getConditionStatusLabel,
 } from '../../../themetokenchk';
 import { colors } from '../../../themetokenchk';
 import dayjs from 'dayjs';
@@ -1067,14 +1068,13 @@ export const LritStationList: React.FC = () => {
       label: 'Tình trạng',
       dataIndex: 'conditionStatus',
       width: 160,
-      align: 'center' as const,
+      align: 'left' as const,
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('conditionStatus'),
       render: (v: string) => {
-        const enumKey = (v || ConditionStatus.OPERATIONAL) as ConditionStatus;
-        const label = CONDITION_STATUS_MAP[enumKey] || v;
-        const color = CONDITION_COLOR[enumKey] || textSecondary;
+        const label = getConditionStatusLabel(v);
+        const color = getConditionStatusColor(v);
         return (
           <span style={statusBadgeStyle(color)}>
             {label}
@@ -1111,7 +1111,7 @@ export const LritStationList: React.FC = () => {
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('submittedInfo'),
-      render: (_: any, r: LritStationItem) => renderPersonTimeCell(r.submittedByName || r.submittedBy, r.submittedAt),
+      render: (_: any, r: LritStationItem) => renderPersonTimeCell(r.submittedByName || r.createdByName || r.submittedBy, r.submittedAt || r.createdAt),
     },
     {
       key: 'approvedLevel1Info',

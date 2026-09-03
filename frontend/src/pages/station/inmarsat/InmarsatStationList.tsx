@@ -23,6 +23,8 @@ import {
   statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
   inputStyle,
   getRangePickerProps,
+  getConditionStatusColor,
+  getConditionStatusLabel,
 } from '../../../themetokenchk';
 import * as themeTokenChk from '../../../themetokenchk';
 import { ThemeTokenProvider } from '../../../context/ThemeTokenContext';
@@ -87,7 +89,7 @@ const formatHistoryValue = (field: string, val: any): string => {
     return getProvinceNameById(val) || String(val);
   }
   if (field === 'conditionStatus' || field === 'Tình trạng') {
-    return CONDITION_STATUS_MAP[val as ConditionStatus] || String(val);
+    return getConditionStatusLabel(val);
   }
   return String(val);
 };
@@ -548,20 +550,10 @@ export const InmarsatStationList = () => {
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('conditionStatus'),
       render: (st: string) => {
-        const enumKey = (st || ConditionStatus.OPERATIONAL) as ConditionStatus;
-        const color = CONDITION_COLOR[enumKey] || statusOperational;
-        const label = CONDITION_STATUS_MAP[enumKey] || st || 'Đang hoạt động';
+        const label = getConditionStatusLabel(st);
+        const color = getConditionStatusColor(st);
         return (
-          <span
-            style={{
-              ...statusBadgeStyle(color),
-              display: 'inline-block',
-              padding: '2px 10px',
-              borderRadius: radiusPill,
-              fontWeight: fontWeightMedium,
-              fontSize: fontSizeMd,
-            }}
-          >
+          <span style={statusBadgeStyle(color)}>
             {label}
           </span>
         );

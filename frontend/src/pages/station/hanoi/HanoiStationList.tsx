@@ -35,6 +35,7 @@ import {
   borderDefault, statusBadgeStyle, cellTitleStyle, cellSubtitleStyle,
   inputStyle, primaryButtonStyle, textAreaStyle,
   getRangePickerProps,
+  getConditionStatusColor, getConditionStatusLabel,
 } from '../../../themetokenchk';
 import { colors } from '../../../themetokenchk';
 import dayjs from 'dayjs';
@@ -1062,14 +1063,13 @@ export const HanoiStationList: React.FC = () => {
       label: 'Tình trạng',
       dataIndex: 'conditionStatus',
       width: 160,
-      align: 'center' as const,
+      align: 'left' as const,
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('conditionStatus'),
       render: (v: string) => {
-        const enumKey = (v || ConditionStatus.OPERATIONAL) as ConditionStatus;
-        const label = CONDITION_STATUS_MAP[enumKey] || v;
-        const color = CONDITION_COLOR[enumKey] || textSecondary;
+        const label = getConditionStatusLabel(v);
+        const color = getConditionStatusColor(v);
         return (
           <span style={statusBadgeStyle(color)}>
             {label}

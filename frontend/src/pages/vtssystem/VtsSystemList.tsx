@@ -25,7 +25,7 @@ import {
   drawerTitleStyle, drawerCloseBtnStyle, selectStyle,
   borderDefault, statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
   inputStyle, textAreaStyle, colors, primaryButtonStyle,
-  getRangePickerProps,
+  getRangePickerProps, getConditionStatusColor,
 } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
@@ -452,30 +452,10 @@ function renderHistoryValueTag(field: string, val: string | null) {
 
   // Condition status
   if (normKey === 'conditionstatus' || normKey === 'tinh trang' || normKey.includes('tinh trang')) {
-    if (normVal.includes('hong') || normVal.includes('ngung') || normVal.includes('dung') || normVal.includes('damaged') || normVal.includes('critical')) {
+    const color = getConditionStatusColor(displayValue);
+    if (color && color !== textSecondary) {
       return (
-        <span style={statusBadgeStyle(statusCritical)}>
-          {displayValue}
-        </span>
-      );
-    }
-    if (normVal.includes('can bao duong') || normVal.includes('warning') || normVal.includes('maintenance') || normVal.includes('bao tri')) {
-      return (
-        <span style={statusBadgeStyle(statusAttention)}>
-          {displayValue}
-        </span>
-      );
-    }
-    if (normVal.includes('xay dung') || normVal.includes('under_construction')) {
-      return (
-        <span style={statusBadgeStyle(actionPrimary)}>
-          {displayValue}
-        </span>
-      );
-    }
-    if (normVal.includes('hoat dong tot') || normVal.includes('good') || normVal.includes('operational') || normVal.includes('hoat dong')) {
-      return (
-        <span style={statusBadgeStyle(statusOperational)}>
+        <span style={statusBadgeStyle(color)}>
           {displayValue}
         </span>
       );

@@ -38,6 +38,7 @@ import {
   textPrimary, textSecondary, textTertiary, borderDefault,
   statusCritical, statusOperational, statusAttention, actionPrimary, textAreaStyle,
   readonlyInputStyle, drawerCloseBtnStyle, selectStyle, inputStyle, requiredMarkStyle,
+  statusBadgeStyle, getConditionStatusColor, getConditionStatusLabel,
 } from '../../../themetokenchk';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../../types/common';
 import { useAuthStore } from '../../../store/authStore';
@@ -84,24 +85,12 @@ const CONDITION_COLOR: Record<string, string> = {
   [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
 };
 
-const renderConditionBadge = (status?: ConditionStatus | string) => {
-  if (!status) return '—';
-  const label = CONDITION_STATUS_MAP[status as ConditionStatus] || status;
-  const color = CONDITION_COLOR[status as ConditionStatus] || textSecondary;
+const renderConditionBadge = (status?: ConditionStatus | string | number) => {
+  if (!status && status !== 0) return '—';
+  const label = getConditionStatusLabel(status);
+  const color = getConditionStatusColor(status);
   return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        padding: '2px 10px',
-        borderRadius: radiusPill,
-        fontSize: fontSizeMd,
-        fontWeight: fontWeightMedium,
-        background: `${color}15`,
-        border: `1px solid ${color}40`,
-        color,
-      }}
-    >
+    <span style={statusBadgeStyle(color)}>
       {label}
     </span>
   );

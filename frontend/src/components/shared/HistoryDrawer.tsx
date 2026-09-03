@@ -8,7 +8,7 @@ import {
   radiusSm, spaceMd, spaceSm, spaceLg, spaceXs, spaceXl,
   statusOperational, statusCritical, statusAttention,
   surfacePage, drawerTitleStyle, drawerCloseBtnStyle, inputStyle, primaryButtonStyle,
-  borderDefault, statusBadgeStyle,
+  borderDefault, statusBadgeStyle, getConditionStatusColor,
 } from '../../themetokenchk';
 import { colors } from '../../themetokenchk';
 
@@ -294,17 +294,9 @@ function renderHistoryValueTag(
 
   const isCondition = normKey === 'conditionstatus' || normKey === 'tinh trang' || normKey.includes('tinh trang');
   if (isCondition) {
-    if (normVal.includes('hoat dong') || normVal.includes('good') || normVal.includes('operational')) {
-      return <span style={statusBadgeStyle(statusOperational)}>{val}</span>;
-    }
-    if (normVal.includes('bao tri') || normVal.includes('warning') || normVal.includes('maintenance')) {
-      return <span style={statusBadgeStyle(statusAttention)}>{val}</span>;
-    }
-    if (normVal.includes('hong') || normVal.includes('ngung') || normVal.includes('dung') || normVal.includes('damaged') || normVal.includes('critical')) {
-      return <span style={statusBadgeStyle(statusCritical)}>{val}</span>;
-    }
-    if (normVal.includes('xay dung') || normVal.includes('under_construction')) {
-      return <span style={statusBadgeStyle(actionPrimary)}>{val}</span>;
+    const color = getConditionStatusColor(val);
+    if (color && color !== textSecondary) {
+      return <span style={statusBadgeStyle(color)}>{val}</span>;
     }
   }
 
