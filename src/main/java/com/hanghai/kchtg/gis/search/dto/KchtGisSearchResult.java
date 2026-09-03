@@ -22,6 +22,7 @@ public class KchtGisSearchResult {
     private Integer provinceId;
     private String location;
     private String diaChiChiTiet;
+    private UUID mapSymbolId;
     private String geometryType;
     private String coordinates;
     private Double latitude;

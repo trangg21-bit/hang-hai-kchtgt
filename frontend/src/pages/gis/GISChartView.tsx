@@ -25,6 +25,11 @@ import {
   SearchOutlined,
   ReloadOutlined,
   CloseOutlined,
+  PlusOutlined,
+  MinusOutlined,
+  FullscreenOutlined,
+  FullscreenExitOutlined,
+  EditOutlined,
 } from '@ant-design/icons';
 import { chartService } from '../../services/chartService';
 import type { ChartCell, ChartFeature } from '../../services/chartService';
@@ -120,15 +125,21 @@ import { pointObjectService } from '../../services/pointObjectService';
 import { lineObjectService } from '../../services/lineObjectService';
 import { polygonObjectService } from '../../services/polygonObjectService';
 import {
+  findMapGeometryHits,
+  geoJsonToMapHitGeometries,
+  getMapHitGeometryBounds,
   normalizeLineCoordinates,
   normalizePointCoordinates,
   normalizePolygonCoordinates,
   parseWktToCoords,
   resolveMapGeometryLocation,
+  type MapGeometryBounds,
+  type MapHitGeometry,
 } from '../../utils/gisGeometry';
 import {
   DEFAULT_SHOW_PLANNING,
   GIS_LAYER_INTERACTION_POLICY,
+  getMapClickResolution,
   getPlanningFeatureKey,
   getPlanningLeafletColorStyle,
   getPlanningStatusPresentation,
@@ -137,6 +148,16 @@ import {
   PLANNING_STATUS_COLORS,
   shouldRenderPlanningFeature,
 } from '../../utils/planningGis';
+import {
+  buildMapShareUrl,
+  circleToPolygonCoordinates,
+  parseSharedMapView,
+} from '../../utils/mapInteraction';
+import {
+  getKchtOperationalStatusText,
+  getKchtStructureTypeText,
+  getKchtSymbolCode,
+} from '../../utils/kchtGisPresentation';
 import Leaflet from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
@@ -151,6 +172,7 @@ declare global {
 }
 
 let leafletRuntime: any;
+const PLANNING_LAYER_CACHE_VERSION = 'screen-hit-resolver-v1';
 
 const CELL_COORDINATES: Record<string, [number, number]> = {
   'HP': [20.80, 106.70],     // Hải Phòng
@@ -497,7 +519,7 @@ const getLoaiCauText = (val?: string) => {
 const resolvedNamesCache = new Map<string, string>();
 let orgUnitsGlobalCache: any[] = [];
 
-const resolveName = async (id: string, type: 'org' | 'Port' | 'Berth' | 'User') => {
+const resolveName = async (id: string, type: 'org' | 'Port' | 'Berth' | 'NavigationChannel' | 'User') => {
   if (!id) return '';
   const cacheKey = `${type}:${id}`;
   if (resolvedNamesCache.has(cacheKey)) return resolvedNamesCache.get(cacheKey)!;
@@ -516,6 +538,9 @@ const resolveName = async (id: string, type: 'org' | 'Port' | 'Berth' | 'User') 
     } else if (type === 'Berth') {
       const bc = await berthCRUD.findById(id);
       name = bc.berthName;
+    } else if (type === 'NavigationChannel') {
+      const channel = await navigationChannelCRUD.getById(id);
+      name = channel.channelName;
     } else if (type === 'User') {
       const response = await userService.getById(id);
       name = response.data?.fullName || response.data?.username || '';
@@ -793,16 +818,6 @@ const fetchAndFormatPopupDetails = async (record: any) => {
       </div>
     </div>
   `;
-
-  const getStatusText = (status?: string) => {
-    if (!status) return '—';
-    const s = status.toUpperCase();
-    if (s === 'HIEN_HANH' || s === 'ACTIVE' || s === 'OPERATIONAL') return 'Đang khai thác/vận hành';
-    if (s === 'TAM_NGUNG' || s === 'INACTIVE' || s === 'STOPPED') return 'Tạm ngừng';
-    if (s === 'MAINTENANCE') return 'Đang bảo trì';
-    if (s === 'UNDER_CONSTRUCTION') return 'Đang xây dựng';
-    return status;
-  };
 
   const getApprovalStatusText = (status?: string) => {
     if (!status) return '—';
@@ -1169,6 +1184,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
       let orgUnitNameResolved = '';
       let cangBienNameResolved = '';
       let benCangNameResolved = '';
+      let waterwayNameResolved = data.waterway || '';
       
       const orgId = data.orgUnitId || data.orgUnitId || data.unitId || data.donViQuanLy || data.unitId;
       if (orgId) {
@@ -1179,6 +1195,10 @@ const fetchAndFormatPopupDetails = async (record: any) => {
       }
       if (data.berthId || data.tenBenCang) {
         benCangNameResolved = data.tenBenCang || (data.berthId ? await resolveName(data.berthId, 'Berth') : '');
+      }
+      const waterwayId = data.waterwayId || data.navigationChannelId;
+      if (!waterwayNameResolved && waterwayId) {
+        waterwayNameResolved = await resolveName(waterwayId, 'NavigationChannel');
       }
 
       const userNamesResolved: Record<string, string> = {};
@@ -1209,13 +1229,16 @@ const fetchAndFormatPopupDetails = async (record: any) => {
           return formatDateTime(value);
         }
         if (field === 'operationalStatus' || field === 'conditionStatus' || field === 'tinhTrang' || field === 'isActive') {
-          return getStatusText(field === 'isActive' ? (value ? 'ACTIVE' : 'INACTIVE') : value);
+          return getKchtOperationalStatusText(field === 'isActive' ? Boolean(value) : value);
         }
         if (field === 'approvalStatus' || field === 'trangThai' || field === 'status') {
           return getApprovalStatusText(value);
         }
         if (field === 'geometryType' || field === 'loaiHinhHoc' || field === 'geomType') {
           return getGeometryTypeText(value);
+        }
+        if (field === 'structureType') {
+          return getKchtStructureTypeText(value);
         }
         return value;
       };
@@ -1231,6 +1254,8 @@ const fetchAndFormatPopupDetails = async (record: any) => {
             val = cangBienNameResolved || val;
           } else if (k === 'berthId') {
             val = benCangNameResolved || val;
+          } else if (k === 'waterway' || k === 'navigationChannelId') {
+            val = waterwayNameResolved || val;
           }
           
           if (valExists) {
@@ -1276,6 +1301,8 @@ const fetchAndFormatPopupDetails = async (record: any) => {
               val = cangBienNameResolved || val;
             } else if (k === 'berthId') {
               val = benCangNameResolved || val;
+            } else if (k === 'waterway' || k === 'navigationChannelId') {
+              val = waterwayNameResolved || val;
             }
             
             if (k === 'loaiVungNuoc') val = getLoaiVungNuocText(val);
@@ -1321,6 +1348,8 @@ const fetchAndFormatPopupDetails = async (record: any) => {
             displayVal = cangBienNameResolved || val;
           } else if (k === 'berthId') {
             displayVal = benCangNameResolved || val;
+          } else if (k === 'waterway' || k === 'navigationChannelId') {
+            displayVal = waterwayNameResolved || val;
           }
           if (k === 'type') {
             if (displayType === 'Đèn biển') {
@@ -1383,11 +1412,145 @@ function getFeatureNameVi(featureCode: string, originalName?: string): string {
   return FEATURE_NAMES_VI[cleanCode] || featureCode;
 }
 
-const parseWktToLatLngs = (wkt: string, _geomType: string): [number, number][] =>
-  resolveMapGeometryLocation(wkt)?.coordinates.map(([lng, lat]) => [lat, lng]) || [];
-
 const isVietnamMapCoordinate = ([lng, lat]: [number, number]) =>
   lat >= 5 && lat <= 26 && lng >= 95 && lng <= 120;
+
+interface KchtMapHitTarget {
+  key: string;
+  label: string;
+  source: 'custom' | 'search';
+  geometry: MapHitGeometry;
+  openPopup: (latlng: any) => void | Promise<void>;
+}
+
+interface PlanningMapHitTarget {
+  key: string;
+  label: string;
+  feature: any;
+  geometry: MapHitGeometry;
+  bounds: MapGeometryBounds;
+}
+
+const escapePopupText = (value: unknown): string => String(value ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#039;');
+
+type QuickMapMode = 'polygon' | 'circle' | 'edit' | null;
+
+const QuickPolygonIcon = () => (
+  <svg aria-hidden="true" fill="none" height="16" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" width="16">
+    <polygon points="12,3 21,9 18,21 6,21 3,9" />
+  </svg>
+);
+
+const QuickCircleIcon = () => (
+  <svg aria-hidden="true" fill="none" height="16" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" width="16">
+    <circle cx="12" cy="12" r="8" />
+  </svg>
+);
+
+const circleLayerToPolygonFeature = (layer: any, vertexCount = 32) => {
+  const center = layer.getLatLng();
+  const radiusInMeters = Number(layer.getRadius());
+  const coordinates = circleToPolygonCoordinates(
+    center.lat,
+    center.lng,
+    radiusInMeters,
+    vertexCount,
+  );
+
+  return {
+    type: 'Feature',
+    properties: {},
+    geometry: { type: 'Polygon', coordinates: [coordinates] },
+  };
+};
+
+const resolveSearchHitGeometry = (record: KchtGisSearchResult): MapHitGeometry | null => {
+  const geometryType = String(record.geometryType || record.loaiHinhHoc || '').toUpperCase();
+  const geometryWkt = record.coordinates || record.toaDo;
+  const parsedCoordinates = geometryWkt ? parseWktToCoords(geometryWkt) : null;
+
+  if (geometryType === 'POINT') {
+    const coordinates = normalizePointCoordinates(parsedCoordinates)
+      || normalizePointCoordinates([record.longitude, record.latitude]);
+    return coordinates ? { type: 'Point', coordinates } : null;
+  }
+
+  if (['LINE', 'LINESTRING', 'POLYLINE'].includes(geometryType)) {
+    const coordinates = normalizeLineCoordinates(parsedCoordinates);
+    return coordinates ? { type: 'LineString', coordinates } : null;
+  }
+
+  if (['POLYGON', 'AREA'].includes(geometryType)) {
+    const coordinates = normalizePolygonCoordinates(parsedCoordinates);
+    if (coordinates) return { type: 'Polygon', coordinates };
+    const legacyVertices = normalizeLineCoordinates(parsedCoordinates);
+    return legacyVertices ? { type: 'Polygon', coordinates: [legacyVertices] } : null;
+  }
+
+  const fallbackPoint = normalizePointCoordinates([record.longitude, record.latitude]);
+  return fallbackPoint ? { type: 'Point', coordinates: fallbackPoint } : null;
+};
+
+const buildPlanningPopupContent = (featuresAtPoint: any[]): string => {
+  const itemsHtml = featuresAtPoint.map((feature: any, index: number) => {
+    const statusPresentation = getPlanningStatusPresentation(
+      feature.geomType,
+      feature.tableName,
+      feature.status,
+      feature.color,
+    );
+    const latitude = Number(feature.lat);
+    const longitude = Number(feature.lon);
+    const formattedLatitude = Number.isFinite(latitude) ? `${latitude.toFixed(5)}°N` : '—';
+    const formattedLongitude = Number.isFinite(longitude) ? `${longitude.toFixed(5)}°E` : '—';
+    const agencyName = feature.agency || 'Cục Hàng hải và Đường thủy Việt Nam';
+    const featureName = feature.name || 'Đối tượng quy hoạch';
+    const statusOptionsHtml = statusPresentation.options.map((option) => {
+      const isActive = statusPresentation.kind === option.kind;
+      return `
+        <button type="button" class="planning-status-option ${isActive ? 'active-opt' : ''}"
+          data-status="${escapePopupText(option.status)}"
+          data-color="${option.color}"
+          data-fid="${escapePopupText(feature.fid)}"
+          data-geomtype="${escapePopupText(feature.geomType)}"
+          data-schema="${escapePopupText(feature.schemaName)}"
+          data-table="${escapePopupText(feature.tableName)}"
+          style="cursor: pointer; display: flex; align-items: center; width: 100%; gap: ${spaceSm}px; padding: ${spaceXs}px ${spaceSm}px; border: 1px solid ${isActive ? actionPrimary : borderDefault}; background: ${isActive ? `${actionPrimary}1A` : surfaceCard}; border-radius: ${radiusSm}px; color: ${textPrimary}; font-family: ${fontSans}; text-align: left;">
+          <span style="width: ${spaceSm}px; height: ${spaceSm}px; border-radius: ${radiusSm}px; background: ${option.swatchColor}; border: 1px solid ${borderDefault}; flex-shrink: 0;"></span>
+          <span style="font-size: ${fontSizeMd}px; line-height: ${fontSizeXl}px; font-weight: ${isActive ? fontWeightBold : fontWeightNormal};">${escapePopupText(option.label)}</span>
+        </button>
+      `;
+    }).join('');
+
+    return `
+      <section style="padding-bottom: ${index === featuresAtPoint.length - 1 ? 0 : spaceMd}px; margin-bottom: ${index === featuresAtPoint.length - 1 ? 0 : spaceMd}px; border-bottom: ${index === featuresAtPoint.length - 1 ? '0' : `1px solid ${borderDefault}`};">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: ${spaceSm}px; margin-bottom: ${spaceSm}px;">
+          <span style="border: 1px solid ${actionPrimary}4D; background: ${actionPrimary}1A; color: ${actionPrimary}; padding: ${spaceXs}px ${spaceSm}px; border-radius: ${radiusPill}px; font-weight: ${fontWeightMedium}; font-size: ${fontSizeLg}px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapePopupText(featureName)}">
+            ${escapePopupText(featureName)}
+          </span>
+        </div>
+        <div style="font-size: ${fontSizeMd}px; color: ${textSecondary}; margin-bottom: ${spaceSm}px;">${formattedLatitude}, ${formattedLongitude}</div>
+        <div style="display: grid; grid-template-columns: 104px minmax(0, 1fr); column-gap: ${spaceSm}px; row-gap: ${spaceSm}px; font-size: ${fontSizeMd}px; margin-bottom: ${spaceMd}px; line-height: ${fontSizeXl}px;">
+          <span style="color: ${textTertiary};">Tên đối tượng:</span><span style="font-weight: ${fontWeightMedium};">${escapePopupText(featureName)}</span>
+          <span style="color: ${textTertiary};">Cơ quan QL:</span><span>${escapePopupText(agencyName)}</span>
+          <span style="color: ${textTertiary};">Trạng thái QH:</span>
+          <span style="justify-self: start; padding: 0 ${spaceSm}px; border-radius: ${radiusPill}px; font-size: ${fontSizeMd}px; font-weight: ${fontWeightMedium}; background: ${statusPresentation.swatchColor}26; border: 1px solid ${statusPresentation.swatchColor}; color: ${textPrimary};">${escapePopupText(statusPresentation.label)}</span>
+        </div>
+        ${statusOptionsHtml ? `
+          <div style="font-size: ${fontSizeMd}px; font-weight: ${fontWeightBold}; color: ${sidebarBg}; margin-bottom: ${spaceSm}px;">Cập nhật trạng thái</div>
+          <div style="display: flex; flex-direction: column; gap: ${spaceXs}px; user-select: none;">${statusOptionsHtml}</div>
+        ` : ''}
+      </section>
+    `;
+  }).join('');
+
+  return `<div style="font-family: ${fontSans}; padding: ${spaceSm}px; width: 390px; color: ${textPrimary}; max-height: 390px; overflow-y: auto;">${itemsHtml}</div>`;
+};
 
 function getFeatureIcon(featureCode: string, fillColor: string, strokeColor: string): string {
   const codeUpper = featureCode.toUpperCase();
@@ -1411,12 +1574,14 @@ function getFeatureIcon(featureCode: string, fillColor: string, strokeColor: str
 
 export default function GISChartView() {
   const screens = Grid.useBreakpoint();
-  const searchPanelWidth = screens.md ? 560 : '100%';
+  const desktopSearchPanelWidth = 560;
+  const searchPanelWidth = screens.md ? desktopSearchPanelWidth : '100%';
   const navigate = useNavigate();
   const [activeModalUrl, setActiveModalUrl] = useState<string | null>(null);
 
   const activePopupRef = useRef<any>(null);
   const activePopupRecordRef = useRef<any>(null);
+  const activePopupRequestRef = useRef(0);
 
   const refreshActivePopup = useCallback(() => {
     const popup = activePopupRef.current;
@@ -1614,7 +1779,12 @@ export default function GISChartView() {
   const [searchPageSize, setSearchPageSize] = useState(20);
   const [symbols, setSymbols] = useState<Symbol[]>([]);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [orgUnitsReady, setOrgUnitsReady] = useState(false);
+  const hasSearchedRef = useRef(false);
+  const initialInfrastructureSearchRef = useRef(false);
   const [searchPanelVisible, setSearchPanelVisible] = useState(true);
+  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
+  const [quickMapMode, setQuickMapMode] = useState<QuickMapMode>(null);
   const compactPanelHandledRef = useRef(false);
   const [tableHeight, setTableHeight] = useState(350);
   const [showPlanning, setShowPlanning] = useState(DEFAULT_SHOW_PLANNING);
@@ -1767,6 +1937,8 @@ export default function GISChartView() {
         orgUnitsGlobalCache = data;
       } catch (err) {
         console.error('Failed to load org units', err);
+      } finally {
+        setOrgUnitsReady(true);
       }
     })();
     void fetchSymbols();
@@ -1780,15 +1952,15 @@ export default function GISChartView() {
     (window as any).kchtSymbols = symbols;
   }, [symbols]);
 
-  const hasSearchedRef = useRef(false);
-
-  // Trigger search on mount if url params exist
+  // Màn hình mặc định để "Tất cả đơn vị" và tự tải danh sách. URL vẫn có thể
+  // bổ sung các điều kiện loại KCHT/tỉnh/từ khóa cho lần tải đầu tiên. Backend
+  // giới hạn dữ liệu theo phạm vi quyền của tài khoản.
   useEffect(() => {
-    const hasUrlParams = !!urlProvince || urlKchtType.length > 0 || !!urlSearch;
-    if (searchPanelVisible && hasUrlParams) {
-      handleSearchInfrastructure();
-    }
-  }, [handleSearchInfrastructure, searchPanelVisible, urlProvince, urlKchtType.length, urlSearch]);
+    if (!orgUnitsReady || initialInfrastructureSearchRef.current) return;
+
+    initialInfrastructureSearchRef.current = true;
+    void handleSearchInfrastructure(1, searchPageSize);
+  }, [handleSearchInfrastructure, orgUnitsReady, searchPageSize]);
 
   // Update map size when search panel is shown/hidden
   useEffect(() => {
@@ -1836,27 +2008,117 @@ export default function GISChartView() {
   // Map elements refs
   const mapRef = useRef<any>(null);
   const [mapInstance, setMapInstance] = useState<any>(null);
+  const mapShellRef = useRef<HTMLDivElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const baseMapLayerRef = useRef<any>(null);
   const geoJsonGroupRef = useRef<any>(null);
   const searchMarkersGroupRef = useRef<any>(null);
-  const searchVertexMarkersGroupRef = useRef<any>(null);
   const planningGroupRef = useRef<any>(null);
+  const planningRendererRef = useRef<any>(null);
   const calibratorMarkerRef = useRef<any>(null);
   const tableWrapperRef = useRef<HTMLDivElement>(null);
   const renderChartFeaturesRef = useRef<() => void>();
-  const renderVertexMarkersRef = useRef<() => void>();
   const renderSearchMarkersRef = useRef<() => void>();
   const fetchFeaturesInViewportRef = useRef<() => Promise<void>>();
   const fetchPlanningFeaturesRef = useRef<() => Promise<void>>();
   const moveEndTimeoutRef = useRef<any>(null);
   const planningLayersCacheRef = useRef<Record<string, any>>({});
+  const planningLayerCacheVersionRef = useRef('');
   const planningStyleZoomBandRef = useRef<number>();
   const [customGisFeatures, setCustomGisFeatures] = useState<any[]>([]);
   const customGisFeaturesDataRef = useRef<any[]>([]);
   const fetchCustomGisFeaturesRef = useRef<() => Promise<void>>();
   const customGisGroupRef = useRef<any>(null);
+  const customKchtHitTargetsRef = useRef<KchtMapHitTarget[]>([]);
+  const searchKchtHitTargetsRef = useRef<KchtMapHitTarget[]>([]);
+  const planningHitTargetsRef = useRef<PlanningMapHitTarget[]>([]);
+  const planningHitIndexRef = useRef<Flatbush | null>(null);
+  const mapFeatureClickHandlerRef = useRef<(latlng: any) => Promise<void>>();
+  const mapFeatureClickSequenceRef = useRef(0);
+  const mapFeatureChoiceActionsRef = useRef<Map<string, () => void | Promise<void>>>(new Map());
   const [leafletLoaded, setLeafletLoaded] = useState(false);
+
+  const toggleMapFullscreen = useCallback(async () => {
+    const mapShell = mapShellRef.current;
+    if (!mapShell) return;
+
+    try {
+      if (document.fullscreenElement === mapShell) {
+        await document.exitFullscreen();
+      } else {
+        await mapShell.requestFullscreen();
+      }
+    } catch {
+      toast.error('Trình duyệt không hỗ trợ chế độ toàn màn hình');
+    }
+  }, []);
+
+  const selectQuickMapMode = useCallback((mode: Exclude<QuickMapMode, null>) => {
+    const map = mapRef.current;
+    const pm = map?.pm;
+    if (!pm) return;
+
+    pm.disableDraw?.();
+    pm.disableGlobalEditMode?.();
+    pm.disableGlobalRemovalMode?.();
+    pm.disableGlobalDragMode?.();
+
+    if (quickMapMode === mode) {
+      setQuickMapMode(null);
+      map.getContainer().style.cursor = '';
+      return;
+    }
+
+    setQuickMapMode(mode);
+    if (mode === 'polygon') {
+      pm.enableDraw('Polygon');
+      map.getContainer().style.cursor = 'crosshair';
+    } else if (mode === 'circle') {
+      pm.enableDraw('Circle');
+      map.getContainer().style.cursor = 'crosshair';
+    } else {
+      pm.enableGlobalEditMode();
+      map.getContainer().style.cursor = '';
+    }
+  }, [quickMapMode]);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsMapFullscreen(document.fullscreenElement === mapShellRef.current);
+      window.requestAnimationFrame(() => mapRef.current?.invalidateSize());
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  useEffect(() => {
+    if (!mapInstance) return;
+    const finishQuickDraw = () => setQuickMapMode(null);
+    const syncQuickDrawMode = (event: any) => {
+      if (!event?.enabled) {
+        setQuickMapMode((currentMode) => currentMode === 'edit' ? currentMode : null);
+      } else if (event.shape === 'Polygon') {
+        setQuickMapMode('polygon');
+      } else if (event.shape === 'Circle') {
+        setQuickMapMode('circle');
+      } else {
+        setQuickMapMode(null);
+      }
+    };
+    const syncQuickEditMode = (event: any) => {
+      setQuickMapMode(event?.enabled ? 'edit' : null);
+    };
+    mapInstance.on('pm:create', finishQuickDraw);
+    mapInstance.on('pm:drawend', finishQuickDraw);
+    mapInstance.on('pm:globaldrawmodetoggled', syncQuickDrawMode);
+    mapInstance.on('pm:globaleditmodetoggled', syncQuickEditMode);
+    return () => {
+      mapInstance.off('pm:create', finishQuickDraw);
+      mapInstance.off('pm:drawend', finishQuickDraw);
+      mapInstance.off('pm:globaldrawmodetoggled', syncQuickDrawMode);
+      mapInstance.off('pm:globaleditmodetoggled', syncQuickEditMode);
+    };
+  }, [mapInstance]);
 
   useEffect(() => {
     customGisFeaturesDataRef.current = customGisFeatures;
@@ -2093,7 +2355,19 @@ export default function GISChartView() {
       // Map polygons
       (polygons || []).forEach((item: any) => {
         if (item.coordinates) {
-          const coords = parseWktToCoords(item.coordinates);
+          const parsedCoords = parseWktToCoords(item.coordinates);
+          const coords = normalizePolygonCoordinates(parsedCoords) || (
+            Array.isArray(parsedCoords)
+            && parsedCoords.length >= 3
+            && parsedCoords.every((coordinate) => (
+              Array.isArray(coordinate)
+              && coordinate.length >= 2
+              && typeof coordinate[0] === 'number'
+              && typeof coordinate[1] === 'number'
+            ))
+              ? [parsedCoords]
+              : null
+          );
           if (coords) {
             allFeatures.push({
               id: item.id,
@@ -2138,28 +2412,48 @@ export default function GISChartView() {
     if (!L || !mapRef.current || !customGisGroupRef.current) return;
 
     customGisGroupRef.current.clearLayers();
-    if (customGisFeatures.length === 0) return;
+    customKchtHitTargetsRef.current = [];
+    // The lookup screen starts clean. KCHT is only drawn after the user has
+    // explicitly searched, while the independently toggled planning layer
+    // remains available from the layer manager.
+    if (!hasSearched || customGisFeatures.length === 0) return;
 
-    customGisFeatures.forEach((feature) => {
+    const resultIds = new Set(infrastructureResults.map((record) => String(record.id)));
+    const selectedIds = new Set(selectedRowKeys.map(String));
+    const visibleCustomFeatures = customGisFeatures.filter((feature) => {
+      const featureId = String(feature.id);
+      const referenceId = feature.refId ? String(feature.refId) : '';
+      const matchesCurrentResults = resultIds.has(featureId)
+        || Boolean(referenceId && resultIds.has(referenceId));
+      const isAlreadyRenderedAsSelectedResult = selectedIds.has(featureId)
+        || Boolean(referenceId && selectedIds.has(referenceId));
+      return matchesCurrentResults && !isAlreadyRenderedAsSelectedResult;
+    });
+
+    visibleCustomFeatures.forEach((feature) => {
       try {
         let layer: any = null;
         let interactionPosition: [number, number] | null = null;
+        let hitGeometry: MapHitGeometry | null = null;
         if (feature.type === 'Point') {
           const coordinates = normalizePointCoordinates(feature.coordinates);
           if (!coordinates) return;
+          hitGeometry = { type: 'Point', coordinates };
           interactionPosition = [coordinates[1], coordinates[0]];
           layer = L.circleMarker([coordinates[1], coordinates[0]], {
-            radius: 7,
-            color: actionPrimary,
+            radius: radiusSm,
+            color: surfaceCard,
             fillColor: actionPrimary,
-            fillOpacity: 0.85,
+            fillOpacity: 1,
             pane: GIS_LAYER_INTERACTION_POLICY.kchtGeometryPane,
             weight: 2,
+            interactive: false,
             pmIgnore: true,
           });
         } else if (feature.type === 'LineString') {
           const coordinates = normalizeLineCoordinates(feature.coordinates);
           if (!coordinates) return;
+          hitGeometry = { type: 'LineString', coordinates };
           const latlngs = coordinates.map((coordinate) => [coordinate[1], coordinate[0]]);
           const center = L.latLngBounds(latlngs).getCenter();
           interactionPosition = [center.lat, center.lng];
@@ -2168,11 +2462,13 @@ export default function GISChartView() {
             weight: 3,
             opacity: 0.9,
             pane: GIS_LAYER_INTERACTION_POLICY.kchtGeometryPane,
+            interactive: false,
             pmIgnore: true,
           });
         } else if (feature.type === 'Polygon') {
           const coordinates = normalizePolygonCoordinates(feature.coordinates);
           if (!coordinates) return;
+          hitGeometry = { type: 'Polygon', coordinates };
           const latlngs = coordinates.map((ring) => ring.map((coordinate) => [coordinate[1], coordinate[0]]));
           const center = L.latLngBounds(latlngs.flat()).getCenter();
           interactionPosition = [center.lat, center.lng];
@@ -2182,15 +2478,16 @@ export default function GISChartView() {
             fillOpacity: 0.25,
             pane: GIS_LAYER_INTERACTION_POLICY.kchtGeometryPane,
             weight: 2,
+            interactive: false,
             pmIgnore: true,
           });
         }
 
         if (layer && interactionPosition) {
-          // Keep KCHT geometry in the default overlay pane. Only its compact
-          // interaction marker uses Leaflet's markerPane, exactly like VMD.
-          // This avoids the previous all-or-nothing z-index conflict with QHCB.
-          const interactionMarker = L.marker(interactionPosition, {
+          // Lines and polygons are already large, clickable targets. Adding a
+          // marker at their centre makes the map look like it contains extra
+          // point objects, so only real point geometries receive this target.
+          const interactionMarker = feature.type === 'Point' ? L.marker(interactionPosition, {
             icon: L.divIcon({
               className: 'gis-kcht-click-target-wrapper',
               html: '<span class="gis-kcht-click-target" aria-hidden="true"></span>',
@@ -2202,14 +2499,13 @@ export default function GISChartView() {
             pane: GIS_LAYER_INTERACTION_POLICY.kchtMarkerPane,
             pmIgnore: true,
             riseOnHover: true,
+            bubblingMouseEvents: false,
             title: feature.name,
-          });
-          const clickableLayers = [layer, interactionMarker];
-
-          clickableLayers.forEach((clickableLayer) => clickableLayer.bindTooltip(
+          }) : null;
+          interactionMarker?.bindTooltip(
             `<div style="font-weight: 600;">${feature.name}</div>`,
             { direction: 'top', offset: [0, -5], opacity: 0.9 }
-          ));
+          );
 
           const getPopupHtml = (portName: string) => `
             <div style="min-width: 250px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 4px;">
@@ -2264,35 +2560,78 @@ export default function GISChartView() {
             </div>
           `;
 
-          clickableLayers.forEach((clickableLayer) => {
-            clickableLayer.bindPopup(getPopupHtml(feature.refId ? 'Đang tải...' : '—'));
+          const openPopupAt = async (latlng: any) => {
+            const requestId = ++activePopupRequestRef.current;
+            const popup = L.popup({ minWidth: 280, maxWidth: 360, autoPanPadding: [50, 100] })
+              .setLatLng(latlng)
+              .setContent(getPopupHtml(feature.refId ? 'Đang tải...' : '—'))
+              .openOn(mapRef.current);
 
-            if (feature.refId) {
-              clickableLayer.on('popupopen', async () => {
-                try {
-                  const port = await portCRUD.findById(feature.refId);
-                  clickableLayer.setPopupContent(getPopupHtml(port?.portName || '—'));
-                } catch (err) {
-                  console.error(err);
-                  clickableLayer.setPopupContent(getPopupHtml('—'));
-                }
-              });
+            activePopupRef.current = popup;
+            activePopupRecordRef.current = null;
+            popup.on('close', () => {
+              if (activePopupRef.current === popup) {
+                activePopupRef.current = null;
+                activePopupRecordRef.current = null;
+              }
+            });
+
+            if (!feature.refId) return;
+            try {
+              const port = await portCRUD.findById(feature.refId);
+              if (
+                requestId === activePopupRequestRef.current
+                && activePopupRef.current === popup
+                && mapRef.current?.hasLayer(popup)
+              ) {
+                popup.setContent(getPopupHtml(port?.portName || '—'));
+              }
+            } catch (err) {
+              console.error(err);
+              if (
+                requestId === activePopupRequestRef.current
+                && activePopupRef.current === popup
+                && mapRef.current?.hasLayer(popup)
+              ) {
+                popup.setContent(getPopupHtml('—'));
+              }
+            }
+          };
+
+          if (hitGeometry) {
+            customKchtHitTargetsRef.current.push({
+              key: `custom:${feature.type}:${feature.id}`,
+              label: feature.name || feature.code || 'Kết cấu hạ tầng',
+              source: 'custom',
+              geometry: hitGeometry,
+              openPopup: openPopupAt,
+            });
+          }
+
+          interactionMarker?.on('click', (event: any) => {
+            L.DomEvent.stopPropagation(event.originalEvent || event);
+            if (mapFeatureClickHandlerRef.current) {
+              void mapFeatureClickHandlerRef.current(event.latlng);
             }
           });
 
           customGisGroupRef.current.addLayer(layer);
-          customGisGroupRef.current.addLayer(interactionMarker);
+          if (interactionMarker) {
+            customGisGroupRef.current.addLayer(interactionMarker);
+          }
         }
       } catch (err) {
         console.error('Failed to draw custom feature:', feature, err);
       }
     });
 
-  }, [customGisFeatures]);
+  }, [customGisFeatures, hasSearched, infrastructureResults, mapInstance, selectedRowKeys]);
 
   // Render planning features as vector layers on the map
   useEffect(() => {
     const L = leafletRuntime;
+    planningHitTargetsRef.current = [];
+    planningHitIndexRef.current = null;
     if (!L || !mapRef.current || !planningGroupRef.current) return;
 
     planningGroupRef.current.clearLayers();
@@ -2300,8 +2639,13 @@ export default function GISChartView() {
     if (!showPlanning || planningFeatures.length === 0) return;
 
     const layers: any[] = [];
+    const hitTargets: PlanningMapHitTarget[] = [];
     const zoom = mapRef.current.getZoom();
     const styleZoomBand = getPlanningStyleZoomBand(zoom);
+    if (planningLayerCacheVersionRef.current !== PLANNING_LAYER_CACHE_VERSION) {
+      planningLayersCacheRef.current = {};
+      planningLayerCacheVersionRef.current = PLANNING_LAYER_CACHE_VERSION;
+    }
     if (planningStyleZoomBandRef.current !== styleZoomBand) {
       planningLayersCacheRef.current = {};
       planningStyleZoomBandRef.current = styleZoomBand;
@@ -2311,21 +2655,33 @@ export default function GISChartView() {
       if (!feature.geojson) return;
       if (!shouldRenderPlanningFeature(feature.geomType, feature.tableName, zoom)) return;
 
-      // Check cache first!
       const featureKey = getPlanningFeatureKey(
         feature.geomType,
         feature.schemaName,
         feature.tableName,
         feature.fid,
       );
-      const cached = planningLayersCacheRef.current[featureKey];
-      if (cached) {
-        layers.push(cached);
-        return;
-      }
 
       try {
         const geojsonObj = JSON.parse(feature.geojson);
+        geoJsonToMapHitGeometries(geojsonObj).forEach((geometry) => {
+          const bounds = getMapHitGeometryBounds(geometry);
+          if (!bounds) return;
+          hitTargets.push({
+            key: featureKey,
+            label: feature.name || feature.tableName || 'Quy hoạch cảng biển',
+            feature,
+            geometry,
+            bounds,
+          });
+        });
+
+        const cached = planningLayersCacheRef.current[featureKey];
+        if (cached) {
+          layers.push(cached);
+          return;
+        }
+
         const visualStyle = getPlanningVisualStyle(
           feature.geomType,
           feature.tableName,
@@ -2336,6 +2692,8 @@ export default function GISChartView() {
         
         const layer = L.geoJSON(geojsonObj, {
           pane: GIS_LAYER_INTERACTION_POLICY.planningPane,
+          renderer: planningRendererRef.current,
+          interactive: false,
           pmIgnore: true,
           style: () => ({
             color: visualStyle.color,
@@ -2348,123 +2706,25 @@ export default function GISChartView() {
           pointToLayer: (geoJsonFeature: any, latlng: any) => {
             return L.circleMarker(latlng, {
               pane: GIS_LAYER_INTERACTION_POLICY.planningPane,
+              renderer: planningRendererRef.current,
               radius: visualStyle.radius,
               fillColor: visualStyle.fillColor,
-              color: '#ffffff',
+              color: surfaceCard,
               weight: 1,
               fillOpacity: visualStyle.opacity,
               opacity: visualStyle.opacity,
+              interactive: false,
               pmIgnore: true,
             });
           }
         });
 
-        // Direct click event to open aggregated details popup
-        layer.on('click', async (e: any) => {
-          L.DomEvent.stopPropagation(e); // stop event bubbling to map
-          
-          const latlng = e.latlng;
-          
-          try {
-            const res = await api.get('/gis/planning/features/at-point', {
-              params: { lat: latlng.lat, lon: latlng.lng }
-            });
-            const featuresAtPoint = res.data?.data || [];
-            if (featuresAtPoint.length === 0) return;
-
-            const itemsHtml = featuresAtPoint.map((feat: any, idx: number) => {
-              const statusPresentation = getPlanningStatusPresentation(
-                feat.geomType,
-                feat.tableName,
-                feat.status,
-                feat.color,
-              );
-              const cleanStatus = statusPresentation.label;
-              const formattedLat = feat.lat ? `${feat.lat.toFixed(5)}°N` : '—';
-              const formattedLon = feat.lon ? `${feat.lon.toFixed(5)}°E` : '—';
-              const agencyName = feat.agency || 'Cục Hàng hải và Đường thủy Việt Nam';
-              const statusOptionsHtml = statusPresentation.options.map((option) => {
-                const isActive = statusPresentation.kind === option.kind;
-                return `
-                  <div class="planning-status-option ${isActive ? 'active-opt' : ''}"
-                       data-status="${option.status}" data-color="${option.color}" data-fid="${feat.fid}" data-geomtype="${feat.geomType}"
-                       data-schema="${feat.schemaName || ''}" data-table="${feat.tableName || ''}"
-                       style="cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: 1px solid ${isActive ? '#0E6FD6' : 'rgba(11,46,79,0.09)'}; background-color: ${isActive ? 'rgba(14,111,214,0.1)' : '#ffffff'}; border-radius: 4px; transition: all 0.2s;">
-                    <div style="width: 16px; height: 16px; border-radius: 4px; background-color: ${option.swatchColor}; border: 1px solid rgba(11,46,79,0.09); flex-shrink: 0;"></div>
-                    <span style="font-size: 13px; font-weight: ${isActive ? '600' : 'normal'};">${option.label}</span>
-                  </div>
-                `;
-              }).join('');
-
-              return `
-                <div style="border-left: 3px solid #0E6FD6; padding-left: 12px; margin-bottom: ${idx === featuresAtPoint.length - 1 ? '0' : '20px'}; position: relative;">
-                  <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
-                    <span style="border: 1px solid rgba(14,111,214,0.3); background-color: rgba(14,111,214,0.1); color: #0E6FD6; padding: 4px 10px; border-radius: 999px; font-weight: 500; font-size: 13px; max-width: 190px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${feat.name || 'Đối tượng quy hoạch'}">
-                      ${feat.name || 'Đối tượng quy hoạch'}
-                    </span>
-                    <span style="background-color: #f8fafc; border: 1px solid rgba(11,46,79,0.09); padding: 2px 8px; border-radius: 999px; font-size: 10px; color: #566a7c; font-weight: 500;">
-                      ${feat.geomType === 'AREA' ? 'Quy hoạch' : 'Hiện trạng'}
-                    </span>
-                  </div>
-
-                  <div style="font-size: 12px; color: #666; margin-bottom: 12px; display: flex; align-items: center; gap: 4px;">
-                    <span>📍</span> <span>${formattedLat}, ${formattedLon}</span>
-                  </div>
-
-                  <div style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; margin-bottom: 12px;">
-                    <div style="display: flex;">
-                      <span style="width: 100px; color: #888; flex-shrink: 0;">Tên đối tượng:</span>
-                      <span style="font-weight: 500;">${feat.name || '—'}</span>
-                    </div>
-                    <div style="display: flex;">
-                      <span style="width: 100px; color: #888; flex-shrink: 0;">Cơ quan QL:</span>
-                      <span>${agencyName}</span>
-                    </div>
-                    <div style="display: flex; align-items: center;">
-                      <span style="width: 100px; color: #888; flex-shrink: 0;">Trạng thái QH:</span>
-                      <span style="padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; background-color: ${statusPresentation.swatchColor}33; border: 1px solid ${statusPresentation.swatchColor}; color: rgba(0, 0, 0, 0.85);">
-                        ${cleanStatus}
-                      </span>
-                    </div>
-                  </div>
-
-                  ${statusOptionsHtml ? `
-                    <div style="border-top: 1px dashed #d9d9d9; margin: 12px 0;"></div>
-
-                    <div style="font-size: 10px; font-weight: 600; color: #12468C; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
-                      CẬP NHẬT TRẠNG THÁI QUY HOẠCH
-                    </div>
-
-                    <div style="display: flex; flex-direction: column; gap: 8px; user-select: none; -webkit-user-select: none;">
-                      ${statusOptionsHtml}
-                    </div>
-                  ` : ''}
-                </div>
-              `;
-            }).join('');
-
-            const aggregatedContent = `
-              <div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 4px; width: 330px; color: #0c2438; max-height: 380px; overflow-y: auto; padding-right: 6px;">
-                ${itemsHtml}
-              </div>
-            `;
-
-            if (mapRef.current) {
-              L.popup({ minWidth: 340, maxWidth: 360, autoPanPadding: [50, 100] })
-                .setLatLng(latlng)
-                .setContent(aggregatedContent)
-                .openOn(mapRef.current);
-            }
-
-          } catch (err) {
-            console.error('Failed to load planning details at click point', err);
-          }
-        });
-
+        // All vector sources use the same dispatcher so overlapping planning
+        // and KCHT geometries can both be selected.
         // Cache the fully parsed and built layer
         planningLayersCacheRef.current[featureKey] = layer;
         layers.push(layer);
-      } catch (err) {
+      } catch {
         // skip
       }
     });
@@ -2473,7 +2733,181 @@ export default function GISChartView() {
       const tempGroup = L.layerGroup(layers);
       planningGroupRef.current.addLayer(tempGroup);
     }
-  }, [planningFeatures, showPlanning]);
+    if (hitTargets.length > 0) {
+      const hitIndex = new Flatbush(hitTargets.length);
+      hitTargets.forEach(({ bounds }) => hitIndex.add(
+        bounds.minLongitude,
+        bounds.minLatitude,
+        bounds.maxLongitude,
+        bounds.maxLatitude,
+      ));
+      hitIndex.finish();
+      planningHitTargetsRef.current = hitTargets;
+      planningHitIndexRef.current = hitIndex;
+    }
+  }, [mapInstance, planningFeatures, showPlanning]);
+
+  const openPlanningPopup = useCallback((latlng: any, featuresAtPoint: any[]) => {
+    const L = leafletRuntime;
+    if (!L || !mapRef.current || featuresAtPoint.length === 0) return;
+
+    const popup = L.popup({ minWidth: 410, maxWidth: 440, maxHeight: 420, autoPanPadding: [50, 100] })
+      .setLatLng(latlng)
+      .setContent(buildPlanningPopupContent(featuresAtPoint))
+      .openOn(mapRef.current);
+
+    activePopupRef.current = popup;
+    activePopupRecordRef.current = null;
+    popup.on('close', () => {
+      if (activePopupRef.current === popup) {
+        activePopupRef.current = null;
+        activePopupRecordRef.current = null;
+      }
+    });
+  }, []);
+
+  const handleMapFeatureClick = useCallback(async (latlng: any) => {
+    const L = leafletRuntime;
+    const map = mapRef.current;
+    if (!L || !map || !latlng) return;
+    const mapPm = (map as any).pm;
+    if (
+      mapPm?.globalDrawModeEnabled?.()
+      || mapPm?.globalEditModeEnabled?.()
+      || mapPm?.globalRemovalModeEnabled?.()
+    ) return;
+
+    const clickSequence = ++mapFeatureClickSequenceRef.current;
+    activePopupRequestRef.current += 1;
+    mapFeatureChoiceActionsRef.current.clear();
+
+    const clickLayerPoint = map.latLngToLayerPoint(latlng);
+    const projectToLayerPoint = ([longitude, latitude]: [number, number]) => {
+      const projected = map.latLngToLayerPoint([latitude, longitude]);
+      return { x: projected.x, y: projected.y };
+    };
+    const allKchtTargets = [
+      ...customKchtHitTargetsRef.current,
+      ...searchKchtHitTargetsRef.current,
+    ];
+    const kchtHits = findMapGeometryHits(
+      { x: clickLayerPoint.x, y: clickLayerPoint.y },
+      allKchtTargets.map((target) => ({ geometry: target.geometry, value: target })),
+      projectToLayerPoint,
+      spaceSm,
+    );
+    const uniqueKchtTargets = kchtHits.reduce<KchtMapHitTarget[]>((targets, hit) => {
+      if (!targets.some((target) => target.key === hit.value.key)) targets.push(hit.value);
+      return targets;
+    }, []);
+
+    const toleranceCornerA = map.layerPointToLatLng([
+      clickLayerPoint.x - spaceSm,
+      clickLayerPoint.y - spaceSm,
+    ]);
+    const toleranceCornerB = map.layerPointToLatLng([
+      clickLayerPoint.x + spaceSm,
+      clickLayerPoint.y + spaceSm,
+    ]);
+    const planningCandidateIndexes = showPlanning && planningHitIndexRef.current
+      ? planningHitIndexRef.current.search(
+        Math.min(toleranceCornerA.lng, toleranceCornerB.lng),
+        Math.min(toleranceCornerA.lat, toleranceCornerB.lat),
+        Math.max(toleranceCornerA.lng, toleranceCornerB.lng),
+        Math.max(toleranceCornerA.lat, toleranceCornerB.lat),
+      )
+      : [];
+    const planningCandidates = Array.from(planningCandidateIndexes)
+      .map((index) => planningHitTargetsRef.current[index])
+      .filter(Boolean);
+    const planningHits = findMapGeometryHits(
+      { x: clickLayerPoint.x, y: clickLayerPoint.y },
+      planningCandidates.map((target) => ({ geometry: target.geometry, value: target })),
+      projectToLayerPoint,
+      spaceSm,
+    );
+    const uniquePlanningTargets = planningHits.reduce<PlanningMapHitTarget[]>((targets, hit) => {
+      if (!targets.some((target) => target.key === hit.value.key)) targets.push(hit.value);
+      return targets;
+    }, []);
+    const planningAtPoint = uniquePlanningTargets.map((target) => target.feature);
+
+    const clickResolution = getMapClickResolution(
+      planningAtPoint.length,
+      uniqueKchtTargets.length,
+    );
+    if (clickResolution === 'none') return;
+
+    if (clickResolution === 'planning') {
+      openPlanningPopup(latlng, planningAtPoint);
+      return;
+    }
+    if (clickResolution === 'kcht') {
+      await uniqueKchtTargets[0].openPopup(latlng);
+      return;
+    }
+
+    const choices: Array<{ id: string; sourceLabel: string; label: string }> = [];
+    if (planningAtPoint.length > 0) {
+      const choiceId = `planning:${clickSequence}`;
+      choices.push({
+        id: choiceId,
+        sourceLabel: 'Quy hoạch cảng biển',
+        label: `${planningAtPoint.length} đối tượng tại vị trí này`,
+      });
+      mapFeatureChoiceActionsRef.current.set(
+        choiceId,
+        () => openPlanningPopup(latlng, planningAtPoint),
+      );
+    }
+
+    uniqueKchtTargets.forEach((target, index) => {
+      const choiceId = `kcht:${clickSequence}:${index}`;
+      choices.push({
+        id: choiceId,
+        sourceLabel: 'Kết cấu hạ tầng',
+        label: target.label,
+      });
+      mapFeatureChoiceActionsRef.current.set(choiceId, () => target.openPopup(latlng));
+    });
+
+    const choicesHtml = choices.map((choice) => `
+      <button type="button" class="gis-map-feature-choice" data-choice-id="${choice.id}"
+        style="display: flex; flex-direction: column; width: 100%; gap: ${spaceXs}px; padding: ${spaceSm}px ${spaceMd}px; border: 1px solid ${borderDefault}; border-radius: ${radiusMd}px; background: ${surfaceCard}; color: ${textPrimary}; cursor: pointer; font-family: ${fontSans}; text-align: left;">
+        <span style="font-size: ${fontSizeSm}px; font-weight: ${fontWeightBold}; color: ${actionPrimary}; text-transform: uppercase;">${escapePopupText(choice.sourceLabel)}</span>
+        <span style="font-size: ${fontSizeMd}px; font-weight: ${fontWeightMedium}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 280px;" title="${escapePopupText(choice.label)}">${escapePopupText(choice.label)}</span>
+      </button>
+    `).join('');
+
+    const choicePopup = L.popup({ minWidth: 300, maxWidth: 340, autoPanPadding: [50, 100] })
+      .setLatLng(latlng)
+      .setContent(`
+        <div style="font-family: ${fontSans}; color: ${textPrimary}; padding: ${spaceXs}px;">
+          <div style="font-size: ${fontSizeLg}px; font-weight: ${fontWeightBold}; margin-bottom: ${spaceXs}px;">Chọn thông tin cần xem</div>
+          <div style="font-size: ${fontSizeMd}px; color: ${textSecondary}; margin-bottom: ${spaceMd}px;">Vị trí này có nhiều lớp dữ liệu.</div>
+          <div style="display: flex; flex-direction: column; gap: ${spaceSm}px; max-height: 320px; overflow-y: auto;">${choicesHtml}</div>
+        </div>
+      `)
+      .openOn(map);
+
+    activePopupRef.current = choicePopup;
+    activePopupRecordRef.current = null;
+    choicePopup.on('close', () => {
+      if (activePopupRef.current === choicePopup) {
+        activePopupRef.current = null;
+        activePopupRecordRef.current = null;
+      }
+    });
+  }, [openPlanningPopup, showPlanning]);
+
+  useEffect(() => {
+    mapFeatureClickHandlerRef.current = handleMapFeatureClick;
+    return () => {
+      if (mapFeatureClickHandlerRef.current === handleMapFeatureClick) {
+        mapFeatureClickHandlerRef.current = undefined;
+      }
+    };
+  }, [handleMapFeatureClick]);
 
 
 
@@ -2487,17 +2921,73 @@ export default function GISChartView() {
 
     const L = leafletRuntime;
     // Create map centered on Vietnam (incorporating East Sea / Sovereignty area)
+    const sharedMapView = parseSharedMapView(window.location.search);
     const map = L.map(mapContainerRef.current, {
       preferCanvas: true,
       attributionControl: false,
       maxZoom: 20,
-    }).setView([16.0, 108.0], 5);
+      zoomControl: false,
+    }).setView(
+      sharedMapView ? [sharedMapView.latitude, sharedMapView.longitude] : [16.0, 108.0],
+      sharedMapView?.zoom ?? 5,
+    );
     mapRef.current = map;
     setMapInstance(map);
 
     // Create a high-priority pane for QHCB planning layers so they render above ENC layers
     const planningPane = map.createPane(GIS_LAYER_INTERACTION_POLICY.planningPane);
     planningPane.style.zIndex = String(GIS_LAYER_INTERACTION_POLICY.planningPaneZIndex);
+    // The planning SVG is visual-only, so its root stays click-through and the
+    // map-level resolver can evaluate planning and KCHT together.
+    planningRendererRef.current = L.svg({ pane: GIS_LAYER_INTERACTION_POLICY.planningPane });
+    planningLayersCacheRef.current = {};
+
+    const handleMapClick = (event: any) => {
+      if (mapFeatureClickHandlerRef.current) {
+        void mapFeatureClickHandlerRef.current(event.latlng);
+      }
+    };
+    map.on('click', handleMapClick);
+
+    const handleMapContextMenu = (event: any) => {
+      L.DomEvent.preventDefault(event.originalEvent || event);
+      const mapPm = map.pm;
+      if (
+        mapPm?.globalDrawModeEnabled?.()
+        || mapPm?.globalEditModeEnabled?.()
+        || mapPm?.globalRemovalModeEnabled?.()
+      ) return;
+      const latitude = Number(event.latlng.lat);
+      const longitude = Number(event.latlng.lng);
+      const zoom = map.getZoom();
+      const shareUrl = buildMapShareUrl(window.location.href, latitude, longitude, zoom);
+      const popup = L.popup({ minWidth: 260, maxWidth: 300, autoPanPadding: [50, 100] })
+        .setLatLng(event.latlng)
+        .setContent(`
+          <div style="font-family: ${fontSans}; color: ${textPrimary}; padding: ${spaceXs}px;">
+            <div style="font-size: ${fontSizeMd}px; font-weight: ${fontWeightBold}; color: ${sidebarBg}; margin-bottom: ${spaceSm}px;">Vị trí trên bản đồ</div>
+            <div style="font-size: ${fontSizeMd}px; line-height: ${fontSizeXl}px; color: ${textSecondary}; margin-bottom: ${spaceSm}px;">
+              <div>Kinh độ: <strong style="color: ${textPrimary};">${longitude.toFixed(6)}</strong></div>
+              <div>Vĩ độ: <strong style="color: ${textPrimary};">${latitude.toFixed(6)}</strong></div>
+              <div>Mức thu phóng: <strong style="color: ${textPrimary};">${zoom}</strong></div>
+            </div>
+            <button type="button" class="gis-share-location" data-url="${escapePopupText(shareUrl)}"
+              style="width: 100%; min-height: ${controlHeight}px; padding: 0 ${spaceMd}px; border: 1px solid ${actionPrimary}; border-radius: ${radiusPill}px; background: ${surfaceCard}; color: ${actionPrimary}; font-family: ${fontSans}; font-size: ${fontSizeMd}px; font-weight: ${fontWeightMedium}; cursor: pointer;">
+              Chia sẻ vị trí
+            </button>
+          </div>
+        `)
+        .openOn(map);
+      activePopupRef.current = popup;
+      activePopupRecordRef.current = null;
+      popup.on('close', () => {
+        if (activePopupRef.current === popup) {
+          activePopupRef.current = null;
+          activePopupRecordRef.current = null;
+        }
+      });
+    };
+    map.on('contextmenu', handleMapContextMenu);
 
     // Track map zoom and move events for viewport filtering with 300ms debounce
     map.on('moveend', () => {
@@ -2510,9 +3000,6 @@ export default function GISChartView() {
         }
         if (fetchPlanningFeaturesRef.current) {
           void fetchPlanningFeaturesRef.current();
-        }
-        if (renderVertexMarkersRef.current) {
-          renderVertexMarkersRef.current();
         }
         if (renderSearchMarkersRef.current) {
           renderSearchMarkersRef.current();
@@ -2529,13 +3016,7 @@ export default function GISChartView() {
       : L.featureGroup();
     searchMarkersGroupRef.current.addTo(map);
 
-    // Plain feature group for vertex markers (zoom-controlled to prevent lag)
-    searchVertexMarkersGroupRef.current = L.layerGroup().addTo(map);
-
     map.on('zoomend', () => {
-      if (renderVertexMarkersRef.current) {
-        renderVertexMarkersRef.current();
-      }
       if (renderSearchMarkersRef.current) {
         renderSearchMarkersRef.current();
       }
@@ -2553,6 +3034,44 @@ export default function GISChartView() {
 
     // Global capture-phase click listener for planning status options and custom GIS actions
     const handleGlobalClick = async (evt: any) => {
+      const shareLocationButton = evt.target.closest?.('.gis-share-location');
+      if (shareLocationButton) {
+        evt.preventDefault();
+        evt.stopPropagation();
+        const shareUrl = shareLocationButton.getAttribute('data-url');
+        if (!shareUrl) return;
+
+        try {
+          if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(shareUrl);
+          } else {
+            const textArea = document.createElement('textarea');
+            textArea.value = shareUrl;
+            textArea.style.position = 'fixed';
+            textArea.style.opacity = '0';
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+          }
+          toast.success('Đã sao chép đường dẫn vị trí');
+        } catch {
+          toast.error('Không thể sao chép đường dẫn vị trí');
+        }
+        return;
+      }
+
+      const featureChoice = evt.target.closest?.('.gis-map-feature-choice');
+      if (featureChoice) {
+        evt.preventDefault();
+        evt.stopPropagation();
+        const choiceId = featureChoice.getAttribute('data-choice-id');
+        const action = choiceId ? mapFeatureChoiceActionsRef.current.get(choiceId) : undefined;
+        mapFeatureChoiceActionsRef.current.clear();
+        if (action) await action();
+        return;
+      }
+
       const opt = evt.target.closest('.planning-status-option');
       if (opt) {
         evt.preventDefault();
@@ -2689,10 +3208,17 @@ export default function GISChartView() {
         clearTimeout(moveEndTimeoutRef.current);
       }
       if (mapRef.current) {
+        mapRef.current.off('click', handleMapClick);
+        mapRef.current.off('contextmenu', handleMapContextMenu);
         mapRef.current.off('moveend');
         mapRef.current.remove();
         mapRef.current = null;
         baseMapLayerRef.current = null;
+        planningRendererRef.current = null;
+        customKchtHitTargetsRef.current = [];
+        searchKchtHitTargetsRef.current = [];
+        planningHitTargetsRef.current = [];
+        planningHitIndexRef.current = null;
       }
     };
   }, [leafletLoaded]);
@@ -2740,6 +3266,7 @@ export default function GISChartView() {
         if (shape === 'Line' || shape === 'Polyline') geometryTypeVi = 'Đường';
         if (shape === 'Polygon') geometryTypeVi = 'Vùng Đa giác';
         if (shape === 'Rectangle') geometryTypeVi = 'Vùng Chữ nhật';
+        if (shape === 'Circle') geometryTypeVi = 'Vùng Tròn';
 
         let result;
         if (shape === 'Marker') {
@@ -2756,9 +3283,15 @@ export default function GISChartView() {
             wkt: `LINESTRING(${wktStr})`,
             coordinates: coords
           };
-        } else if (shape === 'Polygon' || shape === 'Rectangle') {
-          const rawLatLngs = layer.getLatLngs();
-          const latlngs = Array.isArray(rawLatLngs[0]) ? rawLatLngs[0] : rawLatLngs;
+        } else if (shape === 'Polygon' || shape === 'Rectangle' || shape === 'Circle') {
+          const rawLatLngs = shape === 'Circle'
+            ? circleLayerToPolygonFeature(layer).geometry.coordinates[0].map(
+              ([lng, lat]: number[]) => ({ lat, lng }),
+            )
+            : layer.getLatLngs();
+          const latlngs = shape === 'Circle'
+            ? rawLatLngs
+            : (Array.isArray(rawLatLngs[0]) ? rawLatLngs[0] : rawLatLngs);
           const coords = latlngs.map((ll: any) => ({ lat: ll.lat, lng: ll.lng }));
           if (coords.length > 0) {
             const first = coords[0];
@@ -2800,13 +3333,14 @@ export default function GISChartView() {
 
         updateDrawnGeometry(layer, shape);
 
-        const geo = layer.toGeoJSON();
+        const geo = shape === 'Circle' ? circleLayerToPolygonFeature(layer) : layer.toGeoJSON();
         const geomTypeMap: Record<string, 'draw-point' | 'draw-line' | 'draw-polygon'> = {
           'Marker': 'draw-point',
           'Line': 'draw-line',
           'Polyline': 'draw-line',
           'Polygon': 'draw-polygon',
-          'Rectangle': 'draw-polygon'
+          'Rectangle': 'draw-polygon',
+          'Circle': 'draw-polygon',
         };
         const drawResult: DrawResult = {
           geojson: geo,
@@ -2817,7 +3351,7 @@ export default function GISChartView() {
 
         layer.on('pm:edit', () => {
           updateDrawnGeometry(layer, shape);
-          const updatedGeo = layer.toGeoJSON();
+          const updatedGeo = shape === 'Circle' ? circleLayerToPolygonFeature(layer) : layer.toGeoJSON();
           setPendingDrawResult({
             geojson: updatedGeo,
             type: geomTypeMap[shape] || 'draw-point'
@@ -2842,145 +3376,42 @@ export default function GISChartView() {
     }
   }, [leafletLoaded, mapInstance]);
 
-  const renderVertexMarkers = useCallback(() => {
+  const renderSearchMarkers = useCallback(() => {
     const L = leafletRuntime;
-    if (!L || !mapRef.current || !searchVertexMarkersGroupRef.current) return;
-    
-    searchVertexMarkersGroupRef.current.clearLayers();
+    if (!L || !mapRef.current || !searchMarkersGroupRef.current) return;
+
+    const startTime = performance.now();
+
+    // Clear old search markers and vector geometry.
+    searchMarkersGroupRef.current.clearLayers();
+    searchKchtHitTargetsRef.current = [];
 
     const selectedRecords = selectedInfrastructureResults;
-    const zoom = mapRef.current.getZoom();
-    if (zoom < 10) return;
+    if (selectedRecords.length === 0) return;
 
-    const bounds = mapRef.current.getBounds();
-    const visibleRecords = selectedRecords.filter(record => {
-      if (!record.toaDo || !record.loaiHinhHoc) return false;
-      const geomType = record.loaiHinhHoc.toUpperCase();
-      return geomType === 'LINE' || geomType === 'POLYLINE' || geomType === 'POLYGON' || geomType === 'AREA';
-    });
+    const markers: any[] = [];
 
-    const vertexMarkers: any[] = [];
-    let renderedCount = 0;
-    const maxVertices = 1000;
+    selectedRecords.forEach((record) => {
+      const mapLocation = resolveMapGeometryLocation(
+        record.coordinates || record.toaDo,
+        record.longitude,
+        record.latitude,
+      );
+      const center = mapLocation?.center;
+      const hitGeometry = resolveSearchHitGeometry(record);
 
-    visibleRecords.forEach(record => {
-      if (renderedCount >= maxVertices) return;
+      if (center && hitGeometry && isVietnamMapCoordinate(center)) {
+        const [lon, lat] = center;
+        const geometryType = (record.geometryType || record.loaiHinhHoc || '').toUpperCase();
+        const isVectorGeometry = ['LINE', 'LINESTRING', 'POLYLINE', 'POLYGON', 'AREA'].includes(geometryType);
 
-      const shapeCoordinates = parseWktToLatLngs(record.toaDo, record.loaiHinhHoc);
-      if (shapeCoordinates.length === 0) return;
-      
-      const lineLatLngs = shapeCoordinates.map(c => L.latLng(c[0], c[1]));
-      const lineBounds = L.latLngBounds(lineLatLngs);
-      if (!bounds.intersects(lineBounds)) return;
-
-      // Find symbol based on kchtTypeLabel (for infrastructureResults) or loaiKcht (for customGisFeatures)
-      const loai = (record.kchtTypeLabel || record.loaiKcht || '').toUpperCase();
-      let sym = null;
-      if (loai.includes('CẢNG BIỂN') || loai.includes('CANGBIEN') || loai.includes('CANG_BIEN')) {
-        sym = symbols.find(s => s.code === 'SEAPORT');
-      } else if (loai.includes('BẾN CẢNG')) {
-        sym = symbols.find(s => s.code === 'TERMINAL');
-      } else if (loai.includes('CẢNG CẠN')) {
-        sym = symbols.find(s => s.code === 'DRY_PORT');
-      } else if (loai.includes('CẦU CẢNG')) {
-        sym = symbols.find(s => s.code === 'QUAY');
-      } else if (loai.includes('KHU NEO ĐẬU')) {
-        sym = symbols.find(s => s.code === 'ANCHORAGE');
-      } else if (loai.includes('BẾN PHAO')) {
-        sym = symbols.find(s => s.code === 'MOORING');
-      } else if (loai.includes('TRÚ BÃO') || loai.includes('TRÁNH BÃO') || loai.includes('TRÁNH, TRÚ BÃO')) {
-        sym = symbols.find(s => s.code === 'SHELTER');
-      } else if (loai.includes('CHUYỂN TẢI')) {
-        sym = symbols.find(s => s.code === 'TRANSSHIP');
-      } else if (loai.includes('SỬA CHỮA') || loai.includes('ĐÓNG TÀU')) {
-        sym = symbols.find(s => s.code === 'SHIPYARD');
-      } else if (loai.includes('ĐÈN BIỂN') || loai.includes('DENBIEN')) {
-        sym = symbols.find(s => s.code === 'LIGHTHOUSE');
-      } else if (loai.includes('PHAO') || loai.includes('TIÊU') || loai.includes('PHAOTIEU')) {
-        sym = symbols.find(s => s.code === 'BUOY');
-      } else if (loai.includes('LUỒNG HÀNG HẢI') || loai.includes('LUONGHANGHAI')) {
-        sym = symbols.find(s => s.code === 'CHANNEL');
-      } else if (loai.includes('ĐÊ') || loai.includes('KÈ') || loai.includes('DEKE')) {
-        sym = symbols.find(s => s.code === 'BREAKWATER');
-      } else if (loai.includes('VTS')) {
-        sym = symbols.find(s => s.code === 'VTS' || s.code === 'VTS_INFRA');
-      } else if (loai.includes('RADAR')) {
-        sym = symbols.find(s => s.code === 'RADAR');
-      } else if (loai.includes('AIS')) {
-        sym = symbols.find(s => s.code === 'AIS');
-      } else if (loai.includes('CCTV')) {
-        sym = symbols.find(s => s.code === 'CCTV');
-      } else if (loai.includes('SCADA')) {
-        sym = symbols.find(s => s.code === 'SCADA');
-      }
-      
-      let markerIcon: any;
-      if (sym && sym.image) {
-        markerIcon = L.divIcon({
-          html: `
-            <div style="
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              width: 32px;
-              height: 32px;
-              background: white;
-              border: 2px solid #1890ff;
-              border-radius: 50%;
-              box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-              overflow: hidden;
-            ">
-              <img src="${sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`}"
-                   style="width: 22px; height: 22px; object-fit: contain;" />
-            </div>
-          `,
-          className: 'custom-map-icon',
-          iconSize: [32, 32],
-          iconAnchor: [16, 16],
-          popupAnchor: [0, -16],
-        });
-      } else {
-        markerIcon = L.divIcon({
-          html: `
-            <div style="
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              width: 24px;
-              height: 24px;
-              background: #1890ff;
-              border: 2px solid white;
-              border-radius: 50%;
-              box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            ">
-              <span style="color: white; font-size: 10px; font-weight: bold;">
-                ${record.kchtTypeLabel ? record.kchtTypeLabel.charAt(0) : '•'}
-              </span>
-            </div>
-          `,
-          className: 'default-map-icon',
-          iconSize: [24, 24],
-          iconAnchor: [12, 12],
-          popupAnchor: [0, -12],
-        });
-      }
-
-      shapeCoordinates.forEach((coord: [number, number]) => {
-        if (renderedCount >= maxVertices) return;
-        if (!bounds.contains(L.latLng(coord[0], coord[1]))) return;
-
-        const vertexMarker = L.marker(coord, {
-          icon: markerIcon,
-          pane: GIS_LAYER_INTERACTION_POLICY.kchtMarkerPane,
-          pmIgnore: true,
-        });
-        vertexMarker.on('click', async (e: any) => {
-          L.DomEvent.stopPropagation(e);
+        const openPopupAt = async (latlng: any) => {
+          const requestId = ++activePopupRequestRef.current;
           const popup = L.popup({ minWidth: 460, maxWidth: 500, autoPanPadding: [50, 100] })
-            .setLatLng(coord)
-            .setContent('<div style="padding: 10px; font-size: 13px; font-family: sans-serif;">Đang tải thông tin chi tiết...</div>')
+            .setLatLng(latlng)
+            .setContent(`<div style="padding: ${spaceSm}px; font-size: ${fontSizeMd}px; font-family: ${fontSans};">Đang tải thông tin chi tiết...</div>`)
             .openOn(mapRef.current);
-          
+
           activePopupRef.current = popup;
           activePopupRecordRef.current = record;
           popup.on('close', () => {
@@ -2991,90 +3422,31 @@ export default function GISChartView() {
           });
 
           const detailsHtml = await fetchAndFormatPopupDetails(record);
-          popup.setContent(detailsHtml);
-        });
-        vertexMarkers.push(vertexMarker);
-        renderedCount++;
-      });
-    });
-
-    if (vertexMarkers.length > 0) {
-      const tempGroup = L.layerGroup(vertexMarkers);
-      searchVertexMarkersGroupRef.current.addLayer(tempGroup);
-    }
-  }, [selectedInfrastructureResults, symbols]);
-
-  const renderSearchMarkers = useCallback(() => {
-    const L = leafletRuntime;
-    if (!L || !mapRef.current || !searchMarkersGroupRef.current) return;
-
-    const startTime = performance.now();
-
-    // Clear old search markers and vertex markers
-    searchMarkersGroupRef.current.clearLayers();
-    if (searchVertexMarkersGroupRef.current) {
-      searchVertexMarkersGroupRef.current.clearLayers();
-    }
-
-    const selectedRecords = selectedInfrastructureResults;
-    if (selectedRecords.length === 0) return;
-
-    const zoom = mapRef.current.getZoom();
-    const markers: any[] = [];
-
-    selectedRecords.forEach((record) => {
-      const mapLocation = resolveMapGeometryLocation(
-        record.coordinates || record.toaDo,
-        record.longitude,
-        record.latitude,
-      );
-      const center = mapLocation?.center;
-
-      if (center && isVietnamMapCoordinate(center)) {
-        const [lon, lat] = center;
-
-          // Find symbol based on kchtTypeLabel (for infrastructureResults) or loaiKcht (for customGisFeatures)
-          const loai = (record.kchtTypeLabel || record.loaiKcht || '').toUpperCase();
-          let sym = null;
-          if (loai.includes('CẢNG BIỂN') || loai.includes('CANGBIEN') || loai.includes('CANG_BIEN')) {
-            sym = symbols.find(s => s.code === 'SEAPORT');
-          } else if (loai.includes('BẾN CẢNG')) {
-            sym = symbols.find(s => s.code === 'TERMINAL');
-          } else if (loai.includes('CẢNG CẠN')) {
-            sym = symbols.find(s => s.code === 'DRY_PORT');
-          } else if (loai.includes('CẦU CẢNG')) {
-            sym = symbols.find(s => s.code === 'QUAY');
-          } else if (loai.includes('KHU NEO ĐẬU')) {
-            sym = symbols.find(s => s.code === 'ANCHORAGE');
-          } else if (loai.includes('BẾN PHAO')) {
-            sym = symbols.find(s => s.code === 'MOORING');
-          } else if (loai.includes('TRÚ BÃO') || loai.includes('TRÁNH BÃO') || loai.includes('TRÁNH, TRÚ BÃO')) {
-            sym = symbols.find(s => s.code === 'SHELTER');
-          } else if (loai.includes('CHUYỂN TẢI')) {
-            sym = symbols.find(s => s.code === 'TRANSSHIP');
-          } else if (loai.includes('SỬA CHỮA') || loai.includes('ĐÓNG TÀU')) {
-            sym = symbols.find(s => s.code === 'SHIPYARD');
-          } else if (loai.includes('ĐÈN BIỂN') || loai.includes('DENBIEN')) {
-            sym = symbols.find(s => s.code === 'LIGHTHOUSE');
-          } else if (loai.includes('PHAO') || loai.includes('TIÊU') || loai.includes('PHAOTIEU')) {
-            sym = symbols.find(s => s.code === 'BUOY');
-          } else if (loai.includes('LUỒNG HÀNG HẢI') || loai.includes('LUONGHANGHAI')) {
-            sym = symbols.find(s => s.code === 'CHANNEL');
-          } else if (loai.includes('ĐÊ') || loai.includes('KÈ') || loai.includes('DEKE')) {
-            sym = symbols.find(s => s.code === 'BREAKWATER');
-          } else if (loai.includes('VTS')) {
-            sym = symbols.find(s => s.code === 'VTS' || s.code === 'VTS_INFRA');
-          } else if (loai.includes('RADAR')) {
-            sym = symbols.find(s => s.code === 'RADAR');
-          } else if (loai.includes('AIS')) {
-            sym = symbols.find(s => s.code === 'AIS');
-          } else if (loai.includes('CCTV')) {
-            sym = symbols.find(s => s.code === 'CCTV');
-          } else if (loai.includes('SCADA')) {
-            sym = symbols.find(s => s.code === 'SCADA');
+          if (
+            requestId === activePopupRequestRef.current
+            && activePopupRef.current === popup
+            && mapRef.current?.hasLayer(popup)
+          ) {
+            popup.setContent(detailsHtml);
           }
+        };
 
-          let marker;
+        searchKchtHitTargetsRef.current.push({
+          key: `search:${geometryType}:${record.id}`,
+          label: record.name || record.code || record.kchtTypeLabel || 'Kết cấu hạ tầng',
+          source: 'search',
+          geometry: hitGeometry,
+          openPopup: openPopupAt,
+        });
+
+          // Ưu tiên biểu tượng được gán trực tiếp cho bản ghi; nếu chưa có thì
+          // dùng biểu tượng mặc định theo mã loại nghiệp vụ, không suy đoán từ tên.
+          const defaultSymbolCode = getKchtSymbolCode(record.infrastructureType);
+          const sym = (record.mapSymbolId
+            ? symbols.find((symbol) => symbol.id === record.mapSymbolId)
+            : undefined)
+            || symbols.find((symbol) => symbol.code === defaultSymbolCode);
+
           let markerIcon: any;
           if (sym && sym.image) {
             markerIcon = L.divIcon({
@@ -3083,22 +3455,22 @@ export default function GISChartView() {
                   display: flex;
                   align-items: center;
                   justify-content: center;
-                  width: 32px;
-                  height: 32px;
-                  background: white;
-                  border: 2px solid #1890ff;
-                  border-radius: 50%;
-                  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                  width: 28px;
+                  height: 28px;
+                  background: ${surfaceCard};
+                  border: 2px solid ${actionPrimary};
+                  border-radius: ${radiusPill}px;
+                  box-shadow: ${shadowSm};
                   overflow: hidden;
                 ">
                   <img src="${sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`}"
-                       style="width: 22px; height: 22px; object-fit: contain;" />
+                       style="width: 20px; height: 20px; object-fit: contain;" />
                 </div>
               `,
               className: 'custom-map-icon',
-              iconSize: [32, 32],
-              iconAnchor: [16, 16],
-              popupAnchor: [0, -16],
+              iconSize: [28, 28],
+              iconAnchor: [14, 14],
+              popupAnchor: [0, -14],
             });
           } else {
             markerIcon = L.divIcon({
@@ -3107,124 +3479,70 @@ export default function GISChartView() {
                   display: flex;
                   align-items: center;
                   justify-content: center;
-                  width: 24px;
-                  height: 24px;
-                  background: #1890ff;
-                  border: 2px solid white;
-                  border-radius: 50%;
-                  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-                ">
-                  <span style="color: white; font-size: 10px; font-weight: bold;">
-                    ${record.kchtTypeLabel ? record.kchtTypeLabel.charAt(0) : '•'}
-                  </span>
-                </div>
+                  width: 16px;
+                  height: 16px;
+                  background: ${actionPrimary};
+                  border: 2px solid ${surfaceCard};
+                  border-radius: ${radiusPill}px;
+                  box-shadow: ${shadowSm};
+                "></div>
               `,
               className: 'default-map-icon',
-              iconSize: [24, 24],
-              iconAnchor: [12, 12],
-              popupAnchor: [0, -12],
+              iconSize: [16, 16],
+              iconAnchor: [8, 8],
+              popupAnchor: [0, -8],
             });
           }
           
-          // Always create a point marker for all record types (including LINE/POLYLINE)
-          // At low zoom, users see the marker icon; at high zoom >= 10, the full polyline/polygon shape is also drawn
-          marker = L.marker([lat, lon], {
-            icon: markerIcon,
-            pane: GIS_LAYER_INTERACTION_POLICY.kchtMarkerPane,
-            pmIgnore: true,
-          });
-            marker.on('click', async (e: any) => {
-              L.DomEvent.stopPropagation(e);
-              const popup = L.popup({ minWidth: 460, maxWidth: 500, autoPanPadding: [50, 100] })
-                .setLatLng([lat, lon])
-                .setContent('<div style="padding: 10px; font-size: 13px; font-family: sans-serif;">Đang tải thông tin chi tiết...</div>')
-                .openOn(mapRef.current);
-
-              activePopupRef.current = popup;
-              activePopupRecordRef.current = record;
-              popup.on('close', () => {
-                if (activePopupRef.current === popup) {
-                  activePopupRef.current = null;
-                  activePopupRecordRef.current = null;
-                }
-              });
-
-              const detailsHtml = await fetchAndFormatPopupDetails(record);
-              popup.setContent(detailsHtml);
+          // Only true point geometries receive a marker. Lines and polygons use
+          // their own geometry as the click target at every zoom level.
+          if (!isVectorGeometry) {
+            const marker = L.marker([lat, lon], {
+              icon: markerIcon,
+              pane: GIS_LAYER_INTERACTION_POLICY.kchtMarkerPane,
+              bubblingMouseEvents: false,
+              pmIgnore: true,
+            });
+            marker.on('click', (event: any) => {
+              L.DomEvent.stopPropagation(event.originalEvent || event);
+              if (mapFeatureClickHandlerRef.current) {
+                void mapFeatureClickHandlerRef.current(event.latlng);
+              }
             });
             markers.push(marker);
-
-          // Draw spatial shape (polyline / polygon) if coordinates exist
-          // Optimization: Only render complex vector shapes at zoom >= 10 to prevent map rendering lag at low zoom levels
-          if (record.toaDo && record.loaiHinhHoc && zoom >= 10) {
-            const shapeCoordinates = parseWktToLatLngs(record.toaDo, record.loaiHinhHoc);
-            if (shapeCoordinates.length > 0) {
-              let shapeLayer;
-              const geomType = record.loaiHinhHoc.toUpperCase();
-              if (geomType === 'LINE' || geomType === 'POLYLINE') {
-                shapeLayer = L.polyline(shapeCoordinates, {
-                  color: '#1890ff',
-                  weight: 4,
-                  opacity: 0.85,
-                  pane: GIS_LAYER_INTERACTION_POLICY.kchtGeometryPane,
-                  pmIgnore: true,
-                });
-
-                shapeLayer.on('click', async (e: any) => {
-                  L.DomEvent.stopPropagation(e);
-                  const popup = L.popup({ minWidth: 460, maxWidth: 500, autoPanPadding: [50, 100] })
-                    .setLatLng(e.latlng)
-                    .setContent('<div style="padding: 10px; font-size: 13px; font-family: sans-serif;">Đang tải thông tin chi tiết...</div>')
-                    .openOn(mapRef.current);
-
-                  activePopupRef.current = popup;
-                  activePopupRecordRef.current = record;
-                  popup.on('close', () => {
-                    if (activePopupRef.current === popup) {
-                      activePopupRef.current = null;
-                      activePopupRecordRef.current = null;
-                    }
-                  });
-
-                  const detailsHtml = await fetchAndFormatPopupDetails(record);
-                  popup.setContent(detailsHtml);
-                });
-              } else if (geomType === 'POLYGON' || geomType === 'AREA') {
-                shapeLayer = L.polygon(shapeCoordinates, {
-                  color: '#1890ff',
-                  weight: 2,
-                  fillColor: '#1890ff',
-                  fillOpacity: 0.35,
-                  pane: GIS_LAYER_INTERACTION_POLICY.kchtGeometryPane,
-                  pmIgnore: true,
-                });
-
-                shapeLayer.on('click', async (e: any) => {
-                  L.DomEvent.stopPropagation(e);
-                  const popup = L.popup({ minWidth: 460, maxWidth: 500, autoPanPadding: [50, 100] })
-                    .setLatLng(e.latlng)
-                    .setContent('<div style="padding: 10px; font-size: 13px; font-family: sans-serif;">Đang tải thông tin chi tiết...</div>')
-                    .openOn(mapRef.current);
-
-                  activePopupRef.current = popup;
-                  activePopupRecordRef.current = record;
-                  popup.on('close', () => {
-                    if (activePopupRef.current === popup) {
-                      activePopupRef.current = null;
-                      activePopupRecordRef.current = null;
-                    }
-                  });
-
-                  const detailsHtml = await fetchAndFormatPopupDetails(record);
-                  popup.setContent(detailsHtml);
-                });
-              }
-              if (shapeLayer) {
-                markers.push(shapeLayer);
-              }
-            }
           }
-      }
+
+          // Visual paths never own click behavior; the shared dispatcher resolves
+          // every KCHT and planning candidate at the selected screen point.
+          if (hitGeometry.type === 'LineString') {
+            const shapeCoordinates = hitGeometry.coordinates.map(
+              ([longitude, latitude]) => [latitude, longitude],
+            );
+            const shapeLayer = L.polyline(shapeCoordinates, {
+              color: actionPrimary,
+              weight: 4,
+              opacity: 0.85,
+              pane: GIS_LAYER_INTERACTION_POLICY.kchtGeometryPane,
+              interactive: false,
+              pmIgnore: true,
+            });
+            markers.push(shapeLayer);
+          } else if (hitGeometry.type === 'Polygon') {
+            const shapeCoordinates = hitGeometry.coordinates.map((ring) => ring.map(
+              ([longitude, latitude]) => [latitude, longitude],
+            ));
+            const shapeLayer = L.polygon(shapeCoordinates, {
+              color: actionPrimary,
+              weight: 2,
+              fillColor: actionPrimary,
+              fillOpacity: 0.35,
+              pane: GIS_LAYER_INTERACTION_POLICY.kchtGeometryPane,
+              interactive: false,
+              pmIgnore: true,
+            });
+            markers.push(shapeLayer);
+          }
+        }
     });
 
     if (markers.length > 0) {
@@ -3236,16 +3554,9 @@ export default function GISChartView() {
       }
     }
 
-    // Render dynamic vertex markers for lines in current viewport if zoom level is met
-    renderVertexMarkers();
-
     const endTime = performance.now();
     console.log(`[Map] Draw completed in ${(endTime - startTime).toFixed(2)} ms. Rendered ${selectedRecords.length} records (${markers.length} main layers).`);
-  }, [selectedInfrastructureResults, symbols, renderVertexMarkers]);
-
-  useEffect(() => {
-    renderVertexMarkersRef.current = renderVertexMarkers;
-  }, [renderVertexMarkers]);
+  }, [selectedInfrastructureResults, symbols]);
 
   useEffect(() => {
     renderSearchMarkersRef.current = renderSearchMarkers;
@@ -3609,7 +3920,7 @@ export default function GISChartView() {
     <div style={{ position: 'relative', height: 'calc(100vh - 64px)', boxSizing: 'border-box', overflow: 'hidden' }}>
       <div style={{ width: '100%', height: '100%' }}>
         {/* Main Map Viewer */}
-        <div style={{ position: 'relative', zIndex: 0, width: '100%', height: '100%' }}>
+        <div ref={mapShellRef} style={{ position: 'relative', zIndex: 0, width: '100%', height: '100%', background: surfacePage }}>
               <div
                 ref={mapContainerRef}
                 id="leaflet-map-container"
@@ -3651,62 +3962,91 @@ export default function GISChartView() {
                         boxShadow: shadowLg,
                         border: `1px solid ${borderDefault}`,
                         padding: spaceMd,
-                        width: '320px',
+                        width: 340,
+                        maxHeight: '68vh',
+                        overflowY: 'auto',
                         fontFamily: fontSans,
                       }}
                       onMouseDown={(e) => e.stopPropagation()}
                     >
-                      <div style={{ fontWeight: fontWeightBold, fontSize: fontSizeMd, color: colors.sidebarBg, letterSpacing: '0.5px', borderBottom: `1px solid ${borderDefault}`, paddingBottom: spaceSm, marginBottom: spaceMd }}>
-                        GHI CHÚ QUY HOẠCH:
+                      <div style={{ fontWeight: fontWeightBold, fontSize: fontSizeLg, color: colors.sidebarBg, borderBottom: `1px solid ${borderDefault}`, paddingBottom: spaceSm, marginBottom: spaceMd }}>
+                        Chú giải bản đồ
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{ fontWeight: fontWeightBold, fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceSm }}>
+                        Biểu tượng kết cấu hạ tầng
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm, marginBottom: spaceMd }}>
+                        {KCHT_GIS_TYPE_OPTIONS.map((option) => {
+                          const symbolCode = getKchtSymbolCode(option.value);
+                          const symbol = symbols.find((item) => item.code === symbolCode);
+                          const imageSource = symbol?.image
+                            ? (symbol.image.startsWith('data:') ? symbol.image : `data:image/png;base64,${symbol.image}`)
+                            : undefined;
+                          return (
+                            <div key={option.value} style={{ display: 'flex', alignItems: 'center', gap: spaceSm }}>
+                              <div style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                {imageSource ? (
+                                  <img src={imageSource} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} />
+                                ) : (
+                                  <span style={{ width: spaceSm, height: spaceSm, borderRadius: radiusPill, background: actionPrimary }} />
+                                )}
+                              </div>
+                              <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{option.label}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div style={{ fontWeight: fontWeightBold, fontSize: fontSizeMd, color: textSecondary, borderTop: `1px solid ${borderDefault}`, paddingTop: spaceMd, marginBottom: spaceSm }}>
+                        Quy hoạch cảng biển
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}>
                         {/* Bến cảng hiện hữu */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div style={{ width: '24px', height: '12px', background: PLANNING_STATUS_COLORS.existingPort, border: `1px solid ${PLANNING_STATUS_COLORS.existingPort}`, borderRadius: '2px' }} />
-                          <span style={{ fontSize: '13px', color: '#444' }}>Bến cảng hiện hữu</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
+                          <div style={{ width: spaceLg, height: spaceMd, background: PLANNING_STATUS_COLORS.existingPort, border: `1px solid ${PLANNING_STATUS_COLORS.existingPort}`, borderRadius: radiusSm }} />
+                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Bến cảng hiện hữu</span>
                         </div>
                         {/* Bến cảng quy hoạch đến năm 2030 */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div style={{ width: '24px', height: '12px', background: PLANNING_STATUS_COLORS.planned2030, border: `1px solid ${PLANNING_STATUS_COLORS.planned2030}`, borderRadius: '2px' }} />
-                          <span style={{ fontSize: '13px', color: '#444' }}>Bến cảng quy hoạch đến năm 2030</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
+                          <div style={{ width: spaceLg, height: spaceMd, background: PLANNING_STATUS_COLORS.planned2030, border: `1px solid ${PLANNING_STATUS_COLORS.planned2030}`, borderRadius: radiusSm }} />
+                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Bến cảng quy hoạch đến năm 2030</span>
                         </div>
                         {/* Bến cảng phát triển có điều kiện */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div style={{ width: '24px', height: '12px', background: PLANNING_STATUS_COLORS.conditionalDevelopment, border: `1px solid ${PLANNING_STATUS_COLORS.conditionalDevelopment}`, borderRadius: '2px' }} />
-                          <span style={{ fontSize: '13px', color: '#444' }}>Bến cảng phát triển có điều kiện</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
+                          <div style={{ width: spaceLg, height: spaceMd, background: PLANNING_STATUS_COLORS.conditionalDevelopment, border: `1px solid ${PLANNING_STATUS_COLORS.conditionalDevelopment}`, borderRadius: radiusSm }} />
+                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Bến cảng phát triển có điều kiện</span>
                         </div>
                         {/* Bến cảng quy hoạch tầm nhìn đến năm 2050 */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div style={{ width: '24px', height: '12px', background: PLANNING_STATUS_COLORS.vision2050, border: `1px solid ${PLANNING_STATUS_COLORS.vision2050}`, borderRadius: '2px' }} />
-                          <span style={{ fontSize: '13px', color: '#444' }}>Bến cảng quy hoạch tầm nhìn đến năm 2050</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
+                          <div style={{ width: spaceLg, height: spaceMd, background: PLANNING_STATUS_COLORS.vision2050, border: `1px solid ${PLANNING_STATUS_COLORS.vision2050}`, borderRadius: radiusSm }} />
+                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Bến cảng quy hoạch tầm nhìn đến năm 2050</span>
                         </div>
                         {/* Vùng đón trả hoa tiêu quy hoạch */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
                           <svg width="24" height="12" viewBox="0 0 24 12" style={{ display: 'block' }}>
                             <line x1="2" y1="10" x2="22" y2="2" stroke={PLANNING_STATUS_COLORS.plannedPilotArea} strokeWidth="3" strokeLinecap="round" />
                           </svg>
-                          <span style={{ fontSize: '13px', color: '#444' }}>Vùng đón trả hoa tiêu quy hoạch</span>
+                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Vùng đón trả hoa tiêu quy hoạch</span>
                         </div>
                         {/* Vùng đón trả hoa tiêu hiện trạng */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
                           <svg width="24" height="12" viewBox="0 0 24 12" style={{ display: 'block' }}>
                             <line x1="2" y1="10" x2="22" y2="2" stroke={PLANNING_STATUS_COLORS.existingPilotArea} strokeWidth="2" strokeLinecap="round" />
                           </svg>
-                          <span style={{ fontSize: '13px', color: '#444' }}>Vùng đón trả hoa tiêu hiện trạng</span>
+                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Vùng đón trả hoa tiêu hiện trạng</span>
                         </div>
                         {/* Vùng neo hiện trạng */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
                           <svg width="24" height="12" viewBox="0 0 24 12" style={{ display: 'block' }}>
                             <line x1="2" y1="10" x2="22" y2="2" stroke={PLANNING_STATUS_COLORS.existingAnchorage} strokeWidth="2" strokeLinecap="round" />
                           </svg>
-                          <span style={{ fontSize: '13px', color: '#444' }}>Vùng neo hiện trạng</span>
+                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Vùng neo hiện trạng</span>
                         </div>
                         {/* Vùng neo quy hoạch */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
                           <svg width="24" height="12" viewBox="0 0 24 12" style={{ display: 'block' }}>
                             <line x1="2" y1="10" x2="22" y2="2" stroke={PLANNING_STATUS_COLORS.plannedAnchorage} strokeWidth="2" strokeLinecap="round" />
                           </svg>
-                          <span style={{ fontSize: '13px', color: '#444' }}>Vùng neo quy hoạch</span>
+                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Vùng neo quy hoạch</span>
                         </div>
                       </div>
                     </div>
@@ -3795,6 +4135,94 @@ export default function GISChartView() {
                   borderRadius: radiusMd,
                 }}
               />
+              {mapInstance && (
+                <div
+                  aria-label="Điều khiển bản đồ"
+                  style={{
+                    position: 'absolute',
+                    top: controlHeight + spaceMd + spaceSm,
+                    right: spaceSm,
+                    zIndex: 1000,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: spaceXs,
+                  }}
+                >
+                  {[
+                    { key: 'zoom-in', label: 'Phóng to', icon: <PlusOutlined />, action: () => mapInstance.zoomIn() },
+                    { key: 'zoom-out', label: 'Thu nhỏ', icon: <MinusOutlined />, action: () => mapInstance.zoomOut() },
+                    {
+                      key: 'fullscreen',
+                      label: isMapFullscreen ? 'Thoát toàn màn hình' : 'Xem toàn màn hình',
+                      icon: isMapFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />,
+                      action: () => void toggleMapFullscreen(),
+                    },
+                  ].map((control) => (
+                    <Button
+                      key={control.key}
+                      aria-label={control.label}
+                      title={control.label}
+                      icon={control.icon}
+                      onClick={control.action}
+                      style={{
+                        width: controlHeight,
+                        height: controlHeight,
+                        color: actionPrimary,
+                        background: surfaceCard,
+                        borderColor: borderDefault,
+                        borderRadius: radiusMd,
+                        boxShadow: shadowMd,
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+              {mapInstance && (
+                <div
+                  aria-label="Công cụ vẽ nhanh"
+                  style={{
+                    position: 'absolute',
+                    bottom: spaceMd,
+                    left: searchPanelVisible && screens.md && !isMapFullscreen
+                      ? desktopSearchPanelWidth + spaceMd
+                      : spaceMd,
+                    zIndex: 1000,
+                    display: 'flex',
+                    gap: spaceXs,
+                    padding: spaceXs,
+                    background: surfaceCard,
+                    border: `1px solid ${borderDefault}`,
+                    borderRadius: radiusMd,
+                    boxShadow: shadowMd,
+                  }}
+                >
+                  {[
+                    { key: 'polygon' as const, label: 'Vẽ vùng đa giác', icon: <QuickPolygonIcon /> },
+                    { key: 'circle' as const, label: 'Vẽ vùng tròn', icon: <QuickCircleIcon /> },
+                    { key: 'edit' as const, label: 'Chỉnh sửa hình vẽ', icon: <EditOutlined /> },
+                  ].map((tool) => {
+                    const isActive = quickMapMode === tool.key;
+                    return (
+                      <Button
+                        key={tool.key}
+                        type={isActive ? 'primary' : 'default'}
+                        aria-label={tool.label}
+                        title={tool.label}
+                        icon={tool.icon}
+                        onClick={() => selectQuickMapMode(tool.key)}
+                        style={{
+                          width: controlHeight,
+                          height: controlHeight,
+                          color: isActive ? surfaceCard : textSecondary,
+                          background: isActive ? actionPrimary : surfaceCard,
+                          borderColor: isActive ? actionPrimary : borderDefault,
+                          borderRadius: radiusMd,
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              )}
               {/* Floating Search Button when panel is hidden */}
               {!searchPanelVisible && (
                 <Button
@@ -3888,9 +4316,16 @@ export default function GISChartView() {
                         <Select
                           mode="multiple"
                           showSearch
+                          maxTagCount={2}
+                          maxTagTextLength={18}
+                          maxTagPlaceholder={(omittedValues) => (
+                            <span title={omittedValues.map((item) => String(item.label ?? item.value)).join(', ')}>
+                              +{omittedValues.length}
+                            </span>
+                          )}
                           filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
                           placeholder="Chọn loại kết cấu..."
-                          style={selectStyle}
+                          style={{ ...selectStyle, width: '100%' }}
                           options={KCHT_GIS_TYPE_OPTIONS}
                         />
                       </Form.Item>
@@ -3938,20 +4373,14 @@ export default function GISChartView() {
                         <Button
                           icon={<ReloadOutlined />}
                           onClick={() => {
-                            hasSearchedRef.current = false;
-                            setHasSearched(false);
                             setSearchError(undefined);
                             setSearchPage(1);
                             searchForm.resetFields();
-                            setInfrastructureResults([]);
-                            setTotalSearchElements(0);
                             setSelectedRowKeys([]);
                             if (searchMarkersGroupRef.current) {
                               searchMarkersGroupRef.current.clearLayers();
                             }
-                            if (searchVertexMarkersGroupRef.current) {
-                              searchVertexMarkersGroupRef.current.clearLayers();
-                            }
+                            void handleSearchInfrastructure(1, searchPageSize);
                           }}
                           shape="circle"
                           title="Đặt lại bộ lọc"
@@ -3999,6 +4428,7 @@ export default function GISChartView() {
                       </div>
                       <div
                         ref={tableWrapperRef}
+                        data-gis-search-results
                         style={{
                           ...cardStyle,
                           minHeight: 0,
@@ -4019,7 +4449,6 @@ export default function GISChartView() {
                               dataSource={infrastructureResults}
                               rowKey="id"
                               loading={searchingInfrastructure}
-                              dense
                               fill
                               scroll={{ x: 'max-content', y: tableHeight }}
                               emptyState={<EmptyState description={hasSearched ? 'Không tìm thấy kết cấu hạ tầng phù hợp' : 'Nhập điều kiện và chọn Tìm kiếm'} />}
@@ -4042,7 +4471,7 @@ export default function GISChartView() {
                               data-gis-pagination
                               style={{
                                 flex: '0 0 auto',
-                                paddingTop: spaceLg,
+                                paddingTop: 0,
                                 background: surfaceCard,
                               }}
                             >
@@ -4339,21 +4768,28 @@ export default function GISChartView() {
           background: #f5f5f5;
         }
         .gis-kcht-click-target-wrapper {
+          align-items: center;
           background: transparent;
           border: 0;
+          display: flex;
+          justify-content: center;
         }
         .gis-kcht-click-target {
           align-items: center;
           background: var(--color-primary);
-          border: 2px solid var(--bg-container);
-          border-radius: 999px;
+          border: ${spaceXs / 2}px solid var(--bg-container);
+          border-radius: ${radiusPill}px;
           box-shadow: var(--shadow-card-hover);
           box-sizing: border-box;
           cursor: pointer;
           display: flex;
-          height: 24px;
+          height: ${spaceMd}px;
           justify-content: center;
-          width: 24px;
+          width: ${spaceMd}px;
+        }
+        [data-gis-search-results] .list-view-table .ant-table-thead > tr > th,
+        [data-gis-search-results] .list-view-table .ant-table-tbody > tr > td {
+          font-size: ${fontSizeMd}px !important;
         }
       `}} />
     </div>

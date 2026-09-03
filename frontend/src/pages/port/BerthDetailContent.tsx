@@ -255,11 +255,11 @@ export default function BerthDetailContent({
           ),
         },
         {
-          key: 'infra', label: 'Danh sách kết cấu hạ tầng khác thuộc bến cảng',
+          key: 'infra', label: 'Kết cấu hạ tầng',
           children: (
             <div style={{ paddingTop: 3 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: spaceSm }}>
-                <span style={{ ...detailLabelStyle, display: 'inline-block' }}>Loại kết cấu hạ tầng</span>
+                <span style={{ ...detailLabelStyle, display: 'inline-block' }}>Kết cấu hạ tầng thuộc bến cảng</span>
                 <Select allowClear placeholder="Chọn loại kết cấu hạ tầng" value={infraTypeFilter || undefined}
                   onChange={(v: string | undefined) => setInfraTypeFilter(v || '')}
                   options={[{ value: 'Pier', label: 'Cầu cảng' }]} style={{ width: 260, borderRadius: 999, height: 40 }} />

@@ -1,0 +1,106 @@
+{
+  "triage_id": "TRI-1788420943387-ded9",
+  "created_at": 1788420943387,
+  "request_summary": "Sửa lỗi header cột action hở khi cuộn ngang — bỏ y:550/y:500 khỏi scroll trong 5 file list pages",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/dai-ttdh/DaiTtdhListPage.tsx",
+      "frontend/src/pages/port/DryPortListPage.tsx",
+      "frontend/src/pages/port/PierListPage.tsx",
+      "frontend/src/pages/ship-repair-yard/ShipRepairYardListPage.tsx",
+      "frontend/src/pages/transfer-area/TransferAreaListPage.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/dai-ttdh/DaiTtdhListPage.tsx",
+      "frontend/src/pages/port/DryPortListPage.tsx",
+      "frontend/src/pages/port/PierListPage.tsx",
+      "frontend/src/pages/ship-repair-yard/ShipRepairYardListPage.tsx",
+      "frontend/src/pages/transfer-area/TransferAreaListPage.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C1: 5 edit-target files in one package, no one-way door — pre-declared write scope required (5 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Bảng danh sách các module: cầu cảng, CS sửa chữa, khu chuyển tải, cảng cạn, đài TTDH",
+  "blast_radius": 5,
+  "done_oracle": "Header cột Thao tác không còn hở khi cuộn ngang trên cả 5 bảng danh sách",
+  "verification_commands": [
+    {
+      "command": "cd frontend && npx tsc --noEmit --pretty",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 120000
+    }
+  ],
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "frontend/src/pages/dai-ttdh/DaiTtdhListPage.tsx",
+    "frontend/src/pages/port/DryPortListPage.tsx",
+    "frontend/src/pages/port/PierListPage.tsx",
+    "frontend/src/pages/ship-repair-yard/ShipRepairYardListPage.tsx",
+    "frontend/src/pages/transfer-area/TransferAreaListPage.tsx"
+  ],
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/port/PierListPage.tsx",
+      "line": 976,
+      "quote": "scroll={{ x: 'max-content', y: 500 }} />",
+      "source_hash": "82b884af248171d7d9bf929161984a6337b0498d072e2fc421bb371ffb750f6d",
+      "quote_hash": "f0fb6c88694d6a135b6f25cde4191c8dcd8c64ea81f86f46d4d9ba203a4eeef6",
+      "note": "Bỏ y:500"
+    },
+    {
+      "file": "frontend/src/pages/ship-repair-yard/ShipRepairYardListPage.tsx",
+      "line": 1244,
+      "quote": "scroll={{ x: 'max-content', y: 550 }}",
+      "source_hash": "6c9187aa310e1601e57118b02b6bcc78d7e4bfc6e0586f387c18b8d68c7cc014",
+      "quote_hash": "6c5e62bdc2d27c05bb8f10789cced2453ff5b9d877076c542d565c3ae2aaceda",
+      "note": "Bỏ y:550"
+    },
+    {
+      "file": "frontend/src/pages/transfer-area/TransferAreaListPage.tsx",
+      "line": 1235,
+      "quote": "scroll={{ x: 'max-content', y: 550 }}",
+      "source_hash": "00fc7769d9fb07542a5ed1469ba61fd9e9f16e7c5940ffc6d160ea91c0714b6d",
+      "quote_hash": "6c5e62bdc2d27c05bb8f10789cced2453ff5b9d877076c542d565c3ae2aaceda",
+      "note": "Bỏ y:550"
+    },
+    {
+      "file": "frontend/src/pages/port/DryPortListPage.tsx",
+      "line": 1644,
+      "quote": "scroll={{ x: 'max-content', y: 550 }}",
+      "source_hash": "8571879407b6b847dfce291903c9283b06a3b9fc741654e8b66ebd63e96381f5",
+      "quote_hash": "6c5e62bdc2d27c05bb8f10789cced2453ff5b9d877076c542d565c3ae2aaceda",
+      "note": "Bỏ y:550"
+    },
+    {
+      "file": "frontend/src/pages/dai-ttdh/DaiTtdhListPage.tsx",
+      "line": 1057,
+      "quote": "scroll={{ x: 'max-content', y: 550 }}",
+      "source_hash": "af7aff0b0461898a37581016487ac9359bb9ee5929df38be69c3259af7347f59",
+      "quote_hash": "6c5e62bdc2d27c05bb8f10789cced2453ff5b9d877076c542d565c3ae2aaceda",
+      "note": "Bỏ y:550"
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1788420776345-7e78",
+    "breach_kind": "undeclared_path"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "603cbfbda62308bba2e0f1f352e55eaecaad557d",
+    "dirty": true,
+    "captured_at": 1788420943805
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "triage_id": "TRI-1788415508102-e4fe",
+  "created_at": 1788415508102,
+  "request_summary": "Change detailedLocation input to TextArea, change infra tab add button to match GPS tab style",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/services/port/PortForm.tsx",
+      "frontend/src/services/port/PortListPage.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/services/port/PortForm.tsx",
+      "frontend/src/services/port/PortListPage.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Form Tạo mới/Sửa cảng biển - Tab Công trình KCHT trực thuộc",
+  "blast_radius": 2,
+  "done_oracle": "detailedLocation uses TextArea, infra add button in header uses outlineButtonStyle height:32 fontSizeSm",
+  "verification_commands": [
+    {
+      "command": "npm exec -- tsc --noEmit",
+      "cwd": "frontend",
+      "timeout_ms": 90000
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "AUTO-C0-1788409821151",
+    "breach_kind": "loc_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "c1572411e1ce099b4b5c60656bee6d32387a9671",
+    "dirty": true,
+    "captured_at": 1788415508653
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

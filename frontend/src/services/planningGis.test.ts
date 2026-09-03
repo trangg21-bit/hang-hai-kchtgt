@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_SHOW_PLANNING,
   GIS_LAYER_INTERACTION_POLICY,
+  getMapClickResolution,
   getPlanningAciColor,
   getPlanningFeatureColor,
   getPlanningFeatureKey,
@@ -18,13 +19,21 @@ describe('planningGis', () => {
     expect(DEFAULT_SHOW_PLANNING).toBe(true);
   });
 
-  it('keeps KCHT click markers above planning without raising complete KCHT geometry', () => {
+  it('uses panes only for drawing order while click priority stays centralized', () => {
     expect(GIS_LAYER_INTERACTION_POLICY).toEqual({
       kchtGeometryPane: 'overlayPane',
       planningPane: 'planningPane',
       planningPaneZIndex: 550,
       kchtMarkerPane: 'markerPane',
     });
+  });
+
+  it('opens a chooser whenever planning and KCHT overlap', () => {
+    expect(getMapClickResolution(0, 0)).toBe('none');
+    expect(getMapClickResolution(2, 0)).toBe('planning');
+    expect(getMapClickResolution(0, 1)).toBe('kcht');
+    expect(getMapClickResolution(0, 2)).toBe('choice');
+    expect(getMapClickResolution(1, 1)).toBe('choice');
   });
 
   it('uses the same cache key for API and Leaflet geometry type casing', () => {

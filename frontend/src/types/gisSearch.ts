@@ -73,6 +73,7 @@ export interface KchtGisSearchResult {
   provinceId?: number;
   location?: string;
   diaChiChiTiet?: string;
+  mapSymbolId?: string;
   geometryType?: string;
   coordinates?: string;
   toaDo?: string;

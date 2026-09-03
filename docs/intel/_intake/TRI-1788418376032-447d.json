@@ -1,0 +1,67 @@
+{
+  "triage_id": "TRI-1788418376032-447d",
+  "created_at": 1788418376032,
+  "request_summary": "Sửa lỗi SearchOutlined not defined — thiếu import icon",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/services/buoy/BuoyListPage.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/services/buoy/BuoyListPage.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn danh sách Phao tiêu (BuoyListPage)",
+  "blast_radius": 1,
+  "done_oracle": "Màn danh sách Phao tiêu render bình thường, không còn lỗi SearchOutlined not defined",
+  "verification_commands": [
+    {
+      "command": "cd frontend && npx tsc --noEmit --pretty",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 120000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/services/buoy/BuoyListPage.tsx",
+      "line": 19,
+      "quote": "import { ExclamationCircleOutlined } from '@ant-design/icons';",
+      "source_hash": "01c4a38cfecb01e743db083b19f81048e7f70944c912b7fbff838d1da0261501",
+      "quote_hash": "28b4d9695bc846a779a0c29e09ec5b979c05e204ac3a39f316ed8b5e50bc9e89",
+      "note": "Thiếu SearchOutlined — dùng ở dòng 1954"
+    },
+    {
+      "file": "frontend/src/services/buoy/BuoyListPage.tsx",
+      "line": 1954,
+      "quote": "icon={<SearchOutlined />}",
+      "source_hash": "01c4a38cfecb01e743db083b19f81048e7f70944c912b7fbff838d1da0261501",
+      "quote_hash": "7df44e05df30836c71d20583e409d3b61e187b2e13e29cd0e7dbd3f977177540",
+      "note": "Dòng 1954"
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "AUTO-C0-1788417576360",
+    "breach_kind": "file_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "c1572411e1ce099b4b5c60656bee6d32387a9671",
+    "dirty": true,
+    "captured_at": 1788418376289
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}
