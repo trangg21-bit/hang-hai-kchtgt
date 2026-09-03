@@ -1961,6 +1961,7 @@ export default function GISChartView() {
     const defaultOrgUnitId = findDefaultMaritimeAuthorityOrgId(orgUnits);
 
     initialInfrastructureSearchRef.current = true;
+    // setFieldValue đồng bộ trước khi đọc getFieldsValue trong lần tìm kiếm đầu.
     if (defaultOrgUnitId) searchForm.setFieldValue('orgUnitId', defaultOrgUnitId);
     void handleSearchInfrastructure(1, searchPageSize);
   }, [handleSearchInfrastructure, orgUnits, orgUnitsReady, searchForm, searchPageSize]);

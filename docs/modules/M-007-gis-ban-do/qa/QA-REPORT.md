@@ -135,6 +135,7 @@ Execute unit tests and E2E validation for all 5 features of the GIS/Bản đồ 
 - Popup Quy hoạch cảng biển được mở rộng khoảng 410–440px để hạn chế xuống dòng; nội dung dùng cỡ chữ chuẩn 13px, tiêu đề 15px và giới hạn vùng cuộn tối đa 390–420px.
 - Các lớp KCHT và Quy hoạch cảng biển tiếp tục dùng bộ phân giải click chung; điều khiển zoom, chuột phải và công cụ vẽ không thay đổi thứ tự hay khả năng hit-test của hai nguồn.
 - Popup KCHT chuyển mã tỉnh, loại kết cấu, trạng thái vận hành và UUID luồng hàng hải thành nhãn nghiệp vụ. API kết quả trả thêm `mapSymbolId`; marker ưu tiên biểu tượng gán trực tiếp, fallback theo mã loại KCHT. Chú giải hiển thị đồng thời biểu tượng KCHT và ký hiệu Quy hoạch cảng biển.
+- Truy vấn mặc định "Tất cả loại" không còn dừng ở Đài TTDH do lệch schema: migration khôi phục hai cột tọa độ mà entity `coastal_station_vts` và luồng CRUD đang sử dụng, đồng thời backfill từ kho GIS tập trung.
 
 ### Kiểm thử hồi quy
 
@@ -144,6 +145,7 @@ Execute unit tests and E2E validation for all 5 features of the GIS/Bản đồ 
 | `gisGeometry.test.ts` + `planningGis.test.ts` | 17/17 pass: hit-test và phân giải click KCHT/QHCB không hồi quy |
 | `kchtGisPresentation.test.ts` + `gisSearchTypeOptions.test.ts` | 7/7 pass: đơn vị Cục mặc định, nhãn nghiệp vụ, mã biểu tượng và danh mục loại KCHT |
 | `KchtGis155ServiceTest` + `KchtGis155RestControllerTest` | 7/7 pass: API phân trang, tham số tương thích và truyền đúng `mapSymbolId` |
+| Local PostgreSQL smoke test | Pass: `search` với toàn bộ loại KCHT chạy hết các repository trên schema local, không còn lỗi thiếu cột |
 | TypeScript `--noEmit` | Pass |
 | Vite production build | Pass sau rebase main mới nhất, 4.120 module được biên dịch |
 | Toàn bộ Vitest | 101 test pass; riêng suite `AppLayout.test.tsx` không khởi tạo do lỗi đóng gói ESM/CJS sẵn có giữa `@ant-design/icons` và `@ant-design/colors` |
