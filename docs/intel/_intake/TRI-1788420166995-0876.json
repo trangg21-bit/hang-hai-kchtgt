@@ -1,0 +1,77 @@
+{
+  "triage_id": "TRI-1788420166995-0876",
+  "created_at": 1788420166995,
+  "request_summary": "Sửa Đơn vị khai thác nhà trạm phao tiêu dùng DEFAULT_OPERATING_ORGANIZATIONS trong form và list",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/services/buoy-station/BuoyStationFormContent.tsx",
+      "frontend/src/services/buoy-station/BuoyStationListPage.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/services/buoy-station/BuoyStationFormContent.tsx",
+      "frontend/src/services/buoy-station/BuoyStationListPage.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Quản lý nhà trạm phao tiêu — Đơn vị khai thác",
+  "blast_radius": 2,
+  "done_oracle": "\"Đơn vị khai thác\" trong form thêm mới/chỉnh sửa và bảng danh sách nhà trạm phao tiêu dùng DEFAULT_OPERATING_ORGANIZATIONS",
+  "verification_commands": [
+    {
+      "command": "cd frontend && npx tsc --noEmit --pretty",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 120000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/services/buoy-station/BuoyStationFormContent.tsx",
+      "line": 15,
+      "quote": "import { organizationService } from '../../services/organizationService';",
+      "source_hash": "acd48bcf213276a6d975db80a1a888230a7624c1f3d09d7e7e790ccb3a0a7668",
+      "quote_hash": "4443cd7aec3ed118b451bd409080205f2b1bafd214352733d2e22894f9cc2f93",
+      "note": "Cần thêm import DEFAULT_OPERATING_ORGANIZATIONS"
+    },
+    {
+      "file": "frontend/src/services/buoy-station/BuoyStationFormContent.tsx",
+      "line": 388,
+      "quote": "<Select placeholder=\"Chọn đơn vị khai thác...\" options={orgUnitOptions} showSearch allowClear filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))} style={selectStyle} />",
+      "source_hash": "acd48bcf213276a6d975db80a1a888230a7624c1f3d09d7e7e790ccb3a0a7668",
+      "quote_hash": "ee84826d2c85bd9e9600b390a2b503f957058c85d38b8f8d7103bf286208cd58",
+      "note": "Cần đổi options={orgUnitOptions} sang dùng DEFAULT_OPERATING_ORGANIZATIONS"
+    },
+    {
+      "file": "frontend/src/services/buoy-station/BuoyStationListPage.tsx",
+      "line": 1059,
+      "quote": "render: (v: string) => (v ? (orgMap.get(v) || v) : '—'),",
+      "source_hash": "f448c2c7cf51d3cd5effcecc518366cd72aab7275fb6e3062871d3ce30896dcb",
+      "quote_hash": "306a8514197adb89c038c2d7f9bd79bd47465fc6f8f07a168650000daf5ba397",
+      "note": "Cần đổi sang dùng DEFAULT_OPERATING_ORGANIZATIONS"
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1788419128498-fd37",
+    "breach_kind": "file_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "1fdbfaa2ed310c4c311296709bc3ec2d2038144f",
+    "dirty": true,
+    "captured_at": 1788420167272
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}
