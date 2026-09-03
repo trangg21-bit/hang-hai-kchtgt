@@ -11,12 +11,12 @@ import {
 } from './schema';
 import {
   colors, sidebarBg, actionPrimary, statusOperational, statusAttention, statusCritical, surfaceCard,
-  textPrimary, textSecondary, textTertiary,
+  textPrimary, textTertiary,
   fontSizeMd, fontSizeSm, fontSizeLg, fontWeightBold,
   spaceSm, spaceMd, spaceFormField, statusBadgeStyle,
   outlineButtonStyle, primaryButtonStyle,
 } from '../../themetokenchk';
-import { resolveOrgFullPath, type OrgUnitTreeOption } from '../../components/org-unit';
+import type { OrgUnitTreeOption } from '../../components/org-unit';
 import DetailTable from '../../components/shared/DetailTable';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 
@@ -134,8 +134,11 @@ export default function BuoyStationDetailContent({
   symbolImageMap,
 }: BuoyStationDetailContentProps) {
   const r = selectedRecord;
-  const [systemOpen, setSystemOpen] = useState(true);
   const [gisModalOpen, setGisModalOpen] = useState(false);
+  const [operationOpen, setOperationOpen] = useState(true);
+  const [maintenanceOpen, setMaintenanceOpen] = useState(true);
+  const [incidentOpen, setIncidentOpen] = useState(true);
+  const [indexOpen, setIndexOpen] = useState(true);
 
   const orgName = (id: string | undefined) => (id ? (orgUnits.find((o) => o.id === id)?.name || id) : '—');
   const userName = (id: string | number | undefined | null) =>
@@ -173,56 +176,32 @@ export default function BuoyStationDetailContent({
           children: (
             <div style={{ paddingTop: 3 }}>
               {gridRows([
-                ['Đơn vị quản lý', (() => {
-                    const orgPath = resolveOrgFullPath(orgUnits, r.unitId);
-                    if (!orgPath || orgPath.length === 0) return '—';
-                    const levelColors = [textPrimary, textSecondary, textTertiary];
-                    return (
-                      <span>
-                        {orgPath.map((n, i) => (
-                          <span key={i} style={{ display: 'block', color: levelColors[Math.min(i, levelColors.length - 1)], fontWeight: fontWeightBold }}>{n}</span>
-                        ))}
-                      </span>
-                    );
-                  })()],
-                ['Đơn vị khai thác', <span style={{ fontWeight: fontWeightBold }}>{orgName(r.operatingOrgId)}</span>],
                 ['Mã nhà trạm', <span style={statusBadgeStyle(actionPrimary)}>{r.code || '—'}</span>],
                 ['Tên nhà trạm', <span style={{ fontWeight: fontWeightBold }}>{r.name || '—'}</span>],
+                ['Đơn vị quản lý', (() => {
+                    const name = orgUnits.find((o) => o.id === r.unitId)?.name || r.unitId || '—';
+                    return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
+                  })()],
+                ['Đơn vị khai thác', <span style={{ fontWeight: fontWeightBold }}>{orgName(r.operatingOrgId)}</span>],
                 ['Thuộc cảng biển', r.portId ? (portMap.get(r.portId) || r.portId) : '—'],
                 ['Thuộc luồng hàng hải', r.waterwayId ? (waterwayMap.get(r.waterwayId) || r.waterwayId) : '—'],
                 ['Tuyến luồng hàng hải', r.waterwayRouteId ? (routeMap.get(r.waterwayRouteId) || r.waterwayRouteId) : '—'],
                 ['Địa điểm (Tỉnh/Thành Phố)', r.province || '—'],
                 ['Địa điểm chi tiết', r.address || '—'],
                 ['Thời điểm xây dựng', formatDate(r.constructionDate)],
+                ['Tình trạng', (() => { const s = CONDITION_STYLE[r.condition || ''] || { color: textTertiary, label: r.condition || '—' }; return <span style={statusBadgeStyle(s.color)}>{s.label}</span>; })()],
+              ])}
+              {/* ── Toggle: Chỉ số tổng hợp (giống bến phao — BuoyBerthDetailContent) ── */}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setIndexOpen(!indexOpen)}>
+                <span style={{ color: indexOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{indexOpen ? '▼' : '▶'} Chỉ số tổng hợp</span>
+              </button>
+              {indexOpen && gridRows([
                 ['Tổng diện tích (m²)', r.totalArea != null ? r.totalArea : '—'],
                 ['Diện tích sử dụng (m²)', r.usableArea != null ? r.usableArea : '—'],
                 ['Số lượng nhân sự bố trí', r.staffCount != null ? r.staffCount : '—'],
                 ['Năm bảo trì gần nhất', r.lastMaintenanceYear != null ? r.lastMaintenanceYear : '—'],
                 ['Ghi chú', r.note || '—'],
-                ['Tình trạng', (() => { const s = CONDITION_STYLE[r.condition || ''] || { color: textTertiary, label: r.condition || '—' }; return <span style={statusBadgeStyle(s.color)}>{s.label}</span>; })()],
-                ['Trạng thái phê duyệt', statusBadge],
               ])}
-              <div style={{ cursor: 'pointer', marginTop: 10, paddingLeft: 12 }} onClick={() => setSystemOpen(!systemOpen)}>
-                <span style={{ color: systemOpen ? '#1677ff' : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{systemOpen ? '▼' : '▶'} Thông tin hệ thống</span>
-              </div>
-              {systemOpen && (
-                <div style={{ marginTop: 4 }}>
-                  {gridRows([
-                    ['Người tạo', <span style={{ fontWeight: fontWeightBold }}>{userName(r.createdBy)}</span>],
-                    ['Ngày tạo', formatDateTime(r.createdAt)],
-                    ['Người cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userName(r.updatedByName)}</span>],
-                    ['Ngày cập nhật', formatDateTime(r.updatedAt)],
-                    ['Người gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userName(r.sentApprovedBy)}</span>],
-                    ['Ngày gửi phê duyệt', formatDateTime(r.sentApprovedDate)],
-                    ['Người phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level1ApprovedBy)}</span>],
-                    ['Ngày phê duyệt cấp Cảng vụ/Chi cục', formatDateTime(r.level1ApprovedDate)],
-                    ['Người phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level2ApprovedBy)}</span>],
-                    ['Ngày phê duyệt cấp Cục', formatDateTime(r.level2ApprovedDate)],
-                    ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.level1ApprovalContent || '—'],
-                    ['Nội dung phê duyệt cấp Cục', r.level2ApprovalContent || '—'],
-                  ])}
-                </div>
-              )}
             </div>
           ),
         },
@@ -306,53 +285,86 @@ export default function BuoyStationDetailContent({
         },
         {
           key: 'operation',
-          label: 'Thông tin vận hành khai thác',
+          label: 'Vận hành & bảo trì',
           children: (
-            <DetailTabTable
-              title={<span style={detailLabelStyle}>Thông tin vận hành khai thác</span>}
-              dataSource={(r.operationPlanCode || r.operationPlanName || r.operationStartDate || r.operationEndDate) ? [{ key: 'row', operationPlanCode: r.operationPlanCode || '—', operationPlanName: r.operationPlanName || '—', operationStartDate: r.operationStartDate || '—', operationEndDate: r.operationEndDate || '—' }] : []}
-              emptyText="Chưa có dữ liệu"
-              columns={[
-                { title: 'Mã kế hoạch', key: 'operationPlanCode', dataIndex: 'operationPlanCode', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
-                { title: 'Tên kế hoạch', key: 'operationPlanName', dataIndex: 'operationPlanName', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
-                { title: 'Ngày bắt đầu', key: 'operationStartDate', dataIndex: 'operationStartDate', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
-                { title: 'Ngày kết thúc', key: 'operationEndDate', dataIndex: 'operationEndDate', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
-              ]}
-            />
+            <div style={{ paddingTop: 3 }}>
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setOperationOpen(!operationOpen)}>
+                <span style={{ color: operationOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{operationOpen ? '▼' : '▶'} Thông tin vận hành khai thác</span>
+              </button>
+              {operationOpen && (
+                <DetailTabTable
+                  title={<span style={detailLabelStyle}>Danh sách vận hành khai thác</span>}
+                  dataSource={(r.operationPlanCode || r.operationPlanName || r.operationStartDate || r.operationEndDate) ? [{ key: 'row', operationPlanCode: r.operationPlanCode || '—', operationPlanName: r.operationPlanName || '—', operationStartDate: r.operationStartDate || '—', operationEndDate: r.operationEndDate || '—' }] : []}
+                  emptyText="Chưa có dữ liệu"
+                  columns={[
+                    { title: 'Mã kế hoạch', key: 'operationPlanCode', dataIndex: 'operationPlanCode', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
+                    { title: 'Tên kế hoạch', key: 'operationPlanName', dataIndex: 'operationPlanName', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
+                    { title: 'Ngày bắt đầu', key: 'operationStartDate', dataIndex: 'operationStartDate', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
+                    { title: 'Ngày kết thúc', key: 'operationEndDate', dataIndex: 'operationEndDate', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
+                  ]}
+                />
+              )}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setMaintenanceOpen(!maintenanceOpen)}>
+                <span style={{ color: maintenanceOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{maintenanceOpen ? '▼' : '▶'} Thông tin bảo trì</span>
+              </button>
+              {maintenanceOpen && (
+                <DetailTabTable
+                  title={<span style={detailLabelStyle}>Danh sách thông tin bảo trì</span>}
+                  dataSource={(r.maintenancePlanCode || r.maintenancePlanName || r.maintenanceStartTime || r.maintenanceEndTime) ? [{ key: 'row', maintenancePlanCode: r.maintenancePlanCode || '—', maintenancePlanName: r.maintenancePlanName || '—', maintenanceStartTime: r.maintenanceStartTime || '—', maintenanceEndTime: r.maintenanceEndTime || '—' }] : []}
+                  emptyText="Chưa có dữ liệu"
+                  columns={[
+                    { title: 'Mã kế hoạch', key: 'maintenancePlanCode', dataIndex: 'maintenancePlanCode', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
+                    { title: 'Tên kế hoạch', key: 'maintenancePlanName', dataIndex: 'maintenancePlanName', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
+                    { title: 'Thời gian bắt đầu', key: 'maintenanceStartTime', dataIndex: 'maintenanceStartTime', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
+                    { title: 'Thời gian kết thúc', key: 'maintenanceEndTime', dataIndex: 'maintenanceEndTime', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
+                  ]}
+                />
+              )}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setIncidentOpen(!incidentOpen)}>
+                <span style={{ color: incidentOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{incidentOpen ? '▼' : '▶'} Thông tin sự cố</span>
+              </button>
+              {incidentOpen && (
+                <DetailTabTable
+                  title={<span style={detailLabelStyle}>Danh sách thông tin sự cố</span>}
+                  dataSource={(r.incidentCode || r.incidentType || r.incidentLocation || r.incidentTime) ? [{ key: 'row', incidentCode: r.incidentCode || '—', incidentType: r.incidentType || '—', incidentLocation: r.incidentLocation || '—', incidentTime: r.incidentTime || '—' }] : []}
+                  emptyText="Chưa có dữ liệu"
+                  columns={[
+                    { title: 'Mã sự cố', key: 'incidentCode', dataIndex: 'incidentCode', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
+                    { title: 'Loại sự cố', key: 'incidentType', dataIndex: 'incidentType', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
+                    { title: 'Địa điểm', key: 'incidentLocation', dataIndex: 'incidentLocation', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
+                    { title: 'Thời gian', key: 'incidentTime', dataIndex: 'incidentTime', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
+                  ]}
+                />
+              )}
+            </div>
           ),
         },
         {
-          key: 'maintenance',
-          label: 'Thông tin bảo trì',
+          key: 'system',
+          label: 'Xử lý & theo dõi',
           children: (
-            <DetailTabTable
-              title={<span style={detailLabelStyle}>Thông tin bảo trì</span>}
-              dataSource={(r.maintenancePlanCode || r.maintenancePlanName || r.maintenanceStartTime || r.maintenanceEndTime) ? [{ key: 'row', maintenancePlanCode: r.maintenancePlanCode || '—', maintenancePlanName: r.maintenancePlanName || '—', maintenanceStartTime: r.maintenanceStartTime || '—', maintenanceEndTime: r.maintenanceEndTime || '—' }] : []}
-              emptyText="Chưa có dữ liệu"
-              columns={[
-                { title: 'Mã kế hoạch', key: 'maintenancePlanCode', dataIndex: 'maintenancePlanCode', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
-                { title: 'Tên kế hoạch', key: 'maintenancePlanName', dataIndex: 'maintenancePlanName', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
-                { title: 'Thời gian bắt đầu', key: 'maintenanceStartTime', dataIndex: 'maintenanceStartTime', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
-                { title: 'Thời gian kết thúc', key: 'maintenanceEndTime', dataIndex: 'maintenanceEndTime', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
-              ]}
-            />
-          ),
-        },
-        {
-          key: 'incident',
-          label: 'Thông tin sự cố',
-          children: (
-            <DetailTabTable
-              title={<span style={detailLabelStyle}>Thông tin sự cố</span>}
-              dataSource={(r.incidentCode || r.incidentType || r.incidentLocation || r.incidentTime) ? [{ key: 'row', incidentCode: r.incidentCode || '—', incidentType: r.incidentType || '—', incidentLocation: r.incidentLocation || '—', incidentTime: r.incidentTime || '—' }] : []}
-              emptyText="Chưa có dữ liệu"
-              columns={[
-                { title: 'Mã sự cố', key: 'incidentCode', dataIndex: 'incidentCode', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
-                { title: 'Loại sự cố', key: 'incidentType', dataIndex: 'incidentType', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
-                { title: 'Địa điểm', key: 'incidentLocation', dataIndex: 'incidentLocation', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
-                { title: 'Thời gian', key: 'incidentTime', dataIndex: 'incidentTime', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
-              ]}
-            />
+            <div style={{ paddingTop: 3 }}>
+              <div className="chk-detail-grid">
+                {[
+                  ['Trạng thái', statusBadge],
+                  ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{r.updatedByName || '—'}</span>],
+                  ['Ngày cập nhật', formatDateTime(r.updatedAt)],
+                  ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userName(r.sentApprovedBy)}</span>],
+                  ['Ngày gửi phê duyệt', formatDateTime(r.sentApprovedDate)],
+                  ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level1ApprovedBy)}</span>],
+                  ['Ngày phê duyệt cấp Cảng vụ/Chi cục', formatDateTime(r.level1ApprovedDate)],
+                  ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level2ApprovedBy)}</span>],
+                  ['Ngày phê duyệt cấp Cục', formatDateTime(r.level2ApprovedDate)],
+                  ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.level1ApprovalContent || '—'],
+                  ['Nội dung phê duyệt cấp Cục', r.level2ApprovalContent || '—'],
+                ].map(([label, value], i) => (
+                  <div key={i} className="chk-detail-row" style={label === 'Trạng thái' ? { gridColumn: '1 / -1' } : undefined}>
+                    <span className="chk-detail-label">{label}</span>
+                    <span className="chk-detail-value">{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           ),
         },
       ]}

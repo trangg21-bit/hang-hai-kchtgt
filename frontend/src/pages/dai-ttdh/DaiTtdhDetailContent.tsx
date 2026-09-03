@@ -6,7 +6,7 @@ import { colors } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import {
-  textPrimary, textSecondary, textTertiary, surfaceCard,
+  textPrimary, textTertiary, surfaceCard,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
   spaceSm, spaceMd, spaceFormField, actionPrimary, outlineButtonStyle, primaryButtonStyle, statusBadgeStyle,
   statusOperational, statusAttention, statusCritical,
@@ -14,7 +14,6 @@ import {
 import type { DaiTtdh } from '../../types/port';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { VIETNAM_PROVINCES } from '../../types/common';
-import { resolveOrgFullPath } from '../../components/org-unit';
 import { DAI_TTDH_STATION_LEVEL_OPTIONS, DAI_TTDH_SERVICES_OPTIONS } from './DaiTtdhForm';
 import api from '../../services/api';
 
@@ -77,7 +76,6 @@ const fmtDateTime = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/Y
 export default function DaiTtdhDetailContent({
   selectedRecord,
   orgMap,
-  organizations = [],
   symbolMap,
   symbolImageMap,
   userMap,
@@ -133,21 +131,10 @@ export default function DaiTtdhDetailContent({
             <div style={{ paddingTop: 3 }}>
               <div className="chk-detail-grid">
                 {[
-                  ['Đơn vị quản lý', (() => {
-                    const orgPathNames = resolveOrgFullPath(organizations, r.orgUnitId);
-                    if (!orgPathNames || orgPathNames.length === 0) return orgMap.get(r.orgUnitId || '') || r.orgUnitId || '—';
-                    const levelColors = [textPrimary, textSecondary, textTertiary];
-                    return (
-                      <span style={{ fontWeight: fontWeightBold }}>
-                        {orgPathNames.map((n, i) => (
-                          <span key={i} style={{ display: 'block', color: levelColors[Math.min(i, levelColors.length - 1)] }}>{n}</span>
-                        ))}
-                      </span>
-                    );
-                  })(),],
-                  ['Đơn vị khai thác', <span style={{ fontWeight: fontWeightBold }}>{DEFAULT_OPERATING_ORGANIZATIONS.find(o => o.id === r.operatingUnitId)?.name || r.operatingUnitName || r.operatingUnitId || '—'}</span>],
                   ['Mã đài', <span style={statusBadgeStyle(actionPrimary)}>{r.daiTtdhCode || '—'}</span>],
                   ['Tên đài', <span style={{ fontWeight: fontWeightBold }}>{r.daiTtdhName || '—'}</span>],
+                  ['Đơn vị quản lý', (() => { const name = orgMap.get(r.orgUnitId || '') || r.orgUnitId || '—'; return <span style={{ fontWeight: fontWeightBold }}>{name}</span>; })(),],
+                  ['Đơn vị khai thác', <span style={{ fontWeight: fontWeightBold }}>{DEFAULT_OPERATING_ORGANIZATIONS.find(o => o.id === r.operatingUnitId)?.name || r.operatingUnitName || r.operatingUnitId || '—'}</span>],
                   ['Phân loại đài', stationLevelLabel(r.stationLevel)],
                   ['Địa điểm (Tỉnh/Thành phố)', r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '—' : '—'],
                   ['Địa điểm chi tiết', r.detailedLocation || '—'],
@@ -169,7 +156,7 @@ export default function DaiTtdhDetailContent({
           key: 'gis', label: `Thông tin vị trí (${parseGisCoordinates(r).length})`,
           children: (
             <div style={{ paddingTop: 3 }}>
-              <div className="detail-grid">
+              <div className="chk-detail-grid">
                 {[
                   ['Loại đối tượng', (() => { const gt = (r as any).geometryType || ''; const m: Record<string, string> = { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' }; return m[gt] || gt || '—'; })(),],
                   ['Biểu tượng', (() => { const symId = r.mapSymbolId || ''; const symName = symbolMap.get(symId) || symId || '—'; const symImg = symbolImageMap.get(symId); return <span style={{ display:'inline-flex',alignItems:'center',gap:8 }}>{symImg ? <img src={symImg} alt="" style={{ width:24,height:24,objectFit:'contain' }} /> : null}{symName}</span>; })(),],
@@ -305,7 +292,7 @@ export default function DaiTtdhDetailContent({
           key: 'system', label: 'Xử lý & theo dõi',
           children: (
             <div style={{ paddingTop: 3 }}>
-              <div className="detail-grid">
+              <div className="chk-detail-grid">
                 {[
                   ['Trạng thái', r.approvalStatus && approvalStyleMap[r.approvalStatus] ? <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>{approvalStyleMap[r.approvalStatus].label}</span> : '—'],
                   ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.updatedBy || '') || r.updatedBy || '—'}</span>],

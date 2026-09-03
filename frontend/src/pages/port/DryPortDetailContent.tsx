@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Tabs, Button, Modal } from 'antd';
 import { FileOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { colors } from '../../themetokenchk';
 import {
-  textPrimary, textSecondary, textTertiary, surfaceCard,
+  textTertiary, surfaceCard,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold, spaceSm, spaceMd, spaceFormField,
   statusOperational, statusAttention, statusCritical, actionPrimary, statusBadgeStyle,
   outlineButtonStyle, primaryButtonStyle,
@@ -12,7 +12,6 @@ import {
 import type { DryPort } from '../../types/port';
 import DetailTable from '../../components/shared/DetailTable';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import { resolveOrgFullPath } from '../../components/org-unit';
 
 export interface DryPortDetailContentProps {
   selectedRecord: DryPort;
@@ -99,9 +98,20 @@ export default function DryPortDetailContent({
   provinceName,
   approvalStyleMap,
 }: DryPortDetailContentProps) {
-  const [systemOpen, setSystemOpen] = useState(true);
   const [gisModalOpen, setGisModalOpen] = useState(false);
+  const [operationOpen, setOperationOpen] = useState(true);
+  const [maintenanceOpen, setMaintenanceOpen] = useState(true);
+  const [incidentOpen, setIncidentOpen] = useState(true);
+  // Toggle cụm 'Thông tin công bố' trong tab Thông tin chung (mặc định MỞ — giống Bến phao)
+  const [announcementOpen, setAnnouncementOpen] = useState(true);
   const approvalLabel = approvalStyleMap[r.approvalStatus || '']?.label || r.approvalStatus || '—';
+
+  // Bản đồ orgUnitId → tên đơn vị (pattern Bến phao: hiển thị tên đơn vị trực tiếp, không dựng path nhiều cấp)
+  const orgMap = useMemo(() => {
+    const map = new Map<string, string>();
+    (Array.isArray(organizations) ? organizations : []).forEach((o: any) => { if (o?.id) map.set(o.id, o.name || o.id); });
+    return map;
+  }, [organizations]);
 
   return (
     <>
@@ -113,23 +123,13 @@ export default function DryPortDetailContent({
             <div style={{ paddingTop: 3 }}>
               <div className="chk-detail-grid">
                 {([
-                  ['Đơn vị quản lý', (() => {
-                    const orgPathNames = resolveOrgFullPath(organizations, r.orgUnitId);
-                    if (!orgPathNames || orgPathNames.length === 0) return '—';
-                    const levelColors = [textPrimary, textSecondary, textTertiary];
-                    return (
-                      <span>
-                        {orgPathNames.map((n, i) => (
-                          <span key={i} style={{ display: 'block', color: levelColors[Math.min(i, levelColors.length - 1)] }}>
-                            {n}
-                          </span>
-                        ))}
-                      </span>
-                    );
-                  })(), true],
-                  ['Đơn vị khai thác', r.operatingUnit || '—'],
                   ['Mã cảng cạn', <span key="dryPortCode" style={statusBadgeStyle(actionPrimary)}>{r.dryPortCode || '—'}</span>],
                   ['Tên cảng cạn', r.dryPortName || '—', true],
+                  ['Đơn vị quản lý', (() => {
+                    const name = orgMap.get(r.orgUnitId || '') || r.orgUnitId || '—';
+                    return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
+                  })(),],
+                  ['Đơn vị khai thác', r.operatingUnit || '—'],
                   ['Khu vực', r.region || '—'],
                   ['Địa điểm (Tỉnh/Thành Phố)', provinceName(r.provinceId)],
                   ['Địa điểm chi tiết', r.detailedLocation || '—', true, true],
@@ -151,7 +151,6 @@ export default function DryPortDetailContent({
                       : (r.portStatus === 1 ? opMap.OPERATIONAL : opMap.NOT_YET_OPERATIONAL);
                     return <span style={statusBadgeStyle(b.color)}>{b.label}</span>;
                   })()],
-                  ['Trạng thái', (() => { const b = approvalStyleMap[r.approvalStatus || '']; return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : approvalLabel; })(),],
                 ] as any[]).map(([label, value, bold, fullWidth], i) => (
                   <div key={i} className="chk-detail-row" style={fullWidth ? { gridColumn: '1 / -1' } : undefined}>
                     <span className="chk-detail-label">{label}</span>
@@ -159,43 +158,25 @@ export default function DryPortDetailContent({
                   </div>
                 ))}
               </div>
-              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setSystemOpen(!systemOpen)}>
-                <span style={{ color: systemOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{systemOpen ? '▼' : '▶'} Thông tin hệ thống</span>
+
+              {/* ── Toggle: Thông tin công bố (gom vào tab Thông tin chung — giống Bến phao / Bến cảng) ── */}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setAnnouncementOpen(!announcementOpen)}>
+                <span style={{ color: announcementOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{announcementOpen ? '▼' : '▶'} Thông tin công bố</span>
               </button>
-              {systemOpen && (
+              {announcementOpen && (
                 <div className="chk-detail-grid" style={{ marginTop: 4 }}>
-                  {([
-                    ['Người tạo', userMap.get(r.createdBy || '') || r.createdBy || '—', true],
-                    ['Ngày tạo', r.createdAt ? dayjs(r.createdAt).format('DD/MM/YYYY HH:mm:ss') : '—'],
-                    ['Cán bộ cập nhật', userMap.get(r.updatedBy || '') || r.updatedBy || '—', true],
-                    ['Ngày cập nhật', r.updatedAt ? dayjs(r.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '—'],
-                  ] as any[]).map(([label, value, bold], i) => (
+                  {[
+                    ['Quyết định công bố số', r.announcementDecisionNumber || '—'],
+                    ['Ngày ra quyết định công bố', r.announcementDecisionDate ? dayjs(r.announcementDecisionDate).format('DD/MM/YYYY') : '—'],
+                    ['Đơn vị ra quyết định công bố', r.announcementOrg || '—'],
+                  ].map(([label, value], i) => (
                     <div key={i} className="chk-detail-row">
                       <span className="chk-detail-label">{label}</span>
-                      <span className="chk-detail-value" style={bold ? { fontWeight: fontWeightBold } : undefined}>{value}</span>
+                      <span className="chk-detail-value">{value}</span>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
-          ),
-        },
-        {
-          key: 'announcement', label: 'Thời điểm công bố đưa vào sử dụng',
-          children: (
-            <div style={{ paddingTop: 3 }}>
-              <div className="chk-detail-grid">
-                {[
-                  ['Quyết định công bố số', r.announcementDecisionNumber || '—'],
-                  ['Ngày ra quyết định công bố', r.announcementDecisionDate ? dayjs(r.announcementDecisionDate).format('DD/MM/YYYY') : '—'],
-                  ['Đơn vị ra quyết định công bố', r.announcementOrg || '—'],
-                ].map(([label, value], i) => (
-                  <div key={i} className="chk-detail-row">
-                    <span className="chk-detail-label">{label}</span>
-                    <span className="chk-detail-value">{value}</span>
-                  </div>
-                ))}
-              </div>
             </div>
           ),
         },
@@ -272,37 +253,101 @@ export default function DryPortDetailContent({
         },
         {
           key: 'plan', label: 'Thông tin quy hoạch',
-          children: <DryPortRefTable title="Thông tin quy hoạch" emptyText="Chưa có thông tin quy hoạch" columns={[
+          children: <DryPortRefTable title="Danh sách thông tin quy hoạch" emptyText="Chưa có thông tin quy hoạch" columns={[
             { title: 'Số quyết định quy hoạch', dataIndex: 'planDecisionNo', width: 200 },
             { title: 'Ngày quyết định quy hoạch', dataIndex: 'planDecisionDate', width: 180 },
           ]} />,
         },
         {
-          key: 'operation', label: 'Thông tin vận hành khai thác',
-          children: <DryPortRefTable title="Thông tin vận hành khai thác" emptyText="Chưa có dữ liệu" dataSource={(r as any)?.operationPlanList} columns={[
-            { title: 'Mã kế hoạch', dataIndex: 'opPlanCode', width: 180 },
-            { title: 'Tên kế hoạch', dataIndex: 'opPlanName', width: 220 },
-            { title: 'Ngày bắt đầu', dataIndex: 'opStartDate', width: 200 },
-            { title: 'Ngày kết thúc', dataIndex: 'opEndDate', width: 200 },
-          ]} />,
+          key: 'operation', label: 'Vận hành & bảo trì',
+          children: (
+            <div style={{ paddingTop: 3 }}>
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setOperationOpen(!operationOpen)}>
+                <span style={{ color: operationOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{operationOpen ? '▼' : '▶'} Thông tin vận hành khai thác</span>
+              </button>
+              {operationOpen && (
+                <div>
+                  <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách vận hành khai thác</span>
+                  <DetailTable
+                    dataSource={(Array.isArray((r as any)?.operationPlanList) ? (r as any).operationPlanList : [])}
+                    emptyText="Chưa có dữ liệu"
+                    showTotal={(total) => `Tổng cộng ${total}`}
+                    rowKey={(rec: any, idx?: number) => rec?.id || rec?.opPlanCode || String(idx)}
+                    columns={[
+                      { title: 'STT', width: 50 },
+                      { title: 'Mã kế hoạch', dataIndex: 'opPlanCode', key: 'opPlanCode', render: (v: string, rec: any) => v || rec.code || '—' },
+                      { title: 'Tên kế hoạch', dataIndex: 'opPlanName', key: 'opPlanName', render: (v: string, rec: any) => v || rec.name || '—' },
+                      { title: 'Ngày bắt đầu', dataIndex: 'opStartDate', key: 'opStartDate', width: 150, align: 'center' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.startDate ? dayjs(rec.startDate).format('DD/MM/YYYY HH:mm') : '—') },
+                      { title: 'Ngày kết thúc', dataIndex: 'opEndDate', key: 'opEndDate', width: 150, align: 'center' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.endDate ? dayjs(rec.endDate).format('DD/MM/YYYY HH:mm') : '—') },
+                    ]}
+                  />
+                </div>
+              )}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setMaintenanceOpen(!maintenanceOpen)}>
+                <span style={{ color: maintenanceOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{maintenanceOpen ? '▼' : '▶'} Thông tin bảo trì</span>
+              </button>
+              {maintenanceOpen && (
+                <div>
+                  <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin bảo trì</span>
+                  <DetailTable
+                    dataSource={(Array.isArray((r as any)?.maintenancePlanList) ? (r as any).maintenancePlanList : [])}
+                    emptyText="Chưa có dữ liệu"
+                    showTotal={(total) => `Tổng cộng ${total}`}
+                    rowKey={(rec: any, idx?: number) => rec?.id || rec?.maintCode || String(idx)}
+                    columns={[
+                      { title: 'STT', width: 50 },
+                      { title: 'Mã kế hoạch', dataIndex: 'maintCode', key: 'maintCode', render: (v: string, rec: any) => v || rec.code || '—' },
+                      { title: 'Tên kế hoạch', dataIndex: 'maintName', key: 'maintName', render: (v: string, rec: any) => v || rec.name || '—' },
+                      { title: 'Thời gian bắt đầu', dataIndex: 'maintStart', key: 'maintStart', width: 150, align: 'center' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.startTime || rec.start || '—') },
+                      { title: 'Thời gian kết thúc', dataIndex: 'maintEnd', key: 'maintEnd', width: 150, align: 'center' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.endTime || rec.end || '—') },
+                    ]}
+                  />
+                </div>
+              )}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setIncidentOpen(!incidentOpen)}>
+                <span style={{ color: incidentOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{incidentOpen ? '▼' : '▶'} Thông tin sự cố</span>
+              </button>
+              {incidentOpen && (
+                <div>
+                  <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin sự cố</span>
+                  <DetailTable
+                    dataSource={(Array.isArray((r as any)?.incidentList) ? (r as any).incidentList : [])}
+                    emptyText="Chưa có dữ liệu"
+                    showTotal={(total) => `Tổng cộng ${total}`}
+                    rowKey={(rec: any, idx?: number) => rec?.id || rec?.incidentCode || String(idx)}
+                    columns={[
+                      { title: 'STT', width: 50 },
+                      { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'incidentCode', render: (v: string, rec: any) => v || rec.code || '—' },
+                      { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'incidentType', render: (v: string, rec: any) => v || rec.type || '—' },
+                      { title: 'Địa điểm', dataIndex: 'incidentLocation', key: 'incidentLocation', render: (v: string) => v || '—' },
+                      { title: 'Thời gian', dataIndex: 'incidentTime', key: 'incidentTime', width: 150, align: 'center' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.time ? dayjs(rec.time).format('DD/MM/YYYY HH:mm') : '—') },
+                    ]}
+                  />
+                </div>
+              )}
+            </div>
+          ),
         },
         {
-          key: 'maintenance', label: 'Thông tin bảo trì',
-          children: <DryPortRefTable title="Thông tin bảo trì" emptyText="Chưa có dữ liệu" dataSource={(r as any)?.maintenancePlanList} columns={[
-            { title: 'Mã kế hoạch', dataIndex: 'maintCode', width: 180 },
-            { title: 'Tên kế hoạch', dataIndex: 'maintName', width: 220 },
-            { title: 'Thời gian bắt đầu', dataIndex: 'maintStart', width: 200 },
-            { title: 'Thời gian kết thúc', dataIndex: 'maintEnd', width: 200 },
-          ]} />,
-        },
-        {
-          key: 'incident', label: 'Thông tin sự cố',
-          children: <DryPortRefTable title="Thông tin sự cố" emptyText="Chưa có dữ liệu" dataSource={(r as any)?.incidentList} columns={[
-            { title: 'Mã sự cố', dataIndex: 'incidentCode', width: 150 },
-            { title: 'Loại sự cố', dataIndex: 'incidentType', width: 150 },
-            { title: 'Địa điểm', dataIndex: 'incidentLocation', width: 200 },
-            { title: 'Thời gian', dataIndex: 'incidentTime', width: 180 },
-          ]} />,
+          key: 'system', label: 'Xử lý & theo dõi',
+          children: (
+            <div style={{ paddingTop: 3 }}>
+              <div className="chk-detail-grid">
+                {([
+                  ['Trạng thái', r.approvalStatus && approvalStyleMap[r.approvalStatus] ? <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>{approvalStyleMap[r.approvalStatus].label}</span> : approvalLabel, true],
+                  ['Người tạo', <span key="createdBy" style={{ fontWeight: fontWeightBold }}>{userMap.get(r.createdBy || '') || r.createdBy || '—'}</span>],
+                  ['Ngày tạo', r.createdAt ? dayjs(r.createdAt).format('DD/MM/YYYY HH:mm:ss') : '—'],
+                  ['Cán bộ cập nhật', <span key="updBy" style={{ fontWeight: fontWeightBold }}>{userMap.get(r.updatedBy || '') || r.updatedBy || '—'}</span>],
+                  ['Ngày cập nhật', r.updatedAt ? dayjs(r.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '—'],
+                ] as any[]).map(([label, value, fullWidth], i) => (
+                  <div key={i} className="chk-detail-row" style={fullWidth ? { gridColumn: '1 / -1' } : undefined}>
+                    <span className="chk-detail-label">{label}</span>
+                    <span className="chk-detail-value">{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ),
         },
       ]}
     />

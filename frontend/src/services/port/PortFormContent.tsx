@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Row, Col, Form, Input, Select, InputNumber, Tabs, Button, Table, Upload, Space,
 } from 'antd';
 import { message } from '../../components/ToastNotification';
+import { fmtInputNumber } from '../../utils/numFmt';
 import { PlusOutlined, DeleteOutlined, UploadOutlined, FileOutlined } from '@ant-design/icons';
 import {
   colors,
@@ -22,6 +23,29 @@ const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 }
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 
+const dmsUnitStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, height: 32, fontSize: fontSizeSm, color: textTertiary };
+const dmsUnitEndStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, height: 32, borderRadius: '0 999px 999px 0', fontSize: fontSizeSm, color: textTertiary };
+
+/** Nhóm 3 ô nhập Độ/Phút/Giây dùng chung cho bảng tọa độ GPS (chuẩn VTS CHK: viên thuốc 999px — giống Bến phao). */
+const renderDmsGroup = (
+  dVal: number | null | undefined,
+  mVal: number | null | undefined,
+  sVal: number | null | undefined,
+  maxDeg: number,
+  onChange: (d: number | null, m: number | null, s: number | null) => void,
+) => {
+  return (
+    <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
+      <InputNumber value={dVal} min={0} max={maxDeg} placeholder="Độ" onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(v, mVal ?? null, sVal ?? null)} style={{ flex: 1, minWidth: 0, borderRadius: '999px 0 0 999px', height: 32 }} controls={false} />
+      <span style={dmsUnitStyle}>°</span>
+      <InputNumber value={mVal} min={0} max={59} placeholder="Phút" onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(dVal ?? null, v, sVal ?? null)} style={{ flex: 1, minWidth: 0, height: 32 }} controls={false} />
+      <span style={dmsUnitStyle}>'</span>
+      <InputNumber value={sVal} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber} onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(dVal ?? null, mVal ?? null, v)} style={{ flex: 1.2, minWidth: 0, height: 32 }} controls={false} />
+      <span style={dmsUnitEndStyle}>"</span>
+    </Space.Compact>
+  );
+};
+
 export interface PortFormContentProps {
   form: any;
   isEdit?: boolean;
@@ -35,12 +59,11 @@ export interface PortFormContentProps {
   provinces: string[];
   portCodeLoading?: boolean;
   canSubmitForApproval?: boolean;
-  // GPS state
-  gpsCoordList: Array<{ lat: number; lng: number }>;
+  // GPS state — 6 trường DMS riêng (chuẩn VTS CHK, giống Bến phao)
+  gpsCoordList: Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>;
   addGpsPoint: () => void;
   removeGpsPoint: (i: number) => void;
-  updateGpsPoint: (i: number, field: 'lat' | 'lng', d: number, m: number, s: number) => void;
-  ddToDms: (dd: number) => { d: number | null; m: number | null; s: number | null };
+  updateGpsPoint: (i: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => void;
   // Infra state
   infraList: Array<{ stt: number; infraName: string; quantity: number | null }>;
   addInfra: () => void;
@@ -66,7 +89,6 @@ export default function PortFormContent({
   addGpsPoint,
   removeGpsPoint,
   updateGpsPoint,
-  ddToDms,
   infraList,
   addInfra,
   removeInfra,
@@ -74,7 +96,9 @@ export default function PortFormContent({
   updateInfraQty,
   uploadFileList,
   setUploadFileList,
+  geometryType,
 }: PortFormContentProps) {
+  const [gpsPage, setGpsPage] = useState(1);
 
   const tabItems = [
     {
@@ -288,7 +312,7 @@ export default function PortFormContent({
               <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS</span>
             </span>
             {gpsCoordList.length > 0 && (
-              <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addGpsPoint} style={{ borderRadius: radiusPill }}>
+              <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!geometryType} style={{ borderRadius: radiusPill }}>
                 Thêm tọa độ
               </Button>
             )}
@@ -296,41 +320,50 @@ export default function PortFormContent({
           {gpsCoordList.length === 0 ? (
             <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
               <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có tọa độ nào.</span>
-              <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
+              <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!geometryType} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
             </div>
           ) : (
-            <PagedTable dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i }))}
-              tableProps={{ scroll: { x: 820 } }}>
-              <Table.Column title="Vĩ độ (N)" key="lat"
-                render={(_: any, record: any) => {
-                  const dms = ddToDms(record.lat);
-                  return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
-                    <InputNumber value={dms.d} min={0} max={90} placeholder="Độ" onChange={(v) => updateGpsPoint(record._idx, 'lat', v ?? 0, dms.m ?? 0, dms.s ?? 0)} style={{ flex: 1 }} controls={false} />
-                    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span>
-                    <InputNumber value={dms.m} min={0} max={59} placeholder="Phút" onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d ?? 0, v ?? 0, dms.s ?? 0)} style={{ flex: 1 }} controls={false} />
-                    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span>
-                    <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d ?? 0, dms.m ?? 0, v ?? 0)} style={{ flex: 1.2 }} controls={false} />
-                    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span>
-                  </Space.Compact>;
-                }}
-                onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-              <Table.Column title="Kinh độ (E)" key="lng"
-                render={(_: any, record: any) => {
-                  const dms = ddToDms(record.lng);
-                  return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
-                    <InputNumber value={dms.d} min={0} max={180} placeholder="Độ" onChange={(v) => updateGpsPoint(record._idx, 'lng', v ?? 0, dms.m ?? 0, dms.s ?? 0)} style={{ flex: 1 }} controls={false} />
-                    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span>
-                    <InputNumber value={dms.m} min={0} max={59} placeholder="Phút" onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d ?? 0, v ?? 0, dms.s ?? 0)} style={{ flex: 1 }} controls={false} />
-                    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span>
-                    <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d ?? 0, dms.m ?? 0, v ?? 0)} style={{ flex: 1.2 }} controls={false} />
-                    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span>
-                  </Space.Compact>;
-                }}
-                onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-              <Table.Column title="" key="actions" width={44} align="center"
-                render={(_: any, record: any) => <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => removeGpsPoint(record._idx)} />}
-                onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
-            </PagedTable>
+            <Table
+              size="small"
+              tableLayout="fixed"
+              pagination={gpsCoordList.length > 10 ? {
+                current: gpsPage,
+                pageSize: 10,
+                total: gpsCoordList.length,
+                onChange: (p) => setGpsPage(p),
+                showSizeChanger: false,
+                size: 'small',
+              } : false}
+              dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i }))}
+              rowKey={(r: any, idx?: number) => r._idx ?? String(idx)}
+              locale={{ emptyText: 'Chưa có tọa độ GPS nào' }}
+              columns={[
+                {
+                  title: 'STT',
+                  width: 60,
+                  align: 'center' as const,
+                  render: (_v: any, _r: any, idx: number) => (gpsPage - 1) * 10 + idx + 1,
+                },
+                {
+                  title: 'Vĩ độ (Latitude - N)',
+                  key: 'lat',
+                  render: (_v: any, record: any) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
+                },
+                {
+                  title: 'Kinh độ (Longitude - E)',
+                  key: 'lng',
+                  render: (_v: any, record: any) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
+                },
+                {
+                  title: '',
+                  width: 50,
+                  align: 'center' as const,
+                  render: (_v: any, record: any) => (
+                    <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeGpsPoint(record._idx)} />
+                  ),
+                },
+              ]}
+            />
           )}
         </div>
       ),

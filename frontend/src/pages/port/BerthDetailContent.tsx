@@ -6,14 +6,13 @@ import { colors } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import {
-  textPrimary, textSecondary, textTertiary, surfaceCard,
+  textTertiary, surfaceCard,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
   spaceSm, spaceMd, spaceFormField, actionPrimary, outlineButtonStyle, primaryButtonStyle, statusBadgeStyle,
   statusOperational, statusAttention, statusCritical,
 } from '../../themetokenchk';
 import type { Berth } from '../../types/port';
 import { VIETNAM_PROVINCES } from '../../types/common';
-import { resolveOrgFullPath } from '../../components/org-unit';
 import { pierCRUD } from '../../services/portService';
 
 export interface BerthDetailContentProps {
@@ -74,11 +73,11 @@ const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> =
 };
 
 const fmtDateTime = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—');
+const fmtDate = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY') : '—');
 
 export default function BerthDetailContent({
   selectedRecord,
   orgMap,
-  organizations = [],
   symbolMap,
   symbolImageMap,
   portOptions,
@@ -95,10 +94,13 @@ export default function BerthDetailContent({
   onViewPierDetail,
 }: BerthDetailContentProps) {
   const r = selectedRecord;
-  const [systemOpen, setSystemOpen] = useState(true);
   const [infraTypeFilter, setInfraTypeFilter] = useState<string>('');
   const [loadedInfra, setLoadedInfra] = useState<any[]>([]);
   const [gisModalOpen, setGisModalOpen] = useState(false);
+  const [operationOpen, setOperationOpen] = useState(true);
+  const [maintenanceOpen, setMaintenanceOpen] = useState(true);
+  const [incidentOpen, setIncidentOpen] = useState(true);
+  const [announcementOpen, setAnnouncementOpen] = useState(true);
 
   // Tải danh sách KCHT khác thuộc bến cảng (cầu cảng) — logic giống mẫu Cảng biển: tải theo cha qua API
   useEffect(() => {
@@ -134,21 +136,13 @@ export default function BerthDetailContent({
             <div style={{ paddingTop: 3 }}>
               <div className="chk-detail-grid">
                 {[
-                  ['Đơn vị quản lý', (() => {
-                    const orgPathNames = resolveOrgFullPath(organizations, r.orgUnitId);
-                    if (!orgPathNames || orgPathNames.length === 0) return orgMap.get(r.orgUnitId || '') || r.orgUnitId || '—';
-                    const levelColors = [textPrimary, textSecondary, textTertiary];
-                    return (
-                      <span style={{ fontWeight: fontWeightBold }}>
-                        {orgPathNames.map((n, i) => (
-                          <span key={i} style={{ display: 'block', color: levelColors[Math.min(i, levelColors.length - 1)] }}>{n}</span>
-                        ))}
-                      </span>
-                    );
-                  })(),],
-                  ['Thuộc cảng biển', <span style={{ fontWeight: fontWeightBold }}>{portOptions.find(o => o.value === r.portId)?.label || r.portId || '—'}</span>],
                   ['Mã bến cảng', <span style={statusBadgeStyle(actionPrimary)}>{r.berthCode || '—'}</span>],
                   ['Tên bến cảng', <span style={{ fontWeight: fontWeightBold }}>{r.berthName || '—'}</span>],
+                  ['Đơn vị quản lý', (() => {
+                    const name = orgMap.get(r.orgUnitId || '') || r.orgUnitId || '—';
+                    return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
+                  })(),],
+                  ['Thuộc cảng biển', <span style={{ fontWeight: fontWeightBold }}>{portOptions.find(o => o.value === r.portId)?.label || r.portId || '—'}</span>],
                   ['Thuộc luồng hàng hải', waterwayMap.get(r.waterwayId || '') || r.waterwayId || '—'],
                   ['Đơn vị khai thác', r.operator || '—'],
                   ['Địa điểm (Tỉnh/Thành Phố)', r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '—' : '—'],
@@ -162,7 +156,6 @@ export default function BerthDetailContent({
                   ['Sản lượng thực tế năm gần nhất', r.latestCargoVolume != null ? `${r.latestCargoVolume} tấn/năm` : '—'],
                   ['Cỡ tàu tiếp nhận lớn nhất (DWT)', r.maxVesselSize != null ? r.maxVesselSize : '—'],
                   ['Tình trạng', (() => { const s = r.operationalStatus; const m: Record<string,{color:string;label:string}> = { OPERATIONAL:{color:statusOperational,label:'Đang khai thác/Vận hành'}, NOT_YET_OPERATIONAL:{color:statusAttention,label:'Chưa khai thác/Vận hành'}, SUSPENDED:{color:statusCritical,label:'Dừng khai thác/Vận hành'} }; const b = s && m[s]; return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : '—'; })(),],
-                  ['Trạng thái phê duyệt', r.approvalStatus && approvalStyleMap[r.approvalStatus] ? <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>{approvalStyleMap[r.approvalStatus].label}</span> : '—'],
                 ].map(([label, value], i) => (
                   <div key={i} className="chk-detail-row">
                     <span className="chk-detail-label">{label}</span>
@@ -170,22 +163,17 @@ export default function BerthDetailContent({
                   </div>
                 ))}
               </div>
-              <button type="button" style={{ cursor: 'pointer', marginTop: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setSystemOpen(!systemOpen)}>
-                <span style={{ color: systemOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{systemOpen ? '▼' : '▶'} Thông tin hệ thống</span>
+
+              {/* ── Toggle: Thông tin công bố mở, đưa vào sử dụng (gom vào tab Thông tin chung — giống BẾN PHAO) ── */}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setAnnouncementOpen(!announcementOpen)}>
+                <span style={{ color: announcementOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{announcementOpen ? '▼' : '▶'} Thông tin công bố mở, đưa vào sử dụng</span>
               </button>
-              {systemOpen && (
+              {announcementOpen && (
                 <div className="chk-detail-grid" style={{ marginTop: 4 }}>
                   {[
-                    ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.updatedBy || '') || r.updatedBy || '—'}</span>],
-                    ['Ngày cập nhật', fmtDateTime(r.updatedAt)],
-                    ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.submittedForApprovalBy || '') || r.submittedForApprovalBy || '—'}</span>],
-                    ['Ngày gửi phê duyệt', fmtDateTime(r.submittedForApprovalAt)],
-                    ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.portAuthorityApprovedBy || '') || r.portAuthorityApprovedBy || '—'}</span>],
-                    ['Ngày phê duyệt cấp Cảng vụ/Chi cục', fmtDateTime(r.portAuthorityApprovedAt)],
-                    ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.departmentApprovedBy || '') || r.departmentApprovedBy || '—'}</span>],
-                    ['Ngày phê duyệt cấp Cục', fmtDateTime(r.departmentApprovedAt)],
-                    ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.portAuthorityApprovalContent || '—'],
-                    ['Nội dung phê duyệt cấp Cục', r.departmentApprovalContent || '—'],
+                    ['Thời điểm công bố, đưa vào sử dụng', fmtDate(r.openingAnnouncementDate)],
+                    ['Quyết định công bố/ Văn bản cho phép khai thác', r.openingDecision || '—'],
+                    ['Văn bản thỏa thuận đầu tư xây dựng', r.investmentAgreement || '—'],
                   ].map(([label, value], i) => (
                     <div key={i} className="chk-detail-row">
                       <span className="chk-detail-label">{label}</span>
@@ -194,25 +182,6 @@ export default function BerthDetailContent({
                   ))}
                 </div>
               )}
-            </div>
-          ),
-        },
-        {
-          key: 'announcement', label: 'Thông tin công bố',
-          children: (
-            <div style={{ paddingTop: 3 }}>
-              <div className="chk-detail-grid">
-                {[
-                  ['Thời điểm công bố', fmtDateTime(r.openingAnnouncementDate)],
-                  ['Quyết định công bố', r.openingDecision || '—'],
-                  ['Văn bản thỏa thuận', r.investmentAgreement || '—'],
-                ].map(([label, value], i) => (
-                  <div key={i} className="chk-detail-row">
-                    <span className="chk-detail-label">{label}</span>
-                    <span className="chk-detail-value">{value}</span>
-                  </div>
-                ))}
-              </div>
             </div>
           ),
         },
@@ -315,12 +284,15 @@ export default function BerthDetailContent({
           ),
         },
         {
-          key: 'operation', label: 'Thông tin vận hành khai thác',
+          key: 'operationMaintenance', label: 'Vận hành & bảo trì',
           children: (
             <div style={{ paddingTop: 3 }}>
-              <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
-                <span style={detailLabelStyle}>Thông tin vận hành khai thác</span>
-              </div>
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setOperationOpen(!operationOpen)}>
+                <span style={{ color: operationOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{operationOpen ? '▼' : '▶'} Thông tin vận hành khai thác</span>
+              </button>
+              {operationOpen && (
+                <div>
+              <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách vận hành khai thác</span>
               <DetailTable
                 dataSource={operationPlanList}
                 emptyText="Chưa có dữ liệu"
@@ -333,16 +305,14 @@ export default function BerthDetailContent({
                   { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'end', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.endTime || rec.end || null) },
                 ]}
               />
-            </div>
-          ),
-        },
-        {
-          key: 'maintenance', label: 'Thông tin bảo trì',
-          children: (
-            <div style={{ paddingTop: 3 }}>
-              <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
-                <span style={detailLabelStyle}>Thông tin bảo trì</span>
-              </div>
+                </div>
+              )}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setMaintenanceOpen(!maintenanceOpen)}>
+                <span style={{ color: maintenanceOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{maintenanceOpen ? '▼' : '▶'} Thông tin bảo trì</span>
+              </button>
+              {maintenanceOpen && (
+                <div>
+              <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin bảo trì</span>
               <DetailTable
                 dataSource={maintenancePlanList}
                 emptyText="Chưa có dữ liệu"
@@ -355,16 +325,14 @@ export default function BerthDetailContent({
                   { title: 'Thời gian kết thúc', dataIndex: 'endTime', key: 'end', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.end || rec.endDate || null) },
                 ]}
               />
-            </div>
-          ),
-        },
-        {
-          key: 'incident', label: 'Thông tin sự cố',
-          children: (
-            <div style={{ paddingTop: 3 }}>
-              <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
-                <span style={detailLabelStyle}>Thông tin sự cố</span>
-              </div>
+                </div>
+              )}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setIncidentOpen(!incidentOpen)}>
+                <span style={{ color: incidentOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{incidentOpen ? '▼' : '▶'} Thông tin sự cố</span>
+              </button>
+              {incidentOpen && (
+                <div>
+              <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin sự cố</span>
               <DetailTable
                 dataSource={incidentList}
                 emptyText="Chưa có dữ liệu"
@@ -377,6 +345,8 @@ export default function BerthDetailContent({
                   { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.time || null) },
                 ]}
               />
+                </div>
+              )}
             </div>
           ),
         },

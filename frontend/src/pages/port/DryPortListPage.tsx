@@ -581,6 +581,8 @@ export default function DryPortListPage() {
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
   const [updateDrawerOpen, setUpdateDrawerOpen] = useState(false);
   const [createTabKey, setCreateTabKey] = useState('general');
+  // Toggle cụm 'Thông tin công bố' trong tab Thông tin chung (mặc định MỞ — giống Bến phao)
+  const [announcementOpen, setAnnouncementOpen] = useState(true);
   const [formEditId, setFormEditId] = useState<string | undefined>();
   const [editingCode, setEditingCode] = useState<string | undefined>();
   const [editingName, setEditingName] = useState<string | undefined>();
@@ -1265,7 +1267,7 @@ export default function DryPortListPage() {
     fetchCounts(filterOrgUnitId);
   }, [fetchData, fetchCounts, filterOrgUnitId, updateForm]);
 
-  /* ── Form tabs (5 tabs, shared by create + update drawers; fields giữ nguyên form cũ) ── */
+  /* ── Form tabs (3 tabs, shared by create + update drawers; fields giữ nguyên form cũ) ── */
   const buildFormTabs = (isEdit: boolean, geometryType: string | undefined) => ([
     {
       key: 'general',
@@ -1363,33 +1365,31 @@ export default function DryPortListPage() {
               </Form.Item>
             </Col>
           </Row>
-        </div>
-      ),
-    },
-    {
-      key: 'announcement',
-      label: 'Thời điểm công bố đưa vào sử dụng',
-      children: (
-        <div style={drawerTabContentStyle}>
-          <Row gutter={[24, 0]}>
-            <Col span={12}>
-              <Form.Item name="announcementDecisionNumber" {...labelProps('Quyết định công bố số')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.announcementDecisionNumber ? 'error' : undefined} help={atMax.announcementDecisionNumber ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-                <Input placeholder="VD: Số 123/QĐ-BGTVT" maxLength={20} showCount style={inputStyle} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="announcementDecisionDate" {...labelProps('Ngày ra quyết định công bố')} style={{ marginBottom: spaceFormField }}>
-                <DatePicker placeholder="Chọn ngày..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={[24, 0]}>
-            <Col span={24}>
-              <Form.Item name="announcementOrg" {...labelProps('Đơn vị ra quyết định công bố')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.announcementOrg ? 'error' : undefined} help={atMax.announcementOrg ? 'Đã đạt tối đa 255 ký tự' : undefined}>
-                <Input placeholder="Nhập đơn vị ra quyết định công bố" maxLength={255} showCount style={inputStyle} />
-              </Form.Item>
-            </Col>
-          </Row>
+          {/* ── Toggle: Thông tin công bố (gom vào tab Thông tin chung — giống Bến phao) ── */}
+          <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setAnnouncementOpen(!announcementOpen)}>
+            <span style={{ color: announcementOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{announcementOpen ? '▼' : '▶'} Thông tin công bố</span>
+          </button>
+          {announcementOpen && (<div style={{ marginTop: spaceFormField }}>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item name="announcementDecisionNumber" {...labelProps('Quyết định công bố số')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.announcementDecisionNumber ? 'error' : undefined} help={atMax.announcementDecisionNumber ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+                  <Input placeholder="VD: Số 123/QĐ-BGTVT" maxLength={20} showCount style={inputStyle} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="announcementDecisionDate" {...labelProps('Ngày ra quyết định công bố')} style={{ marginBottom: spaceFormField }}>
+                  <DatePicker placeholder="Chọn ngày..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={24}>
+                <Form.Item name="announcementOrg" {...labelProps('Đơn vị ra quyết định công bố')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.announcementOrg ? 'error' : undefined} help={atMax.announcementOrg ? 'Đã đạt tối đa 255 ký tự' : undefined}>
+                  <Input placeholder="Nhập đơn vị ra quyết định công bố" maxLength={255} showCount style={inputStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+          </div>)}
         </div>
       ),
     },
