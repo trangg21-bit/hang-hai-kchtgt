@@ -577,22 +577,23 @@ export const HanoiStationList: React.FC = () => {
   const countPendingApproval = Number(statusCounts.PENDING_APPROVAL ?? statusCounts.pending ?? 0);
   const countApprovedLevel1 = Number(statusCounts.APPROVED_LEVEL1 ?? statusCounts.approvedLevel1 ?? statusCounts.approvedL1 ?? 0);
   const countApproved = Number(statusCounts.APPROVED ?? statusCounts.approved ?? 0);
-  const countRejected = Number(statusCounts.REJECTED ?? statusCounts.rejected ?? ((statusCounts.REJECTED_LEVEL1 || 0) + (statusCounts.REJECTED_LEVEL2 || 0)));
-  const countAll = countDraft + countPendingApproval + countApprovedLevel1 + countApproved + countRejected;
+  const countRejectedLevel1 = Number(statusCounts.REJECTED_LEVEL1 ?? statusCounts.rejectedLevel1 ?? 0);
+  const countRejectedLevel2 = Number(statusCounts.REJECTED_LEVEL2 ?? statusCounts.rejectedLevel2 ?? 0);
+  const countAll = countDraft + countPendingApproval + countApprovedLevel1 + countApproved + countRejectedLevel1 + countRejectedLevel2;
 
   const statusTabsConfig = useMemo(() => [
-    { key: 'ALL', label: 'Tất cả', count: countAll, color: actionPrimary, active: !filterApprovalStatus },
+    { key: 'ALL', label: 'Tất cả', count: filterApprovalStatus ? countAll : total, color: actionPrimary, active: !filterApprovalStatus },
     { key: ApprovalStatus.DRAFT, label: 'Lưu tạm', count: countDraft, color: statusDraft, active: filterApprovalStatus === ApprovalStatus.DRAFT },
-    { key: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ Cảng vụ duyệt', count: countPendingApproval, color: statusAttention, active: filterApprovalStatus === ApprovalStatus.PENDING_APPROVAL },
-    { key: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ Cục duyệt', count: countApprovedLevel1, color: '#0284C7', active: filterApprovalStatus === ApprovalStatus.APPROVED_LEVEL1 },
-    { key: ApprovalStatus.APPROVED, label: 'Đã duyệt', count: countApproved, color: statusOperational, active: filterApprovalStatus === ApprovalStatus.APPROVED },
-    { key: 'REJECTED', label: 'Từ chối', count: countRejected, color: statusCritical, active: filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL1 || filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL2 },
-  ], [countAll, filterApprovalStatus, countDraft, countPendingApproval, countApprovedLevel1, countApproved, countRejected]);
+    { key: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', count: countPendingApproval, color: statusAttention, active: filterApprovalStatus === ApprovalStatus.PENDING_APPROVAL },
+    { key: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ phê duyệt cấp Cục', count: countApprovedLevel1, color: '#0284C7', active: filterApprovalStatus === ApprovalStatus.APPROVED_LEVEL1 },
+    { key: ApprovalStatus.APPROVED, label: 'Đã phê duyệt', count: countApproved, color: statusOperational, active: filterApprovalStatus === ApprovalStatus.APPROVED },
+    { key: ApprovalStatus.REJECTED_LEVEL1, label: 'Từ chối cấp Cảng vụ/Chi cục', count: countRejectedLevel1, color: statusCritical, active: filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL1 },
+    { key: ApprovalStatus.REJECTED_LEVEL2, label: 'Từ chối cấp Cục', count: countRejectedLevel2, color: statusCritical, active: filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL2 },
+  ], [total, countAll, filterApprovalStatus, countDraft, countPendingApproval, countApprovedLevel1, countApproved, countRejectedLevel1, countRejectedLevel2]);
 
   const handleTabChange = (key: string) => {
-    if (key === 'ALL') setFilterApprovalStatus(undefined);
-    else if (key === 'REJECTED') setFilterApprovalStatus(ApprovalStatus.REJECTED_LEVEL1);
-    else setFilterApprovalStatus(key as ApprovalStatus);
+    const approvalStatus = key === 'ALL' || key === 'all' ? undefined : (key as ApprovalStatus);
+    setFilterApprovalStatus(approvalStatus);
     setPage(1);
   };
 
@@ -1287,24 +1288,6 @@ export const HanoiStationList: React.FC = () => {
                   onPressEnter={() => handleFilterSearch(filterValues)}
                   allowClear
                   style={{ ...inputStyle, width: '100%', borderRadius: radiusPill, height: 38 }}
-                />
-              </SidebarFilterField>
-
-              <SidebarFilterField label="Trạng thái">
-                <Select
-                  placeholder="Tất cả trạng thái"
-                  value={filterValues.approvalStatus}
-                  onChange={(val) => setFilterValues((p) => ({ ...p, approvalStatus: val }))}
-                  allowClear
-                  options={[
-                    { value: 'DRAFT', label: 'Lưu tạm' },
-                    { value: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt' },
-                    { value: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt' },
-                    { value: 'APPROVED', label: 'Đã duyệt' },
-                    { value: 'REJECTED_LEVEL1', label: 'Bị Cảng vụ trả về' },
-                    { value: 'REJECTED_LEVEL2', label: 'Bị Cục trả về' },
-                  ]}
-                  style={{ ...selectStyle, width: '100%' }}
                 />
               </SidebarFilterField>
 

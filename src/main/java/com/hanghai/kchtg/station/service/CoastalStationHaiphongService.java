@@ -177,17 +177,27 @@ public class CoastalStationHaiphongService {
         long approvedL1 = countsByStatus.getOrDefault(ApprovalStatus.APPROVED_LEVEL1, 0L);
         long approved = countsByStatus.getOrDefault(ApprovalStatus.APPROVED, 0L)
                 + countsByStatus.getOrDefault(ApprovalStatus.APPROVED_LEVEL2, 0L);
-        long rejected = countsByStatus.getOrDefault(ApprovalStatus.REJECTED, 0L)
-                + countsByStatus.getOrDefault(ApprovalStatus.REJECTED_LEVEL1, 0L)
-                + countsByStatus.getOrDefault(ApprovalStatus.REJECTED_LEVEL2, 0L);
-        long all = draft + pending + approvedL1 + approved + rejected;
+        long rejectedL1 = countsByStatus.getOrDefault(ApprovalStatus.REJECTED_LEVEL1, 0L)
+                + countsByStatus.getOrDefault(ApprovalStatus.REJECTED, 0L);
+        long rejectedL2 = countsByStatus.getOrDefault(ApprovalStatus.REJECTED_LEVEL2, 0L);
+        long all = draft + pending + approvedL1 + approved + rejectedL1 + rejectedL2;
 
+        // Chuẩn tên Enum (khớp hoàn toàn với VTS, LRIT, Inmarsat)
+        result.put("ALL", all);
+        result.put(ApprovalStatus.DRAFT.name(), draft);
+        result.put(ApprovalStatus.PENDING_APPROVAL.name(), pending);
+        result.put(ApprovalStatus.APPROVED_LEVEL1.name(), approvedL1);
+        result.put(ApprovalStatus.APPROVED.name(), approved);
+        result.put(ApprovalStatus.REJECTED_LEVEL1.name(), rejectedL1);
+        result.put(ApprovalStatus.REJECTED_LEVEL2.name(), rejectedL2);
+
+        // Backward compatibility keys
         result.put("all", all);
         result.put("draft", draft);
         result.put("pending", pending);
         result.put("approvedL1", approvedL1);
         result.put("approved", approved);
-        result.put("rejected", rejected);
+        result.put("rejected", rejectedL1 + rejectedL2);
 
         return result;
     }
