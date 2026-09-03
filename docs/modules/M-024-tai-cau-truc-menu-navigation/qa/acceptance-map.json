@@ -1,198 +1,175 @@
 {
   "module": "M-024",
   "feature": "F-292",
-  "stage": "engineering-qa-engineer-wave-2",
+  "stage": "engineering-qa-engineer-wave-1",
+  "do-t": 5,
+  "triage": "TRI-1788409709741-75fa",
   "generated_from": "docs/modules/M-024-tai-cau-truc-menu-navigation/qa/07-qa-report-w1.md",
-  "last_updated": "2026-08-28",
+  "last_updated": "2026-09-03",
+  "model": "2-screen menu (dot-5): màn 'Danh mục chức năng' 6 khối sau đăng nhập -> route /kcht-directory liệt kê 28 loại KCHT C0-C3; sidebar 6 nhóm cấp 1 phẳng; không filter bar trên màn khối lẫn màn danh mục. Thay thế oracle dot-4 (7 nhóm / 13 thực thể trong sidebar).",
+  "authoring_note": "Oracle authored wave-1 (expected states). Wave-2 EXECUTED 2026-09-03: all 16 probes + GATE-1 + GATE-2 run; pass_state/evidence below = REAL outcomes (detail qa/07-qa-report-w2.md).",
   "acceptance_map": {
-    "AC-1": {
-      "spec_ref": "lean-spec:29/282, feature-brief:39 (doct 3 docs-sync TRI-1787899754098-59d2)",
-      "description": "Tai lieu state sidebarBg = #1a3f83, khong phai #12468C",
-      "verification_method": "grep/read code: theme.ts:50 (sidebarBg), themetokenchk.ts:72 (sidebarBg)",
+    "AC-024-01": {
+      "spec_ref": "ba/00-lean-spec.md:265-284 (AC table), lean-spec:33-56 (section 1); design-plan:294-331 section 8; wireframe-menu-khoi.md",
+      "description": "Sau đăng nhập, màn 'Danh mục chức năng' hiển thị đúng 6 khối, đúng tên và thứ tự (1 Quản lý KCHT hàng hải ... 6 Quản trị hệ thống), label tiếng Việt có dấu; khối (1)(2)(3)(5)(6) điều hướng được; riêng khối (4) 'Phê duyệt' disabled + tooltip 'Chưa triển khai', KHÔNG navigate (AC-024-01 amended - exemption block 4)",
+      "file": "frontend/src/pages/Home.tsx",
+      "verification_method": "read Home.tsx:46-88 -> BLOCKS exactly 6 entries; titles in AC order (kcht:48 asset:55 planning:62 approval:69 reports:76 admin:83) with Vietnamese diacritics; route ONLY on blocks 1/2/3/5/6: '/kcht-directory' :51, '/asset/inventory' :58, '/gis/map' :65, '/reports' :79, '/users' :86; block 4 'Phê duyệt' :69-73 has disabled: true (:73) and NO route property; render: Tooltip title={block.disabled ? 'Chưa triển khai' : undefined} :169; button disabled={block.disabled} :178; onClick={() => block.route && navigate(block.route)} :179 -> block 4 never navigates; heading 'Danh mục chức năng' :159; '/' -> HomePage at App.tsx:145; grep 'route:' on Home.tsx -> no '/' self-loop",
+      "test_name": null,
       "pass_state": "pass",
-      "evidence": "grep wave-2: theme.ts:50 sidebarBg '#1a3f83'; themetokenchk.ts:72 sidebarBg '#1a3f83'; #12468C trong theme.ts: 0 match"
+      "evidence": "PASS targeted re-probe 2026-09-03 (post-D1 fix): read Home.tsx:46-88 -> BLOCKS exactly 6, titles in AC order (kcht:48 asset:55 planning:62 approval:69 reports:76 admin:83), labels Vietnamese diacritics; routes only on blocks 1/2/3/5/6 (:51 :58 :65 :79 :86); block 4 approval disabled:true :73, no route between :69-74; Tooltip 'Chưa triển khai' :169; onClick guard 'block.route && navigate' :179 + native disabled :178 -> no navigate, no self-loop; heading 'Danh mục chức năng' :159"
     },
-    "AC-2": {
-      "spec_ref": "lean-spec:29/282, feature-brief:39",
-      "description": "Tai lieu state accent tieu de = #273e7c",
-      "verification_method": "grep/read code: themetokenchk.ts:36 (actionPrimary), AppLayout.tsx:632/865 (title color)",
+    "AC-024-02": {
+      "spec_ref": "ba/00-lean-spec.md:265-284 (AC table)",
+      "description": "Click khối 1 'Quản lý KCHT hàng hải' điều hướng tới /kcht-directory; màn liệt kê đúng 28 loại KCHT phân cấp cha–con C0–C3 theo SO-DO",
+      "file": "frontend/src/pages/Home.tsx",
+      "verification_method": "read Home.tsx:46-50 (block kcht route '/kcht-directory' at :49) + grep App.tsx -> '/kcht-directory' Route element KchtDirectoryPage at App.tsx:148; node count 28 via AC-024-16 probe on KchtDirectoryPage.tsx:71-145",
+      "test_name": null,
       "pass_state": "pass",
-      "evidence": "grep wave-2: themetokenchk.ts:36 actionPrimary '#273e7c'; AppLayout.tsx:632 va :865 color '#273e7c'; docs anchors da sua thanh 632/865"
+      "evidence": "PASS w2: Home.tsx:49 khối 1 route /kcht-directory; App.tsx:148 Route element KchtDirectoryPage (no PermissionGuard - per-node gating in page); 28 loại confirmed via AC-024-16 probe"
     },
-    "AC-3": {
-      "spec_ref": "lean-spec:29/282, feature-brief:39",
-      "description": "Tai lieu state fallback --bg-sidebar = #1a3f83",
-      "verification_method": "grep/read code: theme.ts:287 (--bg-sidebar: ${colors.sidebarBg}), theme.ts:618/1006 (var(--bg-sidebar, #1a3f83)), AppLayout.tsx:785/799",
+    "AC-024-03": {
+      "spec_ref": "ba/00-lean-spec.md:265-284 (AC table); design-plan:294-331 decision 3",
+      "description": "Sidebar shows exactly 6 flat level-1 groups, names matching the 6 blocks; NO old deep KCHT entity submenu (13 entities); utility items by permission",
+      "file": "frontend/src/components/AppLayout.tsx",
+      "verification_method": "read AppLayout.tsx:215-381: depth-1 items = utility '/' (:216) + exactly 6 business entries, labels in AC-024-01 order (:219 /kcht-directory leaf with no children; :225 asset-management; :238 planning-operation; :254 approval disabled; :259 reports-parent; :370 system-admin); grep -n \"key: '/pier'|key: '/berth'|key: '/buoys'|key: '/radar-station'|key: '/navigation-channel'|key: '/vts-operation-center'|key: '/dai-ttdh'\" on AppLayout.tsx:215-381 -> 0 matches (old entity tree removed)",
+      "test_name": null,
       "pass_state": "pass",
-      "evidence": "grep wave-2: theme.ts:618/1006 var(--bg-sidebar, #1a3f83); AppLayout.tsx:785/799 var(--bg-sidebar, #1a3f83); theme.ts:287 xac nhan gian tiep (2 nguon: design-plan muc 2 + intake seam_claims); #1E2129 trong AppLayout.tsx: 0 match"
+      "evidence": "PASS w2 (OBS-1): rawMenuItems AppLayout.tsx:215-381 = / (:216) + 6 nhóm AC order: /kcht-directory leaf no children (:219), asset-management (:223), planning-operation (:236), approval disabled (:254), reports-parent (:257), system-admin (:368); grep old entity keys -> 0 matches; reports-parent keeps pre-existing report folders :263-365 (not KCHT tree; BA adjudication recorded in w2 report)"
     },
-    "AC-4": {
-      "spec_ref": "doct 3 docs-only; design-plan muc 1/4; _state.md:45",
-      "description": "Khong file code/theme/token/test nao bi sua boi pipeline docs-sync nay",
-      "verification_method": "ORCHESTRATOR ran `git status --porcelain` + `git diff --name-only HEAD` in unrestricted scope (QA session git bi policy chan: 'Effective denying pattern(s): git *')",
+    "AC-024-04": {
+      "spec_ref": "ba/00-lean-spec.md:265-284 (AC table)",
+      "description": "User missing a group's permission does not see item/block outside permission; level-1 group with 0 valid items is hidden (filterEmptyChildren)",
+      "file": "frontend/src/components/AppLayout.tsx",
+      "verification_method": "read AppLayout.tsx:226-231/:240-249/:372-377 (children wrapped in canAccessMenu(...)), :382 menuItems = filterEmptyChildren(rawMenuItems), :106-128 filterEmptyChildren drops empty groups + prunes dividers; directory screen: KchtDirectoryPage.tsx:300-301 node without right -> disabled + Tooltip NO_PERMISSION_NOTE (not clickable)",
+      "test_name": null,
       "pass_state": "pass",
-      "evidence": "Orchestrator: workspace la shared dirty tree (pre-existing doct 3 C2-solo + menu-search changes + concurrent M-026/M-027 frontend touches); cac seat pipeline (BA/SA/FE-dev) moi seat bao 0 code write; +3 anchor drift = concurrent external interference, khong phai pipeline nay; QA session nay chi ghi qa/*"
+      "evidence": "PASS w2 (mechanism; OBS-2): children canAccessMenu-wrapped :226-231/:240-249/:372-377 + reports gated :259; menuItems = filterEmptyChildren(rawMenuItems) :382; filterEmptyChildren :106-128 drops empty groups + prunes dividers; Kcht node no-right -> disabled + Tooltip NO_PERMISSION_NOTE :300-301; Home blocks fixed/ungated -> block-screen clause unverifiable in static battery"
     },
-    "AC-5": {
-      "spec_ref": "feature-brief template 7 section; lean-spec:15/29/282",
-      "description": "feature-brief giu dung 7 section theo dung thu tu/tieu de; lean-spec het mau thuan (stale 'KHONG sua theme.ts' da reconciled)",
-      "verification_method": "grep '^## ' feature-brief.md + read lean-spec:29/282",
+    "AC-024-05": {
+      "spec_ref": "ba/00-lean-spec.md:265-284 (AC table)",
+      "description": "User with admin:all (or *) sees the whole menu regardless of detailed permissions",
+      "file": "frontend/src/components/AppLayout.tsx",
+      "verification_method": "read AppLayout.tsx:95-105 canAccessMenu -> usePermissionStore.hasPermission/hasAnyPermission; bypass semantics ('*', 'admin:all', '<resource>:manage|:*|:write') at permissionStore.ts:55-95 (read-only reference); optional unit guard: npx vitest run src/store/permissionStore.test.ts",
+      "test_name": null,
       "pass_state": "pass",
-      "evidence": "7 headings dung thu tu (1 Mo ta ngan -> 7 Phan ky thuat - cau truc bang); lean-spec:29/282 ghi ro doct 3 DA thay doi theme.ts + AppLayout.tsx (gia tri #1a3f83/#273e7c, anchor 632/865/785/799)"
+      "evidence": "PASS w2: canAccessMenu AppLayout.tsx:95-105 -> MENU_PERMISSION_MAP -> hasPermission/hasAnyPermission; permissionStore.ts:70 bypass only * or admin:all; :77 resource:manage / resource:*; :52-53 admin:manage NOT full access"
     },
-    "AC-6": {
-      "spec_ref": "lean-spec toan bo",
-      "description": "lean-spec bao toan moi UC/BR/VAL/D/AC truoc do (khong regression)",
-      "verification_method": "grep inventory UC-024-/BR-024-/VAL-024-/AC-024-/D-",
+    "AC-024-06": {
+      "spec_ref": "ba/00-lean-spec.md:265-284 (AC table)",
+      "description": "Click a leaf item with route navigates correctly; selectedKey + openKeys open the right group (no wrong-group highlight)",
+      "file": "frontend/src/components/AppLayout.tsx",
+      "verification_method": "read AppLayout.tsx:394-399 handleMenuClick (navigate only keys starting '/'), Menu onClick=handleMenuClick at :471; selectedKey mapping ~:168-198 ('/' landing; /reports/<code>; /asset|/gis|/documents; ALL KCHT-entity routes folded to '/kcht-directory'); openKeys effect ~:200-215 opens group by prefix (asset-management / planning-operation / reports-parent,reports-chung,reports-kcht / system-admin)",
+      "test_name": null,
       "pass_state": "pass",
-      "evidence": "UC-024-09; BR-024-04/08/09/10/11/12/13/14/15; VAL-024-01..06; AC-024-02/10/11/12/13; D-1/D-2/D-5 hien dien, noi dung khong doi"
+      "evidence": "PASS w2 (static seam): selectedKey AppLayout.tsx:168-198 maps ''->/, /reports 2-seg, /asset|/gis|/documents 2-seg, all KCHT-entity routes folded to /kcht-directory; openKeys effect :200-215 opens asset-management / planning-operation / reports-parent+chung+kcht / system-admin; handleMenuClick :394-399 navigate only keys starting /; Menu onClick wired"
     },
-    "A1": {
-      "spec_ref": "AC-024-11, BR-024-14",
-      "description": "filterMenuByQuery: label match substring tieng Viet co dau",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+    "AC-024-07": {
+      "spec_ref": "ba/00-lean-spec.md:265-284 (AC table); D-1 method (a)",
+      "description": "Item without a screen shows disabled + Vietnamese tooltip 'Chưa triển khai'; never navigates to a fake route",
+      "file": "frontend/src/pages/kcht-directory/KchtDirectoryPage.tsx",
+      "verification_method": "grep 'Chưa triển khai' -> AppLayout.tsx:254 (Phê duyệt disabled leaf); KchtDirectoryPage.tsx:139 noRouteNote VHF -> :273-274 disabled:true + Tooltip(node.noRouteNote); :300-301 no-right -> disabled + Tooltip(NO_PERMISSION_NOTE); disabled nodes carry no onClick/onTitleClick navigate (only :288 guarded onTitleClick, :308 guarded onClick)",
+      "test_name": null,
       "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed (A1-A13 + B1-B5), exit 0"
+      "evidence": "PASS w2: Chưa triển khai -> AppLayout.tsx:254 only (approval disabled leaf); Kcht vhf-system noRouteNote :139 -> disabled+Tooltip :273-274; no-right node disabled+Tooltip(NO_PERMISSION_NOTE) :300-301; navigate only guarded onTitleClick :288 (route+checkRouteAccess) and leaf onClick :308"
     },
-    "A2": {
-      "spec_ref": "AC-024-11, VAL-024-06",
-      "description": "filterMenuByQuery: .trim() - query co khoang trang thua 2 dau cho ket qua bang",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+    "AC-024-08": {
+      "spec_ref": "ba/00-lean-spec.md:265-284 (AC table); AGENTS.md UI Theme Convention; tokens.ts/theme.ts/themetokenchk.ts",
+      "description": "English keys/routes/resources; Vietnamese labels WITH diacritics; no hardcoded hex/spacing/font-size in menu/UI",
+      "file": "frontend/src/pages/Home.tsx",
+      "verification_method": "(a) keys/routes English + labels Vietnamese diacritics - read Home.tsx:44-86, KchtDirectoryPage.tsx:71-145, AppLayout.tsx:215-381; (b) grep -nE \"#[0-9A-Fa-f]{3,8}\" Home.tsx KchtDirectoryPage.tsx -> 0 matches; rawMenuItems region contains no style objects; (c) all spacing/font-size/radius/weight from themetokenchk/theme tokens; allowed exceptions: layout sizes, 1px borders, pill '2px 10px' (Pill Badge Standard), lineHeight",
+      "test_name": null,
       "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
+      "evidence": "PASS w2: grep hex #[0-9A-Fa-f]{3,8} on Home.tsx+KchtDirectoryPage.tsx -> 0 matches; menu styles token-only (surfaceCard/actionPrimary/textPrimary/fontSize*/space*/radius*/fontWeight*/shadowMd); labels Vietnamese diacritics, keys/routes English; layout numbers allowed. Note OBS-8: pre-existing AppLayout.tsx:452 #273e7c header + rgba footer outside menu region, predates dot-5"
     },
-    "A3": {
-      "spec_ref": "AC-024-12, VAL-024-06",
-      "description": "filterMenuByQuery: whitespace-only query tra ve full tree",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+    "AC-024-09": {
+      "spec_ref": "ba/00-lean-spec.md:265-284 (AC table); triage TRI-1788409709741-75fa verification_commands",
+      "description": "Verification: cd frontend && npx tsc --noEmit passes (mvn clause not applicable - frontend-only edit scope)",
+      "file": "frontend",
+      "verification_method": "GATE-1: cd frontend && npx tsc --noEmit -> exit 0",
+      "test_name": null,
       "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
+      "evidence": "PASS w2: GATE-1 executed - cd frontend && npx --no-install tsc --noEmit -> exit 0, no violations (w2 report section 2). mvn compile clause N/A (frontend-only triage, OBS-3)"
     },
-    "A4": {
-      "spec_ref": "AC-024-11",
-      "description": "filterMenuByQuery: case-insensitive (CANG vs cang)",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+    "AC-024-10": {
+      "spec_ref": "ba/00-lean-spec.md:265-284 (AC table); D-4 resolved = no new permission (lean-spec section 8/BR)",
+      "description": "If a new permission were added (D-4=yes) it would seed via seedPermission; D-4=no -> vacuous",
+      "file": "frontend/src/App.tsx",
+      "verification_method": "premise probe: grep -n \"menu:\" on App.tsx AppLayout.tsx Home.tsx KchtDirectoryPage.tsx -> 0 matches (no new permission token 'menu:view' or similar introduced)",
+      "test_name": null,
       "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
+      "evidence": "PASS w2 (vacuous, premise D-4=no): grep menu: on App.tsx AppLayout.tsx Home.tsx KchtDirectoryPage.tsx -> 0 matches (no new permission token introduced)"
     },
-    "A5": {
-      "spec_ref": "AC-024-11 (boundary am)",
-      "description": "filterMenuByQuery: khong fold dau tieng Viet (cang vs cang) - khong match",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+    "AC-024-11": {
+      "spec_ref": "ba/00-lean-spec.md:265-284 (AC table); dot-2 feature retained",
+      "description": "Search sidebar: chuỗi có khoảng trắng thừa được .trim() trước khi so khớp, substring không phân biệt hoa/thường trên label tiếng Việt; nhánh 0 con khớp bị ẩn; không item ngoài quyền hiển thị",
+      "file": "frontend/src/components/AppLayout.tsx",
+      "verification_method": "read AppLayout.tsx:130-142 filterMenuByQuery (trim+toLowerCase at :131, label.toLowerCase().includes(q), prune via filterEmptyChildren at :141); gating order: menuItems permission-filtered at :382 before filter at :386; optional unit guard: cd frontend && npx vitest run src/components/AppLayout.test.tsx (A1/A2/A5-A8)",
+      "test_name": "src/components/AppLayout.test.tsx (optional regression guard)",
       "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
+      "evidence": "PASS w2: filterMenuByQuery AppLayout.tsx:130-142 trim().toLowerCase() :131, label.toLowerCase().includes(q), prune filterEmptyChildren :141; permission filter :382 precedes search :386"
     },
-    "A6": {
-      "spec_ref": "BR-024-14, D-5a",
-      "description": "filterMenuByQuery: parent/child keep+drop - parent giu qua rebuild {...node, children}, sibling khong match bi drop",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+    "AC-024-12": {
+      "spec_ref": "ba/00-lean-spec.md:265-284 (AC table); dot-2 feature retained",
+      "description": "Xóa toàn bộ chuỗi (hoặc chuỗi chỉ khoảng trắng) khôi phục menu đầy đủ: đúng 6 nhóm cấp 1 phẳng + item tiện ích; openKeys trở về do user điều khiển",
+      "file": "frontend/src/components/AppLayout.tsx",
+      "verification_method": "read AppLayout.tsx:384-387: isSearching = trimmedSearchQuery.length > 0; when false displayedItems = menuItems (:386) and effectiveOpenKeys = openKeys (:387); optional unit guard vitest AppLayout.test.tsx A3/A9",
+      "test_name": "src/components/AppLayout.test.tsx (optional regression guard)",
       "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
+      "evidence": "PASS w2: AppLayout.tsx:384-387 isSearching = trimmedSearchQuery.length > 0; empty/whitespace -> displayedItems = menuItems :386, effectiveOpenKeys = openKeys :387 (full 6 nhóm restored)"
     },
-    "A7": {
-      "spec_ref": "BR-024-14, BR-024-13",
-      "description": "filterMenuByQuery: parent het con khop -> an nhanh (filterEmptyChildren)",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+    "AC-024-13": {
+      "spec_ref": "ba/00-lean-spec.md:265-284 (AC table); dot-2 feature retained",
+      "description": "Gõ từ khóa + Enter không navigate ngoài ý muốn và không phát sinh request API tìm kiếm; chỉ click item lá qua handleMenuClick mới navigate",
+      "file": "frontend/src/components/AppLayout.tsx",
+      "verification_method": "read AppLayout.tsx:449-460 search input: onChange only setSearchQuery, no onSubmit/onKeyDown navigate, no fetch/API call; navigate only in handleMenuClick (:394-399, guard key startsWith '/') wired via Menu onClick (:471)",
+      "test_name": null,
       "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
+      "evidence": "PASS w2: search input AppLayout.tsx:449-460 onChange only setSearchQuery - no onKeyDown/onSubmit/fetch/API; navigate only handleMenuClick :394-399 (guard startsWith /) via Menu onClick"
     },
-    "A8": {
-      "spec_ref": "BR-024-13, AC-024-11",
-      "description": "filterMenuByQuery: divider hygiene - khong divider lien tiep, khong sinh divider moi",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+    "AC-024-14": {
+      "spec_ref": "ba/00-lean-spec.md:265-284 (AC table); design-plan:294-331 decision 4",
+      "description": "NO filter bar on the block screen AND on /kcht-directory (no keyword search box, no filter select, no date range)",
+      "file": "frontend/src/pages/Home.tsx",
+      "verification_method": "grep 'FilterBar|Input|Select|DatePicker|RangePicker|placeholder=|Tìm kiếm' on Home.tsx + KchtDirectoryPage.tsx -> 0 matches; Home renders only Row of blocks (:165-173); Kcht renders ScreenHeader+card+Menu (:322-385); sidebar 'Tìm kiếm' input (AppLayout.tsx:455) is the retained dot-2 menu search, not a screen filter bar",
+      "test_name": null,
       "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
+      "evidence": "PASS w2: grep FilterBar|Input|Select|DatePicker|RangePicker|placeholder=|Tìm kiếm on Home.tsx+KchtDirectoryPage.tsx -> 0 matches; Home renders Row+BLOCKS.map :165-173; Kcht renders ScreenHeader+description+Menu :322-385; sidebar search AppLayout.tsx:455 is menu search (AC-024-11..13), not a screen filter bar"
     },
-    "A9": {
-      "spec_ref": "AC-024-12",
-      "description": "filterMenuByQuery: restore-on-clear (query '') tra ve full tree deep-equal",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+    "AC-024-15": {
+      "spec_ref": "ba/00-lean-spec.md:265-284 (AC table); SO-DO-VA-MA-TRAN-CHA-CON-KCHT.md; design-plan:294-331 section 8.2",
+      "description": "Cây danh mục khớp từng chuỗi cha–con SO-DO: Cảng biển(C0)->Bến cảng(C1)->Cầu cảng(C2); Cảng biển->Luồng hàng hải->{Bến phao; Nhà trạm QLVH phao tiêu->Phao, tiêu; Đèn biển & nhà trạm; Đê chắn sóng, đê chắn cát, kè}; Cảng biển->{Khu neo đậu; Khu chuyển tải; Khu tránh, trú bão; Cơ sở sửa chữa, đóng tàu}; Hệ thống VTS->Trung tâm điều hành VTS->6 hệ thống; Cảng cạn (gốc); nhóm Đài viễn thông hàng hải (gắn lỏng)->6 đài/hệ thống",
+      "file": "frontend/src/pages/kcht-directory/KchtDirectoryPage.tsx",
+      "verification_method": "read KchtDirectoryPage.tsx:71-145 and compare each chain + level against SO-DO chains table and design-plan 8.2; verify 'gắn lỏng' note on Dai vien thong group (~:131-133); DEFAULT_OPEN_KEYS (:183-191) pre-opens /port, /berth, /navigation-channel, /buoy-station, /vts-system, /vts-operation-center, dai-vien-thong-hang-hai so the full tree is visible",
+      "test_name": null,
       "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
+      "evidence": "PASS w2: read KchtDirectoryPage.tsx:71-149 chains+levels match AC-024-15/SO-DO incl gắn lỏng note :131-133 (SO-DO:50 semantics); DEFAULT_OPEN_KEYS :183-191 = /port /berth /navigation-channel /buoy-station /vts-system /vts-operation-center dai-vien-thong-hang-hai"
     },
-    "A10": {
-      "spec_ref": "BR-024-15",
-      "description": "filterMenuByQuery: permission gating - output key-set la subset cua input (khong bypass quyen)",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+    "AC-024-16": {
+      "spec_ref": "ba/00-lean-spec.md:265-284 (AC table); SO-DO-VA-MA-TRAN-CHA-CON-KCHT.md",
+      "description": "Tổng cộng đúng 28 loại KCHT không trùng lặp; cấp C0–C3 khớp ma trận SO-DO; không hiển thị mô hình cũ 7 nhóm / 13 thực thể",
+      "file": "frontend/src/pages/kcht-directory/KchtDirectoryPage.tsx",
+      "verification_method": "grep -n \"level: 'C[0-3]'\" KchtDirectoryPage.tsx -> exactly 28 matching lines (75,81,82,87,89,93,94,96,97,100,101,102,103,109,115,117,118,119,120,121,122,127,134,138,141,142,143,144); unique keys; C0 roots only Cảng biển(:75), Hệ thống VTS(:109), Cảng cạn(:127); old-model absence covered by AC-024-03 probe",
+      "test_name": null,
       "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
+      "evidence": "PASS w2: grep level C[0-3] on KchtDirectoryPage.tsx -> exactly 28 lines (75..144 as listed in map); unique keys; C0 roots Cảng biển:75 Hệ thống VTS:109 Cảng cạn:127"
     },
-    "A11": {
-      "spec_ref": "BR-024-13, AC-024-11",
-      "description": "filterMenuByQuery: non-string ReactNode label guard - khong throw, khong match theo label",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+    "GATE-1": {
+      "spec_ref": "triage TRI-1788409709741-75fa verification_commands; AC-024-09",
+      "description": "Typecheck no-regression over the whole frontend (4 changed files included)",
+      "file": "frontend",
+      "verification_method": "cd frontend && npx tsc --noEmit",
+      "test_name": null,
       "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
+      "evidence": "PASS w2 executed 2026-09-03: cd frontend && npx --no-install tsc --noEmit -> exit 0, no output (0 violations)"
     },
-    "A12": {
-      "spec_ref": "AC-024-11 (boundary am)",
-      "description": "filterMenuByQuery: no match -> []",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
+    "GATE-2": {
+      "spec_ref": "qa/07-qa-report-w1.md section 4; existing component suite",
+      "description": "Optional regression guard for sidebar search helpers after dot-5 refactor",
+      "file": "frontend/src/components/AppLayout.test.tsx",
+      "verification_method": "cd frontend && npx vitest run src/components/AppLayout.test.tsx (exact file - co-located component tests are not collected by a bare run)",
+      "test_name": "src/components/AppLayout.test.tsx",
       "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
-    },
-    "A13": {
-      "spec_ref": "AC-024-13, BR-024-13",
-      "description": "filterMenuByQuery: no navigation, no API - ham thuan, khong doi location, khong goi fetch/navigate",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx + static review than ham AppLayout.tsx:202-213",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed; than ham khong import/goi router hay API"
-    },
-    "B1": {
-      "spec_ref": "BR-024-14, D-5a, AC-024-11",
-      "description": "collectOpenableKeys: auto-open path - tra ve key moi ancestor cua node khop",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
-    },
-    "B2": {
-      "spec_ref": "AC-024-11",
-      "description": "collectOpenableKeys: no match -> []",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
-    },
-    "B3": {
-      "spec_ref": "BR-024-14",
-      "description": "collectOpenableKeys: deterministic, khong trung key, thu tu on dinh",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
-    },
-    "B4": {
-      "spec_ref": "AC-024-12",
-      "description": "collectOpenableKeys wiring: clear/whitespace -> effectiveOpenKeys = openKeys (khong ep open)",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
-    },
-    "B5": {
-      "spec_ref": "BR-024-13",
-      "description": "collectOpenableKeys: moi key la string",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
-    },
-    "C1": {
-      "spec_ref": "AC-024-11",
-      "description": "Manual smoke: go query -> cay menu thu hep + ancestors auto-open",
-      "verification_method": "manual UI smoke (browser/dev server) - chua thuc thi trong pipeline (khong co browser)",
-      "pass_state": "pending_manual",
-      "evidence": "Phan tu dong hoa da cover qua A1-A13/B1-B5 (18/18 pass); smoke C1 dang cho UAT/manual"
-    },
-    "C2": {
-      "spec_ref": "AC-024-12",
-      "description": "Manual smoke: clear -> full menu khoi phuc (7 nhom cap 1)",
-      "verification_method": "manual UI smoke (browser) - chua thuc thi trong pipeline",
-      "pass_state": "pending_manual",
-      "evidence": "Phan tu dong hoa cover qua A3/A9/B4 (18/18 pass); smoke C2 dang cho UAT/manual"
-    },
-    "C3": {
-      "spec_ref": "AC-024-13",
-      "description": "Manual smoke: go + Enter khong navigate, khong request API tim kiem",
-      "verification_method": "manual UI smoke (browser + DevTools Network) - chua thuc thi trong pipeline",
-      "pass_state": "pending_manual",
-      "evidence": "Phan tu dong hoa cover qua A13 (18/18 pass); smoke C3 dang cho UAT/manual"
+      "evidence": "PASS w2 executed 2026-09-03: cd frontend && npx --no-install vitest run src/components/AppLayout.test.tsx -> exit 0; 1 file, 18/18 tests passed (vitest v4.1.11, 5.15s)"
     }
   }
 }
