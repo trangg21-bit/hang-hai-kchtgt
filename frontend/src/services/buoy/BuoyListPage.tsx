@@ -16,7 +16,7 @@ import {
   Typography,
   Radio,
 } from 'antd';
-import { ExclamationCircleOutlined } from '@ant-design/icons';
+import { ExclamationCircleOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
@@ -1486,6 +1486,7 @@ export default function BuoyListPage() {
   })), [page, pageSize, orgLevel2Map, userMap, buoyStations, openDetailDrawer, sortField, sortOrder]);
 
   // ── Row actions with RBAC (moved from BuoyList.tsx) ─────────────
+  // Thứ tự: Xem chi tiết → Chỉnh sửa → Xem vị trí → Lịch sử → Phê duyệt/Từ chối → Xóa
 
   const rowActions = useCallback((record: Buoy) => {
     const actions: {
@@ -1498,7 +1499,7 @@ export default function BuoyListPage() {
 
     actions.push({
       key: 'view',
-      label: 'Chi tiết',
+      label: 'Xem chi tiết',
       icon: icons.view,
       onClick: () => openDetailDrawer(record),
     });
@@ -1524,17 +1525,15 @@ export default function BuoyListPage() {
       });
     }
 
-    const deletableStatuses = ['DRAFT', 'REJECTED', 'REJECTED_L1', 'REJECTED_L2'];
-    if ((hasPerm('buoy:delete') || hasPerm('buoy:manage') || hasPerm('data:delete')) && deletableStatuses.includes(record.status || '')) {
-      actions.push({
-        key: 'delete',
-        label: 'Xóa',
-        icon: icons.delete,
-        onClick: () => openDeleteModal(record),
-        danger: true,
-      });
-    }
+    // Lịch sử — luôn hiển thị khi có quyền
+    actions.push({
+      key: 'history',
+      label: 'Lịch sử',
+      icon: icons.history,
+      onClick: () => openHistoryDrawer(record),
+    });
 
+    // Phê duyệt / Từ chối — theo trạng thái
     if ((hasPerm('buoy:update') || hasPerm('buoy:manage') || hasPerm('data:update') || hasPerm('data:read') || hasPerm('admin:manage')) && (record.status === 'DRAFT' || record.status === 'REJECTED' || record.status === 'REJECTED_L1' || record.status === 'REJECTED_L2')) {
       actions.push({
         key: 'submit',
@@ -1577,12 +1576,17 @@ export default function BuoyListPage() {
       });
     }
 
-    actions.push({
-      key: 'history',
-      label: 'Lịch sử',
-      icon: icons.history,
-      onClick: () => openHistoryDrawer(record),
-    });
+    // Xóa — luôn ở cuối cùng
+    const deletableStatuses = ['DRAFT', 'REJECTED', 'REJECTED_L1', 'REJECTED_L2'];
+    if ((hasPerm('buoy:delete') || hasPerm('buoy:manage') || hasPerm('data:delete')) && deletableStatuses.includes(record.status || '')) {
+      actions.push({
+        key: 'delete',
+        label: 'Xóa',
+        icon: icons.delete,
+        onClick: () => openDeleteModal(record),
+        danger: true,
+      });
+    }
 
     return actions;
   }, [

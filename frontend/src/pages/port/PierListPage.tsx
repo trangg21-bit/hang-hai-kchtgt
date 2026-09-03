@@ -851,18 +851,20 @@ export default function PierListPage() {
     </>
   );
 
+  // ── rowActions callback (Port pattern) ──────────────────────────
+  // Thứ tự: Xem chi tiết → Chỉnh sửa → Lịch sử → Phê duyệt/Từ chối → Xóa
   const rowActions = useCallback((record: Pier) => {
-    const actions: any[] = [{ key: 'view', label: 'Chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) }];
+    const actions: any[] = [{ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) }];
     const st = record.approvalStatus || '';
     const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'pier', extraApprovePerms: ['pier:approve'] });
     if (editable) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => { setEditPierId(record.id); setCreateDrawerVisible(true); } });
-    if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'pier' })) actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => openDeleteModal(record) });
     if (['DRAFT','NHAP'].includes(st) && hasPerm('pier:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => handleSubmitApproval(record) });
+    if (hasPerm('pier:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
     if (hasPerm('pier:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) {
       actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
       actions.push({ key: 'reject', label: 'Từ chối', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
     }
-    if (hasPerm('pier:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
+    if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'pier' })) actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => openDeleteModal(record) });
     return actions;
   }, [hasPerm, openDetailDrawer, openHistory, handleSubmitApproval, openRejectModal, openDeleteModal]);
 

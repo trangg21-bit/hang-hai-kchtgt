@@ -1222,24 +1222,28 @@ export default function DryPortListPage() {
     return base;
   }, [page, pageSize, sortField, sortOrder, isAuditViewer, userMap]);
 
+  // ── rowActions callback (Port pattern) ──────────────────────────
+  // Thứ tự: Xem chi tiết → Chỉnh sửa → Lịch sử → Phê duyệt/Từ chối → Xóa
   const rowActions = useCallback((record: DryPort) => {
     const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];
     const status = record.approvalStatus || '';
     const isDraft = status === 'DRAFT' || status === 'NHAP';
     const isPending = status === 'PENDING' || status === 'PENDING_APPROVAL';
-    actions.push({ key: 'view', label: 'Chi tiết', icon: icons.view, onClick: () => openDetailModal(record) });
+    actions.push({ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailModal(record) });
     // Chỉnh sửa chỉ áp dụng cho Lưu tạm / Bị trả về / Đã phê duyệt (chuẩn VTS CHK)
     if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'dryport', extraUpdatePerms: ['dryport:update'], extraApprovePerms: ['dryport:approve'] })) {
       actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => { setFormEditId(record.id); setEditingCode(record.dryPortCode); setEditingName(record.dryPortName); setUpdateDrawerOpen(true); } });
     }
-    // Xóa: chỉ trạng thái DRAFT/NHAP (giống cảng biển)
-    if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'dryport' })) actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, onClick: () => openDeleteModal(record), danger: true });
+    // Lịch sử — luôn hiển thị khi có quyền
+    if (hasPerm('dryport:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
+    // Phê duyệt / Từ chối — theo trạng thái
     if (isDraft && hasPerm('dryport:approve')) actions.push({ key: 'approve', label: 'Phê duyệt', icon: icons.approve, onClick: () => openApproveModal(record) });
     if (isPending && hasPerm('dryport:approve')) {
       actions.push({ key: 'approve', label: 'Phê duyệt', icon: icons.approve, onClick: () => openApproveModal(record) });
       actions.push({ key: 'reject', label: 'Từ chối', icon: icons.reject, onClick: () => openRejectModal(record), danger: true });
     }
-    if (hasPerm('dryport:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
+    // Xóa: chỉ trạng thái DRAFT/NHAP — luôn ở cuối cùng
+    if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'dryport' })) actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, onClick: () => openDeleteModal(record), danger: true });
     return actions;
   }, [hasPerm, openHistory, openDetailModal, openApproveModal, openRejectModal, openDeleteModal]);
 

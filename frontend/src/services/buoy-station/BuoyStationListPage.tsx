@@ -1111,13 +1111,17 @@ export default function BuoyStationListPage() {
     sortOrder: col.sortable && col.key === sortField ? sortOrder : undefined,
   })), [page, pageSize, orgMap, orgLevel2Map, portMap, waterwayMap, actorName, openDetail, stationBuoys, sortField, sortOrder]);
 
+  // ── rowActions callback (Port pattern) ──────────────────────────
+  // Thứ tự: Xem chi tiết → Chỉnh sửa → Xem vị trí → Lịch sử → Phê duyệt/Từ chối → Xóa
   const rowActions = useCallback((r: BuoyStationResponse) => {
     const a: any[] = [];
-    a.push({ key: 'view', label: 'Chi tiết', icon: icons.view, onClick: () => void openDetail(r) });
+    a.push({ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => void openDetail(r) });
     // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
     if (canEditApprovalRecord(r.status, { hasPerm, resource: 'buoystation', extraUpdatePerms: ['data:update', 'admin:manage'], extraApprovePerms: ['admin:manage'] })) a.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => void openEdit(r) });
     if (r.latitude != null && r.longitude != null) a.push({ key: 'loc', label: 'Xem vị trí', icon: icons.location, onClick: () => window.open(`https://www.google.com/maps?q=${r.latitude},${r.longitude}`, '_blank') });
-    if ((hasPerm('buoystation:delete') || hasPerm('data:delete') || hasPerm('admin:manage')) && (r.status === 'DRAFT' || r.status === 'REJECTED' || r.status === 'REJECTED_L1' || r.status === 'REJECTED_L2')) a.push({ key: 'del', label: 'Xóa', icon: icons.delete, onClick: () => openDelete(r), danger: true });
+    // Lịch sử — luôn hiển thị khi có quyền
+    a.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => void openHistoryDrawer(r) });
+    // Phê duyệt / Từ chối — theo trạng thái
     if ((hasPerm('buoystation:create') || hasPerm('buoystation:update') || hasPerm('data:create') || hasPerm('data:update') || hasPerm('admin:manage')) && (r.status === 'DRAFT' || r.status === 'REJECTED' || r.status === 'REJECTED_L1' || r.status === 'REJECTED_L2')) a.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => openSubmit(r) });
     const canApproveL1 = hasPerm('buoystation:approvec1') || hasPerm('buoystation:approvel1') || hasPerm('data:approvec1') || hasPerm('data:approvel1') || hasPerm('admin:manage');
     const canApproveL2 = hasPerm('buoystation:approvec2') || hasPerm('buoystation:approvel2') || hasPerm('data:approvec2') || hasPerm('data:approvel2') || hasPerm('admin:manage');
@@ -1129,7 +1133,8 @@ export default function BuoyStationListPage() {
       a.push({ key: 'appL2', label: 'Cục phê duyệt', icon: icons.approve, onClick: () => openApprove(r, 'L2') });
       a.push({ key: 'rej', label: 'Từ chối', icon: icons.reject, onClick: () => openReject(r), danger: true });
     }
-    a.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => void openHistoryDrawer(r) });
+    // Xóa — luôn ở cuối cùng
+    if ((hasPerm('buoystation:delete') || hasPerm('data:delete') || hasPerm('admin:manage')) && (r.status === 'DRAFT' || r.status === 'REJECTED' || r.status === 'REJECTED_L1' || r.status === 'REJECTED_L2')) a.push({ key: 'del', label: 'Xóa', icon: icons.delete, onClick: () => openDelete(r), danger: true });
     return a;
   }, [hasPerm, openEdit, openDetail, openHistoryDrawer, openSubmit, openApprove, openReject, openDelete]);
 
