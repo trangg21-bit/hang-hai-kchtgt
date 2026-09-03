@@ -8,7 +8,6 @@ import {
   Checkbox,
   DatePicker,
   Space,
-  Tag,
   Row,
   Col,
   Input,
@@ -23,12 +22,7 @@ import {
 import { OrgUnitTreeSelect } from "../../components/org-unit";
 import {
   PlusOutlined,
-  EditOutlined,
   DeleteOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  SendOutlined,
-  EyeOutlined,
   HistoryOutlined,
   UploadOutlined,
   ExclamationCircleOutlined,
@@ -70,9 +64,46 @@ import {
   DataTable,
   Pagination,
   FilterTableLayout,
-  PagedTable,
 } from "../../components/list-view";
 import {
+  // Design + status tokens (themetokenchk — thay cho ../../tokens cũ)
+  colors,
+  actionPrimary,
+  statusInfo,
+  statusCritical,
+  statusAttention,
+  statusDraft,
+  statusOperational,
+  textPrimary,
+  textSecondary,
+  textTertiary,
+  borderDefault,
+  surfaceCard,
+  radiusPill,
+  radiusMd,
+  fontSans,
+  fontSizeSm,
+  fontSizeMd,
+  fontSizeLg,
+  fontWeightMedium,
+  fontWeightBold,
+  spaceXs,
+  spaceSm,
+  spaceMd,
+  spaceFormField,
+  spaceXl,
+  statusBadgeStyle,
+  icons,
+  labelProps,
+  drawerProps,
+  drawerTitleStyle,
+  drawerCloseBtnStyle,
+  drawerFooterStyle,
+  primaryButtonStyle,
+  outlineButtonStyle,
+  requiredMarkStyle,
+  uploadHintStyle,
+  // Lịch sử (card) styles
   historyBadgeStyle,
   historyGroupGridStyle,
   historyTimeStyle,
@@ -86,7 +117,9 @@ import {
   historyOldValueStyle,
   historyNewValueStyle,
   historyArrowStyle,
-} from "../../tokens";
+} from "../../themetokenchk";
+import * as themeTokenChk from "../../themetokenchk";
+import { ThemeTokenProvider } from "../../context/ThemeTokenContext";
 
 /** Map unitOfMeasure code (Integer) → label cho hiển thị */
 const UOM_LABELS: Record<number, string> = {
@@ -123,46 +156,6 @@ function formatUnitOfMeasure(code: number | null | undefined): string {
   return code != null && UOM_LABELS[code] ? UOM_LABELS[code] : '—';
 }
 
-// ── labelProps — matches PortFormContent.tsx ────────────────
-const labelProps = (text: string) => ({
-  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
-});
-
-import {
-  colors,
-  fontSizeMd,
-  fontSizeLg,
-  fontSizeSm,
-  fontWeightBold,
-  fontWeightMedium,
-  textPrimary,
-  textSecondary,
-  textTertiary,
-  statusCritical,
-  statusAttention,
-  statusDraft,
-  statusOperational,
-  actionPrimary,
-  borderDefault,
-  surfaceCard,
-  radiusPill,
-  radiusMd,
-  fontSans,
-  spaceMd,
-  spaceFormField,
-  spaceSm,
-  spaceXs,
-  spaceXl,
-  badgeBaseStyle,
-  drawerProps,
-  drawerTitleStyle,
-  drawerCloseBtnStyle,
-  drawerFooterStyle,
-  primaryButtonStyle,
-  outlineButtonStyle,
-  requiredMarkStyle,
-  uploadHintStyle,
-} from "../../tokens";
 import dayjs from "dayjs";
 
 const { Text } = Typography;
@@ -180,7 +173,7 @@ const APPROVAL_STATUS_MAP: Record<string, string> = {
 const APPROVAL_COLOR: Record<string, string> = {
   DRAFT: statusDraft,
   PENDING_APPROVAL: statusAttention,
-  APPROVED_LEVEL1: '#0284C7',
+  APPROVED_LEVEL1: statusInfo,
   APPROVED: statusOperational,
   REJECTED_LEVEL1: statusCritical,
   REJECTED_LEVEL2: statusCritical,
@@ -210,7 +203,7 @@ function renderVtsAssistStatusBadge(b: { color: string; label: string }) {
   if (b.color === 'green') c = statusOperational;
   else if (b.color === 'red') c = statusCritical;
   else if (b.color === 'orange') c = statusAttention;
-  return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${c}15`, color: c }}>{b.label}</span>;
+  return <span style={statusBadgeStyle(c)}>{b.label}</span>;
 }
 
 /** Badge trạng thái phê duyệt 2 cấp — dùng APPROVAL_STATUS_MAP + APPROVAL_COLOR (quy chuẩn AGENTS.md) */
@@ -219,21 +212,7 @@ function renderApprovalBadge(status: string | null | undefined) {
   const display = APPROVAL_STATUS_MAP[status] || status;
   const color = APPROVAL_COLOR[status] || textTertiary;
   return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        padding: '2px 10px',
-        border: `1px solid ${color}40`,
-        borderRadius: radiusPill,
-        fontSize: fontSizeMd,
-        fontWeight: fontWeightMedium,
-        background: `${color}15`,
-        color,
-        whiteSpace: 'nowrap',
-      }}
-    >
+    <span style={statusBadgeStyle(color)}>
       {display}
     </span>
   );
@@ -258,7 +237,7 @@ function VtsAssistRefTable({ title, emptyText, columns, dataSource = [] }: { tit
       <Table
         className="list-view-table"
         dataSource={rows}
-        pagination={false} size="middle" bordered
+        pagination={false} size="small" bordered
         style={{ marginLeft: 12, marginRight: 12 }}
         locale={{ emptyText: <div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>{emptyText}</span></div> }}
       >
@@ -326,10 +305,22 @@ function VtsAssistFilesTab({ uploadFileList, setUploadFileList, entityId }: { up
           </Upload>
         </div>
       ) : (
-        <PagedTable
-          dataSource={uploadFileList.map((f, i) => ({ ...f, _idx: i }))}
-          tableProps={{ scroll: { x: 400 } }}
+        <Table
+          size="small"
+          dataSource={uploadFileList.map((f, i) => ({ ...f, _idx: i, key: i, __stt: i + 1 }))}
+          rowKey={(_, i) => (i ?? 0)}
+          pagination={{ pageSize: 10, hideOnSinglePage: true, showTotal: (t) => `Tổng cộng ${t}` }}
+          scroll={{ x: 'max-content' }}
         >
+          <Table.Column
+            title="STT"
+            key="stt"
+            dataIndex="__stt"
+            width={60}
+            align="center"
+            render={(v: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{v}</span>}
+            onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })}
+          />
           <Table.Column
             title="Tên file"
             key="name"
@@ -359,7 +350,7 @@ function VtsAssistFilesTab({ uploadFileList, setUploadFileList, entityId }: { up
             )}
             onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })}
           />
-        </PagedTable>
+        </Table>
       )}
       <div style={{ marginTop: spaceSm }}>
         <span style={uploadHintStyle}>
@@ -738,7 +729,7 @@ const VtsAssistListPage = () => {
         <div style={{ lineHeight: "1.35", overflow: "hidden" }}>
           <div
             title={name || "—"}
-            style={{ fontWeight: fontWeightBold, color: "#0F172A", fontSize: fontSizeMd, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+            style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
           >
             {name || "—"}
           </div>
@@ -905,14 +896,7 @@ const VtsAssistListPage = () => {
             label: String(val || "—"),
           };
           return (
-            <span style={{
-              ...badgeBaseStyle,
-              fontSize: fontSizeMd,
-              padding: '2px 10px',
-              display: 'inline-flex',
-              background: `${s.color}15`,
-              color: s.color,
-            }}>
+            <span style={statusBadgeStyle(s.color)}>
               {s.label}
             </span>
           );
@@ -1036,23 +1020,38 @@ const VtsAssistListPage = () => {
     const rawStatus = String(item?.status ?? item?.action ?? '').toUpperCase();
     const rawReason = String(item?.reason ?? '').toLowerCase();
     const rawField = String(item?.changedField ?? item?.fieldName ?? '').toLowerCase();
+    const level =
+      Number(item?.approvalLevel ?? 0) ||
+      (rawStatus.includes('LEVEL1') ? 1 : rawStatus.includes('LEVEL2') ? 2 : 0);
     if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
       return { label: 'Thêm mới', color: statusOperational };
     }
     if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || (rawField.includes('đính kèm') && rawReason.includes('tải'))) {
-      return { label: 'Tải lên tệp', color: '#0284c7' };
+      return { label: 'Tải lên tệp', color: statusInfo };
     }
     if (rawStatus === 'ATTACHMENT_DELETED' || rawReason.includes('xóa tài liệu') || rawReason.includes('xoa tai lieu') || rawReason.includes('xóa tệp')) {
       return { label: 'Xóa tệp', color: '#ea580c' };
     }
-    if (rawStatus === 'APPROVED' || rawStatus === 'APPROVED_LEVEL2') {
-      return { label: 'Phê duyệt', color: statusOperational };
+    // Phân biệt cấp phê duyệt từ lý do ghi sẵn / approvalLevel (chuẩn VTS CHK)
+    const isC1 = level === 1 || rawReason.includes('cảng vụ') || rawReason.includes('cap cang vu') || rawReason.includes('cấp 1');
+    const isC2 = level === 2 || rawReason.includes('cấp cục') || rawReason.includes('cap cuc') || rawReason.includes('cấp 2');
+    if (rawStatus === 'APPROVED_LEVEL1' || ((rawStatus === 'APPROVED' || rawStatus === 'APPROVED_LEVEL2' || rawReason.includes('phê duyệt')) && isC1)) {
+      return { label: 'Phê duyệt cấp Cảng vụ', color: statusInfo };
+    }
+    if (rawStatus === 'APPROVED' || rawStatus === 'APPROVED_LEVEL2' || rawReason.includes('phê duyệt')) {
+      return { label: 'Phê duyệt cấp Cục', color: statusOperational };
+    }
+    if (rawStatus === 'REJECTED_LEVEL1' || ((rawStatus === 'REJECTED' || rawStatus === 'REJECT') && (isC1 || rawReason.includes('trả về')))) {
+      return { label: 'Từ chối cấp Cảng vụ', color: statusCritical };
+    }
+    if (rawStatus === 'REJECTED_LEVEL2' || ((rawStatus === 'REJECTED' || rawStatus === 'REJECT') && (isC2 || rawReason.includes('trả về')))) {
+      return { label: 'Từ chối cấp Cục', color: statusCritical };
     }
     if (rawStatus === 'REJECTED' || rawStatus === 'REJECT') {
-      return { label: 'Từ chối', color: '#E34948' };
+      return { label: 'Từ chối', color: statusCritical };
     }
     if (rawStatus === 'PROPOSED' || rawStatus === 'PENDING_APPROVAL' || rawReason.includes('gửi phê duyệt') || rawReason.includes('gui phe duyet')) {
-      return { label: 'Gửi phê duyệt', color: '#EDA100' };
+      return { label: 'Gửi phê duyệt', color: statusAttention };
     }
     return { label: 'Chỉnh sửa', color: actionPrimary };
   };
@@ -1318,7 +1317,7 @@ const VtsAssistListPage = () => {
         {
           key: "view",
           label: "Xem chi tiết",
-          icon: <EyeOutlined />,
+          icon: icons.view,
           onClick: () => {
             setSelectedRecord(record);
             setDetailDrawerOpen(true);
@@ -1330,7 +1329,7 @@ const VtsAssistListPage = () => {
         {
           key: "history",
           label: "Lịch sử",
-          icon: <HistoryOutlined />,
+          icon: icons.history,
           onClick: () => {
             setSelectedRecord(record);
             setHistoryEntityName(record.deviceName || '');
@@ -1347,12 +1346,12 @@ const VtsAssistListPage = () => {
         },
       ];
 
-      // Cho phép cập nhật bất kể trạng thái phê duyệt (yêu cầu nghiệp vụ 2026-08-26).
-      {
+      // Chỉnh sửa chỉ hiện với hồ sơ Lưu tạm (DRAFT) hoặc Đã duyệt (APPROVED) — chuẩn CHK
+      if (record.approvalStatus === "DRAFT" || record.approvalStatus === "APPROVED") {
         actions.push({
           key: "edit",
           label: "Chỉnh sửa",
-          icon: <EditOutlined />,
+          icon: icons.edit,
           onClick: () => {
             setUpdateTarget(record);
             setUploadFileList([]);
@@ -1392,7 +1391,7 @@ const VtsAssistListPage = () => {
         actions.push({
           key: "submit",
           label: "Gửi phê duyệt",
-          icon: <SendOutlined />,
+          icon: icons.submit,
           onClick: () => {
             setSubmittingRecord(record);
             setSubmitContent("");
@@ -1408,7 +1407,7 @@ const VtsAssistListPage = () => {
         actions.push({
           key: "approveC1",
           label: isCreatorSelfApprove ? "Phê duyệt cấp Cảng vụ (không thể tự duyệt)" : "Phê duyệt cấp Cảng vụ",
-          icon: <CheckCircleOutlined />,
+          icon: icons.approve,
           disabled: isCreatorSelfApprove,
           onClick: () => {
             setApproveTarget(record);
@@ -1419,7 +1418,7 @@ const VtsAssistListPage = () => {
         actions.push({
           key: "rejectC1",
           label: isCreatorSelfApprove ? "Từ chối cấp Cảng vụ (không thể tự duyệt)" : "Từ chối cấp Cảng vụ",
-          icon: <CloseCircleOutlined />,
+          icon: icons.reject,
           danger: true,
           disabled: isCreatorSelfApprove,
           onClick: () => {
@@ -1437,7 +1436,7 @@ const VtsAssistListPage = () => {
         actions.push({
           key: "approveC2",
           label: isSelfApproval ? "Phê duyệt cấp Cục (không thể tự duyệt)" : "Phê duyệt cấp Cục",
-          icon: <CheckCircleOutlined />,
+          icon: icons.approve,
           disabled: isSelfApproval,
           onClick: () => {
             setApproveTarget(record);
@@ -1448,7 +1447,7 @@ const VtsAssistListPage = () => {
         actions.push({
           key: "rejectC2",
           label: isSelfApproval ? "Từ chối cấp Cục (không thể tự duyệt)" : "Từ chối cấp Cục",
-          icon: <CloseCircleOutlined />,
+          icon: icons.reject,
           danger: true,
           disabled: isSelfApproval,
           onClick: () => {
@@ -1464,7 +1463,7 @@ const VtsAssistListPage = () => {
         actions.push({
           key: "delete",
           label: "Xóa",
-          icon: <DeleteOutlined />,
+          icon: icons.delete,
           danger: true,
           onClick: () => {
             setDeleteConfirmText("");
@@ -1790,7 +1789,7 @@ const VtsAssistListPage = () => {
   }, [submittingRecord, submitContent, fetchData, fetchTabCounts]);
 
   return (
-    <>
+    <ThemeTokenProvider tokens={themeTokenChk}>
       <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader
         breadcrumb={[
@@ -1802,7 +1801,7 @@ const VtsAssistListPage = () => {
             ? {
                 key: "create",
                 label: "Thêm mới",
-                icon: <PlusOutlined />,
+                icon: icons.create,
                 variant: "primary" as const,
                 onClick: () => {
                   setUploadFileList([]);
@@ -2018,7 +2017,7 @@ const VtsAssistListPage = () => {
             key: "APPROVED_LEVEL1",
             label: "Chờ Cục duyệt",
             count: tabCounts["APPROVED_LEVEL1"] ?? 0,
-            color: "#0284C7",
+            color: statusInfo,
             active: filterValues.approvalStatus === "APPROVED_LEVEL1",
           },
           {
@@ -2104,8 +2103,7 @@ const VtsAssistListPage = () => {
                 label: "Thông tin chung",
                 children: (
                   <div style={{ paddingTop: 3 }}>
-                    <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-label { width: 150px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; } .ant-tabs-nav{margin-bottom:0!important;padding-left:12px!important}`}</style>
-                    <div className="detail-grid">
+                    <div className="chk-detail-grid">
                       {([
                         { label: 'Mã thiết bị', value: selectedRecord.deviceCode, badge: true },
                         { label: 'Tên thiết bị', value: selectedRecord.deviceName, bold: true },
@@ -2122,11 +2120,11 @@ const VtsAssistListPage = () => {
                         { label: 'Hãng sản xuất', value: selectedRecord.manufacturer || '—' },
                         { label: 'Phê duyệt', value: renderApprovalBadge(selectedRecord.approvalStatus) },
                       ] as Array<{ label: string; value: React.ReactNode; badge?: boolean; bold?: boolean; fullWidth?: boolean }>).map((row) => (
-                        <div key={row.label} className="detail-row" style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
-                          <span className="detail-label">{row.label}</span>
-                          <span className="detail-value" style={{ whiteSpace: 'pre-wrap', ...(row.bold ? { fontWeight: fontWeightBold } : undefined) }}>
+                        <div key={row.label} className={row.fullWidth ? 'chk-detail-row chk-detail-row--full' : 'chk-detail-row'}>
+                          <span className="chk-detail-label">{row.label}</span>
+                          <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', ...(row.bold ? { fontWeight: fontWeightBold } : undefined) }}>
                             {row.badge ? (
-                              <Tag color={colors.primary} style={{ borderRadius: radiusPill, margin: 0, fontWeight: fontWeightMedium }}>{row.value}</Tag>
+                              <span style={statusBadgeStyle(actionPrimary)}>{row.value}</span>
                             ) : row.value}
                           </span>
                         </div>
@@ -2140,15 +2138,15 @@ const VtsAssistListPage = () => {
                 label: "Thông số kỹ thuật",
                 children: (
                   <div style={{ paddingTop: 3 }}>
-                    <div className="detail-grid">
+                    <div className="chk-detail-grid">
                       {[
                         ['Thông số kỹ thuật', selectedRecord.specifications || '—'],
                         ['Thông tin bảo trì', selectedRecord.maintenanceInformation || '—'],
                         ['Ghi chú', selectedRecord.note || '—'],
                       ].map(([label, value]) => (
-                        <div key={label} className="detail-row" style={{ gridColumn: '1 / -1' }}>
-                          <span className="detail-label">{label}</span>
-                          <span className="detail-value" style={{ whiteSpace: 'pre-wrap' }}>{value}</span>
+                        <div key={label} className="chk-detail-row chk-detail-row--full">
+                          <span className="chk-detail-label">{label}</span>
+                          <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap' }}>{value}</span>
                         </div>
                       ))}
                     </div>
@@ -2160,27 +2158,34 @@ const VtsAssistListPage = () => {
                 label: "Thông tin vị trí",
                 children: (
                   <div style={{ paddingTop: 3 }}>
-                    <div className="detail-grid">
+                    <div className="chk-detail-grid">
                       {([
                         ['Thuộc loại hạ tầng', selectedRecord.attachedInfrastructureName || '—'],
                         ['Biểu tượng', (() => { const sym = (symbols || []).find((s) => s.id === selectedRecord.mapSymbolId); return sym ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{sym.image ? <img src={sym.image} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}{sym.name}</span> : selectedRecord.mapSymbolName || '—'; })(),],
                         ['Hệ quy chiếu', selectedRecord.coordinateSystem === 1 ? 'WGS-84' : selectedRecord.coordinateSystem === 2 ? 'VN-2000' : (selectedRecord.coordinateSystem != null ? String(selectedRecord.coordinateSystem) : '—')],
                         ['Quy tắc hiển thị', selectedRecord.displayRule != null ? String(selectedRecord.displayRule) : '—'],
                       ] as const).map(([label, value]) => (
-                        <div key={label} className="detail-row">
-                          <span className="detail-label">{label}</span>
-                          <span className="detail-value">{value}</span>
+                        <div key={label} className="chk-detail-row">
+                          <span className="chk-detail-label">{label}</span>
+                          <span className="chk-detail-value">{value}</span>
                         </div>
                       ))}
                     </div>
                     <div style={{ marginTop: spaceSm, padding: '0 12px' }}>
                       <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS</span>
-                      <PagedTable dataSource={(() => {
-                        const loc = resolveMapGeometryLocation((selectedRecord as any)?.coordinates);
-                        return loc ? loc.coordinates.map(([lng, lat]) => ({ lat, lng })) : [];
-                      })()}
-                        emptyText={<div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><EnvironmentOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tọa độ</span></div>}
+                      <Table size="small"
+                        dataSource={(() => {
+                          const loc = resolveMapGeometryLocation((selectedRecord as any)?.coordinates);
+                          return (loc ? loc.coordinates.map(([lng, lat]) => ({ lat, lng })) : []).map((r, i) => ({ ...r, key: i, __stt: i + 1 }));
+                        })()}
+                        rowKey={(_, i) => (i ?? 0)}
+                        pagination={{ pageSize: 20, hideOnSinglePage: true, showTotal: (t) => `Tổng cộng ${t}` }}
+                        scroll={{ x: 'max-content' }}
+                        locale={{ emptyText: <div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><EnvironmentOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tọa độ</span></div> }}
                       >
+                        <Table.Column title="STT" key="stt" dataIndex="__stt" width={60} align="center"
+                          render={(v: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{v}</span>}
+                          onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                         <Table.Column title="Vĩ độ (N)" key="lat" align="center"
                           render={(_: any, record: any) => {
                             const dd = record.lat || 0;
@@ -2217,7 +2222,7 @@ const VtsAssistListPage = () => {
                             );
                           }}
                           onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                      </PagedTable>
+                      </Table>
                     </div>
                   </div>
                 ),
@@ -2253,7 +2258,7 @@ const VtsAssistListPage = () => {
                 label: "Xử lý & theo dõi",
                 children: (
                   <div style={{ paddingTop: 3 }}>
-                    <div className="detail-grid">
+                    <div className="chk-detail-grid">
                       {[
                         { key: 'updatedDate', label: 'Ngày cập nhật', value: selectedRecord.updatedAt ? formatDate(selectedRecord.updatedAt) : '—' },
                         { key: 'updatedByUser', label: 'Cán bộ cập nhật', value: selectedRecord.updatedByName || '—' },
@@ -2268,9 +2273,9 @@ const VtsAssistListPage = () => {
                         { key: 'approvalContentExtra', label: 'Nội dung phê duyệt', value: selectedRecord.rejectionReason || '—', fullWidth: true },
                         { key: 'status', label: 'Trạng thái', value: renderApprovalBadge(selectedRecord.approvalStatus), fullWidth: true },
                       ].map((row) => (
-                        <div key={row.key} className="detail-row" style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
-                          <span className="detail-label">{row.label}</span>
-                          <span className="detail-value">{row.value}</span>
+                        <div key={row.key} className={row.fullWidth ? 'chk-detail-row chk-detail-row--full' : 'chk-detail-row'}>
+                          <span className="chk-detail-label">{row.label}</span>
+                          <span className="chk-detail-value">{row.value}</span>
                         </div>
                       ))}
                     </div>
@@ -2284,18 +2289,25 @@ const VtsAssistListPage = () => {
                     <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
                       <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
                     </div>
-                    <PagedTable dataSource={detailFiles.map((f) => ({ ...f }))}
-                      emptyText={(
+                    <Table size="small"
+                      dataSource={detailFiles.map((f, i) => ({ ...f, key: i, __stt: i + 1 }))}
+                      rowKey={(_, i) => (i ?? 0)}
+                      pagination={{ pageSize: 10, hideOnSinglePage: true, showTotal: (t) => `Tổng cộng ${t}` }}
+                      scroll={{ x: 'max-content' }}
+                      locale={{ emptyText: (
                         <div style={{ padding: '32px 0', textAlign: 'center' }}>
                           <div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div>
                           <span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tài liệu đính kèm</span>
                         </div>
-                      )}
+                      ) }}
                     >
+                      <Table.Column title="STT" key="stt" dataIndex="__stt" width={60} align="center"
+                        render={(v: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{v}</span>}
+                        onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                       <Table.Column title="Tên file" key="name" dataIndex="fileName" align="center"
                         render={(name: string) => <div style={{ textAlign: 'left', fontSize: fontSizeMd, color: textPrimary }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}</div>}
                         onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                    </PagedTable>
+                    </Table>
                   </div>
                 ),
               },
@@ -3034,7 +3046,7 @@ const VtsAssistListPage = () => {
                           <Input
                             placeholder="Chọn quy tắc hiển thị"
                             disabled
-                            style={{ ...pillStyle, color: '#8c8c8c', cursor: 'not-allowed' }}
+                            style={{ ...pillStyle, color: textTertiary, cursor: 'not-allowed' }}
                           />
                         </Form.Item>
                       </Col>
@@ -3066,10 +3078,22 @@ const VtsAssistListPage = () => {
                         </Button>
                       </div>
                     ) : (
-                      <PagedTable
-                        dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i }))}
-                        tableProps={{ scroll: { x: 820 } }}
+                      <Table
+                        size="small"
+                        dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i, key: i, __stt: i + 1 }))}
+                        rowKey={(_, i) => (i ?? 0)}
+                        pagination={{ pageSize: 20, hideOnSinglePage: true, showTotal: (t) => `Tổng cộng ${t}` }}
+                        scroll={{ x: 'max-content' }}
                       >
+                        <Table.Column
+                          title="STT"
+                          key="stt"
+                          dataIndex="__stt"
+                          width={60}
+                          align="center"
+                          render={(v: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{v}</span>}
+                          onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })}
+                        />
                         <Table.Column
                           title="Vĩ độ (N)"
                           key="lat"
@@ -3165,7 +3189,7 @@ const VtsAssistListPage = () => {
                             style: { background: colors.bodyBg, padding: '12px 6px' },
                           })}
                         />
-                      </PagedTable>
+                      </Table>
                     )}
                   </div>
                 ),
@@ -3666,7 +3690,7 @@ const VtsAssistListPage = () => {
                           <Input
                             placeholder="Chọn quy tắc hiển thị"
                             disabled
-                            style={{ ...pillStyle, color: '#8c8c8c', cursor: 'not-allowed' }}
+                            style={{ ...pillStyle, color: textTertiary, cursor: 'not-allowed' }}
                           />
                         </Form.Item>
                       </Col>
@@ -3698,10 +3722,22 @@ const VtsAssistListPage = () => {
                         </Button>
                       </div>
                     ) : (
-                      <PagedTable
-                        dataSource={updateGpsCoordList.map((c, i) => ({ ...c, _idx: i }))}
-                        tableProps={{ scroll: { x: 820 } }}
+                      <Table
+                        size="small"
+                        dataSource={updateGpsCoordList.map((c, i) => ({ ...c, _idx: i, key: i, __stt: i + 1 }))}
+                        rowKey={(_, i) => (i ?? 0)}
+                        pagination={{ pageSize: 20, hideOnSinglePage: true, showTotal: (t) => `Tổng cộng ${t}` }}
+                        scroll={{ x: 'max-content' }}
                       >
+                        <Table.Column
+                          title="STT"
+                          key="stt"
+                          dataIndex="__stt"
+                          width={60}
+                          align="center"
+                          render={(v: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{v}</span>}
+                          onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })}
+                        />
                         <Table.Column
                           title="Vĩ độ (N)"
                           key="lat"
@@ -3797,7 +3833,7 @@ const VtsAssistListPage = () => {
                             style: { background: colors.bodyBg, padding: '12px 6px' },
                           })}
                         />
-                      </PagedTable>
+                      </Table>
                     )}
                   </div>
                 ),
@@ -3860,7 +3896,7 @@ const VtsAssistListPage = () => {
           )}
         </div>
       </Drawer>
-    </>
+    </ThemeTokenProvider>
   );
 };
 

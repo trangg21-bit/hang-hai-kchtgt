@@ -134,11 +134,11 @@ export const radarStationApproval = {
   },
 
   // Legacy aliases
-  async approveL1(id: string, approverId?: string): Promise<RadarStationResponse> {
+  async approveL1(id: string, _approverId?: string): Promise<RadarStationResponse> {
     return this.approveLevel1(id);
   },
 
-  async reject(id: string, rejectReason: string, approverId?: string): Promise<RadarStationResponse> {
+  async reject(id: string, rejectReason: string, _approverId?: string): Promise<RadarStationResponse> {
     return this.rejectLevel1(id, rejectReason);
   },
 

@@ -1,24 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Form, Input, InputNumber, Select, message, DatePicker, Upload } from 'antd';
+import { Form, Input, InputNumber, Select } from 'antd';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import { createCctv, updateCctv, fetchCctvById } from '../api';
 import { CctvResponse } from '../types';
 import { OPERATIONAL_STATUS_OPTIONS } from './schema';
-import toast, { modal } from '../../components/ToastNotification';
+import toast from '../../components/ToastNotification';
 import {
-  fontSizeMd,
-  fontSizeLg,
-  fontWeightBold,
   colors,
   actionPrimary,
   borderDefault,
   radiusPill,
-  spaceFormField,
   spaceMd,
-} from '../../tokens';
-import dayjs from 'dayjs';
+} from '../../themetokenchk';
 
 interface CctvFormProps {
   initialData?: CctvResponse;
@@ -31,13 +26,11 @@ const CctvFormContent = ({ initialData, onSuccess }: CctvFormProps) => {
   const [isEdit, setIsEdit] = useState(!!initialData);
   const [submitting, setSubmitting] = useState(false);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
-  const [loadingData, setLoadingData] = useState(false);
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
       if (initialData) {
-        setLoadingData(true);
         try {
           const data = await fetchCctvById(initialData.id);
           form.setFieldsValue(data);
@@ -45,8 +38,6 @@ const CctvFormContent = ({ initialData, onSuccess }: CctvFormProps) => {
         } catch (error) {
           toast.error('Không thể tải dữ liệu');
           navigate(-1);
-        } finally {
-          setLoadingData(false);
         }
       }
     };

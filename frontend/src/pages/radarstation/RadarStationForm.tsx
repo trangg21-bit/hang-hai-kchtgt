@@ -14,6 +14,7 @@ import {
   Col,
   Breadcrumb,
   Popconfirm,
+  Tabs,
   Upload,
 } from 'antd';
 import type { UploadFile } from 'antd';
@@ -35,15 +36,14 @@ import {
   UNIT_OF_MEASURE_OPTIONS,
 } from '../../types/radarStation';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
-import { usePermissionStore } from '../../store/permissionStore';
+import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
 import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
 import RejectionModal from '../../components/shared/RejectionModal';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
-import { colors } from '../../theme';
-import { fontWeightBold, fontSizeLg, fontSizeMd, spaceFormField, radiusLg, radiusPill, borderDefault, textTertiary, textPrimary, surfaceCard, outlineButtonStyle, primaryButtonStyle, statusDraft, statusAttention, statusOperational, statusCritical, statusInfo, inputStyle, selectStyle } from '../../themetokenchk';
+import { colors, fontWeightBold, fontSizeLg, fontSizeMd, spaceFormField, radiusLg, radiusPill, borderDefault, textTertiary, textPrimary, surfaceCard, outlineButtonStyle, primaryButtonStyle, statusBadgeStyle, statusDraft, statusAttention, statusOperational, statusCritical, statusInfo, inputStyle, selectStyle } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 
@@ -79,7 +79,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   const { id: routeId } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm();
-  const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
 
   const isIframe = window.self !== window.top;
   const isModalMode = open !== undefined;
@@ -233,11 +233,11 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
       let latitude: number | undefined;
       const gis = values.gisLocation;
       if (gis?.coordinates) {
-        const match = String(gis.coordinates).match(/POINT\(([^)]+)\)/);
+        // GisLocationSelector xuất WKT dạng "POINT (lng lat)" — có khoảng trắng sau POINT
+        const match = String(gis.coordinates).match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
         if (match) {
-          const parts = match[1].split(' ');
-          longitude = parseFloat(parts[0]);
-          latitude = parseFloat(parts[1]);
+          longitude = parseFloat(match[1]);
+          latitude = parseFloat(match[2]);
         }
       }
 
@@ -436,53 +436,66 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   const title = isDetailMode ? 'Chi tiết trạm radar' : isEditMode ? 'Chỉnh sửa trạm radar' : 'Tạo trạm radar mới';
 
   // ── Nội dung chế độ xem chi tiết ────────────────────────────────────
-  const renderDetail = () => (
+  const renderDetailGeneralTab = () => (
+    <>
+      {record ? (
+        <Descriptions column={2} bordered size="small" style={{ marginTop: 16 }}>
+          <Descriptions.Item label="Mã trạm radar">{record.code || '—'}</Descriptions.Item>
+          <Descriptions.Item label="Tên trạm radar">{record.stationName || '—'}</Descriptions.Item>
+          <Descriptions.Item label="Đơn vị quản lý">{record.orgUnitName || orgNameById(record.orgUnitId)}</Descriptions.Item>
+          <Descriptions.Item label="Cảng biển">{record.seaportName || seaportLabelById(record.seaportId)}</Descriptions.Item>
+          <Descriptions.Item label="Hệ thống VTS">{record.vtsSystemName || vtsLabelById(record.vtsSystemId)}</Descriptions.Item>
+          <Descriptions.Item label="Trung tâm điều hành VTS">
+            {record.vtsOperationCenterName || vtsLabelById(record.vtsOperationCenterId)}
+          </Descriptions.Item>
+          <Descriptions.Item label="Đơn vị khai thác">{orgNameById(record.operatingUnitId)}</Descriptions.Item>
+          <Descriptions.Item label="Địa điểm (Tỉnh/TP)">{getProvinceLabel(record.provinceId)}</Descriptions.Item>
+          <Descriptions.Item label="Đơn vị tính">{record.unitOfMeasure || '—'}</Descriptions.Item>
+          <Descriptions.Item label="Số lượng">{record.quantity != null ? record.quantity : '—'}</Descriptions.Item>
+          <Descriptions.Item label="Tình trạng">
+            {record.conditionStatus ? (CONDITION_STATUS_MAP[record.conditionStatus]?.label || record.conditionStatus) : '—'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Loại trạm">{record.stationType || '—'}</Descriptions.Item>
+          <Descriptions.Item label="Chiều cao tháp radar (m)">
+            {record.towerHeight != null ? Number(record.towerHeight).toLocaleString('vi-VN') : '—'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Tầm hiệu lực radar">{record.radarRange || '—'}</Descriptions.Item>
+          <Descriptions.Item label="Vùng phủ sóng">{record.coverage || '—'}</Descriptions.Item>
+          <Descriptions.Item label="Diện tích phát xạ (km²)">
+            {record.emissionArea != null ? Number(record.emissionArea).toLocaleString('vi-VN') : '—'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Nguồn gốc">{record.source || '—'}</Descriptions.Item>
+          <Descriptions.Item label="Trạng thái">
+            {(() => {
+              const s = RADAR_STATION_STATUS_STYLE_MAP[record.status || ''] || { color: textTertiary, label: record.status || '—' };
+              return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
+            })()}
+          </Descriptions.Item>
+          <Descriptions.Item label="Người tạo">{record.createdBy || '—'}</Descriptions.Item>
+          <Descriptions.Item label="Ngày tạo">{record.createdAt ? new Date(record.createdAt).toLocaleString('vi-VN') : '—'}</Descriptions.Item>
+          <Descriptions.Item label="Người cập nhật cuối">{record.updatedBy || '—'}</Descriptions.Item>
+          <Descriptions.Item label="Ngày cập nhật">{record.updatedAt ? new Date(record.updatedAt).toLocaleString('vi-VN') : '—'}</Descriptions.Item>
+          {record.rejectionReason && (
+            <Descriptions.Item label="Lý do từ chối" span={2}>{record.rejectionReason}</Descriptions.Item>
+          )}
+        </Descriptions>
+      ) : (
+        <Spin spinning={isLoading}>
+          <div style={{ padding: '40px 0', textAlign: 'center' }}>Đang tải thông tin trạm radar...</div>
+        </Spin>
+      )}
+    </>
+  );
+
+  const renderDetailGisTab = () => (
     <>
       {record ? (
         <>
           <Descriptions column={2} bordered size="small" style={{ marginTop: 16 }}>
-            <Descriptions.Item label="Mã trạm radar">{record.code || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Tên trạm radar">{record.stationName || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Đơn vị quản lý">{record.orgUnitName || orgNameById(record.orgUnitId)}</Descriptions.Item>
-            <Descriptions.Item label="Cảng biển">{record.seaportName || seaportLabelById(record.seaportId)}</Descriptions.Item>
-            <Descriptions.Item label="Hệ thống VTS">{record.vtsSystemName || vtsLabelById(record.vtsSystemId)}</Descriptions.Item>
-            <Descriptions.Item label="Trung tâm điều hành VTS">
-              {record.vtsOperationCenterName || vtsLabelById(record.vtsOperationCenterId)}
-            </Descriptions.Item>
-            <Descriptions.Item label="Đơn vị khai thác">{orgNameById(record.operatingUnitId)}</Descriptions.Item>
-            <Descriptions.Item label="Địa điểm (Tỉnh/TP)">{getProvinceLabel(record.provinceId)}</Descriptions.Item>
-            <Descriptions.Item label="Đơn vị tính">{record.unitOfMeasure || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Số lượng">{record.quantity != null ? record.quantity : '—'}</Descriptions.Item>
-            <Descriptions.Item label="Tình trạng">
-              {record.conditionStatus ? (CONDITION_STATUS_MAP[record.conditionStatus]?.label || record.conditionStatus) : '—'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Loại trạm">{record.stationType || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Chiều cao tháp radar (m)">
-              {record.towerHeight != null ? Number(record.towerHeight).toLocaleString('vi-VN') : '—'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Tầm hiệu lực radar">{record.radarRange || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Vùng phủ sóng">{record.coverage || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Diện tích phát xạ (km²)">
-              {record.emissionArea != null ? Number(record.emissionArea).toLocaleString('vi-VN') : '—'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Nguồn gốc">{record.source || '—'}</Descriptions.Item>
             <Descriptions.Item label="Kinh độ">{record.longitude != null ? Number(record.longitude).toFixed(6) : '—'}</Descriptions.Item>
             <Descriptions.Item label="Vĩ độ">{record.latitude != null ? Number(record.latitude).toFixed(6) : '—'}</Descriptions.Item>
             <Descriptions.Item label="Vị trí" span={2}>{record.location || '—'}</Descriptions.Item>
             <Descriptions.Item label="Ghi chú" span={2}>{record.note || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Trạng thái">
-              {(() => {
-                const s = RADAR_STATION_STATUS_STYLE_MAP[record.status || ''] || { color: textTertiary, label: record.status || '—' };
-                return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
-              })()}
-            </Descriptions.Item>
-            <Descriptions.Item label="Người tạo">{record.createdBy || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Ngày tạo">{record.createdAt ? new Date(record.createdAt).toLocaleString('vi-VN') : '—'}</Descriptions.Item>
-            <Descriptions.Item label="Người cập nhật cuối">{record.updatedBy || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Ngày cập nhật">{record.updatedAt ? new Date(record.updatedAt).toLocaleString('vi-VN') : '—'}</Descriptions.Item>
-            {record.rejectionReason && (
-              <Descriptions.Item label="Lý do từ chối" span={2}>{record.rejectionReason}</Descriptions.Item>
-            )}
             <Descriptions.Item label="Tài liệu đính kèm" span={2}>
               <AttachmentList attachments={record.attachments || []} readonly />
             </Descriptions.Item>
@@ -521,7 +534,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
                 Từ chối
               </Button>
             )}
-            {record.status === 'APPROVED' && hasPerm('radarstation:delete') && (
+            {record.status === 'DRAFT' && hasPerm('radarstation:delete') && (
               <Popconfirm
                 title="Xác nhận xóa"
                 description={`Bạn có chắc muốn xóa trạm radar "${record.stationName || record.code}"?`}
@@ -558,8 +571,26 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
     </>
   );
 
+  const renderDetail = () => (
+    <Tabs
+      defaultActiveKey="1"
+      items={[
+        {
+          key: '1',
+          label: 'Thông tin chung',
+          children: renderDetailGeneralTab(),
+        },
+        {
+          key: '2',
+          label: 'Thông tin vị trí GIS',
+          children: renderDetailGisTab(),
+        },
+      ]}
+    />
+  );
+
   // ── Nội dung chế độ tạo mới / chỉnh sửa ─────────────────────────────
-  const renderForm = () => (
+  const renderFormGeneralTab = () => (
     <Form
       form={form}
       layout="vertical"
@@ -771,7 +802,17 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
       <Form.Item label="Nguồn gốc" name="source">
         <Input placeholder="VD: Nhập khẩu - Nhật Bản" style={inputStyle} />
       </Form.Item>
+    </Form>
+  );
 
+  const renderFormGisTab = () => (
+    <Form
+      form={form}
+      layout="vertical"
+      onFinish={handleSubmit}
+      autoComplete="off"
+      style={{ marginTop: 16, maxHeight: '62vh', overflowY: 'auto', paddingRight: 12 }}
+    >
       <Form.Item
         label="Vị trí"
         name="location"
@@ -823,6 +864,24 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
         )}
       </Form.Item>
     </Form>
+  );
+
+  const renderForm = () => (
+    <Tabs
+      defaultActiveKey="1"
+      items={[
+        {
+          key: '1',
+          label: 'Thông tin chung',
+          children: renderFormGeneralTab(),
+        },
+        {
+          key: '2',
+          label: 'Thông tin vị trí GIS',
+          children: renderFormGisTab(),
+        },
+      ]}
+    />
   );
 
   // ── Modal (chế độ dùng chung từ danh sách) ──────────────────────────

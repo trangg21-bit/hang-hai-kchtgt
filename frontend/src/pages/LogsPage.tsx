@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Input, Tooltip, DatePicker, Drawer, Button } from 'antd';
+import { Input, DatePicker, Drawer, Button } from 'antd';
 import { message } from '../components/ToastNotification';
 import { EyeOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -14,7 +14,7 @@ import {
   spaceFormField, spaceMd, spaceSm, radiusPill,
   fontSizeMd,
   fontWeightBold,
-  fontMono, borderDefault, radiusLg, controlHeight,
+  fontMono, borderDefault, controlHeight,
   drawerProps, drawerTitleStyle, drawerCloseBtnStyle,
 } from '../themetokenchk';
 import { colors } from '../themetokenchk';
@@ -24,16 +24,6 @@ import { logService, type AccessLogEntry } from '../services/logService';
 import api from '../services/api';
 import { OrgUnitTreeSelect } from '../components/org-unit';
 import { useAuthStore } from '../store/authStore';
-
-// ── Constants ──────────────────────────────────────────────────────────────────
-
-const TYPE_OPTIONS = [
-  { value: 'access', label: 'Thao tác' },
-  { value: 'login', label: 'Đăng nhập' },
-  { value: 'error', label: 'Lỗi hệ thống' },
-  { value: 'account', label: 'Tài khoản' },
-  { value: 'configuration', label: 'Cấu hình' },
-];
 
 // ── Action translation: English code → Vietnamese display ─────────────────────
 
@@ -330,10 +320,6 @@ export default function LogsPage() {
     return current.isBefore(minDate, 'day') || current.isAfter(today, 'day');
   };
 
-  const handleAdvancedSearch = useCallback(() => {
-    setPage(1);
-  }, []);
-
   const handlePageChange = (newPage: number, newPageSize: number) => {
     setPage(newPage);
     if (newPageSize !== pageSize) {
@@ -381,7 +367,6 @@ export default function LogsPage() {
       label: 'STT',
       dataIndex: '_rowIndex',
       width: 72,
-      fixed: 'left' as const,
       type: 'mono' as const,
       align: 'center',
       render: (val: any) => (
@@ -393,10 +378,10 @@ export default function LogsPage() {
       label: 'Email',
       dataIndex: 'email',
       width: 260,
-      fixed: 'left' as const,
+      ellipsis: true,
       render: (val: any) =>
         val ? (
-          <span style={{ color: textPrimary, fontSize: fontSizeMd }} title={val}>{val}</span>
+          <span style={{ color: textPrimary, fontSize: fontSizeMd }}>{val}</span>
         ) : (
           <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>
         ),
@@ -406,10 +391,11 @@ export default function LogsPage() {
       label: 'Đơn vị',
       dataIndex: 'orgUnit',
       width: 280,
+      ellipsis: true,
       render: (val: any) => {
         const name = orgUnits.find((o) => o.id === val)?.name;
         return val ? (
-          <span style={{ color: textPrimary, fontSize: fontSizeMd, fontWeight: fontWeightBold }} title={val}>{name || val}</span>
+          <span style={{ color: textPrimary, fontSize: fontSizeMd, fontWeight: fontWeightBold }}>{name || val}</span>
         ) : (
           <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>
         );
@@ -420,12 +406,11 @@ export default function LogsPage() {
       label: 'Chức năng',
       width: 240,
       dataIndex: 'action',
+      ellipsis: true,
       render: (val: any) => (
-        <Tooltip title={val}>
-          <span style={{ color: textPrimary, fontSize: fontSizeMd, fontWeight: fontWeightBold }}>
-            {translateAction(val)}
-          </span>
-        </Tooltip>
+        <span style={{ color: textPrimary, fontSize: fontSizeMd, fontWeight: fontWeightBold }}>
+          {translateAction(val)}
+        </span>
       ),
     },
     {
@@ -433,6 +418,7 @@ export default function LogsPage() {
       label: 'Địa chỉ IP',
       dataIndex: 'ipAddress',
       width: 180,
+      ellipsis: true,
       render: (val: any) => (
         <span style={{ fontFamily: fontMono, color: textPrimary, fontSize: fontSizeMd }}>
           {val}
@@ -444,14 +430,13 @@ export default function LogsPage() {
       label: 'Thông tin trình duyệt',
       dataIndex: 'userAgent',
       width: 300,
+      ellipsis: true,
       render: (val: any) => {
         if (!val) {
           return <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>;
         }
         return (
-          <span style={{ color: textPrimary, fontSize: fontSizeMd, whiteSpace: 'normal', wordBreak: 'break-word', display: 'block', lineHeight: 1.4 }}>
-            {val}
-          </span>
+          <span style={{ color: textPrimary, fontSize: fontSizeMd }}>{val}</span>
         );
       },
     },
@@ -460,14 +445,13 @@ export default function LogsPage() {
       label: 'Phiên đăng nhập',
       dataIndex: 'sessionId',
       width: 240,
+      ellipsis: true,
       render: (val: any) => {
         if (!val) {
           return <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>;
         }
         return (
-          <span style={{ fontFamily: fontMono, color: textPrimary, fontSize: fontSizeMd, whiteSpace: 'normal', wordBreak: 'break-all', display: 'block', lineHeight: 1.4 }}>
-            {val}
-          </span>
+          <span style={{ fontFamily: fontMono, color: textPrimary, fontSize: fontSizeMd }}>{val}</span>
         );
       },
     },
@@ -629,8 +613,7 @@ export default function LogsPage() {
       >
         {detailLoading ? <LoadingSkeleton rows={6} /> : r ? (
           <div style={{ paddingTop: 3 }}>
-            <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-label { width: 200px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; min-width: 0; overflow-wrap: anywhere; } .detail-value-full { grid-column: 1 / -1; }`}</style>
-            <div className="detail-grid">
+            <div className="chk-detail-grid">
               {[
                 ['Đơn vị', orgUnits.find((o) => o.id === r.orgUnit)?.name || r.orgUnit || '—'],
                 ['Email', r.email || '—'],
@@ -640,9 +623,9 @@ export default function LogsPage() {
                 ['Phiên đăng nhập', <span style={{ fontFamily: fontMono, wordBreak: 'break-all' }}>{r.sessionId || '—'}</span>, true],
                 ['Ngày truy cập', dayjs(r.createdAt).format('DD/MM/YYYY HH:mm:ss'), true],
               ].map(([label, value, full], i) => (
-                <div key={i} className={full ? 'detail-row detail-value-full' : 'detail-row'}>
-                  <span className="detail-label">{label}</span>
-                  <span className="detail-value">{value}</span>
+                <div key={i} className={full ? 'chk-detail-row chk-detail-row--full' : 'chk-detail-row'}>
+                  <span className="chk-detail-label">{label}</span>
+                  <span className="chk-detail-value">{value}</span>
                 </div>
               ))}
             </div>

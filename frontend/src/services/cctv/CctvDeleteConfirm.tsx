@@ -3,20 +3,16 @@ import { Button, Input, Typography, Alert } from 'antd';
 import { useParams, useNavigate } from 'react-router-dom';
 import { deleteCctv } from '../api';
 import toast from '../../components/ToastNotification';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
 import {
   colors,
   fontSizeMd,
-  fontSizeLg,
-  fontWeightBold,
   textPrimary,
   textSecondary,
-  statusCritical,
   borderDefault,
   radiusPill,
   spaceMd,
   spaceFormField,
-} from '../../tokens';
+} from '../../themetokenchk';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -24,9 +20,8 @@ const { Title, Text } = Typography;
 const CctvDeleteConfirm = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [device, setDevice] = useState<{ id: string; deviceCode: string; deviceName: string } | null>(null);
+  const [device] = useState<{ id: string; deviceCode: string; deviceName: string } | null>(null);
   const [confirmText, setConfirmText] = useState('');
 
   if (!id) {

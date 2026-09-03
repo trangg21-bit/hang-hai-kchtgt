@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Table, Dropdown, Button, Tooltip } from 'antd';
+import { Table, Dropdown, Button, Empty } from 'antd';
 import { MoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
@@ -139,7 +139,7 @@ const DataTable: React.FC<DataTableProps> = ({
   const t = useThemeToken();
   const {
     textPrimary, textSecondary, textTertiary, fontWeightMedium, fontSizeSm, fontSizeMd, fontWeightBold,
-    tableHeaderBg, tableHeaderColor, tableHeaderPadding, tableCellPadding, tableRowStripeBg,
+    tableHeaderBg, tableHeaderPadding, tableCellPadding, tableRowStripeBg,
     tableSortableByDefault, tableSortIcon, tableEmptyState,
   } = t;
   const STATUS_COLOR_MAP = statusColorMapFor(t);

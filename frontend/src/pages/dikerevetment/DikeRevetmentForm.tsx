@@ -7,11 +7,11 @@ import {
   Input,
   InputNumber,
   Select,
+  Tabs,
   TreeSelect,
   Card,
   Spin,
   Empty,
-  Descriptions,
   Space,
   Breadcrumb,
   Modal,
@@ -21,6 +21,7 @@ import toast from '../../components/ToastNotification';
 import { dikeRevetmentCRUD, dikeRevetmentApproval } from '../../services/dikeRevetmentService';
 import { organizationService } from '../../services/organizationService';
 import { portCRUD } from '../../services/portService';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type {
   DikeRevetmentResponse,
@@ -29,13 +30,16 @@ import type {
 } from '../../types/dikeRevetment';
 import { useAuthStore } from '../../store/authStore';
 import { hasPermissionFromList } from '../../store/permissionStore';
-import { colors, sidebarBg } from '../../themetokenchk';
+import { colors, sidebarBg, detailRowStyle, detailLabelColStyle, detailValueStyle } from '../../themetokenchk';
+import * as themeTokenChk from '../../themetokenchk';
 import { fontWeightBold, fontSizeLg, spaceMd, spaceLg, spaceXxl, inputStyle, selectStyle, formFieldStyle, primaryButtonStyle, outlineButtonStyle, dangerButtonStyle, statusOperational, radiusPill } from '../../themetokenchk';
 import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import RejectionModal from '../../components/shared/RejectionModal';
 import { formLabelProps as labelProps } from '../../components/shared/formLabel';
+import ApprovalModal from '../../components/shared/ApprovalModal';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 
 const DIKE_REVETMENT_TYPE_MAP: Record<string, string> = {
   'RIVER_DIKE': 'Đê chắn sóng',
@@ -52,6 +56,8 @@ const STATUS_MAP: Record<string, string> = {
   '2': 'Đang khai thác/vận hành',
   '3': 'Dừng khai thác/vận hành',
 };
+
+const OPERATING_ORG_NAME_OPTIONS = DEFAULT_OPERATING_ORGANIZATIONS.map((o) => ({ value: o.name, label: o.name }));
 
 const buildOrgTree = (nodes: any[]): any[] => {
   const map = new Map<string, any>();
@@ -83,7 +89,15 @@ export interface DikeRevetmentFormProps {
   onSuccess?: () => void;
 }
 
-export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSuccess }: DikeRevetmentFormProps = {}) {
+export default function DikeRevetmentForm(props: DikeRevetmentFormProps = {}) {
+  return (
+    <ThemeTokenProvider tokens={themeTokenChk}>
+      <DikeRevetmentFormInner {...props} />
+    </ThemeTokenProvider>
+  );
+}
+
+function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: DikeRevetmentFormProps = {}) {
   const navigate = useNavigate();
   const { id: routeId } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
@@ -107,6 +121,7 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
   const [formError, setFormError] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [approvalModalOpen, setApprovalModalOpen] = useState(false);
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [seaports, setSeaports] = useState<{ id: string; portName?: string; portCode?: string }[]>([]);
 
@@ -150,6 +165,7 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
             location: data.location,
             locationDetail: data.locationDetail,
             dikeRevetmentName: data.dikeRevetmentName,
+            code: data.code,
             seaportId: data.seaportId,
             donViVanHanhName: data.donViVanHanhName || data.donViVanHanhId || '',
             constructionDate: data.constructionDate ? dayjs(data.constructionDate) : null,
@@ -202,6 +218,7 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
       const spatialData = values.spatialData;
       const payload: CreateDikeRevetmentRequest = {
         dikeRevetmentType: values.dikeRevetmentType,
+        code: values.code,
         location: values.location,
         locationDetail: values.locationDetail,
         dikeRevetmentName: values.dikeRevetmentName,
@@ -266,7 +283,7 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
         setHasChanges(true);
       } else if (action === 'approve') {
         // Luồng phê duyệt 1 cấp — PENDING_APPROVAL → APPROVED
-        await dikeRevetmentApproval.approveL1(id);
+        await dikeRevetmentApproval.approveL1(id, (payload?.note as string) || undefined);
         toast.success('Phê duyệt thành công');
         setRecord({ ...record, approvalStatus: 'APPROVED' });
         setHasChanges(true);
@@ -339,35 +356,97 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
         <Card style={{ marginBottom: spaceLg }}>
           <h2>Chi tiết đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ</h2>
           {record && (
-            <Descriptions column={2} bordered size="small">
-              <Descriptions.Item label="Loại đê">{DIKE_REVETMENT_TYPE_MAP[record.dikeRevetmentType] || record.dikeRevetmentType}</Descriptions.Item>
-              <Descriptions.Item label="Vị trí">{record.location}</Descriptions.Item>
-              <Descriptions.Item label="Tên đê kè">{record.dikeRevetmentName || '—'}</Descriptions.Item>
-              <Descriptions.Item label="Chiều dài (m)">
-                {record.length !== undefined ? record.length.toFixed(2) : '—'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Cao trình đỉnh (m)">
-                {record.crestElevation !== undefined ? record.crestElevation.toFixed(2) : '—'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Thời điểm đưa vào khai thác">
-                {record.commissioningDate ? dayjs(record.commissioningDate).format('DD/MM/YYYY') : '—'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Chiều cao (m)">
-                {record.height !== undefined ? record.height.toFixed(2) : '—'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Tình trạng">
-                {STATUS_MAP[record.status ?? ''] || record.status || '—'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Ghi chú" span={2}>
-                {record.note ?? '—'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Đơn vị quản lý" span={2}>
-                {record.orgUnitName || record.orgUnitId || '—'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Trạng thái">
-                <ApprovalStatusBadge status={record.approvalStatus} />
-              </Descriptions.Item>
-            </Descriptions>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 24 }}>
+              <div style={detailRowStyle}>
+                <div style={detailLabelColStyle}>Mã đê kè:</div>
+                <div style={detailValueStyle}>{record.code || '—'}</div>
+              </div>
+              <div style={detailRowStyle}>
+                <div style={detailLabelColStyle}>Loại kết cấu công trình:</div>
+                <div style={detailValueStyle}>{DIKE_REVETMENT_TYPE_MAP[record.dikeRevetmentType] || record.dikeRevetmentType}</div>
+              </div>
+              <div style={detailRowStyle}>
+                <div style={detailLabelColStyle}>Thuộc cảng biển:</div>
+                <div style={detailValueStyle}>{record.seaportName || record.seaportId || '—'}</div>
+              </div>
+              <div style={detailRowStyle}>
+                <div style={detailLabelColStyle}>Đơn vị vận hành:</div>
+                <div style={detailValueStyle}>{record.donViVanHanhName || record.donViVanHanhId || '—'}</div>
+              </div>
+              <div style={detailRowStyle}>
+                <div style={detailLabelColStyle}>Địa điểm (Tỉnh/TP):</div>
+                <div style={detailValueStyle}>{record.location || '—'}</div>
+              </div>
+              <div style={detailRowStyle}>
+                <div style={detailLabelColStyle}>Địa điểm chi tiết:</div>
+                <div style={detailValueStyle}>{record.locationDetail || '—'}</div>
+              </div>
+              <div style={detailRowStyle}>
+                <div style={detailLabelColStyle}>Tên đê kè:</div>
+                <div style={detailValueStyle}>{record.dikeRevetmentName || '—'}</div>
+              </div>
+              <div style={detailRowStyle}>
+                <div style={detailLabelColStyle}>Chiều dài (m):</div>
+                <div style={detailValueStyle}>{record.length !== undefined ? record.length.toFixed(2) : '—'}</div>
+              </div>
+              <div style={detailRowStyle}>
+                <div style={detailLabelColStyle}>Cao trình đỉnh (m):</div>
+                <div style={detailValueStyle}>{record.crestElevation !== undefined ? record.crestElevation.toFixed(2) : '—'}</div>
+              </div>
+              <div style={detailRowStyle}>
+                <div style={detailLabelColStyle}>Thời điểm đưa vào khai thác:</div>
+                <div style={detailValueStyle}>{record.commissioningDate ? dayjs(record.commissioningDate).format('YYYY') : '—'}</div>
+              </div>
+              <div style={detailRowStyle}>
+                <div style={detailLabelColStyle}>Thời điểm xây dựng:</div>
+                <div style={detailValueStyle}>{record.constructionDate ? dayjs(record.constructionDate).format('DD/MM/YYYY') : '—'}</div>
+              </div>
+              <div style={detailRowStyle}>
+                <div style={detailLabelColStyle}>Năm bảo trì gần nhất:</div>
+                <div style={detailValueStyle}>{record.lastMaintenanceYear || '—'}</div>
+              </div>
+              <div style={detailRowStyle}>
+                <div style={detailLabelColStyle}>Chiều cao (m):</div>
+                <div style={detailValueStyle}>{record.height !== undefined ? record.height.toFixed(2) : '—'}</div>
+              </div>
+              <div style={detailRowStyle}>
+                <div style={detailLabelColStyle}>Tình trạng:</div>
+                <div style={detailValueStyle}>{STATUS_MAP[record.status ?? ''] || record.status || '—'}</div>
+              </div>
+              <div style={{ ...detailRowStyle, gridColumn: '1 / -1' }}>
+                <div style={detailLabelColStyle}>Ghi chú:</div>
+                <div style={detailValueStyle}>{record.note ?? '—'}</div>
+              </div>
+              <div style={{ ...detailRowStyle, gridColumn: '1 / -1' }}>
+                <div style={detailLabelColStyle}>Đơn vị quản lý:</div>
+                <div style={detailValueStyle}>{record.orgUnitName || record.orgUnitId || '—'}</div>
+              </div>
+              <div style={{ ...detailRowStyle, gridColumn: '1 / -1' }}>
+                <div style={detailLabelColStyle}>Trạng thái:</div>
+                <div style={detailValueStyle}><ApprovalStatusBadge status={record.approvalStatus} /></div>
+              </div>
+              <div style={{ gridColumn: '1 / -1', color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginTop: spaceLg }}>Vị trí (GIS)</div>
+              <div style={detailRowStyle}>
+                <div style={detailLabelColStyle}>Loại đối tượng:</div>
+                <div style={detailValueStyle}>{record.geometryType === 'POINT' ? 'Đối tượng điểm' : record.geometryType === 'LINE' ? 'Đối tượng đường' : record.geometryType === 'POLYGON' ? 'Đối tượng vùng' : '—'}</div>
+              </div>
+              <div style={detailRowStyle}>
+                <div style={detailLabelColStyle}>Biểu tượng bản đồ:</div>
+                <div style={detailValueStyle}>{record.symbolId || '—'}</div>
+              </div>
+              <div style={detailRowStyle}>
+                <div style={detailLabelColStyle}>Hệ quy chiếu:</div>
+                <div style={detailValueStyle}>{(record.geometryType || record.coordinates) ? 'WGS-84' : '—'}</div>
+              </div>
+              <div style={detailRowStyle}>
+                <div style={detailLabelColStyle}>Quy tắc hiển thị:</div>
+                <div style={detailValueStyle}>{(record.geometryType || record.coordinates) ? 'Độ, phút, giây (DMS)' : '—'}</div>
+              </div>
+              <div style={{ ...detailRowStyle, gridColumn: '1 / -1' }}>
+                <div style={detailLabelColStyle}>Tọa độ:</div>
+                <div style={detailValueStyle}>{record.coordinates ? `${(record.coordinates.match(/[-\d.]+[ ]+[-\d.]+/g) || []).length} điểm` : '—'}</div>
+              </div>
+            </div>
           )}
         </Card>
 
@@ -391,7 +470,7 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
               </Button>
             ) : record.approvalStatus === 'PENDING_APPROVAL' ? (
               <Space wrap>
-                <Button type="primary" onClick={() => handleApprovalAction('approve')} loading={isSubmitting}
+                <Button type="primary" onClick={() => setApprovalModalOpen(true)} loading={isSubmitting}
                   style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>
                   Phê duyệt
                 </Button>
@@ -410,6 +489,13 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
               loading={isSubmitting}
               onConfirm={(reason) => { setRejectModalVisible(false); handleApprovalAction('reject', { reason }); }}
               onCancel={() => setRejectModalVisible(false)}
+            />
+            <ApprovalModal
+              visible={approvalModalOpen}
+              level="c1"
+              loading={isSubmitting}
+              onConfirm={(content) => { setApprovalModalOpen(false); void handleApprovalAction('approve', { note: content }); }}
+              onCancel={() => setApprovalModalOpen(false)}
             />
           </Card>
         )}
@@ -469,7 +555,20 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
       onFinish={handleSubmitForm}
       autoComplete="off"
     >
-      <Form.Item
+      <Tabs
+        defaultActiveKey="general"
+        items={[
+          {
+            key: 'general',
+            label: 'Thông tin cơ bản',
+            children: (
+              <>
+                <Form.Item {...labelProps('Mã đê kè')} style={formFieldStyle}
+                  tooltip="Mã đê kè được sinh tự động, không thể chỉnh sửa">
+                  <Input disabled placeholder="Mã tự động" style={{ ...inputStyle }} />
+                </Form.Item>
+
+                <Form.Item
         {...labelProps('Loại đê')}
         name="dikeRevetmentType"
         style={formFieldStyle}
@@ -500,7 +599,7 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
       </Form.Item>
 
       <Form.Item {...labelProps('Địa điểm chi tiết')} name="locationDetail" style={formFieldStyle}>
-        <Input placeholder="Nhập địa điểm chi tiết..." style={inputStyle} />
+        <Input placeholder="Nhập địa điểm chi tiết" style={inputStyle} />
       </Form.Item>
 
       <Form.Item
@@ -509,7 +608,7 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
         style={formFieldStyle}
         rules={[{ required: true, message: 'Vui lòng nhập tên đê kè' }]}
       >
-        <Input placeholder="Nhập Tên đê kè..." style={inputStyle} />
+        <Input placeholder="Nhập tên đê kè" style={inputStyle} />
       </Form.Item>
 
       <Form.Item
@@ -528,7 +627,7 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
       >
         <InputNumber
           min={0}
-          placeholder="Nhập chiều dài"
+          placeholder="0"
           style={{ width: '100%', ...inputStyle }}
           precision={2}
         />
@@ -540,7 +639,7 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
         style={formFieldStyle}
       >
         <InputNumber
-          placeholder="Nhập cao trình đỉnh"
+          placeholder="0"
           style={{ width: '100%', ...inputStyle }}
           precision={2}
         />
@@ -550,13 +649,14 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
         {...labelProps('Thời điểm đưa vào khai thác')}
         name="commissioningDate"
         style={formFieldStyle}
-        getValueProps={(value) => ({ value: value ? dayjs(value) : null })}
+        getValueProps={(value) => ({ value: value ? dayjs(String(value)) : null })}
         normalize={(value) => value ? value.format('YYYY-MM-DD') : null}
       >
         <DatePicker
-          placeholder="Chọn ngày"
+          picker="year"
+          placeholder="Chọn năm..."
           style={{ width: '100%', ...selectStyle }}
-          format="DD/MM/YYYY"
+          format="YYYY"
         />
       </Form.Item>
 
@@ -568,7 +668,7 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
         normalize={(value) => value ? value.format('YYYY-MM-DD') : null}
       >
         <DatePicker
-          placeholder="Chọn ngày xây dựng"
+          placeholder="Chọn ngày..."
           style={{ width: '100%', ...selectStyle }}
           format="DD/MM/YYYY"
         />
@@ -583,7 +683,7 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
       >
         <DatePicker
           picker="year"
-          placeholder="Chọn năm"
+          placeholder="Chọn năm..."
           style={{ width: '100%', ...selectStyle }}
         />
       </Form.Item>
@@ -604,7 +704,7 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
       >
         <InputNumber
           min={0}
-          placeholder="Nhập chiều cao"
+          placeholder="0"
           style={{ width: '100%', ...inputStyle }}
           precision={2}
         />
@@ -628,7 +728,7 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
         style={formFieldStyle}
       >
         <TreeSelect
-          placeholder="Chọn đơn vị quản lý"
+          placeholder="Chọn đơn vị quản lý..."
           allowClear
           showSearch
           treeNodeFilterProp="title"
@@ -650,7 +750,14 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
       </Form.Item>
 
       <Form.Item {...labelProps('Đơn vị vận hành')} name="donViVanHanhName" style={formFieldStyle}>
-        <Input placeholder="VD: Công ty Hoa tiêu Hàng hải" style={inputStyle} />
+        <Select
+          placeholder="Chọn đơn vị vận hành..."
+          allowClear
+          showSearch
+          optionFilterProp="label"
+          options={OPERATING_ORG_NAME_OPTIONS}
+          style={selectStyle}
+        />
       </Form.Item>
 
       <Form.Item
@@ -665,17 +772,36 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
           styles={{ textarea: { borderRadius: radiusPill, minHeight: 40 } }}
         />
       </Form.Item>
-
+              </>
+            ),
+          },
+          {
+            key: 'gis',
+            label: 'Tọa độ GIS',
+            children: (
+              <>
       <Form.Item {...labelProps('Vị trí/Hình vẽ bản đồ')} name="spatialData" style={formFieldStyle}>
         <GisLocationSelector defaultGeometryType="LINE" disabled={isDetailMode} />
       </Form.Item>
-
+              </>
+            ),
+          },
+          {
+            key: 'files',
+            label: 'File đính kèm',
+            children: (
+              <>
       <Form.Item {...labelProps('Tài liệu đính kèm')} style={formFieldStyle}>
         <AttachmentList
           attachments={(record?.attachments || []).map((a) => ({ id: a.id, fileName: a.fileName, filePath: a.fileUrl }))}
           readonly={false}
         />
       </Form.Item>
+              </>
+            ),
+          },
+        ]}
+      />
 
       <Form.Item style={formFieldStyle}>
         <Space>

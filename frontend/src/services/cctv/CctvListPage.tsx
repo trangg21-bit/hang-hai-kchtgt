@@ -13,21 +13,17 @@ import {
   Card,
   Checkbox,
   DatePicker,
-  Divider,
   Space,
   Tag,
   Row,
   Col,
   Input,
   Select,
-  Tooltip,
   Modal,
   Form,
   InputNumber,
   Typography,
-  Descriptions,
   Drawer,
-  Popconfirm,
   Table,
 } from "antd";
 import { OrgUnitTreeSelect } from "../../components/org-unit";
@@ -40,20 +36,9 @@ import {
   SendOutlined,
   EyeOutlined,
   HistoryOutlined,
-  ClockCircleOutlined,
-  ClockCircleFilled,
-  HourglassOutlined,
-  ArrowRightOutlined,
   UploadOutlined,
   ExclamationCircleOutlined,
-  DownOutlined,
-  UpOutlined,
   FileOutlined,
-  SearchOutlined,
-  FilterOutlined,
-  ReloadOutlined,
-  FileImageOutlined,
-  FilePdfOutlined,
   EnvironmentOutlined,
 } from "@ant-design/icons";
 import { Tabs, Upload } from "antd";
@@ -98,7 +83,6 @@ import {
   DataTable,
   Pagination,
   FilterTableLayout,
-  PagedTable,
 } from "../../components/list-view";
 import {
   historyBadgeStyle,
@@ -114,7 +98,7 @@ import {
   historyOldValueStyle,
   historyNewValueStyle,
   historyArrowStyle,
-} from "../../tokens";
+} from "../../themetokenchk";
 
 /** Map unitOfMeasure code (Integer) → label cho hiển thị */
 const UOM_LABELS: Record<number, string> = {
@@ -170,18 +154,14 @@ import {
   textTertiary,
   statusCritical,
   statusAttention,
-  statusWarning,
-  statusNeutral,
   statusDraft,
   statusOperational,
+  statusInfo,
   actionPrimary,
-  actionHover,
   borderDefault,
   surfaceCard,
   radiusPill,
-  radiusSm,
   radiusMd,
-  radiusLg,
   fontSans,
   spaceMd,
   spaceFormField,
@@ -189,10 +169,6 @@ import {
   spaceLg,
   spaceXs,
   spaceXl,
-  badgeBaseStyle,
-  cardStyle,
-  dividerStyle,
-  metaStyle,
   drawerProps,
   drawerTitleStyle,
   drawerCloseBtnStyle,
@@ -202,7 +178,10 @@ import {
   requiredMarkStyle,
   detailSectionTitleStyle,
   uploadHintStyle,
-} from "../../tokens";
+  statusBadgeStyle,
+} from "../../themetokenchk";
+import * as themeTokenChk from "../../themetokenchk";
+import { ThemeTokenProvider } from "../../context/ThemeTokenContext";
 import dayjs from "dayjs";
 
 const { Text, Title } = Typography;
@@ -220,22 +199,13 @@ const APPROVAL_STATUS_MAP: Record<string, string> = {
 const APPROVAL_COLOR: Record<string, string> = {
   DRAFT: statusDraft,
   PENDING_APPROVAL: statusAttention,
-  APPROVED_LEVEL1: '#0284C7',
+  APPROVED_LEVEL1: statusInfo,
   APPROVED: statusOperational,
   REJECTED_LEVEL1: statusCritical,
   REJECTED_LEVEL2: statusCritical,
 };
 
 /* ── Shared list/detail UI tokens — aligned with Port list-view ───────── */
-const sectionHeader: React.CSSProperties = {
-  display: "block",
-  fontSize: fontSizeMd,
-  fontWeight: fontWeightBold,
-  color: colors.sidebarBg,
-  marginBottom: spaceMd,
-  marginTop: spaceLg,
-  fontFamily: fontSans,
-};
 
 const fieldLabelStyle: React.CSSProperties = {
   color: colors.sidebarBg,
@@ -267,7 +237,7 @@ function renderCctvStatusBadge(b: { color: string; label: string }) {
   if (b.color === 'green') c = statusOperational;
   else if (b.color === 'red') c = statusCritical;
   else if (b.color === 'orange') c = statusAttention;
-  return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${c}15`, color: c }}>{b.label}</span>;
+  return <span style={statusBadgeStyle(c)}>{b.label}</span>;
 }
 
 /** Badge trạng thái phê duyệt 2 cấp — dùng APPROVAL_STATUS_MAP + APPROVAL_COLOR (quy chuẩn AGENTS.md) */
@@ -275,25 +245,7 @@ function renderApprovalBadge(status: string | null | undefined) {
   if (!status) return <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>;
   const display = APPROVAL_STATUS_MAP[status] || status;
   const color = APPROVAL_COLOR[status] || textTertiary;
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        padding: '2px 10px',
-        border: `1px solid ${color}40`,
-        borderRadius: radiusPill,
-        fontSize: fontSizeMd,
-        fontWeight: fontWeightMedium,
-        background: `${color}15`,
-        color,
-        whiteSpace: 'nowrap',
-      }}
-    >
-      {display}
-    </span>
-  );
+  return <span style={statusBadgeStyle(color)}>{display}</span>;
 }
 
 /** Stat card cho chỉ số tổng hợp */
@@ -419,10 +371,22 @@ function CctvFilesTab({ uploadFileList, setUploadFileList, entityId }: { uploadF
           </Upload>
         </div>
       ) : (
-        <PagedTable
-          dataSource={uploadFileList.map((f, i) => ({ ...f, _idx: i }))}
-          tableProps={{ scroll: { x: 400 } }}
+        <Table
+          size="small"
+          dataSource={uploadFileList.map((f, i) => ({ ...f, _idx: i, key: i, __stt: i + 1 }))}
+          rowKey={(_, i) => (i ?? 0)}
+          pagination={{ pageSize: 10, hideOnSinglePage: true, showTotal: (t) => `Tổng cộng ${t}` }}
+          scroll={{ x: 'max-content' }}
         >
+          <Table.Column
+            title="STT"
+            key="stt"
+            dataIndex="__stt"
+            width={60}
+            align="center"
+            render={(v: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{v}</span>}
+            onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })}
+          />
           <Table.Column
             title="Tên file"
             key="name"
@@ -452,7 +416,7 @@ function CctvFilesTab({ uploadFileList, setUploadFileList, entityId }: { uploadF
             )}
             onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })}
           />
-        </PagedTable>
+        </Table>
       )}
       <div style={{ marginTop: spaceSm }}>
         <span style={uploadHintStyle}>
@@ -995,7 +959,7 @@ const CctvListPage = () => {
         <div style={{ lineHeight: "1.35", overflow: "hidden" }}>
           <div
             title={name || "—"}
-            style={{ fontWeight: fontWeightBold, color: "#0F172A", fontSize: fontSizeMd, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+            style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
           >
             {name || "—"}
           </div>
@@ -1162,14 +1126,7 @@ const CctvListPage = () => {
             label: String(val || "—"),
           };
           return (
-            <span style={{
-              ...badgeBaseStyle,
-              fontSize: fontSizeMd,
-              padding: '2px 10px',
-              display: 'inline-flex',
-              background: `${s.color}15`,
-              color: s.color,
-            }}>
+            <span style={statusBadgeStyle(s.color)}>
               {s.label}
             </span>
           );
@@ -1314,7 +1271,7 @@ const CctvListPage = () => {
       return { label: 'Thêm mới', color: statusOperational };
     }
     if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || (rawField.includes('đính kèm') && rawReason.includes('tải'))) {
-      return { label: 'Tải lên tệp', color: '#0284c7' };
+      return { label: 'Tải lên tệp', color: statusInfo };
     }
     if (rawStatus === 'ATTACHMENT_DELETED' || rawReason.includes('xóa tài liệu') || rawReason.includes('xoa tai lieu') || rawReason.includes('xóa tệp')) {
       return { label: 'Xóa tệp', color: '#ea580c' };
@@ -1323,10 +1280,10 @@ const CctvListPage = () => {
       return { label: 'Phê duyệt', color: statusOperational };
     }
     if (rawStatus === 'REJECTED' || rawStatus === 'REJECT') {
-      return { label: 'Từ chối', color: '#E34948' };
+      return { label: 'Từ chối', color: statusCritical };
     }
     if (rawStatus === 'PROPOSED' || rawStatus === 'PENDING_APPROVAL' || rawReason.includes('gửi phê duyệt') || rawReason.includes('gui phe duyet')) {
-      return { label: 'Gửi phê duyệt', color: '#EDA100' };
+      return { label: 'Gửi phê duyệt', color: statusAttention };
     }
     return { label: 'Chỉnh sửa', color: actionPrimary };
   };
@@ -2061,7 +2018,7 @@ const CctvListPage = () => {
   }, [submittingRecord, submitContent, fetchData, fetchTabCounts]);
 
   return (
-    <>
+    <ThemeTokenProvider tokens={themeTokenChk}>
       <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader
         breadcrumb={[
@@ -2288,7 +2245,7 @@ const CctvListPage = () => {
             key: "APPROVED_LEVEL1",
             label: "Chờ Cục duyệt",
             count: tabCounts["APPROVED_LEVEL1"] ?? 0,
-            color: "#0284C7",
+            color: statusInfo,
             active: filterValues.approvalStatus === "APPROVED_LEVEL1",
           },
           {
@@ -2341,13 +2298,10 @@ const CctvListPage = () => {
               current={page + 1}
               total={total}
               pageSize={pageSize}
-              onChange={(p) => setPage(Math.max(p - 1, 0))}
-              onShowSizeChange={(sP, sS) => {
-                setPageSize(sS);
-                setPage(0);
+              onChange={(p, ps) => {
+                setPageSize(ps);
+                setPage(Math.max(p - 1, 0));
               }}
-              showSizeChanger
-              showTotal={(t) => `Tổng ${t} thiết bị`}
             />
           </div>
       </FilterTableLayout>
@@ -2377,8 +2331,7 @@ const CctvListPage = () => {
                 label: "Thông tin chung",
                 children: (
                   <div style={{ paddingTop: 3 }}>
-                    <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-label { width: 150px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; } .ant-tabs-nav{margin-bottom:0!important;padding-left:12px!important}`}</style>
-                    <div className="detail-grid">
+                    <div className="chk-detail-grid">
                       {[
                         { label: 'Mã thiết bị', value: selectedRecord.deviceCode, badge: true },
                         { label: 'Tên thiết bị', value: selectedRecord.deviceName, bold: true },
@@ -2390,14 +2343,14 @@ const CctvListPage = () => {
                         { label: 'Đơn vị tính', value: formatUnitOfMeasure(selectedRecord.unitOfMeasure) },
                         { label: 'Số lượng', value: <span style={{ color: textPrimary, fontSize: fontSizeMd }}>{fmtNum(selectedRecord.quantity)}</span> },
                         { label: 'Năm đưa vào sử dụng', value: selectedRecord.yearOfUse ? String(selectedRecord.yearOfUse) : '—' },
-                        { label: 'Tình trạng', value: (() => { const stMap: Record<string, { color: string; label: string }> = { 'NOT_YET_OPERATIONAL': { color: 'orange', label: 'Chưa khai thác/vận hành' }, 'OPERATIONAL': { color: 'green', label: 'Đang khai thác/vận hành' }, 'SUSPENDED': { color: 'red', label: 'Dừng khai thác/vận hành' } }; const st = stMap[String(selectedRecord.operationalStatus || '').toUpperCase()] || { color: textTertiary, label: String(selectedRecord.operationalStatus || '—') }; return renderCctvStatusBadge(st); })() },
+                        { label: 'Tình trạng', value: (() => { const stMap: Record<string, { color: string; label: string }> = { 'NOT_YET_OPERATIONAL': { color: statusAttention, label: 'Chưa khai thác/vận hành' }, 'OPERATIONAL': { color: statusOperational, label: 'Đang khai thác/vận hành' }, 'SUSPENDED': { color: statusCritical, label: 'Dừng khai thác/vận hành' } }; const st = stMap[String(selectedRecord.operationalStatus || '').toUpperCase()] || { color: textTertiary, label: String(selectedRecord.operationalStatus || '—') }; return renderCctvStatusBadge(st); })() },
                         { label: 'Model', value: selectedRecord.model || '—' },
                         { label: 'Hãng sản xuất', value: selectedRecord.manufacturer || '—' },
                         { label: 'Phê duyệt', value: renderApprovalBadge(selectedRecord.approvalStatus) },
                       ].map((row) => (
-                        <div key={row.label} className="detail-row" style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
-                          <span className="detail-label">{row.label}</span>
-                          <span className="detail-value" style={{ whiteSpace: 'pre-wrap', ...(row.bold ? { fontWeight: fontWeightBold } : undefined) }}>
+                        <div key={row.label} className={row.fullWidth ? 'chk-detail-row chk-detail-row--full' : 'chk-detail-row'}>
+                          <span className="chk-detail-label">{row.label}</span>
+                          <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', ...(row.bold ? { fontWeight: fontWeightBold } : undefined) }}>
                             {row.badge ? (
                               <Tag color={colors.primary} style={{ borderRadius: radiusPill, margin: 0, fontWeight: fontWeightMedium }}>{row.value}</Tag>
                             ) : row.value}
@@ -2413,15 +2366,15 @@ const CctvListPage = () => {
                 label: "Thông số kỹ thuật",
                 children: (
                   <div style={{ paddingTop: 3 }}>
-                    <div className="detail-grid">
+                    <div className="chk-detail-grid">
                       {[
                         ['Thông số kỹ thuật', selectedRecord.specifications || '—'],
                         ['Thông tin bảo trì', selectedRecord.maintenanceInformation || '—'],
                         ['Ghi chú', selectedRecord.note || '—'],
                       ].map(([label, value]) => (
-                        <div key={label} className="detail-row" style={{ gridColumn: '1 / -1' }}>
-                          <span className="detail-label">{label}</span>
-                          <span className="detail-value" style={{ whiteSpace: 'pre-wrap' }}>{value}</span>
+                        <div key={label} className="chk-detail-row chk-detail-row--full">
+                          <span className="chk-detail-label">{label}</span>
+                          <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap' }}>{value}</span>
                         </div>
                       ))}
                     </div>
@@ -2433,27 +2386,34 @@ const CctvListPage = () => {
                 label: "Thông tin vị trí",
                 children: (
                   <div style={{ paddingTop: 3 }}>
-                    <div className="detail-grid">
+                    <div className="chk-detail-grid">
                       {[
                         ['Thuộc loại hạ tầng', selectedRecord.attachedInfrastructureName || '—'],
                         ['Biểu tượng', (() => { const sym = (symbols || []).find((s) => s.id === selectedRecord.mapSymbolId); return sym ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{sym.image ? <img src={sym.image} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}{sym.name}</span> : selectedRecord.mapSymbolName || '—'; })(),],
                         ['Hệ quy chiếu', selectedRecord.coordinateSystem === 1 ? 'WGS-84' : selectedRecord.coordinateSystem === 2 ? 'VN-2000' : (selectedRecord.coordinateSystem != null ? String(selectedRecord.coordinateSystem) : '—')],
                         ['Quy tắc hiển thị', selectedRecord.displayRule != null ? String(selectedRecord.displayRule) : '—'],
                       ].map(([label, value]) => (
-                        <div key={label} className="detail-row">
-                          <span className="detail-label">{label}</span>
-                          <span className="detail-value">{value}</span>
+                        <div key={label} className="chk-detail-row">
+                          <span className="chk-detail-label">{label}</span>
+                          <span className="chk-detail-value">{value}</span>
                         </div>
                       ))}
                     </div>
                     <div style={{ marginTop: spaceSm, padding: '0 12px' }}>
                       <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS</span>
-                      <PagedTable dataSource={(() => {
-                        const loc = resolveMapGeometryLocation((selectedRecord as any)?.coordinates);
-                        return loc ? loc.coordinates.map(([lng, lat]) => ({ lat, lng })) : [];
-                      })()}
-                        emptyText={<div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><EnvironmentOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tọa độ</span></div>}
+                      <Table size="small"
+                        dataSource={(() => {
+                          const loc = resolveMapGeometryLocation((selectedRecord as any)?.coordinates);
+                          return (loc ? loc.coordinates.map(([lng, lat]) => ({ lat, lng })) : []).map((r, i) => ({ ...r, key: i, __stt: i + 1 }));
+                        })()}
+                        rowKey={(_, i) => (i ?? 0)}
+                        pagination={{ pageSize: 20, hideOnSinglePage: true, showTotal: (t) => `Tổng cộng ${t}` }}
+                        scroll={{ x: 'max-content' }}
+                        locale={{ emptyText: <div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><EnvironmentOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tọa độ</span></div> }}
                       >
+                        <Table.Column title="STT" key="stt" dataIndex="__stt" width={60} align="center"
+                          render={(v: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{v}</span>}
+                          onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                         <Table.Column title="Vĩ độ (N)" key="lat" align="center"
                           render={(_: any, record: any) => {
                             const dd = record.lat || 0;
@@ -2490,7 +2450,7 @@ const CctvListPage = () => {
                             );
                           }}
                           onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                      </PagedTable>
+                      </Table>
                     </div>
                   </div>
                 ),
@@ -2526,7 +2486,7 @@ const CctvListPage = () => {
                 label: "Xử lý & theo dõi",
                 children: (
                   <div style={{ paddingTop: 3 }}>
-                    <div className="detail-grid">
+                    <div className="chk-detail-grid">
                       {[
                         { key: 'updatedDate', label: 'Ngày cập nhật', value: selectedRecord.updatedAt ? formatDate(selectedRecord.updatedAt) : '—' },
                         { key: 'updatedByUser', label: 'Cán bộ cập nhật', value: selectedRecord.updatedByName || '—' },
@@ -2541,9 +2501,9 @@ const CctvListPage = () => {
                         { key: 'approvalContentExtra', label: 'Nội dung phê duyệt', value: selectedRecord.rejectionReason || '—', fullWidth: true },
                         { key: 'status', label: 'Trạng thái', value: renderApprovalBadge(selectedRecord.approvalStatus), fullWidth: true },
                       ].map((row) => (
-                        <div key={row.key} className="detail-row" style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
-                          <span className="detail-label">{row.label}</span>
-                          <span className="detail-value">{row.value}</span>
+                        <div key={row.key} className={row.fullWidth ? 'chk-detail-row chk-detail-row--full' : 'chk-detail-row'}>
+                          <span className="chk-detail-label">{row.label}</span>
+                          <span className="chk-detail-value">{row.value}</span>
                         </div>
                       ))}
                     </div>
@@ -3282,7 +3242,7 @@ const CctvListPage = () => {
                           <Input
                             placeholder="Chọn quy tắc hiển thị"
                             disabled
-                            style={{ ...pillStyle, color: '#8c8c8c', cursor: 'not-allowed' }}
+                            style={{ ...pillStyle, color: textTertiary, cursor: 'not-allowed' }}
                           />
                         </Form.Item>
                       </Col>
@@ -3314,10 +3274,22 @@ const CctvListPage = () => {
                         </Button>
                       </div>
                     ) : (
-                      <PagedTable
-                        dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i }))}
-                        tableProps={{ scroll: { x: 820 } }}
+                      <Table
+                        size="small"
+                        dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i, key: i, __stt: i + 1 }))}
+                        rowKey={(_, i) => (i ?? 0)}
+                        pagination={{ pageSize: 20, hideOnSinglePage: true, showTotal: (t) => `Tổng cộng ${t}` }}
+                        scroll={{ x: 'max-content' }}
                       >
+                        <Table.Column
+                          title="STT"
+                          key="stt"
+                          dataIndex="__stt"
+                          width={60}
+                          align="center"
+                          render={(v: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{v}</span>}
+                          onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })}
+                        />
                         <Table.Column
                           title="Vĩ độ (N)"
                           key="lat"
@@ -3413,7 +3385,7 @@ const CctvListPage = () => {
                             style: { background: colors.bodyBg, padding: '12px 6px' },
                           })}
                         />
-                      </PagedTable>
+                      </Table>
                     )}
                   </div>
                 ),
@@ -3911,7 +3883,7 @@ const CctvListPage = () => {
                           <Input
                             placeholder="Chọn quy tắc hiển thị"
                             disabled
-                            style={{ ...pillStyle, color: '#8c8c8c', cursor: 'not-allowed' }}
+                            style={{ ...pillStyle, color: textTertiary, cursor: 'not-allowed' }}
                           />
                         </Form.Item>
                       </Col>
@@ -3943,10 +3915,22 @@ const CctvListPage = () => {
                         </Button>
                       </div>
                     ) : (
-                      <PagedTable
-                        dataSource={updateGpsCoordList.map((c, i) => ({ ...c, _idx: i }))}
-                        tableProps={{ scroll: { x: 820 } }}
+                      <Table
+                        size="small"
+                        dataSource={updateGpsCoordList.map((c, i) => ({ ...c, _idx: i, key: i, __stt: i + 1 }))}
+                        rowKey={(_, i) => (i ?? 0)}
+                        pagination={{ pageSize: 20, hideOnSinglePage: true, showTotal: (t) => `Tổng cộng ${t}` }}
+                        scroll={{ x: 'max-content' }}
                       >
+                        <Table.Column
+                          title="STT"
+                          key="stt"
+                          dataIndex="__stt"
+                          width={60}
+                          align="center"
+                          render={(v: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{v}</span>}
+                          onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })}
+                        />
                         <Table.Column
                           title="Vĩ độ (N)"
                           key="lat"
@@ -4042,7 +4026,7 @@ const CctvListPage = () => {
                             style: { background: colors.bodyBg, padding: '12px 6px' },
                           })}
                         />
-                      </PagedTable>
+                      </Table>
                     )}
                   </div>
                 ),
@@ -4105,7 +4089,7 @@ const CctvListPage = () => {
           )}
         </div>
       </Drawer>
-    </>
+    </ThemeTokenProvider>
   );
 };
 

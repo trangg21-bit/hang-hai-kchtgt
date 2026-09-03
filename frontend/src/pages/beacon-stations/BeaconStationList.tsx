@@ -3,9 +3,9 @@ import {
   Button,
   Modal,
   Input,
+  InputNumber,
   Select,
   TreeSelect,
-  Radio,
   Space,
   Typography,
   Checkbox,
@@ -13,27 +13,28 @@ import {
   DatePicker,
   Row,
   Col,
-  Upload,
   Tabs,
-  Table,
-  Drawer,
 } from 'antd';
 import {
   PlusOutlined,
   EditOutlined,
-  FileOutlined,
   DeleteOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
   EyeOutlined,
   HistoryOutlined,
   SendOutlined,
-  UploadOutlined,
-  SearchOutlined,
 } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
-import type { UploadFile } from 'antd';
-import type { RcFile } from 'antd/es/upload/interface';
+
+// Kiểu file đính kèm đang chờ tải lên (file mới chọn từ máy)
+type PendingUploadFile = {
+  uid: string;
+  name: string;
+  size?: number;
+  status?: 'done';
+  originFileObj?: File;
+};
 import {
   beaconStationCRUD,
   approval,
@@ -41,9 +42,12 @@ import {
 } from '../../services/beaconService';
 import type { BeaconStation } from '../../types/beacon';
 import {
+  CommonHistoryDrawer,
+} from '../../components/shared/CommonHistoryDrawer';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import {
   BEACON_STATUS_MAP,
   BEACON_LIGHT_TYPE_OPTIONS,
-  BEACON_HISTORY_ACTION_MAP,
   type BeaconStatus,
 } from '../../types/beacon';
 import { organizationService } from '../../services/organizationService';
@@ -52,7 +56,6 @@ import type { Organization } from '../../services/organizationService';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import toast from '../../components/ToastNotification';
 import { useAuthStore } from '../../store/authStore';
@@ -65,63 +68,25 @@ import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
-import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
-import { OrgUnitTreeSelect, normalizeSearchText, type OrgUnitTreeOption } from '../../components/org-unit';
+import { OrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import {
   actionPrimary, textPrimary, textSecondary, textTertiary,
   fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd, fontSizeLg,
-  radiusSm, radiusMd, radiusPill,
-  spaceXs, spaceSm, spaceMd, spaceXl, spaceFormField, spaceLg,
+  radiusMd, radiusPill,
+  spaceXs, spaceSm, spaceMd, spaceFormField,
   surfaceCard, surfacePage,
   statusOperational, statusDraft, statusCritical, statusAttention,
-  drawerTitleStyle, drawerCloseBtnStyle, selectStyle,
-  borderDefault, statusBadgeStyle, badgeBaseStyle, icons, cellTitleStyle, cellSubtitleStyle, detailRowStyle, detailLabelColStyle, detailValueStyle,
-  inputStyle, textAreaStyle, colors, primaryButtonStyle, outlineButtonStyle, dangerButtonStyle,
-  formFieldStyle, formRowGutter,
-  filterLabelStyle, filterInputStyle, confirmModalBodyStyle,
-  historyBadgeStyle, historyGroupGridStyle, historyTimeStyle,
-  historyMetaRowStyle, historyInfoCardStyle, historyAccentBarStyle, historyInfoTitleStyle,
-  historyChangeRowStyle, historyCreateRowStyle, historyFieldLabelStyle,
-  historyOldValueStyle, historyNewValueStyle, historyArrowStyle,
-  requiredMarkStyle, uploadHintStyle,
-  getRangePickerProps, DRAWER_TABLE_SCROLL_Y,
+  drawerTitleStyle, drawerTabBarStyle, drawerTabContentStyle, readonlyInputStyle, selectStyle,
+  borderDefault, statusBadgeStyle, cellTitleStyle, cellSubtitleStyle, detailRowStyle, detailLabelColStyle, detailValueStyle,
+  inputStyle, colors, primaryButtonStyle, outlineButtonStyle, dangerButtonStyle,
+  formFieldStyle,
+  confirmModalBodyStyle,
+  requiredMarkStyle,
+  DRAWER_TABLE_SCROLL_Y,
 } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
-
-// ── Field name translation ───────────────────────────────────────────
-
-const FIELD_LABELS: Record<string, string> = {
-  code: 'Mã đèn biển',
-  name: 'Tên đèn biển',
-  type: 'Cấp trạm đèn',
-  unitId: 'Đơn vị quản lý',
-  unitName: 'Tên đơn vị',
-  latitude: 'Vĩ độ',
-  longitude: 'Kinh độ',
-  lightRange: 'Tầm hiệu lực ánh sáng',
-  towerColor: 'Màu sắc bên ngoài của tháp đèn',
-  location: 'Địa điểm đặt trạm đèn',
-  shape: 'Hình dáng',
-  structure: 'Kết cấu',
-  towerHeight: 'Chiều cao tháp đèn',
-  lightHeight: 'Chiều cao tâm sáng',
-  geographicRange: 'Tầm hiệu lực địa lý',
-  backupLightModel: 'Đèn dự phòng',
-  powerSupply: 'Nguồn cung cấp',
-  staffCount: 'Nhân sự bố trí',
-  stationArea: 'Diện tích sử dụng trạm',
-  primaryLightModel: 'Đèn chính',
-  area: 'Diện tích',
-  lastRepairDate: 'Thời điểm sửa chữa gần nhất',
-  commissionedDate: 'Thời điểm đưa vào sử dụng',
-  status: 'Trạng thái',
-  approvalStatus: 'Trạng thái phê duyệt',
-  rejectionReason: 'Lý do từ chối',
-};
-
-const historyFieldName = (fn: string): string => FIELD_LABELS[fn] || fn;
 
 const pillStyle = { borderRadius: radiusPill, height: 40 };
 
@@ -189,14 +154,14 @@ const COORD_SYS_OPTIONS = [
 
 const COORD_SYS_MAP: Record<number, string> = { 1: 'WGS-84', 2: 'VN-2000' };
 
-// History action colors — semantic tokens (BEACON_HISTORY_ACTION_MAP keeps AntD names; use tokens for the accent bar/badge)
-const HISTORY_ACTION_COLOR: Record<string, string> = {
-  CREATE: statusOperational,
-  UPDATE: actionPrimary,
-  APPROVE_L1: statusAttention,
-  APPROVE_L2: statusAttention,
-  REJECT: statusCritical,
-  SOFT_DELETE: statusDraft,
+// ── DMS coordinate conversion (độ-phút-giây ↔ thập phân) ─────────
+const ddToDmsFields = (dd: number): { d: number; m: number; s: number } => {
+  const abs = Math.abs(dd);
+  const d = Math.floor(abs);
+  const minFloat = (abs - d) * 60;
+  const m = Math.floor(minFloat);
+  const s = Math.round((minFloat - m) * 6000) / 100;
+  return { d, m, s: s > 59.9999 ? 0 : s };
 };
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -285,7 +250,7 @@ export default function BeaconStationList() {
   const [submitting, setSubmitting] = useState(false);
   const [createForm] = Form.useForm();
   const [activeTabKey, setActiveTabKey] = useState('general');
-  const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<PendingUploadFile[]>([]);
   const [detailFiles, setDetailFiles] = useState<any[]>([]);
   const [logOpen, setLogOpen] = useState(true);
   const [operationOpen, setOperationOpen] = useState(true);
@@ -314,10 +279,9 @@ export default function BeaconStationList() {
   const [historyTarget, setHistoryTarget] = useState<BeaconStation | null>(null);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [historySearch, setHistorySearch] = useState('');
-  const [historyFrom, setHistoryFrom] = useState('');
-  const [historyTo, setHistoryTo] = useState('');
-  const [historyMode, setHistoryMode] = useState<'current' | 'all'>('current');
+
+  // ── GIS map modal (Rule 12: disabled mode for view) ─────────────
+  const [gisModalOpen, setGisModalOpen] = useState(false);
 
   // ── Load organizations (for unit TreeSelect in the form) ─────────
   useEffect(() => {
@@ -464,6 +428,11 @@ export default function BeaconStationList() {
   const openEditDrawer = useCallback((record: BeaconStation) => {
     setEditingRecord(record); setIsDetailMode(false); setDetailRecord(null);
     setActiveTabKey('general');
+
+    // ── decimal → DMS conversion (Rule 7) ─────────────────────────
+    const latDms = record.latitude != null ? ddToDmsFields(record.latitude) : { d: 0, m: 0, s: 0 };
+    const lngDms = record.longitude != null ? ddToDmsFields(record.longitude) : { d: 0, m: 0, s: 0 };
+
     createForm.setFieldsValue({
       code: record.code, name: record.name, type: record.type, unitId: record.unitId,
       lightRange: record.lightRange, towerColor: record.towerColor, location: record.location,
@@ -486,8 +455,9 @@ export default function BeaconStationList() {
       mapSymbolId: record.mapSymbolId,
       coordinateSystem: record.coordinateSystem,
       displayRule: record.displayRule,
-      latitude: record.latitude,
-      longitude: record.longitude,
+      // DMS fields
+      latitudeDegrees: latDms.d, latitudeMinutes: latDms.m, latitudeSeconds: latDms.s,
+      longitudeDegrees: lngDms.d, longitudeMinutes: lngDms.m, longitudeSeconds: lngDms.s,
     });
     setUploadedFiles([]);
     beaconStationCRUD.listAttachments(record.id)
@@ -517,7 +487,7 @@ export default function BeaconStationList() {
   }, [createForm]);
 
   // ── File đính kèm ───────────────────────────────────────────────
-  const handleBeforeUpload = useCallback((file: RcFile): false => {
+  const handleBeforeUpload = useCallback((file: File): false => {
     if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB'); return false; }
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) { toast.error('Định dạng không hỗ trợ'); return false; }
@@ -535,27 +505,31 @@ export default function BeaconStationList() {
   }, [uploadedFiles, editingRecord]);
 
   // ── History ─────────────────────────────────────────────────────
-  const loadHistory = useCallback(async (mode: 'current' | 'all') => {
-    setHistoryLoading(true);
-    setHistoryRecords([]);
-    try {
-      const res = await beaconHistory.getHistory(
-        mode === 'all'
-          ? { type: 'BEACON_LIGHT' }
-          : { type: 'BEACON_LIGHT', entityId: historyTarget?.id },
-      );
-      setHistoryRecords(res.data || []);
-    } catch { toast.error('Không thể tải lịch sử'); } finally { setHistoryLoading(false); }
-  }, [historyTarget]);
-
   const openHistory = useCallback(async (r: BeaconStation) => {
     setHistoryTarget(r); setHistoryOpen(true);
-    setHistorySearch(''); setHistoryFrom(''); setHistoryTo(''); setHistoryMode('current');
     setHistoryLoading(true);
     setHistoryRecords([]);
     try {
       const res = await beaconHistory.getHistory({ type: 'BEACON_LIGHT', entityId: r.id });
-      setHistoryRecords(res.data || []);
+      const entries: any[] = (res.data || []).map((r: any) => {
+        const act = r.actionType || 'UPDATE';
+        const ts = r.changedAt || r.createdAt || '';
+        const changedByVal = r.changedBy ?? r.changedByName ?? r.actor ?? '—';
+        return {
+          id: r.id || `h-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          action: act,
+          changedBy: changedByVal,
+          changedByName: r.changedByName ?? (typeof changedByVal === 'string' ? changedByVal : '—'),
+          actor: r.changedByName ?? (typeof changedByVal === 'string' ? changedByVal : '—'),
+          changedAt: ts,
+          createdAt: r.createdAt || ts,
+          changes: r.changes || [
+            { field: r.changedField || r.fieldName || '', oldValue: r.previousValue ?? r.oldValue ?? '', newValue: r.newValue ?? '' },
+          ],
+          reason: r.reason ?? null,
+        };
+      });
+      setHistoryRecords(entries);
     } catch { toast.error('Không thể tải lịch sử'); } finally { setHistoryLoading(false); }
   }, []);
 
@@ -648,6 +622,17 @@ export default function BeaconStationList() {
     setSubmitting(true);
     try {
       const values = await createForm.validateFields();
+
+      // ── DMS → decimal conversion (Rule 7) ─────────────────────────
+      const latD = values.latitudeDegrees ?? 0;
+      const latM = values.latitudeMinutes ?? 0;
+      const latS = values.latitudeSeconds ?? 0;
+      const lngD = values.longitudeDegrees ?? 0;
+      const lngM = values.longitudeMinutes ?? 0;
+      const lngS = values.longitudeSeconds ?? 0;
+      const decimalLat = latD + latM / 60 + latS / 3600;
+      const decimalLng = lngD + lngM / 60 + lngS / 3600;
+
       const toDate = (v: any) => (v ? (dayjs.isDayjs(v) ? v.toISOString() : String(v)) : undefined);
       if (editingRecord) {
         const payload = {
@@ -671,8 +656,8 @@ export default function BeaconStationList() {
           mapSymbolId: values.mapSymbolId,
           coordinateSystem: values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined,
           displayRule: values.displayRule,
-          latitude: values.latitude != null ? Number(values.latitude) : undefined,
-          longitude: values.longitude != null ? Number(values.longitude) : undefined,
+          latitude: decimalLat,
+          longitude: decimalLng,
         };
         const updated = await beaconStationCRUD.update(editingRecord.id, payload);
         if (window.parent && (window.parent as any).kchtDetailCache) {
@@ -705,8 +690,8 @@ export default function BeaconStationList() {
           mapSymbolId: values.mapSymbolId,
           coordinateSystem: values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined,
           displayRule: values.displayRule,
-          latitude: values.latitude != null ? Number(values.latitude) : undefined,
-          longitude: values.longitude != null ? Number(values.longitude) : undefined,
+          latitude: decimalLat,
+          longitude: decimalLng,
         };
         const created = await beaconStationCRUD.create(payload);
         const newFiles = uploadedFiles.filter((f) => f.originFileObj).map((f) => f.originFileObj as File);
@@ -1054,14 +1039,47 @@ export default function BeaconStationList() {
   );
 
   const renderToggleSection = (open: boolean, onToggle: () => void, title: string, rows: DetailRow[], twoCol = false) => (
-    <div>
-      <button type="button" style={{ cursor: 'pointer', marginTop: 10, paddingLeft: 12, background: 'none', border: 'none', font: 'inherit', textAlign: 'left', display: 'block', width: '100%' }}
-        onClick={onToggle}>
-        <span style={{ color: open ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>
-          {open ? '▼' : '▶'} {title}
+    <div className="chk-detail-grid">
+      <button
+        type="button"
+        className="chk-detail-section-toggle"
+        style={{
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          width: '100%',
+          padding: '8px 12px',
+          background: open ? surfacePage : 'transparent',
+          borderRadius: radiusMd,
+          marginBottom: 4,
+          border: 'none',
+          font: 'inherit',
+          textAlign: 'left',
+        }}
+        onClick={onToggle}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}
+      >
+        <span
+          style={{
+            color: open ? actionPrimary : colors.sidebarBg,
+            fontWeight: fontWeightBold,
+            fontSize: fontSizeMd + 1,
+            marginRight: 8,
+          }}
+        >
+          {open ? '▼' : '▶'}
         </span>
+        <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{title}</span>
       </button>
-      {open && (twoCol ? renderDetailRowsTwoCol(rows) : renderDetailRows(rows, 4))}
+      <div
+        style={{
+          maxHeight: open ? 'none' : 0,
+          overflow: 'hidden',
+          transition: 'max-height 0.2s ease',
+        }}
+      >
+        {open && (twoCol ? renderDetailRowsTwoCol(rows) : renderDetailRows(rows, 4))}
+      </div>
     </div>
   );
 
@@ -1140,17 +1158,17 @@ export default function BeaconStationList() {
       ]
     : [];
 
-  // Tab 6 — Thông tin log cập nhật (read-only)
+  // Tab 6 — Thông tin log cập nhật (read-only) — cấu trúc CHK chuẩn
   const detailLogRows: DetailRow[] = detailRecord
     ? [
         { label: 'Ngày gửi phê duyệt', value: formatDate(detailRecord.submittedAt) },
         { label: 'Cán bộ gửi phê duyệt', value: detailRecord.submittedByName || '—' },
-        { label: 'Nội dung phê duyệt', value: detailRecord.approvalContentLevel1 || '—', span: true },
-        { label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', value: formatDate(detailRecord.approvedDateLevel1) },
-        { label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: detailRecord.approverLevel1Name || '—' },
-        { label: 'Nội dung phê duyệt', value: detailRecord.approvalContentLevel2 || '—', span: true },
+        { label: 'Nội dung phê duyệt (Cảng vụ)', value: detailRecord.approvalContentLevel1 || '—', span: true },
+        { label: 'Phê duyệt cấp Cảng vụ/Chi cục', value: detailRecord.approverLevel1Name || '—', span: true },
+        { label: 'Ngày phê duyệt cấp Cảng vụ', value: formatDate(detailRecord.approvedDateLevel1) },
+        { label: 'Nội dung phê duyệt (Cục)', value: detailRecord.approvalContentLevel2 || '—', span: true },
+        { label: 'Phê duyệt cấp Cục', value: detailRecord.approverLevel2Name || '—', span: true },
         { label: 'Ngày phê duyệt cấp Cục', value: formatDate(detailRecord.approvedDateLevel2) },
-        { label: 'Cán bộ phê duyệt cấp Cục', value: detailRecord.approverLevel2Name || '—' },
         {
           label: 'Trạng thái',
           value: (() => {
@@ -1192,6 +1210,23 @@ export default function BeaconStationList() {
       ]
     : [];
 
+  // GIS modal content — disabled mode (Rule 12: ẩn hết nút thêm/sửa/xóa/toolbar)
+  const gisDetailModalContent = useMemo(() => {
+    if (!detailRecord?.mapSymbolId && !detailRecord?.geometryType) return null;
+    return {
+      geometryType: detailRecord.geometryType || 'POINT',
+      coordinates: detailRecord.coordinates || '',
+      mapSymbolId: detailRecord.mapSymbolId || undefined,
+      coordinateSystem: detailRecord.coordinateSystem || 1,
+      displayRule: detailRecord.displayRule || undefined,
+      shape: detailRecord.shape || undefined,
+      structure: detailRecord.structure || undefined,
+      towerHeight: detailRecord.towerHeight || undefined,
+      lightHeight: detailRecord.lightHeight || undefined,
+      geographicRange: detailRecord.geographicRange || undefined,
+    };
+  }, [detailRecord]);
+
   const detailTabItems = [
     {
       key: 'general',
@@ -1200,6 +1235,24 @@ export default function BeaconStationList() {
         <>
           {renderDetailRowsTwoCol(detailBasicRows)}
           {renderToggleSection(logOpen, () => setLogOpen(!logOpen), 'Thông tin phê duyệt', detailLogRows, true)}
+          <div style={{ marginTop: 16 }}>
+            <button
+              type="button"
+              onClick={() => setGisModalOpen(true)}
+              style={{
+                cursor: 'pointer',
+                padding: '6px 16px',
+                background: 'none',
+                border: `1px solid ${actionPrimary}`,
+                borderRadius: radiusPill,
+                color: actionPrimary,
+                fontWeight: fontWeightMedium,
+                fontSize: fontSizeMd,
+              }}
+            >
+              📍 Xem vị trí trên bản đồ
+            </button>
+          </div>
         </>
       ),
     },
@@ -1259,111 +1312,7 @@ export default function BeaconStationList() {
     return val;
   };
 
-  const renderHistoryTimeline = (records: any[]) => {
-    const q = historySearch.toLowerCase().trim();
-    const fromMs = historyFrom ? dayjs(historyFrom).valueOf() : null;
-    const toMs = historyTo ? dayjs(historyTo).valueOf() : null;
-    const sorted = [...records].sort(
-      (a, b) => new Date(b.changedAt || b.createdAt || 0).getTime() - new Date(a.changedAt || a.createdAt || 0).getTime(),
-    );
-    const groups: { ts: string; actor: string; items: any[] }[] = [];
-    for (const r of sorted) {
-      if (q) {
-        const fn = (r.changedField || r.fieldName || '').toLowerCase();
-        const ov = (r.previousValue || r.oldValue || '').toLowerCase();
-        const nv = (r.newValue || '').toLowerCase();
-        const reason = (r.reason || '').toLowerCase();
-        if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !reason.includes(q)) continue;
-      }
-      const ts = r.changedAt || r.createdAt || '';
-      const ms = ts ? new Date(ts).getTime() : 0;
-      if (fromMs && ms < fromMs) continue;
-      if (toMs && ms > toMs) continue;
-      const prev = groups[groups.length - 1];
-      if (prev && prev.ts === ts && prev.actor === (r.changedBy || '')) prev.items.push(r);
-      else groups.push({ ts, actor: r.changedBy || '', items: [r] });
-    }
-    if (groups.length === 0) {
-      return (
-        <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
-          <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-          <div style={{ color: textTertiary, fontSize: fontSizeMd }}>
-            {q || historyFrom || historyTo ? 'Không tìm thấy kết quả' : 'Chưa có thay đổi'}
-          </div>
-        </div>
-      );
-    }
-    return groups.map((g) => {
-      const actionType = g.items[0]?.actionType || 'UPDATE';
-      const color = HISTORY_ACTION_COLOR[actionType] || actionPrimary;
-      const actionLabel = BEACON_HISTORY_ACTION_MAP[actionType as keyof typeof BEACON_HISTORY_ACTION_MAP]?.label || actionType;
-      const isCreate = actionType === 'CREATE';
-      const ordered = g.items.map((r: any) => ({
-        id: r.id || '',
-        field: r.changedField || r.fieldName || '',
-        oldValue: r.previousValue ?? r.oldValue ?? null,
-        newValue: r.newValue ?? null,
-        reason: r.reason ?? null,
-      }));
-      return (
-        <div key={g.items[0]?.id || `${g.ts}-${g.actor}`} style={historyGroupGridStyle}>
-          <div>
-            <div style={historyTimeStyle}>{g.ts ? dayjs(g.ts).format('DD/MM/YYYY HH:mm:ss') : '—'}</div>
-            <div style={{ marginTop: spaceXs }}>
-              <span style={historyBadgeStyle(color)}>{actionLabel}</span>
-            </div>
-            <Typography.Text style={{ ...historyMetaRowStyle, marginTop: spaceXs }}>
-              Người cập nhật: {g.actor || '—'}
-            </Typography.Text>
-          </div>
-          <div style={historyInfoCardStyle}>
-            <div style={historyAccentBarStyle(color)} />
-            <Typography.Text style={historyInfoTitleStyle}>
-              {isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:'}
-            </Typography.Text>
-            {ordered.length > 0 ? (
-              <div>
-                {ordered.map((change) => {
-                  const fn = change.field;
-                  const changeKey = change.id || fn || 'row';
-                  if (change.reason && change.reason !== '(null)') {
-                    return (
-                      <div key={changeKey} style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '4px 0' }}>
-                        <div style={historyFieldLabelStyle}>Lý do từ chối:</div>
-                        <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: radiusSm, padding: '6px 12px', color: statusCritical, fontSize: fontSizeMd, overflowWrap: 'anywhere' }}>{change.reason}</div>
-                      </div>
-                    );
-                  }
-                  const ov = formatHistoryValue(fn, change.oldValue);
-                  const nv = formatHistoryValue(fn, change.newValue);
 
-                  if (isCreate) {
-                    return (
-                      <div key={changeKey} style={historyCreateRowStyle}>
-                        <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                        <span title={nv} style={historyNewValueStyle}>{nv}</span>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div key={changeKey} style={historyChangeRowStyle}>
-                      <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                      <span title={ov} style={historyOldValueStyle}>{ov}</span>
-                      <span style={historyArrowStyle}>→</span>
-                      <span title={nv} style={historyNewValueStyle}>{nv}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có thông tin chi tiết</Typography.Text>
-            )}
-          </div>
-        </div>
-      );
-    });
-  };
 
   // ── JSX ─────────────────────────────────────────────────────────
   return (
@@ -1440,28 +1389,27 @@ export default function BeaconStationList() {
           <>
             <style>{requiredMarkStyle}</style>
             <Form form={createForm} layout="vertical" initialValues={{ operationalStatus: 1 }}>
-              <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={tabBarStyle}
+              <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle}
                 items={[
                   {
                     key: 'general',
                     label: 'Thông tin chung',
                     children: (
-                      <div style={{ paddingTop: 16 }}>
-                        <Row gutter={formRowGutter}>
+                      <div style={drawerTabContentStyle}>
+                        <Row gutter={[24, 0]}>
                           <Col span={12}>
-                            <Form.Item name="code" {...labelProps('Mã đèn biển')} required style={formFieldStyle}
-                              rules={[{ required: true, message: 'Vui lòng nhập mã đèn biển' }]}>
-                              <Input placeholder="VD: LH-HAIPHONG-001" disabled={!!editingRecord} style={inputStyle} />
+                            <Form.Item name="code" {...labelProps('Mã đèn biển')} style={formFieldStyle}>
+                              <Input placeholder="Mã tự sinh (DBNT-XXXXXX)" disabled style={readonlyInputStyle} />
                             </Form.Item>
                           </Col>
                           <Col span={12}>
                             <Form.Item name="name" {...labelProps('Tên đèn biển')} required style={formFieldStyle}
                               rules={[{ required: true, message: 'Vui lòng nhập tên đèn biển' }]}>
-                              <Input placeholder="VD: Đèn biển Hòn Dấu" style={inputStyle} />
+                              <Input placeholder="VD: Đèn biển Hòn Dấu" maxLength={255} showCount style={inputStyle} />
                             </Form.Item>
                           </Col>
                         </Row>
-                        <Row gutter={formRowGutter}>
+                        <Row gutter={[24, 0]}>
                           <Col span={12}>
                             <Form.Item name="unitId" {...labelProps('Đơn vị quản lý')} required style={formFieldStyle}
                               rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}>
@@ -1477,10 +1425,10 @@ export default function BeaconStationList() {
                             </Form.Item>
                           </Col>
                         </Row>
-                        <Row gutter={formRowGutter}>
+                        <Row gutter={[24, 0]}>
                           <Col span={12}>
                             <Form.Item name="operator" {...labelProps('Đơn vị vận hành')} style={formFieldStyle}>
-                              <Input placeholder="Nhập đơn vị vận hành..." style={inputStyle} />
+                              <Input placeholder="Nhập đơn vị vận hành..." maxLength={200} showCount style={inputStyle} />
                             </Form.Item>
                           </Col>
                           <Col span={12}>
@@ -1490,10 +1438,10 @@ export default function BeaconStationList() {
                             </Form.Item>
                           </Col>
                         </Row>
-                        <Row gutter={formRowGutter}>
+                        <Row gutter={[24, 0]}>
                           <Col span={12}>
                             <Form.Item name="detailedLocation" {...labelProps('Địa điểm chi tiết')} style={formFieldStyle}>
-                              <Input placeholder="Nhập địa điểm chi tiết..." style={inputStyle} />
+                              <Input placeholder="Nhập địa điểm chi tiết..." maxLength={500} showCount style={inputStyle} />
                             </Form.Item>
                           </Col>
                           <Col span={12}>
@@ -1509,8 +1457,8 @@ export default function BeaconStationList() {
                     key: 'technical',
                     label: 'Thông tin kỹ thuật đèn biển',
                     children: (
-                      <div style={{ paddingTop: 16 }}>
-                        <Row gutter={formRowGutter}>
+                      <div style={drawerTabContentStyle}>
+                        <Row gutter={[24, 0]}>
                           <Col span={12}>
                             <Form.Item name="type" {...labelProps('Cấp trạm đèn')} required style={formFieldStyle}
                               rules={[{ required: true, message: 'Vui lòng chọn cấp trạm đèn' }]}>
@@ -1519,35 +1467,35 @@ export default function BeaconStationList() {
                           </Col>
                           <Col span={12}>
                             <Form.Item name="primaryLightModel" {...labelProps('Đèn chính')} style={formFieldStyle}>
-                              <Input placeholder="VD: VMS.RB-400" style={inputStyle} />
+                              <Input placeholder="VD: VMS.RB-400" maxLength={100} showCount style={inputStyle} />
                             </Form.Item>
                           </Col>
                         </Row>
-                        <Row gutter={formRowGutter}>
+                        <Row gutter={[24, 0]}>
                           <Col span={12}>
                             <Form.Item name="backupLightModel" {...labelProps('Đèn dự phòng')} style={formFieldStyle}>
-                              <Input placeholder="VD: LED 200W" style={inputStyle} />
+                              <Input placeholder="VD: LED 200W" maxLength={100} showCount style={inputStyle} />
                             </Form.Item>
                           </Col>
                           <Col span={12}>
                             <Form.Item name="region" {...labelProps('Địa bàn')} style={formFieldStyle}>
-                              <Input placeholder="Nhập địa bàn..." style={inputStyle} />
+                              <Input placeholder="Nhập địa bàn..." maxLength={255} showCount style={inputStyle} />
                             </Form.Item>
                           </Col>
                         </Row>
-                        <Row gutter={formRowGutter}>
+                        <Row gutter={[24, 0]}>
                           <Col span={12}>
                             <Form.Item name="identifyingFeature" {...labelProps('Đặc điểm nhận dạng')} style={formFieldStyle}>
-                              <Input placeholder="Nhập đặc điểm nhận dạng..." style={inputStyle} />
+                              <Input placeholder="Nhập đặc điểm nhận dạng..." maxLength={500} showCount style={inputStyle} />
                             </Form.Item>
                           </Col>
                           <Col span={12}>
                             <Form.Item name="shape" {...labelProps('Hình dáng')} style={formFieldStyle}>
-                              <Input placeholder="VD: Hình trụ tròn" style={inputStyle} />
+                              <Input placeholder="VD: Hình trụ tròn" maxLength={255} showCount style={inputStyle} />
                             </Form.Item>
                           </Col>
                         </Row>
-                        <Row gutter={formRowGutter}>
+                        <Row gutter={[24, 0]}>
                           <Col span={12}>
                             <Form.Item name="towerHeight" {...labelProps('Chiều cao tháp (m)')} style={formFieldStyle}>
                               <Input type="number" placeholder="VD: 25.5" style={inputStyle} />
@@ -1559,10 +1507,10 @@ export default function BeaconStationList() {
                             </Form.Item>
                           </Col>
                         </Row>
-                        <Row gutter={formRowGutter}>
+                        <Row gutter={[24, 0]}>
                           <Col span={12}>
                             <Form.Item name="geographicRange" {...labelProps('Tầm hiệu lực địa lý')} style={formFieldStyle}>
-                              <Input placeholder="VD: 15 hải lý" style={inputStyle} />
+                              <Input placeholder="VD: 15 hải lý" maxLength={20} showCount style={inputStyle} />
                             </Form.Item>
                           </Col>
                           <Col span={12}>
@@ -1572,20 +1520,20 @@ export default function BeaconStationList() {
                             </Form.Item>
                           </Col>
                         </Row>
-                        <Row gutter={formRowGutter}>
+                        <Row gutter={[24, 0]}>
                           <Col span={12}>
                             <Form.Item name="towerColor" {...labelProps('Màu sắc tháp đèn')} required style={formFieldStyle}
                               rules={[{ required: true, message: 'Vui lòng nhập màu sắc' }]}>
-                              <Input placeholder="VD: Trắng, Đỏ" style={inputStyle} />
+                              <Input placeholder="VD: Trắng, Đỏ" maxLength={500} showCount style={inputStyle} />
                             </Form.Item>
                           </Col>
                           <Col span={12}>
                             <Form.Item name="powerSupply" {...labelProps('Nguồn cung cấp')} style={formFieldStyle}>
-                              <Input placeholder="VD: Pin mặt trời" style={inputStyle} />
+                              <Input placeholder="VD: Pin mặt trời" maxLength={500} showCount style={inputStyle} />
                             </Form.Item>
                           </Col>
                         </Row>
-                        <Row gutter={formRowGutter}>
+                        <Row gutter={[24, 0]}>
                           <Col span={12}>
                             <Form.Item name="commissionedDate" {...labelProps('Đưa vào sử dụng')} style={formFieldStyle}>
                               <DatePicker placeholder="Chọn ngày..." format="DD/MM/YYYY" style={{ ...selectStyle, width: '100%' }} />
@@ -1604,14 +1552,14 @@ export default function BeaconStationList() {
                     key: 'station',
                     label: 'Thông tin nhà trạm',
                     children: (
-                      <div style={{ paddingTop: 16 }}>
+                      <div style={drawerTabContentStyle}>
                         <Form.Item name="location" {...labelProps('Địa điểm')} style={formFieldStyle}>
-                          <Input placeholder="Mô tả địa điểm..." style={inputStyle} />
+                          <Input placeholder="Mô tả địa điểm..." maxLength={500} showCount style={inputStyle} />
                         </Form.Item>
                         <Form.Item name="structure" {...labelProps('Kết cấu')} style={formFieldStyle}>
-                          <Input placeholder="VD: Bê tông cốt thép" style={inputStyle} />
+                          <Input.TextArea rows={3} placeholder="VD: Bê tông cốt thép" maxLength={2000} showCount style={{ borderRadius: radiusPill, height: 'auto' }} />
                         </Form.Item>
-                        <Row gutter={formRowGutter}>
+                        <Row gutter={[24, 0]}>
                           <Col span={12}>
                             <Form.Item name="area" {...labelProps('Diện tích (m²)')} style={formFieldStyle}>
                               <Input type="number" placeholder="VD: 4466.7" style={inputStyle} />
@@ -1623,7 +1571,7 @@ export default function BeaconStationList() {
                             </Form.Item>
                           </Col>
                         </Row>
-                        <Row gutter={formRowGutter}>
+                        <Row gutter={[24, 0]}>
                           <Col span={12}>
                             <Form.Item name="staffCount" {...labelProps('Nhân sự (người)')} style={formFieldStyle}>
                               <Input type="number" placeholder="VD: 3" style={inputStyle} />
@@ -1631,7 +1579,7 @@ export default function BeaconStationList() {
                           </Col>
                           <Col span={12}>
                             <Form.Item name="note" {...labelProps('Ghi chú')} style={formFieldStyle}>
-                              <Input placeholder="Nhập ghi chú..." style={inputStyle} />
+                              <Input.TextArea rows={3} placeholder="Nhập ghi chú..." maxLength={1000} showCount style={{ borderRadius: radiusPill, height: 'auto' }} />
                             </Form.Item>
                           </Col>
                         </Row>
@@ -1642,8 +1590,8 @@ export default function BeaconStationList() {
                     key: 'gis',
                     label: 'Thông tin vị trí (tọa độ GIS)',
                     children: (
-                      <div style={{ paddingTop: 16 }}>
-                        <Row gutter={formRowGutter}>
+                      <div style={drawerTabContentStyle}>
+                        <Row gutter={[24, 0]}>
                           <Col span={12}>
                             <Form.Item name="geometryType" {...labelProps('Loại đối tượng GIS')} style={formFieldStyle}>
                               <Select placeholder="Chọn loại đối tượng..." allowClear options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
@@ -1664,7 +1612,7 @@ export default function BeaconStationList() {
                             </Form.Item>
                           </Col>
                         </Row>
-                        <Row gutter={formRowGutter}>
+                        <Row gutter={[24, 0]}>
                           <Col span={12}>
                             <Form.Item name="coordinateSystem" {...labelProps('Hệ quy chiếu GIS')} style={formFieldStyle}>
                               <Select placeholder="Chọn hệ quy chiếu..." allowClear options={COORD_SYS_OPTIONS} style={selectStyle} />
@@ -1672,19 +1620,47 @@ export default function BeaconStationList() {
                           </Col>
                           <Col span={12}>
                             <Form.Item name="displayRule" {...labelProps('Quy tắc hiển thị GIS')} style={formFieldStyle}>
-                              <Input placeholder="Nhập quy tắc hiển thị..." style={inputStyle} />
+                              <Input placeholder="Nhập quy tắc hiển thị..." maxLength={255} showCount style={inputStyle} />
                             </Form.Item>
                           </Col>
                         </Row>
-                        <Row gutter={formRowGutter}>
+                        {/* GPS — DMS (Rule 7: 6 fields instead of decimal lat/lon) */}
+                        {/* DMS input fields (degree-minutes-seconds) */}
+                        <Row gutter={[24, 0]}>
                           <Col span={12}>
-                            <Form.Item name="latitude" {...labelProps('Vĩ độ')} style={formFieldStyle}>
-                              <Input type="number" step="any" placeholder="VD: 20.6624" style={inputStyle} />
+                            <Form.Item label="Vĩ độ (Độ - Phút - Giây)" style={formFieldStyle}>
+                              <Space.Compact size="small" style={{ width: '100%' }}>
+                                <Form.Item name="latitudeDegrees" style={{ marginBottom: 0, flex: 1 }}>
+                                  <InputNumber min={0} max={90} precision={0} placeholder="Độ" controls={false} style={{ flex: 1 }} />
+                                </Form.Item>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span>
+                                <Form.Item name="latitudeMinutes" style={{ marginBottom: 0, flex: 1 }}>
+                                  <InputNumber min={0} max={59} precision={0} placeholder="Phút" controls={false} style={{ flex: 1 }} />
+                                </Form.Item>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span>
+                                <Form.Item name="latitudeSeconds" style={{ marginBottom: 0, flex: 1.2 }}>
+                                  <InputNumber min={0} max={59.9999} step={0.01} placeholder="Giây" controls={false} style={{ flex: 1.2 }} />
+                                </Form.Item>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>N</span>
+                              </Space.Compact>
                             </Form.Item>
                           </Col>
                           <Col span={12}>
-                            <Form.Item name="longitude" {...labelProps('Kinh độ')} style={formFieldStyle}>
-                              <Input type="number" step="any" placeholder="VD: 106.7435" style={inputStyle} />
+                            <Form.Item label="Kinh độ (Độ - Phút - Giây)" style={formFieldStyle}>
+                              <Space.Compact size="small" style={{ width: '100%' }}>
+                                <Form.Item name="longitudeDegrees" style={{ marginBottom: 0, flex: 1 }}>
+                                  <InputNumber min={0} max={180} precision={0} placeholder="Độ" controls={false} style={{ flex: 1 }} />
+                                </Form.Item>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span>
+                                <Form.Item name="longitudeMinutes" style={{ marginBottom: 0, flex: 1 }}>
+                                  <InputNumber min={0} max={59} precision={0} placeholder="Phút" controls={false} style={{ flex: 1 }} />
+                                </Form.Item>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span>
+                                <Form.Item name="longitudeSeconds" style={{ marginBottom: 0, flex: 1.2 }}>
+                                  <InputNumber min={0} max={59.9999} step={0.01} placeholder="Giây" controls={false} style={{ flex: 1.2 }} />
+                                </Form.Item>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>E</span>
+                              </Space.Compact>
                             </Form.Item>
                           </Col>
                         </Row>
@@ -1695,7 +1671,7 @@ export default function BeaconStationList() {
                     key: 'files',
                     label: 'File đính kèm',
                     children: (
-                      <div style={{ paddingTop: 16 }}>
+                      <div style={drawerTabContentStyle}>
                         <InfrastructureAttachmentTab
                           attachments={uploadedFiles.map((f) => ({
                             id: f.uid,
@@ -1826,84 +1802,72 @@ export default function BeaconStationList() {
         </Form>
       </Modal>
 
-      {/* ── History Drawer ────────────────────────────────────────── */}
-      <Drawer
-        size={960}
-        placement="right"
+      {/* ── GIS Map Modal (Rule 12: disabled mode for view) ─────────── */}
+      <Modal
+        title="Xem vị trí trên bản đồ"
+        open={gisModalOpen}
+        onCancel={() => setGisModalOpen(false)}
+        footer={null}
+        width={960}
+        destroyOnHidden
+      >
+        <GisLocationSelector
+          disabled={true}
+          defaultGeometryType={gisDetailModalContent?.geometryType as 'POINT' | 'LINE' | 'POLYGON' | undefined}
+        />
+      </Modal>
+
+      {/* ── History Drawer (CommonHistoryDrawer — Rule 10) ──────────── */}
+      <CommonHistoryDrawer
         open={historyOpen}
         onClose={() => { setHistoryOpen(false); setHistoryTarget(null); setHistoryRecords([]); }}
-        closable={false}
-        extra={<Button type="text" aria-label="Đóng lịch sử thay đổi" onClick={() => { setHistoryOpen(false); setHistoryTarget(null); setHistoryRecords([]); }} style={drawerCloseBtnStyle}>✕</Button>}
-        footer={null}
-        styles={{
-          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-          body: { padding: '12px 24px 12px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
+        title="Lịch sử thay đổi"
+        entityName={historyTarget?.name || historyTarget?.code || ''}
+        records={historyRecords}
+        loading={historyLoading}
+        formatValue={formatHistoryValue}
+        fieldLabelMap={{
+          code: 'Mã đèn biển',
+          name: 'Tên đèn biển',
+          type: 'Cấp trạm đèn',
+          unitId: 'Đơn vị quản lý',
+          unitName: 'Tên đơn vị',
+          latitude: 'Vĩ độ',
+          longitude: 'Kinh độ',
+          lightRange: 'Tầm hiệu lực ánh sáng',
+          towerColor: 'Màu sắc bên ngoài của tháp đèn',
+          location: 'Địa điểm đặt trạm đèn',
+          shape: 'Hình dáng',
+          structure: 'Kết cấu',
+          towerHeight: 'Chiều cao tháp đèn',
+          lightHeight: 'Chiều cao tâm sáng',
+          geographicRange: 'Tầm hiệu lực địa lý',
+          backupLightModel: 'Đèn dự phòng',
+          powerSupply: 'Nguồn cung cấp',
+          staffCount: 'Nhân sự bố trí',
+          stationArea: 'Diện tích sử dụng trạm',
+          primaryLightModel: 'Đèn chính',
+          area: 'Diện tích',
+          lastRepairDate: 'Thời điểm sửa chữa gần nhất',
+          commissionedDate: 'Thời điểm đưa vào sử dụng',
+          status: 'Trạng thái',
+          approvalStatus: 'Trạng thái phê duyệt',
+          rejectionReason: 'Lý do từ chối',
+          provinceId: 'Tỉnh / Thành phố',
+          seaportId: 'Cảng biển',
+          operator: 'Đơn vị vận hành',
+          detailedLocation: 'Địa điểm chi tiết',
+          operationalStatus: 'Tình trạng hoạt động',
+          region: 'Địa bàn',
+          identifyingFeature: 'Đặc điểm nhận dạng',
+          note: 'Ghi chú',
+          geometryType: 'Loại đối tượng GIS',
+          mapSymbolId: 'Biểu tượng GIS',
+          coordinateSystem: 'Hệ quy chiếu',
+          displayRule: 'Quy tắc hiển thị',
         }}
-        title={
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-            <Space size={spaceSm} style={{ alignItems: 'center' }}>
-              <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
-              <span style={drawerTitleStyle}>
-                {historyTarget ? `Lịch sử thay đổi — ${historyTarget.code} — ${historyTarget.name}` : 'Lịch sử thay đổi'}
-              </span>
-            </Space>
-          </div>
-        }
-      >
-        <div style={{ flexShrink: 0 }}>
-          <Radio.Group value={historyMode} onChange={(e) => loadHistory(e.target.value as any)}>
-            <Radio.Button value="current" style={{ flex: 1, minWidth: 0, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', borderRadius: 0, border: 'none', background: 'transparent', fontSize: fontSizeMd, padding: `0 ${spaceMd}px`, borderBottom: `2px solid ${actionPrimary}`, fontWeight: fontWeightBold, color: actionPrimary }}>Bản ghi hiện tại</Radio.Button>
-            <Radio.Button value="all" style={{ flex: 1, minWidth: 0, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', borderRadius: 0, border: 'none', background: 'transparent', fontSize: fontSizeMd, padding: `0 ${spaceMd}px`, borderBottom: `2px solid ${borderDefault}`, fontWeight: fontWeightMedium, color: textSecondary }}>Tất cả bản ghi</Radio.Button>
-          </Radio.Group>
-        </div>
-        <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
-          <Input
-            placeholder="Tìm kiếm nội dung thay đổi..."
-            allowClear
-            value={historySearch}
-            onChange={(e) => setHistorySearch(e.target.value)}
-            onPressEnter={() => {}}
-            style={{ ...inputStyle, flex: 1 }}
-          />
-          <DatePicker.RangePicker
-            {...getRangePickerProps({
-              value: (historyFrom && historyTo)
-                ? [dayjs(historyFrom), dayjs(historyTo)]
-                : (historyFrom ? [dayjs(historyFrom), null] : (historyTo ? [null, dayjs(historyTo)] : null)),
-              onChange: (dates: any) => {
-                if (!dates || dates.length === 0 || (!dates[0] && !dates[1])) {
-                  setHistoryFrom('');
-                  setHistoryTo('');
-                } else {
-                  setHistoryFrom(dates[0] ? dates[0].startOf('day').format('YYYY-MM-DD HH:mm') : '');
-                  setHistoryTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DD HH:mm') : '');
-                }
-              },
-              style: { ...inputStyle, width: 280 },
-            })}
-          />
-          <Button
-            type="primary"
-            icon={<SearchOutlined />}
-            loading={historyLoading}
-            onClick={() => { void loadHistory(historyMode); }}
-            style={primaryButtonStyle}
-          >
-            Tìm kiếm
-          </Button>
-        </div>
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-          {historyLoading && historyRecords.length === 0 ? <LoadingSkeleton rows={5} /> :
-            historyRecords.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
-                <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-                <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
-              </div>
-            ) : (
-              <>{renderHistoryTimeline(historyRecords)}</>
-            )}
-        </div>
-      </Drawer>
+        size="large"
+      />
 
     </div>
     </ThemeTokenProvider>

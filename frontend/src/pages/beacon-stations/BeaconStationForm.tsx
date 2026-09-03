@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { Card, Form, Button, Space, Typography, Row, Col, Tag, Select } from 'antd';
+import { useState, useCallback, useEffect } from 'react';
+import { Card, Form, Button, Space, Typography, Row, Col, Tag } from 'antd';
 import { ArrowLeftOutlined, SendOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { beaconStationCRUD, approval } from '../../services/beaconService';
