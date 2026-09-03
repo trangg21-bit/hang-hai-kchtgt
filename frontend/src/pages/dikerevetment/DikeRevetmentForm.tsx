@@ -29,8 +29,8 @@ import type {
 } from '../../types/dikeRevetment';
 import { useAuthStore } from '../../store/authStore';
 import { hasPermissionFromList } from '../../store/permissionStore';
-import { colors } from '../../theme';
-import { fontWeightBold, fontSizeLg, spaceMd, spaceLg, spaceXxl, inputStyle, selectStyle, formFieldStyle, primaryButtonStyle, outlineButtonStyle, dangerButtonStyle, statusOperational, radiusPill } from '../../tokens';
+import { colors, sidebarBg } from '../../themetokenchk';
+import { fontWeightBold, fontSizeLg, spaceMd, spaceLg, spaceXxl, inputStyle, selectStyle, formFieldStyle, primaryButtonStyle, outlineButtonStyle, dangerButtonStyle, statusOperational, radiusPill } from '../../themetokenchk';
 import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
@@ -439,7 +439,7 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
     if (isModalMode) {
       return (
         <Modal
-          title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Chi tiết đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ</span>}
+          title={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Chi tiết đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ</span>}
           open={open}
           onCancel={handleCloseModal}
           footer={null}
@@ -667,7 +667,7 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
       </Form.Item>
 
       <Form.Item {...labelProps('Vị trí/Hình vẽ bản đồ')} name="spatialData" style={formFieldStyle}>
-        <GisLocationSelector defaultGeometryType="LINE" />
+        <GisLocationSelector defaultGeometryType="LINE" disabled={isDetailMode} />
       </Form.Item>
 
       <Form.Item {...labelProps('Tài liệu đính kèm')} style={formFieldStyle}>

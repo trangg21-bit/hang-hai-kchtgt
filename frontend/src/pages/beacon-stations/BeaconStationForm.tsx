@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Card, Form, Button, Space, Typography, Row, Col, Tag, Select } from 'antd';
 import { ArrowLeftOutlined, SendOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -10,7 +10,7 @@ import {
   type BeaconStatus,
 } from '../../types/beacon';
 import FormField from '../../components/FormField';
-import { radiusPill, fontSizeMd, borderDefault, textSecondary } from '../../tokens';
+import { radiusPill, fontSizeMd, borderDefault, textSecondary } from '../../themetokenchk';
 import toast, { message } from '../../components/ToastNotification';
 import { organizationService } from '../../services/organizationService';
 

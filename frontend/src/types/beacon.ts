@@ -103,6 +103,7 @@ export interface BeaconStation {
   coordinateSystem?: number;
   displayRule?: string;
   updatedBy?: string;
+  updatedByName?: string;
   submittedBy?: string;
   submittedAt?: string;
   submittedByName?: string;

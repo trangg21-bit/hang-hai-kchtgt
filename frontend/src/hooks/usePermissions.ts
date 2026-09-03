@@ -81,7 +81,7 @@ const RESOURCE_LABELS: Record<string, string> = {
   vtsoperationcenter: 'Quản lý Trung tâm điều hành VTS',
   aissystem: 'Quản lý Hệ thống trạm bờ AIS',
   station: 'Quản lý Nhà trạm hàng hải',
-  beaconstation: 'Quản lý Đèn biển và nhà trạm',
+  beaconstation: 'Quản lý Đèn biển và nhà trạm gắn với Đèn biển',
   buoystation: 'Quản lý Nhà trạm phao tiêu',
   buoy: 'Quản lý Phao tiêu báo hiệu',
   lighthousestation: 'Quản lý Đèn biển',

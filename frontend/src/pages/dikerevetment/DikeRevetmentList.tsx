@@ -98,6 +98,7 @@ import {
   detailLabelColStyle,
   detailValueStyle,
   historyBadgeStyle,
+  statusBadgeStyle,
   historyMetaRowStyle,
   historyInfoCardStyle,
   historyAccentBarStyle,
@@ -949,27 +950,22 @@ export default function DikeRevetmentList() {
       ),
     },
     {
+      key: 'codeAndName',
+      label: 'Tên / Mã đê kè',
+      width: 350,
+      fixed: 'left' as const,
+      render: (_: any, record: DikeRevetmentResponse) => (
+        <span style={{ color: textPrimary, fontWeight: fontWeightMedium }}>
+          {record.dikeRevetmentName || ''}{record.code ? ` (${record.code})` : ''}
+        </span>
+      ),
+    },
+    {
       key: 'orgUnitName',
       label: 'Đơn vị quản lý',
       dataIndex: 'orgUnitName',
       width: 260,
-      fixed: 'left' as const,
       render: (val: string | undefined, record: DikeRevetmentResponse) => val || record.orgUnitId || '',
-    },
-    {
-      key: 'dikeRevetmentName',
-      label: 'Tên đê kè',
-      dataIndex: 'dikeRevetmentName',
-      width: 250,
-      fixed: 'left' as const,
-      render: (val: string) => <span style={{ color: textPrimary, fontWeight: fontWeightMedium }}>{val || ''}</span>,
-    },
-    {
-      key: 'code',
-      label: 'Mã đê kè',
-      dataIndex: 'code',
-      width: 150,
-      render: (val: string) => <span style={{ color: textPrimary, fontWeight: fontWeightMedium }}>{val || ''}</span>,
     },
     {
       key: 'seaportName',
@@ -1000,7 +996,7 @@ export default function DikeRevetmentList() {
       render: (val: string) => {
         if (!val) return '';
         const st = OPERATIONAL_STATUS_STYLE_MAP[val];
-        return st ? <span style={historyBadgeStyle(st.color)}>{st.label}</span> : val;
+        return st ? <span style={statusBadgeStyle(st.color)}>{st.label}</span> : val;
       },
     },
     {

@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   Button,
-  Tag,
   Modal,
   Input,
   InputNumber,
@@ -88,7 +87,6 @@ import {
   spaceMd,
   spaceXl,
   spaceFormField,
-  badgeBaseStyle,
   uploadHintStyle,
   inputStyle,
   selectStyle,
@@ -119,7 +117,11 @@ import {
   historyNewValueStyle,
   historyOldValueStyle,
   historyArrowStyle,
-} from '../../tokens';
+  statusInfo,
+} from '../../themetokenchk';
+import * as themeTokenChk from '../../themetokenchk';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import ApprovalModal from '../../components/shared/ApprovalModal';
 
 // ── Constants ────────────────────────────────────────────────────────
 
@@ -128,7 +130,7 @@ const STATUS_TAB_LIST = [
   { key: '', label: 'Tất cả', color: actionPrimary },
   { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
   { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', color: statusAttention },
-  { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', color: '#0284C7' },
+  { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', color: statusInfo },
   { key: 'APPROVED', label: 'Đã duyệt', color: statusOperational },
   { key: 'REJECTED', label: 'Từ chối', color: statusCritical },
 ];
@@ -149,7 +151,7 @@ const RADAR_STATION_STATUS_STYLE_MAP: Record<string, { color: string; label: str
   PROPOSED: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
   PENDING: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
   PENDING_APPROVAL: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
-  APPROVED_LEVEL1: { color: '#0284C7', label: 'Chờ Cục duyệt' },
+  APPROVED_LEVEL1: { color: statusInfo, label: 'Chờ Cục duyệt' },
   APPROVED_LEVEL2: { color: statusOperational, label: 'Đã duyệt' },
   APPROVED: { color: statusOperational, label: 'Đã duyệt' },
   REJECTED: { color: statusCritical, label: 'Từ chối' },
@@ -756,7 +758,7 @@ export default function RadarStationList() {
     {
       key: 'code', label: 'Mã trạm radar', dataIndex: 'code', width: 150, fixed: 'left' as const,
       render: (code: string) => code
-        ? <Tag color="cyan" style={{ borderRadius: radiusSm, fontSize: fontSizeSm }}>{code}</Tag>
+        ? <span style={{ color: textPrimary, fontWeight: fontWeightMedium, fontSize: fontSizeMd }}>{code}</span>
         : <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>,
     },
     {
@@ -771,7 +773,7 @@ export default function RadarStationList() {
     {
       key: 'stationType', label: 'Loại trạm', dataIndex: 'stationType', width: 130,
       render: (v: string) => v
-        ? <Tag color="blue" style={{ borderRadius: radiusSm, fontSize: fontSizeSm }}>{v}</Tag>
+        ? <span style={{ color: textPrimary, fontSize: fontSizeMd }}>{v}</span>
         : <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>,
     },
     {
@@ -811,7 +813,7 @@ export default function RadarStationList() {
       render: (v: string) => {
         const s = CONDITION_STATUS_STYLE_MAP[v];
         return s
-          ? <span style={{ ...badgeBaseStyle, background: `${s.color}15`, color: s.color }}>{s.label}</span>
+          ? <span style={statusBadgeStyle(s.color)}>{s.label}</span>
           : <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>;
       },
     },
@@ -980,7 +982,7 @@ export default function RadarStationList() {
           value: (() => {
             const s = CONDITION_STATUS_STYLE_MAP[detailRecord.conditionStatus || ''];
             return s
-              ? <span style={{ ...badgeBaseStyle, background: `${s.color}15`, color: s.color }}>{s.label}</span>
+              ? <span style={statusBadgeStyle(s.color)}>{s.label}</span>
               : '—';
           })(),
         },
@@ -1038,7 +1040,7 @@ export default function RadarStationList() {
           label: 'Trạng thái',
           value: (() => {
             const s = RADAR_STATION_STATUS_STYLE_MAP[detailRecord.status || ''] || { color: textTertiary, label: detailRecord.status || '—' };
-            return <span style={{ ...badgeBaseStyle, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
+            return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
           })(),
         },
       ]
@@ -1077,7 +1079,7 @@ export default function RadarStationList() {
       children: (
         <>
           {renderDetailRows(detailBasicRows)}
-          {renderToggleSection(logOpen, () => setLogOpen(!logOpen), 'Thông tin log cập nhật', detailLogRows)}
+          {renderToggleSection(logOpen, () => setLogOpen(!logOpen), 'Thông tin phê duyệt', detailLogRows)}
         </>
       ),
     },
@@ -1102,7 +1104,7 @@ export default function RadarStationList() {
           {detailFiles.length === 0 ? (
             <span style={{ color: textTertiary, fontSize: fontSizeMd, paddingLeft: 12 }}>Không có tài liệu đính kèm</span>
           ) : (
-            <Table className="list-view-table" dataSource={detailFiles.map((f, i) => ({ ...f, key: f.id, _idx: i }))} pagination={false} size="middle" bordered style={{ marginLeft: 12, marginRight: 12 }}>
+            <Table className="list-view-table" dataSource={detailFiles.map((f, i) => ({ ...f, key: f.id, _idx: i }))} pagination={false} size="small" bordered style={{ marginLeft: 12, marginRight: 12 }}>
               <Table.Column title="STT" key="stt" width={60} align="center"
                 render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
                 onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
@@ -1139,12 +1141,12 @@ export default function RadarStationList() {
   const resolveHistoryActionMeta = (item: any): { label: string; color: string } => {
     const rawStatus = String(item?.status ?? item?.action ?? '').toUpperCase();
     const rawReason = String(item?.reason ?? '').toLowerCase();
-    if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi')) return { label: 'Thêm mới', color: '#1BAF7A' };
-    if (rawStatus === 'APPROVED' || rawStatus === 'APPROVED_LEVEL2' || rawStatus === 'APPROVED_LEVEL1' || rawReason.includes('phê duyệt') || rawReason.includes('phe duyet')) return { label: 'Phê duyệt', color: '#1BAF7A' };
-    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi')) return { label: 'Từ chối', color: '#E34948' };
-    if (rawStatus === 'PROPOSED' || rawStatus === 'PENDING_APPROVAL' || rawReason.includes('gửi phê duyệt') || rawReason.includes('gui phe duyet')) return { label: 'Gửi phê duyệt', color: '#EDA100' };
-    if (rawStatus === 'DELETED' || rawStatus === 'SOFT_DELETE') return { label: 'Xóa mềm', color: '#E34948' };
-    return { label: 'Chỉnh sửa', color: '#0E6FD6' };
+    if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi')) return { label: 'Thêm mới', color: statusOperational };
+    if (rawStatus === 'APPROVED' || rawStatus === 'APPROVED_LEVEL2' || rawStatus === 'APPROVED_LEVEL1' || rawReason.includes('phê duyệt') || rawReason.includes('phe duyet')) return { label: 'Phê duyệt', color: statusOperational };
+    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi')) return { label: 'Từ chối', color: statusCritical };
+    if (rawStatus === 'PROPOSED' || rawStatus === 'PENDING_APPROVAL' || rawReason.includes('gửi phê duyệt') || rawReason.includes('gui phe duyet')) return { label: 'Gửi phê duyệt', color: statusAttention };
+    if (rawStatus === 'DELETED' || rawStatus === 'SOFT_DELETE') return { label: 'Xóa mềm', color: statusCritical };
+    return { label: 'Chỉnh sửa', color: actionPrimary };
   };
 
   useEffect(() => {
@@ -1262,9 +1264,10 @@ export default function RadarStationList() {
 
   // ── JSX ─────────────────────────────────────────────────────────
   return (
+    <ThemeTokenProvider tokens={themeTokenChk}>
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader
-        breadcrumb={[{ label: 'KCHT hàng hải' }, { label: 'Trạm Radar' }]}
+        breadcrumb={[{ label: 'KCHT hàng hải' }, { label: 'Quản lý trạm radar' }]}
         actions={headerActions}
       />
 
@@ -1276,6 +1279,7 @@ export default function RadarStationList() {
         onFilterReset={handleFilterReset}
         filterCollapsed={filterCollapsed}
         onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
+        hideFilterToggle={true}
         loading={isLoading}
         error={isError}
         onRetry={() => void fetchData()}
@@ -1552,7 +1556,7 @@ export default function RadarStationList() {
                             ) : (
                               <Table className="list-view-table"
                                 dataSource={uploadedFiles.map((f, i) => ({ ...f, key: f.uid, _idx: i, name: f.name }))}
-                                pagination={false} size="middle" bordered scroll={{ x: 400 }}>
+                                pagination={false} size="small" bordered scroll={{ x: 400 }}>
                                 <Table.Column title="STT" key="stt" width={60} align="center"
                                   render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
                                   onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
@@ -1707,6 +1711,16 @@ export default function RadarStationList() {
           )}
         </div>
       </Modal>
+
+      {/* ── Approval Modal (CHK standard) ─────────────────────── */}
+      <ApprovalModal
+        open={approveModalOpen}
+        level="c1"
+        loading={submitting}
+        onConfirm={confirmApprove}
+        onCancel={closeApproveModal}
+      />
     </div>
+    </ThemeTokenProvider>
   );
 }
