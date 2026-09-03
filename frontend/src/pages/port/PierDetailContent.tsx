@@ -302,11 +302,11 @@ export default function PierDetailContent({
           ),
         },
         {
-          key: 'infra', label: 'Danh sách kết cấu hạ tầng thuộc cầu cảng',
+          key: 'infra', label: 'Kết cấu hạ tầng',
           children: (
             <div style={{ paddingTop: 3 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: spaceSm }}>
-                <span style={{ ...detailLabelStyle, display: 'inline-block' }}>Danh sách kết cấu hạ tầng thuộc cầu cảng</span>
+                <span style={{ ...detailLabelStyle, display: 'inline-block' }}>Kết cấu hạ tầng thuộc cầu cảng</span>
                 <Select placeholder="Chọn loại kết cấu hạ tầng" allowClear value={infraTypeFilter || undefined}
                   onChange={(v: string | undefined) => setInfraTypeFilter(v || '')}
                   options={PIER_INFRA_TYPE_OPTIONS} style={{ width: 360, borderRadius: radiusPill, height: 40 }} />

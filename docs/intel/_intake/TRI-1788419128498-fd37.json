@@ -1,0 +1,59 @@
+{
+  "triage_id": "TRI-1788419128498-fd37",
+  "created_at": 1788419128498,
+  "request_summary": "Đổi text label 'Danh sách kết cấu hạ tầng thuộc bến phao' thành 'Kết cấu hạ tầng thuộc bến phao'",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/buoy-berth/BuoyBerthDetailContent.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/buoy-berth/BuoyBerthDetailContent.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Chi tiết bến phao — tab kết cấu hạ tầng",
+  "blast_radius": 1,
+  "done_oracle": "Label trên bộ lọc đổi thành 'Kết cấu hạ tầng thuộc bến phao'",
+  "verification_commands": [
+    {
+      "command": "cd frontend && npx tsc --noEmit --pretty",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 120000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/buoy-berth/BuoyBerthDetailContent.tsx",
+      "line": 291,
+      "quote": "<span style={{ ...detailLabelStyle, display: 'inline-block' }}>Danh sách kết cấu hạ tầng thuộc bến phao</span>",
+      "source_hash": "70dede7497e18d3306d41bf94d31a60805a6a7ab38bd8801e33828f1cda277c7",
+      "quote_hash": "ab049d284266354fbad0ed290dedb779e5572107e9640295781d8c9fb12ec6b5",
+      "note": "Label cần đổi thành 'Kết cấu hạ tầng thuộc bến phao'"
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1788418889855-9bdb",
+    "breach_kind": "file_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "c1572411e1ce099b4b5c60656bee6d32387a9671",
+    "dirty": true,
+    "captured_at": 1788419129044
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

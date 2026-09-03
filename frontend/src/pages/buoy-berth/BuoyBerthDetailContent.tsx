@@ -288,7 +288,7 @@ export default function BuoyBerthDetailContent({
           children: (
             <div style={{ paddingTop: 3 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: spaceSm }}>
-                <span style={{ ...detailLabelStyle, display: 'inline-block' }}>Danh sách kết cấu hạ tầng thuộc bến phao</span>
+                <span style={{ ...detailLabelStyle, display: 'inline-block' }}>Kết cấu hạ tầng thuộc bến phao</span>
                 <Select placeholder="Chọn loại kết cấu hạ tầng" allowClear style={{ width: 260, borderRadius: 999 }} options={[{ value: 'ANCHORAGE', label: 'Khu neo đậu' }, { value: 'STORM_SHELTER', label: 'Khu tránh, trú bão' }]} onChange={setInfraTypeFilter} />
               </div>
               <DetailTable

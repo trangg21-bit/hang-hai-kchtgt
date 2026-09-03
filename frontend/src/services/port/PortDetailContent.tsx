@@ -127,10 +127,10 @@ export default function PortDetailContent({
                   { label: 'Phân cấp cảng biển', value: selectedRecord.portClass != null ? (selectedRecord.portClass === 5 ? 'Cấp đặc biệt' : `Cấp ${selectedRecord.portClass}`) : '—' },
                   { label: 'Đơn vị quản lý', value: orgLevel2Map.get(selectedRecord.orgUnitId || '') || selectedRecord.orgUnitName || '—', bold: true },
                   { label: 'Địa điểm (Tỉnh/Thành phố)', value: selectedRecord.province || '—' },
-                  { label: 'Địa điểm chi tiết', value: selectedRecord.detailedLocation || '—' },
-                  { label: 'Phạm vi vùng nước cảng biển', value: selectedRecord.waterAreaScope || '—' },
+                  { label: 'Địa điểm chi tiết', value: selectedRecord.detailedLocation || '—', fullWidth: true },
+                  { label: 'Phạm vi vùng nước cảng biển', value: selectedRecord.waterAreaScope || '—', fullWidth: true },
                 ].map((row, i) => (
-                  <div key={i} className="chk-detail-row">
+                  <div key={i} className={`chk-detail-row${row.fullWidth ? ' chk-detail-row--full' : ''}`}>
                     <span className="chk-detail-label">{row.label}</span>
                     <span className="chk-detail-value" style={row.bold ? { fontWeight: fontWeightBold } : undefined}>
                       {row.badge ? (
@@ -218,23 +218,6 @@ export default function PortDetailContent({
           ),
         },
         {
-          key: 'infra', label: 'Công trình KCHT trực thuộc',
-          children: (
-            <div style={{ paddingTop: 3 }}>
-              <DetailTable
-                dataSource={((selectedRecord as any).infrastructureList || []).map((i: any) => ({ ...i }))}
-                emptyText="Chưa có dữ liệu"
-                rowKey={(r: any) => r.stt ?? r.infraName ?? r.name}
-                columns={[
-                  { title: 'STT', width: 50 },
-                  { title: 'Tên công trình', dataIndex: 'infraName', key: 'name', render: (v: string, rec: any) => v || rec.name || '—' },
-                  { title: 'Số lượng', dataIndex: 'quantity', key: 'qty', width: 100, align: 'center' as const, render: (v: number) => v ?? '—' },
-                ]}
-              />
-            </div>
-          ),
-        },
-        {
           key: 'files', label: `File đính kèm (${detailFiles.length})`,
           children: (
             <div style={{ paddingTop: 3 }}>
@@ -256,11 +239,11 @@ export default function PortDetailContent({
           ),
         },
         {
-          key: 'infraOther', label: 'Danh sách kết cấu hạ tầng khác',
+          key: 'infraOther', label: 'Kết cấu hạ tầng',
           children: (
             <div style={{ paddingTop: 3 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: spaceSm }}>
-                <span style={{ ...detailLabelStyle, display: 'inline-block' }}>Loại kết cấu hạ tầng</span>
+                <span style={{ ...detailLabelStyle, display: 'inline-block' }}>Kết cấu hạ tầng thuộc cảng biển</span>
                 <Select allowClear showSearch placeholder="Chọn loại kết cấu hạ tầng" value={infraFilter || undefined}
                   onChange={(v: string | undefined) => setInfraFilter(v || undefined)}
                   options={KCHT_TYPE_OPTIONS} style={{ width: 260, borderRadius: 999, height: 40 }} />
@@ -281,6 +264,17 @@ export default function PortDetailContent({
                   ) },
                 ]}
               />
+              <span style={{ ...detailLabelStyle, display: 'inline-block', marginBottom: spaceSm, marginTop: spaceMd }}>Công trình KCHT trực thuộc</span>
+              <DetailTable
+                dataSource={((selectedRecord as any).infrastructureList || []).map((i: any) => ({ ...i }))}
+                emptyText="Chưa có dữ liệu"
+                rowKey={(r: any) => r.stt ?? r.infraName ?? r.name}
+                columns={[
+                  { title: 'STT', width: 50 },
+                  { title: 'Tên công trình', dataIndex: 'infraName', key: 'name', render: (v: string, rec: any) => v || rec.name || '—' },
+                  { title: 'Số lượng', dataIndex: 'quantity', key: 'qty', width: 100, align: 'center' as const, render: (v: number) => v ?? '—' },
+                ]}
+              />
             </div>
           ),
         },
@@ -296,8 +290,9 @@ export default function PortDetailContent({
                 columns={[
                   { title: 'STT', width: 50 },
                   { title: 'Số quyết định quy hoạch', dataIndex: 'planDecisionNo', key: 'planNo', render: (v: string) => v || '—' },
-                  { title: 'Ngày quyết định quy hoạch', dataIndex: 'planDecisionDate', key: 'planDate', width: 160, align: 'center' as const, render: (v: string) => (v ? dayjs(v).format('DD/MM/YYYY') : '—') },
+                  { title: 'Ngày quyết định quy hoạch', dataIndex: 'planDecisionDate', key: 'planDate', width: 320, align: 'center' as const, render: (v: string) => (v ? dayjs(v).format('DD/MM/YYYY') : '—') },
                 ]}
+                scroll={{ x: 'max-content' }}
               />
             </div>
           ),

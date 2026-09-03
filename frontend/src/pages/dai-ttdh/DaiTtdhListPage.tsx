@@ -802,18 +802,23 @@ export default function DaiTtdhList() {
   }));
 
   // ── rowActions callback ──────────────────────────────────────────
+  // Thứ tự: Xem chi tiết → Chỉnh sửa → Lịch sử → Phê duyệt/Từ chối → Xóa
   const rowActions = useCallback(
     (record: DaiTtdh) => {
       const actions: any[] = [
-        { key: 'view', label: 'Chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) },
+        { key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) },
       ];
       const st = record.approvalStatus || '';
       // Chỉnh sửa chỉ áp dụng cho Lưu tạm (DRAFT) và Đã phê duyệt (APPROVED) — chuẩn VTS CHK
       if (canEditApprovalRecord(st, { hasPerm, resource: 'daittdh', extraApprovePerms: ['daittdh:approve'] })) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => { setEditDaiTtdhId(record.id); setEditDaiTtdhName(record.daiTtdhName || ''); } });
-      if (hasPerm('daittdh:delete') && ['DRAFT','NHAP'].includes(st)) actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => openDeleteModal(record) });
-      if (['DRAFT','NHAP'].includes(st) && hasPerm('daittdh:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
-      if (hasPerm('daittdh:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) { actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } }); actions.push({ key: 'reject', label: 'Từ chối', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) }); }
+      // Lịch sử — luôn hiển thị khi có quyền
       if (hasPerm('daittdh:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
+      // Gửi duyệt
+      if (['DRAFT','NHAP'].includes(st) && hasPerm('daittdh:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
+      // Phê duyệt / Từ chối — theo trạng thái, hiển thị trước Xóa
+      if (hasPerm('daittdh:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) { actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } }); actions.push({ key: 'reject', label: 'Từ chối', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) }); }
+      // Xóa: chỉ trạng thái DRAFT/NHAP — luôn ở cuối cùng
+      if (hasPerm('daittdh:delete') && ['DRAFT','NHAP'].includes(st)) actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => openDeleteModal(record) });
       return actions;
     },
     [hasPerm, openDetailDrawer, openHistory, openDeleteModal, openRejectModal],

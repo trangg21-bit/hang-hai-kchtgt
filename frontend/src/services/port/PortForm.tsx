@@ -180,7 +180,7 @@ export default function PortForm({
               ]}
               validateStatus={atMax.portName ? 'error' : undefined} help={atMax.portName ? 'Đã đạt tối đa 255 ký tự' : undefined}
             >
-              <Input placeholder="VD: Cảng biển Hải Phòng" maxLength={255} showCount style={inputStyle} />
+              <Input placeholder="Nhập tên cảng biển" maxLength={255} showCount style={inputStyle} />
             </Form.Item>
           </Col>
         </Row>
@@ -191,7 +191,7 @@ export default function PortForm({
               {...labelProps('Nhóm cảng biển')}
               style={{ marginBottom: spaceFormField }}
             >
-              <Select placeholder="Chọn nhóm cảng" allowClear style={selectStyle}
+              <Select placeholder="Chọn nhóm cảng biển" allowClear style={selectStyle}
                 options={[
                   { value: 1, label: 'Nhóm 1' },
                   { value: 2, label: 'Nhóm 2' },
@@ -210,7 +210,7 @@ export default function PortForm({
               rules={[{ required: true, message: 'Phân cấp cảng biển là bắt buộc' }]}
               style={{ marginBottom: spaceFormField }}
             >
-              <Select placeholder="Chọn phân cấp" allowClear style={selectStyle}
+              <Select placeholder="Chọn phân cấp cảng biển" allowClear style={selectStyle}
                 options={[
                   { value: 5, label: 'Cấp đặc biệt' },
                   { value: 1, label: 'Cấp 1' },
@@ -233,7 +233,7 @@ export default function PortForm({
             >
               <OrgUnitTreeSelect
                 organizations={orgUnits}
-                placeholder="Chọn đơn vị quản lý..."
+                placeholder="Chọn đơn vị quản lý"
                 allowClear
                 showPath
                 treeDefaultExpandAll={false}
@@ -250,7 +250,7 @@ export default function PortForm({
             >
               <Select
                 showSearch
-                placeholder="Chọn tỉnh/thành phố..."
+                placeholder="Chọn tỉnh/thành phố"
                 filterOption={(input, option) =>
                   (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                 }
@@ -261,24 +261,29 @@ export default function PortForm({
           </Col>
         </Row>
         <Row gutter={16}>
-          <Col span={12}>
+          <Col span={24}>
             <Form.Item
               name="detailedLocation"
               {...labelProps('Địa điểm chi tiết')}
               style={{ marginBottom: spaceFormField }}
               validateStatus={atMax.detailedLocation ? 'error' : undefined} help={atMax.detailedLocation ? 'Đã đạt tối đa 500 ký tự' : undefined}
             >
-              <Input placeholder="VD: Xã Đình Vũ, Quận Hải An" maxLength={500} showCount style={inputStyle} />
+               <Input.TextArea rows={2} placeholder="Nhập địa điểm chi tiết"  maxLength={500} showCount
+                styles={{ textarea: { borderRadius: radiusPill, resize: 'none', padding: '12px 16px' } }}
+              />
             </Form.Item>
           </Col>
-          <Col span={12}>
+        </Row>
+
+        <Row gutter={16}>
+          <Col span={24}>
             <Form.Item
               name="waterAreaScope"
               {...labelProps('Phạm vi vùng nước cảng biển')}
               style={{ marginBottom: spaceFormField }}
               validateStatus={atMax.waterAreaScope ? 'error' : undefined} help={atMax.waterAreaScope ? 'Đã đạt tối đa 2000 ký tự' : undefined}
             >
-              <Input.TextArea rows={2} placeholder="Mô tả phạm vi vùng nước cảng biển" maxLength={2000} showCount
+              <Input.TextArea rows={2} placeholder="Nhập phạm vi vùng nước" maxLength={2000} showCount
                 styles={{ textarea: { borderRadius: radiusPill, resize: 'none', padding: '12px 16px' } }}
               />
             </Form.Item>
@@ -755,14 +760,21 @@ export default function PortForm({
           <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
             Công trình KCHT trực thuộc
           </span>
-          <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addInfra} style={{ borderRadius: radiusPill }}>
-            Thêm
-          </Button>
+          {infraList.length === 0 ? null : (
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={addInfra}
+              style={{ ...primaryButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            >
+              Thêm công trình
+            </Button>
+          )}
         </div>
         {infraList.length === 0 ? (
           <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
             <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có công trình nào.</span>
-            <Button type="dashed" icon={<PlusOutlined />} onClick={addInfra} style={{ borderRadius: radiusPill }}>Thêm</Button>
+            <Button type="dashed" icon={<PlusOutlined />} onClick={addInfra} style={{ borderRadius: radiusPill }}>Thêm công trình</Button>
           </div>
         ) : (
           <Table
