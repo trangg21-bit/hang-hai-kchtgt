@@ -44,6 +44,7 @@ import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { useAuthStore } from '../../store/authStore';
 import ApprovalActionBar from '../../components/shared/ApprovalActionBar';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import AppDrawer from '../../components/shared/AppDrawer';
 import DetailTable from '../../components/shared/DetailTable';
 import {
   inputStyle,
@@ -96,7 +97,7 @@ import {
 } from '../../themetokenchk';
 import { colors } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
-import { ThemeTokenProvider, THEME_SCOPE_CLASS } from '../../context/ThemeTokenContext';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 
 export interface NavigationChannelFormProps {
   open?: boolean;
@@ -1438,6 +1439,27 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
   }
 
   // ── Create / Edit form (#1-#46) — chuẩn CHK ────────────────────────
+  const formFooter = (
+    <div style={{ display: 'flex', justifyContent: 'center', gap: spaceSm }}>
+      <Button
+        type="primary"
+        loading={isSubmitting}
+        onClick={() => form.submit()}
+        style={{ ...primaryButtonStyle, minWidth: 120 }}
+      >
+        {isCreateMode ? 'Tạo mới' : 'Cập nhật'}
+      </Button>
+      <Button
+        onClick={isIframe
+          ? () => window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*')
+          : isModalMode ? onCancel : () => navigate('/navigation-channel')}
+        style={{ ...outlineButtonStyle, minWidth: 120 }}
+      >
+        Hủy
+      </Button>
+    </div>
+  );
+
   const formContent = (
     <>
     <Form form={form} layout="vertical" onFinish={handleSubmitForm} style={{ maxWidth: 1100 }}>
@@ -1888,25 +1910,8 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
           }]),
         ]}
       />
-      {/* Footer */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: spaceSm, marginBottom: spaceMd }}>
-        <Button
-          htmlType="submit"
-          type="primary"
-          loading={isSubmitting}
-          style={{ ...primaryButtonStyle, minWidth: 120 }}
-        >
-          {isCreateMode ? 'Tạo mới' : 'Cập nhật'}
-        </Button>
-        <Button
-          onClick={isIframe
-            ? () => window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*')
-            : isModalMode ? onCancel : () => navigate('/navigation-channel')}
-          style={{ ...outlineButtonStyle, minWidth: 120 }}
-        >
-          Hủy
-        </Button>
-      </div>
+      {/* Footer — chế độ standalone hiển thị trong form; chế độ modal hiển thị trong footer AppDrawer */}
+      {!isModalMode && formFooter}
     </Form>
 
     {/* GIS Location Selector Modal — chọn tọa độ trên bản đồ chuyên dụng (chuẩn VTS CHK) */}
@@ -1953,20 +1958,23 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
 
   if (isModalMode) {
     return (
-      <Modal
-        open={open}
-        onCancel={onCancel}
-        width={1080}
-        footer={null}
-        rootClassName={THEME_SCOPE_CLASS}
+      <AppDrawer
         title={
           <span style={{ color: textPrimary, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>
             {isCreateMode ? 'Tạo mới Luồng hàng hải' : isEditMode ? 'Chỉnh sửa Luồng hàng hải' : 'Chi tiết Luồng hàng hải'}
           </span>
         }
+        open={open ?? false}
+        onClose={() => onCancel?.()}
+        size={1080}
+        footer={formFooter}
+        styles={{
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '0 24px 12px 24px' },
+        }}
       >
         {formContent}
-      </Modal>
+      </AppDrawer>
     );
   }
 
