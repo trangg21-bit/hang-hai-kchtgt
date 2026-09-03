@@ -159,9 +159,11 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
     );
   }
 
+  const { size: _themeSize, ...safeDrawerProps } = drawerProps;
+
   return (
     <Drawer
-      {...drawerProps}
+      {...safeDrawerProps}
       width={calculatedWidth}
       destroyOnHidden
       open={open}

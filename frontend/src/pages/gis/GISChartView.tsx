@@ -1279,7 +1279,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
           const valExists = data[k] !== undefined && data[k] !== null && data[k] !== '';
           let val = valExists ? data[k] : '';
           
-          if (['orgUnitId', 'orgUnitId', 'unitId', 'donViQuanLy', 'unitId', 'unitName'].includes(k)) {
+          if (['orgUnitId', 'orgName', 'orgUnitName', 'unitId', 'donViQuanLy', 'unitName'].includes(k)) {
             val = orgUnitNameResolved || val;
           } else if (k === 'portId') {
             val = cangBienNameResolved || val;
@@ -1326,7 +1326,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
             const label = KEY_LABELS[k] || k;
             let val = data[k];
             
-            if (['orgUnitId', 'orgUnitId', 'unitId', 'donViQuanLy'].includes(k)) {
+            if (['orgUnitId', 'orgName', 'orgUnitName', 'unitId', 'donViQuanLy', 'unitName'].includes(k)) {
               val = orgUnitNameResolved || val;
             } else if (k === 'portId') {
               val = cangBienNameResolved || val;
