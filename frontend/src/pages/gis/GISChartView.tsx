@@ -1502,9 +1502,22 @@ const circleLayerToPolygonFeature = (layer: any, vertexCount = 32) => {
   };
 };
 
+const getRecordCoordinatesWkt = (record: any): string | null => {
+  if (record.coordinates) return record.coordinates;
+  if (record.toaDo) return record.toaDo;
+  if (Array.isArray(record.coordinateList) && record.coordinateList.length > 0) {
+    const type = String(record.geometryType || record.loaiHinhHoc || '').toUpperCase();
+    const pts = record.coordinateList.map((c: any) => `${Number(c.longitude ?? c.lng)} ${Number(c.latitude ?? c.lat)}`).join(', ');
+    if (['LINE', 'LINESTRING', 'POLYLINE'].includes(type)) return `LINESTRING(${pts})`;
+    if (['POLYGON', 'AREA'].includes(type)) return `POLYGON((${pts}))`;
+    if (type === 'POINT') return `POINT(${pts.split(', ')[0]})`;
+  }
+  return null;
+};
+
 const resolveSearchHitGeometry = (record: KchtGisSearchResult): MapHitGeometry | null => {
   const geometryType = String(record.geometryType || record.loaiHinhHoc || '').toUpperCase();
-  const geometryWkt = record.coordinates || record.toaDo;
+  const geometryWkt = getRecordCoordinatesWkt(record);
   const parsedCoordinates = geometryWkt ? parseWktToCoords(geometryWkt) : null;
 
   if (geometryType === 'POINT') {
@@ -1839,7 +1852,7 @@ export default function GISChartView() {
 
   const infrastructureColumns = useMemo<DataTableColumn[]>(() => [
     {
-      key: 'index', label: 'STT', width: 52, align: 'center',
+      key: 'index', label: 'STT', width: 52, align: 'center', fixed: 'left',
       render: (_value, _record, index = 0) => (searchPage - 1) * searchPageSize + index + 1,
     },
     { key: 'orgName', dataIndex: 'orgName', label: 'Đơn vị quản lý', width: 170 },
@@ -1938,7 +1951,7 @@ export default function GISChartView() {
         return {
           ...x,
           location: x.location || getProvinceNameById(x.provinceId) || '',
-          toaDo: x.coordinates,
+          toaDo: getRecordCoordinatesWkt(x),
           loaiHinhHoc: x.geometryType,
           latitude: mapLocation?.center[1],
           longitude: mapLocation?.center[0],
@@ -2006,7 +2019,7 @@ export default function GISChartView() {
 
   const handleRowClick = useCallback(async (record: KchtGisSearchResult) => {
     const mapLocation = resolveMapGeometryLocation(
-      record.coordinates || record.toaDo,
+      getRecordCoordinatesWkt(record),
       record.longitude,
       record.latitude,
     );
@@ -3426,7 +3439,7 @@ export default function GISChartView() {
 
     selectedRecords.forEach((record) => {
       const mapLocation = resolveMapGeometryLocation(
-        record.coordinates || record.toaDo,
+        getRecordCoordinatesWkt(record),
         record.longitude,
         record.latitude,
       );
@@ -3611,7 +3624,7 @@ export default function GISChartView() {
       const pts: Array<[number, number]> = [];
       selectedRecords.forEach(record => {
         const mapLocation = resolveMapGeometryLocation(
-          record.coordinates || record.toaDo,
+          getRecordCoordinatesWkt(record),
           record.longitude,
           record.latitude,
         );
@@ -4485,6 +4498,7 @@ export default function GISChartView() {
                               scroll={{ x: 'max-content', y: tableHeight }}
                               emptyState={<EmptyState description={hasSearched ? 'Không tìm thấy kết cấu hạ tầng phù hợp' : 'Nhập điều kiện và chọn Tìm kiếm'} />}
                               rowSelection={{
+                                fixed: 'left',
                                 columnWidth: 44,
                                 selectedRowKeys,
                                 onChange: (keys: React.Key[]) => {
