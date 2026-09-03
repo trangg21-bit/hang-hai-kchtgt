@@ -1,0 +1,71 @@
+{
+  "triage_id": "TRI-1788420776345-7e78",
+  "created_at": 1788420776345,
+  "request_summary": "Sửa header cột action hở khi cuộn ngang bảng danh sách cảng biển (PortListPage) — remove y:550 khỏi scroll",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/services/buoy-station/BuoyStationDetailContent.tsx",
+      "frontend/src/services/buoy-station/BuoyStationFormContent.tsx",
+      "frontend/src/services/buoy-station/BuoyStationListPage.tsx",
+      "frontend/src/services/port/PortListPage.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/services/buoy-station/BuoyStationDetailContent.tsx",
+      "frontend/src/services/buoy-station/BuoyStationFormContent.tsx",
+      "frontend/src/services/buoy-station/BuoyStationListPage.tsx",
+      "frontend/src/services/port/PortListPage.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C1: 4 edit-target files in one package, no one-way door — pre-declared write scope required (4 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Quản lý cảng biển — bảng danh sách",
+  "blast_radius": 4,
+  "done_oracle": "\"Header cột Thao tác không còn hở khi cuộn ngang bảng danh sách cảng biển\"",
+  "verification_commands": [
+    {
+      "command": "cd frontend && npx tsc --noEmit --pretty",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 120000
+    }
+  ],
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "frontend/src/services/buoy-station/BuoyStationDetailContent.tsx",
+    "frontend/src/services/buoy-station/BuoyStationFormContent.tsx",
+    "frontend/src/services/buoy-station/BuoyStationListPage.tsx",
+    "frontend/src/services/port/PortListPage.tsx"
+  ],
+  "seam_claims": [
+    {
+      "file": "frontend/src/services/port/PortListPage.tsx",
+      "line": 1976,
+      "quote": "scroll={{ x: 'max-content', y: 550 }}",
+      "source_hash": "0027ff9aa91aca5d9a67b157e6a74fe6b4e6439ad272b05dbdac071584fcee64",
+      "quote_hash": "6c5e62bdc2d27c05bb8f10789cced2453ff5b9d877076c542d565c3ae2aaceda",
+      "note": "Bỏ y:550 — gây header/body scroll lệch với cột fixed: right"
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1788420166995-0876",
+    "breach_kind": "file_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "603cbfbda62308bba2e0f1f352e55eaecaad557d",
+    "dirty": false,
+    "captured_at": 1788420776599
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}
