@@ -2296,20 +2296,9 @@ export default function GISChartView() {
 
   const getOrgNameByUnitId = (unitId?: string) => {
     if (!unitId) return '—';
-    const pathList: string[] = [];
-    let currentId: string | undefined = unitId;
-    let limit = 10;
-    while (currentId && limit > 0) {
-      const found = orgUnits.find(u => u.id === currentId);
-      if (found) {
-        pathList.unshift(found.name);
-        currentId = found.parentId;
-      } else {
-        break;
-      }
-      limit--;
-    }
-    return pathList.length > 0 ? pathList.join(' > ') : '—';
+    const found = orgUnits.find(u => u.id === unitId);
+    if (!found || !found.name) return unitId;
+    return found.name.split(' > ').pop()?.trim() || found.name;
   };
 
   const getObjectTypeLabel = (type: string, objectType: string, categoryId?: number) => {
