@@ -4259,13 +4259,12 @@ export default function GISChartView() {
               {!searchPanelVisible && (
                 <Button
                   type="primary"
-                  icon={<SearchOutlined />}
                   onClick={() => setSearchPanelVisible(true)}
                   style={{
                     ...primaryButtonStyle,
                     position: 'absolute',
                     top: spaceSm,
-                    left: controlHeight + spaceMd,
+                    left: spaceMd,
                     zIndex: 1000,
                     boxShadow: shadowMd,
                   }}
