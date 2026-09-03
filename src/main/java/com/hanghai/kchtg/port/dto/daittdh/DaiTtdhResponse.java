@@ -3,7 +3,6 @@ package com.hanghai.kchtg.port.dto.daittdh;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.Builder;
 import lombok.Data;
 
@@ -15,7 +14,7 @@ import java.util.UUID;
 @Builder
 public class DaiTtdhResponse {
     private UUID id;
-    private RecordSecurityLevel securityLevel;
+    // private RecordSecurityLevel securityLevel;
     private String daiTtdhCode;
     private String daiTtdhName;
     private UUID orgUnitId;
