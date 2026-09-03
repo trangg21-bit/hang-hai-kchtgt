@@ -8,3 +8,4 @@
 UPDATE public.gis_spatial_objects
 SET geometry_type = 1
 WHERE geometry_type = 0;
+

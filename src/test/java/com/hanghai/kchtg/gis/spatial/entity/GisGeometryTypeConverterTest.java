@@ -38,3 +38,4 @@ class GisGeometryTypeConverterTest {
         assertEquals(3, converter.convertToDatabaseColumn(GisGeometryType.POLYGON));
     }
 }
+
