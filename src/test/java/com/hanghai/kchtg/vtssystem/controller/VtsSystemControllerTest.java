@@ -57,6 +57,7 @@ class VtsSystemControllerTest {
                 .owningOrgId(UUID.fromString("00000000-0000-0000-0000-000000000011"))
                 .operatingOrgId(UUID.fromString("00000000-0000-0000-0000-000000000012"))
                 .provinceId(1)
+                .maritimeNotice("TBHH 01")
                 .build();
 
         response = VtsSystemResponse.builder()

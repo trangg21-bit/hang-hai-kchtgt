@@ -11,7 +11,6 @@ import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.fieldvisibility.FieldVisibilityContext;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.security.service.PermissionCacheService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
@@ -85,7 +84,9 @@ public class VtsSystemService {
     private record DataScopeContext(boolean enabled, List<UUID> orgUnitIds) {
     }
 
-    /** Trần bản ghi cho endpoint /search (trả danh sách phẳng, không phân trang). */
+    /**
+     * Trần bản ghi cho endpoint /search (trả danh sách phẳng, không phân trang).
+     */
     private static final int MAX_SEARCH_RESULTS = 200;
 
     private final VtsSystemRepository repository;
@@ -193,7 +194,8 @@ public class VtsSystemService {
                 throw new IllegalArgumentException("Mã hệ thống VTS đã tồn tại trong hệ thống");
             }
         }
-        ApprovalStatus initialStatus = request.getApprovalStatus() != null ? request.getApprovalStatus() : ApprovalStatus.DRAFT;
+        ApprovalStatus initialStatus = request.getApprovalStatus() != null ? request.getApprovalStatus()
+                : ApprovalStatus.DRAFT;
         if (initialStatus == ApprovalStatus.PENDING_APPROVAL && approvalService.isDepartmentLevelUser(userId)) {
             initialStatus = ApprovalStatus.APPROVED_LEVEL1;
         }
@@ -219,6 +221,8 @@ public class VtsSystemService {
                 .maritimeNotice(request.getMaritimeNotice())
                 .operationStartDate(request.getOperationStartDate())
                 .approvalStatus(initialStatus)
+                .approvedDateLevel1(initialStatus == ApprovalStatus.APPROVED ? LocalDateTime.now() : null)
+                .approverLevel1(initialStatus == ApprovalStatus.APPROVED ? userId : null)
                 .approvedDateLevel2(initialStatus == ApprovalStatus.APPROVED ? LocalDateTime.now() : null)
                 .approverLevel2(initialStatus == ApprovalStatus.APPROVED ? userId : null)
                 .build();
@@ -292,6 +296,9 @@ public class VtsSystemService {
         }
         if (request.getConditionStatus() == null) {
             throw new IllegalArgumentException("Tình trạng không được để trống");
+        }
+        if (request.getMaritimeNotice() == null || request.getMaritimeNotice().isBlank()) {
+            throw new IllegalArgumentException("Thông báo hàng hải không được để trống");
         }
         validateReferenceScope(resolveDataScope(), request.getOrgUnitId(), request.getOwningOrgId(),
                 request.getOperatingOrgId(), request.getPortId());
@@ -429,7 +436,8 @@ public class VtsSystemService {
     }
 
     public VtsZoneDto toZoneDto(VtsZone entity) {
-        if (entity == null) return null;
+        if (entity == null)
+            return null;
         return VtsZoneDto.builder()
                 .id(entity.getId())
                 .code(entity.getCode())
@@ -485,7 +493,8 @@ public class VtsSystemService {
         VtsZone zone = VtsZone.builder()
                 .code(trimmedCode)
                 .name(dto.getName().trim())
-                .conditionStatus(dto.getConditionStatus() != null ? dto.getConditionStatus() : ConditionStatus.OPERATIONAL)
+                .conditionStatus(
+                        dto.getConditionStatus() != null ? dto.getConditionStatus() : ConditionStatus.OPERATIONAL)
                 .vtsSystem(vtsSystem)
                 .createdBy(effectiveUserId)
                 .updatedBy(effectiveUserId)
@@ -506,7 +515,8 @@ public class VtsSystemService {
                     .reason("Thêm mới vùng VTS: " + saved.getName())
                     .changedField("Vùng VTS")
                     .previousValue(null)
-                    .newValue("Thêm vùng [" + saved.getCode() + "] " + saved.getName() + " (" + saved.getConditionStatus().name() + ")")
+                    .newValue("Thêm vùng [" + saved.getCode() + "] " + saved.getName() + " ("
+                            + saved.getConditionStatus().name() + ")")
                     .build());
         }
 
@@ -532,12 +542,14 @@ public class VtsSystemService {
             throw new IllegalArgumentException("Dữ liệu vùng VTS không được để trống");
         }
 
-        String oldDesc = "[" + zone.getCode() + "] " + zone.getName() + " (" + (zone.getConditionStatus() != null ? zone.getConditionStatus().name() : "OPERATIONAL") + ")";
+        String oldDesc = "[" + zone.getCode() + "] " + zone.getName() + " ("
+                + (zone.getConditionStatus() != null ? zone.getConditionStatus().name() : "OPERATIONAL") + ")";
 
         if (dto.getCode() != null && !dto.getCode().trim().isEmpty()) {
             String trimmedCode = dto.getCode().trim();
             if (zoneRepository.existsByVtsSystemIdAndCodeAndIdNot(systemId, trimmedCode, zoneId)) {
-                throw new IllegalArgumentException("Mã vùng VTS '" + trimmedCode + "' đã tồn tại trong hệ thống VTS này");
+                throw new IllegalArgumentException(
+                        "Mã vùng VTS '" + trimmedCode + "' đã tồn tại trong hệ thống VTS này");
             }
             zone.setCode(trimmedCode);
         }
@@ -553,7 +565,8 @@ public class VtsSystemService {
         zone.setUpdatedBy(effectiveUserId);
 
         VtsZone saved = zoneRepository.save(zone);
-        String newDesc = "[" + saved.getCode() + "] " + saved.getName() + " (" + (saved.getConditionStatus() != null ? saved.getConditionStatus().name() : "OPERATIONAL") + ")";
+        String newDesc = "[" + saved.getCode() + "] " + saved.getName() + " ("
+                + (saved.getConditionStatus() != null ? saved.getConditionStatus().name() : "OPERATIONAL") + ")";
 
         // Ghi log lịch sử thay đổi khi hệ thống VTS đã được phê duyệt
         boolean wasApproved = vtsSystem.getApprovalStatus() == ApprovalStatus.APPROVED
@@ -590,7 +603,8 @@ public class VtsSystemService {
         VtsZone zone = zoneRepository.findByIdAndVtsSystemId(zoneId, systemId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy vùng VTS với ID: " + zoneId));
 
-        String zoneDesc = "Xóa vùng [" + zone.getCode() + "] " + zone.getName() + " (" + (zone.getConditionStatus() != null ? zone.getConditionStatus().name() : "OPERATIONAL") + ")";
+        String zoneDesc = "Xóa vùng [" + zone.getCode() + "] " + zone.getName() + " ("
+                + (zone.getConditionStatus() != null ? zone.getConditionStatus().name() : "OPERATIONAL") + ")";
         String zoneName = zone.getName();
 
         zoneRepository.delete(zone);
@@ -825,15 +839,19 @@ public class VtsSystemService {
             return Page.empty(pageable);
         }
         Page<VtsSystemListProjection> rawPage = repository.searchList(
-                scope.enabled(), scope.orgUnitIds(), orgUnitId, portId, provinceId, keywordLike, systemNameLike, codeLike,
+                scope.enabled(), scope.orgUnitIds(), orgUnitId, portId, provinceId, keywordLike, systemNameLike,
+                codeLike,
                 conditionStatus, approvalStatus, fromDate, toDate, updatedFrom, updatedTo, pageable);
 
         // Batch resolve user names in a single query to eliminate N+1 queries
         Set<UUID> userIds = new LinkedHashSet<>();
         for (VtsSystemListProjection item : rawPage.getContent()) {
-            if (item.getUpdatedBy() != null) userIds.add(item.getUpdatedBy());
-            if (item.getCreatedBy() != null) userIds.add(item.getCreatedBy());
-            if (item.getApproverLevel1() != null) userIds.add(item.getApproverLevel1());
+            if (item.getUpdatedBy() != null)
+                userIds.add(item.getUpdatedBy());
+            if (item.getCreatedBy() != null)
+                userIds.add(item.getCreatedBy());
+            if (item.getApproverLevel1() != null)
+                userIds.add(item.getApproverLevel1());
         }
         Map<UUID, String> userNameMap = resolveUserNames(userIds);
 
@@ -851,7 +869,9 @@ public class VtsSystemService {
         return rawPage.map(item -> toListItemResponse(item, userNameMap, operatingOrgNameMap));
     }
 
-    /** Nạp tên đơn vị vận hành theo lô; thiếu ở bảng riêng thì lùi về cache đơn vị. */
+    /**
+     * Nạp tên đơn vị vận hành theo lô; thiếu ở bảng riêng thì lùi về cache đơn vị.
+     */
     private Map<UUID, String> resolveOperatingOrgNames(Collection<UUID> operatingOrgIds) {
         if (operatingOrgIds == null || operatingOrgIds.isEmpty()) {
             return Collections.emptyMap();
@@ -871,7 +891,8 @@ public class VtsSystemService {
         VtsSystem entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Hệ thống VTS với ID: " + id));
 
-        // Quy tắc 12 (approval-2-level-spec.md mục 3.9): cấm sửa khi hồ sơ đang trong vòng duyệt
+        // Quy tắc 12 (approval-2-level-spec.md mục 3.9): cấm sửa khi hồ sơ đang trong
+        // vòng duyệt
         approvalService.assertEditable(entity);
 
         DataScopeContext scope = resolveDataScope();
@@ -895,6 +916,9 @@ public class VtsSystemService {
         }
         if (request.getOrgUnitId() != null && !request.getOrgUnitId().equals(entity.getOrgUnitId())) {
             throw new IllegalArgumentException("Đơn vị quản lý không được phép thay đổi sau khi tạo");
+        }
+        if (request.getMaritimeNotice() != null && request.getMaritimeNotice().isBlank()) {
+            throw new IllegalArgumentException("Thông báo hàng hải không được để trống");
         }
 
         validateReferenceScope(scope,
@@ -920,48 +944,57 @@ public class VtsSystemService {
             // 1. Identify added zones (in request but not in oldZones by code and ID)
             List<String> addedList = new ArrayList<>();
             for (VtsZoneDto nzd : newZoneDtos) {
-                if (nzd == null) continue;
-                boolean exists = oldZones.stream().anyMatch(oz ->
-                    (nzd.getId() != null && oz.getId() != null && oz.getId().equals(nzd.getId()))
-                    || (nzd.getCode() != null && oz.getCode() != null && oz.getCode().trim().equalsIgnoreCase(nzd.getCode().trim()))
-                );
+                if (nzd == null)
+                    continue;
+                boolean exists = oldZones.stream()
+                        .anyMatch(oz -> (nzd.getId() != null && oz.getId() != null && oz.getId().equals(nzd.getId()))
+                                || (nzd.getCode() != null && oz.getCode() != null
+                                        && oz.getCode().trim().equalsIgnoreCase(nzd.getCode().trim())));
                 if (!exists) {
                     String name = nzd.getName() != null ? nzd.getName().trim() : "";
                     String code = nzd.getCode() != null ? nzd.getCode().trim() : "";
-                    addedList.add((!name.isEmpty() && !code.isEmpty()) ? name + " (" + code + ")" : (!name.isEmpty() ? name : code));
+                    addedList.add((!name.isEmpty() && !code.isEmpty()) ? name + " (" + code + ")"
+                            : (!name.isEmpty() ? name : code));
                 }
             }
 
             // 2. Identify removed zones (in oldZones but not in request by code and ID)
             List<String> removedList = new ArrayList<>();
             for (VtsZone oz : oldZones) {
-                if (oz == null) continue;
-                boolean exists = newZoneDtos.stream().anyMatch(nzd ->
-                    (nzd.getId() != null && oz.getId() != null && oz.getId().equals(nzd.getId()))
-                    || (nzd.getCode() != null && oz.getCode() != null && oz.getCode().trim().equalsIgnoreCase(nzd.getCode().trim()))
-                );
+                if (oz == null)
+                    continue;
+                boolean exists = newZoneDtos.stream()
+                        .anyMatch(nzd -> (nzd.getId() != null && oz.getId() != null && oz.getId().equals(nzd.getId()))
+                                || (nzd.getCode() != null && oz.getCode() != null
+                                        && oz.getCode().trim().equalsIgnoreCase(nzd.getCode().trim())));
                 if (!exists) {
                     String name = oz.getName() != null ? oz.getName().trim() : "";
                     String code = oz.getCode() != null ? oz.getCode().trim() : "";
-                    removedList.add((!name.isEmpty() && !code.isEmpty()) ? name + " (" + code + ")" : (!name.isEmpty() ? name : code));
+                    removedList.add((!name.isEmpty() && !code.isEmpty()) ? name + " (" + code + ")"
+                            : (!name.isEmpty() ? name : code));
                 }
             }
 
-            // 3. Identify modified zones (matching by ID or code, but changed name or status)
+            // 3. Identify modified zones (matching by ID or code, but changed name or
+            // status)
             List<String> modifiedOldList = new ArrayList<>();
             List<String> modifiedNewList = new ArrayList<>();
             for (VtsZoneDto nzd : newZoneDtos) {
-                if (nzd == null) continue;
-                Optional<VtsZone> matched = oldZones.stream().filter(oz ->
-                    (nzd.getId() != null && oz.getId() != null && oz.getId().equals(nzd.getId()))
-                    || (nzd.getCode() != null && oz.getCode() != null && oz.getCode().trim().equalsIgnoreCase(nzd.getCode().trim()))
-                ).findFirst();
+                if (nzd == null)
+                    continue;
+                Optional<VtsZone> matched = oldZones.stream()
+                        .filter(oz -> (nzd.getId() != null && oz.getId() != null && oz.getId().equals(nzd.getId()))
+                                || (nzd.getCode() != null && oz.getCode() != null
+                                        && oz.getCode().trim().equalsIgnoreCase(nzd.getCode().trim())))
+                        .findFirst();
                 if (matched.isPresent()) {
                     VtsZone oz = matched.get();
                     String oldName = oz.getName() != null ? oz.getName().trim() : "";
                     String newName = nzd.getName() != null ? nzd.getName().trim() : "";
-                    ConditionStatus oldCond = oz.getConditionStatus() != null ? oz.getConditionStatus() : ConditionStatus.OPERATIONAL;
-                    ConditionStatus newCond = nzd.getConditionStatus() != null ? nzd.getConditionStatus() : ConditionStatus.OPERATIONAL;
+                    ConditionStatus oldCond = oz.getConditionStatus() != null ? oz.getConditionStatus()
+                            : ConditionStatus.OPERATIONAL;
+                    ConditionStatus newCond = nzd.getConditionStatus() != null ? nzd.getConditionStatus()
+                            : ConditionStatus.OPERATIONAL;
                     if (!Objects.equals(oldName, newName) || oldCond != newCond) {
                         modifiedOldList.add(oldName + " (" + oz.getCode() + ")");
                         modifiedNewList.add(newName + " (" + nzd.getCode() + ")");
@@ -1023,7 +1056,8 @@ public class VtsSystemService {
         // Attachment smart delta diff
         List<String> addedAtts = request.getAddedAttachmentNames();
         List<String> removedAtts = request.getRemovedAttachmentNames();
-        boolean hasAttachmentChanges = (addedAtts != null && !addedAtts.isEmpty()) || (removedAtts != null && !removedAtts.isEmpty());
+        boolean hasAttachmentChanges = (addedAtts != null && !addedAtts.isEmpty())
+                || (removedAtts != null && !removedAtts.isEmpty());
         if (hasAttachmentChanges) {
             List<String> prevAttParts = new ArrayList<>();
             if (removedAtts != null) {
@@ -1137,7 +1171,8 @@ public class VtsSystemService {
 
         VtsSystem saved = repository.save(entity);
 
-        // Only record field change history if the record was already approved (final level)
+        // Only record field change history if the record was already approved (final
+        // level)
         if (hasFieldChanges && wasApproved) {
             historyRepository.save(InfrastructureHistory.builder()
                     .refId(saved.getId())
@@ -1255,7 +1290,8 @@ public class VtsSystemService {
                     String unitName = null;
                     if (h.getApprovedBy() != null && userMap.get(h.getApprovedBy()) != null) {
                         User u = userMap.get(h.getApprovedBy());
-                        if (u.getOrgUnit() != null && u.getOrgUnit().getName() != null && !u.getOrgUnit().getName().isBlank()) {
+                        if (u.getOrgUnit() != null && u.getOrgUnit().getName() != null
+                                && !u.getOrgUnit().getName().isBlank()) {
                             unitName = u.getOrgUnit().getName();
                         } else if (u.getDepartment() != null && !u.getDepartment().isBlank()) {
                             unitName = u.getDepartment();
@@ -1463,11 +1499,16 @@ public class VtsSystemService {
 
         if (includeCreatedByName) {
             Set<UUID> userIds = new LinkedHashSet<>();
-            if (entity.getCreatedBy() != null) userIds.add(entity.getCreatedBy());
-            if (entity.getUpdatedBy() != null) userIds.add(entity.getUpdatedBy());
-            if (entity.getSubmittedBy() != null) userIds.add(entity.getSubmittedBy());
-            if (entity.getApproverLevel1() != null) userIds.add(entity.getApproverLevel1());
-            if (entity.getApproverLevel2() != null) userIds.add(entity.getApproverLevel2());
+            if (entity.getCreatedBy() != null)
+                userIds.add(entity.getCreatedBy());
+            if (entity.getUpdatedBy() != null)
+                userIds.add(entity.getUpdatedBy());
+            if (entity.getSubmittedBy() != null)
+                userIds.add(entity.getSubmittedBy());
+            if (entity.getApproverLevel1() != null)
+                userIds.add(entity.getApproverLevel1());
+            if (entity.getApproverLevel2() != null)
+                userIds.add(entity.getApproverLevel2());
 
             Map<UUID, String> userNameMap = resolveUserNames(userIds);
             createdByName = userNameMap.get(entity.getCreatedBy());
@@ -1544,16 +1585,22 @@ public class VtsSystemService {
             if (z instanceof VtsZone vz) {
                 String name = vz.getName() != null ? vz.getName().trim() : "";
                 String code = vz.getCode() != null ? vz.getCode().trim() : "";
-                if (!name.isEmpty() && !code.isEmpty()) return name + " (" + code + ")";
-                if (!name.isEmpty()) return name;
-                if (!code.isEmpty()) return code;
+                if (!name.isEmpty() && !code.isEmpty())
+                    return name + " (" + code + ")";
+                if (!name.isEmpty())
+                    return name;
+                if (!code.isEmpty())
+                    return code;
                 return "";
             } else if (z instanceof VtsZoneDto zd) {
                 String name = zd.getName() != null ? zd.getName().trim() : "";
                 String code = zd.getCode() != null ? zd.getCode().trim() : "";
-                if (!name.isEmpty() && !code.isEmpty()) return name + " (" + code + ")";
-                if (!name.isEmpty()) return name;
-                if (!code.isEmpty()) return code;
+                if (!name.isEmpty() && !code.isEmpty())
+                    return name + " (" + code + ")";
+                if (!name.isEmpty())
+                    return name;
+                if (!code.isEmpty())
+                    return code;
                 return "";
             }
             return String.valueOf(z).trim();
@@ -1613,7 +1660,8 @@ public class VtsSystemService {
         return GisSpatialObjectType.LINE_OTHER;
     }
 
-    private VtsSystemAttachmentResponse toAttachmentResponse(InfrastructureAttachment attachment, String uploadedByName) {
+    private VtsSystemAttachmentResponse toAttachmentResponse(InfrastructureAttachment attachment,
+            String uploadedByName) {
         return VtsSystemAttachmentResponse.builder()
                 .id(attachment.getId())
                 .fileName(attachment.getFileName())
@@ -1634,12 +1682,15 @@ public class VtsSystemService {
         return toAttachmentResponse(attachment, uploadedByName);
     }
 
-    /** Số tệp đính kèm tối đa cho một hồ sơ (khớp giới hạn hiển thị ở giao diện). */
+    /**
+     * Số tệp đính kèm tối đa cho một hồ sơ (khớp giới hạn hiển thị ở giao diện).
+     */
     private static final int MAX_ATTACHMENTS = 10;
     private static final long MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024L;
 
     /**
-     * Kiểm tra trạng thái hồ sơ có cho phép thay đổi tài liệu đính kèm hay không (quy tắc 12).
+     * Kiểm tra trạng thái hồ sơ có cho phép thay đổi tài liệu đính kèm hay không
+     * (quy tắc 12).
      */
     private void ensureAttachmentEditable(VtsSystem entity) {
         approvalService.assertEditable(entity);
@@ -1674,7 +1725,8 @@ public class VtsSystemService {
     }
 
     private boolean isAllowedFileExtension(String filename) {
-        if (filename == null || !filename.contains(".")) return false;
+        if (filename == null || !filename.contains("."))
+            return false;
         String ext = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT);
         return List.of("pdf", "doc", "docx", "xls", "xlsx", "jpg", "jpeg", "png", "gif", "tiff", "tif").contains(ext);
     }
@@ -1748,7 +1800,8 @@ public class VtsSystemService {
                 .collect(Collectors.joining("; "));
     }
 
-    private String formatNewValues(VtsSystem entity, Map<String, String> previousValues, Map<String, String> customNewValues) {
+    private String formatNewValues(VtsSystem entity, Map<String, String> previousValues,
+            Map<String, String> customNewValues) {
         return previousValues.keySet().stream()
                 .map(field -> {
                     String raw = (customNewValues != null && customNewValues.containsKey(field))
@@ -1780,7 +1833,8 @@ public class VtsSystemService {
                 return rawValue;
             }
         }
-        if (BaseApprovableEntity.Fields.provinceId.equals(field) || "provinceId".equals(field) || "province".equals(field)) {
+        if (BaseApprovableEntity.Fields.provinceId.equals(field) || "provinceId".equals(field)
+                || "province".equals(field)) {
             try {
                 int pid = Integer.parseInt(rawValue);
                 List<String> names = jdbcTemplate.queryForList("SELECT name FROM provinces WHERE id = ?", String.class,
@@ -1911,7 +1965,7 @@ public class VtsSystemService {
                 conditionStatus, null, null, null, null);
     }
 
-    private java.util.Map<String, Long> countByApprovalStatus(
+    private Map<String, Long> countByApprovalStatus(
             DataScopeContext scope, UUID orgUnitId, UUID portId, Integer provinceId, String keyword,
             String systemName, String code,
             ConditionStatus conditionStatus, LocalDate fromDate, LocalDate toDate,
@@ -1919,9 +1973,17 @@ public class VtsSystemService {
         if (scope.enabled() && scope.orgUnitIds().isEmpty()) {
             return Collections.emptyMap();
         }
-        java.util.Map<String, Long> counts = new java.util.LinkedHashMap<>();
+        Map<String, Long> counts = new LinkedHashMap<>();
+        counts.put(ApprovalStatus.DRAFT.name(), 0L);
+        counts.put(ApprovalStatus.PENDING_APPROVAL.name(), 0L);
+        counts.put(ApprovalStatus.APPROVED_LEVEL1.name(), 0L);
+        counts.put(ApprovalStatus.APPROVED.name(), 0L);
+        counts.put(ApprovalStatus.REJECTED_LEVEL1.name(), 0L);
+        counts.put(ApprovalStatus.REJECTED_LEVEL2.name(), 0L);
+
         List<Object[]> rows = repository.countByApprovalStatus(
-                scope.enabled(), scope.orgUnitIds(), orgUnitId, portId, provinceId, keyword, systemName, code, conditionStatus,
+                scope.enabled(), scope.orgUnitIds(), orgUnitId, portId, provinceId, keyword, systemName, code,
+                conditionStatus,
                 fromDate, toDate, updatedFrom, updatedTo);
         for (Object[] row : rows) {
             counts.put(((ApprovalStatus) row[0]).name(), (Long) row[1]);
@@ -2087,7 +2149,8 @@ public class VtsSystemService {
     }
 
     public List<VtsSystemOptionResponse> getOptions(UUID orgUnitId) {
-        OrgUnitScopeService.Scope userScope = orgUnitScopeService != null ? orgUnitScopeService.currentUserScope() : OrgUnitScopeService.Scope.all();
+        OrgUnitScopeService.Scope userScope = orgUnitScopeService != null ? orgUnitScopeService.currentUserScope()
+                : OrgUnitScopeService.Scope.all();
         boolean scopeEnabled = userScope != null && !userScope.unrestricted();
         List<UUID> scopeOrgUnitIds = scopeEnabled ? userScope.orgUnitIds() : List.of();
 

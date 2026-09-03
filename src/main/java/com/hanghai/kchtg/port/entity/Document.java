@@ -23,7 +23,6 @@ import lombok.experimental.SuperBuilder;
  *
  * Entity types supported: ports, berths, piers, dry-ports, water-zones
  */
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.Builder;
 import lombok.experimental.FieldNameConstants;
 

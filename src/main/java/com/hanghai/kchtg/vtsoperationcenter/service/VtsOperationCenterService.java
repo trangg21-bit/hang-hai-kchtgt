@@ -166,6 +166,11 @@ public class VtsOperationCenterService {
         OrgUnit orgUnit = orgUnitRepository.findById(request.getOrgUnitId())
                 .orElseThrow(() -> new IllegalArgumentException("Đơn vị quản lý không tồn tại"));
 
+        ApprovalStatus initialStatus = request.getApprovalStatus() != null ? request.getApprovalStatus()
+                : ApprovalStatus.DRAFT;
+        boolean isApproved = (initialStatus == ApprovalStatus.APPROVED);
+        LocalDateTime now = LocalDateTime.now();
+
         VtsOperationCenter entity = VtsOperationCenter.builder()
                 .code(request.getCode().trim())
                 .name(request.getName().trim())
@@ -180,12 +185,15 @@ public class VtsOperationCenterService {
                 .note(request.getNote())
                 .symbolId(request.getSymbolId())
                 .spatialId(request.getSpatialId())
-                .approvalStatus(
-                        request.getApprovalStatus() != null ? request.getApprovalStatus() : ApprovalStatus.DRAFT)
+                .approvalStatus(initialStatus)
+                .approvedDateLevel1(isApproved ? now : null)
+                .approverLevel1(isApproved ? userId : null)
+                .approvedDateLevel2(isApproved ? now : null)
+                .approverLevel2(isApproved ? userId : null)
                 .createdBy(userId)
                 .updatedBy(userId)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
+                .createdAt(now)
+                .updatedAt(now)
                 .build();
 
         VtsOperationCenter saved = repository.save(entity);

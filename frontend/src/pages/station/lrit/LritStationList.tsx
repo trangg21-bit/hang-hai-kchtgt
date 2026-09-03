@@ -1,16 +1,9 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Typography, Modal, Input, Drawer, Button, DatePicker, Space, Select } from 'antd';
 import {
-  EyeOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  SendOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
   HistoryOutlined,
   ExclamationCircleOutlined,
   SearchOutlined,
-  PlusOutlined,
 } from '@ant-design/icons';
 import { lritStationService, type LritStationListParams } from '../../../services/lritStationService';
 import { organizationService } from '../../../services/organizationService';
@@ -35,7 +28,7 @@ import {
   surfacePage, spaceXs, spaceXl, drawerTitleStyle, drawerCloseBtnStyle, selectStyle,
   borderDefault, statusBadgeStyle, cellTitleStyle, cellSubtitleStyle,
   inputStyle, primaryButtonStyle, textAreaStyle,
-  getRangePickerProps,
+  getRangePickerProps, icons,
 } from '../../../themetokenchk';
 import { colors } from '../../../themetokenchk';
 import dayjs from 'dayjs';
@@ -578,22 +571,23 @@ export const LritStationList: React.FC = () => {
   const countPendingApproval = Number(statusCounts.PENDING_APPROVAL ?? statusCounts.pending ?? 0);
   const countApprovedLevel1 = Number(statusCounts.APPROVED_LEVEL1 ?? statusCounts.approvedLevel1 ?? statusCounts.approvedL1 ?? 0);
   const countApproved = Number(statusCounts.APPROVED ?? statusCounts.approved ?? 0);
-  const countRejected = Number(statusCounts.REJECTED ?? statusCounts.rejected ?? ((statusCounts.REJECTED_LEVEL1 || 0) + (statusCounts.REJECTED_LEVEL2 || 0)));
-  const countAll = countDraft + countPendingApproval + countApprovedLevel1 + countApproved + countRejected;
+  const countRejectedLevel1 = Number(statusCounts.REJECTED_LEVEL1 ?? statusCounts.rejectedLevel1 ?? 0);
+  const countRejectedLevel2 = Number(statusCounts.REJECTED_LEVEL2 ?? statusCounts.rejectedLevel2 ?? 0);
+  const countAll = countDraft + countPendingApproval + countApprovedLevel1 + countApproved + countRejectedLevel1 + countRejectedLevel2;
 
   const statusTabsConfig = useMemo(() => [
-    { key: 'ALL', label: 'Tất cả', count: countAll, color: actionPrimary, active: !filterApprovalStatus },
+    { key: 'ALL', label: 'Tất cả', count: filterApprovalStatus ? countAll : total, color: actionPrimary, active: !filterApprovalStatus },
     { key: ApprovalStatus.DRAFT, label: 'Lưu tạm', count: countDraft, color: statusDraft, active: filterApprovalStatus === ApprovalStatus.DRAFT },
-    { key: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ Cảng vụ duyệt', count: countPendingApproval, color: statusAttention, active: filterApprovalStatus === ApprovalStatus.PENDING_APPROVAL },
-    { key: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ Cục duyệt', count: countApprovedLevel1, color: '#0284C7', active: filterApprovalStatus === ApprovalStatus.APPROVED_LEVEL1 },
-    { key: ApprovalStatus.APPROVED, label: 'Đã duyệt', count: countApproved, color: statusOperational, active: filterApprovalStatus === ApprovalStatus.APPROVED },
-    { key: 'REJECTED', label: 'Từ chối', count: countRejected, color: statusCritical, active: filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL1 || filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL2 },
-  ], [countAll, filterApprovalStatus, countDraft, countPendingApproval, countApprovedLevel1, countApproved, countRejected]);
+    { key: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', count: countPendingApproval, color: statusAttention, active: filterApprovalStatus === ApprovalStatus.PENDING_APPROVAL },
+    { key: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ phê duyệt cấp Cục', count: countApprovedLevel1, color: '#0284C7', active: filterApprovalStatus === ApprovalStatus.APPROVED_LEVEL1 },
+    { key: ApprovalStatus.APPROVED, label: 'Đã phê duyệt', count: countApproved, color: statusOperational, active: filterApprovalStatus === ApprovalStatus.APPROVED },
+    { key: ApprovalStatus.REJECTED_LEVEL1, label: 'Từ chối cấp Cảng vụ/Chi cục', count: countRejectedLevel1, color: statusCritical, active: filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL1 },
+    { key: ApprovalStatus.REJECTED_LEVEL2, label: 'Từ chối cấp Cục', count: countRejectedLevel2, color: statusCritical, active: filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL2 },
+  ], [total, countAll, filterApprovalStatus, countDraft, countPendingApproval, countApprovedLevel1, countApproved, countRejectedLevel1, countRejectedLevel2]);
 
   const handleTabChange = (key: string) => {
-    if (key === 'ALL') setFilterApprovalStatus(undefined);
-    else if (key === 'REJECTED') setFilterApprovalStatus(ApprovalStatus.REJECTED_LEVEL1);
-    else setFilterApprovalStatus(key as ApprovalStatus);
+    const approvalStatus = key === 'ALL' || key === 'all' ? undefined : (key as ApprovalStatus);
+    setFilterApprovalStatus(approvalStatus);
     setPage(1);
   };
 
@@ -1092,8 +1086,8 @@ export const LritStationList: React.FC = () => {
       key: 'approvalStatus',
       label: 'Trạng thái',
       dataIndex: 'approvalStatus',
-      width: 180,
-      align: 'center' as const,
+      width: 280,
+      align: 'left' as const,
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('approvalStatus'),
@@ -1152,7 +1146,7 @@ export const LritStationList: React.FC = () => {
       {
         key: 'view',
         label: 'Xem chi tiết',
-        icon: <EyeOutlined />,
+        icon: icons.view,
         onClick: () => {
           setEditingId(record.id);
           setSelectedRecord(record);
@@ -1160,19 +1154,13 @@ export const LritStationList: React.FC = () => {
           setIsModalOpen(true);
         },
       },
-      {
-        key: 'history',
-        label: 'Lịch sử',
-        icon: <HistoryOutlined />,
-        onClick: () => handleOpenHistory(record),
-      },
     ];
 
     if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'coastalstationlrit', extraApprovePerms: ['specialstation:approvec2', 'specialstation:approve', 'admin:all'] })) {
       actions.push({
         key: 'edit',
         label: 'Chỉnh sửa',
-        icon: <EditOutlined />,
+        icon: icons.edit,
         onClick: () => {
           setEditingId(record.id);
           setSelectedRecord(record);
@@ -1182,11 +1170,18 @@ export const LritStationList: React.FC = () => {
       });
     }
 
+    actions.push({
+      key: 'history',
+      label: 'Lịch sử',
+      icon: icons.history,
+      onClick: () => handleOpenHistory(record),
+    });
+
     if ((hasPerm('coastalstationlrit:update') || (user as any)?.role === 'SUPER_ADMIN' || (user as any)?.role === 'ADMIN') && (st === 'DRAFT' || st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2')) {
       actions.push({
         key: 'submit',
         label: 'Gửi duyệt',
-        icon: <SendOutlined />,
+        icon: icons.submit,
         onClick: async () => {
           try {
             await lritStationService.submit(record.id);
@@ -1203,13 +1198,13 @@ export const LritStationList: React.FC = () => {
       actions.push({
         key: 'approve_c1',
         label: 'Phê duyệt cấp Cảng vụ/Chi cục',
-        icon: <CheckCircleOutlined />,
+        icon: icons.approve,
         onClick: () => openApproveModal(record.id, 'c1'),
       });
       actions.push({
         key: 'reject_c1',
         label: 'Từ chối cấp Cảng vụ/Chi cục',
-        icon: <CloseCircleOutlined />,
+        icon: icons.reject,
         danger: true,
         onClick: () => openRejectModal(record.id),
       });
@@ -1219,13 +1214,13 @@ export const LritStationList: React.FC = () => {
       actions.push({
         key: 'approve_c2',
         label: 'Phê duyệt cấp Cục',
-        icon: <CheckCircleOutlined />,
+        icon: icons.approve,
         onClick: () => openApproveModal(record.id, 'c2'),
       });
       actions.push({
         key: 'reject_c2',
         label: 'Từ chối cấp Cục',
-        icon: <CloseCircleOutlined />,
+        icon: icons.reject,
         danger: true,
         onClick: () => openRejectModal(record.id),
       });
@@ -1234,8 +1229,8 @@ export const LritStationList: React.FC = () => {
     if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'coastalstationlrit', extraDeletePerms: ['specialstation:delete', 'admin:all'] })) {
       actions.push({
         key: 'delete',
-        label: 'Xóa bỏ',
-        icon: <DeleteOutlined />,
+        label: 'Xóa',
+        icon: icons.delete,
         danger: true,
         onClick: () => confirmDelete(record),
       });
@@ -1259,7 +1254,7 @@ export const LritStationList: React.FC = () => {
                 key: 'create',
                 label: 'Thêm mới',
                 variant: 'primary' as const,
-                icon: <PlusOutlined />,
+                icon: icons.create,
                 onClick: () => {
                   setEditingId(null);
                   setSelectedRecord(null);

@@ -40,7 +40,7 @@ import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS, CONDITION_ST
 import {
   drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle,
   drawerTabBarStyle, drawerStyles, drawerFormScrollStyle, drawerGisControlBoxStyle,
-  spaceFormField, spaceXs, spaceSm, spaceMd, radiusPill, sidebarBg,
+  spaceFormField, radiusPill, sidebarBg,
   fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeSm, fontSizeLg,
   textSecondary, textTertiary, borderDefault,
   statusCritical, statusAttention, statusOperational, actionPrimary, textAreaStyle,
@@ -156,7 +156,6 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [pendingDeletedAttachments, setPendingDeletedAttachments] = useState<{ id: string; fileName: string }[]>([]);
-  const [approvalSectionOpen, setApprovalSectionOpen] = useState(true);
   const [geometryTypeState, setGeometryTypeState] = useState<string>('POINT');
 
   const currentUser = useAuthStore((s: AuthState) => s.user);
@@ -556,6 +555,9 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
       };
 
       if (isCreateMode) {
+        if (act === 'approve') {
+          payload.approvalStatus = ApprovalStatus.APPROVED;
+        }
         const created = await aisSystemService.create(payload);
         if (created?.id && pendingFiles.length > 0) {
           try {
@@ -566,16 +568,17 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
         }
         if (act === 'submit' && created?.id) {
           await aisSystemService.submit(created.id);
-        } else if (act === 'approve' && created?.id) {
-          await aisSystemService.submit(created.id).catch(() => {});
-          await aisSystemService.approveC2(created.id, 'APPROVED', 'Lưu và phê duyệt trực tiếp');
         }
         setPendingFiles([]);
         setPendingDeletedAttachments([]);
-        toast.success('Thêm mới thành công');
+        toast.success(act === 'approve' ? 'Lưu và phê duyệt thành công' : act === 'submit' ? 'Lưu và gửi phê duyệt thành công' : 'Thêm mới thành công');
       } else if (editId || record?.id) {
         const targetId = editId || record!.id;
-        await aisSystemService.update(targetId, { ...payload, id: targetId } as UpdateAisSystemRequest);
+        const updatePayload: UpdateAisSystemRequest = { ...payload, id: targetId } as UpdateAisSystemRequest;
+        if (act === 'approve') {
+          updatePayload.approvalStatus = ApprovalStatus.APPROVED;
+        }
+        await aisSystemService.update(targetId, updatePayload);
         if (pendingDeletedAttachments.length > 0) {
           try {
             await Promise.all(pendingDeletedAttachments.map((a) => aisSystemService.deleteAttachment(targetId, a.id)));
@@ -666,49 +669,12 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                     <span className="chk-detail-value">{record.note || '—'}</span>
                   </div>
                 </div>
-
-                <div style={{ marginTop: spaceMd, marginBottom: spaceSm }}>
-                  <button
-                    type="button"
-                    onClick={() => setApprovalSectionOpen((openState) => !openState)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      padding: `${spaceXs}px 0`,
-                      color: actionPrimary,
-                      fontWeight: fontWeightBold,
-                      fontSize: fontSizeMd,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: spaceSm,
-                    }}
-                  >
-                    <span aria-hidden="true">{approvalSectionOpen ? '▼' : '▶'}</span>
-                    <span>Thông tin phê duyệt</span>
-                  </button>
-                </div>
-
-                {approvalSectionOpen && (
-                  <div className="chk-detail-grid">
-                    <div className="chk-detail-row"><span className="chk-detail-label">Ngày gửi phê duyệt</span><span className="chk-detail-value">{record.submittedAt ? dayjs(record.submittedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                    <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ gửi phê duyệt</span><span className="chk-detail-value">{record.submittedByName || record.submittedBy || '—'}</span></div>
-                    <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt cấp C1</span><span className="chk-detail-value">{record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                    <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt cấp C1</span><span className="chk-detail-value">{record.approverLevel1Name || record.approverLevel1 || '—'}</span></div>
-                    <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Nội dung phê duyệt cấp C1</span><span className="chk-detail-value">{record.approvalContentLevel1 || record.approvalReasonLevel1 || '—'}</span></div>
-                    <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt cấp C2</span><span className="chk-detail-value">{record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                    <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt cấp C2</span><span className="chk-detail-value">{record.approverLevel2Name || record.approverLevel2 || '—'}</span></div>
-                    <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Nội dung phê duyệt cấp C2</span><span className="chk-detail-value">{record.approvalContentLevel2 || record.approvalReasonLevel2 || record.rejectionReason || '—'}</span></div>
-                    <div className="chk-detail-row"><span className="chk-detail-label">Trạng thái phê duyệt</span><span className="chk-detail-value"><ApprovalStatusBadge status={record.approvalStatus} /></span></div>
-                    {record.rejectionReason && <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Lý do từ chối</span><span className="chk-detail-value" style={{ color: statusCritical }}>{record.rejectionReason}</span></div>}
-                  </div>
-                )}
               </div>
             ),
           },
           {
             key: 'gis',
-            label: 'Vị trí (GIS)',
+            label: 'Thông tin vị trí',
             children: (
               <DetailTable
                 scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
@@ -820,6 +786,96 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
               />
             ),
           },
+          {
+            key: 'handlingAndTracking',
+            label: 'Xử lý & theo dõi',
+            children: (
+              <div style={drawerFormScrollStyle}>
+                <div className="chk-detail-grid">
+                  {/* Trạng thái phê duyệt */}
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Trạng thái phê duyệt</span>
+                    <span className="chk-detail-value"><ApprovalStatusBadge status={record.approvalStatus} /></span>
+                  </div>
+                  <div style={{ border: 'none' }} />
+
+                  {/* Ngày cập nhật & Cán bộ cập nhật */}
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Ngày cập nhật</span>
+                    <span className="chk-detail-value">
+                      {record.updatedAt
+                        ? dayjs(record.updatedAt).format('DD/MM/YYYY HH:mm:ss')
+                        : record.createdAt
+                        ? dayjs(record.createdAt).format('DD/MM/YYYY HH:mm:ss')
+                        : '—'}
+                    </span>
+                  </div>
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Cán bộ cập nhật</span>
+                    <span className="chk-detail-value">{record.updatedByName || record.createdByName || '—'}</span>
+                  </div>
+
+                  {/* Ngày gửi phê duyệt & Cán bộ gửi phê duyệt */}
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Ngày gửi phê duyệt</span>
+                    <span className="chk-detail-value">
+                      {record.submittedAt ? dayjs(record.submittedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}
+                    </span>
+                  </div>
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Cán bộ gửi phê duyệt</span>
+                    <span className="chk-detail-value">{record.submittedByName || record.submittedBy || '—'}</span>
+                  </div>
+
+                  {/* Cấp Cảng vụ/Chi cục */}
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
+                    <span className="chk-detail-value">
+                      {record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}
+                    </span>
+                  </div>
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
+                    <span className="chk-detail-value">
+                      {record.approverLevel1Name || record.approverLevel1 || '—'}
+                    </span>
+                  </div>
+                  <div className="chk-detail-row chk-detail-row--full">
+                    <span className="chk-detail-label">Nội dung phê duyệt</span>
+                    <span className="chk-detail-value">{record.approvalContentLevel1 || record.approvalReasonLevel1 || '—'}</span>
+                  </div>
+
+                  {/* Cấp Cục */}
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Ngày phê duyệt cấp Cục</span>
+                    <span className="chk-detail-value">
+                      {record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}
+                    </span>
+                  </div>
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Cán bộ phê duyệt cấp Cục</span>
+                    <span className="chk-detail-value">
+                      {record.approverLevel2Name || record.approverLevel2 || '—'}
+                    </span>
+                  </div>
+                  <div className="chk-detail-row chk-detail-row--full">
+                    <span className="chk-detail-label">Nội dung phê duyệt</span>
+                    <span className="chk-detail-value">{record.approvalContentLevel2 || record.approvalReasonLevel2 || '—'}</span>
+                  </div>
+
+                  {/* Lý do từ chối nếu có */}
+                  {record.rejectionReason && (
+                    <div className="chk-detail-row chk-detail-row--full">
+                      <span className="chk-detail-label">Lý do từ chối</span>
+                      <span className="chk-detail-value" style={{ color: statusCritical }}>
+                        {record.rejectionReason}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ),
+          },
         ]}
       />
     );
@@ -906,14 +962,25 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
             ) : (
               <>
                 <Button onClick={handleClose} style={outlineButtonStyle}>Hủy</Button>
-                <Button
-                  type="primary"
-                  onClick={() => { actionTypeRef.current = 'update'; setActionType('update'); form.submit(); }}
-                  loading={isSubmitting}
-                  style={primaryButtonStyle}
-                >
-                  Cập nhật
-                </Button>
+                {record?.approvalStatus === ApprovalStatus.APPROVED && hasPerm('aissystem:approvec2') ? (
+                  <Button
+                    type="primary"
+                    onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
+                    loading={isSubmitting && actionType === 'approve'}
+                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                  >
+                    Lưu và phê duyệt
+                  </Button>
+                ) : (
+                  <Button
+                    type="primary"
+                    onClick={() => { actionTypeRef.current = 'update'; setActionType('update'); form.submit(); }}
+                    loading={isSubmitting && actionType === 'update'}
+                    style={primaryButtonStyle}
+                  >
+                    Cập nhật
+                  </Button>
+                )}
               </>
             )}
           </div>
@@ -1198,7 +1265,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                 },
                 {
                   key: 'gis',
-                  label: 'Vị trí (GIS)',
+                  label: 'Thông tin vị trí',
                   children: (
                     <div>
                       <div style={drawerGisControlBoxStyle}>

@@ -10,13 +10,13 @@ import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService.Scope;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.station.dto.lrit.*;
 import com.hanghai.kchtg.station.entity.CoastalStationLRIT;
 import com.hanghai.kchtg.station.entity.StationHistoryActionType;
 import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.repository.CoastalStationLRITRepository;
+import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -113,6 +113,25 @@ public class CoastalStationLRITService {
         return code;
     }
 
+    public static ConditionStatus parseConditionStatus(Object val) {
+        if (val == null) return null;
+        if (val instanceof ConditionStatus cs) return cs;
+        String s = val.toString().trim();
+        if (s.isEmpty()) return null;
+        if ("NOT_OPERATIONAL".equalsIgnoreCase(s)) return ConditionStatus.STOPPED;
+        try {
+            return ConditionStatus.valueOf(s.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            try {
+                int ordinal = Integer.parseInt(s);
+                if (ordinal >= 0 && ordinal < ConditionStatus.values().length) {
+                    return ConditionStatus.values()[ordinal];
+                }
+            } catch (NumberFormatException ignored) {}
+            return null;
+        }
+    }
+
     // --- TÌM KIẾM PHÂN TRANG & THỐNG KÊ TAB ---
 
     @Transactional(readOnly = true)
@@ -123,7 +142,7 @@ public class CoastalStationLRITService {
             String code,
             UUID operatingOrgId,
             Integer provinceId,
-            String conditionStatus,
+            ConditionStatus conditionStatus,
             ApprovalStatus approvalStatus,
             UUID updatedBy,
             LocalDateTime updatedFrom,
@@ -143,13 +162,42 @@ public class CoastalStationLRITService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Long> countByApprovalStatus(UUID orgUnitId, String keyword, String conditionStatus) {
+    public Page<CoastalStationLRITResponse> searchPaged(
+            UUID orgUnitId,
+            String keyword,
+            String name,
+            String code,
+            UUID operatingOrgId,
+            Integer provinceId,
+            String conditionStatus,
+            ApprovalStatus approvalStatus,
+            UUID updatedBy,
+            LocalDateTime updatedFrom,
+            LocalDateTime updatedTo,
+            Pageable pageable) {
+        return searchPaged(orgUnitId, keyword, name, code, operatingOrgId, provinceId,
+                parseConditionStatus(conditionStatus), approvalStatus, updatedBy, updatedFrom, updatedTo, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> countByApprovalStatus(UUID orgUnitId, String keyword, ConditionStatus conditionStatus) {
         return countByApprovalStatus(orgUnitId, keyword, null, null, conditionStatus, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> countByApprovalStatus(UUID orgUnitId, String keyword, String conditionStatus) {
+        return countByApprovalStatus(orgUnitId, keyword, parseConditionStatus(conditionStatus));
     }
 
     @Transactional(readOnly = true)
     public Map<String, Long> countByApprovalStatus(UUID orgUnitId, String keyword, String name, String code,
             String conditionStatus, Integer provinceId, LocalDateTime updatedFrom, LocalDateTime updatedTo) {
+        return countByApprovalStatus(orgUnitId, keyword, name, code, parseConditionStatus(conditionStatus), provinceId, updatedFrom, updatedTo);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> countByApprovalStatus(UUID orgUnitId, String keyword, String name, String code,
+            ConditionStatus conditionStatus, Integer provinceId, LocalDateTime updatedFrom, LocalDateTime updatedTo) {
         Scope scope = resolveEffectiveScope(orgUnitId);
         boolean scopeEnabled = !scope.unrestricted();
         List<UUID> scopeOrgUnitIds = scope.orgUnitIds();
@@ -172,17 +220,29 @@ public class CoastalStationLRITService {
         long approvedL1 = countsByStatus.getOrDefault(ApprovalStatus.APPROVED_LEVEL1, 0L);
         long approved = countsByStatus.getOrDefault(ApprovalStatus.APPROVED, 0L)
                 + countsByStatus.getOrDefault(ApprovalStatus.APPROVED_LEVEL2, 0L);
-        long rejected = countsByStatus.getOrDefault(ApprovalStatus.REJECTED, 0L)
-                + countsByStatus.getOrDefault(ApprovalStatus.REJECTED_LEVEL1, 0L)
-                + countsByStatus.getOrDefault(ApprovalStatus.REJECTED_LEVEL2, 0L);
-        long all = draft + pending + approvedL1 + approved + rejected;
+        long rejectedL1 = countsByStatus.getOrDefault(ApprovalStatus.REJECTED_LEVEL1, 0L)
+                + countsByStatus.getOrDefault(ApprovalStatus.REJECTED, 0L);
+        long rejectedL2 = countsByStatus.getOrDefault(ApprovalStatus.REJECTED_LEVEL2, 0L);
+        long all = draft + pending + approvedL1 + approved + rejectedL1 + rejectedL2;
 
+        // Chuẩn tên Enum (khớp hoàn toàn với VTS)
+        result.put("ALL", all);
+        result.put(ApprovalStatus.DRAFT.name(), draft);
+        result.put(ApprovalStatus.PENDING_APPROVAL.name(), pending);
+        result.put(ApprovalStatus.APPROVED_LEVEL1.name(), approvedL1);
+        result.put(ApprovalStatus.APPROVED.name(), approved);
+        result.put(ApprovalStatus.REJECTED_LEVEL1.name(), rejectedL1);
+        result.put(ApprovalStatus.REJECTED_LEVEL2.name(), rejectedL2);
+
+        // Backward compatibility keys
         result.put("all", all);
         result.put("draft", draft);
         result.put("pending", pending);
         result.put("approvedL1", approvedL1);
         result.put("approved", approved);
-        result.put("rejected", rejected);
+        result.put("rejectedLevel1", rejectedL1);
+        result.put("rejectedLevel2", rejectedL2);
+        result.put("rejected", rejectedL1 + rejectedL2);
 
         return result;
     }
@@ -220,15 +280,12 @@ public class CoastalStationLRITService {
 
         CoastalStationLRIT entity = new CoastalStationLRIT();
         entity.setOrgUnitId(targetOrgUnitId);
-        entity.setUnitId(targetOrgUnitId);
         entity.setOperatingOrgId(request.getOperatingOrgId());
         entity.setProvinceId(request.getProvinceId());
         entity.setCode(code);
-        entity.setStationCode(code);
-        entity.setName(request.getName() != null ? request.getName() : request.getStationName());
-        entity.setStationName(entity.getName());
+        entity.setName(request.getName());
         entity.setLocationAddress(request.getLocationAddress());
-        entity.setConditionStatus(request.getConditionStatus() != null ? request.getConditionStatus() : "OPERATIONAL");
+        entity.setConditionStatus(request.getConditionStatus() != null ? request.getConditionStatus() : ConditionStatus.OPERATIONAL);
         entity.setStatus(StationStatus.DRAFT);
         entity.setApprovalStatus(ApprovalStatus.DRAFT);
 
@@ -247,12 +304,11 @@ public class CoastalStationLRITService {
         entity.setContactPhone(request.getContactPhone());
 
         // GIS
-        entity.setGeometryType(request.getGeometryType() != null ? request.getGeometryType() : "POINT");
-        entity.setSymbol(request.getSymbol());
-        entity.setCoordinateSystem(request.getCoordinateSystem() != null ? request.getCoordinateSystem() : "WGS84");
-        entity.setDisplayRule(request.getDisplayRule());
-        entity.setLatitude(request.getLatitude());
-        entity.setLongitude(request.getLongitude());
+        if (request.getSymbolId() != null) {
+            entity.setSymbolId(request.getSymbolId());
+        } else if (request.getSymbol() != null) {
+            entity.setSymbol(request.getSymbol());
+        }
 
         CoastalStationLRIT saved = repository.save(entity);
 
@@ -383,7 +439,6 @@ public class CoastalStationLRITService {
         if (request.getOrgUnitId() != null) {
             validateAllowedOrgUnit(request.getOrgUnitId());
             entity.setOrgUnitId(request.getOrgUnitId());
-            entity.setUnitId(request.getOrgUnitId());
         }
 
         if (request.getCode() != null && repository.existsByCodeAndIdNotAndDeletedAtIsNull(request.getCode().trim(), id)) {
@@ -394,7 +449,6 @@ public class CoastalStationLRITService {
         if (request.getProvinceId() != null) entity.setProvinceId(request.getProvinceId());
         if (request.getName() != null) {
             entity.setName(request.getName());
-            entity.setStationName(request.getName());
         }
         if (request.getLocationAddress() != null) entity.setLocationAddress(request.getLocationAddress());
         if (request.getConditionStatus() != null) entity.setConditionStatus(request.getConditionStatus());
@@ -413,14 +467,12 @@ public class CoastalStationLRITService {
         if (request.getContactPerson() != null) entity.setContactPerson(request.getContactPerson());
         if (request.getContactPhone() != null) entity.setContactPhone(request.getContactPhone());
 
-        if (request.getGeometryType() != null) entity.setGeometryType(request.getGeometryType());
-        if (request.getSymbol() != null) entity.setSymbol(request.getSymbol());
-        if (request.getCoordinateSystem() != null) entity.setCoordinateSystem(request.getCoordinateSystem());
-        if (request.getDisplayRule() != null) entity.setDisplayRule(request.getDisplayRule());
+        if (request.getSymbolId() != null) {
+            entity.setSymbolId(request.getSymbolId());
+        } else if (request.getSymbol() != null) {
+            entity.setSymbol(request.getSymbol());
+        }
         GisGeometryType geomType = toGisGeometryType(request.getGeometryType());
-
-        if (request.getLatitude() != null) entity.setLatitude(request.getLatitude());
-        if (request.getLongitude() != null) entity.setLongitude(request.getLongitude());
 
         // coordinates != null means the caller intentionally changed GIS. An
         // empty string clears the old spatial object; omitting the property
@@ -536,15 +588,21 @@ public class CoastalStationLRITService {
      * hình lịch sử hiện tiếng Anh, và tìm kiếm nhật ký theo "dừng hoạt động"
      * không bao giờ khớp vì trong CSDL không có chuỗi đó.
      */
+    private String formatConditionStatusDisplay(ConditionStatus conditionStatus) {
+        if (conditionStatus == null) return "—";
+        return switch (conditionStatus) {
+            case OPERATIONAL -> "Đang hoạt động";
+            case STOPPED -> "Dừng hoạt động";
+            case MAINTENANCE -> "Đang bảo trì";
+            case UNDER_CONSTRUCTION -> "Đang xây dựng";
+        };
+    }
+
     private String formatConditionStatusDisplay(String conditionStatus) {
         if (conditionStatus == null || conditionStatus.isBlank()) return "—";
-        return switch (conditionStatus.trim().toUpperCase()) {
-            case "OPERATIONAL", "1" -> "Đang hoạt động";
-            case "STOPPED", "0" -> "Dừng hoạt động";
-            case "MAINTENANCE" -> "Đang bảo trì";
-            case "UNDER_CONSTRUCTION", "2" -> "Đang xây dựng";
-            default -> conditionStatus;
-        };
+        ConditionStatus cs = parseConditionStatus(conditionStatus);
+        if (cs != null) return formatConditionStatusDisplay(cs);
+        return conditionStatus;
     }
 
     /** Tương tự: lưu tên tỉnh/thành thay cho số ID vốn vô nghĩa với người đọc. */
@@ -751,8 +809,14 @@ public class CoastalStationLRITService {
         String approver2Name = resolveUserName(entity.getApproverLevel2());
 
         String coords = gisSpatialObjectService != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
-        if (coords == null && entity.getLatitude() != null && entity.getLongitude() != null) {
-            coords = "POINT(" + entity.getLongitude() + " " + entity.getLatitude() + ")";
+        BigDecimal lat = entity.getLatitude();
+        BigDecimal lng = entity.getLongitude();
+        if ((lat == null || lng == null) && coords != null && !coords.isBlank()) {
+            BigDecimal[] pt = extractFirstCoordinate(coords);
+            if (pt != null) {
+                lat = pt[0];
+                lng = pt[1];
+            }
         }
 
         return CoastalStationLRITResponse.builder()
@@ -762,12 +826,13 @@ public class CoastalStationLRITService {
                 .operatingOrgId(entity.getOperatingOrgId())
                 .operatingOrgName(opOrgName)
                 .provinceId(entity.getProvinceId())
-                .code(entity.getCode() != null ? entity.getCode() : entity.getStationCode())
-                .stationCode(entity.getCode() != null ? entity.getCode() : entity.getStationCode())
-                .name(entity.getName() != null ? entity.getName() : entity.getStationName())
-                .stationName(entity.getName() != null ? entity.getName() : entity.getStationName())
+                .code(entity.getCode())
+                .stationCode(entity.getCode())
+                .name(entity.getName())
+                .stationName(entity.getName())
                 .locationAddress(entity.getLocationAddress())
                 .conditionStatus(entity.getConditionStatus())
+                .conditionStatusLabel(formatConditionStatusDisplay(entity.getConditionStatus()))
                 .status(entity.getStatus())
                 .terminalId(entity.getTerminalId())
                 .imoNumber(entity.getImoNumber())
@@ -783,12 +848,13 @@ public class CoastalStationLRITService {
                 .contactPerson(entity.getContactPerson())
                 .contactPhone(entity.getContactPhone())
                 .spatialId(entity.getSpatialId())
+                .symbolId(entity.getSymbolId())
                 .geometryType(entity.getGeometryType())
                 .symbol(entity.getSymbol())
                 .coordinateSystem(entity.getCoordinateSystem())
                 .displayRule(entity.getDisplayRule())
-                .latitude(entity.getLatitude())
-                .longitude(entity.getLongitude())
+                .latitude(lat)
+                .longitude(lng)
                 .coordinates(coords)
                 .approvalStatus(entity.getApprovalStatus())
                 .submittedAt(entity.getSubmittedAt())

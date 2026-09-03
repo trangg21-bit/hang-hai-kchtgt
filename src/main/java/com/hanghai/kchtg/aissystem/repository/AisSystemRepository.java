@@ -53,7 +53,9 @@ public interface AisSystemRepository extends JpaRepository<AisSystem, UUID> {
           AND (:commissioningYear IS NULL OR t.commissioningYear = :commissioningYear)
           AND (:approvalStatus IS NULL
                OR t.approvalStatus = :approvalStatus
-               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)))
+               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED))
+               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PENDING_APPROVAL AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PENDING_APPROVAL OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PROPOSED))
+               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)))
           AND (CAST(:updatedFrom AS timestamp) IS NULL OR t.updatedAt >= :updatedFrom)
           AND (CAST(:updatedTo AS timestamp) IS NULL OR t.updatedAt <= :updatedTo)
           AND (CAST(:name AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(t.name)) AS string) LIKE CAST(:name AS string))
@@ -198,6 +200,7 @@ public interface AisSystemRepository extends JpaRepository<AisSystem, UUID> {
         FROM AisSystem t
         WHERE t.deletedAt IS NULL
           AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
+          AND (t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.OPERATIONAL)
           AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgFiltered = false OR t.orgUnitId IN :targetOrgUnitIds)
         ORDER BY t.name ASC

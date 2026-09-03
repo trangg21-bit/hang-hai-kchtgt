@@ -5,7 +5,6 @@ import com.hanghai.kchtg.common.dto.OperatingOrganizationOptionResponse;
 import com.hanghai.kchtg.common.entity.OperatingOrganization;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.port.entity.Port;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.vtssystem.dto.VtsSystemOptionResponse;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;

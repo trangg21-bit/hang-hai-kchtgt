@@ -508,7 +508,7 @@ export function buildScadaCollapseItems(
   // 3. GIS
   items.push({
     key: 'gis',
-    label: '3. GIS',
+    label: '3. Thông tin vị trí',
     children: (
       <Row gutter={[spaceMd, 0]}>
         <DetailInfoRow
@@ -2481,12 +2481,12 @@ const ScadaListPage = () => {
                         { key: 'approvalContentLevel2', label: 'Nội dung phê duyệt', value: selectedRecord.approvalContentLevel2 || '—', fullWidth: true },
                         { key: 'approvedDateLevel2', label: 'Ngày phê duyệt cấp Cục', value: selectedRecord.approvedDateLevel2 ? formatDate(selectedRecord.approvedDateLevel2) : '—' },
                         { key: 'approvedByLevel2', label: 'Cán bộ phê duyệt cấp Cục', value: selectedRecord.approverLevel2Name || '—' },
-                        { key: 'approvalContentExtra', label: 'Nội dung phê duyệt', value: selectedRecord.rejectionReason || '—', fullWidth: true },
+                        ...(selectedRecord.rejectionReason ? [{ key: 'rejectionReason', label: 'Lý do từ chối', value: selectedRecord.rejectionReason, fullWidth: true, color: statusCritical }] : []),
                         { key: 'status', label: 'Trạng thái', value: renderApprovalBadge(selectedRecord.approvalStatus), fullWidth: true },
                       ].map((row) => (
                         <div key={row.key} className="detail-row" style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
                           <span className="detail-label">{row.label}</span>
-                          <span className="detail-value">{row.value}</span>
+                          <span className="detail-value" style={row.color ? { color: row.color } : undefined}>{row.value}</span>
                         </div>
                       ))}
                     </div>

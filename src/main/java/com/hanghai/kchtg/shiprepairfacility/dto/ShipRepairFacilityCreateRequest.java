@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.shiprepairfacility.dto;
 
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.shiprepairfacility.entity.FacilityType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

@@ -93,6 +93,7 @@ class VtsSystemServiceTest {
                 .owningOrgId(UUID.fromString("00000000-0000-0000-0000-000000000011"))
                 .operatingOrgId(UUID.fromString("00000000-0000-0000-0000-000000000012"))
                 .provinceId(1)
+                .maritimeNotice("TBHH 01")
                 .build();
     }
 
@@ -131,6 +132,7 @@ class VtsSystemServiceTest {
                 .owningOrgId(UUID.fromString("00000000-0000-0000-0000-000000000011"))
                 .operatingOrgId(UUID.fromString("00000000-0000-0000-0000-000000000012"))
                 .provinceId(1)
+                .maritimeNotice("TBHH 01")
                 .zones(List.of(zoneDto))
                 .build();
 
@@ -542,6 +544,7 @@ class VtsSystemServiceTest {
                 .owningOrgId(UUID.fromString("00000000-0000-0000-0000-000000000011"))
                 .operatingOrgId(UUID.fromString("00000000-0000-0000-0000-000000000012"))
                 .provinceId(1)
+                .maritimeNotice("TBHH 01")
                 .build();
 
         VtsSystem saved = VtsSystem.builder()
@@ -566,6 +569,7 @@ class VtsSystemServiceTest {
                 .owningOrgId(UUID.fromString("00000000-0000-0000-0000-000000000011"))
                 .operatingOrgId(UUID.fromString("00000000-0000-0000-0000-000000000012"))
                 .provinceId(1)
+                .maritimeNotice("TBHH 01")
                 .build();
 
         VtsSystem saved = VtsSystem.builder()

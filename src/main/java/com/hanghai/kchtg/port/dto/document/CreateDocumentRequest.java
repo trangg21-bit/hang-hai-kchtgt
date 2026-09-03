@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.port.dto.document;
 
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

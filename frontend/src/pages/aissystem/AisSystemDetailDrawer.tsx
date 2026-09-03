@@ -13,7 +13,6 @@ import type {
 } from '../../types/aisSystem';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import { UNIT_OF_MEASURE_MAP } from '../../types/aisSystem';
-import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { aisSystemService } from '../../services/aisSystemService';
 import {
   ConditionStatus,
@@ -49,7 +48,7 @@ interface CoordinateItem {
   longitude: number | null;
 }
 
-const ddToDms = (dd: number | null | undefined) => {
+const formatDms = (dd: number | null | undefined) => {
   if (dd == null || isNaN(dd)) return { d: 0, m: 0, s: 0 };
   const abs = Math.abs(dd);
   const d = Math.floor(abs);
@@ -169,22 +168,17 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
   const parsedCoords = parseWktToCoordinates(record?.coordinates);
 
   const isDraft = record?.approvalStatus === ApprovalStatus.DRAFT || record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL2;
-  const isApprovedL1 = record?.approvalStatus === ApprovalStatus.APPROVED_LEVEL1;
-  const isApproved = record?.approvalStatus === ApprovalStatus.APPROVED;
-
-  const isRejectedC1 = record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL1;
-  const isRejectedC2 = record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL2;
 
   const submittedDate = !isDraft && record ? (record.updatedAt ? dayjs(record.updatedAt).format('DD/MM/YYYY HH:mm:ss') : (record.createdAt ? dayjs(record.createdAt).format('DD/MM/YYYY HH:mm:ss') : '—')) : '—';
   const submittedByName = !isDraft && record ? (record.createdByName || '—') : '—';
 
-  const approvedDateC1 = (isApprovedL1 || isApproved || isRejectedC1) && record?.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—';
-  const approverC1Name = (isApprovedL1 || isApproved || isRejectedC1) ? (record?.approverLevel1Name || '—') : '—';
-  const approvalContentC1 = isRejectedC1 ? (record?.rejectionReason || 'Từ chối phê duyệt') : (isApprovedL1 || isApproved ? 'Đồng ý phê duyệt' : '—');
+  const approvedDateC1 = record?.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—';
+  const approverC1Name = record?.approverLevel1Name || record?.approverLevel1 || '—';
+  const approvalContentC1 = record?.approvalContentLevel1 || record?.approvalReasonLevel1 || '—';
 
-  const approvedDateC2 = (isApproved || isRejectedC2) && record?.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—';
-  const approverC2Name = (isApproved || isRejectedC2) ? (record?.approverLevel2Name || '—') : '—';
-  const approvalContentC2 = isRejectedC2 ? (record?.rejectionReason || 'Từ chối phê duyệt') : (isApproved ? 'Đồng ý phê duyệt' : '—');
+  const approvedDateC2 = record?.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—';
+  const approverC2Name = record?.approverLevel2Name || record?.approverLevel2 || '—';
+  const approvalContentC2 = record?.approvalContentLevel2 || record?.approvalReasonLevel2 || '—';
 
   const provinceDisplay = record?.provinceId ? (getProvinceNameById(record.provinceId) || record.provinceId) : (record?.provinceName || '—');
   const uomDisplay = record?.unitOfMeasure ? (UNIT_OF_MEASURE_MAP[record.unitOfMeasure] || record.unitOfMeasureLabel || record.unitOfMeasure) : (record?.unitOfMeasureLabel || '—');
@@ -213,13 +207,13 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
             </div>
             <div className="detail-row">
               <span className="detail-label">Thuộc TTDH VTS / Trạm Radar</span>
-              <span className="detail-value">{record?.attachedLocationName || record?.vtsOperationCenterName || record?.radarStationName || '—'}</span>
+              <span className="detail-value">{record?.vtsOperationCenterName || record?.radarStationName || '—'}</span>
             </div>
 
             {/* 5. Đơn vị khai thác & 6. Địa điểm (Tỉnh/TP) */}
             <div className="detail-row">
               <span className="detail-label">Đơn vị khai thác</span>
-              <span className="detail-value">{record?.operatingOrgName || DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === record?.operatingOrgId)?.name || '—'}</span>
+              <span className="detail-value">{record?.operatingOrgName || '—'}</span>
             </div>
             <div className="detail-row">
               <span className="detail-label">Địa điểm (Tỉnh/TP)</span>
@@ -287,7 +281,7 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
     },
     {
       key: 'gis',
-      label: 'Vị trí (GIS)',
+      label: 'Thông tin vị trí',
       children: (
         <div>
           <div className="chk-detail-grid" style={{ marginBottom: 12 }}>
@@ -318,22 +312,32 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
           </div>
           <DetailTable
             scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
-            dataSource={parsedCoords.map((c, i) => ({ key: i, index: i + 1, ...c }))}
-            rowKey="index"
-            emptyText="Chưa có dữ liệu tọa độ"
+            dataSource={parsedCoords}
             columns={[
-              { title: 'STT', dataIndex: 'index', width: 60, align: 'center' },
-              { title: 'Kinh độ (Độ thập phân)', dataIndex: 'longitude', render: (val) => (val != null ? val.toFixed(6) : '—') },
-              { title: 'Vĩ độ (Độ thập phân)', dataIndex: 'latitude', render: (val) => (val != null ? val.toFixed(6) : '—') },
-              { title: 'Kinh độ (DMS)', dataIndex: 'longitude', render: (val) => ddToDms(val) },
-              { title: 'Vĩ độ (DMS)', dataIndex: 'latitude', render: (val) => ddToDms(val) },
+              {
+                title: 'STT',
+                dataIndex: 'index',
+                width: 60,
+                align: 'center',
+                render: (_: any, __: any, index: number) => index + 1,
+              },
+              {
+                title: 'Vĩ độ (Latitude - N)',
+                dataIndex: 'latitude',
+                render: (val: number) => (val != null ? `${formatDms(val)} N` : '—'),
+              },
+              {
+                title: 'Kinh độ (Longitude - E)',
+                dataIndex: 'longitude',
+                render: (val: number) => (val != null ? `${formatDms(val)} E` : '—'),
+              },
             ]}
           />
         </div>
       ),
     },
     {
-      key: 'attachment',
+      key: 'attachments',
       label: 'File đính kèm',
       children: (
         <InfrastructureAttachmentTab
@@ -350,7 +354,7 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
     },
     {
       key: 'audit',
-      label: 'Trạng thái & Kiểm toán',
+      label: 'Xử lý & theo dõi',
       children: (
         <div style={{ paddingTop: 16 }}>
           <div className="detail-grid">
@@ -385,23 +389,21 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
               <span className="detail-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
               <span className="detail-value">{approverC1Name}</span>
             </div>
+            <div className="detail-row detail-row--full">
+              <span className="detail-label">Nội dung phê duyệt</span>
+              <span className="detail-value">{approvalContentC1}</span>
+            </div>
+
             <div className="detail-row">
               <span className="detail-label">Ngày phê duyệt cấp Cục</span>
               <span className="detail-value">{approvedDateC2}</span>
             </div>
-
-            <div className="detail-row detail-row--full">
+            <div className="detail-row">
               <span className="detail-label">Cán bộ phê duyệt cấp Cục</span>
               <span className="detail-value">{approverC2Name}</span>
             </div>
-
             <div className="detail-row detail-row--full">
-              <span className="detail-label">Nội dung phê duyệt cấp Cảng vụ/Chi cục</span>
-              <span className="detail-value">{approvalContentC1}</span>
-            </div>
-
-            <div className="detail-row detail-row--full">
-              <span className="detail-label">Nội dung phê duyệt cấp Cục</span>
+              <span className="detail-label">Nội dung phê duyệt</span>
               <span className="detail-value">{approvalContentC2}</span>
             </div>
           </div>

@@ -418,7 +418,7 @@ function renderGeneralTab(
     },
     {
       key: 'gis',
-      label: '3. Thông tin GIS',
+      label: '3. Thông tin vị trí',
       children: (
         <Row gutter={[spaceMd, 0]}>
           <InfoRow

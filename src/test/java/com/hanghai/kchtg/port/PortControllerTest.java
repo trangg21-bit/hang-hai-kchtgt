@@ -315,12 +315,12 @@ class PortControllerTest {
     @DisplayName("GET /api/v1/ports/{id}/history — returns 200 with history map")
     void getHistory_returns200() throws Exception {
         UUID id = UUID.randomUUID();
-        when(portApprovalService.getHistory(id)).thenReturn(List.of());
+        when(portApprovalService.getHistory(eq(id), any(), any(), any(), any(), any())).thenReturn(List.of());
 
         mockMvc.perform(get("/api/v1/ports/{id}/history", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(portApprovalService).getHistory(id);
+        verify(portApprovalService).getHistory(eq(id), any(), any(), any(), any(), any());
     }
 }

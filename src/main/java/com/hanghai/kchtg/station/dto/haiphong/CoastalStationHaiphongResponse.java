@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.station.dto.haiphong;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.station.entity.StationStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

@@ -20,8 +20,7 @@ WITH point_coordinates AS (
             'i'
         ) AS coordinate_parts
     FROM public.gis_spatial_objects spatial
-    WHERE spatial.deleted_at IS NULL
-      AND spatial.coordinates IS NOT NULL
+    WHERE spatial.coordinates IS NOT NULL
 )
 UPDATE public.coastal_station_lrit station
 SET longitude = COALESCE(station.longitude, point.coordinate_parts[1]::NUMERIC(10, 6)),
@@ -41,8 +40,7 @@ WITH point_coordinates AS (
             'i'
         ) AS coordinate_parts
     FROM public.gis_spatial_objects spatial
-    WHERE spatial.deleted_at IS NULL
-      AND spatial.coordinates IS NOT NULL
+    WHERE spatial.coordinates IS NOT NULL
 )
 UPDATE public.coastal_station_haiphong station
 SET longitude = COALESCE(station.longitude, point.coordinate_parts[1]::NUMERIC(10, 6)),

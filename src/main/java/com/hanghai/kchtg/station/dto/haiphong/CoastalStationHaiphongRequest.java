@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.station.dto.haiphong;
 
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;

@@ -286,7 +286,7 @@ function renderCoordinatesDisplay(val: string | null) {
         </span>
       )}
       {points.map((pt) => (
-        <div key={pt.index} style={{ fontSize: fontSizeSm, color: textPrimary, lineHeight: 1.5 }}>
+        <div key={pt.index} style={{ fontSize: fontSizeSm, color: textPrimary, lineHeight: 1.5, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
           {points.length > 1 && <span style={{ color: textSecondary, marginRight: spaceXs }}>#{pt.index}:</span>}
           <span>{formatCoordPointDms(pt.x, pt.y)}</span>
         </div>
@@ -357,7 +357,7 @@ export function renderCommonHistoryValueTag(field: string, val: string) {
     }
   }
 
-  return <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{val}</span>;
+  return <span style={{ color: textPrimary, fontWeight: fontWeightBold, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{val}</span>;
 }
 
 const drawerTitleStyle: React.CSSProperties = {
@@ -744,7 +744,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                   key={gIdx}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'minmax(310px, 0.38fr) minmax(0, 1fr)',
+                    gridTemplateColumns: '220px minmax(0, 1fr)',
                     gap: spaceLg,
                     alignItems: 'start',
                     marginBottom: gIdx < filteredGroups.length - 1 ? spaceMd : 0,
@@ -880,7 +880,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                                 return (
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
                                     {items.map((item, idx) => (
-                                      <div key={idx} style={{ color: textPrimary, fontWeight: fontWeightMedium, lineHeight: '20px', wordBreak: 'break-word' }}>
+                                      <div key={idx} style={{ color: textPrimary, fontWeight: fontWeightMedium, lineHeight: '20px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                                         {item}
                                       </div>
                                     ))}
@@ -897,18 +897,18 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                                 key={cIdx}
                                 style={{
                                   display: 'grid',
-                                  gridTemplateColumns: '170px minmax(100px, 1fr)',
+                                  gridTemplateColumns: '140px minmax(0, 1fr)',
                                   alignItems: 'flex-start',
                                   gap: spaceSm,
                                   fontSize: fontSizeMd,
                                   lineHeight: 1.6,
-                                  padding: '3px 0',
+                                  padding: '4px 0',
                                 }}
                               >
-                                <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>
+                                <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                                   {label ? `${label}:` : '—'}
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word', color: textPrimary }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', color: textPrimary }}>
                                   {renderFormattedContent(nv, false)}
                                 </div>
                               </div>
@@ -920,24 +920,24 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                               key={cIdx}
                               style={{
                                 display: 'grid',
-                                gridTemplateColumns: '170px minmax(100px, 1fr) 24px minmax(100px, 1fr)',
+                                gridTemplateColumns: '140px minmax(0, 1fr) 24px minmax(0, 1fr)',
                                 alignItems: 'flex-start',
                                 gap: spaceSm,
                                 fontSize: fontSizeMd,
                                 lineHeight: 1.6,
-                                padding: '3px 0',
+                                padding: '4px 0',
                               }}
                             >
-                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>
+                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                                 {label ? `${label}:` : '—'}
                               </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                                 {renderFormattedContent(ov, true)}
                               </div>
                               <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>
                                 →
                               </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                                 {renderFormattedContent(nv, false)}
                               </div>
                             </div>

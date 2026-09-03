@@ -228,6 +228,10 @@ public class AisSystemService {
                 .symbolId(symbolId)
                 .spatialId(request.getSpatialId())
                 .approvalStatus(initialStatus)
+                .approvedDateLevel1(initialStatus == ApprovalStatus.APPROVED ? LocalDateTime.now() : null)
+                .approverLevel1(initialStatus == ApprovalStatus.APPROVED ? userId : null)
+                .approvedDateLevel2(initialStatus == ApprovalStatus.APPROVED ? LocalDateTime.now() : null)
+                .approverLevel2(initialStatus == ApprovalStatus.APPROVED ? userId : null)
                 .createdBy(userId)
                 .updatedBy(userId)
                 .createdAt(LocalDateTime.now())
@@ -359,6 +363,15 @@ public class AisSystemService {
 
         if (wasApproved) {
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            LocalDateTime now = LocalDateTime.now();
+            if (entity.getApproverLevel1() == null) {
+                entity.setApprovedDateLevel1(now);
+                entity.setApproverLevel1(userId);
+            }
+            if (entity.getApproverLevel2() == null) {
+                entity.setApprovedDateLevel2(now);
+                entity.setApproverLevel2(userId);
+            }
         } else if (request.getApprovalStatus() != null) {
             // Chuyển thẳng sang "Đã duyệt" từ trạng thái chưa duyệt cũng là bỏ qua
             // 2 vòng — áp cùng ràng buộc cấp Cục như lúc tạo mới.
@@ -369,6 +382,13 @@ public class AisSystemService {
                                 + "các đơn vị khác phải gửi hồ sơ qua quy trình phê duyệt 2 cấp");
             }
             entity.setApprovalStatus(request.getApprovalStatus());
+            if (request.getApprovalStatus() == ApprovalStatus.APPROVED) {
+                LocalDateTime now = LocalDateTime.now();
+                entity.setApprovedDateLevel1(now);
+                entity.setApproverLevel1(userId);
+                entity.setApprovedDateLevel2(now);
+                entity.setApproverLevel2(userId);
+            }
         }
 
         entity.setUpdatedBy(userId);

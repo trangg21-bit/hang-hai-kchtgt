@@ -11,7 +11,6 @@ import com.hanghai.kchtg.security.service.TokenValidationService;
 import com.hanghai.kchtg.station.controller.CoastalStationInmarsatController;
 import com.hanghai.kchtg.station.dto.inmarsat.*;
 import com.hanghai.kchtg.station.entity.CoastalStationInmarsat;
-import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.service.CoastalStationInmarsatService;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -80,15 +79,10 @@ class CoastalStationInmarsatControllerTest {
         entity.setCode("INM-001");
         entity.setName("Inmarsat Station");
         entity.setStationName("Inmarsat Station");
-        entity.setModemType("Capsat");
         entity.setFrequency("1.6GHz");
         entity.setCoverageZone("Pacific");
-        entity.setSarCode("SAR-001");
         entity.setLocationAddress("123 Ocean Dr");
-        entity.setContactPerson("Jane Doe");
-        entity.setContactPhone("+84987654321");
         entity.setIsActive(true);
-        entity.setStatus(StationStatus.PENDING_APPROVAL);
         entity.setApprovalStatus(ApprovalStatus.PROPOSED);
         entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_0);
         return entity;
@@ -101,15 +95,10 @@ class CoastalStationInmarsatControllerTest {
                 .deviceCode("INM-001")
                 .name("Inmarsat Station")
                 .stationName("Inmarsat Station")
-                .modemType("Capsat")
                 .frequency("1.6GHz")
                 .coverageZone("Pacific")
-                .sarCode("SAR-001")
                 .locationAddress("123 Ocean Dr")
-                .contactPerson("Jane Doe")
-                .contactPhone("+84987654321")
-                .status(StationStatus.PENDING_APPROVAL)
-                .approvalStatus(ApprovalStatus.PROPOSED)
+                .approvalStatus(ApprovalStatus.PENDING_APPROVAL)
                 .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_0)
                 .build();
     }

@@ -64,7 +64,7 @@ public class InfrastructureApprovalService {
                 || currentStatus == ApprovalStatus.REJECTED;
 
         if (!canSubmit) {
-            throw new IllegalStateException("Chỉ có thể gửi duyệt hồ sơ ở trạng thái Lưu tạm hoặc Bị trả về. Trạng thái hiện tại: "
+            throw new IllegalStateException("Chỉ có thể gửi duyệt hồ sơ ở trạng thái Lưu tạm hoặc Bị từ chối. Trạng thái hiện tại: "
                     + currentStatus.getLabel());
         }
 
@@ -115,7 +115,7 @@ public class InfrastructureApprovalService {
 
         ApprovalStatus currentStatus = entity.getApprovalStatus();
         if (currentStatus != ApprovalStatus.PENDING_APPROVAL && currentStatus != ApprovalStatus.PROPOSED) {
-            throw new IllegalStateException("Chỉ có thể phê duyệt cấp Cảng vụ từ trạng thái 'Chờ Cảng vụ duyệt'");
+            throw new IllegalStateException("Chỉ có thể phê duyệt cấp Cảng vụ từ trạng thái 'Chờ phê duyệt cấp Cảng vụ/Chi cục'");
         }
 
         // Quy tắc chống tự duyệt (BR-015): Đối với tài khoản cấp dưới, người tạo không được tự phê duyệt
@@ -132,8 +132,7 @@ public class InfrastructureApprovalService {
             entity.setRejectionReason(reason.trim());
             entity.setApproverLevel1(null);
             entity.setApprovedDateLevel1(null);
-            // #54 — nội dung trả về vẫn được ghi
-            entity.setLevel1ApprovalContent(reason.trim());
+            entity.setLevel1ApprovalContent(null);
             // Lịch sử chỉ ghi khi phê duyệt cấp cuối — không ghi reject L1.
         } else if (isApproveDecision(decision)) {
             // Đồng ý vòng 1 (T06) -> Chuyển sang Chờ Cục duyệt (APPROVED_LEVEL1)
@@ -162,7 +161,7 @@ public class InfrastructureApprovalService {
         ApprovalStatus currentStatus = entity.getApprovalStatus();
         if (currentStatus != ApprovalStatus.APPROVED_LEVEL1
                 && !(currentStatus == ApprovalStatus.PENDING_APPROVAL && entity.getApproverLevel1() != null)) {
-            throw new IllegalStateException("Chỉ có thể phê duyệt cấp Cục từ trạng thái 'Chờ Cục duyệt'");
+            throw new IllegalStateException("Chỉ có thể phê duyệt cấp Cục từ trạng thái 'Chờ phê duyệt cấp Cục'");
         }
 
         // Quy tắc: Người duyệt C2 không được trùng người duyệt C1
@@ -185,8 +184,7 @@ public class InfrastructureApprovalService {
             entity.setRejectionReason(reason.trim());
             entity.setApproverLevel2(null);
             entity.setApprovedDateLevel2(null);
-            // #57 — nội dung trả về vẫn được ghi
-            entity.setLevel2ApprovalContent(reason.trim());
+            entity.setLevel2ApprovalContent(null);
             // Lịch sử chỉ ghi khi phê duyệt cấp cuối — không ghi reject L2.
         } else if (isApproveDecision(decision)) {
             // Đồng ý vòng 2 (T08) -> Đã duyệt (APPROVED)
@@ -331,9 +329,12 @@ public class InfrastructureApprovalService {
             throw new IllegalArgumentException("Dữ liệu hồ sơ không được để trống");
         }
 
+        LocalDateTime now = LocalDateTime.now();
         entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        entity.setApproverLevel1(userId);
+        entity.setApprovedDateLevel1(now);
         entity.setApproverLevel2(userId);
-        entity.setApprovedDateLevel2(LocalDateTime.now());
+        entity.setApprovedDateLevel2(now);
 
         recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_2,
                 InfrastructureHistoryStatus.UPDATED, userId, changeDescription,
@@ -350,9 +351,12 @@ public class InfrastructureApprovalService {
         }
 
         ApprovalStatus currentStatus = entity.getApprovalStatus() != null ? entity.getApprovalStatus() : ApprovalStatus.DRAFT;
+        LocalDateTime now = LocalDateTime.now();
         entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        entity.setApproverLevel1(userId);
+        entity.setApprovedDateLevel1(now);
         entity.setApproverLevel2(userId);
-        entity.setApprovedDateLevel2(LocalDateTime.now());
+        entity.setApprovedDateLevel2(now);
 
         // Lịch sử chỉ ghi khi chỉnh sửa dữ liệu — không ghi khi chỉ chuyển trạng thái.
     }

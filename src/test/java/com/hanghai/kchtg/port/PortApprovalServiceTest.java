@@ -161,7 +161,7 @@ class PortApprovalServiceTest {
     @Test
     @DisplayName("F-013: getHistory — trả về changeHistory và approvalLog từ infrastructure_history")
     void getHistory_returnsPersistedRows() {
-        when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
+        when(portRepository.existsById(testId)).thenReturn(true);
 
         // Dòng có changedField => nhật ký thay đổi
         InfrastructureHistory changeRow = new InfrastructureHistory();
@@ -182,6 +182,7 @@ class PortApprovalServiceTest {
         approvalRow.setApprovalLevel(ApprovalLevel.LEVEL_2);
         approvalRow.setApprovedDate(LocalDateTime.now());
 
+        when(portRepository.existsById(testId)).thenReturn(true);
         when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SEAPORT, testId))
                 .thenReturn(List.of(changeRow, approvalRow));
 
@@ -202,7 +203,7 @@ class PortApprovalServiceTest {
     @Test
     @DisplayName("F-013: getHistory — danh sách rỗng khi chưa có nhật ký")
     void getHistory_emptyWhenNoRecords() {
-        when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
+        when(portRepository.existsById(testId)).thenReturn(true);
         when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SEAPORT, testId))
                 .thenReturn(List.of());
 
@@ -214,7 +215,7 @@ class PortApprovalServiceTest {
     @Test
     @DisplayName("F-013: getHistory — throws EntityNotFoundException when entity missing")
     void getHistory_entityNotFound_throws() {
-        when(portRepository.findById(testId)).thenReturn(Optional.empty());
+        when(portRepository.existsById(testId)).thenReturn(false);
 
         assertThrows(EntityNotFoundException.class, () -> approvalService.getHistory(testId));
     }

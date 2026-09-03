@@ -4,7 +4,7 @@ import { inmarsatStationService } from '../../../services/inmarsatStationService
 import { organizationService } from '../../../services/organizationService';
 
 import type { CoastalStationInmarsatResponse } from '../../../services/station/types';
-import { ConditionStatus, CONDITION_STATUS_MAP, CONDITION_STATUS_OPTIONS } from '../../../types/vtsSystem';
+import { ConditionStatus, CONDITION_STATUS_MAP, CONDITION_STATUS_OPTIONS, ApprovalStatus } from '../../../types/vtsSystem';
 import { useAuthStore } from '../../../store/authStore';
 import { usePermissionStore } from '../../../store/permissionStore';
 import { ScreenHeader, DataTable } from '../../../components/list-view';
@@ -95,9 +95,10 @@ const formatHistoryValue = (field: string, val: any): string => {
 /** Số bản ghi nhật ký mỗi lần cuộn tải thêm trong drawer lịch sử. */
 const HISTORY_PAGE_SIZE = 20;
 
-const CONDITION_COLOR: Record<ConditionStatus, string> = {
+const CONDITION_COLOR: Record<string, string> = {
   [ConditionStatus.OPERATIONAL]: statusOperational,
   [ConditionStatus.STOPPED]: statusCritical,
+  NOT_OPERATIONAL: statusCritical,
   [ConditionStatus.MAINTENANCE]: statusAttention,
   [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
 };
@@ -107,11 +108,11 @@ export const InmarsatStationList = () => {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
 
   // Filters
-  const [activeTab, setActiveTab] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<string>('ALL');
   const [filterCollapsed, setFilterCollapsed] = useState<boolean>(false);
 
   const [filterOrgUnitId, setFilterOrgUnitId] = useState<string | undefined>();
@@ -195,12 +196,7 @@ export const InmarsatStationList = () => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      let approvalStatusParam: string | undefined = undefined;
-      if (activeTab === 'draft') approvalStatusParam = 'DRAFT';
-      else if (activeTab === 'proposed') approvalStatusParam = 'PENDING_APPROVAL';
-      else if (activeTab === 'approved_level1') approvalStatusParam = 'APPROVED_LEVEL1';
-      else if (activeTab === 'approved_level2') approvalStatusParam = 'APPROVED';
-      else if (activeTab === 'rejected') approvalStatusParam = 'REJECTED';
+      const approvalStatusParam = (activeTab === 'ALL' || activeTab === 'all') ? undefined : activeTab;
 
       const res = await inmarsatStationService.search({
         name: filterName?.trim() || undefined,
@@ -270,7 +266,7 @@ export const InmarsatStationList = () => {
   const handleDelete = (rec: CoastalStationInmarsatResponse) => {
     Modal.confirm({
       title: 'Xác nhận xóa',
-      content: `Bạn có chắc chắn muốn xóa Đài Inmarsat "${rec.name || rec.stationName || rec.code}" không?`,
+      content: `Bạn có chắc chắn muốn xóa Đài Inmarsat "${rec.name || rec.code}" không?`,
       okText: 'Xóa',
       cancelText: 'Hủy',
       okButtonProps: { danger: true, style: { borderRadius: radiusPill, height: 36 } },
@@ -443,23 +439,22 @@ export const InmarsatStationList = () => {
   // dùng `??`: `??` chỉ lấy khóa đầu tiên khác null nên khi cả hai mã cùng có dữ
   // liệu thì tab đếm thiếu. Riêng "Từ chối" trước đây chỉ đọc mã cũ `REJECTED`
   // trong khi luồng từ chối luôn ghi REJECTED_LEVEL1/LEVEL2, nên tab luôn bằng 0.
-  const sumCounts = (...keys: string[]) =>
-    keys.reduce((sum, key) => sum + Number(statusCounts?.[key] ?? 0), 0);
-
-  const totalDraft = sumCounts('DRAFT', 'draft');
-  const totalProposed = sumCounts('PENDING_APPROVAL', 'PROPOSED', 'pending');
-  const totalApprovedL1 = sumCounts('APPROVED_LEVEL1', 'approved_level1');
-  const totalApprovedL2 = sumCounts('APPROVED', 'APPROVED_LEVEL2', 'approved');
-  const totalRejected = sumCounts('REJECTED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2', 'rejected');
-  const totalAll = totalDraft + totalProposed + totalApprovedL1 + totalApprovedL2 + totalRejected;
+  const countDraft = Number(statusCounts['DRAFT'] || statusCounts['draft'] || 0);
+  const countPendingApproval = Number(statusCounts['PENDING_APPROVAL'] || 0) + Number(statusCounts['PROPOSED'] || 0) + Number(statusCounts['pending'] || 0);
+  const countApprovedLevel1 = Number(statusCounts['APPROVED_LEVEL1'] || statusCounts['approved_level1'] || 0);
+  const countApproved = Number(statusCounts['APPROVED'] || statusCounts['APPROVED_LEVEL2'] || statusCounts['approved'] || 0);
+  const countRejectedLevel1 = Number(statusCounts['REJECTED_LEVEL1'] || statusCounts['REJECTED'] || 0);
+  const countRejectedLevel2 = Number(statusCounts['REJECTED_LEVEL2'] || 0);
+  const countAll = countDraft + countPendingApproval + countApprovedLevel1 + countApproved + countRejectedLevel1 + countRejectedLevel2;
 
   const statusTabs = [
-    { key: 'all', label: 'Tất cả', count: totalAll || total, color: actionPrimary, active: activeTab === 'all' },
-    { key: 'draft', label: 'Lưu tạm', count: totalDraft, color: statusDraft, active: activeTab === 'draft' },
-    { key: 'proposed', label: 'Chờ Cảng vụ duyệt', count: totalProposed, color: statusAttention, active: activeTab === 'proposed' },
-    { key: 'approved_level1', label: 'Chờ Cục duyệt', count: totalApprovedL1, color: actionPrimary, active: activeTab === 'approved_level1' },
-    { key: 'approved_level2', label: 'Đã duyệt', count: totalApprovedL2, color: statusOperational, active: activeTab === 'approved_level2' },
-    { key: 'rejected', label: 'Từ chối', count: totalRejected, color: statusCritical, active: activeTab === 'rejected' },
+    { key: 'ALL', label: 'Tất cả', count: countAll || total, color: actionPrimary, active: activeTab === 'ALL' || activeTab === 'all' },
+    { key: ApprovalStatus.DRAFT, label: 'Lưu tạm', count: countDraft, color: statusDraft, active: activeTab === ApprovalStatus.DRAFT },
+    { key: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', count: countPendingApproval, color: statusAttention, active: activeTab === ApprovalStatus.PENDING_APPROVAL },
+    { key: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ phê duyệt cấp Cục', count: countApprovedLevel1, color: '#0284C7', active: activeTab === ApprovalStatus.APPROVED_LEVEL1 },
+    { key: ApprovalStatus.APPROVED, label: 'Đã phê duyệt', count: countApproved, color: statusOperational, active: activeTab === ApprovalStatus.APPROVED },
+    { key: ApprovalStatus.REJECTED_LEVEL1, label: 'Từ chối cấp Cảng vụ/Chi cục', count: countRejectedLevel1, color: statusCritical, active: activeTab === ApprovalStatus.REJECTED_LEVEL1 },
+    { key: ApprovalStatus.REJECTED_LEVEL2, label: 'Từ chối cấp Cục', count: countRejectedLevel2, color: statusCritical, active: activeTab === ApprovalStatus.REJECTED_LEVEL2 },
   ];
 
   // Table columns definition
@@ -480,7 +475,7 @@ export const InmarsatStationList = () => {
       key: 'name',
       label: 'Tên / Mã đài',
       dataIndex: 'name',
-      width: 260,
+      width: 300,
       fixed: 'left' as const,
       sortable: true,
       sorter: serverSideSorter,
@@ -490,8 +485,8 @@ export const InmarsatStationList = () => {
           style={{ cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
           onClick={() => handleOpenDetail(record)}
         >
-          <div style={cellTitleStyle} title={record.name || record.stationName || ''}>{record.name || record.stationName || '—'}</div>
-          <div style={cellSubtitleStyle} title={record.code || record.deviceCode || ''}>{record.code || record.deviceCode || '—'}</div>
+          <div style={cellTitleStyle} title={record.name || ''}>{record.name || '—'}</div>
+          <div style={cellSubtitleStyle} title={record.code || ''}>{record.code || '—'}</div>
         </div>
       ),
     },
@@ -499,7 +494,7 @@ export const InmarsatStationList = () => {
       key: 'orgUnitName',
       label: 'Đơn vị quản lý',
       dataIndex: 'orgUnitName',
-      width: 200,
+      width: 240,
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('orgUnitName'),
@@ -548,7 +543,7 @@ export const InmarsatStationList = () => {
       label: 'Tình trạng',
       dataIndex: 'conditionStatus',
       width: 160,
-      align: 'center' as const,
+      align: 'left' as const,
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('conditionStatus'),
@@ -574,10 +569,11 @@ export const InmarsatStationList = () => {
     },
     {
       key: 'approvalStatus',
-      label: 'Trạng thái phê duyệt',
+      label: 'Trạng thái',
       dataIndex: 'approvalStatus',
-      width: 180,
-      align: 'center' as const,
+      width: 280,
+      align: 'left' as const,
+      ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('approvalStatus'),
@@ -856,6 +852,10 @@ export const InmarsatStationList = () => {
                 scroll={{ x: 'max-content' }}
                 emptyText="Không có dữ liệu Đài Inmarsat"
                 rowActions={(rec) => {
+                  const currentUserId = user?.userId || user?.id;
+                  const isCreator = Boolean(currentUserId && rec.createdBy === currentUserId);
+                  const isApproverL1 = Boolean(currentUserId && rec.approverLevel1 === currentUserId);
+
                   const isPendingL1 = rec.approvalStatus === 'PROPOSED' || rec.approvalStatus === 'PENDING' || rec.approvalStatus === 'PENDING_APPROVAL';
                   const isPendingL2 = rec.approvalStatus === 'APPROVED_LEVEL1';
                   const isDraftOrRejected = rec.approvalStatus === 'DRAFT' || rec.approvalStatus === 'REJECTED' || rec.approvalStatus === 'REJECTED_LEVEL1' || rec.approvalStatus === 'REJECTED_LEVEL2';
@@ -873,76 +873,97 @@ export const InmarsatStationList = () => {
                     extraDeletePerms: ['specialstation:delete', 'data:delete', 'admin:all'],
                   });
 
-                  return [
-                    {
-                      key: 'view',
-                      label: 'Xem chi tiết',
-                      icon: icons.view,
-                      onClick: () => handleOpenDetail(rec),
-                    },
-                    {
-                      key: 'history',
-                      label: 'Lịch sử',
-                      icon: icons.history,
-                      onClick: () => handleOpenHistory(rec),
-                    },
-                    ...(canEditThis ? [{
+                  const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];
+
+                  // 1. Xem chi tiết (chuẩn VTS)
+                  actions.push({
+                    key: 'view',
+                    label: 'Xem chi tiết',
+                    icon: icons.view,
+                    onClick: () => handleOpenDetail(rec),
+                  });
+
+                  // 2. Chỉnh sửa (đứng thứ 2, ngay sau Xem chi tiết — chuẩn VTS)
+                  if (canEditThis) {
+                    actions.push({
                       key: 'edit',
                       label: 'Chỉnh sửa',
                       icon: icons.edit,
                       onClick: () => handleOpenEdit(rec),
-                    }] : []),
-                    ...(isDraftOrRejected && canCreate ? [{
+                    });
+                  }
+
+                  // 3. Lịch sử (đứng thứ 3, ngay sau Chỉnh sửa — chuẩn VTS)
+                  actions.push({
+                    key: 'history',
+                    label: 'Lịch sử',
+                    icon: icons.history,
+                    onClick: () => handleOpenHistory(rec),
+                  });
+
+                  // 4. Gửi phê duyệt (chuẩn VTS)
+                  if (isDraftOrRejected && canCreate) {
+                    actions.push({
                       key: 'submit',
                       label: 'Gửi phê duyệt',
                       icon: icons.submit,
                       onClick: () => handleSubmit(rec),
-                    }] : []),
-                    ...(isPendingL1 && canApproveL1 ? [
-                      {
-                        key: 'approveL1',
-                        label: 'Phê duyệt cấp Cảng vụ/Chi cục',
-                        icon: icons.approve,
-                        onClick: () => handleOpenApprove(rec, 'c1'),
-                      },
-                      {
-                        key: 'rejectL1',
-                        label: 'Từ chối cấp Cảng vụ/Chi cục',
-                        icon: icons.reject,
-                        danger: true,
-                        onClick: () => handleOpenReject(rec),
-                      },
-                    ] : []),
-                    ...(isPendingL2 && canApproveL2 ? [
-                      {
-                        key: 'approveL2',
-                        label: 'Phê duyệt cấp Cục',
-                        icon: icons.approve,
-                        onClick: () => handleOpenApprove(rec, 'c2'),
-                      },
-                      {
-                        key: 'rejectL2',
-                        label: 'Từ chối cấp Cục',
-                        icon: icons.reject,
-                        danger: true,
-                        onClick: () => handleOpenReject(rec),
-                      },
-                    ] : []),
-                    ...(canDeleteThis ? [{
+                    });
+                  }
+
+                  // 5 & 6. Phê duyệt & Từ chối cấp Cảng vụ/Chi cục (kèm chống tự duyệt — chuẩn VTS)
+                  if (isPendingL1 && canApproveL1 && !isCreator) {
+                    actions.push({
+                      key: 'approveL1',
+                      label: 'Phê duyệt cấp Cảng vụ/Chi cục',
+                      icon: icons.approve,
+                      onClick: () => handleOpenApprove(rec, 'c1'),
+                    });
+                    actions.push({
+                      key: 'rejectL1',
+                      label: 'Từ chối cấp Cảng vụ/Chi cục',
+                      icon: icons.reject,
+                      danger: true,
+                      onClick: () => handleOpenReject(rec),
+                    });
+                  }
+
+                  // 7 & 8. Phê duyệt & Từ chối cấp Cục (kèm chống tự duyệt — chuẩn VTS)
+                  if (isPendingL2 && canApproveL2 && !isApproverL1) {
+                    actions.push({
+                      key: 'approveL2',
+                      label: 'Phê duyệt cấp Cục',
+                      icon: icons.approve,
+                      onClick: () => handleOpenApprove(rec, 'c2'),
+                    });
+                    actions.push({
+                      key: 'rejectL2',
+                      label: 'Từ chối cấp Cục',
+                      icon: icons.reject,
+                      danger: true,
+                      onClick: () => handleOpenReject(rec),
+                    });
+                  }
+
+                  // 9. Xóa (chuẩn VTS: label 'Xóa', danger: true)
+                  if (canDeleteThis) {
+                    actions.push({
                       key: 'delete',
-                      label: 'Xóa bỏ',
+                      label: 'Xóa',
                       icon: icons.delete,
                       danger: true,
                       onClick: () => handleDelete(rec),
-                    }] : []),
-                  ];
+                    });
+                  }
+
+                  return actions;
                 }}
               />
               <Pagination
                 total={total}
                 current={page}
                 pageSize={pageSize}
-                pageSizeOptions={[10, 20, 50]}
+                pageSizeOptions={[20, 50, 100]}
                 onChange={(p, sz) => { setPage(p); setPageSize(sz); }}
               />
             </>
@@ -989,7 +1010,7 @@ export const InmarsatStationList = () => {
             </div>
             <Input.TextArea
               rows={4}
-              placeholder="Nhập lý do từ chối phê duyệt..."
+              placeholder="Nhập lý do từ chối"
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               style={{ borderRadius: 8 }}
@@ -1001,7 +1022,7 @@ export const InmarsatStationList = () => {
         <CommonHistoryDrawer
           open={historyDrawerOpen}
           onClose={() => setHistoryDrawerOpen(false)}
-          entityName={selectedRecord?.name || selectedRecord?.stationName || selectedRecord?.code}
+          entityName={selectedRecord?.name || selectedRecord?.code}
           records={historyList}
           loading={historyLoading}
           fieldLabelMap={INMARSAT_FIELD_MAP}

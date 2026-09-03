@@ -85,15 +85,15 @@ function historyFieldValue(fn: string, val: string | null): string {
   if (isApprovalField) {
     const statusMap: Record<string, string> = {
       DRAFT: 'Lưu tạm',
-      PROPOSED: 'Chờ Cảng vụ duyệt',
-      PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
-      PENDING: 'Chờ Cảng vụ duyệt',
-      APPROVED_LEVEL1: 'Chờ Cục duyệt',
-      APPROVED_LEVEL2: 'Đã duyệt',
-      APPROVED: 'Đã duyệt',
-      REJECTED: 'Từ chối',
-      REJECTED_LEVEL1: 'Từ chối',
-      REJECTED_LEVEL2: 'Từ chối',
+      PROPOSED: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+      PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+      PENDING: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+      APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục',
+      APPROVED_LEVEL2: 'Đã phê duyệt',
+      APPROVED: 'Đã phê duyệt',
+      REJECTED: 'Từ chối cấp Cảng vụ/Chi cục',
+      REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
+      REJECTED_LEVEL2: 'Từ chối cấp Cục',
     };
     return displayValue.split(';').map((value) => {
       const normalizedValue = String(value || '').trim();
@@ -564,7 +564,8 @@ export default function VtsSystemList() {
   const [countPendingApproval, setCountPendingApproval] = useState<number>(0);
   const [countApprovedLevel1, setCountApprovedLevel1] = useState<number>(0);
   const [countApproved, setCountApproved] = useState<number>(0);
-  const [countRejected, setCountRejected] = useState<number>(0);
+  const [countRejectedLevel1, setCountRejectedLevel1] = useState<number>(0);
+  const [countRejectedLevel2, setCountRejectedLevel2] = useState<number>(0);
   const statusCountFilterKey = useRef<string | null>(null);
   const listRequestId = useRef(0);
 
@@ -635,7 +636,8 @@ export default function VtsSystemList() {
         setCountPendingApproval(Number(counts.PENDING_APPROVAL) || 0);
         setCountApprovedLevel1(Number(counts.APPROVED_LEVEL1) || 0);
         setCountApproved(Number(counts.APPROVED) || 0);
-        setCountRejected((Number(counts.REJECTED_LEVEL1) || 0) + (Number(counts.REJECTED_LEVEL2) || 0));
+        setCountRejectedLevel1(Number(counts.REJECTED_LEVEL1) || 0);
+        setCountRejectedLevel2(Number(counts.REJECTED_LEVEL2) || 0);
         statusCountFilterKey.current = currentStatusCountFilterKey;
       }
     } catch (err: unknown) {
@@ -964,7 +966,7 @@ export default function VtsSystemList() {
       key: 'approvalStatus',
       label: 'Trạng thái',
       dataIndex: 'approvalStatus',
-      width: 180,
+      width: 280,
       // Đang đứng ở tab trạng thái nào thì cột này thừa — chk ẩn luôn.
       hidden: Boolean(filterApprovalStatus),
       ellipsis: false,
@@ -1030,13 +1032,13 @@ export default function VtsSystemList() {
     if (hasPerm('vts:read')) {
       actions.push({ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => { setEditingId(record.id); setSelectedRecord(record); setModalMode('detail'); setIsModalOpen(true); } });
     }
-    if (hasPerm('vts:history')) {
-      actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => handleViewHistory(record) });
-    }
     // N09/BR-019: hồ sơ đang chờ duyệt bị khóa sửa. Hồ sơ đã duyệt vẫn sửa được
     // nhưng chỉ bởi người có quyền phê duyệt (T12 — "Lưu và phê duyệt").
     if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'vts' })) {
       actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => { setEditingId(record.id); setSelectedRecord(record); setModalMode('edit'); setIsModalOpen(true); } });
+    }
+    if (hasPerm('vts:history')) {
+      actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => handleViewHistory(record) });
     }
     if (hasPerm('vts:update') && (record.approvalStatus === ApprovalStatus.DRAFT || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL2)) {
       actions.push({
@@ -1073,21 +1075,22 @@ export default function VtsSystemList() {
     }
     // T13/N04: chỉ hồ sơ đang "Lưu tạm" mới được xóa (approval-2-level-spec §3.6).
     if (hasPerm('vts:delete') && record.approvalStatus === ApprovalStatus.DRAFT) {
-      actions.push({ key: 'delete', label: 'Xóa bỏ', icon: icons.delete, danger: true, onClick: () => confirmDelete(record) });
+      actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => confirmDelete(record) });
     }
     return actions;
   }, [hasPerm, currentUser?.userId, refreshList]);
 
-  const countAllFiltered = countDraft + countPendingApproval + countApprovedLevel1 + countApproved + countRejected;
+  const countAllFiltered = countDraft + countPendingApproval + countApprovedLevel1 + countApproved + countRejectedLevel1 + countRejectedLevel2;
 
   const statusTabs = useMemo(() => [
     { key: 'all', label: 'Tất cả', count: filterApprovalStatus ? countAllFiltered : total, color: actionPrimary, active: !filterApprovalStatus },
     { key: ApprovalStatus.DRAFT, label: 'Lưu tạm', count: countDraft, color: statusDraft, active: filterApprovalStatus === ApprovalStatus.DRAFT },
-    { key: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ Cảng vụ duyệt', count: countPendingApproval, color: statusAttention, active: filterApprovalStatus === ApprovalStatus.PENDING_APPROVAL },
-    { key: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ Cục duyệt', count: countApprovedLevel1, color: '#0284C7', active: filterApprovalStatus === ApprovalStatus.APPROVED_LEVEL1 },
-    { key: ApprovalStatus.APPROVED, label: 'Đã duyệt', count: countApproved, color: statusOperational, active: filterApprovalStatus === ApprovalStatus.APPROVED },
-    { key: ApprovalStatus.REJECTED_LEVEL1, label: 'Từ chối', count: countRejected, color: statusCritical, active: filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL1 || filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL2 },
-  ], [total, countAllFiltered, filterApprovalStatus, countDraft, countPendingApproval, countApprovedLevel1, countApproved, countRejected]);
+    { key: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', count: countPendingApproval, color: statusAttention, active: filterApprovalStatus === ApprovalStatus.PENDING_APPROVAL },
+    { key: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ phê duyệt cấp Cục', count: countApprovedLevel1, color: '#0284C7', active: filterApprovalStatus === ApprovalStatus.APPROVED_LEVEL1 },
+    { key: ApprovalStatus.APPROVED, label: 'Đã phê duyệt', count: countApproved, color: statusOperational, active: filterApprovalStatus === ApprovalStatus.APPROVED },
+    { key: ApprovalStatus.REJECTED_LEVEL1, label: 'Từ chối cấp Cảng vụ/Chi cục', count: countRejectedLevel1, color: statusCritical, active: filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL1 },
+    { key: ApprovalStatus.REJECTED_LEVEL2, label: 'Từ chối cấp Cục', count: countRejectedLevel2, color: statusCritical, active: filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL2 },
+  ], [total, countAllFiltered, filterApprovalStatus, countDraft, countPendingApproval, countApprovedLevel1, countApproved, countRejectedLevel1, countRejectedLevel2]);
 
   const handleFilterSearch = useCallback((values: Record<string, any>) => {
     setFilterSystemName(values.systemName?.trim() || '');

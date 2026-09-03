@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.experimental.FieldNameConstants;
 
 /**

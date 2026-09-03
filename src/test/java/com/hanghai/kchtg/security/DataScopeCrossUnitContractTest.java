@@ -283,6 +283,7 @@ class DataScopeCrossUnitContractTest {
                                 .owningOrgId(ORG_UNIT_A_ID)
                                 .operatingOrgId(ORG_UNIT_A_ID)
                                 .provinceId(1)
+                                .maritimeNotice("TBHH 01")
                                 .conditionStatus(ConditionStatus.OPERATIONAL)
                                 .build();
 
@@ -297,6 +298,7 @@ class DataScopeCrossUnitContractTest {
                                 .owningOrgId(ORG_UNIT_B_ID)
                                 .operatingOrgId(ORG_UNIT_B_ID)
                                 .provinceId(2)
+                                .maritimeNotice("TBHH 01")
                                 .conditionStatus(ConditionStatus.OPERATIONAL)
                                 .build();
 

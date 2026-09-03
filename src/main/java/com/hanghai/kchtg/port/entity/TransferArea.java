@@ -36,11 +36,9 @@ import com.hanghai.kchtg.security.RecordSecurityLevel;
 @SuperBuilder
 @FieldNameConstants
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
-@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 public class TransferArea extends BaseEntity {
 
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
+    @Transient
     @Builder.Default
     private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
 

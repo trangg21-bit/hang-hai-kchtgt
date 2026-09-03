@@ -1340,7 +1340,7 @@ export default function DikeRevetmentList() {
         { key: 'technical', label: 'Thông tin kỹ thuật & thời gian', children: renderDetailRows(detailTechnicalRows) },
         {
           key: 'gis',
-          label: 'Tọa độ GIS',
+          label: 'Thông tin vị trí',
           children: (
             <>
               {renderDetailRows(detailGisRows, spaceXs)}
@@ -1606,7 +1606,7 @@ export default function DikeRevetmentList() {
                   },
                   {
                     key: 'gis',
-                    label: 'Tọa độ GIS',
+                    label: 'Thông tin vị trí',
                     children: (
                       <div style={{ paddingTop: spaceMd }}>
                         <Row gutter={formRowGutter}>

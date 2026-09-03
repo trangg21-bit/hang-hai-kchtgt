@@ -175,12 +175,12 @@ const serializeCoordinatesToWkt = (coords: { latitude: number | null; longitude:
 const renderApprovalBadge = (status?: ApprovalStatus | string) => {
   const map: Record<string, { label: string; color: string }> = {
     DRAFT: { label: 'Lưu tạm', color: textTertiary },
-    PENDING_APPROVAL: { label: 'Chờ Cảng vụ duyệt', color: statusAttention },
-    APPROVED_LEVEL1: { label: 'Chờ Cục duyệt', color: '#0082fb' },
-    APPROVED: { label: 'Đã duyệt', color: statusOperational },
-    REJECTED_LEVEL1: { label: 'Từ chối (C1)', color: statusCritical },
-    REJECTED_LEVEL2: { label: 'Từ chối (C2)', color: statusCritical },
-    ARCHIVED: { label: 'Lưu trữ', color: textTertiary },
+    PENDING_APPROVAL: { label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: statusAttention },
+    APPROVED_LEVEL1: { label: 'Chờ phê duyệt cấp Cục', color: '#0284C7' },
+    APPROVED: { label: 'Đã phê duyệt', color: statusOperational },
+    REJECTED_LEVEL1: { label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
+    REJECTED_LEVEL2: { label: 'Từ chối cấp Cục', color: statusCritical },
+    ARCHIVED: { label: 'Đã xóa', color: textTertiary },
   };
   const item = map[String(status || '').toUpperCase()] || { label: String(status || '—'), color: textSecondary };
   return (
@@ -221,7 +221,10 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [pendingDeletedAttachments, setPendingDeletedAttachments] = useState<{ id: string; fileName: string }[]>([]);
 
-  const [otherInfraTypeFilter, setOtherInfraTypeFilter] = useState<string>('ALL');
+  const [otherInfraTypeFilter, setOtherInfraTypeFilter] = useState<string>('RADAR_STATION');
+  const [otherInfraPage, setOtherInfraPage] = useState<number>(1);
+  const [otherInfraPageSize, setOtherInfraPageSize] = useState<number>(20);
+  const [otherInfraTotal, setOtherInfraTotal] = useState<number>(0);
   const [otherInfraList, setOtherInfraList] = useState<Array<{ id: string; type: string; typeLabel: string; name: string; code?: string }>>([]);
   const [otherInfraLoading, setOtherInfraLoading] = useState(false);
   const [otherInfraError, setOtherInfraError] = useState<string | null>(null);
@@ -230,13 +233,6 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
   const operationPlanList: Array<Record<string, unknown>> = [];
   const maintenancePlanList: Array<Record<string, unknown>> = [];
   const incidentList: Array<Record<string, unknown>> = [];
-
-  const filteredOtherInfra = useMemo(() => {
-    if (!otherInfraTypeFilter || otherInfraTypeFilter === 'ALL') {
-      return otherInfraList;
-    }
-    return otherInfraList.filter((item) => item.type === otherInfraTypeFilter);
-  }, [otherInfraList, otherInfraTypeFilter]);
 
   const currentUser = useAuthStore((s: AuthState) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
@@ -428,7 +424,10 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
     if (!open) return;
     setTabKey('general');
     setDetailTabKey('general');
-    setOtherInfraTypeFilter('ALL');
+    setOtherInfraTypeFilter('RADAR_STATION');
+    setOtherInfraPage(1);
+    setOtherInfraPageSize(20);
+    setOtherInfraTotal(0);
     setOtherInfraList([]);
     setOtherInfraError(null);
     setPendingFiles([]);
@@ -518,39 +517,59 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
     let cancelled = false;
     setOtherInfraLoading(true);
     setOtherInfraError(null);
-    setOtherInfraList([]);
 
-    Promise.allSettled([
-      radarStationCRUD.searchPaged({ vtsOperationCenterId: record.id, page: 1, size: 100 }),
-      aisSystemService.search({ vtsOperationCenterId: record.id, page: 1, size: 100 }),
-    ]).then(([radarResult, aisResult]) => {
-      if (cancelled) return;
-      const failed = [radarResult, aisResult].some((result) => result.status === 'rejected');
-      const radarItems = radarResult.status === 'fulfilled' ? radarResult.value.items || [] : [];
-      const aisItems = aisResult.status === 'fulfilled' ? aisResult.value.items || [] : [];
-      setOtherInfraList([
-        ...radarItems.map((item: any) => ({
-          id: String(item.id),
-          type: 'RADAR_STATION',
-          typeLabel: 'Trạm Radar VTS',
-          code: item.code,
-          name: item.name || item.stationName || item.code || String(item.id),
-        })),
-        ...aisItems.map((item: any) => ({
-          id: String(item.id),
-          type: 'AIS_SYSTEM',
-          typeLabel: 'Trạm AIS / Hệ thống AIS',
-          code: item.code,
-          name: item.name || item.systemName || item.code || String(item.id),
-        })),
-      ]);
-      if (failed) setOtherInfraError('Một số loại kết cấu hạ tầng chưa tải được dữ liệu.');
-    }).finally(() => {
-      if (!cancelled) setOtherInfraLoading(false);
-    });
+    const fetchInfra = async () => {
+      try {
+        if (otherInfraTypeFilter === 'RADAR_STATION') {
+          const res = await radarStationCRUD.searchPaged({
+            vtsOperationCenterId: record.id,
+            page: otherInfraPage,
+            size: otherInfraPageSize,
+          });
+          if (cancelled) return;
+          const items = (res.items || []).map((item: any) => ({
+            id: String(item.id),
+            type: 'RADAR_STATION',
+            typeLabel: 'Trạm Radar VTS',
+            code: item.code,
+            name: item.name || item.stationName || item.code || String(item.id),
+          }));
+          setOtherInfraList(items);
+          setOtherInfraTotal(res.total || items.length);
+        } else if (otherInfraTypeFilter === 'AIS_SYSTEM') {
+          const res = await aisSystemService.search({
+            vtsOperationCenterId: record.id,
+            page: otherInfraPage,
+            size: otherInfraPageSize,
+          });
+          if (cancelled) return;
+          const items = (res.items || []).map((item: any) => ({
+            id: String(item.id),
+            type: 'AIS_SYSTEM',
+            typeLabel: 'Trạm AIS / Hệ thống AIS',
+            code: item.code,
+            name: item.name || item.systemName || item.code || String(item.id),
+          }));
+          setOtherInfraList(items);
+          setOtherInfraTotal(res.total || items.length);
+        } else {
+          // Các loại KCHT con chưa có API liên kết với TTĐH VTS: tạm thời chưa gọi API
+          setOtherInfraList([]);
+          setOtherInfraTotal(0);
+        }
+      } catch (err: any) {
+        if (cancelled) return;
+        setOtherInfraList([]);
+        setOtherInfraTotal(0);
+        setOtherInfraError('Không tải được danh sách kết cấu hạ tầng.');
+      } finally {
+        if (!cancelled) setOtherInfraLoading(false);
+      }
+    };
 
+    fetchInfra();
     return () => { cancelled = true; };
-  }, [open, isDetailMode, detailTabKey, record?.id]);
+  }, [open, isDetailMode, detailTabKey, record?.id, otherInfraTypeFilter, otherInfraPage, otherInfraPageSize]);
 
   const selectedOrgUnitId = Form.useWatch('orgUnitId', form);
   const effectiveOrgUnitId = selectedOrgUnitId || record?.orgUnitId;
@@ -707,7 +726,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
           },
           {
             key: 'gis',
-            label: 'Vị trí (GIS)',
+            label: 'Thông tin vị trí',
             children: (
               <DetailTable
                 scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
@@ -831,34 +850,46 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                     Loại kết cấu hạ tầng:
                   </span>
                   <Select
-                    allowClear
                     showSearch
-                    placeholder="Chọn loại đối tượng"
-                    value={otherInfraTypeFilter === 'ALL' ? undefined : otherInfraTypeFilter}
-                    onChange={(val) => setOtherInfraTypeFilter(val || 'ALL')}
+                    value={otherInfraTypeFilter}
+                    onChange={(val) => {
+                      setOtherInfraTypeFilter(val);
+                      setOtherInfraPage(1);
+                    }}
                     filterOption={(input, option) =>
                       normalizeSearchText(String(option?.label || '')).includes(normalizeSearchText(input))
                     }
                     options={[
-                      { value: 'VTS_OPERATION_CENTER', label: 'Trung tâm điều hành VTS' },
-                      { value: 'RADAR_STATION', label: 'Trạm Radar VTS' },
-                      { value: 'AIS_SYSTEM', label: 'Trạm AIS / Hệ thống AIS' },
+                      { value: 'AIS_SYSTEM', label: 'Hệ thống AIS' },
+                      { value: 'CCTV', label: 'Hệ thống CCTV' },
+                      { value: 'VTS_ASSIST', label: 'Hệ thống phụ trợ VTS' },
+                      { value: 'RADAR_STATION', label: 'Trạm Radar' },
+                      { value: 'SCADA', label: 'Hệ thống SCADA' },
+                      { value: 'TRANSMISSION', label: 'Hệ thống truyền dẫn' },
+                      { value: 'VHF', label: 'Hệ thống thông tin liên lạc VHF' },
                     ]}
                     style={{ ...selectStyle, width: 280, height: 38 }}
                   />
                 </div>
                 <DetailTable
                   scrollY="calc(100vh - 378px)"
-                  dataSource={filteredOtherInfra}
+                  dataSource={otherInfraList}
+                  total={otherInfraTotal}
+                  pageSize={otherInfraPageSize}
+                  currentPage={otherInfraPage}
+                  onPageChange={(page, size) => {
+                    setOtherInfraPage(page);
+                    if (size) setOtherInfraPageSize(size);
+                  }}
                   loading={otherInfraLoading}
-                  emptyText="Chưa có kết cấu hạ tầng khác thuộc trung tâm điều hành VTS"
+                  emptyText={otherInfraLoading ? 'Đang tải dữ liệu KCHT...' : 'Chưa có kết cấu hạ tầng thuộc loại này'}
                   rowKey={(r: any) => r.id || `${r.type}-${r.code || r.name}`}
                   columns={[
                     {
                       title: 'STT',
                       width: 60,
                       align: 'center',
-                      render: (_: any, __: any, index: number) => index + 1,
+                      render: (_: any, __: any, index: number) => (otherInfraPage - 1) * otherInfraPageSize + index + 1,
                     },
                     {
                       title: 'Loại đối tượng',
@@ -1137,7 +1168,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                   <div className="chk-detail-row chk-detail-row--full">
                     <span className="chk-detail-label">Nội dung phê duyệt</span>
                     <span className="chk-detail-value">
-                      {record.approvalContentLevel1 || record.approvalReasonLevel1 || record.rejectionReasonLevel1 || '—'}
+                      {record.approvalContentLevel1 || record.approvalReasonLevel1 || '—'}
                     </span>
                   </div>
 
@@ -1159,7 +1190,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                   <div className="chk-detail-row chk-detail-row--full">
                     <span className="chk-detail-label">Nội dung phê duyệt</span>
                     <span className="chk-detail-value">
-                      {record.approvalContentLevel2 || record.approvalReasonLevel2 || record.rejectionReasonLevel2 || record.rejectionReason || '—'}
+                      {record.approvalContentLevel2 || record.approvalReasonLevel2 || '—'}
                     </span>
                   </div>
 
@@ -1463,7 +1494,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                 },
                 {
                   key: 'gis',
-                  label: 'Vị trí (GIS)',
+                  label: 'Thông tin vị trí',
                   children: (
                     <div>
                       <div style={drawerGisControlBoxStyle}>

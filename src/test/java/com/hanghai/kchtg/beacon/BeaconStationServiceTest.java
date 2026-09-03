@@ -70,6 +70,9 @@ class BeaconStationServiceTest {
     @Mock
     private com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService;
 
+    @Mock
+    private com.hanghai.kchtg.port.service.shared.UserResolverService userResolverService;
+
     @InjectMocks
     private BeaconStationService service;
 
@@ -97,7 +100,9 @@ class BeaconStationServiceTest {
                 .thenReturn(dummySpatial);
         lenient().when(orgUnitScopeService.currentUserScope()).thenReturn(com.hanghai.kchtg.orgunit.service.OrgUnitScopeService.Scope.allScope());
         lenient().when(orgUnitCacheService.getName(any())).thenReturn("Đơn vị Test");
+        lenient().when(userResolverService.resolveName(any())).thenReturn("Admin Test");
     }
+
 
     private BeaconStation makeEntity(UUID id, String status) {
         BeaconStation entity = BeaconStation.builder()

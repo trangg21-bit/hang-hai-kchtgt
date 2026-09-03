@@ -3,7 +3,6 @@ package com.hanghai.kchtg.vtssystem.dto;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -51,6 +50,7 @@ public class VtsSystemCreateRequest {
 
     private String address;
 
+    @NotBlank(message = "Thông báo hàng hải không được để trống")
     private String maritimeNotice;
 
     private LocalDate operationStartDate;

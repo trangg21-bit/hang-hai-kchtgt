@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.station.dto.lrit;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.station.entity.StationStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,6 +12,8 @@ import lombok.experimental.FieldNameConstants;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
+
+import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 
 @Getter
 @Setter
@@ -36,7 +37,8 @@ public class CoastalStationLRITResponse {
     private String stationName;
 
     private String locationAddress;
-    private String conditionStatus;
+    private ConditionStatus conditionStatus;
+    private String conditionStatusLabel;
     private StationStatus status;
 
     // --- Đặc thù LRIT ---
@@ -56,7 +58,9 @@ public class CoastalStationLRITResponse {
 
     // --- GIS ---
     private UUID spatialId;
+    private UUID symbolId;
     private String geometryType;
+    private String objectType;
     private String symbol;
     private String coordinateSystem;
     private String displayRule;

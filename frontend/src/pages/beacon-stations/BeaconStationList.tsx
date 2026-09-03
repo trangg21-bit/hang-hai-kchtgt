@@ -1565,7 +1565,7 @@ export default function BeaconStationList() {
                   },
                   {
                     key: 'gis',
-                    label: 'Thông tin vị trí (tọa độ GIS)',
+                    label: 'Thông tin vị trí',
                     children: (
                       <div style={{ paddingTop: 16 }}>
                         <Row gutter={formRowGutter}>
