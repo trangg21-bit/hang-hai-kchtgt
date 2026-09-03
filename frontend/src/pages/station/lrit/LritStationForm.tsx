@@ -30,14 +30,14 @@ import type {
   IncidentItem,
 } from '../../../types/lritStation';
 import { LRIT_SERVICE_OPTIONS } from '../../../types/lritStation';
-import { ConditionStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP, ApprovalStatus } from '../../../types/vtsSystem';
+import { ConditionStatus, CONDITION_STATUS_OPTIONS, ApprovalStatus } from '../../../types/vtsSystem';
 import {
   drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle,
   drawerTabBarStyle, drawerStyles, drawerFormScrollStyle, drawerGisControlBoxStyle, DRAWER_TABLE_SCROLL_Y,
   spaceFormField, radiusPill, sidebarBg,
   fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd, fontSizeLg,
   textPrimary, textSecondary, textTertiary, borderDefault,
-  statusCritical, statusOperational, statusAttention, actionPrimary, textAreaStyle,
+  statusCritical, statusOperational, actionPrimary, textAreaStyle,
   readonlyInputStyle, drawerCloseBtnStyle, selectStyle, inputStyle, requiredMarkStyle,
   statusBadgeStyle, getConditionStatusColor, getConditionStatusLabel,
 } from '../../../themetokenchk';
@@ -79,13 +79,6 @@ export interface LritStationFormProps {
   onClose?: () => void;
   onSuccess?: () => void;
 }
-
-const CONDITION_COLOR: Record<string, string> = {
-  [ConditionStatus.OPERATIONAL]: statusOperational,
-  [ConditionStatus.STOPPED]: statusCritical,
-  [ConditionStatus.MAINTENANCE]: statusAttention,
-  [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
-};
 
 const renderConditionBadge = (status?: ConditionStatus | string | number) => {
   if (!status && status !== 0) return '—';

@@ -47,7 +47,7 @@ BEGIN
             v_sp1_id,
             'Trung tâm Xử lý Thông tin Hàng hải Hà Nội',
             'HAIPHONG_' || v_st1_id::text,
-            0, -- GisGeometryType.POINT
+            1, -- GisGeometryType.POINT
             5, -- GisSpatialObjectType.POINT_OTHER
             '[105.787680,21.037240]',
             v_st1_id,
@@ -66,7 +66,7 @@ BEGIN
             v_sp2_id,
             'Đài TTXLTT Hàng hải Hải Phòng',
             'HAIPHONG_' || v_st2_id::text,
-            0,
+            1, -- GisGeometryType.POINT
             5,
             '[106.688084,20.844911]',
             v_st2_id,
@@ -85,7 +85,7 @@ BEGIN
             v_sp3_id,
             'Đài TTXLTT Hàng hải Đà Nẵng',
             'HAIPHONG_' || v_st3_id::text,
-            0,
+            1, -- GisGeometryType.POINT
             5,
             '[108.220833,16.054444]',
             v_st3_id,
@@ -104,7 +104,7 @@ BEGIN
             v_sp4_id,
             'Đài TTXLTT Hàng hải Quy Nhơn',
             'HAIPHONG_' || v_st4_id::text,
-            0,
+            1, -- GisGeometryType.POINT
             5,
             '[109.219662,13.782967]',
             v_st4_id,
@@ -123,7 +123,7 @@ BEGIN
             v_sp5_id,
             'Đài TTXLTT Hàng hải Cần Thơ',
             'HAIPHONG_' || v_st5_id::text,
-            0,
+            1, -- GisGeometryType.POINT
             5,
             '[105.783802,10.045162]',
             v_st5_id,
@@ -165,3 +165,4 @@ CREATE INDEX IF NOT EXISTS idx_cs_haiphong_province_id ON public.coastal_station
 CREATE INDEX IF NOT EXISTS idx_cs_haiphong_operating_org ON public.coastal_station_haiphong (operating_org_id);
 CREATE INDEX IF NOT EXISTS idx_cs_haiphong_spatial_id ON public.coastal_station_haiphong (spatial_id);
 CREATE INDEX IF NOT EXISTS idx_cs_haiphong_symbol ON public.coastal_station_haiphong (symbol_id);
+

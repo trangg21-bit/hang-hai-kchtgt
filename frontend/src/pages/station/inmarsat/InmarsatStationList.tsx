@@ -4,7 +4,7 @@ import { inmarsatStationService } from '../../../services/inmarsatStationService
 import { organizationService } from '../../../services/organizationService';
 
 import type { CoastalStationInmarsatResponse } from '../../../services/station/types';
-import { ConditionStatus, CONDITION_STATUS_MAP, CONDITION_STATUS_OPTIONS, ApprovalStatus } from '../../../types/vtsSystem';
+import { CONDITION_STATUS_OPTIONS, ApprovalStatus } from '../../../types/vtsSystem';
 import { useAuthStore } from '../../../store/authStore';
 import { usePermissionStore } from '../../../store/permissionStore';
 import { ScreenHeader, DataTable } from '../../../components/list-view';
@@ -96,14 +96,6 @@ const formatHistoryValue = (field: string, val: any): string => {
 
 /** Số bản ghi nhật ký mỗi lần cuộn tải thêm trong drawer lịch sử. */
 const HISTORY_PAGE_SIZE = 20;
-
-const CONDITION_COLOR: Record<string, string> = {
-  [ConditionStatus.OPERATIONAL]: statusOperational,
-  [ConditionStatus.STOPPED]: statusCritical,
-  NOT_OPERATIONAL: statusCritical,
-  [ConditionStatus.MAINTENANCE]: statusAttention,
-  [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
-};
 
 export const InmarsatStationList = () => {
   const [data, setData] = useState<CoastalStationInmarsatResponse[]>([]);

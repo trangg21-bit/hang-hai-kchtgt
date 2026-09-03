@@ -25,7 +25,7 @@ import type {
   CreateVtsSystemRequest,
   UpdateVtsSystemRequest,
 } from '../../types/vtsSystem';
-import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/vtsSystem';
+import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS } from '../../types/vtsSystem';
 import {
   drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle,
   requiredMarkStyle, inputStyle,
@@ -114,13 +114,6 @@ export interface VtsSystemFormProps {
   onCancel?: () => void;
   onSuccess?: () => void;
 }
-
-const CONDITION_COLOR: Record<string, string> = {
-  [ConditionStatus.OPERATIONAL]: statusOperational,
-  [ConditionStatus.STOPPED]: statusCritical,
-  [ConditionStatus.MAINTENANCE]: statusAttention,
-  [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
-};
 
 export const ConditionStatusBadge: React.FC<{ status?: ConditionStatus | number | string }> = React.memo(({ status }) => {
   const label = getConditionStatusLabel(status);

@@ -46,13 +46,6 @@ import { renderCommonHistoryValueTag } from '../../../components/shared/CommonHi
 /** Số bản ghi nhật ký mỗi lần cuộn tải thêm trong drawer lịch sử. */
 const HISTORY_PAGE_SIZE = 20;
 
-const CONDITION_COLOR: Record<ConditionStatus, string> = {
-  [ConditionStatus.OPERATIONAL]: statusOperational,
-  [ConditionStatus.STOPPED]: statusCritical,
-  [ConditionStatus.MAINTENANCE]: statusAttention,
-  [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
-};
-
 const HISTORY_FIELD_ORDER = [
   'orgUnitId', 'orgUnitName', 'operatingOrgId', 'operatingOrgName',
   'code', 'name', 'provinceId', 'province', 'locationAddress', 'coverageArea',

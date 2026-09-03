@@ -29,14 +29,14 @@ import type {
   IncidentItem,
 } from '../../../types/hanoiStation';
 import { HANOI_SERVICE_OPTIONS } from '../../../types/hanoiStation';
-import { ConditionStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP, ApprovalStatus } from '../../../types/vtsSystem';
+import { ConditionStatus, CONDITION_STATUS_OPTIONS, ApprovalStatus } from '../../../types/vtsSystem';
 import {
   drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle,
   drawerTabBarStyle, drawerStyles, drawerFormScrollStyle, drawerGisControlBoxStyle, DRAWER_TABLE_SCROLL_Y,
   spaceFormField, radiusPill, sidebarBg,
   fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd, fontSizeLg,
   textPrimary, textSecondary, textTertiary, borderDefault,
-  statusCritical, statusOperational, statusAttention, actionPrimary, textAreaStyle,
+  statusCritical, statusOperational, actionPrimary, textAreaStyle,
   readonlyInputStyle, drawerCloseBtnStyle, selectStyle, inputStyle, requiredMarkStyle,
   statusBadgeStyle, getConditionStatusColor, getConditionStatusLabel,
 } from '../../../themetokenchk';
@@ -77,13 +77,6 @@ export interface HanoiStationFormProps {
   onClose?: () => void;
   onSuccess?: () => void;
 }
-
-const CONDITION_COLOR: Record<string, string> = {
-  [ConditionStatus.OPERATIONAL]: statusOperational,
-  [ConditionStatus.STOPPED]: statusCritical,
-  [ConditionStatus.MAINTENANCE]: statusAttention,
-  [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
-};
 
 const renderConditionBadge = (status?: ConditionStatus | string | number) => {
   if (!status && status !== 0) return '—';
@@ -775,7 +768,6 @@ export default function HanoiStationForm({
                   <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span><span className="chk-detail-value">{record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span><span className="chk-detail-value">{record.approverLevel1Name || record.approverLevel1 || '—'}</span></div>
                   <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Nội dung phê duyệt</span><span className="chk-detail-value">{record.level1ApprovalContent || record.approvalContentLevel1 || '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt cấp Cục</span><span className="chk-detail-value">{record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt cấp Cục</span><span className="chk-detail-value">{record.approverLevel2Name || record.approverLevel2 || '—'}</span></div>
                   <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Nội dung phê duyệt</span><span className="chk-detail-value">{record.level2ApprovalContent || record.approvalContentLevel2 || '—'}</span></div>
                   {record.rejectionReason && (

@@ -77,6 +77,7 @@ export interface CoastalStationInmarsatRequest {
   spatialId?: string;
   objectType?: string;
   symbol?: string;
+  symbolId?: string;
   coordinateSystem?: string;
   displayRule?: string;
   latitude?: number;

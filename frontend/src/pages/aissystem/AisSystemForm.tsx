@@ -36,14 +36,14 @@ import type {
   UpdateAisSystemRequest,
 } from '../../types/aisSystem';
 import { UNIT_OF_MEASURE_OPTIONS, UNIT_OF_MEASURE_MAP, UnitOfMeasure } from '../../types/aisSystem';
-import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/vtsSystem';
+import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS } from '../../types/vtsSystem';
 import {
   drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle,
   drawerTabBarStyle, drawerStyles, drawerFormScrollStyle, drawerGisControlBoxStyle,
   spaceFormField, radiusPill, sidebarBg,
   fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeSm, fontSizeLg,
   textSecondary, textTertiary, borderDefault,
-  statusCritical, statusAttention, statusOperational, actionPrimary, textAreaStyle,
+  statusCritical, statusOperational, actionPrimary, textAreaStyle,
   readonlyInputStyle, drawerCloseBtnStyle, inputStyle, selectStyle,
   DRAWER_TABLE_SCROLL_Y, getDatePickerProps,
   statusBadgeStyle, getConditionStatusColor, getConditionStatusLabel,
@@ -76,13 +76,6 @@ export interface AisSystemFormProps {
   onClose?: () => void;
   onSwitchToEdit?: () => void;
 }
-
-const CONDITION_COLOR: Record<string, string> = {
-  [ConditionStatus.OPERATIONAL]: statusOperational,
-  [ConditionStatus.STOPPED]: statusCritical,
-  [ConditionStatus.MAINTENANCE]: statusAttention,
-  [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
-};
 
 const renderConditionBadge = (status?: ConditionStatus | string | number) => {
   if (!status && status !== 0) return '—';

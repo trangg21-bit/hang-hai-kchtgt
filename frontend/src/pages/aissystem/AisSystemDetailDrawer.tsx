@@ -16,28 +16,21 @@ import { UNIT_OF_MEASURE_MAP } from '../../types/aisSystem';
 import { aisSystemService } from '../../services/aisSystemService';
 import {
   ConditionStatus,
-  CONDITION_STATUS_MAP,
   ApprovalStatus,
 } from '../../types/vtsSystem';
 import { getProvinceNameById } from '../../types/common';
 import toast from '../../components/ToastNotification';
 import { colors } from '../../theme';
 import {
-  radiusPill,
   radiusMd,
   fontSizeMd,
   fontWeightBold,
-  fontWeightMedium,
   borderDefault,
   textPrimary,
-  textSecondary,
   spaceSm,
   drawerCloseBtnStyle,
   drawerTitleStyle,
   statusCritical,
-  statusAttention,
-  statusOperational,
-  actionPrimary,
   DRAWER_TABLE_SCROLL_Y,
   statusBadgeStyle,
   getConditionStatusColor,
@@ -88,13 +81,6 @@ const parseWktToCoordinates = (wkt?: string): CoordinateItem[] => {
     }
   } catch (e) {}
   return [];
-};
-
-const CONDITION_COLOR: Record<string, string> = {
-  [ConditionStatus.OPERATIONAL]: statusOperational,
-  [ConditionStatus.STOPPED]: statusCritical,
-  [ConditionStatus.MAINTENANCE]: statusAttention,
-  [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
 };
 
 const renderConditionStatusBadge = (status?: ConditionStatus | string | number) => {

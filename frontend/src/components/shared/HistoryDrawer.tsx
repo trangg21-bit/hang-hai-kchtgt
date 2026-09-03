@@ -140,8 +140,8 @@ function parseHistoryAssignments(value: string | null): Map<string, string> {
 function historyChangeRows(
   item: any,
   fieldNameMap: Record<string, string>,
-  approvalStatusMap: Record<string, string>,
-  conditionStatusMap: Record<string, string>,
+  _approvalStatusMap?: Record<string, string>,
+  _conditionStatusMap?: Record<string, string>,
 ): Array<{ field: string; oldValue: string | null; newValue: string | null }> {
   const fields = normalizedHistoryFields(historyField(item));
   const oldValue = historyOldValue(item);
@@ -273,7 +273,7 @@ function renderHistoryValueTag(
   field: string,
   val: string | null,
   approvalStatusMap: Record<string, string>,
-  conditionStatusMap: Record<string, string>,
+  _conditionStatusMap?: Record<string, string>,
 ): React.ReactElement {
   if (!val) return <span style={{ color: textTertiary }}>—</span>;
   const normKey = normalizeHistoryKey(field);
@@ -337,36 +337,6 @@ export default function HistoryDrawer({
     }
     return count;
   }, [records]);
-
-  const loadFirst = async () => {
-    if (mode === 'all' && onFetchAll) {
-      setLoading(true);
-      try {
-        const all = (await onFetchAll()) || [];
-        setRecords(all);
-        setHasMore(false);
-      } catch {
-        // ignore
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
-    setLoading(true);
-    setLoadingMore(false);
-    setHasMore(true);
-    setRecords([]);
-    setPage(0);
-    try {
-      const items = (await fetchHistory(0, pageSize, { keyword: search, fromDate: dateFrom, toDate: dateTo })) || [];
-      setRecords(items);
-      setHasMore(items.length === pageSize);
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     if (!open) return;

@@ -35,7 +35,7 @@ import type {
   UpdateVtsOperationCenterRequest,
   VtsOperationCenterAttachment,
 } from '../../types/vtsOperationCenter';
-import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/vtsSystem';
+import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS } from '../../types/vtsSystem';
 import {
   drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle,
   drawerTabBarStyle, drawerStyles, drawerFormScrollStyle, drawerGisControlBoxStyle, DRAWER_TABLE_SCROLL_Y,
@@ -79,13 +79,6 @@ export interface VtsOperationCenterFormProps {
   onCancel?: () => void;
   onSuccess?: () => void;
 }
-
-const CONDITION_COLOR: Record<string, string> = {
-  [ConditionStatus.OPERATIONAL]: statusOperational,
-  [ConditionStatus.STOPPED]: statusCritical,
-  [ConditionStatus.MAINTENANCE]: statusAttention,
-  [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
-};
 
 const renderConditionBadge = (status?: ConditionStatus | string | number) => {
   if (!status && status !== 0) return '—';

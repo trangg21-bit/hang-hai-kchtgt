@@ -49,8 +49,6 @@ export interface HanoiStationItem {
   approvedDateLevel2?: string;
   approvalContentLevel1?: string;
   approvalContentLevel2?: string;
-  level1ApprovalContent?: string;
-  level2ApprovalContent?: string;
   rejectionReason?: string;
   createdBy?: string;
   createdByName?: string;

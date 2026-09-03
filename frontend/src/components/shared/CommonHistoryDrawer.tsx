@@ -405,7 +405,6 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
   fieldLabelMap = {},
   formatValue,
   width,
-  size,
   serverFiltered = false,
   onFilterChange,
   onLoadMore,

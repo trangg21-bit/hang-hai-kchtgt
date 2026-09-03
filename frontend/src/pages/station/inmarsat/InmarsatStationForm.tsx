@@ -25,14 +25,14 @@ import type {
   CoastalStationInmarsatResponse,
   CoastalStationInmarsatRequest,
 } from '../../../services/station/types';
-import { ConditionStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP, ApprovalStatus } from '../../../types/vtsSystem';
+import { ConditionStatus, CONDITION_STATUS_OPTIONS, ApprovalStatus } from '../../../types/vtsSystem';
 import {
   drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle,
   drawerTabBarStyle, drawerStyles, drawerFormScrollStyle, drawerGisControlBoxStyle, DRAWER_TABLE_SCROLL_Y,
   requiredMarkStyle, spaceFormField, radiusPill, sidebarBg,
   fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd, fontSizeLg,
   textPrimary, textSecondary, textTertiary, borderDefault,
-  statusCritical, statusOperational, statusAttention, actionPrimary, textAreaStyle,
+  statusCritical, statusOperational, actionPrimary, textAreaStyle,
   readonlyInputStyle, drawerCloseBtnStyle, selectStyle, inputStyle,
   statusBadgeStyle, getConditionStatusColor, getConditionStatusLabel,
 } from '../../../themetokenchk';
@@ -84,14 +84,6 @@ export interface InmarsatStationFormProps {
   onClose?: () => void;
   onSuccess?: () => void;
 }
-
-const CONDITION_COLOR: Record<string, string> = {
-  [ConditionStatus.OPERATIONAL]: statusOperational,
-  [ConditionStatus.STOPPED]: statusCritical,
-  NOT_OPERATIONAL: statusCritical,
-  [ConditionStatus.MAINTENANCE]: statusAttention,
-  [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
-};
 
 const renderConditionBadge = (status?: ConditionStatus | string | number) => {
   if (!status && status !== 0) return '—';
