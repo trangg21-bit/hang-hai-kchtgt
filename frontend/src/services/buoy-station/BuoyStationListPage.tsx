@@ -53,6 +53,7 @@ import { CONDITION_OPTIONS, CLASSIFICATION_OPTIONS, CLASSIFICATION_BUOY_OPTIONS 
 import BuoyStationFormContent from './BuoyStationFormContent';
 import type { ExistingFile, BuoyStationFormContentHandle } from './BuoyStationFormContent';
 import BuoyStationDetailContent from './BuoyStationDetailContent';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import type { DataTableColumn } from '../../components/list-view/DataTable';
 import Pagination from '../../components/list-view/Pagination';
@@ -595,8 +596,8 @@ export default function BuoyStationListPage() {
         aVal = orgLevel2Map.get(a.unitId) ?? a.unitId ?? '';
         bVal = orgLevel2Map.get(b.unitId) ?? b.unitId ?? '';
       } else if (sortField === 'operatingOrgId') {
-        aVal = orgMap.get(a.operatingOrgId) ?? a.operatingOrgId ?? '';
-        bVal = orgMap.get(b.operatingOrgId) ?? b.operatingOrgId ?? '';
+        aVal = DEFAULT_OPERATING_ORGANIZATIONS.find(o => o.id === a.operatingOrgId)?.name ?? a.operatingOrgId ?? '';
+        bVal = DEFAULT_OPERATING_ORGANIZATIONS.find(o => o.id === b.operatingOrgId)?.name ?? b.operatingOrgId ?? '';
       } else if (sortField === 'portId') {
         aVal = portMap.get(a.portId) ?? a.portId ?? '';
         bVal = portMap.get(b.portId) ?? b.portId ?? '';
@@ -1056,7 +1057,7 @@ export default function BuoyStationListPage() {
     },
     {
       key: 'operatingOrgId', label: 'Đơn vị khai thác', dataIndex: 'operatingOrgId', width: 220, ellipsis: true, sortable: true,
-      render: (v: string) => (v ? (orgMap.get(v) || v) : '—'),
+      render: (v: string) => (v ? (DEFAULT_OPERATING_ORGANIZATIONS.find(o => o.id === v)?.name || v) : '—'),
     },
     {
       key: 'portId', label: 'Thuộc cảng biển', dataIndex: 'portId', width: 220, ellipsis: true, sortable: true,
