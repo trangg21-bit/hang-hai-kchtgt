@@ -599,7 +599,12 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
       return timeB - timeA;
     });
 
-    // Group items with same second and same actor
+    const isSameMinute = (t1: string, t2: string) => {
+      if (!t1 || !t2) return false;
+      return dayjs(t1).format('YYYY-MM-DD HH:mm') === dayjs(t2).format('YYYY-MM-DD HH:mm');
+    };
+
+    // Group items with same second or minute and same actor
     const groups: { tsSec: number; ts: string; actor: string; unitName: string; items: CommonHistoryEntry[] }[] = [];
     for (const r of sorted) {
       const ts = getRecordTimestamp(r);
@@ -608,7 +613,13 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
       const unitName = r.orgUnitName || r.unitName || '';
       const prev = groups[groups.length - 1];
 
-      if (prev && prev.tsSec === tsSec && prev.actor === actor) {
+      const isSameGroup = prev && prev.actor === actor && (
+        prev.tsSec === tsSec ||
+        isSameMinute(prev.ts, ts) ||
+        Math.abs(prev.tsSec - tsSec) <= 60
+      );
+
+      if (isSameGroup) {
         prev.items.push(r);
       } else {
         groups.push({ tsSec, ts, actor, unitName, items: [r] });
@@ -621,8 +632,8 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
   return (
     <Drawer
       rootClassName="vtssystemchk-theme-scope"
-      size={width ? undefined : (size || 960)}
-      width={width || 960}
+      width={width || 1000}
+      style={{ maxWidth: '95vw' }}
       placement="right"
       open={open}
       onClose={onClose}
@@ -930,7 +941,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                                 <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                                   {label ? `${label}:` : '—'}
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', color: textPrimary }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5, color: textPrimary }}>
                                   {renderFormattedContent(nv, false)}
                                 </div>
                               </div>
@@ -953,13 +964,13 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                               <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                                 {label ? `${label}:` : '—'}
                               </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>
                                 {renderFormattedContent(ov, true)}
                               </div>
                               <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>
                                 →
                               </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>
                                 {renderFormattedContent(nv, false)}
                               </div>
                             </div>

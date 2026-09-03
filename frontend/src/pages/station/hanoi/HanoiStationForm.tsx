@@ -774,10 +774,10 @@ export default function HanoiStationForm({
                   <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ gửi phê duyệt</span><span className="chk-detail-value">{record.submittedByName || record.submittedBy || '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span><span className="chk-detail-value">{record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span><span className="chk-detail-value">{record.approverLevel1Name || record.approverLevel1 || '—'}</span></div>
-                  <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Nội dung phê duyệt</span><span className="chk-detail-value">{record.approvalContentLevel1 || '—'}</span></div>
+                  <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Nội dung phê duyệt</span><span className="chk-detail-value">{record.level1ApprovalContent || record.approvalContentLevel1 || '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt cấp Cục</span><span className="chk-detail-value">{record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt cấp Cục</span><span className="chk-detail-value">{record.approverLevel2Name || record.approverLevel2 || '—'}</span></div>
-                  <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Nội dung phê duyệt</span><span className="chk-detail-value">{record.approvalContentLevel2 || '—'}</span></div>
+                  <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Nội dung phê duyệt</span><span className="chk-detail-value">{record.level2ApprovalContent || record.approvalContentLevel2 || '—'}</span></div>
                   {record.rejectionReason && (
                     <div className="chk-detail-row chk-detail-row--full">
                       <span className="chk-detail-label" style={{ color: statusCritical }}>Lý do từ chối</span>

@@ -300,7 +300,7 @@ function renderHistoryValueTag(
     }
   }
 
-  return <span title={val} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere' }}>{val}</span>;
+  return <span title={val} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>{val}</span>;
 }
 
 /**
@@ -449,13 +449,22 @@ export default function HistoryDrawer({
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
     const sorted = [...records].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
     const q = search.toLowerCase().trim();
+    const isSameMinute = (t1: string, t2: string) => {
+      if (!t1 || !t2) return false;
+      return dayjs(t1).format('YYYY-MM-DD HH:mm') === dayjs(t2).format('YYYY-MM-DD HH:mm');
+    };
     const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
     for (const r of sorted) {
       const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
       const prev = groups[groups.length - 1];
       const actor = historyActor(r);
-      if (prev && prev.tsSec === sec && prev.actor === actor && prev.status === (r as any).status && prev.approvalLevel === (r as any).approvalLevel) {
+      const isSameGroup = prev && prev.actor === actor && (
+        prev.tsSec === sec ||
+        isSameMinute(prev.ts, ts) ||
+        Math.abs(prev.tsSec - sec) <= 60
+      );
+      if (isSameGroup) {
         prev.items.push(r);
       } else {
         groups.push({ tsSec: sec, ts, actor, status: (r as any).status, approvalLevel: (r as any).approvalLevel, items: [r] });
@@ -498,7 +507,7 @@ export default function HistoryDrawer({
           if (changes.length === 0) return null;
           const actionMeta = resolveHistoryActionMeta(g.items[0], changes);
           return (
-            <div key={gi} style={{ display: 'grid', gridTemplateColumns: 'minmax(310px, 0.38fr) minmax(0, 1fr)', gap: spaceLg, alignItems: 'start', marginBottom: gi < groups.length - 1 ? spaceMd : 0 }}>
+            <div key={gi} style={{ display: 'grid', gridTemplateColumns: '220px minmax(0, 1fr)', gap: spaceLg, alignItems: 'start', marginBottom: gi < groups.length - 1 ? spaceMd : 0 }}>
               <div style={{ minWidth: 0, paddingTop: spaceXs }}>
                 <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: spaceSm, marginBottom: spaceXs }}>
                   <Typography.Text style={{ display: 'block', fontSize: fontSizeLg - 1, color: textPrimary, fontWeight: fontWeightBold, lineHeight: 1.5, whiteSpace: 'nowrap' }}>
@@ -542,16 +551,16 @@ export default function HistoryDrawer({
                           const ov = formatHistoryValue(fn, change.oldValue);
                           const nv = formatHistoryValue(fn, change.newValue);
                           return isCreate ? (
-                            <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '170px minmax(0, 1fr)', alignItems: 'flex-start', gap: spaceMd, fontSize: fontSizeMd, lineHeight: 1.6 }}>
-                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{fn ? `${historyFieldName(fieldNameMap, fn)}:` : '—'}</div>
-                              <div style={{ minWidth: 0, overflowWrap: 'break-word' }}>{renderHistoryValueTag(fn, nv, approvalStatusMap, conditionStatusMap)}</div>
+                            <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '140px minmax(0, 1fr)', alignItems: 'flex-start', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6 }}>
+                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{fn ? `${historyFieldName(fieldNameMap, fn)}:` : '—'}</div>
+                              <div style={{ display: 'flex', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>{renderHistoryValueTag(fn, nv, approvalStatusMap, conditionStatusMap)}</div>
                             </div>
                           ) : (
-                            <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '170px minmax(120px, 1fr) 24px minmax(120px, 1fr)', alignItems: 'center', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6 }}>
-                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{fn ? `${historyFieldName(fieldNameMap, fn)}:` : '—'}</div>
-                              <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, overflowWrap: 'break-word' }}>{renderHistoryValueTag(fn, ov, approvalStatusMap, conditionStatusMap)}</div>
-                              <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none' }}>→</div>
-                              <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, overflowWrap: 'break-word' }}>{renderHistoryValueTag(fn, nv, approvalStatusMap, conditionStatusMap)}</div>
+                            <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '140px minmax(0, 1fr) 24px minmax(0, 1fr)', alignItems: 'flex-start', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6 }}>
+                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{fn ? `${historyFieldName(fieldNameMap, fn)}:` : '—'}</div>
+                              <div style={{ display: 'flex', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>{renderHistoryValueTag(fn, ov, approvalStatusMap, conditionStatusMap)}</div>
+                              <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>→</div>
+                              <div style={{ display: 'flex', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>{renderHistoryValueTag(fn, nv, approvalStatusMap, conditionStatusMap)}</div>
                             </div>
                           );
                         })}
@@ -581,7 +590,8 @@ export default function HistoryDrawer({
     <Drawer
       open={open}
       onClose={onClose}
-      width={880}
+      width={1000}
+      style={{ maxWidth: '95vw' }}
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
           <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
