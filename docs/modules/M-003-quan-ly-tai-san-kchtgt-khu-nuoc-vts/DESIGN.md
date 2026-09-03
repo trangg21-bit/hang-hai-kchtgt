@@ -1035,6 +1035,20 @@ com.hanghai.kchtg.vts
 | 9 | `GET` | `/api/v1/he-thong-vts/status-phe-duyet/{trangThai}` | F-066 | `vts:read` | `trangThai` | `ApiResponse<List<HeThongVTSResponse>>` | Lọc theo trạng thái phê duyệt |
 | 10 | `GET` | `/api/v1/he-thong-vts/{id}/history` | F-067 | `vts:history` | — | `ApiResponse<List<HistoryEntry>>` | Lịch sử thay đổi (giảm dần) |
 
+**Ma trận bộ lọc danh sách Hệ thống VTS (đường dẫn triển khai: `GET /api/v1/vts-system`)**
+
+| Nhóm | Trường hiển thị | Query parameter | Ghi chú |
+|---|---|---|---|
+| Thường | Đơn vị quản lý | `orgUnitId` | TreeSelect theo DataScope |
+| Thường | Thuộc cảng biển | `portId` | Danh sách cảng được giới hạn theo đơn vị đã chọn |
+| Thường | Tên hệ thống VTS | `systemName` | Tìm không dấu, chỉ trên tên hệ thống |
+| Nâng cao | Tình trạng | `conditionStatus` | `OPERATIONAL`, `STOPPED`, `MAINTENANCE`, `UNDER_CONSTRUCTION` |
+| Nâng cao | Mã hệ thống VTS | `code` | Tìm không dấu, chỉ trên mã hệ thống |
+| Nâng cao | Thời gian bắt đầu hoạt động | `operationStartDateFrom`, `operationStartDateTo` | Khoảng ngày, `YYYY-MM-DD` khi gọi API |
+| Nâng cao | Ngày cập nhật | `updatedFrom`, `updatedTo` | Khoảng ngày, truyền theo giờ địa phương |
+
+Các điều kiện cùng được áp dụng theo quan hệ **AND**; trường tỉnh/thành phố không thuộc bộ lọc của màn danh sách này.
+
 #### 4.5.4 DTO Schemas
 
 **HeThongVTSCreateRequest**

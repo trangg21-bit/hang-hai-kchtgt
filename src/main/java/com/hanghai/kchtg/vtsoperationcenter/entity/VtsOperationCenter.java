@@ -34,7 +34,7 @@ public class VtsOperationCenter extends BaseApprovableEntity {
     @Column(name = "name", nullable = false, length = 255)
     private String name;
 
-    @Column(name = "vts_system_id", nullable = false)
+    @Column(name = "vts_system_id")
     private UUID vtsSystemId;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -61,6 +61,9 @@ public class VtsOperationCenter extends BaseApprovableEntity {
     // Trường #13 của ma trận dữ liệu (F-293): hệ quy chiếu tọa độ.
     @Column(name = "coordinate_reference_system", length = 50)
     private String coordinateReferenceSystem;
+
+    @Column(name = "symbol_id")
+    private UUID symbolId;
 
     // Các trường phân quyền (org_unit_id, province_id, security_level), GIS (spatial_id) và
     // toàn bộ vết phê duyệt 2 cấp — kể cả submitted_at/submitted_by và

@@ -1,10 +1,11 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Table, Empty, Dropdown, Button, Tooltip } from 'antd';
+import { Table, Dropdown, Button, Tooltip } from 'antd';
 import { MoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
 import { layout } from '../../theme';
 import { useThemeToken, THEME_SCOPE_CLASS, type ThemeToken } from '../../context/ThemeTokenContext';
+import EmptyState from '../EmptyState';
 
 const ACTION_COLUMN_WIDTH = 60;
 
@@ -341,18 +342,27 @@ const DataTable: React.FC<DataTableProps> = ({
         } : undefined,
       }),
       title: <span style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>{((col as any).title ?? col.label)}</span>,
-      onCell: () => ({
-        style: {
-          fontSize: dense ? fontSizeSm : fontSizeMd,
-          color: textPrimary,
-          padding: col.key === 'stt' ? '8px 4px' : (tableCellPadding || undefined),
-          whiteSpace: 'nowrap',
-          overflow: col.key === 'stt' ? 'visible' : 'hidden',
-          textOverflow: (col.key === 'stt' || col.ellipsis === false) ? 'clip' : 'ellipsis',
-          background: col.fixed ? '#ffffff' : undefined,
-          zIndex: col.fixed ? 9 : undefined,
-        },
-      }),
+      onCell: (record: any) => {
+        let cellTitleText: string | undefined = undefined;
+        if (col.cellTitle) {
+          cellTitleText = col.cellTitle(record);
+        } else if (dataKey && record && record[dataKey] != null && typeof record[dataKey] !== 'object') {
+          cellTitleText = String(record[dataKey]);
+        }
+        return {
+          title: cellTitleText,
+          style: {
+            fontSize: dense ? fontSizeSm : fontSizeMd,
+            color: textPrimary,
+            padding: col.key === 'stt' ? '8px 4px' : (tableCellPadding || undefined),
+            whiteSpace: 'nowrap',
+            overflow: col.key === 'stt' ? 'visible' : 'hidden',
+            textOverflow: col.key === 'stt' ? 'clip' : 'ellipsis',
+            background: col.fixed ? '#ffffff' : undefined,
+            zIndex: col.fixed ? 9 : undefined,
+          },
+        };
+      },
     };
 
     if (col.sortOrder !== undefined) {
@@ -410,7 +420,7 @@ const DataTable: React.FC<DataTableProps> = ({
         className="list-view-table"
         pagination={false}
         tableLayout={tableLayout}
-        locale={{ emptyText: emptyState || tableEmptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
+        locale={{ emptyText: emptyState || tableEmptyState || <EmptyState description="Không có dữ liệu" /> }}
         onChange={handleTableChange}
         scroll={tableScroll}
         style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1, height: '100%' }}

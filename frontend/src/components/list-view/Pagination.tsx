@@ -9,7 +9,7 @@ export interface PaginationProps {
 }
 
 const Pagination: React.FC<PaginationProps> = ({
-  total, current, pageSize, pageSizeOptions = [10, 20, 50, 100], onChange,
+  total, current, pageSize, pageSizeOptions = [20, 50, 100], onChange,
 }) => {
   const {
     textSecondary, fontSizeMd, fontWeightBold, fontWeightMedium,
@@ -46,7 +46,7 @@ const Pagination: React.FC<PaginationProps> = ({
     if (p === '...') return <span key={`dots-${idx}`} style={{ ...btnBase, border: 'none', cursor: 'default', width: 32, height: 32 }}>...</span>;
     const isActive = p === current;
     return (
-      <button key={p} onClick={() => onChange(p, pageSize)}
+      <button key={p} type="button" onClick={() => onChange(p, pageSize)}
         style={{
           ...btnBase,
           background: isActive ? `${dataSea1}15` : 'transparent',
@@ -70,20 +70,20 @@ const Pagination: React.FC<PaginationProps> = ({
           Tổng cộng:{' '}
           <span style={{ fontWeight: fontWeightBold }}>{total}</span>
         </span>
-        <button style={{ ...btnBase, opacity: isFirst ? 0.35 : 1, cursor: isFirst ? 'not-allowed' : 'pointer' }}
+        <button type="button" style={{ ...btnBase, opacity: isFirst ? 0.35 : 1, cursor: isFirst ? 'not-allowed' : 'pointer' }}
           disabled={isFirst} onClick={() => onChange(1, pageSize)}>
           <DoubleLeftOutlined />
         </button>
-        <button style={{ ...btnBase, opacity: isFirst ? 0.35 : 1, cursor: isFirst ? 'not-allowed' : 'pointer' }}
+        <button type="button" style={{ ...btnBase, opacity: isFirst ? 0.35 : 1, cursor: isFirst ? 'not-allowed' : 'pointer' }}
           disabled={isFirst} onClick={() => onChange(current - 1, pageSize)}>
           <LeftOutlined />
         </button>
         {pageNumbers.map(pageBtn)}
-        <button style={{ ...btnBase, opacity: isLast ? 0.35 : 1, cursor: isLast ? 'not-allowed' : 'pointer' }}
+        <button type="button" style={{ ...btnBase, opacity: isLast ? 0.35 : 1, cursor: isLast ? 'not-allowed' : 'pointer' }}
           disabled={isLast} onClick={() => onChange(current + 1, pageSize)}>
           <RightOutlined />
         </button>
-        <button style={{ ...btnBase, opacity: isLast ? 0.35 : 1, cursor: isLast ? 'not-allowed' : 'pointer' }}
+        <button type="button" style={{ ...btnBase, opacity: isLast ? 0.35 : 1, cursor: isLast ? 'not-allowed' : 'pointer' }}
           disabled={isLast} onClick={() => onChange(totalPages, pageSize)}>
           <DoubleRightOutlined />
         </button>

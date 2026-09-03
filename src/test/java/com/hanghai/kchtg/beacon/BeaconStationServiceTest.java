@@ -53,6 +53,9 @@ class BeaconStationServiceTest {
     private BeaconHistoryRepository historyRepo;
 
     @Mock
+    private com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository infraHistoryRepo;
+
+    @Mock
     private NotificationService notificationService;
 
     @Mock
@@ -236,7 +239,7 @@ class BeaconStationServiceTest {
             assertThat(result.getApprovalStatus()).isEqualTo("PROPOSED");
 
             verify(beaconStationRepo, atLeastOnce()).save(any());
-            verify(historyRepo).save(any());
+            verify(infraHistoryRepo).save(any());
             verify(notificationService).sendApprovalNotification(any());
         }
 
@@ -376,7 +379,7 @@ class BeaconStationServiceTest {
 
             assertThat(result.getStatus()).isEqualTo("APPROVED_L2");
             assertThat(result.getApprovalStatus()).isEqualTo("APPROVED");
-            verify(historyRepo, atLeastOnce()).save(any());
+            verify(infraHistoryRepo, atLeastOnce()).save(any());
         }
 
         @Test
@@ -420,7 +423,7 @@ class BeaconStationServiceTest {
             BeaconStation saved = beaconStationCaptor.getValue();
             assertThat(saved.getStatus()).isEqualTo("DELETED");
             assertThat(saved.getDeletedAt()).isNotNull();
-            verify(historyRepo).save(any());
+            verify(infraHistoryRepo).save(any());
             verify(gisSpatialObjectService).delete(entity.getSpatialId());
         }
 
@@ -517,7 +520,7 @@ class BeaconStationServiceTest {
             assertThat(saved.getApproverLevel1()).isEqualTo(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
             assertThat(saved.getApprovedDateLevel1()).isNotNull();
             assertThat(result.getStatus()).isEqualTo(ApprovalStatus.APPROVED_LEVEL1.name());
-            verify(historyRepo).save(any());
+            verify(infraHistoryRepo).save(any());
         }
 
         @Test

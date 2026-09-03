@@ -51,9 +51,12 @@ function buildSearchParams(params: Record<string, string | number | undefined>) 
   return sp;
 }
 
+let inFlightPortPromise: Promise<{ id: string; portCode?: string; portName?: string; orgUnitId?: string }[]> | null = null;
+
 const clearPortOptionsCache = () => {
   const getWin = () => (window.top || window) as any;
   getWin().__portOptionsCache = null;
+  inFlightPortPromise = null;
 };
 
 // ── Port CRUD ───────────────────────────────────────────────────
@@ -66,10 +69,20 @@ export const portCRUD = {
     if (cache?.[cacheKey]) {
       return cache[cacheKey] as { id: string; portCode?: string; portName?: string; orgUnitId?: string }[];
     }
-    const res = await api.get('/common/options/ports', { params });
-    const list = res.data.data || [];
-    getWin().__portOptionsCache = { ...(cache || {}), [cacheKey]: list };
-    return list;
+    if (inFlightPortPromise) {
+      return inFlightPortPromise;
+    }
+    inFlightPortPromise = (async () => {
+      try {
+        const res = await api.get('/common/options/ports', { params });
+        const list = res.data.data || [];
+        getWin().__portOptionsCache = { ...(cache || {}), [cacheKey]: list };
+        return list;
+      } finally {
+        inFlightPortPromise = null;
+      }
+    })();
+    return inFlightPortPromise;
   },
 
   async findAll(params?: {

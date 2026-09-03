@@ -27,7 +27,6 @@ public class VtsOperationCenterRequest {
     @Size(max = 255, message = "Tên trung tâm tối đa 255 ký tự")
     private String name;
 
-    @NotNull(message = "Thuộc hệ thống VTS không được để trống")
     private UUID vtsSystemId;
 
     private UUID portId;

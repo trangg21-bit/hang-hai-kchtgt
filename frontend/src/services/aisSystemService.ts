@@ -11,7 +11,7 @@ import type { HistoryEntry } from '../types/radarStation';
 
 const BASE_PATH = '/v1/ais-system';
 
-function buildSearchParams(params: Record<string, string | number | undefined>) {
+function buildSearchParams(params: Record<string, string | number | boolean | undefined>) {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
     if (v !== undefined && v !== '') sp.set(k, String(v));
@@ -37,6 +37,8 @@ export interface AisSystemListParams {
   size?: number;
   sortBy?: string;
   sortDir?: string;
+  /** Bỏ qua truy vấn đếm theo trạng thái khi chỉ lật trang / đổi sắp xếp */
+  includeCounts?: boolean;
 }
 
 export interface AisSystemSearchResponse {
@@ -47,41 +49,71 @@ export interface AisSystemSearchResponse {
   statusCounts: Record<string, number>;
 }
 
+const inFlightGetByIdPromises = new Map<string, Promise<AisSystemResponse>>();
+let inFlightSearchPromise: { key: string; promise: Promise<AisSystemSearchResponse> } | null = null;
+
 export const aisSystemService = {
   async getById(id: string): Promise<AisSystemResponse> {
-    const res = await api.get(`${BASE_PATH}/${id}`);
-    return toSingle<AisSystemResponse>(res.data) || ({} as AisSystemResponse);
+    const existing = inFlightGetByIdPromises.get(id);
+    if (existing) {
+      return existing;
+    }
+    const promise = (async () => {
+      try {
+        const res = await api.get(`${BASE_PATH}/${id}`);
+        return toSingle<AisSystemResponse>(res.data) || ({} as AisSystemResponse);
+      } finally {
+        inFlightGetByIdPromises.delete(id);
+      }
+    })();
+    inFlightGetByIdPromises.set(id, promise);
+    return promise;
   },
 
   async search(params?: AisSystemListParams): Promise<AisSystemSearchResponse> {
-    const sp = buildSearchParams({
-      keyword: params?.keyword,
-      name: params?.name,
-      code: params?.code,
-      orgUnitId: params?.orgUnitId,
-      vtsOperationCenterId: params?.vtsOperationCenterId,
-      radarStationId: params?.radarStationId,
-      operatingOrgId: params?.operatingOrgId,
-      provinceId: params?.provinceId,
-      conditionStatus: params?.conditionStatus,
-      approvalStatus: params?.approvalStatus,
-      commissioningYear: params?.commissioningYear,
-      updatedFrom: params?.updatedFrom,
-      updatedTo: params?.updatedTo,
-      page: params?.page !== undefined ? Math.max(0, params.page > 0 ? params.page - 1 : 0) : 0,
-      size: params?.size || 20,
-      sortBy: params?.sortBy,
-      sortDir: params?.sortDir,
-    });
-    const res = await api.get(`${BASE_PATH}?${sp}`);
-    const data = res.data?.data || {};
-    return {
-      items: data.content || [],
-      total: data.totalElements || 0,
-      page: (data.number ?? 0) + 1,
-      size: data.size ?? (params?.size || 20),
-      statusCounts: data.statusCounts || {},
-    };
+    const key = JSON.stringify(params || {});
+    if (inFlightSearchPromise && inFlightSearchPromise.key === key) {
+      return inFlightSearchPromise.promise;
+    }
+    const promise = (async () => {
+      try {
+        const sp = buildSearchParams({
+          keyword: params?.keyword,
+          name: params?.name,
+          code: params?.code,
+          orgUnitId: params?.orgUnitId,
+          vtsOperationCenterId: params?.vtsOperationCenterId,
+          radarStationId: params?.radarStationId,
+          operatingOrgId: params?.operatingOrgId,
+          provinceId: params?.provinceId,
+          conditionStatus: params?.conditionStatus,
+          approvalStatus: params?.approvalStatus,
+          commissioningYear: params?.commissioningYear,
+          updatedFrom: params?.updatedFrom,
+          updatedTo: params?.updatedTo,
+          page: params?.page !== undefined ? Math.max(0, params.page > 0 ? params.page - 1 : 0) : 0,
+          size: params?.size || 20,
+          sortBy: params?.sortBy,
+          sortDir: params?.sortDir,
+          includeCounts: params?.includeCounts,
+        });
+        const res = await api.get(`${BASE_PATH}?${sp}`);
+        const data = res.data?.data || {};
+        return {
+          items: data.content || [],
+          total: data.totalElements || 0,
+          page: (data.number ?? 0) + 1,
+          size: data.size ?? (params?.size || 20),
+          statusCounts: data.statusCounts || {},
+        };
+      } finally {
+        if (inFlightSearchPromise?.key === key) {
+          inFlightSearchPromise = null;
+        }
+      }
+    })();
+    inFlightSearchPromise = { key, promise };
+    return promise;
   },
 
   async generateCode(): Promise<{ code: string }> {
@@ -119,8 +151,27 @@ export const aisSystemService = {
     await api.post(`${BASE_PATH}/${id}/reject`, { reason });
   },
 
-  async getHistory(id: string): Promise<HistoryEntry[]> {
-    const res = await api.get(`${BASE_PATH}/${id}/history`);
+  /**
+   * Nhật ký thay đổi. Truyền `page`/`pageSize` để drawer cuộn tải thêm, và
+   * `keyword`/`fromDate`/`toDate` để lọc ở server — lọc phía client sẽ chỉ soi
+   * được phần đã tải.
+   */
+  async getHistory(
+    id: string,
+    page?: number,
+    pageSize?: number,
+    filters?: { keyword?: string; fromDate?: string; toDate?: string },
+  ): Promise<HistoryEntry[]> {
+    const params: Record<string, string | number> = {};
+    if (page !== undefined && pageSize !== undefined) {
+      params.page = page;
+      params.pageSize = pageSize;
+    }
+    if (filters?.keyword) params.keyword = filters.keyword;
+    if (filters?.fromDate) params.fromDate = filters.fromDate;
+    if (filters?.toDate) params.toDate = filters.toDate;
+
+    const res = await api.get(`${BASE_PATH}/${id}/history`, { params });
     return toArray<HistoryEntry>(res.data);
   },
 

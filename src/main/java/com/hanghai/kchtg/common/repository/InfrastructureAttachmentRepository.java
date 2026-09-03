@@ -17,4 +17,6 @@ public interface InfrastructureAttachmentRepository extends JpaRepository<Infras
     Optional<InfrastructureAttachment> findByIdAndRefIdAndRefType(UUID id, UUID refId, InfrastructureType refType);
 
     void deleteByRefIdAndRefType(UUID refId, InfrastructureType refType);
+
+    long countByRefIdAndRefType(UUID refId, InfrastructureType refType);
 }

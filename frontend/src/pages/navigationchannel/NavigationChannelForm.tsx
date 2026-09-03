@@ -613,6 +613,9 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
       loadData();
     } else {
       form.resetFields();
+      form.setFieldsValue({
+        conditionStatus: '1',
+      });
       setRecord(null);
       setRouteRows([]);
       setCoordinateList([]);

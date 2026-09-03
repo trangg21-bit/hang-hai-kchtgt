@@ -15,58 +15,140 @@ source-paths:
   - src/main/java/com/hanghai/kchtg/assetmovement/service/KeHoachKiemKeService.java
   - src/test/java/com/hanghai/kchtg/assetmovement/service/KeHoachKiemKeServiceTest.java
 ---
-# Feature: Kiểm kê tài sản KCHT
+# Đặc tả nghiệp vụ: Kiểm kê tài sản KCHT
 
-## Description
-Quản lý hoạt động kiểm kê tài sản kết cấu hạ tầng công nghệ giao thông (KCHTGT) định kỳ hoặc đột xuất theo chuẩn mực kế toán và quản lý tài sản nhà nước. Hệ thống hỗ trợ lập kế hoạch kiểm kê, tạo danh sách tài sản cần kiểm kê, ghi nhận kết quả đối chiếu thực tế với sổ sách và xử lý chênh lệch nếu có.
+**Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu `docs/feature-brief-template.md`)
+**Chức năng:** F-125 — Kiểm kê tài sản KCHT
+**Module:** M-005 — Quản lý biến động tài sản KCHTGT
+**Loại:** chức năng thường (quản lý thông tin kiểm kê; không có cột phê duyệt trong ma trận Excel cụm #34 — xem §3)
+**Tham chiếu:**
+- Nguồn sự thật (ma trận trường): Excel `HH_Tính năng & danh sách các trường thông tin_2.9.xlsx` — sheet `30->43`, cụm **#34 "QL Kiểm kê tài sản"** (khối cột 120–127, 68 dòng × 128 cột — cụm đứng sau cụm #33 'QL Sản lượng cảng biển'). Trích xuất bằng openpyxl (như M-007 verify-report) vì bản markdown bị cắt dòng ở 2000 ký tự.
+- Tài liệu yêu cầu gốc (hh.csdl): URD v3.0 **III.7.55 Kiểm kê tài sản** (`docs/intel/temp_extract/20260616T031810-3cef57d6c3853955-ZOxvv1/URD_MTIS_VMD_v3.0_PHCV-00000000.txt`, ~dòng 66853 trở đi).
+- Tài liệu nền module M-005: `ba/00-lean-spec.md` (chưa có `ba/01-base-pattern.md` — phần CHUNG sẽ bổ sung khi module mở lại).
 
-## Business Intent
-Đảm bảo tính chính xác và trung thực của hồ sơ quản lý tài sản so với thực tế, phát hiện kịp thời các sai sót, mất mát hoặc chênh lệch giữa sổ sách và hiện trạng. Hỗ trợ tuân thủ quy định kiểm kê tài sản định kỳ theo pháp luật hiện hành và cung cấp cơ sở cho việc điều chỉnh sổ sách, xử lý vi phạm nếu phát hiện.
+> ⚠️ Các mục 6–7 là đề xuất của BA, SA chốt khi triển khai. Ô Excel không đối chiếu chắc tới từng ô → ghi rõ **UNRESOLVED**, không bịa.
 
-## Flow Summary
-Quy trình bắt đầu khi bộ phận quản lý lập kế hoạch kiểm kê tài sản, xác định phạm vi (theo đơn vị, loại tài sản, khu vực), thời gian và tổ chức thực hiện. Hệ thống tự động sinh danh sách tài sản cần kiểm kê dựa trên phạm vi đã chọn, sau đó phân công cho từng bộ phận, tổ kiểm kê tiến hành đối chiếu thực tế với thông tin trên sổ sách. Kết quả kiểm kê được ghi nhận trực tiếp trên hệ thống, tự động phát hiện các chênh lệch giữa sổ sách và thực tế (tài sản thừa, thiếu, hư hỏng không ghi nhận). Hệ thống lập báo cáo tổng hợp kiểm kê và chuyển sang quy trình phê duyệt (F-127) để lãnh đạo xác nhận trước khi điều chỉnh sổ sách.
+---
 
-## Acceptance Criteria
-1. Người dùng có thể lập kế hoạch kiểm kê với đầy đủ thông tin (phạm vi, thời gian, tổ kiểm kê).
-2. Hệ thống tự động sinh danh sách tài sản cần kiểm kê dựa trên phạm vi đã chọn và đối chiếu với sổ sách.
-3. Hệ thống tự động phát hiện và cảnh báo các chênh lệch giữa sổ sách và kết quả kiểm kê thực tế.
-4. Báo cáo kiểm kê được tổng hợp tự động và chuyển sang quy trình phê duyệt F-127.
+## 1. Mô tả ngắn
 
-## In Scope
-- Lập kế hoạch kiểm kê tài sản (định kỳ, đột xuất)
-- Sinh danh sách tài sản cần kiểm kê theo phạm vi
-- Phân công tổ kiểm kê và theo dõi tiến độ
-- Ghi nhận kết quả kiểm kê thực tế
-- Tự động phát hiện chênh lệch giữa sổ sách và thực tế
-- Lập báo cáo kiểm kê tổng hợp
-- Chuyển báo cáo kiểm kê sang quy trình phê duyệt
+- Chức năng cho phép đơn vị kiểm kê **lập và quản lý các đợt kiểm kê tài sản KCHTGT**: khai thông tin chung (Đơn vị kiểm kê, Thời gian kiểm kê, Phân loại kiểm kê — định kỳ/đột xuất, Ghi chú), kèm **Danh sách Tài sản kiểm kê** (loại tài sản, tài sản, nguyên giá, giá trị còn lại, nguyên giá/giá trị còn lại **sau kiểm kê** và **chênh lệch** tự tính) và **Danh sách Hội đồng kiểm kê** (cán bộ kiểm kê, chức vụ, chức danh trong hội đồng).
+- Người dùng: chuyên viên/lãnh đạo Cục, Phòng ban trực thuộc Cục, Cảng vụ/Chi cục (theo URD III.7.55.1); phạm vi đơn vị theo phân quyền dữ liệu.
+- Trên danh sách sắp xếp mặc định theo **Ngày cập nhật giảm dần**; cho phép sorting theo Ngày cập nhật / Thời gian kiểm kê (URD III.7.55.2).
 
-## Out of Scope
-- Quy trình xử lý tài sản thừa, thiếu (F-124)
-- Tính toán hao mòn tài sản
-- Sửa đổi thông tin cơ bản của tài sản
-- Tích hợp với hệ thống thanh tra, kiểm toán nội bộ
+## 2. Trường dữ liệu
 
-## Roles + Permissions
-| Role | Permissions |
-|------|-------------|
-| Kế toán trưởng | Lập kế hoạch, Xem, Phê duyệt báo cáo kiểm kê |
-| Nhân viên kiểm kê | Xem danh sách, Ghi nhận kết quả kiểm kê |
-| Trưởng phòng | Xem, Sửa kế hoạch kiểm kê chưa phê duyệt |
-| Lãnh đạo | Xem, Phê duyệt báo cáo kiểm kê |
-| Admin hệ thống | Quản lý phân quyền, cấu hình mẫu báo cáo |
+Cờ ma trận đọc trực tiếp từ Excel cụm #34 (không suy diễn): ✓ = true, — = false. Cột "Bắt buộc" lấy theo URD III.7.55.3 (M = bắt buộc; X = hiển thị/cho phép; — = không bắt buộc). Nhóm "Tài sản kiểm kê" và "Hội đồng kiểm kê" là **2 danh sách con** (mở popup Thêm mới — URD: "Popup Thêm mới hội đồng", "Popup Thêm mới Tài sản").
 
-## Entities
-- **KeHoachKiemKe**: id, loaiKiemKe, PhamVi, NgayBatDau, NgayKetThuc, ToTruongKiemKe, trangThai, createdAt, updatedAt
-- **TaiSanKiemKe**: id, keHoachId, taiSanId, giaTriSach, giaTriThucTe, ChenhLech, trangThaiKiemKe, createdAt, updatedAt
-- **BaoCaoKiemKe**: id, keHoachId, TongSoTaiSan, SoThua, SoThieu, SoKhacThuong, trangThai, createdAt, updatedAt
+| # | Trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
+|---|---|---|---|---|
+| — | *Thông tin chung* (section — Excel: DS —, Lọc —, Xem —, Tạo —, Sửa —) | — | — | — |
+| 1 | Đơn vị kiểm kê | Có (M) | `SelectOrgCode` (cây đơn vị) | DS ✓, Lọc ✓, Xem —, Tạo ✓, Sửa ✓. `orgUnitId` — trường DataScope |
+| 2 | Thời gian kiểm kê | Có (M) | `DatePicker` (có giờ; disabled khi sửa) | DS ✓, Lọc ✓, Xem —, Tạo ✓, Sửa ✓. `inventoryTime` (range Từ ngày–đến ngày theo URD) |
+| 3 | Phân loại kiểm kê | Có (M) | `Select` (Định kỳ / Đột xuất) | DS ✓, Lọc —, Xem —, Tạo ✓, Sửa ✓. `inventoryType` |
+| 4 | Ghi chú | Không (—) | `InputTextArea` | DS —, Lọc —, Xem —, Tạo ✓, Sửa ✓. `note` |
+| — | *Tài sản kiểm kê (Thêm mới tài sản)* — danh sách con | — | — | Excel: DS —, Lọc —, Xem —, Tạo ✓, Sửa ✓ |
+| 5 | Loại tài sản | Có (M) | `Select` | DS —, Lọc —, Xem —, Tạo ✓, Sửa ✓. `assetTypeId` |
+| 6 | Tài sản | Có (M) | `Select` | DS —, Lọc —, Xem —, Tạo ✓, Sửa ✓. `assetId` |
+| 7 | Tình trạng tài sản | Không (X) | `Select` (disabled) | DS —, Lọc —, Xem —, Tạo ✓, Sửa ✓. Tự hiển thị từ tài sản |
+| 8 | Nguyên giá | Không (X) | `InputMoney` (disabled) | DS —, Lọc —, Xem —, Tạo ✓, Sửa ✓. `originalValue` |
+| 9 | Giá trị còn lại | Không (X) | `InputMoney` (disabled) | DS —, Lọc —, Xem —, Tạo ✓, Sửa ✓. `residualValue` |
+| 10 | Nguyên giá sau kiểm kê | Có (M) | `InputMoney` | DS —, Lọc —, Xem —, Tạo ✓, Sửa ✓. `originalValueAfter` |
+| 11 | Giá trị còn lại sau kiểm kê | Có (M) | `InputMoney` | DS —, Lọc —, Xem —, Tạo ✓, Sửa ✓. `residualValueAfter` |
+| 12 | Nguyên giá chênh lệch | Có (hệ thống) | `Text` (hiển thị, không nhập) | DS —, Lọc —, Xem —, Tạo ✓, Sửa ✓. Tự tính = nguyên giá sau − nguyên giá |
+| 13 | Giá trị còn lại chênh lệch | Có (hệ thống) | `Text` (hiển thị, không nhập) | DS —, Lọc —, Xem —, Tạo ✓, Sửa ✓. Tự tính = giá trị còn lại sau − giá trị còn lại |
+| — | *Hội đồng kiểm kê (Thêm mới hội đồng)* — danh sách con | — | — | Excel: DS —, Lọc —, Xem —, Tạo ✓, Sửa ✓ |
+| 14 | Cán bộ kiểm kê | Có (M) | `Select` | DS —, Lọc —, Xem —, Tạo ✓, Sửa ✓. `inventoryOfficerId` |
+| 15 | Chức vụ | Có (M) | `Select` | DS —, Lọc —, Xem —, Tạo ✓, Sửa ✓. `position` |
+| 16 | Chức danh trong hội đồng | Có (M) | `Select` | DS —, Lọc —, Xem —, Tạo ✓, Sửa ✓. `committeeRole` |
+| 17 | Cán bộ cập nhật | Có (hệ thống) | `Text` (hiển thị, không nhập) | DS ✓, Lọc —, Xem —, Tạo —, Sửa —. `updatedByName` |
+| 18 | Ngày cập nhật | Có (hệ thống) | `DatePicker` (hiển thị, không nhập) | DS ✓, Lọc ✓, Xem —, Tạo —, Sửa —. `updatedAt` |
 
-## Business Rules
-1. Kế hoạch kiểm kê phải xác định rõ phạm vi (tất cả tài sản, theo đơn vị, theo loại tài sản).
-2. Kết quả kiểm kê thực tế phải được ghi nhận trước ngày kết thúc kế hoạch kiểm kê.
-3. Chênh lệch giữa sổ sách và thực tế phải được giải trình và có bằng chứng xác nhận.
-4. Báo cáo kiểm kê chỉ được phê duyệt khi tất cả các đơn vị trong phạm vi đã hoàn thành kiểm kê.
-5. Mọi chênh lệch phải được xử lý theo quy định về quản lý tài sản nhà nước.
+> ⚠️ UNRESOLVED: cột **Xem chi tiết = false toàn bộ** trong Excel cụm #34 — không có trường nào hiển thị ở "Xem chi tiết" theo ma trận. Các danh sách con (5–16) chỉ bật Tạo/Sửa. BA/SA chốt lại cấu trúc màn Xem chi tiết khi module mở lại (có thể xem qua Drawer gộp thông tin chung + 2 danh sách con như màn Sửa — KHÔNG tự bịa).
 
-## Testing Strategy
-Kiểm thử tạo kế hoạch kiểm kê với các phạm vi khác nhau (tất cả, theo đơn vị, theo loại). Kiểm thử chức năng sinh danh sách đối chiếu và phát hiện chênh lệch với dữ liệu mẫu có cài sẵn sai lệch. Kiểm thử báo cáo tổng hợp với các tình huống: không có chênh lệch, chỉ thừa, chỉ thiếu, cả thừa và thiếu. Kiểm thử trường hợp biên: kiểm kê khi có tài sản đang trong quá trình xử lý hoặc phê duyệt.
+## 3. Trạng thái và phê duyệt
+
+- **Không có cột Trạng thái và không có cột phê duyệt nào trong ma trận Excel cụm #34** (68 dòng × 128 cột — đã đối chiếu tới ô cuối cùng của cụm). Chức năng theo Excel là quản lý **thông tin kiểm kê** (tìm kiếm/xem chi tiết/thêm/sửa/xóa — URD III.7.55.1), không có luồng phê duyệt riêng trên bản ghi kiểm kê.
+- **UNRESOLVED:** nếu nghiệp vụ yêu cầu kế hoạch kiểm kê phải phê duyệt (như luồng 2 cấp M-1006 / F-127 của M-005), cần BA/SA chốt bổ sung cột Trạng thái + luồng duyệt khi module M-005 được mở lại — brief này không tự thêm trường không có trong Excel.
+
+## 4. Quy tắc và phân quyền riêng
+
+> Chỉ ghi quy tắc RIÊNG của chức năng; phần CHUNG (DataScope, cache tên đơn vị, đa ngôn ngữ) theo AGENTS.md và tài liệu nền module.
+
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
+
+| ID | Quy tắc | Áp dụng |
+|---|---|---|
+| BR-125-01 | Kế hoạch kiểm kê phải xác định Đơn vị kiểm kê + Thời gian kiểm kê + Phân loại kiểm kê (bắt buộc) | Create |
+| BR-125-02 | Thời gian kiểm kê không đổi khi sửa (disabled) | Update |
+| BR-125-03 | Mỗi dòng Tài sản kiểm kê: chọn Loại tài sản + Tài sản; Nguyên giá/Giá trị còn lại hiển thị từ hồ sơ tài sản (read-only) | Create/Update |
+| BR-125-04 | Nguyên giá sau kiểm kê và Giá trị còn lại sau kiểm kê bắt buộc nhập; chênh lệch (12–13) hệ thống tự tính, không nhập tay | Create/Update |
+| BR-125-05 | Hội đồng kiểm kê: mỗi thành viên phải có Cán bộ kiểm kê + Chức vụ + Chức danh trong hội đồng (bắt buộc) | Create/Update |
+| BR-125-06 | Mọi ô text nhập liệu phải `.trim()` trước khi gửi API | All |
+| BR-125-07 | Mọi thay đổi ghi đủ kiểm toán (`operatorId`/`updatedBy`/`updatedAt`) và lịch sử tập trung | All |
+
+### 4.2. Acceptance Criteria kế thừa (nếu có)
+
+- **AC-125-01** — Tạo mới: khai đủ Thông tin chung + ≥ 1 Tài sản kiểm kê + ≥ 1 thành viên Hội đồng → lưu thành công; thiếu trường bắt buộc → chặn + báo lỗi tiếng Việt.
+- **AC-125-02** — Chọn Tài sản → Tình trạng/Nguyên giá/Giá trị còn lại tự điền read-only; chênh lệch tự tính đúng số học.
+- **AC-125-03** — Danh sách hiển thị Đơn vị kiểm kê / Thời gian kiểm kê / Phân loại kiểm kê / Ngày cập nhật / Cán bộ cập nhật; sort theo Ngày cập nhật (mặc định), Thời gian kiểm kê.
+- **AC-125-04** — Bộ lọc: Đơn vị kiểm kê (cây), Ngày cập nhật (Từ–đến), Thời gian kiểm kê (Từ–đến) (URD III.7.55.3).
+- **AC-125-05** — Danh sách đủ 4 trạng thái loading/error/empty/data.
+
+### 4.3. User Stories kế thừa (nếu có)
+
+- **US-125-01:** Là chuyên viên quản lý tài sản, tôi lập đợt kiểm kê kèm hội đồng kiểm kê để đối chiếu nguyên giá/giá trị còn lại của tài sản với thực tế.
+
+### 4.4. Phân quyền riêng
+
+| Thao tác | Quyền (`<resource>:<action>`) |
+|---|---|
+| Tạo/Sửa/Xóa kế hoạch kiểm kê | `inventoryplan:manage` (đề xuất; theo PermissionSeeder + controller hiện có `InventoryPlanController`) |
+| Tạo/Sửa/Xóa tài sản kiểm kê | `inventoryasset:manage` (theo code hiện có `InventoryAssetController`) |
+| Tạo/Sửa/Xóa báo cáo kiểm kê | `inventoryreport:manage` (theo code hiện có — UNRESOLVED nếu gộp vào brief này) |
+| Xem danh sách/chi tiết | xác thực (`isAuthenticated()` — controller hiện có) |
+
+**Admin Cục:** không có đặc biệt ngoài mặc định tài liệu nền — full quyền + xem thêm metadata người tạo/người sửa/thời gian.
+
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
+
+| # | Điểm cần khai báo | Khai báo của chức năng này |
+|---|---|---|
+| 1 | Trạng thái riêng | Không — Excel cụm #34 không có cột Trạng thái (xem §3, UNRESOLVED nếu cần thêm) |
+| 2 | Có bước phê duyệt không | Không theo Excel (không có cột phê duyệt trong cụm #34); nếu cần phê duyệt kế hoạch → UNRESOLVED, chờ BA/SA chốt |
+| 3 | Lọc cha-con / theo đơn vị | Theo đơn vị — `Đơn vị kiểm kê` = `orgUnitId` + DataScope |
+| 4 | Trường chỉ hiện trong điều kiện nào | Có — 2 danh sách con (Tài sản kiểm kê, Hội đồng kiểm kê) chỉ thao tác ở Tạo/Sửa qua popup "Thêm mới" |
+| 5 | Quyền riêng | `inventoryplan:manage`, `inventoryasset:manage`, `inventoryreport:manage` (đề xuất) |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
+| 7 | Tải lên tệp | Không (Excel cụm #34 không có trường Upload/File đính kèm) |
+| 8 | Giao diện khác mẫu chung | Không |
+
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+> Code hiện có của M-005 (package `com.hanghai.kchtg.assetmovement`) đặt tên khác brief cũ (`InventoryPlanController`, bảng `inventory_plans` + `inventory_assets` + `inventory_reports`) — đường dẫn dưới đây theo code hiện có, BA đề xuất; SA chốt khi module mở lại.
+
+| Method | Đường dẫn | Mô tả | Quyền |
+|---|---|---|---|
+| GET | `/api/v1/asset/inventory-plans` | Danh sách kiểm kê (phân trang + lọc DataScope/ngày) | `isAuthenticated()` |
+| POST | `/api/v1/asset/inventory-plans` | Tạo mới kế hoạch kiểm kê (thông tin chung + danh sách tài sản + hội đồng) | `inventoryplan:manage` |
+| GET | `/api/v1/asset/inventory-plans/{id}` | Chi tiết kế hoạch kiểm kê | `isAuthenticated()` |
+| PUT | `/api/v1/asset/inventory-plans/{id}` | Sửa kế hoạch | `inventoryplan:manage` |
+| DELETE | `/api/v1/asset/inventory-plans/{id}` | Xóa kế hoạch | `inventoryplan:manage` |
+| POST | `/api/v1/asset/inventory-assets` | Thêm tài sản kiểm kê (danh sách con) | `inventoryasset:manage` |
+| PUT/DELETE | `/api/v1/asset/inventory-assets/{id}` | Sửa/Xóa tài sản kiểm kê | `inventoryasset:manage` |
+| (đề xuất) | `/api/v1/asset/inventory-plan-officers` | Danh sách Hội đồng kiểm kê (nếu tách bảng con) | `inventoryplan:manage` — UNRESOLVED |
+
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+Quy ước: 🔴 = trường mới cần thêm (so với bảng đang có trong code M-005); ~~gạch ngang~~ = trường cần loại bỏ.
+
+**Bảng `inventory_plans`** (Kế hoạch kiểm kê — theo code hiện có, mở rộng theo Excel #34):
+- `id` UUID PK; 🔴 `org_unit_id` UUID NOT NULL (Đơn vị kiểm kê — DataScope, index) · 🔴 `inventory_time` TIMESTAMP/range (Thời gian kiểm kê — disabled khi sửa) · 🔴 `inventory_type` SMALLINT/ENUM (Phân loại kiểm kê: Định kỳ/Đột xuất) · 🔴 `note` TEXT (Ghi chú)
+- Audit kế thừa `BaseEntity` (`created_by/at`, `updated_by/at`, `deleted_at/by` — phục vụ Cán bộ cập nhật #17, Ngày cập nhật #18) + `@Version`; 🔴 `org_unit_name` KHÔNG lưu — hiển thị qua `OrgUnitCacheService`
+- Cột enum lưu số nguyên `@Enumerated(ORDINAL)`; tên bảng/cột/field tiếng Anh, message/giao diện tiếng Việt có dấu
+
+**Bảng `inventory_assets`** (Tài sản kiểm kê — danh sách con #5–13): `id`, `plan_id` FK, `asset_type_id`, `asset_id` FK, `asset_condition`, `original_value` DECIMAL, `residual_value` DECIMAL, 🔴 `original_value_after` DECIMAL NOT NULL (Nguyên giá sau kiểm kê), 🔴 `residual_value_after` DECIMAL NOT NULL (Giá trị còn lại sau kiểm kê), 🔴 `original_difference` DECIMAL (Nguyên giá chênh lệch — tự tính), 🔴 `residual_difference` DECIMAL (Giá trị còn lại chênh lệch — tự tính).
+
+**Bảng `inventory_plan_officers`** (🔴 Hội đồng kiểm kê — danh sách con #14–16, nếu tách bảng; code hiện có chưa có entity riêng): `id`, `plan_id` FK, `officer_id` UUID FK (Cán bộ kiểm kê), `position` (Chức vụ), `committee_role` (Chức danh trong hội đồng).
+
+**Lịch sử:** ghi vào bảng tập trung (`infrastructure_history`) — không tạo bảng lịch sử riêng (convention dự án).

@@ -428,6 +428,18 @@ public class EffectivePermissionService {
             }
         }
 
+        // 8b. VTS / VtsSystem resource alias
+        if ("vts".equals(resource) || "vtssystem".equals(resource)) {
+            if (permissions.contains(PermissionConstants.build("vts", action))
+                    || permissions.contains(PermissionConstants.build("vtssystem", action))
+                    || permissions.contains("vts:manage")
+                    || permissions.contains("vtssystem:manage")
+                    || permissions.contains("vts:*")
+                    || permissions.contains("vtssystem:*")) {
+                return true;
+            }
+        }
+
         // 9. Document domain fallbacks for port planning, adjustments, operation plans,
         // maintenance plans
         if (Set.of("portplanning", "planningadjustment", "operationplan", "maintenanceplan").contains(resource)) {

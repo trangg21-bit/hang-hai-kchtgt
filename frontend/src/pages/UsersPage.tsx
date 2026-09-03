@@ -1,12 +1,12 @@
-import { useState, useCallback, useEffect, useMemo, memo, type ReactNode, type FC } from 'react';
-import { Typography, Modal, Form, Input, Select, Spin, Button, Row, Col, Drawer, Empty, Tree, Checkbox } from 'antd';
-import { PlusOutlined, EditOutlined, LockOutlined, UnlockOutlined, KeyOutlined, ExclamationCircleOutlined, CheckOutlined, CloseOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons';
+import { useState, useCallback, useEffect, useMemo, memo, type FC, type ReactNode } from 'react';
+import { Typography, Modal, Form, Input, Select, Spin, Button, Row, Col, Drawer, Tree, Checkbox, Tabs, Empty } from 'antd';
+import {
+  PlusOutlined, LockOutlined, UnlockOutlined, KeyOutlined,
+  ExclamationCircleOutlined, CloseOutlined, SearchOutlined,
+} from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useUsers, useUser, useCreateUser, useUpdateUser, useDeleteUser, useToggleLockUser, useResetPassword, useForgotPassword, useChangeStatusUser } from '../hooks/useUsers';
 import { usePermissionStore } from '../store/permissionStore';
-import LoadingSkeleton from '../components/LoadingSkeleton';
-import EmptyState from '../components/EmptyState';
-import ErrorState from '../components/ErrorState';
 import { ScreenHeader, DataTable } from '../components/list-view';
 import FilterTableLayout from '../components/list-view/FilterTableLayout';
 import Pagination from '../components/list-view/Pagination';
@@ -15,37 +15,36 @@ import { organizationService, type Organization } from '../services/organization
 import { userService } from '../services/userService';
 import { normalizeSearchText, OrgUnitTreeSelect } from '../components/org-unit';
 import { getVisiblePermissionKeys, mergePermissionKeys, usePermissions } from '../hooks/usePermissions';
-import { statusAttention, statusCritical, statusDraft, actionPrimary, textSecondary, textPrimary, fontSizeMd, fontSizeLg, fontWeightBold, fontWeightMedium, radiusPill, radiusTextArea, radiusMd, borderDefault, spaceFormField, spaceMd, spaceSm, spaceXs, formFieldStyle, formRowGutter, inputStyle, selectStyle, drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, detailRowStyle, detailLabelColStyle, detailValueStyle } from '../tokens';
-import { colors } from '../theme';
+import {
+  actionPrimary, textSecondary, textPrimary, textTertiary, fontSizeSm, fontSizeMd, fontSizeLg,
+  fontWeightBold, fontWeightMedium, radiusPill, radiusMd, radiusTextArea, borderDefault,
+  spaceFormField, spaceMd, spaceSm, spaceXs, inputStyle,
+  selectStyle, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, drawerStyles, drawerFormScrollStyle,
+  drawerTabBarStyle, primaryButtonStyle, outlineButtonStyle,
+  statusOperational, statusCritical, statusDraft, statusAttention, textAreaStyle, icons, surfaceCard,
+} from '../themetokenchk';
+import { colors } from '../themetokenchk';
+import * as themeTokenChk from '../themetokenchk';
+import { ThemeTokenProvider } from '../context/ThemeTokenContext';
 import toast, { modal } from '../components/ToastNotification';
-import ManagementDrawer from '../components/management/ManagementDrawer';
 import { formLabelProps as labelProps } from '../components/shared/formLabel';
+
+
 const { confirm } = modal;
 
-const STATUS_LABEL: Record<string, string> = {
-  active: 'Hoạt động',
-  ACTIVE: 'Hoạt động',
-  locked: 'Đã khóa',
-  LOCKED: 'Đã khóa',
-  inactive: 'Không hoạt động',
-  INACTIVE: 'Không hoạt động',
-  pending_approval: 'Chờ phê duyệt',
-  PENDING_APPROVAL: 'Chờ phê duyệt',
-  pending_verification: 'Chờ xác thực',
-  PENDING_VERIFICATION: 'Chờ xác thực',
+const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  active: { label: 'Hoạt động', color: statusOperational },
+  ACTIVE: { label: 'Hoạt động', color: statusOperational },
+  locked: { label: 'Đã khóa', color: statusCritical },
+  LOCKED: { label: 'Đã khóa', color: statusCritical },
+  inactive: { label: 'Không hoạt động', color: statusDraft },
+  INACTIVE: { label: 'Không hoạt động', color: statusDraft },
+  pending_approval: { label: 'Chờ phê duyệt', color: statusAttention },
+  PENDING_APPROVAL: { label: 'Chờ phê duyệt', color: statusAttention },
+  pending_verification: { label: 'Chờ xác thực', color: statusAttention },
+  PENDING_VERIFICATION: { label: 'Chờ xác thực', color: statusAttention },
 };
 
-function getStatusBadgeClass(status: string): string {
-  const s = (status || '').toLowerCase();
-  switch (s) {
-    case 'active': return 'status-badge--active';
-    case 'locked': return 'status-badge--locked';
-    case 'inactive': return 'status-badge--inactive';
-    case 'pending_approval':
-    case 'pending_verification': return 'status-badge--pending';
-    default: return '';
-  }
-}
 
 const PermissionSearchBar: FC<{ onSearch: (val: string) => void }> = memo(({ onSearch }) => {
   const [value, setValue] = useState('');
@@ -69,7 +68,7 @@ const PermissionSearchBar: FC<{ onSearch: (val: string) => void }> = memo(({ onS
         />
       }
       placeholder="Tìm theo tên hoặc mã quyền"
-      style={{ borderRadius: radiusPill, height: 40, margin: `${spaceMd}px 0` }}
+      style={{ borderRadius: radiusPill, height: 40 }}
     />
   );
 });
@@ -110,7 +109,7 @@ export default function UsersPage() {
     let isMounted = true;
     (async () => {
       try {
-        const orgs = await organizationService.getTree({ allowMockFallback: false });
+        const orgs = await organizationService.getTree();
         if (isMounted) setOrganizations(orgs);
       } catch (err) {
         console.error('Không thể tải danh sách đơn vị trực thuộc', err);
@@ -120,9 +119,9 @@ export default function UsersPage() {
     return () => { isMounted = false; };
   }, []);
 
-  const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const hasPerm = usePermissionStore((s: any) => s.hasPermission);
 
-  const { data, isLoading, isError, error, refetch } = useUsers({
+  const { data, isLoading, isError, refetch } = useUsers({
     page, pageSize, search: search || undefined, fullName: fullName || undefined,
     status: filterStatus, orgUnitId: filterOrganizationId, sortField, sortOrder,
   });
@@ -367,7 +366,7 @@ export default function UsersPage() {
     }[] = [];
 
     if (hasPerm('user:read')) {
-      actions.push({ key: 'view', label: 'Xem chi tiết tài khoản', icon: <EyeOutlined />, onClick: () => setDetailUserId(record.id) });
+      actions.push({ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => setDetailUserId(record.id) });
     }
 
     if (hasPerm('user:manage')) {
@@ -376,10 +375,10 @@ export default function UsersPage() {
 
     const s = (record.status || '').toUpperCase();
     if (s === 'PENDING_APPROVAL' || s === 'PENDING_VERIFICATION') {
-      if (hasPerm('user:approve')) actions.push({ key: 'approve', label: 'Phê duyệt tài khoản', icon: <CheckOutlined />, onClick: () => handleApprove(record) });
-      if (hasPerm('user:approve')) actions.push({ key: 'reject', label: 'Từ chối tài khoản', icon: <CloseOutlined />, onClick: () => handleReject(record), danger: true });
+      if (hasPerm('user:approve')) actions.push({ key: 'approve', label: 'Phê duyệt tài khoản', icon: icons.approve, onClick: () => handleApprove(record) });
+      if (hasPerm('user:approve')) actions.push({ key: 'reject', label: 'Từ chối tài khoản', icon: icons.reject, onClick: () => handleReject(record), danger: true });
     } else {
-      if (hasPerm('user:update') || hasPerm('user:manage')) actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
+      if (hasPerm('user:update') || hasPerm('user:manage')) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => openEditModal(record) });
       if (hasPerm('user:lock') || hasPerm('user:manage')) actions.push({ key: 'lock', label: record.status === 'locked' ? 'Mở khóa' : 'Khóa', icon: record.status === 'locked' ? <UnlockOutlined /> : <LockOutlined />, onClick: () => handleToggleLock(record) });
       // Intentionally hidden per TRI-1786688745847-4d03: reset-password, forgot-password, delete row actions.
       // Handlers/modals/hooks (handleResetPassword, handleForgotPassword, handleDelete) remain intact.
@@ -388,59 +387,87 @@ export default function UsersPage() {
   }, [hasPerm, openPermissionModal, openEditModal, handleToggleLock, handleResetPassword, handleForgotPassword, handleDelete, handleApprove, handleReject]);
 
   const columns = useMemo(() => [
-    { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, fixed: 'left' as const, render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
-    { key: 'fullName', label: 'Họ và tên', dataIndex: 'fullName', width: 260, sortable: true, sorter: true, align: 'left' as const, sortOrder: sortField === 'fullName' ? sortOrder : null, render: (text: string) => <Typography.Text strong>{text}</Typography.Text> },
-    { key: 'email', label: 'Email', dataIndex: 'email', width: 200, sortable: true, align: 'left' as const, sortOrder: sortField === 'email' ? sortOrder : null },
-    { key: 'orgUnitName', label: 'Đơn vị', dataIndex: 'orgUnitName', width: 200, sortable: true, align: 'left' as const, sortOrder: sortField === 'orgUnitName' ? sortOrder : null, render: (text: string) => text ? <Typography.Text>{text}</Typography.Text> : <Typography.Text type="secondary">—</Typography.Text> },
-    { key: 'lastLoginAt', label: 'Đăng nhập cuối', dataIndex: 'lastLoginAt', width: 170, sortable: true, align: 'center' as const, sortOrder: sortField === 'lastLoginAt' ? sortOrder : null, render: (text: string) => text ? <span>{dayjs(text).format('DD/MM/YYYY HH:mm')}</span> : <Typography.Text type="secondary">Chưa đăng nhập</Typography.Text> },
-    { key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 140, sortable: true, align: 'center' as const, sortOrder: sortField === 'status' ? sortOrder : null, render: (status: string) => { return (<span className={`status-badge ${getStatusBadgeClass(status)}`}>{STATUS_LABEL[status] || status}</span>); } },
+    { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, fixed: 'left' as const, render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + idx + 1}</span> },
+    { key: 'fullName', label: 'Họ và tên', dataIndex: 'fullName', width: 260, sortable: true, sorter: true, align: 'left' as const, sortOrder: sortField === 'fullName' ? sortOrder : null, render: (text: string) => <span style={{ color: textPrimary, fontWeight: fontWeightMedium, fontSize: fontSizeMd }}>{text}</span> },
+    { key: 'email', label: 'Email', dataIndex: 'email', width: 200, sortable: true, align: 'left' as const, sortOrder: sortField === 'email' ? sortOrder : null, render: (text: string) => <span style={{ color: textSecondary, fontSize: fontSizeMd }}>{text}</span> },
+    { key: 'orgUnitName', label: 'Đơn vị', dataIndex: 'orgUnitName', width: 220, sortable: true, align: 'left' as const, sortOrder: sortField === 'orgUnitName' ? sortOrder : null, render: (text: string) => text ? <span style={{ color: textPrimary, fontSize: fontSizeMd }}>{text}</span> : <span style={{ color: textTertiary }}>—</span> },
+    { key: 'lastLoginAt', label: 'Đăng nhập cuối', dataIndex: 'lastLoginAt', width: 170, sortable: true, align: 'center' as const, sortOrder: sortField === 'lastLoginAt' ? sortOrder : null, render: (text: string) => text ? <span style={{ color: textSecondary, fontSize: fontSizeMd }}>{dayjs(text).format('DD/MM/YYYY HH:mm')}</span> : <span style={{ color: textTertiary, fontSize: fontSizeSm }}>Chưa đăng nhập</span> },
+    {
+      key: 'status',
+      label: 'Trạng thái',
+      dataIndex: 'status',
+      width: 150,
+      sortable: true,
+      align: 'center' as const,
+      sortOrder: sortField === 'status' ? sortOrder : null,
+      render: (status: string) => {
+        const conf = STATUS_CONFIG[status] || { label: status, color: statusDraft };
+        return (
+          <span
+            style={{
+              display: 'inline-block',
+              padding: '2px 10px',
+              borderRadius: radiusPill,
+              fontSize: fontSizeSm,
+              fontWeight: fontWeightMedium,
+              backgroundColor: `${conf.color}15`,
+              border: `1px solid ${conf.color}40`,
+              color: conf.color,
+              lineHeight: '20px',
+            }}
+          >
+            {conf.label}
+          </span>
+        );
+      },
+    },
   ], [page, pageSize, sortField, sortOrder]);
 
   const renderContent = () => {
-    if (isLoading) return <LoadingSkeleton rows={8} />;
-    if (isError) return <ErrorState message={error?.message || 'Không thể tải danh sách người dùng'} onRetry={() => refetch()} />;
     const tableData = data?.data || [];
-    const emptyDescription = search || fullName || filterStatus || filterOrganizationId
-      ? 'Không tìm thấy người dùng nào phù hợp'
-      : 'Chưa có người dùng nào';
-    return <>
-      <DataTable
-        columns={columns}
-        dataSource={tableData}
-        rowKey="id"
-        rowActions={rowActions}
-        loading={false}
-        onSort={handleSort}
-        scroll={{ x: 'max-content' }}
-        emptyState={tableData.length === 0 ? <EmptyState description={emptyDescription} /> : undefined}
-      />
-      {tableData.length > 0 && (
+    return (
+      <>
+        <DataTable
+          columns={columns}
+          dataSource={tableData}
+          rowKey="id"
+          rowActions={rowActions}
+          loading={isLoading}
+          onSort={handleSort}
+          scroll={{ x: 'max-content' }}
+        />
+        {/* Luôn hiển thị phân trang cố định ở đáy giống Trung tâm VTS (Tổng cộng: 0) */}
         <Pagination total={data?.total || 0} current={page} pageSize={pageSize} onChange={handlePageChange} />
-      )}
-    </>;
+      </>
+    );
   };
-
 
   const filterContent = (
     <>
-      <div style={{ marginBottom: 12, marginTop: 16 }}>
+      <div style={{ marginBottom: spaceFormField, marginTop: spaceMd }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Email</div>
-        <Input placeholder="Tìm theo email" allowClear
+        <Input
+          placeholder="Tìm theo email"
+          allowClear
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           onPressEnter={handleFilterApply}
-          style={{ borderRadius: radiusPill, height: 40 }} />
+          style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }}
+        />
       </div>
       <div style={{ marginBottom: spaceFormField }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Họ tên</div>
-        <Input placeholder="Tìm theo họ tên" allowClear
+        <Input
+          placeholder="Tìm theo họ tên"
+          allowClear
           value={fullNameInput}
           onChange={(e) => setFullNameInput(e.target.value)}
           onPressEnter={handleFilterApply}
-          style={{ borderRadius: radiusPill, height: 40 }} />
+          style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }}
+        />
       </div>
       <div style={{ marginBottom: spaceFormField }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceMd }}>Đơn vị</div>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Đơn vị</div>
         <OrgUnitTreeSelect
           organizations={organizations}
           value={filterOrganizationInput}
@@ -455,355 +482,518 @@ export default function UsersPage() {
   );
 
   const statusTabs = [
-    { key: 'all', label: 'Tất cả', count: statusCounts?.total ?? (data?.total || 0), color: textSecondary, active: !filterStatus },
-    { key: 'active', label: 'Hoạt động', count: statusCounts?.active ?? 0, color: actionPrimary, active: filterStatus === 'active' },
+    { key: 'all', label: 'Tất cả', count: statusCounts?.total ?? (data?.total || 0), color: colors.primary, active: !filterStatus },
+    { key: 'active', label: 'Hoạt động', count: statusCounts?.active ?? 0, color: statusOperational, active: filterStatus === 'active' },
     { key: 'locked', label: 'Đã khóa', count: statusCounts?.locked ?? 0, color: statusCritical, active: filterStatus === 'locked' },
     { key: 'inactive', label: 'Không hoạt động', count: statusCounts?.inactive ?? 0, color: statusDraft, active: filterStatus === 'inactive' },
   ];
 
   const headerActions = useMemo(() => {
     const actions: any[] = [];
-    if (hasPerm('user:create') || hasPerm('user.create')) actions.push({ key: 'create', label: 'Thêm tài khoản', variant: 'primary' as const, icon: <PlusOutlined />, onClick: openCreateModal });
+    if (hasPerm('user:create') || hasPerm('user.create')) {
+      actions.push({
+        key: 'create',
+        label: 'Thêm mới',
+        variant: 'primary' as const,
+        icon: <PlusOutlined />,
+        onClick: openCreateModal,
+      });
+    }
     return actions;
   }, [hasPerm, openCreateModal]);
 
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
-      <ScreenHeader breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Quản lý tài khoản người dùng' }]} actions={headerActions} />
-      <FilterTableLayout
-        hideFilterToggle
-        onFilterApply={handleFilterApply}
-        onFilterReset={handleFilterReset}
-        loading={isLoading}
-        error={isError}
-        onRetry={() => refetch()}
-        filterContent={filterContent}
-        statusTabs={statusTabs}
-        onStatusTabChange={handleTabChange}
-      >
-        {renderContent()}
-      </FilterTableLayout>
+    <ThemeTokenProvider tokens={themeTokenChk}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+        <ScreenHeader breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Quản lý tài khoản người dùng' }]} actions={headerActions} />
+        <FilterTableLayout
+          hideFilterToggle
+          onFilterApply={handleFilterApply}
+          onFilterReset={handleFilterReset}
+          loading={isLoading}
+          error={isError}
+          onRetry={() => refetch()}
+          filterContent={filterContent}
+          statusTabs={statusTabs}
+          onStatusTabChange={handleTabChange}
+        >
+          {renderContent()}
+        </FilterTableLayout>
 
-      <ManagementDrawer
-        size={760}
-        title={<span style={drawerTitleStyle}>{editingUser ? 'Chỉnh sửa người dùng' : 'Thêm mới người dùng'}</span>}
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        footer={
-          <>
-            <Button onClick={() => setModalOpen(false)} style={outlineButtonStyle}>Hủy</Button>
-            <Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>{editingUser ? 'Cập nhật' : 'Tạo mới'}</Button>
-          </>
-        }
-      >
-        <Spin spinning={submitting}>
-          <Form form={form} layout="vertical" style={{ marginTop: spaceMd }}
-            labelCol={{ style: { padding: 0, marginBottom: 4 } }}
-            initialValues={{ status: 'active' }}
-          >
-            <Form.Item name="orgUnitId" {...labelProps('Đơn vị')} style={formFieldStyle} rules={[{ required: !editingUser, message: 'Vui lòng chọn đơn vị' }]}>
-              <OrgUnitTreeSelect
-                organizations={organizations}
-                placeholder="Chọn đơn vị"
-                allowClear
-                disabled={Boolean(editingUser)}
-                style={selectStyle}
-              />
-            </Form.Item>
-            <Row gutter={formRowGutter}>
-              <Col xs={24} md={12}>
-                <Form.Item name="email" {...labelProps('Email')} style={formFieldStyle} rules={[{ required: true, message: 'Vui lòng nhập email' }, { type: 'email', message: 'Email không hợp lệ' }, { max: 150, message: 'Tối đa 150 ký tự' }]}>
-                  <Input placeholder="email@example.com" autoComplete="email" disabled={Boolean(editingUser)} style={inputStyle} />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="fullName" {...labelProps('Họ và tên')} style={formFieldStyle} rules={[{ required: true, message: 'Vui lòng nhập họ tên' }, { max: 200, message: 'Tối đa 200 ký tự' }]}>
-                  <Input placeholder="Nguyễn Văn A" style={inputStyle} />
-                </Form.Item>
-              </Col>
-            </Row>
-            <Row gutter={formRowGutter}>
-              <Col xs={24} md={12}>
-                <Form.Item name="phone" {...labelProps('Số điện thoại')} style={formFieldStyle} rules={[{ pattern: /^0\d{9,10}$/, message: 'Số điện thoại không hợp lệ (10-11 số)' }]}>
-                  <Input placeholder="0901234567" style={inputStyle} />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="address" {...labelProps('Địa chỉ')} style={formFieldStyle} rules={[{ max: 255, message: 'Địa chỉ tối đa 255 ký tự' }]}>
-                  <Input placeholder="Nhập địa chỉ" style={inputStyle} />
-                </Form.Item>
-              </Col>
-            </Row>
-            <Row gutter={formRowGutter}>
-              <Col xs={24} md={12}>
-                <Form.Item name="department" {...labelProps('Phòng ban')} style={formFieldStyle} rules={[{ required: true, message: 'Vui lòng nhập phòng ban' }, { max: 100, message: 'Phòng ban tối đa 100 ký tự' }]}>
-                  <Input placeholder="Ví dụ: Phòng Quản lý cảng" style={inputStyle} />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="position" {...labelProps('Chức vụ')} style={formFieldStyle} rules={[{ max: 100, message: 'Chức vụ tối đa 100 ký tự' }]}>
-                  <Input placeholder="Ví dụ: Chuyên viên" style={inputStyle} />
-                </Form.Item>
-              </Col>
-            </Row>
-            <Form.Item
-              name="status"
-              {...labelProps('Trạng thái')}
-              style={formFieldStyle}
-              rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}
-            >
-              <Select
-                placeholder="Chọn trạng thái"
-                options={[
-                  { value: 'active', label: 'Hoạt động' },
-                  { value: 'inactive', label: 'Không hoạt động' },
-                ]}
-                style={selectStyle}
-              />
-            </Form.Item>
-            <Form.Item name="note" {...labelProps('Ghi chú')} style={formFieldStyle} rules={[{ max: 500, message: 'Ghi chú tối đa 500 ký tự' }]}>
-              <Input.TextArea placeholder="Nhập ghi chú" rows={3} style={{ borderRadius: radiusTextArea }} />
-            </Form.Item>
-          </Form>
-        </Spin>
-      </ManagementDrawer>
+        <Drawer
+          width="50%"
+          placement="right"
+          closable={false}
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          styles={drawerStyles}
+          title={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={drawerTitleStyle}>{editingUser ? 'Chỉnh sửa người dùng' : 'Thêm mới người dùng'}</span>
+              <Button
+                type="text"
+                onClick={() => setModalOpen(false)}
+                style={{
+                  ...drawerCloseBtnStyle,
+                  borderRadius: '50%',
+                  width: 32,
+                  height: 32,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <CloseOutlined style={{ fontSize: 14, color: textSecondary }} />
+              </Button>
+            </div>
+          }
+          footer={
+            <div style={drawerFooterStyle}>
+              <Button onClick={() => setModalOpen(false)} style={outlineButtonStyle}>Hủy</Button>
+              <Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>{editingUser ? 'Cập nhật' : 'Tạo mới'}</Button>
+            </div>
+          }
+        >
+          <Tabs
+            tabBarStyle={drawerTabBarStyle}
+            animated={false}
+            items={[
+              {
+                key: 'general',
+                label: 'Thông tin chung',
+                children: (
+                  <Spin spinning={submitting}>
+                    <div style={drawerFormScrollStyle}>
+                      <Form
+                        form={form}
+                        layout="vertical"
+                        style={{ marginTop: spaceMd }}
+                        labelCol={{ style: { padding: 0, marginBottom: 4 } }}
+                        initialValues={{ status: 'active' }}
+                      >
+                        <Row gutter={[24, 0]}>
+                          <Col span={12}>
+                            <Form.Item name="orgUnitId" {...labelProps('Đơn vị')} style={{ marginBottom: spaceFormField }} rules={[{ required: !editingUser, message: 'Vui lòng chọn đơn vị' }]}>
+                              <OrgUnitTreeSelect
+                                organizations={organizations}
+                                placeholder="Chọn đơn vị"
+                                allowClear
+                                disabled={Boolean(editingUser)}
+                                style={selectStyle}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              name="status"
+                              {...labelProps('Trạng thái')}
+                              style={{ marginBottom: spaceFormField }}
+                              rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}
+                            >
+                              <Select
+                                placeholder="Chọn trạng thái"
+                                options={[
+                                  { value: 'active', label: 'Hoạt động' },
+                                  { value: 'inactive', label: 'Không hoạt động' },
+                                ]}
+                                style={selectStyle}
+                              />
+                            </Form.Item>
+                          </Col>
 
-      <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Đặt lại mật khẩu</span>}
-        open={Boolean(resetPasswordUser)}
-        onOk={handleResetPasswordSubmit}
-        onCancel={() => setResetPasswordUser(null)}
-        destroyOnHidden
-        confirmLoading={resetPasswordSubmitting}
-        width={600}
-        mask={{ closable: false }}
-        footer={[
-          <Button
-            key="cancel"
-            onClick={() => setResetPasswordUser(null)}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}
-          >
-            Hủy
-          </Button>,
-          <Button
-            key="ok"
-            type="primary"
-            onClick={handleResetPasswordSubmit}
-            loading={resetPasswordSubmitting}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}
-          >
-            Đặt lại mật khẩu
-          </Button>,
-        ]}
-      >
-        <Spin spinning={resetPasswordSubmitting}>
-          <Typography.Text style={{ color: textSecondary }}>
-            Tài khoản: {resetPasswordUser?.fullName} ({resetPasswordUser?.username})
-          </Typography.Text>
-          <Form
-            form={resetPasswordForm}
-            layout="vertical"
-            style={{ marginTop: spaceMd }}
-            labelCol={{ style: { padding: 0, marginBottom: 4 } }}
-          >
-            <Form.Item
-              name="newPassword"
-              {...labelProps('Mật khẩu mới')}
-              style={{ marginBottom: spaceFormField }}
-              rules={[
-                { required: true, message: 'Vui lòng nhập mật khẩu mới' },
-                {
-                  validator: (_, value) => {
-                    const password = typeof value === 'string' ? value.trim() : '';
-                    if (!password) return Promise.resolve();
-                    if (password.length < 8) return Promise.reject(new Error('Mật khẩu phải có ít nhất 8 ký tự'));
-                    if (password.length > 128) return Promise.reject(new Error('Mật khẩu tối đa 128 ký tự'));
-                    if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
-                      return Promise.reject(new Error('Mật khẩu phải có ít nhất một chữ cái và một số'));
-                    }
-                    return Promise.resolve();
-                  },
-                },
-              ]}
-            >
-              <Input.Password
-                placeholder="Nhập mật khẩu mới"
-                autoComplete="new-password"
-                style={{ borderRadius: radiusPill, height: 40 }}
-              />
-            </Form.Item>
-            <Form.Item
-              name="confirmPassword"
-              {...labelProps('Xác nhận mật khẩu')}
-              dependencies={['newPassword']}
-              style={{ marginBottom: spaceFormField }}
-              rules={[
-                { required: true, message: 'Vui lòng xác nhận mật khẩu mới' },
-                ({ getFieldValue }) => ({
-                  validator: (_, value) => {
-                    const password = getFieldValue('newPassword')?.trim();
-                    const confirmation = typeof value === 'string' ? value.trim() : '';
-                    if (!confirmation || password === confirmation) return Promise.resolve();
-                    return Promise.reject(new Error('Mật khẩu xác nhận không khớp'));
-                  },
-                }),
-              ]}
-            >
-              <Input.Password
-                placeholder="Nhập lại mật khẩu mới"
-                autoComplete="new-password"
-                style={{ borderRadius: radiusPill, height: 40 }}
-              />
-            </Form.Item>
-          </Form>
-        </Spin>
-      </Modal>
+                          <Col span={12}>
+                            <Form.Item name="fullName" {...labelProps('Họ và tên')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập họ tên' }, { max: 200, message: 'Tối đa 200 ký tự' }]}>
+                              <Input placeholder="Nhập họ và tên" maxLength={200} showCount style={inputStyle} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item name="email" {...labelProps('Email')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập email' }, { type: 'email', message: 'Email không hợp lệ' }, { max: 150, message: 'Tối đa 150 ký tự' }]}>
+                              <Input placeholder="Nhập email" autoComplete="email" disabled={Boolean(editingUser)} maxLength={150} showCount style={inputStyle} />
+                            </Form.Item>
+                          </Col>
 
-      <ManagementDrawer
-        title={<>Phân quyền chức năng cho người dùng{permissionUser ? `: ${permissionUser.fullName}` : ''}</>}
-        open={Boolean(permissionUser)}
-        onClose={() => {
-          setPermissionUser(null);
-          setAppliedPermissionSearch('');
-        }}
-        destroyOnHidden
-        maskClosable={false}
-        footer={
-          <>
+                          <Col span={12}>
+                            <Form.Item name="phone" {...labelProps('Số điện thoại')} style={{ marginBottom: spaceFormField }} rules={[{ pattern: /^0\d{9,10}$/, message: 'Số điện thoại không hợp lệ (10-11 số)' }]}>
+                              <Input placeholder="Nhập số điện thoại" maxLength={15} showCount style={inputStyle} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item name="address" {...labelProps('Địa chỉ')} style={{ marginBottom: spaceFormField }} rules={[{ max: 255, message: 'Địa chỉ tối đa 255 ký tự' }]}>
+                              <Input placeholder="Nhập địa chỉ" maxLength={255} showCount style={inputStyle} />
+                            </Form.Item>
+                          </Col>
+
+                          <Col span={12}>
+                            <Form.Item name="department" {...labelProps('Phòng ban')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập phòng ban' }, { max: 100, message: 'Phòng ban tối đa 100 ký tự' }]}>
+                              <Input placeholder="Nhập phòng ban" maxLength={100} showCount style={inputStyle} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item name="position" {...labelProps('Chức vụ')} style={{ marginBottom: spaceFormField }} rules={[{ max: 100, message: 'Chức vụ tối đa 100 ký tự' }]}>
+                              <Input placeholder="Nhập chức vụ" maxLength={100} showCount style={inputStyle} />
+                            </Form.Item>
+                          </Col>
+
+                          <Col span={24}>
+                            <Form.Item name="note" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }} rules={[{ max: 500, message: 'Ghi chú tối đa 500 ký tự' }]}>
+                              <Input.TextArea placeholder="Nhập ghi chú" rows={3} maxLength={500} showCount style={textAreaStyle} />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                      </Form>
+                    </div>
+                  </Spin>
+                ),
+              },
+            ]}
+          />
+        </Drawer>
+
+
+        <Modal
+          title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Đặt lại mật khẩu</span>}
+          open={Boolean(resetPasswordUser)}
+          onOk={handleResetPasswordSubmit}
+          onCancel={() => setResetPasswordUser(null)}
+          destroyOnHidden
+          confirmLoading={resetPasswordSubmitting}
+          width={600}
+          mask={{ closable: false }}
+          footer={[
             <Button
-              onClick={() => {
-                setPermissionUser(null);
-                setAppliedPermissionSearch('');
-              }}
+              key="cancel"
+              onClick={() => setResetPasswordUser(null)}
               style={outlineButtonStyle}
             >
-              Đóng
-            </Button>
-            <Button type="primary" loading={permissionSaving} onClick={handlePermissionSave} style={primaryButtonStyle}>Lưu</Button>
-          </>
-        }
-      >
-        <Spin spinning={permissionLoading || permissionCatalogLoading}>
-          <PermissionSearchBar onSearch={setAppliedPermissionSearch} />
-          {permissionTreeData.length === 0 && !permissionLoading ? (
-            <Empty description="Không tìm thấy quyền phù hợp" />
-          ) : (
-            <div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceMd }}>Danh sách chức năng</div>
-              <div style={{ marginBottom: spaceMd }}>
-                <Checkbox
-                  checked={allPermissionsSelected}
-                  indeterminate={!allPermissionsSelected && somePermissionsSelected}
-                  disabled={permissionLoading || permissionCatalogLoading || allPermissionKeys.length === 0}
-                  onChange={(event) => setSelectedPermissionKeys(event.target.checked ? allPermissionKeys : [])}
-                >
-                  HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI
-                </Checkbox>
-              </div>
-              <Tree
-                checkable
-                defaultExpandAll
-                height={460}
-                treeData={permissionTreeData}
-                checkedKeys={getVisiblePermissionKeys(selectedPermissionKeys, permissionTreeData)}
-                onCheck={(checked) => {
-                  const keys = Array.isArray(checked) ? checked : checked.checked;
-                  setSelectedPermissionKeys(
-                    mergePermissionKeys(selectedPermissionKeys, keys.map(String), permissionTreeData)
-                      .filter((key) => !key.startsWith('group_')),
-                  );
+              Hủy
+            </Button>,
+            <Button
+              key="ok"
+              type="primary"
+              onClick={handleResetPasswordSubmit}
+              loading={resetPasswordSubmitting}
+              style={primaryButtonStyle}
+            >
+              Đặt lại mật khẩu
+            </Button>,
+          ]}
+        >
+          <Spin spinning={resetPasswordSubmitting}>
+            <Typography.Text style={{ color: textSecondary, fontSize: fontSizeMd }}>
+              Tài khoản: <strong>{resetPasswordUser?.fullName}</strong> ({resetPasswordUser?.username})
+            </Typography.Text>
+            <Form
+              form={resetPasswordForm}
+              layout="vertical"
+              style={{ marginTop: spaceMd }}
+              labelCol={{ style: { padding: 0, marginBottom: 4 } }}
+            >
+              <Form.Item
+                name="newPassword"
+                {...labelProps('Mật khẩu mới')}
+                style={{ marginBottom: spaceFormField }}
+                rules={[
+                  { required: true, message: 'Vui lòng nhập mật khẩu mới' },
+                  {
+                    validator: (_, value) => {
+                      const password = typeof value === 'string' ? value.trim() : '';
+                      if (!password) return Promise.resolve();
+                      if (password.length < 8) return Promise.reject(new Error('Mật khẩu phải có ít nhất 8 ký tự'));
+                      if (password.length > 128) return Promise.reject(new Error('Mật khẩu tối đa 128 ký tự'));
+                      if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+                        return Promise.reject(new Error('Mật khẩu phải có ít nhất một chữ cái và một số'));
+                      }
+                      return Promise.resolve();
+                    },
+                  },
+                ]}
+              >
+                <Input.Password
+                  placeholder="Nhập mật khẩu mới"
+                  autoComplete="new-password"
+                  style={inputStyle}
+                />
+              </Form.Item>
+              <Form.Item
+                name="confirmPassword"
+                {...labelProps('Xác nhận mật khẩu')}
+                dependencies={['newPassword']}
+                style={{ marginBottom: spaceFormField }}
+                rules={[
+                  { required: true, message: 'Vui lòng xác nhận mật khẩu mới' },
+                  ({ getFieldValue }) => ({
+                    validator: (_, value) => {
+                      const password = getFieldValue('newPassword')?.trim();
+                      const confirmation = typeof value === 'string' ? value.trim() : '';
+                      if (!confirmation || password === confirmation) return Promise.resolve();
+                      return Promise.reject(new Error('Mật khẩu xác nhận không khớp'));
+                    },
+                  }),
+                ]}
+              >
+                <Input.Password
+                  placeholder="Nhập lại mật khẩu mới"
+                  autoComplete="new-password"
+                  style={inputStyle}
+                />
+              </Form.Item>
+            </Form>
+          </Spin>
+        </Modal>
+
+        <Drawer
+          width="50%"
+          placement="right"
+          closable={false}
+          open={Boolean(permissionUser)}
+          onClose={() => {
+            setPermissionUser(null);
+            setAppliedPermissionSearch('');
+          }}
+          destroyOnClose
+          styles={drawerStyles}
+          title={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={drawerTitleStyle}>Phân quyền chức năng cho người dùng{permissionUser ? `: ${permissionUser.fullName}` : ''}</span>
+              <Button
+                type="text"
+                onClick={() => {
+                  setPermissionUser(null);
+                  setAppliedPermissionSearch('');
                 }}
+                style={{
+                  ...drawerCloseBtnStyle,
+                  borderRadius: '50%',
+                  width: 32,
+                  height: 32,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <CloseOutlined style={{ fontSize: 14, color: textSecondary }} />
+              </Button>
+            </div>
+          }
+          footer={
+            <div style={drawerFooterStyle}>
+              <Button
+                onClick={() => {
+                  setPermissionUser(null);
+                  setAppliedPermissionSearch('');
+                }}
+                style={outlineButtonStyle}
+              >
+                Đóng
+              </Button>
+              <Button type="primary" loading={permissionSaving} onClick={handlePermissionSave} style={primaryButtonStyle}>Lưu</Button>
+            </div>
+          }
+        >
+          <Spin spinning={permissionLoading || permissionCatalogLoading} wrapperClassName="chk-h-full">
+            <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 150px)', padding: '16px 0 8px 0' }}>
+              <div style={{ flexShrink: 0, marginBottom: spaceMd }}>
+                <PermissionSearchBar onSearch={setAppliedPermissionSearch} />
+              </div>
+              {permissionTreeData.length === 0 && !permissionLoading ? (
+                <Empty description="Không tìm thấy quyền phù hợp" />
+              ) : (
+                <div style={{
+                  border: `1px solid ${borderDefault}`,
+                  borderRadius: radiusMd,
+                  padding: spaceMd,
+                  flex: 1,
+                  minHeight: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  background: surfaceCard,
+                }}>
+                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceMd, flexShrink: 0 }}>Danh sách chức năng</div>
+                  <div style={{ marginBottom: spaceMd, flexShrink: 0 }}>
+                    <Checkbox
+                      checked={allPermissionsSelected}
+                      indeterminate={!allPermissionsSelected && somePermissionsSelected}
+                      disabled={permissionLoading || permissionCatalogLoading || allPermissionKeys.length === 0}
+                      onChange={(event) => setSelectedPermissionKeys(event.target.checked ? allPermissionKeys : [])}
+                    >
+                      HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI
+                    </Checkbox>
+                  </div>
+                  <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                    <Tree
+                      checkable
+                      defaultExpandAll
+                      treeData={permissionTreeData}
+                      checkedKeys={getVisiblePermissionKeys(selectedPermissionKeys, permissionTreeData)}
+                      onCheck={(checked) => {
+                        const keys = Array.isArray(checked) ? checked : checked.checked;
+                        setSelectedPermissionKeys(
+                          mergePermissionKeys(selectedPermissionKeys, keys.map(String), permissionTreeData)
+                            .filter((key) => !key.startsWith('group_')),
+                        );
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </Spin>
+        </Drawer>
+
+        <Drawer
+          width="50%"
+          placement="right"
+          closable={false}
+          open={detailUserId !== null}
+          onClose={() => setDetailUserId(null)}
+          styles={drawerStyles}
+          title={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={drawerTitleStyle}>
+                {detailUser?.fullName ? `Xem chi tiết — ${detailUser.fullName}` : 'Xem chi tiết tài khoản'}
+              </span>
+              <Button
+                type="text"
+                onClick={() => setDetailUserId(null)}
+                style={{
+                  ...drawerCloseBtnStyle,
+                  borderRadius: '50%',
+                  width: 32,
+                  height: 32,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <CloseOutlined style={{ fontSize: 14, color: textSecondary }} />
+              </Button>
+            </div>
+          }
+          footer={null}
+        >
+          {detailLoading ? <Spin /> : detailUser && (
+            <Tabs
+              tabBarStyle={drawerTabBarStyle}
+              animated={false}
+              items={[
+                {
+                  key: 'general',
+                  label: 'Thông tin chung',
+                  children: (
+                    <div style={drawerFormScrollStyle}>
+                      <div style={{ paddingTop: spaceMd }}>
+                        <div className="chk-detail-grid">
+                          <div className="chk-detail-row"><span className="chk-detail-label">Họ và tên</span><span className="chk-detail-value">{detailUser.fullName || '—'}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Email</span><span className="chk-detail-value">{detailUser.email || '—'}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị trực thuộc</span><span className="chk-detail-value">{detailUser.orgUnitName || '—'}</span></div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label">Trạng thái</span>
+                            <span className="chk-detail-value">
+                              {(() => {
+                                const conf = STATUS_CONFIG[detailUser.status] || { label: detailUser.status, color: statusDraft };
+                                return (
+                                  <span
+                                    style={{
+                                      display: 'inline-block',
+                                      padding: '2px 10px',
+                                      borderRadius: radiusPill,
+                                      fontSize: fontSizeSm,
+                                      fontWeight: fontWeightMedium,
+                                      backgroundColor: `${conf.color}15`,
+                                      border: `1px solid ${conf.color}40`,
+                                      color: conf.color,
+                                    }}
+                                  >
+                                    {conf.label}
+                                  </span>
+                                );
+                              })()}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Số điện thoại</span><span className="chk-detail-value">{detailUser.phone || '—'}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Địa chỉ</span><span className="chk-detail-value">{detailUser.address || '—'}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Phòng ban</span><span className="chk-detail-value">{detailUser.department || '—'}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Chức vụ</span><span className="chk-detail-value">{detailUser.position || '—'}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Nhóm nghiệp vụ</span><span className="chk-detail-value">{detailUser.groupNames?.length ? detailUser.groupNames.join(', ') : '—'}</span></div>
+                          <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Ghi chú</span><span className="chk-detail-value">{detailUser.note || '—'}</span></div>
+                        </div>
+
+                        <div style={{ marginTop: 20, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ display: 'inline-block', width: 4, height: 16, borderRadius: 2, backgroundColor: actionPrimary }} />
+                          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                            Thông tin hệ thống
+                          </span>
+                        </div>
+
+                        <div className="chk-detail-grid">
+                          <div className="chk-detail-row"><span className="chk-detail-label">Người tạo</span><span className="chk-detail-value">{detailUser.createdByName || '—'}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Ngày tạo</span><span className="chk-detail-value">{detailUser.createdAt ? dayjs(detailUser.createdAt).format('DD/MM/YYYY HH:mm') : '—'}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Người cập nhật</span><span className="chk-detail-value">{detailUser.updatedByName || '—'}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Ngày cập nhật</span><span className="chk-detail-value">{detailUser.updatedAt ? dayjs(detailUser.updatedAt).format('DD/MM/YYYY HH:mm') : '—'}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Đăng nhập gần nhất</span><span className="chk-detail-value">{detailUser.lastLoginAt ? dayjs(detailUser.lastLoginAt).format('DD/MM/YYYY HH:mm') : '—'}</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  ),
+                },
+              ]}
+            />
+          )}
+        </Drawer>
+
+
+
+
+        <Modal
+          open={Boolean(lockTargetUser)}
+          title={
+            <span style={{ fontSize: fontSizeLg, fontWeight: fontWeightBold, color: colors.sidebarBg }}>
+              {lockTargetUser?.status === 'locked' ? 'Xác nhận mở khóa tài khoản' : 'Xác nhận khóa tài khoản'}
+            </span>
+          }
+          onCancel={() => { if (!lockSubmitting) setLockTargetUser(null); }}
+          footer={[
+            <Button key="cancel" onClick={() => setLockTargetUser(null)} style={outlineButtonStyle} disabled={lockSubmitting}>
+              Hủy
+            </Button>,
+            <Button
+              key="submit"
+              type="primary"
+              danger={lockTargetUser?.status !== 'locked'}
+              loading={lockSubmitting}
+              onClick={handleConfirmToggleLock}
+              style={lockTargetUser?.status === 'locked' ? primaryButtonStyle : { borderRadius: radiusPill, height: 40 }}
+            >
+              {lockTargetUser?.status === 'locked' ? 'Mở khóa' : 'Khóa'}
+            </Button>,
+          ]}
+        >
+          <div style={{ padding: `${spaceSm}px 0` }}>
+            <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceMd }}>
+              {lockTargetUser?.status === 'locked'
+                ? `Bạn có chắc chắn muốn mở khóa cho tài khoản "${lockTargetUser?.fullName}" (${lockTargetUser?.email})?`
+                : `Tài khoản "${lockTargetUser?.fullName}" (${lockTargetUser?.email}) sẽ bị khóa và không thể đăng nhập. Tiếp tục?`}
+            </p>
+            <div style={{ marginBottom: spaceSm }}>
+              <label style={{ display: 'block', fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg, marginBottom: spaceXs }}>
+                Lý do:
+              </label>
+              <Input.TextArea
+                rows={3}
+                placeholder={lockTargetUser?.status !== 'locked' ? "Nhập lý do khóa tài khoản" : "Nhập lý do mở khóa tài khoản"}
+                value={lockReason}
+                onChange={(e) => setLockReason(e.target.value)}
+                style={{ borderRadius: radiusTextArea || radiusMd }}
+                maxLength={500}
+                showCount
               />
             </div>
-          )}
-        </Spin>
-      </ManagementDrawer>
-
-      <Drawer
-        {...drawerProps}
-        title={<span style={drawerTitleStyle}>Chi tiết tài khoản</span>}
-        open={detailUserId !== null}
-        onClose={() => setDetailUserId(null)}
-        extra={<Button type="text" onClick={() => setDetailUserId(null)} style={drawerCloseBtnStyle}>✕</Button>}
-        footer={null}
-      >
-        {detailLoading ? <Spin /> : detailUser && (
-          <div style={{ paddingTop: spaceMd }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
-              {[
-                ['Họ và tên', detailUser.fullName],
-                ['Email', detailUser.email],
-                ['Số điện thoại', detailUser.phone || '—'],
-                ['Địa chỉ', detailUser.address || '—'],
-                ['Phòng ban', detailUser.department || '—'],
-                ['Chức vụ', detailUser.position || '—'],
-                ['Ghi chú', detailUser.note || '—'],
-                ['Nhóm nghiệp vụ', detailUser.groupNames?.length ? detailUser.groupNames.join(', ') : '—'],
-                ['Đơn vị trực thuộc', detailUser.orgUnitName || '—'],
-                ['Trạng thái', <span className={`status-badge ${getStatusBadgeClass(detailUser.status)}`}>{STATUS_LABEL[detailUser.status] || detailUser.status}</span>],
-                ['Đăng nhập gần nhất', detailUser.lastLoginAt ? dayjs(detailUser.lastLoginAt).format('DD/MM/YYYY HH:mm') : '—'],
-                ['Ngày tạo', detailUser.createdAt ? dayjs(detailUser.createdAt).format('DD/MM/YYYY HH:mm') : '—'],
-                ['Người tạo', detailUser.createdByName || '—'],
-                ['Ngày cập nhật', detailUser.updatedAt ? dayjs(detailUser.updatedAt).format('DD/MM/YYYY HH:mm') : '—'],
-                ['Người cập nhật', detailUser.updatedByName || '—'],
-              ].map(([label, value], index) => (
-                <div key={index} style={detailRowStyle}>
-                  <span style={detailLabelColStyle}>{label}:</span>
-                  <span style={{ ...detailValueStyle, color: value === '—' ? textSecondary : textPrimary }}>{value}</span>
-                </div>
-              ))}
-            </div>
           </div>
-        )}
-      </Drawer>
-
-      <Modal
-        open={Boolean(lockTargetUser)}
-        title={
-          <span style={{ fontSize: fontSizeLg, fontWeight: fontWeightBold, color: colors.sidebarBg }}>
-            {lockTargetUser?.status === 'locked' ? 'Xác nhận mở khóa tài khoản' : 'Xác nhận khóa tài khoản'}
-          </span>
-        }
-        onCancel={() => { if (!lockSubmitting) setLockTargetUser(null); }}
-        footer={[
-          <Button key="cancel" onClick={() => setLockTargetUser(null)} style={outlineButtonStyle} disabled={lockSubmitting}>
-            Hủy
-          </Button>,
-          <Button
-            key="submit"
-            type="primary"
-            danger={lockTargetUser?.status !== 'locked'}
-            loading={lockSubmitting}
-            onClick={handleConfirmToggleLock}
-            style={lockTargetUser?.status === 'locked' ? primaryButtonStyle : { borderRadius: radiusPill, height: 40 }}
-          >
-            {lockTargetUser?.status === 'locked' ? 'Mở khóa' : 'Khóa'}
-          </Button>,
-        ]}
-      >
-        <div style={{ padding: `${spaceSm}px 0` }}>
-          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceMd }}>
-            {lockTargetUser?.status === 'locked'
-              ? `Bạn có chắc chắn muốn mở khóa cho tài khoản "${lockTargetUser?.fullName}" (${lockTargetUser?.email})?`
-              : `Tài khoản "${lockTargetUser?.fullName}" (${lockTargetUser?.email}) sẽ bị khóa và không thể đăng nhập. Tiếp tục?`}
-          </p>
-          <div style={{ marginBottom: spaceSm }}>
-            <label style={{ display: 'block', fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg, marginBottom: spaceXs }}>
-              Lý do:
-            </label>
-            <Input.TextArea
-              rows={3}
-              placeholder={lockTargetUser?.status !== 'locked' ? "Nhập lý do khóa tài khoản" : "Nhập lý do mở khóa tài khoản"}
-              value={lockReason}
-              onChange={(e) => setLockReason(e.target.value)}
-              style={{ borderRadius: radiusTextArea || radiusMd }}
-              maxLength={500}
-              showCount
-            />
-          </div>
-        </div>
-      </Modal>
-    </div>
+        </Modal>
+      </div>
+    </ThemeTokenProvider>
   );
 }
+
 

@@ -88,6 +88,9 @@ export interface VtsSystemListItem {
   provinceId?: number;
   operationStartDate?: string;
   approvalStatus: ApprovalStatus;
+  rejectionReason?: string;
+  createdBy?: string;
+  createdByName?: string;
   approverLevel1?: string;
   updatedDate?: string;
   updatedByName?: string;
@@ -119,6 +122,8 @@ export interface CreateVtsSystemRequest {
   zones?: VtsZoneDto[];
   geometryType?: 'POINT' | 'LINE' | 'POLYGON' | string;
   coordinates?: string;
+  addedAttachmentNames?: string[];
+  removedAttachmentNames?: string[];
 }
 
 export interface UpdateVtsSystemRequest extends CreateVtsSystemRequest {}
@@ -148,6 +153,8 @@ export interface ListParams {
   page?: number;
   size?: number;
   keyword?: string;
+  systemName?: string;
+  code?: string;
   conditionStatus?: ConditionStatus;
   approvalStatus?: ApprovalStatus;
   orgUnitId?: string;

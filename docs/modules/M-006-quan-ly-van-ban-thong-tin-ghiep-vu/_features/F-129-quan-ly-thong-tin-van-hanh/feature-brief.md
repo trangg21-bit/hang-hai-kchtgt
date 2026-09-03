@@ -1,86 +1,131 @@
 ---
 id: F-129
-name: Quản lý thông tin vận hành
+name: Quản lý thông tin vận hành khai thác
 slug: quan-ly-thong-tin-van-hanh
 module-id: M-006
 status: proposed
 classification: local
 priority: high
-created: 2026-06-16T04:40:21Z
-last-updated: 2026-07-21T08:29:20Z
+created: 2026-09-02
+last-updated: 2026-09-02
 locked-fields: []
 consumed_by_modules: []
-source-paths:
-  - src/main/java/com/hanghai/kchtg/vanban/entity/KeHoachVanHanh.java
-  - src/main/java/com/hanghai/kchtg/vanban/controller/KeHoachVanHanhController.java
-  - src/main/java/com/hanghai/kchtg/vanban/service/KeHoachVanHanhService.java
-  - src/main/java/com/hanghai/kchtg/vanban/repository/KeHoachVanHanhRepository.java
-  - src/main/java/com/hanghai/kchtg/vanban/dto/KeHoachVanHanhResponse.java
-  - src/main/java/com/hanghai/kchtg/vanban/dto/KeHoachVanHanhCreateRequest.java
-  - src/test/java/com/hanghai/kchtg/vanban/KeHoachVanHanhControllerTest.java
 ---
-# Feature: Quản lý thông tin vận hành
 
-## Description
+# Đặc tả nghiệp vụ: Quản lý thông tin vận hành khai thác
 
-Hệ thống quản lý thông tin vận hành kết cấu hạ tầng cảng biển (KCHT), bao gồm việc đăng ký, theo dõi và báo cáo các kế hoạch vận hành hàng ngày, lịch trình hoạt động của cầu cảng, thiết bị xếp dỡ, cũng như các quy trình vận hành tiêu chuẩn đảm bảo an toàn và hiệu quả khai thác cảng.
+**Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu này)
+**Chức năng:** F-129
+**Module:** M-006 — Quản lý văn bản & thông tin nghiệp vụ
+**Loại:** chức năng thường (không có bước phê duyệt)
+**Tham chiếu:** tài liệu nền chung của module (chưa có `ba/01-base-pattern.md` cho M-006) + tài liệu yêu cầu gốc (TKCT) + nguồn sự thật Excel `HH_Tính năng & danh sách các trường thông tin_2.9.xlsx` sheet `30->43` cụm #35 "QL TT vận hành khai thác".
 
-## Business Intent
+> **⚠️ Data Scope:** Trường "Đơn vị quản lý" (`orgUnitId`, `SelectOrgCode`) là trường đơn vị phân quyền dữ liệu — xem mục 5 dòng 3 và AGENTS.md mục Data Scope Convention.
 
-Nâng cao năng lực điều độ và quản lý vận hành cảng biển thông qua việc số hóa toàn bộ thông tin vận hành, giúp người quản lý có cái nhìn tổng quan về tình trạng khai thác, tối ưu hóa lịch trình hoạt động của các thiết bị và khu vực bến cảng, giảm thiểu thời gian chờ đợi và tăng công suất khai thác tổng thể.
+---
 
-## Flow Summary
+## 1. Mô tả ngắn
 
-Người vận hành đăng nhập hệ thống, nhập kế hoạch vận hành hàng ngày bao gồm lịch trình hoạt động của từng cầu cảng, thiết bị xếp dỡ và khu vực bốc xếp. Hệ thống tự động kiểm tra xung đột lịch trình và cảnh báo nếu có sự chồng chéo. Người quản lý xem dashboard tổng quan để theo dõi tiến độ vận hành, phê duyệt kế hoạch và điều chỉnh khi cần. Hệ thống tự động sinh báo cáo vận hàng ngày, tuần, tháng và xuất ra định dạng PDF hoặc Excel để lưu trữ hoặc trình báo cấp trên.
+Chức năng quản lý thông tin vận hành khai thác kết cấu hạ tầng hàng hải (KCHT): lập kế hoạch vận hành khai thác, liệt kê danh sách công trình thuộc kế hoạch, đính kèm tệp kế hoạch; khi kế hoạch ở trạng thái "Hoàn thành" thì ghi nhận kết quả xác nhận vận hành thực tế (thời gian hoạt động, công suất, tần suất sự cố) kèm tệp xác nhận. Người dùng: cán bộ đơn vị quản lý KCHT (tạo/sửa), lãnh đạo/cục tra cứu.
 
-## Acceptance Criteria
+## 2. Trường dữ liệu
 
-- Người vận hành có thể tạo mới kế hoạch vận hành với đầy đủ thông tin (ngày, cầu cảng, thiết bị, thời gian dự kiến)
-- Hệ thống tự động kiểm tra và cảnh báo khi có xung đột lịch trình giữa các kế hoạch
-- Người quản lý có thể xem dashboard tổng quan, phê duyệt hoặc từ chối kế hoạch vận hành
-- Hệ thống tự động sinh báo cáo vận hành theo ngày, tuần, tháng với các chỉ số chính
-- Chỉ người có quyền Admin mới được phép xóa kế hoạch vận hành đã được phê duyệt
+Nguồn: ma trận Excel cụm #35 (30 trường). Cờ: ✓ = có (true), — = không (false). Cột **Bắt buộc** không có trong Excel → **không xác định ở cấp Excel**.
 
-## In Scope
+| # | Nhóm (TAB) | Trường | Loại điều khiển | DS | Lọc | Xem | Tạo | Sửa |
+|---|---|---|---|---|---|---|---|---|
+| 1 | Kế hoạch vận hành khai thác | Đơn vị quản lý | SelectOrgCode | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 2 | Kế hoạch vận hành khai thác | Đơn vị vận hành khai thác | SelectOrgCode | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 3 | Kế hoạch vận hành khai thác | Loại kết cấu hạ tầng | Select | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 4 | Kế hoạch vận hành khai thác | Mã kế hoạch vận hành khai thác | Input Text (disabled, tự sinh) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 5 | Kế hoạch vận hành khai thác | Tên kế hoạch vận hành khai thác | InputTextArea | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 6 | Kế hoạch vận hành khai thác | Nội dung kế hoạch vận hành khai thác | InputTextArea | — | — | ✓ | ✓ | ✓ |
+| 7 | Kế hoạch vận hành khai thác | Trạng thái vận hành khai thác | Select | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 8 | Kế hoạch vận hành khai thác | Ngày bắt đầu vận hành khai thác dự kiến | DatePicker | ✓ | — | ✓ | ✓ | ✓ |
+| 9 | Kế hoạch vận hành khai thác | Ngày kết thúc vận hành khai thác dự kiến | DatePicker | ✓ | — | ✓ | ✓ | ✓ |
+| 10 | Kế hoạch vận hành khai thác | Ghi chú | InputTextArea | — | — | ✓ | ✓ | ✓ |
+| 11 | Danh sách công trình | Mã kết cấu hạ tầng | Select | — | — | ✓ | ✓ | ✓ |
+| 12 | Danh sách công trình | Tên kết cấu hạ tầng | Input Text | — | — | ✓ | ✓ | ✓ |
+| 13 | Danh sách công trình | Địa điểm | Input Text | — | — | ✓ | ✓ | ✓ |
+| 14 | Danh sách công trình | Thuộc cảng biển | Select | — | — | ✓ | ✓ | ✓ |
+| 15 | File kế hoạch vận hành khai thác | Loại kế hoạch vận hành khai thác | Select | — | — | ✓ | ✓ | ✓ |
+| 16 | File kế hoạch vận hành khai thác | Tên file | Upload/Attachment | — | — | ✓ | ✓ | ✓ |
+| 17 | Xác nhận vận hành khai thác (hiện khi trạng thái = Hoàn thành) | Ngày bắt đầu vận hành khai thác | DatePicker | — | — | ✓ | — | ✓ |
+| 18 | Xác nhận vận hành khai thác (hiện khi trạng thái = Hoàn thành) | Ngày kết thúc vận hành khai thác | DatePicker | — | — | ✓ | — | ✓ |
+| 19 | Xác nhận vận hành khai thác (hiện khi trạng thái = Hoàn thành) | Thời gian hoạt động | Input Text | — | — | ✓ | — | ✓ |
+| 20 | Xác nhận vận hành khai thác (hiện khi trạng thái = Hoàn thành) | Tình trạng hoạt động | Select | — | — | ✓ | — | ✓ |
+| 21 | Xác nhận vận hành khai thác (hiện khi trạng thái = Hoàn thành) | Thời gian ngừng hoạt động | Input Text | — | — | ✓ | — | ✓ |
+| 22 | Xác nhận vận hành khai thác (hiện khi trạng thái = Hoàn thành) | Tần suất sự cố | Input Text | — | — | ✓ | — | ✓ |
+| 23 | Xác nhận vận hành khai thác (hiện khi trạng thái = Hoàn thành) | Công suất tối đa | Input Text | — | — | ✓ | — | ✓ |
+| 24 | Xác nhận vận hành khai thác (hiện khi trạng thái = Hoàn thành) | Công suất thực tế | Input Text | — | — | ✓ | — | ✓ |
+| 25 | Xác nhận vận hành khai thác (hiện khi trạng thái = Hoàn thành) | Nội dung kết quả vận hành khai thác | InputTextArea | — | — | ✓ | — | ✓ |
+| 26 | Xác nhận vận hành khai thác (hiện khi trạng thái = Hoàn thành) | Ghi chú (kết quả) | InputTextArea | — | — | ✓ | — | ✓ |
+| 27 | File xác nhận vận hành khai thác | Loại xác nhận vận hành khai thác | Select | — | — | ✓ | — | ✓ |
+| 28 | File xác nhận vận hành khai thác | Tên file | Upload/Attachment | — | — | ✓ | — | ✓ |
+| 29 | Trạng thái | Cán bộ cập nhật | Text (hiển thị, không nhập) | ✓ | — | ✓ | — | — |
+| 30 | Trạng thái | Ngày cập nhật | DatePicker (hiển thị, không nhập) | ✓ | — | ✓ | — | — |
 
-- Đăng ký và quản lý kế hoạch vận hành hàng ngày, tuần, tháng
-- Theo dõi trạng thái thực hiện của từng kế hoạch (đang diễn ra, hoàn thành, trì hoãn, hủy)
-- Kiểm tra xung đột lịch trình và tự động cảnh báo
-- Dashboard tổng quan tình trạng vận hành cảng
-- Sinh báo cáo vận hành tự động theo chu kỳ
+## 3. Trạng thái và phê duyệt
 
-## Out of Scope
+- Excel cụm #35 **không khai báo luồng phê duyệt** (không có cấp C1/C2). Trạng thái nghiệp vụ nằm ở trường "Trạng thái vận hành khai thác" (số 7) và TAB "Xác nhận vận hành khai thác" chỉ hiển thị khi **trạng thái = Hoàn thành**.
+- Trạng thái lưu dạng số (theo tài liệu nền mục 3.7); bộ giá trị cụ thể chưa được Excel khai báo → **SA chốt** (gợi ý theo chuẩn 7 trạng thái phê duyệt của hệ thống, xem AGENTS.md).
+- **Không có bước phê duyệt** (không phát sinh approval log) — chỉ là trạng thái vận hành nội bộ.
 
-- Quản lý nhân sự và phân công ca làm việc
-- Tích hợp trực tiếp với hệ thống giám sát thiết bị IoT tại cảng
-- Quản lý chi phí vận hành chi tiết cho từng ca
-- Tự động điều độ tàu vào/ra dựa trên AI
+## 4. Quy tắc và phân quyền riêng
 
-## Roles + Permissions
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
 
-| Role | Permissions |
-|------|-------------|
-| User | Xem kế hoạch vận hành, Báo cáo tình trạng |
-| Operator | Tạo, Chỉnh sửa kế hoạch vận hành, Đính kèm tài liệu |
-| Admin | Phê duyệt, Từ chối, Xóa, Vô hiệu hóa kế hoạch, Quản lý phân quyền |
+| ID | Quy tắc | Áp dụng |
+|---|---|---|
+| BR-129-01 | Mã kế hoạch vận hành khai thác tự sinh, không cho nhập tay. | Create |
+| BR-129-02 | TAB "Xác nhận vận hành khai thác" chỉ hiển thị/ghi nhận khi trạng thái = Hoàn thành. | Update |
+| BR-129-03 | "Đơn vị quản lý" là trường đơn vị phân quyền dữ liệu; khi tạo phải gán đơn vị trong phạm vi người dùng (không để NULL). | Create / Update |
+| BR-129-04 | Cán bộ cập nhật / Ngày cập nhật do hệ thống tự điền, không cho nhập. | Create / Update |
 
-## Entities
+### 4.4. Phân quyền riêng
 
-- **KeHoachVanHanh**: id, ngayVanHanh, cauCangId, thietBiId, thoiGianBatDau, thoiGianKetThuc, tinhTrang, nguoiTao, ngayTao, nguoiSuaDoi, ngaySuaDoi
-- **VanHanhChiTiet**: id, keHoachId, moTa, sanLuongDuKien, sanLuongThucTe, ghiChu
-- **BaoCaoVanHanh**: id, loaiBaoCao, kyBatDau, kyKetThuc, duongDanFile, nguoiTao, ngayTao
+| Thao tác | Quyền (`<resource>:<action>`) |
+|---|---|
+| Xem danh sách / chi tiết | `operationplan:read` |
+| Tạo mới | `operationplan:create` |
+| Sửa | `operationplan:update` |
+| Xóa | `operationplan:delete` |
 
-## Business Rules
+**Admin Cục:** mặc định theo tài liệu nền mục 3.8 — full quyền + xem thêm metadata người tạo/người sửa/thời gian.
 
-1. Kế hoạch vận hành phải có ngày và thời gian bắt đầu kết thúc hợp lệ (bắt đầu < kết thúc)
-2. Một cầu cảng hoặc thiết bị chỉ được xếp lịch cho một kế hoạch vận hành duy nhất tại cùng một khung giờ
-3. Kế hoạch vận hành chưa được phê duyệt có thể được chỉnh sửa bởi người tạo
-4. Báo cáo vận hành chỉ được sinh khi có ít nhất một kế hoạch vận hành đã hoàn thành trong kỳ báo cáo
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
 
-## Testing Strategy
+| # | Điểm cần khai báo | Khai báo của chức năng này |
+|---|---|---|
+| 1 | Trạng thái riêng | Có — "Trạng thái vận hành khai thác" (giá trị chưa khai báo, SA chốt) |
+| 2 | Có bước phê duyệt không | Không — Excel không khai báo luồng duyệt |
+| 3 | Lọc cha-con / theo đơn vị | Theo đơn vị — trường `orgUnitId` (Đơn vị quản lý), lọc subtree, Cục xem full |
+| 4 | Trường chỉ hiện trong điều kiện nào | Có — TAB "Xác nhận vận hành khai thác" hiện khi trạng thái = Hoàn thành |
+| 5 | Quyền riêng | `operationplan:read/create/update/delete` |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
+| 7 | Tải lên tệp | Có — Upload/Attachment (file kế hoạch + file xác nhận) |
+| 8 | Giao diện khác mẫu chung | Không — theo list-screen + form/drawer convention |
 
-- Test đơn vị hàm tạo kế hoạch vận hành và kiểm tra xung đột lịch trình
-- Test tích hợp luồng đăng ký → kiểm tra xung đột → phê duyệt → sinh báo cáo
-- Test dashboard với dữ liệu vận hành mẫu để đảm bảo hiển thị đúng chỉ số
-- Test sinh báo cáo theo các chu kỳ ngày, tuần, tháng với bộ dữ liệu khác nhau
-- Test phân quyền: Operator không được phép xóa, Admin mới có quyền phê duyệt
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+| Method | Đường dẫn | Mô tả | Quyền |
+|---|---|---|---|
+| GET | `/api/operationplans` | Danh sách kế hoạch vận hành khai thác (lọc theo đơn vị, trạng thái) | `operationplan:read` |
+| GET | `/api/operationplans/{id}` | Chi tiết kế hoạch | `operationplan:read` |
+| POST | `/api/operationplans` | Tạo mới kế hoạch | `operationplan:create` |
+| PUT | `/api/operationplans/{id}` | Sửa / ghi nhận xác nhận vận hành | `operationplan:update` |
+| DELETE | `/api/operationplans/{id}` | Xóa mềm | `operationplan:delete` |
+
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+Quy ước: 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường cần loại bỏ.
+
+**Bảng `operation_plan` (kế hoạch vận hành khai thác):** 🔴 `org_unit_id` (Đơn vị quản lý), 🔴 `operation_unit_id` (Đơn vị vận hành khai thác), 🔴 `infrastructure_type` (Loại KCHT), 🔴 `code` (Mã kế hoạch — tự sinh), 🔴 `name` (Tên kế hoạch), 🔴 `content` (Nội dung), 🔴 `status` (Trạng thái vận hành khai thác), 🔴 `expected_start_date`, 🔴 `expected_end_date`, 🔴 `note` (Ghi chú), 🔴 `updated_by`, 🔴 `updated_at`.
+
+**Bảng con `operation_plan_work` (danh sách công trình):** 🔴 `operation_plan_id` (FK), 🔴 `infrastructure_id` (Mã KCHT), 🔴 `name` (Tên KCHT), 🔴 `location` (Địa điểm), 🔴 `port_id` (Thuộc cảng biển).
+
+**Bảng con `operation_plan_file` (tệp):** 🔴 `operation_plan_id`, 🔴 `file_type` (Loại kế hoạch / Loại xác nhận), 🔴 `file_name` (Tên file).
+
+**Bảng con `operation_confirmation` (xác nhận vận hành — hiện khi Hoàn thành):** 🔴 `operation_plan_id`, 🔴 `actual_start_date`, 🔴 `actual_end_date`, 🔴 `operating_time`, 🔴 `operating_status`, 🔴 `downtime`, 🔴 `incident_frequency`, 🔴 `max_capacity`, 🔴 `actual_capacity`, 🔴 `result_content`, 🔴 `result_note`.
+
+> Ghi chú: brief cũ (F-129 legacy) tham chiếu entity `KeHoachVanHanh` trong package `vanban` — SA đối chiếu/đồng bộ tên bảng với entity hiện có; các trường 🔴 là đề xuất từ ma trận Excel, chưa đối chiếu với schema đang chạy.

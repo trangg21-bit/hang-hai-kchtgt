@@ -423,6 +423,9 @@ public class AccessLogInterceptor implements HandlerInterceptor {
         if (queryIndex != -1) {
             path = path.substring(0, queryIndex);
         }
+        if (path.length() > 500) {
+            path = path.substring(0, 500);
+        }
         return path;
     }
 

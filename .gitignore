@@ -45,3 +45,12 @@ uploads/
 /cleanup*.js
 /revert*.js
 /remove_fields.js
+
+# Local UAT data & seeders
+data/
+data.zip
+data.rar
+backups/
+src/main/java/com/hanghai/kchtg/seeder/UatDataSeeder.java
+
+

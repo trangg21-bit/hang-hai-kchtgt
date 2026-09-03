@@ -43,8 +43,24 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
 
     boolean existsByCodeAndIdNotAndDeletedAtIsNull(String code, UUID id);
 
+    /**
+     * Danh sách trung tâm điều hành VTS.
+     *
+     * KHÔNG đặt ORDER BY cố định ở đây: JPA nối ORDER BY của {@link Pageable} vào
+     * SAU mệnh đề có sẵn, nên nếu cố định thì cột người dùng chọn chỉ còn tác dụng
+     * phá hòa giữa các bản ghi trùng createdAt — tức là bấm sắp xếp gần như không
+     * đổi gì. Thứ tự mặc định (createdAt DESC) do controller đưa vào Pageable.
+     *
+     * Các join bên dưới chỉ phục vụ sắp xếp theo tên hiển thị (đơn vị quản lý,
+     * cảng biển, hệ thống VTS, cán bộ cập nhật) — đều là join 1-1 theo khóa chính
+     * nên không nhân bản dòng.
+     */
     @Query("""
         SELECT t FROM VtsOperationCenter t
+        LEFT JOIN OrgUnit o ON o.id = t.orgUnitId
+        LEFT JOIN Port p ON p.id = t.portId
+        LEFT JOIN VtsSystem vs ON vs.id = t.vtsSystemId
+        LEFT JOIN User u ON u.id = t.updatedBy
         WHERE t.deletedAt IS NULL
           AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
@@ -52,9 +68,9 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
           AND (:portId IS NULL OR t.portId = :portId)
           AND (:provinceId IS NULL OR t.provinceId = :provinceId)
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
-          AND (:approvalStatus IS NULL 
+          AND (:approvalStatus IS NULL
                OR t.approvalStatus = :approvalStatus
-               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2)))
+               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)))
           AND (CAST(:updatedFrom AS timestamp) IS NULL OR t.updatedAt >= :updatedFrom)
           AND (CAST(:updatedTo AS timestamp) IS NULL OR t.updatedAt <= :updatedTo)
           AND (CAST(:keyword AS string) IS NULL OR
@@ -62,7 +78,10 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
             CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(t.detailedLocation)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(t.coverage)) AS string) LIKE CAST(:keyword AS string))
-        ORDER BY t.createdAt DESC
+          AND (CAST(:name AS string) IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(t.name)) AS string) LIKE CAST(:name AS string))
+          AND (CAST(:code AS string) IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:code AS string))
     """)
     Page<VtsOperationCenter> search(
         @Param("scopeEnabled") boolean scopeEnabled,
@@ -74,14 +93,16 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
         @Param("conditionStatus") ConditionStatus conditionStatus,
         @Param("approvalStatus") ApprovalStatus approvalStatus,
         @Param("keyword") String keyword,
+        @Param("name") String name,
+        @Param("code") String code,
         @Param("updatedFrom") LocalDateTime updatedFrom,
         @Param("updatedTo") LocalDateTime updatedTo,
         Pageable pageable
     );
 
     default Page<VtsOperationCenter> search(
-        boolean scopeEnabled,
-        List<UUID> scopeOrgUnitIds,
+            boolean scopeEnabled,
+            List<UUID> scopeOrgUnitIds,
         UUID orgUnitId,
         UUID vtsSystemId,
         UUID portId,
@@ -91,7 +112,26 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
         String keyword,
         Pageable pageable
     ) {
-        return search(scopeEnabled, scopeOrgUnitIds, orgUnitId, vtsSystemId, portId, provinceId, conditionStatus, approvalStatus, keyword, null, null, pageable);
+        return search(scopeEnabled, scopeOrgUnitIds, orgUnitId, vtsSystemId, portId, provinceId, conditionStatus,
+                approvalStatus, keyword, null, null, null, null, pageable);
+    }
+
+    default Page<VtsOperationCenter> search(
+            boolean scopeEnabled,
+            List<UUID> scopeOrgUnitIds,
+            UUID orgUnitId,
+            UUID vtsSystemId,
+            UUID portId,
+            Integer provinceId,
+            ConditionStatus conditionStatus,
+            ApprovalStatus approvalStatus,
+            String keyword,
+            LocalDateTime updatedFrom,
+            LocalDateTime updatedTo,
+            Pageable pageable
+    ) {
+        return search(scopeEnabled, scopeOrgUnitIds, orgUnitId, vtsSystemId, portId, provinceId, conditionStatus,
+                approvalStatus, keyword, null, null, updatedFrom, updatedTo, pageable);
     }
 
     @Query("""
@@ -111,6 +151,10 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
                 CAST(function('immutable_unaccent', LOWER(t.detailedLocation)) AS string) LIKE CAST(:keyword AS string) OR
                 CAST(function('immutable_unaccent', LOWER(t.coverage)) AS string) LIKE CAST(:keyword AS string)
               ))
+          AND (CAST(:name AS string) IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(t.name)) AS string) LIKE CAST(:name AS string))
+          AND (CAST(:code AS string) IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:code AS string))
         GROUP BY t.approvalStatus
     """)
     List<Object[]> countByApprovalStatus(
@@ -122,9 +166,27 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
         @Param("provinceId") Integer provinceId,
         @Param("conditionStatus") ConditionStatus conditionStatus,
         @Param("keyword") String keyword,
+        @Param("name") String name,
+        @Param("code") String code,
         @Param("updatedFrom") LocalDateTime updatedFrom,
         @Param("updatedTo") LocalDateTime updatedTo
     );
+
+    default List<Object[]> countByApprovalStatus(
+            boolean scopeEnabled,
+            List<UUID> scopeOrgUnitIds,
+            UUID orgUnitId,
+            UUID vtsSystemId,
+            UUID portId,
+            Integer provinceId,
+            ConditionStatus conditionStatus,
+            String keyword,
+            LocalDateTime updatedFrom,
+            LocalDateTime updatedTo
+    ) {
+        return countByApprovalStatus(scopeEnabled, scopeOrgUnitIds, orgUnitId, vtsSystemId, portId, provinceId,
+                conditionStatus, keyword, null, null, updatedFrom, updatedTo);
+    }
 
     List<VtsOperationCenter> findByVtsSystemIdAndDeletedAtIsNull(UUID vtsSystemId);
 

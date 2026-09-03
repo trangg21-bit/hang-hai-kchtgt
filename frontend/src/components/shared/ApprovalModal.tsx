@@ -11,31 +11,43 @@ import {
 } from '../../themetokenchk';
 
 interface ApprovalModalProps {
-  visible: boolean;
-  level: 'c1' | 'c2';
+  visible?: boolean;
+  open?: boolean;
+  level?: 'c1' | 'c2';
   loading?: boolean;
-  onConfirm: (content: string) => void;
+  onConfirm?: (content: string) => void;
+  onOk?: (content: string) => void;
   onCancel: () => void;
+  title?: string;
+  actionType?: 'approve' | 'reject';
+  targetName?: string;
 }
 
 export default function ApprovalModal({
   visible,
-  level,
+  open,
+  level = 'c1',
   loading,
   onConfirm,
+  onOk,
   onCancel,
+  title: customTitle,
 }: ApprovalModalProps) {
+  const isModalOpen = open !== undefined ? open : !!visible;
   const [form] = Form.useForm();
   const [content, setContent] = useState('');
 
   useEffect(() => {
-    if (visible) {
+    if (isModalOpen) {
       setContent('');
+      form.resetFields();
     }
-  }, [visible]);
+  }, [isModalOpen, form]);
 
   const handleConfirm = () => {
-    onConfirm(content.trim() || 'Đã phê duyệt');
+    const text = content.trim() || 'Đã phê duyệt';
+    if (onConfirm) onConfirm(text);
+    if (onOk) onOk(text);
     setContent('');
     form.resetFields();
   };
@@ -46,12 +58,12 @@ export default function ApprovalModal({
     onCancel();
   };
 
-  const title = level === 'c1' ? 'Phê duyệt cấp Cảng vụ/Chi cục' : 'Phê duyệt cấp Cục';
+  const title = customTitle || (level === 'c1' ? 'Phê duyệt cấp Cảng vụ/Chi cục' : 'Phê duyệt cấp Cục');
 
   return (
     <Modal
       title={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{title}</span>}
-      open={visible}
+      open={isModalOpen}
       onCancel={handleCancel}
       okText="Xác nhận phê duyệt"
       cancelText="Hủy"

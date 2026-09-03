@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Form, Select, Table, InputNumber, Button, Space, Card, Row, Col, Typography, Modal } from 'antd';
+import { Select, Table, InputNumber, Button, Space, Card, Row, Col, Typography, Modal } from 'antd';
 import { PlusOutlined, DeleteOutlined, CompassOutlined, EnvironmentOutlined, HolderOutlined } from '@ant-design/icons';
 import { colors } from '../../theme';
 
@@ -74,11 +74,10 @@ const DMSToDD = (d: number, m: number, s: number) => {
 interface DmsInputProps {
   value: number;
   onChange: (val: number) => void;
-  placeholderPrefix: string;
   disabled?: boolean;
 }
 
-function DmsInput({ value, onChange, placeholderPrefix, disabled = false }: DmsInputProps) {
+function DmsInput({ value, onChange, disabled = false }: DmsInputProps) {
   const { d, m, s } = DDToDMS(value);
 
   const handleDChange = (newD: number | null) => {
@@ -92,8 +91,8 @@ function DmsInput({ value, onChange, placeholderPrefix, disabled = false }: DmsI
   };
 
   return (
-    <div style={{ display: 'flex', gap: '6px', width: '260px', minWidth: '260px', alignItems: 'center' }}>
-      <Space.Compact size="small" style={{ width: '74px' }}>
+    <div style={{ display: 'flex', gap: '4px', width: '100%', alignItems: 'center' }}>
+      <Space.Compact size="small" style={{ flex: 1, minWidth: 46 }}>
         <InputNumber
           value={d}
           onChange={handleDChange}
@@ -103,7 +102,7 @@ function DmsInput({ value, onChange, placeholderPrefix, disabled = false }: DmsI
           disabled={disabled}
         />
         <div style={{
-          padding: '0 6px',
+          padding: '0 4px',
           background: '#f8fafc',
           border: '1px solid #d9d9d9',
           borderLeft: 'none',
@@ -111,9 +110,10 @@ function DmsInput({ value, onChange, placeholderPrefix, disabled = false }: DmsI
           alignItems: 'center',
           color: '#64748b',
           fontWeight: 600,
+          fontSize: 11,
         }}>°</div>
       </Space.Compact>
-      <Space.Compact size="small" style={{ width: '74px' }}>
+      <Space.Compact size="small" style={{ flex: 1, minWidth: 46 }}>
         <InputNumber
           value={m}
           onChange={handleMChange}
@@ -125,7 +125,7 @@ function DmsInput({ value, onChange, placeholderPrefix, disabled = false }: DmsI
           disabled={disabled}
         />
         <div style={{
-          padding: '0 6px',
+          padding: '0 4px',
           background: '#f8fafc',
           border: '1px solid #d9d9d9',
           borderLeft: 'none',
@@ -133,9 +133,10 @@ function DmsInput({ value, onChange, placeholderPrefix, disabled = false }: DmsI
           alignItems: 'center',
           color: '#64748b',
           fontWeight: 600,
+          fontSize: 11,
         }}>'</div>
       </Space.Compact>
-      <Space.Compact size="small" style={{ width: '92px' }}>
+      <Space.Compact size="small" style={{ flex: 1.3, minWidth: 60 }}>
         <InputNumber
           value={s}
           onChange={handleSChange}
@@ -148,7 +149,7 @@ function DmsInput({ value, onChange, placeholderPrefix, disabled = false }: DmsI
           disabled={disabled}
         />
         <div style={{
-          padding: '0 6px',
+          padding: '0 4px',
           background: '#f8fafc',
           border: '1px solid #d9d9d9',
           borderLeft: 'none',
@@ -156,6 +157,7 @@ function DmsInput({ value, onChange, placeholderPrefix, disabled = false }: DmsI
           alignItems: 'center',
           color: '#64748b',
           fontWeight: 600,
+          fontSize: 11,
         }}>"</div>
       </Space.Compact>
     </div>
@@ -163,7 +165,7 @@ function DmsInput({ value, onChange, placeholderPrefix, disabled = false }: DmsI
 }
 
 export default function GisLocationSelector({
-  value = { geometryType: undefined, coordinates: '' },
+  value = { geometryType: '', coordinates: '' },
   onChange,
   defaultGeometryType,
   height = 550,
@@ -173,7 +175,7 @@ export default function GisLocationSelector({
   const [leafletLoaded, setLeafletLoaded] = useState(false);
   const [vertices, setVertices] = useState<{ lng: number; lat: number }[]>([]);
   const [internalGeom, setInternalGeom] = useState<string>('POINT');
-  const [internalToaDo, setInternalToaDo] = useState<string>('');
+  const [, setInternalToaDo] = useState<string>('');
   const [internalBieuTuong, setInternalBieuTuong] = useState<string | undefined>(undefined);
   const [modalOpen, setModalOpen] = useState(false);
   const [mapReady, setMapReady] = useState(false);
@@ -181,14 +183,29 @@ export default function GisLocationSelector({
   const mapRef = useRef<any>(null);
   const drawnLayerRef = useRef<any>(null);
   const isUpdatingFromMap = useRef(false);
+  const hasCenteredOnLoadRef = useRef(false);
 
   const internalGeomRef = useRef(internalGeom);
   const internalBieuTuongRef = useRef(internalBieuTuong);
+  const disabledRef = useRef(disabled);
 
   useEffect(() => {
     internalGeomRef.current = internalGeom;
     internalBieuTuongRef.current = internalBieuTuong;
   }, [internalGeom, internalBieuTuong]);
+
+  useEffect(() => {
+    disabledRef.current = disabled;
+    if (mapRef.current?.pm) {
+      if (disabled) {
+        try {
+          mapRef.current.pm.disableDraw();
+          mapRef.current.pm.disableGlobalEditMode();
+          mapRef.current.pm.removeControls();
+        } catch {}
+      }
+    }
+  }, [disabled]);
 
   // Auto trigger map resize when modal opens or inline mounted to prevent grey area issues
   useEffect(() => {
@@ -243,54 +260,62 @@ export default function GisLocationSelector({
     };
   }, []);
 
-  // Parse WKT string into vertices list
+  // Parse WKT string into vertices list with smart cross-geometry conversion
   const parseWktToVertices = (wkt: string, geomType: string): { lng: number; lat: number }[] => {
     if (!wkt) return [];
     try {
-      const type = geomType.toUpperCase();
-      if (type === 'POINT') {
-        if (wkt.startsWith('MULTIPOINT(')) {
-          // Regex phải vượt qua cả dấu ) bên trong từng cặp (lng lat) — nếu dùng [^)]+ đơn thuần sẽ chỉ bắt được điểm ĐẦU TIÊN
-          const match = wkt.match(/MULTIPOINT\(((?:\([^)]*\),?)+)\)/);
-          if (match) {
-            return match[1].split('),(').map((pt) => {
-              const parts = pt.replace(/[()]/g, '').trim().split(/\s+/);
-              return { lng: parseFloat(parts[0]), lat: parseFloat(parts[1]) };
-            });
-          }
-        } else if (wkt.startsWith('POINT(')) {
-          const match = wkt.match(/POINT\(([^)]+)\)/);
-          if (match) {
-            const parts = match[1].split(' ');
-            return [{ lng: parseFloat(parts[0]), lat: parseFloat(parts[1]) }];
-          }
-        }
-      } else if (type === 'LINE' && wkt.startsWith('LINESTRING(')) {
-        const match = wkt.match(/LINESTRING\(([^)]+)\)/);
+      const trimmed = wkt.trim();
+      const upper = trimmed.toUpperCase();
+      const type = (geomType || 'POINT').toUpperCase();
+
+      // Universal coordinate extractor across any WKT geometry format
+      let rawPoints: { lng: number; lat: number }[] = [];
+
+      if (upper.startsWith('POINT')) {
+        const match = trimmed.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
         if (match) {
-          return match[1].split(',').map((pt) => {
-            const parts = pt.trim().split(' ');
+          rawPoints = [{ lng: parseFloat(match[1]), lat: parseFloat(match[2]) }];
+        }
+      } else if (upper.startsWith('MULTIPOINT')) {
+        const match = trimmed.match(/MULTIPOINT\s*\(([^)]+)\)/i);
+        if (match) {
+          rawPoints = match[1].split('),(').map((pt) => {
+            const parts = pt.replace(/[()]/g, '').trim().split(/\s+/);
             return { lng: parseFloat(parts[0]), lat: parseFloat(parts[1]) };
           });
         }
-      } else if (type === 'POLYGON' && wkt.startsWith('POLYGON((')) {
-        const match = wkt.match(/POLYGON\(\(([^)]+)\)\)/);
+      } else if (upper.startsWith('LINESTRING') || upper.startsWith('LINE')) {
+        const match = trimmed.match(/LINESTRING\s*\(([^)]+)\)/i);
         if (match) {
-          const pts = match[1].split(',').map((pt) => {
-            const parts = pt.trim().split(' ');
+          rawPoints = match[1].split(',').map((pt) => {
+            const parts = pt.trim().split(/\s+/);
+            return { lng: parseFloat(parts[0]), lat: parseFloat(parts[1]) };
+          });
+        }
+      } else if (upper.startsWith('POLYGON')) {
+        const match = trimmed.match(/POLYGON\s*\(\(([^)]+)\)\)/i);
+        if (match) {
+          rawPoints = match[1].split(',').map((pt) => {
+            const parts = pt.trim().split(/\s+/);
             return { lng: parseFloat(parts[0]), lat: parseFloat(parts[1]) };
           });
           // Remove closing duplicate point for simplified vertices display
           if (
-            pts.length > 1 &&
-            pts[0].lng === pts[pts.length - 1].lng &&
-            pts[0].lat === pts[pts.length - 1].lat
+            rawPoints.length > 1 &&
+            rawPoints[0].lng === rawPoints[rawPoints.length - 1].lng &&
+            rawPoints[0].lat === rawPoints[rawPoints.length - 1].lat
           ) {
-            pts.pop();
+            rawPoints.pop();
           }
-          return pts;
         }
       }
+
+      // If converting to POINT from LINE/POLYGON, keep the first vertex (Đỉnh 1)
+      if (type === 'POINT' && rawPoints.length > 1) {
+        return [rawPoints[0]];
+      }
+
+      return rawPoints;
     } catch (e) {
       console.warn('Sai định dạng WKT:', wkt, e);
     }
@@ -302,25 +327,26 @@ export default function GisLocationSelector({
     // Only serialize points that have both coordinates as valid numbers
     const validPts = pts.filter((p) => p && typeof p.lng === 'number' && typeof p.lat === 'number' && !isNaN(p.lng) && !isNaN(p.lat));
     if (validPts.length === 0) return '';
-    const type = geomType.toUpperCase();
-    if (type === 'POINT') {
-      if (validPts.length === 1) {
-        return `POINT(${validPts[0].lng.toFixed(6)} ${validPts[0].lat.toFixed(6)})`;
-      }
-      const coords = validPts.map((p) => `(${p.lng.toFixed(6)} ${p.lat.toFixed(6)})`).join(',');
-      return `MULTIPOINT(${coords})`;
+    const type = (geomType || 'POINT').toUpperCase();
+    if (type === 'POINT' || validPts.length === 1) {
+      return `POINT (${validPts[0].lng.toFixed(6)} ${validPts[0].lat.toFixed(6)})`;
     } else if (type === 'LINE') {
       const coords = validPts.map((p) => `${p.lng.toFixed(6)} ${p.lat.toFixed(6)}`).join(', ');
-      return `LINESTRING(${coords})`;
+      return `LINESTRING (${coords})`;
     } else if (type === 'POLYGON') {
-      if (validPts.length < 3) return '';
+      if (validPts.length < 3) {
+        const coords = validPts.map((p) => `${p.lng.toFixed(6)} ${p.lat.toFixed(6)}`).join(', ');
+        return `LINESTRING (${coords})`;
+      }
       const list = [...validPts];
       // Close the polygon by repeating the first vertex at the end
-      list.push(validPts[0]);
+      if (list[0].lng !== list[list.length - 1].lng || list[0].lat !== list[list.length - 1].lat) {
+        list.push(list[0]);
+      }
       const coords = list.map((p) => `${p.lng.toFixed(6)} ${p.lat.toFixed(6)}`).join(', ');
-      return `POLYGON((${coords}))`;
+      return `POLYGON ((${coords}))`;
     }
-    return '';
+    return `POINT (${validPts[0].lng.toFixed(6)} ${validPts[0].lat.toFixed(6)})`;
   };
 
   // Trigger changes to form parent
@@ -353,35 +379,132 @@ export default function GisLocationSelector({
     const validVertices = vertices.filter((v) => v && typeof v.lat === 'number' && typeof v.lng === 'number' && !isNaN(v.lat) && !isNaN(v.lng));
     if (validVertices.length === 0) return;
 
+    const createPinIcon = (index?: number) => {
+      const label = index !== undefined ? `${index}` : '';
+      const html = `
+        <div style="position: relative; width: 28px; height: 34px; transform: translate(-50%, -100%);">
+          <svg viewBox="0 0 28 34" width="28" height="34" style="filter: drop-shadow(0 2px 5px rgba(0,0,0,0.35)); display: block;">
+            <path d="M14 0C6.27 0 0 6.27 0 14c0 10.5 14 20 14 20s14-9.5 14-20c0-7.73-6.27-14-14-14z" fill="${colors.primary}" />
+            <circle cx="14" cy="13" r="8" fill="#ffffff" />
+          </svg>
+          ${label ? `<span style="position: absolute; top: 3px; left: 0; right: 0; text-align: center; font-size: 11px; font-weight: 700; color: ${colors.primary}; line-height: 20px; font-family: sans-serif;">${label}</span>` : ''}
+        </div>
+      `;
+      return L.divIcon({
+        className: 'custom-map-pin',
+        html,
+        iconSize: [28, 34],
+        iconAnchor: [14, 34],
+      });
+    };
+
     try {
       let layer: any;
 
       if (internalGeom === 'POINT') {
         // POINT mode: LUÔN dùng LayerGroup để hỗ trợ chọn NHIỀU tọa độ trên bản đồ (không ghi đè marker cũ)
-        const coords = validVertices.map((v) => [v.lat, v.lng]);
+        const coords: [number, number][] = validVertices.map((v) => [v.lat, v.lng]);
         layer = L.layerGroup(coords.map((c: [number, number]) => L.marker(c)));
       } else if (internalGeom === 'LINE') {
-        if (validVertices.length < 2) return; // Polyline needs at least 2 points to draw
         const coords = validVertices.map((v) => [v.lat, v.lng]);
-        layer = L.polyline(coords, { color: colors.primary });
+        if (validVertices.length === 1) {
+          layer = L.marker(coords[0], { icon: createPinIcon(1), draggable: !disabled });
+          if (!disabled) {
+            layer.on('dragend', () => {
+              const pos = layer.getLatLng();
+              const draggedPts = [{ lat: pos.lat, lng: pos.lng }];
+              setVertices(draggedPts);
+              const draggedWkt = serializeVerticesToWkt(draggedPts, 'LINE');
+              setInternalToaDo(draggedWkt);
+              triggerChange('LINE', draggedWkt, internalBieuTuongRef.current);
+            });
+          }
+        } else {
+          const polyline = L.polyline(coords, { color: colors.primary, weight: 3 });
+          const vertexMarkers = validVertices.map((v, idx) => {
+            const m = L.marker([v.lat, v.lng], { icon: createPinIcon(idx + 1), draggable: !disabled });
+            if (!disabled) {
+              m.on('dragend', () => {
+                const pos = m.getLatLng();
+                const updated = [...validVertices];
+                updated[idx] = { lat: pos.lat, lng: pos.lng };
+                setVertices(updated);
+                const updatedWkt = serializeVerticesToWkt(updated, 'LINE');
+                setInternalToaDo(updatedWkt);
+                triggerChange('LINE', updatedWkt, internalBieuTuongRef.current);
+              });
+            }
+            return m;
+          });
+          layer = L.featureGroup([polyline, ...vertexMarkers]);
+        }
       } else if (internalGeom === 'POLYGON') {
-        if (validVertices.length < 3) return; // Polygon needs at least 3 points to draw
         const coords = validVertices.map((v) => [v.lat, v.lng]);
-        layer = L.polygon(coords, { color: colors.primary, fillColor: colors.primary, fillOpacity: 0.2 });
+        if (validVertices.length === 1) {
+          layer = L.marker(coords[0], { icon: createPinIcon(1), draggable: !disabled });
+          if (!disabled) {
+            layer.on('dragend', () => {
+              const pos = layer.getLatLng();
+              const draggedPts = [{ lat: pos.lat, lng: pos.lng }];
+              setVertices(draggedPts);
+              const draggedWkt = serializeVerticesToWkt(draggedPts, 'POLYGON');
+              setInternalToaDo(draggedWkt);
+              triggerChange('POLYGON', draggedWkt, internalBieuTuongRef.current);
+            });
+          }
+        } else if (validVertices.length === 2) {
+          const polyline = L.polyline(coords, { color: colors.primary, dashArray: '6, 6', weight: 2 });
+          const vertexMarkers = validVertices.map((v, idx) => {
+            const m = L.marker([v.lat, v.lng], { icon: createPinIcon(idx + 1), draggable: !disabled });
+            if (!disabled) {
+              m.on('dragend', () => {
+                const pos = m.getLatLng();
+                const updated = [...validVertices];
+                updated[idx] = { lat: pos.lat, lng: pos.lng };
+                setVertices(updated);
+                const updatedWkt = serializeVerticesToWkt(updated, 'POLYGON');
+                setInternalToaDo(updatedWkt);
+                triggerChange('POLYGON', updatedWkt, internalBieuTuongRef.current);
+              });
+            }
+            return m;
+          });
+          layer = L.featureGroup([polyline, ...vertexMarkers]);
+        } else {
+          const polygon = L.polygon(coords, { color: colors.primary, fillColor: colors.primary, fillOpacity: 0.2, weight: 2 });
+          const vertexMarkers = validVertices.map((v, idx) => {
+            const m = L.marker([v.lat, v.lng], { icon: createPinIcon(idx + 1), draggable: !disabled });
+            if (!disabled) {
+              m.on('dragend', () => {
+                const pos = m.getLatLng();
+                const updated = [...validVertices];
+                updated[idx] = { lat: pos.lat, lng: pos.lng };
+                setVertices(updated);
+                const updatedWkt = serializeVerticesToWkt(updated, 'POLYGON');
+                setInternalToaDo(updatedWkt);
+                triggerChange('POLYGON', updatedWkt, internalBieuTuongRef.current);
+              });
+            }
+            return m;
+          });
+          layer = L.featureGroup([polygon, ...vertexMarkers]);
+        }
       }
 
       if (layer) {
         layer.addTo(mapRef.current);
         drawnLayerRef.current = layer;
 
-        // Giữ nguyên mức zoom hiện tại của người dùng, tuyệt đối không tự ý zoom in làm mất ngữ cảnh
-        const currentZoom = mapRef.current.getZoom?.() ?? 6;
-        if (internalGeom === 'POINT' && validVertices.length === 1) {
-          mapRef.current.panTo([validVertices[0].lat, validVertices[0].lng]);
-        } else if (layer.getBounds) {
-          const bounds = layer.getBounds();
-          if (bounds && bounds.isValid && bounds.isValid()) {
-            mapRef.current.panTo(bounds.getCenter());
+        // Auto center to drawn vertices once on initial load (without forced zoom-in, keep overview zoom 6)
+        if (!hasCenteredOnLoadRef.current) {
+          hasCenteredOnLoadRef.current = true;
+          if (validVertices.length === 1) {
+            mapRef.current.setView([validVertices[0].lat, validVertices[0].lng], 6);
+          } else if (layer.getBounds) {
+            const bounds = layer.getBounds();
+            if (bounds && bounds.isValid && bounds.isValid()) {
+              mapRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 6 });
+            }
           }
         }
 
@@ -399,7 +522,7 @@ export default function GisLocationSelector({
     } catch (err) {
       console.warn('Lỗi vẽ đè hình học lên bản đồ:', err);
     }
-  }, [leafletLoaded, mapReady, vertices, internalGeom]);
+  }, [leafletLoaded, mapReady, vertices, internalGeom, disabled]);
 
   const initMap = useCallback((container: HTMLDivElement) => {
     if (!leafletLoaded || mapRef.current) return;
@@ -422,8 +545,53 @@ export default function GisLocationSelector({
       updateWhenIdle: true,
     }).addTo(mapRef.current);
 
+    // Click on map to place or update point
+    mapRef.current.on('click', (e: any) => {
+      if (disabledRef.current) return;
+      const { lat, lng } = e.latlng;
+      const curGeom = (internalGeomRef.current || 'POINT').toUpperCase();
+
+      if (curGeom === 'POINT') {
+        const newPts = [{ lat, lng }];
+        setVertices(newPts);
+        const newWkt = serializeVerticesToWkt(newPts, 'POINT');
+        setInternalToaDo(newWkt);
+        triggerChange('POINT', newWkt, internalBieuTuongRef.current);
+
+        if (drawnLayerRef.current) {
+          mapRef.current.removeLayer(drawnLayerRef.current);
+        }
+        const newMarker = L.marker([lat, lng], { draggable: !disabledRef.current });
+        newMarker.addTo(mapRef.current);
+        drawnLayerRef.current = newMarker;
+
+        newMarker.on('dragend', () => {
+          if (disabledRef.current) return;
+          const pos = newMarker.getLatLng();
+          const draggedPts = [{ lat: pos.lat, lng: pos.lng }];
+          setVertices(draggedPts);
+          const draggedWkt = serializeVerticesToWkt(draggedPts, 'POINT');
+          setInternalToaDo(draggedWkt);
+          triggerChange('POINT', draggedWkt, internalBieuTuongRef.current);
+        });
+      } else if (curGeom === 'LINE' || curGeom === 'POLYGON') {
+        if (disabledRef.current) return;
+        setVertices((prev: { lng: number; lat: number }[]) => {
+          const validNonZero = prev.filter(
+            (p) => p && typeof p.lat === 'number' && typeof p.lng === 'number' && !isNaN(p.lat) && !isNaN(p.lng) && (p.lat !== 0 || p.lng !== 0)
+          );
+          const next = [...validNonZero, { lat, lng }];
+          const newWkt = serializeVerticesToWkt(next, curGeom);
+          setInternalToaDo(newWkt);
+          triggerChange(curGeom, newWkt, internalBieuTuongRef.current);
+          return next;
+        });
+      }
+    });
+
     // Handle drawing lifecycle events
     mapRef.current.on('pm:create', (e: any) => {
+      if (disabledRef.current) return;
       const layer = e.layer;
       const L = (window as any).L;
 
@@ -449,12 +617,23 @@ export default function GisLocationSelector({
       drawnLayerRef.current = layer;
       syncLayerToWkt(layer);
 
+      // Disable draw mode after placing marker in POINT mode
+      if (internalGeomRef.current === 'POINT' && mapRef.current?.pm) {
+        try {
+          mapRef.current.pm.disableDraw();
+        } catch {}
+      }
+
       // Bind update listeners on the new shape
       layer.on('pm:edit', () => syncLayerToWkt(layer));
       layer.on('pm:dragend', () => syncLayerToWkt(layer));
+      layer.on('dragend', () => syncLayerToWkt(layer));
     });
 
     if (mapRef.current.pm) {
+      if (typeof mapRef.current.pm.setGlobalOptions === 'function') {
+        mapRef.current.pm.setGlobalOptions({ hideMiddleMarkers: true });
+      }
       mapRef.current.pm.reenableMode = false;
     }
     mapRef.current.on('pm:remove', (e: any) => {
@@ -513,35 +692,46 @@ export default function GisLocationSelector({
     if (isUpdatingFromMap.current) return;
     isUpdatingFromMap.current = true;
 
-    const L = (window as any).L;
     let newWkt = '';
     let parsedPts: { lng: number; lat: number }[] = [];
+    let detectedGeom = internalGeomRef.current || 'POINT';
 
     try {
-      if (layer instanceof L.Marker) {
+      if (layer && typeof layer.getLatLng === 'function') {
         const latlng = layer.getLatLng();
         parsedPts = [{ lng: latlng.lng, lat: latlng.lat }];
-        newWkt = serializeVerticesToWkt(parsedPts, 'POINT');
-        setInternalGeom('POINT');
-      } else if (layer instanceof L.Polygon) {
-        const latlngs = layer.getLatLngs()[0];
-        parsedPts = latlngs.map((l: any) => ({ lng: l.lng, lat: l.lat }));
-        newWkt = serializeVerticesToWkt(parsedPts, 'POLYGON');
-        setInternalGeom('POLYGON');
-      } else if (layer instanceof L.Polyline) {
+        detectedGeom = 'POINT';
+      } else if (layer && typeof layer.getLatLngs === 'function') {
         const latlngs = layer.getLatLngs();
-        parsedPts = latlngs.map((l: any) => ({ lng: l.lng, lat: l.lat }));
-        newWkt = serializeVerticesToWkt(parsedPts, 'LINE');
-        setInternalGeom('LINE');
+        if (Array.isArray(latlngs) && Array.isArray(latlngs[0])) {
+          // Polygon (or nested polygon rings)
+          const ring = Array.isArray(latlngs[0][0]) ? latlngs[0][0] : latlngs[0];
+          parsedPts = ring.map((l: any) => ({ lng: l.lng, lat: l.lat }));
+          if (
+            parsedPts.length > 1 &&
+            parsedPts[0].lng === parsedPts[parsedPts.length - 1].lng &&
+            parsedPts[0].lat === parsedPts[parsedPts.length - 1].lat
+          ) {
+            parsedPts.pop();
+          }
+          detectedGeom = 'POLYGON';
+        } else if (Array.isArray(latlngs)) {
+          // Polyline
+          parsedPts = latlngs.map((l: any) => ({ lng: l.lng, lat: l.lat }));
+          detectedGeom = 'LINE';
+        }
       }
     } catch (e) {
       console.error('Lỗi phân tích đối tượng vẽ:', e);
     }
 
+    newWkt = serializeVerticesToWkt(parsedPts, detectedGeom);
+    setInternalGeom(detectedGeom);
+    internalGeomRef.current = detectedGeom;
     setVertices(parsedPts);
     setInternalToaDo(newWkt);
     triggerChange(
-      layer instanceof L.Marker ? 'POINT' : (layer instanceof L.Polygon ? 'POLYGON' : 'LINE'),
+      detectedGeom,
       newWkt,
       internalBieuTuongRef.current
     );
@@ -580,18 +770,16 @@ export default function GisLocationSelector({
     drawExistingShape();
   }, [drawExistingShape, mapReady, modalOpen]);
 
-  // Dynamically configure drawing toolbar based on active geometry type selected outside
+  // Remove external drawing toolbar controls so clicking on the map directly continues and connects vertices seamlessly
   useEffect(() => {
     if (!leafletLoaded || !mapReady || !mapRef.current) return;
 
     const pm = mapRef.current.pm;
-    if (pm) {
-      if (typeof pm.removeControls === 'function') {
-        try {
-          pm.removeControls();
-        } catch (e) {
-          console.error(e);
-        }
+    if (pm && typeof pm.removeControls === 'function') {
+      try {
+        pm.removeControls();
+      } catch (e) {
+        console.error(e);
       }
       if (disabled) {
         return;
@@ -623,7 +811,7 @@ export default function GisLocationSelector({
 
     const newWkt = serializeVerticesToWkt(newPts, internalGeom);
     setInternalToaDo(newWkt);
-    triggerChange(internalGeom, newWkt, internalBieuTuong);
+    triggerChange(internalGeom, newWkt, internalBieuTuongRef.current);
   };
 
   const addVertex = () => {
@@ -633,7 +821,7 @@ export default function GisLocationSelector({
 
     const newWkt = serializeVerticesToWkt(newPts, internalGeom);
     setInternalToaDo(newWkt);
-    triggerChange(internalGeom, newWkt, internalBieuTuong);
+    triggerChange(internalGeom, newWkt, internalBieuTuongRef.current);
   };
 
   const removeVertex = (index: number) => {
@@ -642,22 +830,23 @@ export default function GisLocationSelector({
 
     const newWkt = serializeVerticesToWkt(newPts, internalGeom);
     setInternalToaDo(newWkt);
-    triggerChange(internalGeom, newWkt, internalBieuTuong);
+    triggerChange(internalGeom, newWkt, internalBieuTuongRef.current);
   };
-
-
 
   // Handle configuration changes
   const handleGeomTypeChange = (newGeom: string) => {
     setInternalGeom(newGeom);
-    setVertices([]);
-    setInternalToaDo('');
-    triggerChange(newGeom, '', internalBieuTuong);
-  };
+    internalGeomRef.current = newGeom;
 
-  const handleSymbolChange = (newSym: string) => {
-    setInternalBieuTuong(newSym);
-    triggerChange(internalGeom, internalToaDo, newSym);
+    let newPts = [...vertices];
+    if (newGeom === 'POINT' && newPts.length > 1) {
+      newPts = [newPts[0]];
+    }
+
+    setVertices(newPts);
+    const newWkt = serializeVerticesToWkt(newPts, newGeom);
+    setInternalToaDo(newWkt);
+    triggerChange(newGeom, newWkt, internalBieuTuongRef.current);
   };
 
   const GEOM_TYPE_OPTIONS = [
@@ -671,7 +860,7 @@ export default function GisLocationSelector({
   const mapContent = (
     <div style={{ padding: inline ? 0 : '12px 0 0 0' }}>
       <Row gutter={[16, 16]}>
-        <Col xs={24} md={14}>
+        <Col xs={24} md={13}>
           <div style={{ position: 'relative' }}>
             <div
               ref={mapContainerRef}
@@ -709,8 +898,8 @@ export default function GisLocationSelector({
           </div>
         </Col>
 
-        <Col xs={24} md={10}>
-          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Col xs={24} md={11}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <Typography.Text strong style={{ fontSize: 13 }}>
@@ -748,17 +937,20 @@ export default function GisLocationSelector({
                   size="small"
                   bordered
                   tableLayout="fixed"
-                  scroll={{ x: 620, y: height - 80 }}
+                  scroll={{ y: height - 80 }}
                   onRow={(_, index) => ({
                     draggable: internalGeom !== 'POINT' && !disabled,
                     style: { cursor: internalGeom !== 'POINT' && !disabled ? 'grab' : 'default' },
                     onDragStart: (e) => {
+                      if (disabled) return;
                       e.dataTransfer.setData('text/plain', index!.toString());
                     },
                     onDragOver: (e) => {
+                      if (disabled) return;
                       e.preventDefault();
                     },
                     onDrop: (e) => {
+                      if (disabled) return;
                       e.preventDefault();
                       const dragIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
                       const hoverIndex = index!;
@@ -794,13 +986,12 @@ export default function GisLocationSelector({
                       title: 'Vĩ độ (N) *',
                       dataIndex: 'lat',
                       key: 'lat',
-                      width: 275,
+                      width: '45%',
                       render: (val, _, i) => (
                         <DmsInput
                           value={val}
-                          onChange={(v) => handleVertexChange(i, 'lat', v)}
-                          placeholderPrefix="Vĩ độ"
                           disabled={disabled}
+                          onChange={(v) => handleVertexChange(i, 'lat', v)}
                         />
                       ),
                     },
@@ -808,13 +999,12 @@ export default function GisLocationSelector({
                       title: 'Kinh độ (E) *',
                       dataIndex: 'lng',
                       key: 'lng',
-                      width: 275,
+                      width: '45%',
                       render: (val, _, i) => (
                         <DmsInput
                           value={val}
-                          onChange={(v) => handleVertexChange(i, 'lng', v)}
-                          placeholderPrefix="Kinh độ"
                           disabled={disabled}
+                          onChange={(v) => handleVertexChange(i, 'lng', v)}
                         />
                       ),
                     },
@@ -838,7 +1028,7 @@ export default function GisLocationSelector({
                 />
               )}
             </div>
-          </Space>
+          </div>
         </Col>
       </Row>
     </div>

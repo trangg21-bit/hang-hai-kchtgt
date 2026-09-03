@@ -105,7 +105,17 @@ export const groupService = {
    * Frontend applies pagination client-side.
    */
   async list(
-    params?: { page?: number; pageSize?: number; search?: string; code?: string; status?: string; organizationId?: string; myGroups?: boolean }
+    params?: {
+      page?: number;
+      pageSize?: number;
+      search?: string;
+      code?: string;
+      status?: string;
+      organizationId?: string;
+      myGroups?: boolean;
+      sortBy?: string;
+      sortDir?: string;
+    }
   ): Promise<PaginatedResponse<Group> & { activeCount: number; inactiveCount: number }> {
     try {
       // Build query string
@@ -117,6 +127,8 @@ export const groupService = {
       if (params?.status) qParams.append("status", params.status);
       if (params?.organizationId) qParams.append("organizationId", params.organizationId);
       if (params?.myGroups) qParams.append("myGroups", "true");
+      if (params?.sortBy) qParams.append("sortBy", params.sortBy);
+      if (params?.sortDir) qParams.append("sortDir", params.sortDir);
 
       const resp = await api.get(`/v1/groups?${qParams.toString()}`);
       const rawData: any = extractData(resp);

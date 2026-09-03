@@ -1526,8 +1526,14 @@ export default function GISChartView() {
         path = `/radar-station/${id}${action === 'edit' ? '?mode=edit' : ''}`;
       } else if (label.includes('hệ thống vts') || label.includes('he thong vts')) {
         path = `/vts-system/${id}${action === 'edit' ? '?mode=edit' : ''}`;
-      } else if (label.includes('inmarsat') || label.includes('cospas') || label.includes('lrit') || label.includes('vệ tinh') || label.includes('trung tâm xử lý') || label.includes('hà nội')) {
-        path = `/station/special?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+      } else if (label.includes('inmarsat')) {
+        path = `/station/inmarsat?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+      } else if (label.includes('cospas')) {
+        path = `/station/cospas-sarsat?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+      } else if (label.includes('lrit')) {
+        path = `/station/lrit?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+      } else if (label.includes('hà nội') || label.includes('trung tâm xử lý') || label.includes('ha noi')) {
+        path = `/station/hanoi?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
       } else if (label.includes('đài ttdh') || label.includes('dai ttdh') || label.includes('đài duyên hải') || label.includes('dai duyen hai')) {
         path = `/station/coastal?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
       }

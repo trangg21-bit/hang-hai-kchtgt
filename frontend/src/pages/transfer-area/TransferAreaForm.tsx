@@ -59,7 +59,7 @@ const GEOMETRY_TYPE_OPTIONS = [
 ];
 const COORD_SYS_OPTIONS = [{ value: 1, label: 'WGS-84' }, { value: 2, label: 'VN-2000' }];
 // Số lượng tọa độ mặc định tương ứng với từng loại đối tượng: điểm → 1, đường → 2, vùng → 3
-const GEOMETRY_POINT_COUNT: Record<string, number> = { POINT: 1, LINE: 2, POLYGON: 3 };
+
 
 // ── Tọa độ GPS chuẩn VTS CHK: lưu 6 trường DMS riêng (latD/latM/latS/lngD/lngM/lngS),
 //    mỗi ô nhập ghi trực tiếp 1 trường — KHÔNG chuyển decimal qua lại khi nhập. ──
@@ -67,6 +67,7 @@ interface DmsPoint {
   latD: number | null; latM: number | null; latS: number | null;
   lngD: number | null; lngM: number | null; lngS: number | null;
 }
+const GEOMETRY_POINT_COUNT: Record<string, number> = { POINT: 1, LINE: 2, POLYGON: 3 };
 const emptyDmsPoint = (): DmsPoint => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null });
 
 const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
@@ -629,7 +630,7 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
           </Form.Item>
         </Col>
         <Col span={12}>
-          <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} required style={{ marginBottom: spaceFormField }} initialValue="NOT_YET_OPERATIONAL" rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}>
+          <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} required style={{ marginBottom: spaceFormField }} initialValue="OPERATIONAL" rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}>
             <Select placeholder="Chọn tình trạng" options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />
           </Form.Item>
         </Col>

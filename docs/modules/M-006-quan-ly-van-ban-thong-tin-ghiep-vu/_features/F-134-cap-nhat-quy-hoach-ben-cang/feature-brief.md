@@ -5,86 +5,121 @@ slug: cap-nhat-quy-hoach-ben-cang
 module-id: M-006
 status: proposed
 classification: local
-priority: high
-created: 2026-06-16T04:41:29Z
-last-updated: 2026-07-21T08:29:30Z
+priority: medium
+created: 2026-09-02
+last-updated: 2026-09-02
 locked-fields: []
 consumed_by_modules: []
-source-paths:
-  - src/main/java/com/hanghai/kchtg/vanban/entity/DieuChinhQuyHoach.java
-  - src/main/java/com/hanghai/kchtg/vanban/controller/DieuChinhQuyHoachController.java
-  - src/main/java/com/hanghai/kchtg/vanban/service/DieuChinhQuyHoachService.java
-  - src/main/java/com/hanghai/kchtg/vanban/repository/DieuChinhQuyHoachRepository.java
-  - src/main/java/com/hanghai/kchtg/vanban/dto/DieuChinhQuyHoachResponse.java
-  - src/main/java/com/hanghai/kchtg/vanban/dto/DieuChinhQuyHoachCreateRequest.java
-  - src/test/java/com/hanghai/kchtg/vanban/DieuChinhQuyHoachControllerTest.java
 ---
-# Feature: Cập nhật quy hoạch bến cảng
 
-## Description
+# Đặc tả nghiệp vụ: Cập nhật quy hoạch bến cảng
 
-Hệ thống cập nhật quy hoạch bến cảng hàng hải, cho phép quản lý quy hoạch các thay đổi, bổ sung hoặc điều chỉnh quy hoạch bến cảng đã được phê duyệt, bao gồm việc đăng ký điều chỉnh quy hoạch, đánh giá tác động, phê duyệt thay đổi và cập nhật bản quy hoạch hiện hành với đầy đủ hồ sơ pháp lý và kỹ thuật đi kèm.
+**Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu này)
+**Chức năng:** F-134
+**Module:** M-006 — Quản lý văn bản & thông tin nghiệp vụ
+**Loại:** chức năng thường (có trạng thái ban hành, không khai báo luồng duyệt C1/C2 trong Excel)
+**Tham chiếu:** tài liệu nền chung của module (chưa có `ba/01-base-pattern.md` cho M-006) + TKCT + nguồn sự thật Excel `HH_Tính năng & danh sách các trường thông tin_2.9.xlsx` sheet `30->43` cụm #38 "TT quy hoạch bến cảng hàng hải".
 
-## Business Intent
+> **⚠️ Data Scope:** Trường "Đơn vị quản lý" (`orgUnitId`, `SelectOrgCode`) là trường đơn vị phân quyền dữ liệu — xem mục 5 dòng 3 và AGENTS.md mục Data Scope Convention.
 
-Đảm bảo mọi thay đổi đối với quy hoạch bến cảng đã được phê duyệt đều được quản lý chặt chẽ, có đầy đủ hồ sơ pháp lý và kỹ thuật, tránh tình trạng điều chỉnh quy hoạch thiếu kiểm soát gây xung đột với quy hoạch tổng thể, giúp ban lãnh đạo cảng và cơ quan nhà nước có thẩm quyền kiểm soát chặt chẽ mọi thay đổi trong quá trình phát triển bến cảng hàng hải.
+---
 
-## Flow Summary
+## 1. Mô tả ngắn
 
-Người đăng ký cập nhật quy hoạch với lý do điều chỉnh (mở rộng bến, thay đổi công năng, nâng cấp thiết bị), mô tả chi tiết nội dung thay đổi và phạm vi ảnh hưởng. Hệ thống tự động tạo báo cáo đánh giá tác động sơ bộ, gửi phê duyệt theo quy trình多层次 (trưởng phòng → phòng kỹ thuật → giám đốc). Sau khi phê duyệt, hệ thống cập nhật quy hoạch hiện hành, lưu quy hoạch cũ làm lịch sử và gắn kèm toàn bộ hồ sơ phê duyệt thay đổi. Người dùng có thể xem lịch sử các lần điều chỉnh đã được phê duyệt của từng quy hoạch.
+Chức năng cập nhật hồ sơ quy hoạch bến cảng hàng hải đã tồn tại: sửa thông tin chung, kế hoạch quy hoạch, dự báo hàng hóa, danh mục quy hoạch chi tiết và tệp đính kèm. Cùng F-132 (tạo mới) và F-133 (tra cứu) dùng chung ma trận #38. Người dùng: cán bộ đơn vị quản lý / Cục (cập nhật hồ sơ quy hoạch).
 
-## Acceptance Criteria
+## 2. Trường dữ liệu
 
-- Người dùng có thể đăng ký điều chỉnh quy hoạch với đầy đủ thông tin (lý do, nội dung thay đổi, phạm vi ảnh hưởng)
-- Hệ thống tự động sinh báo cáo đánh giá tác động sơ bộ khi đăng ký điều chỉnh
-- Quy trình phê duyệt多层次 hoạt động đúng theo phân quyền (trưởng phòng → phòng kỹ thuật → giám đốc)
-- Sau phê duyệt, hệ thống tự động cập nhật quy hoạch hiện hành và lưu lịch sử
-- Người dùng có thể xem lịch sử điều chỉnh quy hoạch đã được phê duyệt
+Nguồn: ma trận Excel cụm #38 (41 trường), dùng chung cho F-132/133/134. **Cột áp dụng cho F-134 = Sửa.** Cờ: ✓ = có, — = không. Cột **Bắt buộc** không có trong Excel → **không xác định ở cấp Excel**.
 
-## In Scope
+| # | Nhóm (TAB) | Trường | Loại điều khiển | DS | Lọc | Xem | Tạo | Sửa |
+|---|---|---|---|---|---|---|---|---|
+| 1 | Thông tin chung | Đơn vị quản lý | SelectOrgCode | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 2 | Thông tin chung | Số quyết định quy hoạch | Input Text | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 3 | Thông tin chung | Ngày quyết định quy hoạch | DatePicker | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 4 | Thông tin chung | Cảng biển quy hoạch | Select | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 5 | Thông tin chung | Nhóm | Select (Cảng biển/cảng cạn) | ✓ | ✓ | — | — | — |
+| 6 | Nếu Nhóm = Cảng biển | Cảng biển quy hoạch | Select | — | ✓ | — | — | — |
+| 7 | Nếu Nhóm = Cảng biển | Nhóm cảng biển | Select | — | ✓ | — | — | — |
+| 8 | Nếu Nhóm = Cảng cạn | Cảng cạn quy hoạch | Select | ✓ | ✓ | — | — | — |
+| 9 | Nếu Nhóm = Cảng cạn | Hành lang vận tải | Text | ✓ | ✓ | — | — | — |
+| 10 | Nếu Nhóm = Cảng cạn | Khu vực | Select | ✓ | ✓ | ✓ | — | — |
+| 11 | Kế hoạch quy hoạch | Dự báo quy hoạch đến năm | DatePicker (chọn năm) | — | — | ✓ | ✓ | ✓ |
+| 12 | Kế hoạch quy hoạch | Nội dung quy hoạch | InputTextArea | — | — | ✓ | ✓ | ✓ |
+| 13 | Kế hoạch quy hoạch | Nhu cầu sử dụng đất và mặt nước | InputTextArea | — | — | ✓ | ✓ | ✓ |
+| 14 | Kế hoạch quy hoạch | Nhu cầu vốn đầu tư | InputTextArea | — | — | ✓ | ✓ | ✓ |
+| 15 | Kế hoạch quy hoạch | Giải pháp thực hiện quy hoạch | InputTextArea | — | — | ✓ | ✓ | ✓ |
+| 16 | Kế hoạch quy hoạch | Dự án ưu tiên đầu tư | InputTextArea | — | — | ✓ | ✓ | ✓ |
+| 17 | Kế hoạch quy hoạch | Tổ chức thực hiện quy hoạch | InputTextArea | — | — | ✓ | ✓ | ✓ |
+| 18 | Dự báo hàng hóa thông qua cảng | Phân loại cảng, bến cảng, cầu cảng | Select | — | — | ✓ | ✓ | ✓ |
+| 19 | Dự báo hàng hóa thông qua cảng | Cảng, bến cảng, cầu cảng | Select | — | — | ✓ | ✓ | ✓ |
+| 20 | Dự báo hàng hóa thông qua cảng | Hàng container (Trọng lượng tối thiểu - tối đa) | DoubleInput | — | — | ✓ | ✓ | ✓ |
+| 21 | Dự báo hàng hóa thông qua cảng | Hàng tổng hợp, rời (Trọng lượng tối thiểu - tối đa) | DoubleInput | — | — | ✓ | ✓ | ✓ |
+| 22 | Dự báo hàng hóa thông qua cảng | Hàng lỏng, khí (Trọng lượng tối thiểu - tối đa) | DoubleInput | — | — | ✓ | ✓ | ✓ |
+| 23 | Dự báo hàng hóa thông qua cảng | Tổng cộng (Trọng lượng tối thiểu - tối đa) | DoubleInput (disabled, tự tính) | — | — | ✓ | ✓ | ✓ |
+| 24 | Dự báo hàng hóa thông qua cảng | Ghi chú (dự báo hàng hóa) | InputTextArea | — | — | ✓ | ✓ | ✓ |
+| 25 | Danh mục quy hoạch chi tiết — Hiện trạng | Phân loại cảng, bến cảng, cầu cảng | Select | — | — | ✓ | ✓ | ✓ |
+| 26 | Danh mục quy hoạch chi tiết — Hiện trạng | Cảng, bến cảng, cầu cảng | Select | — | — | ✓ | ✓ | ✓ |
+| 27 | Danh mục quy hoạch chi tiết — Hiện trạng | Công năng khai thác | Select | — | — | ✓ | ✓ | ✓ |
+| 28 | Danh mục quy hoạch chi tiết — Hiện trạng | Phân loại | Select | — | — | ✓ | ✓ | ✓ |
+| 29 | Danh mục quy hoạch chi tiết — Hiện trạng | Ghi chú (quy hoạch chi tiết) | InputTextArea | — | — | ✓ | ✓ | ✓ |
+| 30 | Danh mục quy hoạch chi tiết — Hiện trạng | Số lượng cầu cảng | Input Text | — | — | ✓ | ✓ | ✓ |
+| 31 | Danh mục quy hoạch chi tiết — Hiện trạng | Chiều dài (m) | InputDecimal | — | — | ✓ | ✓ | ✓ |
+| 32 | Danh mục quy hoạch chi tiết — Hiện trạng | Cỡ tàu (tấn) | Input Text | — | — | ✓ | ✓ | ✓ |
+| 33 | Danh mục quy hoạch chi tiết — Sau quy hoạch | Số lượng cầu cảng (KB thấp - KB cao) | DoubleInput | — | — | ✓ | ✓ | ✓ |
+| 34 | Danh mục quy hoạch chi tiết — Sau quy hoạch | Chiều dài (m) (KB thấp - KB cao) | DoubleInput | — | — | ✓ | ✓ | ✓ |
+| 35 | Danh mục quy hoạch chi tiết — Sau quy hoạch | Dự kiến Cỡ tàu (tấn) | Input Text | — | — | ✓ | ✓ | ✓ |
+| 36 | Danh mục quy hoạch chi tiết — Sau quy hoạch | Dự kiến công suất (Triệu tấn) (KB thấp - KB cao) | DoubleInput | — | — | ✓ | ✓ | ✓ |
+| 37 | Danh mục quy hoạch chi tiết — Sau quy hoạch | Diện tích vùng đất (ha) | InputDecimal | — | — | ✓ | ✓ | ✓ |
+| 38 | Danh mục quy hoạch chi tiết — Sau quy hoạch | Diện tích vùng nước (ha) | InputDecimal | — | — | ✓ | ✓ | ✓ |
+| 39 | File đính kèm | Tên file | Upload/Attachment | — | — | ✓ | ✓ | ✓ |
+| 40 | Thông tin cập nhật | Người cập nhật | Text (hiển thị, không nhập) | ✓ | — | ✓ | — | — |
+| 41 | Thông tin cập nhật | Ngày cập nhật | DatePicker (hiển thị, không nhập) | ✓ | — | ✓ | — | — |
 
-- Đăng ký điều chỉnh, bổ sung hoặc thay đổi quy hoạch bến cảng
-- Sinh báo cáo đánh giá tác động sơ bộ tự động
-- Quản lý quy trình phê duyệt多层次 thay đổi quy hoạch
-- Cập nhật quy hoạch hiện hành sau khi phê duyệt
-- Lưu trữ lịch sử điều chỉnh quy hoạch
+## 3. Trạng thái và phê duyệt
 
-## Out of Scope
+- Ma trận Excel cụm #38 **không có trường "Trạng thái"** và **không khai báo luồng phê duyệt C1/C2**.
+- Trạng thái ban hành (Hiện hành/Đã thay thế/Lịch sử theo legacy F-132) cần **SA chốt**; lưu dạng số.
+- **Không có bước phê duyệt** (cập nhật nội dung hồ sơ, không phát sinh approval log).
 
-- Tự động vẽ lại bản đồ quy hoạch sau điều chỉnh
-- Tích hợp với hệ thống quản lý dự án đầu tư xây dựng
-- Quản lý hồ sơ xin phép điều chỉnh với cơ quan nhà nước
-- Tự động kiểm tra tính tuân thủ điều chỉnh với quy định môi trường
+## 4. Quy tắc và phân quyền riêng
 
-## Roles + Permissions
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
 
-| Role | Permissions |
-|------|-------------|
-| User | Xem lịch sử điều chỉnh, Xem thông tin quy hoạch |
-| Planner | Đăng ký điều chỉnh, Đính kèm tài liệu đánh giá tác động |
-| DepartmentHead | Phê duyệt điều chỉnh ở mức trưởng phòng |
-| TechnicalDirector | Phê duyệt điều chỉnh ở mức phòng kỹ thuật |
-| Director | Phê duyệt cuối cùng, Cập nhật quy hoạch hiện hành |
-| Admin | Xóa, Vô hiệu hóa hồ sơ điều chỉnh, Quản lý phân quyền |
+| ID | Quy tắc | Áp dụng |
+|---|---|---|
+| BR-134-01 | "Nhóm" (Cảng biển/cảng cạn) quyết định hiển thị nhánh trường "Nếu Nhóm = Cảng biển" hay "Nếu Nhóm = Cảng cạn". | Update |
+| BR-134-02 | "Tổng cộng" (dự báo hàng hóa) tự tính (disabled), không cho sửa tay. | Update |
+| BR-134-03 | "Đơn vị quản lý" là trường đơn vị phân quyền dữ liệu; khi sửa phải validate đơn vị trong phạm vi người dùng. | Update |
+| BR-134-04 | Người cập nhật / Ngày cập nhật do hệ thống tự điền khi lưu. | Update |
 
-## Entities
+### 4.4. Phân quyền riêng
 
-- **DieuChinhQuyHoach**: id, quyHoachId, loaiDieuChinh, lyDo, moTaChiTiet, phamViAnhHuong, tinhTrang, nguoiDangKy, ngayDangKy, nguoiSuaDoi, ngaySuaDoi
-- **PheDuyetDieuChinh**: id, dieuChinhId, capPheDuyet, trangThai, nguoiPheDuyet, ngayPheDuyet, ghiChu
-- **BaoCaoDanhGiaTacDong**: id, dieuChinhId, moTa, phuThuong, thoiGianThucHien, duongDanFile, nguoiTao, ngayTao
+| Thao tác | Quyền (`<resource>:<action>`) |
+|---|---|
+| Cập nhật | `portplanning:update` |
 
-## Business Rules
+**Admin Cục:** full quyền + xem metadata người tạo/người sửa/thời gian.
 
-1. Điều chỉnh quy hoạch phải có lý do và mô tả chi tiết trước khi gửi phê duyệt
-2. Quy trình phê duyệt phải đi theo đúng thứ tự: trưởng phòng → phòng kỹ thuật → giám đốc
-3. Chỉ sau khi có đủ 3 chữ ký phê duyệt, quy hoạch mới được tự động cập nhật
-4. Mọi điều chỉnh quy hoạch đều phải có báo cáo đánh giá tác động đi kèm
-5. Quy hoạch cũ được lưu tự động vào lịch sử khi quy hoạch mới được phê duyệt
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
 
-## Testing Strategy
+| # | Điểm cần khai báo | Khai báo của chức năng này |
+|---|---|---|
+| 1 | Trạng thái riêng | Có — trạng thái ban hành (theo legacy; Excel không khai báo → SA chốt) |
+| 2 | Có bước phê duyệt không | Không — Excel không khai báo luồng duyệt C1/C2 |
+| 3 | Lọc cha-con / theo đơn vị | Theo đơn vị — trường `orgUnitId` (Đơn vị quản lý) |
+| 4 | Trường chỉ hiện trong điều kiện nào | Có — nhánh "Nếu Nhóm = Cảng biển" / "Nếu Nhóm = Cảng cạn" theo "Nhóm" |
+| 5 | Quyền riêng | `portplanning:update` |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
+| 7 | Tải lên tệp | Có — Upload/Attachment (File đính kèm) |
+| 8 | Giao diện khác mẫu chung | Không — theo list-screen + form/drawer convention |
 
-- Test đơn vị hàm đăng ký điều chỉnh quy hoạch và sinh báo cáo đánh giá tác động
-- Test tích hợp quy trình phê duyệt多层次 với bộ dữ liệu điều chỉnh mẫu
-- Test tự động cập nhật quy hoạch hiện hành sau khi phê duyệt đầy đủ
-- Test lưu lịch sử điều chỉnh với nhiều lần điều chỉnh cho cùng quy hoạch
-- Test phân quyền: Planner không được phép phê duyệt, từng cấp chỉ phê duyệt đúng quyền của mình
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+| Method | Đường dẫn | Mô tả | Quyền |
+|---|---|---|---|
+| PUT | `/api/portplannings/{id}` | Cập nhật hồ sơ quy hoạch bến cảng | `portplanning:update` |
+
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+Dùng chung cấu trúc bảng với F-132 (xem F-132 §7): bảng `port_planning` + bảng con `port_planning_cargo_forecast`, `port_planning_detail`, `port_planning_file`. Quy ước 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường cần loại bỏ.

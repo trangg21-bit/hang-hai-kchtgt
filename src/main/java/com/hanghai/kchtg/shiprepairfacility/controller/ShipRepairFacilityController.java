@@ -113,7 +113,7 @@ public class ShipRepairFacilityController {
                     ? ((User) authentication.getPrincipal()).getId()
                     : null;
             ShipRepairFacilityResponse response = service.approveC1(id, request, userId);
-            return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 1 thành công", response));
+            return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Chi cục thành công", response));
         } catch (Exception e) {
             log.warn("Lỗi khi duyệt C1 cho cơ sở sửa chữa, đóng tàu id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
@@ -131,7 +131,7 @@ public class ShipRepairFacilityController {
                     ? ((User) authentication.getPrincipal()).getId()
                     : null;
             ShipRepairFacilityResponse response = service.approveC2(id, request, userId);
-            return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 2 thành công", response));
+            return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", response));
         } catch (Exception e) {
             log.warn("Lỗi khi duyệt C2 cho cơ sở sửa chữa, đóng tàu id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));

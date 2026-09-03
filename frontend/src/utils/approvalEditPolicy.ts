@@ -73,11 +73,13 @@ export function isEditableByOwner(status?: string | null): boolean {
   return st === 'DRAFT' || st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2';
 }
 
+import { usePermissionStore } from '../store/permissionStore';
+
 export interface ApprovalEditPolicyOptions {
   /** Hàm kiểm tra quyền của màn hình, thường là `usePermissionStore.hasPermission`. */
-  hasPerm: (key: string) => boolean;
+  hasPerm?: (key: string) => boolean;
   /** Tiền tố resource của quyền, ví dụ `'vts'`, `'port'`, `'coastalstationinmarsat'`. */
-  resource: string;
+  resource?: string;
   /**
    * Các quyền được chấp nhận thay cho `<resource>:update` (quyền chung của hệ thống cũ),
    * ví dụ `['data:update', 'admin:manage']`.
@@ -85,6 +87,10 @@ export interface ApprovalEditPolicyOptions {
   extraUpdatePerms?: string[];
   /** Các quyền được chấp nhận thay cho `<resource>:approvec2`, ví dụ `['<resource>:approve']`. */
   extraApprovePerms?: string[];
+  /** Tuỳ chọn legacy để tương thích */
+  userUnitType?: string;
+  allowEditApproved?: boolean;
+  allowEditLevel1Approved?: boolean;
 }
 
 /**
@@ -93,24 +99,63 @@ export interface ApprovalEditPolicyOptions {
  * @param status Trạng thái phê duyệt của bản ghi (chấp nhận cả mã legacy).
  */
 export function canEditApprovalRecord(
-  status: string | null | undefined,
-  { hasPerm, resource, extraUpdatePerms = [], extraApprovePerms = [] }: ApprovalEditPolicyOptions,
+  status: string | number | null | undefined,
+  optionsOrResource?: ApprovalEditPolicyOptions | string,
+  legacyHasPerm?: (key: string) => boolean,
 ): boolean {
-  const st = normalizeApprovalStatus(status);
+  const st = normalizeApprovalStatus(status != null ? String(status) : null);
 
   // Đang trong vòng duyệt hoặc đã xóa mềm: đóng băng, không ai sửa được.
   if (st === 'PENDING_APPROVAL' || st === 'APPROVED_LEVEL1' || st === 'ARCHIVED') {
     return false;
   }
 
+  let hasPerm: ((key: string) => boolean) | undefined;
+  let resource = '';
+  let extraUpdatePerms: string[] = [];
+  let extraApprovePerms: string[] = [];
+
+  if (typeof optionsOrResource === 'string') {
+    resource = optionsOrResource;
+    hasPerm = legacyHasPerm;
+  } else if (optionsOrResource && typeof optionsOrResource === 'object') {
+    hasPerm = optionsOrResource.hasPerm;
+    resource = optionsOrResource.resource || '';
+    extraUpdatePerms = optionsOrResource.extraUpdatePerms || [];
+    extraApprovePerms = optionsOrResource.extraApprovePerms || [];
+  }
+
+  if (typeof hasPerm !== 'function') {
+    hasPerm = usePermissionStore.getState().hasPermission;
+  }
+
+  const checkPerm = (p: string) => {
+    try {
+      return Boolean(hasPerm!(p));
+    } catch {
+      return false;
+    }
+  };
+
   // Đã duyệt: chỉ người có thẩm quyền phê duyệt, sửa qua "Lưu và phê duyệt" (T12).
   if (st === 'APPROVED') {
-    return [`${resource}:approvec2`, ...extraApprovePerms].some(hasPerm);
+    const perms = [
+      ...(resource ? [`${resource}:approvec2`, `${resource}:approve`] : []),
+      ...extraApprovePerms,
+      'admin:all',
+    ];
+    return perms.some(checkPerm);
   }
 
   // Lưu tạm / Bị trả về: người nhập sửa được nếu có quyền cập nhật.
   if (isEditableByOwner(st)) {
-    return [`${resource}:update`, ...extraUpdatePerms].some(hasPerm);
+    const perms = [
+      ...(resource ? [`${resource}:update`, `${resource}:write`] : []),
+      ...extraUpdatePerms,
+      'data:update',
+      'admin:all',
+    ];
+    return perms.some(checkPerm);
   }
 
   // Trạng thái lạ: mặc định an toàn là không cho sửa.
@@ -119,11 +164,14 @@ export function canEditApprovalRecord(
 
 export interface ApprovalDeletePolicyOptions {
   /** Hàm kiểm tra quyền của màn hình, thường là `usePermissionStore.hasPermission`. */
-  hasPerm: (key: string) => boolean;
+  hasPerm?: (key: string) => boolean;
   /** Tiền tố resource của quyền, ví dụ `'navigationchannel'`, `'port'`. */
-  resource: string;
+  resource?: string;
   /** Các quyền được chấp nhận thay cho `<resource>:delete`, ví dụ `['admin:manage']`. */
   extraDeletePerms?: string[];
+  /** Tuỳ chọn legacy */
+  userUnitType?: string;
+  allowDeleteApproved?: boolean;
 }
 
 /**
@@ -140,13 +188,46 @@ export interface ApprovalDeletePolicyOptions {
  * CẤM tự viết lại điều kiện này ở từng màn hình.
  */
 export function canDeleteApprovalRecord(
-  status: string | null | undefined,
-  { hasPerm, resource, extraDeletePerms = [] }: ApprovalDeletePolicyOptions,
+  status: string | number | null | undefined,
+  optionsOrResource?: ApprovalDeletePolicyOptions | string,
+  legacyHasPerm?: (key: string) => boolean,
 ): boolean {
-  if (normalizeApprovalStatus(status) !== 'DRAFT') {
+  if (normalizeApprovalStatus(status != null ? String(status) : null) !== 'DRAFT') {
     return false;
   }
-  return [`${resource}:delete`, ...extraDeletePerms].some(hasPerm);
+
+  let hasPerm: ((key: string) => boolean) | undefined;
+  let resource = '';
+  let extraDeletePerms: string[] = [];
+
+  if (typeof optionsOrResource === 'string') {
+    resource = optionsOrResource;
+    hasPerm = legacyHasPerm;
+  } else if (optionsOrResource && typeof optionsOrResource === 'object') {
+    hasPerm = optionsOrResource.hasPerm;
+    resource = optionsOrResource.resource || '';
+    extraDeletePerms = optionsOrResource.extraDeletePerms || [];
+  }
+
+  if (typeof hasPerm !== 'function') {
+    hasPerm = usePermissionStore.getState().hasPermission;
+  }
+
+  const checkPerm = (p: string) => {
+    try {
+      return Boolean(hasPerm!(p));
+    } catch {
+      return false;
+    }
+  };
+
+  const perms = [
+    ...(resource ? [`${resource}:delete`] : []),
+    ...extraDeletePerms,
+    'data:delete',
+    'admin:all',
+  ];
+  return perms.some(checkPerm);
 }
 
 /**
@@ -157,3 +238,4 @@ export function canDeleteApprovalRecord(
 export function editFooterMode(status?: string | null): 'approve' | 'draft' {
   return isApprovedRecord(status) ? 'approve' : 'draft';
 }
+

@@ -88,7 +88,7 @@ public class NavigationChannelController {
             @RequestBody @Valid ApprovalRequest req,
             Authentication authentication) {
         UUID userId = currentUserId(authentication);
-        return ResponseEntity.ok(ApiResponse.success("Phê duyệt C1 thành công", service.approveC1(id, req, userId)));
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Chi cục thành công", service.approveC1(id, req, userId)));
     }
 
     @PostMapping("/{id}/approve/c2")
@@ -98,7 +98,7 @@ public class NavigationChannelController {
             @RequestBody @Valid ApprovalRequest req,
             Authentication authentication) {
         UUID userId = currentUserId(authentication);
-        return ResponseEntity.ok(ApiResponse.success("Phê duyệt C2 thành công", service.approveC2(id, req, userId)));
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", service.approveC2(id, req, userId)));
     }
 
     /** Trả về cấp 1 (mới — F-038). */

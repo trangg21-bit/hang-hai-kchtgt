@@ -170,7 +170,7 @@ public class DikeRevetmentController {
         try {
             String n = note != null ? note : (req != null ? req.getReason() : null);
             DikeRevetmentResponse response = service.approveLevel1(id, getUserId(authentication), n);
-            return ResponseEntity.ok(ApiResponse.success("Phê duyệt C1 thành công", response));
+            return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Chi cục thành công", response));
         } catch (Exception e) {
             log.warn("Lỗi khi duyệt C1 đê kè id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
@@ -187,7 +187,7 @@ public class DikeRevetmentController {
         try {
             String n = note != null ? note : (req != null ? req.getReason() : null);
             DikeRevetmentResponse response = service.approveLevel2(id, getUserId(authentication), n);
-            return ResponseEntity.ok(ApiResponse.success("Phê duyệt C2 thành công", response));
+            return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", response));
         } catch (Exception e) {
             log.warn("Lỗi khi duyệt C2 đê kè id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
@@ -204,7 +204,7 @@ public class DikeRevetmentController {
         try {
             String r = reason != null ? reason : (req != null ? req.getReason() : null);
             DikeRevetmentResponse response = service.rejectLevel1(id, getUserId(authentication), r);
-            return ResponseEntity.ok(ApiResponse.success("Đã từ chối C1 đê kè", response));
+            return ResponseEntity.ok(ApiResponse.success("Đã từ chối cấp Chi cục đê kè", response));
         } catch (Exception e) {
             log.warn("Lỗi khi từ chối C1 đê kè id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
@@ -221,7 +221,7 @@ public class DikeRevetmentController {
         try {
             String r = reason != null ? reason : (req != null ? req.getReason() : null);
             DikeRevetmentResponse response = service.rejectLevel2(id, getUserId(authentication), r);
-            return ResponseEntity.ok(ApiResponse.success("Đã từ chối C2 đê kè", response));
+            return ResponseEntity.ok(ApiResponse.success("Đã từ chối cấp Cục đê kè", response));
         } catch (Exception e) {
             log.warn("Lỗi khi từ chối C2 đê kè id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));

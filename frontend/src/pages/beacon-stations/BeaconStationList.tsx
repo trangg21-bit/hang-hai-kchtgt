@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   Button,
-  Tag,
   Modal,
   Input,
   Select,
@@ -17,9 +16,6 @@ import {
   Upload,
   Tabs,
   Table,
-  Tooltip,
-  Popconfirm,
-  Descriptions,
 } from 'antd';
 import {
   PlusOutlined,
@@ -45,10 +41,8 @@ import type { BeaconStation } from '../../types/beacon';
 import {
   BEACON_STATUS_MAP,
   BEACON_LIGHT_TYPE_OPTIONS,
-  BEACON_LIGHT_TYPE_MAP,
   BEACON_HISTORY_ACTION_MAP,
   type BeaconStatus,
-  type BeaconLightType,
 } from '../../types/beacon';
 import { organizationService } from '../../services/organizationService';
 import { userService } from '../../services/userService';
@@ -58,15 +52,10 @@ import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
-import ErrorState from '../../components/ErrorState';
-import toast, { message } from '../../components/ToastNotification';
-import FormField from '../../components/FormField';
-import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
-import RejectionModal from '../../components/shared/RejectionModal';
+import toast from '../../components/ToastNotification';
 import { colors } from '../../theme';
 import { useAuthStore } from '../../store/authStore';
-import { usePermissionStore } from '../../store/permissionStore';
+import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
 import { portCRUD } from '../../services/portService';
 import { symbolService } from '../../services/symbolService';
@@ -83,9 +72,7 @@ import {
   textPrimary,
   textSecondary,
   textTertiary,
-  fontSizeSm,
   fontSizeMd,
-  fontSizeBreadcrumb,
   fontWeightBold,
   fontWeightMedium,
   radiusSm,
@@ -129,6 +116,7 @@ import {
   historyOldValueStyle,
   historyNewValueStyle,
   historyArrowStyle,
+  getRangePickerProps,
 } from '../../tokens';
 
 // ── Field name translation ───────────────────────────────────────────
@@ -278,7 +266,7 @@ const tabBarStyle: React.CSSProperties = {
 // ── Component ────────────────────────────────────────────────────────
 
 export default function BeaconStationList() {
-  const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
 
   // ── Filter state ─────────────────────────────────────────────────
   const [filterName, setFilterName] = useState('');
@@ -307,7 +295,7 @@ export default function BeaconStationList() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const [, setError] = useState<Error | null>(null);
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
 
   // ── Organizations (form unit selector) ──────────────────────────
@@ -482,7 +470,9 @@ export default function BeaconStationList() {
   // ── Drawer handlers ─────────────────────────────────────────────
   const openCreateDrawer = useCallback(() => {
     setEditingRecord(null); setIsDetailMode(false); setDetailRecord(null);
-    createForm.resetFields(); setActiveTabKey('general'); setUploadedFiles([]); setDrawerVisible(true);
+    createForm.resetFields();
+    createForm.setFieldsValue({ operationalStatus: 1 });
+    setActiveTabKey('general'); setUploadedFiles([]); setDrawerVisible(true);
     (async () => {
       try {
         const code = await beaconStationCRUD.generateCode();
@@ -1018,7 +1008,7 @@ export default function BeaconStationList() {
         {
           label: 'Tình trạng',
           value: (() => {
-            const s = OPERATIONAL_STATUS_STYLE_MAP[detailRecord.operationalStatus];
+            const s = detailRecord.operationalStatus != null ? OPERATIONAL_STATUS_STYLE_MAP[detailRecord.operationalStatus] : undefined;
             return s
               ? <span style={{ ...badgeBaseStyle, fontSize: fontSizeMd, padding: '2px 10px', display: 'inline-flex', background: `${s.color}15`, color: s.color }}>{s.label}</span>
               : '—';
@@ -1069,7 +1059,7 @@ export default function BeaconStationList() {
     ? [
         { label: 'Loại đối tượng GIS', value: GEOMETRY_TYPE_MAP[detailRecord.geometryType || ''] || detailRecord.geometryType || '—' },
         { label: 'Biểu tượng GIS', value: symbols.find((s) => s.id === detailRecord.mapSymbolId)?.name || detailRecord.mapSymbolId || '—' },
-        { label: 'Hệ quy chiếu GIS', value: COORD_SYS_MAP[detailRecord.coordinateSystem] || (detailRecord.coordinateSystem != null ? String(detailRecord.coordinateSystem) : '—') },
+        { label: 'Hệ quy chiếu GIS', value: (detailRecord.coordinateSystem != null ? COORD_SYS_MAP[detailRecord.coordinateSystem] : undefined) || (detailRecord.coordinateSystem != null ? String(detailRecord.coordinateSystem) : '—') },
         { label: 'Quy tắc hiển thị GIS', value: detailRecord.displayRule || '—' },
         {
           label: 'Tọa độ GIS',
@@ -1266,20 +1256,25 @@ export default function BeaconStationList() {
                   const changeKey = change.id || fn || 'row';
                   if (change.reason && change.reason !== '(null)') {
                     return (
-                      <div key={changeKey} style={{ ...historyChangeRowStyle, paddingTop: 0 }}>
+                      <div key={changeKey} style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '4px 0' }}>
                         <div style={historyFieldLabelStyle}>Lý do từ chối:</div>
-                        <span title={change.reason} style={historyNewValueStyle}>{change.reason}</span>
+                        <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: radiusSm, padding: '6px 12px', color: statusCritical, fontSize: fontSizeMd, overflowWrap: 'anywhere' }}>{change.reason}</div>
                       </div>
                     );
                   }
                   const ov = formatHistoryValue(fn, change.oldValue);
                   const nv = formatHistoryValue(fn, change.newValue);
-                  return isCreate ? (
-                    <div key={changeKey} style={historyCreateRowStyle}>
-                      <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                      <span title={nv} style={historyNewValueStyle}>{nv}</span>
-                    </div>
-                  ) : (
+
+                  if (isCreate) {
+                    return (
+                      <div key={changeKey} style={historyCreateRowStyle}>
+                        <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
+                        <span title={nv} style={historyNewValueStyle}>{nv}</span>
+                      </div>
+                    );
+                  }
+
+                  return (
                     <div key={changeKey} style={historyChangeRowStyle}>
                       <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
                       <span title={ov} style={historyOldValueStyle}>{ov}</span>
@@ -1369,7 +1364,7 @@ export default function BeaconStationList() {
         ) : (
           <>
             <style>{requiredMarkStyle}</style>
-            <Form form={createForm} layout="vertical" initialValues={{}}>
+            <Form form={createForm} layout="vertical" initialValues={{ operationalStatus: 1 }}>
               <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={tabBarStyle}
                 items={[
                   {
@@ -1813,12 +1808,23 @@ export default function BeaconStationList() {
         <Space style={{ marginTop: spaceMd, marginBottom: spaceMd }} wrap>
           <Input placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
             onChange={(e) => setHistorySearch(e.target.value)} style={{ width: 240, ...inputStyle }} />
-          <DatePicker placeholder="Từ ngày" value={historyFrom ? dayjs(historyFrom) : null}
-            onChange={(d) => setHistoryFrom(d ? d.format('YYYY-MM-DD HH:mm') : '')}
-            style={{ width: 170, ...selectStyle }} format="DD/MM/YYYY HH:mm" showTime />
-          <DatePicker placeholder="Đến ngày" value={historyTo ? dayjs(historyTo) : null}
-            onChange={(d) => setHistoryTo(d ? d.format('YYYY-MM-DD HH:mm') : '')}
-            style={{ width: 170, ...selectStyle }} format="DD/MM/YYYY HH:mm" showTime />
+          <DatePicker.RangePicker
+            {...getRangePickerProps({
+              value: (historyFrom && historyTo)
+                ? [dayjs(historyFrom), dayjs(historyTo)]
+                : (historyFrom ? [dayjs(historyFrom), null] : (historyTo ? [null, dayjs(historyTo)] : null)),
+              onChange: (dates: any) => {
+                if (!dates || dates.length === 0 || (!dates[0] && !dates[1])) {
+                  setHistoryFrom('');
+                  setHistoryTo('');
+                } else {
+                  setHistoryFrom(dates[0] ? dates[0].startOf('day').format('YYYY-MM-DD HH:mm') : '');
+                  setHistoryTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DD HH:mm') : '');
+                }
+              },
+              style: { width: 280, ...selectStyle },
+            })}
+          />
         </Space>
         <div style={{ maxHeight: 500, overflowY: 'auto', marginTop: spaceFormField }}>
           {historyLoading ? (

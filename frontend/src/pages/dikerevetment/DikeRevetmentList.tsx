@@ -57,7 +57,6 @@ import { colors } from '../../theme';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
-import { approvalStatusLabel } from '../../components/shared/ApprovalStatusBadge';
 import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import {
@@ -189,31 +188,6 @@ const OPERATIONAL_STATUS_STYLE_MAP: Record<string, { color: string; label: strin
   '1': { color: statusAttention, label: 'Chưa khai thác/vận hành' },
   '2': { color: statusOperational, label: 'Đang khai thác/vận hành' },
   '3': { color: statusCritical, label: 'Dừng khai thác/vận hành' },
-};
-
-const GEOMETRY_POINT_COUNT: Record<string, number> = { POINT: 1, LINE: 2, POLYGON: 3 };
-
-const APPROVAL_STATUS_MAP: Record<string, string> = {
-  DRAFT: 'Lưu tạm',
-  PROPOSED: 'Chờ Cảng vụ duyệt',
-  PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
-  APPROVED_LEVEL1: 'Chờ Cục duyệt',
-  APPROVED_LEVEL2: 'Đã duyệt',
-  APPROVED: 'Đã duyệt',
-  REJECTED: 'Từ chối',
-  REJECTED_LEVEL1: 'Cảng vụ trả về',
-  REJECTED_LEVEL2: 'Cục trả về',
-};
-
-// History action colors — semantic tokens
-const HISTORY_ACTION_COLOR: Record<string, string> = {
-  TAO_MOI: statusOperational,
-  CAP_NHAT: actionPrimary,
-  GUI_DUYET: statusAttention,
-  PHE_DUYET_C1: statusAttention,
-  PHE_DUYET_C2: statusAttention,
-  TU_CHOI: statusCritical,
-  XOA_MEM: statusDraft,
 };
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -418,6 +392,7 @@ export default function DikeRevetmentList() {
   const [historyTarget, setHistoryTarget] = useState<DikeRevetmentResponse | null>(null);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [, setHistorySearchInput] = useState('');
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
   const [historyTo, setHistoryTo] = useState('');
@@ -546,6 +521,9 @@ export default function DikeRevetmentList() {
     setDetailRecord(null);
     setIsDetailMode(false);
     createForm.resetFields();
+    createForm.setFieldsValue({
+      status: '2',
+    });
     setGpsCoordList([]);
     setUploadFileList([]);
     setActiveTabKey('general');
@@ -810,6 +788,7 @@ export default function DikeRevetmentList() {
   const openHistoryModal = useCallback(async (record: DikeRevetmentResponse) => {
     setHistoryTarget(record);
     setHistoryRecords([]);
+    setHistorySearchInput('');
     setHistorySearch('');
     setHistoryFrom('');
     setHistoryTo('');
@@ -819,15 +798,6 @@ export default function DikeRevetmentList() {
     setHasMoreHistory(true);
     setHistoryPage(0);
   }, []);
-
-  const formatHistoryValue = (fn: string, val: any): string => {
-    if (val === null || val === undefined || val === '') return '—';
-    if (fn === 'dikeRevetmentType') return DIKE_REVETMENT_TYPE_MAP[val] || val;
-    if (fn === 'status') return OPERATIONAL_STATUS_STYLE_MAP[val]?.label || val;
-    if (fn === 'approvalStatus') return approvalStatusLabel(val);
-    if (fn === 'length' || fn === 'height' || fn === 'crestElevation') return `${val} m`;
-    return String(val);
-  };
 
   const HISTORY_PAGE_SIZE = 20;
 
@@ -1518,7 +1488,7 @@ export default function DikeRevetmentList() {
         ) : (
           <>
             <style>{requiredMarkStyle}</style>
-            <Form form={createForm} layout="vertical" initialValues={{}}>
+            <Form form={createForm} layout="vertical" initialValues={{ status: '2' }}>
               <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={tabBarStyle}
                 items={[
                   {

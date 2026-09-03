@@ -1,635 +1,281 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  Tag,
-  Input,
-  Select,
-  Modal,
-  Space,
-  Button,
-  Drawer,
-  DatePicker,
-  Typography,
-} from 'antd';
-import {
-  PlusOutlined,
-  EyeOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  SendOutlined,
-  HistoryOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  SearchOutlined,
-} from '@ant-design/icons';
-import dayjs from 'dayjs';
-import { ScreenHeader, DataTable } from '../../components/list-view';
-import FilterTableLayout from '../../components/list-view/FilterTableLayout';
-import Pagination from '../../components/list-view/Pagination';
-import EmptyState from '../../components/EmptyState';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../components/org-unit';
-import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
-import {
-  CONDITION_STATUS_OPTIONS,
-  CONDITION_STATUS_TAG_MAP,
-  APPROVAL_STATUS_TAG_MAP,
-  ApprovalStatus,
-} from '../../types/vtsSystem';
-import { UNIT_OF_MEASURE_MAP } from '../../types/aisSystem';
-import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
-import type {
-  AisSystemListItem,
-  AisSystemResponse,
-} from '../../types/aisSystem';
-import type { HistoryEntry } from '../../types/radarStation';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { Modal, Input, Select, DatePicker } from 'antd';
 import { aisSystemService } from '../../services/aisSystemService';
+import { vtsSystemCRUD } from '../../services/vtsSystemService';
 import { vtsOperationCenterService } from '../../services/vtsOperationCenterService';
 import { radarStationService } from '../../services/radarStationService';
 import { organizationService } from '../../services/organizationService';
-import { AisSystemFormModal } from './AisSystemFormModal';
-import { AisSystemDetailDrawer } from './AisSystemDetailDrawer';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
+import type { AisSystemListItem, AisSystemResponse } from '../../types/aisSystem';
+import { UNIT_OF_MEASURE_MAP, UnitOfMeasure } from '../../types/aisSystem';
+import { ConditionStatus, ApprovalStatus, CONDITION_STATUS_MAP, CONDITION_STATUS_OPTIONS } from '../../types/vtsSystem';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
+import { ScreenHeader, DataTable, Pagination } from '../../components/list-view';
+import FilterTableLayout from '../../components/list-view/FilterTableLayout';
+import AisSystemForm from './AisSystemForm';
+import ApprovalModal from '../../components/shared/ApprovalModal';
+import CommonHistoryDrawer from '../../components/shared/CommonHistoryDrawer';
 import toast from '../../components/ToastNotification';
-
 import {
-  statusDraft,
-  statusOperational,
-  statusCritical,
-  statusAttention,
-  actionPrimary,
-  textPrimary,
-  textSecondary,
-  textTertiary,
-  surfacePage,
-  spaceMd,
-  spaceSm,
-  spaceXs,
-  spaceLg,
-  spaceXl,
-  fontSizeLg,
-  fontSizeMd,
-  fontSizeSm,
-  fontWeightBold,
-  fontWeightMedium,
-  spaceFormField,
-  radiusPill,
-  radiusSm,
-  radiusMd,
-  primaryButtonStyle,
-  textAreaStyle,
-  drawerTitleStyle,
-  drawerCloseBtnStyle,
-  borderDefault,
-} from '../../tokens';
-import { colors } from '../../theme';
-import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
-import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+  actionPrimary, textSecondary,
+  fontWeightBold, fontWeightMedium,
+  spaceMd, spaceFormField,
+  statusOperational, statusCritical, statusAttention,
+  selectStyle, statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
+  inputStyle, textAreaStyle,
+  getRangePickerProps, getSidebarDatePickerProps,
+} from '../../themetokenchk';
+import * as themeTokenChk from '../../themetokenchk';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import dayjs from 'dayjs';
+import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
+import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds, type OrgUnitTreeOption } from '../../components/org-unit';
+import SidebarFilterField from '../../components/list-view/SidebarFilterField';
+import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
 
-const APPROVAL_STATUS_FILTER_OPTIONS = [
-  { value: ApprovalStatus.DRAFT, label: 'Lưu tạm' },
-  { value: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ Cảng vụ duyệt' },
-  { value: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ Cục duyệt' },
-  { value: ApprovalStatus.APPROVED, label: 'Đã duyệt' },
-  { value: ApprovalStatus.REJECTED_LEVEL1, label: 'Bị Cảng vụ trả về' },
-  { value: ApprovalStatus.REJECTED_LEVEL2, label: 'Bị Cục trả về' },
-];
+/** Số bản ghi nhật ký mỗi lần cuộn tải thêm trong drawer lịch sử. */
+const HISTORY_PAGE_SIZE = 20;
 
-const HISTORY_FIELD_ORDER = [
-  'orgUnitId',
-  'orgUnitName',
-  'vtsOperationCenterId',
-  'vtsOperationCenterName',
-  'operatingOrgId',
-  'operatingOrgName',
-  'code',
-  'name',
-  'provinceId',
-  'detailedLocation',
-  'unitOfMeasure',
-  'quantity',
-  'model',
-  'specifications',
-  'manufacturer',
-  'commissioningYear',
-  'conditionStatus',
-  'maintenanceInfo',
-  'note',
-  'approvalStatus',
-  'geometryType',
-  'coordinates',
-  'symbolId',
-];
+const CONDITION_COLOR: Record<ConditionStatus, string> = {
+  [ConditionStatus.OPERATIONAL]: statusOperational,
+  [ConditionStatus.STOPPED]: statusCritical,
+  [ConditionStatus.MAINTENANCE]: statusAttention,
+  [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
+};
 
-// ── History helpers ──────────────────────────────────────────────
+export function AisSystemList() {
+  const currentUser = useAuthStore((s) => s.user);
+  const { hasPermission } = usePermissionStore();
+  const hasPerm = useCallback((perm: string) => hasPermission(perm), [hasPermission]);
 
-function historyFieldName(fn: string): string {
-  const map: Record<string, string> = {
-    name: 'Tên thiết bị AIS',
-    code: 'Mã thiết bị AIS',
-    province: 'Tỉnh/Thành phố',
-    provinceId: 'Địa điểm (Tỉnh/TP)',
-    detailedLocation: 'Địa điểm chi tiết',
-    unitOfMeasure: 'Đơn vị tính',
-    quantity: 'Số lượng',
-    model: 'Model',
-    specifications: 'Thông số kỹ thuật',
-    manufacturer: 'Hãng sản xuất',
-    commissioningYear: 'Năm đưa vào sử dụng',
-    conditionStatus: 'Tình trạng',
-    maintenanceInfo: 'Thông tin bảo trì',
-    note: 'Ghi chú',
-    approvalStatus: 'Trạng thái phê duyệt',
-    orgUnitName: 'Đơn vị quản lý',
-    orgUnitId: 'Đơn vị quản lý',
-    operatingOrgName: 'Đơn vị khai thác',
-    operatingOrgId: 'Đơn vị khai thác',
-    vtsOperationCenterName: 'Thuộc TTDH VTS / Trạm Radar',
-    vtsOperationCenterId: 'Thuộc TTDH VTS / Trạm Radar',
-    geometryType: 'Loại đối tượng',
-    coordinates: 'Tọa độ (GIS)',
-    symbolId: 'Biểu tượng',
-  };
-  return map[fn] || fn;
-}
-
-function normalizeHistoryKey(value: string): string {
-  return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
-}
-
-function historyFieldValue(fn: string, val: string | null): string {
-  if (!val || val === '(null)' || val === 'null' || val === '') return '(trống)';
-  const displayValue = val.split(';').map((part) => {
-    const separator = part.indexOf('=');
-    return separator >= 0 ? part.slice(separator + 1).trim() : part.trim();
-  }).filter(Boolean).join('; ');
-  const historyFieldKeys = fn.split(/[,;]+/).map(normalizeHistoryKey);
-  const isApprovalField = fn === 'approvalStatus'
-    || historyFieldKeys.includes('approvalstatus')
-    || historyFieldKeys.includes('trang thai phe duyet');
-  if (isApprovalField) {
-    const statusMap: Record<string, string> = {
-      DRAFT: 'Lưu tạm',
-      PROPOSED: 'Chờ Cảng vụ duyệt',
-      PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
-      PENDING: 'Chờ Cảng vụ duyệt',
-      APPROVED_LEVEL1: 'Chờ Cục duyệt',
-      APPROVED_LEVEL2: 'Đã duyệt',
-      APPROVED: 'Đã duyệt',
-      REJECTED: 'Từ chối',
-      REJECTED_LEVEL1: 'Bị Cảng vụ trả về',
-      REJECTED_LEVEL2: 'Bị Cục trả về',
-    };
-    return displayValue.split(';').map((value) => {
-      const normalizedValue = String(value || '').trim();
-      const fromEnum = statusMap[normalizedValue] || statusMap[normalizedValue.toUpperCase()];
-      if (fromEnum) return fromEnum;
-      const normText = normalizeHistoryKey(normalizedValue);
-      if (normText.includes('cang vu') && (normText.includes('tra ve') || normText.includes('tu choi'))) {
-        return 'Bị Cảng vụ trả về';
-      }
-      if (normText.includes('cuc') && (normText.includes('tra ve') || normText.includes('tu choi'))) {
-        return 'Bị Cục trả về';
-      }
-      if (normText.includes('cho') && (normText.includes('cang vu') || normText.includes('chi cuc') || normText.includes('phe duyet'))) {
-        return 'Chờ Cảng vụ duyệt';
-      }
-      if (normText.includes('cho') && normText.includes('cuc')) {
-        return 'Chờ Cục duyệt';
-      }
-      if (normText.includes('da') && normText.includes('duyet')) {
-        return 'Đã duyệt';
-      }
-      if (normText.includes('tu choi') || normText.includes('tra ve')) {
-        return 'Từ chối';
-      }
-      if (normText.includes('luu tam') || normText.includes('nhap')) {
-        return 'Lưu tạm';
-      }
-      return normalizedValue;
-    }).join('; ');
-  }
-  if (fn === 'unitOfMeasure') {
-    const num = Number(displayValue);
-    if (!isNaN(num)) return UNIT_OF_MEASURE_MAP[num] || displayValue;
-    return displayValue;
-  }
-  if (fn === 'provinceId') {
-    const num = Number(displayValue);
-    if (!isNaN(num)) return getProvinceNameById(num) || displayValue;
-    return displayValue;
-  }
-  if (fn === 'conditionStatus') {
-    const statusMap: Record<string, string> = {
-      OPERATIONAL: 'Đang hoạt động',
-      STOPPED: 'Dừng hoạt động',
-      MAINTENANCE: 'Đang bảo trì',
-      UNDER_CONSTRUCTION: 'Đang xây dựng',
-      '1': 'Đang hoạt động',
-      '2': 'Dừng hoạt động',
-      '3': 'Đang bảo trì',
-      '4': 'Đang xây dựng',
-    };
-    const strVal = String(displayValue || '');
-    return statusMap[strVal] || statusMap[strVal.toUpperCase()] || strVal;
-  }
-  return displayValue;
-}
-
-function historyTimestamp(item: any): string {
-  return item.approvedDate || item.changedAt || item.createdAt || item.performedDate || '';
-}
-
-function historyField(item: any): string {
-  return item.changedField || item.fieldName || '';
-}
-
-function historyOldValue(item: any): string | null {
-  return item.previousValue ?? item.oldValue ?? null;
-}
-
-function historyNewValue(item: any): string | null {
-  return item.newValue ?? null;
-}
-
-function historyActor(item: any): string {
-  const raw = item?.approvedByName || item?.changedByName || item?.performedByName || item?.userName || item?.actorName || item?.approvedBy || item?.changedBy || item?.performedBy || '';
-  return raw || '—';
-}
-
-function normalizedHistoryFields(value: string): string[] {
-  const fields = value.split(/[,;]+/).map((field: string) => field.trim()).filter(Boolean);
-  const hasApprovalStatus = fields.some((field) => {
-    const key = normalizeHistoryKey(field);
-    return key === 'approvalstatus' || key === 'trang thai phe duyet';
-  });
-
-  if (hasApprovalStatus) {
-    return fields.filter((field) => {
-      const key = normalizeHistoryKey(field);
-      return key !== 'approvedlevel1'
-        && key !== 'approvedlevel2'
-        && key !== 'da phe duyet cap 1'
-        && key !== 'da phe duyet cap 2';
-    });
-  }
-
-  return fields;
-}
-
-function parseHistoryAssignments(value: string | null): Map<string, string> {
-  const result = new Map<string, string>();
-  if (!value) return result;
-  value.split(';').forEach((part) => {
-    const separator = part.indexOf('=');
-    if (separator < 0) return;
-    result.set(normalizeHistoryKey(part.slice(0, separator)), part.slice(separator + 1).trim());
-  });
-  return result;
-}
-
-function historyChangeRows(item: any): Array<{ field: string; oldValue: string | null; newValue: string | null }> {
-  const fields = normalizedHistoryFields(historyField(item));
-  const oldValue = historyOldValue(item);
-  const newValue = historyNewValue(item);
-  const oldAssignments = parseHistoryAssignments(oldValue);
-  const newAssignments = parseHistoryAssignments(newValue);
-
-  if (fields.length > 1 && oldAssignments.size === 0 && newAssignments.size === 0) {
-    return [{ field: fields.join(', '), oldValue, newValue }];
-  }
-
-  if (fields.length === 0) {
-    return [{ field: '', oldValue, newValue }];
-  }
-
-  return fields.map((field, index) => {
-    const displayField = historyFieldName(field);
-    const oldAssigned = oldAssignments.get(normalizeHistoryKey(field))
-      ?? oldAssignments.get(normalizeHistoryKey(displayField));
-    const newAssigned = newAssignments.get(normalizeHistoryKey(field))
-      ?? newAssignments.get(normalizeHistoryKey(displayField));
-    const oldParts = oldValue?.split(';').map((part) => part.trim()).filter(Boolean) || [];
-    const newParts = newValue?.split(';').map((part) => part.trim()).filter(Boolean) || [];
-    return {
-      field,
-      oldValue: oldAssigned ?? (fields.length === 1 ? oldValue : oldParts[index] || null),
-      newValue: newAssigned ?? (fields.length === 1 ? newValue : newParts[index] || null),
-    };
-  });
-}
-
-function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; color: string; bg: string } {
-  const item = group.items?.[0] || {};
-  const rawStatus = String(item.status ?? item.action ?? '').toUpperCase();
-  const rawReason = String(item.reason ?? item.ghiChu ?? item.note ?? '').toLowerCase();
-  const level = Number(item.approvalLevel || 0);
-
-  if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('tao moi')) {
-    return { label: 'Tạo mới', color: statusOperational, bg: `${statusOperational}18` };
-  }
-
-  if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || item.changedField?.includes('đính kèm')) {
-    return { label: 'Tải lên tệp', color: '#0284c7', bg: '#0284c718' };
-  }
-  if (rawStatus === 'ATTACHMENT_DELETED' || rawReason.includes('xóa tài liệu') || rawReason.includes('xóa tệp') || rawReason.includes('xoa tep')) {
-    return { label: 'Xóa tệp', color: '#ea580c', bg: '#ea580c18' };
-  }
-
-  if (rawStatus === 'UPDATED' || rawStatus === 'UPDATE' || rawStatus === 'EDIT' || rawReason.includes('cập nhật') || rawReason.includes('chỉnh sửa')) {
-    return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
-  }
-
-  const approvalChange = changes.find((c: any) => {
-    const k = normalizeHistoryKey(c.field);
-    return k === 'approvalstatus' || k === 'trang thai phe duyet';
-  });
-
-  if (approvalChange) {
-    const nv = normalizeHistoryKey(approvalChange.newValue || '');
-    if (nv.includes('cang vu tra ve') || nv.includes('rejected_level1') || (nv.includes('tra ve') && nv.includes('cang vu'))) {
-      return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    if (nv.includes('cuc tra ve') || nv.includes('rejected_level2') || (nv.includes('tra ve') && nv.includes('cuc'))) {
-      return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    if (nv === 'cho cuc duyet' || nv.includes('da phe duyet cap 1') || nv.includes('approved_level1') || nv.includes('cuc duyet')) {
-      return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
-    }
-    if (nv === 'da duyet' || nv.includes('da phe duyet') || nv.includes('approved')) {
-      return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
-    }
-    if (nv.includes('tu choi') || nv.includes('rejected') || nv.includes('tra ve')) {
-      return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    if (nv.includes('cho cang vu duyet') || nv.includes('cho phe duyet') || nv.includes('pending') || nv.includes('proposed')) {
-      return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
-    }
-  }
-
-  if (level === 1 || String(item.approvalLevel).includes('LEVEL_1') || rawReason.includes('cấp 1') || rawReason.includes('cap 1') || rawStatus === 'UNDER_REVIEW') {
-    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
-      return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
-  }
-  if (level === 2 || String(item.approvalLevel).includes('LEVEL_2') || rawReason.includes('cấp 2') || rawReason.includes('cap 2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
-    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
-      return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
-  }
-  if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi')) {
-    return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
-  }
-  if (rawStatus === 'SUBMITTED' || rawStatus === 'PENDING' || rawReason.includes('trình duyệt') || rawReason.includes('trinh duyet')) {
-    return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
-  }
-  if (rawStatus === 'DELETED' || rawStatus === 'DELETE' || rawStatus === 'SOFT_DELETE' || rawReason.includes('xóa') || rawReason.includes('xoa')) {
-    return { label: 'Xóa', color: '#64748b', bg: '#64748b18' };
-  }
-
-  return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
-}
-
-function renderHistoryValueTag(field: string, val: string | null) {
-  if (val === null || val === undefined || val === '—') {
-    return <span style={{ color: textTertiary }}>—</span>;
-  }
-  const normKey = normalizeHistoryKey(field);
-  const normVal = normalizeHistoryKey(val);
-
-  if (normKey === 'approvalstatus' || normKey === 'trang thai phe duyet' || normKey.includes('phe duyet') || normKey.includes('trang thai')) {
-    if (normVal === 'da duyet' || normVal === 'da phe duyet' || normVal === 'approved' || normVal === 'approved_level2') {
-      return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', border: `1px solid ${statusOperational}40`, borderRadius: radiusPill, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: `${statusOperational}15`, color: statusOperational, whiteSpace: 'nowrap' }}>
-          {val}
-        </span>
-      );
-    }
-    if (normVal === 'cho cuc duyet' || normVal === 'approved_level1' || normVal.includes('cap 1') || normVal.includes('cuc duyet')) {
-      return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', border: '1px solid #13C2C240', borderRadius: radiusPill, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: '#13C2C215', color: '#13C2C2', whiteSpace: 'nowrap' }}>
-          {val}
-        </span>
-      );
-    }
-    if (normVal === 'cho cang vu duyet' || normVal === 'cho phe duyet' || normVal === 'cho duyet' || normVal === 'pending' || normVal === 'pending_approval' || normVal === 'proposed' || normVal.includes('cang vu')) {
-      return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', border: `1px solid ${statusAttention}40`, borderRadius: radiusPill, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: `${statusAttention}15`, color: statusAttention, whiteSpace: 'nowrap' }}>
-          {val}
-        </span>
-      );
-    }
-    if (normVal === 'tu choi' || normVal.includes('rejected') || normVal.includes('tra ve')) {
-      return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', border: `1px solid ${statusCritical}40`, borderRadius: radiusPill, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: `${statusCritical}15`, color: statusCritical, whiteSpace: 'nowrap' }}>
-          {val}
-        </span>
-      );
-    }
-    return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', border: `1px solid ${statusDraft}40`, borderRadius: radiusPill, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: `${statusDraft}15`, color: statusDraft, whiteSpace: 'nowrap' }}>
-        {val}
-      </span>
-    );
-  }
-
-  return <span>{val}</span>;
-}
-
-export const AisSystemList: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [data, setData] = useState<AisSystemListItem[]>([]);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [dataSource, setDataSource] = useState<AisSystemListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
-  const [activeTab, setActiveTab] = useState<string>('ALL');
+  // Sắp xếp chạy ở server để áp dụng cho toàn bộ kết quả; nếu để antd tự sắp thì
+  // chỉ 20 dòng của trang hiện tại được sắp, gây hiểu nhầm là đã sắp cả danh sách.
   const [sortField, setSortField] = useState<string | undefined>();
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  // Khóa bộ lọc đã dùng cho lần đếm gần nhất — dùng để bỏ truy vấn đếm khi chỉ
+  // lật trang hoặc đổi cột sắp xếp.
+  const statusCountFilterKey = useRef<string | null>(null);
+  const [filterApprovalStatus, setFilterApprovalStatus] = useState<ApprovalStatus | undefined>(undefined);
+  const [filterValues, setFilterValues] = useState<{
+    name?: string;
+    code?: string;
+    orgUnitId?: string;
+    vtsOperationCenterId?: string;
+    operatingOrgId?: string;
+    provinceId?: number;
+    commissioningYear?: number;
+    conditionStatus?: ConditionStatus;
+    approvalStatus?: ApprovalStatus;
+    updateDateRange?: [dayjs.Dayjs | null, dayjs.Dayjs | null];
+  }>({});
+  const [appliedFilterValues, setAppliedFilterValues] = useState<typeof filterValues>({});
   const [filterCollapsed, setFilterCollapsed] = useState(false);
-  const [keyword, setKeyword] = useState<string>('');
-  const [name, setName] = useState<string>('');
-  const [code, setCode] = useState<string>('');
-  const [orgUnitId, setOrgUnitId] = useState<string | undefined>();
-  const [filterApprovalStatus, setFilterApprovalStatus] = useState<string | undefined>();
-  const [vtsOperationCenterId, setVtsOperationCenterId] = useState<string | undefined>();
-  const [provinceId, setProvinceId] = useState<number | undefined>();
-  const [commissioningYear, setCommissioningYear] = useState<number | undefined>();
-  const [conditionStatus, setConditionStatus] = useState<number | undefined>();
-  const [updatedRange, setUpdatedRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
 
-  const [orgUnits, setOrgUnits] = useState<any[]>([]);
+  const [orgUnitOptions, setOrgUnitOptions] = useState<OrgUnitTreeOption[]>([]);
+  const [operatingOrganizations, setOperatingOrganizations] = useState<any[]>(DEFAULT_OPERATING_ORGANIZATIONS);
   const [opCenters, setOpCenters] = useState<{ id: string; name: string; orgUnitId?: string }[]>([]);
   const [radarStations, setRadarStations] = useState<{ id: string; name: string; orgUnitId?: string }[]>([]);
 
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<AisSystemResponse | null>(null);
-  const [drawerVisible, setDrawerVisible] = useState(false);
-  const [drawerItem, setDrawerItem] = useState<AisSystemResponse | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'create' | 'edit' | 'detail'>('create');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<AisSystemResponse | null>(null);
 
-  const [historyDrawerVisible, setHistoryDrawerVisible] = useState(false);
-  const [historyTargetRecord, setHistoryTargetRecord] = useState<AisSystemListItem | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<HistoryEntry[]>([]);
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [historySearch, setHistorySearch] = useState('');
-  const [historyDateFrom, setHistoryDateFrom] = useState('');
-  const [historyDateTo, setHistoryDateTo] = useState('');
+  const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
+  const [hasMoreHistory, setHasMoreHistory] = useState(true);
+  // Số trang nhật ký đã tải. Không suy ra từ `historyRecords.length` vì backend có
+  // thể trả ít hơn pageSize khi lọc, làm lệch số trang → sót/lặp bản ghi.
+  const [historyPage, setHistoryPage] = useState(0);
+  const [historyTargetId, setHistoryTargetId] = useState<string | null>(null);
+  const [historyFilters, setHistoryFilters] = useState<{ keyword: string; fromDate: string; toDate: string }>(
+    { keyword: '', fromDate: '', toDate: '' },
+  );
 
-  const [approveModalVisible, setApproveModalVisible] = useState(false);
-  const [approveLevel, setApproveLevel] = useState<'C1' | 'C2'>('C1');
-  const [approveTargetId, setApproveTargetId] = useState<string>('');
-  const [approveReason, setApproveReason] = useState<string>('');
-  const [actionLoading, setActionLoading] = useState(false);
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c1');
+  const [actionTargetRecord, setActionTargetRecord] = useState<AisSystemListItem | null>(null);
 
-  const [rejectModalVisible, setRejectModalVisible] = useState(false);
-  const [rejectTargetId, setRejectTargetId] = useState<string>('');
-  const [rejectReason, setRejectReason] = useState<string>('');
-
-  const { user } = useAuthStore();
-  const { hasPermission } = usePermissionStore();
-
-  const canCreate = hasPermission('aissystem:create');
-  const canUpdate = hasPermission('aissystem:update');
-  const canDelete = hasPermission('aissystem:delete');
-  const canHistory = hasPermission('aissystem:history');
-  const canApproveC1 = hasPermission('aissystem:approvec1');
-  const canApproveC2 = hasPermission('aissystem:approvec2');
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
 
   const loadReferenceData = useCallback(async () => {
     try {
-      const [orgRes, opRes, radarRes] = await Promise.allSettled([
-        organizationService.list({ pageSize: 1000 }),
+      const [orgRes, opRes, radarRes, operatingRes] = await Promise.allSettled([
+        organizationService.getAll(),
         vtsOperationCenterService.getOptions(),
         radarStationService.getOptions(),
+        vtsSystemCRUD.getOperatingOrganizationOptions(),
       ]);
-      if (orgRes.status === 'fulfilled' && orgRes.value && Array.isArray(orgRes.value.data)) {
-        setOrgUnits(orgRes.value.data);
+
+      if (orgRes.status === 'fulfilled' && Array.isArray(orgRes.value)) {
+        setOrgUnitOptions(orgRes.value);
       }
       if (opRes.status === 'fulfilled' && Array.isArray(opRes.value)) {
-        setOpCenters(opRes.value.map((c: any) => ({ id: c.id, name: c.name, orgUnitId: c.orgUnitId })));
+        setOpCenters(opRes.value.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          orgUnitId: item.orgUnitId || item.managementUnitId || item.operatingUnitId,
+        })));
       }
       if (radarRes.status === 'fulfilled' && Array.isArray(radarRes.value)) {
-        setRadarStations(radarRes.value.map((r: any) => ({ id: r.id, name: r.stationName || r.code || r.id, orgUnitId: r.orgUnitId })));
+        setRadarStations(radarRes.value.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          orgUnitId: item.orgUnitId || item.managementUnitId || item.operatingUnitId,
+        })));
+      }
+      if (operatingRes.status === 'fulfilled' && Array.isArray(operatingRes.value)) {
+        setOperatingOrganizations(operatingRes.value);
       }
     } catch {
-      // ignore
+      // Ignored
     }
   }, []);
 
+  useEffect(() => {
+    loadReferenceData();
+  }, [loadReferenceData]);
+
+  const operatingUnitOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const list: { value: string; label: string }[] = [];
+
+    if (Array.isArray(orgUnitOptions)) {
+      orgUnitOptions.forEach((o) => {
+        if (o.id && o.name && !seen.has(String(o.id))) {
+          seen.add(String(o.id));
+          list.push({ value: String(o.id), label: o.code ? `${o.code} - ${o.name}` : o.name });
+        }
+      });
+    }
+
+    if (Array.isArray(operatingOrganizations)) {
+      operatingOrganizations.forEach((o) => {
+        if (o.id && o.name && !seen.has(String(o.id))) {
+          seen.add(String(o.id));
+          list.push({ value: String(o.id), label: o.code ? `${o.code} - ${o.name}` : o.name });
+        }
+      });
+    }
+
+    return list;
+  }, [orgUnitOptions, operatingOrganizations]);
+
   const filteredOpCenters = useMemo(() => {
-    if (!orgUnitId) return opCenters;
-    const allowedIds = resolveOrgSubtreeIds(orgUnits, orgUnitId);
+    if (!filterValues.orgUnitId) return opCenters;
+    const allowedIds = resolveOrgSubtreeIds(orgUnitOptions, filterValues.orgUnitId);
     return opCenters.filter((c) => !c.orgUnitId || allowedIds.has(c.orgUnitId));
-  }, [opCenters, orgUnitId, orgUnits]);
+  }, [opCenters, filterValues.orgUnitId, orgUnitOptions]);
 
   const filteredRadarStations = useMemo(() => {
-    if (!orgUnitId) return radarStations;
-    const allowedIds = resolveOrgSubtreeIds(orgUnits, orgUnitId);
+    if (!filterValues.orgUnitId) return radarStations;
+    const allowedIds = resolveOrgSubtreeIds(orgUnitOptions, filterValues.orgUnitId);
     return radarStations.filter((r) => !r.orgUnitId || allowedIds.has(r.orgUnitId));
-  }, [radarStations, orgUnitId, orgUnits]);
+  }, [radarStations, filterValues.orgUnitId, orgUnitOptions]);
 
   const combinedLocationOptions = useMemo(() => [
     {
       label: 'Trung tâm điều hành VTS',
-      options: filteredOpCenters.map((c) => ({ value: c.id, label: c.name })),
+      options: filteredOpCenters.map((c) => ({ value: `op_${c.id}`, rawId: c.id, type: 'op', label: c.name })),
     },
     {
       label: 'Trạm Radar',
-      options: filteredRadarStations.map((r) => ({ value: r.id, label: r.name })),
+      options: filteredRadarStations.map((r) => ({ value: `radar_${r.id}`, rawId: r.id, type: 'radar', label: r.name })),
     },
   ], [filteredOpCenters, filteredRadarStations]);
 
-  const handleOrgUnitChange = (val?: string) => {
-    setOrgUnitId(val);
-    if (val) {
-      const allowedIds = resolveOrgSubtreeIds(orgUnits, val);
-      const inOpCenters = opCenters.some((c) => c.id === vtsOperationCenterId && (!c.orgUnitId || allowedIds.has(c.orgUnitId)));
-      const inRadars = radarStations.some((r) => r.id === vtsOperationCenterId && (!r.orgUnitId || allowedIds.has(r.orgUnitId)));
-      if (vtsOperationCenterId && !inOpCenters && !inRadars) {
-        setVtsOperationCenterId(undefined);
-      }
-    }
-  };
-
   const fetchData = useCallback(async () => {
+    setLoading(true);
+    setIsError(false);
+    setErrorMessage('');
     try {
-      setLoading(true);
-      setIsError(false);
-
-      const effectiveApprovalStatus = filterApprovalStatus || (activeTab === 'ALL' ? undefined : activeTab);
-
-      let updatedFrom: string | undefined = undefined;
-      let updatedTo: string | undefined = undefined;
-      if (updatedRange && updatedRange[0]) {
-        updatedFrom = updatedRange[0].startOf('day').format('YYYY-MM-DDTHH:mm:ss');
-      }
-      if (updatedRange && updatedRange[1]) {
-        updatedTo = updatedRange[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss');
-      }
-
       let filterOpCenterId: string | undefined = undefined;
       let filterRadarStationId: string | undefined = undefined;
-      if (vtsOperationCenterId) {
-        if (opCenters.some((c) => c.id === vtsOperationCenterId)) {
-          filterOpCenterId = vtsOperationCenterId;
-        } else if (radarStations.some((r) => r.id === vtsOperationCenterId)) {
-          filterRadarStationId = vtsOperationCenterId;
+      if (appliedFilterValues.vtsOperationCenterId) {
+        if (appliedFilterValues.vtsOperationCenterId.startsWith('op_')) {
+          filterOpCenterId = appliedFilterValues.vtsOperationCenterId.replace('op_', '');
+        } else if (appliedFilterValues.vtsOperationCenterId.startsWith('radar_')) {
+          filterRadarStationId = appliedFilterValues.vtsOperationCenterId.replace('radar_', '');
         } else {
-          filterOpCenterId = vtsOperationCenterId;
+          filterOpCenterId = appliedFilterValues.vtsOperationCenterId;
         }
       }
+      let updatedFrom: string | undefined = undefined;
+      let updatedTo: string | undefined = undefined;
+      // Backend nhận LocalDateTime và BỎ QUA offset, nên `toISOString()` (giờ UTC)
+      // làm cửa sổ lọc lệch đúng bằng chênh lệch múi giờ (VN: -7h): hồ sơ cập nhật
+      // sau 17h bị đẩy nhầm sang ngày hôm sau. Gửi thẳng giờ địa phương.
+      if (appliedFilterValues.updateDateRange && appliedFilterValues.updateDateRange[0]) {
+        updatedFrom = appliedFilterValues.updateDateRange[0].startOf('day').format('YYYY-MM-DDTHH:mm:ss');
+      }
+      if (appliedFilterValues.updateDateRange && appliedFilterValues.updateDateRange[1]) {
+        updatedTo = appliedFilterValues.updateDateRange[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss');
+      }
+
+      // Số trên tab tính cho MỌI trạng thái phê duyệt, nên đổi tab không được làm
+      // thay đổi phạm vi đếm — khóa này chỉ gồm các bộ lọc còn lại.
+      const currentStatusCountFilterKey = JSON.stringify([
+        appliedFilterValues.name, appliedFilterValues.code,
+        appliedFilterValues.orgUnitId, filterOpCenterId, filterRadarStationId,
+        appliedFilterValues.operatingOrgId, appliedFilterValues.provinceId,
+        appliedFilterValues.commissioningYear, appliedFilterValues.conditionStatus,
+        updatedFrom, updatedTo,
+      ]);
+      const shouldIncludeCounts = statusCountFilterKey.current !== currentStatusCountFilterKey;
 
       const res = await aisSystemService.search({
-        keyword: keyword.trim() || undefined,
-        name: name.trim() || undefined,
-        code: code.trim() || undefined,
-        orgUnitId: orgUnitId || undefined,
+        name: appliedFilterValues.name?.trim() || undefined,
+        code: appliedFilterValues.code?.trim() || undefined,
+        orgUnitId: appliedFilterValues.orgUnitId || undefined,
         vtsOperationCenterId: filterOpCenterId,
         radarStationId: filterRadarStationId,
-        provinceId: provinceId !== undefined ? provinceId : undefined,
-        commissioningYear: commissioningYear !== undefined ? commissioningYear : undefined,
-        conditionStatus: conditionStatus !== undefined ? conditionStatus : undefined,
-        approvalStatus: effectiveApprovalStatus || undefined,
+        operatingOrgId: appliedFilterValues.operatingOrgId || undefined,
+        provinceId: appliedFilterValues.provinceId,
+        commissioningYear: appliedFilterValues.commissioningYear,
+        conditionStatus: appliedFilterValues.conditionStatus || undefined,
+        approvalStatus: filterApprovalStatus,
         updatedFrom,
         updatedTo,
         page,
         size: pageSize,
-        // Sắp xếp chạy ở server để áp dụng cho toàn bộ kết quả, không chỉ trang
-        // đang hiển thị (backend đã nhận sortBy/sortDir sẵn).
         sortBy: sortField,
-        sortDir: sortField ? sortDirection : undefined,
+        sortDir: sortField ? sortDirection.toUpperCase() : undefined,
+        // Chỉ yêu cầu backend đếm lại khi bộ lọc đổi; lật trang hay đổi sắp xếp
+        // không làm thay đổi số trên tab nên bỏ được truy vấn GROUP BY.
+        includeCounts: shouldIncludeCounts,
       });
 
-      setData(res.items);
-      setTotal(res.total);
-      setStatusCounts(res.statusCounts || {});
+      setDataSource(res.items || []);
+      setTotal(res.total || 0);
+      if (shouldIncludeCounts) {
+        setStatusCounts(res.statusCounts || {});
+        statusCountFilterKey.current = currentStatusCountFilterKey;
+      }
     } catch (err: any) {
       setIsError(true);
+      setErrorMessage(err?.message || 'Không thể tải danh sách hệ thống AIS');
       toast.error('Không thể tải danh sách hệ thống AIS');
     } finally {
       setLoading(false);
     }
-  }, [
-    page,
-    pageSize,
-    keyword,
-    name,
-    code,
-    orgUnitId,
-    filterApprovalStatus,
-    vtsOperationCenterId,
-    provinceId,
-    commissioningYear,
-    conditionStatus,
-    updatedRange,
-    activeTab,
-    sortField,
-    sortDirection,
-  ]);
+  }, [page, pageSize, appliedFilterValues, filterApprovalStatus, sortField, sortDirection]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleSort = useCallback((field: string, order: 'asc' | 'desc') => {
     setSortField(field);
@@ -637,157 +283,193 @@ export const AisSystemList: React.FC = () => {
     setPage(1);
   }, []);
 
-  useEffect(() => {
-    loadReferenceData();
-  }, [loadReferenceData]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const handleSearch = () => {
-    setPage(1);
-    fetchData();
-  };
-
-  const handleReset = () => {
-    setKeyword('');
-    setName('');
-    setCode('');
-    setOrgUnitId(undefined);
-    setFilterApprovalStatus(undefined);
-    setVtsOperationCenterId(undefined);
-    setProvinceId(undefined);
-    setCommissioningYear(undefined);
-    setConditionStatus(undefined);
-    setUpdatedRange(null);
-    setActiveTab('ALL');
-    setPage(1);
-  };
-
-  const handleViewDetail = async (record: AisSystemListItem) => {
-    try {
-      const full = await aisSystemService.getById(record.id);
-      setDrawerItem(full);
-      setDrawerVisible(true);
-    } catch {
-      toast.error('Không thể tải chi tiết');
-    }
-  };
-
-  const handleEdit = async (record: AisSystemListItem | AisSystemResponse) => {
-    try {
-      const full = await aisSystemService.getById(record.id);
-      setSelectedItem(full);
-      setModalVisible(true);
-    } catch {
-      toast.error('Không thể tải thông tin chỉnh sửa');
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    try {
-      await aisSystemService.delete(id);
-      toast.success('Xóa hệ thống AIS thành công');
-      fetchData();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || 'Xóa thất bại');
-    }
-  };
-
-  const handleViewHistory = async (record: AisSystemListItem) => {
-    setHistoryTargetRecord(record);
-    setHistoryDrawerVisible(true);
-    setLoadingHistory(true);
-    setHistorySearch('');
-    setHistoryDateFrom('');
-    setHistoryDateTo('');
-    try {
-      const h = await aisSystemService.getHistory(record.id);
-      setHistoryRecords(h || []);
-    } catch {
-      toast.error('Không thể tải lịch sử thay đổi');
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
-
-  const openApproveModal = (id: string, level: 'C1' | 'C2') => {
-    setApproveTargetId(id);
-    setApproveLevel(level);
-    setApproveReason('');
-    setApproveModalVisible(true);
-  };
-
-  const handleConfirmApprove = async () => {
-    if (!approveTargetId) return;
-    try {
-      setActionLoading(true);
-      if (approveLevel === 'C1') {
-        await aisSystemService.approveC1(approveTargetId, 'APPROVED', approveReason);
-        toast.success('Phê duyệt cấp 1 thành công');
-      } else {
-        await aisSystemService.approveC2(approveTargetId, 'APPROVED', approveReason);
-        toast.success('Phê duyệt cấp 2 thành công');
-      }
-      setApproveModalVisible(false);
-      fetchData();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || 'Lỗi phê duyệt');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const openRejectModal = (id: string) => {
-    setRejectTargetId(id);
-    setRejectReason('');
-    setRejectModalVisible(true);
-  };
-
-  const handleConfirmReject = async () => {
-    if (!rejectReason.trim()) {
-      toast.warning('Vui lòng nhập lý do từ chối');
-      return;
-    }
-    if (!rejectTargetId) return;
-    try {
-      setActionLoading(true);
-      await aisSystemService.reject(rejectTargetId, rejectReason.trim());
-      toast.success('Đã từ chối phê duyệt');
-      setRejectModalVisible(false);
-      fetchData();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || 'Có lỗi xảy ra');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const statusTabsItems = useMemo(() => {
-    const draftCount = statusCounts['DRAFT'] || 0;
-    const pendingCount = (statusCounts['PENDING_APPROVAL'] || 0) + (statusCounts['PROPOSED'] || 0);
-    const approvedL1Count = statusCounts['APPROVED_LEVEL1'] || 0;
-    const approvedCount = (statusCounts['APPROVED'] || 0) + (statusCounts['APPROVED_LEVEL2'] || 0);
-    const rejectedCount = (statusCounts['REJECTED'] || 0) + (statusCounts['REJECTED_LEVEL1'] || 0) + (statusCounts['REJECTED_LEVEL2'] || 0);
-    const allCount = draftCount + pendingCount + approvedL1Count + approvedCount + rejectedCount;
-
-    return [
-      { key: 'ALL', label: 'Tất cả', count: allCount, color: actionPrimary, active: activeTab === 'ALL' },
-      { key: 'DRAFT', label: 'Lưu tạm', count: draftCount, color: statusDraft, active: activeTab === 'DRAFT' },
-      { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', count: pendingCount, color: statusAttention, active: activeTab === 'PENDING_APPROVAL' },
-      { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', count: approvedL1Count, color: '#0284C7', active: activeTab === 'APPROVED_LEVEL1' },
-      { key: 'APPROVED', label: 'Đã duyệt', count: approvedCount, color: statusOperational, active: activeTab === 'APPROVED' },
-      { key: 'REJECTED_LEVEL1', label: 'Từ chối', count: rejectedCount, color: statusCritical, active: activeTab === 'REJECTED_LEVEL1' || activeTab === 'REJECTED_LEVEL2' },
-    ];
-  }, [statusCounts, activeTab]);
-
   const sortOrderFor = (key: string): 'ascend' | 'descend' | null =>
     (sortField === key ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null);
 
   // Bộ so sánh trung tính: thứ tự do server quyết định, hàm này chỉ để antd hiện
-  // biểu tượng sắp xếp mà không tự sắp lại trang đang xem.
+  // biểu tượng sắp xếp mà không tự sắp lại 20 dòng của trang hiện tại.
   const serverSideSorter = () => 0;
+
+  const refreshList = useCallback(() => {
+    // Sau khi tạo/duyệt/xóa thì số trên tab đã đổi — buộc đếm lại.
+    statusCountFilterKey.current = null;
+    fetchData();
+  }, [fetchData]);
+
+  const countDraft = statusCounts['DRAFT'] || 0;
+  const countPendingApproval = (statusCounts['PENDING_APPROVAL'] || 0) + (statusCounts['PROPOSED'] || 0);
+  const countApprovedLevel1 = statusCounts['APPROVED_LEVEL1'] || 0;
+  const countApproved = (statusCounts['APPROVED'] || 0) + (statusCounts['APPROVED_LEVEL2'] || 0);
+  const countRejected = (statusCounts['REJECTED'] || 0) + (statusCounts['REJECTED_LEVEL1'] || 0) + (statusCounts['REJECTED_LEVEL2'] || 0);
+  const countAll = countDraft + countPendingApproval + countApprovedLevel1 + countApproved + countRejected;
+
+  const statusTabs = useMemo(() => [
+    { key: 'ALL', label: 'Tất cả', count: countAll, color: actionPrimary, active: !filterApprovalStatus },
+    { key: ApprovalStatus.DRAFT, label: 'Lưu tạm', count: countDraft, color: '#93A3B3', active: filterApprovalStatus === ApprovalStatus.DRAFT },
+    { key: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ Cảng vụ duyệt', count: countPendingApproval, color: statusAttention, active: filterApprovalStatus === ApprovalStatus.PENDING_APPROVAL },
+    { key: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ Cục duyệt', count: countApprovedLevel1, color: '#0284C7', active: filterApprovalStatus === ApprovalStatus.APPROVED_LEVEL1 },
+    { key: ApprovalStatus.APPROVED, label: 'Đã duyệt', count: countApproved, color: statusOperational, active: filterApprovalStatus === ApprovalStatus.APPROVED },
+    { key: 'REJECTED', label: 'Từ chối', count: countRejected, color: statusCritical, active: filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL1 || filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL2 },
+  ], [countAll, countDraft, countPendingApproval, countApprovedLevel1, countApproved, countRejected, filterApprovalStatus]);
+
+  const handleTabChange = (key: string) => {
+    setPage(1);
+    const approvalStatus = key === 'ALL'
+      ? undefined
+      : key === 'REJECTED'
+        ? ApprovalStatus.REJECTED_LEVEL1
+        : key as ApprovalStatus;
+    setFilterApprovalStatus(approvalStatus);
+    setFilterValues((prev) => ({ ...prev, approvalStatus }));
+  };
+
+  const handleFilterSearch = (vals: typeof filterValues) => {
+    setPage(1);
+    setFilterValues(vals);
+    setAppliedFilterValues(vals);
+    setFilterApprovalStatus(vals.approvalStatus);
+  };
+
+  const handleFilterReset = () => {
+    setPage(1);
+    setFilterValues({});
+    setAppliedFilterValues({});
+    setFilterApprovalStatus(undefined);
+  };
+
+  const handleViewHistory = (record: AisSystemListItem) => {
+    setSelectedRecord(record as any);
+    setHistoryTargetId(record.id);
+    setHistoryModalOpen(true);
+    setHistoryRecords([]);
+    setLoadingHistory(false);
+    setLoadingMoreHistory(false);
+    setHasMoreHistory(true);
+    setHistoryPage(0);
+    setHistoryFilters({ keyword: '', fromDate: '', toDate: '' });
+  };
+
+  // Nạp lại trang đầu mỗi khi mở drawer hoặc đổi điều kiện lọc. Lọc chạy ở server
+  // nên ô tìm kiếm quét đúng toàn bộ nhật ký, không riêng phần đã tải.
+  useEffect(() => {
+    if (!historyModalOpen || !historyTargetId) return;
+    let cancelled = false;
+    (async () => {
+      setLoadingHistory(true);
+      setLoadingMoreHistory(false);
+      setHasMoreHistory(true);
+      setHistoryRecords([]);
+      setHistoryPage(0);
+      try {
+        const records = await aisSystemService.getHistory(historyTargetId, 0, HISTORY_PAGE_SIZE, {
+          keyword: historyFilters.keyword || undefined,
+          fromDate: historyFilters.fromDate || undefined,
+          toDate: historyFilters.toDate || undefined,
+        });
+        if (cancelled) return;
+        const items = records || [];
+        setHistoryRecords(items);
+        setHasMoreHistory(items.length === HISTORY_PAGE_SIZE);
+      } catch {
+        if (!cancelled) toast.error('Không thể tải lịch sử thay đổi');
+      } finally {
+        if (!cancelled) setLoadingHistory(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [historyModalOpen, historyTargetId, historyFilters]);
+
+  const loadMoreHistory = useCallback(async () => {
+    if (!historyTargetId || loadingHistory || loadingMoreHistory || !hasMoreHistory) return;
+    setLoadingMoreHistory(true);
+    try {
+      const nextPage = historyPage + 1;
+      const records = await aisSystemService.getHistory(historyTargetId, nextPage, HISTORY_PAGE_SIZE, {
+        keyword: historyFilters.keyword || undefined,
+        fromDate: historyFilters.fromDate || undefined,
+        toDate: historyFilters.toDate || undefined,
+      });
+      if (records && records.length > 0) {
+        setHistoryRecords((prev) => [...prev, ...records]);
+      }
+      setHistoryPage(nextPage);
+      setHasMoreHistory((records || []).length === HISTORY_PAGE_SIZE);
+    } catch { /* giữ nguyên phần đã tải, người dùng cuộn lại sẽ thử tiếp */ }
+    finally { setLoadingMoreHistory(false); }
+  }, [historyTargetId, loadingHistory, loadingMoreHistory, hasMoreHistory, historyPage, historyFilters]);
+
+  const confirmDelete = (record: AisSystemListItem) => {
+    Modal.confirm({
+      title: 'Xác nhận xóa hệ thống AIS',
+      icon: <span style={{ color: statusCritical, fontSize: 22, marginRight: 8 }}>⚠</span>,
+      content: (
+        <div>
+          <p>Bạn có chắc chắn muốn xóa hệ thống AIS <strong>{record.name}</strong> ({record.code})?</p>
+          <p style={{ color: textSecondary, fontSize: '14px' }}>Hành động này không thể hoàn tác.</p>
+        </div>
+      ),
+      okText: 'Xác nhận xóa',
+      okType: 'danger',
+      cancelText: 'Hủy',
+      onOk: async () => {
+        try {
+          await aisSystemService.delete(record.id);
+          toast.success('Xóa hệ thống AIS thành công');
+          refreshList();
+        } catch (err: any) {
+          toast.error(err?.response?.data?.message || err?.message || 'Xóa thất bại');
+        }
+      },
+    });
+  };
+
+  const openApprove = (record: AisSystemListItem, level: 'c1' | 'c2') => {
+    setActionTargetRecord(record);
+    setApproveLevel(level);
+    setApproveModalOpen(true);
+  };
+
+  const handleApprove = async (reason?: string) => {
+    if (!actionTargetRecord) return;
+    try {
+      if (approveLevel === 'c1') {
+        await aisSystemService.approveC1(actionTargetRecord.id, 'APPROVED', reason);
+        toast.success('Phê duyệt cấp Cảng vụ/Chi cục thành công');
+      } else {
+        await aisSystemService.approveC2(actionTargetRecord.id, 'APPROVED', reason);
+        toast.success('Phê duyệt cấp Cục thành công');
+      }
+      setApproveModalOpen(false);
+      setActionTargetRecord(null);
+      refreshList();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Phê duyệt thất bại');
+    }
+  };
+
+  const openReject = (record: AisSystemListItem) => {
+    setActionTargetRecord(record);
+    setRejectReason('');
+    setRejectModalOpen(true);
+  };
+
+  const handleReject = async () => {
+    if (!actionTargetRecord) return;
+    // approval-2-level-spec §3.4 (quy tắc 5): lý do từ chối tối thiểu 10 ký tự.
+    if (!rejectReason.trim() || rejectReason.trim().length < 10) {
+      toast.warning('Lý do từ chối phải có ít nhất 10 ký tự');
+      return;
+    }
+    try {
+      await aisSystemService.reject(actionTargetRecord.id, rejectReason.trim());
+      toast.success('Từ chối phê duyệt thành công');
+      setRejectModalOpen(false);
+      setActionTargetRecord(null);
+      refreshList();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Từ chối thất bại');
+    }
+  };
 
   const columns = useMemo(() => [
     {
@@ -800,35 +482,25 @@ export const AisSystemList: React.FC = () => {
     },
     {
       key: 'name',
-      label: <span>Tên/Mã thiết bị AIS</span>,
+      label: 'Tên / Mã thiết bị',
       dataIndex: 'name',
-      // list-screen-ui-standard §2: cột Tên/Mã KCHT rộng 220–260px.
       width: 260,
       fixed: 'left' as const,
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('name'),
-      ellipsis: false,
-      render: (name: string, record: AisSystemListItem) => (
-        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          <a
-            title={name}
-            onClick={() => handleViewDetail(record)}
-            style={{
-              fontWeight: fontWeightBold,
-              color: actionPrimary,
-              cursor: 'pointer',
-              display: 'block',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {name || '—'}
-          </a>
-          <span style={{ opacity: 0.85, fontSize: fontSizeMd, color: textSecondary, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {record.code || '—'}
-          </span>
+      render: (_: any, record: AisSystemListItem) => (
+        <div
+          style={{ cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          onClick={() => {
+            setEditingId(record.id);
+            setSelectedRecord(record as any);
+            setModalMode('detail');
+            setIsModalOpen(true);
+          }}
+        >
+          <div style={cellTitleStyle} title={record.name || ''}>{record.name || '—'}</div>
+          <div style={cellSubtitleStyle} title={record.code || ''}>{record.code || '—'}</div>
         </div>
       ),
     },
@@ -836,19 +508,27 @@ export const AisSystemList: React.FC = () => {
       key: 'orgUnitName',
       label: 'Đơn vị quản lý',
       dataIndex: 'orgUnitName',
-      width: 260,
+      width: 200,
       ellipsis: false,
-      // Tên đơn vị resolve từ cache sau truy vấn nên không sắp xếp được ở server;
-      // không bật sắp xếp để tránh chỉ sắp đúng trang đang xem.
-      render: (orgName: string) => <span style={{ fontWeight: fontWeightBold }}>{orgName || '—'}</span>,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('orgUnitName'),
+      render: (v: string) => (
+        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v || '—'}>
+          {v || '—'}
+        </div>
+      ),
     },
     {
       key: 'vtsOperationCenterName',
       label: 'Thuộc TTDH VTS / Trạm Radar',
       dataIndex: 'vtsOperationCenterName',
-      width: 260,
+      width: 220,
       ellipsis: false,
-      render: (_: string, record: AisSystemListItem) => record.attachedLocationName || record.vtsOperationCenterName || record.radarStationName || '—',
+      render: (_: any, record: AisSystemListItem) => {
+        const val = record.attachedLocationName || record.vtsOperationCenterName || record.radarStationName || '—';
+        return <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>{val}</div>;
+      },
     },
     {
       key: 'operatingOrgName',
@@ -856,891 +536,413 @@ export const AisSystemList: React.FC = () => {
       dataIndex: 'operatingOrgName',
       width: 200,
       ellipsis: false,
-      render: (oName: string, record: AisSystemListItem) => oName || DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === record.operatingOrgId)?.name || '—',
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('operatingOrgName'),
+      render: (v: string, record: AisSystemListItem) => {
+        const val = v || record.operatingOrgName || operatingUnitOptions.find((o) => o.value === String(record.operatingOrgId))?.label || DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === record.operatingOrgId)?.name || '—';
+        return <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>{val}</div>;
+      },
     },
     {
-      key: 'provinceId',
+      key: 'province',
       label: 'Địa điểm (Tỉnh/TP)',
       dataIndex: 'provinceId',
-      width: 190,
+      width: 180,
       ellipsis: false,
-      render: (pId: number) => (pId ? getProvinceNameById(pId) || pId : '—'),
+      sortable: true,
+      sorter: serverSideSorter,
+      // DataTable lấy khóa sắp xếp từ `dataIndex` nên cột này gửi lên `provinceId`.
+      sortOrder: sortOrderFor('provinceId'),
+      render: (_: any, r: AisSystemListItem) => {
+        const val = r.provinceName || getProvinceNameById(r.provinceId) || '—';
+        return <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>{val}</div>;
+      },
     },
     {
       key: 'unitOfMeasure',
       label: 'Đơn vị tính',
-      dataIndex: 'unitOfMeasureLabel',
-      width: 140,
-      ellipsis: false,
+      dataIndex: 'unitOfMeasure',
+      width: 130,
       align: 'center' as const,
-      render: (uLabel: string, record: AisSystemListItem) =>
-        uLabel || (record.unitOfMeasure ? UNIT_OF_MEASURE_MAP[record.unitOfMeasure] : '—'),
+      ellipsis: false,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('unitOfMeasure'),
+      render: (v: string) => {
+        const label = UNIT_OF_MEASURE_MAP[v as unknown as UnitOfMeasure] || v || '—';
+        return <span style={{ fontWeight: fontWeightMedium }}>{label}</span>;
+      },
     },
     {
       key: 'quantity',
       label: 'Số lượng',
       dataIndex: 'quantity',
-      width: 120,
+      width: 110,
+      align: 'center' as const,
       ellipsis: false,
-      align: 'right' as const,
-      render: (q: number) => (q != null ? Number(q).toLocaleString('vi-VN') : '—'),
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('quantity'),
+      render: (v: number) => <span style={{ fontWeight: fontWeightBold }}>{v ?? 1}</span>,
     },
     {
       key: 'commissioningYear',
       label: 'Năm đưa vào sử dụng',
       dataIndex: 'commissioningYear',
-      width: 200,
-      ellipsis: false,
+      width: 170,
       align: 'center' as const,
-      render: (y: number) => y || '—',
+      ellipsis: false,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('commissioningYear'),
+      render: (v: number) => <span>{v || '—'}</span>,
     },
     {
       key: 'conditionStatus',
       label: 'Tình trạng',
       dataIndex: 'conditionStatus',
       width: 160,
+      align: 'center' as const,
       ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('conditionStatus'),
-      render: (status: any) => {
-        if (!status && status !== 0) return '—';
-        const key = String(status);
-        const label = (key === '1' || key === 'OPERATIONAL') ? 'Đang hoạt động' : (key === '2' || key === 'MAINTENANCE') ? 'Đang bảo trì' : (key === '0' || key === 'STOPPED') ? 'Dừng hoạt động' : (key === '3' || key === 'UNDER_CONSTRUCTION') ? 'Đang xây dựng' : key;
-        const color = (key === '1' || key === 'OPERATIONAL') ? statusOperational : (key === '2' || key === 'MAINTENANCE') ? statusAttention : (key === '0' || key === 'STOPPED') ? statusCritical : (key === '3' || key === 'UNDER_CONSTRUCTION') ? actionPrimary : textSecondary;
+      render: (v: string) => {
+        const label = CONDITION_STATUS_MAP[v as ConditionStatus] || v;
+        const color = CONDITION_COLOR[v as ConditionStatus] || textSecondary;
         return (
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '2px 10px',
-              border: `1px solid ${color}40`,
-              borderRadius: radiusPill,
-              fontSize: fontSizeMd,
-              fontWeight: fontWeightMedium,
-              background: `${color}15`,
-              color,
-              whiteSpace: 'nowrap',
-            }}
-          >
+          <span style={statusBadgeStyle(color)}>
             {label}
           </span>
         );
       },
     },
-    {
-      key: 'approvalStatus',
-      label: 'Trạng thái',
-      dataIndex: 'approvalStatus',
-      width: 180,
-      ellipsis: false,
-      sortable: true,
-      sorter: serverSideSorter,
-      sortOrder: sortOrderFor('approvalStatus'),
-      render: (status: string) => <ApprovalStatusBadge status={status} />,
-    },
-    {
-      key: 'updatedByName',
-      label: 'Cán bộ cập nhật',
-      dataIndex: 'updatedByName',
-      width: 220,
-      // Tên cán bộ cũng resolve sau truy vấn — xem ghi chú ở cột đơn vị quản lý.
-      ellipsis: false,
-      render: (_: string, record: AisSystemListItem) => {
-        // list-screen-ui-standard §3: chỉ hiển thị Họ và tên. Không fallback sang
-        // `updatedBy`/`createdBy` vì đó là UUID, tuyệt đối không đưa ra giao diện.
-        const name = record.updatedByName || record.createdByName || '—';
-        const date = record.updatedAt || record.createdAt;
-        return (
-          <div style={{ lineHeight: '1.35' }}>
-            <div style={{ fontWeight: fontWeightBold, color: '#0F172A', fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {name}
-            </div>
-            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
-              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
-            </div>
-          </div>
-        );
+  ], [page, pageSize, operatingUnitOptions, sortField, sortDirection]);
+
+  const rowActions = (record: AisSystemListItem) => {
+    const isCreator = Boolean(currentUser?.id && record.createdBy === currentUser.id);
+    const actions: any[] = [
+      {
+        key: 'detail',
+        label: 'Xem chi tiết',
+        icon: icons.view,
+        onClick: () => {
+          setEditingId(record.id);
+          setSelectedRecord(record as any);
+          setModalMode('detail');
+          setIsModalOpen(true);
+        },
       },
-    },
-    {
-      key: 'createdByName',
-      label: 'Cán bộ gửi phê duyệt',
-      dataIndex: 'createdByName',
-      width: 220,
-      ellipsis: false,
-      render: (_: string, record: AisSystemListItem) => {
-        const name = record.createdByName || '—';
-        const date = record.createdAt;
-        return (
-          <div style={{ lineHeight: '1.35' }}>
-            <div style={{ fontWeight: fontWeightBold, color: '#0F172A', fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {name}
-            </div>
-            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
-              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      key: 'approverLevel1Name',
-      label: 'Phê duyệt cấp Cảng vụ/Chi cục',
-      dataIndex: 'approverLevel1Name',
-      width: 240,
-      ellipsis: false,
-      render: (_: string, record: AisSystemListItem) => {
-        const name = record.approverLevel1Name || '—';
-        const date = record.approvedDateLevel1;
-        return (
-          <div style={{ lineHeight: '1.35' }}>
-            <div style={{ fontWeight: fontWeightBold, color: '#0F172A', fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {name}
-            </div>
-            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
-              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      key: 'approverLevel2Name',
-      label: 'Phê duyệt cấp Cục',
-      dataIndex: 'approverLevel2Name',
-      width: 220,
-      ellipsis: false,
-      render: (_: string, record: AisSystemListItem) => {
-        const name = record.approverLevel2Name || '—';
-        const date = record.approvedDateLevel2;
-        return (
-          <div style={{ lineHeight: '1.35' }}>
-            <div style={{ fontWeight: fontWeightBold, color: '#0F172A', fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {name}
-            </div>
-            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
-              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
-            </div>
-          </div>
-        );
-      },
-    },
-  ], [page, pageSize, sortField, sortDirection]);
+    ];
 
-  const rowActions = useCallback((record: AisSystemListItem) => {
-    const isDraft = record.approvalStatus === ApprovalStatus.DRAFT || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL2;
-    const isPendingC1 = record.approvalStatus === ApprovalStatus.PENDING_APPROVAL;
-    const isApprovedL1 = record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1;
-
-    const currentUserId = user?.userId || user?.id;
-    const isCreator = Boolean(currentUserId && record.createdBy === currentUserId);
-
-    const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }[] = [];
-
-    // 1. Xem chi tiết
-    actions.push({
-      key: 'view',
-      icon: <EyeOutlined />,
-      label: 'Xem chi tiết',
-      onClick: () => handleViewDetail(record),
-    });
-
-    // 2. Lịch sử
-    if (canHistory) {
+    if (hasPerm('aissystem:history')) {
       actions.push({
         key: 'history',
-        icon: <HistoryOutlined />,
         label: 'Lịch sử',
+        icon: icons.history,
         onClick: () => handleViewHistory(record),
       });
     }
 
-    // 3. Chỉnh sửa — quy tắc 12 (approval-2-level-spec.md mục 3.9)
-    if (canEditApprovalRecord(record.approvalStatus, { hasPerm: hasPermission, resource: 'aissystem' })) {
+    if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'aissystem' })) {
       actions.push({
         key: 'edit',
-        icon: <EditOutlined />,
         label: 'Chỉnh sửa',
-        onClick: () => handleEdit(record),
+        icon: icons.edit,
+        onClick: () => {
+          setEditingId(record.id);
+          setSelectedRecord(record as any);
+          setModalMode('edit');
+          setIsModalOpen(true);
+        },
       });
     }
 
-    // 4. Gửi phê duyệt
-    if (canUpdate && isDraft) {
+    if (hasPerm('aissystem:update') && (record.approvalStatus === ApprovalStatus.DRAFT || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL2)) {
       actions.push({
         key: 'submit',
-        icon: <SendOutlined />,
-        label: 'Gửi phê duyệt',
+        label: 'Gửi duyệt',
+        icon: icons.submit,
         onClick: async () => {
           try {
             await aisSystemService.submit(record.id);
-            toast.success('Gửi phê duyệt thành công');
-            fetchData();
+            toast.success('Gửi duyệt thành công');
+            refreshList();
           } catch (e: any) {
-            toast.error(e?.response?.data?.message || 'Có lỗi xảy ra');
+            toast.error(e?.response?.data?.message || e?.message || 'Lỗi gửi duyệt');
           }
         },
       });
     }
 
-    // 5. Phê duyệt & Từ chối cấp Cảng vụ
-    if (canApproveC1 && isPendingC1) {
-      const isSelfApproval = Boolean(isCreator);
+    if (hasPerm('aissystem:approvec1') && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && !isCreator) {
       actions.push({
-        key: 'approveC1',
-        icon: <CheckCircleOutlined />,
-        disabled: isSelfApproval,
-        label: isSelfApproval ? 'Phê duyệt cấp Cảng vụ (không thể tự duyệt)' : 'Phê duyệt cấp Cảng vụ',
-        onClick: () => !isSelfApproval && openApproveModal(record.id, 'C1'),
+        key: 'approve_c1',
+        label: 'Phê duyệt cấp Cảng vụ/Chi cục',
+        icon: icons.approve,
+        onClick: () => openApprove(record, 'c1'),
       });
       actions.push({
-        key: 'rejectC1',
-        icon: <CloseCircleOutlined />,
+        key: 'reject_c1',
+        label: 'Từ chối cấp Cảng vụ/Chi cục',
+        icon: icons.reject,
         danger: true,
-        disabled: isSelfApproval,
-        label: isSelfApproval ? 'Từ chối cấp Cảng vụ (không thể tự duyệt)' : 'Từ chối cấp Cảng vụ',
-        onClick: () => !isSelfApproval && openRejectModal(record.id),
+        onClick: () => openReject(record),
       });
     }
 
-    // 6. Phê duyệt & Từ chối cấp Cục
-    if (canApproveC2 && isApprovedL1) {
-      const isSelfApproval = Boolean(isCreator);
-      const isSameApprover = Boolean(user?.id && record.approverLevel1 === user.id);
-      const isBlocked = isSelfApproval || isSameApprover;
-      const blockedReason = isSelfApproval
-        ? ' (không thể tự duyệt)'
-        : isSameApprover
-        ? ' (người duyệt cấp Cục không được trùng người duyệt cấp Cảng vụ)'
-        : '';
-
+    if (hasPerm('aissystem:approvec2') && record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1) {
       actions.push({
-        key: 'approveC2',
-        icon: <CheckCircleOutlined />,
-        disabled: isBlocked,
-        label: `Phê duyệt cấp Cục${blockedReason}`,
-        onClick: () => !isBlocked && openApproveModal(record.id, 'C2'),
+        key: 'approve_c2',
+        label: 'Phê duyệt cấp Cục',
+        icon: icons.approve,
+        onClick: () => openApprove(record, 'c2'),
       });
       actions.push({
-        key: 'rejectC2',
-        icon: <CloseCircleOutlined />,
+        key: 'reject_c2',
+        label: 'Từ chối cấp Cục',
+        icon: icons.reject,
         danger: true,
-        disabled: isBlocked,
-        label: `Từ chối cấp Cục${blockedReason}`,
-        onClick: () => !isBlocked && openRejectModal(record.id),
+        onClick: () => openReject(record),
       });
     }
 
-    // 7. Xóa — T13/N04: chỉ hồ sơ đang "Lưu tạm" mới xóa được.
-    if (canDelete && record.approvalStatus === ApprovalStatus.DRAFT) {
+    if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'aissystem' })) {
       actions.push({
         key: 'delete',
-        icon: <DeleteOutlined />,
+        label: 'Xóa bỏ',
+        icon: icons.delete,
         danger: true,
-        label: 'Xóa',
-        onClick: () => {
-          Modal.confirm({
-            title: 'Xác nhận xóa hệ thống AIS',
-            content: 'Hồ sơ ở trạng thái Lưu tạm sẽ chuyển sang "Đã xóa (lịch sử)": không còn hiển thị trong danh sách nhưng vẫn được giữ lại để đối chiếu.',
-            okText: 'Xóa',
-            okType: 'danger',
-            cancelText: 'Hủy',
-            onOk: () => handleDelete(record.id),
-          });
-        },
+        onClick: () => confirmDelete(record),
       });
     }
 
     return actions;
-  }, [canUpdate, canDelete, canHistory, canApproveC1, canApproveC2, user?.id, fetchData]);
-
-  // ── History rendering (Identical to VTS System) ─────────────────
-
-  const fmtTime = (ts: string) => {
-    const d = dayjs(ts);
-    return `${d.format('HH:mm')} ${d.format('DD/MM/YYYY')}`;
   };
-
-  const renderHistoryTimeline = (records: any[]) => {
-    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...records].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
-    const q = historySearch.toLowerCase().trim();
-
-    const filtered = sorted.filter((r) => {
-      if (historyDateFrom && new Date(historyTimestamp(r)) < new Date(historyDateFrom)) return false;
-      if (historyDateTo && new Date(historyTimestamp(r)) > new Date(historyDateTo)) return false;
-      if (q) {
-        const actorName = historyActor(r);
-        const txt = `${historyField(r)} ${historyOldValue(r)} ${historyNewValue(r)} ${actorName} ${r.reason || ''}`.toLowerCase();
-        if (!txt.includes(q)) return false;
-      }
-      return true;
-    });
-
-    const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
-    for (const r of filtered) {
-      const ts = historyTimestamp(r);
-      const sec = ts ? toSec(ts) : 0;
-      const prev = groups[groups.length - 1];
-      const actor = historyActor(r);
-      if (prev && prev.tsSec === sec && prev.actor === actor) prev.items.push(r);
-      else groups.push({ tsSec: sec, ts, actor, items: [r] });
-    }
-
-    if (groups.length === 0) {
-      return (
-        <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
-          <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-          <div style={{ color: textTertiary, fontSize: fontSizeMd }}>
-            {q || historyDateFrom || historyDateTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: spaceMd }}>
-        {groups.map((g, gi) => {
-          const changes = g.items.flatMap((item: any) => historyChangeRows(item)).sort((a: any, b: any) => {
-            const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
-            const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
-            return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-          });
-          const unitName = g.items[0]?.orgUnitName || g.items[0]?.unitName || historyTargetRecord?.orgUnitName || '—';
-          const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
-          const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
-
-          const formatHistoryValue = (fn: string, raw: string | null) => {
-            if (raw === null || raw === '(null)' || raw === '') return null;
-            const t = raw.trim();
-            if (t.startsWith('[') && t.endsWith(']')) {
-              if (t === '[]') return 'Không có';
-              const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
-              return `${parts.length} công trình hạ tầng`;
-            }
-            if (/^-?\d+(\.\d+)?$/.test(t)) {
-              const n = Number(t);
-              return Number.isInteger(n) ? String(n) : t;
-            }
-            return historyFieldValue(fn, raw);
-          };
-
-          if (changes.length === 0) return null;
-          const actionMeta = resolveHistoryActionMeta(g, changes);
-
-          return (
-            <div
-              key={gi}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'minmax(310px, 0.38fr) minmax(0, 1fr)',
-                gap: spaceLg,
-                alignItems: 'start',
-                marginBottom: gi < groups.length - 1 ? spaceMd : 0,
-              }}
-            >
-              <div style={{ minWidth: 0, paddingTop: spaceXs }}>
-                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: spaceSm, marginBottom: spaceXs }}>
-                  <Typography.Text style={{ display: 'block', fontSize: fontSizeLg - 1, color: textPrimary, fontWeight: fontWeightBold, lineHeight: 1.5, whiteSpace: 'nowrap' }}>
-                    {g.ts ? fmtTime(g.ts) : '—'}
-                  </Typography.Text>
-                  <span style={{ flexShrink: 0 }}>
-                    <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: actionMeta.bg, color: actionMeta.color, whiteSpace: 'nowrap' }}>
-                      {actionMeta.label}
-                    </span>
-                  </span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: spaceXs }}>
-                  <Typography.Text style={{ display: 'block', fontSize: fontSizeSm + 1, color: textSecondary, fontWeight: fontWeightMedium, lineHeight: 1.4 }}>
-                    Người cập nhật: <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{g.actor || '—'}</span>
-                  </Typography.Text>
-                  <Typography.Text style={{ display: 'block', fontSize: fontSizeSm + 1, color: textSecondary, fontWeight: fontWeightMedium, lineHeight: 1.4 }}>
-                    Đơn vị: <span style={{ color: textPrimary }}>{unitName}</span>
-                  </Typography.Text>
-                </div>
-              </div>
-
-              <div style={{ position: 'relative', minWidth: 0, background: surfacePage, borderRadius: radiusSm, padding: `${spaceMd}px ${spaceLg}px`, paddingLeft: spaceLg, overflow: 'hidden', border: `1px solid ${borderDefault}` }}>
-                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: spaceXs, background: `linear-gradient(180deg, ${actionMeta.color} 0%, ${actionMeta.color}40 100%)` }} />
-                <Typography.Text style={{ display: 'block', color: colors.sidebarBg, fontSize: fontSizeMd, fontWeight: fontWeightBold, marginBottom: spaceSm }}>
-                  {informationTitle}
-                </Typography.Text>
-
-                {(() => {
-                  const validChanges = changes.filter((c: any) => {
-                    if (!c.field) return false;
-                    const ov = formatHistoryValue(c.field, c.oldValue);
-                    const nv = formatHistoryValue(c.field, c.newValue);
-                    if (ov == null && nv == null) return false;
-                    if (ov === nv) return false;
-                    return true;
-                  });
-                  const reasons = g.items.map((i: any) => i.reason || i.ghiChu || i.note).filter(Boolean);
-
-                  if (validChanges.length > 0) {
-                    return (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}>
-                        {validChanges.map((change, ri: number) => {
-                          const fn = change.field;
-                          const ov = formatHistoryValue(fn, change.oldValue);
-                          const nv = formatHistoryValue(fn, change.newValue);
-                          return isCreate ? (
-                            <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '170px minmax(0, 1fr)', alignItems: 'flex-start', gap: spaceMd, fontSize: fontSizeMd, lineHeight: 1.6 }}>
-                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                              <div style={{ minWidth: 0, overflowWrap: 'break-word' }}>{renderHistoryValueTag(fn, nv)}</div>
-                            </div>
-                          ) : (
-                            <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '170px minmax(120px, 1fr) 24px minmax(120px, 1fr)', alignItems: 'center', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6 }}>
-                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                              <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, overflowWrap: 'break-word' }}>
-                                {renderHistoryValueTag(fn, ov)}
-                              </div>
-                              <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none' }}>→</div>
-                              <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, overflowWrap: 'break-word' }}>
-                                {renderHistoryValueTag(fn, nv)}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  }
-
-                  if (reasons.length > 0) {
-                    return (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
-                        {reasons.map((r: string, ri: number) => (
-                          <div key={ri} style={{ fontSize: fontSizeMd, color: textPrimary }}>
-                            {r}
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  }
-
-                  return <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có thông tin chi tiết</Typography.Text>;
-                })()}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
-  const historyGroupCount = useMemo(() => {
-    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...historyRecords].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
-    const groups: any[] = [];
-    for (const r of sorted) {
-      const ts = historyTimestamp(r);
-      const sec = ts ? toSec(ts) : 0;
-      const prev = groups[groups.length - 1];
-      const actor = historyActor(r);
-      if (prev && prev.tsSec === sec && prev.actor === actor) prev.items.push(r);
-      else groups.push({ tsSec: sec, ts, actor, items: [r] });
-    }
-    return groups.length;
-  }, [historyRecords]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
-      <ScreenHeader
-        breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Hệ thống AIS' }]}
-        actions={
-          canCreate
-            ? [
-                {
-                  key: 'create',
-                  label: 'Thêm mới',
-                  icon: <PlusOutlined />,
-                  variant: 'primary' as const,
-                  onClick: () => {
-                    setSelectedItem(null);
-                    setModalVisible(true);
-                  },
-                },
-              ]
-            : []
-        }
-      />
-
-      <FilterTableLayout
-        filterCollapsed={filterCollapsed}
-        onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
-        onFilterApply={handleSearch}
-        onFilterReset={handleReset}
-        loading={loading}
-        error={isError}
-        onRetry={fetchData}
-        filterContent={
-          <>
-            {/* ── BỘ LỌC THƯỜNG (Cơ bản - Luôn hiển thị) ──────────────── */}
-            <div style={{ marginBottom: 12, marginTop: spaceMd }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                Đơn vị quản lý
-              </div>
-              <OrgUnitTreeSelect
-                organizations={orgUnits}
-                placeholder="Tất cả"
-                allowClear
-                treeDefaultExpandAll={true}
-                listHeight={256}
-                value={orgUnitId}
-                onChange={handleOrgUnitChange}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-              />
-            </div>
-
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                Tên thiết bị
-              </div>
-              <Input
-                placeholder="Tìm theo tên thiết bị..."
-                allowClear
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onPressEnter={handleSearch}
-                style={{ borderRadius: radiusPill, height: 40 }}
-              />
-            </div>
-
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                Trạng thái
-              </div>
-              <Select
-                placeholder="Tất cả"
-                allowClear
-                value={filterApprovalStatus}
-                onChange={(val) => {
-                  setFilterApprovalStatus(val);
-                  if (val) {
-                    if (val === ApprovalStatus.REJECTED_LEVEL1 || val === ApprovalStatus.REJECTED_LEVEL2) {
-                      setActiveTab('REJECTED_LEVEL1');
-                    } else {
-                      setActiveTab(val);
-                    }
-                  } else {
-                    setActiveTab('ALL');
-                  }
-                  setPage(1);
-                }}
-                options={APPROVAL_STATUS_FILTER_OPTIONS}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-              />
-            </div>
-
-            {/* ── BỘ LỌC NÂNG CAO (Mở rộng khi filterCollapsed === true) ── */}
-            {filterCollapsed && (
-              <>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                    Thuộc TTDH VTS / Trạm Radar
-                  </div>
-                  <Select
-                    placeholder="Tất cả"
-                    allowClear
-                    showSearch
-                    filterOption={(input, option) =>
-                      normalizeSearchText(option?.label).includes(normalizeSearchText(input))
-                    }
-                    value={vtsOperationCenterId}
-                    onChange={setVtsOperationCenterId}
-                    options={combinedLocationOptions}
-                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                    Mã thiết bị
-                  </div>
-                  <Input
-                    placeholder="Tìm theo mã thiết bị..."
-                    allowClear
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    onPressEnter={handleSearch}
-                    style={{ borderRadius: radiusPill, height: 40 }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                    Tình trạng
-                  </div>
-                  <Select
-                    placeholder="Tất cả"
-                    allowClear
-                    value={conditionStatus}
-                    onChange={setConditionStatus}
-                    options={CONDITION_STATUS_OPTIONS}
-                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                    Năm đưa vào sử dụng
-                  </div>
-                  <DatePicker
-                    picker="year"
-                    placeholder="Chọn năm"
-                    allowClear
-                    value={commissioningYear ? dayjs(String(commissioningYear), 'YYYY') : null}
-                    onChange={(d) => setCommissioningYear(d ? d.year() : undefined)}
-                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                    Khoảng ngày cập nhật
-                  </div>
-                  <DatePicker.RangePicker
-                    format="DD/MM/YYYY"
-                    placeholder={['Từ ngày', 'Đến ngày']}
-                    allowClear
-                    value={updatedRange}
-                    onChange={(range) => setUpdatedRange(range as [dayjs.Dayjs | null, dayjs.Dayjs | null] | null)}
-                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                    Địa điểm (Tỉnh/TP)
-                  </div>
-                  <Select
-                    placeholder="Tất cả"
-                    allowClear
-                    showSearch
-                    filterOption={(input, option) =>
-                      normalizeSearchText(option?.label).includes(normalizeSearchText(input))
-                    }
-                    value={provinceId}
-                    onChange={setProvinceId}
-                    options={VIETNAM_PROVINCE_OPTIONS}
-                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                  />
-                </div>
-              </>
-            )}
-          </>
-        }
-        hideFilterToggle={false}
-        statusTabs={statusTabsItems}
-        onStatusTabChange={(key) => {
-          setActiveTab(key);
-          setFilterApprovalStatus(undefined);
-          setPage(1);
-        }}
-      >
-        <DataTable
-          columns={columns}
-          dataSource={data}
-          rowKey="id"
-          rowActions={rowActions}
-          loading={false}
-          onSort={handleSort}
-          scroll={{ x: 'max-content' }}
-          emptyState={
-            data.length === 0 && !loading ? (
-              <EmptyState description="Không tìm thấy thiết bị AIS nào phù hợp" />
-            ) : undefined
+    <ThemeTokenProvider tokens={themeTokenChk}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+        <ScreenHeader
+          breadcrumb={[
+            { label: 'Tài sản KCHTGT' },
+            { label: 'Hệ thống trạm bờ AIS' },
+          ]}
+          actions={
+            hasPerm('aissystem:create')
+              ? [{
+                key: 'create', label: 'Thêm mới', variant: 'primary' as const, icon: icons.create,
+                onClick: () => { setEditingId(null); setSelectedRecord(null); setModalMode('create'); setIsModalOpen(true); }
+              }]
+              : []
           }
         />
-        <Pagination
-          total={total}
-          current={page}
-          pageSize={pageSize}
-          onChange={(p, ps) => {
-            setPage(p);
-            setPageSize(ps);
-          }}
-        />
-      </FilterTableLayout>
+        <FilterTableLayout
+          filterCollapsed={filterCollapsed}
+          onToggleCollapse={() => setFilterCollapsed((value) => !value)}
+          onFilterApply={() => handleFilterSearch(filterValues)}
+          onFilterReset={handleFilterReset}
+          loading={loading}
+          error={isError}
+          errorMessage={errorMessage}
+          onRetry={refreshList}
+          statusTabs={statusTabs}
+          onStatusTabChange={handleTabChange}
+          filterContent={
+            <>
+              <SidebarFilterField label="Đơn vị quản lý" style={{ marginTop: spaceMd }}>
+                <OrgUnitTreeSelect
+                  organizations={orgUnitOptions}
+                  placeholder="Tất cả đơn vị"
+                  allowClear
+                  treeDefaultExpandAll={true}
+                  listHeight={256}
+                  value={filterValues.orgUnitId}
+                  onChange={(value) => {
+                    setFilterValues((prev) => ({ ...prev, orgUnitId: value, vtsOperationCenterId: undefined }));
+                  }}
+                  style={{ ...selectStyle, width: '100%' }}
+                />
+              </SidebarFilterField>
 
-      {/* Form Modal */}
-      <AisSystemFormModal
-        visible={modalVisible}
-        item={selectedItem}
-        onCancel={() => {
-          setModalVisible(false);
-          setSelectedItem(null);
-        }}
-        onSuccess={() => {
-          setModalVisible(false);
-          setSelectedItem(null);
-          fetchData();
-        }}
-      />
+              <SidebarFilterField label="Tên thiết bị">
+                <Input
+                  placeholder="Nhập tên thiết bị"
+                  allowClear
+                  value={filterValues.name}
+                  onChange={(e) => setFilterValues((prev) => ({ ...prev, name: e.target.value }))}
+                  onPressEnter={() => handleFilterSearch(filterValues)}
+                  style={inputStyle}
+                />
+              </SidebarFilterField>
 
-      {/* Detail Drawer */}
-      <AisSystemDetailDrawer
-        visible={drawerVisible}
-        item={drawerItem}
-        onClose={() => {
-          setDrawerVisible(false);
-          setDrawerItem(null);
-        }}
-        onEdit={(it) => {
-          setDrawerVisible(false);
-          handleEdit(it);
-        }}
-        onRefresh={() => {
-          fetchData();
-          if (drawerItem) {
-            aisSystemService.getById(drawerItem.id).then(setDrawerItem).catch(() => {});
+              <SidebarFilterField label="Trạng thái">
+                <Select
+                  placeholder="Tất cả"
+                  allowClear
+                  value={filterValues.approvalStatus}
+                  onChange={(value) => setFilterValues((prev) => ({ ...prev, approvalStatus: value }))}
+                  options={[
+                    { value: ApprovalStatus.DRAFT, label: 'Lưu tạm' },
+                    { value: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ Cảng vụ duyệt' },
+                    { value: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ Cục duyệt' },
+                    { value: ApprovalStatus.APPROVED, label: 'Đã duyệt' },
+                    { value: ApprovalStatus.REJECTED_LEVEL1, label: 'Từ chối' },
+                  ]}
+                  style={{ ...selectStyle, width: '100%' }}
+                />
+              </SidebarFilterField>
+
+              {filterCollapsed && (
+                <>
+                  <SidebarFilterField label="Thuộc TTDH VTS / Trạm Radar">
+                    <Select
+                      placeholder="Tất cả TTDH / Trạm Radar"
+                      allowClear
+                      showSearch
+                      filterOption={(input, option) =>
+                        normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
+                      }
+                      value={filterValues.vtsOperationCenterId}
+                      onChange={(value) => setFilterValues((prev) => ({ ...prev, vtsOperationCenterId: value }))}
+                      options={combinedLocationOptions}
+                      style={{ ...selectStyle, width: '100%' }}
+                    />
+                  </SidebarFilterField>
+
+                  <SidebarFilterField label="Mã thiết bị">
+                    <Input
+                      placeholder="Nhập mã thiết bị"
+                      allowClear
+                      value={filterValues.code}
+                      onChange={(e) => setFilterValues((prev) => ({ ...prev, code: e.target.value }))}
+                      onPressEnter={() => handleFilterSearch(filterValues)}
+                      style={inputStyle}
+                    />
+                  </SidebarFilterField>
+
+                  <SidebarFilterField label="Tình trạng">
+                    <Select
+                      placeholder="Tất cả tình trạng"
+                      allowClear
+                      value={filterValues.conditionStatus}
+                      onChange={(value) => setFilterValues((prev) => ({ ...prev, conditionStatus: value }))}
+                      options={CONDITION_STATUS_OPTIONS}
+                      style={{ ...selectStyle, width: '100%' }}
+                    />
+                  </SidebarFilterField>
+
+                  <SidebarFilterField label="Năm đưa vào sử dụng">
+                    <DatePicker
+                      {...getSidebarDatePickerProps({
+                        picker: 'year',
+                        format: 'YYYY',
+                        placeholder: 'Tất cả năm',
+                        value: filterValues.commissioningYear ? dayjs(String(filterValues.commissioningYear), 'YYYY') : null,
+                        onChange: (date: any) => setFilterValues((prev) => ({ ...prev, commissioningYear: date ? date.year() : undefined })),
+                      })}
+                      style={{ ...selectStyle, width: '100%' }}
+                    />
+                  </SidebarFilterField>
+
+                  <SidebarFilterField label="Ngày cập nhật">
+                    <DatePicker.RangePicker
+                      {...getRangePickerProps({
+                        value: filterValues.updateDateRange,
+                        onChange: (dates: any) => setFilterValues((prev) => ({ ...prev, updateDateRange: dates })),
+                      })}
+                    />
+                  </SidebarFilterField>
+
+                  <SidebarFilterField label="Địa điểm (Tỉnh / TP)">
+                    <Select
+                      placeholder="Tất cả tỉnh thành"
+                      allowClear
+                      showSearch
+                      filterOption={(input, option) =>
+                        normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
+                      }
+                      value={filterValues.provinceId}
+                      onChange={(value) => setFilterValues((prev) => ({ ...prev, provinceId: value }))}
+                      options={VIETNAM_PROVINCE_OPTIONS}
+                      style={{ ...selectStyle, width: '100%' }}
+                    />
+                  </SidebarFilterField>
+                </>
+              )}
+            </>
           }
-        }}
-      />
+        >
+          <DataTable
+            columns={columns}
+            dataSource={dataSource}
+            rowKey="id"
+            rowActions={rowActions}
+            loading={loading}
+            onSort={handleSort}
+            scroll={{ x: 'max-content' }}
+          />
+          <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
+        </FilterTableLayout>
 
-      {/* ── History Drawer (Identical to VTS System) ─────────────── */}
-      <Drawer
-        size={960}
-        placement="right"
-        open={historyDrawerVisible}
-        onClose={() => {
-          setHistoryDrawerVisible(false);
-          setHistoryTargetRecord(null);
-        }}
-        closable={false}
-        extra={
-          <Button
-            type="text"
-            aria-label="Đóng lịch sử thay đổi"
-            onClick={() => {
-              setHistoryDrawerVisible(false);
-              setHistoryTargetRecord(null);
-            }}
-            style={drawerCloseBtnStyle}
-          >
-            ✕
-          </Button>
-        }
-        footer={null}
-        styles={{
-          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-          body: { padding: '12px 24px 12px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
-        }}
-        title={
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-            <Space size={spaceSm} style={{ alignItems: 'center' }}>
-              <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
-              <span style={drawerTitleStyle}>
-                {historyTargetRecord ? `Lịch sử thay đổi — ${historyTargetRecord.name || historyTargetRecord.code}` : 'Lịch sử thay đổi'}
-              </span>
-              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                Tổng cộng {historyGroupCount}
-              </span>
-            </Space>
-          </div>
-        }
-      >
-        <div style={{ flexShrink: 0 }}>
-          <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
-            <Input
-              placeholder="Tìm kiếm nội dung thay đổi..."
-              allowClear
-              value={historySearch}
-              onChange={(e) => setHistorySearch(e.target.value)}
-              style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
-            />
-            <DatePicker
-              placeholder="Từ ngày"
-              value={historyDateFrom ? dayjs(historyDateFrom) : null}
-              onChange={(d) => setHistoryDateFrom(d ? d.startOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
-              style={{ width: 170, borderRadius: radiusPill, height: 40 }}
-              format="DD/MM/YYYY HH:mm"
-              showTime={{ format: 'HH:mm' }}
-            />
-            <DatePicker
-              placeholder="Đến ngày"
-              value={historyDateTo ? dayjs(historyDateTo) : null}
-              onChange={(d) => setHistoryDateTo(d ? d.endOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
-              style={{ width: 170, borderRadius: radiusPill, height: 40 }}
-              format="DD/MM/YYYY HH:mm"
-              showTime={{ format: 'HH:mm' }}
-            />
-            <Button
-              type="primary"
-              icon={<SearchOutlined />}
-              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}
-            >
-              Tìm kiếm
-            </Button>
-          </div>
-        </div>
+        {isModalOpen && (
+          <AisSystemForm
+            open={true}
+            editId={editingId}
+            initialData={selectedRecord}
+            mode={modalMode}
+            orgUnits={orgUnitOptions}
+            opCenterOptions={opCenters}
+            radarStationOptions={radarStations}
+            operatingOrganizationOptions={operatingOrganizations}
+            onCancel={() => { setIsModalOpen(false); setEditingId(null); setSelectedRecord(null); }}
+            onSuccess={() => { setIsModalOpen(false); setEditingId(null); setSelectedRecord(null); refreshList(); }}
+          />
+        )}
 
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-          {loadingHistory ? (
-            <LoadingSkeleton rows={5} />
-          ) : (
-            renderHistoryTimeline(historyRecords)
-          )}
-        </div>
-      </Drawer>
+        <CommonHistoryDrawer
+          open={historyModalOpen}
+          onClose={() => setHistoryModalOpen(false)}
+          entityName={selectedRecord?.name || (selectedRecord as any)?.code || 'Hệ thống AIS'}
+          records={historyRecords}
+          loading={loadingHistory}
+          serverFiltered
+          onFilterChange={setHistoryFilters}
+          onLoadMore={loadMoreHistory}
+          loadingMore={loadingMoreHistory}
+        />
 
-      {/* Modal Approve */}
-      <Modal
-        title={`Xác nhận phê duyệt ${approveLevel === 'C1' ? 'cấp Cảng vụ/Chi cục' : 'cấp Cục'}`}
-        open={approveModalVisible}
-        onCancel={() => setApproveModalVisible(false)}
-        onOk={handleConfirmApprove}
-        confirmLoading={actionLoading}
-        okText={approveLevel === 'C1' ? 'Phê duyệt cấp Cảng vụ' : 'Phê duyệt cấp Cục'}
-        okButtonProps={{ style: { ...primaryButtonStyle, borderRadius: radiusPill, height: 40, background: approveLevel === 'C1' ? '#13C2C2' : '#1BAF7A', borderColor: approveLevel === 'C1' ? '#13C2C2' : '#1BAF7A' } }}
-        cancelButtonProps={{ style: { borderRadius: radiusPill, height: 40 } }}
-      >
-        <div style={{ marginTop: spaceFormField, marginBottom: spaceLg }}>
-          <label style={{ display: 'block', marginBottom: spaceSm, fontWeight: fontWeightMedium }}>
-            Nội dung / Ý kiến phê duyệt (không bắt buộc)
-          </label>
+        <ApprovalModal
+          visible={approveModalOpen}
+          level={approveLevel}
+          onConfirm={handleApprove}
+          onCancel={() => setApproveModalOpen(false)}
+        />
+
+        <Modal
+          title="Từ chối"
+          open={rejectModalOpen}
+          onOk={handleReject}
+          onCancel={() => setRejectModalOpen(false)}
+          okText="Từ chối"
+          cancelText="Hủy"
+          okButtonProps={{ danger: true }}
+        >
+          <p style={{ marginBottom: spaceFormField }}>Nhập lý do từ chối:</p>
           <Input.TextArea
             rows={3}
-            value={approveReason}
-            onChange={(e) => setApproveReason(e.target.value)}
-            placeholder="Nhập ý kiến phê duyệt nếu có..."
-            maxLength={1000}
-            showCount
-            style={{ ...textAreaStyle, padding: '10px 16px' }}
-          />
-        </div>
-      </Modal>
-
-      {/* Modal Reject */}
-      <Modal
-        title="Từ chối phê duyệt"
-        open={rejectModalVisible}
-        onCancel={() => setRejectModalVisible(false)}
-        onOk={handleConfirmReject}
-        confirmLoading={actionLoading}
-        okText="Từ chối"
-        okButtonProps={{ danger: true, style: { borderRadius: radiusPill, height: 40 } }}
-        cancelButtonProps={{ style: { borderRadius: radiusPill, height: 40 } }}
-      >
-        <div style={{ marginTop: spaceFormField, marginBottom: spaceLg }}>
-          <label style={{ display: 'block', marginBottom: spaceSm, fontWeight: fontWeightMedium }}>
-            Lý do từ chối <span style={{ color: '#D83A52' }}>*</span>
-          </label>
-          <Input.TextArea
-            rows={4}
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
-            placeholder="Nhập lý do từ chối phê duyệt..."
+            placeholder="Nhập lý do từ chối"
             maxLength={1000}
             showCount
-            style={{ ...textAreaStyle, padding: '10px 16px' }}
+            style={textAreaStyle}
           />
-        </div>
-      </Modal>
-    </div>
+        </Modal>
+      </div>
+    </ThemeTokenProvider>
   );
-};
+}
 
 export default AisSystemList;

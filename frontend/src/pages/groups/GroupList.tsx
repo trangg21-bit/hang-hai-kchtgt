@@ -1,6 +1,10 @@
-import { useState, useCallback, useEffect, useMemo, memo, type ReactNode, type FC } from 'react';
-import { Typography, Form, Input, Spin, Button, Select, Tree, Tabs, Empty, Checkbox } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, ExclamationCircleOutlined, EyeOutlined, LockOutlined, UnlockOutlined, SearchOutlined } from '@ant-design/icons';
+import { useState, useCallback, useEffect, useMemo, memo, type FC } from 'react';
+import { Form, Input, Spin, Button, Select, Tree, Tabs, Empty, Checkbox, Drawer, Row, Col } from 'antd';
+import {
+  PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined,
+  ExclamationCircleOutlined, EyeOutlined, LockOutlined, UnlockOutlined,
+  SearchOutlined, CloseOutlined,
+} from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { usePermissionStore } from '../../store/permissionStore';
 import { getPermissionTreeKeys, getVisiblePermissionKeys, mergePermissionKeys, usePermissions } from '../../hooks/usePermissions';
@@ -11,20 +15,31 @@ import ErrorState from '../../components/ErrorState';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
+import SidebarFilterField from '../../components/list-view/SidebarFilterField';
 import { groupService } from '../../services/groupService';
 import type { Group, GroupMember, CreateGroupPayload, UpdateGroupPayload } from '../../services/groupService';
+import { organizationService } from '../../services/organizationService';
 import { vtsSystemCRUD } from '../../services/vtsSystemService';
 import { userService } from '../../services/userService';
-import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
-import { actionPrimary, textPrimary, textSecondary, statusDraft, statusCritical, statusOperational, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, radiusMd, radiusPill, borderDefault, spaceFormField, spaceMd, spaceSm, primaryButtonStyle, outlineButtonStyle } from '../../tokens';
-import { colors } from '../../theme';
+import { OrgUnitTreeSelect, normalizeSearchText, type OrgUnitTreeOption } from '../../components/org-unit';
+import {
+  actionPrimary, textPrimary, textSecondary, textTertiary,
+  fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd,
+  radiusMd, radiusPill, spaceFormField, spaceMd,
+  statusOperational, statusCritical, surfaceCard, borderDefault,
+  drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, drawerStyles, drawerFormScrollStyle, drawerTabBarStyle,
+  primaryButtonStyle, outlineButtonStyle, inputStyle, selectStyle, textAreaStyle,
+  cellTitleStyle, cellSubtitleStyle,
+} from '../../themetokenchk';
+import { colors } from '../../themetokenchk';
+import * as themeTokenChk from '../../themetokenchk';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import toast, { modal } from '../../components/ToastNotification';
-import { normalizeSearchText } from '../../components/org-unit';
-import { ManagementDrawer, ManagementFormField, ManagementFormGrid } from '../../components/management';
 import { PERMISSIONS } from '../../constants/permissions';
 import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 
 const { confirm } = modal;
+const drawerProps = { styles: drawerStyles, maskClosable: false };
 
 const STATUS_LABELS: Record<string, string> = { active: 'Sử dụng', inactive: 'Không sử dụng' };
 const NON_INHERITABLE_GROUP_PERMISSIONS = new Set(['admin:all', '*']);
@@ -50,14 +65,14 @@ const PermissionSearchBar: FC<{ onSearch: (val: string) => void }> = memo(({ onS
           onClick={() => onSearch(value.trim())}
         />
       }
-      placeholder="Tìm theo tên hoặc mã quyền"
-      style={{ borderRadius: radiusPill, height: 40, margin: `${spaceMd}px 0` }}
+      placeholder="Nhập tên hoặc mã quyền"
+      style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }}
     />
   );
 });
 
 export default function GroupList() {
-  const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const hasPerm = usePermissionStore((s: any) => s.hasPermission);
 
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -77,6 +92,20 @@ export default function GroupList() {
   const [countActive, setCountActive] = useState(0);
   const [countInactive, setCountInactive] = useState(0);
 
+  const [sortField, setSortField] = useState<string>('updatedAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  const sortOrderFor = (key: string): 'ascend' | 'descend' | null =>
+    (sortField === key ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null);
+
+  const serverSideSorter = () => 0;
+
+  const handleSortChange = (key: string, direction: 'asc' | 'desc') => {
+    setSortField(key);
+    setSortDirection(direction);
+    setPage(1);
+  };
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [detailGroup, setDetailGroup] = useState<Group | null>(null);
@@ -95,7 +124,6 @@ export default function GroupList() {
   const [detailMembersReload, setDetailMembersReload] = useState(0);
   const [addMemberDrawerOpen, setAddMemberDrawerOpen] = useState(false);
   const [addMemberOptions, setAddMemberOptions] = useState<{ value: string; label: string }[]>([]);
-  const [existingMemberIds, setExistingMemberIds] = useState<string[]>([]);
   const [addMemberSearchLoading, setAddMemberSearchLoading] = useState(false);
   const [addMemberSubmitting, setAddMemberSubmitting] = useState(false);
   const [form] = Form.useForm();
@@ -108,20 +136,26 @@ export default function GroupList() {
   const [permissionLoading, setPermissionLoading] = useState(false);
   const [permissionSaving, setPermissionSaving] = useState(false);
   const [orgTree, setOrgTree] = useState<OrgUnitTreeOption[]>([]);
-  const [filterCollapsed, setFilterCollapsed] = useState(false);
 
   const fetchGroups = useCallback(async () => {
     setIsLoading(true); setIsError(false);
     try {
-      const res = await groupService.list({ page, pageSize, search: search || undefined, code: code || undefined, status: filterStatus, organizationId: filterOrganizationId });
+      const res = await groupService.list({
+        page,
+        pageSize,
+        search: search || undefined,
+        code: code || undefined,
+        status: filterStatus,
+        organizationId: filterOrganizationId,
+        sortBy: sortField,
+        sortDir: sortField ? sortDirection.toUpperCase() : undefined,
+      });
       setDataSource(res.data); setTotal(res.total);
-
-      // Update counts based on backend stats
       setCountActive(res.activeCount);
       setCountInactive(res.inactiveCount);
     } catch (err: unknown) { setIsError(true); setError(err instanceof Error ? err : new Error('Không thể tải danh sách nhóm')); }
     finally { setIsLoading(false); }
-  }, [page, pageSize, search, code, filterStatus, filterOrganizationId]);
+  }, [page, pageSize, search, code, filterStatus, filterOrganizationId, sortField, sortDirection]);
 
   useEffect(() => { fetchGroups(); }, [fetchGroups]);
 
@@ -131,60 +165,45 @@ export default function GroupList() {
       setDetailMembersOnly(false);
       setDetailMembers([]);
       setDetailMembersPage(1);
-      setDetailMembersPageSize(10);
       setDetailMembersSearchInput('');
       setDetailMembersSearch('');
       setAddMemberDrawerOpen(false);
       return;
     }
-
     setDetailMembersPage(1);
   }, [detailGroup?.id]);
 
   useEffect(() => {
     if (!detailGroup || detailTab !== 'members') return;
-
     let cancelled = false;
     setDetailMembersLoading(true);
     setDetailMembersError(null);
-    void groupService.getMembers(detailGroup.id, {
-      page: detailMembersPage,
-      pageSize: detailMembersPageSize,
-      search: detailMembersSearch || undefined,
-    })
-      .then((response) => {
-        if (cancelled) return;
-        setDetailMembers(response.data);
-        setDetailMembersTotal(response.total);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        setDetailMembersError(err instanceof Error ? err.message : 'Không thể tải danh sách thành viên');
-      })
-      .finally(() => {
-        if (!cancelled) setDetailMembersLoading(false);
-      });
-
+    void groupService.getMembers(detailGroup.id, { page: detailMembersPage, pageSize: detailMembersPageSize, search: detailMembersSearch || undefined })
+      .then((response) => { if (!cancelled) { setDetailMembers(response.data); setDetailMembersTotal(response.total); } })
+      .catch((err: unknown) => { if (!cancelled) setDetailMembersError(err instanceof Error ? err.message : 'Không thể tải danh sách thành viên'); })
+      .finally(() => { if (!cancelled) setDetailMembersLoading(false); });
     return () => { cancelled = true; };
   }, [detailGroup?.id, detailMembersPage, detailMembersPageSize, detailMembersReload, detailMembersSearch, detailTab]);
 
   const fetchExistingMemberIds = useCallback(async () => {
     if (!detailGroup) return [];
-
     const response = await groupService.getMembers(detailGroup.id, { page: 1, pageSize: 1000 });
-    const ids = response.data.map((member) => member.userId);
-    setExistingMemberIds(ids);
-    return ids;
+    return response.data.map((member) => member.userId);
   }, [detailGroup?.id]);
 
-  const fetchAddMemberOptions = useCallback(async (searchText: string, excludedIds: string[]) => {
+  const fetchAddMemberOptions = useCallback(async (excludedIds: string[]) => {
     setAddMemberSearchLoading(true);
     try {
-      const response = await userService.list({ search: searchText.trim(), pageSize: 50 });
+      const response = await userService.list({ pageSize: 1000 });
       const excluded = new Set(excludedIds);
-      setAddMemberOptions(response.data
-        .filter((user) => !excluded.has(user.id))
-        .map((user) => ({ value: user.id, label: `${user.fullName} (${user.username})` })));
+      setAddMemberOptions(
+        response.data
+          .filter((user) => !excluded.has(user.id))
+          .map((user) => ({
+            value: user.id,
+            label: `${user.fullName} (${user.username})`,
+          }))
+      );
     } catch (_) {
       setAddMemberOptions([]);
     } finally {
@@ -194,56 +213,63 @@ export default function GroupList() {
 
   useEffect(() => {
     if (!addMemberDrawerOpen || !detailGroup) return;
-
     let cancelled = false;
     void (async () => {
       try {
         const ids = await fetchExistingMemberIds();
-        if (!cancelled) await fetchAddMemberOptions('', ids);
-      } catch (_) {
+        if (cancelled) return;
+        await fetchAddMemberOptions(ids);
+      } catch {
         if (!cancelled) setAddMemberOptions([]);
       }
     })();
-
     return () => { cancelled = true; };
   }, [addMemberDrawerOpen, detailGroup, fetchAddMemberOptions, fetchExistingMemberIds]);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const orgs = await vtsSystemCRUD.getScopedOrgUnitOptions();
-        setOrgTree(orgs.map((org) => ({
-          id: String(org.id),
-          name: org.name,
-          code: org.code,
-          parentId: org.parentId ? String(org.parentId) : undefined,
-        })));
-      } catch (_) { /* silently ignore */ }
-    })();
-  }, []);
-
-
-  const totalAll = countActive + countInactive;
-
-  const openDetail = useCallback(async (group: Group, tab: 'info' | 'members', membersOnly = false) => {
+  const openDetail = useCallback(async (group: Group, tab: 'info' | 'members' = 'info', membersOnly = false) => {
+    setDetailGroup(group);
     setDetailTab(tab);
     setDetailMembersOnly(membersOnly);
-    setDetailGroup(group);
     setDetailLoading(true);
     setDetailError(null);
     try {
       const detail = await groupService.getById(group.id);
       setDetailGroup(detail);
     } catch (err: unknown) {
-      setDetailError(err instanceof Error ? err.message : 'Không thể tải chi tiết nhóm');
+      setDetailError(err instanceof Error ? err.message : 'Không thể tải thông tin nhóm');
     } finally {
       setDetailLoading(false);
     }
   }, []);
 
-  const handleViewDetail = useCallback((group: Group) => { void openDetail(group, 'info'); }, [openDetail]);
-
+  const handleViewDetail = useCallback((group: Group) => { void openDetail(group, 'info', false); }, [openDetail]);
   const handleViewMembers = useCallback((group: Group) => { void openDetail(group, 'members', true); }, [openDetail]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        let orgs: any[] = await organizationService.getTree();
+        if (!orgs || orgs.length === 0) {
+          orgs = await organizationService.getAll();
+        }
+        if (!orgs || orgs.length === 0) {
+          orgs = await vtsSystemCRUD.getScopedOrgUnitOptions();
+        }
+        if (mounted && Array.isArray(orgs)) {
+          setOrgTree(orgs.map((org: any) => ({
+            id: String(org.id),
+            name: org.name || org.unitName || org.tenDonVi || 'Đơn vị',
+            code: org.code || org.maDonVi,
+            parentId: org.parentId ? String(org.parentId) : undefined,
+          })));
+        }
+      } catch (err) {
+        console.error('Error fetching org tree for groups:', err);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   const handleDetailMembersSearch = useCallback(() => {
     setDetailMembersSearch(detailMembersSearchInput.trim());
@@ -255,23 +281,24 @@ export default function GroupList() {
     setDetailMembersPageSize(nextPageSize);
   }, []);
 
-  const openAddMemberDrawer = useCallback(() => {
-    addMemberForm.resetFields();
-    setAddMemberDrawerOpen(true);
-  }, [addMemberForm]);
+  const openAddMemberDrawer = useCallback(() => { addMemberForm.resetFields(); setAddMemberDrawerOpen(true); }, [addMemberForm]);
 
   const handleAddMembers = useCallback(async () => {
     if (!detailGroup) return;
-
     try {
       const values = await addMemberForm.validateFields();
-      const userIds = Array.isArray(values.userIds) ? values.userIds : [values.userIds];
+      const rawIds = values.userIds;
+      const userIds = Array.isArray(rawIds) ? rawIds : (rawIds ? [rawIds] : []);
+      if (userIds.length === 0) {
+        toast.warning('Vui lòng chọn ít nhất một người dùng');
+        return;
+      }
       setAddMemberSubmitting(true);
       await groupService.addMembers(detailGroup.id, userIds);
       toast.success(`Đã thêm ${userIds.length} thành viên vào nhóm`);
       addMemberForm.resetFields();
       setAddMemberDrawerOpen(false);
-      setDetailMembersReload((value) => value + 1);
+      setDetailMembersReload((v) => v + 1);
     } catch (err: any) {
       if (err?.errorFields) return;
       toast.error(err instanceof Error ? err.message : 'Lỗi khi thêm thành viên');
@@ -282,30 +309,20 @@ export default function GroupList() {
 
   const handleRemoveDetailMember = useCallback((member: GroupMember) => {
     if (!detailGroup) return;
-
     confirm({
       title: 'Xác nhận xóa thành viên',
       icon: <ExclamationCircleOutlined />,
       content: `Bạn có chắc chắn muốn xóa "${member.fullName}" khỏi nhóm này?`,
-      okText: 'Xóa',
-      okType: 'danger',
-      cancelText: 'Hủy',
+      okText: 'Xóa', okType: 'danger', cancelText: 'Hủy',
       onOk: async () => {
-        try {
-          await groupService.removeMember(detailGroup.id, member.userId);
-          toast.success('Đã xóa thành viên khỏi nhóm');
-          setDetailMembersReload((value) => value + 1);
-        } catch (err: unknown) {
-          toast.error(err instanceof Error ? err.message : 'Thao tác thất bại');
-        }
+        try { await groupService.removeMember(detailGroup.id, member.userId); toast.success('Đã xóa thành viên khỏi nhóm'); setDetailMembersReload((v) => v + 1); }
+        catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Thao tác thất bại'); }
       },
     });
   }, [detailGroup]);
 
   const detailMemberActions = useCallback((member: GroupMember) => (
-    hasPerm(PERMISSIONS.GROUP_MEMBER.MANAGE)
-      ? [{ key: 'remove', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleRemoveDetailMember(member), danger: true }]
-      : []
+    hasPerm(PERMISSIONS.GROUP_MEMBER.MANAGE) ? [{ key: 'remove', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleRemoveDetailMember(member), danger: true }] : []
   ), [handleRemoveDetailMember, hasPerm]);
 
   const openCreateModal = useCallback(() => { setEditingGroup(null); form.resetFields(); form.setFieldsValue({ status: 'active' }); setModalOpen(true); }, [form]);
@@ -319,74 +336,38 @@ export default function GroupList() {
   const handleSubmit = useCallback(async () => {
     try {
       const values = await form.validateFields(); setSubmitting(true);
-      const name = String(values.name ?? '').trim();
-      const code = String(values.code ?? '').trim().toUpperCase();
-      const description = String(values.description ?? '').trim() || undefined;
-      if (editingGroup) {
-        const payload: UpdateGroupPayload = { name, description, status: values.status };
-        await groupService.update(editingGroup.id, payload);
-        toast.success('Đã cập nhật nhóm');
-      } else {
-        const payload: CreateGroupPayload = { name, code, description, status: values.status, organizationId: values.organizationId };
-        await groupService.create(payload);
-        toast.success('Đã tạo thành công');
-      }
+      const payload = { name: String(values.name).trim(), code: String(values.code).trim().toUpperCase(), description: String(values.description || '').trim() || undefined, status: values.status, organizationId: values.organizationId };
+      if (editingGroup) { await groupService.update(editingGroup.id, payload as UpdateGroupPayload); toast.success('Đã cập nhật nhóm'); }
+      else { await groupService.create(payload as CreateGroupPayload); toast.success('Đã tạo thành công'); }
       setModalOpen(false); fetchGroups();
-    } catch (err: any) {
-      if (err.errorFields) return;
-      toast.error(err?.message || 'Thao tác thất bại');
-    } finally { setSubmitting(false); }
+    } catch (err: any) { if (!err.errorFields) toast.error(err?.message || 'Thao tác thất bại'); } finally { setSubmitting(false); }
   }, [editingGroup, form, fetchGroups]);
 
   const handleLock = useCallback((group: Group) => {
     const isActive = group.status === 'active';
-    const actionLabel = isActive ? 'khóa' : 'mở khóa';
     confirm({
       title: isActive ? 'Xác nhận khóa nhóm' : 'Xác nhận mở khóa nhóm',
       icon: <ExclamationCircleOutlined />,
-      content: isActive
-        ? `Bạn có chắc chắn muốn khóa nhóm '${group.name}'? Toàn bộ thành viên trong nhóm sẽ bị tạm ngưng quyền sử dụng chức năng thừa hưởng từ nhóm.`
-        : `Bạn có chắc chắn muốn mở khóa nhóm '${group.name}'? Quyền sử dụng chức năng thừa hưởng từ nhóm sẽ được khôi phục cho các thành viên.`,
-      okText: isActive ? 'Khóa nhóm' : 'Mở khóa nhóm',
-      okType: 'primary',
-      cancelText: 'Hủy',
-      onOk: async () => {
-        try { await groupService.lock(group.id); toast.success(`Đã ${actionLabel} nhóm`); fetchGroups(); }
-        catch (err: unknown) { toast.error(err instanceof Error ? err.message : `${actionLabel.charAt(0).toUpperCase() + actionLabel.slice(1)} nhóm thất bại`); }
-      },
+      content: isActive ? `Bạn có chắc chắn muốn khóa nhóm '${group.name}'?` : `Bạn có chắc chắn muốn mở khóa nhóm '${group.name}'?`,
+      okText: isActive ? 'Khóa nhóm' : 'Mở khóa nhóm', okType: 'primary', cancelText: 'Hủy',
+      onOk: async () => { try { await groupService.lock(group.id); toast.success('Đã cập nhật trạng thái'); fetchGroups(); } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Thao tác thất bại'); } },
     });
   }, [fetchGroups]);
 
   const openPermissionModal = useCallback(async (group: Group) => {
-    setPermissionGroup(group);
-    setAppliedPermissionSearch('');
-    setPermissionLoading(true);
-    try {
-      const permissions = await groupService.getPermissions(group.id);
-      setSelectedPermissionKeys(permissions);
-    } catch (err: unknown) {
-      setSelectedPermissionKeys([]);
-      toast.error(err instanceof Error ? err.message : 'Không thể tải phân quyền của nhóm');
-    } finally {
-      setPermissionLoading(false);
-    }
+    setPermissionGroup(group); setAppliedPermissionSearch(''); setPermissionLoading(true);
+    try { const permissions = await groupService.getPermissions(group.id); setSelectedPermissionKeys(permissions); }
+    catch (err: unknown) { setSelectedPermissionKeys([]); toast.error(err instanceof Error ? err.message : 'Không thể tải phân quyền'); }
+    finally { setPermissionLoading(false); }
   }, []);
 
   const handlePermissionSave = useCallback(async () => {
-    if (!permissionGroup) return;
-    setPermissionSaving(true);
+    if (!permissionGroup) return; setPermissionSaving(true);
     try {
-      const selectedPerms = selectedPermissionKeys.filter((key) =>
-        !key.startsWith('group_') && !NON_INHERITABLE_GROUP_PERMISSIONS.has(key));
-      await groupService.updatePermissions(permissionGroup.id, selectedPerms);
-      toast.success('Đã cập nhật phân quyền chức năng cho nhóm');
-      setPermissionGroup(null);
-      fetchGroups();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Cập nhật phân quyền thất bại');
-    } finally {
-      setPermissionSaving(false);
-    }
+      const selected = selectedPermissionKeys.filter((key) => !key.startsWith('group_') && !NON_INHERITABLE_GROUP_PERMISSIONS.has(key));
+      await groupService.updatePermissions(permissionGroup.id, selected);
+      toast.success('Đã cập nhật phân quyền'); setPermissionGroup(null); fetchGroups();
+    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Cập nhật phân quyền thất bại'); } finally { setPermissionSaving(false); }
   }, [permissionGroup, selectedPermissionKeys, fetchGroups]);
 
   const assignablePermissionTree = useMemo(() => {
@@ -395,521 +376,256 @@ export default function GroupList() {
       const children = sanitize(node.children || []);
       return [{ ...node, children }];
     });
-
-    const groupNode = rawPermissionTree.find((node) => node.key === 'group_group');
-    const groupMemberNode = rawPermissionTree.find((node) => node.key === 'group_groupmember');
-    const groupChildren = [
-      ...(groupNode ? sanitize(groupNode.children || []) : []),
-      ...(groupMemberNode ? sanitize(groupMemberNode.children || []) : []),
-    ];
-
+    const groupNode = rawPermissionTree.find((n) => n.key === 'group_group');
+    const groupMemberNode = rawPermissionTree.find((n) => n.key === 'group_groupmember');
+    const groupChildren = [...(groupNode ? sanitize(groupNode.children || []) : []), ...(groupMemberNode ? sanitize(groupMemberNode.children || []) : [])];
     return rawPermissionTree.flatMap((node) => {
       if (node.key === 'group_groupmember') return [];
-      if (node.key === 'group_group') {
-        return groupChildren.length ? [{ ...node, children: groupChildren }] : [];
-      }
+      if (node.key === 'group_group') return groupChildren.length ? [{ ...node, children: groupChildren }] : [];
       if (NON_INHERITABLE_GROUP_PERMISSIONS.has(String(node.key))) return [];
       const children = sanitize(node.children || []);
-      return children.length || !String(node.key).startsWith('group_')
-        ? [{ ...node, children }]
-        : [];
+      return children.length || !String(node.key).startsWith('group_') ? [{ ...node, children }] : [];
     });
   }, [rawPermissionTree]);
 
   const indexedGroupPermissionTree = useMemo(() => {
-    const attachMeta = (nodes: readonly MenuTreeNode[]): any[] => nodes.map((node) => ({
-      ...node,
-      _searchStr: normalizeSearchText(`${node.title} ${node.key}`),
-      children: node.children ? attachMeta(node.children) : [],
-    }));
+    const attachMeta = (nodes: readonly MenuTreeNode[]): any[] => nodes.map((n) => ({ ...n, _searchStr: normalizeSearchText(`${n.title} ${n.key}`), children: n.children ? attachMeta(n.children) : [] }));
     return attachMeta(assignablePermissionTree);
   }, [assignablePermissionTree]);
 
   const permissionTreeData = useMemo(() => {
     const keyword = normalizeSearchText(appliedPermissionSearch);
     if (!keyword) return assignablePermissionTree;
-    const filter = (nodes: any[]): MenuTreeNode[] => nodes.flatMap((node) => {
-      const parentMatches = node._searchStr.includes(keyword);
-      if (parentMatches) {
-        return [{ ...node, children: node.children || [] }];
-      }
-      const children = filter(node.children || []);
-      return children.length ? [{ ...node, children }] : [];
+    const filter = (nodes: any[]): MenuTreeNode[] => nodes.flatMap((n) => {
+      if (n._searchStr.includes(keyword)) return [{ ...n, children: n.children || [] }];
+      const children = filter(n.children || []);
+      return children.length ? [{ ...n, children }] : [];
     });
     return filter(indexedGroupPermissionTree);
   }, [indexedGroupPermissionTree, assignablePermissionTree, appliedPermissionSearch]);
 
-  const allGroupPermissionKeys = useMemo(
-    () => Array.from(getPermissionTreeKeys(assignablePermissionTree)).filter((key) => !key.startsWith('group_')),
-    [assignablePermissionTree],
-  );
-  const allGroupPermissionsSelected = allGroupPermissionKeys.length > 0
-    && allGroupPermissionKeys.every((key) => selectedPermissionKeys.includes(key));
-  const someGroupPermissionsSelected = allGroupPermissionKeys.some((key) => selectedPermissionKeys.includes(key));
+  const allGroupPermissionKeys = useMemo(() => Array.from(getPermissionTreeKeys(assignablePermissionTree)).filter((k) => !k.startsWith('group_')), [assignablePermissionTree]);
+  const allGroupPermissionsSelected = allGroupPermissionKeys.length > 0 && allGroupPermissionKeys.every((k) => selectedPermissionKeys.includes(k));
+  const someGroupPermissionsSelected = allGroupPermissionKeys.some((k) => selectedPermissionKeys.includes(k));
 
-  const handleFilterSearch = useCallback(() => {
-    setSearch(searchInput.trim());
-    setCode(codeInput.trim());
-    setFilterOrganizationId(filterOrganizationInput);
-    setPage(1);
-  }, [filterOrganizationInput, searchInput, codeInput]);
-
-  const handleFilterReset = useCallback(() => {
-    setSearchInput('');
-    setSearch('');
-    setCodeInput('');
-    setCode('');
-    setFilterStatus(undefined);
-    setFilterOrganizationInput(undefined);
-    setFilterOrganizationId(undefined);
-    setPage(1);
-  }, []);
-
-  const handleTabChange = useCallback((key: string) => {
-    const nextStatus = key === 'all' ? undefined : key;
-    setFilterStatus(nextStatus);
-    setPage(1);
-  }, []);
-
+  const handleFilterSearch = useCallback(() => { setSearch(searchInput.trim()); setCode(codeInput.trim()); setFilterOrganizationId(filterOrganizationInput); setPage(1); }, [filterOrganizationInput, searchInput, codeInput]);
+  const handleFilterReset = useCallback(() => { setSearchInput(''); setSearch(''); setCodeInput(''); setCode(''); setFilterStatus(undefined); setFilterOrganizationInput(undefined); setFilterOrganizationId(undefined); setPage(1); }, []);
+  const handleTabChange = useCallback((k: string) => { setFilterStatus(k === 'all' ? undefined : k); setPage(1); }, []);
   const handlePageChange = useCallback((p: number, ps: number) => { setPage(p); setPageSize(ps); }, []);
 
   const rowActions = useCallback((record: Group) => {
-    const actions: { key: string; label: string; icon?: ReactNode; onClick: () => void; danger?: boolean }[] = [];
-    if (hasPerm(PERMISSIONS.GROUP.READ)) {
-      actions.push({ key: 'view', label: 'Xem', icon: <EyeOutlined />, onClick: () => handleViewDetail(record) });
-    }
-    if (hasPerm(PERMISSIONS.GROUP.EDIT)) {
-      actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
-    }
-    if (hasPerm(PERMISSIONS.GROUP.LOCK)) {
-      const isActive = record.status === 'active';
-      actions.push({ key: 'lock', label: isActive ? 'Khóa nhóm' : 'Mở khóa nhóm', icon: isActive ? <LockOutlined /> : <UnlockOutlined />, onClick: () => handleLock(record) });
-    }
-    if (hasPerm(PERMISSIONS.GROUP.PERMISSION)) {
-      actions.push({ key: 'permissions', label: 'Phân quyền nhóm', icon: <EditOutlined />, onClick: () => openPermissionModal(record) });
-    }
-    if (hasPerm(PERMISSIONS.GROUP_MEMBER.MANAGE)) {
-      actions.push({ key: 'members', label: 'Thêm người vào nhóm', icon: <UserOutlined />, onClick: () => handleViewMembers(record) });
-    }
-    return actions;
+    const acts: any[] = [];
+    if (hasPerm(PERMISSIONS.GROUP.READ)) acts.push({ key: 'view', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => handleViewDetail(record) });
+    if (hasPerm(PERMISSIONS.GROUP.EDIT)) acts.push({ key: 'edit', label: 'Sửa thông tin', icon: <EditOutlined />, onClick: () => openEditModal(record) });
+    if (hasPerm(PERMISSIONS.GROUP.LOCK)) acts.push({ key: 'lock', label: record.status === 'active' ? 'Khóa nhóm' : 'Mở khóa nhóm', icon: record.status === 'active' ? <LockOutlined /> : <UnlockOutlined />, onClick: () => handleLock(record) });
+    if (hasPerm(PERMISSIONS.GROUP.PERMISSION)) acts.push({ key: 'permissions', label: 'Phân quyền chức năng', icon: <EditOutlined />, onClick: () => openPermissionModal(record) });
+    if (hasPerm(PERMISSIONS.GROUP_MEMBER.MANAGE)) acts.push({ key: 'members', label: 'Quản lý thành viên', icon: <UserOutlined />, onClick: () => handleViewMembers(record) });
+    return acts;
   }, [hasPerm, handleViewDetail, handleViewMembers, openPermissionModal, openEditModal, handleLock]);
 
   const columns = useMemo(() => [
     {
-      key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const,
-      render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span>
+      key: 'sequenceNo',
+      label: 'STT',
+      width: 60,
+      type: 'mono' as const,
+      align: 'center' as const,
+      fixed: 'left' as const,
+      sortable: false,
+      render: (_: unknown, __: unknown, idx: number) => (
+        <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + idx + 1}</span>
+      ),
     },
     {
-      key: 'organizationName', label: 'Đơn vị', dataIndex: 'organizationName', width: 260,
-      render: (text?: string) => text || <Typography.Text type="secondary">—</Typography.Text>
-    },
-    {
-      key: 'code', label: 'Mã nhóm', dataIndex: 'code', width: 160,
-      render: (text?: string) => text || <Typography.Text type="secondary">—</Typography.Text>
-    },
-    {
-      key: 'name', label: 'Tên nhóm', dataIndex: 'name',
-      render: (text: string, record: Group) => (
-        <Typography.Text
-          strong
-          style={{ color: hasPerm(PERMISSIONS.GROUP.READ) ? actionPrimary : textSecondary, cursor: hasPerm(PERMISSIONS.GROUP.READ) ? 'pointer' : 'default' }}
-          onClick={() => { if (hasPerm(PERMISSIONS.GROUP.READ)) handleViewDetail(record); }}
+      key: 'name',
+      label: 'TÊN / MÃ NHÓM',
+      dataIndex: 'name',
+      width: 260,
+      fixed: 'left' as const,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('name'),
+      render: (_: any, record: Group) => (
+        <div
+          style={{
+            cursor: hasPerm(PERMISSIONS.GROUP.READ) ? 'pointer' : 'default',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+          onClick={() => {
+            if (hasPerm(PERMISSIONS.GROUP.READ)) handleViewDetail(record);
+          }}
         >
-          {text}
-        </Typography.Text>
-      )
+          <div style={cellTitleStyle} title={record.name || ''}>{record.name || '—'}</div>
+          <div style={cellSubtitleStyle} title={record.code || ''}>{record.code || '—'}</div>
+        </div>
+      ),
     },
     {
-      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 140, align: 'center' as const,
-      render: (status: string) => {
-        const color = status === 'active' ? statusOperational : statusDraft;
-        const label = STATUS_LABELS[status] || status;
-        return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${color}15`, color }}>{label}</span>;
-      }
+      key: 'organizationName',
+      label: 'ĐƠN VỊ',
+      dataIndex: 'organizationName',
+      width: 260,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('organizationName'),
+      render: (text?: string) => (
+        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: fontWeightBold }} title={text || ''}>
+          {text || '—'}
+        </div>
+      ),
     },
-  ], [page, pageSize, handleViewDetail, hasPerm]);
+    {
+      key: 'updater',
+      label: 'CÁN BỘ CẬP NHẬT',
+      dataIndex: 'updatedByName',
+      width: 220,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('updatedByName'),
+      render: (_: unknown, record: Group) => {
+        const updaterName = record.updatedByName || record.createdByName || '—';
+        const updateTime = record.updatedAt || record.createdAt;
+        return (
+          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+            <div
+              title={updaterName}
+              style={{
+                fontWeight: fontWeightBold,
+                color: '#0F172A',
+                fontSize: fontSizeMd,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {updaterName}
+            </div>
+            <div
+              title={updateTime ? dayjs(updateTime).format('DD/MM/YYYY HH:mm:ss') : '—'}
+              style={{
+                fontSize: fontSizeMd,
+                color: textSecondary,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {updateTime ? dayjs(updateTime).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'status',
+      label: 'TRẠNG THÁI',
+      dataIndex: 'status',
+      width: 140,
+      align: 'center' as const,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('status'),
+      render: (status: string) => {
+        const color = status === 'active' ? statusOperational : statusCritical;
+        const label = STATUS_LABELS[status] || status;
+        return (
+          <span
+            title={label}
+            style={{
+              display: 'inline-block',
+              padding: '2px 10px',
+              borderRadius: radiusPill,
+              fontSize: fontSizeSm,
+              fontWeight: fontWeightMedium,
+              backgroundColor: `${color}15`,
+              border: `1px solid ${color}40`,
+              color,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {label}
+          </span>
+        );
+      },
+    },
+  ], [page, pageSize, handleViewDetail, hasPerm, sortField, sortDirection]);
 
   const detailMemberColumns = useMemo(() => [
-    {
-      key: 'sequenceNo', label: 'STT', width: 64, align: 'center' as const,
-      render: (_value: unknown, _record: GroupMember, index: number) => (detailMembersPage - 1) * detailMembersPageSize + index + 1,
-    },
-    { key: 'fullName', label: 'Họ và tên', dataIndex: 'fullName', width: 220 },
-    { key: 'username', label: 'Tên đăng nhập', dataIndex: 'username', width: 180 },
-    { key: 'email', label: 'Email', dataIndex: 'email', width: 240 },
-    {
-      key: 'joinedAt', label: 'Tham gia từ', dataIndex: 'joinedAt', width: 160, align: 'center' as const,
-      render: (value: string) => value ? dayjs(value).format('DD/MM/YYYY') : '—',
-    },
+    { key: 'sequenceNo', label: 'STT', width: 64, align: 'center' as const, sortable: false, render: (_v: any, _r: any, idx: number) => (detailMembersPage - 1) * detailMembersPageSize + idx + 1 },
+    { key: 'fullName', label: 'Họ tên', dataIndex: 'fullName', width: 220, sortable: false },
+    { key: 'username', label: 'Tên đăng nhập', dataIndex: 'username', width: 180, sortable: false },
+    { key: 'email', label: 'Email', dataIndex: 'email', width: 240, sortable: false },
+    { key: 'joinedAt', label: 'Ngày tham gia', dataIndex: 'joinedAt', width: 160, align: 'center' as const, sortable: false, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
   ], [detailMembersPage, detailMembersPageSize]);
 
   const renderContent = () => {
     if (isLoading) return <LoadingSkeleton rows={8} />;
     if (isError) return <ErrorState message={error?.message || 'Không thể tải danh sách nhóm'} onRetry={fetchGroups} />;
-    const emptyDescription = search || code || filterStatus || filterOrganizationId
-      ? 'Không tìm thấy nhóm nào phù hợp'
-      : 'Chưa có nhóm nào';
-    return <>
-      <DataTable
-        columns={columns}
-        dataSource={dataSource}
-        rowKey="id"
-        rowActions={rowActions}
-        scroll={{ x: '100%' }}
-        emptyState={dataSource.length === 0 ? <EmptyState description={emptyDescription} /> : undefined}
-      />
-      {dataSource.length > 0 && (
+    return (
+      <>
+        <DataTable
+          columns={columns}
+          dataSource={dataSource}
+          rowKey="id"
+          rowActions={rowActions}
+          scroll={{ x: 'max-content' }}
+          onSort={handleSortChange}
+        />
         <Pagination total={total} current={page} pageSize={pageSize} onChange={handlePageChange} />
-      )}
-    </>;
+      </>
+    );
   };
 
   const filterContent = (
     <>
-      <div style={{ marginBottom: spaceFormField, marginTop: spaceMd }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên nhóm</div>
-        <Input
-          placeholder="Tìm theo tên nhóm..."
-          allowClear
-          value={searchInput}
-          onChange={(event) => setSearchInput(event.target.value)}
-          onPressEnter={handleFilterSearch}
-          style={{ borderRadius: radiusPill, height: 40 }}
-        />
-      </div>
-      <div style={{ marginBottom: spaceFormField }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã nhóm</div>
-        <Input
-          placeholder="Tìm theo mã nhóm..."
-          allowClear
-          value={codeInput}
-          onChange={(event) => setCodeInput(event.target.value)}
-          onPressEnter={handleFilterSearch}
-          style={{ borderRadius: radiusPill, height: 40 }}
-        />
-      </div>
-      <div style={{ marginBottom: spaceFormField }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Đơn vị</div>
-        <OrgUnitTreeSelect
-          organizations={orgTree}
-          value={filterOrganizationInput}
-          onChange={(value) => setFilterOrganizationInput(value)}
-          placeholder="Tất cả đơn vị"
-          showSearch
-          allowClear
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-        />
-      </div>
+      <SidebarFilterField label="Tên nhóm" style={{ marginTop: spaceMd }}>
+        <Input placeholder="Nhập tên nhóm" allowClear value={searchInput} onChange={(e) => setSearchInput(e.target.value)} onPressEnter={handleFilterSearch} style={{ ...inputStyle, borderRadius: radiusPill, height: 38 }} />
+      </SidebarFilterField>
+      <SidebarFilterField label="Mã nhóm">
+        <Input placeholder="Nhập mã nhóm" allowClear value={codeInput} onChange={(e) => setCodeInput(e.target.value)} onPressEnter={handleFilterSearch} style={{ ...inputStyle, borderRadius: radiusPill, height: 38 }} />
+      </SidebarFilterField>
+      <SidebarFilterField label="Đơn vị">
+        <OrgUnitTreeSelect organizations={orgTree} value={filterOrganizationInput} onChange={setFilterOrganizationInput} placeholder="Chọn đơn vị" showSearch allowClear style={{ width: '100%', borderRadius: radiusPill, height: 38 }} />
+      </SidebarFilterField>
     </>
   );
 
   const headerActions = useMemo(() => {
-    const actions: any[] = [];
-    if (hasPerm(PERMISSIONS.GROUP.CREATE)) actions.push({ key: 'create', label: 'Thêm nhóm', variant: 'primary' as const, icon: <PlusOutlined />, onClick: openCreateModal });
-    return actions;
+    const acts: any[] = [];
+    if (hasPerm(PERMISSIONS.GROUP.CREATE)) acts.push({ key: 'create', label: 'Thêm mới', variant: 'primary', icon: <PlusOutlined />, onClick: openCreateModal });
+    return acts;
   }, [hasPerm, openCreateModal]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
-      <ScreenHeader breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Quản lý nhóm' }]} actions={headerActions} />
-      <FilterTableLayout
-        filterCollapsed={filterCollapsed}
-        onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
-        onFilterApply={handleFilterSearch}
-        onFilterReset={handleFilterReset}
-        loading={isLoading}
-        error={isError}
-        onRetry={fetchGroups}
-        filterContent={filterContent}
-        statusTabs={[
-          { key: 'all', label: 'Tất cả', count: totalAll, color: textSecondary, active: !filterStatus },
-          { key: 'active', label: 'Sử dụng', count: countActive, color: statusOperational, active: filterStatus === 'active' },
-          { key: 'inactive', label: 'Không sử dụng', count: countInactive, color: statusDraft, active: filterStatus === 'inactive' },
-        ]}
-        onStatusTabChange={handleTabChange}
-      >
-        {renderContent()}
-      </FilterTableLayout>
+    <ThemeTokenProvider tokens={themeTokenChk}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+        <ScreenHeader breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Quản lý nhóm' }]} actions={headerActions} />
+        <FilterTableLayout hideFilterToggle onFilterApply={handleFilterSearch} onFilterReset={handleFilterReset} loading={isLoading} error={isError} onRetry={fetchGroups} filterContent={filterContent} statusTabs={[{ key: 'all', label: 'Tất cả', count: countActive + countInactive, color: colors.primary, active: !filterStatus }, { key: 'active', label: 'Sử dụng', count: countActive, color: statusOperational, active: filterStatus === 'active' }, { key: 'inactive', label: 'Không sử dụng', count: countInactive, color: statusCritical, active: filterStatus === 'inactive' }]} onStatusTabChange={handleTabChange}>
+          {renderContent()}
+        </FilterTableLayout>
 
-      {/* Modal Xem chi tiết */}
-      <ManagementDrawer
-        title={<>{detailMembersOnly ? 'Thành viên nhóm' : 'Chi tiết nhóm'} - {detailGroup?.name ?? ''}</>}
-        open={!!detailGroup}
-        onClose={() => { setDetailGroup(null); setAddMemberDrawerOpen(false); }}
-      >
-        {detailGroup && (
-          <Spin spinning={detailLoading}>
-            {detailError ? <ErrorState message={detailError} onRetry={() => { void openDetail(detailGroup, detailTab as 'info' | 'members', detailMembersOnly); }} /> : (
-              <div style={{ paddingTop: 16 }}>
-                <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-label { width: 200px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; }`}</style>
-                <Tabs
-                  activeKey={detailTab}
-                  onChange={setDetailTab}
-                  tabBarStyle={detailMembersOnly
-                    ? { display: 'none' }
-                    : { marginBottom: 0, paddingTop: 0 }}
-                  items={[
-                    ...(!detailMembersOnly ? [{
-                      key: 'info',
-                      label: 'Thông tin nhóm',
-                      children: (
-                        <div style={{ paddingTop: 16 }}>
-                          <div className="detail-grid">
-                            {[
-                              ['Đơn vị', detailGroup.organizationName || '—'],
-                              ['Tên nhóm', <Typography.Text strong style={{ color: colors.sidebarBg }}>{detailGroup.name}</Typography.Text>],
-                              ['Mã nhóm', detailGroup.code || '—'],
-                              ['Trạng thái', (() => {
-                                const color = detailGroup.status === 'active' ? statusOperational : statusDraft;
-                                return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${color}15`, color }}>{STATUS_LABELS[detailGroup.status] || detailGroup.status}</span>;
-                              })()],
-                              ['Mô tả', detailGroup.description || 'Chưa có mô tả'],
-                              ['Ngày cập nhật', detailGroup.updatedAt ? dayjs(detailGroup.updatedAt).format('DD/MM/YYYY HH:mm') : '—'],
-                              ['Cán bộ cập nhật', detailGroup.updatedByName || '—'],
-                            ].map(([label, value], index) => (
-                              <div key={index} className="detail-row">
-                                <span className="detail-label">{label}</span>
-                                <span className="detail-value">{value}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ),
-                    }] : []),
-                    {
-                      key: 'members',
-                      label: 'Danh sách thành viên',
-                      children: (
-                        <div style={{ paddingTop: 16 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: spaceMd, marginBottom: spaceMd }}>
-                            <Input
-                              allowClear
-                              prefix={<SearchOutlined style={{ color: colors.sidebarBg }} />}
-                              value={detailMembersSearchInput}
-                              placeholder="Tìm theo họ tên, tên đăng nhập, email..."
-                              onChange={(event) => {
-                                const value = event.target.value;
-                                setDetailMembersSearchInput(value);
-                                if (!value) {
-                                  setDetailMembersSearch('');
-                                  setDetailMembersPage(1);
-                                }
-                              }}
-                              onPressEnter={handleDetailMembersSearch}
-                              style={{ width: 360, maxWidth: '100%', borderRadius: radiusPill, height: 40 }}
-                            />
-                            {hasPerm(PERMISSIONS.GROUP_MEMBER.MANAGE) && (
-                              <Button
-                                type={addMemberDrawerOpen ? 'default' : 'primary'}
-                                icon={<PlusOutlined />}
-                                onClick={() => {
-                                  if (addMemberDrawerOpen) {
-                                    setAddMemberDrawerOpen(false);
-                                    addMemberForm.resetFields();
-                                  } else {
-                                    openAddMemberDrawer();
-                                  }
-                                }}
-                                style={addMemberDrawerOpen ? outlineButtonStyle : primaryButtonStyle}
-                              >
-                                {addMemberDrawerOpen ? 'Ẩn thêm thành viên' : 'Thêm thành viên'}
-                              </Button>
-                            )}
-                          </div>
-                          {addMemberDrawerOpen && (
-                            <div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, marginBottom: spaceMd }}>
-                              <Form form={addMemberForm} layout="vertical">
-                                <Form.Item
-                                  name="userIds"
-                                  label="Chọn người dùng"
-                                  required
-                                  style={{ marginBottom: spaceMd }}
-                                  rules={[
-                                    { required: true, message: 'Vui lòng chọn ít nhất một người dùng' },
-                                    {
-                                      validator: (_, value: string[]) => value?.length > 100
-                                        ? Promise.reject(new Error('Mỗi lần chỉ được thêm tối đa 100 người dùng'))
-                                        : Promise.resolve()
-                                    },
-                                  ]}
-                                >
-                                  <Select
-                                    mode="multiple"
-                                    showSearch
-                                    placeholder="Tìm và chọn nhiều người dùng..."
-                                    options={addMemberOptions}
-                                    filterOption={false}
-                                    maxTagCount="responsive"
-                                    onSearch={(value) => { void fetchAddMemberOptions(value, existingMemberIds); }}
-                                    loading={addMemberSearchLoading}
-                                    style={{ borderRadius: radiusPill, minHeight: 40 }}
-                                  />
-                                </Form.Item>
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: spaceMd }}>
-                                  <Button onClick={() => { setAddMemberDrawerOpen(false); addMemberForm.resetFields(); }} style={outlineButtonStyle}>Hủy</Button>
-                                  <Button type="primary" onClick={handleAddMembers} loading={addMemberSubmitting} style={primaryButtonStyle}>Thêm</Button>
-                                </div>
-                              </Form>
-                            </div>
-                          )}
-                          <Spin spinning={detailMembersLoading}>
-                            {detailMembersError ? (
-                              <ErrorState message={detailMembersError} onRetry={() => setDetailMembersReload((value) => value + 1)} />
-                            ) : (
-                              <>
-                                <DataTable
-                                  columns={detailMemberColumns}
-                                  dataSource={detailMembers}
-                                  rowKey="userId"
-                                  rowActions={hasPerm(PERMISSIONS.GROUP_MEMBER.MANAGE) ? detailMemberActions : undefined}
-                                  scroll={{ x: 'max-content' }}
-                                  emptyState={<EmptyState description={detailMembersSearch ? 'Không tìm thấy thành viên phù hợp' : 'Chưa có thành viên nào'} />}
-                                />
-                                {detailMembersTotal > 0 && (
-                                  <Pagination
-                                    total={detailMembersTotal}
-                                    current={detailMembersPage}
-                                    pageSize={detailMembersPageSize}
-                                    pageSizeOptions={[10, 20, 50, 100]}
-                                    onChange={handleDetailMembersPageChange}
-                                  />
-                                )}
-                              </>
-                            )}
-                          </Spin>
-                        </div>
-                      ),
-                    },
-                  ]}
-                />
-              </div>
-            )}
-          </Spin>
-        )}
-      </ManagementDrawer>
-
-      {/* Drawer Phân quyền cho nhóm */}
-      <ManagementDrawer
-        title={<>Phân quyền chức năng cho nhóm{permissionGroup ? `: ${permissionGroup.name}` : ''}</>}
-        open={!!permissionGroup}
-        onClose={() => {
-          setPermissionGroup(null);
-          setAppliedPermissionSearch('');
-        }}
-        maskClosable={false}
-        footer={
-          <>
-            <Button
-              onClick={() => {
-                setPermissionGroup(null);
-                setAppliedPermissionSearch('');
-              }}
-              style={outlineButtonStyle}
-            >
-              Đóng
-            </Button>
-            <Button type="primary" loading={permissionSaving} onClick={handlePermissionSave} style={primaryButtonStyle}>Lưu</Button>
-          </>
-        }
-      >
-        <Spin spinning={permissionLoading}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginTop: spaceMd, marginBottom: spaceSm }}>
-            Danh sách chức năng
-          </div>
-          <PermissionSearchBar onSearch={setAppliedPermissionSearch} />
-          {permissionTreeData.length === 0 && !permissionLoading ? (
-            <Empty description="Không tìm thấy quyền phù hợp" />
-          ) : (
-            <div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd }}>
-              <div style={{ marginBottom: spaceMd }}>
-                <Checkbox
-                  checked={allGroupPermissionsSelected}
-                  indeterminate={!allGroupPermissionsSelected && someGroupPermissionsSelected}
-                  disabled={permissionLoading || allGroupPermissionKeys.length === 0}
-                  onChange={(event) => setSelectedPermissionKeys(event.target.checked ? allGroupPermissionKeys : [])}
-                >
-                  HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI
-                </Checkbox>
-              </div>
-              <Tree
-                checkable
-                defaultExpandAll
-                height={460}
-                treeData={permissionTreeData}
-                checkedKeys={getVisiblePermissionKeys(selectedPermissionKeys, permissionTreeData)}
-                onCheck={(checked) => {
-                  const keys = Array.isArray(checked) ? checked : checked.checked;
-                  setSelectedPermissionKeys(mergePermissionKeys(selectedPermissionKeys, keys.map(String), permissionTreeData));
-                }}
-              />
-            </div>
+        <Drawer {...drawerProps} width="50%" open={!!detailGroup} onClose={() => { setDetailGroup(null); setAddMemberDrawerOpen(false); }} title={<span style={drawerTitleStyle}>{detailMembersOnly ? 'Thành viên nhóm' : 'Chi tiết nhóm'} - {detailGroup?.name ?? ''}</span>} extra={<Button type="text" onClick={() => { setDetailGroup(null); setAddMemberDrawerOpen(false); }} style={drawerCloseBtnStyle}><CloseOutlined style={{ fontSize: 14, color: textSecondary }} /></Button>} footer={null}>
+          {detailGroup && (
+            <Spin spinning={detailLoading}>
+              {detailError ? <ErrorState message={detailError} onRetry={() => { void openDetail(detailGroup, detailTab as 'info' | 'members', detailMembersOnly); }} /> : (
+                <div style={drawerFormScrollStyle}>
+                  <Tabs tabBarStyle={detailMembersOnly ? { display: 'none' } : drawerTabBarStyle} animated={false} activeKey={detailTab} onChange={setDetailTab} items={[...(!detailMembersOnly ? [{ key: 'info', label: 'Thông tin chung', children: (<div style={{ paddingTop: spaceMd }}><div className="chk-detail-grid"><div className="chk-detail-row"><span className="chk-detail-label">Đơn vị</span><span className="chk-detail-value">{detailGroup.organizationName || '—'}</span></div><div className="chk-detail-row"><span className="chk-detail-label">Tên nhóm</span><span className="chk-detail-value" style={{ fontWeight: fontWeightBold, color: colors.sidebarBg }}>{detailGroup.name}</span></div><div className="chk-detail-row"><span className="chk-detail-label">Mã nhóm</span><span className="chk-detail-value">{detailGroup.code || '—'}</span></div><div className="chk-detail-row"><span className="chk-detail-label">Trạng thái</span><span className="chk-detail-value"><span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: radiusPill, fontSize: fontSizeSm, fontWeight: fontWeightMedium, backgroundColor: detailGroup.status === 'active' ? `${statusOperational}15` : `${statusCritical}15`, border: detailGroup.status === 'active' ? `1px solid ${statusOperational}40` : `1px solid ${statusCritical}40`, color: detailGroup.status === 'active' ? statusOperational : statusCritical }}>{STATUS_LABELS[detailGroup.status] || detailGroup.status}</span></span></div><div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Mô tả</span><span className="chk-detail-value">{detailGroup.description || 'Chưa có mô tả'}</span></div></div><div style={{ marginTop: 20, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ display: 'inline-block', width: 4, height: 16, borderRadius: 2, backgroundColor: actionPrimary }} /><span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Thông tin hệ thống</span></div><div className="chk-detail-grid"><div className="chk-detail-row"><span className="chk-detail-label">Cán bộ cập nhật</span><span className="chk-detail-value">{detailGroup.updatedByName || '—'}</span></div><div className="chk-detail-row"><span className="chk-detail-label">Ngày cập nhật</span><span className="chk-detail-value">{detailGroup.updatedAt ? dayjs(detailGroup.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div></div></div>) }] : []), { key: 'members', label: 'Danh sách thành viên', children: (<div style={{ paddingTop: spaceMd }}><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: spaceMd, marginBottom: spaceMd }}><Input allowClear prefix={<SearchOutlined style={{ color: textSecondary }} />} value={detailMembersSearchInput} placeholder="Nhập từ khóa tìm kiếm" onChange={(e) => { const v = e.target.value; setDetailMembersSearchInput(v); if (!v) { setDetailMembersSearch(''); setDetailMembersPage(1); } }} onPressEnter={handleDetailMembersSearch} style={{ ...inputStyle, width: 360, maxWidth: '100%', borderRadius: radiusPill, height: 40 }} />{hasPerm(PERMISSIONS.GROUP_MEMBER.MANAGE) && (<Button type={addMemberDrawerOpen ? 'default' : 'primary'} icon={<PlusOutlined />} onClick={() => { if (addMemberDrawerOpen) { setAddMemberDrawerOpen(false); addMemberForm.resetFields(); } else { openAddMemberDrawer(); } }} style={addMemberDrawerOpen ? outlineButtonStyle : primaryButtonStyle}>{addMemberDrawerOpen ? 'Ẩn thêm thành viên' : 'Thêm thành viên'}</Button>)}</div>{addMemberDrawerOpen && (<div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, marginBottom: spaceMd, background: surfaceCard }}><Form form={addMemberForm} layout="vertical"><Form.Item name="userIds" {...labelProps('Chọn người dùng')} style={{ marginBottom: spaceMd }} rules={[{ validator: (_, val: any) => { if (!val || !Array.isArray(val) || val.length === 0) { return Promise.reject(new Error('Vui lòng chọn ít nhất một người dùng')); } if (val.length > 100) { return Promise.reject(new Error('Mỗi lần chỉ được thêm tối đa 100 người dùng')); } return Promise.resolve(); } }]}> <Select mode="multiple" showSearch placeholder="Chọn người dùng" options={addMemberOptions} filterOption={(input, option) => normalizeSearchText(option?.label ?? '').includes(normalizeSearchText(input))} maxTagCount="responsive" loading={addMemberSearchLoading} style={{ borderRadius: radiusPill, minHeight: 40 }} /></Form.Item><div style={{ display: 'flex', justifyContent: 'flex-end', gap: spaceMd }}><Button onClick={() => { setAddMemberDrawerOpen(false); addMemberForm.resetFields(); }} style={outlineButtonStyle}>Hủy</Button><Button type="primary" onClick={handleAddMembers} loading={addMemberSubmitting} style={primaryButtonStyle}>Thêm</Button></div></Form></div>)}<Spin spinning={detailMembersLoading}>{detailMembersError ? <ErrorState message={detailMembersError} onRetry={() => setDetailMembersReload((v) => v + 1)} /> : (<><DataTable columns={detailMemberColumns} dataSource={detailMembers} rowKey="userId" rowActions={hasPerm(PERMISSIONS.GROUP_MEMBER.MANAGE) ? detailMemberActions : undefined} scroll={{ x: 'max-content' }} emptyState={<EmptyState description={detailMembersSearch ? 'Không tìm thấy thành viên phù hợp' : 'Chưa có thành viên nào'} />} />{detailMembersTotal > 0 && (<Pagination total={detailMembersTotal} current={detailMembersPage} pageSize={detailMembersPageSize} pageSizeOptions={[10, 20, 50, 100]} onChange={handleDetailMembersPageChange} />)}</>)}</Spin></div>) }]} />
+                </div>
+              )}
+            </Spin>
           )}
-        </Spin>
-      </ManagementDrawer>
+        </Drawer>
 
-      {/* Modal Thêm/Sửa */}
-      <ManagementDrawer
-        title={editingGroup ? 'Sửa nhóm' : 'Thêm nhóm mới'}
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        maskClosable={false}
-        footer={
-          <>
-            <Button onClick={() => setModalOpen(false)} style={outlineButtonStyle}>Hủy</Button>
-            <Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>{editingGroup ? 'Cập nhật' : 'Tạo mới'}</Button>
-          </>
-        }
-      >
-        <Spin spinning={submitting}>
-          <Form form={form} layout="vertical" style={{ marginTop: 16 }} labelCol={{ style: { padding: 0, marginBottom: 4 } }}>
-            <ManagementFormGrid>
-              <ManagementFormField>
-                <Form.Item name="organizationId" {...labelProps('Đơn vị')} style={{ marginBottom: spaceFormField }} rules={[{ required: !editingGroup, message: 'Vui lòng chọn đơn vị' }]}>
-                  <OrgUnitTreeSelect
-                    organizations={orgTree}
-                    placeholder="Chọn đơn vị"
-                    showSearch
-                    disabled={!!editingGroup}
-                    allowClear
-                    style={{ borderRadius: radiusPill, height: 40 }}
-                  />
-                </Form.Item>
-              </ManagementFormField>
-              <ManagementFormField>
-                <Form.Item name="name" {...labelProps('Tên nhóm')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập tên nhóm' }, { min: 2, max: 100, message: 'Tên nhóm phải từ 2 đến 100 ký tự' }]}>
-                  <Input placeholder="vd: Nhóm Quản lý" style={{ borderRadius: radiusPill, height: 40 }} />
-                </Form.Item>
-              </ManagementFormField>
-            </ManagementFormGrid>
-            <ManagementFormGrid>
-              <ManagementFormField>
-                <Form.Item
-                  name="code"
-                  {...labelProps('Mã nhóm')}
-                  style={{ marginBottom: spaceFormField }}
-                  normalize={(value) => String(value ?? '').trim().toUpperCase()}
-                  rules={[
-                    { required: true, message: 'Vui lòng nhập mã nhóm' },
-                    { min: 2, max: 30, message: 'Mã nhóm phải từ 2 đến 30 ký tự' },
-                    { pattern: /^[A-Z0-9_]+$/, message: 'Mã nhóm chỉ gồm chữ hoa, số và dấu gạch dưới' },
-                  ]}
-                >
-                  <Input placeholder="vd: QL01" disabled={!!editingGroup} style={{ borderRadius: radiusPill, height: 40 }} />
-                </Form.Item>
-              </ManagementFormField>
-              <ManagementFormField>
-                <Form.Item name="status" {...labelProps('Trạng thái')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}>
-                  <Select placeholder="Chọn trạng thái" options={[{ value: 'active', label: 'Sử dụng' }, { value: 'inactive', label: 'Không sử dụng' }]} style={{ borderRadius: radiusPill, height: 40 }} />
-                </Form.Item>
-              </ManagementFormField>
-            </ManagementFormGrid>
-            <Form.Item name="description" {...labelProps('Mô tả')} style={{ marginBottom: spaceFormField }} rules={[{ max: 1000, message: 'Mô tả tối đa 1000 ký tự' }]}>
-              <Input.TextArea rows={3} placeholder="Mô tả nhóm (tùy chọn)" />
-            </Form.Item>
-          </Form>
-        </Spin>
-      </ManagementDrawer>
-    </div>
+        <Drawer {...drawerProps} width="50%" open={!!permissionGroup} onClose={() => { setPermissionGroup(null); setAppliedPermissionSearch(''); }} title={<span style={drawerTitleStyle}>Phân quyền chức năng cho nhóm{permissionGroup ? `: ${permissionGroup.name}` : ''}</span>} extra={<Button type="text" onClick={() => { setPermissionGroup(null); setAppliedPermissionSearch(''); }} style={drawerCloseBtnStyle}><CloseOutlined style={{ fontSize: 14, color: textSecondary }} /></Button>} footer={<div style={drawerFooterStyle}><Button onClick={() => { setPermissionGroup(null); setAppliedPermissionSearch(''); }} style={outlineButtonStyle}>Đóng</Button><Button type="primary" loading={permissionSaving} onClick={handlePermissionSave} style={primaryButtonStyle}>Lưu</Button></div>}>
+          <Spin spinning={permissionLoading} wrapperClassName="chk-h-full"><div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 150px)', padding: '16px 0 8px 0' }}><div style={{ flexShrink: 0, marginBottom: spaceMd }}><PermissionSearchBar onSearch={setAppliedPermissionSearch} /></div>{permissionTreeData.length === 0 && !permissionLoading ? <Empty description="Không tìm thấy quyền phù hợp" /> : (<div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: surfaceCard }}><div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceMd, flexShrink: 0 }}>Danh sách chức năng</div><div style={{ marginBottom: spaceMd, flexShrink: 0 }}><Checkbox checked={allGroupPermissionsSelected} indeterminate={!allGroupPermissionsSelected && someGroupPermissionsSelected} disabled={permissionLoading || allGroupPermissionKeys.length === 0} onChange={(e) => setSelectedPermissionKeys(e.target.checked ? allGroupPermissionKeys : [])}>HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI</Checkbox></div><div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}><Tree checkable defaultExpandAll treeData={permissionTreeData} checkedKeys={getVisiblePermissionKeys(selectedPermissionKeys, permissionTreeData)} onCheck={(c) => { const ks = Array.isArray(c) ? c : (c as any).checked; setSelectedPermissionKeys(mergePermissionKeys(selectedPermissionKeys, ks.map(String), permissionTreeData)); }} /></div></div>)}</div></Spin>
+        </Drawer>
+
+        <Drawer {...drawerProps} width="50%" open={modalOpen} onClose={() => setModalOpen(false)} title={<span style={drawerTitleStyle}>{editingGroup ? 'Sửa thông tin nhóm' : 'Thêm mới nhóm'}</span>} extra={<Button type="text" onClick={() => setModalOpen(false)} style={drawerCloseBtnStyle}><CloseOutlined style={{ fontSize: 14, color: textSecondary }} /></Button>} footer={<div style={drawerFooterStyle}><Button onClick={() => setModalOpen(false)} style={outlineButtonStyle}>Hủy</Button><Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>{editingGroup ? 'Cập nhật' : 'Tạo mới'}</Button></div>}>
+          <Spin spinning={submitting}><Tabs tabBarStyle={drawerTabBarStyle} animated={false} items={[{ key: 'general', label: 'Thông tin chung', children: (<div style={drawerFormScrollStyle}><Form form={form} layout="vertical" style={{ marginTop: 16 }} labelCol={{ style: { padding: 0, marginBottom: 4 } }}><Row gutter={[24, 0]}><Col span={12}><Form.Item name="organizationId" {...labelProps('Đơn vị')} style={{ marginBottom: spaceFormField }} rules={[{ required: !editingGroup, message: 'Vui lòng chọn đơn vị' }]}><OrgUnitTreeSelect organizations={orgTree} placeholder="Chọn đơn vị" showSearch disabled={!!editingGroup} allowClear style={{ ...selectStyle, borderRadius: radiusPill, height: 40, width: '100%' }} /></Form.Item></Col><Col span={12}><Form.Item name="name" {...labelProps('Tên nhóm')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập tên nhóm' }, { min: 2, max: 100, message: 'Tên nhóm phải từ 2 đến 100 ký tự' }]}><Input placeholder="Nhập tên nhóm" maxLength={100} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} /></Form.Item></Col><Col span={12}><Form.Item name="code" {...labelProps('Mã nhóm')} style={{ marginBottom: spaceFormField }} normalize={(v) => String(v ?? '').trim().toUpperCase()} rules={[{ required: true, message: 'Vui lòng nhập mã nhóm' }, { min: 2, max: 30, message: 'Mã nhóm phải từ 2 đến 30 ký tự' }, { pattern: /^[A-Z0-9_]+$/, message: 'Mã nhóm chỉ gồm chữ hoa, số và dấu gạch dưới' }]}><Input placeholder="Nhập mã nhóm" maxLength={30} showCount disabled={!!editingGroup} style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} /></Form.Item></Col><Col span={12}><Form.Item name="status" {...labelProps('Trạng thái')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}><Select placeholder="Chọn trạng thái" options={[{ value: 'active', label: 'Sử dụng' }, { value: 'inactive', label: 'Không sử dụng' }]} style={{ ...selectStyle, borderRadius: radiusPill, height: 40, width: '100%' }} /></Form.Item></Col><Col span={24}><Form.Item name="description" {...labelProps('Mô tả')} style={{ marginBottom: spaceFormField }} rules={[{ max: 1000, message: 'Mô tả tối đa 1000 ký tự' }]}><Input.TextArea rows={3} placeholder="Nhập mô tả" maxLength={1000} showCount style={textAreaStyle} /></Form.Item></Col></Row></Form></div>) }]} /></Spin>
+        </Drawer>
+      </div>
+    </ThemeTokenProvider>
   );
 }
-

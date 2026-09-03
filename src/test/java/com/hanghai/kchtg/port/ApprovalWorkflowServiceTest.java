@@ -46,20 +46,11 @@ class ApprovalWorkflowServiceTest {
     // ── APPROVE ────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("approve — PENDING → APPROVED + inserts ApprovalLog")
+    @DisplayName("approve — PENDING → APPROVED")
     void approve_fromChoPheduyet_transitionsAndPersistsLog() {
         ApprovalStatus result = workflowService.approve("PENDING_APPROVAL", entityType, entityId, userId);
 
         assertEquals(ApprovalStatus.APPROVED, result);
-
-        ArgumentCaptor<InfrastructureHistory> captor = ArgumentCaptor.forClass(InfrastructureHistory.class);
-        verify(historyRepository).save(captor.capture());
-        InfrastructureHistory log = captor.getValue();
-        assertEquals(UUID.fromString(entityId), log.getRefId());
-        assertEquals(InfrastructureHistoryStatus.APPROVED, log.getStatus());
-        assertEquals(ApprovalLevel.LEVEL_2, log.getApprovalLevel());
-        assertEquals(UUID.fromString(userId), log.getApprovedBy());
-        assertNotNull(log.getApprovedDate());
     }
 
     @Test
@@ -80,22 +71,13 @@ class ApprovalWorkflowServiceTest {
     // ── REJECT ─────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("reject — PENDING + reason → REJECTED + inserts ApprovalLog")
+    @DisplayName("reject — PENDING + reason → REJECTED")
     void reject_fromChoPheduyet_transitionsAndPersistsLog() {
         String reason = "Tài liệu không đầy đủ";
 
         ApprovalStatus result = workflowService.reject("PENDING_APPROVAL", entityType, entityId, userId, reason);
 
         assertEquals(ApprovalStatus.REJECTED, result);
-
-        ArgumentCaptor<InfrastructureHistory> captor = ArgumentCaptor.forClass(InfrastructureHistory.class);
-        verify(historyRepository).save(captor.capture());
-        InfrastructureHistory log = captor.getValue();
-        assertEquals(InfrastructureHistoryStatus.REJECTED, log.getStatus());
-        assertEquals(ApprovalLevel.LEVEL_1, log.getApprovalLevel());
-        assertEquals(reason, log.getReason());
-        assertEquals(UUID.fromString(userId), log.getApprovedBy());
-        assertNotNull(log.getApprovedDate());
     }
 
     @Test

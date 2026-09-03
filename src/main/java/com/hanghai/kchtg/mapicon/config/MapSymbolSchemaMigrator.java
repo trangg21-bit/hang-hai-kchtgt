@@ -95,8 +95,7 @@ public class MapSymbolSchemaMigrator implements CommandLineRunner {
             jdbcTemplate.execute("ALTER TABLE IF EXISTS vts_operation_center DROP COLUMN IF EXISTS geometry_type");
             jdbcTemplate.execute("ALTER TABLE IF EXISTS vts_operation_center DROP COLUMN IF EXISTS coordinates");
             jdbcTemplate.execute("ALTER TABLE IF EXISTS vts_operation_center DROP COLUMN IF EXISTS coordinate_system");
-            jdbcTemplate.execute("ALTER TABLE IF EXISTS vts_operation_center DROP COLUMN IF EXISTS display_rule");
-            jdbcTemplate.execute("ALTER TABLE IF EXISTS vts_operation_center DROP COLUMN IF EXISTS symbol_id");
+            jdbcTemplate.execute("ALTER TABLE IF EXISTS vts_operation_center ADD COLUMN IF NOT EXISTS symbol_id UUID");
 
             // 6. Ensure ARCHIVED (status 7) records in vts_system have deleted_at set so they are excluded from list
             jdbcTemplate.execute("UPDATE vts_system SET deleted_at = CURRENT_TIMESTAMP WHERE approval_status = 7 AND deleted_at IS NULL");

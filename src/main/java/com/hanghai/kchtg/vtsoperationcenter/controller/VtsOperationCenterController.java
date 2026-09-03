@@ -1,4 +1,11 @@
 package com.hanghai.kchtg.vtsoperationcenter.controller;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.HttpHeaders;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.common.dto.ApprovalRequest;
@@ -65,30 +72,41 @@ public class VtsOperationCenterController {
         return ResponseEntity.ok(ApiResponse.success("Sinh mã thành công", Map.of("code", code)));
     }
 
+    /** Trần số bản ghi mỗi trang cho endpoint danh sách. */
+    private static final int MAX_PAGE_SIZE = 200;
+
     /**
      * Các cột được phép sắp xếp. `sortBy` đến từ client nên phải qua danh sách
-     * trắng: tên thuộc tính lạ sẽ làm truy vấn ném lỗi 500, và các cột hiển thị
-     * tên (đơn vị, cán bộ) được resolve sau truy vấn nên không sắp xếp được ở DB.
+     * trắng: tên thuộc tính lạ sẽ làm truy vấn ném lỗi 500.
+     *
+     * Cột hiển thị tên (đơn vị quản lý, cảng biển, hệ thống VTS, cán bộ cập nhật)
+     * trỏ vào alias của các LEFT JOIN trong {@code VtsOperationCenterRepository.search}
+     * để sắp theo đúng chữ người dùng nhìn thấy, thay vì theo UUID.
+     *
+     * Ngoại lệ: Tỉnh/TP chỉ có mã số trong CSDL (chưa có entity Province để join)
+     * nên sắp theo mã tỉnh — trùng với thứ tự mã hành chính.
      */
     private static final Map<String, String> SORTABLE_LIST_FIELDS = Map.ofEntries(
-            Map.entry("name", "name"),
-            Map.entry("code", "code"),
-            Map.entry("vtsSystemId", "vtsSystemId"),
-            Map.entry("vtsSystemName", "vtsSystemId"),
-            Map.entry("portId", "portId"),
-            Map.entry("portName", "portId"),
-            Map.entry("orgUnitId", "orgUnitId"),
-            Map.entry("orgUnitName", "orgUnitId"),
-            Map.entry("detailedLocation", "detailedLocation"),
-            Map.entry("conditionStatus", "conditionStatus"),
-            Map.entry("approvalStatus", "approvalStatus"),
-            Map.entry("provinceId", "provinceId"),
-            Map.entry("updatedAt", "updatedAt"),
-            Map.entry("updatedDate", "updatedAt"),
-            Map.entry("createdAt", "createdAt"));
+            Map.entry("name", "t.name"),
+            Map.entry("code", "t.code"),
+            Map.entry("vtsSystemId", "t.vtsSystemId"),
+            Map.entry("vtsSystemName", "vs.systemName"),
+            Map.entry("portId", "t.portId"),
+            Map.entry("portName", "p.portName"),
+            Map.entry("orgUnitId", "t.orgUnitId"),
+            Map.entry("orgUnitName", "o.name"),
+            Map.entry("detailedLocation", "t.detailedLocation"),
+            Map.entry("conditionStatus", "t.conditionStatus"),
+            Map.entry("approvalStatus", "t.approvalStatus"),
+            Map.entry("province", "t.provinceId"),
+            Map.entry("provinceId", "t.provinceId"),
+            Map.entry("updatedByName", "u.fullName"),
+            Map.entry("updatedAt", "t.updatedAt"),
+            Map.entry("updatedDate", "t.updatedAt"),
+            Map.entry("createdAt", "t.createdAt"));
 
     private static Sort resolveListSort(String sortBy, String sortDir) {
-        Sort defaultSort = Sort.by(Sort.Direction.DESC, "createdAt");
+        Sort defaultSort = Sort.by(Sort.Direction.DESC, "t.createdAt");
         String property = sortBy == null ? null : SORTABLE_LIST_FIELDS.get(sortBy.trim());
         if (property == null) {
             return defaultSort;
@@ -119,6 +137,8 @@ public class VtsOperationCenterController {
     @GetMapping
     public ResponseEntity<ApiResponse<Map<String, Object>>> search(
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String code,
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) UUID vtsSystemId,
             @RequestParam(required = false) UUID portId,
@@ -133,12 +153,22 @@ public class VtsOperationCenterController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "DESC") String sortDir) {
+            @RequestParam(defaultValue = "DESC") String sortDir,
+            @RequestParam(defaultValue = "true") boolean includeCounts) {
 
-        PageRequest pageRequest = PageRequest.of(page, size, resolveListSort(sortBy, sortDir));
+        // Chặn trần số bản ghi mỗi trang: "size" đến từ client, không giới hạn thì
+        // một request "size=100000" kéo cả bảng ra khỏi CSDL.
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        PageRequest pageRequest = PageRequest.of(page, safeSize, resolveListSort(sortBy, sortDir));
 
-        Page<VtsOperationCenterListItem> resultPage = service.search(keyword, orgUnitId, vtsSystemId, portId, provinceId, conditionStatus, approvalStatus, updatedFrom, updatedTo, pageRequest);
-        Map<String, Long> statusCounts = service.countByStatus(keyword, orgUnitId, vtsSystemId, portId, provinceId, conditionStatus, updatedFrom, updatedTo);
+        Page<VtsOperationCenterListItem> resultPage = service.search(keyword, name, code, orgUnitId, vtsSystemId, portId,
+                provinceId, conditionStatus, approvalStatus, updatedFrom, updatedTo, pageRequest);
+        // Số đếm theo trạng thái không đổi khi người dùng chỉ lật trang hay đổi cột
+        // sắp xếp, nên client tắt cờ này để khỏi chạy thêm một truy vấn GROUP BY.
+        Map<String, Long> statusCounts = includeCounts
+                ? service.countByStatus(keyword, name, code, orgUnitId, vtsSystemId, portId,
+                        provinceId, conditionStatus, updatedFrom, updatedTo)
+                : Map.of();
 
         Map<String, Object> data = new HashMap<>();
         data.put("content", resultPage.getContent());
@@ -151,7 +181,7 @@ public class VtsOperationCenterController {
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách thành công", data));
     }
 
-    @PreAuthorize("@auth.check(authentication, 'vtsoperationcenter:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'vtsoperationcenter:update', 'vtsoperationcenter:approvec2', 'vts:update', 'vts:approvec2')")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<VtsOperationCenterResponse>> update(
             @PathVariable UUID id,
@@ -192,7 +222,7 @@ public class VtsOperationCenterController {
         String decision = ApprovalUtils.resolveDecision(request);
         String reason = ApprovalUtils.resolveReason(request);
         service.approveC1(id, decision, reason, userId);
-        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 1 thành công", null));
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Chi cục thành công", null));
     }
 
     @PreAuthorize("@auth.check(authentication, 'vtsoperationcenter:approvec2')")
@@ -205,7 +235,7 @@ public class VtsOperationCenterController {
         String decision = ApprovalUtils.resolveDecision(request);
         String reason = ApprovalUtils.resolveReason(request);
         service.approveC2(id, decision, reason, userId);
-        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 2 thành công", null));
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", null));
     }
 
     @PreAuthorize("@auth.checkAny(authentication, 'vtsoperationcenter:approvec1', 'vtsoperationcenter:approvec2')")
@@ -225,14 +255,19 @@ public class VtsOperationCenterController {
     public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
             @PathVariable UUID id,
             @RequestParam(value = "page", required = false) Integer page,
-            @RequestParam(value = "pageSize", required = false) Integer pageSize) {
-        List<HistoryEntry> history = service.getHistory(id, page, pageSize);
+            @RequestParam(value = "pageSize", required = false) Integer pageSize,
+            // Lọc nhật ký ở server để drawer phân trang được mà ô tìm kiếm vẫn quét
+            // toàn bộ nhật ký, không chỉ phần đã tải về.
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "fromDate", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+            @RequestParam(value = "toDate", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate) {
+        List<HistoryEntry> history = service.getHistory(id, page, pageSize, keyword, fromDate, toDate);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử thành công", history));
     }
 
-    // OR-logic: `check(Authentication, String...)` là alias của `checkAny`. Dùng
-    // `checkAny` cho đúng nghĩa để người đọc không hiểu nhầm là bắt buộc cả hai.
-    @PreAuthorize("@auth.checkAny(authentication, 'vtsoperationcenter:create', 'vtsoperationcenter:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'vtsoperationcenter:create', 'vtsoperationcenter:update', 'vtsoperationcenter:approvec2', 'vts:create', 'vts:update', 'vts:approvec2')")
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<List<VtsSystemAttachmentResponse>>> uploadAttachments(
             @PathVariable UUID id,
@@ -250,7 +285,7 @@ public class VtsOperationCenterController {
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách tệp đính kèm thành công", list));
     }
 
-    @PreAuthorize("@auth.check(authentication, 'vtsoperationcenter:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'vtsoperationcenter:update', 'vtsoperationcenter:approvec2', 'vts:update', 'vts:approvec2')")
     @DeleteMapping("/{id}/attachments/{attId}")
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,
@@ -259,6 +294,34 @@ public class VtsOperationCenterController {
         UUID userId = getUserId(authentication);
         service.deleteAttachment(id, attId, userId);
         return ResponseEntity.ok(ApiResponse.success("Xóa tệp đính kèm thành công", null));
+    }
+
+    
+    @PreAuthorize("@auth.check(authentication, 'vtsoperationcenter:read')")
+    @GetMapping("/{id}/attachments/{attId}/download")
+    public ResponseEntity<Resource> downloadAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId) {
+        InfrastructureAttachment attachment = service.getAttachment(id, attId);
+        Path path = Paths.get(attachment.getFilePath()).toAbsolutePath().normalize();
+        if (!Files.isRegularFile(path)) {
+            return ResponseEntity.notFound().build();
+        }
+        Resource resource = new FileSystemResource(path);
+        String contentType;
+        try {
+            contentType = Files.probeContentType(path);
+        } catch (Exception ignored) {
+            contentType = null;
+        }
+        MediaType mediaType = contentType == null
+                ? MediaType.APPLICATION_OCTET_STREAM
+                : MediaType.parseMediaType(contentType);
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + (attachment.getFileName() != null ? attachment.getFileName().replace("\"", "") : "attachment") + "\"")
+                .body(resource);
     }
 
     private final UserRepository userRepository;

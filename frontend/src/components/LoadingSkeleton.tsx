@@ -1,30 +1,19 @@
-import { Skeleton, Card, Row, Col, Space } from 'antd';
+import { Skeleton, Card, Space } from 'antd';
 
 interface Props {
   rows?: number;
+  rowCount?: number;
+  columnCount?: number;
   type?: 'card' | 'table' | 'form';
 }
 
-export default function LoadingSkeleton({ rows = 5, type = 'table' }: Props) {
-  if (type === 'card') {
-    return (
-      <Row gutter={[16, 16]}>
-        {Array.from({ length: rows }).map((_, i) => (
-          <Col xs={24} sm={12} lg={8} key={i}>
-            <Card>
-              <Skeleton active paragraph={{ rows: 2 }} />
-            </Card>
-          </Col>
-        ))}
-      </Row>
-    );
-  }
+export default function LoadingSkeleton({ rows = 5, rowCount, columnCount = 1, type = 'table' }: Props) {
+  const actualRows = rowCount ?? rows;
 
   if (type === 'form') {
     return (
       <Card>
-        <Space orientation="vertical" style={{ width: '100%' }} size="large">
-          <Skeleton.Input active block />
+        <Space direction="vertical" style={{ width: '100%' }} size="large">
           <Skeleton.Input active block />
           <Skeleton.Input active block />
           <Skeleton.Input active block size="large" style={{ width: 200 }} />
@@ -34,22 +23,31 @@ export default function LoadingSkeleton({ rows = 5, type = 'table' }: Props) {
     );
   }
 
-  // table skeleton
+  if (type === 'card') {
+    return (
+      <Space direction="vertical" style={{ width: '100%' }} size="middle">
+        {Array.from({ length: actualRows }).map((_, index) => (
+          <Card key={index}>
+            <Skeleton active paragraph={{ rows: 2 }} />
+          </Card>
+        ))}
+      </Space>
+    );
+  }
+
   return (
     <Card>
-      <Space orientation="vertical" style={{ width: '100%' }} size="middle">
-        {/* search bar skeleton */}
-        <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-          <Skeleton.Input active style={{ width: 240 }} />
-          <Skeleton.Input active style={{ width: 140 }} />
+      <Space direction="vertical" style={{ width: '100%' }} size="middle">
+        <Space wrap>
+          {Array.from({ length: columnCount }).map((_, index) => (
+            <Skeleton.Input key={index} active style={{ width: index === 0 ? 240 : 140 }} />
+          ))}
           <Skeleton.Button active style={{ width: 80 }} />
-        </div>
-        {/* table rows */}
-        {Array.from({ length: rows }).map((_, i) => (
-          <Skeleton key={i} active avatar paragraph={{ rows: 0 }} />
+        </Space>
+        {Array.from({ length: actualRows }).map((_, index) => (
+          <Skeleton key={index} active avatar paragraph={{ rows: 0 }} />
         ))}
-        {/* pagination skeleton */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <Skeleton.Input active style={{ width: 200 }} />
         </div>
       </Space>

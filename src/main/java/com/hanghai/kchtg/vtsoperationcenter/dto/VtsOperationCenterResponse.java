@@ -42,10 +42,15 @@ public class VtsOperationCenterResponse {
     private UUID approverLevel1;
     private String approverLevel1Name;
     private LocalDateTime approvedDateLevel1;
+    private String approvalContentLevel1;
     private UUID approverLevel2;
     private String approverLevel2Name;
     private LocalDateTime approvedDateLevel2;
+    private String approvalContentLevel2;
     private String rejectionReason;
+    private LocalDateTime submittedAt;
+    private UUID submittedBy;
+    private String submittedByName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private UUID createdBy;
@@ -83,10 +88,15 @@ public class VtsOperationCenterResponse {
         private UUID approverLevel1;
         private String approverLevel1Name;
         private LocalDateTime approvedDateLevel1;
+        private String approvalContentLevel1;
         private UUID approverLevel2;
         private String approverLevel2Name;
         private LocalDateTime approvedDateLevel2;
+        private String approvalContentLevel2;
         private String rejectionReason;
+        private LocalDateTime submittedAt;
+        private UUID submittedBy;
+        private String submittedByName;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
         private UUID createdBy;
@@ -119,10 +129,15 @@ public class VtsOperationCenterResponse {
         public Builder approverLevel1(UUID approverLevel1) { this.approverLevel1 = approverLevel1; return this; }
         public Builder approverLevel1Name(String approverLevel1Name) { this.approverLevel1Name = approverLevel1Name; return this; }
         public Builder approvedDateLevel1(LocalDateTime approvedDateLevel1) { this.approvedDateLevel1 = approvedDateLevel1; return this; }
+        public Builder approvalContentLevel1(String approvalContentLevel1) { this.approvalContentLevel1 = approvalContentLevel1; return this; }
         public Builder approverLevel2(UUID approverLevel2) { this.approverLevel2 = approverLevel2; return this; }
         public Builder approverLevel2Name(String approverLevel2Name) { this.approverLevel2Name = approverLevel2Name; return this; }
         public Builder approvedDateLevel2(LocalDateTime approvedDateLevel2) { this.approvedDateLevel2 = approvedDateLevel2; return this; }
+        public Builder approvalContentLevel2(String approvalContentLevel2) { this.approvalContentLevel2 = approvalContentLevel2; return this; }
         public Builder rejectionReason(String rejectionReason) { this.rejectionReason = rejectionReason; return this; }
+        public Builder submittedAt(LocalDateTime submittedAt) { this.submittedAt = submittedAt; return this; }
+        public Builder submittedBy(UUID submittedBy) { this.submittedBy = submittedBy; return this; }
+        public Builder submittedByName(String submittedByName) { this.submittedByName = submittedByName; return this; }
         public Builder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
         public Builder updatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; return this; }
         public Builder createdBy(UUID createdBy) { this.createdBy = createdBy; return this; }
@@ -135,8 +150,9 @@ public class VtsOperationCenterResponse {
             return new VtsOperationCenterResponse(id, code, name, vtsSystemId, vtsSystemName, portId, portName,
                     orgUnitId, orgUnitName, provinceId, provinceName, detailedLocation, coverage, conditionStatus,
                     note, spatialId, geometryType, coordinates, symbolId, approvalStatus, approvalStatusLabel,
-                    approverLevel1, approverLevel1Name, approvedDateLevel1, approverLevel2, approverLevel2Name,
-                    approvedDateLevel2, rejectionReason, createdAt, updatedAt, createdBy, createdByName,
+                    approverLevel1, approverLevel1Name, approvedDateLevel1, approvalContentLevel1,
+                    approverLevel2, approverLevel2Name, approvedDateLevel2, approvalContentLevel2,
+                    rejectionReason, submittedAt, submittedBy, submittedByName, createdAt, updatedAt, createdBy, createdByName,
                     updatedBy, updatedByName, attachments);
         }
     }

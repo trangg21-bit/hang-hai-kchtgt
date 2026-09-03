@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Drawer, Input, DatePicker, Button, Typography, Space, Skeleton } from 'antd';
 import {
   HistoryOutlined,
@@ -6,7 +6,9 @@ import {
   FileOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { colors } from '../../theme';
+import { symbolService, type SymbolOption } from '../../services/symbolService';
+import { getProvinceNameById } from '../../types/common';
+import { colors, getRangePickerProps } from '../../themetokenchk';
 import {
   actionPrimary,
   statusOperational,
@@ -18,7 +20,6 @@ import {
   textTertiary,
   borderDefault,
   radiusSm,
-  radiusPill,
   spaceXs,
   spaceSm,
   spaceMd,
@@ -29,7 +30,10 @@ import {
   fontSizeLg,
   fontWeightMedium,
   fontWeightBold,
-} from '../../tokens';
+  inputStyle,
+  primaryButtonStyle,
+} from '../../themetokenchk';
+import { deduplicateAttachmentHistoryChanges } from '../../utils/historyAttachmentDedup';
 
 export interface HistoryChangeItem {
   field: string;
@@ -63,6 +67,18 @@ export interface CommonHistoryDrawerProps {
   loading?: boolean;
   fieldLabelMap?: Record<string, string>;
   formatValue?: (fieldName: string, value: any) => string;
+  width?: string | number;
+  size?: 'default' | 'large' | '50%' | string;
+  /**
+   * Bật chế độ lọc ở server. Khi bật, drawer KHÔNG tự lọc `records` theo từ khóa
+   * và khoảng ngày nữa mà báo điều kiện ra ngoài qua `onFilterChange` — bắt buộc
+   * nếu màn có phân trang, vì lọc phía client chỉ soi được phần đã tải.
+   */
+  serverFiltered?: boolean;
+  onFilterChange?: (filters: { keyword: string; fromDate: string; toDate: string }) => void;
+  /** Gọi khi người dùng cuộn tới đáy để tải thêm một trang nhật ký. */
+  onLoadMore?: () => void;
+  loadingMore?: boolean;
 }
 
 const DEFAULT_ACTION_MAP: Record<string, { label: string; color: string; bg: string }> = {
@@ -93,9 +109,17 @@ const DEFAULT_ACTION_MAP: Record<string, { label: string; color: string; bg: str
   APPROVED: { label: 'Phê duyệt C2', color: statusOperational, bg: `${statusOperational}15` },
   APPROVE_L1: { label: 'Phê duyệt C1', color: statusAttention, bg: `${statusAttention}15` },
   APPROVE_L2: { label: 'Phê duyệt C2', color: statusOperational, bg: `${statusOperational}15` },
+  APPROVED_LEVEL1: { label: 'Phê duyệt C1', color: '#0284C7', bg: '#0284C715' },
+  APPROVED_LEVEL2: { label: 'Phê duyệt C2', color: statusOperational, bg: `${statusOperational}15` },
+  SUBMIT: { label: 'Gửi duyệt', color: '#EDA100', bg: '#EDA10015' },
+  SUBMITTED: { label: 'Gửi duyệt', color: '#EDA100', bg: '#EDA10015' },
+  PROPOSED: { label: 'Gửi duyệt', color: '#EDA100', bg: '#EDA10015' },
+  UNDER_REVIEW: { label: 'Phê duyệt C1', color: '#0284C7', bg: '#0284C715' },
 
   REJECT: { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}15` },
   REJECTED: { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}15` },
+  REJECTED_LEVEL1: { label: 'Từ chối C1', color: statusCritical, bg: `${statusCritical}15` },
+  REJECTED_LEVEL2: { label: 'Từ chối C2', color: statusCritical, bg: `${statusCritical}15` },
 
   INVALIDATE: { label: 'Vô hiệu hóa', color: '#7c3aed', bg: '#7c3aed15' },
   LOCK: { label: 'Khóa tài khoản', color: '#d97706', bg: '#d9770615' },
@@ -120,6 +144,27 @@ const DEFAULT_FIELD_MAP: Record<string, string> = {
   conditionStatus: 'Tình trạng',
   operationalStatus: 'Trạng thái hoạt động',
   approvalStatus: 'Trạng thái phê duyệt',
+  province: 'Địa điểm (Tỉnh/TP)',
+  provinceId: 'Địa điểm (Tỉnh/TP)',
+  provinceName: 'Địa điểm (Tỉnh/TP)',
+  operatingOrgId: 'Đơn vị khai thác',
+  operatingOrgName: 'Đơn vị khai thác',
+  operatingUnitId: 'Đơn vị khai thác',
+  operatingUnitName: 'Đơn vị khai thác',
+  vtsOperationCenterId: 'Thuộc TTDH VTS',
+  vtsOperationCenterName: 'Thuộc TTDH VTS',
+  radarStationId: 'Thuộc Trạm Radar',
+  radarStationName: 'Thuộc Trạm Radar',
+  detailedLocation: 'Địa điểm chi tiết',
+  locationDetail: 'Địa điểm chi tiết',
+  unitOfMeasure: 'Đơn vị tính',
+  quantity: 'Số lượng',
+  commissioningYear: 'Năm đưa vào sử dụng',
+  specifications: 'Thông số kỹ thuật',
+  manufacturer: 'Hãng sản xuất',
+  maintenanceInfo: 'Thông tin bảo trì',
+  note: 'Ghi chú',
+  notes: 'Ghi chú',
   orgUnitId: 'Đơn vị quản lý',
   orgUnitName: 'Tên đơn vị quản lý',
   facilityName: 'Tên cơ sở',
@@ -131,9 +176,126 @@ const DEFAULT_FIELD_MAP: Record<string, string> = {
   dryPortName: 'Tên cảng cạn',
   beaconName: 'Tên báo hiệu',
   beaconCode: 'Mã báo hiệu',
+  attachments: 'Tài liệu đính kèm',
+  attachmentList: 'Tài liệu đính kèm',
+  fileName: 'Tên tệp tin',
+  fileSize: 'Kích thước tệp',
+  coordinates: 'Tọa độ GIS',
+  geometryType: 'Loại đối tượng GIS',
+  objectType: 'Loại đối tượng GIS',
+  symbol: 'Biểu tượng',
+  symbolId: 'Biểu tượng',
+  mapSymbolId: 'Biểu tượng',
+  mapIcon: 'Biểu tượng',
 };
 
-function renderCommonHistoryValueTag(field: string, val: string) {
+function formatCoordPointDms(xStr: string, yStr?: string): string {
+  const x = Number(xStr);
+  const y = yStr !== undefined && yStr !== '' ? Number(yStr) : NaN;
+
+  const toDmsString = (val: number, isLat: boolean) => {
+    if (isNaN(val)) return '';
+    const abs = Math.abs(val);
+    const d = Math.floor(abs);
+    const minFloat = (abs - d) * 60;
+    const m = Math.floor(minFloat);
+    const s = Math.round((minFloat - m) * 60 * 10) / 10;
+    const dir = isLat ? (val >= 0 ? 'N' : 'S') : (val >= 0 ? 'E' : 'W');
+    return `${d}° ${m}' ${s.toFixed(1)}" ${dir}`;
+  };
+
+  if (!isNaN(x) && !isNaN(y)) {
+    let lat = y;
+    let lng = x;
+    if (x < 35 && y > 50) {
+      lat = x;
+      lng = y;
+    }
+    const latDms = toDmsString(lat, true);
+    const lngDms = toDmsString(lng, false);
+    return `${latDms}, ${lngDms}`;
+  }
+
+  if (!isNaN(x)) {
+    const isLat = x <= 35 && x >= -35;
+    return toDmsString(x, isLat);
+  }
+
+  return xStr;
+}
+
+function parseCoordinatesPoints(raw: string | null): { typeName?: string; points: Array<{ x: string; y: string; index: number }> } | null {
+  if (!raw || raw === '—' || raw === 'Chưa có' || raw === '(null)' || raw === '(trống)') return null;
+  const str = raw.trim();
+
+  if (/^(Đường|Vùng|Điểm)\s+bản\s+đồ\s*\(\d+\s+điểm/i.test(str)) {
+    return { typeName: str, points: [] };
+  }
+
+  let typeName = '';
+  let inner = str;
+
+  if (/^POINT\s*\(/i.test(str)) {
+    typeName = 'Điểm';
+    inner = str.replace(/^POINT\s*\(/i, '').replace(/\)\s*$/, '');
+  } else if (/^LINESTRING\s*\(/i.test(str)) {
+    typeName = 'Đường';
+    inner = str.replace(/^LINESTRING\s*\(/i, '').replace(/\)\s*$/, '');
+  } else if (/^LINE\s*\(/i.test(str)) {
+    typeName = 'Đường';
+    inner = str.replace(/^LINE\s*\(/i, '').replace(/\)\s*$/, '');
+  } else if (/^POLYGON\s*\(\(/i.test(str)) {
+    typeName = 'Vùng';
+    inner = str.replace(/^POLYGON\s*\(\(/i, '').replace(/\)\)\s*$/, '');
+  } else if (/^MULTIPOINT\s*\(/i.test(str)) {
+    typeName = 'Tập hợp điểm';
+    inner = str.replace(/^MULTIPOINT\s*\(/i, '').replace(/\)\s*$/, '');
+  } else if (str.startsWith('(') && str.endsWith(')')) {
+    inner = str.slice(1, -1);
+  }
+
+  const pointStrings = inner.split(',').map((s) => s.trim()).filter(Boolean);
+  if (pointStrings.length === 0) return null;
+
+  const points = pointStrings.map((ps, idx) => {
+    const clean = ps.replace(/[()]/g, '').trim();
+    const parts = clean.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return { x: parts[0], y: parts[1], index: idx + 1 };
+    }
+    return { x: clean, y: '', index: idx + 1 };
+  });
+
+  return { typeName, points };
+}
+
+function renderCoordinatesDisplay(val: string | null) {
+  if (!val || val === '—' || val === 'Chưa có' || val === '(null)' || val === '(trống)') {
+    return <span style={{ color: textTertiary }}>{val === 'Chưa có' ? 'Chưa có' : '—'}</span>;
+  }
+  const parsed = parseCoordinatesPoints(val);
+  if (!parsed || parsed.points.length === 0) {
+    return <span style={{ color: textPrimary }}>{parsed?.typeName || val}</span>;
+  }
+  const { typeName, points } = parsed;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs, width: '100%' }}>
+      {typeName && (
+        <span style={{ fontSize: fontSizeSm, fontWeight: fontWeightBold, color: actionPrimary }}>
+          {typeName} ({points.length} điểm)
+        </span>
+      )}
+      {points.map((pt) => (
+        <div key={pt.index} style={{ fontSize: fontSizeSm, color: textPrimary, lineHeight: 1.5 }}>
+          {points.length > 1 && <span style={{ color: textSecondary, marginRight: spaceXs }}>#{pt.index}:</span>}
+          <span>{formatCoordPointDms(pt.x, pt.y)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function renderCommonHistoryValueTag(field: string, val: string) {
   if (!val || val === '—') {
     return <span style={{ color: textTertiary }}>—</span>;
   }
@@ -141,6 +303,30 @@ function renderCommonHistoryValueTag(field: string, val: string) {
   const normVal = val.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
 
   if (normKey.includes('trang thai') || normKey.includes('status') || normKey.includes('hieu luc') || normKey.includes('tinh trang')) {
+    // Các giá trị PHỦ ĐỊNH phải xét TRƯỚC: "dừng hoạt động" cũng chứa "hoạt động"
+    // nên nếu để nhánh xanh chạy trước thì nó bị tô như đang hoạt động.
+    if (normVal.includes('dung hoat dong') || normVal.includes('ngung hoat dong')
+        || normVal.includes('tam dung') || normVal.includes('khong hoat dong')) {
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: statusCritical, background: `${statusCritical}18`, border: `1px solid ${statusCritical}40` }}>
+          {val}
+        </span>
+      );
+    }
+    if (normVal.includes('bao tri') || normVal.includes('sua chua') || normVal.includes('maintenance')) {
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: statusAttention, background: `${statusAttention}18`, border: `1px solid ${statusAttention}40` }}>
+          {val}
+        </span>
+      );
+    }
+    if (normVal.includes('xay dung') || normVal.includes('construction')) {
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: actionPrimary, background: `${actionPrimary}18`, border: `1px solid ${actionPrimary}40` }}>
+          {val}
+        </span>
+      );
+    }
     if (normVal.includes('da phe duyet') || normVal.includes('con hieu luc') || normVal.includes('hoat dong') || normVal.includes('active') || normVal.includes('approved') || normVal.includes('valid')) {
       return (
         <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: statusOperational, background: `${statusOperational}18`, border: `1px solid ${statusOperational}40` }}>
@@ -196,10 +382,99 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
   loading = false,
   fieldLabelMap = {},
   formatValue,
+  width,
+  size,
+  serverFiltered = false,
+  onFilterChange,
+  onLoadMore,
+  loadingMore = false,
 }) => {
+  const [searchInput, setSearchInput] = useState('');
   const [keyword, setKeyword] = useState('');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
+
+  // Ở chế độ lọc phía server, mỗi lần điều kiện đổi thì đẩy ra ngoài để màn cha
+  // nạp lại từ trang đầu.
+  useEffect(() => {
+    if (!serverFiltered || !onFilterChange) return;
+    onFilterChange({ keyword, fromDate: dateFrom, toDate: dateTo });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverFiltered, keyword, dateFrom, dateTo]);
+
+  const handleBodyScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (!onLoadMore) return;
+    const el = e.currentTarget;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) {
+      onLoadMore();
+    }
+  };
+  const [symbols, setSymbols] = useState<SymbolOption[]>([]);
+
+  useEffect(() => {
+    symbolService.getOptions().then((opts) => {
+      setSymbols(opts || []);
+    }).catch(() => setSymbols([]));
+  }, []);
+
+  const { symbolByCode, symbolById, symbolByName } = useMemo(() => {
+    const byCode = new Map<string, SymbolOption>();
+    const byId = new Map<string, SymbolOption>();
+    const byName = new Map<string, SymbolOption>();
+
+    (symbols || []).forEach((sym) => {
+      if (sym.code) {
+        byCode.set(sym.code.trim().toUpperCase(), sym);
+        byCode.set(sym.code.trim().toLowerCase(), sym);
+      }
+      if (sym.id) {
+        byId.set(String(sym.id).trim().toLowerCase(), sym);
+      }
+      if (sym.name) {
+        byName.set(sym.name.trim().toLowerCase(), sym);
+        const norm = sym.name.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+        byName.set(norm, sym);
+      }
+    });
+
+    return { symbolByCode: byCode, symbolById: byId, symbolByName: byName };
+  }, [symbols]);
+
+  const renderSymbolValue = (val: string) => {
+    if (!val || val === '—' || val === 'null' || val === '(null)') {
+      return <span style={{ color: textTertiary }}>—</span>;
+    }
+    const trimmed = String(val).trim();
+    const upper = trimmed.toUpperCase();
+    const lower = trimmed.toLowerCase();
+    const norm = lower.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+
+    const sym = symbolByCode.get(upper) || symbolByCode.get(lower) || symbolById.get(lower) || symbolByName.get(lower) || symbolByName.get(norm);
+
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: textPrimary, fontWeight: fontWeightBold, verticalAlign: 'middle' }}>
+        {sym?.image ? (
+          <img
+            src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`}
+            alt=""
+            style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4, flexShrink: 0 }}
+          />
+        ) : (
+          <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: actionPrimary, flexShrink: 0 }} />
+        )}
+        <span>{sym?.name || trimmed}</span>
+      </span>
+    );
+  };
+
+  useEffect(() => {
+    if (!open) {
+      setSearchInput('');
+      setKeyword('');
+      setDateFrom('');
+      setDateTo('');
+    }
+  }, [open]);
 
   const combinedFieldMap = useMemo(() => ({
     ...DEFAULT_FIELD_MAP,
@@ -214,11 +489,11 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
   };
 
   const getRecordTimestamp = (r: CommonHistoryEntry): string => {
-    return r.changedAt || r.createdAt || r.timestamp || '';
+    return r.changedAt || r.createdAt || r.timestamp || r.approvedDate || '';
   };
 
   const getRecordActor = (r: CommonHistoryEntry): string => {
-    return r.changedByName || r.actor || r.changedBy || '—';
+    return r.changedByName || r.actor || r.changedBy || r.approvedBy || '—';
   };
 
   const formatTimestamp = (ts: string) => {
@@ -234,6 +509,11 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
       const custom = formatValue(field, val);
       if (custom !== undefined) return custom;
     }
+    const fLower = (field || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+    if (fLower.includes('tinh') || fLower.includes('province') || fLower.includes('thanh pho') || fLower === 'provinceid') {
+      const provName = getProvinceNameById(val);
+      if (provName) return provName;
+    }
     if (typeof val === 'boolean') return val ? 'Có' : 'Không';
     if (typeof val === 'object') return JSON.stringify(val);
     return String(val);
@@ -241,14 +521,24 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
 
   // Filter and group records
   const { filteredGroups, totalCount } = useMemo(() => {
-    const q = keyword.toLowerCase().trim();
+    // Ở chế độ lọc phía server, từ khóa và khoảng ngày đã được áp ở CSDL — lọc
+    // lại tại đây sẽ cắt mất bản ghi của các trang chưa tải về.
+    const q = serverFiltered ? '' : keyword.toLowerCase().trim();
+    const clientDateFrom = serverFiltered ? '' : dateFrom;
+    const clientDateTo = serverFiltered ? '' : dateTo;
 
     const filtered = (records || []).filter((r) => {
+      const act = (r.action || r.status || '').toUpperCase();
+      const reason = (r.reason || r.note || r.description || '').toLowerCase();
+      // Nghiệp vụ: Lịch sử thay đổi chỉ hiển thị cập nhật trên hồ sơ đã duyệt, không hiển thị log Tạo mới / Lưu tạm
+      if (act === 'CREATED' || act === 'CREATE' || act === 'DRAFT' || act === 'PROPOSED' || reason.startsWith('tạo mới')) {
+        return false;
+      }
+
       const ts = getRecordTimestamp(r);
       const actor = getRecordActor(r).toLowerCase();
-      const note = (r.note || r.description || '').toLowerCase();
-      const act = (r.action || '').toLowerCase();
-      const actLabel = resolveAction(r.action).label.toLowerCase();
+      const note = (r.note || r.reason || r.description || '').toLowerCase();
+      const actLabel = resolveAction(r.action || r.status).label.toLowerCase();
 
       // Keyword search
       if (q) {
@@ -260,16 +550,21 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
             const nv = String(c.newValue || '').toLowerCase();
             return fName.includes(q) || ov.includes(q) || nv.includes(q);
           });
+        } else if (!match && r.changedField) {
+          const fName = (combinedFieldMap[r.changedField] || r.changedField).toLowerCase();
+          const ov = String(r.previousValue || '').toLowerCase();
+          const nv = String(r.newValue || '').toLowerCase();
+          match = fName.includes(q) || ov.includes(q) || nv.includes(q);
         }
         if (!match) return false;
       }
 
       // Date range filter
-      if (dateFrom && ts) {
-        if (dayjs(ts).isBefore(dayjs(dateFrom))) return false;
+      if (clientDateFrom && ts) {
+        if (dayjs(ts).isBefore(dayjs(clientDateFrom))) return false;
       }
-      if (dateTo && ts) {
-        if (dayjs(ts).isAfter(dayjs(dateTo))) return false;
+      if (clientDateTo && ts) {
+        if (dayjs(ts).isAfter(dayjs(clientDateTo))) return false;
       }
 
       return true;
@@ -299,24 +594,26 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
     }
 
     return { filteredGroups: groups, totalCount: filtered.length };
-  }, [records, keyword, dateFrom, dateTo, combinedFieldMap]);
+  }, [records, keyword, dateFrom, dateTo, combinedFieldMap, serverFiltered]);
 
   return (
     <Drawer
-      width={880}
+      rootClassName="vtssystemchk-theme-scope"
+      size={width ? undefined : (size || 960)}
+      width={width || 960}
       placement="right"
       open={open}
       onClose={onClose}
       closable={false}
       extra={
-        <Button type="text" aria-label="Đóng" onClick={onClose} style={drawerCloseBtnStyle}>
+        <Button type="text" aria-label="Đóng lịch sử thay đổi" onClick={onClose} style={drawerCloseBtnStyle}>
           ✕
         </Button>
       }
       footer={null}
       styles={{
         header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-        body: { padding: '16px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
+        body: { padding: '12px 24px 12px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
       }}
       title={
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
@@ -329,8 +626,8 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
               style={{
                 display: 'inline-flex',
                 padding: '2px 10px',
-                borderRadius: radiusPill,
-                fontSize: fontSizeSm + 1,
+                borderRadius: radiusSm,
+                fontSize: fontSizeLg - 1,
                 fontWeight: fontWeightBold,
                 background: `${colors.sidebarBg}15`,
                 color: colors.sidebarBg,
@@ -344,41 +641,43 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
       }
     >
       {/* ── Search & Filter Bar ────────────────────────────── */}
-      <div style={{ flexShrink: 0, marginBottom: spaceMd }}>
-        <div style={{ display: 'flex', gap: spaceSm }}>
+      <div style={{ flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
           <Input
             placeholder="Tìm kiếm nội dung thay đổi..."
             allowClear
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
+            value={searchInput}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSearchInput(val);
+              if (!val) setKeyword('');
+            }}
+            onPressEnter={() => setKeyword(searchInput.trim())}
+            style={{ ...inputStyle, flex: 1 }}
           />
-          <DatePicker
-            placeholder="Từ ngày"
-            value={dateFrom ? dayjs(dateFrom) : null}
-            onChange={(d) => setDateFrom(d ? d.startOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
-            style={{ width: 175, borderRadius: radiusPill, height: 40 }}
-            format="DD/MM/YYYY HH:mm"
-            showTime={{ format: 'HH:mm' }}
-          />
-          <DatePicker
-            placeholder="Đến ngày"
-            value={dateTo ? dayjs(dateTo) : null}
-            onChange={(d) => setDateTo(d ? d.endOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
-            style={{ width: 175, borderRadius: radiusPill, height: 40 }}
-            format="DD/MM/YYYY HH:mm"
-            showTime={{ format: 'HH:mm' }}
+          <DatePicker.RangePicker
+            {...getRangePickerProps({
+              value: (dateFrom && dateTo)
+                ? [dayjs(dateFrom), dayjs(dateTo)]
+                : (dateFrom ? [dayjs(dateFrom), null] : (dateTo ? [null, dayjs(dateTo)] : null)),
+              onChange: (dates: any) => {
+                if (!dates || dates.length === 0 || (!dates[0] && !dates[1])) {
+                  setDateFrom('');
+                  setDateTo('');
+                } else {
+                  setDateFrom(dates[0] ? dates[0].startOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
+                  setDateTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
+                }
+              },
+              style: { ...inputStyle, width: 280 },
+            })}
           />
           <Button
             type="primary"
             icon={<SearchOutlined />}
-            style={{
-              borderRadius: radiusPill,
-              height: 40,
-              fontSize: fontSizeMd,
-              background: actionPrimary,
-              borderColor: actionPrimary,
-            }}
+            loading={loading}
+            onClick={() => setKeyword(searchInput.trim())}
+            style={primaryButtonStyle}
           >
             Tìm kiếm
           </Button>
@@ -386,7 +685,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
       </div>
 
       {/* ── Timeline Body ─────────────────────────────────── */}
-      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, paddingRight: spaceXs }}>
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleBodyScroll}>
         {loading ? (
           <div style={{ padding: spaceMd }}>
             <Skeleton active paragraph={{ rows: 6 }} />
@@ -401,43 +700,62 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
             </div>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}>
+          <div>
             {filteredGroups.map((group, gIdx) => {
               // Extract all changes from items in the group
               const groupChanges: HistoryChangeItem[] = [];
               const groupNotes: string[] = [];
-              let primaryAction = group.items[0]?.action || 'UPDATE';
+              let primaryAction = group.items[0]?.action || group.items[0]?.status || 'UPDATE';
 
               group.items.forEach((item) => {
                 if (item.action) primaryAction = item.action;
+                else if (item.status) primaryAction = item.status;
                 if (item.note) groupNotes.push(item.note);
-                if (item.description && item.description !== item.note) groupNotes.push(item.description);
+                if (item.reason && !groupNotes.includes(item.reason)) groupNotes.push(item.reason);
+                if (item.description && !groupNotes.includes(item.description)) groupNotes.push(item.description);
                 if (item.changes && Array.isArray(item.changes)) {
                   groupChanges.push(...item.changes);
+                } else if (item.changedField) {
+                  groupChanges.push({
+                    field: item.changedField,
+                    oldValue: item.previousValue,
+                    newValue: item.newValue,
+                  });
                 }
               });
 
               const actionMeta = resolveAction(primaryAction);
               const isCreate = primaryAction.toUpperCase().includes('CREATE') || primaryAction.toUpperCase().includes('ADD');
               const infoTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
+              const rawUnit = group.unitName;
+              const unitName = rawUnit && rawUnit !== '—' ? rawUnit : 'Cục Hàng hải Việt Nam';
+
+              const validChanges = deduplicateAttachmentHistoryChanges(groupChanges).filter((change) => {
+                const ov = resolveFieldValue(change.field, change.oldValue);
+                const nv = resolveFieldValue(change.field, change.newValue);
+                if (ov !== '—' && nv !== '—' && String(ov).trim() === String(nv).trim()) {
+                  return false;
+                }
+                return true;
+              });
 
               return (
                 <div
                   key={gIdx}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'minmax(250px, 0.36fr) minmax(0, 1fr)',
+                    gridTemplateColumns: 'minmax(310px, 0.38fr) minmax(0, 1fr)',
                     gap: spaceLg,
                     alignItems: 'start',
-                    paddingBottom: spaceSm,
-                    borderBottom: gIdx < filteredGroups.length - 1 ? `1px dashed ${borderDefault}` : 'none',
+                    marginBottom: gIdx < filteredGroups.length - 1 ? spaceMd : 0,
                   }}
                 >
                   {/* Left Column: Metadata */}
                   <div style={{ minWidth: 0, paddingTop: spaceXs }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: spaceSm, flexWrap: 'wrap', marginBottom: spaceXs }}>
+                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: spaceSm, marginBottom: spaceXs }}>
                       <Typography.Text
                         style={{
+                          display: 'block',
                           fontSize: fontSizeLg - 1,
                           color: textPrimary,
                           fontWeight: fontWeightBold,
@@ -445,48 +763,49 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {formatTimestamp(group.ts)}
+                        {group.ts ? formatTimestamp(group.ts) : '—'}
                       </Typography.Text>
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          padding: '2px 10px',
-                          borderRadius: radiusPill,
-                          fontSize: fontSizeSm + 1,
-                          fontWeight: fontWeightMedium,
-                          background: actionMeta.bg,
-                          color: actionMeta.color,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {actionMeta.label}
+                      <span style={{ flexShrink: 0 }}>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            padding: '2px 10px',
+                            borderRadius: 999,
+                            fontSize: fontSizeSm + 1,
+                            fontWeight: fontWeightMedium,
+                            background: actionMeta.bg,
+                            color: actionMeta.color,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {actionMeta.label}
+                        </span>
                       </span>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: spaceXs }}>
                       <Typography.Text
                         style={{
                           display: 'block',
-                          fontSize: fontSizeMd,
+                          fontSize: fontSizeSm + 1,
                           color: textSecondary,
                           fontWeight: fontWeightMedium,
                           lineHeight: 1.4,
                         }}
                       >
-                        Người thực hiện: <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{group.actor}</span>
+                        Người cập nhật: <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{group.actor || '—'}</span>
                       </Typography.Text>
-                      {group.unitName && (
-                        <Typography.Text
-                          style={{
-                            display: 'block',
-                            fontSize: fontSizeMd,
-                            color: textSecondary,
-                            lineHeight: 1.4,
-                          }}
-                        >
-                          Đơn vị: {group.unitName}
-                        </Typography.Text>
-                      )}
+                      <Typography.Text
+                        style={{
+                          display: 'block',
+                          fontSize: fontSizeSm + 1,
+                          color: textSecondary,
+                          fontWeight: fontWeightMedium,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        Đơn vị: <span style={{ color: textPrimary }}>{unitName}</span>
+                      </Typography.Text>
                     </div>
                   </div>
 
@@ -497,9 +816,10 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                       minWidth: 0,
                       background: surfacePage,
                       borderRadius: radiusSm,
-                      padding: `${spaceSm + 2}px ${spaceMd}px`,
+                      padding: `${spaceMd}px ${spaceLg}px`,
                       paddingLeft: spaceLg,
                       overflow: 'hidden',
+                      border: `1px solid ${borderDefault}`,
                     }}
                   >
                     {/* Left Accent Gradient Bar */}
@@ -514,70 +834,115 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                       }}
                     />
 
-                    {/* Change list */}
-                    {groupChanges.length > 0 ? (
-                      <div>
-                        <Typography.Text
-                          style={{
-                            display: 'block',
-                            color: textPrimary,
-                            fontSize: fontSizeMd,
-                            fontWeight: fontWeightBold,
-                            marginBottom: spaceXs,
-                          }}
-                        >
-                          {infoTitle}
-                        </Typography.Text>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {groupChanges.map((change, cIdx) => {
-                            const label = combinedFieldMap[change.field] || change.field;
-                            const ov = resolveFieldValue(change.field, change.oldValue);
-                            const nv = resolveFieldValue(change.field, change.newValue);
+                    <Typography.Text
+                      style={{
+                        display: 'block',
+                        color: colors.sidebarBg,
+                        fontSize: fontSizeMd,
+                        fontWeight: fontWeightBold,
+                        marginBottom: spaceSm,
+                      }}
+                    >
+                      {infoTitle}
+                    </Typography.Text>
 
-                            return isCreate ? (
+                    {/* Change list */}
+                    {validChanges.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}>
+                        {validChanges.map((change, cIdx) => {
+                          const label = combinedFieldMap[change.field] || change.field;
+                          const ov = resolveFieldValue(change.field, change.oldValue);
+                          const nv = resolveFieldValue(change.field, change.newValue);
+
+                          const renderFormattedContent = (content: string, _isOld: boolean = false) => {
+                            if (!content || content === '—') return <span style={{ color: textTertiary }}>—</span>;
+                            const str = String(content).trim();
+                            const normLabel = (label || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+                            const normField = (change.field || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+                            const isSymbolField = normLabel.includes('bieu tuong') || normLabel.includes('symbol') || normLabel.includes('icon')
+                              || normField.includes('bieu tuong') || normField === 'symbol' || normField === 'mapsymbolid' || normField === 'symbolid' || normField === 'mapsymbol' || normField === 'icon';
+
+                            if (isSymbolField) {
+                              return renderSymbolValue(str);
+                            }
+
+                            const isCoordField = normLabel.includes('toa do') || normLabel.includes('coordinate')
+                              || normField.includes('toa do') || normField.includes('coordinate')
+                              || /^POINT\s*\(/i.test(str) || /^LINESTRING\s*\(/i.test(str) || /^LINE\s*\(/i.test(str) || /^POLYGON\s*\(\(/i.test(str) || /^MULTIPOINT\s*\(/i.test(str);
+
+                            if (isCoordField) {
+                              return renderCoordinatesDisplay(str);
+                            }
+
+                            if (str.includes(',') && str.length > 25) {
+                              const items = str.split(',').map((s) => s.trim()).filter(Boolean);
+                              if (items.length > 1) {
+                                return (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+                                    {items.map((item, idx) => (
+                                      <div key={idx} style={{ color: textPrimary, fontWeight: fontWeightMedium, lineHeight: '20px', wordBreak: 'break-word' }}>
+                                        {item}
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              }
+                            }
+                            return renderCommonHistoryValueTag(label, content);
+                          };
+
+                          if (isCreate) {
+                            return (
                               <div
                                 key={cIdx}
                                 style={{
                                   display: 'grid',
-                                  gridTemplateColumns: 'minmax(140px, 1fr) minmax(160px, 2fr)',
+                                  gridTemplateColumns: '170px minmax(100px, 1fr)',
+                                  alignItems: 'flex-start',
                                   gap: spaceSm,
                                   fontSize: fontSizeMd,
-                                  lineHeight: 1.5,
+                                  lineHeight: 1.6,
+                                  padding: '3px 0',
                                 }}
                               >
-                                <span style={{ fontWeight: fontWeightMedium, color: textSecondary }}>
-                                  {label}:
-                                </span>
-                                <div>
-                                  {renderCommonHistoryValueTag(label, nv)}
+                                <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>
+                                  {label ? `${label}:` : '—'}
                                 </div>
-                              </div>
-                            ) : (
-                              <div
-                                key={cIdx}
-                                style={{
-                                  display: 'grid',
-                                  gridTemplateColumns: 'minmax(120px, 1.2fr) minmax(90px, 0.8fr) 20px minmax(120px, 1.2fr)',
-                                  gap: spaceSm,
-                                  alignItems: 'center',
-                                  fontSize: fontSizeMd,
-                                  lineHeight: 1.5,
-                                }}
-                              >
-                                <span style={{ fontWeight: fontWeightMedium, color: textSecondary }}>
-                                  {label}:
-                                </span>
-                                <div style={{ textDecoration: ov !== '—' ? 'line-through' : 'none' }}>
-                                  {renderCommonHistoryValueTag(label, ov)}
-                                </div>
-                                <span style={{ color: textTertiary, textAlign: 'center' }}>→</span>
-                                <div>
-                                  {renderCommonHistoryValueTag(label, nv)}
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word', color: textPrimary }}>
+                                  {renderFormattedContent(nv, false)}
                                 </div>
                               </div>
                             );
-                          })}
-                        </div>
+                          }
+
+                          return (
+                            <div
+                              key={cIdx}
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: '170px minmax(100px, 1fr) 24px minmax(100px, 1fr)',
+                                alignItems: 'flex-start',
+                                gap: spaceSm,
+                                fontSize: fontSizeMd,
+                                lineHeight: 1.6,
+                                padding: '3px 0',
+                              }}
+                            >
+                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>
+                                {label ? `${label}:` : '—'}
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word' }}>
+                                {renderFormattedContent(ov, true)}
+                              </div>
+                              <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>
+                                →
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word' }}>
+                                {renderFormattedContent(nv, false)}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : groupNotes.length > 0 ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -610,6 +975,11 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                 </div>
               );
             })}
+          </div>
+        )}
+        {loadingMore && (
+          <div style={{ padding: spaceMd, textAlign: 'center', color: textTertiary, fontSize: fontSizeMd }}>
+            Đang tải thêm…
           </div>
         )}
       </div>

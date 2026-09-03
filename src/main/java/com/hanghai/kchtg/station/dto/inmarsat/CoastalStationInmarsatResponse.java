@@ -72,6 +72,7 @@ public class CoastalStationInmarsatResponse {
     private String displayRule;
     private BigDecimal latitude;
     private BigDecimal longitude;
+    private String coordinates;
 
     // --- Phê duyệt 2 cấp (M-1006) ---
     private ApprovalStatus approvalStatus;

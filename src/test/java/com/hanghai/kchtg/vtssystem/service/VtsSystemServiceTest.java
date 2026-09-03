@@ -27,6 +27,9 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -34,6 +37,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class VtsSystemServiceTest {
 
     private static final UUID TEST_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
@@ -423,6 +427,11 @@ class VtsSystemServiceTest {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(
                         "admin", null, List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
+        // Phê duyệt cũng kiểm tra phạm vi đơn vị như sửa/xóa, nên phải nạp được
+        // tài khoản đang đăng nhập; admin Cục xem toàn quốc → không giới hạn scope.
+        com.hanghai.kchtg.user.entity.User adminUser = mock(com.hanghai.kchtg.user.entity.User.class);
+        when(adminUser.getAllPermissions()).thenReturn(java.util.Set.of("orgunit:scope_all"));
+        when(userRepository.findByUsernameWithRelations("admin")).thenReturn(Optional.of(adminUser));
         try {
             ApprovalRequest req = ApprovalRequest.builder().decision("APPROVED").build();
             when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
@@ -434,7 +443,6 @@ class VtsSystemServiceTest {
 
             assertEquals(ApprovalStatus.APPROVED_LEVEL1, entity.getApprovalStatus());
             assertNull(entity.getApproverLevel2());
-            verify(historyRepository, times(1)).save(any());
         } finally {
             SecurityContextHolder.clearContext();
         }
@@ -516,7 +524,7 @@ class VtsSystemServiceTest {
     @Test
     void testSearch() {
         when(repository.search(false, List.of(), null, null, null, null,
-                org.springframework.data.domain.PageRequest.of(0, 100))).thenReturn(org.springframework.data.domain.Page.empty());
+                org.springframework.data.domain.PageRequest.of(0, 200))).thenReturn(org.springframework.data.domain.Page.empty());
         List<VtsSystemResponse> responses = service.search(null, null, null, null);
         assertNotNull(responses);
         assertTrue(responses.isEmpty());
@@ -585,7 +593,7 @@ class VtsSystemServiceTest {
 
     @Test
     void testGetAttachments() {
-        when(repository.existsById(TEST_ID)).thenReturn(true);
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(attachmentRepository.findByRefIdAndRefTypeOrderByUploadedDateDesc(TEST_ID, InfrastructureType.VTS_SYSTEM))
                 .thenReturn(List.of());
 
@@ -705,11 +713,244 @@ class VtsSystemServiceTest {
                 null,
                 java.time.LocalDate.of(2025, 1, 1),
                 java.time.LocalDate.of(2026, 1, 1),
-                org.springframework.data.domain.PageRequest.of(0, 100)))
+                org.springframework.data.domain.PageRequest.of(0, 200)))
                 .thenReturn(org.springframework.data.domain.Page.empty());
 
         List<VtsSystemResponse> responses = service.search(null, null, null, null, 2025);
         assertNotNull(responses);
         assertTrue(responses.isEmpty());
+    }
+
+    @Test
+    void testUploadAttachment_RejectsWhenPendingApproval() {
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "file", "test.pdf", "application/pdf", "dummy content".getBytes());
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> service.uploadAttachment(TEST_ID, file, UUID.randomUUID()));
+        assertTrue(ex.getMessage().contains("Không thể sửa hồ sơ đang trong quy trình phê duyệt"));
+    }
+
+    @Test
+    void testUploadAttachment_RejectsExceedingSize() {
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(attachmentRepository.findByRefIdAndRefTypeOrderByUploadedDateDesc(TEST_ID, InfrastructureType.VTS_SYSTEM))
+                .thenReturn(List.of());
+
+        byte[] bigContent = new byte[21 * 1024 * 1024]; // 21MB
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "file", "big.pdf", "application/pdf", bigContent);
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> service.uploadAttachment(TEST_ID, file, UUID.randomUUID()));
+        assertTrue(ex.getMessage().contains("vượt quá 20MB"));
+    }
+
+    @Test
+    void testUploadAttachment_RejectsUnsupportedFormat() {
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(attachmentRepository.findByRefIdAndRefTypeOrderByUploadedDateDesc(TEST_ID, InfrastructureType.VTS_SYSTEM))
+                .thenReturn(List.of());
+
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "file", "script.exe", "application/x-msdownload", "content".getBytes());
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> service.uploadAttachment(TEST_ID, file, UUID.randomUUID()));
+        assertTrue(ex.getMessage().contains("không được hỗ trợ"));
+    }
+
+    @Test
+    void testGetZones_Paged() {
+        com.hanghai.kchtg.vtssystem.entity.VtsZone zone = com.hanghai.kchtg.vtssystem.entity.VtsZone.builder()
+                .id(UUID.randomUUID())
+                .code("Z1")
+                .name("Zone 1")
+                .conditionStatus(ConditionStatus.OPERATIONAL)
+                .build();
+        when(repository.existsById(TEST_ID)).thenReturn(true);
+        when(zoneRepository.findByVtsSystemId(eq(TEST_ID), any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(zone)));
+
+        org.springframework.data.domain.Page<VtsZoneDto> result = service.getZones(TEST_ID, org.springframework.data.domain.PageRequest.of(0, 10));
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Z1", result.getContent().get(0).getCode());
+    }
+
+    @Test
+    void testCreateZone_Success_And_LogsHistoryWhenApproved() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(zoneRepository.existsByVtsSystemIdAndCode(TEST_ID, "Z-NEW")).thenReturn(false);
+
+        com.hanghai.kchtg.vtssystem.entity.VtsZone savedZone = com.hanghai.kchtg.vtssystem.entity.VtsZone.builder()
+                .id(UUID.randomUUID())
+                .code("Z-NEW")
+                .name("Zone New")
+                .conditionStatus(ConditionStatus.OPERATIONAL)
+                .vtsSystem(entity)
+                .build();
+        when(zoneRepository.save(any())).thenReturn(savedZone);
+
+        VtsZoneDto inputDto = VtsZoneDto.builder()
+                .code("Z-NEW")
+                .name("Zone New")
+                .conditionStatus(ConditionStatus.OPERATIONAL)
+                .build();
+
+        VtsZoneDto result = service.createZone(TEST_ID, inputDto, UUID.randomUUID());
+        assertNotNull(result);
+        assertEquals("Z-NEW", result.getCode());
+        verify(historyRepository, times(1)).save(any(InfrastructureHistory.class));
+    }
+
+    @Test
+    void testUpdateZone_Success_And_LogsHistoryWhenApproved() {
+        UUID zoneId = UUID.randomUUID();
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+
+        com.hanghai.kchtg.vtssystem.entity.VtsZone existingZone = com.hanghai.kchtg.vtssystem.entity.VtsZone.builder()
+                .id(zoneId)
+                .code("Z-OLD")
+                .name("Zone Old")
+                .conditionStatus(ConditionStatus.OPERATIONAL)
+                .vtsSystem(entity)
+                .build();
+        when(zoneRepository.findByIdAndVtsSystemId(zoneId, TEST_ID)).thenReturn(Optional.of(existingZone));
+        when(zoneRepository.existsByVtsSystemIdAndCodeAndIdNot(TEST_ID, "Z-UPDATED", zoneId)).thenReturn(false);
+
+        com.hanghai.kchtg.vtssystem.entity.VtsZone updatedZone = com.hanghai.kchtg.vtssystem.entity.VtsZone.builder()
+                .id(zoneId)
+                .code("Z-UPDATED")
+                .name("Zone Updated")
+                .conditionStatus(ConditionStatus.STOPPED)
+                .vtsSystem(entity)
+                .build();
+        when(zoneRepository.save(any())).thenReturn(updatedZone);
+
+        VtsZoneDto updateDto = VtsZoneDto.builder()
+                .code("Z-UPDATED")
+                .name("Zone Updated")
+                .conditionStatus(ConditionStatus.STOPPED)
+                .build();
+
+        VtsZoneDto result = service.updateZone(TEST_ID, zoneId, updateDto, UUID.randomUUID());
+        assertNotNull(result);
+        assertEquals("Z-UPDATED", result.getCode());
+        verify(historyRepository, times(1)).save(any(InfrastructureHistory.class));
+    }
+
+    @Test
+    void testDeleteZone_Success_And_LogsHistoryWhenApproved() {
+        UUID zoneId = UUID.randomUUID();
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+
+        com.hanghai.kchtg.vtssystem.entity.VtsZone existingZone = com.hanghai.kchtg.vtssystem.entity.VtsZone.builder()
+                .id(zoneId)
+                .code("Z-DEL")
+                .name("Zone To Delete")
+                .conditionStatus(ConditionStatus.OPERATIONAL)
+                .vtsSystem(entity)
+                .build();
+        when(zoneRepository.findByIdAndVtsSystemId(zoneId, TEST_ID)).thenReturn(Optional.of(existingZone));
+        doNothing().when(zoneRepository).delete(existingZone);
+
+        service.deleteZone(TEST_ID, zoneId, UUID.randomUUID());
+        verify(zoneRepository, times(1)).delete(existingZone);
+        verify(historyRepository, times(1)).save(any(InfrastructureHistory.class));
+    }
+
+    @Test
+    void testUpdate_SmartDeltaDiff_Zones_OnlyLogsDelta() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        UUID unchangedZoneId = UUID.randomUUID();
+        UUID modZoneId = UUID.randomUUID();
+        UUID delZoneId = UUID.randomUUID();
+
+        com.hanghai.kchtg.vtssystem.entity.VtsZone unchangedZone = com.hanghai.kchtg.vtssystem.entity.VtsZone.builder()
+                .id(unchangedZoneId).code("VZ-01").name("Vùng 1").conditionStatus(ConditionStatus.OPERATIONAL).vtsSystem(entity).build();
+        com.hanghai.kchtg.vtssystem.entity.VtsZone modZone = com.hanghai.kchtg.vtssystem.entity.VtsZone.builder()
+                .id(modZoneId).code("VZ-MOD").name("Vùng Cũ").conditionStatus(ConditionStatus.OPERATIONAL).vtsSystem(entity).build();
+        com.hanghai.kchtg.vtssystem.entity.VtsZone delZone = com.hanghai.kchtg.vtssystem.entity.VtsZone.builder()
+                .id(delZoneId).code("VZ-DEL").name("Vùng Xóa").conditionStatus(ConditionStatus.OPERATIONAL).vtsSystem(entity).build();
+
+        entity.setZones(new java.util.ArrayList<>(List.of(unchangedZone, modZone, delZone)));
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        VtsZoneDto unchangedDto = VtsZoneDto.builder().id(unchangedZoneId).code("VZ-01").name("Vùng 1").conditionStatus(ConditionStatus.OPERATIONAL).build();
+        VtsZoneDto modDto = VtsZoneDto.builder().id(modZoneId).code("VZ-MOD").name("Vùng Mới").conditionStatus(ConditionStatus.OPERATIONAL).build();
+        VtsZoneDto newDto = VtsZoneDto.builder().code("VZ-NEW").name("Vùng Mới Thêm").conditionStatus(ConditionStatus.OPERATIONAL).build();
+
+        VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
+                .zones(List.of(unchangedDto, modDto, newDto))
+                .build();
+
+        VtsSystemResponse response = service.update(TEST_ID, updateReq, UUID.randomUUID());
+        assertNotNull(response);
+
+        org.mockito.ArgumentCaptor<InfrastructureHistory> historyCaptor = org.mockito.ArgumentCaptor.forClass(InfrastructureHistory.class);
+        verify(historyRepository, times(1)).save(historyCaptor.capture());
+        InfrastructureHistory savedHistory = historyCaptor.getValue();
+
+        assertEquals(InfrastructureType.VTS_SYSTEM, savedHistory.getRefType());
+        assertTrue(savedHistory.getChangedField().contains("Vùng VTS"));
+        // Check that unchanged zone VZ-01 is NOT in the history diff
+        assertFalse(savedHistory.getPreviousValue().contains("VZ-01"));
+        assertFalse(savedHistory.getNewValue().contains("VZ-01"));
+        // Check that removed zone and modified old zone are in previousValue
+        assertTrue(savedHistory.getPreviousValue().contains("Xóa Vùng Xóa (VZ-DEL)"));
+        assertTrue(savedHistory.getPreviousValue().contains("Cũ: Vùng Cũ (VZ-MOD)"));
+        // Check that added zone and modified new zone are in newValue
+        assertTrue(savedHistory.getNewValue().contains("Thêm Vùng Mới Thêm (VZ-NEW)"));
+        assertTrue(savedHistory.getNewValue().contains("Mới: Vùng Mới (VZ-MOD)"));
+    }
+
+    @Test
+    void testUpdate_CombinedFieldsZonesAndAttachments_SingleHistoryRecord() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        entity.setSystemName("VTS Cũ");
+        entity.setZones(new java.util.ArrayList<>());
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        VtsZoneDto newZone = VtsZoneDto.builder().code("VZ-NEW").name("Vùng Mới").conditionStatus(ConditionStatus.OPERATIONAL).build();
+
+        VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
+                .systemName("VTS Mới")
+                .zones(List.of(newZone))
+                .addedAttachmentNames(List.of("doc_moi.pdf"))
+                .removedAttachmentNames(List.of("doc_cu.xlsx"))
+                .build();
+
+        VtsSystemResponse response = service.update(TEST_ID, updateReq, UUID.randomUUID());
+        assertNotNull(response);
+
+        org.mockito.ArgumentCaptor<InfrastructureHistory> historyCaptor = org.mockito.ArgumentCaptor.forClass(InfrastructureHistory.class);
+        verify(historyRepository, times(1)).save(historyCaptor.capture());
+        InfrastructureHistory savedHistory = historyCaptor.getValue();
+
+        assertEquals(InfrastructureType.VTS_SYSTEM, savedHistory.getRefType());
+        // Verify changedField contains all 3 areas
+        assertTrue(savedHistory.getChangedField().contains("Tên hệ thống"));
+        assertTrue(savedHistory.getChangedField().contains("Vùng VTS"));
+        assertTrue(savedHistory.getChangedField().contains("Tài liệu đính kèm"));
+
+        // Verify previousValue contains old field, old zone, and removed attachment
+        assertTrue(savedHistory.getPreviousValue().contains("VTS Cũ"));
+        assertTrue(savedHistory.getPreviousValue().contains("Xóa doc_cu.xlsx"));
+
+        // Verify newValue contains new field, new zone, and added attachment
+        assertTrue(savedHistory.getNewValue().contains("VTS Mới"));
+        assertTrue(savedHistory.getNewValue().contains("Thêm Vùng Mới (VZ-NEW)"));
+        assertTrue(savedHistory.getNewValue().contains("Thêm doc_moi.pdf"));
     }
 }

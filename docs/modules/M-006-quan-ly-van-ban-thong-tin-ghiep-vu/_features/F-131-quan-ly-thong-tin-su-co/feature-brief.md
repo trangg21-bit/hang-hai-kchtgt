@@ -5,83 +5,122 @@ slug: quan-ly-thong-tin-su-co
 module-id: M-006
 status: proposed
 classification: local
-priority: high
-created: 2026-06-16T04:41:29Z
-last-updated: 2026-07-21T08:29:20Z
+priority: medium
+created: 2026-09-02
+last-updated: 2026-09-02
 locked-fields: []
 consumed_by_modules: []
-source-paths:
-  - src/main/java/com/hanghai/kchtg/vanban/entity/SuCo.java
-  - src/main/java/com/hanghai/kchtg/vanban/controller/SuCoController.java
-  - src/main/java/com/hanghai/kchtg/vanban/service/SuCoService.java
-  - src/main/java/com/hanghai/kchtg/vanban/repository/SuCoRepository.java
-  - src/main/java/com/hanghai/kchtg/vanban/dto/SuCoResponse.java
-  - src/main/java/com/hanghai/kchtg/vanban/dto/SuCoCreateRequest.java
-  - src/test/java/com/hanghai/kchtg/vanban/SuCoControllerTest.java
 ---
-# Feature: Quản lý thông tin sự cố
 
-## Description
+# Đặc tả nghiệp vụ: Quản lý thông tin sự cố
 
-Hệ thống quản lý thông tin sự cố kết cấu hạ tầng cảng biển (KCHT), bao gồm việc tiếp nhận, phân loại, theo dõi xử lý và báo cáo các sự cố liên quan đến cầu cảng, thiết bị xếp dỡ, hệ thống an toàn và các hạng mục hạ tầng cảng, cùng việc lưu trữ biên bản sự cố và hồ sơ xử lý sự cố đầy đủ, hệ thống.
+**Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu này)
+**Chức năng:** F-131
+**Module:** M-006 — Quản lý văn bản & thông tin nghiệp vụ
+**Loại:** chức năng thường (không có bước phê duyệt)
+**Tham chiếu:** tài liệu nền chung của module (chưa có `ba/01-base-pattern.md` cho M-006) + TKCT + nguồn sự thật Excel `HH_Tính năng & danh sách các trường thông tin_2.9.xlsx` sheet `30->43` cụm #37 "Thông tin sự cố".
 
-## Business Intent
+> **⚠️ Data Scope:** Trường "Đơn vị quản lý" (`orgUnitId`, `SelectOrgCode`) là trường đơn vị phân quyền dữ liệu — xem mục 5 dòng 3 và AGENTS.md mục Data Scope Convention.
 
-Nâng cao năng lực ứng phó và xử lý sự cố tại cảng biển bằng cách số hóa toàn bộ quy trình tiếp nhận, phân tích và xử lý sự cố, giúp nhà quản lý có cái nhìn tổng quan về tình trạng an toàn KCHT, rút ngắn thời gian phản ứng sự cố và phục vụ công tác phòng ngừa, phân tích nguyên nhân để tránh tái diễn trong tương lai.
+---
 
-## Flow Summary
+## 1. Mô tả ngắn
 
-Người phát hiện sự cố đăng nhập hệ thống, khai báo sự cố mới với đầy đủ thông tin (thời gian phát hiện, vị trí, mức độ nghiêm trọng, mô tả sơ bộ, hình ảnh đính kèm). Hệ thống tự động phân loại mức độ sự cố (nhẹ, trung bình, nghiêm trọng, cực nghiêm trọng) và gửi thông báo khẩn cấp đến người phụ trách tương ứng. Đội xử lý sự cố cập nhật tiến độ xử lý, biện pháp khắc phục và kết quả cuối cùng. Hệ thống tự động sinh biên bản sự cố và báo cáo phân tích nguyên nhân gốc rễ, lưu trữ toàn bộ hồ sơ để tra cứu và học kinh nghiệm.
+Chức năng ghi nhận và theo dõi thông tin sự cố KCHT: ghi nhận sự cố (loại, thời gian, địa điểm, KCHT bị ảnh hưởng, thiệt hại), cập nhật diễn biến sự cố, đính kèm tệp; khi sự cố chuyển sang trạng thái xử lý thì ghi nhận thông tin chỉ đạo/xử lý sự cố và tệp kết quả. Người dùng: cán bộ đơn vị quản lý KCHT (ghi nhận/xử lý), lãnh đạo/cục tra cứu.
 
-## Acceptance Criteria
+## 2. Trường dữ liệu
 
-- Người dùng có thể khai báo sự cố mới với đầy đủ thông tin (thời gian, vị trí, mức độ, mô tả, hình ảnh đính kèm)
-- Hệ thống tự động phân loại mức độ sự cố và gửi thông báo đến người phụ trách tương ứng
-- Đội xử lý sự cố có thể cập nhật tiến độ xử lý và biện pháp khắc phục theo thời gian thực
-- Hệ thống tự động sinh biên bản sự cố và báo cáo phân tích sau khi sự cố được xử lý xong
-- Chỉ Admin mới được phép đóng sự cố hoặc xóa hồ sơ sự cố
+Nguồn: ma trận Excel cụm #37 (24 trường). Cờ: ✓ = có, — = không. Cột **Bắt buộc** không có trong Excel → **không xác định ở cấp Excel**.
 
-## In Scope
+| # | Nhóm (TAB) | Trường | Loại điều khiển | DS | Lọc | Xem | Tạo | Sửa |
+|---|---|---|---|---|---|---|---|---|
+| 1 | Thông tin sự cố | Đơn vị quản lý | SelectOrgCode | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 2 | Thông tin sự cố | Loại sự cố | Select | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 3 | Thông tin sự cố | Mã sự cố | Input Text (disabled, tự sinh) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 4 | Thông tin sự cố | Thời gian xảy ra sự cố | RangePicker | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 5 | Thông tin sự cố | Địa điểm xảy ra sự cố | InputTextArea | ✓ | — | ✓ | ✓ | — |
+| 6 | Thông tin sự cố | Loại kết cấu hạ tầng xảy ra sự cố | Select | — | — | ✓ | ✓ | — |
+| 7 | Thông tin sự cố | Mã kết cấu hạ tầng xảy ra sự cố | Select | — | — | ✓ | ✓ | ✓ |
+| 8 | Thông tin sự cố | Tên kết cấu hạ tầng xảy ra sự cố | Input Text (disabled) | — | — | ✓ | ✓ | ✓ |
+| 9 | Thông tin sự cố | Nội dung sự cố | InputTextArea | ✓ | — | ✓ | ✓ | ✓ |
+| 10 | Thông tin sự cố | Tình trạng thiệt hại | InputTextArea | — | — | ✓ | ✓ | ✓ |
+| 11 | Thông tin sự cố | Trạng thái sự cố | Select | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 12 | Thông tin sự cố | Ghi chú | InputTextArea | — | — | ✓ | ✓ | ✓ |
+| 13 | Diễn biến sự cố | Thời gian (Từ ngày - đến ngày) | RangePicker (trong bảng) | — | — | ✓ | ✓ | ✓ |
+| 14 | Diễn biến sự cố | Sự kiện | InputTextArea (trong bảng) | — | — | ✓ | ✓ | ✓ |
+| 15 | File thông tin sự cố | Tên file | Upload/Attachment | — | — | ✓ | ✓ | ✓ |
+| 16 | Chỉ đạo xử lý sự cố (hiện khi trạng thái = Đã xử lý đang theo dõi / Không thể xử lý / Đã đóng) | Cán bộ chỉ đạo xử lý sự cố | Select (trong bảng) | — | — | ✓ | — | ✓ |
+| 17 | Chỉ đạo xử lý sự cố (hiện khi trạng thái = Đã xử lý đang theo dõi / Không thể xử lý / Đã đóng) | Nội dung chỉ đạo xử lý sự cố | InputTextArea (trong bảng) | — | — | ✓ | — | ✓ |
+| 18 | Chỉ đạo xử lý sự cố (hiện khi trạng thái = Đã xử lý đang theo dõi / Không thể xử lý / Đã đóng) | Ngày chỉ đạo xử lý sự cố | DatePicker (trong bảng) | — | — | ✓ | — | ✓ |
+| 19 | Chỉ đạo xử lý sự cố (hiện khi trạng thái = Đã xử lý đang theo dõi / Không thể xử lý / Đã đóng) | Biện pháp xử lý sự cố | InputTextArea (trong bảng) | — | — | ✓ | — | ✓ |
+| 20 | Chỉ đạo xử lý sự cố (hiện khi trạng thái = Đã xử lý đang theo dõi / Không thể xử lý / Đã đóng) | Kết quả xử lý sự cố | InputTextArea (trong bảng) | — | — | ✓ | — | ✓ |
+| 21 | Chỉ đạo xử lý sự cố (hiện khi trạng thái = Đã xử lý đang theo dõi / Không thể xử lý / Đã đóng) | Ghi chú (xử lý) | InputTextArea (trong bảng) | — | — | ✓ | — | ✓ |
+| 22 | File kết quả xử lý sự cố | Tên file | Upload/Attachment | — | — | ✓ | — | ✓ |
+| 23 | Trạng thái | Cán bộ cập nhật | Text (hiển thị, không nhập) | ✓ | — | ✓ | — | ✓ |
+| 24 | Trạng thái | Ngày cập nhật | DatePicker (hiển thị, không nhập) | ✓ | — | ✓ | — | — |
 
-- Khai báo và quản lý sự cố liên quan đến KCHT
-- Tự động phân loại mức độ và gửi thông báo khẩn cấp
-- Theo dõi tiến độ xử lý sự cố theo thời gian thực
-- Sinh biên bản sự cố và báo cáo phân tích nguyên nhân gốc rễ
-- Lưu trữ hồ sơ xử lý sự cố để tra cứu và học kinh nghiệm
+## 3. Trạng thái và phê duyệt
 
-## Out of Scope
+- Excel cụm #37 **không khai báo luồng phê duyệt**. Trạng thái nghiệp vụ ở trường "Trạng thái sự cố" (số 11); TAB "Chỉ đạo xử lý sự cố" chỉ hiển thị khi trạng thái = **Đã xử lý đang theo dõi / Không thể xử lý / Đã đóng**.
+- Trạng thái lưu dạng số; bộ giá trị (gồm cả "Đã xử lý đang theo dõi", "Không thể xử lý", "Đã đóng") chưa được liệt kê đầy đủ trong Excel → **SA chốt**.
+- **Không có bước phê duyệt** (chỉ đạo xử lý nội bộ, không phát sinh approval log).
 
-- Tích hợp với hệ thống báo động cháy và an ninh tại cảng
-- Quản lý bảo hiểm bồi thường cho các sự cố
-- Tự động cảnh báo thời tiết nguy hiểm ảnh hưởng đến cảng
-- Quản lý trách nhiệm pháp lý và tranh chấp sau sự cố
+## 4. Quy tắc và phân quyền riêng
 
-## Roles + Permissions
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
 
-| Role | Permissions |
-|------|-------------|
-| User | Xem danh sách sự cố, Xem chi tiết sự cố đã đóng |
-| Reporter | Khai báo sự cố mới, Đính kèm hình ảnh, Tài liệu |
-| Handler | Cập nhật tiến độ xử lý, Ghi nhận biện pháp khắc phục |
-| Admin | Đóng sự cố, Xóa, Vô hiệu hóa hồ sơ, Quản lý phân quyền |
+| ID | Quy tắc | Áp dụng |
+|---|---|---|
+| BR-131-01 | Mã sự cố tự sinh, không cho nhập tay. | Create |
+| BR-131-02 | TAB "Chỉ đạo xử lý sự cố" chỉ hiển thị khi trạng thái ∈ {Đã xử lý đang theo dõi, Không thể xử lý, Đã đóng}. | Update |
+| BR-131-03 | "Đơn vị quản lý" là trường đơn vị phân quyền dữ liệu; khi tạo phải gán đơn vị trong phạm vi người dùng. | Create / Update |
+| BR-131-04 | Tên KCHT xảy ra sự cố tự điền từ mã KCHT (disabled). | Create / Update |
+| BR-131-05 | Cán bộ cập nhật / Ngày cập nhật do hệ thống tự điền. | Create / Update |
 
-## Entities
+### 4.4. Phân quyền riêng
 
-- **SuCo**: id, thoiGianPhatHien, viTri, mucDoNghiemTrong, moTa, tinhTrangXuLy, nguoiBaoCao, ngayTao, nguoiSuaDoi, ngaySuaDoi
-- **BienBanSuCo**: id, suCoId, moTaChiTiet, bienPhapKacPhuc, thoiGianXuLyKetThuc, nguoiLapBienBan, ngayLap, taiLieuDinhKem
-- **TienDoXuLy**: id, suCoId, thoiGianCapNhat, moTaTienDo, nguoiCapNhat
+| Thao tác | Quyền (`<resource>:<action>`) |
+|---|---|
+| Xem danh sách / chi tiết | `incident:read` |
+| Tạo mới | `incident:create` |
+| Sửa | `incident:update` |
+| Xóa | `incident:delete` |
 
-## Business Rules
+**Admin Cục:** full quyền + xem metadata người tạo/người sửa/thời gian.
 
-1. Sự cố phải có mức độ nghiêm trọng hợp lệ (nhẹ, trung bình, nghiêm trọng, cực nghiêm trọng)
-2. Thông báo khẩn cấp tự động gửi đến người phụ trách khi mức độ là "nghiêm trọng" hoặc "cực nghiêm trọng"
-3. Trạng thái sự cố phải được cập nhật theo trình tự: Tiếp nhận → Đang xử lý → Đã xử lý → Đã đóng
-4. Biên bản sự cố chỉ được lập khi sự cố ở trạng thái "Đã xử lý" hoặc "Đã đóng"
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
 
-## Testing Strategy
+| # | Điểm cần khai báo | Khai báo của chức năng này |
+|---|---|---|
+| 1 | Trạng thái riêng | Có — "Trạng thái sự cố" (bộ giá trị chưa khai báo đầy đủ, SA chốt) |
+| 2 | Có bước phê duyệt không | Không — Excel không khai báo luồng duyệt |
+| 3 | Lọc cha-con / theo đơn vị | Theo đơn vị — trường `orgUnitId` (Đơn vị quản lý) |
+| 4 | Trường chỉ hiện trong điều kiện nào | Có — TAB "Chỉ đạo xử lý sự cố" hiện khi trạng thái ∈ {Đã xử lý đang theo dõi, Không thể xử lý, Đã đóng} |
+| 5 | Quyền riêng | `incident:read/create/update/delete` |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
+| 7 | Tải lên tệp | Có — Upload/Attachment (file thông tin sự cố + file kết quả xử lý) |
+| 8 | Giao diện khác mẫu chung | Không — theo list-screen + form/drawer convention |
 
-- Test đơn vị hàm khai báo sự cố và tự động phân loại mức độ
-- Test tích hợp luồng khai báo → phân loại → thông báo → xử lý → sinh biên bản
-- Test thông báo khẩn cấp với các mức độ sự cố khác nhau
-- Test sinh biên bản sự cố với dữ liệu xử lý mẫu
-- Test phân quyền: Reporter không được phép đóng sự cố, Admin mới có quyền xóa
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+| Method | Đường dẫn | Mô tả | Quyền |
+|---|---|---|---|
+| GET | `/api/incidents` | Danh sách sự cố (lọc theo đơn vị, loại, trạng thái) | `incident:read` |
+| GET | `/api/incidents/{id}` | Chi tiết sự cố | `incident:read` |
+| POST | `/api/incidents` | Ghi nhận sự cố mới | `incident:create` |
+| PUT | `/api/incidents/{id}` | Cập nhật diễn biến / chỉ đạo xử lý | `incident:update` |
+| DELETE | `/api/incidents/{id}` | Xóa mềm | `incident:delete` |
+
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+Quy ước: 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường cần loại bỏ.
+
+**Bảng `incident` (thông tin sự cố):** 🔴 `org_unit_id` (Đơn vị quản lý), 🔴 `incident_type` (Loại sự cố), 🔴 `code` (Mã sự cố — tự sinh), 🔴 `occurred_from` / 🔴 `occurred_to` (Thời gian xảy ra), 🔴 `location` (Địa điểm xảy ra), 🔴 `infrastructure_type` (Loại KCHT xảy ra sự cố), 🔴 `infrastructure_id` (Mã KCHT), 🔴 `infrastructure_name` (Tên KCHT), 🔴 `content` (Nội dung sự cố), 🔴 `damage_status` (Tình trạng thiệt hại), 🔴 `status` (Trạng thái sự cố), 🔴 `note` (Ghi chú), 🔴 `updated_by`, 🔴 `updated_at`.
+
+**Bảng con `incident_evolution` (diễn biến sự cố):** 🔴 `incident_id`, 🔴 `from_date`, 🔴 `to_date`, 🔴 `event`.
+
+**Bảng con `incident_handling` (chỉ đạo/xử lý — hiện theo trạng thái):** 🔴 `incident_id`, 🔴 `handler` (Cán bộ chỉ đạo), 🔴 `directive_content` (Nội dung chỉ đạo), 🔴 `directive_date` (Ngày chỉ đạo), 🔴 `measure` (Biện pháp xử lý), 🔴 `result` (Kết quả xử lý), 🔴 `note` (Ghi chú xử lý).
+
+**Bảng con `incident_file` (tệp):** 🔴 `incident_id`, 🔴 `file_name`.
+
+> Ghi chú: brief cũ (F-131 legacy) chưa có §2/§7 — SA đối chiếu tên bảng/entity với schema hiện có; các trường 🔴 là đề xuất từ ma trận Excel.

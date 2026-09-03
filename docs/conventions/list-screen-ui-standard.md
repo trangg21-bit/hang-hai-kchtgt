@@ -122,6 +122,15 @@ Nguồn gốc duy nhất của các trường dữ liệu trên Bảng danh sác
 - **Cột Văn bản / Tên / Mã / Địa điểm / Đơn vị / Cán bộ cập nhật / Tình trạng / Trạng thái**: Mặc định **căn trái (`align: 'left'`)** để Badge và tiêu đề thẳng hàng đồng bộ với các cột nội dung.
 - **Cột Số liệu / Chiều dài / Diện tích / Tải trọng / Công suất**: Căn phải (`align: 'right'`), có định dạng phân cách hàng nghìn (`#,###.##`).
 
+### Quy chuẩn Tỷ lệ Cột cho Bảng con trong Drawer (Drawer Child Table Layout):
+Chi tiết tài liệu đặc tả tại [`docs/conventions/drawer-table-layout-standard.md`](docs/conventions/drawer-table-layout-standard.md):
+- **Bố cục 3 cột dữ liệu (STT + Mã + Tên + Tình trạng/Trạng thái)**:
+  - `STT`: `60px` (`align: 'center'`).
+  - `Mã`: `200px` (~`22%`).
+  - `Tên`: **`440px` (chiếm tỷ trọng chính ~`50%`)** để văn bản không bị ép nhỏ.
+  - `Tình trạng / Trạng thái`: `180px` (~`20%`).
+  - `Thao tác` (nếu có): `60px` (`align: 'center'`).
+
 ## Kết cấu chuẩn
 
 ```text

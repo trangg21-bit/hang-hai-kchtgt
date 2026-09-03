@@ -64,6 +64,8 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             "/api/v1/integration/share/",
             "/api/org-units/options",
             "/api/v1/org-units/options",
+            "/api/symbols/options",
+            "/api/v1/symbols/options",
             "/api/common/options/",
             "/api/field-visibility",
             // TAM THOI: Anchorage (Khu neo đậu) bo qua kiem tra permission
@@ -143,6 +145,9 @@ public class PermissionMiddleware extends OncePerRequestFilter {
 
     private boolean shouldSkip(String path, String method) {
         if (HttpMethod.OPTIONS.name().equalsIgnoreCase(method)) {
+            return true;
+        }
+        if (path.endsWith("/options") || path.endsWith("/options/") || path.contains("/options")) {
             return true;
         }
         if (HttpMethod.GET.name().equalsIgnoreCase(method) && SKIP_PERMISSION_ORG_UNIT_PATHS.contains(path)) {

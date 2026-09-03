@@ -81,6 +81,7 @@ export interface CoastalStationInmarsatRequest {
   displayRule?: string;
   latitude?: number;
   longitude?: number;
+  coordinates?: string;
 }
 
 export interface CoastalStationInmarsatUpdateRequest extends CoastalStationInmarsatRequest {}
@@ -115,22 +116,34 @@ export interface CoastalStationInmarsatResponse {
   contactPhone?: string;
   spatialId?: string;
   objectType?: string;
+  geometryType?: string;
   symbol?: string;
+  symbolId?: string;
   coordinateSystem?: string;
   displayRule?: string;
   latitude?: number;
   longitude?: number;
+  coordinates?: string;
   approvalStatus?: string;
   approvalLevel?: string;
   submittedAt?: string;
+  submittedDate?: string;
   submittedBy?: string;
   submittedByName?: string;
   approverLevel1?: string;
   approverNameLevel1?: string;
+  approverLevel1Name?: string;
   approvedDateLevel1?: string;
+  approvalContentLevel1?: string;
+  approvalReasonLevel1?: string;
+  rejectionReasonLevel1?: string;
   approverLevel2?: string;
   approverNameLevel2?: string;
+  approverLevel2Name?: string;
   approvedDateLevel2?: string;
+  approvalContentLevel2?: string;
+  approvalReasonLevel2?: string;
+  rejectionReasonLevel2?: string;
   approvedBy?: string;
   approvedByName?: string;
   approvedDate?: string;

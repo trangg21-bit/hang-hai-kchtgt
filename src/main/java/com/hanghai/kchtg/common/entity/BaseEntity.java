@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.common.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -17,17 +18,12 @@ import java.util.UUID;
 
 /**
  * Abstract base entity providing common audit fields for all JPA entities.
- * <p>
- * Uses {@code @EnableJpaAuditing} (already configured on
- * {@link com.hanghai.kchtg.KchtgApplication}) to automatically populate
- * {@code createdAt} and {@code updatedAt} via the
- * {@link AuditingEntityListener}.
- * </p>
  */
 @Getter
 @Setter
 @SuperBuilder
 @NoArgsConstructor
+@AllArgsConstructor
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
 @SQLRestriction("deleted_at IS NULL")
@@ -65,11 +61,6 @@ public abstract class BaseEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    public UUID getId() { return id; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public LocalDateTime getDeletedAt() { return deletedAt; }
-
     /**
      * User ID who soft-deleted the entity (null = not deleted).
      */
@@ -93,12 +84,20 @@ public abstract class BaseEntity {
     @Column(name = "updated_by")
     private UUID updatedBy;
 
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public LocalDateTime getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
+    public UUID getDeletedBy() { return deletedBy; }
+    public void setDeletedBy(UUID deletedBy) { this.deletedBy = deletedBy; }
     public UUID getCreatedBy() { return createdBy; }
     public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
     public UUID getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(UUID updatedBy) { this.updatedBy = updatedBy; }
-
-
 
     /**
      * Mark this entity as soft-deleted, recording who performed the deletion.

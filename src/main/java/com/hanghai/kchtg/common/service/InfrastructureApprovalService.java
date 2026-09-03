@@ -100,10 +100,8 @@ public class InfrastructureApprovalService {
         entity.setApproverLevel2(null);
         entity.setApprovedDateLevel2(null);
 
-        // Ghi lịch sử phê duyệt
-        recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_0,
-                InfrastructureHistoryStatus.PROPOSED, userId, content,
-                "Trạng thái phê duyệt", currentStatus.getLabel(), nextStatus.getLabel());
+        // Lịch sử chỉ ghi khi bản ghi được phê duyệt cấp cuối cùng (APPROVED)
+        // — không ghi ở bước submit.
     }
 
     /**
@@ -117,11 +115,11 @@ public class InfrastructureApprovalService {
 
         ApprovalStatus currentStatus = entity.getApprovalStatus();
         if (currentStatus != ApprovalStatus.PENDING_APPROVAL && currentStatus != ApprovalStatus.PROPOSED) {
-            throw new IllegalStateException("Chỉ có thể phê duyệt C1 từ trạng thái Chờ Cảng vụ / Chi cục duyệt (PENDING_APPROVAL)");
+            throw new IllegalStateException("Chỉ có thể phê duyệt cấp Cảng vụ từ trạng thái 'Chờ Cảng vụ duyệt'");
         }
 
-        // Quy tắc chống tự duyệt (BR-015): Người tạo hồ sơ không được tự phê duyệt
-        if (entity.getCreatedBy() != null && entity.getCreatedBy().equals(userId)) {
+        // Quy tắc chống tự duyệt (BR-015): Đối với tài khoản cấp dưới, người tạo không được tự phê duyệt
+        if (!isDepartmentLevelUser(userId) && entity.getCreatedBy() != null && entity.getCreatedBy().equals(userId)) {
             throw new IllegalStateException("Bạn không thể tự phê duyệt bản ghi do chính mình tạo hoặc đề xuất");
         }
 
@@ -136,10 +134,7 @@ public class InfrastructureApprovalService {
             entity.setApprovedDateLevel1(null);
             // #54 — nội dung trả về vẫn được ghi
             entity.setLevel1ApprovalContent(reason.trim());
-
-            recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_1,
-                    InfrastructureHistoryStatus.REJECTED, userId, reason.trim(),
-                    "Trạng thái phê duyệt", currentStatus.getLabel(), ApprovalStatus.REJECTED_LEVEL1.getLabel());
+            // Lịch sử chỉ ghi khi phê duyệt cấp cuối — không ghi reject L1.
         } else if (isApproveDecision(decision)) {
             // Đồng ý vòng 1 (T06) -> Chuyển sang Chờ Cục duyệt (APPROVED_LEVEL1)
             entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
@@ -148,12 +143,9 @@ public class InfrastructureApprovalService {
             entity.setApprovedDateLevel1(LocalDateTime.now());
             // #54 — nội dung phê duyệt
             entity.setLevel1ApprovalContent(reason);
-
-            recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_1,
-                    InfrastructureHistoryStatus.APPROVED, userId, reason,
-                    "Trạng thái phê duyệt", currentStatus.getLabel(), ApprovalStatus.APPROVED_LEVEL1.getLabel());
+            // Lịch sử chỉ ghi khi phê duyệt cấp cuối — không ghi approve L1.
         } else {
-            throw new IllegalArgumentException("Quyết định phê duyệt C1 không hợp lệ: " + decision);
+            throw new IllegalArgumentException("Quyết định phê duyệt cấp Chi cục không hợp lệ");
         }
     }
 
@@ -170,17 +162,17 @@ public class InfrastructureApprovalService {
         ApprovalStatus currentStatus = entity.getApprovalStatus();
         if (currentStatus != ApprovalStatus.APPROVED_LEVEL1
                 && !(currentStatus == ApprovalStatus.PENDING_APPROVAL && entity.getApproverLevel1() != null)) {
-            throw new IllegalStateException("Chỉ có thể phê duyệt C2 từ trạng thái Chờ Cục duyệt (APPROVED_LEVEL1)");
+            throw new IllegalStateException("Chỉ có thể phê duyệt cấp Cục từ trạng thái 'Chờ Cục duyệt'");
         }
 
         // Quy tắc: Người duyệt C2 không được trùng người duyệt C1
         UUID c1Approver = entity.getApproverLevel1();
         if (c1Approver != null && c1Approver.equals(userId)) {
-            throw new IllegalStateException("Người phê duyệt cấp Cục không được trùng với người phê duyệt cấp Cảng vụ / Chi cục");
+            throw new IllegalStateException("Người phê duyệt cấp Cục không được trùng với người phê duyệt cấp Chi cục");
         }
 
-        // Quy tắc chống tự duyệt: Người tạo hồ sơ không được tự duyệt
-        if (entity.getCreatedBy() != null && entity.getCreatedBy().equals(userId)) {
+        // Quy tắc chống tự duyệt: Đối với tài khoản cấp dưới, người tạo không được tự phê duyệt
+        if (!isDepartmentLevelUser(userId) && entity.getCreatedBy() != null && entity.getCreatedBy().equals(userId)) {
             throw new IllegalStateException("Người tạo hồ sơ không được tự phê duyệt bản ghi");
         }
 
@@ -195,10 +187,7 @@ public class InfrastructureApprovalService {
             entity.setApprovedDateLevel2(null);
             // #57 — nội dung trả về vẫn được ghi
             entity.setLevel2ApprovalContent(reason.trim());
-
-            recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_2,
-                    InfrastructureHistoryStatus.REJECTED, userId, reason.trim(),
-                    "Trạng thái phê duyệt", currentStatus.getLabel(), ApprovalStatus.REJECTED_LEVEL2.getLabel());
+            // Lịch sử chỉ ghi khi phê duyệt cấp cuối — không ghi reject L2.
         } else if (isApproveDecision(decision)) {
             // Đồng ý vòng 2 (T08) -> Đã duyệt (APPROVED)
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
@@ -207,12 +196,9 @@ public class InfrastructureApprovalService {
             entity.setApprovedDateLevel2(LocalDateTime.now());
             // #57 — nội dung phê duyệt
             entity.setLevel2ApprovalContent(reason);
-
-            recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_2,
-                    InfrastructureHistoryStatus.APPROVED, userId, reason,
-                    "Trạng thái phê duyệt", currentStatus.getLabel(), ApprovalStatus.APPROVED.getLabel());
+            // Lịch sử chỉ ghi khi CHỈNH SỬA dữ liệu trên bản ghi đã duyệt — không ghi khi chỉ bấm nút duyệt.
         } else {
-            throw new IllegalArgumentException("Quyết định phê duyệt C2 không hợp lệ: " + decision);
+            throw new IllegalArgumentException("Quyết định phê duyệt cấp Cục không hợp lệ");
         }
     }
 
@@ -270,6 +256,28 @@ public class InfrastructureApprovalService {
      *
      * @throws IllegalStateException nếu hồ sơ không ở trạng thái Lưu tạm
      */
+    /**
+     * approval-2-level-spec §3.6 (quy tắc 11): hồ sơ "Lưu tạm" chỉ do **người
+     * nhập** xóa. Trước đây chỉ kiểm tra trạng thái, nên bất kỳ ai có quyền
+     * {@code <resource>:delete} trong cùng phạm vi đơn vị đều xóa được bản nháp
+     * của đồng nghiệp.
+     *
+     * Nới hai trường hợp để không chặn nhầm: tài khoản cấp Cục (vai trò quản trị
+     * dữ liệu toàn quốc) và hồ sơ cũ không còn lưu người tạo.
+     */
+    public void assertDeletableBy(ApprovableEntity entity, UUID userId) {
+        if (entity == null || entity.getCreatedBy() == null) {
+            return;
+        }
+        if (userId != null && userId.equals(entity.getCreatedBy())) {
+            return;
+        }
+        if (isDepartmentLevelUser(userId)) {
+            return;
+        }
+        throw new IllegalStateException("Chỉ người nhập hồ sơ mới được xóa bản Lưu tạm này");
+    }
+
     public void assertDeletable(ApprovableEntity entity) {
         if (entity == null) {
             throw new IllegalArgumentException("Dữ liệu hồ sơ không được để trống");
@@ -306,13 +314,12 @@ public class InfrastructureApprovalService {
         }
 
         assertDeletable(entity);
+        assertDeletableBy(entity, userId);
         ApprovalStatus currentStatus = entity.getApprovalStatus();
 
         entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
 
-        recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_0,
-                InfrastructureHistoryStatus.DELETED, userId, null,
-                "Trạng thái phê duyệt", currentStatus.getLabel(), ApprovalStatus.ARCHIVED.getLabel());
+        // Lịch sử chỉ ghi khi phê duyệt cấp cuối — không ghi xóa nháp.
     }
 
     /**
@@ -347,25 +354,34 @@ public class InfrastructureApprovalService {
         entity.setApproverLevel2(userId);
         entity.setApprovedDateLevel2(LocalDateTime.now());
 
-        recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_2,
-                InfrastructureHistoryStatus.APPROVED, userId, "Tích hợp hệ thống ngoài lưu thẳng Đã duyệt",
-                "Trạng thái phê duyệt", currentStatus.getLabel(), ApprovalStatus.APPROVED.getLabel());
+        // Lịch sử chỉ ghi khi chỉnh sửa dữ liệu — không ghi khi chỉ chuyển trạng thái.
     }
 
     /**
-     * Kiểm tra người dùng có thuộc đơn vị cấp Cục hay không (Rule 14).
-     * Sử dụng enum OrgUnitRank.DEPARTMENT (hoặc level == 1).
+     * Kiểm tra người dùng có thuộc đơn vị cấp cao nhất (Cục / Root Department) hay không (Rule 14).
+     *
+     * <p>Xác định theo cấu trúc phân cấp tổ chức:
+     * - Đơn vị có cấp bậc DEPARTMENT (OrgUnitRank.DEPARTMENT)
+     * - HOẶC đơn vị có cấp độ 1 (level == 1)
+     * - HOẶC đơn vị gốc không có đơn vị cha (parentId == null)
+     * - Nếu tài khoản không gán đơn vị cụ thể (toàn quyền hệ thống), mặc định thuộc phạm vi cấp cao nhất.
+     * </p>
      */
     public boolean isDepartmentLevelUser(UUID userId) {
         if (userId == null) return false;
         try {
             User user = userRepository.findById(userId).orElse(null);
-            if (user == null || user.getOrgUnit() == null) {
+            if (user == null) {
                 return false;
             }
             OrgUnit orgUnit = user.getOrgUnit();
+            if (orgUnit == null) {
+                // Người dùng quản trị toàn quyền không giới hạn đơn vị con
+                return true;
+            }
             return orgUnit.getRank() == OrgUnitRank.DEPARTMENT
-                    || (orgUnit.getLevel() != null && orgUnit.getLevel() == 1);
+                    || (orgUnit.getLevel() != null && orgUnit.getLevel() == 1)
+                    || orgUnit.getParentId() == null;
         } catch (Exception e) {
             log.warn("Không thể xác định cấp đơn vị của người dùng {}: {}", userId, e.getMessage());
             return false;

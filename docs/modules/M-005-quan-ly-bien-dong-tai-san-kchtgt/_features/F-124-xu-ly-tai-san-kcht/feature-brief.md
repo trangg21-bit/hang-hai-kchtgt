@@ -14,55 +14,164 @@ source-paths:
   - src/main/java/com/hanghai/kchtg/assetmovement/controller/HoSoXuLyTaiSanController.java
   - src/main/java/com/hanghai/kchtg/assetmovement/service/HoSoXuLyTaiSanService.java
 ---
-# Feature: Xử lý tài sản KCHT
+# Đặc tả nghiệp vụ: Xử lý tài sản KCHT
 
-## Description
-Quản lý các nghiệp vụ xử lý tài sản kết cấu hạ tầng công nghệ giao thông (KCHTGT) sau khi giảm nguyên giá, bao gồm điều chuyển giữa các đơn vị, bàn giao cho bên nhận quản lý, thanh lý hoặc phá bỏ. Hệ thống hỗ trợ lập hồ sơ xử lý, kiểm tra điều kiện và thực hiện cập nhật trạng thái tài sản sau khi xử lý hoàn tất.
+**Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu `docs/feature-brief-template.md`)
+**Chức năng:** F-124 — Xử lý tài sản KCHT
+**Module:** M-005 — Quản lý biến động tài sản KCHTGT
+**Loại:** chức năng có bước phê duyệt (tối đa 2 cấp: Cảng vụ/Chi cục → Cục)
+**Tham chiếu:**
+- Nguồn sự thật (ma trận trường): Excel `HH_Tính năng & danh sách các trường thông tin_2.9.xlsx` — sheet `30->43`, cụm **#32 "QL Đề nghị xử lý tài sản KCHTGT HH"** (khối cột 103–110, 68 dòng × 128 cột). Trích xuất bằng openpyxl (như M-007 verify-report) vì bản markdown bị cắt dòng ở 2000 ký tự.
+- Tài liệu yêu cầu gốc (hh.csdl): URD v3.0 **III.7.51 Quản lý đề nghị xử lý tài sản KCHTGT hàng hải** (`docs/intel/temp_extract/20260616T031810-3cef57d6c3853955-ZOxvv1/URD_MTIS_VMD_v3.0_PHCV-00000000.txt`, ~dòng 65700 trở đi).
+- Tài liệu nền module M-005: `ba/00-lean-spec.md` (chưa có `ba/01-base-pattern.md` — phần CHUNG sẽ bổ sung khi module mở lại).
 
-## Business Intent
-Đảm bảo mọi nghiệp vụ xử lý tài sản sau giảm nguyên giá được thực hiện đúng quy trình, có đầy đủ hồ sơ pháp lý và được phê duyệt bởi người có thẩm quyền. Tránh tình trạng tài sản bị mất tích, sử dụng sai mục đích hoặc xử lý thiếu thủ tục, đồng thời duy trì tính minh bạch và trách nhiệm giải trình trong quản lý tài sản.
+> ⚠️ Các mục 6–7 là đề xuất của BA, SA chốt khi triển khai. Ô Excel không đối chiếu chắc tới từng ô → ghi rõ **UNRESOLVED**, không bịa.
 
-## Flow Summary
-Quy trình bắt đầu khi đơn vị quản lý cần xử lý tài sản sau khi đã có yêu cầu giảm nguyên giá được phê duyệt. Người dùng tạo hồ sơ xử lý tài sản, chọn loại xử lý (điều chuyển, bàn giao, thanh lý, phá bỏ) và nhập thông tin liên quan như bên nhận, lý do xử lý, giá trị thanh lý. Hệ thống kiểm tra điều kiện xử lý, tạo hồ sơ xử lý với đầy đủ chứng từ kèm theo, sau đó chuyển sang quy trình phê duyệt (F-127). Sau khi phê duyệt, hệ thống tự động cập nhật trạng thái tài sản, ghi nhận giá trị thanh lý nếu có, và hoàn tất xử lý.
+---
 
-## Acceptance Criteria
-1. Người dùng có thể tạo hồ sơ xử lý tài sản với đầy đủ thông tin bắt buộc (loại xử lý, bên nhận, lý do, chứng từ kèm theo).
-2. Hệ thống kiểm tra điều kiện xử lý: tài sản phải có trạng thái giảm nguyên giá được phê duyệt trước khi cho phép tạo hồ sơ xử lý.
-3. Hồ sơ xử lý được chuyển tự động sang quy trình phê duyệt F-127 sau khi hoàn thành đăng ký.
-4. Sau khi phê duyệt, hệ thống tự động cập nhật trạng thái tài sản và ghi nhận các nghiệp vụ liên quan.
+## 1. Mô tả ngắn
 
-## In Scope
-- Tạo hồ sơ xử lý tài sản (điều chuyển, bàn giao, thanh lý, phá bỏ)
-- Nhập thông tin bên nhận, lý do xử lý và giá trị thanh lý (nếu có)
-- Kiểm tra điều kiện xử lý tài sản tự động
-- Chuyển hồ sơ xử lý sang quy trình phê duyệt
-- Cập nhật trạng thái tài sản sau khi xử lý hoàn tất
+- Chức năng cho phép đơn vị quản lý lập **Đề nghị xử lý tài sản KCHTGT HH** khi tài sản cần xử lý (điều chuyển, bàn giao, thanh lý, phá bỏ…): chọn **Hình thức xử lý đề nghị**, kèm **Lý do đề nghị xử lý**, gắn một **Tài sản** cụ thể (thông tin tài sản hiển thị tự động từ hồ sơ tài sản) và **File đính kèm**.
+- Bản ghi có **Trạng thái** hiển thị dạng badge và đi qua **luồng phê duyệt tối đa 2 cấp (Cảng vụ/Chi cục → Cục)**; toàn bộ thông tin gửi duyệt/phê duyệt (ngày, cán bộ, nội dung) được lưu ngay trên bản ghi.
+- Người dùng: chuyên viên/lãnh đạo Cục, Phòng ban trực thuộc Cục, Cảng vụ/Chi cục (theo URD III.7.51.1); đơn vị quản lý theo phân quyền dữ liệu.
 
-## Out of Scope
-- Quy trình mua bán tài sản (thuộc module khác)
-- Tính toán hao mòn tài sản
-- Quản lý hồ sơ pháp lý ban đầu của tài sản
-- Tích hợp với hệ thống đấu thầu, mua sắm
+## 2. Trường dữ liệu
 
-## Roles + Permissions
-| Role | Permissions |
-|------|-------------|
-| Nhân viên quản lý tài sản | Tạo, Xem hồ sơ xử lý tài sản |
-| Kế toán | Xem, Xác nhận giá trị thanh lý |
-| Trưởng phòng | Xem, Sửa hồ sơ xử lý chưa phê duyệt |
-| Lãnh đạo | Xem, Phê duyệt hồ sơ xử lý tài sản |
-| Admin hệ thống | Quản lý danh mục loại xử lý, phân quyền |
+Cờ ma trận đọc trực tiếp từ Excel cụm #32 (không suy diễn): ✓ = true, — = false. Cột "Bắt buộc" lấy theo URD III.7.51.3 (M = bắt buộc; X = hiển thị/cho phép, không bắt buộc).
 
-## Entities
-- **TaiSanKCHT**: id, loaiTaiSan, viTri, giaTriBanDau, HaoMonLucKe, GiaTriConLai, trangThai, createdAt, updatedAt
-- **HoSoXuLyTaiSan**: id, taiSanId, loaiXuLy, benNhan, LyDoXuLy, GiaTriThanhLy, trangThai, createdAt, updatedAt
+| # | Trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
+|---|---|---|---|---|
+| — | *Thông tin chung* (section — Excel: DS —, Lọc —, Xem —, Tạo —, Sửa —) | — | — | — |
+| 1 | Đơn vị đề nghị | Có (M) | `SelectOrgCode` (cây đơn vị) | DS ✓, Lọc ✓, Xem ✓, Tạo ✓, Sửa ✓. `orgUnitId` — trường DataScope, bắt buộc |
+| 2 | Số đề nghị | Có (M) | `Input Text` (disabled khi sửa) | DS ✓, Lọc ✓, Xem ✓, Tạo ✓, Sửa ✓. `dossierNo` |
+| 3 | Ngày đề nghị | Có (M) | `DatePicker` | DS ✓, Lọc ✓, Xem ✓, Tạo ✓, Sửa ✓. `requestDate` |
+| 4 | Hình thức xử lý đề nghị | Có (M) | `Select` (danh mục: Điều chuyển / Bàn giao / Thanh lý / Phá bỏ…) | DS ✓, Lọc ✓, Xem ✓, Tạo ✓, Sửa ✓. `processingType` |
+| 5 | Lý do đề nghị xử lý | Có (M) | `InputTextArea` | DS —, Lọc —, Xem ✓, Tạo ✓, Sửa ✓. `processingReason` |
+| — | *Thông tin tài sản* (section — Excel: DS —, Lọc —, Xem ✓, Tạo ✓, Sửa ✓) | — | — | Chọn 1 tài sản → tự động hiển thị thông tin bên dưới (read-only, lấy từ hồ sơ tài sản) |
+| 6 | Loại tài sản | Có (M) | `Select` | DS ✓, Lọc ✓, Xem ✓, Tạo ✓, Sửa ✓. `assetTypeId` |
+| 7 | Tài sản | Có (M) | `Select` (chọn tài sản trong loại đã chọn) | DS ✓, Lọc ✓, Xem ✓, Tạo ✓, Sửa ✓. `assetId` |
+| 8 | Địa chỉ | Không (X) | `InputTextArea` (disabled) | DS —, Lọc —, Xem ✓, Tạo ✓, Sửa ✓. Hiển thị từ tài sản |
+| 9 | Năm đưa vào sử dụng | Không (X) | `DatePicker (chọn năm)` (disabled) | DS —, Lọc —, Xem ✓, Tạo ✓, Sửa ✓ |
+| 10 | Thông số cơ bản | Không (X) | `Input Text` (disabled) | DS —, Lọc —, Xem ✓, Tạo ✓, Sửa ✓ |
+| 11 | Diện tích (đất, sàn sử dụng: m2) | Không (X) | `Input Text` (disabled) | DS —, Lọc —, Xem ✓, Tạo ✓, Sửa ✓ |
+| 12 | Diện tích (sàn sử dụng: m2) | Không (X) | `Input Text` (disabled) | DS —, Lọc —, Xem ✓, Tạo ✓, Sửa ✓ |
+| 13 | Nguyên giá (VNĐ) | Không (X) | `InputMoney` (disabled) | DS —, Lọc —, Xem ✓, Tạo ✓, Sửa ✓. `originalValue` |
+| 14 | Giá trị còn lại (VNĐ) | Không (X) | `InputMoney` (disabled) | DS —, Lọc —, Xem ✓, Tạo ✓, Sửa ✓. `residualValue` |
+| 15 | Tình trạng tài sản | Không (X) | `Select` (disabled) | DS —, Lọc —, Xem ✓, Tạo ✓, Sửa ✓ |
+| — | *File đính kèm* (section — Excel: DS —, Lọc —, Xem ✓, Tạo ✓, Sửa ✓) | — | — | — |
+| 16 | File đính kèm | Không | `UploadFileTable` | DS —, Lọc —, Xem ✓, Tạo ✓, Sửa ✓. Bảng con file: STT + Tên file (URD III.7.51.3 #17–18) |
+| — | *Trạng thái* (section — Excel: DS —, Lọc —, Xem ✓, Tạo —, Sửa —) | — | — | Nhóm theo dõi/phê duyệt, hiển thị ở Danh sách/Xem chi tiết |
+| 17 | Trạng thái | Có (hệ thống) | `Select` hiển thị dạng **badge** (read-only) | DS ✓, Lọc ✓, Xem ✓, Tạo —, Sửa —. Giá trị xem §3 |
+| 18 | Cán bộ cập nhật | Có (hệ thống) | `Text` (hiển thị, không nhập) | DS ✓, Lọc —, Xem ✓, Tạo —, Sửa —. `updatedByName` |
+| 19 | Ngày cập nhật | Có (hệ thống) | `DatePicker` (hiển thị, không nhập) | DS ✓, Lọc ✓, Xem ✓, Tạo —, Sửa —. `updatedAt` |
+| 20 | Ngày gửi phê duyệt | Có (hệ thống) | `Text` (read-only) | DS ✓, Lọc —, Xem ✓, Tạo —, Sửa —. `submittedAt` |
+| 21 | Cán bộ gửi phê duyệt | Có (hệ thống) | `Text` (read-only) | DS ✓, Lọc —, Xem ✓, Tạo —, Sửa —. `submittedBy` |
+| 22 | Ngày phê duyệt cấp Cảng vụ/Chi cục | Có (hệ thống) | `Text` (read-only) | DS ✓, Lọc —, Xem ✓, Tạo —, Sửa —. `approvedL1At` |
+| 23 | Cán bộ phê duyệt cấp Cảng vụ/Chi cục | Có (hệ thống) | `Text` (read-only) | DS ✓, Lọc —, Xem ✓, Tạo —, Sửa —. `approvedL1By` |
+| 24 | Nội dung phê duyệt | Không (hệ thống) | `Text` (read-only) | DS —, Lọc —, Xem ✓, Tạo —, Sửa —. `approvedL1Note` |
+| 25 | Ngày phê duyệt cấp Cục | Có (hệ thống) | `Text` (read-only) | DS ✓, Lọc —, Xem ✓, Tạo —, Sửa —. `approvedL2At` |
+| 26 | Cán bộ phê duyệt cấp Cục | Có (hệ thống) | `Text` (read-only) | DS ✓, Lọc —, Xem ✓, Tạo —, Sửa —. `approvedL2By` |
+| 27 | Nội dung phê duyệt | Không (hệ thống) | `Text` (read-only) | DS —, Lọc —, Xem ✓, Tạo —, Sửa —. `approvedL2Note` |
 
-## Business Rules
-1. Tài sản chỉ được xử lý khi đã có yêu cầu giảm nguyên giá được phê duyệt.
-2. Loại xử lý phải được chọn từ danh mục đã được quy định (điều chuyển, bàn giao, thanh lý, phá bỏ).
-3. Giá trị thanh lý không được vượt quá giá trị còn lại của tài sản.
-4. Hồ sơ xử lý phải có đầy đủ chứng từ kèm theo (biên bản, quyết định, hợp đồng).
-5. Trạng thái tài sản chỉ được cập nhật sau khi hồ sơ xử lý được phê duyệt.
+> ⚠️ UNRESOLVED: `Đơn vị đề nghị` — URD ghi "X/M" (Thêm mới) và "X" (Cập nhật): hiểu là bắt buộc chọn và **không đổi khi sửa** (giống dòng 2 "disabled khi sửa"). Các trường 8–15 chỉ hiển thị sau khi chọn tài sản — BA/SA chốt khi scaffold.
 
-## Testing Strategy
-Kiểm thử từng loại xử lý (điều chuyển, bàn giao, thanh lý, phá bỏ) với dữ liệu mẫu khác nhau. Kiểm thử trường hợp biên: tài sản chưa được giảm nguyên giá nhưng cố gắng xử lý, hồ sơ thiếu chứng từ bắt buộc. Kiểm thử tích hợp luồng tạo hồ sơ xử lý, phê duyệt và cập nhật trạng thái tài sản tự động. Sử dụng dữ liệu thực tế để đối chiếu tính chính xác của giá trị thanh lý và trạng thái tài sản cuối cùng.
+## 3. Trạng thái và phê duyệt
+
+- Trạng thái lưu dạng **số nguyên (Enum ORDINAL)** theo convention dự án; hiển thị trên UI bằng **badge trạng thái** (viên thuốc, màu semantic — convention list-screen).
+- Đề xuất ánh xạ trạng thái chuẩn **M-1006 (7 trạng thái, theo `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`)** — SA chốt khi mở lại module:
+
+| Nhãn UI (đề xuất) | Trạng thái hệ thống | Ý nghĩa |
+|---|---|---|
+| Lưu tạm | `DRAFT` | Mới tạo, chưa gửi duyệt; sửa/xóa được |
+| Chờ Cảng vụ/Chi cục duyệt | `PENDING_L1` | Đã gửi phê duyệt cấp 1 (Excel: ghi Ngày/Cán bộ gửi phê duyệt) |
+| Chờ Cục duyệt | `PENDING_L2` | Cấp Cảng vụ/Chi cục đã duyệt, chờ Cục |
+| Bị Cảng vụ/Chi cục trả về | `REJECTED_L1` | Cấp 1 từ chối (kèm nội dung phê duyệt) → sửa/gửi lại |
+| Bị Cục trả về | `REJECTED_L2` | Cấp Cục từ chối (kèm nội dung phê duyệt) → sửa/gửi lại |
+| Đã duyệt | `APPROVED` | Cấp Cục duyệt → hoàn tất; khóa sửa thông tin chính |
+| Đã xóa (lịch sử) | `DELETED` | Xóa khi đang Lưu tạm; lưu đối chiếu |
+
+- **Luồng phê duyệt (theo cột phê duyệt trong Excel #32):** Lưu tạm → Gửi phê duyệt (ghi `Ngày gửi phê duyệt`/`Cán bộ gửi phê duyệt`) → Cấp Cảng vụ/Chi cục duyệt (ghi `Ngày/Cán bộ/Nội dung phê duyệt` cấp 1) → Cấp Cục duyệt (ghi `Ngày/Cán bộ/Nội dung phê duyệt` cấp 2) → Đã duyệt. Từ chối ở cấp nào phải nhập nội dung phê duyệt. Nguyên tắc **4-eyes**: người đề nghị không tự duyệt.
+- Mọi thay đổi trạng thái ghi vào lịch sử tập trung + thông tin kiểm toán đầy đủ (`operatorId`, `approvedBy`, thời gian).
+
+## 4. Quy tắc và phân quyền riêng
+
+> Chỉ ghi quy tắc RIÊNG của chức năng; phần CHUNG (DataScope, badge, cache tên đơn vị, đa ngôn ngữ) theo AGENTS.md và tài liệu nền module.
+
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
+
+| ID | Quy tắc | Áp dụng |
+|---|---|---|
+| BR-124-01 | Đề nghị xử lý phải xác định đúng 1 Tài sản (Loại tài sản + Tài sản bắt buộc khi tạo) | Create |
+| BR-124-02 | Hình thức xử lý đề nghị chọn từ danh mục (điều chuyển/bàn giao/thanh lý/phá bỏ…), không nhập tự do | Create |
+| BR-124-03 | Giá trị xử lý (nếu có) không vượt quá giá trị còn lại của tài sản | Create/Update |
+| BR-124-04 | Thông tin tài sản (8–15) hiển thị read-only từ hồ sơ tài sản tại thời điểm chọn — không nhập tay | Create |
+| BR-124-05 | Chỉ gửi phê duyệt khi trạng thái Lưu tạm (hoặc sau khi bị trả về đã sửa lại) và đủ trường bắt buộc | Submit |
+| BR-124-06 | Sau khi gửi duyệt: khóa sửa/xóa; chỉ còn theo dõi phê duyệt | Edit/Delete |
+| BR-124-07 | 4-eyes: người lập đề nghị không được tự phê duyệt bản ghi do mình tạo | Approve |
+| BR-124-08 | Từ chối ở bất kỳ cấp nào bắt buộc nhập nội dung phê duyệt (lưu + lịch sử) | Reject |
+| BR-124-09 | Mọi ô text nhập liệu phải `.trim()` trước khi gửi API; tên đơn vị luôn lấy từ cây đơn vị qua `OrgUnitCacheService` | All |
+| BR-124-10 | Mọi thay đổi ghi đủ kiểm toán (`operatorId`/`updatedBy`) và lịch sử tập trung | All |
+
+### 4.2. Acceptance Criteria kế thừa (nếu có)
+
+- **AC-124-01** — Tạo mới: chọn đủ Hình thức xử lý, Lý do, Loại tài sản + Tài sản → Lưu tạm/Đề nghị thành công; thiếu trường bắt buộc → chặn + báo lỗi tiếng Việt.
+- **AC-124-02** — Sau khi chọn Tài sản, các trường 8–15 tự điền read-only, không chỉnh được.
+- **AC-124-03** — Gửi duyệt ghi `Ngày/Cán bộ gửi phê duyệt`, badge chuyển "Chờ Cảng vụ/Chi cục duyệt".
+- **AC-124-04** — Phê duyệt 2 cấp ghi đủ Ngày/Cán bộ/Nội dung; từ chối phải có nội dung; bản ghi Đã duyệt khóa sửa.
+- **AC-124-05** — Danh sách đủ 4 trạng thái loading/error/empty/data; lọc theo DataScope + Trạng thái + khoảng ngày.
+
+### 4.3. User Stories kế thừa (nếu có)
+
+- **US-124-01:** Là chuyên viên đơn vị, tôi lập đề nghị xử lý tài sản kèm lý do/file để trình cấp trên duyệt.
+
+### 4.4. Phân quyền riêng
+
+| Thao tác | Quyền (`<resource>:<action>`) |
+|---|---|
+| Tạo/Sửa/Xóa đề nghị xử lý tài sản | `processingrecord:manage` (đề xuất; đúng theo PermissionSeeder + controller hiện có) |
+| Xem danh sách/chi tiết | xác thực (`isAuthenticated()` — controller hiện có) |
+| Gửi phê duyệt / Phê duyệt cấp Cảng vụ/Chi cục | đề xuất thêm `processingrecord:approve` (hoặc theo resource phê duyệt chung F-127 khi module mở lại) — **UNRESOLVED, SA chốt** |
+
+**Admin Cục:** không có đặc biệt ngoài mặc định tài liệu nền — full quyền + xem thêm metadata người tạo/người sửa/thời gian.
+
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
+
+| # | Điểm cần khai báo | Khai báo của chức năng này |
+|---|---|---|
+| 1 | Trạng thái riêng | Có — badge trạng thái kèm bộ trường theo dõi phê duyệt (18–27) hiển thị ở Danh sách/Xem chi tiết |
+| 2 | Có bước phê duyệt không | Có — tối đa 2 cấp: Cảng vụ/Chi cục → Cục (theo cột phê duyệt trong Excel #32) |
+| 3 | Lọc cha-con / theo đơn vị | Theo đơn vị — `Đơn vị đề nghị` = `orgUnitId` + DataScope |
+| 4 | Trường chỉ hiện trong điều kiện nào | Có — Thông tin tài sản (8–15) chỉ hiển thị sau khi chọn Tài sản; nhóm Trạng thái chỉ ở Danh sách/Xem chi tiết |
+| 5 | Quyền riêng | `processingrecord:manage` (+ `processingrecord:approve` đề xuất) |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
+| 7 | Tải lên tệp | Có — File đính kèm (UploadFileTable, bảng con file) |
+| 8 | Giao diện khác mẫu chung | Không |
+
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+> Code hiện có của M-005 (package `com.hanghai.kchtg.assetmovement`) đặt tên khác brief cũ (`AssetProcessingRecordController`, bảng `asset_processing_records`) — các đường dẫn dưới đây theo code hiện có, BA đề xuất; SA chốt khi module mở lại.
+
+| Method | Đường dẫn | Mô tả | Quyền |
+|---|---|---|---|
+| GET | `/api/v1/asset/asset-processing-records` | Danh sách đề nghị xử lý (phân trang + lọc DataScope/Trạng thái/ngày) | `isAuthenticated()` |
+| POST | `/api/v1/asset/asset-processing-records` | Tạo mới đề nghị xử lý (draft) | `processingrecord:manage` |
+| GET | `/api/v1/asset/asset-processing-records/{id}` | Chi tiết đề nghị (kèm thông tin tài sản + trạng thái/phê duyệt) | `isAuthenticated()` |
+| PUT | `/api/v1/asset/asset-processing-records/{id}` | Sửa (chỉ khi Lưu tạm) | `processingrecord:manage` |
+| DELETE | `/api/v1/asset/asset-processing-records/{id}` | Xóa (chỉ khi Lưu tạm) | `processingrecord:manage` |
+| POST | `/api/v1/asset/asset-processing-records/{id}/submit` | Gửi phê duyệt (ghi Ngày/Cán bộ gửi) | đề xuất `processingrecord:approve` (UNRESOLVED) |
+| POST | `/api/v1/asset/asset-processing-records/{id}/approve` | Phê duyệt cấp theo user (L1/L2) / từ chối kèm nội dung | đề xuất `processingrecord:approve` (UNRESOLVED) |
+
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+Quy ước: 🔴 = trường mới cần thêm (so với bảng `asset_processing_records` đang có); ~~gạch ngang~~ = trường cần loại bỏ.
+
+**Bảng `asset_processing_records`** (Hồ sơ/Đề nghị xử lý tài sản — theo code hiện có, mở rộng theo Excel #32):
+- `id` UUID PK; 🔴 `org_unit_id` UUID NOT NULL (Đơn vị đề nghị — DataScope, index) · 🔴 `dossier_no` (Số đề nghị, unique) · 🔴 `request_date` DATE (Ngày đề nghị) · `processing_type` SMALLINT/ENUM (Hình thức xử lý đề nghị) · 🔴 `processing_reason` (Lý do đề nghị xử lý) · `asset_id` UUID FK (Tài sản — #7)
+- Nhóm thông tin tài sản read-only (snapshot hiển thị, 🔴 nếu muốn lưu lịch sử): `asset_address`, `commissioning_year`, `basic_specs`, `land_floor_area`, `floor_area`, `original_value`, `residual_value`, `asset_condition` — hoặc KHÔNG lưu, hiển thị qua FK `asset_id` (SA chốt 1 trong 2 — UNRESOLVED)
+- Nhóm trạng thái & phê duyệt: `approval_status` SMALLINT/ENUM (7 trạng thái M-1006 — §3), `submitted_at`, `submitted_by`, `approved_l1_at/by/note`, `approved_l2_at/by/note`, `rejected_reason`…; audit kế thừa `BaseEntity` (`created_by/at`, `updated_by/at`, `deleted_at/by`) + `@Version`
+- 🔴 `org_unit_name` KHÔNG lưu — hiển thị qua `OrgUnitCacheService`
+- Cột enum lưu số nguyên `@Enumerated(ORDINAL)`; tên bảng/cột/field tiếng Anh, message/giao diện tiếng Việt có dấu
+
+**Bảng con `asset_processing_record_file`** (🔴 File đính kèm #16): `id`, `record_id` FK, `stt`, `file_name`, `file_path`, `created_by`, `created_at`.
+
+**Lịch sử:** ghi vào bảng tập trung (`infrastructure_history` + approval-history) — không tạo bảng lịch sử riêng (convention dự án).

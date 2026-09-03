@@ -3,7 +3,9 @@ feature-id: F-297
 document: lean-spec
 output-mode: lean
 module-id: M-003
-last-updated: 2026-08-26
+last-updated: 2026-09-01
+implementation-audit: 2026-09-01
+implementation-note: "Tab KCHT khác tải dữ liệu thực từ Radar/AIS theo vtsOperationCenterId; các nhóm vận hành, bảo trì, sự cố được ẩn khi chưa có API nguồn, không dùng dữ liệu mock."
 ---
 # Xem chi tiết Trung tâm điều hành VTS
 ## Bối cảnh
@@ -32,53 +34,77 @@ Hiển thị toàn bộ thông tin một Trung tâm điều hành VTS ở dạng
 | Out of scope | Sửa dữ liệu tại màn chi tiết; xuất PDF hồ sơ. |
 | Assumptions | Quy trình phê duyệt 2 cấp và bảng `infrastructure_history` đã có sẵn dùng chung. Ma trận trường lấy từ đặc tả nghiệp vụ do PMO cung cấp 26/08/2026, **không** suy ra từ code. |
 ## 4. Ma trận dữ liệu
-Các trường có **Chi tiết = TRUE** (41 trường):
+Toàn bộ 41 trường dữ liệu hiển thị trong Drawer Xem chi tiết được phân bổ vào **5 TAB** chuẩn hóa:
 
-| # | Tên trường | Loại điều khiển | Trường kỹ thuật | Hiện trạng code |
-|---|---|---|---|---|
-| 1 | Đơn vị quản lý (bắt buộc khi tạo) | SelectOrgCode | `orgUnitId` | Đã có. |
-| 2 | Thuộc cảng biển | SelectKcht (CB) | `portId` | Đã có. |
-| 3 | Thuộc hệ thống VTS | SelectKcht (ATHH, VTS) | `vtsSystemId` | Đã có. Quan hệ cha theo `SO-DO-VA-MA-TRAN-CHA-CON-KCHT.md` (thực thể #12). |
-| 4 | Mã trung tâm điều hành VTS | Input (disabled, tự sinh `TTDH-{seq}`) | `code` | Đã có. Bất biến sau khi tạo. |
-| 5 | Tên trung tâm điều hành VTS (bắt buộc) | InputTextArea | `name` | Đã có. |
-| 6 | Địa điểm (Tỉnh/TP) (bắt buộc) | SelectCateOther | `provinceId` | Đã có. |
-| 7 | Địa điểm chi tiết | InputTextArea | `detailedLocation` | Đã có. |
-| 8 | Tình trạng (bắt buộc) | SelectAppParams | `conditionStatus` | Đã có (`ConditionStatus`). |
-| 9 | Vùng phủ sóng | InputTextArea | `coverage` | Đã có. |
-| 10 | Ghi chú | InputTextArea | `note` | Đã có. |
-| 11 | Loại đối tượng | Select (Điểm/Đường/Vùng) | `geometryType` | Đã có ở form. |
-| 12 | Biểu tượng | Select | `symbolId` | Đã có ở form. |
-| 13 | Hệ quy chiếu | Text | `coordinateReferenceSystem` | **THIẾU** — chưa có cột trong entity. |
-| 14 | Quy tắc hiển thị | Text | `displayRule` | Đã có ở form. |
-| 15 | Tọa độ | LongLatTable | `spatialId` + bảng tọa độ | **THIẾU** bảng tọa độ nhiều điểm; hiện chỉ có `spatialId`. |
-| 16 | File đính kèm | UploadFileTable | `infrastructure_attachment` | Đã có. |
-| 17 | Trạng thái | Badge (read-only) | `approvalStatus` | Đã có. Bộ lọc qua StatusTabs. |
-| 18 | Ngày cập nhật | Text (read-only) | `updatedAt` | Cột đã có; **bộ lọc khoảng ngày ĐÃ BỔ SUNG 26/08/2026**. |
-| 19 | Cán bộ cập nhật | Text (read-only) | `updatedBy` | Đã có. |
-| 20 | Ngày gửi phê duyệt | Text (read-only) | `submittedAt` | **THIẾU** — xem Quyết định mở (a). |
-| 21 | Cán bộ gửi phê duyệt | Text (read-only) | `submittedBy` | **THIẾU** — xem Quyết định mở (a). |
-| 22 | Ngày phê duyệt cấp Cảng vụ/Chi cục | Text (read-only) | `approvedDateLevel1` | Entity đã có; **chưa lên bảng danh sách** — xem Quyết định mở (a). |
-| 23 | Cán bộ phê duyệt cấp Cảng vụ/Chi cục | Text (read-only) | `approverLevel1` | Entity đã có; **chưa lên bảng danh sách** — xem Quyết định mở (a). |
-| 24 | Nội dung phê duyệt (cấp Cảng vụ/Chi cục) | Text (read-only) | `level1ApprovalContent` | **THIẾU** — chưa có cột trong entity. |
-| 25 | Ngày phê duyệt cấp Cục | Text (read-only) | `approvedDateLevel2` | Entity đã có; **chưa lên bảng danh sách** — xem Quyết định mở (a). |
-| 26 | Cán bộ phê duyệt cấp Cục | Text (read-only) | `approverLevel2` | Entity đã có; **chưa lên bảng danh sách** — xem Quyết định mở (a). |
-| 27 | Nội dung phê duyệt (cấp Cục) | Text (read-only) | `level2ApprovalContent` | **THIẾU** — chưa có cột trong entity. |
-| 28 | Tên kết cấu hạ tầng | Text (read-only) | con của TTĐH VTS | **THIẾU** — xem Quyết định mở (b). |
-| 29 | Loại kết cấu hạ tầng | Dropdown (bộ lọc) | Radar/AIS/CCTV/SCADA/Truyền dẫn/Phụ trợ | **THIẾU** — xem Quyết định mở (b). |
-| 30 | Mã kế hoạch | Text (read-only) | module vận hành | **THIẾU** — xem Quyết định mở (b). |
-| 31 | Tên kế hoạch | Text (read-only) | module vận hành | **THIẾU** — xem Quyết định mở (b). |
-| 32 | Ngày bắt đầu | Text (read-only) | module vận hành | **THIẾU** — xem Quyết định mở (b). |
-| 33 | Ngày kết thúc | Text (read-only) | module vận hành | **THIẾU** — xem Quyết định mở (b). |
-| 34 | Mã kế hoạch | Text (read-only) | module bảo trì | **THIẾU** — xem Quyết định mở (b). |
-| 35 | Tên kế hoạch | Text (read-only) | module bảo trì | **THIẾU** — xem Quyết định mở (b). |
-| 36 | Thời gian bắt đầu | Text (read-only) | module bảo trì | **THIẾU** — xem Quyết định mở (b). |
-| 37 | Thời gian kết thúc | Text (read-only) | module bảo trì | **THIẾU** — xem Quyết định mở (b). |
-| 38 | Mã sự cố | Text (read-only) | module sự cố | **THIẾU** — xem Quyết định mở (b). |
-| 39 | Loại sự cố | Text (read-only) | module sự cố | **THIẾU** — xem Quyết định mở (b). |
-| 40 | Địa điểm | Text (read-only) | module sự cố | **THIẾU** — xem Quyết định mở (b). |
-| 41 | Thời gian | Text (read-only) | module sự cố | **THIẾU** — xem Quyết định mở (b). |
+| # | Tên trường | Loại điều khiển | Trường kỹ thuật | TAB hiển thị | Hiện trạng code |
+|---|---|---|---|---|---|
+| | **TAB 1: Thông tin chung** | | | | |
+| 1 | Mã trung tâm điều hành VTS | Input (disabled, tự sinh `TTDH-{seq}`) | `code` | Tab 1 (Cơ bản) | Đã có. Bất biến sau khi tạo. |
+| 2 | Tên trung tâm điều hành VTS (bắt buộc) | InputTextArea | `name` | Tab 1 (Cơ bản) | Đã có. |
+| 3 | Đơn vị quản lý (bắt buộc khi tạo) | SelectOrgCode | `orgUnitId` | Tab 1 (Cơ bản) | Đã có (`FormOrgUnitTreeSelect`). |
+| 4 | Thuộc cảng biển | SelectKcht (CB) | `portId` | Tab 1 (Cơ bản) | Đã có. |
+| 5 | Thuộc hệ thống VTS | SelectKcht (ATHH, VTS) | `vtsSystemId` | Tab 1 (Cơ bản) | Đã có. Quan hệ cha theo `SO-DO-VA-MA-TRAN-CHA-CON-KCHT.md` (thực thể #12). |
+| 6 | Địa điểm (Tỉnh/TP) (bắt buộc) | SelectCateOther | `provinceId` | Tab 1 (Cơ bản) | Đã có (`VIETNAM_PROVINCE_OPTIONS`). |
+| 7 | Địa điểm chi tiết | InputTextArea | `detailedLocation` | Tab 1 (Cơ bản) | Đã có. |
+| 8 | Tình trạng (bắt buộc) | SelectAppParams | `conditionStatus` | Tab 1 (Cơ bản) | Đã có (`ConditionStatus`). |
+| 9 | Vùng phủ sóng | InputTextArea | `coverage` | Tab 1 (Khác) | Đã có. |
+| 10 | Ghi chú | InputTextArea | `note` | Tab 1 (Khác) | Đã có. |
+| 11 | Trạng thái phê duyệt | Badge (read-only) | `approvalStatus` | Tab 1 (Toggle Phê duyệt) | Đã có (`ApprovalStatusBadge`). |
+| 12 | Ngày cập nhật | Text (read-only) | `updatedAt` | Tab 1 (Cơ bản) | Đã có. |
+| 13 | Cán bộ cập nhật | Text (read-only) | `updatedBy` | Tab 1 (Cơ bản) | Đã có. |
+| 14 | Ngày gửi phê duyệt | Text (read-only) | `submittedAt` | Tab 1 (Toggle Phê duyệt) | Đã có trên toggle drawer. |
+| 15 | Cán bộ gửi phê duyệt | Text (read-only) | `submittedBy` | Tab 1 (Toggle Phê duyệt) | Đã có trên toggle drawer. |
+| 16 | Ngày phê duyệt cấp Cảng vụ/Chi cục | Text (read-only) | `approvedDateLevel1` | Tab 1 (Toggle Phê duyệt) | Đã có trên toggle drawer. |
+| 17 | Cán bộ phê duyệt cấp Cảng vụ/Chi cục | Text (read-only) | `approverLevel1` | Tab 1 (Toggle Phê duyệt) | Đã có trên toggle drawer. |
+| 18 | Nội dung phê duyệt Cảng vụ | Text (read-only) | `approvalReasonLevel1` | Tab 1 (Toggle Phê duyệt) | Đã có trên toggle drawer. |
+| 19 | Ngày phê duyệt cấp Cục | Text (read-only) | `approvedDateLevel2` | Tab 1 (Toggle Phê duyệt) | Đã có trên toggle drawer. |
+| 20 | Cán bộ phê duyệt cấp Cục | Text (read-only) | `approverLevel2` | Tab 1 (Toggle Phê duyệt) | Đã có trên toggle drawer. |
+| 21 | Nội dung phê duyệt Cục | Text (read-only) | `approvalReasonLevel2` | Tab 1 (Toggle Phê duyệt) | Đã có trên toggle drawer. |
+| | **TAB 2: Thông tin vị trí** | | | | |
+| 22 | Loại đối tượng | Select (Điểm/Đường/Vùng) | `geometryType` | Tab 2 (Vị trí) | Đã có ở form. |
+| 23 | Biểu tượng | Select | `symbolId` | Tab 2 (Vị trí) | Đã có ở form (kèm icon thực tế). |
+| 24 | Hệ quy chiếu | Text | `coordinateReferenceSystem` | Tab 2 (Vị trí) | Đã có ở form (`WGS 84 / VN-2000`). |
+| 25 | Quy tắc hiển thị | Text | `displayRule` | Tab 2 (Vị trí) | Đã có ở form (`Độ, phút, giây (DMS)`). |
+| 26 | Tọa độ GPS | LongLatTable | `spatialId` + bảng tọa độ | Tab 2 (Vị trí) | Bảng tọa độ DMS + popup chọn bản đồ. |
+| | **TAB 3: File đính kèm** | | | | |
+| 27 | File đính kèm | UploadFileTable | `infrastructure_attachment` | Tab 3 (File) | Đã có (`InfrastructureAttachmentTab`). |
+| | **TAB 4: Kết cấu hạ tầng** | | | | |
+| 28 | Tên kết cấu hạ tầng | Text (read-only) | con của TTĐH VTS | Tab 4 (KCHT) | Đã có bảng `DetailTable` danh sách KCHT trực thuộc. |
+| 29 | Loại kết cấu hạ tầng | Dropdown (bộ lọc) | Radar/AIS/CCTV/SCADA/Truyền dẫn/Phụ trợ | Tab 4 (KCHT) | Đã có bộ lọc dropdown trên đầu bảng. |
+| | **TAB 5: Vận hành & bảo trì** | | | | |
+| | *Sub-tab Vận hành khai thác* | | | | |
+| 30 | Mã kế hoạch | Text (read-only) | module vận hành | Tab 5 (Vận hành) | Đã có bảng `DetailTable` (150px). |
+| 31 | Tên kế hoạch | Text (read-only) | module vận hành | Tab 5 (Vận hành) | Đã có bảng `DetailTable` (280px). |
+| 32 | Ngày bắt đầu | Text (read-only) | module vận hành | Tab 5 (Vận hành) | Đã có bảng `DetailTable` (120px). |
+| 33 | Ngày kết thúc | Text (read-only) | module vận hành | Tab 5 (Vận hành) | Đã có bảng `DetailTable` (120px). |
+| | *Sub-tab Thông tin bảo trì* | | | | |
+| 34 | Mã kế hoạch | Text (read-only) | module bảo trì | Tab 5 (Bảo trì) | Đã có bảng `DetailTable` (150px). |
+| 35 | Tên hạng mục | Text (read-only) | module bảo trì | Tab 5 (Bảo trì) | Đã có bảng `DetailTable` (280px). |
+| 36 | Thời gian bắt đầu | Text (read-only) | module bảo trì | Tab 5 (Bảo trì) | Đã có bảng `DetailTable` (120px). |
+| 37 | Thời gian kết thúc | Text (read-only) | module bảo trì | Tab 5 (Bảo trì) | Đã có bảng `DetailTable` (120px). |
+| | *Sub-tab Thông tin sự cố* | | | | |
+| 38 | Mã sự cố | Text (read-only) | module sự cố | Tab 5 (Sự cố) | Đã có bảng `DetailTable` (140px). |
+| 39 | Loại sự cố | Text (read-only) | module sự cố | Tab 5 (Sự cố) | Đã có bảng `DetailTable` (220px). |
+| 40 | Địa điểm | Text (read-only) | module sự cố | Tab 5 (Sự cố) | Đã có bảng `DetailTable` (220px). |
+| 41 | Thời gian | Text (read-only) | module sự cố | Tab 5 (Sự cố) | Đã có bảng `DetailTable` (150px). |
 
 > Ma trận 41 trường đầy đủ xem `F-293-quan-ly-tt-dieu-hanh-vts-tao-moi/ba/00-lean-spec.md`.
+
+## 4.1 Ma trận bộ lọc danh sách
+
+| Nhóm | Trường | Query parameter | Ghi chú |
+|---|---|---|---|
+| Thường | Đơn vị | `orgUnitId` | TreeSelect theo DataScope. |
+| Thường | Thuộc cảng biển | `portId` | Danh sách cảng được giới hạn theo đơn vị đã chọn. |
+| Thường | Tên trung tâm điều hành VTS | `name` | Tìm không dấu, chỉ trên tên trung tâm. |
+| Nâng cao | Trạng thái | `approvalStatus` | Đồng bộ với StatusTabs của luồng phê duyệt. |
+| Nâng cao | Thuộc hệ thống VTS | `vtsSystemId` | Chọn hệ thống VTS cha. |
+| Nâng cao | Mã trung tâm điều hành VTS | `code` | Tìm không dấu, chỉ trên mã trung tâm. |
+| Nâng cao | Tình trạng | `conditionStatus` | Tình trạng vận hành. |
+| Nâng cao | Ngày cập nhật | `updatedFrom`, `updatedTo` | Khoảng ngày, gửi theo giờ địa phương. |
+| Nâng cao | Địa điểm (Tỉnh/Thành phố) | `provinceId` | Dropdown hỗ trợ tìm kiếm không dấu. |
+
+Mọi điều kiện được áp dụng theo quan hệ **AND**. API thực thi: `GET /api/v1/vts-operation-center`.
 
 ## ⚠️ Hai quyết định còn mở — phải chốt TRƯỚC khi code
 

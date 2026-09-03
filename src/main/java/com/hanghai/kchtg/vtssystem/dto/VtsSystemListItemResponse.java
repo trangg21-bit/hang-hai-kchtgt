@@ -28,9 +28,15 @@ public class VtsSystemListItemResponse {
     private UUID orgUnitId;
     private String orgUnitName;
     private ApprovalStatus approvalStatus;
+    private String rejectionReason;
+
     private UUID approverLevel1;
+    private UUID createdBy;
+    private String createdByName;
+
     private LocalDateTime updatedDate;
     private String updatedByName;
+
     private UUID owningOrgId;
     private String owningOrgName;
     private UUID operatingOrgId;

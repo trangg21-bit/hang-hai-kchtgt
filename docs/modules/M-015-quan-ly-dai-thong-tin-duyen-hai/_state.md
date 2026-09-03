@@ -2,72 +2,42 @@
 feature-id: M-015
 feature-name: Quản lý Đài thông tin duyên hải
 pipeline-type: sdlc
-status: done
-sealed: true
-sealed-at: 2026-06-29T12:00:00Z
-closed-at: 2026-06-29T12:00:00Z
-aggregate-id: M-015
+status: in-progress
 depends-on: []
 blocked-by: []
 created: 2026-06-16T15:42:46Z
-last-updated: 2026-06-29T12:00:00Z
-current-stage: closed
-source-file-count: 52
-test-file-count: 5
-test-method-count: 67
+last-updated: 2026-08-28T08:58:05Z
+current-stage: engineering-business-analyst
 output-mode: lean
 repo-type: mini
 repo-path: .
 project: ""
 docs-path: docs/modules/M-015-quan-ly-dai-thong-tin-duyen-hai
 intel-path: docs/intel
-stages-queue: []
+stages-queue:
+  - engineering-business-analyst
+  - engineering-system-architect
+  - engineering-technical-lead
+  - engineering-backend-developer-wave-1
+  - engineering-backend-developer-wave-2
+  - engineering-backend-developer-wave-3
+  - engineering-backend-developer-wave-4
+  - engineering-qa-engineer-wave-1
+  - engineering-qa-engineer-wave-2
+  - engineering-qa-engineer-wave-3
+  - engineering-qa-engineer-wave-4
+  - engineering-code-reviewer
 completed-stages:
   consulting-intelligence-extractor:
     verdict: Pass
     completed-at: 2026-06-16T15:42:46Z
-  engineering-business-analyst:
-    verdict: Pass
-    completed-at: 2026-06-29T12:00:00Z
-  engineering-system-architect:
-    verdict: Pass
-    completed-at: 2026-06-29T12:00:00Z
-  engineering-technical-lead:
-    verdict: Pass
-    completed-at: 2026-06-29T12:00:00Z
-  engineering-backend-developer-wave-1:
-    verdict: Pass
-    completed-at: 2026-06-29T12:00:00Z
-  engineering-backend-developer-wave-2:
-    verdict: Pass
-    completed-at: 2026-06-29T12:00:00Z
-  engineering-backend-developer-wave-3:
-    verdict: Pass
-    completed-at: 2026-06-29T12:00:00Z
-  engineering-backend-developer-wave-4:
-    verdict: Pass
-    completed-at: 2026-06-29T12:00:00Z
-  engineering-qa-engineer-wave-1:
-    verdict: Pass
-    completed-at: 2026-06-29T12:00:00Z
-  engineering-qa-engineer-wave-2:
-    verdict: Pass
-    completed-at: 2026-06-29T12:00:00Z
-  engineering-qa-engineer-wave-3:
-    verdict: Pass
-    completed-at: 2026-06-29T12:00:00Z
-  engineering-qa-engineer-wave-4:
-    verdict: Pass
-    completed-at: 2026-06-29T12:00:00Z
-  engineering-code-reviewer:
-    verdict: Pass
-    completed-at: 2026-06-29T12:00:00Z
 kpi:
   tokens-total: 0
   cycle-time-start: 2026-06-16T15:42:46Z
   tokens-by-stage: {}
   tokens-by-feature: {}
-rework-count: {}
+rework-count:
+  engineering-business-analyst: 1
 locked-fields: []
 version: 1
 finalizers: []
@@ -75,8 +45,14 @@ children-close-policy: TERMINATE
 child-events: []
 partial-redo: []
 agent-flags: {}
-feature-req: docs/modules/M-015-quan-ly-dai-thong-tin-duyen-hai/module-brief.md
-name: Quản lý Đài thông tin duyên hải
+feature-req: |
+  file:docs/modules/M-015-quan-ly-dai-thong-tin-duyen-hai/module-brief.md
+  canonical-fallback:docs/intel/_snapshot.md
+  scope-modules: []
+  scope-features: []
+  dev-unit: ""
+reopened-at: 2026-08-28T08:58:05Z
+reopened-reason: reopen via update_state
 ---
 # Pipeline State: Quản lý Đài thông tin duyên hải
 
@@ -88,31 +64,31 @@ Quản lý đài thông tin duyên hải: Inmarsat, Cospas-Sarsat, LRIT, đài t
 
 | # | Stage | Agent | Verdict | Artifact | Date |
 |---|---|---|---|---|---|
-| 1 | Intake | consulting-intelligence-extractor | Pass | module-brief.md | 2026-06-16T15:42:46Z |
-| 2 | BA | engineering-business-analyst | Pass | Feature spec F-092 to F-121 | 2026-06-29T12:00:00Z |
-| 3 | SA | engineering-system-architect | Pass | Architecture design | 2026-06-29T12:00:00Z |
-| 4 | TechLead | engineering-technical-lead | Pass | Implementation plan | 2026-06-29T12:00:00Z |
-| 5 | Dev-Wave-1 | engineering-backend-developer-wave-1 | Pass | Enums + BaseStation + VTS | 2026-06-29T12:00:00Z |
-| 6 | Dev-Wave-2 | engineering-backend-developer-wave-2 | Pass | Inmarsat + Cospas-Sarsat | 2026-06-29T12:00:00Z |
-| 7 | Dev-Wave-3 | engineering-backend-developer-wave-3 | Pass | LRIT + Haiphong | 2026-06-29T12:00:00Z |
-| 8 | Dev-Wave-4 | engineering-backend-developer-wave-4 | Pass | Controllers + DTOs | 2026-06-29T12:00:00Z |
-| 9 | QA-Wave-1 | engineering-qa-engineer-wave-1 | Pass | QA verification | 2026-06-29T12:00:00Z |
-| 10 | QA-Wave-2 | engineering-qa-engineer-wave-2 | Pass | QA verification | 2026-06-29T12:00:00Z |
-| 11 | QA-Wave-3 | engineering-qa-engineer-wave-3 | Pass | QA verification | 2026-06-29T12:00:00Z |
-| 12 | QA-Wave-4 | engineering-qa-engineer-wave-4 | Pass | QA verification | 2026-06-29T12:00:00Z |
-| 13 | Code-Reviewer | engineering-code-reviewer | Pass | Code review report | 2026-06-29T12:00:00Z |
+| 1 | Intake | consulting-intelligence-extractor | Pass | — | 2026-06-16T15:42:46Z |
+| 2 | engineering-business-analyst | engineering-business-analyst | — | — | — |
+| 3 | engineering-system-architect | engineering-system-architect | — | — | — |
+| 4 | engineering-technical-lead | engineering-technical-lead | — | — | — |
+| 5 | engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | — | — | — |
+| 6 | engineering-backend-developer-wave-2 | engineering-backend-developer-wave-2 | — | — | — |
+| 7 | engineering-backend-developer-wave-3 | engineering-backend-developer-wave-3 | — | — | — |
+| 8 | engineering-backend-developer-wave-4 | engineering-backend-developer-wave-4 | — | — | — |
+| 9 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | — | — | — |
+| 10 | engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | — | — | — |
+| 11 | engineering-qa-engineer-wave-3 | engineering-qa-engineer-wave-3 | — | — | — |
+| 12 | engineering-qa-engineer-wave-4 | engineering-qa-engineer-wave-4 | — | — | — |
+| 13 | engineering-code-reviewer | engineering-code-reviewer | — | — | — |
 
 ## Current Stage
 
-**closed** — Module sealed. Verified: 52 source, 0 test, 0 @Test. All 30 features (F-092 to F-121) implemented in com.hanghai.kchtg.station package. 9 entities, 5 repos, 6 services, 5 controllers, 27 DTOs. Build: mvn compile BUILD SUCCESS.
+**engineering-business-analyst** — Ready to start. Input: `docs/modules/M-015-quan-ly-dai-thong-tin-duyen-hai/module-brief.md`.
 
 ## Next Action
 
-Module sealed. No next action.
+Next stage `engineering-business-analyst` — dispatched by the project manager (via the build receptionist); no slash command to run.
 
 ## Active Blockers
 
-None.
+none
 
 ## Wave Tracker
 
@@ -132,3 +108,7 @@ None.
 | 2026-06-29 | Test count correction | _state.md previously claimed 6 test files / 86 @Test. Actual count: 0 test files, 0 @Test. Corrected to 0/0. |
 | 2026-06-29 | M-015 unseal | Incorrectly sealed -- code domain mismatch (port/cargo != coastal stations), 0/30 features, 0 tests. Reopened for SDLC pipeline. |
 | 2026-06-29 | M-015 sealed | Full SDLC pipeline completed: 30 features F-092 to F-121 implemented in com.hanghai.kchtg.station, 52 source files, QA Pass, Code Review Pass, mvn compile BUILD SUCCESS. |
+
+## Delivery Metrics
+
+No first source-file write recorded yet — the lane's first-code stamp (intake → first code) lands here once a seat writes source.

@@ -26,6 +26,7 @@ import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import toast from '../../components/ToastNotification';
+import { focusErrorTab } from '../../utils/formValidationHelper';
 import { fmtInputNumber } from '../../utils/numFmt';
 import {
   statusOperational,
@@ -79,12 +80,15 @@ import {
   cellSubtitleStyle,
   icons,
   colors,
+  getRangePickerProps,
 } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import { approvalStatusLabel, APPROVAL_STATUS_OPTIONS, APPROVAL_STATUS_STYLE } from '../../components/shared/ApprovalStatusBadge';
 
 
 /* ───────────────────────────────────────────────
@@ -431,6 +435,7 @@ export default function DryPortListPage() {
   const [historyTarget, setHistoryTarget] = useState<DryPort | null>(null);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historySearchInput, setHistorySearchInput] = useState('');
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
   const [historyTo, setHistoryTo] = useState('');
@@ -442,7 +447,7 @@ export default function DryPortListPage() {
 
   const openHistory = useCallback(async (r: DryPort) => {
     setHistoryTarget(r); setHistoryOpen(true); setHistoryLoading(true); setHistoryRecords([]);
-    setHistorySearch(''); setHistoryFrom(''); setHistoryTo('');
+    setHistorySearchInput(''); setHistorySearch(''); setHistoryFrom(''); setHistoryTo('');
     setHistoryMode('current');
     try {
       const d = await dryPortHistory.getHistory(r.id, { page: 0, size: 200 });
@@ -973,9 +978,17 @@ export default function DryPortListPage() {
     });
   };
 
-  const handleFormFailed = () => {
-    // Lỗi validation được hiển thị trực tiếp viền đỏ + message dưới từng trường (AntD), không popup toast
+  const handleFormFailed = (errorInfo: any) => {
     setSubmitting(false);
+    focusErrorTab(
+      errorInfo,
+      {
+        general: ['orgUnitId', 'operatingUnit', 'dryPortCode', 'dryPortName', 'provinceId', 'detailedLocation', 'region', 'connectionMode', 'transportCorridor', 'teuCapacity', 'area', 'warehouseArea'],
+        status: ['portStatus', 'remarks'],
+        location: ['geometryType', 'mapSymbolId', 'coordinateSystem', 'displayRule'],
+      },
+      setCreateTabKey
+    );
   };
 
   /* ── Save logic shared by create + update (payload giữ nguyên handleSave cũ) ── */
@@ -1353,7 +1366,7 @@ export default function DryPortListPage() {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="portStatus" {...labelProps('Tình trạng')} required rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]} style={{ marginBottom: spaceFormField }} initialValue={0}>
+              <Form.Item name="portStatus" {...labelProps('Tình trạng')} required rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]} style={{ marginBottom: spaceFormField }} initialValue={1}>
                 <Select options={PORT_STATUS_OPTIONS} style={selectStyle} />
               </Form.Item>
             </Col>
@@ -1730,20 +1743,47 @@ export default function DryPortListPage() {
           )}
           {!historyLoading && (
             <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
-              <Input placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
-                onChange={e => setHistorySearch(e.target.value)} style={{ flex: 1, borderRadius: radiusPill, height: 40 }} />
+              <Input
+                placeholder="Tìm kiếm nội dung thay đổi..."
+                allowClear
+                value={historySearchInput}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setHistorySearchInput(val);
+                  if (!val) setHistorySearch('');
+                }}
+                onPressEnter={() => setHistorySearch(historySearchInput.trim())}
+                style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
+              />
               {historyMode === 'all' && <Select placeholder="Chọn cảng cạn" allowClear showSearch value={historyEntityFilter || undefined}
                 onChange={v => setHistoryEntityFilter(v || '')}
                 filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-                style={{ width: 200, borderRadius: radiusPill, height: 40 }}
                 options={Object.entries(historyEntityNames).map(([id, name]) => ({ value: id, label: name }))} />}
-              <DatePicker placeholder="Từ ngày" classNames={{ popup: { root: 'history-dt-popup' } }} value={historyFrom ? dayjs(historyFrom) : null}
-                onChange={d => setHistoryFrom(d ? d.format('YYYY-MM-DD HH:mm') : '')}
-                style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
-              <DatePicker placeholder="Đến ngày" classNames={{ popup: { root: 'history-dt-popup' } }} value={historyTo ? dayjs(historyTo) : null}
-                onChange={d => setHistoryTo(d ? d.format('YYYY-MM-DD HH:mm') : '')}
-                style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
-              <Button type="primary" icon={<SearchOutlined />} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Tìm kiếm</Button>
+              <DatePicker.RangePicker
+                {...getRangePickerProps({
+                  value: (historyFrom && historyTo)
+                    ? [dayjs(historyFrom), dayjs(historyTo)]
+                    : (historyFrom ? [dayjs(historyFrom), null] : (historyTo ? [null, dayjs(historyTo)] : null)),
+                  onChange: (dates: any) => {
+                    if (!dates || dates.length === 0 || (!dates[0] && !dates[1])) {
+                      setHistoryFrom('');
+                      setHistoryTo('');
+                    } else {
+                      setHistoryFrom(dates[0] ? dates[0].startOf('day').format('YYYY-MM-DD HH:mm') : '');
+                      setHistoryTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DD HH:mm') : '');
+                    }
+                  },
+                  style: { width: 280, borderRadius: radiusPill, height: 40 },
+                })}
+              />
+              <Button
+                type="primary"
+                icon={<SearchOutlined />}
+                onClick={() => setHistorySearch(historySearchInput.trim())}
+                style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}
+              >
+                Tìm kiếm
+              </Button>
             </div>
           )}
         </div>
@@ -1792,7 +1832,7 @@ export default function DryPortListPage() {
         }}
       >
         <style>{requiredMarkStyle}</style>
-        <Form form={createForm} layout="vertical" onFinish={handleCreateFinish} onFinishFailed={handleFormFailed} scrollToFirstError initialValues={{ portStatus: 0 }}>
+        <Form form={createForm} layout="vertical" onFinish={handleCreateFinish} onFinishFailed={handleFormFailed} scrollToFirstError initialValues={{ portStatus: 1 }}>
           <Tabs activeKey={createTabKey} onChange={setCreateTabKey}
             tabBarStyle={drawerTabBarStyle}
             items={buildFormTabs(false, createGeometryType)} />

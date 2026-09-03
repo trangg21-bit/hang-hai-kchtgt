@@ -201,7 +201,7 @@ public class RadarStationController {
             Authentication authentication) {
         try {
             RadarStationResponse response = service.approveLevel1(id, getUserId(authentication), note);
-            return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 1 thành công", response));
+            return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Chi cục thành công", response));
         } catch (Exception e) {
             log.warn("Lỗi khi phê duyệt C1 trạm radar id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
@@ -216,7 +216,7 @@ public class RadarStationController {
             Authentication authentication) {
         try {
             RadarStationResponse response = service.approveLevel2(id, getUserId(authentication), note);
-            return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 2 thành công", response));
+            return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", response));
         } catch (Exception e) {
             log.warn("Lỗi khi phê duyệt C2 trạm radar id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
@@ -233,7 +233,7 @@ public class RadarStationController {
         try {
             String r = reason != null && !reason.isBlank() ? reason : rejectReason;
             RadarStationResponse response = service.rejectLevel1(id, getUserId(authentication), r);
-            return ResponseEntity.ok(ApiResponse.success("Đã từ chối cấp 1", response));
+            return ResponseEntity.ok(ApiResponse.success("Đã từ chối cấp Chi cục", response));
         } catch (Exception e) {
             log.warn("Lỗi khi từ chối C1 trạm radar id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
@@ -248,7 +248,7 @@ public class RadarStationController {
             Authentication authentication) {
         try {
             RadarStationResponse response = service.rejectLevel2(id, getUserId(authentication), reason);
-            return ResponseEntity.ok(ApiResponse.success("Đã từ chối cấp 2", response));
+            return ResponseEntity.ok(ApiResponse.success("Đã từ chối cấp Cục", response));
         } catch (Exception e) {
             log.warn("Lỗi khi từ chối C2 trạm radar id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
