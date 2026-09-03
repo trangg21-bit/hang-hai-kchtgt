@@ -7,6 +7,18 @@ ALTER TABLE public.coastal_station_vts
     ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,
     ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
 
+ALTER TABLE public.coastal_station_inmarsat
+    ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
+
+ALTER TABLE public.coastal_station_lrit
+    ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
+
+ALTER TABLE public.coastal_station_haiphong
+    ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
+
 -- Khôi phục giá trị hiển thị/CRUD từ POINT trong kho GIS khi có thể. Tọa độ GIS
 -- tập trung vẫn là nguồn dùng để vẽ bản đồ; hai cột này giữ tương thích entity.
 WITH point_coordinates AS (
@@ -23,6 +35,30 @@ WITH point_coordinates AS (
       AND spatial.coordinates IS NOT NULL
 )
 UPDATE public.coastal_station_vts station
+SET longitude = COALESCE(station.longitude, point.coordinate_parts[1]::DOUBLE PRECISION),
+    latitude = COALESCE(station.latitude, point.coordinate_parts[2]::DOUBLE PRECISION)
+FROM point_coordinates point
+WHERE point.coordinate_parts IS NOT NULL
+  AND (station.spatial_id = point.id OR station.id = point.ref_id)
+  AND (station.longitude IS NULL OR station.latitude IS NULL);
+
+UPDATE public.coastal_station_inmarsat station
+SET longitude = COALESCE(station.longitude, point.coordinate_parts[1]::DOUBLE PRECISION),
+    latitude = COALESCE(station.latitude, point.coordinate_parts[2]::DOUBLE PRECISION)
+FROM point_coordinates point
+WHERE point.coordinate_parts IS NOT NULL
+  AND (station.spatial_id = point.id OR station.id = point.ref_id)
+  AND (station.longitude IS NULL OR station.latitude IS NULL);
+
+UPDATE public.coastal_station_lrit station
+SET longitude = COALESCE(station.longitude, point.coordinate_parts[1]::DOUBLE PRECISION),
+    latitude = COALESCE(station.latitude, point.coordinate_parts[2]::DOUBLE PRECISION)
+FROM point_coordinates point
+WHERE point.coordinate_parts IS NOT NULL
+  AND (station.spatial_id = point.id OR station.id = point.ref_id)
+  AND (station.longitude IS NULL OR station.latitude IS NULL);
+
+UPDATE public.coastal_station_haiphong station
 SET longitude = COALESCE(station.longitude, point.coordinate_parts[1]::DOUBLE PRECISION),
     latitude = COALESCE(station.latitude, point.coordinate_parts[2]::DOUBLE PRECISION)
 FROM point_coordinates point

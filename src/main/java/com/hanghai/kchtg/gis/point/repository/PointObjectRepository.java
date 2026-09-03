@@ -35,7 +35,7 @@ public interface PointObjectRepository extends JpaRepository<PointObject, UUID> 
     List<PointObject> findByCodeContainingIgnoreCase(String code);
 
     @Query(value = "SELECT * FROM gis_spatial_objects p WHERE " +
-            "p.geometry_type = 1 AND p.ref_id IS NULL AND " +
+            "p.geometry_type = 1 AND p.deleted_at IS NULL AND p.ref_id IS NULL AND " +
             "(cast(:name as text) IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', cast(:name as text), '%'))) AND " +
             "(cast(:code as text) IS NULL OR LOWER(p.code) LIKE LOWER(CONCAT('%', cast(:code as text), '%'))) AND " +
             "(cast(:objectType as integer) IS NULL OR p.object_type = cast(:objectType as integer)) AND " +
@@ -47,7 +47,7 @@ public interface PointObjectRepository extends JpaRepository<PointObject, UUID> 
             @Param("status") Integer status
     );
 
-    @Query(value = "SELECT * FROM gis_spatial_objects p WHERE p.geometry_type = 1 AND p.status = 4 AND " +
+    @Query(value = "SELECT * FROM gis_spatial_objects p WHERE p.geometry_type = 1 AND p.status = 4 AND p.deleted_at IS NULL AND " +
             "ST_Distance(ST_GeomFromText(:pointWKT, 4326), p.geom) <= :radius", nativeQuery = true)
     List<PointObject> findByDistance(
             @Param("pointWKT") String pointWKT,

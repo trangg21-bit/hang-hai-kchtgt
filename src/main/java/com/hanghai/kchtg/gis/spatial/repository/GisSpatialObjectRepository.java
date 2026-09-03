@@ -36,7 +36,7 @@ public interface GisSpatialObjectRepository extends JpaRepository<GisSpatialObje
             GisGeometryType geometryType, GisSpatialObjectType objectType, GisSpatialStatus status, Pageable pageable);
 
     @Query(value = "SELECT * FROM gis_spatial_objects p WHERE " +
-            "p.geometry_type = :geometryTypeValue AND " +
+            "p.geometry_type = :geometryTypeValue AND p.deleted_at IS NULL AND " +
             "(:name IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))) AND " +
             "(:code IS NULL OR LOWER(p.code) LIKE LOWER(CONCAT('%', :code, '%'))) AND " +
             "(:objectTypeValue IS NULL OR p.object_type = :objectTypeValue) AND " +
