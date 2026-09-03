@@ -128,12 +128,13 @@ Execute unit tests and E2E validation for all 5 features of the GIS/Bản đồ 
 ### Hành vi đã đồng bộ
 
 - Select nhiều Loại KCHT chỉ hiển thị tối đa hai thẻ trên một dòng; các lựa chọn còn lại thu gọn thành `+N`, tránh đẩy lệch nhãn và trường Địa điểm.
-- Font tiêu đề và nội dung bảng kết quả được khóa theo `fontSizeMd`; màn hình mặc định và trạng thái sau Đặt lại không vẽ toàn bộ lớp KCHT thủ công.
+- Font tiêu đề và nội dung bảng kết quả được khóa theo `fontSizeMd`; màn hình mặc định chọn đơn vị Cục và tự tải danh sách KCHT theo phạm vi quyền. Nút Đặt lại khôi phục đơn vị Cục rồi tải lại danh sách; nếu API đơn vị không khả dụng thì truy vấn vẫn chạy theo phạm vi tài khoản.
 - Phóng to, thu nhỏ và toàn màn hình được gom thành cụm dọc bên phải, bên dưới nút Quản lý lớp bản đồ.
 - Chuột phải mở popup tọa độ gồm kinh độ, vĩ độ, mức thu phóng và nút sao chép liên kết. URL chia sẻ giữ các tham số bộ lọc hiện có và khôi phục đúng tâm/zoom khi mở lại.
 - Ba công cụ đa giác, vùng tròn và chỉnh sửa được đặt ở góc trái dưới, tự dịch sang phải khi panel tra cứu mở. Vùng tròn được chuyển thành polygon đóng 32 cạnh trước khi lưu để tương thích mô hình dữ liệu vùng hiện tại.
-- Popup Quy hoạch cảng biển được thu gọn còn khoảng 296–320px, giảm khoảng cách dòng và chiều cao tùy chọn; giới hạn nội dung cuộn 310–330px.
+- Popup Quy hoạch cảng biển được mở rộng khoảng 410–440px để hạn chế xuống dòng; nội dung dùng cỡ chữ chuẩn 13px, tiêu đề 15px và giới hạn vùng cuộn tối đa 390–420px.
 - Các lớp KCHT và Quy hoạch cảng biển tiếp tục dùng bộ phân giải click chung; điều khiển zoom, chuột phải và công cụ vẽ không thay đổi thứ tự hay khả năng hit-test của hai nguồn.
+- Popup KCHT chuyển mã tỉnh, loại kết cấu, trạng thái vận hành và UUID luồng hàng hải thành nhãn nghiệp vụ. API kết quả trả thêm `mapSymbolId`; marker ưu tiên biểu tượng gán trực tiếp, fallback theo mã loại KCHT. Chú giải hiển thị đồng thời biểu tượng KCHT và ký hiệu Quy hoạch cảng biển.
 
 ### Kiểm thử hồi quy
 
@@ -141,6 +142,8 @@ Execute unit tests and E2E validation for all 5 features of the GIS/Bản đồ 
 |---|---|
 | `mapInteraction.test.ts` | 4/4 pass: tạo/đọc URL vị trí, từ chối tọa độ không hợp lệ, chuyển vùng tròn thành polygon đóng |
 | `gisGeometry.test.ts` + `planningGis.test.ts` | 17/17 pass: hit-test và phân giải click KCHT/QHCB không hồi quy |
+| `kchtGisPresentation.test.ts` + `gisSearchTypeOptions.test.ts` | 7/7 pass: đơn vị Cục mặc định, nhãn nghiệp vụ, mã biểu tượng và danh mục loại KCHT |
+| `KchtGis155ServiceTest` + `KchtGis155RestControllerTest` | 7/7 pass: API phân trang, tham số tương thích và truyền đúng `mapSymbolId` |
 | TypeScript `--noEmit` | Pass |
-| Vite production build | Pass sau rebase main mới nhất, 4.119 module được biên dịch |
+| Vite production build | Pass sau rebase main mới nhất, 4.120 module được biên dịch |
 | Toàn bộ Vitest | 101 test pass; riêng suite `AppLayout.test.tsx` không khởi tạo do lỗi đóng gói ESM/CJS sẵn có giữa `@ant-design/icons` và `@ant-design/colors` |

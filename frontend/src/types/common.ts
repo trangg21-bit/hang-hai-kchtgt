@@ -115,5 +115,10 @@ export const getProvinceNameById = (id?: number | string): string | undefined =>
   if (id === undefined || id === null || id === '') return undefined;
   const numId = Number(id);
   const idx = VIETNAM_PROVINCE_IDS.indexOf(numId as any);
-  return idx !== -1 ? VIETNAM_PROVINCES[idx] : undefined;
+  if (idx !== -1) return VIETNAM_PROVINCES[idx];
+
+  // Dữ liệu KCHT kế thừa dùng mã thứ tự 1..63 thay vì mã hành chính.
+  return Number.isInteger(numId) && numId >= 1 && numId <= VIETNAM_PROVINCES.length
+    ? VIETNAM_PROVINCES[numId - 1]
+    : undefined;
 };

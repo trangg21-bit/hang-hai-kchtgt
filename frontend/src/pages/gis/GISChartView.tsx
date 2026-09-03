@@ -153,6 +153,12 @@ import {
   circleToPolygonCoordinates,
   parseSharedMapView,
 } from '../../utils/mapInteraction';
+import {
+  findDefaultMaritimeAuthorityOrgId,
+  getKchtOperationalStatusText,
+  getKchtStructureTypeText,
+  getKchtSymbolCode,
+} from '../../utils/kchtGisPresentation';
 import Leaflet from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
@@ -514,7 +520,7 @@ const getLoaiCauText = (val?: string) => {
 const resolvedNamesCache = new Map<string, string>();
 let orgUnitsGlobalCache: any[] = [];
 
-const resolveName = async (id: string, type: 'org' | 'Port' | 'Berth' | 'User') => {
+const resolveName = async (id: string, type: 'org' | 'Port' | 'Berth' | 'NavigationChannel' | 'User') => {
   if (!id) return '';
   const cacheKey = `${type}:${id}`;
   if (resolvedNamesCache.has(cacheKey)) return resolvedNamesCache.get(cacheKey)!;
@@ -533,6 +539,9 @@ const resolveName = async (id: string, type: 'org' | 'Port' | 'Berth' | 'User') 
     } else if (type === 'Berth') {
       const bc = await berthCRUD.findById(id);
       name = bc.berthName;
+    } else if (type === 'NavigationChannel') {
+      const channel = await navigationChannelCRUD.getById(id);
+      name = channel.channelName;
     } else if (type === 'User') {
       const response = await userService.getById(id);
       name = response.data?.fullName || response.data?.username || '';
@@ -810,16 +819,6 @@ const fetchAndFormatPopupDetails = async (record: any) => {
       </div>
     </div>
   `;
-
-  const getStatusText = (status?: string) => {
-    if (!status) return '—';
-    const s = status.toUpperCase();
-    if (s === 'HIEN_HANH' || s === 'ACTIVE' || s === 'OPERATIONAL') return 'Đang khai thác/vận hành';
-    if (s === 'TAM_NGUNG' || s === 'INACTIVE' || s === 'STOPPED') return 'Tạm ngừng';
-    if (s === 'MAINTENANCE') return 'Đang bảo trì';
-    if (s === 'UNDER_CONSTRUCTION') return 'Đang xây dựng';
-    return status;
-  };
 
   const getApprovalStatusText = (status?: string) => {
     if (!status) return '—';
@@ -1186,6 +1185,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
       let orgUnitNameResolved = '';
       let cangBienNameResolved = '';
       let benCangNameResolved = '';
+      let waterwayNameResolved = data.waterway || '';
       
       const orgId = data.orgUnitId || data.orgUnitId || data.unitId || data.donViQuanLy || data.unitId;
       if (orgId) {
@@ -1196,6 +1196,10 @@ const fetchAndFormatPopupDetails = async (record: any) => {
       }
       if (data.berthId || data.tenBenCang) {
         benCangNameResolved = data.tenBenCang || (data.berthId ? await resolveName(data.berthId, 'Berth') : '');
+      }
+      const waterwayId = data.waterwayId || data.navigationChannelId;
+      if (!waterwayNameResolved && waterwayId) {
+        waterwayNameResolved = await resolveName(waterwayId, 'NavigationChannel');
       }
 
       const userNamesResolved: Record<string, string> = {};
@@ -1226,13 +1230,16 @@ const fetchAndFormatPopupDetails = async (record: any) => {
           return formatDateTime(value);
         }
         if (field === 'operationalStatus' || field === 'conditionStatus' || field === 'tinhTrang' || field === 'isActive') {
-          return getStatusText(field === 'isActive' ? (value ? 'ACTIVE' : 'INACTIVE') : value);
+          return getKchtOperationalStatusText(field === 'isActive' ? Boolean(value) : value);
         }
         if (field === 'approvalStatus' || field === 'trangThai' || field === 'status') {
           return getApprovalStatusText(value);
         }
         if (field === 'geometryType' || field === 'loaiHinhHoc' || field === 'geomType') {
           return getGeometryTypeText(value);
+        }
+        if (field === 'structureType') {
+          return getKchtStructureTypeText(value);
         }
         return value;
       };
@@ -1248,6 +1255,8 @@ const fetchAndFormatPopupDetails = async (record: any) => {
             val = cangBienNameResolved || val;
           } else if (k === 'berthId') {
             val = benCangNameResolved || val;
+          } else if (k === 'waterway' || k === 'navigationChannelId') {
+            val = waterwayNameResolved || val;
           }
           
           if (valExists) {
@@ -1293,6 +1302,8 @@ const fetchAndFormatPopupDetails = async (record: any) => {
               val = cangBienNameResolved || val;
             } else if (k === 'berthId') {
               val = benCangNameResolved || val;
+            } else if (k === 'waterway' || k === 'navigationChannelId') {
+              val = waterwayNameResolved || val;
             }
             
             if (k === 'loaiVungNuoc') val = getLoaiVungNuocText(val);
@@ -1338,6 +1349,8 @@ const fetchAndFormatPopupDetails = async (record: any) => {
             displayVal = cangBienNameResolved || val;
           } else if (k === 'berthId') {
             displayVal = benCangNameResolved || val;
+          } else if (k === 'waterway' || k === 'navigationChannelId') {
+            displayVal = waterwayNameResolved || val;
           }
           if (k === 'type') {
             if (displayType === 'Đèn biển') {
@@ -1510,7 +1523,7 @@ const buildPlanningPopupContent = (featuresAtPoint: any[]): string => {
           data-table="${escapePopupText(feature.tableName)}"
           style="cursor: pointer; display: flex; align-items: center; width: 100%; gap: ${spaceSm}px; padding: ${spaceXs}px ${spaceSm}px; border: 1px solid ${isActive ? actionPrimary : borderDefault}; background: ${isActive ? `${actionPrimary}1A` : surfaceCard}; border-radius: ${radiusSm}px; color: ${textPrimary}; font-family: ${fontSans}; text-align: left;">
           <span style="width: ${spaceSm}px; height: ${spaceSm}px; border-radius: ${radiusSm}px; background: ${option.swatchColor}; border: 1px solid ${borderDefault}; flex-shrink: 0;"></span>
-          <span style="font-size: ${fontSizeSm}px; line-height: ${fontSizeLg}px; font-weight: ${isActive ? fontWeightBold : fontWeightNormal};">${escapePopupText(option.label)}</span>
+          <span style="font-size: ${fontSizeMd}px; line-height: ${fontSizeXl}px; font-weight: ${isActive ? fontWeightBold : fontWeightNormal};">${escapePopupText(option.label)}</span>
         </button>
       `;
     }).join('');
@@ -1518,26 +1531,26 @@ const buildPlanningPopupContent = (featuresAtPoint: any[]): string => {
     return `
       <section style="padding-bottom: ${index === featuresAtPoint.length - 1 ? 0 : spaceMd}px; margin-bottom: ${index === featuresAtPoint.length - 1 ? 0 : spaceMd}px; border-bottom: ${index === featuresAtPoint.length - 1 ? '0' : `1px solid ${borderDefault}`};">
         <div style="display: flex; align-items: center; justify-content: space-between; gap: ${spaceSm}px; margin-bottom: ${spaceSm}px;">
-          <span style="border: 1px solid ${actionPrimary}4D; background: ${actionPrimary}1A; color: ${actionPrimary}; padding: ${spaceXs}px ${spaceSm}px; border-radius: ${radiusPill}px; font-weight: ${fontWeightMedium}; font-size: ${fontSizeMd}px; max-width: 190px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapePopupText(featureName)}">
+          <span style="border: 1px solid ${actionPrimary}4D; background: ${actionPrimary}1A; color: ${actionPrimary}; padding: ${spaceXs}px ${spaceSm}px; border-radius: ${radiusPill}px; font-weight: ${fontWeightMedium}; font-size: ${fontSizeLg}px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapePopupText(featureName)}">
             ${escapePopupText(featureName)}
           </span>
         </div>
-        <div style="font-size: ${fontSizeSm}px; color: ${textSecondary}; margin-bottom: ${spaceSm}px;">${formattedLatitude}, ${formattedLongitude}</div>
-        <div style="display: grid; grid-template-columns: 88px minmax(0, 1fr); column-gap: ${spaceSm}px; row-gap: ${spaceXs}px; font-size: ${fontSizeSm}px; margin-bottom: ${spaceSm}px; line-height: ${fontSizeLg}px;">
+        <div style="font-size: ${fontSizeMd}px; color: ${textSecondary}; margin-bottom: ${spaceSm}px;">${formattedLatitude}, ${formattedLongitude}</div>
+        <div style="display: grid; grid-template-columns: 104px minmax(0, 1fr); column-gap: ${spaceSm}px; row-gap: ${spaceSm}px; font-size: ${fontSizeMd}px; margin-bottom: ${spaceMd}px; line-height: ${fontSizeXl}px;">
           <span style="color: ${textTertiary};">Tên đối tượng:</span><span style="font-weight: ${fontWeightMedium};">${escapePopupText(featureName)}</span>
           <span style="color: ${textTertiary};">Cơ quan QL:</span><span>${escapePopupText(agencyName)}</span>
           <span style="color: ${textTertiary};">Trạng thái QH:</span>
-          <span style="justify-self: start; padding: 0 ${spaceSm}px; border-radius: ${radiusPill}px; font-size: ${fontSizeSm}px; font-weight: ${fontWeightMedium}; background: ${statusPresentation.swatchColor}26; border: 1px solid ${statusPresentation.swatchColor}; color: ${textPrimary};">${escapePopupText(statusPresentation.label)}</span>
+          <span style="justify-self: start; padding: 0 ${spaceSm}px; border-radius: ${radiusPill}px; font-size: ${fontSizeMd}px; font-weight: ${fontWeightMedium}; background: ${statusPresentation.swatchColor}26; border: 1px solid ${statusPresentation.swatchColor}; color: ${textPrimary};">${escapePopupText(statusPresentation.label)}</span>
         </div>
         ${statusOptionsHtml ? `
-          <div style="font-size: ${fontSizeSm}px; font-weight: ${fontWeightBold}; color: ${sidebarBg}; margin-bottom: ${spaceXs}px;">Cập nhật trạng thái</div>
+          <div style="font-size: ${fontSizeMd}px; font-weight: ${fontWeightBold}; color: ${sidebarBg}; margin-bottom: ${spaceSm}px;">Cập nhật trạng thái</div>
           <div style="display: flex; flex-direction: column; gap: ${spaceXs}px; user-select: none;">${statusOptionsHtml}</div>
         ` : ''}
       </section>
     `;
   }).join('');
 
-  return `<div style="font-family: ${fontSans}; padding: ${spaceXs}px; width: 286px; color: ${textPrimary}; max-height: 310px; overflow-y: auto;">${itemsHtml}</div>`;
+  return `<div style="font-family: ${fontSans}; padding: ${spaceSm}px; width: 390px; color: ${textPrimary}; max-height: 390px; overflow-y: auto;">${itemsHtml}</div>`;
 };
 
 function getFeatureIcon(featureCode: string, fillColor: string, strokeColor: string): string {
@@ -1767,6 +1780,9 @@ export default function GISChartView() {
   const [searchPageSize, setSearchPageSize] = useState(20);
   const [symbols, setSymbols] = useState<Symbol[]>([]);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [orgUnitsReady, setOrgUnitsReady] = useState(false);
+  const hasSearchedRef = useRef(false);
+  const initialInfrastructureSearchRef = useRef(false);
   const [searchPanelVisible, setSearchPanelVisible] = useState(true);
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
   const [quickMapMode, setQuickMapMode] = useState<QuickMapMode>(null);
@@ -1922,6 +1938,8 @@ export default function GISChartView() {
         orgUnitsGlobalCache = data;
       } catch (err) {
         console.error('Failed to load org units', err);
+      } finally {
+        setOrgUnitsReady(true);
       }
     })();
     void fetchSymbols();
@@ -1935,15 +1953,17 @@ export default function GISChartView() {
     (window as any).kchtSymbols = symbols;
   }, [symbols]);
 
-  const hasSearchedRef = useRef(false);
-
-  // Trigger search on mount if url params exist
+  // Màn hình mặc định dùng đơn vị Cục và tự tải danh sách. URL vẫn có thể
+  // bổ sung các điều kiện loại KCHT/tỉnh/từ khóa cho lần tải đầu tiên. Nếu
+  // danh mục đơn vị không tải được, vẫn tra cứu theo phạm vi dữ liệu của user.
   useEffect(() => {
-    const hasUrlParams = !!urlProvince || urlKchtType.length > 0 || !!urlSearch;
-    if (searchPanelVisible && hasUrlParams) {
-      handleSearchInfrastructure();
-    }
-  }, [handleSearchInfrastructure, searchPanelVisible, urlProvince, urlKchtType.length, urlSearch]);
+    if (!orgUnitsReady || initialInfrastructureSearchRef.current) return;
+    const defaultOrgUnitId = findDefaultMaritimeAuthorityOrgId(orgUnits);
+
+    initialInfrastructureSearchRef.current = true;
+    if (defaultOrgUnitId) searchForm.setFieldValue('orgUnitId', defaultOrgUnitId);
+    void handleSearchInfrastructure(1, searchPageSize);
+  }, [handleSearchInfrastructure, orgUnits, orgUnitsReady, searchForm, searchPageSize]);
 
   // Update map size when search panel is shown/hidden
   useEffect(() => {
@@ -2734,7 +2754,7 @@ export default function GISChartView() {
     const L = leafletRuntime;
     if (!L || !mapRef.current || featuresAtPoint.length === 0) return;
 
-    const popup = L.popup({ minWidth: 296, maxWidth: 320, maxHeight: 330, autoPanPadding: [50, 100] })
+    const popup = L.popup({ minWidth: 410, maxWidth: 440, maxHeight: 420, autoPanPadding: [50, 100] })
       .setLatLng(latlng)
       .setContent(buildPlanningPopupContent(featuresAtPoint))
       .openOn(mapRef.current);
@@ -3422,46 +3442,13 @@ export default function GISChartView() {
           openPopup: openPopupAt,
         });
 
-          // Find symbol based on kchtTypeLabel (for infrastructureResults) or loaiKcht (for customGisFeatures)
-          const loai = (record.kchtTypeLabel || record.loaiKcht || '').toUpperCase();
-          let sym = null;
-          if (loai.includes('CẢNG BIỂN') || loai.includes('CANGBIEN') || loai.includes('CANG_BIEN')) {
-            sym = symbols.find(s => s.code === 'SEAPORT');
-          } else if (loai.includes('BẾN CẢNG')) {
-            sym = symbols.find(s => s.code === 'TERMINAL');
-          } else if (loai.includes('CẢNG CẠN')) {
-            sym = symbols.find(s => s.code === 'DRY_PORT');
-          } else if (loai.includes('CẦU CẢNG')) {
-            sym = symbols.find(s => s.code === 'QUAY');
-          } else if (loai.includes('KHU NEO ĐẬU')) {
-            sym = symbols.find(s => s.code === 'ANCHORAGE');
-          } else if (loai.includes('BẾN PHAO')) {
-            sym = symbols.find(s => s.code === 'MOORING');
-          } else if (loai.includes('TRÚ BÃO') || loai.includes('TRÁNH BÃO') || loai.includes('TRÁNH, TRÚ BÃO')) {
-            sym = symbols.find(s => s.code === 'SHELTER');
-          } else if (loai.includes('CHUYỂN TẢI')) {
-            sym = symbols.find(s => s.code === 'TRANSSHIP');
-          } else if (loai.includes('SỬA CHỮA') || loai.includes('ĐÓNG TÀU')) {
-            sym = symbols.find(s => s.code === 'SHIPYARD');
-          } else if (loai.includes('ĐÈN BIỂN') || loai.includes('DENBIEN')) {
-            sym = symbols.find(s => s.code === 'LIGHTHOUSE');
-          } else if (loai.includes('PHAO') || loai.includes('TIÊU') || loai.includes('PHAOTIEU')) {
-            sym = symbols.find(s => s.code === 'BUOY');
-          } else if (loai.includes('LUỒNG HÀNG HẢI') || loai.includes('LUONGHANGHAI')) {
-            sym = symbols.find(s => s.code === 'CHANNEL');
-          } else if (loai.includes('ĐÊ') || loai.includes('KÈ') || loai.includes('DEKE')) {
-            sym = symbols.find(s => s.code === 'BREAKWATER');
-          } else if (loai.includes('VTS')) {
-            sym = symbols.find(s => s.code === 'VTS' || s.code === 'VTS_INFRA');
-          } else if (loai.includes('RADAR')) {
-            sym = symbols.find(s => s.code === 'RADAR');
-          } else if (loai.includes('AIS')) {
-            sym = symbols.find(s => s.code === 'AIS');
-          } else if (loai.includes('CCTV')) {
-            sym = symbols.find(s => s.code === 'CCTV');
-          } else if (loai.includes('SCADA')) {
-            sym = symbols.find(s => s.code === 'SCADA');
-          }
+          // Ưu tiên biểu tượng được gán trực tiếp cho bản ghi; nếu chưa có thì
+          // dùng biểu tượng mặc định theo mã loại nghiệp vụ, không suy đoán từ tên.
+          const defaultSymbolCode = getKchtSymbolCode(record.infrastructureType);
+          const sym = (record.mapSymbolId
+            ? symbols.find((symbol) => symbol.id === record.mapSymbolId)
+            : undefined)
+            || symbols.find((symbol) => symbol.code === defaultSymbolCode);
 
           let markerIcon: any;
           if (sym && sym.image) {
@@ -3978,62 +3965,91 @@ export default function GISChartView() {
                         boxShadow: shadowLg,
                         border: `1px solid ${borderDefault}`,
                         padding: spaceMd,
-                        width: '320px',
+                        width: 340,
+                        maxHeight: '68vh',
+                        overflowY: 'auto',
                         fontFamily: fontSans,
                       }}
                       onMouseDown={(e) => e.stopPropagation()}
                     >
-                      <div style={{ fontWeight: fontWeightBold, fontSize: fontSizeMd, color: colors.sidebarBg, letterSpacing: '0.5px', borderBottom: `1px solid ${borderDefault}`, paddingBottom: spaceSm, marginBottom: spaceMd }}>
-                        GHI CHÚ QUY HOẠCH:
+                      <div style={{ fontWeight: fontWeightBold, fontSize: fontSizeLg, color: colors.sidebarBg, borderBottom: `1px solid ${borderDefault}`, paddingBottom: spaceSm, marginBottom: spaceMd }}>
+                        Chú giải bản đồ
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{ fontWeight: fontWeightBold, fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceSm }}>
+                        Biểu tượng kết cấu hạ tầng
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm, marginBottom: spaceMd }}>
+                        {KCHT_GIS_TYPE_OPTIONS.map((option) => {
+                          const symbolCode = getKchtSymbolCode(option.value);
+                          const symbol = symbols.find((item) => item.code === symbolCode);
+                          const imageSource = symbol?.image
+                            ? (symbol.image.startsWith('data:') ? symbol.image : `data:image/png;base64,${symbol.image}`)
+                            : undefined;
+                          return (
+                            <div key={option.value} style={{ display: 'flex', alignItems: 'center', gap: spaceSm }}>
+                              <div style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                {imageSource ? (
+                                  <img src={imageSource} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} />
+                                ) : (
+                                  <span style={{ width: spaceSm, height: spaceSm, borderRadius: radiusPill, background: actionPrimary }} />
+                                )}
+                              </div>
+                              <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{option.label}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div style={{ fontWeight: fontWeightBold, fontSize: fontSizeMd, color: textSecondary, borderTop: `1px solid ${borderDefault}`, paddingTop: spaceMd, marginBottom: spaceSm }}>
+                        Quy hoạch cảng biển
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}>
                         {/* Bến cảng hiện hữu */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div style={{ width: '24px', height: '12px', background: PLANNING_STATUS_COLORS.existingPort, border: `1px solid ${PLANNING_STATUS_COLORS.existingPort}`, borderRadius: '2px' }} />
-                          <span style={{ fontSize: '13px', color: '#444' }}>Bến cảng hiện hữu</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
+                          <div style={{ width: spaceLg, height: spaceMd, background: PLANNING_STATUS_COLORS.existingPort, border: `1px solid ${PLANNING_STATUS_COLORS.existingPort}`, borderRadius: radiusSm }} />
+                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Bến cảng hiện hữu</span>
                         </div>
                         {/* Bến cảng quy hoạch đến năm 2030 */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div style={{ width: '24px', height: '12px', background: PLANNING_STATUS_COLORS.planned2030, border: `1px solid ${PLANNING_STATUS_COLORS.planned2030}`, borderRadius: '2px' }} />
-                          <span style={{ fontSize: '13px', color: '#444' }}>Bến cảng quy hoạch đến năm 2030</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
+                          <div style={{ width: spaceLg, height: spaceMd, background: PLANNING_STATUS_COLORS.planned2030, border: `1px solid ${PLANNING_STATUS_COLORS.planned2030}`, borderRadius: radiusSm }} />
+                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Bến cảng quy hoạch đến năm 2030</span>
                         </div>
                         {/* Bến cảng phát triển có điều kiện */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div style={{ width: '24px', height: '12px', background: PLANNING_STATUS_COLORS.conditionalDevelopment, border: `1px solid ${PLANNING_STATUS_COLORS.conditionalDevelopment}`, borderRadius: '2px' }} />
-                          <span style={{ fontSize: '13px', color: '#444' }}>Bến cảng phát triển có điều kiện</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
+                          <div style={{ width: spaceLg, height: spaceMd, background: PLANNING_STATUS_COLORS.conditionalDevelopment, border: `1px solid ${PLANNING_STATUS_COLORS.conditionalDevelopment}`, borderRadius: radiusSm }} />
+                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Bến cảng phát triển có điều kiện</span>
                         </div>
                         {/* Bến cảng quy hoạch tầm nhìn đến năm 2050 */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div style={{ width: '24px', height: '12px', background: PLANNING_STATUS_COLORS.vision2050, border: `1px solid ${PLANNING_STATUS_COLORS.vision2050}`, borderRadius: '2px' }} />
-                          <span style={{ fontSize: '13px', color: '#444' }}>Bến cảng quy hoạch tầm nhìn đến năm 2050</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
+                          <div style={{ width: spaceLg, height: spaceMd, background: PLANNING_STATUS_COLORS.vision2050, border: `1px solid ${PLANNING_STATUS_COLORS.vision2050}`, borderRadius: radiusSm }} />
+                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Bến cảng quy hoạch tầm nhìn đến năm 2050</span>
                         </div>
                         {/* Vùng đón trả hoa tiêu quy hoạch */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
                           <svg width="24" height="12" viewBox="0 0 24 12" style={{ display: 'block' }}>
                             <line x1="2" y1="10" x2="22" y2="2" stroke={PLANNING_STATUS_COLORS.plannedPilotArea} strokeWidth="3" strokeLinecap="round" />
                           </svg>
-                          <span style={{ fontSize: '13px', color: '#444' }}>Vùng đón trả hoa tiêu quy hoạch</span>
+                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Vùng đón trả hoa tiêu quy hoạch</span>
                         </div>
                         {/* Vùng đón trả hoa tiêu hiện trạng */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
                           <svg width="24" height="12" viewBox="0 0 24 12" style={{ display: 'block' }}>
                             <line x1="2" y1="10" x2="22" y2="2" stroke={PLANNING_STATUS_COLORS.existingPilotArea} strokeWidth="2" strokeLinecap="round" />
                           </svg>
-                          <span style={{ fontSize: '13px', color: '#444' }}>Vùng đón trả hoa tiêu hiện trạng</span>
+                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Vùng đón trả hoa tiêu hiện trạng</span>
                         </div>
                         {/* Vùng neo hiện trạng */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
                           <svg width="24" height="12" viewBox="0 0 24 12" style={{ display: 'block' }}>
                             <line x1="2" y1="10" x2="22" y2="2" stroke={PLANNING_STATUS_COLORS.existingAnchorage} strokeWidth="2" strokeLinecap="round" />
                           </svg>
-                          <span style={{ fontSize: '13px', color: '#444' }}>Vùng neo hiện trạng</span>
+                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Vùng neo hiện trạng</span>
                         </div>
                         {/* Vùng neo quy hoạch */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
                           <svg width="24" height="12" viewBox="0 0 24 12" style={{ display: 'block' }}>
                             <line x1="2" y1="10" x2="22" y2="2" stroke={PLANNING_STATUS_COLORS.plannedAnchorage} strokeWidth="2" strokeLinecap="round" />
                           </svg>
-                          <span style={{ fontSize: '13px', color: '#444' }}>Vùng neo quy hoạch</span>
+                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Vùng neo quy hoạch</span>
                         </div>
                       </div>
                     </div>
@@ -4282,7 +4298,7 @@ export default function GISChartView() {
                         form={searchForm}
                         layout="vertical"
                         onFinish={() => void handleSearchInfrastructure(1, searchPageSize)}
-                        initialValues={{ orgUnitId: '__all__', kchtType: urlKchtType, province: urlProvince || undefined, search: urlSearch, objectType: undefined }}
+                        initialValues={{ kchtType: urlKchtType, province: urlProvince || undefined, search: urlSearch, objectType: undefined }}
                         style={{ width: '100%', maxWidth: '100%', minWidth: 0, overflow: 'hidden' }}
                       >
                         <Form.Item name="orgUnitId" label={<span style={filterLabelStyle}>Đơn vị quản lý</span>} style={formFieldStyle}>
@@ -4360,17 +4376,16 @@ export default function GISChartView() {
                         <Button
                           icon={<ReloadOutlined />}
                           onClick={() => {
-                            hasSearchedRef.current = false;
-                            setHasSearched(false);
                             setSearchError(undefined);
                             setSearchPage(1);
                             searchForm.resetFields();
-                            setInfrastructureResults([]);
-                            setTotalSearchElements(0);
+                            const defaultOrgUnitId = findDefaultMaritimeAuthorityOrgId(orgUnits);
+                            if (defaultOrgUnitId) searchForm.setFieldValue('orgUnitId', defaultOrgUnitId);
                             setSelectedRowKeys([]);
                             if (searchMarkersGroupRef.current) {
                               searchMarkersGroupRef.current.clearLayers();
                             }
+                            void handleSearchInfrastructure(1, searchPageSize);
                           }}
                           shape="circle"
                           title="Đặt lại bộ lọc"
