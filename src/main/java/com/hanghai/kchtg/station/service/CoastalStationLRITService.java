@@ -5,6 +5,7 @@ import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
@@ -35,6 +36,8 @@ import java.util.*;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
 import com.hanghai.kchtg.common.entity.OperatingOrganization;
+import com.hanghai.kchtg.mapicon.entity.MapSymbol;
+import com.hanghai.kchtg.mapicon.repository.MapSymbolRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -51,8 +54,28 @@ public class CoastalStationLRITService {
     private final OperatingOrganizationRepository operatingOrganizationRepository;
     private final UserRepository userRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
+    private final MapSymbolRepository mapSymbolRepository;
     private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
     private final com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository attachmentRepository;
+
+    private UUID resolveSymbolId(UUID requestSymbolId, String requestSymbol) {
+        if (requestSymbolId != null) {
+            return requestSymbolId;
+        }
+        if (requestSymbol != null && !requestSymbol.isBlank()) {
+            String trimmed = requestSymbol.trim();
+            try {
+                return UUID.fromString(trimmed);
+            } catch (IllegalArgumentException notUuid) {
+                if (mapSymbolRepository != null) {
+                    return mapSymbolRepository.findByCode(trimmed)
+                            .map(MapSymbol::getId)
+                            .orElse(null);
+                }
+            }
+        }
+        return null;
+    }
 
     private Scope resolveEffectiveScope(UUID selectedOrgUnitId) {
         Scope userScope = orgUnitScopeService.currentUserScope();
@@ -304,20 +327,18 @@ public class CoastalStationLRITService {
         entity.setContactPhone(request.getContactPhone());
 
         // GIS
-        if (request.getSymbolId() != null) {
-            entity.setSymbolId(request.getSymbolId());
-        } else if (request.getSymbol() != null) {
-            entity.setSymbol(request.getSymbol());
-        }
+        UUID resolvedSymbolId = resolveSymbolId(request.getSymbolId(), request.getSymbol());
+        entity.setSymbolId(resolvedSymbolId);
 
         CoastalStationLRIT saved = repository.save(entity);
 
         if (request.getCoordinates() != null && !request.getCoordinates().isBlank()) {
+            String reqGeom = request.getGeometryType() != null ? request.getGeometryType() : request.getObjectType();
             UUID spatialId = gisSpatialObjectService.syncSpatialObject(
                     null,
                     "Đài LRIT " + saved.getName(),
                     "LRIT_" + saved.getId(),
-                    toGisGeometryType(request.getGeometryType()),
+                    toGisGeometryType(reqGeom, request.getCoordinates()),
                     request.getCoordinates(),
                     saved.getId(),
                     InfrastructureType.LRIT_STATION);
@@ -337,6 +358,16 @@ public class CoastalStationLRITService {
 
         boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
                 || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+
+        String currentGeomType = "POINT";
+        if (entity.getSpatialId() != null && gisSpatialObjectService != null) {
+            Optional<GisSpatialObject> spatialOpt = gisSpatialObjectService.findById(entity.getSpatialId());
+            if (spatialOpt.isPresent() && spatialOpt.get().getGeometryType() != null) {
+                currentGeomType = spatialOpt.get().getGeometryType().name();
+            }
+        }
+        entity.setGeometryType(currentGeomType);
+        entity.setObjectType(currentGeomType);
 
         Map<String, String> oldValues = new LinkedHashMap<>();
         if (wasApproved) {
@@ -401,11 +432,16 @@ public class CoastalStationLRITService {
             }
 
             // GIS fields
-            if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType(), entity.getGeometryType())) {
-                oldValues.put("Loại đối tượng GIS", formatObjectTypeDisplay(entity.getGeometryType()));
+            String reqGeom = request.getGeometryType() != null ? request.getGeometryType() : request.getObjectType();
+            if (reqGeom != null && !Objects.equals(reqGeom, currentGeomType)) {
+                oldValues.put("Loại đối tượng GIS", formatObjectTypeDisplay(currentGeomType));
             }
-            if (request.getSymbol() != null && !Objects.equals(request.getSymbol(), entity.getSymbol())) {
-                oldValues.put("Biểu tượng", gisSpatialObjectService != null ? gisSpatialObjectService.getSymbolDisplayName(entity.getSymbol()) : (entity.getSymbol() != null ? entity.getSymbol() : "—"));
+            UUID targetSymbolId = resolveSymbolId(request.getSymbolId(), request.getSymbol());
+            if ((request.getSymbolId() != null || request.getSymbol() != null) && !Objects.equals(targetSymbolId, entity.getSymbolId())) {
+                String oldSymDisplay = entity.getSymbolId() != null
+                        ? (gisSpatialObjectService != null ? gisSpatialObjectService.getSymbolDisplayName(entity.getSymbolId().toString()) : entity.getSymbolId().toString())
+                        : "—";
+                oldValues.put("Biểu tượng", oldSymDisplay);
             }
             if (request.getCoordinateSystem() != null && !Objects.equals(request.getCoordinateSystem(), entity.getCoordinateSystem())) {
                 oldValues.put("Hệ quy chiếu", entity.getCoordinateSystem() != null ? entity.getCoordinateSystem() : "—");
@@ -467,12 +503,13 @@ public class CoastalStationLRITService {
         if (request.getContactPerson() != null) entity.setContactPerson(request.getContactPerson());
         if (request.getContactPhone() != null) entity.setContactPhone(request.getContactPhone());
 
-        if (request.getSymbolId() != null) {
-            entity.setSymbolId(request.getSymbolId());
-        } else if (request.getSymbol() != null) {
-            entity.setSymbol(request.getSymbol());
+        if (request.getSymbolId() != null || request.getSymbol() != null) {
+            entity.setSymbolId(resolveSymbolId(request.getSymbolId(), request.getSymbol()));
         }
-        GisGeometryType geomType = toGisGeometryType(request.getGeometryType());
+        String reqGeom = request.getGeometryType() != null ? request.getGeometryType() : request.getObjectType();
+        GisGeometryType geomType = toGisGeometryType(reqGeom, request.getCoordinates());
+        entity.setGeometryType(geomType.name());
+        entity.setObjectType(geomType.name());
 
         // coordinates != null means the caller intentionally changed GIS. An
         // empty string clears the old spatial object; omitting the property
@@ -514,14 +551,23 @@ public class CoastalStationLRITService {
         return updated;
     }
 
-    private GisGeometryType toGisGeometryType(String geometryType) {
+    private GisGeometryType toGisGeometryType(String geometryType, String coordinates) {
         if ("LINE".equalsIgnoreCase(geometryType) || "LINESTRING".equalsIgnoreCase(geometryType)) {
             return GisGeometryType.LINE;
         }
         if ("POLYGON".equalsIgnoreCase(geometryType)) {
             return GisGeometryType.POLYGON;
         }
+        if (coordinates != null) {
+            String upper = coordinates.trim().toUpperCase();
+            if (upper.startsWith("LINE")) return GisGeometryType.LINE;
+            if (upper.startsWith("POLYGON")) return GisGeometryType.POLYGON;
+        }
         return GisGeometryType.POINT;
+    }
+
+    private GisGeometryType toGisGeometryType(String geometryType) {
+        return toGisGeometryType(geometryType, null);
     }
 
     private BigDecimal[] extractFirstCoordinate(String wkt) {
@@ -652,8 +698,17 @@ public class CoastalStationLRITService {
     public CoastalStationLRIT submit(UUID id) {
         CoastalStationLRIT entity = getStationById(id);
         UUID currentUserId = SecurityUtils.getCurrentUserId();
+        if (currentUserId == null) {
+            currentUserId = entity.getUpdatedBy() != null ? entity.getUpdatedBy() : entity.getCreatedBy();
+            if (currentUserId == null) {
+                currentUserId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+            }
+        }
         validateAllowedOrgUnit(entity.getOrgUnitId());
         approvalService.submit(entity, InfrastructureType.LRIT_STATION, currentUserId);
+        entity.setSubmittedAt(LocalDateTime.now());
+        entity.setSubmittedBy(currentUserId);
+        entity.setRejectionReason(null);
         entity.setStatus(StationStatus.PENDING_APPROVAL);
         return repository.save(entity);
     }
@@ -665,6 +720,12 @@ public class CoastalStationLRITService {
     public CoastalStationLRIT approveLevel1(UUID id, String content) {
         CoastalStationLRIT entity = getStationById(id);
         UUID currentUserId = SecurityUtils.getCurrentUserId();
+        if (currentUserId == null) {
+            currentUserId = entity.getUpdatedBy() != null ? entity.getUpdatedBy() : entity.getCreatedBy();
+            if (currentUserId == null) {
+                currentUserId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+            }
+        }
         validateAllowedOrgUnit(entity.getOrgUnitId());
         String approvalContent = content == null || content.isBlank() ? "Đủ điều kiện" : content.trim();
         approvalService.approveC1(entity, InfrastructureType.LRIT_STATION, ApprovalStatus.APPROVED_LEVEL1.name(), approvalContent, currentUserId);
@@ -678,9 +739,30 @@ public class CoastalStationLRITService {
     public CoastalStationLRIT approveLevel2(UUID id, String content) {
         CoastalStationLRIT entity = getStationById(id);
         UUID currentUserId = SecurityUtils.getCurrentUserId();
+        if (currentUserId == null) {
+            currentUserId = entity.getUpdatedBy() != null ? entity.getUpdatedBy() : entity.getCreatedBy();
+            if (currentUserId == null) {
+                currentUserId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+            }
+        }
         String approvalContent = content == null || content.isBlank() ? "Đồng ý ban hành" : content.trim();
         approvalService.approveC2(entity, InfrastructureType.LRIT_STATION, ApprovalStatus.APPROVED_LEVEL2.name(), approvalContent, currentUserId);
         entity.setStatus(StationStatus.APPROVED_L2);
+        LocalDateTime now = LocalDateTime.now();
+
+        // Khi Cấp Cục phê duyệt trực tiếp, nếu chưa có thông tin người gửi thì tự động điền
+        if (entity.getSubmittedBy() == null) {
+            entity.setSubmittedBy(currentUserId);
+            entity.setSubmittedAt(now);
+        }
+
+        // Hướng 2: Khi Cấp Cục phê duyệt trực tiếp, tự động điền luôn thông tin Cấp 1
+        if (entity.getApproverLevel1() == null) {
+            entity.setApproverLevel1(currentUserId);
+            entity.setApprovedDateLevel1(now);
+            entity.setLevel1ApprovalContent("Cấp Cục phê duyệt trực tiếp (đồng thuận cả 2 cấp)");
+        }
+
         return repository.save(entity);
     }
 
@@ -805,10 +887,31 @@ public class CoastalStationLRITService {
 
         String createdByName = resolveUserName(entity.getCreatedBy());
         String updatedByName = resolveUserName(entity.getUpdatedBy());
+        UUID effectiveSubmittedBy = entity.getSubmittedBy() != null ? entity.getSubmittedBy() : entity.getCreatedBy();
+        String submittedByName = resolveUserName(effectiveSubmittedBy);
         String approver1Name = resolveUserName(entity.getApproverLevel1());
         String approver2Name = resolveUserName(entity.getApproverLevel2());
 
-        String coords = gisSpatialObjectService != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
+        String coords = null;
+        String resolvedGeomType = "POINT";
+        if (entity.getSpatialId() != null && gisSpatialObjectService != null) {
+            Optional<GisSpatialObject> spatialOpt = gisSpatialObjectService.findById(entity.getSpatialId());
+            if (spatialOpt.isPresent()) {
+                GisSpatialObject so = spatialOpt.get();
+                coords = so.getCoordinates();
+                if (so.getGeometryType() != null) {
+                    resolvedGeomType = so.getGeometryType().name();
+                }
+            }
+        }
+        if (coords == null && entity.getLatitude() != null && entity.getLongitude() != null) {
+            coords = "POINT(" + entity.getLongitude() + " " + entity.getLatitude() + ")";
+        }
+        if (coords != null && (resolvedGeomType == null || "POINT".equals(resolvedGeomType))) {
+            String upper = coords.trim().toUpperCase();
+            if (upper.startsWith("LINE")) resolvedGeomType = "LINE";
+            else if (upper.startsWith("POLYGON")) resolvedGeomType = "POLYGON";
+        }
         BigDecimal lat = entity.getLatitude();
         BigDecimal lng = entity.getLongitude();
         if ((lat == null || lng == null) && coords != null && !coords.isBlank()) {
@@ -849,7 +952,11 @@ public class CoastalStationLRITService {
                 .contactPhone(entity.getContactPhone())
                 .spatialId(entity.getSpatialId())
                 .symbolId(entity.getSymbolId())
-                .geometryType(entity.getGeometryType())
+                .symbolName(entity.getSymbolId() != null && gisSpatialObjectService != null
+                        ? gisSpatialObjectService.getSymbolDisplayName(entity.getSymbolId().toString())
+                        : null)
+                .geometryType(resolvedGeomType)
+                .objectType(resolvedGeomType)
                 .symbol(entity.getSymbol())
                 .coordinateSystem(entity.getCoordinateSystem())
                 .displayRule(entity.getDisplayRule())
@@ -857,14 +964,19 @@ public class CoastalStationLRITService {
                 .longitude(lng)
                 .coordinates(coords)
                 .approvalStatus(entity.getApprovalStatus())
-                .submittedAt(entity.getSubmittedAt())
-                .submittedBy(entity.getSubmittedBy())
+                .submittedAt(entity.getSubmittedAt() != null ? entity.getSubmittedAt() : entity.getCreatedAt())
+                .submittedBy(effectiveSubmittedBy)
+                .submittedByName(submittedByName)
                 .approverLevel1(entity.getApproverLevel1())
                 .approverLevel1Name(approver1Name)
                 .approvedDateLevel1(entity.getApprovedDateLevel1())
+                .approvalContentLevel1(entity.getLevel1ApprovalContent())
+                .level1ApprovalContent(entity.getLevel1ApprovalContent())
                 .approverLevel2(entity.getApproverLevel2())
                 .approverLevel2Name(approver2Name)
                 .approvedDateLevel2(entity.getApprovedDateLevel2())
+                .approvalContentLevel2(entity.getLevel2ApprovalContent())
+                .level2ApprovalContent(entity.getLevel2ApprovalContent())
                 .rejectionReason(entity.getRejectionReason())
                 .createdBy(entity.getCreatedBy())
                 .createdByName(createdByName)

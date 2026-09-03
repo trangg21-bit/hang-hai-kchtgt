@@ -111,6 +111,23 @@ public class CoastalStationHaiphongService {
         return code;
     }
 
+    public static com.hanghai.kchtg.vtssystem.entity.ConditionStatus parseConditionStatus(Object val) {
+        if (val == null) return null;
+        if (val instanceof com.hanghai.kchtg.vtssystem.entity.ConditionStatus cs) return cs;
+        String s = val.toString().trim();
+        if (s.isEmpty()) return null;
+        try {
+            int ord = Integer.parseInt(s);
+            if (ord >= 0 && ord < com.hanghai.kchtg.vtssystem.entity.ConditionStatus.values().length) {
+                return com.hanghai.kchtg.vtssystem.entity.ConditionStatus.values()[ord];
+            }
+        } catch (NumberFormatException ignored) {}
+        try {
+            return com.hanghai.kchtg.vtssystem.entity.ConditionStatus.valueOf(s.toUpperCase());
+        } catch (IllegalArgumentException ignored) {}
+        return null;
+    }
+
     // --- TÌM KIẾM PHÂN TRANG & THỐNG KÊ TAB ---
 
     @Transactional(readOnly = true)
@@ -134,7 +151,7 @@ public class CoastalStationHaiphongService {
 
         Page<CoastalStationHaiphong> page = repository.searchPaged(
                 scopeEnabled, scopeOrgUnitIds, orgUnitId, kw, operatingOrgId, provinceId,
-                conditionStatus, approvalStatus, updatedBy, updatedFrom, updatedTo, pageable);
+                parseConditionStatus(conditionStatus), approvalStatus, updatedBy, updatedFrom, updatedTo, pageable);
 
         return page.map(this::buildResponse);
     }
@@ -160,7 +177,7 @@ public class CoastalStationHaiphongService {
         String kw = toKeywordLike(keyword);
 
         List<Object[]> rawCounts = repository.countByApprovalStatus(
-                scopeEnabled, scopeOrgUnitIds, orgUnitId, kw, conditionStatus,
+                scopeEnabled, scopeOrgUnitIds, orgUnitId, kw, parseConditionStatus(conditionStatus),
                 operatingOrgId, provinceId, updatedBy, updatedFrom, updatedTo);
 
         Map<ApprovalStatus, Long> countsByStatus = new EnumMap<>(ApprovalStatus.class);
@@ -235,16 +252,14 @@ public class CoastalStationHaiphongService {
 
         CoastalStationHaiphong entity = new CoastalStationHaiphong();
         entity.setOrgUnitId(targetOrgUnitId);
-        entity.setUnitId(targetOrgUnitId);
         entity.setOperatingOrgId(request.getOperatingOrgId());
         entity.setProvinceId(request.getProvinceId());
         entity.setCode(code);
-        entity.setStationCode(code);
-        entity.setName(request.getName() != null ? request.getName() : request.getStationName());
-        entity.setStationName(entity.getName());
+        entity.setName(request.getName() != null ? request.getName().trim() : null);
         entity.setLocationAddress(request.getLocationAddress());
-        entity.setConditionStatus(request.getConditionStatus() != null ? request.getConditionStatus() : "OPERATIONAL");
-        entity.setStatus(StationStatus.DRAFT);
+        entity.setConditionStatus(request.getConditionStatus() != null
+                ? parseConditionStatus(request.getConditionStatus())
+                : com.hanghai.kchtg.vtssystem.entity.ConditionStatus.OPERATIONAL);
         entity.setApprovalStatus(ApprovalStatus.DRAFT);
 
         entity.setPortName(request.getPortName());
@@ -263,14 +278,7 @@ public class CoastalStationHaiphongService {
         entity.setDescription(request.getDescription());
         entity.setContactPerson(request.getContactPerson());
         entity.setContactPhone(request.getContactPhone());
-
-        // GIS
-        entity.setGeometryType(request.getGeometryType() != null ? request.getGeometryType() : "POINT");
-        entity.setSymbol(request.getSymbol());
-        entity.setCoordinateSystem(request.getCoordinateSystem() != null ? request.getCoordinateSystem() : "WGS84");
-        entity.setDisplayRule(request.getDisplayRule());
-        entity.setLatitude(request.getLatitude());
-        entity.setLongitude(request.getLongitude());
+        entity.setSymbolId(request.getSymbolId());
 
         CoastalStationHaiphong saved = repository.save(entity);
 
@@ -327,8 +335,8 @@ public class CoastalStationHaiphongService {
             if (request.getLocationAddress() != null && !Objects.equals(request.getLocationAddress(), entity.getLocationAddress())) {
                 oldValues.put("Địa điểm chi tiết", entity.getLocationAddress() != null ? entity.getLocationAddress() : "—");
             }
-            if (request.getConditionStatus() != null && !Objects.equals(request.getConditionStatus(), entity.getConditionStatus())) {
-                oldValues.put("Tình trạng", entity.getConditionStatus() != null ? entity.getConditionStatus() : "—");
+            if (request.getConditionStatus() != null && !Objects.equals(parseConditionStatus(request.getConditionStatus()), entity.getConditionStatus())) {
+                oldValues.put("Tình trạng", entity.getConditionStatus() != null ? entity.getConditionStatus().name() : "—");
             }
             if (request.getPortName() != null && !Objects.equals(request.getPortName(), entity.getPortName())) {
                 oldValues.put("Cảng biển", entity.getPortName() != null ? entity.getPortName() : "—");
@@ -379,38 +387,13 @@ public class CoastalStationHaiphongService {
                 oldValues.put("Số điện thoại liên hệ", entity.getContactPhone() != null ? entity.getContactPhone() : "—");
             }
 
-            // GIS fields
-            if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType(), entity.getGeometryType())) {
-                oldValues.put("Loại đối tượng GIS", formatObjectTypeDisplay(entity.getGeometryType()));
+            // GIS tracking
+            if (request.getSymbolId() != null && !Objects.equals(request.getSymbolId(), entity.getSymbolId())) {
+                oldValues.put("Biểu tượng", entity.getSymbolId() != null ? String.valueOf(entity.getSymbolId()) : "—");
             }
-            if (request.getSymbol() != null && !Objects.equals(request.getSymbol(), entity.getSymbol())) {
-                oldValues.put("Biểu tượng", gisSpatialObjectService != null ? gisSpatialObjectService.getSymbolDisplayName(entity.getSymbol()) : (entity.getSymbol() != null ? entity.getSymbol() : "—"));
-            }
-            if (request.getCoordinateSystem() != null && !Objects.equals(request.getCoordinateSystem(), entity.getCoordinateSystem())) {
-                oldValues.put("Hệ quy chiếu", entity.getCoordinateSystem() != null ? entity.getCoordinateSystem() : "—");
-            }
-            if (request.getDisplayRule() != null && !Objects.equals(request.getDisplayRule(), entity.getDisplayRule())) {
-                oldValues.put("Quy tắc hiển thị", entity.getDisplayRule() != null ? entity.getDisplayRule() : "—");
-            }
-            boolean latChanged = (request.getLatitude() != null && (entity.getLatitude() == null || request.getLatitude().compareTo(entity.getLatitude()) != 0))
-                    || (request.getLatitude() == null && entity.getLatitude() != null);
-            boolean lngChanged = (request.getLongitude() != null && (entity.getLongitude() == null || request.getLongitude().compareTo(entity.getLongitude()) != 0))
-                    || (request.getLongitude() == null && entity.getLongitude() != null);
-
             String oldCoord = gisSpatialObjectService != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
-            if (oldCoord == null || oldCoord.isBlank()) {
-                oldCoord = (entity.getLatitude() != null && entity.getLongitude() != null)
-                        ? entity.getLatitude() + ", " + entity.getLongitude()
-                        : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
-            }
             String newCoord = request.getCoordinates();
-            if (newCoord == null || newCoord.isBlank()) {
-                newCoord = (request.getLatitude() != null && request.getLongitude() != null)
-                        ? request.getLatitude() + ", " + request.getLongitude()
-                        : (request.getLatitude() != null ? "Vĩ độ: " + request.getLatitude() : (request.getLongitude() != null ? "Kinh độ: " + request.getLongitude() : null));
-            }
-            boolean coordsChanged = (newCoord != null && !Objects.equals(newCoord, oldCoord)) || latChanged || lngChanged;
-            if (coordsChanged) {
+            if (newCoord != null && !Objects.equals(newCoord, oldCoord)) {
                 oldValues.put("Tọa độ GIS", oldCoord != null ? oldCoord : "—");
             }
         }
@@ -418,7 +401,6 @@ public class CoastalStationHaiphongService {
         if (request.getOrgUnitId() != null) {
             validateAllowedOrgUnit(request.getOrgUnitId());
             entity.setOrgUnitId(request.getOrgUnitId());
-            entity.setUnitId(request.getOrgUnitId());
         }
 
         if (request.getCode() != null && repository.existsByCodeAndIdNotAndDeletedAtIsNull(request.getCode().trim(), id)) {
@@ -428,11 +410,10 @@ public class CoastalStationHaiphongService {
         if (request.getOperatingOrgId() != null) entity.setOperatingOrgId(request.getOperatingOrgId());
         if (request.getProvinceId() != null) entity.setProvinceId(request.getProvinceId());
         if (request.getName() != null) {
-            entity.setName(request.getName());
-            entity.setStationName(request.getName());
+            entity.setName(request.getName().trim());
         }
         if (request.getLocationAddress() != null) entity.setLocationAddress(request.getLocationAddress());
-        if (request.getConditionStatus() != null) entity.setConditionStatus(request.getConditionStatus());
+        if (request.getConditionStatus() != null) entity.setConditionStatus(parseConditionStatus(request.getConditionStatus()));
 
         if (request.getPortName() != null) entity.setPortName(request.getPortName());
         if (request.getDistrict() != null) entity.setDistrict(request.getDistrict());
@@ -450,29 +431,14 @@ public class CoastalStationHaiphongService {
         if (request.getDescription() != null) entity.setDescription(request.getDescription());
         if (request.getContactPerson() != null) entity.setContactPerson(request.getContactPerson());
         if (request.getContactPhone() != null) entity.setContactPhone(request.getContactPhone());
-
-        if (request.getGeometryType() != null) entity.setGeometryType(request.getGeometryType());
-        if (request.getSymbol() != null) entity.setSymbol(request.getSymbol());
-        if (request.getCoordinateSystem() != null) entity.setCoordinateSystem(request.getCoordinateSystem());
-        if (request.getDisplayRule() != null) entity.setDisplayRule(request.getDisplayRule());
-        GisGeometryType geomType = "LINE".equalsIgnoreCase(request.getGeometryType()) ? GisGeometryType.LINE : ("POLYGON".equalsIgnoreCase(request.getGeometryType()) ? GisGeometryType.POLYGON : GisGeometryType.POINT);
-
-        if (request.getLatitude() != null) entity.setLatitude(request.getLatitude());
-        if (request.getLongitude() != null) entity.setLongitude(request.getLongitude());
+        if (request.getSymbolId() != null) entity.setSymbolId(request.getSymbolId());
 
         if (request.getCoordinates() != null && !request.getCoordinates().isBlank()) {
-            if (entity.getLatitude() == null || entity.getLongitude() == null) {
-                BigDecimal[] pt = extractFirstCoordinate(request.getCoordinates());
-                if (pt != null) {
-                    entity.setLatitude(pt[0]);
-                    entity.setLongitude(pt[1]);
-                }
-            }
             UUID spatialId = gisSpatialObjectService.syncSpatialObject(
                     entity.getSpatialId(),
                     "Đài TTXLTT " + entity.getName(),
                     "HAIPHONG_" + entity.getId(),
-                    geomType,
+                    GisGeometryType.POINT,
                     request.getCoordinates(),
                     entity.getId(),
                     InfrastructureType.HANOI_STATION);
@@ -522,7 +488,7 @@ public class CoastalStationHaiphongService {
             case "Đơn vị khai thác" -> entity.getOperatingOrgId() != null ? resolveOperatingOrgName(entity.getOperatingOrgId()) : "—";
             case "Địa điểm (Tỉnh/TP)" -> entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : "—";
             case "Địa điểm chi tiết" -> entity.getLocationAddress() != null ? entity.getLocationAddress() : "—";
-            case "Tình trạng" -> entity.getConditionStatus() != null ? entity.getConditionStatus() : "—";
+            case "Tình trạng" -> entity.getConditionStatus() != null ? entity.getConditionStatus().name() : "—";
             case "Vùng phủ sóng" -> entity.getCoverageArea() != null ? entity.getCoverageArea() : "—";
             case "Loại thiết bị" -> entity.getEquipmentType() != null ? entity.getEquipmentType() : "—";
             case "Tần số liên lạc" -> entity.getCommunicationFrequency() != null ? entity.getCommunicationFrequency() : "—";
@@ -530,16 +496,10 @@ public class CoastalStationHaiphongService {
             case "Ghi chú" -> entity.getDescription() != null ? entity.getDescription() : "—";
             case "Người liên hệ" -> entity.getContactPerson() != null ? entity.getContactPerson() : "—";
             case "Số điện thoại liên hệ" -> entity.getContactPhone() != null ? entity.getContactPhone() : "—";
-            case "Loại đối tượng", "Loại đối tượng GIS" -> formatObjectTypeDisplay(entity.getGeometryType());
-            case "Biểu tượng" -> gisSpatialObjectService != null ? gisSpatialObjectService.getSymbolDisplayName(entity.getSymbol()) : (entity.getSymbol() != null ? entity.getSymbol() : "—");
-            case "Hệ quy chiếu" -> entity.getCoordinateSystem() != null ? entity.getCoordinateSystem() : "—";
-            case "Quy tắc hiển thị" -> entity.getDisplayRule() != null ? entity.getDisplayRule() : "—";
+            case "Biểu tượng" -> entity.getSymbolId() != null ? String.valueOf(entity.getSymbolId()) : "—";
             case "Tọa độ", "Tọa độ GIS", "Tọa độ GPS" -> {
                 String c = gisSpatialObjectService != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
-                if (c != null && !c.isBlank()) yield c;
-                yield (entity.getLatitude() != null && entity.getLongitude() != null)
-                        ? entity.getLatitude() + ", " + entity.getLongitude()
-                        : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
+                yield (c != null && !c.isBlank()) ? c : "—";
             }
             default -> "—";
         };
@@ -580,7 +540,6 @@ public class CoastalStationHaiphongService {
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         validateAllowedOrgUnit(entity.getOrgUnitId());
         approvalService.submit(entity, InfrastructureType.HANOI_STATION, currentUserId);
-        entity.setStatus(StationStatus.PENDING_APPROVAL);
         return repository.save(entity);
     }
 
@@ -594,6 +553,7 @@ public class CoastalStationHaiphongService {
         validateAllowedOrgUnit(entity.getOrgUnitId());
         String approvalContent = content == null || content.isBlank() ? "Đủ điều kiện" : content.trim();
         approvalService.approveC1(entity, InfrastructureType.HANOI_STATION, ApprovalStatus.APPROVED_LEVEL1.name(), approvalContent, currentUserId);
+        entity.setLevel1ApprovalContent(approvalContent);
         return repository.save(entity);
     }
 
@@ -606,7 +566,7 @@ public class CoastalStationHaiphongService {
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         String approvalContent = content == null || content.isBlank() ? "Đồng ý ban hành" : content.trim();
         approvalService.approveC2(entity, InfrastructureType.HANOI_STATION, ApprovalStatus.APPROVED_LEVEL2.name(), approvalContent, currentUserId);
-        entity.setStatus(StationStatus.APPROVED_L2);
+        entity.setLevel2ApprovalContent(approvalContent);
         return repository.save(entity);
     }
 
@@ -731,8 +691,14 @@ public class CoastalStationHaiphongService {
         String approver2Name = resolveUserName(entity.getApproverLevel2());
 
         String coords = gisSpatialObjectService != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
-        if (coords == null && entity.getLatitude() != null && entity.getLongitude() != null) {
-            coords = "POINT(" + entity.getLongitude() + " " + entity.getLatitude() + ")";
+        BigDecimal lat = entity.getLatitude();
+        BigDecimal lng = entity.getLongitude();
+        if ((lat == null || lng == null) && coords != null && !coords.isBlank()) {
+            BigDecimal[] pt = extractFirstCoordinate(coords);
+            if (pt != null) {
+                lat = pt[0];
+                lng = pt[1];
+            }
         }
 
         return CoastalStationHaiphongResponse.builder()
@@ -742,13 +708,10 @@ public class CoastalStationHaiphongService {
                 .operatingOrgId(entity.getOperatingOrgId())
                 .operatingOrgName(opOrgName)
                 .provinceId(entity.getProvinceId())
-                .code(entity.getCode() != null ? entity.getCode() : entity.getStationCode())
-                .stationCode(entity.getCode() != null ? entity.getCode() : entity.getStationCode())
-                .name(entity.getName() != null ? entity.getName() : entity.getStationName())
-                .stationName(entity.getName() != null ? entity.getName() : entity.getStationName())
+                .code(entity.getCode())
+                .name(entity.getName())
                 .locationAddress(entity.getLocationAddress())
-                .conditionStatus(entity.getConditionStatus())
-                .status(entity.getStatus())
+                .conditionStatus(entity.getConditionStatus() != null ? entity.getConditionStatus().name() : null)
                 .portName(entity.getPortName())
                 .district(entity.getDistrict())
                 .ward(entity.getWard())
@@ -766,12 +729,9 @@ public class CoastalStationHaiphongService {
                 .contactPerson(entity.getContactPerson())
                 .contactPhone(entity.getContactPhone())
                 .spatialId(entity.getSpatialId())
-                .geometryType(entity.getGeometryType())
-                .symbol(entity.getSymbol())
-                .coordinateSystem(entity.getCoordinateSystem())
-                .displayRule(entity.getDisplayRule())
-                .latitude(entity.getLatitude())
-                .longitude(entity.getLongitude())
+                .symbolId(entity.getSymbolId())
+                .latitude(lat)
+                .longitude(lng)
                 .coordinates(coords)
                 .approvalStatus(entity.getApprovalStatus())
                 .submittedAt(entity.getSubmittedAt())
@@ -779,9 +739,11 @@ public class CoastalStationHaiphongService {
                 .approverLevel1(entity.getApproverLevel1())
                 .approverLevel1Name(approver1Name)
                 .approvedDateLevel1(entity.getApprovedDateLevel1())
+                .level1ApprovalContent(entity.getLevel1ApprovalContent())
                 .approverLevel2(entity.getApproverLevel2())
                 .approverLevel2Name(approver2Name)
                 .approvedDateLevel2(entity.getApprovedDateLevel2())
+                .level2ApprovalContent(entity.getLevel2ApprovalContent())
                 .rejectionReason(entity.getRejectionReason())
                 .createdBy(entity.getCreatedBy())
                 .createdByName(createdByName)

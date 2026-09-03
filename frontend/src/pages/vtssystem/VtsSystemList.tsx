@@ -462,7 +462,7 @@ function renderHistoryValueTag(field: string, val: string | null) {
     }
   }
 
-  return <span title={displayValue} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere' }}>{displayValue}</span>;
+  return <span title={displayValue} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>{displayValue}</span>;
 }
 
 export default function VtsSystemList() {
@@ -1143,6 +1143,11 @@ export default function VtsSystemList() {
         || r.includes('cập nhật') || r.includes('chỉnh sửa') || r.includes('tải lên') || r.includes('xóa tệp') || r.includes('xóa tài liệu');
     };
 
+    const isSameMinute = (t1: string, t2: string) => {
+      if (!t1 || !t2) return false;
+      return dayjs(t1).format('YYYY-MM-DD HH:mm') === dayjs(t2).format('YYYY-MM-DD HH:mm');
+    };
+
     const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
     for (const r of sorted) {
       const ts = historyTimestamp(r);
@@ -1150,10 +1155,12 @@ export default function VtsSystemList() {
       const prev = groups[groups.length - 1];
       const actor = historyActor(r);
       const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
-      // Gộp theo ĐÚNG giây: một lần bấm Lưu ghi ra nhiều dòng cùng thời điểm.
-      // Cửa sổ 60 giây như trước làm hai lần sửa cách nhau chưa tới một phút bị
-      // nhập thành một bản ghi lịch sử duy nhất.
-      const isSameGroup = prev && prev.tsSec === sec && prev.actor === actor && (prev.status === r.status || isBothUpdate);
+      // Gom nhóm thông minh: Cùng người dùng, cùng giây HOẶC cùng phút (cho các thao tác cập nhật/đính kèm của cùng một phiên lưu)
+      const isSameGroup = prev && prev.actor === actor && (
+        prev.tsSec === sec ||
+        (isBothUpdate && (isSameMinute(prev.ts, ts) || Math.abs(prev.tsSec - sec) <= 60)) ||
+        (prev.status === r.status && isSameMinute(prev.ts, ts))
+      );
       if (isSameGroup) {
         prev.items.push(r);
       } else {
@@ -1198,7 +1205,7 @@ export default function VtsSystemList() {
               key={gi}
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'minmax(310px, 0.38fr) minmax(0, 1fr)',
+                gridTemplateColumns: '220px minmax(0, 1fr)',
                 gap: spaceLg,
                 alignItems: 'start',
                 marginBottom: gi < groups.length - 1 ? spaceMd : 0,
@@ -1254,7 +1261,7 @@ export default function VtsSystemList() {
                         return (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
                             {items.map((item, idx) => (
-                              <div key={idx} style={{ color: textPrimary, fontWeight: fontWeightMedium, lineHeight: '20px', wordBreak: 'break-word' }}>
+                              <div key={idx} style={{ color: textPrimary, fontWeight: fontWeightMedium, lineHeight: 1.5, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                                 {item}
                               </div>
                             ))}
@@ -1360,16 +1367,24 @@ export default function VtsSystemList() {
                             return (
                               <React.Fragment key={`${fn}-${ri}`}>
                                 {rows.map((row, rIdx) => (
-                                  <div key={rIdx} style={{ display: 'grid', gridTemplateColumns: '170px minmax(100px, 1fr) 24px minmax(100px, 1fr)', alignItems: 'flex-start', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6, padding: '3px 0' }}>
-                                    <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{row.label}</div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word', color: textPrimary }}>
-                                      {row.oldVal}
+                                  <div key={rIdx} style={{ display: 'grid', gridTemplateColumns: '140px minmax(0, 1fr) 24px minmax(0, 1fr)', alignItems: 'flex-start', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6, padding: '3px 0' }}>
+                                    <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{row.label}</div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5, color: textPrimary }}>
+                                      {typeof row.oldVal === 'string' ? (
+                                        <span title={row.oldVal} style={{ overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>
+                                          {row.oldVal}
+                                        </span>
+                                      ) : row.oldVal}
                                     </div>
                                     <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>
                                       {row.arrow ? '→' : ''}
                                     </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word', color: textPrimary }}>
-                                      {row.newVal}
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5, color: textPrimary }}>
+                                      {typeof row.newVal === 'string' ? (
+                                        <span title={row.newVal} style={{ overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>
+                                          {row.newVal}
+                                        </span>
+                                      ) : row.newVal}
                                     </div>
                                   </div>
                                 ))}
@@ -1378,13 +1393,13 @@ export default function VtsSystemList() {
                           }
 
                           return (
-                            <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '170px minmax(100px, 1fr) 24px minmax(100px, 1fr)', alignItems: 'flex-start', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6, padding: '3px 0' }}>
-                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word' }}>
+                            <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '140px minmax(0, 1fr) 24px minmax(0, 1fr)', alignItems: 'flex-start', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6, padding: '3px 0' }}>
+                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>
                                 {renderHistoryContent(fn, ov, true)}
                               </div>
                               <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>→</div>
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>
                                 {renderHistoryContent(fn, nv, false)}
                               </div>
                             </div>
@@ -1574,7 +1589,8 @@ export default function VtsSystemList() {
 
       {/* ── History drawer ────────────────────────────────────────── */}
       <Drawer
-        size={960}
+        width={1000}
+        style={{ maxWidth: '95vw' }}
         placement="right"
         open={historyModalOpen}
         onClose={() => setHistoryModalOpen(false)}

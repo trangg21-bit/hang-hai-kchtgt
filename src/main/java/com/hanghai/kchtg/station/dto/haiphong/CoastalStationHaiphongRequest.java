@@ -23,10 +23,7 @@ public class CoastalStationHaiphongRequest {
     private Integer provinceId;
 
     private String code;
-    private String stationCode;
-
     private String name;
-    private String stationName;
 
     private String locationAddress;
     private String conditionStatus;
@@ -51,11 +48,29 @@ public class CoastalStationHaiphongRequest {
 
     // --- GIS ---
     private UUID spatialId;
-    private String geometryType;
-    private String symbol;
-    private String coordinateSystem;
-    private String displayRule;
+    private UUID symbolId;
     private BigDecimal latitude;
     private BigDecimal longitude;
     private String coordinates;
+
+    // Getter tương thích ngược nếu payload cũ gửi stationCode / stationName
+    public void setStationCode(String stationCode) {
+        if (this.code == null || this.code.isBlank()) {
+            this.code = stationCode;
+        }
+    }
+
+    public void setStationName(String stationName) {
+        if (this.name == null || this.name.isBlank()) {
+            this.name = stationName;
+        }
+    }
+
+    public String getStationCode() {
+        return this.code;
+    }
+
+    public String getStationName() {
+        return this.name;
+    }
 }

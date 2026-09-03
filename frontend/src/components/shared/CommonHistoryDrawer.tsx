@@ -372,7 +372,14 @@ export function renderCommonHistoryValueTag(field: string, val: string) {
     }
   }
 
-  return <span style={{ color: textPrimary, fontWeight: fontWeightBold, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{val}</span>;
+  return (
+    <span
+      title={typeof val === 'string' ? val : undefined}
+      style={{ color: textPrimary, fontWeight: fontWeightBold, wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'normal', lineHeight: 1.5 }}
+    >
+      {val}
+    </span>
+  );
 }
 
 const drawerTitleStyle: React.CSSProperties = {

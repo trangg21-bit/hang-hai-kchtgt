@@ -235,13 +235,19 @@ public class HistoryService {
         if (action == null) {
             return InfrastructureHistoryStatus.UPDATED;
         }
-        return switch (action) {
-            case CREATE -> InfrastructureHistoryStatus.CREATED;
-            case UPDATE -> InfrastructureHistoryStatus.UPDATED;
-            case DELETE -> InfrastructureHistoryStatus.DELETED;
-            case APPROVE_L1, APPROVE_L2 -> InfrastructureHistoryStatus.APPROVED;
-            case REJECT -> InfrastructureHistoryStatus.REJECTED;
-        };
+        if (action == StationHistoryActionType.CREATE) {
+            return InfrastructureHistoryStatus.CREATED;
+        }
+        if (action == StationHistoryActionType.DELETE) {
+            return InfrastructureHistoryStatus.DELETED;
+        }
+        if (action == StationHistoryActionType.APPROVE_L1 || action == StationHistoryActionType.APPROVE_L2) {
+            return InfrastructureHistoryStatus.APPROVED;
+        }
+        if (action == StationHistoryActionType.REJECT) {
+            return InfrastructureHistoryStatus.REJECTED;
+        }
+        return InfrastructureHistoryStatus.UPDATED;
     }
 
     private ApprovalLevel toApprovalLevel(StationHistoryActionType action) {
@@ -258,15 +264,21 @@ public class HistoryService {
         if (status == null) {
             return StationHistoryActionType.UPDATE;
         }
-        return switch (status) {
-            case CREATED, DRAFT_SAVED -> StationHistoryActionType.CREATE;
-            case DELETED -> StationHistoryActionType.DELETE;
-            case REJECTED -> StationHistoryActionType.REJECT;
-            case APPROVED -> level == ApprovalLevel.LEVEL_2
+        if (status == InfrastructureHistoryStatus.CREATED || status == InfrastructureHistoryStatus.DRAFT_SAVED) {
+            return StationHistoryActionType.CREATE;
+        }
+        if (status == InfrastructureHistoryStatus.DELETED) {
+            return StationHistoryActionType.DELETE;
+        }
+        if (status == InfrastructureHistoryStatus.REJECTED) {
+            return StationHistoryActionType.REJECT;
+        }
+        if (status == InfrastructureHistoryStatus.APPROVED) {
+            return level == ApprovalLevel.LEVEL_2
                     ? StationHistoryActionType.APPROVE_L2
                     : StationHistoryActionType.APPROVE_L1;
-            default -> StationHistoryActionType.UPDATE;
-        };
+        }
+        return StationHistoryActionType.UPDATE;
     }
 
     private Map<UUID, String> resolveUserNames(Collection<UUID> userIds) {

@@ -27,6 +27,8 @@ export interface LritStationItem {
   contactPerson?: string;
   contactPhone?: string;
   spatialId?: string;
+  symbolId?: string;
+  symbolName?: string;
   geometryType?: string;
   symbol?: string;
   coordinateSystem?: string;
@@ -78,6 +80,7 @@ export interface CreateLritStationRequest {
   contactPerson?: string;
   contactPhone?: string;
   geometryType?: string;
+  symbolId?: string;
   symbol?: string;
   coordinateSystem?: string;
   displayRule?: string;

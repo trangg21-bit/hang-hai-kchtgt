@@ -59,6 +59,7 @@ public class CoastalStationLRITResponse {
     // --- GIS ---
     private UUID spatialId;
     private UUID symbolId;
+    private String symbolName;
     private String geometryType;
     private String objectType;
     private String symbol;
@@ -75,6 +76,7 @@ public class CoastalStationLRITResponse {
     private UUID submittedBy;
     private String submittedByName;
     private String approvalContentLevel1;
+    private String level1ApprovalContent;
 
     private UUID approverLevel1;
     private String approverLevel1Name;
@@ -84,6 +86,7 @@ public class CoastalStationLRITResponse {
     private String approverLevel2Name;
     private LocalDateTime approvedDateLevel2;
     private String approvalContentLevel2;
+    private String level2ApprovalContent;
 
     private String rejectionReason;
 

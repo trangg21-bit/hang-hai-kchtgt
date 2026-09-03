@@ -4,12 +4,14 @@ import com.hanghai.kchtg.common.entity.ApprovableEntity;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldNameConstants;
+import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
@@ -28,14 +30,11 @@ import java.util.UUID;
 @AllArgsConstructor
 @FieldNameConstants
 @SQLRestriction("deleted_at IS NULL")
-@org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
+@Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
 public class CoastalStationHaiphong extends BaseEntity implements ApprovableEntity {
 
     @Column(name = "org_unit_id")
     private UUID orgUnitId;
-
-    @Column(name = "unit_id")
-    private UUID unitId;
 
     @Column(name = "operating_org_id")
     private UUID operatingOrgId;
@@ -46,14 +45,8 @@ public class CoastalStationHaiphong extends BaseEntity implements ApprovableEnti
     @Column(name = "code", length = 50)
     protected String code;
 
-    @Column(name = "station_code", length = 50)
-    private String stationCode;
-
     @Column(name = "name", length = 255)
     protected String name;
-
-    @Column(name = "station_name", length = 255)
-    private String stationName;
 
     @Column(name = "description", length = 1000)
     protected String description;
@@ -64,15 +57,21 @@ public class CoastalStationHaiphong extends BaseEntity implements ApprovableEnti
     @Column(name = "spatial_id")
     protected UUID spatialId;
 
-    @Column(name = "is_active")
-    protected Boolean isActive = true;
+    @Column(name = "symbol_id")
+    private UUID symbolId;
 
-    @Column(name = "condition_status", length = 50)
-    private String conditionStatus = "OPERATIONAL";
+    @Transient
+    private BigDecimal latitude;
+
+    @Transient
+    private BigDecimal longitude;
+
+    @Transient
+    private String objectType;
 
     @Enumerated(EnumType.ORDINAL)
-    @Column(name = "status", columnDefinition = "smallint default 0")
-    protected StationStatus status = StationStatus.DRAFT;
+    @Column(name = "condition_status", nullable = false, columnDefinition = "SMALLINT")
+    private ConditionStatus conditionStatus = ConditionStatus.OPERATIONAL;
 
     // --- Thông số đặc thù TTXLTT Hà Nội / Hải Phòng ---
     @Column(name = "port_name")
@@ -120,25 +119,6 @@ public class CoastalStationHaiphong extends BaseEntity implements ApprovableEnti
     @Column(name = "services_provided", length = 1000)
     private String servicesProvided;
 
-    // --- GIS Coordinates ---
-    @Column(name = "geometry_type", length = 50)
-    private String geometryType = "POINT";
-
-    @Column(name = "symbol", length = 100)
-    private String symbol;
-
-    @Column(name = "coordinate_system", length = 50)
-    private String coordinateSystem = "WGS84";
-
-    @Column(name = "display_rule", length = 500)
-    private String displayRule;
-
-    @Column(name = "latitude", precision = 10, scale = 6)
-    private BigDecimal latitude;
-
-    @Column(name = "longitude", precision = 10, scale = 6)
-    private BigDecimal longitude;
-
     // --- Quy trình phê duyệt 2 cấp chuẩn (C1/C2) ---
     @Enumerated(EnumType.ORDINAL)
     @Column(name = "approval_status", nullable = false, columnDefinition = "SMALLINT DEFAULT 0")
@@ -175,6 +155,18 @@ public class CoastalStationHaiphong extends BaseEntity implements ApprovableEnti
     @Column(name = "rejection_reason", length = 1000)
     protected String rejectionReason;
 
+    @Column(name = "level1_approval_content", length = 2000)
+    private String level1ApprovalContent;
+
+    @Column(name = "level2_approval_content", length = 2000)
+    private String level2ApprovalContent;
+
+    // Alias tương thích ngược
+    public String getStationCode() { return this.code; }
+    public void setStationCode(String stationCode) { this.code = stationCode; }
+    public String getStationName() { return this.name; }
+    public void setStationName(String stationName) { this.name = stationName; }
+
     @Override
     public void setSubmittedBy(UUID submittedBy) {
         this.submittedBy = submittedBy;
@@ -210,43 +202,13 @@ public class CoastalStationHaiphong extends BaseEntity implements ApprovableEnti
         this.approvedDateLevel2 = date;
     }
 
-    @Override
-    public UUID getOrgUnitId() {
-        return this.orgUnitId != null ? this.orgUnitId : this.unitId;
-    }
-
     @PrePersist
     protected void onCreate() {
         if (this.approvalStatus == null) {
             this.approvalStatus = ApprovalStatus.DRAFT;
         }
-        if (this.status == null) {
-            this.status = StationStatus.DRAFT;
-        }
         if (this.conditionStatus == null) {
-            this.conditionStatus = "OPERATIONAL";
+            this.conditionStatus = ConditionStatus.OPERATIONAL;
         }
-        if (this.code != null && this.stationCode == null) {
-            this.stationCode = this.code;
-        } else if (this.stationCode != null && this.code == null) {
-            this.code = this.stationCode;
-        }
-        if (this.name != null && this.stationName == null) {
-            this.stationName = this.name;
-        } else if (this.stationName != null && this.name == null) {
-            this.name = this.stationName;
-        }
-        if (this.orgUnitId != null && this.unitId == null) {
-            this.unitId = this.orgUnitId;
-        } else if (this.unitId != null && this.orgUnitId == null) {
-            this.orgUnitId = this.unitId;
-        }
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        if (this.code != null) this.stationCode = this.code;
-        if (this.name != null) this.stationName = this.name;
-        if (this.orgUnitId != null) this.unitId = this.orgUnitId;
     }
 }

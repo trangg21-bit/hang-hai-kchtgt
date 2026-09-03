@@ -226,6 +226,25 @@ export default function LritStationForm({
     return orgUnits.filter((u: any) => allowedIds.has(u.id));
   }, [orgUnits, user, isCucLevel]);
 
+  // Sync symbol field when symbols list finishes loading
+  useEffect(() => {
+    if (record && symbols.length > 0) {
+      const symIdOrCode = (record as any).symbolId || record.symbol;
+      if (symIdOrCode) {
+        const found = symbols.find(
+          (s) => s.id === symIdOrCode || s.code === symIdOrCode || String(s.id) === String(symIdOrCode)
+        );
+        if (found) {
+          const finalVal = found.id || found.code;
+          if (form.getFieldValue('symbolId') !== finalVal) {
+            form.setFieldValue('symbolId', finalVal);
+            form.setFieldValue('symbol', finalVal);
+          }
+        }
+      }
+    }
+  }, [symbols, record, form]);
+
   // Load record details
   useEffect(() => {
     if (!open) {
@@ -281,6 +300,7 @@ export default function LritStationForm({
         coverageArea: undefined,
         description: undefined,
         geometryType: 'POINT',
+        symbolId: undefined,
         symbol: undefined,
         coordinateSystem: 'WGS 84 / VN-2000',
         displayRule: 'Độ, phút, giây (DMS)',
@@ -334,6 +354,17 @@ export default function LritStationForm({
     setGeometryTypeState(geom);
     setCoordinateList(adjustCoordinateListForGeometry(initialCoords, geom));
 
+    const rawSym = (data as any).symbolId || data.symbol;
+    let initialSymVal = rawSym;
+    if (rawSym && symbols.length > 0) {
+      const matched = symbols.find(
+        (s) => s.id === rawSym || s.code === rawSym || String(s.id) === String(rawSym)
+      );
+      if (matched) {
+        initialSymVal = matched.id || matched.code;
+      }
+    }
+
     form.setFieldsValue({
       orgUnitId: data.orgUnitId,
       operatingOrgId: data.operatingOrgId,
@@ -346,7 +377,8 @@ export default function LritStationForm({
       services: serviceList,
       description: data.description,
       geometryType: geom,
-      symbol: data.symbol || undefined,
+      symbolId: initialSymVal || undefined,
+      symbol: initialSymVal || undefined,
       coordinateSystem: data.coordinateSystem || 'WGS 84 / VN-2000',
       displayRule: data.displayRule || 'Độ, phút, giây (DMS)',
     });
@@ -385,6 +417,13 @@ export default function LritStationForm({
       const servicesArray = Array.isArray(values.services) ? values.services : [];
       const servicesString = servicesArray.join(', ');
 
+      const rawSelectedSym = values.symbolId || values.symbol;
+      const matchedSym = symbols.find(
+        (s) => s.id === rawSelectedSym || s.code === rawSelectedSym || String(s.id) === String(rawSelectedSym)
+      );
+      const payloadSymbolId = matchedSym?.id || rawSelectedSym || undefined;
+      const payloadSymbolCode = matchedSym?.code || matchedSym?.name || rawSelectedSym || undefined;
+
       const payload: CreateLritStationRequest = {
         orgUnitId: values.orgUnitId,
         operatingOrgId: values.operatingOrgId,
@@ -398,7 +437,8 @@ export default function LritStationForm({
         services: servicesArray,
         description: values.description?.trim(),
         geometryType: geomType,
-        symbol: values.symbol,
+        symbolId: payloadSymbolId,
+        symbol: payloadSymbolCode || payloadSymbolId,
         coordinateSystem: values.coordinateSystem,
         displayRule: values.displayRule,
         // Chuỗi rỗng có nghĩa là người dùng chủ động bỏ vị trí; BE sẽ xóa
@@ -663,8 +703,8 @@ export default function LritStationForm({
                         <span className="chk-detail-label">Biểu tượng</span>
                         <span className="chk-detail-value">
                           {(() => {
-                            const symId = record?.symbol;
-                            const sym = symbols.find((s) => s.id === symId || s.code === symId);
+                            const symId = (record as any)?.symbolId || record?.symbol;
+                            const sym = symbols.find((s) => s.id === symId || s.code === symId || String(s.id) === String(symId));
                             if (sym?.image) {
                               const imgSrc = sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`;
                               return (
@@ -674,7 +714,7 @@ export default function LritStationForm({
                                 </Space>
                               );
                             }
-                            return sym?.name || symId || 'SYM-COASTAL';
+                            return sym?.name || (record as any)?.symbolName || symId || '—';
                           })()}
                         </span>
                       </div>
@@ -1079,6 +1119,7 @@ export default function LritStationForm({
                               } else {
                                 form.setFieldValue('coordinateSystem', undefined);
                                 form.setFieldValue('displayRule', undefined);
+                                form.setFieldValue('symbolId', undefined);
                                 form.setFieldValue('symbol', undefined);
                                 setCoordinateList([{ latitude: null, longitude: null }]);
                               }
@@ -1089,7 +1130,7 @@ export default function LritStationForm({
 
                       <Col span={12}>
                         <Form.Item
-                          name="symbol"
+                          name="symbolId"
                           label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '18px' }}>Biểu tượng</span>}
                           style={{ marginBottom: 0 }}
                         >
@@ -1098,7 +1139,7 @@ export default function LritStationForm({
                             allowClear
                             disabled={!geometryTypeState}
                             options={symbols.map((sym) => ({
-                              value: sym.code || sym.id,
+                              value: sym.id || sym.code,
                               label: (
                                 <Space size={6} style={{ display: 'inline-flex', alignItems: 'center' }}>
                                   {sym.image ? (
@@ -1114,6 +1155,10 @@ export default function LritStationForm({
                                 </Space>
                               ),
                             }))}
+                            onChange={(val) => {
+                              form.setFieldValue('symbolId', val);
+                              form.setFieldValue('symbol', val);
+                            }}
                             style={{ ...selectStyle, height: 38 }}
                           />
                         </Form.Item>

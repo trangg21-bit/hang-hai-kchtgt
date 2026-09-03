@@ -427,7 +427,20 @@ function renderHistoryValueTag(field: string, val: string | null, symbols: any[]
   if (normField.includes('tinh trang') || normField.includes('trang thai') || normField.includes('status')) {
     return renderCommonHistoryValueTag(field, val);
   }
-  return <span style={{ color: textPrimary }}>{val}</span>;
+  return (
+    <span
+      title={typeof val === 'string' ? val : undefined}
+      style={{
+        color: textPrimary,
+        overflowWrap: 'anywhere',
+        wordBreak: 'break-word',
+        whiteSpace: 'normal',
+        lineHeight: 1.5,
+      }}
+    >
+      {val}
+    </span>
+  );
 }
 
 export const HanoiStationList: React.FC = () => {
@@ -773,6 +786,11 @@ export const HanoiStationList: React.FC = () => {
         || r.includes('cập nhật') || r.includes('chỉnh sửa') || r.includes('tải lên') || r.includes('xóa tệp') || r.includes('xóa tài liệu');
     };
 
+    const isSameMinute = (t1: string, t2: string) => {
+      if (!t1 || !t2) return false;
+      return dayjs(t1).format('YYYY-MM-DD HH:mm') === dayjs(t2).format('YYYY-MM-DD HH:mm');
+    };
+
     const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
     for (const r of sorted) {
       const ts = historyTimestamp(r);
@@ -780,10 +798,12 @@ export const HanoiStationList: React.FC = () => {
       const prev = groups[groups.length - 1];
       const actor = historyActor(r);
       const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
-      // Gộp theo ĐÚNG giây: một lần bấm Lưu ghi ra nhiều dòng cùng thời điểm.
-      // Cửa sổ 60 giây như trước làm hai lần sửa cách nhau chưa tới một phút bị
-      // nhập thành một bản ghi lịch sử duy nhất.
-      const isSameGroup = prev && prev.tsSec === sec && prev.actor === actor && (prev.status === r.status || isBothUpdate);
+      // Gom nhóm thông minh: Cùng người dùng, cùng giây HOẶC cùng phút (cho các thao tác cập nhật/đính kèm của cùng một phiên lưu)
+      const isSameGroup = prev && prev.actor === actor && (
+        prev.tsSec === sec ||
+        (isBothUpdate && (isSameMinute(prev.ts, ts) || Math.abs(prev.tsSec - sec) <= 60)) ||
+        (prev.status === r.status && isSameMinute(prev.ts, ts))
+      );
       if (isSameGroup) {
         prev.items.push(r);
       } else {
@@ -827,7 +847,7 @@ export const HanoiStationList: React.FC = () => {
             key={gi}
             style={{
               display: 'grid',
-              gridTemplateColumns: 'minmax(310px, 0.38fr) minmax(0, 1fr)',
+              gridTemplateColumns: '220px minmax(0, 1fr)',
               gap: spaceLg,
               alignItems: 'start',
               marginBottom: gi < groups.length - 1 ? spaceMd : 0,
@@ -947,16 +967,24 @@ export const HanoiStationList: React.FC = () => {
                           return (
                             <React.Fragment key={`${fn}-${ri}`}>
                               {rows.map((row, rIdx) => (
-                                <div key={rIdx} style={{ display: 'grid', gridTemplateColumns: '170px minmax(100px, 1fr) 24px minmax(100px, 1fr)', alignItems: 'flex-start', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6, padding: '3px 0' }}>
-                                  <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{row.label}</div>
-                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word', color: textPrimary }}>
-                                    {row.oldVal}
+                                <div key={rIdx} style={{ display: 'grid', gridTemplateColumns: '140px minmax(0, 1fr) 24px minmax(0, 1fr)', alignItems: 'flex-start', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6, padding: '3px 0' }}>
+                                  <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{row.label}</div>
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5, color: textPrimary }}>
+                                    {typeof row.oldVal === 'string' ? (
+                                      <span title={row.oldVal} style={{ overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>
+                                        {row.oldVal}
+                                      </span>
+                                    ) : row.oldVal}
                                   </div>
                                   <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>
                                     {row.arrow ? '→' : ''}
                                   </div>
-                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word', color: textPrimary }}>
-                                    {row.newVal}
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5, color: textPrimary }}>
+                                    {typeof row.newVal === 'string' ? (
+                                      <span title={row.newVal} style={{ overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>
+                                        {row.newVal}
+                                      </span>
+                                    ) : row.newVal}
                                   </div>
                                 </div>
                               ))}
@@ -965,13 +993,13 @@ export const HanoiStationList: React.FC = () => {
                         }
 
                         return (
-                          <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '170px minmax(100px, 1fr) 24px minmax(100px, 1fr)', alignItems: 'flex-start', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6, padding: '3px 0' }}>
-                            <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word' }}>
+                          <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '140px minmax(0, 1fr) 24px minmax(0, 1fr)', alignItems: 'flex-start', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6, padding: '3px 0' }}>
+                            <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>
                               {renderHistoryContent(fn, ov, true)}
                             </div>
                             <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>→</div>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>
                               {renderHistoryContent(fn, nv)}
                             </div>
                           </div>
@@ -1376,7 +1404,8 @@ export const HanoiStationList: React.FC = () => {
         )}
 
         <Drawer
-          size={960}
+          width={1000}
+          style={{ maxWidth: '95vw' }}
           placement="right"
           open={historyModalOpen}
           onClose={() => setHistoryModalOpen(false)}

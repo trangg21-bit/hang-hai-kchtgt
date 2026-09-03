@@ -30,6 +30,7 @@ export interface HanoiStationItem {
   contactPerson?: string;
   contactPhone?: string;
   spatialId?: string;
+  symbolId?: string;
   geometryType?: string;
   symbol?: string;
   coordinateSystem?: string;
@@ -83,6 +84,8 @@ export interface CreateHanoiStationRequest {
   description?: string;
   contactPerson?: string;
   contactPhone?: string;
+  spatialId?: string;
+  symbolId?: string;
   geometryType?: string;
   symbol?: string;
   coordinateSystem?: string;

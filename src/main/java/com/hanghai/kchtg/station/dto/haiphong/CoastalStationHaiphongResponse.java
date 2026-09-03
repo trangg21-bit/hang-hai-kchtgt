@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.station.dto.haiphong;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.station.entity.StationStatus;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -30,13 +30,10 @@ public class CoastalStationHaiphongResponse {
     private String provinceName;
 
     private String code;
-    private String stationCode;
     private String name;
-    private String stationName;
 
     private String locationAddress;
     private String conditionStatus;
-    private StationStatus status;
 
     // --- Đặc thù TTXLTT Hà Nội / Hải Phòng ---
     private String portName;
@@ -58,17 +55,14 @@ public class CoastalStationHaiphongResponse {
 
     // --- GIS ---
     private UUID spatialId;
-    private String geometryType;
-    private String symbol;
-    private String coordinateSystem;
-    private String displayRule;
+    private UUID symbolId;
     private BigDecimal latitude;
     private BigDecimal longitude;
     private String coordinates;
 
     // --- Phê duyệt & Kiểm toán ---
     private ApprovalStatus approvalStatus;
-    private com.hanghai.kchtg.common.enums.ApprovalLevel approvalLevel;
+    private ApprovalLevel approvalLevel;
     private LocalDateTime submittedAt;
     private UUID submittedBy;
     private String submittedByName;
@@ -76,10 +70,12 @@ public class CoastalStationHaiphongResponse {
     private UUID approverLevel1;
     private String approverLevel1Name;
     private LocalDateTime approvedDateLevel1;
+    private String level1ApprovalContent;
 
     private UUID approverLevel2;
     private String approverLevel2Name;
     private LocalDateTime approvedDateLevel2;
+    private String level2ApprovalContent;
 
     private String rejectionReason;
 
@@ -90,4 +86,21 @@ public class CoastalStationHaiphongResponse {
     private UUID updatedBy;
     private String updatedByName;
     private LocalDateTime updatedAt;
+
+    // Getter tương thích ngược cho client/legacy code
+    public String getStationCode() {
+        return this.code;
+    }
+
+    public void setStationCode(String stationCode) {
+        this.code = stationCode;
+    }
+
+    public String getStationName() {
+        return this.name;
+    }
+
+    public void setStationName(String stationName) {
+        this.name = stationName;
+    }
 }
