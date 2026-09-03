@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { Row, Col, Form, Input, Select, InputNumber, Tabs, Button, Upload, Space, Table, Modal } from 'antd';
-import { PlusOutlined, DeleteOutlined, FileOutlined, InboxOutlined, DownloadOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import { useState, useMemo } from 'react';
+import { Row, Col, Form, Input, Select, InputNumber, Tabs, Button, Space, Table, Modal } from 'antd';
+import { PlusOutlined, DeleteOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import toast, { message } from '../../components/ToastNotification';
+import toast from '../../components/ToastNotification';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import {
@@ -10,12 +10,16 @@ import {
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
   radiusPill, radiusMd, spaceSm, spaceMd, spaceFormField, surfaceCard,
   readonlyInputStyle, actionPrimary, sidebarBg,
-  drawerTabBarStyle, drawerTabContentStyle, outlineButtonStyle, primaryButtonStyle,
+  drawerTabBarStyle, drawerTabContentStyle, drawerFormScrollStyle,
+  outlineButtonStyle, primaryButtonStyle,
+  DRAWER_TABLE_SCROLL_Y,
 } from '../../themetokenchk';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { useAuthStore } from '../../store/authStore';
+import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import DetailTable from '../../components/shared/DetailTable';
 
 // ── Styles ──────────────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
@@ -145,14 +149,25 @@ export default function PortForm({
   // Toggle cụm "Chỉ số tổng hợp" trong tab Thông tin chung (mặc định MỞ)
   const [indexOpen, setIndexOpen] = useState(true);
   const [gisModalOpen, setGisModalOpen] = useState(false);
-  const [filePage, setFilePage] = useState(1);
+  const [infraPage, setInfraPage] = useState(1);
   const currentUser = useAuthStore((s: any) => s.user);
+
+  // Transform uploadFileList từ { uid, name, size } sang { id, fileName, fileSize } cho InfrastructureAttachmentTab
+  const mappedAttachments = useMemo(() =>
+    uploadFileList.map((f) => ({
+      id: f.uid,
+      fileName: f.name,
+      fileSize: f.size,
+      ...f,
+    })),
+    [uploadFileList],
+  );
 
   const tabItems = [
     // ── Tab 1: Thông tin chung ──
     {
       key: 'general', label: 'Thông tin chung',
-      children: (<div style={drawerTabContentStyle}>
+      children: (<div style={drawerFormScrollStyle}>
         <Row gutter={16}>
           <Col span={12}>
             <Form.Item
@@ -469,7 +484,7 @@ export default function PortForm({
     // ── Tab 2: Thông tin vị trí ──
     {
       key: 'gis', label: `Thông tin vị trí (${gpsCoordList.length})`,
-      children: (<div style={drawerTabContentStyle}>
+      children: (<div style={drawerFormScrollStyle}>
         <Row gutter={16}>
           <Col span={12}>
             <Form.Item
@@ -601,20 +616,12 @@ export default function PortForm({
               <span style={{ color: statusCritical, fontSize: fontSizeMd, flex: 1 }}>⚠ {gpsError}</span>
             </div>
           )}
-          <Table
+          <DetailTable
             size="small"
-            tableLayout="fixed"
-            pagination={gpsCoordList.length > 10 ? {
-              current: gpsPage,
-              pageSize: 10,
-              total: gpsCoordList.length,
-              onChange: (p) => onGpsPageChange(p),
-              showSizeChanger: false,
-              size: 'small',
-            } : false}
+            scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
             dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i }))}
             rowKey={(r: any, idx?: number) => r._idx ?? String(idx)}
-            locale={{ emptyText: 'Chưa có tọa độ GPS nào' }}
+            emptyText="Chưa có tọa độ GPS nào"
             columns={[
               {
                 title: 'STT',
@@ -649,113 +656,27 @@ export default function PortForm({
     // ── Tab 3: File đính kèm ──
     {
       key: 'files', label: `File đính kèm (${uploadFileList.length})`,
-      children: (<div style={drawerTabContentStyle}>
-        <div style={{ marginBottom: spaceMd }}>
-          <Upload.Dragger
-            beforeUpload={(file) => {
-              if (file.size > 20 * 1024 * 1024) { message.error('File vượt quá 20MB'); return false; }
-              const ext = file.name.split('.').pop()?.toLowerCase();
-              if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) { message.error('Định dạng không hỗ trợ'); return false; }
-              if (uploadFileList.length >= 10) { message.error('Tối đa 10 file'); return false; }
-              setUploadFileList([...uploadFileList, { uid: `${Date.now()}`, name: file.name, size: file.size, status: 'done', originFileObj: file }]);
-              return false;
-            }}
-            showUploadList={false}
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif"
-            multiple
-            style={{ background: '#fafbfc', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, padding: '24px 16px' }}
-          >
-            <p style={{ marginBottom: 8 }}>
-              <InboxOutlined style={{ fontSize: 44, color: actionPrimary }} />
-            </p>
-            <p style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: textPrimary, marginBottom: 4 }}>
-              Kéo thả tệp vào đây hoặc nhấp để chọn tệp tải lên
-            </p>
-            <p style={{ fontSize: fontSizeSm, color: textTertiary, margin: 0 }}>
-              Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Mỗi file ≤ 20MB.
-            </p>
-          </Upload.Dragger>
-        </div>
-        <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-          <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
-            Danh sách tệp đính kèm ({uploadFileList.length})
-          </span>
-        </div>
-        <Table
-          size="small"
-          pagination={uploadFileList.length > 10 ? {
-            current: filePage,
-            pageSize: 10,
-            total: uploadFileList.length,
-            onChange: (p) => setFilePage(p),
-            showSizeChanger: false,
-            size: 'small',
-          } : false}
-          dataSource={uploadFileList.map((f, i) => ({ ...f, key: f.uid, _idx: i, name: f.name }))}
-          rowKey={(r) => r.uid || r._idx}
-          locale={{ emptyText: 'Chưa có tài liệu đính kèm nào' }}
-          scroll={{ x: 720 }}
-          columns={[
-            {
-              title: 'STT',
-              width: 60,
-              align: 'center',
-              render: (_v, _r, idx) => (filePage - 1) * 10 + idx + 1,
-            },
-            {
-              title: 'Tên tài liệu',
-              key: 'name',
-              dataIndex: 'name',
-              render: (name: string) => (
-                <a
-                  onClick={() => toast.info(`Đang tải xuống tệp: ${name}`)}
-                  style={{ fontSize: fontSizeMd, color: actionPrimary, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontWeight: fontWeightMedium, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
-                >
-                  <FileOutlined />
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-                </a>
-              ),
-            },
-            {
-              title: 'Dung lượng',
-              key: 'size',
-              width: 120,
-              align: 'right' as const,
-              render: (_v, rec: any) => rec.size ? (rec.size > 1024 * 1024 ? `${(rec.size / (1024 * 1024)).toFixed(2)} MB` : `${(rec.size / 1024).toFixed(1)} KB`) : '—',
-            },
-            {
-              title: 'Người tải lên',
-              key: 'uploadedBy',
-              width: 180,
-              render: () => currentUser?.fullName || currentUser?.username || '—',
-            },
-            {
-              title: 'Ngày tải lên',
-              key: 'uploadedDate',
-              width: 160,
-              align: 'center' as const,
-              render: (_v, rec: any) => rec.uploadedDate ? dayjs(rec.uploadedDate).format('DD/MM/YYYY HH:mm') : '—',
-            },
-            {
-              title: '',
-              key: 'actions',
-              width: 80,
-              align: 'center',
-              render: (_v, record: any) => (
-                <Space size={4}>
-                  <Button type="text" icon={<DownloadOutlined style={{ color: actionPrimary }} />} onClick={() => toast.info(`Đang tải xuống tệp: ${record.name}`)} />
-                  <Button type="text" danger icon={<DeleteOutlined />} onClick={() => setUploadFileList(uploadFileList.filter(x => x.uid !== record.uid))} />
-                </Space>
-              ),
-            },
-          ]}
+      children: (
+        <InfrastructureAttachmentTab
+          attachments={mappedAttachments}
+          readonly={false}
+          onUpload={(file) => {
+            setUploadFileList([...uploadFileList, { uid: `${Date.now()}`, name: file.name, size: file.size, status: 'done', originFileObj: file }]);
+            return false;
+          }}
+          onDelete={(uid) => {
+            setUploadFileList(uploadFileList.filter((x) => x.uid !== uid));
+          }}
+          onDownload={(uid, name) => {
+            toast.info(`Đang tải xuống tệp: ${name}`);
+          }}
         />
-      </div>),
+      ),
     },
     // ── Tab 4: Công trình KCHT trực thuộc ──
     {
       key: 'infra', label: 'Công trình KCHT trực thuộc',
-      children: (<div style={drawerTabContentStyle}>
+      children: (<div style={drawerFormScrollStyle}>
         <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
           <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
             Công trình KCHT trực thuộc
@@ -777,13 +698,12 @@ export default function PortForm({
             <Button type="dashed" icon={<PlusOutlined />} onClick={addInfra} style={{ borderRadius: radiusPill }}>Thêm công trình</Button>
           </div>
         ) : (
-          <Table
+          <DetailTable
             size="small"
-            pagination={false}
+            scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
             dataSource={infraList.map((inf, i) => ({ ...inf, _idx: i }))}
             rowKey={(r: any) => r._idx}
-            locale={{ emptyText: 'Chưa có công trình nào' }}
-            scroll={{ x: 600 }}
+            emptyText="Chưa có công trình nào"
             columns={[
               {
                 title: 'STT',

@@ -16,7 +16,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import lombok.experimental.FieldNameConstants;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 
 /**
  * Entity representing a VTS Assist System (Hệ thống phụ trợ VTS) — M-NEW entity.
@@ -30,7 +29,7 @@ import com.hanghai.kchtg.security.RecordSecurityLevel;
 @Table(name = "vts_assist",
         uniqueConstraints = @UniqueConstraint(columnNames = "device_code"))
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
-@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
+// @org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -39,10 +38,10 @@ import com.hanghai.kchtg.security.RecordSecurityLevel;
 @FieldNameConstants
 public class VtsAssist extends BaseEntity implements ApprovableEntity {
 
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
-    @Builder.Default
-    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
+    // @Enumerated(EnumType.ORDINAL)
+    // @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
+    // @Builder.Default
+    // private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
 
     // ── Basic information ───────────────────────────────────────────────
 

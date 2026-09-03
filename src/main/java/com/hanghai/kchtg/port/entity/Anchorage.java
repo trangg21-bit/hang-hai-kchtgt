@@ -14,7 +14,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 
 /**
  * Entity representing an anchorage area (Khu neo đậu) — child of Port.
@@ -35,13 +34,13 @@ import com.hanghai.kchtg.security.RecordSecurityLevel;
 @SuperBuilder
 @FieldNameConstants
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
-@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
+// @org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 public class Anchorage extends BaseEntity {
 
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
-    @Builder.Default
-    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
+    // @Enumerated(EnumType.ORDINAL)
+    // @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
+    // @Builder.Default
+    // private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
 
     @Column(name = "anchorage_code", nullable = false, unique = true, length = 50)
     private String anchorageCode;

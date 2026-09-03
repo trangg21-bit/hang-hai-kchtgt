@@ -85,15 +85,15 @@ public class BuoyBerthService {
             throw new IllegalArgumentException("Không thể tạo bến phao: cảng biển cha phải ở trạng thái được phê duyệt");
         }
 
-        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
-                : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "buoyberth", SecurityUtils.getCurrentUserPermissions(),
-                SecurityUtils.isElevatedAdministrator());
+        // RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
+        //         : RecordSecurityLevel.NORMAL;
+        // RecordSecurityLevel.validateAssignment(secLevel, "buoyberth", SecurityUtils.getCurrentUserPermissions(),
+        //         SecurityUtils.isElevatedAdministrator());
 
         String code = generateBuoyBerthCode(request.getPortId());
 
         BuoyBerth entity = BuoyBerth.builder()
-                .securityLevel(secLevel)
+                // .securityLevel(secLevel)
                 .buoyBerthCode(code)
                 .buoyBerthName(request.getBuoyBerthName())
                 .portId(request.getPortId())
@@ -151,7 +151,7 @@ public class BuoyBerthService {
         Map<String, String> previousValues = new HashMap<>();
         Map<String, String> newValues = new HashMap<>();
         String prevApprovalLabel = approvalLabel(entity.getApprovalStatus());
-        captureChange(previousValues, newValues, "securityLevel", entity.getSecurityLevel(), request.getSecurityLevel());
+        // captureChange(previousValues, newValues, "securityLevel", entity.getSecurityLevel(), request.getSecurityLevel());
         captureChange(previousValues, newValues, "buoyBerthName", entity.getBuoyBerthName(), request.getBuoyBerthName());
         captureChange(previousValues, newValues, "portId", entity.getPortId(), request.getPortId());
         captureChange(previousValues, newValues, "waterwayId", entity.getWaterwayId(), request.getWaterwayId());
@@ -180,11 +180,11 @@ public class BuoyBerthService {
         captureChange(previousValues, newValues, "coordinateSystem", entity.getCoordinateSystem(), request.getCoordinateSystem());
         captureChange(previousValues, newValues, "displayRule", entity.getDisplayRule(), request.getDisplayRule());
 
-        if (request.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "buoyberth",
-                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-            entity.setSecurityLevel(request.getSecurityLevel());
-        }
+        // if (request.getSecurityLevel() != null) {
+        //     RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "buoyberth",
+        //             SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+        //     entity.setSecurityLevel(request.getSecurityLevel());
+        // }
         if (request.getBuoyBerthName() != null)
             entity.setBuoyBerthName(request.getBuoyBerthName());
         if (request.getPortId() != null) {
@@ -462,7 +462,7 @@ public class BuoyBerthService {
 
         BuoyBerthResponse response = BuoyBerthResponse.builder()
                 .id(entity.getId())
-                .securityLevel(entity.getSecurityLevel())
+                // .securityLevel(entity.getSecurityLevel())
                 .buoyBerthCode(entity.getBuoyBerthCode())
                 .buoyBerthName(entity.getBuoyBerthName())
                 .portId(entity.getPortId())

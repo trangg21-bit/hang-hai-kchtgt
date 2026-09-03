@@ -1,5 +1,6 @@
 import { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react';
 import { Tabs, Row, Col, Input, Select, InputNumber, DatePicker, Switch, Form, Upload, Space, Button, Table, Modal } from 'antd';
+import DetailTable from '../../components/shared/DetailTable';
 import { PlusOutlined, DeleteOutlined, FileOutlined, InboxOutlined, DownloadOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { pierCRUD, portCRUD, berthCRUD } from '../../services/portService';
@@ -15,13 +16,13 @@ import { VIETNAM_PROVINCES } from '../../types/common';
 import toast from '../../components/ToastNotification';
 import { fmtInputNumber } from '../../utils/numFmt';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import { colors } from '../../themetokenchk';
+import { colors, DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import {
   textPrimary, textTertiary, borderDefault, actionPrimary, statusCritical,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
   radiusPill, radiusMd, spaceSm, spaceMd, spaceFormField,
   surfaceCard, readonlyInputStyle, sidebarBg,
-  primaryButtonStyle, outlineButtonStyle, drawerTabBarStyle, drawerTabContentStyle,
+  primaryButtonStyle, outlineButtonStyle, drawerTabBarStyle, drawerTabContentStyle, drawerFormScrollStyle,
 } from '../../themetokenchk';
 
 type SaveAction = 'DRAFT' | 'SUBMIT' | 'SAVE_AND_APPROVE' | 'APPROVED' | 'UPDATE';
@@ -285,7 +286,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
 
   const tabItems = [
     // Tab 1: Thông tin chung
-    { key: 'general', label: 'Thông tin chung', children: (<div style={drawerTabContentStyle}>
+    { key: 'general', label: 'Thông tin chung', children: (<div style={drawerFormScrollStyle}>
       <Row gutter={[24, 0]}><Col span={12}><Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]} style={{ marginBottom: spaceFormField }}><OrgUnitTreeSelect organizations={orgUnits} placeholder="Chọn đơn vị quản lý..." loading={loadingOrgs} disabled={isEdit || !isSystemAdmin} showPath treeDefaultExpandAll={false} onChange={handleOrgUnitChange} /></Form.Item></Col><Col span={12}><Form.Item name="portId" {...labelProps('Thuộc cảng biển')} required rules={[{ required: true, message: 'Cảng biển là bắt buộc' }]} style={{ marginBottom: spaceFormField }}><Select placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : portOptions.length === 0 && !loadingPorts ? 'Không có cảng biển thuộc đơn vị quản lý' : 'Chọn cảng biển...'} loading={loadingPorts} disabled={!watchedOrgUnitId || (portOptions.length === 0 && !loadingPorts)} options={portOptions} showSearch optionFilterProp="label" notFoundContent="Không có cảng biển thuộc đơn vị quản lý" onChange={handlePortChange} style={selectStyle} /></Form.Item></Col></Row>
       <Row gutter={[24, 0]}><Col span={12}><Form.Item name="berthId" {...labelProps('Thuộc bến cảng')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Bến cảng là bắt buộc' }]}><Select placeholder={!watchedPortId ? 'Vui lòng chọn cảng biển trước' : berthOptions.length === 0 && !loadingBerths ? 'Không có bến cảng thuộc cảng biển' : 'Chọn bến cảng...'} loading={loadingBerths} disabled={!watchedPortId || (berthOptions.length === 0 && !loadingBerths)} options={berthOptions} showSearch optionFilterProp="label" notFoundContent="Không có bến cảng thuộc cảng biển" style={selectStyle} /></Form.Item></Col><Col span={12}><Form.Item name="navigationChannelId" {...labelProps('Thuộc luồng hàng hải')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn luồng hàng hải..." options={waterwayOptions} showSearch allowClear optionFilterProp="label" style={selectStyle} /></Form.Item></Col></Row>
       <Row gutter={[24, 0]}><Col span={12}><Form.Item name="pierCode" {...labelProps('Mã cầu cảng')} style={{ marginBottom: spaceFormField }} tooltip="Mã được sinh tự động"><Input disabled placeholder={pierCodeLoading ? 'Đang sinh mã...' : watchedBerthId ? 'Mã tự động' : 'Chọn Bến để sinh mã'} style={readonlyInputStyle} /></Form.Item></Col><Col span={12}><Form.Item name="pierName" {...labelProps('Tên cầu cảng')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true }, { max: 255 }]} validateStatus={atMax.pierName ? 'error' : undefined} help={atMax.pierName ? 'Đã đạt tối đa 255 ký tự' : undefined}><Input placeholder="Nhập tên cầu cảng" maxLength={255} showCount style={inputStyle} /></Form.Item></Col></Row>
@@ -333,7 +334,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
       </div>)}
     </div>) },
     // Tab 3: Thông tin vị trí
-    { key: 'location', label: `Thông tin vị trí (${coordinateList.length})`, children: (<div style={drawerTabContentStyle}>
+    { key: 'location', label: `Thông tin vị trí (${coordinateList.length})`, children: (<div style={drawerFormScrollStyle}>
       <Row gutter={[24, 0]}><Col span={12}><Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn loại đối tượng" allowClear options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} /></Form.Item></Col><Col span={12}><Form.Item name="mapSymbolId" {...labelProps('Biểu tượng')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn biểu tượng bản đồ" allowClear showSearch optionFilterProp="label" disabled={!watchedGeometryType} loading={loadingSymbols} style={selectStyle}>{symbols.map((sym) => (<Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}><Space>{sym.image && <img src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`} alt={sym.name} style={{ width: 20, height: 20, objectFit: 'contain' }} />}<span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span></Space></Select.Option>))}</Select></Form.Item></Col></Row>
       <Row gutter={[24, 0]}><Col span={12}><Form.Item name="coordinateSystem" {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn hệ quy chiếu" disabled style={selectStyle} options={COORD_SYS_OPTIONS} /></Form.Item></Col><Col span={12}><Form.Item name="displayRule" {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }}><Input placeholder="Chọn quy tắc hiển thị" maxLength={255} disabled style={readonlyInputStyle} /></Form.Item></Col></Row>
       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
@@ -372,42 +373,34 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
             <span style={{ color: statusCritical, fontSize: fontSizeMd, flex: 1 }}>⚠ {gpsError}</span>
           </div>
         )}
-        <Table
+        <DetailTable
           size="small"
-          tableLayout="fixed"
-          pagination={coordinateList.length > 10 ? {
-            current: gpsPage,
-            pageSize: 10,
-            total: coordinateList.length,
-            onChange: (p) => setGpsPage(p),
-            showSizeChanger: false,
-            size: 'small',
-          } : false}
+          scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
           dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))}
-          rowKey={(r, idx) => r._idx ?? String(idx)}
-          locale={{ emptyText: 'Chưa có tọa độ GPS nào' }}
+          rowKey={(r: any, idx?: number) => r._idx ?? String(idx)}
+          emptyText="Chưa có tọa độ GPS nào"
           columns={[
             {
               title: 'STT',
               width: 60,
-              align: 'center',
-              render: (_v, _r, idx) => (gpsPage - 1) * 10 + idx + 1,
+              align: 'center' as const,
+              render: (_v: any, _r: any, idx: number) => (gpsPage - 1) * 10 + idx + 1,
             },
             {
               title: 'Vĩ độ (Latitude - N)',
               key: 'lat',
-              render: (_v, record: any) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
+              render: (_v: any, record: any) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
             },
             {
               title: 'Kinh độ (Longitude - E)',
               key: 'lng',
-              render: (_v, record: any) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
+              render: (_v: any, record: any) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
             },
             {
               title: '',
               width: 50,
-              align: 'center',
-              render: (_v, record: any) => (
+              align: 'center' as const,
+              render: (_v: any, record: any) => (
                 <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeCoordinate(record._idx)} />
               ),
             },
@@ -417,7 +410,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
       )}
     </div>) },
     // Tab 4: File đính kèm
-    { key: 'files', label: `File đính kèm (${uploadedFiles.length})`, children: (<div style={drawerTabContentStyle}>
+    { key: 'files', label: `File đính kèm (${uploadedFiles.length})`, children: (<div style={drawerFormScrollStyle}>
       <div style={{ marginBottom: spaceMd }}>
         <Upload.Dragger
           beforeUpload={handleBeforeUpload}
