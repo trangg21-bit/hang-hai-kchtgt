@@ -128,7 +128,7 @@ Execute unit tests and E2E validation for all 5 features of the GIS/Bản đồ 
 ### Hành vi đã đồng bộ
 
 - Select nhiều Loại KCHT chỉ hiển thị tối đa hai thẻ trên một dòng; các lựa chọn còn lại thu gọn thành `+N`, tránh đẩy lệch nhãn và trường Địa điểm.
-- Font tiêu đề và nội dung bảng kết quả được khóa theo `fontSizeMd`; màn hình mặc định chọn đơn vị Cục và tự tải danh sách KCHT theo phạm vi quyền. Nút Đặt lại khôi phục đơn vị Cục rồi tải lại danh sách; nếu API đơn vị không khả dụng thì truy vấn vẫn chạy theo phạm vi tài khoản.
+- Font tiêu đề và nội dung bảng kết quả được khóa theo `fontSizeMd`; màn hình mặc định giữ "Tất cả đơn vị" và tự tải danh sách KCHT theo phạm vi quyền. Nút Đặt lại khôi phục "Tất cả đơn vị" rồi tải lại danh sách.
 - Phóng to, thu nhỏ và toàn màn hình được gom thành cụm dọc bên phải, bên dưới nút Quản lý lớp bản đồ.
 - Chuột phải mở popup tọa độ gồm kinh độ, vĩ độ, mức thu phóng và nút sao chép liên kết. URL chia sẻ giữ các tham số bộ lọc hiện có và khôi phục đúng tâm/zoom khi mở lại.
 - Ba công cụ đa giác, vùng tròn và chỉnh sửa được đặt ở góc trái dưới, tự dịch sang phải khi panel tra cứu mở. Vùng tròn được chuyển thành polygon đóng 32 cạnh trước khi lưu để tương thích mô hình dữ liệu vùng hiện tại.
@@ -143,7 +143,7 @@ Execute unit tests and E2E validation for all 5 features of the GIS/Bản đồ 
 |---|---|
 | `mapInteraction.test.ts` | 4/4 pass: tạo/đọc URL vị trí, từ chối tọa độ không hợp lệ, chuyển vùng tròn thành polygon đóng |
 | `gisGeometry.test.ts` + `planningGis.test.ts` | 17/17 pass: hit-test và phân giải click KCHT/QHCB không hồi quy |
-| `kchtGisPresentation.test.ts` + `gisSearchTypeOptions.test.ts` | 7/7 pass: đơn vị Cục mặc định, nhãn nghiệp vụ, mã biểu tượng và danh mục loại KCHT |
+| `kchtGisPresentation.test.ts` + `gisSearchTypeOptions.test.ts` | 6/6 pass: nhãn nghiệp vụ, mã biểu tượng và danh mục loại KCHT |
 | `KchtGis155ServiceTest` + `KchtGis155RestControllerTest` | 7/7 pass: API phân trang, tham số tương thích và truyền đúng `mapSymbolId` |
 | Local PostgreSQL smoke test | Pass: `search` với toàn bộ loại KCHT chạy hết các repository trên schema local, không còn lỗi thiếu cột |
 | TypeScript `--noEmit` | Pass |

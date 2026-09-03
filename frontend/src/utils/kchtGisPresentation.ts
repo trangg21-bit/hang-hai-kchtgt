@@ -1,30 +1,3 @@
-export interface KchtOrgNode {
-  id: string;
-  code?: string;
-  name?: string;
-  children?: KchtOrgNode[];
-}
-
-const DEFAULT_MARITIME_AUTHORITY_CODE = 'G17.43';
-const DEFAULT_MARITIME_AUTHORITY_NAME = 'cục hàng hải và đường thủy việt nam';
-
-const normalizeText = (value?: string): string => (value || '').trim().toLocaleLowerCase('vi-VN');
-
-/** Tìm đơn vị Cục trong cả dữ liệu phẳng và cây đơn vị. */
-export const findDefaultMaritimeAuthorityOrgId = (organizations: KchtOrgNode[]): string | undefined => {
-  const nodes: KchtOrgNode[] = [...organizations];
-  let nameMatch: string | undefined;
-
-  while (nodes.length > 0) {
-    const node = nodes.shift()!;
-    if (normalizeText(node.code) === normalizeText(DEFAULT_MARITIME_AUTHORITY_CODE)) return node.id;
-    if (!nameMatch && normalizeText(node.name).includes(DEFAULT_MARITIME_AUTHORITY_NAME)) nameMatch = node.id;
-    if (node.children?.length) nodes.push(...node.children);
-  }
-
-  return nameMatch;
-};
-
 export const getKchtOperationalStatusText = (status?: string | boolean | null): string => {
   if (status === undefined || status === null || status === '') return '—';
   const normalized = String(status).toUpperCase();

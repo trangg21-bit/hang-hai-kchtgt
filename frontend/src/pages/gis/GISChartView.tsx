@@ -154,7 +154,6 @@ import {
   parseSharedMapView,
 } from '../../utils/mapInteraction';
 import {
-  findDefaultMaritimeAuthorityOrgId,
   getKchtOperationalStatusText,
   getKchtStructureTypeText,
   getKchtSymbolCode,
@@ -1953,18 +1952,15 @@ export default function GISChartView() {
     (window as any).kchtSymbols = symbols;
   }, [symbols]);
 
-  // Màn hình mặc định dùng đơn vị Cục và tự tải danh sách. URL vẫn có thể
-  // bổ sung các điều kiện loại KCHT/tỉnh/từ khóa cho lần tải đầu tiên. Nếu
-  // danh mục đơn vị không tải được, vẫn tra cứu theo phạm vi dữ liệu của user.
+  // Màn hình mặc định để "Tất cả đơn vị" và tự tải danh sách. URL vẫn có thể
+  // bổ sung các điều kiện loại KCHT/tỉnh/từ khóa cho lần tải đầu tiên. Backend
+  // giới hạn dữ liệu theo phạm vi quyền của tài khoản.
   useEffect(() => {
     if (!orgUnitsReady || initialInfrastructureSearchRef.current) return;
-    const defaultOrgUnitId = findDefaultMaritimeAuthorityOrgId(orgUnits);
 
     initialInfrastructureSearchRef.current = true;
-    // setFieldValue đồng bộ trước khi đọc getFieldsValue trong lần tìm kiếm đầu.
-    if (defaultOrgUnitId) searchForm.setFieldValue('orgUnitId', defaultOrgUnitId);
     void handleSearchInfrastructure(1, searchPageSize);
-  }, [handleSearchInfrastructure, orgUnits, orgUnitsReady, searchForm, searchPageSize]);
+  }, [handleSearchInfrastructure, orgUnitsReady, searchPageSize]);
 
   // Update map size when search panel is shown/hidden
   useEffect(() => {
@@ -4299,7 +4295,7 @@ export default function GISChartView() {
                         form={searchForm}
                         layout="vertical"
                         onFinish={() => void handleSearchInfrastructure(1, searchPageSize)}
-                        initialValues={{ kchtType: urlKchtType, province: urlProvince || undefined, search: urlSearch, objectType: undefined }}
+                        initialValues={{ orgUnitId: '__all__', kchtType: urlKchtType, province: urlProvince || undefined, search: urlSearch, objectType: undefined }}
                         style={{ width: '100%', maxWidth: '100%', minWidth: 0, overflow: 'hidden' }}
                       >
                         <Form.Item name="orgUnitId" label={<span style={filterLabelStyle}>Đơn vị quản lý</span>} style={formFieldStyle}>
@@ -4380,8 +4376,6 @@ export default function GISChartView() {
                             setSearchError(undefined);
                             setSearchPage(1);
                             searchForm.resetFields();
-                            const defaultOrgUnitId = findDefaultMaritimeAuthorityOrgId(orgUnits);
-                            if (defaultOrgUnitId) searchForm.setFieldValue('orgUnitId', defaultOrgUnitId);
                             setSelectedRowKeys([]);
                             if (searchMarkersGroupRef.current) {
                               searchMarkersGroupRef.current.clearLayers();
