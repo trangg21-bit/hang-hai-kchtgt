@@ -1241,7 +1241,7 @@ export default function ShipRepairYardList() {
           dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; const aVal = getSortValue(a, sortField); const bVal = getSortValue(b, sortField); const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi'); return sortOrder === 'ascend' ? cmp : -cmp; })}
           rowKey="id" rowActions={rowActions} loading={false}
           onSort={(key: string, order: 'asc' | 'desc') => { setSortField(key); setSortOrder(order === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
-          scroll={{ x: 'max-content', y: 550 }}
+            scroll={{ x: 'max-content' }}
         />
         <Pagination total={total} current={page} pageSize={pageSize}
           onChange={(p, ps) => { setPage(p); setPageSize(ps); }}

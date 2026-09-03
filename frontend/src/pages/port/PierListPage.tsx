@@ -973,7 +973,7 @@ export default function PierListPage() {
         loading={isLoading} error={isError} onRetry={() => void fetchData()}>
         <DataTable columns={columns} dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; if (sortField === 'stt') { const arr = [...dataSource]; return sortOrder === 'descend' ? (arr.reverse(), 0) : 0; } const av = getSortValue(a, sortField); const bv = getSortValue(b, sortField); const c = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv), 'vi'); return sortOrder === 'ascend' ? c : -c; })}
           rowKey="id" rowActions={rowActions} loading={false} onSort={(k: string, o: 'asc' | 'desc') => { setSortField(k); setSortOrder(o === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
-          scroll={{ x: 'max-content', y: 500 }} />
+          scroll={{ x: 'max-content' }} />
         <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
       </FilterTableLayout>
 
