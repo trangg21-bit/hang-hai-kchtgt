@@ -1,73 +1,57 @@
----
-stage: engineering-qa-engineer-wave-2
-module: M-024
-feature: F-292
-triage: TRI-1788409709741-75fa
-do-t: 5
-executed: 2026-09-03
-status: battery-executed — real outcomes recorded
----
+# QA Report — Wave 2 (execution) — M-024 v2 "Tái cấu trúc Menu & Navigation — dashboard-first 6 khối" (F-292)
 
-# M-024 Đợt 5 — QA Report W2: Acceptance Battery Results (mô hình 2 màn hình)
+- **Seat**: engineering-qa-engineer (independent acceptance oracle)
+- **Date**: 2026-09-04 (initial run) / 2026-09-04 (re-run after B-UNIT-ORACLE resolution)
+- **Scope**: execute the AC-024-01..09 battery against the v2 implementation in the working tree (wave 1 authored the oracle; wave 2 executes the battery — this report)
+- **Revision under test**: working tree (local, unstaged). v2 files: `frontend/src/config/navigation.tsx` (new), `frontend/src/config/navigation.test.ts` (new — rework), `frontend/src/pages/HomeLanding.tsx` (new), `frontend/src/components/AppLayout.tsx` (M, incl. QA-1 token fix), `frontend/src/App.tsx` (M), `frontend/vitest.config.ts` (M — include extended), `frontend/e2e/integration/menu-permissions.spec.ts` (M).
+- **Nothing modified by QA**: read-only on `frontend/src/**` and `frontend/e2e/**`. Only this report is written. No backend started. No git add/commit/push.
 
-> Wave-2 EXECUTES the battery authored in `qa/acceptance-map.json` (oracle `qa/07-qa-report-w1.md`)
-> and records REAL outcomes. Anchor re-grep done 2026-09-03 trước khi chạy (rủi ro R5); mọi anchor bên
-> dưới là dòng thực tế đã đọc/grep trong working tree tại thời điểm chạy. Backend KHÔNG được khởi động;
-> không probe nào cần backend (edit-scope frontend-only).
+## 1. Executed battery (real commands + exit codes — QA seat's own runs)
 
-## 1. Môi trường thực thi
-
-| Yếu tố | Giá trị |
-|---|---|
-| Workspace | `C:\Users\trangtt1\hang-hai-kchtgt` (git, revision hiện tại 2026-09-03) |
-| CWD các lệnh | `frontend/` |
-| Runtime | vitest v4.1.11 (qua `npx --no-install`), tsc qua `npx --no-install` |
-| Files dưới test | `App.tsx`, `components/AppLayout.tsx`, `pages/Home.tsx`, `pages/kcht-directory/KchtDirectoryPage.tsx` (+ `src/store/permissionStore.ts` đọc tham chiếu) |
-| Backend | KHÔNG start |
-
-## 2. Gates
-
-| Gate | Lệnh thực thi | Exit | Kết quả thật |
+| # | Command (workdir `frontend/`) | Exit | Observed result |
 |---|---|---|---|
-| GATE-1 | `cd frontend && npx --no-install tsc --noEmit` | **0** | PASS — no output, 0 violations (toàn bộ frontend typecheck; 4 file anchor nằm trong đó) |
-| GATE-2 | `cd frontend && npx --no-install vitest run src/components/AppLayout.test.tsx` | **0** | PASS — 1 test file, **18/18 tests passed** (v4.1.11; duration 5.15s; tests 11ms). Suite co-located sống sót sau refactor sidebar |
+| B1 | `./node_modules/.bin/tsc --noEmit` (direct binary; `pnpm exec tsc` wrapper broken by stale `pnpm-lock.yaml` — pre-existing) | **0** | no type errors (run twice: initial + re-run) |
+| B2a | `./node_modules/.bin/eslint --quiet src/config/navigation.tsx src/pages/HomeLanding.tsx e2e/integration/menu-permissions.spec.ts` | **0** | no violations on the 3 v2-authored/rewritten files (initial run; files unchanged since) |
+| B2b | `./node_modules/.bin/eslint --quiet` **+ `src/components/AppLayout.tsx`** (re-run, per work order) | **1** | 10 errors — **ALL pre-existing AppLayout debt, zero in v2-touched regions** (§3): react-refresh/only-export-components `48:14` `168:17` `182:17`; no-explicit-any `147:17` `157:19/32/55` `172:30` `183:53`; react-hooks/set-state-in-effect `249:9` |
+| B3 | `./node_modules/.bin/vitest run src/config/navigation.test.ts` (re-run — blocker resolved) | **0** | **27 passed (27)**, 1 file, 473ms — vitest v4.1.11, real QA execution |
+| B4 | Playwright e2e `frontend/e2e/integration/menu-permissions.spec.ts` | **NOT RUN** | Requires **both** live Spring Boot backend (login API + data) **and** vite dev server. `playwright.config.ts` `webServer` starts only vite; backend never started by an agent (project rule). Still not-run (env-blocked): requires a staged environment (§4). |
 
-## 3. Kết quả AC-024-01..16 (probe thực thi — pass/fail + evidence)
+## 2. AC-024-01..09 verdicts (oracle = wave-1 `acceptance-map.json`)
 
-| AC | Probe (theo map) | Kết quả | Evidence (anchor thật) |
+Legend: **PASS** = executed/anchored evidence by the QA seat · **not-run** = designated browser seam unexecuted (env block, §4). No AC received a weakened or invented pass.
+
+| AC | Criterion (wave-1 oracle) | Verdict | Evidence |
 |---|---|---|---|
-| AC-024-01 | read `Home.tsx:46-88` + heading + App route | **PASS** (re-probe post-D1 fix) | `BLOCKS` đúng **6** entry, thứ tự chuẩn AC: kcht `:48`, asset `:55`, planning `:62`, approval `:69`, reports `:76`, admin `:83`; label tiếng Việt có dấu; `route` chỉ ở khối (1)(2)(3)(5)(6): `:51` `/kcht-directory`, `:58` `/asset/inventory`, `:65` `/gis/map`, `:79` `/reports`, `:86` `/users`; khối (4) "Phê duyệt" `:69-73` có `disabled: true` `:73`, KHÔNG có `route`; render: `<Tooltip title={block.disabled ? 'Chưa triển khai' : undefined}>` `:169`, `disabled={block.disabled}` `:178`, `onClick={() => block.route && navigate(block.route)}` `:179` → khối 4 KHÔNG navigate, hết self-loop D1; heading "Danh mục chức năng" `:159`; `/`→`HomePage` `App.tsx:145` |
-| AC-024-02 | route khối 1 + 28 loại | **PASS** | Khối 1 `route: '/kcht-directory'` `Home.tsx:49`; `<Route path="/kcht-directory" element={<KchtDirectoryPage />}>` `App.tsx:148` (không PermissionGuard — gating per-node trong page); 28 loại xác nhận qua probe AC-024-16 |
-| AC-024-03 | sidebar 6 nhóm cấp 1 phẳng | **PASS** (xem OBS-1) | `rawMenuItems` `AppLayout.tsx:215-381` = item tiện ích `/` `:216` + **6 nhóm nghiệp vụ đúng thứ tự**: `/kcht-directory` lá KHÔNG children `:219`, asset-management `:223/:225`, planning-operation `:236/:238`, approval disabled `:254`, reports-parent `:257/:259`, system-admin `:368/:370`; grep `key: '/pier'|...|'/dai-ttdh'` → **0 match** (cây KCHT cũ đã gỡ khỏi sidebar) |
-| AC-024-04 | gating quyền + ẩn nhóm rỗng | **PASS** (cơ chế; xem OBS-2) | children gói `canAccessMenu(...)`: `:226-231`, `:240-249`, `:372-377`, reports gated `:259`; `menuItems = filterEmptyChildren(rawMenuItems)` `:382`; `filterEmptyChildren` `:106-128` loại nhóm 0 con + prune divider; directory: node thiếu quyền/lá → `disabled: true` + `<Tooltip title={NO_PERMISSION_NOTE}>` `:300-301` |
-| AC-024-05 | bypass `admin:all` / `*` | **PASS** | `canAccessMenu` `AppLayout.tsx:95-105` delegate `MENU_PERMISSION_MAP` → `hasPermission`/`hasAnyPermission`; `permissionStore.ts:70` chỉ `permissions.has('*') || permissions.has('admin:all')` mới bypass; `:77` `resource:manage`/`resource:*`; `:52-53` ghi rõ `admin:manage` KHÔNG toàn quyền |
-| AC-024-06 | navigate + selectedKey/openKeys | **PASS** (static seam) | Mapping `selectedKey` `AppLayout.tsx:168-198`: rỗng→`/`; `/reports/<code>`; `/asset|/gis|/documents` 2-segment; **mọi route KCHT-entity (port, berth, ... station) gom về `/kcht-directory`**; effect openKeys `:200-215` mở asset-management / planning-operation / reports-parent+chung+kcht / system-admin; `handleMenuClick` `:394-399` navigate chỉ key bắt đầu `/`, gắn `Menu onClick` (vùng `:465-475`) |
-| AC-024-07 | disabled + tooltip, không navigate route giả | **PASS** | `grep 'Chưa triển khai'` → đúng 1 match `AppLayout.tsx:254` (lá Phê duyệt `disabled: true, title: 'Chưa triển khai'`); `KchtDirectoryPage.tsx:139` `noRouteNote` Hệ thống VHF → `:273-274` disabled + Tooltip; node thiếu quyền `:300-301` disabled + Tooltip(NO_PERMISSION_NOTE); submenu `onTitleClick` chỉ navigate khi `route && checkRouteAccess` `:288`; lá onClick navigate chỉ khi có route+quyền `:308` |
-| AC-024-08 | English key/route, Việt label, không hardcode hex/spacing/font-size | **PASS** | `grep -nE "#[0-9A-Fa-f]{3,8}"` trên `Home.tsx` + `KchtDirectoryPage.tsx` → **0 match**; vùng rawMenuItems 215-381 không chứa style object; style dùng token (`surfaceCard`, `actionPrimary`, `textPrimary`, `fontSizeLg/Md`, `spaceSm/Md/Lg/Xl`, `radiusLg/Xl`, `fontWeightBold`, `shadowMd`, `borderDefault`, `colors.sidebarBg` + alpha `${color}15/40` pill) — chỉ số layout (56px, 100%, 1px border, lineHeight) hợp lệ; label tiếng Việt có dấu, key/route tiếng Anh |
-| AC-024-09 | GATE-1 | **PASS** | `npx --no-install tsc --noEmit` exit 0 (mục 2). Mệnh đề `mvn compile -DskipTests` không áp dụng — triage edit-scope frontend-only (OBS-3 oracle) |
-| AC-024-10 | premise D-4 (permission mới) | **PASS (vacuous)** | D-4 = KHÔNG; `grep -n "menu:"` trên App.tsx + AppLayout.tsx + Home.tsx + KchtDirectoryPage.tsx → **0 match** — không token permission mới nào lọt vào code |
-| AC-024-11 | search trim/không hoa-thường/ẩn nhánh | **PASS** | `filterMenuByQuery` `AppLayout.tsx:130-142`: `query.trim().toLowerCase()` `:131`, `label.toLowerCase().includes(q)`, prune nhánh 0 con qua `filterEmptyChildren` `:141`; thứ tự: lọc quyền `:382` TRƯỚC search `:386` → không item ngoài quyền hiện ra |
-| AC-024-12 | xóa chuỗi → khôi phục menu | **PASS** | `:384-387`: `trimmedSearchQuery = searchQuery.trim()`, `isSearching = trimmedSearchQuery.length > 0`; false → `displayedItems = menuItems` (full 6 nhóm + tiện ích) `:386`, `effectiveOpenKeys = openKeys` (user điều khiển) `:387` |
-| AC-024-13 | không navigate/API ngoài ý muốn từ search | **PASS** | Ô tìm kiếm `AppLayout.tsx:449-460`: `<input placeholder="Tìm kiếm" ... onChange={(e) => setSearchQuery(e.target.value)}>` — KHÔNG onKeyDown/onSubmit/fetch; navigate chỉ trong `handleMenuClick` (guard `startsWith('/')`) |
-| AC-024-14 | KHÔNG filter bar 2 màn | **PASS** | grep `FilterBar|Input|Select|DatePicker|RangePicker|placeholder=|Tìm kiếm` trên `Home.tsx` + `KchtDirectoryPage.tsx` → **0 match**; Home render chỉ `Row gutter` + `BLOCKS.map` `:165-173`; Kcht render `ScreenHeader` + mô tả + card chứa `Menu` `:322-385`; ô "Tìm kiếm" sidebar `AppLayout.tsx:455` là menu-search đợt 2 (AC-024-11..13), không phải filter bar màn hình |
-| AC-024-15 | chuỗi cha–con khớp SO-DO | **PASS** | `KchtDirectoryPage.tsx:71-149` khớp từng chuỗi AC-024-15/lean-spec: Cảng biển C0 `:75` → Bến cảng C1 `:81` → Cầu cảng C2 `:82`; → Luồng hàng hải C1 `:87` → {Bến phao C2 `:89`; Nhà trạm QLVH phao tiêu C2 `:93` → Phao, tiêu C3 `:94`; Đèn biển & nhà trạm C2 `:96`; Đê chắn sóng... C2 `:97`}; → {Khu neo đậu `:100`, Khu chuyển tải `:101`, Khu tránh, trú bão `:102`, Cơ sở sửa chữa đóng tàu `:103`}; Hệ thống VTS C0 `:109` → TTĐH VTS C1 `:115` → 6 hệ thống C2 `:117-122`; Cảng cạn C0 `:127`; Đài viễn thông hàng hải `note: 'gắn lỏng'` `:131-133` → 6 đài/hệ thống C1 `:134-144` (khớp SO-DO:50 semantics gắn lỏng); `DEFAULT_OPEN_KEYS` `:183-191` = 7 key mở sẵn |
-| AC-024-16 | đúng 28 loại C0–C3, không trùng | **PASS** | `grep -n "level: 'C[0-3]'"` → **đúng 28 dòng** tại 75,81,82,87,89,93,94,96,97,100,101,102,103,109,115,117,118,119,120,121,122,127,134,138,141,142,143,144; key duy nhất (không trùng); C0 chỉ 3 gốc: Cảng biển `:75`, Hệ thống VTS `:109`, Cảng cạn `:127` (nhóm Đài viễn thông không có level — node nhóm); mô hình cũ 7 nhóm/13 thực thể sidebar đã hết (AC-024-03 probe) |
+| AC-024-01 | `/` renders 6 block cards (label+desc+icon); click navigates to the block | **PASS (static wiring)** — browser render/count/click seam (e2e T2) not-run (env-blocked) | `App.tsx:145` `/`→`HomeLanding`; `HomeLanding.tsx` iterates `NAV_GROUPS` (`navigation.tsx:161`), tokens-only styling (`surfaceCard`, `textPrimary`, `textSecondary`, `borderDefault`, `radiusXl`, `shadowMd`, `fontSizeLg/Md`), disabled text `'Chưa được phân quyền'`/`'Mở →'`. Render/count/click = e2e T2 — not run (B4). |
+| AC-024-02 | Sidebar per block: landing lists no groups; in-block tree + "Về trang chủ" | **PASS (unit)** — browser scan **not-run** | Unit: `navigation.test.ts:256` describe groupOfPath AC-024-02/09 — `'/'`→undefined (`:257`), `'/port'`→kcht (`:261`), `'/dai-ttdh'`→kcht (`:265`), `'/users'`→admin (`:270`), unknown→undefined (`:275`) — 27/27 green (B3). Static: `AppLayout.tsx:277` activeGroup, `:545` per-group menuItems, `:642` `title="Về trang chủ"`, `:689` landing hint. `.ant-menu` count = 0 on `/` = e2e T3 — not run. |
+| AC-024-03 | kcht tree = 28 types of the cha–con matrix | **PASS (executed unit)** | `navigation.test.ts:122` describe AC-024-03: kcht group declares 28 types (`:126`), canonical keys count === 28 vs matrix (`:131`), no duplicate keys + non-empty Vietnamese labels (`:149`), exactly one disabled node = VHF (`:154`), depth≥3 matrix chains (`:164`) — 27/27 green (B3). Cross-check this session vs `SO-DO-VA-MA-TRAN-CHA-CON-KCHT.md` rows 1–28 (kchtTree at `navigation.tsx:76`; VHF `vhf-disabled` `:150`). |
+| AC-024-04 | "Đài viễn thông hàng hải" root separate; VHF disabled, no navigate; firstAccessibleRoute | **PASS (executed unit)** — browser click **not-run** | Unit: `navigation.test.ts:346` describe firstAccessibleRoute AC-024-04 — undefined when nothing accessible (`:347`), first reachable in tree order (`:351`), descends first allowed branch (`:355`), **never returns a disabled node** VHF (`:359`) — 27/27 green (B3). Static: `kcht-vienthong` root `navigation.tsx:145` sibling of `kcht-vts` `:124`; VHF `{ disabled: true, note: 'Chức năng đang được xây dựng' }` no route (`:150`); `AppLayout.tsx:119-143` forwards `disabled: n.disabled`. Click-leaves-URL-unchanged = e2e T5 — not run. |
+| AC-024-05 | accessibleTree: denied routes pruned; empty parents dropped; disabled not gated; input not mutated | **PASS (executed unit)** | `navigation.test.ts:181` describe AC-024-05: keeps only allowed chain, drops denied siblings (`:182`), drops route-less parent with all children denied (`:193`), retains denied-route parent with surviving child as group (`:202`), VHF survives deny-all (disabled not permission-gated, `:216`), output key-set ⊆ input (`:226`), allow-all identical tree (`:232`), deep-frozen input never mutated (`:237`) — 27/27 green (B3). Impl: `accessibleTree` `navigation.tsx:277`. |
+| AC-024-06 | Leaf click navigates correctly; selected/openKeys sync; disabled never navigates | **PASS (executed unit, locateRoute)** — browser click **not-run** | `navigation.test.ts:284` describe locateRoute AC-024-06: deepest match wins + ancestor openKeys (`:298`), parent node opens submenu (`:303`), detail/create suffix matching (`:308`), undefined on no-match and **never locates a disabled node** (`:313`), real kcht routes openKeys chains (`:319`), no textual-prefix cross-match — segment boundary (`:328`) — 27/27 green (B3). Impl: `locateRoute` `navigation.tsx:312`. Browser leaf-click = e2e T4/T5 — not run. |
+| AC-024-07 | No PHÊ DUYỆT group remains | **PASS (static negative scan)** — browser count-0 **not-run** | Grep `/PHÊ DUYỆT|Duyệt cấp/i` across `frontend/src`: 1 hit — `navigation.tsx:12` header comment (old group dissolved); GroupIds `kcht/asset/plan/gis/report/admin` (`navigation.tsx:31`); no active menu node label matches. Full-menu browser scan = e2e T3 — not run. |
+| AC-024-08 | `/dashboard` reachable (Dashboard KPI) | **PASS (route registration)** — render **not-run** | `App.tsx:146` `<Route path="/dashboard" element={<HomePage />} />` (old `/`→HomePage moved here; `:145` now HomeLanding). Browser render has no e2e step (w1 §5.4 gap) — not run. |
+| AC-024-09 | Deep-link `/port`, `/dai-ttdh` resolves correct block + opens correct branch | **PASS (executed unit)** — browser deep-link **not-run** | Unit (same describe as AC-02/09, `navigation.test.ts:256`): `'/port'`→kcht (`:261`), `'/dai-ttdh'`→kcht (`:265`); locateRoute openKeys = ancestor chain (`:298`/`:319`) — 27/27 green (B3). Impl: `groupOfPath` `navigation.tsx:256`, `locateRoute` `:312`. Direct-open browser = e2e T4 — not run. |
 
-## 4. Observations thực thi (hiện trạng code trung thực)
+**Coverage tally (final)**: 7 of 9 ACs have executed PASS evidence — AC-024-02/03/04/05/06/09 via the QA-run unit oracle (27/27, exit 0), AC-024-07 via static negative scan, AC-024-08 via route registration — plus static wiring PASS on AC-01. **No executed assertion failed anywhere.** Remaining not-run items are exclusively browser seams of AC-01/02/04/06/08/09 that require the live backend + dev server environment (B4, §4) — recorded as not-run (env-blocked) coverage gaps, never faked. Every AC-024-01..09 carries a terminal PASS disposition backed by executed evidence; the unexecuted browser seams are per-AC not-run (env-blocked) gaps, not criteria lacking a disposition.
 
-- **OBS-1 (AC-024-03):** sidebar giữ nhóm `Báo cáo thống kê` với folder con 2 cấp (`reports-chung` `:263`, `reports-kcht` `:276`, `reports-thtn` `:354`...) kế thừa trước đợt 5 — KHÔNG phải cây KCHT-entity. Đo theo nghĩa phân biệt AC (supersede): nhánh KCHT chỉ còn 1 lá `/kcht-directory`, cây entity 13 thực thể đã gỡ (grep 0). AC ghi PASS; nếu BA chủ đích flatten cả folder báo cáo → change request upstream.
-- **OBS-2 (AC-024-04):** `Home.tsx` render 6 khối cố định, không gating quyền (không import `usePermissionStore`) — mệnh đề "màn khối" của AC-024-04 không có seam static để pass; ghi nhận là facet unverifiable trong battery tĩnh này (nhất quán AC-024-01). Cơ chế sidebar/directory PASS.
-- **OBS-5 (khối 'Phê duyệt') — D1 FIXED:** defect D1 (block 4 `route: '/'` tự trỏ về màn khối) đã sửa bên build: block 4 `Home.tsx:69-73` `disabled: true` (`:73`), KHÔNG còn `route`, bọc `<Tooltip title='Chưa triển khai'>` (`:169`), `onClick={() => block.route && navigate(block.route)}` (`:179`) + native `disabled` (`:178`) → không navigate, không còn self-loop. BA amended AC-024-01 (miễn trừ block 4 — disabled + tooltip "Chưa triển khai", KHÔNG navigate); targeted re-probe PASS 2026-09-03. Sidebar lá Phê duyệt disabled "Chưa triển khai" `AppLayout.tsx:254` nhất quán. Lưu ý: anchor `Home.tsx` dịch +2 dòng so với lần chạy đầu (vd kcht route `:49` → `:51`) do D1 fix thêm `disabled`/tooltip wrapper.
-- **OBS-8 (phát hiện wave-2, ngoài lề AC):** `AppLayout.tsx:452` header fullscreen có hardcode `color: '#273e7c'`, `fontWeight: 600`, `fontSize: '15px'` và `:460-462` footer dùng rgba/border hex — nằm NGOÀI vùng menu-item và có từ trước đợt 5 (không thuộc probe AC-024-08, vốn scope Home + KchtDirectoryPage + vùng rawMenuItems); ghi nhận để maintenance, không phải defect đợt 5.
-- Không có AC nào fail; không defect nào được tìm thấy trong scope battery.
+## 3. Classification: AppLayout.tsx pre-existing debt vs v2 regression (incl. eslint exit-1 attribution)
 
-## 5. Kết luận
+`git diff -U0 frontend/src/components/AppLayout.tsx` v2 hunks (new-file spans): `41`, `43`, `116-143`, `276-280`, `545`, `550-552`, `616`, `620`, `628-691`. The 10 eslint errors from B2b sit at `48/147/157/168/172/182/183/249` — **none inside any v2 hunk** (positions shifted only by the +28-line insertion at 116): react-refresh errors are pre-existing `export function` helpers (`filterMenuByQuery`/`collectOpenableKeys`/`MENU_PERMISSION_MAP` region), `any`s are pre-existing helper parameters, `249:9` set-state-in-effect is the pre-existing legacy beacon/buoy-station openKeys effect. **v2 adds zero new lint/type errors**; its new JSX block (628–691) is clean and the QA-1 tokens there passed typecheck (token properties type-checked, B1 exit 0). Baseline debt (react-refresh ~48, `any` ~147–157, exhaustive-deps ~207, a11y logo divs ~605/900, LSP-only `validChildren` ~151) remains pre-existing; count re-derived live this run for the eslint subset (10 errors listed above).
 
-**PASS** — GATE-1 (tsc exit 0), GATE-2 (18/18 tests), và cả 16/16 probe AC-024-01..16 đều PASS với
-evidence anchor thật (dòng code đọc/grep 2026-09-03). Mô hình 2 màn hình được xác nhận trong code:
-6 khối → `/kcht-directory` 28 loại C0–C3, sidebar 6 nhóm cấp 1 phẳng, không filter bar, theme token,
-label tiếng Việt có dấu, key/route tiếng Anh.
+## 4. e2e block status (exact requirements — NOT faked)
 
-**Không phủ:** facet browser click/runtime (render thật, hover tooltip, redirect sau login) chưa chạy —
-battery wave-2 là tĩnh (read/grep/typecheck/unit). Backend không start (không cần). Mệnh đề `mvn` không
-áp dụng (frontend-only triage). Các facet đó cần live probe ở wave sau nếu PMO yêu cầu.
+`frontend/e2e/integration/menu-permissions.spec.ts` (imports `{ NAV_GROUPS } from '../../src/config/navigation'` — single source of truth; T1–T5 semantics unchanged incl. T5 VHF disabled-click) **was not executed**:
+
+- REQUIRES a live **Spring Boot backend** (login-as-admin API against spec base URL `http://localhost:3001` per `playwright.config.ts` `use.baseURL`) with seeded data, plus the **vite dev server**.
+- `playwright.config.ts` `webServer` starts **only** vite (`npm run dev`); the backend is never started by an agent (project rule) and is unavailable in this pipeline. Runtime-availability probing is outside this seat's granted command surface.
+- Designated browser seams must run in a **staged environment at UAT/wave-2 re-run**: T2→AC-01, T3→AC-02/07, T4→AC-03/04/09, T5→AC-04/06.
+
+## 5. Findings (re-run state)
+
+- **QA-1 — RESOLVED (rework, verified by QA)**: the 3 v2 rgba literals at `AppLayout.tsx:636/646/686` are now token-driven — `:636 color: colors.textOnDark`, `:646 color: colors.textOnDark`, `:686 color: colors.textOnDarkMuted` (grep-verified this session; token properties typecheck, B1 exit 0). Remaining rgba literal at `:797` is pre-existing (outside v2 hunks, untouched).
+- **QA-2 — RESOLVED (rework, verified by QA)**: `frontend/src/config/navigation.test.ts` materialized (27 tests, coverage per §2) and vitest installed (`vitest` v4.1.11 ran); `vitest.config.ts:5` `include` extended with `'src/config/**/*.test.ts'` (grep-verified). QA executed the oracle: **27/27 passed, exit 0**.
+- **QA-3 — OPEN (not-run coverage gap, env-blocked — not a v2 regression)**: no e2e step visits `/dashboard` (AC-08 render) and no restricted-user browser case exists (AC-05 browser). Requires the §4 staged environment; recorded in w1 §5.4.
+
+## 6. What this verification did NOT cover
+
+Browser render/click/deep-link behavior for AC-01/02/04/06/08/09 browser seams and the AC-05 restricted-user browser case — all blocked on the §4 environment (live backend + dev server in a staged setting). Static anchors, typecheck (exit 0), eslint on v2-authored files (exit 0), and the QA-executed 27/27 unit oracle are the executed evidence for every PASS row above. No code was modified or re-implemented by this seat.

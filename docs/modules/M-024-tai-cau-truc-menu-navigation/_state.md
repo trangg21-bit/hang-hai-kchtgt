@@ -6,21 +6,23 @@ status: in-progress
 depends-on: []
 blocked-by: []
 created: 2026-08-25T07:34:20.884Z
-last-updated: 2026-09-03T07:42:53Z
-current-stage: closed
+last-updated: 2026-09-03T18:40:17Z
+current-stage: engineering-qa-engineer-wave-2
 output-mode: lean
 repo-type: mini
 repo-path: .
 project: ""
 docs-path: docs/modules/M-024-tai-cau-truc-menu-navigation
 intel-path: docs/intel
-stages-queue: []
+stages-queue:
+  - engineering-qa-engineer-wave-2
+  - engineering-code-reviewer
 completed-stages:
   engineering-business-analyst:
     verdict: Pass
     artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/ba/00-lean-spec.md
     performed: dispatched
-    completed-at: 2026-09-03
+    completed-at: 2026-08-28
   engineering-solution-designer:
     verdict: Pass
     artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/design/00-design-plan.md
@@ -29,21 +31,11 @@ completed-stages:
   engineering-qa-engineer-wave-1:
     verdict: Pass
     artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/qa/07-qa-report-w1.md
-    performed: in-seat
+    performed: dispatched
     completed-at: 2026-09-03
   engineering-frontend-developer-wave-1:
     verdict: Pass
-    artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/dev/05-fe-dev-w1-menu-khoi-2-screen.md
-    performed: dispatched
-    completed-at: 2026-09-03
-  engineering-qa-engineer-wave-2:
-    verdict: Pass
-    artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/qa/07-qa-report-w2.md
-    performed: dispatched
-    completed-at: 2026-09-03
-  engineering-code-reviewer:
-    verdict: Pass
-    artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/reviewer/08-review-report.md
+    artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/dev/05-fe-dev-w1-dashboard-first-nav.md
     performed: dispatched
     completed-at: 2026-09-03
 kpi:
@@ -57,7 +49,8 @@ kpi:
   first-code-path: frontend/src/components/AppLayout.tsx
   first-code-advisory-shown: true
 rework-count:
-  engineering-business-analyst: 4
+  engineering-business-analyst: 2
+  engineering-solution-designer: 1
 locked-fields: []
 version: 1
 finalizers: []
@@ -66,9 +59,13 @@ child-events: []
 partial-redo: []
 agent-flags: {}
 triage-id: TRI-1787823566528-bb3e
-reopened-at: 2026-09-03T04:45:58Z
-reopened-reason: 'Change request (TRI-1788409709741-75fa, C2 solo, A32 reconcile-add): docs-only — ghi nhận thiết kế menu 2-màn-hình đã chốt (màn "Danh mục chức năng" 6 khối → click khối 1 mở /kcht-directory 28 loại KCHT phân cấp theo SO-DO-VA-MA-TRAN-CHA-CON-KCHT.md; sidebar 6 nhóm cấp 1 phẳng, bỏ filter bar trên màn khối). Code do build-side workers xử lý riêng; session này CHỈ cập nhật docs BA + design.'
-released: true
+reopened-at: 2026-09-03T18:13:50Z
+reopened-reason: "Change request TRI-1788457723340-50a8 (C2 architecture reduced_pipeline, menu/nav v2 dashboard-first 6 khối): code+docs đã implement inline routing-off; re-enter pipeline từ SA để ghi nhận chu kỳ mới 2026-09-04."
+stage-starts:
+  engineering-solution-designer: 2026-09-03T18:13:50Z
+  engineering-qa-engineer-wave-1: 2026-09-03T18:31:28Z
+  engineering-frontend-developer-wave-1: 2026-09-03T18:40:13Z
+  engineering-qa-engineer-wave-2: 2026-09-03T18:40:17Z
 ---
 # Pipeline State: Tái cấu trúc Menu & Navigation (M-024)
 
@@ -80,20 +77,20 @@ Tái cấu trúc toàn bộ hệ thống menu và giao diện điều hướng, 
 
 | # | Stage | Agent | Verdict | Artifact | Date |
 |---|---|---|---|---|---|
-| 1 | engineering-business-analyst | engineering-business-analyst | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/ba/00-lean-spec.md | 2026-09-03 |
+| 1 | engineering-business-analyst | engineering-business-analyst | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/ba/00-lean-spec.md | 2026-08-28 |
 | 2 | engineering-solution-designer | engineering-solution-designer | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/design/00-design-plan.md | 2026-09-03 |
 | 3 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/qa/07-qa-report-w1.md | 2026-09-03 |
-| 4 | engineering-frontend-developer-wave-1 | engineering-frontend-developer-wave-1 | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/dev/05-fe-dev-w1-menu-khoi-2-screen.md | 2026-09-03 |
-| 5 | engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/qa/07-qa-report-w2.md | 2026-09-03 |
-| 6 | engineering-code-reviewer | engineering-code-reviewer | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/reviewer/08-review-report.md | 2026-09-03 |
+| 4 | engineering-frontend-developer-wave-1 | engineering-frontend-developer-wave-1 | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/dev/05-fe-dev-w1-dashboard-first-nav.md | 2026-09-03 |
+| 5 | engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | — | — | — |
+| 6 | engineering-code-reviewer | engineering-code-reviewer | — | — | — |
 
 ## Current Stage
 
-**closed** — Pipeline complete.
+**engineering-qa-engineer-wave-2** — Ready to start. Input: `docs/modules/M-024-tai-cau-truc-menu-navigation/module-brief.md`.
 
 ## Next Action
 
-Released — sign-off recorded (`released: true`).
+Next stage `engineering-qa-engineer-wave-2` — dispatched by the project manager (via the build receptionist); no slash command to run.
 
 ## Active Blockers
 
