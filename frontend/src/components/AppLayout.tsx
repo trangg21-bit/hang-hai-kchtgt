@@ -85,6 +85,7 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/connections': 'connection:read',
   '/interconnect': 'connection:read',
   '/reports': 'report:read',
+  '/dashboard': 'report:read',
   '/settings': 'admin:manage',
   '/logs': 'admin:view',
   '/symbols': 'data:read',

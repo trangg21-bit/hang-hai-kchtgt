@@ -48,7 +48,7 @@ export const colors = {
   bodyBg: '#F5F8FA',         // nền layout tổng (xám rất nhạt đặc trưng Metronic)
   containerBg: '#FFFFFF',
   sidebarBg: '#1a3f83',      // nền sidebar navy CHK — đồng nhất themetokenchk.sidebarBg
-  sidebarActiveBg: '#1B84FF', // pill active màu xanh dương sáng
+  sidebarActiveBg: 'rgba(255,255,255,0.16)', // pill active trên nền navy — trung tính (không azure)
   sidebarSearchBg: 'rgba(255, 255, 255, 0.12)', // nền ô tìm kiếm trong sidebar
 
   // Border
@@ -184,8 +184,8 @@ export const metronicTheme: ThemeConfig = {
       itemBorderRadius: radius.md,
       iconSize: 18,
       collapsedIconSize: 18,
-      // Lưu ý cho AI: item đang active là PILL màu xanh dương sáng, KHÔNG có border-left.
-      // Xem CSS .ant-menu-dark .ant-menu-item-selected để biết box-shadow glow.
+      // Lưu ý cho AI: item đang active là PILL trắng trong mờ trên nền navy (trung tính),
+      // KHÔNG có border-left, KHÔNG dùng màu azure #1B84FF — xem CSS .ant-menu-dark .ant-menu-item-selected.
     },
 
     Card: {
@@ -630,11 +630,26 @@ export const globalCssVars = `
   background: var(--bg-sidebar) !important;
 }
 
-/* Active item: PILL với box-shadow glow, KHÔNG có border-left */
+/* Active item: PILL trắng trong mờ trên nền navy — trung tính, bỏ glow & màu
+   azure colorPrimary (#1B84FF) để sidebar đồng tông với action primary chàm/đậm
+   của nút (vd #273e7c). TRI-1788504980955-c557 */
 .ant-menu-dark .ant-menu-item-selected {
   position: relative;
   font-weight: 600;
-  box-shadow: 0 0 12px rgba(27, 132, 255, 0.4);
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+  box-shadow: none;
+}
+.ant-menu-dark .ant-menu-item-selected .anticon {
+  color: #ffffff !important;
+}
+.ant-menu-dark .ant-menu-item-selected::after {
+  border-right-color: transparent !important;
+}
+/* Submenu mở / chứa item đang chọn: giữ chữ trắng, không nhuộm azure */
+.ant-menu-dark .ant-menu-submenu-selected > .ant-menu-submenu-title,
+.ant-menu-dark .ant-menu-submenu-open > .ant-menu-submenu-title {
+  color: rgba(255, 255, 255, 0.92) !important;
 }
 
 /* Menu item spacing đồng bộ với form field (height ~40px, padding 10 = cellPaddingBlock) */
@@ -912,11 +927,10 @@ export const globalCssVars = `
 }
 .topbar-user__status-dot {
   position: absolute;
-  top: 50%;
-  right: -4px;
-  transform: translateY(-50%);
-  width: 8px;
-  height: 8px;
+  bottom: 0;
+  right: -1px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   background: var(--color-success);
   border: 2px solid var(--bg-container);
@@ -2802,7 +2816,8 @@ textarea::placeholder,
  *    KHÔNG được wrap thêm ConfigProvider theme khác ở cấp module (tránh theme bị override lệch nhau).
  *
  * 8. Sidebar: 1 MÀU NAVY ĐỒNG NHẤT (#1a3f83 — chuẩn CHK) cho header, menu, footer.
- *    Active menu item là PILL màu xanh dương sáng (#1B84FF), KHÔNG có border-left.
+ *    Active menu item là PILL trắng trong mờ trên nền navy (trung tính), KHÔNG có border-left,
+ *    không dùng glow hay màu azure #1B84FF.
  *
  * 9. MỌI cột "Trạng thái" trong MỌI bảng dữ liệu (Table) của 22 module phải dùng class
  *    `.status-badge` + 1 trong 4 biến thể: `--active`, `--inactive`, `--locked`, `--pending`.
