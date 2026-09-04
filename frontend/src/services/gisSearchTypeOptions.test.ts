@@ -9,9 +9,10 @@ import {
 } from '../types/gisSearch';
 
 describe('danh mục loại KCHT GIS', () => {
-  it('giữ đúng 22 loại duy nhất của source mới', () => {
-    expect(KCHT_GIS_TYPE_OPTIONS).toHaveLength(22);
-    expect(new Set(KCHT_GIS_TYPE_OPTIONS.map((option) => option.value)).size).toBe(22);
+  it('giữ đúng 28 loại có nguồn dữ liệu tra cứu', () => {
+    expect(KCHT_GIS_TYPE_OPTIONS).toHaveLength(28);
+    expect(new Set(KCHT_GIS_TYPE_OPTIONS.map((option) => option.value)).size).toBe(28);
+    expect(KCHT_GIS_TYPE_OPTIONS.map((option) => option.value)).not.toContain('VHF_SYSTEM');
   });
 
   it('chuẩn hóa được các mã loại của dữ liệu cũ', () => {
