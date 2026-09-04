@@ -43,7 +43,7 @@ const BuoyListPage = lazy(() => import('./services/buoy/BuoyListPage'));
 const BeaconHistoryList = lazy(() => import('./pages/history/BeaconHistoryList'));
 const SymbolList = lazy(() => import('./pages/symbols/SymbolList'));
 const HomePage = lazy(() => import('./pages/Home'));
-const HomeLanding = lazy(() => import('./pages/HomeLanding'));
+const PortalHome = lazy(() => import('./pages/PortalHome'));
 const PasswordResetPage = lazy(() => import('./pages/PasswordResetPage'));
 const PortList = lazy(() => import('./services/port/PortListPage'));
 const PortApprovePage = lazy(() => import('./services/port/PortApprovePage'));
@@ -136,13 +136,13 @@ export default function App() {
               <Routes>
               {/* Login & Registration — outside layout */}
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/" element={<PortalHome />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/forgot-password" element={<PasswordResetPage mode="forgot" />} />
               <Route path="/reset-password/:token" element={<PasswordResetPage mode="reset" />} />
 
               {/* Protected routes — inside layout */}
               <Route element={<AppLayout />}>
-                <Route path="/" element={<HomeLanding />} />
                 <Route path="/dashboard" element={<HomePage />} />
                 <Route path="/users" element={<PermissionGuard permission="user:read"><UsersPage /></PermissionGuard>} />
 
