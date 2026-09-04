@@ -564,13 +564,30 @@ const getOrderedKeysAndLabels = (type: string): { key: string; label: string }[]
     return [
       { key: 'portCode', label: 'Mã cảng biển' },
       { key: 'portName', label: 'Tên cảng biển' },
+      { key: 'portGroup', label: 'Nhóm cảng biển' },
       { key: 'province', label: 'Địa điểm (Tỉnh/ Thành phố)' },
       { key: 'area', label: 'Diện tích (ha)' },
-      { key: 'khaNangTiepNhan', label: 'Khả năng tiếp nhận (tấn)' },
+      { key: 'maxVesselCapacity', label: 'Khả năng tiếp nhận tàu lớn nhất' },
       { key: 'orgUnitId', label: 'Đơn vị quản lý' },
       { key: 'operationalStatus', label: 'Trạng thái hoạt động' },
       { key: 'approvalStatus', label: 'Trạng thái phê duyệt' },
-      { key: 'loaiHinhHoc', label: 'Loại hình học' }
+      { key: 'loaiHinhHoc', label: 'Loại hình học' },
+      { key: 'waterAreaScope', label: 'Phạm vi vùng nước' },
+      { key: 'totalBerths', label: 'Tổng số bến cảng' },
+      { key: 'totalAnchoragesTransshipment', label: 'Tổng số khu neo đậu, chuyển tải' },
+      { key: 'totalPublicChannels', label: 'Tổng số tuyến luồng hàng hải công cộng' },
+      { key: 'totalDedicatedChannels', label: 'Tổng số tuyến luồng hàng hải chuyên dùng' },
+      { key: 'totalPublicChannelLength', label: 'Tổng chiều dài tuyến luồng hàng hải công cộng (km)' },
+      { key: 'totalDedicatedChannelLength', label: 'Tổng số chiều dài tuyến luồng hàng hải chuyên dùng (km)' },
+      { key: 'totalBuoysBeacons', label: 'Tổng số phao tiêu, báo hiệu hàng hải trên luồng' },
+      { key: 'totalDikes', label: 'Tổng số đê, kè' },
+      { key: 'totalDikeLength', label: 'Tổng chiều dài hệ thống đê, kè (km)' },
+      { key: 'totalLighthouses', label: 'Tổng số đèn biển, đăng tiêu độc lập' },
+      { key: 'buoyBerthCount', label: 'Số lượng bến phao' },
+      { key: 'anchorageCount', label: 'Số lượng khu neo đậu' },
+      { key: 'transshipmentCount', label: 'Số lượng khu chuyển tải' },
+      { key: 'otherWaterAreas', label: 'Các khu nước vùng nước khác' },
+      { key: 'remarks', label: 'Ghi chú' }
     ];
   }
   
