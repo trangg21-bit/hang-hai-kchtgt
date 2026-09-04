@@ -631,8 +631,8 @@ export const globalCssVars = `
 }
 
 /* Active item: PILL trắng trong mờ trên nền navy — trung tính, bỏ glow & màu
-   azure colorPrimary (#1B84FF) để sidebar đồng tông với action primary chàm/đậm
-   của nút (vd #273e7c). TRI-1788504980955-c557 */
+   azure colorPrimary (#1B84FF) để sidebar đồng tông với action primary navy
+   của nút (#1a3f83). TRI-1788504980955-c557 */
 .ant-menu-dark .ant-menu-item-selected {
   position: relative;
   font-weight: 600;
@@ -899,7 +899,7 @@ export const globalCssVars = `
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
-  background-color: #273e7c;
+  background-color: var(--bg-sidebar, #1a3f83);
 }
 .topbar-user__info {
   display: flex;
@@ -2288,7 +2288,7 @@ textarea::placeholder,
 .chk-detail-label {
   width: 190px !important;
   flex-shrink: 0 !important;
-  color: #273e7c !important;
+  color: #1a3f83 !important;
   font-weight: 700 !important;
   font-size: 13px !important;
   text-align: left !important;

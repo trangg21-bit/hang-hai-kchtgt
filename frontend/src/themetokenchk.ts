@@ -20,7 +20,7 @@ export const layout = baseLayout;
 //   <ThemeTokenProvider tokens={themeTokenChk}>     // cho component dùng chung
 //
 // Ba khác biệt tạo nên "chất CHK", áp dụng xuyên suốt file:
-//   1. Xanh navy đậm #273e7c làm màu hành động, thay xanh sáng #0E6FD6.
+//   1. Xanh navy chuẩn #1a3f83 làm màu hành động đồng bộ với Taskbar menu, thay xanh sáng #0E6FD6.
 //   2. Bảng có đường kẻ rõ: header nền xám #e4e4e4, chữ navy IN HOA 600, hàng chẵn sọc #f9fafb.
 //   3. Bề mặt phẳng kiểu Metronic: nền trang #eef0f8, text thang xám gray-800/600/500,
 //      shadow rất nhẹ — control GIỮ NGUYÊN bo viên thuốc (radiusPill 999) như chuẩn hệ thống.
@@ -35,9 +35,9 @@ export const layout = baseLayout;
 
 // --- COLOR PALETTE ---
 
-// Action — --primary-color / --kt-primary-active của chk
-export const actionPrimary = '#273e7c';
-export const actionHover = '#25396d';
+// Action — --primary-color / --kt-primary-active của chk (đồng bộ với màu nền sidebar #1a3f83)
+export const actionPrimary = '#1a3f83';
+export const actionHover = '#15336a';
 
 // Status — bảng màu semantic chuẩn đồng bộ toàn hệ thống
 export const statusOperational = '#1BAF7A';
@@ -48,7 +48,7 @@ export const statusDraft = '#93A3B3';
 export const statusNeutral = statusDraft;
 
 // Data — chart series
-export const dataPrimary = '#273e7c';
+export const dataPrimary = '#1a3f83';
 export const dataSecondary = '#63abfd';       // --box-report-bg-color
 
 // Surface
@@ -65,7 +65,7 @@ export const borderDefault = '#e4e4e4';
 
 // Data series — dải xanh navy của chk
 export const dataNavy = '#1d2359';            // --kt-color-text-device-diagram
-export const dataSea0 = '#273e7c';
+export const dataSea0 = '#1a3f83';
 export const dataSea1 = '#1a3f83';
 export const dataSea2 = '#63abfd';
 export const dataSea3 = '#9ecdf0';
@@ -87,7 +87,7 @@ export const shadowLg = '0 4px 16px rgba(0,0,0,0.10)';
 export const colors = {
   ...baseColors,
   primary: actionPrimary,
-  primaryHover: '#2f4a92',
+  primaryHover: '#2252a8',
   primaryActive: actionHover,
   bodyBg: surfacePage,
   sidebarBg,

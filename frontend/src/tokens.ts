@@ -50,7 +50,7 @@ export const dataSea3 = '#9ecdf0';
 export const dataTeal = '#bedaf2';    // icy light blue — continues sea gradient past dataSea3 (was teal #0ea5a3)
 
 // Infrastructure colors (dùng cho sidebar, layout — cần cho style preset)
-export const sidebarBg = '#12468C';
+export const sidebarBg = '#1a3f83';
 
 // Font families
 export const fontSans = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
@@ -224,7 +224,7 @@ export const iconButtonStyle: React.CSSProperties = {
 
 /**
  * Style nhãn Form chuẩn toàn hệ thống:
- * - Màu chữ: sidebarBg (#12468C - Xanh navy thương hiệu Cục Hàng hải)
+ * - Màu chữ: sidebarBg (#1a3f83 - Xanh navy thương hiệu Cục Hàng hải)
  * - Độ đậm: fontWeightBold (600)
  * - Cỡ chữ: fontSizeMd (13px)
  */

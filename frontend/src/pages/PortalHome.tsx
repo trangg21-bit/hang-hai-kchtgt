@@ -1,7 +1,7 @@
 /**
  * PortalHome — "Cổng phân hệ Hàng hải" (route "/", fullscreen, không sidebar/topbar).
  * Dựng theo mockup cong-phan-he-hang-hai.html đã đồng bộ themetokenchk:
- *  - accent 6 phân hệ: kcht #273e7c · asset #1BAF7A · plan #EDA100 · gis #63abfd
+ *  - accent 6 phân hệ: kcht #1a3f83 · asset #1BAF7A · plan #EDA100 · gis #63abfd
  *    · report #E34948 · admin #5E6278 (chốt 2026-09-04)
  *  - icon = antd (@ant-design/icons), không tự vẽ SVG
  *  - khối chào không có "X/6 phân hệ", tile không có meta "…đối tượng cập nhật…"
