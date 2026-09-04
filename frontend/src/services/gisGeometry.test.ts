@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   coordinateRowsToWkt,
+  everyMapHitGeometryCoordinate,
   findMapGeometryHits,
   geoJsonToMapHitGeometries,
   getMapHitGeometryBounds,
   geometryCoordinatesToRows,
+  isVietnamMapCoordinate,
   normalizeLineCoordinates,
   normalizePolygonCoordinates,
   parseWktToCoords,
@@ -60,6 +62,19 @@ describe('gisGeometry', () => {
       center: [107, 21],
       coordinates: [[106, 20], [108, 22]],
     });
+  });
+
+  it('rejects the complete CCTV geometry when any polygon vertex is invalid', () => {
+    const parsed = parseWktToCoords(
+      'POLYGON((106.500000 20.550000, 0.000000 20.550000, 0.000000 0.000000, 106.500000 20.550000))',
+    );
+    const polygon = normalizePolygonCoordinates(parsed);
+
+    expect(polygon).not.toBeNull();
+    expect(everyMapHitGeometryCoordinate(
+      { type: 'Polygon', coordinates: polygon! },
+      isVietnamMapCoordinate,
+    )).toBe(false);
   });
 
   it('falls back to separate longitude and latitude for legacy records', () => {

@@ -30,6 +30,8 @@ import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
 import com.hanghai.kchtg.cctv.entity.Cctv;
 import com.hanghai.kchtg.cctv.repository.CctvRepository;
+import com.hanghai.kchtg.scada.entity.Scada;
+import com.hanghai.kchtg.scada.repository.ScadaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -74,6 +76,7 @@ public class KchtGis155Service {
       InfrastructureType.LRIT_STATION,
       InfrastructureType.HANOI_STATION,
       InfrastructureType.CCTV,
+      InfrastructureType.SCADA,
       InfrastructureType.DRY_PORT);
 
   private final PortRepository portRepository;
@@ -98,6 +101,7 @@ public class KchtGis155Service {
   private final CoastalStationLRITRepository coastalStationLRITRepository;
   private final CoastalStationHaiphongRepository coastalStationHaiphongRepository;
   private final CctvRepository cctvRepository;
+  private final ScadaRepository scadaRepository;
   private final jakarta.persistence.EntityManager entityManager;
 
   /**
@@ -688,6 +692,49 @@ public class KchtGis155Service {
                   spatialIdMap.put(r.getId(), cctv.getSpatialId());
                 } else {
                   spatialIdMap.put(r.getId(), cctv.getId());
+                }
+              }
+            }
+            break;
+
+        case SCADA:
+            List<Scada> scadaSystems = scadaRepository.searchScada(
+                orgUnitId == null,
+                orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of(),
+                false, null, null, null, null, ApprovalStatus.APPROVED, null, null, null,
+                province,
+                null, null, searchLower, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+            Map<UUID, GisSpatialObject> scadaSpatialMap = new HashMap<>();
+            if (!scadaSystems.isEmpty()) {
+              List<UUID> scadaIds = scadaSystems.stream().map(Scada::getId).collect(Collectors.toList());
+              gisSpatialObjectRepository.findByRefIdInAndRefType(scadaIds, InfrastructureType.SCADA)
+                  .forEach(spatial -> {
+                    scadaSpatialMap.put(spatial.getRefId(), spatial);
+                    scadaSpatialMap.put(spatial.getId(), spatial);
+                  });
+            }
+            for (Scada scada : scadaSystems) {
+              KchtGisSearchResult result = KchtGisSearchResult.builder()
+                  .id(scada.getId() != null ? scada.getId().toString() : null)
+                  .name(scada.getDeviceName())
+                  .code(scada.getDeviceCode())
+                  .orgUnitId(scada.getOrgUnitId())
+                  .orgName(getOrgName(scada.getOrgUnitId(), orgNameMap))
+                  .infrastructureType(type)
+                  .kchtTypeLabel("Hệ thống SCADA")
+                  .mapSymbolId(scada.getMapSymbolId())
+                  .provinceId(null)
+                  .location(scada.getProvinceName() != null ? scada.getProvinceName() : "")
+                  .diaChiChiTiet(scada.getDetailedLocation() != null ? scada.getDetailedLocation() : "")
+                  .build();
+              UUID spatialLookupId = scada.getSpatialId() != null ? scada.getSpatialId() : scada.getId();
+              if (objectType != null) {
+                populateSpatialAndFilterFromMap(results, result, spatialLookupId, objectType,
+                    GisObjectType.POINT, scadaSpatialMap);
+              } else {
+                results.add(result);
+                if (spatialLookupId != null) {
+                  spatialIdMap.put(result.getId(), spatialLookupId);
                 }
               }
             }

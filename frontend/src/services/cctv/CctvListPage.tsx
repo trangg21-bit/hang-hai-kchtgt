@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { fmtNum, fmtInputNumber } from "../../utils/numFmt";
-import { coordinateRowsToWkt, parseWktToCoordinates, resolveMapGeometryLocation, type EditableGeometryType } from "../../utils/gisGeometry";
+import { coordinateRowsToWkt, isVietnamMapCoordinate, parseWktToCoordinates, resolveMapGeometryLocation, type EditableGeometryType } from "../../utils/gisGeometry";
 
 // Normalize form geometryType ('POINT' | 'LINE' | 'POLYGON') — fallback POINT khi chưa chọn
 const normalizeGeometryType = (value: unknown): 'POINT' | 'LINE' | 'POLYGON' =>
@@ -1714,10 +1714,19 @@ const CctvListPage = () => {
         const createGeomType = normalizeGeometryType(values.geometryType);
         const createWktType: EditableGeometryType =
           createGeomType === 'LINE' ? 'LineString' : createGeomType === 'POLYGON' ? 'Polygon' : 'Point';
+        const createCoordinateRows = gpsCoordList.map(c => ({ lng: c.lng, lat: c.lat }));
+        if (createCoordinateRows.some(({ lng, lat }) => !isVietnamMapCoordinate([lng, lat]))) {
+          toast.warning('Vui lòng nhập đầy đủ tọa độ hợp lệ trong khu vực bản đồ Việt Nam');
+          return;
+        }
         const coordinates = coordinateRowsToWkt(
           createWktType,
-          gpsCoordList.map(c => ({ lng: c.lng, lat: c.lat }))
+          createCoordinateRows
         );
+        if (!coordinates) {
+          toast.warning('Tọa độ chưa đủ để tạo hình học đã chọn');
+          return;
+        }
 
         const payload = {
           ...values,
@@ -1771,10 +1780,19 @@ const CctvListPage = () => {
         const updateGeomType = normalizeGeometryType(updateGeometryType);
         const updateWktType: EditableGeometryType =
           updateGeomType === 'LINE' ? 'LineString' : updateGeomType === 'POLYGON' ? 'Polygon' : 'Point';
+        const updateCoordinateRows = updateGpsCoordList.map(c => ({ lng: c.lng, lat: c.lat }));
+        if (updateCoordinateRows.some(({ lng, lat }) => !isVietnamMapCoordinate([lng, lat]))) {
+          toast.warning('Vui lòng nhập đầy đủ tọa độ hợp lệ trong khu vực bản đồ Việt Nam');
+          return;
+        }
         const coordinates = coordinateRowsToWkt(
           updateWktType,
-          updateGpsCoordList.map(c => ({ lng: c.lng, lat: c.lat }))
+          updateCoordinateRows
         );
+        if (!coordinates) {
+          toast.warning('Tọa độ chưa đủ để tạo hình học đã chọn');
+          return;
+        }
 
         // Chuẩn VTS: Lưu tạm (chỉ update) / Lưu và gửi phê duyệt (update + submit) /
         // Lưu và phê duyệt (update + giữ Đã duyệt — T12 backend)

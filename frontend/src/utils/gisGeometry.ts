@@ -39,6 +39,20 @@ export interface MapGeometryBounds {
   maxLatitude: number;
 }
 
+export const VIETNAM_MAP_BOUNDS = {
+  minLongitude: 95,
+  maxLongitude: 120,
+  minLatitude: 5,
+  maxLatitude: 26,
+} as const;
+
+export const isVietnamMapCoordinate = ([longitude, latitude]: LngLat): boolean => (
+  longitude >= VIETNAM_MAP_BOUNDS.minLongitude
+  && longitude <= VIETNAM_MAP_BOUNDS.maxLongitude
+  && latitude >= VIETNAM_MAP_BOUNDS.minLatitude
+  && latitude <= VIETNAM_MAP_BOUNDS.maxLatitude
+);
+
 interface GeoJsonGeometryLike {
   type?: unknown;
   coordinates?: unknown;
@@ -213,6 +227,14 @@ const flattenGeometryCoordinates = (
 
   const polygon = normalizePolygonCoordinates(value);
   return polygon?.flat() || [];
+};
+
+export const everyMapHitGeometryCoordinate = (
+  geometry: MapHitGeometry,
+  predicate: (coordinate: LngLat) => boolean,
+): boolean => {
+  const coordinates = flattenGeometryCoordinates(geometry.coordinates);
+  return coordinates.length > 0 && coordinates.every(predicate);
 };
 
 const distanceToSegment = (

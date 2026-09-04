@@ -125,9 +125,11 @@ import { pointObjectService } from '../../services/pointObjectService';
 import { lineObjectService } from '../../services/lineObjectService';
 import { polygonObjectService } from '../../services/polygonObjectService';
 import {
+  everyMapHitGeometryCoordinate,
   findMapGeometryHits,
   geoJsonToMapHitGeometries,
   getMapHitGeometryBounds,
+  isVietnamMapCoordinate,
   normalizeLineCoordinates,
   normalizePointCoordinates,
   normalizePolygonCoordinates,
@@ -1445,9 +1447,6 @@ function getFeatureNameVi(featureCode: string, originalName?: string): string {
   return FEATURE_NAMES_VI[cleanCode] || featureCode;
 }
 
-const isVietnamMapCoordinate = ([lng, lat]: [number, number]) =>
-  lat >= 5 && lat <= 26 && lng >= 95 && lng <= 120;
-
 interface KchtMapHitTarget {
   key: string;
   label: string;
@@ -1519,24 +1518,30 @@ const resolveSearchHitGeometry = (record: KchtGisSearchResult): MapHitGeometry |
   const geometryWkt = getRecordCoordinatesWkt(record);
   const parsedCoordinates = geometryWkt ? parseWktToCoords(geometryWkt) : null;
   const geometryType = String(record.geometryType || record.loaiHinhHoc || '').toUpperCase();
+  const useValidMapCoordinates = (geometry: MapHitGeometry | null): MapHitGeometry | null => {
+    if (!geometry) return null;
+    return everyMapHitGeometryCoordinate(geometry, isVietnamMapCoordinate)
+      ? geometry
+      : null;
+  };
 
   // Prefer detecting type from WKT if available to handle dirty data
   if (geometryWkt) {
     const wktUpper = geometryWkt.toUpperCase();
     if (wktUpper.startsWith('POINT')) {
       const coordinates = normalizePointCoordinates(parsedCoordinates);
-      if (coordinates) return { type: 'Point', coordinates };
+      if (coordinates) return useValidMapCoordinates({ type: 'Point', coordinates });
     }
     if (wktUpper.startsWith('LINESTRING') || wktUpper.startsWith('MULTIPOINT')) {
       const coordinates = normalizeLineCoordinates(parsedCoordinates);
-      if (coordinates) return { type: 'LineString', coordinates };
+      if (coordinates) return useValidMapCoordinates({ type: 'LineString', coordinates });
     }
     if (wktUpper.startsWith('POLYGON')) {
       const coordinates = normalizePolygonCoordinates(parsedCoordinates);
-      if (coordinates) return { type: 'Polygon', coordinates };
+      if (coordinates) return useValidMapCoordinates({ type: 'Polygon', coordinates });
       // Legacy fallback
       const legacyVertices = normalizeLineCoordinates(parsedCoordinates);
-      if (legacyVertices) return { type: 'Polygon', coordinates: [legacyVertices] };
+      if (legacyVertices) return useValidMapCoordinates({ type: 'Polygon', coordinates: [legacyVertices] });
     }
   }
 
@@ -1544,23 +1549,25 @@ const resolveSearchHitGeometry = (record: KchtGisSearchResult): MapHitGeometry |
   if (geometryType === 'POINT' || (parsedCoordinates && !Array.isArray(parsedCoordinates[0]))) {
     const coordinates = normalizePointCoordinates(parsedCoordinates)
       || normalizePointCoordinates([record.longitude, record.latitude]);
-    return coordinates ? { type: 'Point', coordinates } : null;
+    return coordinates ? useValidMapCoordinates({ type: 'Point', coordinates }) : null;
   }
 
   if (['LINE', 'LINESTRING', 'POLYLINE'].includes(geometryType)) {
     const coordinates = normalizeLineCoordinates(parsedCoordinates);
-    return coordinates ? { type: 'LineString', coordinates } : null;
+    return coordinates ? useValidMapCoordinates({ type: 'LineString', coordinates }) : null;
   }
 
   if (['POLYGON', 'AREA'].includes(geometryType)) {
     const coordinates = normalizePolygonCoordinates(parsedCoordinates);
-    if (coordinates) return { type: 'Polygon', coordinates };
+    if (coordinates) return useValidMapCoordinates({ type: 'Polygon', coordinates });
     const legacyVertices = normalizeLineCoordinates(parsedCoordinates);
-    return legacyVertices ? { type: 'Polygon', coordinates: [legacyVertices] } : null;
+    return legacyVertices
+      ? useValidMapCoordinates({ type: 'Polygon', coordinates: [legacyVertices] })
+      : null;
   }
 
   const fallbackPoint = normalizePointCoordinates([record.longitude, record.latitude]);
-  return fallbackPoint ? { type: 'Point', coordinates: fallbackPoint } : null;
+  return fallbackPoint ? useValidMapCoordinates({ type: 'Point', coordinates: fallbackPoint }) : null;
 };
 
 const buildPlanningPopupContent = (featuresAtPoint: any[]): string => {
@@ -2044,8 +2051,19 @@ export default function GISChartView() {
   }, [searchPanelVisible]);
 
   const handleRowClick = useCallback(async (record: KchtGisSearchResult) => {
+    const geometryWkt = getRecordCoordinatesWkt(record);
+    const hitGeometry = resolveSearchHitGeometry(record);
+    if (!hitGeometry) {
+      if (geometryWkt) {
+        toast.warning('Không thể hiển thị: hình học có đỉnh tọa độ không hợp lệ. Vui lòng cập nhật lại tọa độ.');
+      } else {
+        toast.info('Đối tượng này chưa được cấu hình tọa độ trên bản đồ');
+      }
+      return;
+    }
+
     const mapLocation = resolveMapGeometryLocation(
-      getRecordCoordinatesWkt(record),
+      geometryWkt,
       record.longitude,
       record.latitude,
     );
@@ -3504,16 +3522,17 @@ export default function GISChartView() {
     const markers: any[] = [];
 
     selectedRecords.forEach((record) => {
-      const mapLocation = resolveMapGeometryLocation(
-        getRecordCoordinatesWkt(record),
-        record.longitude,
-        record.latitude,
-      );
-      const center = mapLocation?.center;
       const hitGeometry = resolveSearchHitGeometry(record);
+      const hitBounds = hitGeometry ? getMapHitGeometryBounds(hitGeometry) : null;
+      const renderCenter: [number, number] | null = hitBounds
+        ? [
+            (hitBounds.minLongitude + hitBounds.maxLongitude) / 2,
+            (hitBounds.minLatitude + hitBounds.maxLatitude) / 2,
+          ]
+        : null;
 
-      if (center && hitGeometry && isVietnamMapCoordinate(center)) {
-        const [lon, lat] = center;
+      if (renderCenter && hitGeometry && isVietnamMapCoordinate(renderCenter)) {
+        const [lon, lat] = renderCenter;
         const geometryType = (record.geometryType || record.loaiHinhHoc || '').toUpperCase();
         const isVectorGeometry = hitGeometry.type === 'LineString' || hitGeometry.type === 'Polygon';
 
@@ -4568,8 +4587,31 @@ export default function GISChartView() {
                                 columnWidth: 44,
                                 selectedRowKeys,
                                 onChange: (keys: React.Key[]) => {
-                                  const hasNewSelection = keys.some((key) => !selectedRowKeys.includes(key));
-                                  setSelectedRowKeys(keys);
+                                  const newKeySet = new Set(
+                                    keys
+                                      .filter((key) => !selectedRowKeys.includes(key))
+                                      .map(String),
+                                  );
+                                  const invalidRecords = infrastructureResults.filter((record) => (
+                                    newKeySet.has(String(record.id))
+                                    && resolveSearchHitGeometry(record) === null
+                                  ));
+                                  const invalidIds = new Set(invalidRecords.map((record) => String(record.id)));
+                                  const validKeys = keys.filter((key) => !invalidIds.has(String(key)));
+                                  const hasNewSelection = validKeys.some((key) => !selectedRowKeys.includes(key));
+
+                                  if (invalidRecords.length > 0) {
+                                    const recordLabels = invalidRecords
+                                      .slice(0, 3)
+                                      .map((record) => record.code || record.name)
+                                      .join(', ');
+                                    const remainingCount = invalidRecords.length - 3;
+                                    toast.warning(
+                                      `Không thể hiển thị ${recordLabels}${remainingCount > 0 ? ` và ${remainingCount} bản ghi khác` : ''}: có đỉnh tọa độ không hợp lệ.`,
+                                    );
+                                  }
+
+                                  setSelectedRowKeys(validKeys);
                                   if (hasNewSelection && screens.md === false) {
                                     setSearchPanelVisible(false);
                                   }

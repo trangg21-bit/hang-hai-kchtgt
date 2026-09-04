@@ -18,6 +18,8 @@ import com.hanghai.kchtg.port.repository.PierRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.repository.WaterZoneRepository;
 import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
+import com.hanghai.kchtg.scada.entity.Scada;
+import com.hanghai.kchtg.scada.repository.ScadaRepository;
 import com.hanghai.kchtg.shiprepairfacility.repository.ShipRepairFacilityRepository;
 import com.hanghai.kchtg.station.repository.BuoyStationRepository;
 import com.hanghai.kchtg.station.repository.CoastalStationCospasSarsatRepository;
@@ -70,6 +72,7 @@ class KchtGis155ServiceTest {
     @Mock private CoastalStationCospasSarsatRepository coastalStationCospasSarsatRepository;
     @Mock private CoastalStationLRITRepository coastalStationLRITRepository;
     @Mock private CoastalStationHaiphongRepository coastalStationHaiphongRepository;
+    @Mock private ScadaRepository scadaRepository;
     @Mock private EntityManager entityManager;
 
     @InjectMocks private KchtGis155Service service;
@@ -122,6 +125,47 @@ class KchtGis155ServiceTest {
         verify(berthRepository).searchBerths(
                 isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
                 eq(ApprovalStatus.APPROVED), any(Pageable.class));
+    }
+
+    @Test
+    void scadaSearchReturnsApprovedRecords() {
+        UUID orgUnitId = UUID.randomUUID();
+        UUID mapSymbolId = UUID.randomUUID();
+        Scada scada = new Scada();
+        scada.setId(UUID.randomUUID());
+        scada.setDeviceCode("SCA-000001");
+        scada.setDeviceName("Viba trung tâm điều hành");
+        scada.setOrgUnitId(orgUnitId);
+        scada.setProvinceName("Hưng Yên");
+        scada.setDetailedLocation("Trung tâm điều hành");
+        scada.setMapSymbolId(mapSymbolId);
+        scada.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        when(orgUnitCacheService.getDirectory()).thenReturn(Map.of(orgUnitId, "Đại diện"));
+        when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
+        when(scadaRepository.searchScada(
+                eq(true), eq(List.of()), eq(false), isNull(), isNull(), isNull(), isNull(),
+                eq(ApprovalStatus.APPROVED), isNull(), isNull(), isNull(), isNull(), isNull(),
+                isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(scada)));
+        when(gisSpatialObjectRepository.findByRefIdInAndRefType(
+                any(), eq(InfrastructureType.SCADA))).thenReturn(List.of());
+        when(gisSpatialObjectRepository.findAllById(any())).thenReturn(List.of());
+        when(gisSpatialObjectRepository.findByRefIdIn(any())).thenReturn(List.of());
+
+        KchtGisSearchPage result = service.search(
+                null, List.of(InfrastructureType.SCADA), null, null, null, null, 0, 20);
+
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertThat(result.getContent().get(0).getCode()).isEqualTo("SCA-000001");
+        assertThat(result.getContent().get(0).getName()).isEqualTo("Viba trung tâm điều hành");
+        assertThat(result.getContent().get(0).getKchtTypeLabel()).isEqualTo("Hệ thống SCADA");
+        assertThat(result.getContent().get(0).getOrgName()).isEqualTo("Đại diện");
+        assertThat(result.getContent().get(0).getMapSymbolId()).isEqualTo(mapSymbolId);
+        verify(scadaRepository).searchScada(
+                eq(true), eq(List.of()), eq(false), isNull(), isNull(), isNull(), isNull(),
+                eq(ApprovalStatus.APPROVED), isNull(), isNull(), isNull(), isNull(), isNull(),
+                isNull(), isNull(), any(Pageable.class));
     }
 
     private Berth approvedBerth(UUID orgUnitId, String code, OperationalStatus operationalStatus) {
