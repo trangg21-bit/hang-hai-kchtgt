@@ -1780,6 +1780,16 @@ export default function GISChartView() {
         path = `/station/hanoi?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
       } else if (label.includes('đài ttdh') || label.includes('dai ttdh') || label.includes('đài duyên hải') || label.includes('dai duyen hai')) {
         path = `/station/coastal?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+      } else if (label.includes('scada')) {
+        path = `/scada?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+      } else if (label.includes('ais')) {
+        path = `/ais-system?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+      } else if (label.includes('vts') && label.includes('phụ trợ')) {
+        path = `/vts-assist?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+      } else if (label.includes('truyền dẫn') || label.includes('truyen dan')) {
+        path = `/transmission?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+      } else if (label.includes('điều hành vts') || label.includes('dieu hanh vts')) {
+        path = `/vts-operation-center?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
       }
 
       if (path) {
