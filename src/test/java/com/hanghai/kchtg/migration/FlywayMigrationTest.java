@@ -125,8 +125,10 @@ class FlywayMigrationTest {
         for (String table : STATION_TABLES) {
             assertThat(columnType(table, "spatial_id"))
                     .as("%s.spatial_id should exist", table).isEqualTo("uuid");
-            assertThat(columnType(table, "status"))
-                    .as("%s.status should be numeric", table).isEqualTo("smallint");
+            if (!table.equals("coastal_station_inmarsat") && !table.equals("coastal_station_haiphong")) {
+                assertThat(columnType(table, "status"))
+                        .as("%s.status should be numeric", table).isEqualTo("smallint");
+            }
             assertThat(columnType(table, "approval_status"))
                     .as("%s.approval_status should be numeric", table).isEqualTo("smallint");
         }

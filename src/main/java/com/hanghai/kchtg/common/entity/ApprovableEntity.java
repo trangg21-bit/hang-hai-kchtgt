@@ -61,9 +61,17 @@ public interface ApprovableEntity {
     default void setLevel1ApprovalContent(String content) {
     }
 
+    default String getLevel1ApprovalContent() {
+        return null;
+    }
+
     /**
      * Content of the level-2 approval/rejection decision (#57).
      */
     default void setLevel2ApprovalContent(String content) {
+    }
+
+    default String getLevel2ApprovalContent() {
+        return null;
     }
 }

@@ -705,14 +705,15 @@ export default function RadarStationList() {
   // ── Row actions (approval 1 cấp: DRAFT/REJECTED → submit; PENDING_APPROVAL → approve/reject) ──
   const rowActions = useCallback((record: RadarStationResponse) => {
     const actions: any[] = [];
+    const st = record.approvalStatus;
     if (hasPerm('radarstation:read')) {
-      actions.push({ key: 'view', label: 'Chi tiết', icon: <EyeOutlined />, onClick: () => openDetailDrawer(record) });
+      actions.push({ key: 'view', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => openDetailDrawer(record) });
     }
     // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
     if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'radarstation' })) {
       actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => openEditDrawer(record) });
     }
-    const st = record.status || '';
+    actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistory(record) });
     if ((st === 'DRAFT' || st === 'REJECTED') && hasPerm('radarstation:update')) {
       actions.push({ key: 'submit', label: 'Gửi duyệt', icon: <SendOutlined />, onClick: () => openSubmitModal(record) });
     }
@@ -721,7 +722,6 @@ export default function RadarStationList() {
       actions.push({ key: 'approve', label: 'Phê duyệt', icon: <CheckCircleOutlined />, onClick: () => openApproveModal(record) });
       actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, danger: true, onClick: () => openRejectModal(record) });
     }
-    actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistory(record) });
     if (st === 'APPROVED' && hasPerm('radarstation:delete')) {
       actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => openDeleteConfirm(record) });
     }

@@ -3,7 +3,6 @@ package com.hanghai.kchtg.port.dto.berth;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.port.entity.BerthType;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -49,6 +48,8 @@ public class UpdateBerthRequest {
 
     @Size(max = 255)
     private String operator;
+
+    private UUID operatingOrgId;
 
     @DecimalMin("0")
     private BigDecimal totalArea;

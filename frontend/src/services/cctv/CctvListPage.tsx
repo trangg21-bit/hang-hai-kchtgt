@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { PERMISSIONS } from "../../constants/permissions";
 import { fmtNum, fmtInputNumber } from "../../utils/numFmt";
-import { coordinateRowsToWkt, resolveMapGeometryLocation, type EditableGeometryType } from "../../utils/gisGeometry";
+import { coordinateRowsToWkt, isVietnamMapCoordinate, parseWktToCoordinates, resolveMapGeometryLocation, type EditableGeometryType } from "../../utils/gisGeometry";
 
 // Normalize form geometryType ('POINT' | 'LINE' | 'POLYGON') — fallback POINT khi chưa chọn
 const normalizeGeometryType = (value: unknown): 'POINT' | 'LINE' | 'POLYGON' =>
@@ -10,24 +9,19 @@ import { usePermissionStore } from "../../store/permissionStore";
 import {
   Alert,
   Button,
-  Card,
   Checkbox,
   DatePicker,
-  Divider,
   Space,
   Tag,
   Row,
   Col,
   Input,
   Select,
-  Tooltip,
   Modal,
   Form,
   InputNumber,
   Typography,
-  Descriptions,
   Drawer,
-  Popconfirm,
   Table,
 } from "antd";
 import { OrgUnitTreeSelect } from "../../components/org-unit";
@@ -40,50 +34,33 @@ import {
   SendOutlined,
   EyeOutlined,
   HistoryOutlined,
-  ClockCircleOutlined,
-  ClockCircleFilled,
-  HourglassOutlined,
-  ArrowRightOutlined,
   UploadOutlined,
   ExclamationCircleOutlined,
-  DownOutlined,
-  UpOutlined,
   FileOutlined,
-  SearchOutlined,
-  FilterOutlined,
-  ReloadOutlined,
-  FileImageOutlined,
-  FilePdfOutlined,
   EnvironmentOutlined,
 } from "@ant-design/icons";
 import { Tabs, Upload } from "antd";
-import type { RcFile, UploadFile } from "antd/es/upload/interface";
+import type { RcFile } from "antd/es/upload/interface";
 import { useSearchParams } from "react-router-dom";
-import { SelectAppParams } from "../../components/SelectAppParams";
-import { LongLatTable, type CoordinateRow } from "../../components/LongLatTable";
 import {
   fetchCctvList,
+  fetchCctvById,
   deleteCctv,
   submitCctv,
   approveCctvC1,
   approveCctvC2,
-  fetchCctvById,
   createCctv,
   updateCctv,
   generateCctvCode,
-  fetchCctvOptions,
   fetchCctvHistory,
   fetchCctvAttachments,
   uploadCctvAttachment,
   deleteCctvAttachment,
 } from "./api";
 import {
-  operationalStatusBadge,
   OPERATIONAL_STATUS_OPTIONS,
-  APPROVAL_STATUS_OPTIONS,
-  ATTACHED_INFRA_TYPE_OPTIONS,
 } from "./schema";
-import type { CctvResponse, ApprovalRequest } from "./types";
+import type { CctvResponse, ApprovalRequest, CreateCctvRequest } from "./types";
 import toast from "../../components/ToastNotification";
 import ApprovalModal from "../../components/shared/ApprovalModal";
 import { useAuthStore } from "../../store/authStore";
@@ -160,39 +137,28 @@ import {
   colors,
   fontSizeMd,
   fontSizeLg,
-  fontSizeXl,
   fontSizeSm,
   fontWeightBold,
   fontWeightMedium,
-  fontWeightNormal,
   textPrimary,
   textSecondary,
   textTertiary,
   statusCritical,
   statusAttention,
-  statusWarning,
-  statusNeutral,
   statusDraft,
   statusOperational,
   actionPrimary,
-  actionHover,
   borderDefault,
   surfaceCard,
   radiusPill,
-  radiusSm,
   radiusMd,
-  radiusLg,
   fontSans,
   spaceMd,
   spaceFormField,
   spaceSm,
-  spaceLg,
   spaceXs,
   spaceXl,
   badgeBaseStyle,
-  cardStyle,
-  dividerStyle,
-  metaStyle,
   drawerProps,
   drawerTitleStyle,
   drawerCloseBtnStyle,
@@ -200,12 +166,11 @@ import {
   primaryButtonStyle,
   outlineButtonStyle,
   requiredMarkStyle,
-  detailSectionTitleStyle,
   uploadHintStyle,
 } from "../../tokens";
 import dayjs from "dayjs";
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 // ── Trạng thái phê duyệt 2 cấp (C1 Cảng vụ → C2 Cục) — đồng bộ /vts-system ──
 const APPROVAL_STATUS_MAP: Record<string, string> = {
@@ -227,22 +192,6 @@ const APPROVAL_COLOR: Record<string, string> = {
 };
 
 /* ── Shared list/detail UI tokens — aligned with Port list-view ───────── */
-const sectionHeader: React.CSSProperties = {
-  display: "block",
-  fontSize: fontSizeMd,
-  fontWeight: fontWeightBold,
-  color: colors.sidebarBg,
-  marginBottom: spaceMd,
-  marginTop: spaceLg,
-  fontFamily: fontSans,
-};
-
-const fieldLabelStyle: React.CSSProperties = {
-  color: colors.sidebarBg,
-  fontWeight: fontWeightBold,
-  fontSize: fontSizeMd,
-  marginBottom: spaceSm,
-};
 
 const pillStyle: React.CSSProperties = {
   borderRadius: radiusPill,
@@ -293,42 +242,6 @@ function renderApprovalBadge(status: string | null | undefined) {
     >
       {display}
     </span>
-  );
-}
-
-/** Stat card cho chỉ số tổng hợp */
-function CctvStatCard({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
-  return (
-    <Card
-      size="small"
-      style={{
-        border: `0.5px solid ${borderDefault}`,
-        borderRadius: radiusMd,
-        transition: 'box-shadow 0.2s',
-      }}
-      styles={{ body: { padding: `${spaceSm}px ${spaceMd}px` } }}
-      hoverable
-    >
-      <Space size={spaceSm}>
-        {icon && <span style={{ color: actionPrimary, fontSize: fontSizeXl }}>{icon}</span>}
-        <div>
-          <div style={{ color: textPrimary, fontSize: fontSizeMd, fontWeight: fontWeightBold }}>{value}</div>
-          <div style={{ color: textTertiary, fontSize: fontSizeSm }}>{label}</div>
-        </div>
-      </Space>
-    </Card>
-  );
-}
-
-/** Info row cho label+value pairs trong detail */
-function DetailInfoRow({ label, value, full }: { label: string; value: React.ReactNode; full?: boolean }) {
-  return (
-    <Col xs={24} sm={full ? 24 : 12}>
-      <div style={{ marginBottom: spaceMd }}>
-        <Typography.Text style={fieldLabelStyle}>{label}</Typography.Text>
-        <div style={{ color: textPrimary, fontSize: fontSizeMd, fontWeight: fontWeightNormal }}>{value}</div>
-      </div>
-    </Col>
   );
 }
 
@@ -479,181 +392,14 @@ const tableMetaStyle: React.CSSProperties = {
   fontSize: fontSizeMd,
   color: textPrimary,
 };
-
-const btnStyle: React.CSSProperties = {
-  ...pillStyle,
-  fontWeight: fontWeightMedium,
-};
-
-// ── Build Collapse items for Detail Modal (aligned with PortDetailPage) ──
-
-function buildCctvCollapseItems(
-  rec: CctvResponse,
-): Array<{ key: string; label: string; children: React.ReactNode }> {
-  const items: Array<{ key: string; label: string; children: React.ReactNode }> = [];
-
-  // 1. Thông tin chung
-  items.push({
-    key: 'general',
-    label: '1. Thông tin chung',
-    children: (
-      <Row gutter={[spaceMd, 0]}>
-        <DetailInfoRow
-          label="Mã thiết bị"
-          value={<Tag color={colors.primary} style={{ borderRadius: radiusPill, margin: 0 }}>{rec.deviceCode}</Tag>}
-        />
-        <DetailInfoRow label="Tên thiết bị" value={rec.deviceName} />
-        <DetailInfoRow label="Model" value={rec.model || '—'} />
-        <DetailInfoRow label="Hãng sản xuất" value={rec.manufacturer || '—'} />
-        <DetailInfoRow label="Số lượng" value={<span style={{ color: textPrimary, fontSize: fontSizeMd }}>{fmtNum(rec.quantity)}</span>} />
-        <DetailInfoRow label="Đơn vị tính" value={formatUnitOfMeasure(rec.unitOfMeasure)} />
-        <DetailInfoRow label="Đơn vị quản lý" value={rec.orgUnitName || '—'} />
-        <DetailInfoRow label="Đơn vị khai thác" value={rec.operatingUnitName || '—'} />
-        <DetailInfoRow label="Thuộc TTDH VTS / Trạm Radar" full value={rec.attachedInfrastructureName || '—'} />
-        <DetailInfoRow label="Tỉnh / Thành phố" value={rec.provinceName || '—'} />
-        <DetailInfoRow label="Địa điểm chi tiết" full value={rec.detailedLocation || '—'} />
-        <DetailInfoRow label="Năm đưa vào sử dụng" value={rec.yearOfUse ? String(rec.yearOfUse) : '—'} />
-      </Row>
-    ),
-  });
-
-  // 2. Thông số kỹ thuật
-  items.push({
-    key: 'technical',
-    label: '2. Thông số kỹ thuật',
-    children: (
-      <Row gutter={[spaceMd, 0]}>
-        <DetailInfoRow
-          label="Thông số kỹ thuật"
-          value={rec.specifications || '—'}
-          span={12}
-        />
-        <DetailInfoRow
-          label="Thông tin bảo trì"
-          value={rec.maintenanceInformation || '—'}
-          span={12}
-        />
-        <DetailInfoRow
-          label="Ghi chú"
-          value={rec.note || '—'}
-          span={12}
-        />
-      </Row>
-    ),
-  });
-
-  // 3. GIS
-  items.push({
-    key: 'gis',
-    label: '3. GIS',
-    children: (
-      <Row gutter={[spaceMd, 0]}>
-        <DetailInfoRow
-          label="Thuộc loại hạ tầng"
-          value={rec.attachedInfrastructureName || '—'}
-        />
-        <DetailInfoRow
-          label="Biểu tượng"
-          value={rec.mapSymbolName || '—'}
-        />
-        <DetailInfoRow
-          label="Hệ quy chiếu"
-          value={rec.coordinateSystem != null ? String(rec.coordinateSystem) : '—'}
-        />
-        <DetailInfoRow
-          label="Quy tắc hiển thị"
-          value={rec.displayRule != null ? String(rec.displayRule) : '—'}
-        />
-      </Row>
-    ),
-  });
-
-  // 4. Tọa độ
-  const coordList = (rec as any).coordinateList as Array<{ latitude: number; longitude: number }> | undefined;
-  items.push({
-    key: 'coordinates',
-    label: '4. Tọa độ',
-    children: coordList && coordList.length > 0 ? (
-      <div>
-        <div style={{ color: textPrimary, fontSize: fontSizeSm, marginBottom: spaceSm }}>
-          {coordList.length} điểm tọa độ
-        </div>
-      </div>
-    ) : (
-      <EmptyState description="Chưa có dữ liệu tọa độ" />
-    ),
-  });
-
-  // 5. Hồ sơ (metadata)
-  items.push({
-    key: 'metadata',
-    label: '5. Hồ sơ',
-    children: (
-      <Row gutter={[spaceMd, 0]}>
-        <DetailInfoRow label="Người tạo" value={rec.createdByName || '—'} />
-        <DetailInfoRow label="Ngày tạo" value={rec.createdAt ? formatDate(rec.createdAt) : '—'} />
-        <DetailInfoRow label="Người cập nhật" value={rec.updatedByName || '—'} />
-        <DetailInfoRow label="Ngày cập nhật" value={rec.updatedAt ? formatDate(rec.updatedAt) : '—'} />
-      </Row>
-    ),
-  });
-
-  // 6. Ghi chú
-  items.push({
-    key: 'notes',
-    label: '6. Ghi chú',
-    children: (
-      <div
-        style={{
-          background: surfaceCard,
-          border: `0.5px solid ${borderDefault}`,
-          borderRadius: radiusMd,
-          padding: spaceMd,
-          minHeight: 60,
-          color: textPrimary,
-          fontSize: fontSizeMd,
-        }}
-      >
-        {rec.note || '—'}
-      </div>
-    ),
-  });
-
-  // 7. Trạng thái
-  const opStatusBadge = rec.operationalStatus != null
-    ? (rec.operationalStatus === 0 ? { color: 'orange', label: 'Chưa khai thác/vận hành' }
-      : rec.operationalStatus === 1 ? { color: 'green', label: 'Đang khai thác/vận hành' }
-      : rec.operationalStatus === 2 ? { color: 'red', label: 'Dừng khai thác/vận hành' }
-      : { color: textTertiary, label: String(rec.operationalStatus) })
-    : { color: textTertiary, label: '—' };
-  const appStatusBadge = rec.approvalStatus
-    ? renderApprovalBadge(rec.approvalStatus)
-    : <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>;
-  items.push({
-    key: 'status',
-    label: '7. Trạng thái',
-    children: (
-      <Row gutter={[spaceMd, spaceMd]}>
-        <Col xs={24} sm={12}>
-          <Typography.Text style={fieldLabelStyle}>Tình trạng</Typography.Text>
-          <div>{renderCctvStatusBadge(opStatusBadge)}</div>
-        </Col>
-        <Col xs={24} sm={12}>
-          <Typography.Text style={fieldLabelStyle}>Phê duyệt</Typography.Text>
-          <div>{appStatusBadge}</div>
-        </Col>
-      </Row>
-    ),
-  });
-
-  return items;
-}
-
 const CctvListPage = () => {
   const [searchParams] = useSearchParams();
   const hasPerm = usePermissionStore((s) => s.hasPermission);
   const currentUser = useAuthStore((s) => s.user);
   const isIframeModal = window.parent !== window.self;
+  const linkedAction = searchParams.get("action");
+  const linkedRecordId = searchParams.get("id");
+  const isMapLinkedView = isIframeModal && (linkedAction === "edit" || linkedAction === "detail");
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState<string | null>(null);
   const [data, setData] = useState<CctvResponse[]>([]);
@@ -727,7 +473,6 @@ const CctvListPage = () => {
 
   // Symbols
   const [symbols, setSymbols] = useState<MapSymbolType[]>([]);
-  const [loadingSymbols, setLoadingSymbols] = useState(false);
 
   // Year options for "Năm đưa vào sử dụng" (current year - 30 to current year)
   const yearOfUseOptions = useMemo(() => {
@@ -890,6 +635,82 @@ const CctvListPage = () => {
 
   // GPS coordinates for edit drawer
   const [updateGpsCoordList, setUpdateGpsCoordList] = useState<Array<{ lat: number; lng: number }>>([]);
+
+  const openUpdateDrawer = useCallback((record: CctvResponse) => {
+    setUpdateTarget(record);
+    setUploadFileList([]);
+    void fetchCctvAttachments(record.id).then((list) => {
+      setUploadFileList(list.map((attachment) => ({
+        uid: attachment.id,
+        name: attachment.fileName,
+        size: attachment.fileSize,
+        status: 'done' as const,
+      })));
+    }).catch(() => { /* attachment failure must not block the edit form */ });
+
+    const coordinates = parseWktToCoordinates(record.coordinates || undefined);
+    setUpdateGpsCoordList(coordinates.map((coordinate) => ({
+      lat: coordinate.latitude,
+      lng: coordinate.longitude,
+    })));
+
+    // Convert operationalStatus từ string enum (backend @JsonValue) sang số
+    // dùng bởi dropdown trong form CCTV.
+    const safeRecord = {
+      ...record,
+      operationalStatus: record.operationalStatus != null
+        ? (() => {
+            switch (record.operationalStatus) {
+              case "NOT_YET_OPERATIONAL": return 0;
+              case "OPERATIONAL": return 1;
+              case "SUSPENDED": return 2;
+              default: {
+                const value = Number(record.operationalStatus);
+                return value >= 0 && value <= 2 ? value : 1;
+              }
+            }
+          })()
+        : null,
+    };
+    updateForm.setFieldsValue(safeRecord);
+    setUpdateModalOpen(true);
+  }, [updateForm]);
+
+  const closeLinkedDrawer = useCallback(() => {
+    if (isMapLinkedView) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+    }
+  }, [isMapLinkedView]);
+
+  const handledLinkedRecordRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isMapLinkedView || !linkedRecordId || !linkedAction) return;
+
+    const requestKey = `${linkedAction}:${linkedRecordId}`;
+    if (handledLinkedRecordRef.current === requestKey) return;
+    handledLinkedRecordRef.current = requestKey;
+
+    let active = true;
+    void fetchCctvById(linkedRecordId)
+      .then((record) => {
+        if (!active) return;
+        if (linkedAction === "edit") {
+          openUpdateDrawer(record);
+        } else {
+          setSelectedRecord(record);
+          setDetailDrawerOpen(true);
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        handledLinkedRecordRef.current = null;
+        toast.error("Không thể tải hồ sơ hệ thống CCTV");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isMapLinkedView, linkedAction, linkedRecordId, openUpdateDrawer]);
 
   // GEOMETRY_POINT_COUNT mapping (same as Port)
   const GEOMETRY_POINT_COUNT = useMemo(() => ({ POINT: 1, LINE: 2, POLYGON: 3 }), []);
@@ -1270,23 +1091,6 @@ const CctvListPage = () => {
     return val;
   }
 
-  function getActionLabel(items: any[]): { label: string; color: string } {
-    const fields = items.map((i: any) => i.fieldName || '');
-    const oldVals = items.map((i: any) => i.oldValue || '');
-    const newVals = items.map((i: any) => i.newValue || '');
-    if (fields.includes('deletedAt') || newVals.includes('Đã xóa'))
-      return { label: 'Xóa', color: 'red' };
-    if (fields.includes('approvalStatus')) {
-      const newStatus = newVals[fields.indexOf('approvalStatus')];
-      if (newStatus === 'APPROVED') return { label: 'Phê duyệt', color: 'green' };
-      if (newStatus === 'REJECTED') return { label: 'Từ chối', color: 'red' };
-      if (newStatus === 'PENDING') return { label: 'Gửi phê duyệt', color: 'orange' };
-    }
-    const nullCount = oldVals.filter((v) => v === '(null)' || v === 'null').length;
-    if (nullCount > items.length / 2) return { label: 'Thêm mới', color: 'blue' };
-    return { label: 'Chỉnh sửa', color: 'blue' };
-  }
-
   const HISTORY_PAGE_SIZE = 20;
 
   const historyTimestamp = (item: any): string =>
@@ -1588,7 +1392,7 @@ const CctvListPage = () => {
   // ── rowActions callback ──────────────────────────────────────────
   const rowActions = useCallback(
     (record: CctvResponse) => {
-      const actions = [
+      const actions: { key: string; label: string; icon?: React.ReactNode; danger?: boolean; disabled?: boolean; onClick: () => void }[] = [
         {
           key: "view",
           label: "Xem chi tiết",
@@ -1624,32 +1428,7 @@ const CctvListPage = () => {
           key: "edit",
           label: "Chỉnh sửa",
           icon: <EditOutlined />,
-          onClick: () => {
-            setUpdateTarget(record);
-            setUploadFileList([]);
-            void fetchCctvAttachments(record.id).then((list: any[]) => {
-              setUploadFileList(list.map((a: any) => ({ uid: a.id, name: a.fileName, size: a.fileSize, status: 'done' as const })));
-            }).catch(() => { /* ignore */ });
-            // Convert operationalStatus từ string enum (backend @JsonValue) sang số (frontend dropdown)
-            const safeRecord = {
-              ...record,
-              operationalStatus: record.operationalStatus != null
-                ? (() => {
-                    switch (record.operationalStatus) {
-                      case "NOT_YET_OPERATIONAL": return 0;
-                      case "OPERATIONAL": return 1;
-                      case "SUSPENDED": return 2;
-                      default: {
-                        const num = Number(record.operationalStatus);
-                        return num >= 0 && num <= 2 ? num : 1;
-                      }
-                    }
-                  })()
-                : null,
-            };
-            updateForm.setFieldsValue(safeRecord);
-            setUpdateModalOpen(true);
-          },
+          onClick: () => openUpdateDrawer(record),
         });
       }
 
@@ -1746,7 +1525,7 @@ const CctvListPage = () => {
 
       return actions;
     },
-    [updateForm, hasPerm, currentUser]
+    [openUpdateDrawer, hasPerm, currentUser]
   );
 
   const fetchData = useCallback(async () => {
@@ -1762,7 +1541,7 @@ const CctvListPage = () => {
         search: filterValues.deviceCode || filterValues.deviceName || undefined,
         deviceCode: filterValues.deviceCode || undefined,
         deviceName: filterValues.deviceName || undefined,
-        operationalStatus: filterValues.operationalStatus != null ? filterValues.operationalStatus : undefined,
+        operationalStatus: filterValues.operationalStatus != null ? String(filterValues.operationalStatus) : undefined,
         approvalStatus: filterValues.approvalStatus || undefined,
         province: filterValues.province || undefined,
         vtsSystemId: filterValues.vtsSystemId || undefined,
@@ -1805,15 +1584,12 @@ const CctvListPage = () => {
   }, []);
 
   const fetchSymbols = useCallback(async () => {
-    setLoadingSymbols(true);
     try {
       const res = await api.get("/common/options/symbols");
       const items = res.data?.data;
       setSymbols((Array.isArray(items) ? items : []) as MapSymbolType[]);
     } catch (error) {
       console.error("Lỗi tải biểu tượng:", error);
-    } finally {
-      setLoadingSymbols(false);
     }
   }, []);
 
@@ -1938,10 +1714,19 @@ const CctvListPage = () => {
         const createGeomType = normalizeGeometryType(values.geometryType);
         const createWktType: EditableGeometryType =
           createGeomType === 'LINE' ? 'LineString' : createGeomType === 'POLYGON' ? 'Polygon' : 'Point';
+        const createCoordinateRows = gpsCoordList.map(c => ({ lng: c.lng, lat: c.lat }));
+        if (createCoordinateRows.some(({ lng, lat }) => !isVietnamMapCoordinate([lng, lat]))) {
+          toast.warning('Vui lòng nhập đầy đủ tọa độ hợp lệ trong khu vực bản đồ Việt Nam');
+          return;
+        }
         const coordinates = coordinateRowsToWkt(
           createWktType,
-          gpsCoordList.map(c => ({ lng: c.lng, lat: c.lat }))
+          createCoordinateRows
         );
+        if (!coordinates) {
+          toast.warning('Tọa độ chưa đủ để tạo hình học đã chọn');
+          return;
+        }
 
         const payload = {
           ...values,
@@ -1958,7 +1743,7 @@ const CctvListPage = () => {
         const created = await createCctv({
           ...payload,
           action: currentAction === 'draft' ? 'draft' : currentAction === 'submit' ? 'submit' : 'approve',
-        });
+        } as unknown as CreateCctvRequest);
         if (created?.id && uploadFileList.length > 0) {
           for (const f of uploadFileList) {
             if (f.originFileObj) await uploadCctvAttachment(created.id, f.originFileObj);
@@ -1995,10 +1780,19 @@ const CctvListPage = () => {
         const updateGeomType = normalizeGeometryType(updateGeometryType);
         const updateWktType: EditableGeometryType =
           updateGeomType === 'LINE' ? 'LineString' : updateGeomType === 'POLYGON' ? 'Polygon' : 'Point';
+        const updateCoordinateRows = updateGpsCoordList.map(c => ({ lng: c.lng, lat: c.lat }));
+        if (updateCoordinateRows.some(({ lng, lat }) => !isVietnamMapCoordinate([lng, lat]))) {
+          toast.warning('Vui lòng nhập đầy đủ tọa độ hợp lệ trong khu vực bản đồ Việt Nam');
+          return;
+        }
         const coordinates = coordinateRowsToWkt(
           updateWktType,
-          updateGpsCoordList.map(c => ({ lng: c.lng, lat: c.lat }))
+          updateCoordinateRows
         );
+        if (!coordinates) {
+          toast.warning('Tọa độ chưa đủ để tạo hình học đã chọn');
+          return;
+        }
 
         // Chuẩn VTS: Lưu tạm (chỉ update) / Lưu và gửi phê duyệt (update + submit) /
         // Lưu và phê duyệt (update + giữ Đã duyệt — T12 backend)
@@ -2031,6 +1825,7 @@ const CctvListPage = () => {
         setUpdateTarget(null);
         setUpdateGpsCoordList([]);
         setUploadFileList([]);
+        closeLinkedDrawer();
         fetchData();
         fetchTabCounts();
       } catch (error: unknown) {
@@ -2039,7 +1834,7 @@ const CctvListPage = () => {
         setUpdateLoading(false);
       }
     },
-    [updateTarget, fetchData, fetchTabCounts, updateGpsCoordList, uploadFileList, updateGeometryType]
+    [updateTarget, fetchData, fetchTabCounts, updateGpsCoordList, uploadFileList, updateGeometryType, closeLinkedDrawer]
   );
 
   const handleConfirmSubmit = useCallback(async () => {
@@ -2096,7 +1891,8 @@ const CctvListPage = () => {
         onFilterApply={handleFilterApply}
         onFilterReset={handleFilterReset}
         loading={isLoading}
-        error={isError ?? undefined}
+        error={Boolean(isError)}
+        errorMessage={isError || undefined}
         onRetry={fetchData}
         filterContent={
           <>
@@ -2341,13 +2137,11 @@ const CctvListPage = () => {
               current={page + 1}
               total={total}
               pageSize={pageSize}
-              onChange={(p) => setPage(Math.max(p - 1, 0))}
-              onShowSizeChange={(sP, sS) => {
-                setPageSize(sS);
-                setPage(0);
+              pageSizeOptions={[20, 50, 100]}
+              onChange={(p, size) => {
+                setPage(Math.max(p - 1, 0));
+                setPageSize(size);
               }}
-              showSizeChanger
-              showTotal={(t) => `Tổng ${t} thiết bị`}
             />
           </div>
       </FilterTableLayout>
@@ -2358,8 +2152,22 @@ const CctvListPage = () => {
         {...drawerProps}
         title={<span style={drawerTitleStyle}>Chi tiết hệ thống CCTV{selectedRecord ? ` - ${selectedRecord.deviceName || selectedRecord.deviceCode || ''}` : ''}</span>}
         open={detailDrawerOpen}
-        onClose={() => setDetailDrawerOpen(false)}
-        extra={<Button type="text" onClick={() => setDetailDrawerOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
+        onClose={() => {
+          setDetailDrawerOpen(false);
+          closeLinkedDrawer();
+        }}
+        extra={
+          <Button
+            type="text"
+            onClick={() => {
+              setDetailDrawerOpen(false);
+              closeLinkedDrawer();
+            }}
+            style={drawerCloseBtnStyle}
+          >
+            ✕
+          </Button>
+        }
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
           body: { padding: '0 24px 12px 24px' },
@@ -2379,7 +2187,7 @@ const CctvListPage = () => {
                   <div style={{ paddingTop: 3 }}>
                     <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-label { width: 150px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; } .ant-tabs-nav{margin-bottom:0!important;padding-left:12px!important}`}</style>
                     <div className="detail-grid">
-                      {[
+                      {([
                         { label: 'Mã thiết bị', value: selectedRecord.deviceCode, badge: true },
                         { label: 'Tên thiết bị', value: selectedRecord.deviceName, bold: true },
                         { label: 'Đơn vị quản lý', value: selectedRecord.orgUnitName || '—', bold: true },
@@ -2394,7 +2202,7 @@ const CctvListPage = () => {
                         { label: 'Model', value: selectedRecord.model || '—' },
                         { label: 'Hãng sản xuất', value: selectedRecord.manufacturer || '—' },
                         { label: 'Phê duyệt', value: renderApprovalBadge(selectedRecord.approvalStatus) },
-                      ].map((row) => (
+                      ] as Array<{ label: string; value: React.ReactNode; badge?: boolean; bold?: boolean; fullWidth?: boolean }>).map((row) => (
                         <div key={row.label} className="detail-row" style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
                           <span className="detail-label">{row.label}</span>
                           <span className="detail-value" style={{ whiteSpace: 'pre-wrap', ...(row.bold ? { fontWeight: fontWeightBold } : undefined) }}>
@@ -2434,13 +2242,13 @@ const CctvListPage = () => {
                 children: (
                   <div style={{ paddingTop: 3 }}>
                     <div className="detail-grid">
-                      {[
+                      {([
                         ['Thuộc loại hạ tầng', selectedRecord.attachedInfrastructureName || '—'],
                         ['Biểu tượng', (() => { const sym = (symbols || []).find((s) => s.id === selectedRecord.mapSymbolId); return sym ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{sym.image ? <img src={sym.image} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}{sym.name}</span> : selectedRecord.mapSymbolName || '—'; })(),],
                         ['Hệ quy chiếu', selectedRecord.coordinateSystem === 1 ? 'WGS-84' : selectedRecord.coordinateSystem === 2 ? 'VN-2000' : (selectedRecord.coordinateSystem != null ? String(selectedRecord.coordinateSystem) : '—')],
                         ['Quy tắc hiển thị', selectedRecord.displayRule != null ? String(selectedRecord.displayRule) : '—'],
-                      ].map(([label, value]) => (
-                        <div key={label} className="detail-row">
+                      ] as [string, React.ReactNode][]).map(([label, value], idx) => (
+                        <div key={`${label}-${idx}`} className="detail-row">
                           <span className="detail-label">{label}</span>
                           <span className="detail-value">{value}</span>
                         </div>
@@ -2538,12 +2346,12 @@ const CctvListPage = () => {
                         { key: 'approvalContentLevel2', label: 'Nội dung phê duyệt', value: selectedRecord.approvalContentLevel2 || '—', fullWidth: true },
                         { key: 'approvedDateLevel2', label: 'Ngày phê duyệt cấp Cục', value: selectedRecord.approvedDateLevel2 ? formatDate(selectedRecord.approvedDateLevel2) : '—' },
                         { key: 'approvedByLevel2', label: 'Cán bộ phê duyệt cấp Cục', value: selectedRecord.approverLevel2Name || '—' },
-                        { key: 'approvalContentExtra', label: 'Nội dung phê duyệt', value: selectedRecord.rejectionReason || '—', fullWidth: true },
+                        ...(selectedRecord.rejectionReason ? [{ key: 'rejectionReason', label: 'Lý do từ chối', value: selectedRecord.rejectionReason, fullWidth: true, color: statusCritical }] : []),
                         { key: 'status', label: 'Trạng thái', value: renderApprovalBadge(selectedRecord.approvalStatus), fullWidth: true },
                       ].map((row) => (
                         <div key={row.key} className="detail-row" style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
                           <span className="detail-label">{row.label}</span>
-                          <span className="detail-value">{row.value}</span>
+                          <span className="detail-value" style={row.color ? { color: row.color } : undefined}>{row.value}</span>
                         </div>
                       ))}
                     </div>
@@ -3445,6 +3253,7 @@ const CctvListPage = () => {
           updateForm.resetFields();
           setUpdateGpsCoordList([]);
           setUploadFileList([]);
+          closeLinkedDrawer();
         }}
         extra={
           <Button
@@ -3455,6 +3264,7 @@ const CctvListPage = () => {
               updateForm.resetFields();
               setUpdateGpsCoordList([]);
               setUploadFileList([]);
+              closeLinkedDrawer();
             }}
             style={drawerCloseBtnStyle}
           >

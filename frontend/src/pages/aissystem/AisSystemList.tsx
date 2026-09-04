@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Modal, Input, Select, DatePicker } from 'antd';
 import { aisSystemService } from '../../services/aisSystemService';
 import { vtsSystemCRUD } from '../../services/vtsSystemService';
@@ -15,11 +16,12 @@ import { ScreenHeader, DataTable, Pagination } from '../../components/list-view'
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import AisSystemForm from './AisSystemForm';
 import ApprovalModal from '../../components/shared/ApprovalModal';
+import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import CommonHistoryDrawer from '../../components/shared/CommonHistoryDrawer';
 import toast from '../../components/ToastNotification';
 import {
   actionPrimary, textSecondary,
-  fontWeightBold, fontWeightMedium,
+  fontWeightBold, fontWeightMedium, fontSizeMd,
   spaceMd, spaceFormField,
   statusOperational, statusCritical, statusAttention,
   selectStyle, statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
@@ -45,6 +47,13 @@ const CONDITION_COLOR: Record<ConditionStatus, string> = {
 };
 
 export function AisSystemList() {
+  const [searchParams] = useSearchParams();
+  const linkedAction = searchParams.get("action");
+  const linkedRecordId = searchParams.get("id");
+  const isIframeModal = window.parent !== window.self;
+  const isMapLinkedView = isIframeModal && (linkedAction === "edit" || linkedAction === "detail");
+  const handledLinkedRecordRef = useRef<string | null>(null);
+
   const currentUser = useAuthStore((s) => s.user);
   const { hasPermission } = usePermissionStore();
   const hasPerm = useCallback((perm: string) => hasPermission(perm), [hasPermission]);
@@ -90,6 +99,40 @@ export function AisSystemList() {
   const [modalMode, setModalMode] = useState<'create' | 'edit' | 'detail'>('create');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<AisSystemResponse | null>(null);
+
+  useEffect(() => {
+    if (!isMapLinkedView || !linkedRecordId || !linkedAction) return;
+
+    const requestKey = `${linkedAction}:${linkedRecordId}`;
+    if (handledLinkedRecordRef.current === requestKey) return;
+    handledLinkedRecordRef.current = requestKey;
+
+    let active = true;
+    void aisSystemService.getById(linkedRecordId)
+      .then((record) => {
+        if (!active) return;
+        if (linkedAction === "edit") {
+          setEditingId(record.id);
+          setSelectedRecord(record as any);
+          setModalMode('edit');
+          setIsModalOpen(true);
+        } else {
+          setEditingId(record.id);
+          setSelectedRecord(record as any);
+          setModalMode('detail');
+          setIsModalOpen(true);
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        handledLinkedRecordRef.current = null;
+        toast.error("Không thể tải dữ liệu AIS");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isMapLinkedView, linkedAction, linkedRecordId]);
 
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
@@ -300,34 +343,32 @@ export function AisSystemList() {
   const countPendingApproval = (statusCounts['PENDING_APPROVAL'] || 0) + (statusCounts['PROPOSED'] || 0);
   const countApprovedLevel1 = statusCounts['APPROVED_LEVEL1'] || 0;
   const countApproved = (statusCounts['APPROVED'] || 0) + (statusCounts['APPROVED_LEVEL2'] || 0);
-  const countRejected = (statusCounts['REJECTED'] || 0) + (statusCounts['REJECTED_LEVEL1'] || 0) + (statusCounts['REJECTED_LEVEL2'] || 0);
-  const countAll = countDraft + countPendingApproval + countApprovedLevel1 + countApproved + countRejected;
+  const countRejectedLevel1 = (statusCounts['REJECTED_LEVEL1'] || 0) + (statusCounts['REJECTED'] || 0);
+  const countRejectedLevel2 = statusCounts['REJECTED_LEVEL2'] || 0;
+  const countAll = countDraft + countPendingApproval + countApprovedLevel1 + countApproved + countRejectedLevel1 + countRejectedLevel2;
 
   const statusTabs = useMemo(() => [
     { key: 'ALL', label: 'Tất cả', count: countAll, color: actionPrimary, active: !filterApprovalStatus },
     { key: ApprovalStatus.DRAFT, label: 'Lưu tạm', count: countDraft, color: '#93A3B3', active: filterApprovalStatus === ApprovalStatus.DRAFT },
-    { key: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ Cảng vụ duyệt', count: countPendingApproval, color: statusAttention, active: filterApprovalStatus === ApprovalStatus.PENDING_APPROVAL },
-    { key: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ Cục duyệt', count: countApprovedLevel1, color: '#0284C7', active: filterApprovalStatus === ApprovalStatus.APPROVED_LEVEL1 },
-    { key: ApprovalStatus.APPROVED, label: 'Đã duyệt', count: countApproved, color: statusOperational, active: filterApprovalStatus === ApprovalStatus.APPROVED },
-    { key: 'REJECTED', label: 'Từ chối', count: countRejected, color: statusCritical, active: filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL1 || filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL2 },
-  ], [countAll, countDraft, countPendingApproval, countApprovedLevel1, countApproved, countRejected, filterApprovalStatus]);
+    { key: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', count: countPendingApproval, color: statusAttention, active: filterApprovalStatus === ApprovalStatus.PENDING_APPROVAL },
+    { key: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ phê duyệt cấp Cục', count: countApprovedLevel1, color: '#0284C7', active: filterApprovalStatus === ApprovalStatus.APPROVED_LEVEL1 },
+    { key: ApprovalStatus.APPROVED, label: 'Đã phê duyệt', count: countApproved, color: statusOperational, active: filterApprovalStatus === ApprovalStatus.APPROVED },
+    { key: ApprovalStatus.REJECTED_LEVEL1, label: 'Từ chối cấp Cảng vụ/Chi cục', count: countRejectedLevel1, color: statusCritical, active: filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL1 },
+    { key: ApprovalStatus.REJECTED_LEVEL2, label: 'Từ chối cấp Cục', count: countRejectedLevel2, color: statusCritical, active: filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL2 },
+  ], [countAll, countDraft, countPendingApproval, countApprovedLevel1, countApproved, countRejectedLevel1, countRejectedLevel2, filterApprovalStatus]);
 
   const handleTabChange = (key: string) => {
     setPage(1);
     const approvalStatus = key === 'ALL'
       ? undefined
-      : key === 'REJECTED'
-        ? ApprovalStatus.REJECTED_LEVEL1
-        : key as ApprovalStatus;
+      : key as ApprovalStatus;
     setFilterApprovalStatus(approvalStatus);
-    setFilterValues((prev) => ({ ...prev, approvalStatus }));
   };
 
   const handleFilterSearch = (vals: typeof filterValues) => {
     setPage(1);
     setFilterValues(vals);
     setAppliedFilterValues(vals);
-    setFilterApprovalStatus(vals.approvalStatus);
   };
 
   const handleFilterReset = () => {
@@ -603,7 +644,7 @@ export function AisSystemList() {
       label: 'Tình trạng',
       dataIndex: 'conditionStatus',
       width: 160,
-      align: 'center' as const,
+      align: 'left' as const,
       ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
@@ -615,6 +656,45 @@ export function AisSystemList() {
           <span style={statusBadgeStyle(color)}>
             {label}
           </span>
+        );
+      },
+    },
+    {
+      key: 'approvalStatus',
+      label: 'Trạng thái',
+      dataIndex: 'approvalStatus',
+      width: 280,
+      align: 'left' as const,
+      ellipsis: false,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('approvalStatus'),
+      render: (_: any, record: AisSystemListItem) => (
+        <ApprovalStatusBadge status={record.approvalStatus} />
+      ),
+    },
+    {
+      key: 'updatedByName',
+      label: 'Cán bộ cập nhật',
+      dataIndex: 'updatedByName',
+      width: 220,
+      align: 'left' as const,
+      ellipsis: false,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('updatedAt'),
+      render: (_: any, record: AisSystemListItem) => {
+        const updaterName = record.updatedByName || record.createdByName || '—';
+        const updateDate = record.updatedAt || record.createdAt;
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {updaterName}
+            </span>
+            <span style={{ fontSize: fontSizeMd, color: textSecondary }}>
+              {updateDate ? dayjs(updateDate).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </span>
+          </div>
         );
       },
     },
@@ -636,15 +716,6 @@ export function AisSystemList() {
       },
     ];
 
-    if (hasPerm('aissystem:history')) {
-      actions.push({
-        key: 'history',
-        label: 'Lịch sử',
-        icon: icons.history,
-        onClick: () => handleViewHistory(record),
-      });
-    }
-
     if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'aissystem' })) {
       actions.push({
         key: 'edit',
@@ -656,6 +727,15 @@ export function AisSystemList() {
           setModalMode('edit');
           setIsModalOpen(true);
         },
+      });
+    }
+
+    if (hasPerm('aissystem:history')) {
+      actions.push({
+        key: 'history',
+        label: 'Lịch sử',
+        icon: icons.history,
+        onClick: () => handleViewHistory(record),
       });
     }
 
@@ -711,7 +791,7 @@ export function AisSystemList() {
     if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'aissystem' })) {
       actions.push({
         key: 'delete',
-        label: 'Xóa bỏ',
+        label: 'Xóa',
         icon: icons.delete,
         danger: true,
         onClick: () => confirmDelete(record),
@@ -774,23 +854,6 @@ export function AisSystemList() {
                   onChange={(e) => setFilterValues((prev) => ({ ...prev, name: e.target.value }))}
                   onPressEnter={() => handleFilterSearch(filterValues)}
                   style={inputStyle}
-                />
-              </SidebarFilterField>
-
-              <SidebarFilterField label="Trạng thái">
-                <Select
-                  placeholder="Tất cả"
-                  allowClear
-                  value={filterValues.approvalStatus}
-                  onChange={(value) => setFilterValues((prev) => ({ ...prev, approvalStatus: value }))}
-                  options={[
-                    { value: ApprovalStatus.DRAFT, label: 'Lưu tạm' },
-                    { value: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ Cảng vụ duyệt' },
-                    { value: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ Cục duyệt' },
-                    { value: ApprovalStatus.APPROVED, label: 'Đã duyệt' },
-                    { value: ApprovalStatus.REJECTED_LEVEL1, label: 'Từ chối' },
-                  ]}
-                  style={{ ...selectStyle, width: '100%' }}
                 />
               </SidebarFilterField>
 

@@ -11,14 +11,14 @@ import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService.Scope;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import com.hanghai.kchtg.station.dto.inmarsat.*;
 import com.hanghai.kchtg.station.entity.CoastalStationInmarsat;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.station.entity.StationHistoryActionType;
-import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.station.repository.CoastalStationInmarsatRepository;
 import com.hanghai.kchtg.user.entity.User;
@@ -39,7 +39,8 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 /**
- * Service xử lý nghiệp vụ cho Đài thông tin vệ tinh Inmarsat (M-004: F-098..F-103).
+ * Service xử lý nghiệp vụ cho Đài thông tin vệ tinh Inmarsat (M-004:
+ * F-098..F-103).
  * Tuân thủ quy chuẩn kiến trúc KCHTGT 3 tầng, DataScope phân cấp,
  * Quy trình phê duyệt 2 cấp C1/C2 và nguyên tắc 4 mắt (chống tự duyệt).
  */
@@ -58,9 +59,30 @@ public class CoastalStationInmarsatService {
     private final InfrastructureAttachmentRepository attachmentRepository;
     private final OperatingOrganizationRepository operatingOrganizationRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     @Value("${app.upload.attachment-path:uploads/inmarsat-attachments}")
     private String attachmentPath;
+
+    private UUID resolveSymbolId(String symbolId, String symbol) {
+        String raw = (symbolId != null && !symbolId.isBlank()) ? symbolId.trim()
+                : ((symbol != null && !symbol.isBlank()) ? symbol.trim() : null);
+        if (raw == null)
+            return null;
+        try {
+            return UUID.fromString(raw);
+        } catch (IllegalArgumentException e) {
+            try {
+                List<UUID> ids = jdbcTemplate.queryForList(
+                        "SELECT id FROM map_symbols WHERE code = ? LIMIT 1", UUID.class, raw);
+                if (!ids.isEmpty() && ids.get(0) != null) {
+                    return ids.get(0);
+                }
+            } catch (Exception ignored) {
+            }
+            return null;
+        }
+    }
 
     private Scope resolveEffectiveScope(UUID selectedOrgUnitId) {
         Scope userScope = orgUnitScopeService.currentUserScope();
@@ -86,7 +108,6 @@ public class CoastalStationInmarsatService {
             throw new AccessDeniedException("Bạn không có quyền thao tác trên đơn vị quản lý này");
         }
     }
-
 
     @Transactional(readOnly = true)
     public String generateCode() {
@@ -120,6 +141,28 @@ public class CoastalStationInmarsatService {
         return "%" + normalized + "%";
     }
 
+    public static ConditionStatus parseConditionStatus(Object val) {
+        if (val == null)
+            return null;
+        if (val instanceof ConditionStatus cs)
+            return cs;
+        String s = val.toString().trim();
+        if (s.isEmpty())
+            return null;
+        try {
+            return ConditionStatus.valueOf(s.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            try {
+                int ordinal = Integer.parseInt(s);
+                if (ordinal >= 0 && ordinal < ConditionStatus.values().length) {
+                    return ConditionStatus.values()[ordinal];
+                }
+            } catch (NumberFormatException ignored) {
+            }
+            return null;
+        }
+    }
+
     @Transactional(readOnly = true)
     public Page<CoastalStationInmarsatResponse> searchPaged(
             UUID orgUnitId,
@@ -128,7 +171,7 @@ public class CoastalStationInmarsatService {
             String code,
             UUID operatingOrgId,
             Integer provinceId,
-            String conditionStatus,
+            ConditionStatus conditionStatus,
             ApprovalStatus approvalStatus,
             UUID updatedBy,
             LocalDateTime updatedFrom,
@@ -151,14 +194,13 @@ public class CoastalStationInmarsatService {
                 updatedBy,
                 updatedFrom,
                 updatedTo,
-                pageable
-        );
+                pageable);
 
         return page.map(this::buildResponse);
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Long> countByApprovalStatus(UUID orgUnitId, String keyword, String conditionStatus) {
+    public Map<String, Long> countByApprovalStatus(UUID orgUnitId, String keyword, ConditionStatus conditionStatus) {
         return countByApprovalStatus(orgUnitId, keyword, null, null, conditionStatus, null, null, null);
     }
 
@@ -168,7 +210,7 @@ public class CoastalStationInmarsatService {
             String keyword,
             String name,
             String code,
-            String conditionStatus,
+            ConditionStatus conditionStatus,
             Integer provinceId,
             LocalDateTime updatedFrom,
             LocalDateTime updatedTo) {
@@ -184,8 +226,7 @@ public class CoastalStationInmarsatService {
                 conditionStatus,
                 provinceId,
                 updatedFrom,
-                updatedTo
-        );
+                updatedTo);
 
         Map<String, Long> counts = new HashMap<>();
         long total = 0;
@@ -233,38 +274,29 @@ public class CoastalStationInmarsatService {
 
         CoastalStationInmarsat entity = new CoastalStationInmarsat();
         entity.setCode(effectiveCode);
-        entity.setDeviceCode(effectiveCode);
         entity.setName(effectiveName);
-        entity.setStationName(effectiveName);
         entity.setOrgUnitId(effectiveOrgUnitId);
-        entity.setUnitId(effectiveOrgUnitId);
         entity.setOperatingOrgId(request.getOperatingOrgId());
         entity.setProvinceId(request.getProvinceId());
-        entity.setLocationAddress(request.getLocationAddress());
-        entity.setLocationDetail(request.getLocationDetail());
-        entity.setConditionStatus(request.getConditionStatus() != null ? request.getConditionStatus() : "OPERATIONAL");
-        entity.setStatus(StationStatus.DRAFT);
+        String effectiveLocation = request.getLocationAddress() != null && !request.getLocationAddress().isBlank()
+                ? request.getLocationAddress().trim()
+                : (request.getLocationDetail() != null ? request.getLocationDetail().trim() : null);
+        entity.setLocationAddress(effectiveLocation);
+        entity.setConditionStatus(
+                request.getConditionStatus() != null ? request.getConditionStatus() : ConditionStatus.OPERATIONAL);
         entity.setIsActive(true);
 
         // Thông số Inmarsat
-        entity.setCoverageZone(request.getCoverageZone() != null ? request.getCoverageZone() : request.getCoverageArea());
-        entity.setCoverageArea(request.getCoverageArea() != null ? request.getCoverageArea() : request.getCoverageZone());
+        entity.setCoverageArea(
+                request.getCoverageArea() != null ? request.getCoverageArea() : request.getCoverageZone());
         entity.setServices(request.getServices());
         entity.setFrequency(request.getFrequency());
-        entity.setModemType(request.getModemType());
-        entity.setSarCode(request.getSarCode());
-        entity.setSatelliteSystem(request.getSatelliteSystem());
         entity.setNotes(request.getNotes() != null ? request.getNotes() : request.getDescription());
-        entity.setDescription(request.getDescription() != null ? request.getDescription() : request.getNotes());
-        entity.setContactPerson(request.getContactPerson());
-        entity.setContactPhone(request.getContactPhone());
 
         // GIS
         entity.setSpatialId(request.getSpatialId());
-        entity.setObjectType(request.getObjectType());
-        entity.setSymbol(request.getSymbol());
-        entity.setCoordinateSystem(request.getCoordinateSystem() != null ? request.getCoordinateSystem() : "WGS84");
-        entity.setDisplayRule(request.getDisplayRule());
+        UUID resolvedSym = resolveSymbolId(request.getSymbolId(), request.getSymbol());
+        entity.setSymbolId(resolvedSym);
         entity.setLatitude(request.getLatitude());
         entity.setLongitude(request.getLongitude());
 
@@ -275,7 +307,9 @@ public class CoastalStationInmarsatService {
                     null,
                     "Đài Inmarsat " + saved.getName(),
                     "INMARSAT_" + saved.getId(),
-                    "LINE".equalsIgnoreCase(request.getObjectType()) ? GisGeometryType.LINE : ("POLYGON".equalsIgnoreCase(request.getObjectType()) ? GisGeometryType.POLYGON : GisGeometryType.POINT),
+                    "LINE".equalsIgnoreCase(request.getObjectType()) ? GisGeometryType.LINE
+                            : ("POLYGON".equalsIgnoreCase(request.getObjectType()) ? GisGeometryType.POLYGON
+                                    : GisGeometryType.POINT),
                     request.getCoordinates(),
                     saved.getId(),
                     InfrastructureType.INMARSAT_STATION);
@@ -305,26 +339,40 @@ public class CoastalStationInmarsatService {
                 oldValues.put("Tên đài", entity.getName() != null ? entity.getName() : "—");
             }
             if (request.getOrgUnitId() != null && !Objects.equals(request.getOrgUnitId(), entity.getOrgUnitId())) {
-                String oldName = entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId()) : "—";
+                String oldName = entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId())
+                        : "—";
                 oldValues.put("Đơn vị quản lý", oldName != null ? oldName : "—");
             }
-            if (request.getOperatingOrgId() != null && !Objects.equals(request.getOperatingOrgId(), entity.getOperatingOrgId())) {
-                String oldName = entity.getOperatingOrgId() != null ? resolveOperatingOrgName(entity.getOperatingOrgId()) : "—";
+            if (request.getOperatingOrgId() != null
+                    && !Objects.equals(request.getOperatingOrgId(), entity.getOperatingOrgId())) {
+                String oldName = entity.getOperatingOrgId() != null
+                        ? resolveOperatingOrgName(entity.getOperatingOrgId())
+                        : "—";
                 oldValues.put("Đơn vị khai thác", oldName != null ? oldName : "—");
             }
             if (request.getProvinceId() != null && !Objects.equals(request.getProvinceId(), entity.getProvinceId())) {
-                oldValues.put("Địa điểm (Tỉnh/TP)", entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : "—");
+                oldValues.put("Địa điểm (Tỉnh/TP)",
+                        entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : "—");
             }
-            if (request.getLocationDetail() != null && !Objects.equals(request.getLocationDetail(), entity.getLocationDetail())) {
-                oldValues.put("Địa điểm chi tiết", entity.getLocationDetail() != null ? entity.getLocationDetail() : "—");
+            String newLocation = request.getLocationAddress() != null && !request.getLocationAddress().isBlank()
+                    ? request.getLocationAddress().trim()
+                    : (request.getLocationDetail() != null ? request.getLocationDetail().trim() : null);
+            if (newLocation != null && !Objects.equals(newLocation, entity.getLocationAddress())) {
+                oldValues.put("Địa điểm chi tiết",
+                        entity.getLocationAddress() != null ? entity.getLocationAddress() : "—");
             }
-            if (request.getConditionStatus() != null && !Objects.equals(request.getConditionStatus(), entity.getConditionStatus())) {
-                oldValues.put("Tình trạng", entity.getConditionStatus() != null ? entity.getConditionStatus() : "—");
+            if (request.getConditionStatus() != null
+                    && !Objects.equals(request.getConditionStatus(), entity.getConditionStatus())) {
+                oldValues.put("Tình trạng",
+                        entity.getConditionStatus() != null ? resolveConditionStatusLabel(entity.getConditionStatus())
+                                : "—");
             }
-            if (request.getCoverageZone() != null && !Objects.equals(request.getCoverageZone(), entity.getCoverageZone())) {
+            if (request.getCoverageZone() != null
+                    && !Objects.equals(request.getCoverageZone(), entity.getCoverageZone())) {
                 oldValues.put("Vùng phủ sóng", entity.getCoverageZone() != null ? entity.getCoverageZone() : "—");
             }
-            if (request.getCoverageArea() != null && !Objects.equals(request.getCoverageArea(), entity.getCoverageArea())) {
+            if (request.getCoverageArea() != null
+                    && !Objects.equals(request.getCoverageArea(), entity.getCoverageArea())) {
                 oldValues.put("Khu vực phủ sóng", entity.getCoverageArea() != null ? entity.getCoverageArea() : "—");
             }
             if (request.getServices() != null && !Objects.equals(request.getServices(), entity.getServices())) {
@@ -333,56 +381,53 @@ public class CoastalStationInmarsatService {
             if (request.getFrequency() != null && !Objects.equals(request.getFrequency(), entity.getFrequency())) {
                 oldValues.put("Tần số", entity.getFrequency() != null ? entity.getFrequency() : "—");
             }
-            if (request.getModemType() != null && !Objects.equals(request.getModemType(), entity.getModemType())) {
-                oldValues.put("Loại Modem", entity.getModemType() != null ? entity.getModemType() : "—");
-            }
-            if (request.getSarCode() != null && !Objects.equals(request.getSarCode(), entity.getSarCode())) {
-                oldValues.put("Mã SAR", entity.getSarCode() != null ? entity.getSarCode() : "—");
-            }
-            if (request.getSatelliteSystem() != null && !Objects.equals(request.getSatelliteSystem(), entity.getSatelliteSystem())) {
-                oldValues.put("Hệ thống vệ tinh", entity.getSatelliteSystem() != null ? entity.getSatelliteSystem() : "—");
-            }
             if (request.getNotes() != null && !Objects.equals(request.getNotes(), entity.getNotes())) {
                 oldValues.put("Ghi chú", entity.getNotes() != null ? entity.getNotes() : "—");
-            }
-            if (request.getContactPerson() != null && !Objects.equals(request.getContactPerson(), entity.getContactPerson())) {
-                oldValues.put("Người liên hệ", entity.getContactPerson() != null ? entity.getContactPerson() : "—");
-            }
-            if (request.getContactPhone() != null && !Objects.equals(request.getContactPhone(), entity.getContactPhone())) {
-                oldValues.put("Số điện thoại liên hệ", entity.getContactPhone() != null ? entity.getContactPhone() : "—");
             }
 
             // GIS fields tracking
             if (request.getObjectType() != null && !Objects.equals(request.getObjectType(), entity.getObjectType())) {
                 oldValues.put("Loại đối tượng GIS", formatObjectTypeDisplay(entity.getObjectType()));
             }
-            if (request.getSymbol() != null && !Objects.equals(request.getSymbol(), entity.getSymbol())) {
-                oldValues.put("Biểu tượng", gisSpatialObjectService != null ? gisSpatialObjectService.getSymbolDisplayName(entity.getSymbol()) : (entity.getSymbol() != null ? entity.getSymbol() : "—"));
+            UUID newSym = resolveSymbolId(request.getSymbolId(), request.getSymbol());
+            if ((request.getSymbolId() != null || request.getSymbol() != null)
+                    && !Objects.equals(newSym, entity.getSymbolId())) {
+                oldValues.put("Biểu tượng", resolveSymbolDisplayName(entity.getSymbolId()));
             }
-            if (request.getCoordinateSystem() != null && !Objects.equals(request.getCoordinateSystem(), entity.getCoordinateSystem())) {
-                oldValues.put("Hệ quy chiếu", entity.getCoordinateSystem() != null ? entity.getCoordinateSystem() : "—");
+            if (request.getCoordinateSystem() != null
+                    && !Objects.equals(request.getCoordinateSystem(), entity.getCoordinateSystem())) {
+                oldValues.put("Hệ quy chiếu",
+                        entity.getCoordinateSystem() != null ? entity.getCoordinateSystem() : "—");
             }
-            if (request.getDisplayRule() != null && !Objects.equals(request.getDisplayRule(), entity.getDisplayRule())) {
+            if (request.getDisplayRule() != null
+                    && !Objects.equals(request.getDisplayRule(), entity.getDisplayRule())) {
                 oldValues.put("Quy tắc hiển thị", entity.getDisplayRule() != null ? entity.getDisplayRule() : "—");
             }
-            boolean latChanged = (request.getLatitude() != null && (entity.getLatitude() == null || request.getLatitude().compareTo(entity.getLatitude()) != 0))
+            boolean latChanged = (request.getLatitude() != null
+                    && (entity.getLatitude() == null || request.getLatitude().compareTo(entity.getLatitude()) != 0))
                     || (request.getLatitude() == null && entity.getLatitude() != null);
-            boolean lngChanged = (request.getLongitude() != null && (entity.getLongitude() == null || request.getLongitude().compareTo(entity.getLongitude()) != 0))
+            boolean lngChanged = (request.getLongitude() != null
+                    && (entity.getLongitude() == null || request.getLongitude().compareTo(entity.getLongitude()) != 0))
                     || (request.getLongitude() == null && entity.getLongitude() != null);
 
-            String oldCoord = gisSpatialObjectService != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
+            String oldCoord = gisSpatialObjectService != null
+                    ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId())
+                    : null;
             if (oldCoord == null || oldCoord.isBlank()) {
                 oldCoord = (entity.getLatitude() != null && entity.getLongitude() != null)
                         ? entity.getLatitude() + ", " + entity.getLongitude()
-                        : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
+                        : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude()
+                                : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
             }
             String newCoord = request.getCoordinates();
             if (newCoord == null || newCoord.isBlank()) {
                 newCoord = (request.getLatitude() != null && request.getLongitude() != null)
                         ? request.getLatitude() + ", " + request.getLongitude()
-                        : (request.getLatitude() != null ? "Vĩ độ: " + request.getLatitude() : (request.getLongitude() != null ? "Kinh độ: " + request.getLongitude() : null));
+                        : (request.getLatitude() != null ? "Vĩ độ: " + request.getLatitude()
+                                : (request.getLongitude() != null ? "Kinh độ: " + request.getLongitude() : null));
             }
-            boolean coordsChanged = (newCoord != null && !Objects.equals(newCoord, oldCoord)) || latChanged || lngChanged;
+            boolean coordsChanged = (newCoord != null && !Objects.equals(newCoord, oldCoord)) || latChanged
+                    || lngChanged;
             if (coordsChanged) {
                 oldValues.put("Tọa độ GIS", oldCoord != null ? oldCoord : "—");
             }
@@ -393,7 +438,6 @@ public class CoastalStationInmarsatService {
         if (request.getOrgUnitId() != null) {
             validateAllowedOrgUnit(request.getOrgUnitId());
             entity.setOrgUnitId(request.getOrgUnitId());
-            entity.setUnitId(request.getOrgUnitId());
         }
 
         if (request.getOperatingOrgId() != null) {
@@ -402,43 +446,55 @@ public class CoastalStationInmarsatService {
 
         if (request.getEffectiveName() != null) {
             entity.setName(request.getEffectiveName());
-            entity.setStationName(request.getEffectiveName());
         }
 
         if (request.getProvinceId() != null) {
             entity.setProvinceId(request.getProvinceId());
         }
 
-        if (request.getLocationAddress() != null) entity.setLocationAddress(request.getLocationAddress());
-        if (request.getLocationDetail() != null) entity.setLocationDetail(request.getLocationDetail());
-        if (request.getConditionStatus() != null) entity.setConditionStatus(request.getConditionStatus());
+        String effectiveLoc = request.getLocationAddress() != null && !request.getLocationAddress().isBlank()
+                ? request.getLocationAddress().trim()
+                : (request.getLocationDetail() != null ? request.getLocationDetail().trim() : null);
+        if (effectiveLoc != null) {
+            entity.setLocationAddress(effectiveLoc);
+        }
+        if (request.getConditionStatus() != null)
+            entity.setConditionStatus(request.getConditionStatus());
 
-        if (request.getCoverageZone() != null) entity.setCoverageZone(request.getCoverageZone());
-        if (request.getCoverageArea() != null) entity.setCoverageArea(request.getCoverageArea());
-        if (request.getServices() != null) entity.setServices(request.getServices());
-        if (request.getFrequency() != null) entity.setFrequency(request.getFrequency());
-        if (request.getModemType() != null) entity.setModemType(request.getModemType());
-        if (request.getSarCode() != null) entity.setSarCode(request.getSarCode());
-        if (request.getSatelliteSystem() != null) entity.setSatelliteSystem(request.getSatelliteSystem());
-        if (request.getNotes() != null) entity.setNotes(request.getNotes());
-        if (request.getDescription() != null) entity.setDescription(request.getDescription());
-        if (request.getContactPerson() != null) entity.setContactPerson(request.getContactPerson());
-        if (request.getContactPhone() != null) entity.setContactPhone(request.getContactPhone());
+        if (request.getCoverageArea() != null) {
+            entity.setCoverageArea(request.getCoverageArea());
+        } else if (request.getCoverageZone() != null) {
+            entity.setCoverageArea(request.getCoverageZone());
+        }
+        if (request.getServices() != null)
+            entity.setServices(request.getServices());
+        if (request.getFrequency() != null)
+            entity.setFrequency(request.getFrequency());
+        if (request.getNotes() != null) {
+            entity.setNotes(request.getNotes());
+        } else if (request.getDescription() != null) {
+            entity.setNotes(request.getDescription());
+        }
 
-        if (request.getSpatialId() != null) entity.setSpatialId(request.getSpatialId());
-        if (request.getObjectType() != null) entity.setObjectType(request.getObjectType());
-        if (request.getSymbol() != null) entity.setSymbol(request.getSymbol());
-        if (request.getCoordinateSystem() != null) entity.setCoordinateSystem(request.getCoordinateSystem());
-        if (request.getDisplayRule() != null) entity.setDisplayRule(request.getDisplayRule());
-        if (request.getLatitude() != null) entity.setLatitude(request.getLatitude());
-        if (request.getLongitude() != null) entity.setLongitude(request.getLongitude());
+        if (request.getSpatialId() != null)
+            entity.setSpatialId(request.getSpatialId());
+        if (request.getSymbolId() != null || request.getSymbol() != null) {
+            UUID resolvedSym = resolveSymbolId(request.getSymbolId(), request.getSymbol());
+            entity.setSymbolId(resolvedSym);
+        }
+        if (request.getLatitude() != null)
+            entity.setLatitude(request.getLatitude());
+        if (request.getLongitude() != null)
+            entity.setLongitude(request.getLongitude());
 
         if (request.getCoordinates() != null && !request.getCoordinates().isBlank()) {
             UUID spatialId = gisSpatialObjectService.syncSpatialObject(
                     entity.getSpatialId(),
                     "Đài Inmarsat " + entity.getName(),
                     "INMARSAT_" + entity.getId(),
-                    "LINE".equalsIgnoreCase(request.getObjectType()) ? GisGeometryType.LINE : ("POLYGON".equalsIgnoreCase(request.getObjectType()) ? GisGeometryType.POLYGON : GisGeometryType.POINT),
+                    "LINE".equalsIgnoreCase(request.getObjectType()) ? GisGeometryType.LINE
+                            : ("POLYGON".equalsIgnoreCase(request.getObjectType()) ? GisGeometryType.POLYGON
+                                    : GisGeometryType.POINT),
                     request.getCoordinates(),
                     entity.getId(),
                     InfrastructureType.INMARSAT_STATION);
@@ -460,47 +516,63 @@ public class CoastalStationInmarsatService {
     }
 
     private String getNewValueDisplay(String fieldName, CoastalStationInmarsat entity) {
-        if (entity == null || fieldName == null) return "—";
+        if (entity == null || fieldName == null)
+            return "—";
         return switch (fieldName) {
             case "Tên đài" -> entity.getName() != null ? entity.getName() : "—";
-            case "Đơn vị quản lý" -> entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId()) : "—";
-            case "Đơn vị khai thác" -> entity.getOperatingOrgId() != null ? resolveOperatingOrgName(entity.getOperatingOrgId()) : "—";
+            case "Đơn vị quản lý" ->
+                entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId()) : "—";
+            case "Đơn vị khai thác" ->
+                entity.getOperatingOrgId() != null ? resolveOperatingOrgName(entity.getOperatingOrgId()) : "—";
             case "Địa điểm (Tỉnh/TP)" -> entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : "—";
             case "Địa điểm chi tiết" -> entity.getLocationDetail() != null ? entity.getLocationDetail() : "—";
-            case "Tình trạng" -> entity.getConditionStatus() != null ? entity.getConditionStatus() : "—";
+            case "Tình trạng" ->
+                entity.getConditionStatus() != null ? resolveConditionStatusLabel(entity.getConditionStatus()) : "—";
             case "Vùng phủ sóng" -> entity.getCoverageZone() != null ? entity.getCoverageZone() : "—";
             case "Khu vực phủ sóng" -> entity.getCoverageArea() != null ? entity.getCoverageArea() : "—";
             case "Dịch vụ cung cấp" -> entity.getServices() != null ? entity.getServices() : "—";
             case "Tần số" -> entity.getFrequency() != null ? entity.getFrequency() : "—";
-            case "Loại Modem" -> entity.getModemType() != null ? entity.getModemType() : "—";
-            case "Mã SAR" -> entity.getSarCode() != null ? entity.getSarCode() : "—";
-            case "Hệ thống vệ tinh" -> entity.getSatelliteSystem() != null ? entity.getSatelliteSystem() : "—";
             case "Ghi chú" -> entity.getNotes() != null ? entity.getNotes() : "—";
-            case "Người liên hệ" -> entity.getContactPerson() != null ? entity.getContactPerson() : "—";
-            case "Số điện thoại liên hệ" -> entity.getContactPhone() != null ? entity.getContactPhone() : "—";
             case "Loại đối tượng", "Loại đối tượng GIS" -> formatObjectTypeDisplay(entity.getObjectType());
-            case "Biểu tượng" -> gisSpatialObjectService != null ? gisSpatialObjectService.getSymbolDisplayName(entity.getSymbol()) : (entity.getSymbol() != null ? entity.getSymbol() : "—");
+            case "Biểu tượng" -> resolveSymbolDisplayName(entity.getSymbolId());
             case "Hệ quy chiếu" -> entity.getCoordinateSystem() != null ? entity.getCoordinateSystem() : "—";
-            case "Quy tắc hiển thị" -> entity.getDisplayRule() != null ? entity.getDisplayRule() : "—";
+            case "Quy tắc hiển thị" -> "Độ, phút, giây (DMS)";
             case "Tọa độ", "Tọa độ GIS", "Tọa độ GPS" -> {
-                String c = gisSpatialObjectService != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
-                if (c != null && !c.isBlank()) yield c;
+                String c = gisSpatialObjectService != null
+                        ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId())
+                        : null;
+                if (c != null && !c.isBlank())
+                    yield c;
                 yield (entity.getLatitude() != null && entity.getLongitude() != null)
                         ? entity.getLatitude() + ", " + entity.getLongitude()
-                        : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
+                        : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude()
+                                : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
             }
             default -> "—";
         };
     }
 
     private String formatObjectTypeDisplay(String objectType) {
-        if (objectType == null || objectType.isBlank()) return "—";
+        if (objectType == null || objectType.isBlank())
+            return "—";
         return switch (objectType.toUpperCase()) {
             case "POINT" -> "Đối tượng điểm";
             case "LINE" -> "Đối tượng đường";
             case "POLYGON" -> "Đối tượng vùng";
             default -> objectType;
         };
+    }
+
+    private String resolveSymbolDisplayName(UUID symbolId) {
+        if (symbolId == null)
+            return "—";
+        try {
+            List<String> names = jdbcTemplate.queryForList("SELECT name FROM map_symbols WHERE id = ?", String.class,
+                    symbolId);
+            return (!names.isEmpty() && names.get(0) != null) ? names.get(0) : symbolId.toString();
+        } catch (Exception e) {
+            return symbolId.toString();
+        }
     }
 
     public void deleteStation(UUID id) {
@@ -527,7 +599,6 @@ public class CoastalStationInmarsatService {
 
         entity.softDelete(SecurityUtils.getCurrentUserId());
         entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
-        entity.setStatus(StationStatus.DELETED);
         repository.save(entity);
     }
 
@@ -563,7 +634,8 @@ public class CoastalStationInmarsatService {
         CoastalStationInmarsat entity = getStationById(id);
         UUID currentUserId = SecurityUtils.getCurrentUserId();
 
-        // Quy tắc 14: người gửi thuộc cấp Cục -> bỏ qua vòng 1, vào thẳng "Chờ Cục duyệt".
+        // Quy tắc 14: người gửi thuộc cấp Cục -> bỏ qua vòng 1, vào thẳng "Chờ Cục
+        // duyệt".
         // Kiểm tra trạng thái hợp lệ và ghi nhật ký do service dùng chung đảm nhiệm.
         approvalService.submit(entity, InfrastructureType.INMARSAT_STATION, currentUserId);
 
@@ -579,6 +651,10 @@ public class CoastalStationInmarsatService {
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         // Chống tự duyệt 4 mắt (quy tắc 8) do service dùng chung đảm nhiệm.
         approvalService.approveC1(entity, InfrastructureType.INMARSAT_STATION, "APPROVED", null, currentUserId);
+        LocalDateTime now = LocalDateTime.now();
+        entity.setApproverLevel1(currentUserId);
+        entity.setApprovedDateLevel1(now);
+        entity.setLevel1ApprovalContent("Đã phê duyệt cấp Cảng vụ/Chi cục");
         syncStationStatus(entity);
         return repository.save(entity);
     }
@@ -587,8 +663,27 @@ public class CoastalStationInmarsatService {
         CoastalStationInmarsat entity = getStationById(id);
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         approvalService.approveC2(entity, InfrastructureType.INMARSAT_STATION, "APPROVED", null, currentUserId);
+        LocalDateTime now = LocalDateTime.now();
+        entity.setApproverLevel2(currentUserId);
+        entity.setApprovedDateLevel2(now);
         entity.setApprovedBy(currentUserId);
-        entity.setApprovedDate(LocalDateTime.now());
+        entity.setApprovedDate(now);
+        entity.setLevel2ApprovalContent("Đã phê duyệt cấp Cục");
+
+        // Khi Cấp Cục phê duyệt trực tiếp, nếu chưa có thông tin người gửi thì tự động
+        // điền
+        if (entity.getSubmittedBy() == null) {
+            entity.setSubmittedBy(currentUserId);
+            entity.setSubmittedAt(now);
+        }
+
+        // Hướng 2: Khi Cấp Cục phê duyệt trực tiếp, tự động điền luôn thông tin Cấp 1
+        if (entity.getApproverLevel1() == null) {
+            entity.setApproverLevel1(currentUserId);
+            entity.setApprovedDateLevel1(now);
+            entity.setLevel1ApprovalContent("Cấp Cục phê duyệt trực tiếp");
+        }
+
         syncStationStatus(entity);
         return repository.save(entity);
     }
@@ -605,16 +700,19 @@ public class CoastalStationInmarsatService {
         if (isLevel2) {
             approvalService.approveC2(entity, InfrastructureType.INMARSAT_STATION, "REJECTED",
                     rejectionReason.trim(), currentUserId);
+            entity.setLevel2ApprovalContent(rejectionReason.trim());
         } else {
             approvalService.approveC1(entity, InfrastructureType.INMARSAT_STATION, "REJECTED",
                     rejectionReason.trim(), currentUserId);
+            entity.setLevel1ApprovalContent(rejectionReason.trim());
         }
         syncStationStatus(entity);
         return repository.save(entity);
     }
 
     /**
-     * Đồng bộ các trường hiển thị riêng của họ nhà trạm ({@code status}, {@code approvalLevel})
+     * Đồng bộ các trường hiển thị riêng của họ nhà trạm ({@code status},
+     * {@code approvalLevel})
      * theo trạng thái phê duyệt chuẩn do service dùng chung đặt.
      */
     private void syncStationStatus(CoastalStationInmarsat entity) {
@@ -623,30 +721,14 @@ public class CoastalStationInmarsatService {
             return;
         }
         switch (st) {
-            case DRAFT, PROPOSED -> {
-                entity.setStatus(StationStatus.DRAFT);
-                entity.setApprovalLevel(ApprovalLevel.LEVEL_0);
+            case DRAFT, PROPOSED, PENDING_APPROVAL -> entity.setApprovalLevel(ApprovalLevel.LEVEL_0);
+            case APPROVED_LEVEL1 -> entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
+            case APPROVED_LEVEL2, APPROVED -> entity.setApprovalLevel(ApprovalLevel.LEVEL_2);
+            case REJECTED, REJECTED_LEVEL1, REJECTED_LEVEL2 -> entity.setApprovalLevel(ApprovalLevel.LEVEL_0);
+            default -> {
             }
-            case PENDING_APPROVAL -> {
-                entity.setStatus(StationStatus.PENDING_APPROVAL);
-                entity.setApprovalLevel(ApprovalLevel.LEVEL_0);
-            }
-            case APPROVED_LEVEL1 -> {
-                entity.setStatus(StationStatus.APPROVED_L1);
-                entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
-            }
-            case APPROVED_LEVEL2, APPROVED -> {
-                entity.setStatus(StationStatus.APPROVED_L2);
-                entity.setApprovalLevel(ApprovalLevel.LEVEL_2);
-            }
-            case REJECTED, REJECTED_LEVEL1, REJECTED_LEVEL2 -> {
-                entity.setStatus(StationStatus.DRAFT);
-                entity.setApprovalLevel(ApprovalLevel.LEVEL_0);
-            }
-            default -> { }
         }
     }
-
 
     // Tương thích ngược phương thức cũ
     public CoastalStationInmarsat approveStation(UUID id, boolean approved, Long userId) {
@@ -668,7 +750,8 @@ public class CoastalStationInmarsatService {
         return reject(id, rejectionReason);
     }
 
-    // --- LOOKUP OPTIONS CHO CÁC MODULE KHÁC LIÊN KẾT (Chỉ lấy APPROVED & OPERATIONAL) ---
+    // --- LOOKUP OPTIONS CHO CÁC MODULE KHÁC LIÊN KẾT (Chỉ lấy APPROVED &
+    // OPERATIONAL) ---
 
     @Transactional(readOnly = true)
     public List<CoastalStationInmarsatOptionResponse> getOptions(UUID orgUnitId) {
@@ -710,15 +793,15 @@ public class CoastalStationInmarsatService {
                 : Pageable.unpaged();
 
         return historyService.getHistory(
-                        InfrastructureType.INMARSAT_STATION, entity.getId(), code,
-                        // Khớp đúng tập dòng mà CommonHistoryDrawer vốn tự ẩn (tạo mới /
-                        // phê duyệt / từ chối) — phải loại ngay ở CSDL, nếu để drawer lọc
-                        // sau khi phân trang thì trang bị hụt và cuộn-tải-thêm dừng sớm.
-                        List.of(InfrastructureHistoryStatus.CREATED,
-                                InfrastructureHistoryStatus.APPROVED,
-                                InfrastructureHistoryStatus.REJECTED),
-                        new String[] { "Thông tin", "Phê duyệt", "Cập nhật thông tin đài Inmarsat" },
-                        keyword, fromDate, toDate, pageable)
+                InfrastructureType.INMARSAT_STATION, entity.getId(), code,
+                // Khớp đúng tập dòng mà CommonHistoryDrawer vốn tự ẩn (tạo mới /
+                // phê duyệt / từ chối) — phải loại ngay ở CSDL, nếu để drawer lọc
+                // sau khi phân trang thì trang bị hụt và cuộn-tải-thêm dừng sớm.
+                List.of(InfrastructureHistoryStatus.CREATED,
+                        InfrastructureHistoryStatus.APPROVED,
+                        InfrastructureHistoryStatus.REJECTED),
+                new String[] { "Thông tin", "Phê duyệt", "Cập nhật thông tin đài Inmarsat" },
+                keyword, fromDate, toDate, pageable)
                 .stream()
                 .filter(h -> h.getActionType() != null)
                 .map(h -> {
@@ -739,7 +822,8 @@ public class CoastalStationInmarsatService {
     }
 
     private String resolveOperatingOrgName(UUID operatingOrgId) {
-        if (operatingOrgId == null) return null;
+        if (operatingOrgId == null)
+            return null;
         return operatingOrganizationRepository.findById(operatingOrgId)
                 .map(OperatingOrganization::getName)
                 .orElseGet(() -> orgUnitCacheService.getName(operatingOrgId));
@@ -748,20 +832,56 @@ public class CoastalStationInmarsatService {
     // --- BUILD RESPONSE DTO ---
 
     public CoastalStationInmarsatResponse buildResponse(CoastalStationInmarsat entity) {
-        UUID effectiveOrgUnitId = entity.getOrgUnitId() != null ? entity.getOrgUnitId() : entity.getUnitId();
+        UUID effectiveOrgUnitId = entity.getOrgUnitId();
         String orgUnitName = effectiveOrgUnitId != null ? orgUnitCacheService.getName(effectiveOrgUnitId) : null;
         String operatingOrgName = resolveOperatingOrgName(entity.getOperatingOrgId());
 
         String createdByName = resolveUserName(entity.getCreatedBy());
         String updatedByName = resolveUserName(entity.getUpdatedBy());
-        String submittedByName = resolveUserName(entity.getSubmittedBy());
+        UUID effectiveSubmittedBy = entity.getSubmittedBy() != null ? entity.getSubmittedBy() : entity.getCreatedBy();
+        String submittedByName = resolveUserName(effectiveSubmittedBy);
         String approverNameL1 = resolveUserName(entity.getApproverLevel1());
         String approverNameL2 = resolveUserName(entity.getApproverLevel2());
         String approvedByName = resolveUserName(entity.getApprovedBy());
 
-        String coords = gisSpatialObjectService != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
+        String coords = null;
+        String resolvedGeomType = "POINT";
+        if (entity.getSpatialId() != null && gisSpatialObjectService != null) {
+            Optional<GisSpatialObject> spatialOpt = gisSpatialObjectService.findById(entity.getSpatialId());
+            if (spatialOpt.isPresent()) {
+                GisSpatialObject so = spatialOpt.get();
+                coords = so.getCoordinates();
+                if (so.getGeometryType() != null) {
+                    resolvedGeomType = so.getGeometryType().name();
+                }
+            }
+        }
         if (coords == null && entity.getLatitude() != null && entity.getLongitude() != null) {
             coords = "POINT(" + entity.getLongitude() + " " + entity.getLatitude() + ")";
+        }
+        if (coords != null && (resolvedGeomType == null || "POINT".equals(resolvedGeomType))) {
+            String upper = coords.trim().toUpperCase();
+            if (upper.startsWith("LINE"))
+                resolvedGeomType = "LINE";
+            else if (upper.startsWith("POLYGON"))
+                resolvedGeomType = "POLYGON";
+        }
+
+        String approvalContentLevel1 = entity.getLevel1ApprovalContent();
+        if (approvalContentLevel1 == null || approvalContentLevel1.isBlank()) {
+            if (entity.getApprovalStatus() == ApprovalStatus.REJECTED_LEVEL1 && entity.getRejectionReason() != null) {
+                approvalContentLevel1 = entity.getRejectionReason();
+            } else if (entity.getApproverLevel1() != null) {
+                approvalContentLevel1 = "Đã phê duyệt";
+            }
+        }
+        String approvalContentLevel2 = entity.getLevel2ApprovalContent();
+        if (approvalContentLevel2 == null || approvalContentLevel2.isBlank()) {
+            if (entity.getApprovalStatus() == ApprovalStatus.REJECTED_LEVEL2 && entity.getRejectionReason() != null) {
+                approvalContentLevel2 = entity.getRejectionReason();
+            } else if (entity.getApproverLevel2() != null || entity.getApprovalStatus() == ApprovalStatus.APPROVED) {
+                approvalContentLevel2 = "Đã phê duyệt";
+            }
         }
 
         return CoastalStationInmarsatResponse.builder()
@@ -770,50 +890,53 @@ public class CoastalStationInmarsatService {
                 .orgUnitName(orgUnitName)
                 .operatingOrgId(entity.getOperatingOrgId())
                 .operatingOrgName(operatingOrgName)
-                .code(entity.getCode() != null ? entity.getCode() : entity.getDeviceCode())
-                .deviceCode(entity.getDeviceCode() != null ? entity.getDeviceCode() : entity.getCode())
-                .name(entity.getName() != null ? entity.getName() : entity.getStationName())
-                .stationName(entity.getStationName() != null ? entity.getStationName() : entity.getName())
+                .code(entity.getCode())
+                .deviceCode(entity.getCode())
+                .name(entity.getName())
+                .stationName(entity.getName())
                 .provinceId(entity.getProvinceId())
                 .locationAddress(entity.getLocationAddress())
                 .locationDetail(entity.getLocationDetail())
                 .conditionStatus(entity.getConditionStatus())
-                .status(entity.getStatus())
+                .conditionStatusLabel(resolveConditionStatusLabel(entity.getConditionStatus()))
                 .isActive(entity.getIsActive())
-                .coverageZone(entity.getCoverageZone())
+                .coverageZone(entity.getCoverageArea())
                 .coverageArea(entity.getCoverageArea())
                 .services(entity.getServices())
                 .frequency(entity.getFrequency())
-                .modemType(entity.getModemType())
-                .sarCode(entity.getSarCode())
-                .satelliteSystem(entity.getSatelliteSystem())
                 .notes(entity.getNotes())
-                .description(entity.getDescription())
-                .contactPerson(entity.getContactPerson())
-                .contactPhone(entity.getContactPhone())
+                .description(entity.getNotes())
                 .spatialId(entity.getSpatialId())
-                .objectType(entity.getObjectType())
-                .symbol(entity.getSymbol())
-                .coordinateSystem(entity.getCoordinateSystem())
-                .displayRule(entity.getDisplayRule())
+                .symbolId(entity.getSymbolId() != null ? entity.getSymbolId().toString() : null)
+                .objectType(resolvedGeomType)
+                .geometryType(resolvedGeomType)
+                .symbol(entity.getSymbolId() != null ? entity.getSymbolId().toString() : null)
+                .coordinateSystem(entity.getCoordinateSystem() != null ? entity.getCoordinateSystem() : "WGS84")
+                .displayRule(entity.getDisplayRule() != null ? entity.getDisplayRule() : "Độ, phút, giây (DMS)")
                 .latitude(entity.getLatitude())
                 .longitude(entity.getLongitude())
                 .coordinates(coords)
                 .approvalStatus(entity.getApprovalStatus())
                 .approvalLevel(entity.getApprovalLevel())
-                .submittedAt(entity.getSubmittedAt())
-                .submittedBy(entity.getSubmittedBy())
+                .submittedAt(entity.getSubmittedAt() != null ? entity.getSubmittedAt() : entity.getCreatedAt())
+                .submittedBy(effectiveSubmittedBy)
                 .submittedByName(submittedByName)
                 .approverLevel1(entity.getApproverLevel1())
                 .approverNameLevel1(approverNameL1)
+                .approverLevel1Name(approverNameL1)
                 .approvedDateLevel1(entity.getApprovedDateLevel1())
                 .approverLevel2(entity.getApproverLevel2())
                 .approverNameLevel2(approverNameL2)
+                .approverLevel2Name(approverNameL2)
                 .approvedDateLevel2(entity.getApprovedDateLevel2())
                 .approvedBy(entity.getApprovedBy())
                 .approvedByName(approvedByName)
                 .approvedDate(entity.getApprovedDate())
                 .rejectionReason(entity.getRejectionReason())
+                .level1ApprovalContent(approvalContentLevel1)
+                .approvalContentLevel1(approvalContentLevel1)
+                .level2ApprovalContent(approvalContentLevel2)
+                .approvalContentLevel2(approvalContentLevel2)
                 .createdBy(entity.getCreatedBy())
                 .createdByName(createdByName)
                 .createdAt(entity.getCreatedAt())
@@ -826,29 +949,35 @@ public class CoastalStationInmarsatService {
     }
 
     private String resolveUserName(UUID userId) {
-        if (userId == null) return null;
+        if (userId == null)
+            return null;
         return userRepository.findById(userId)
                 .map(User::getFullName)
                 .orElse(null);
     }
 
-    public List<CoastalStationInmarsatAttachmentResponse> uploadAttachments(UUID id, List<org.springframework.web.multipart.MultipartFile> files, UUID userId) {
+    public List<CoastalStationInmarsatAttachmentResponse> uploadAttachments(UUID id,
+            List<org.springframework.web.multipart.MultipartFile> files, UUID userId) {
         CoastalStationInmarsat entity = getStationById(id);
         validateAllowedOrgUnit(entity.getOrgUnitId());
 
-        long existingCount = attachmentRepository.findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.INMARSAT_STATION).size();
+        long existingCount = attachmentRepository
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.INMARSAT_STATION).size();
         if (existingCount + files.size() > 10) {
             throw new IllegalArgumentException("Tối đa 10 file đính kèm theo quy định");
         }
 
-        java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath != null ? attachmentPath : "uploads/inmarsat-attachments").toAbsolutePath().normalize();
+        java.nio.file.Path basePath = java.nio.file.Paths
+                .get(attachmentPath != null ? attachmentPath : "uploads/inmarsat-attachments").toAbsolutePath()
+                .normalize();
         List<com.hanghai.kchtg.common.entity.InfrastructureAttachment> savedAttachments = new ArrayList<>();
         for (org.springframework.web.multipart.MultipartFile file : files) {
             String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
             String storageFileName = System.currentTimeMillis() + "_" + originalFilename;
 
             try {
-                java.nio.file.Path dir = basePath.resolve(InfrastructureType.INMARSAT_STATION.name()).resolve(id.toString());
+                java.nio.file.Path dir = basePath.resolve(InfrastructureType.INMARSAT_STATION.name())
+                        .resolve(id.toString());
                 java.nio.file.Files.createDirectories(dir);
                 java.nio.file.Path filePath = dir.resolve(storageFileName);
                 file.transferTo(filePath.toFile());
@@ -857,11 +986,13 @@ public class CoastalStationInmarsatService {
                 throw new RuntimeException("Không thể lưu file: " + originalFilename);
             }
 
-            com.hanghai.kchtg.common.entity.InfrastructureAttachment attachment = com.hanghai.kchtg.common.entity.InfrastructureAttachment.builder()
+            com.hanghai.kchtg.common.entity.InfrastructureAttachment attachment = com.hanghai.kchtg.common.entity.InfrastructureAttachment
+                    .builder()
                     .refId(id)
                     .refType(InfrastructureType.INMARSAT_STATION)
                     .fileName(originalFilename)
-                    .filePath(basePath.resolve(InfrastructureType.INMARSAT_STATION.name()).resolve(id.toString()).resolve(storageFileName).toString())
+                    .filePath(basePath.resolve(InfrastructureType.INMARSAT_STATION.name()).resolve(id.toString())
+                            .resolve(storageFileName).toString())
                     .fileSize(file.getSize())
                     .fileType(com.hanghai.kchtg.common.enums.AttachmentFileType.fromValue(file.getContentType()))
                     .uploadedBy(userId)
@@ -879,8 +1010,7 @@ public class CoastalStationInmarsatService {
                         "—",
                         originalFilename,
                         "Tải lên tài liệu đính kèm: " + originalFilename,
-                        userId
-                );
+                        userId);
             }
         }
         return savedAttachments.stream().map(this::toAttachmentResponse).toList();
@@ -888,7 +1018,8 @@ public class CoastalStationInmarsatService {
 
     @Transactional(readOnly = true)
     public List<CoastalStationInmarsatAttachmentResponse> listAttachments(UUID id) {
-        return attachmentRepository.findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.INMARSAT_STATION)
+        return attachmentRepository
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.INMARSAT_STATION)
                 .stream().map(this::toAttachmentResponse).toList();
     }
 
@@ -896,7 +1027,8 @@ public class CoastalStationInmarsatService {
         CoastalStationInmarsat entity = getStationById(id);
         validateAllowedOrgUnit(entity.getOrgUnitId());
 
-        com.hanghai.kchtg.common.entity.InfrastructureAttachment attachment = attachmentRepository.findByIdAndRefIdAndRefType(attachmentId, id, InfrastructureType.INMARSAT_STATION)
+        com.hanghai.kchtg.common.entity.InfrastructureAttachment attachment = attachmentRepository
+                .findByIdAndRefIdAndRefType(attachmentId, id, InfrastructureType.INMARSAT_STATION)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy file đính kèm với ID: " + attachmentId));
         String fileName = attachment.getFileName();
         try {
@@ -917,8 +1049,7 @@ public class CoastalStationInmarsatService {
                     fileName,
                     "—",
                     "Xóa tài liệu đính kèm: " + fileName,
-                    userId
-            );
+                    userId);
         }
     }
 
@@ -927,7 +1058,8 @@ public class CoastalStationInmarsatService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy file đính kèm với ID: " + attachmentId));
     }
 
-    private CoastalStationInmarsatAttachmentResponse toAttachmentResponse(com.hanghai.kchtg.common.entity.InfrastructureAttachment a) {
+    private CoastalStationInmarsatAttachmentResponse toAttachmentResponse(
+            com.hanghai.kchtg.common.entity.InfrastructureAttachment a) {
         String uploadedByName = a.getUploadedBy() != null
                 ? userRepository.findById(a.getUploadedBy()).map(User::getFullName).orElse(a.getUploadedBy().toString())
                 : "Cán bộ quản lý";
@@ -956,5 +1088,16 @@ public class CoastalStationInmarsatService {
                 throw new IllegalArgumentException("Vĩ độ phải trong khoảng -90~90 (WGS84)");
             }
         }
+    }
+
+    private String resolveConditionStatusLabel(ConditionStatus status) {
+        if (status == null)
+            return "—";
+        return switch (status) {
+            case OPERATIONAL -> "Đang hoạt động";
+            case STOPPED -> "Dừng hoạt động";
+            case MAINTENANCE -> "Đang bảo trì";
+            case UNDER_CONSTRUCTION -> "Đang xây dựng";
+        };
     }
 }

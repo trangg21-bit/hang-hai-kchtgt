@@ -1,0 +1,80 @@
+{
+  "triage_id": "TRI-1788489877531-53b8",
+  "created_at": 1788489877531,
+  "request_summary": "Sửa 2 file migration bị lưu sai encoding (comment tiếng Việt không phải UTF-8) làm Flyway không start được: xóa toàn bộ comment, chỉ giữ phần SQL.",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/resources/db/migration/V20260903143000__restore_coastal_vts_coordinates.sql",
+      "src/main/resources/db/migration/V20260903153000__restore_other_coastal_coordinates.sql"
+    ],
+    "impact_files": [
+      "src/main/resources/db/migration/V20260903143000__restore_coastal_vts_coordinates.sql",
+      "src/main/resources/db/migration/V20260903153000__restore_other_coastal_coordinates.sql"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/V20260903143000__restore_coastal_vts_coordinates.sql"
+      },
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/V20260903153000__restore_other_coastal_coordinates.sql"
+      }
+    ],
+    "dev_footprint": "backend"
+  },
+  "rationale": "C3: one-way door: schema:src/main/resources/db/migration/V20260903143000__restore_coastal_vts_coordinates.sql, schema:src/main/resources/db/migration/V20260903153000__restore_other_coastal_coordinates.sql — floors at C3 regardless of size (2 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Khởi động backend Spring Boot (Flyway migrate khi profile local)",
+  "blast_radius": 2,
+  "done_oracle": "Ứng dụng khởi động được, Flyway resolve được 2 migration (không còn MalformedInputException khi tính checksum), nội dung SQL 2 file giữ nguyên so với HEAD, không còn comment tiếng Việt.",
+  "verification_commands": [
+    {
+      "command": "git diff --check HEAD -- src/main/resources/db/migration/V20260903143000__restore_coastal_vts_coordinates.sql src/main/resources/db/migration/V20260903153000__restore_other_coastal_coordinates.sql",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 60000
+    }
+  ],
+  "change_type": "hotfix",
+  "seam_claims": [
+    {
+      "file": "src/main/resources/db/migration/V20260903143000__restore_coastal_vts_coordinates.sql",
+      "line": 6,
+      "quote": "ALTER TABLE public.coastal_station_vts",
+      "source_hash": "6eea81a28afed97e4a947e7f171e7570b176e84bfe6ff897771d73a851681465",
+      "quote_hash": "b9dbaae359d7d7c11e32c16c05150f1c7b9a0773fd1252230e228bec2ff1be42",
+      "note": "Dòng SQL load-bearing cần giữ nguyên khi xóa comment phía trên (file hiện binary do comment lưu sai encoding; nội dung xác minh qua git show HEAD khớp working tree sạch)"
+    },
+    {
+      "file": "src/main/resources/db/migration/V20260903153000__restore_other_coastal_coordinates.sql",
+      "line": 5,
+      "quote": "ALTER TABLE public.coastal_station_inmarsat",
+      "source_hash": "36f4062153bee5b4fe4b74a95d57222c9a593f8d6f9786137424a1c3e1fed98f",
+      "quote_hash": "6cd2f22ab659476c7039dd510874ba180cef2d269253815cc78a164b4c07105e",
+      "note": "Dòng SQL load-bearing cần giữ nguyên khi xóa comment phía trên"
+    },
+    {
+      "file": "src/main/resources/db/migration/V20260903153000__restore_other_coastal_coordinates.sql",
+      "line": 13,
+      "quote": "ALTER TABLE public.coastal_station_haiphong",
+      "source_hash": "36f4062153bee5b4fe4b74a95d57222c9a593f8d6f9786137424a1c3e1fed98f",
+      "quote_hash": "e4575f231a3828ec7be79fc2166cdc0e2d64dbc6de3d6e2d317e42abfcb5eb99",
+      "note": "Khối ALTER cuối của file 153000 cần giữ nguyên"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "04f37dba5c2a15e36bd3a408a1222f8101915a99",
+    "dirty": false,
+    "captured_at": 1788489877772
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.station.dto.inmarsat;
 
+import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,5 +22,5 @@ public class CoastalStationInmarsatOptionResponse {
     private String code;
     private String name;
     private UUID orgUnitId;
-    private String conditionStatus;
+    private ConditionStatus conditionStatus;
 }

@@ -13,7 +13,6 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.util.List;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 
 /**
  * Request DTO for creating a new Port.

@@ -193,6 +193,8 @@ export interface Berth {
   coordinateSystem?: number;
   displayRule?: number;
   operator?: string;
+  operatingOrgId?: string;
+  operatingOrgName?: string;
   totalArea?: number;
   designThroughput?: number;
   currentThroughput?: number;

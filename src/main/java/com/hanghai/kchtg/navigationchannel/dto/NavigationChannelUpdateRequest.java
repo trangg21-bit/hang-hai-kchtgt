@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.navigationchannel.dto;
 
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

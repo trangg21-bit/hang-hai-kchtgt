@@ -3,6 +3,8 @@ package com.hanghai.kchtg.port.service;
 import com.hanghai.kchtg.common.entity.EntityFields;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.common.entity.OperatingUnit;
+import com.hanghai.kchtg.common.repository.OperatingUnitRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
@@ -68,6 +70,7 @@ public class BerthService {
     private final OrgUnitScopeService orgUnitScopeService;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final AttachmentRepository attachmentRepository;
+    private final OperatingUnitRepository operatingUnitRepository;
 
     @Value("${app.upload.attachment-path:uploads/attachments}")
     private String attachmentPath;
@@ -100,6 +103,7 @@ public class BerthService {
                 .coordinateSystem(request.getCoordinateSystem())
                 .displayRule(request.getDisplayRule())
                 .operator(request.getOperator())
+                .operatingOrgId(request.getOperatingOrgId())
                 .totalArea(request.getTotalArea())
                 .designThroughput(request.getDesignThroughput())
                 .currentThroughput(request.getCurrentThroughput())
@@ -287,6 +291,7 @@ public class BerthService {
                 .coordinateSystem(entity.getCoordinateSystem())
                 .displayRule(entity.getDisplayRule())
                 .operator(entity.getOperator())
+                .operatingOrgId(entity.getOperatingOrgId())
                 .totalArea(entity.getTotalArea())
                 .designThroughput(entity.getDesignThroughput())
                 .currentThroughput(entity.getCurrentThroughput())
@@ -357,6 +362,8 @@ public class BerthService {
             entity.setDisplayRule(request.getDisplayRule());
         if (request.getOperator() != null)
             entity.setOperator(request.getOperator());
+        if (request.getOperatingOrgId() != null)
+            entity.setOperatingOrgId(request.getOperatingOrgId());
         if (request.getTotalArea() != null)
             entity.setTotalArea(request.getTotalArea());
         if (request.getDesignThroughput() != null)
@@ -445,6 +452,7 @@ public class BerthService {
                 .coordinateSystem(entity.getCoordinateSystem())
                 .displayRule(entity.getDisplayRule())
                 .operator(entity.getOperator())
+                .operatingOrgId(entity.getOperatingOrgId())
                 .totalArea(entity.getTotalArea())
                 .designThroughput(entity.getDesignThroughput())
                 .currentThroughput(entity.getCurrentThroughput())
@@ -466,6 +474,13 @@ public class BerthService {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
         log.info("Soft-deleted Berth [{}] code={}", entity.getId(), entity.getBerthCode());
+    }
+
+    private String resolveOperatingOrgName(UUID operatingOrgId) {
+        if (operatingOrgId == null) return null;
+        return operatingUnitRepository.findById(operatingOrgId)
+                .map(OperatingUnit::getName)
+                .orElse(null);
     }
 
     private BerthResponse toResponse(Berth e) {
@@ -533,6 +548,8 @@ public class BerthService {
                 .coordinateSystem(e.getCoordinateSystem())
                 .displayRule(e.getDisplayRule())
                 .operator(e.getOperator())
+                .operatingOrgId(e.getOperatingOrgId())
+                .operatingOrgName(resolveOperatingOrgName(e.getOperatingOrgId()))
                 .totalArea(e.getTotalArea())
                 .designThroughput(e.getDesignThroughput())
                 .currentThroughput(e.getCurrentThroughput())

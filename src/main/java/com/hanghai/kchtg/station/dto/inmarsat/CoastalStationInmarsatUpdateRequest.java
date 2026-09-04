@@ -1,6 +1,6 @@
 package com.hanghai.kchtg.station.dto.inmarsat;
 
-import com.hanghai.kchtg.security.RecordSecurityLevel;
+import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import lombok.AllArgsConstructor;
@@ -37,23 +37,19 @@ public class CoastalStationInmarsatUpdateRequest {
     private String locationAddress;
     private String locationDetail;
 
-    private String conditionStatus;
+    private ConditionStatus conditionStatus;
 
     // --- Thông số đặc thù Inmarsat ---
     private String coverageZone;
     private String coverageArea;
     private String services;
     private String frequency;
-    private String modemType;
-    private String sarCode;
-    private String satelliteSystem;
     private String notes;
     private String description;
-    private String contactPerson;
-    private String contactPhone;
 
     // --- GIS ---
     private UUID spatialId;
+    private String symbolId;
     private String objectType;
     private String symbol;
     private String coordinateSystem;

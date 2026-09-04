@@ -11,7 +11,7 @@ services:
       - REDIS_HOST=redis
       - DB_HOST=${DB_HOST:-10.0.229.20}
       - DB_PORT=${DB_PORT:-5432}
-      - DB_NAME=${DB_NAME:-vmd_csdl_v2_dev}
+      - DB_NAME=${DB_NAME:-vmd_csdl_v2}
       - DB_USER=${DB_USER:-vmd_mtis_geo}
       - DB_PASS=${DB_PASS:-VmdMtisPostgis@123}
     ports:

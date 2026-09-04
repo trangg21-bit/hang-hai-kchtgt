@@ -30,7 +30,6 @@ import com.hanghai.kchtg.security.RecordSecurityLevel;
 @Table(name = "scada",
         uniqueConstraints = @UniqueConstraint(columnNames = "device_code"))
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
-@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -39,8 +38,7 @@ import com.hanghai.kchtg.security.RecordSecurityLevel;
 @FieldNameConstants
 public class Scada extends BaseEntity implements ApprovableEntity {
 
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
+    @Transient
     @Builder.Default
     private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
 

@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.station.dto.haiphong;
 
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -24,10 +23,7 @@ public class CoastalStationHaiphongRequest {
     private Integer provinceId;
 
     private String code;
-    private String stationCode;
-
     private String name;
-    private String stationName;
 
     private String locationAddress;
     private String conditionStatus;
@@ -52,11 +48,58 @@ public class CoastalStationHaiphongRequest {
 
     // --- GIS ---
     private UUID spatialId;
-    private String geometryType;
+    private UUID symbolId;
     private String symbol;
-    private String coordinateSystem;
-    private String displayRule;
     private BigDecimal latitude;
     private BigDecimal longitude;
     private String coordinates;
+
+    public void setSymbolId(Object sym) {
+        if (sym == null) {
+            this.symbolId = null;
+        } else if (sym instanceof UUID u) {
+            this.symbolId = u;
+        } else {
+            String s = sym.toString().trim();
+            if (s.isEmpty()) {
+                this.symbolId = null;
+            } else {
+                try {
+                    this.symbolId = UUID.fromString(s);
+                } catch (IllegalArgumentException e) {
+                    this.symbol = s;
+                }
+            }
+        }
+    }
+
+    public void setSymbol(String symbol) {
+        this.symbol = symbol;
+        if (symbol != null && !symbol.isBlank() && this.symbolId == null) {
+            try {
+                this.symbolId = UUID.fromString(symbol.trim());
+            } catch (IllegalArgumentException ignored) {}
+        }
+    }
+
+    // Getter tương thích ngược nếu payload cũ gửi stationCode / stationName
+    public void setStationCode(String stationCode) {
+        if (this.code == null || this.code.isBlank()) {
+            this.code = stationCode;
+        }
+    }
+
+    public void setStationName(String stationName) {
+        if (this.name == null || this.name.isBlank()) {
+            this.name = stationName;
+        }
+    }
+
+    public String getStationCode() {
+        return this.code;
+    }
+
+    public String getStationName() {
+        return this.name;
+    }
 }

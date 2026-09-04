@@ -1,12 +1,12 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Button, Modal, Drawer, Input, Space, Typography, Alert, DatePicker, Radio, Select,
-  Form, Tabs, Row, Col, InputNumber, Upload, Table,
+  Form, Tabs, Row, Col, InputNumber, Table,
 } from 'antd';
 import {
   PlusOutlined, DeleteOutlined,
   HistoryOutlined, SearchOutlined, ExclamationCircleOutlined,
-  FileOutlined, InboxOutlined, EnvironmentOutlined,
+  EnvironmentOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import api from '../../services/api';
@@ -14,6 +14,7 @@ import { dryPortCRUD, dryPortApproval, dryPortHistory } from '../../services/por
 import type { DryPort } from '../../types/port';
 import DryPortDetailContent from './DryPortDetailContent';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
+import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import { userService } from '../../services/userService';
 import { organizationService } from '../../services/organizationService';
 import type { Organization } from '../../services/organizationService';
@@ -70,12 +71,11 @@ import {
   primaryButtonStyle,
   outlineButtonStyle,
   requiredMarkStyle,
-  uploadHintStyle,
   statusBadgeStyle,
   labelProps,
   readonlyInputStyle,
   drawerTabBarStyle,
-  drawerTabContentStyle, drawerFormScrollStyle,
+  drawerFormScrollStyle,
   cellTitleStyle,
   cellSubtitleStyle,
   icons,
@@ -87,8 +87,6 @@ import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenCon
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
-import { approvalStatusLabel, APPROVAL_STATUS_OPTIONS, APPROVAL_STATUS_STYLE } from '../../components/shared/ApprovalStatusBadge';
 
 
 /* ───────────────────────────────────────────────
@@ -633,7 +631,6 @@ export default function DryPortListPage() {
   const [coordinateList, setCoordinateList] = useState<Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>>([]);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gpsPage, setGpsPage] = useState(1);
-  const [filePage, setFilePage] = useState(1);
   const [gisModalOpen, setGisModalOpen] = useState(false);
 
   // ── Symbol state (form select) ──
@@ -1390,12 +1387,12 @@ export default function DryPortListPage() {
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="announcementDecisionNumber" {...labelProps('Quyết định công bố số')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.announcementDecisionNumber ? 'error' : undefined} help={atMax.announcementDecisionNumber ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-                  <Input placeholder="VD: Số 123/QĐ-BGTVT" maxLength={20} showCount style={inputStyle} />
+                  <Input placeholder="Nhập quyết định công bố số" maxLength={20} showCount style={inputStyle} />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item name="announcementDecisionDate" {...labelProps('Ngày ra quyết định công bố')} style={{ marginBottom: spaceFormField }}>
-                  <DatePicker placeholder="Chọn ngày..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                  <DatePicker placeholder="Chọn ngày ra quyết định công bố" format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
                 </Form.Item>
               </Col>
             </Row>
@@ -1495,51 +1492,13 @@ export default function DryPortListPage() {
       key: 'files',
       label: `File đính kèm (${uploadFileList.length})`,
       children: (
-        <div style={drawerFormScrollStyle}>
-          <div style={{ marginBottom: spaceMd }}>
-            <Upload.Dragger
-              beforeUpload={handleAddFile}
-              showUploadList={false}
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif"
-              multiple
-              style={{ background: '#fafbfc', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, padding: '24px 16px' }}
-            >
-              <p style={{ marginBottom: 8 }}>
-                <InboxOutlined style={{ fontSize: 44, color: actionPrimary }} />
-              </p>
-              <p style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: textPrimary, marginBottom: 4 }}>
-                Kéo thả tệp vào đây hoặc nhấp để chọn tệp tải lên
-              </p>
-              <p style={{ fontSize: fontSizeSm, color: textTertiary, margin: 0 }}>
-                Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Mỗi file ≤ 20MB.
-              </p>
-            </Upload.Dragger>
-          </div>
-          <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-            <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
-              Danh sách tệp đính kèm ({uploadFileList.length})
-            </span>
-          </div>
-          <Table
-            size="small"
-            pagination={uploadFileList.length > 10 ? { current: filePage, pageSize: 10, total: uploadFileList.length, onChange: (p) => setFilePage(p), showSizeChanger: false, size: 'small' } : false}
-            dataSource={uploadFileList.map((f, i) => ({ ...f, key: f.uid, _idx: i, name: f.name }))}
-            rowKey={(r: any) => r.uid || r._idx}
-            locale={{ emptyText: 'Chưa có tài liệu đính kèm nào' }}
-            scroll={{ x: 720 }}
-            columns={[
-              { title: 'STT', width: 60, align: 'center' as const, render: (_v: any, _r: any, idx?: number) => (filePage - 1) * 10 + (idx ?? 0) + 1 },
-              { title: 'Tên tài liệu', key: 'name', dataIndex: 'name', render: (name: string) => (<span title={name} style={{ fontSize: fontSizeMd, color: actionPrimary, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontWeight: fontWeightMedium, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}><FileOutlined /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span></span>) },
-              { title: 'Dung lượng', key: 'size', width: 120, align: 'right' as const, render: (_v: any, rec: any) => rec.size ? (rec.size > 1024 * 1024 ? `${(rec.size / (1024 * 1024)).toFixed(2)} MB` : `${(rec.size / 1024).toFixed(1)} KB`) : '—' },
-              { title: 'Người tải lên', key: 'uploadedBy', width: 180, render: (_v: any, rec: any) => (rec.uploadedBy ? (userMap.get(rec.uploadedBy) || rec.uploadedBy) : (currentUser?.fullName || currentUser?.username || '—')) },
-              { title: 'Ngày tải lên', key: 'uploadedAt', width: 160, align: 'center' as const, render: (_v: any, rec: any) => (rec.uploadedAt ? dayjs(rec.uploadedAt).format('DD/MM/YYYY HH:mm') : (rec.uploadedDate ? dayjs(rec.uploadedDate).format('DD/MM/YYYY HH:mm') : '—')) },
-              { title: '', key: 'actions', width: 80, align: 'center' as const, render: (_v: any, record: any) => (<Button type="text" danger icon={<DeleteOutlined />} onClick={() => setUploadFileList(uploadFileList.filter((x) => x.uid !== record.uid))} />) },
-            ]}
-          />
-          <div style={{ marginTop: spaceSm }}>
-            <span style={uploadHintStyle}>Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤20MB.</span>
-          </div>
-        </div>
+        <InfrastructureAttachmentTab
+          attachments={uploadFileList.map((f) => ({ id: f.uid, fileName: f.name, fileSize: f.size, ...f }))}
+          readonly={false}
+          onUpload={(file) => { handleAddFile(file); return false; }}
+          onDelete={(uid) => { setUploadFileList((prev) => prev.filter((x) => x.uid !== uid)); }}
+          onDownload={(_uid, name) => { toast.info(`Đang tải xuống tệp: ${name}`); }}
+        />
       ),
     },
   ]);
@@ -1648,7 +1607,7 @@ export default function DryPortListPage() {
       </FilterTableLayout>
 
       {/* Detail Drawer */}
-      <Drawer {...drawerProps}
+      <Drawer {...drawerProps} size={1000}
         title={
           <span style={drawerTitleStyle}>Chi tiết cảng cạn{detailRecord ? ` - ${detailRecord.dryPortName}` : ''}</span>
         }

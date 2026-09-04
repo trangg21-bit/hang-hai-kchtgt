@@ -20,6 +20,10 @@ public class GisGeometryTypeConverter implements AttributeConverter<GisGeometryT
                 return type;
             }
         }
+        // Fallback an toàn cho dữ liệu legacy hoặc 0-indexed ordinal (0 -> POINT)
+        if (dbData == 0) {
+            return GisGeometryType.POINT;
+        }
         throw new IllegalArgumentException("Unknown database value for GisGeometryType: " + dbData);
     }
 }

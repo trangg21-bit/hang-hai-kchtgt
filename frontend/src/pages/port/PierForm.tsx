@@ -1,7 +1,8 @@
 import { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react';
-import { Tabs, Row, Col, Input, Select, InputNumber, DatePicker, Switch, Form, Upload, Space, Button, Table, Modal } from 'antd';
+import { Tabs, Row, Col, Input, Select, InputNumber, DatePicker, Switch, Form, Space, Button, Modal } from 'antd';
 import DetailTable from '../../components/shared/DetailTable';
-import { PlusOutlined, DeleteOutlined, FileOutlined, InboxOutlined, DownloadOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import { PlusOutlined, DeleteOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { pierCRUD, portCRUD, berthCRUD } from '../../services/portService';
 import type { Pier } from '../../types/port';
@@ -18,11 +19,11 @@ import { fmtInputNumber } from '../../utils/numFmt';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { colors, DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import {
-  textPrimary, textTertiary, borderDefault, actionPrimary, statusCritical,
-  fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
-  radiusPill, radiusMd, spaceSm, spaceMd, spaceFormField,
+  textTertiary, borderDefault, actionPrimary, statusCritical,
+  fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
+  radiusPill, radiusMd, spaceSm, spaceFormField,
   surfaceCard, readonlyInputStyle, sidebarBg,
-  primaryButtonStyle, outlineButtonStyle, drawerTabBarStyle, drawerTabContentStyle, drawerFormScrollStyle,
+  primaryButtonStyle, outlineButtonStyle, drawerTabBarStyle, drawerFormScrollStyle,
 } from '../../themetokenchk';
 
 type SaveAction = 'DRAFT' | 'SUBMIT' | 'SAVE_AND_APPROVE' | 'APPROVED' | 'UPDATE';
@@ -137,8 +138,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
   const [coordinateList, setCoordinateList] = useState<Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>>([]);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gisModalOpen, setGisModalOpen] = useState(false);
-  const [gpsPage, setGpsPage] = useState(1);
-  const [filePage, setFilePage] = useState(1);
+  const [gpsPage] = useState(1);
   const [indicatorOpen, setIndicatorOpen] = useState(true);
   const [athhPlanOpen, setAthhPlanOpen] = useState(true);
   const [announcementOpen, setAnnouncementOpen] = useState(true);
@@ -410,101 +410,19 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
       )}
     </div>) },
     // Tab 4: File đính kèm
-    { key: 'files', label: `File đính kèm (${uploadedFiles.length})`, children: (<div style={drawerFormScrollStyle}>
-      <div style={{ marginBottom: spaceMd }}>
-        <Upload.Dragger
-          beforeUpload={handleBeforeUpload}
-          showUploadList={false}
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif"
-          multiple
-          style={{ background: '#fafbfc', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, padding: '24px 16px' }}
-        >
-          <p style={{ marginBottom: 8 }}>
-            <InboxOutlined style={{ fontSize: 44, color: actionPrimary }} />
-          </p>
-          <p style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: textPrimary, marginBottom: 4 }}>
-            Kéo thả tệp vào đây hoặc nhấp để chọn tệp tải lên
-          </p>
-          <p style={{ fontSize: fontSizeSm, color: textTertiary, margin: 0 }}>
-            Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Mỗi file ≤ 20MB.
-          </p>
-        </Upload.Dragger>
-      </div>
-      <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-        <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
-          Danh sách tệp đính kèm ({uploadedFiles.length})
-        </span>
-      </div>
-      <Table
-        size="small"
-        pagination={uploadedFiles.length > 10 ? {
-          current: filePage,
-          pageSize: 10,
-          total: uploadedFiles.length,
-          onChange: (p) => setFilePage(p),
-          showSizeChanger: false,
-          size: 'small',
-        } : false}
-        dataSource={uploadedFiles.map((f, i) => ({ ...f, key: f.uid, _idx: i, name: f.name }))}
-        rowKey={(r) => r.uid || r._idx}
-        locale={{ emptyText: 'Chưa có tài liệu đính kèm nào' }}
-        scroll={{ x: 720 }}
-        columns={[
-          {
-            title: 'STT',
-            width: 60,
-            align: 'center',
-            render: (_v, _r, idx) => (filePage - 1) * 10 + idx + 1,
-          },
-          {
-            title: 'Tên tài liệu',
-            key: 'name',
-            dataIndex: 'name',
-            render: (name: string) => (
-              <a
-                onClick={() => toast.info(`Đang tải xuống tệp: ${name}`)}
-                style={{ fontSize: fontSizeMd, color: actionPrimary, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontWeight: fontWeightMedium, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
-              >
-                <FileOutlined />
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-              </a>
-            ),
-          },
-          {
-            title: 'Dung lượng',
-            key: 'size',
-            width: 120,
-            align: 'right' as const,
-            render: (_v, rec: any) => rec.size ? (rec.size > 1024 * 1024 ? `${(rec.size / (1024 * 1024)).toFixed(2)} MB` : `${(rec.size / 1024).toFixed(1)} KB`) : '—',
-          },
-          {
-            title: 'Người tải lên',
-            key: 'uploadedBy',
-            width: 180,
-            render: () => currentUser?.fullName || currentUser?.username || '—',
-          },
-          {
-            title: 'Ngày tải lên',
-            key: 'uploadedDate',
-            width: 160,
-            align: 'center' as const,
-            render: (_v, rec: any) => rec.uploadedDate ? dayjs(rec.uploadedDate).format('DD/MM/YYYY HH:mm') : '—',
-          },
-          {
-            title: '',
-            key: 'actions',
-            width: 80,
-            align: 'center',
-            render: (_v, record: any) => (
-              <Space size={4}>
-                <Button type="text" icon={<DownloadOutlined style={{ color: actionPrimary }} />} onClick={() => toast.info(`Đang tải xuống tệp: ${record.name}`)} />
-                <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleRemoveFile(record)} />
-              </Space>
-            ),
-          },
-        ]}
-      />
-    </div>) },
+    {
+      key: 'files',
+      label: `File đính kèm (${uploadedFiles.length})`,
+      children: (
+        <InfrastructureAttachmentTab
+          attachments={uploadedFiles.map((f) => ({ id: f.uid, fileName: f.name, fileSize: f.size, ...f }))}
+          readonly={false}
+          onUpload={(file) => { handleBeforeUpload(file); return false; }}
+          onDelete={(uid) => { handleRemoveFile({ uid } as UploadFile); }}
+          onDownload={(_uid, name) => { toast.info(`Đang tải xuống tệp: ${name}`); }}
+        />
+      ),
+    },
   ];
 
   return (

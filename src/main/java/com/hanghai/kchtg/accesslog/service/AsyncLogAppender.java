@@ -65,15 +65,12 @@ public class AsyncLogAppender {
                     // Drain up to batchSize entries from the queue
                     queue.drainTo(batch, batchSize);
                     if (!batch.isEmpty()) {
-                        repository.saveAll(batch);
-                        log.debug("Batch saved: {} entries", batch.size());
+                        saveBatchSafely(batch);
                     } else {
                         // Wait for new entries or interrupt
                         AccessLog entry = queue.poll(2, java.util.concurrent.TimeUnit.SECONDS);
                         if (entry != null) {
-                            batch.add(entry);
-                            repository.saveAll(batch);
-                            log.debug("Batch saved: 1 entry");
+                            saveSingleSafely(entry);
                         }
                     }
                 } catch (InterruptedException e) {
@@ -87,5 +84,26 @@ public class AsyncLogAppender {
         }, "log-appender-consumer");
         consumer.setDaemon(true);
         consumer.start();
+    }
+
+    private void saveBatchSafely(List<AccessLog> batch) {
+        try {
+            repository.saveAll(batch);
+            log.debug("Batch saved: {} entries", batch.size());
+        } catch (Exception e) {
+            log.warn("Batch save failed in log appender ({}), fallback to save individually", e.getMessage());
+            for (AccessLog entry : batch) {
+                saveSingleSafely(entry);
+            }
+        }
+    }
+
+    private void saveSingleSafely(AccessLog entry) {
+        try {
+            repository.save(entry);
+            log.debug("Entry saved: 1 entry");
+        } catch (Exception ex) {
+            log.error("Failed to save log entry: {}", ex.getMessage());
+        }
     }
 }

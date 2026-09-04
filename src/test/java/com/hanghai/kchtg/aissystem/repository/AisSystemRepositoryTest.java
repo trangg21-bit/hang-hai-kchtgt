@@ -118,7 +118,13 @@ class AisSystemRepositoryTest {
                 ApprovalStatus.REJECTED_LEVEL1, null, null, null, null, null,
                 PageRequest.of(0, 20, JpaSort.unsafe(Sort.Direction.DESC, "t.createdAt")));
 
-        assertEquals(3, result.getTotalElements());
+        assertEquals(2, result.getTotalElements());
+
+        var resultL2 = repository.search(false, List.of(), null, null, null, null, null, null, null,
+                ApprovalStatus.REJECTED_LEVEL2, null, null, null, null, null,
+                PageRequest.of(0, 20, JpaSort.unsafe(Sort.Direction.DESC, "t.createdAt")));
+
+        assertEquals(1, resultL2.getTotalElements());
     }
 
     /** Join thêm để sắp xếp không được nhân bản dòng. */

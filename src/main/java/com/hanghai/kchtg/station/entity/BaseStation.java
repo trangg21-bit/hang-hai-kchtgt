@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.station.entity;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

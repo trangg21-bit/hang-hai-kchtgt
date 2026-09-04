@@ -41,6 +41,7 @@ import { useSearchParams } from "react-router-dom";
 import { DEFAULT_OPERATING_ORGANIZATIONS } from "../operatingOrganizationsData";
 import {
   fetchVtsAssistList,
+  fetchVtsAssistById,
   deleteVtsAssist,
   submitVtsAssist,
   approveVtsAssistC1,
@@ -393,9 +394,14 @@ const normalizeGeometryType = (value: unknown): 'POINT' | 'LINE' | 'POLYGON' =>
 
 const VtsAssistListPage = () => {
   const [searchParams] = useSearchParams();
+  const linkedAction = searchParams.get("action");
+  const linkedRecordId = searchParams.get("id");
+  const isIframeModal = window.parent !== window.self;
+  const isMapLinkedView = isIframeModal && (linkedAction === "edit" || linkedAction === "detail");
+  const handledLinkedRecordRef = useRef<string | null>(null);
+
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const currentUser = useAuthStore((s) => s.user);
-  const isIframeModal = window.parent !== window.self;
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState<string | null>(null);
   const [data, setData] = useState<VtsAssistResponse[]>([]);
@@ -1311,6 +1317,61 @@ const VtsAssistListPage = () => {
     );
   };
 
+  const openUpdateDrawer = useCallback((record: VtsAssistResponse) => {
+    setUpdateTarget(record);
+    setUploadFileList([]);
+    void fetchVtsAssistAttachments(record.id).then((list: any[]) => {
+      setUploadFileList(list.map((a: any) => ({ uid: a.id, name: a.fileName, size: a.fileSize, status: 'done' as const })));
+    }).catch(() => { /* ignore */ });
+    const safeRecord = {
+      ...record,
+      operationalStatus: record.operationalStatus != null
+        ? (() => {
+            switch (record.operationalStatus) {
+              case "NOT_YET_OPERATIONAL": return 0;
+              case "OPERATIONAL": return 1;
+              case "SUSPENDED": return 2;
+              default: {
+                const num = Number(record.operationalStatus);
+                return num >= 0 && num <= 2 ? num : 1;
+              }
+            }
+          })()
+        : null,
+    };
+    updateForm.setFieldsValue(safeRecord);
+    setUpdateModalOpen(true);
+  }, [updateForm, setUpdateModalOpen, setUpdateTarget, setUploadFileList]);
+
+  useEffect(() => {
+    if (!isMapLinkedView || !linkedRecordId || !linkedAction) return;
+
+    const requestKey = `${linkedAction}:${linkedRecordId}`;
+    if (handledLinkedRecordRef.current === requestKey) return;
+    handledLinkedRecordRef.current = requestKey;
+
+    let active = true;
+    void fetchVtsAssistById(linkedRecordId)
+      .then((record) => {
+        if (!active) return;
+        if (linkedAction === "edit") {
+          openUpdateDrawer(record);
+        } else {
+          setSelectedRecord(record);
+          setDetailDrawerOpen(true);
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        handledLinkedRecordRef.current = null;
+        toast.error("Không thể tải hồ sơ vts assist");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isMapLinkedView, linkedAction, linkedRecordId, openUpdateDrawer]);
+
   // ── rowActions callback ──────────────────────────────────────────
   const rowActions = useCallback(
     (record: VtsAssistResponse) => {
@@ -1327,24 +1388,6 @@ const VtsAssistListPage = () => {
             }).catch(() => setDetailFiles([]));
           },
         },
-        {
-          key: "history",
-          label: "Lịch sử",
-          icon: <HistoryOutlined />,
-          onClick: () => {
-            setSelectedRecord(record);
-            setHistoryEntityName(record.deviceName || '');
-            setHistoryModalVisible(true);
-            setHistoryRecords([]);
-            setLoadingHistory(false);
-            setLoadingMoreHistory(false);
-            setHasMoreHistory(true);
-            setHistorySearch('');
-            setHistoryDateFrom('');
-            setHistoryDateTo('');
-            setHistoryPage(0);
-          },
-        },
       ];
 
       // Cho phép cập nhật bất kể trạng thái phê duyệt (yêu cầu nghiệp vụ 2026-08-26).
@@ -1353,34 +1396,28 @@ const VtsAssistListPage = () => {
           key: "edit",
           label: "Chỉnh sửa",
           icon: <EditOutlined />,
-          onClick: () => {
-            setUpdateTarget(record);
-            setUploadFileList([]);
-            void fetchVtsAssistAttachments(record.id).then((list: any[]) => {
-              setUploadFileList(list.map((a: any) => ({ uid: a.id, name: a.fileName, size: a.fileSize, status: 'done' as const })));
-            }).catch(() => { /* ignore */ });
-            // Convert operationalStatus từ string enum (backend @JsonValue) sang số (frontend dropdown)
-            const safeRecord = {
-              ...record,
-              operationalStatus: record.operationalStatus != null
-                ? (() => {
-                    switch (record.operationalStatus) {
-                      case "NOT_YET_OPERATIONAL": return 0;
-                      case "OPERATIONAL": return 1;
-                      case "SUSPENDED": return 2;
-                      default: {
-                        const num = Number(record.operationalStatus);
-                        return num >= 0 && num <= 2 ? num : 1;
-                      }
-                    }
-                  })()
-                : null,
-            };
-            updateForm.setFieldsValue(safeRecord);
-            setUpdateModalOpen(true);
-          },
+          onClick: () => openUpdateDrawer(record),
         });
       }
+
+      actions.push({
+        key: "history",
+        label: "Lịch sử",
+        icon: <HistoryOutlined />,
+        onClick: () => {
+          setSelectedRecord(record);
+          setHistoryEntityName(record.deviceName || '');
+          setHistoryModalVisible(true);
+          setHistoryRecords([]);
+          setLoadingHistory(false);
+          setLoadingMoreHistory(false);
+          setHasMoreHistory(true);
+          setHistorySearch('');
+          setHistoryDateFrom('');
+          setHistoryDateTo('');
+          setHistoryPage(0);
+        },
+      });
 
       // DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2 + vtsassist:update → Gửi phê duyệt (submitVtsAssist)
       if (
@@ -2265,12 +2302,12 @@ const VtsAssistListPage = () => {
                         { key: 'approvalContentLevel2', label: 'Nội dung phê duyệt', value: selectedRecord.approvalContentLevel2 || '—', fullWidth: true },
                         { key: 'approvedDateLevel2', label: 'Ngày phê duyệt cấp Cục', value: selectedRecord.approvedDateLevel2 ? formatDate(selectedRecord.approvedDateLevel2) : '—' },
                         { key: 'approvedByLevel2', label: 'Cán bộ phê duyệt cấp Cục', value: selectedRecord.approverLevel2Name || '—' },
-                        { key: 'approvalContentExtra', label: 'Nội dung phê duyệt', value: selectedRecord.rejectionReason || '—', fullWidth: true },
+                        ...(selectedRecord.rejectionReason ? [{ key: 'rejectionReason', label: 'Lý do từ chối', value: selectedRecord.rejectionReason, fullWidth: true, color: statusCritical }] : []),
                         { key: 'status', label: 'Trạng thái', value: renderApprovalBadge(selectedRecord.approvalStatus), fullWidth: true },
                       ].map((row) => (
                         <div key={row.key} className="detail-row" style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
                           <span className="detail-label">{row.label}</span>
-                          <span className="detail-value">{row.value}</span>
+                          <span className="detail-value" style={row.color ? { color: row.color } : undefined}>{row.value}</span>
                         </div>
                       ))}
                     </div>

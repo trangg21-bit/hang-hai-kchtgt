@@ -20,6 +20,12 @@ public class GisSpatialObjectTypeConverter implements AttributeConverter<GisSpat
                 return type;
             }
         }
-        throw new IllegalArgumentException("Unknown database value for GisSpatialObjectType: " + dbData);
+        for (GisSpatialObjectType type : GisSpatialObjectType.values()) {
+            if (type.ordinal() == dbData) {
+                return type;
+            }
+        }
+        // Fallback an toàn cho dữ liệu legacy hoặc không xác định (tương tự PointObjectTypeConverter)
+        return GisSpatialObjectType.POINT_OTHER;
     }
 }

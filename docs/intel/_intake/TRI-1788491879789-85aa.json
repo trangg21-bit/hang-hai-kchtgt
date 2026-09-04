@@ -1,0 +1,145 @@
+{
+  "triage_id": "TRI-1788491879789-85aa",
+  "created_at": 1788491879790,
+  "request_summary": "Đồng bộ giao diện tab \"File đính kèm\" trong form Thêm mới/Chỉnh sửa của 10 module (bến cảng, cầu cảng, cảng cạn, khu neo đậu, khu chuyển tải, khu tránh trú bão, cơ sở sửa chữa đóng tàu, nhà trạm phao tiêu, phao tiêu, đài TTDH) giống hệt chuẩn của Quản lý cảng biển — thay inline Upload.Dragger+Table bằng component dùng chung InfrastructureAttachmentTab.",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "frontend/src/pages/dai-ttdh/DaiTtdhForm.tsx",
+      "frontend/src/pages/port/BerthForm.tsx",
+      "frontend/src/pages/port/DryPortListPage.tsx",
+      "frontend/src/pages/port/PierForm.tsx",
+      "frontend/src/pages/ship-repair-yard/ShipRepairYardForm.tsx",
+      "frontend/src/pages/storm-shelter/StormShelterForm.tsx",
+      "frontend/src/pages/transfer-area/TransferAreaForm.tsx",
+      "frontend/src/services/buoy-station/BuoyStationFormContent.tsx",
+      "frontend/src/services/buoy/BuoyFormContent.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "frontend/src/pages/dai-ttdh/DaiTtdhForm.tsx",
+      "frontend/src/pages/port/BerthForm.tsx",
+      "frontend/src/pages/port/DryPortListPage.tsx",
+      "frontend/src/pages/port/PierForm.tsx",
+      "frontend/src/pages/ship-repair-yard/ShipRepairYardForm.tsx",
+      "frontend/src/pages/storm-shelter/StormShelterForm.tsx",
+      "frontend/src/pages/transfer-area/TransferAreaForm.tsx",
+      "frontend/src/services/buoy-station/BuoyStationFormContent.tsx",
+      "frontend/src/services/buoy/BuoyFormContent.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C2: 10 edit-target files exceed the inline gate (10 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Drawer form Thêm mới / Chỉnh sửa của từng màn hình quản lý, tab \"File đính kèm\"",
+  "blast_radius": 10,
+  "done_oracle": "Mở form Thêm mới/Chỉnh sửa của từng module trong 10 module, tab \"File đính kèm\" hiển thị giống hệt cảng biển: khung Upload.Dragger chuẩn (cao 104px, padding 12px, icon 28px) + bảng DetailTable cột STT/Tên tài liệu/Dung lượng/Người tải lên/Ngày tải lên/Thao tác (tải xuống + xóa), validation định dạng + dung lượng ≤20MB, không còn Table thô lệch style.",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/port/BerthForm.tsx",
+      "line": 561,
+      "quote": "{ key: 'files', label: `File đính kèm (${uploadedFiles.length})`, children: (<div style={drawerFormScrollStyle}>",
+      "source_hash": "4d54838ebb681b9d89994a1a3d4e76c726e28190e846ec48c13f847461320f5e",
+      "quote_hash": "07920c76811d3d636815e4ff88f9e27ddbcf8ce6562dda1b31233ff3f816c78c",
+      "note": "Tab File đính kèm hiện đang inline Upload.Dragger + Table thô"
+    },
+    {
+      "file": "frontend/src/pages/port/PierForm.tsx",
+      "line": 413,
+      "quote": "{ key: 'files', label: `File đính kèm (${uploadedFiles.length})`, children: (<div style={drawerFormScrollStyle}>",
+      "source_hash": "2af381c78b01082dc44faff81d8185118b386ce8ac5798bc08fd316f80b65815",
+      "quote_hash": "07920c76811d3d636815e4ff88f9e27ddbcf8ce6562dda1b31233ff3f816c78c",
+      "note": "Cầu cảng — inline tab"
+    },
+    {
+      "file": "frontend/src/pages/port/DryPortListPage.tsx",
+      "line": 1496,
+      "quote": "label: `File đính kèm (${uploadFileList.length})`,",
+      "source_hash": "12adec0a808cd4e2a6b734949310c55fcd3915bbc700d16906df68eaf965d22b",
+      "quote_hash": "252f5683d48faa570f3b78a385570d882594cdd8b200710f6b1ad7662417a068",
+      "note": "Cảng cạn — form inline trong ListPage"
+    },
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "line": 841,
+      "quote": "{ key: 'files', label: `File đính kèm (${uploadedFiles.length})`, children: (<div style={drawerFormScrollStyle}>",
+      "source_hash": "dc3c3ca10124a204f0f44e390ffa8397657a71085fdd2ee64f9dd0923d7b577b",
+      "quote_hash": "07920c76811d3d636815e4ff88f9e27ddbcf8ce6562dda1b31233ff3f816c78c",
+      "note": "Khu neo đậu"
+    },
+    {
+      "file": "frontend/src/pages/transfer-area/TransferAreaForm.tsx",
+      "line": 904,
+      "quote": "{ key: 'files', label: `File đính kèm (${uploadedFiles.length})`, children: (<div style={drawerFormScrollStyle}>",
+      "source_hash": "1b2f8cbba66e68c76e6b247de29e0f401053352303b9c1dd3ee6b8fc4142849f",
+      "quote_hash": "07920c76811d3d636815e4ff88f9e27ddbcf8ce6562dda1b31233ff3f816c78c",
+      "note": "Khu chuyển tải"
+    },
+    {
+      "file": "frontend/src/pages/storm-shelter/StormShelterForm.tsx",
+      "line": 851,
+      "quote": "{ key: 'files', label: 'File đính kèm', children: (<div style={drawerFormScrollStyle}>",
+      "source_hash": "26009a3cede4f5bb68b79163b90456189489fe4e993dd13edc8809fa7349da51",
+      "quote_hash": "96f44df4b8f81c874509bac09b8018403b5e2cefb27181f7c084f44822ba21e0",
+      "note": "Khu tránh trú bão"
+    },
+    {
+      "file": "frontend/src/pages/ship-repair-yard/ShipRepairYardForm.tsx",
+      "line": 606,
+      "quote": "{ key: 'files', label: 'File đính kèm', children: (<div style={drawerFormScrollStyle}>",
+      "source_hash": "76a30cedf560e9e2ae9ba6e461444b34a8180996c5fe80e322d2b91eb1f4c7c9",
+      "quote_hash": "96f44df4b8f81c874509bac09b8018403b5e2cefb27181f7c084f44822ba21e0",
+      "note": "Cơ sở sửa chữa đóng tàu"
+    },
+    {
+      "file": "frontend/src/services/buoy-station/BuoyStationFormContent.tsx",
+      "line": 546,
+      "quote": "{ key: 'files', label: 'File đính kèm', children: (<div style={drawerFormScrollStyle}>",
+      "source_hash": "4a2c9cf440813d380836e2c455f91f4898a73233e42dd82cf4705d94c7d4c37f",
+      "quote_hash": "96f44df4b8f81c874509bac09b8018403b5e2cefb27181f7c084f44822ba21e0",
+      "note": "Nhà trạm phao tiêu"
+    },
+    {
+      "file": "frontend/src/services/buoy/BuoyFormContent.tsx",
+      "line": 602,
+      "quote": "label: `File đính kèm (${uploadFileList.length})`,",
+      "source_hash": "cc3320b49579a77fe2ec26562e898a29d2cdc7c2464cfbca18d4f650d24910f5",
+      "quote_hash": "252f5683d48faa570f3b78a385570d882594cdd8b200710f6b1ad7662417a068",
+      "note": "Quản lý phao tiêu"
+    },
+    {
+      "file": "frontend/src/pages/dai-ttdh/DaiTtdhForm.tsx",
+      "line": 527,
+      "quote": "{ key: 'files', label: 'File đính kèm', children: (<div style={drawerFormScrollStyle}>",
+      "source_hash": "8a7b7c092731fd4cfc3c810e9c1e69cfb2011f01dd83e5f21a1bfdf30e910959",
+      "quote_hash": "96f44df4b8f81c874509bac09b8018403b5e2cefb27181f7c084f44822ba21e0",
+      "note": "Đài TTDH"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "04f37dba5c2a15e36bd3a408a1222f8101915a99",
+    "dirty": true,
+    "captured_at": 1788491880026
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

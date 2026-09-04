@@ -12,7 +12,6 @@ import com.hanghai.kchtg.station.dto.haiphong.CoastalStationHaiphongHistoryRespo
 import com.hanghai.kchtg.station.dto.haiphong.CoastalStationHaiphongResponse;
 import com.hanghai.kchtg.station.entity.CoastalStationHaiphong;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.service.CoastalStationHaiphongService;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -90,8 +89,6 @@ class CoastalStationHaiphongControllerTest {
         entity.setLocationAddress("1 Port Road, Haiphong");
         entity.setContactPerson("Le Thi B");
         entity.setContactPhone("+84999000222");
-        entity.setIsActive(true);
-        entity.setStatus(StationStatus.PENDING_APPROVAL);
         entity.setApprovalStatus(ApprovalStatus.PROPOSED);
         entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_0);
         return entity;
@@ -100,8 +97,8 @@ class CoastalStationHaiphongControllerTest {
     private CoastalStationHaiphongResponse makeResponse(UUID id) {
         return CoastalStationHaiphongResponse.builder()
                 .id(id)
-                .stationCode("HP-001")
-                .stationName("Haiphong Station")
+                .code("HP-001")
+                .name("Haiphong Station")
                 .portName("Haiphong Port")
                 .district("Hong Bang")
                 .ward("Thuong Ly")
@@ -117,7 +114,6 @@ class CoastalStationHaiphongControllerTest {
                 .locationAddress("1 Port Road, Haiphong")
                 .contactPerson("Le Thi B")
                 .contactPhone("+84999000222")
-                .status(StationStatus.PENDING_APPROVAL)
                 .approvalStatus(ApprovalStatus.PROPOSED)
                 .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_0)
                 .build();
@@ -294,7 +290,6 @@ class CoastalStationHaiphongControllerTest {
         CoastalStationHaiphong entity = makeEntity(id);
         entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1);
         entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
-        entity.setStatus(StationStatus.APPROVED_L1);
         when(service.approveStation(eq(id), eq(true), any(Long.class))).thenReturn(entity);
 
         String json = """

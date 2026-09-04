@@ -88,7 +88,6 @@ class CoastalStationLRITControllerTest {
         entity.setDataFormat("AIS");
         entity.setCommunicationChannel("VHF Ch 16");
         entity.setCoverageArea("Territorial");
-        entity.setIsActive(true);
         entity.setStatus(StationStatus.PENDING_APPROVAL);
         entity.setApprovalStatus(ApprovalStatus.PROPOSED);
         entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_0);

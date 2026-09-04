@@ -49,6 +49,8 @@ public class BerthResponse {
     private Integer coordinateSystem;
     private Integer displayRule;
     private String operator;
+    private UUID operatingOrgId;
+    private String operatingOrgName;
     private BigDecimal totalArea;
     private BigDecimal designThroughput;
     private BigDecimal currentThroughput;

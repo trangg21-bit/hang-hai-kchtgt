@@ -4,7 +4,7 @@ import com.hanghai.kchtg.common.entity.ApprovableEntity;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
+import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -35,9 +35,6 @@ public class CoastalStationInmarsat extends BaseEntity implements ApprovableEnti
     @Column(name = "org_unit_id")
     private UUID orgUnitId;
 
-    @Column(name = "unit_id")
-    private UUID unitId;
-
     @Column(name = "operating_org_id")
     private UUID operatingOrgId;
 
@@ -47,38 +44,17 @@ public class CoastalStationInmarsat extends BaseEntity implements ApprovableEnti
     @Column(name = "code", length = 50)
     private String code;
 
-    @Column(name = "device_code", length = 50)
-    private String deviceCode;
-
     @Column(name = "name", length = 255)
     private String name;
-
-    @Column(name = "station_name", length = 255)
-    private String stationName;
-
-    @Column(name = "description", length = 1000)
-    private String description;
 
     @Column(name = "location_address", length = 1000)
     private String locationAddress;
 
-    @Column(name = "location_detail", columnDefinition = "TEXT")
-    private String locationDetail;
-
-    @Column(name = "condition_status", length = 50)
-    private String conditionStatus = "OPERATIONAL";
-
     @Enumerated(EnumType.ORDINAL)
-    @Column(name = "status", columnDefinition = "smallint default 0")
-    private StationStatus status = StationStatus.DRAFT;
-
-    @Column(name = "is_active")
-    private Boolean isActive = true;
+    @Column(name = "condition_status", columnDefinition = "SMALLINT")
+    private ConditionStatus conditionStatus = ConditionStatus.OPERATIONAL;
 
     // --- Thông tin đặc thù Inmarsat ---
-    @Column(name = "coverage_zone", length = 1000)
-    private String coverageZone;
-
     @Column(name = "coverage_area", length = 1000)
     private String coverageArea;
 
@@ -88,45 +64,28 @@ public class CoastalStationInmarsat extends BaseEntity implements ApprovableEnti
     @Column(name = "frequency", length = 500)
     private String frequency;
 
-    @Column(name = "modem_type", length = 500)
-    private String modemType;
-
-    @Column(name = "sar_code", length = 500)
-    private String sarCode;
-
-    @Column(name = "satellite_system", length = 500)
-    private String satelliteSystem;
-
-    @Column(name = "notes", columnDefinition = "TEXT")
+    @Column(name = "notes", length = 2000)
     private String notes;
 
-    @Column(name = "contact_person", length = 500)
-    private String contactPerson;
-
-    @Column(name = "contact_phone", length = 500)
-    private String contactPhone;
-
-    // --- Thông tin GIS ---
+    // --- Thông tin GIS tập trung (liên kết qua spatial_id và symbol_id) ---
     @Column(name = "spatial_id")
     private UUID spatialId;
 
-    @Column(name = "object_type", length = 50)
-    private String objectType;
+    @Column(name = "symbol_id")
+    private UUID symbolId;
 
-    @Column(name = "symbol", length = 100)
-    private String symbol;
-
-    @Column(name = "coordinate_system", length = 50)
-    private String coordinateSystem = "WGS84";
-
-    @Column(name = "display_rule", length = 500)
-    private String displayRule;
-
-    @Column(name = "latitude", precision = 10, scale = 6)
+    @Transient
     private BigDecimal latitude;
 
-    @Column(name = "longitude", precision = 10, scale = 6)
+    @Transient
     private BigDecimal longitude;
+
+    @Transient
+    private String objectType;
+
+    // Alias tương thích chuẩn note
+    public String getNote() { return this.notes; }
+    public void setNote(String note) { this.notes = note; }
 
     // --- Quy trình phê duyệt 2 cấp chuẩn (M-1006) ---
     @Enumerated(EnumType.ORDINAL)
@@ -164,6 +123,12 @@ public class CoastalStationInmarsat extends BaseEntity implements ApprovableEnti
     @Column(name = "rejection_reason", length = 1000)
     private String rejectionReason;
 
+    @Column(name = "level1_approval_content", length = 2000)
+    private String level1ApprovalContent;
+
+    @Column(name = "level2_approval_content", length = 2000)
+    private String level2ApprovalContent;
+
     @Override
     public void setApproverLevel1(UUID userId) {
         this.approverLevel1 = userId;
@@ -186,7 +151,41 @@ public class CoastalStationInmarsat extends BaseEntity implements ApprovableEnti
 
     @Override
     public UUID getOrgUnitId() {
-        return this.orgUnitId != null ? this.orgUnitId : this.unitId;
+        return this.orgUnitId;
+    }
+
+    // --- Backward compatibility aliases ---
+    public String getDeviceCode() { return this.code; }
+    public void setDeviceCode(String code) { this.code = code; }
+    public String getStationName() { return this.name; }
+    public void setStationName(String name) { this.name = name; }
+    public String getDescription() { return this.notes; }
+    public void setDescription(String description) { this.notes = description; }
+    public String getCoverageZone() { return this.coverageArea; }
+    public void setCoverageZone(String zone) { this.coverageArea = zone; }
+    public UUID getUnitId() { return this.orgUnitId; }
+    public void setUnitId(UUID unitId) { this.orgUnitId = unitId; }
+    public Boolean getIsActive() { return Boolean.TRUE; }
+    public void setIsActive(Boolean isActive) { /* no-op backward compatibility */ }
+    public String getLocationDetail() { return this.locationAddress; }
+    public void setLocationDetail(String detail) { this.locationAddress = detail; }
+    public String getObjectType() { return this.objectType != null ? this.objectType : "POINT"; }
+    public void setObjectType(String objectType) { this.objectType = objectType; }
+    public String getCoordinateSystem() { return "WGS84"; }
+    public void setCoordinateSystem(String coordinateSystem) { /* no-op */ }
+    public String getDisplayRule() { return "Độ, phút, giây (DMS)"; }
+    public void setDisplayRule(String displayRule) { /* no-op */ }
+    public String getSymbol() { return this.symbolId != null ? this.symbolId.toString() : null; }
+    public void setSymbol(String symbol) {
+        if (symbol != null && !symbol.isBlank()) {
+            try {
+                this.symbolId = UUID.fromString(symbol.trim());
+            } catch (IllegalArgumentException ignored) {
+                // Not a pure UUID; service will resolve code to UUID
+            }
+        } else {
+            this.symbolId = null;
+        }
     }
 
     @PrePersist
@@ -194,33 +193,8 @@ public class CoastalStationInmarsat extends BaseEntity implements ApprovableEnti
         if (this.approvalStatus == null) {
             this.approvalStatus = ApprovalStatus.DRAFT;
         }
-        if (this.status == null) {
-            this.status = StationStatus.DRAFT;
-        }
         if (this.conditionStatus == null) {
-            this.conditionStatus = "OPERATIONAL";
+            this.conditionStatus = ConditionStatus.OPERATIONAL;
         }
-        if (this.code != null && this.deviceCode == null) {
-            this.deviceCode = this.code;
-        } else if (this.deviceCode != null && this.code == null) {
-            this.code = this.deviceCode;
-        }
-        if (this.name != null && this.stationName == null) {
-            this.stationName = this.name;
-        } else if (this.stationName != null && this.name == null) {
-            this.name = this.stationName;
-        }
-        if (this.orgUnitId != null && this.unitId == null) {
-            this.unitId = this.orgUnitId;
-        } else if (this.unitId != null && this.orgUnitId == null) {
-            this.orgUnitId = this.unitId;
-        }
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        if (this.code != null) this.deviceCode = this.code;
-        if (this.name != null) this.stationName = this.name;
-        if (this.orgUnitId != null) this.unitId = this.orgUnitId;
     }
 }

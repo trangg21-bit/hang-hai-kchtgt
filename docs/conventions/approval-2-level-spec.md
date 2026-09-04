@@ -106,6 +106,11 @@ Bảng chuyển trạng thái (khớp mục 7 tài liệu gốc — **mỗi dòn
 
 - Lịch sử thay đổi (`infrastructure_history`) **chỉ lưu lịch sử sau khi hồ sơ đã qua phê duyệt bước cuối (`APPROVED` / Đã duyệt)**.
 - Trong các giai đoạn trước đó (`DRAFT`, `PENDING_APPROVAL`, `APPROVED_LEVEL1`, `REJECTED_LEVEL1`, `REJECTED_LEVEL2`), thông tin người gửi/duyệt và thời điểm phê duyệt được lưu trực tiếp vào các trường metadata của thực thể (`submittedAt`, `submittedBy`, `approverLevel1`, `approvedDateLevel1`, `approverLevel2`, `approvedDateLevel2`, `level1ApprovalContent`, `level2ApprovalContent`, `rejectionReason`) và hiển thị tại mục "Thông tin phê duyệt" trong Drawer chi tiết; không ghi dòng trạng thái chuyển tiếp vào bảng `infrastructure_history`.
+- **Luồng Lưu và phê duyệt trực tiếp từ cấp Cục (Tạo mới hoặc Duyệt trực tiếp)**:
+  Khi người dùng thuộc cấp Cục (có quyền `<resource>:approvec2`) thực hiện hành động **"Lưu và phê duyệt"** khi tạo mới hồ sơ:
+  - Hồ sơ được phê duyệt hoàn tất và chuyển thẳng sang trạng thái `APPROVED` (Đã duyệt).
+  - **Tự động đồng bộ thông tin Cấp 1 (Cảng vụ / Chi cục)**: Hệ thống tự động ghi nhận thông tin cán bộ phê duyệt cấp 1 trên thực thể (`approverLevel1 = currentUserId`, `approvedDateLevel1 = now`, `level1ApprovalContent = "Cấp Cục phê duyệt trực tiếp"`) song hành cùng thông tin cấp 2 (`approverLevel2 = currentUserId`, `approvedDateLevel2 = now`, `level2ApprovalContent = "Đã phê duyệt cấp Cục"`). Điều này đảm bảo mục 'Thông tin phê duyệt' trên Drawer chi tiết luôn hiển thị trọn vẹn dữ liệu của cả 2 cấp, không bị khuyết thiếu (`—`).
+  - **Quy tắc ghi Audit Log (`infrastructure_history`)**: Tuân thủ tuyệt đối quy tắc chỉ ghi nhận nhật ký thay đổi sau khi hồ sơ đã qua phê duyệt cấp cuối (`APPROVED`) và phát sinh chỉnh sửa dữ liệu; các thao tác chuyển trạng thái phê duyệt ban đầu được lưu giữ trên các trường metadata của chính thực thể chứ không ghi đè/sinh dòng giả vào bảng `infrastructure_history`.
 - **Sau khi hồ sơ ĐÃ DUYỆT**: Mọi thao tác chỉnh sửa thông tin, cập nhật tọa độ GIS, biểu tượng, tải lên / xóa tài liệu đính kèm (T12) đều được ghi nhận chi tiết (*Giá trị cũ $\rightarrow$ Giá trị mới*) vào bảng `infrastructure_history` để phục vụ thanh tra và kiểm toán.
 
 ### 3.6. Xóa mềm — quy tắc 11

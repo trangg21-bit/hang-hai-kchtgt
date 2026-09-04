@@ -78,6 +78,7 @@ export interface CreateCctvRequest {
   spatialId?: string | null;
   geometryType?: 'POINT' | 'LINE' | 'POLYGON' | null;
   coordinates?: string | null;
+  action?: 'draft' | 'submit' | 'approve' | string;
 }
 
 // ── UpdateCctvRequest (matches UpdateCctvRequest.java) ──────────────

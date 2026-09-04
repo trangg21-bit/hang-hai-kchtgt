@@ -41,13 +41,13 @@ public class AccessLog {
     private String username;
 
     @NotBlank(message = "Hành động không được để trống")
-    @Size(max = 30, message = "Hành động tối đa 30 ký tự")
-    @Column(nullable = false, length = 30)
+    @Size(max = 100, message = "Hành động tối đa 100 ký tự")
+    @Column(nullable = false, length = 100)
     private String action;
 
     @NotBlank(message = "Phân hệ không được để trống")
-    @Size(max = 50, message = "Phân hệ tối đa 50 ký tự")
-    @Column(nullable = false, length = 50)
+    @Size(max = 100, message = "Phân hệ tối đa 100 ký tự")
+    @Column(nullable = false, length = 100)
     private String module;
 
     @NotBlank(message = "Địa chỉ IP không được để trống")
@@ -58,13 +58,13 @@ public class AccessLog {
     @Column(name = "user_agent", length = 500)
     private String userAgent;
 
-    @Column(name = "email", length = 100)
+    @Column(name = "email", length = 255)
     private String email;
 
-    @Column(name = "org_unit", length = 100)
+    @Column(name = "org_unit", length = 255)
     private String orgUnit;
 
-    @Column(name = "session_id", length = 50)
+    @Column(name = "session_id", length = 100)
     private String sessionId;
 
     @Enumerated(EnumType.STRING)
@@ -85,7 +85,7 @@ public class AccessLog {
     @Column(name = "target_resource", length = 500)
     private String targetResource;
 
-    @Column(name = "request_path", length = 500)
+    @Column(name = "request_path", length = 1000)
     private String requestPath;
 
     @Column(name = "response_code")

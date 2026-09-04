@@ -125,9 +125,11 @@ import { pointObjectService } from '../../services/pointObjectService';
 import { lineObjectService } from '../../services/lineObjectService';
 import { polygonObjectService } from '../../services/polygonObjectService';
 import {
+  everyMapHitGeometryCoordinate,
   findMapGeometryHits,
   geoJsonToMapHitGeometries,
   getMapHitGeometryBounds,
+  isVietnamMapCoordinate,
   normalizeLineCoordinates,
   normalizePointCoordinates,
   normalizePolygonCoordinates,
@@ -562,13 +564,30 @@ const getOrderedKeysAndLabels = (type: string): { key: string; label: string }[]
     return [
       { key: 'portCode', label: 'Mã cảng biển' },
       { key: 'portName', label: 'Tên cảng biển' },
+      { key: 'portGroup', label: 'Nhóm cảng biển' },
       { key: 'province', label: 'Địa điểm (Tỉnh/ Thành phố)' },
       { key: 'area', label: 'Diện tích (ha)' },
-      { key: 'khaNangTiepNhan', label: 'Khả năng tiếp nhận (tấn)' },
+      { key: 'maxVesselCapacity', label: 'Khả năng tiếp nhận tàu lớn nhất' },
       { key: 'orgUnitId', label: 'Đơn vị quản lý' },
       { key: 'operationalStatus', label: 'Trạng thái hoạt động' },
       { key: 'approvalStatus', label: 'Trạng thái phê duyệt' },
-      { key: 'loaiHinhHoc', label: 'Loại hình học' }
+      { key: 'loaiHinhHoc', label: 'Loại hình học' },
+      { key: 'waterAreaScope', label: 'Phạm vi vùng nước' },
+      { key: 'totalBerths', label: 'Tổng số bến cảng' },
+      { key: 'totalAnchoragesTransshipment', label: 'Tổng số khu neo đậu, chuyển tải' },
+      { key: 'totalPublicChannels', label: 'Tổng số tuyến luồng hàng hải công cộng' },
+      { key: 'totalDedicatedChannels', label: 'Tổng số tuyến luồng hàng hải chuyên dùng' },
+      { key: 'totalPublicChannelLength', label: 'Tổng chiều dài tuyến luồng hàng hải công cộng (km)' },
+      { key: 'totalDedicatedChannelLength', label: 'Tổng số chiều dài tuyến luồng hàng hải chuyên dùng (km)' },
+      { key: 'totalBuoysBeacons', label: 'Tổng số phao tiêu, báo hiệu hàng hải trên luồng' },
+      { key: 'totalDikes', label: 'Tổng số đê, kè' },
+      { key: 'totalDikeLength', label: 'Tổng chiều dài hệ thống đê, kè (km)' },
+      { key: 'totalLighthouses', label: 'Tổng số đèn biển, đăng tiêu độc lập' },
+      { key: 'buoyBerthCount', label: 'Số lượng bến phao' },
+      { key: 'anchorageCount', label: 'Số lượng khu neo đậu' },
+      { key: 'transshipmentCount', label: 'Số lượng khu chuyển tải' },
+      { key: 'otherWaterAreas', label: 'Các khu nước vùng nước khác' },
+      { key: 'remarks', label: 'Ghi chú' }
     ];
   }
   
@@ -1445,9 +1464,6 @@ function getFeatureNameVi(featureCode: string, originalName?: string): string {
   return FEATURE_NAMES_VI[cleanCode] || featureCode;
 }
 
-const isVietnamMapCoordinate = ([lng, lat]: [number, number]) =>
-  lat >= 5 && lat <= 26 && lng >= 95 && lng <= 120;
-
 interface KchtMapHitTarget {
   key: string;
   label: string;
@@ -1519,24 +1535,30 @@ const resolveSearchHitGeometry = (record: KchtGisSearchResult): MapHitGeometry |
   const geometryWkt = getRecordCoordinatesWkt(record);
   const parsedCoordinates = geometryWkt ? parseWktToCoords(geometryWkt) : null;
   const geometryType = String(record.geometryType || record.loaiHinhHoc || '').toUpperCase();
+  const useValidMapCoordinates = (geometry: MapHitGeometry | null): MapHitGeometry | null => {
+    if (!geometry) return null;
+    return everyMapHitGeometryCoordinate(geometry, isVietnamMapCoordinate)
+      ? geometry
+      : null;
+  };
 
   // Prefer detecting type from WKT if available to handle dirty data
   if (geometryWkt) {
     const wktUpper = geometryWkt.toUpperCase();
     if (wktUpper.startsWith('POINT')) {
       const coordinates = normalizePointCoordinates(parsedCoordinates);
-      if (coordinates) return { type: 'Point', coordinates };
+      if (coordinates) return useValidMapCoordinates({ type: 'Point', coordinates });
     }
     if (wktUpper.startsWith('LINESTRING') || wktUpper.startsWith('MULTIPOINT')) {
       const coordinates = normalizeLineCoordinates(parsedCoordinates);
-      if (coordinates) return { type: 'LineString', coordinates };
+      if (coordinates) return useValidMapCoordinates({ type: 'LineString', coordinates });
     }
     if (wktUpper.startsWith('POLYGON')) {
       const coordinates = normalizePolygonCoordinates(parsedCoordinates);
-      if (coordinates) return { type: 'Polygon', coordinates };
+      if (coordinates) return useValidMapCoordinates({ type: 'Polygon', coordinates });
       // Legacy fallback
       const legacyVertices = normalizeLineCoordinates(parsedCoordinates);
-      if (legacyVertices) return { type: 'Polygon', coordinates: [legacyVertices] };
+      if (legacyVertices) return useValidMapCoordinates({ type: 'Polygon', coordinates: [legacyVertices] });
     }
   }
 
@@ -1544,23 +1566,25 @@ const resolveSearchHitGeometry = (record: KchtGisSearchResult): MapHitGeometry |
   if (geometryType === 'POINT' || (parsedCoordinates && !Array.isArray(parsedCoordinates[0]))) {
     const coordinates = normalizePointCoordinates(parsedCoordinates)
       || normalizePointCoordinates([record.longitude, record.latitude]);
-    return coordinates ? { type: 'Point', coordinates } : null;
+    return coordinates ? useValidMapCoordinates({ type: 'Point', coordinates }) : null;
   }
 
   if (['LINE', 'LINESTRING', 'POLYLINE'].includes(geometryType)) {
     const coordinates = normalizeLineCoordinates(parsedCoordinates);
-    return coordinates ? { type: 'LineString', coordinates } : null;
+    return coordinates ? useValidMapCoordinates({ type: 'LineString', coordinates }) : null;
   }
 
   if (['POLYGON', 'AREA'].includes(geometryType)) {
     const coordinates = normalizePolygonCoordinates(parsedCoordinates);
-    if (coordinates) return { type: 'Polygon', coordinates };
+    if (coordinates) return useValidMapCoordinates({ type: 'Polygon', coordinates });
     const legacyVertices = normalizeLineCoordinates(parsedCoordinates);
-    return legacyVertices ? { type: 'Polygon', coordinates: [legacyVertices] } : null;
+    return legacyVertices
+      ? useValidMapCoordinates({ type: 'Polygon', coordinates: [legacyVertices] })
+      : null;
   }
 
   const fallbackPoint = normalizePointCoordinates([record.longitude, record.latitude]);
-  return fallbackPoint ? { type: 'Point', coordinates: fallbackPoint } : null;
+  return fallbackPoint ? useValidMapCoordinates({ type: 'Point', coordinates: fallbackPoint }) : null;
 };
 
 const buildPlanningPopupContent = (featuresAtPoint: any[]): string => {
@@ -1582,6 +1606,9 @@ const buildPlanningPopupContent = (featuresAtPoint: any[]): string => {
       return `
         <button type="button" class="planning-status-option ${isActive ? 'active-opt' : ''}"
           data-status="${escapePopupText(option.status)}"
+          data-status-label="${escapePopupText(option.label)}"
+          data-current-status-label="${escapePopupText(statusPresentation.label)}"
+          data-active="${isActive}"
           data-color="${option.color}"
           data-fid="${escapePopupText(feature.fid)}"
           data-geomtype="${escapePopupText(feature.geomType)}"
@@ -1758,6 +1785,8 @@ export default function GISChartView() {
         path = `/radar-station/${id}${action === 'edit' ? '?mode=edit' : ''}`;
       } else if (label.includes('hệ thống vts') || label.includes('he thong vts')) {
         path = `/vts-system/${id}${action === 'edit' ? '?mode=edit' : ''}`;
+      } else if (label.includes('cctv')) {
+        path = `/cctv?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
       } else if (label.includes('inmarsat')) {
         path = `/station/inmarsat?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
       } else if (label.includes('cospas')) {
@@ -1768,6 +1797,16 @@ export default function GISChartView() {
         path = `/station/hanoi?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
       } else if (label.includes('đài ttdh') || label.includes('dai ttdh') || label.includes('đài duyên hải') || label.includes('dai duyen hai')) {
         path = `/station/coastal?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+      } else if (label.includes('scada')) {
+        path = `/scada?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+      } else if (label.includes('ais')) {
+        path = `/ais-system?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+      } else if (label.includes('vts') && label.includes('phụ trợ')) {
+        path = `/vts-assist?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+      } else if (label.includes('truyền dẫn') || label.includes('truyen dan')) {
+        path = `/transmission?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+      } else if (label.includes('điều hành vts') || label.includes('dieu hanh vts')) {
+        path = `/vts-operation-center?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
       }
 
       if (path) {
@@ -2039,8 +2078,19 @@ export default function GISChartView() {
   }, [searchPanelVisible]);
 
   const handleRowClick = useCallback(async (record: KchtGisSearchResult) => {
+    const geometryWkt = getRecordCoordinatesWkt(record);
+    const hitGeometry = resolveSearchHitGeometry(record);
+    if (!hitGeometry) {
+      if (geometryWkt) {
+        toast.warning('Không thể hiển thị: hình học có đỉnh tọa độ không hợp lệ. Vui lòng cập nhật lại tọa độ.');
+      } else {
+        toast.info('Đối tượng này chưa được cấu hình tọa độ trên bản đồ');
+      }
+      return;
+    }
+
     const mapLocation = resolveMapGeometryLocation(
-      getRecordCoordinatesWkt(record),
+      geometryWkt,
       record.longitude,
       record.latitude,
     );
@@ -2474,16 +2524,26 @@ export default function GISChartView() {
     // remains available from the layer manager.
     if (!hasSearched || customGisFeatures.length === 0) return;
 
-    const resultIds = new Set(infrastructureResults.map((record) => String(record.id)));
+    const resultsById = new Map(
+      infrastructureResults.map((record) => [String(record.id), record]),
+    );
     const selectedIds = new Set(selectedRowKeys.map(String));
     const visibleCustomFeatures = customGisFeatures.filter((feature) => {
       const featureId = String(feature.id);
       const referenceId = feature.refId ? String(feature.refId) : '';
-      const matchesCurrentResults = resultIds.has(featureId)
-        || Boolean(referenceId && resultIds.has(referenceId));
-      const isAlreadyRenderedAsSelectedResult = selectedIds.has(featureId)
-        || Boolean(referenceId && selectedIds.has(referenceId));
-      return matchesCurrentResults && !isAlreadyRenderedAsSelectedResult;
+      const matchingResult = resultsById.get(referenceId) || resultsById.get(featureId);
+
+      // The result table is the source of truth for map visibility. In
+      // particular, synchronized CCTV polygons must not leak from the custom
+      // GIS layer before their business record's checkbox is selected.
+      if (!matchingResult || !selectedIds.has(String(matchingResult.id))) {
+        return false;
+      }
+
+      // Normal selected results are rendered by renderSearchMarkers. Keep this
+      // custom layer only as a fallback for legacy rows whose search response
+      // does not contain usable geometry, avoiding duplicate shapes.
+      return resolveSearchHitGeometry(matchingResult) === null;
     });
 
     visibleCustomFeatures.forEach((feature) => {
@@ -2563,6 +2623,8 @@ export default function GISChartView() {
             { direction: 'top', offset: [0, -5], opacity: 0.9 }
           );
 
+          const isPort = feature.refType === 0 || feature.refType === 'SEAPORT';
+
           const getPopupHtml = (portName: string) => `
             <div style="min-width: 250px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 4px;">
               <!-- Header -->
@@ -2590,10 +2652,12 @@ export default function GISChartView() {
                   <span style="color: #666; font-style: italic;">${feature.restrictionLevel}</span>
                 </div>
                 ` : ''}
+                ${isPort ? `
                 <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f9f9f9; padding-bottom: 4px;">
                   <span style="font-weight: 600; color: #888;">Cảng biển:</span>
                   <span style="color: #222;">${portName}</span>
                 </div>
+                ` : ''}
                 <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f9f9f9; padding-bottom: 4px;">
                   <span style="font-weight: 600; color: #888;">Đơn vị QL:</span>
                   <span style="color: #222; text-align: right; max-width: 140px; word-break: break-word;">${getOrgNameByUnitId(feature.unitId)}</span>
@@ -2620,7 +2684,7 @@ export default function GISChartView() {
             const requestId = ++activePopupRequestRef.current;
             const popup = L.popup({ minWidth: 280, maxWidth: 360, autoPanPadding: [50, 100] })
               .setLatLng(latlng)
-              .setContent(getPopupHtml(feature.refId ? 'Đang tải...' : '—'))
+              .setContent(getPopupHtml(feature.refId && isPort ? 'Đang tải...' : '—'))
               .openOn(mapRef.current);
 
             activePopupRef.current = popup;
@@ -2632,7 +2696,7 @@ export default function GISChartView() {
               }
             });
 
-            if (!feature.refId) return;
+            if (!feature.refId || !isPort) return;
             try {
               const port = await portCRUD.findById(feature.refId);
               if (
@@ -3134,6 +3198,9 @@ export default function GISChartView() {
         evt.stopPropagation();
 
         const status = opt.getAttribute('data-status');
+        const statusLabel = opt.getAttribute('data-status-label');
+        const currentStatusLabel = opt.getAttribute('data-current-status-label');
+        const isActive = opt.getAttribute('data-active') === 'true';
         const color = opt.getAttribute('data-color');
         const fid = opt.getAttribute('data-fid');
         const geomType = opt.getAttribute('data-geomtype');
@@ -3144,31 +3211,49 @@ export default function GISChartView() {
           return;
         }
 
-        try {
-          const colorInt = parseInt(color, 10);
-          await api.put(`/gis/planning/features/${geomType}/${fid}/status`, null, {
-            params: { schemaName, tableName, status, color: colorInt }
-          });
-          toast.success('Cập nhật trạng thái quy hoạch thành công');
-          
-          if (mapRef.current) {
-            mapRef.current.closePopup();
-          }
-          // Clear cache for this feature so it gets re-rendered with new color!
-          if (fid && planningLayersCacheRef.current) {
-            const featureKey = getPlanningFeatureKey(geomType, schemaName, tableName, fid);
-            const currentLayer = planningLayersCacheRef.current[featureKey];
-            currentLayer?.setStyle?.(
-              getPlanningLeafletColorStyle(geomType, colorInt, tableName, status),
-            );
-            delete planningLayersCacheRef.current[featureKey];
-          }
-          if (fetchPlanningFeaturesRef.current) {
-            await fetchPlanningFeaturesRef.current();
-          }
-        } catch (err) {
-          toast.error('Lỗi khi cập nhật trạng thái quy hoạch');
+        if (isActive) {
+          return;
         }
+
+        const targetStatusLabel = statusLabel || status;
+        const transitionDescription = currentStatusLabel
+          ? `từ "${currentStatusLabel}" sang "${targetStatusLabel}"`
+          : `sang "${targetStatusLabel}"`;
+
+        modal.confirm({
+          title: 'Xác nhận đổi trạng thái quy hoạch',
+          content: `Bạn có chắc chắn muốn đổi trạng thái quy hoạch ${transitionDescription} không?`,
+          okText: 'Xác nhận',
+          cancelText: 'Hủy',
+          onOk: async () => {
+            try {
+              const colorInt = parseInt(color, 10);
+              await api.put(`/gis/planning/features/${geomType}/${fid}/status`, null, {
+                params: { schemaName, tableName, status, color: colorInt }
+              });
+              toast.success('Cập nhật trạng thái quy hoạch thành công');
+
+              if (mapRef.current) {
+                mapRef.current.closePopup();
+              }
+              // Clear cache for this feature so it gets re-rendered with new color!
+              if (planningLayersCacheRef.current) {
+                const featureKey = getPlanningFeatureKey(geomType, schemaName, tableName, fid);
+                const currentLayer = planningLayersCacheRef.current[featureKey];
+                currentLayer?.setStyle?.(
+                  getPlanningLeafletColorStyle(geomType, colorInt, tableName, status),
+                );
+                delete planningLayersCacheRef.current[featureKey];
+              }
+              if (fetchPlanningFeaturesRef.current) {
+                await fetchPlanningFeaturesRef.current();
+              }
+            } catch (err) {
+              toast.error('Lỗi khi cập nhật trạng thái quy hoạch');
+              throw err;
+            }
+          },
+        });
         return;
       }
 
@@ -3223,8 +3308,24 @@ export default function GISChartView() {
         const id = editBtn.getAttribute('data-id');
         if (!id) return;
 
-        const feature = customGisFeaturesDataRef.current.find((f: any) => String(f.id) === id);
+        const feature = customGisFeaturesDataRef.current.find((candidate) => String(candidate.id) === id);
         if (feature) {
+          const refType = String(feature.refType ?? '').toUpperCase();
+          const kchtType = getKchtGisTypeByCategoryId(feature.categoryId);
+          const isCctvReference = Boolean(feature.refId)
+            && (refType === 'CCTV' || Number(feature.refType) === 28 || kchtType === 'CCTV');
+
+          // Hồ sơ CCTV đồng bộ hình học vào gis_spatial_objects với refId trỏ
+          // về bản ghi nghiệp vụ. Chỉnh sửa phải mở Drawer CCTV chuẩn, không
+          // được rơi vào modal chỉnh sửa đối tượng vẽ tay của Leaflet.
+          if (isCctvReference) {
+            window.handleKchtAction(String(feature.refId), 'Hệ thống CCTV', 'edit');
+            if (mapRef.current) {
+              mapRef.current.closePopup();
+            }
+            return;
+          }
+
           const editRecord = {
             id: feature.id,
             type: feature.type,
@@ -3448,16 +3549,17 @@ export default function GISChartView() {
     const markers: any[] = [];
 
     selectedRecords.forEach((record) => {
-      const mapLocation = resolveMapGeometryLocation(
-        getRecordCoordinatesWkt(record),
-        record.longitude,
-        record.latitude,
-      );
-      const center = mapLocation?.center;
       const hitGeometry = resolveSearchHitGeometry(record);
+      const hitBounds = hitGeometry ? getMapHitGeometryBounds(hitGeometry) : null;
+      const renderCenter: [number, number] | null = hitBounds
+        ? [
+            (hitBounds.minLongitude + hitBounds.maxLongitude) / 2,
+            (hitBounds.minLatitude + hitBounds.maxLatitude) / 2,
+          ]
+        : null;
 
-      if (center && hitGeometry && isVietnamMapCoordinate(center)) {
-        const [lon, lat] = center;
+      if (renderCenter && hitGeometry && isVietnamMapCoordinate(renderCenter)) {
+        const [lon, lat] = renderCenter;
         const geometryType = (record.geometryType || record.loaiHinhHoc || '').toUpperCase();
         const isVectorGeometry = hitGeometry.type === 'LineString' || hitGeometry.type === 'Polygon';
 
@@ -4512,8 +4614,31 @@ export default function GISChartView() {
                                 columnWidth: 44,
                                 selectedRowKeys,
                                 onChange: (keys: React.Key[]) => {
-                                  const hasNewSelection = keys.some((key) => !selectedRowKeys.includes(key));
-                                  setSelectedRowKeys(keys);
+                                  const newKeySet = new Set(
+                                    keys
+                                      .filter((key) => !selectedRowKeys.includes(key))
+                                      .map(String),
+                                  );
+                                  const invalidRecords = infrastructureResults.filter((record) => (
+                                    newKeySet.has(String(record.id))
+                                    && resolveSearchHitGeometry(record) === null
+                                  ));
+                                  const invalidIds = new Set(invalidRecords.map((record) => String(record.id)));
+                                  const validKeys = keys.filter((key) => !invalidIds.has(String(key)));
+                                  const hasNewSelection = validKeys.some((key) => !selectedRowKeys.includes(key));
+
+                                  if (invalidRecords.length > 0) {
+                                    const recordLabels = invalidRecords
+                                      .slice(0, 3)
+                                      .map((record) => record.code || record.name)
+                                      .join(', ');
+                                    const remainingCount = invalidRecords.length - 3;
+                                    toast.warning(
+                                      `Không thể hiển thị ${recordLabels}${remainingCount > 0 ? ` và ${remainingCount} bản ghi khác` : ''}: có đỉnh tọa độ không hợp lệ.`,
+                                    );
+                                  }
+
+                                  setSelectedRowKeys(validKeys);
                                   if (hasNewSelection && screens.md === false) {
                                     setSearchPanelVisible(false);
                                   }

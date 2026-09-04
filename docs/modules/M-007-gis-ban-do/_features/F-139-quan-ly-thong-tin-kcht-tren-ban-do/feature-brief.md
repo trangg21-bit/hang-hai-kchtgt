@@ -7,7 +7,7 @@ status: proposed
 classification: local
 priority: high
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-06-26T00:00:00Z
+last-updated: 2026-09-04T00:00:00Z
 locked-fields: []
 consumed_by_modules: []
 ---
@@ -28,6 +28,7 @@ Người dùng truy cập giao diện bản đồ GIS và chọn mục quản l�
 - Người dùng có thể xem danh sách các đối tượng KCHT cùng loại hoặc trong một khu vực địa lý cụ thể với thông tin tóm tắt tình trạng.
 - Người dùng có thể đánh giá tình trạng KCHT (tốt/bình thường/kém) với lý do đánh giá được ghi nhận.
 - Hệ thống không cho phép xóa thông tin KCHT đã được xác nhận nghiệm thu mà chỉ cho phép vô hiệu hóa.
+- Khi người dùng chọn Chỉnh sửa trên popup của một hình học đã liên kết với hồ sơ nghiệp vụ (ví dụ Hệ thống CCTV), hệ thống phải mở form chỉnh sửa chuẩn của đúng phân hệ bằng `refId/refType`; modal chỉnh sửa hình vẽ GIS chỉ dùng cho đối tượng vẽ tay không liên kết hồ sơ nghiệp vụ.
 
 ## In Scope
 - Xem chi tiết thông tin KCHT trên bản đồ GIS

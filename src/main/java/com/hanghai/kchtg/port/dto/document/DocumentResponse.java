@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.port.dto.document;
 
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

@@ -6,7 +6,6 @@ import {
   Button,
   Avatar,
   Dropdown,
-  theme,
   Grid,
   Drawer,
   Typography,
@@ -29,6 +28,7 @@ import { useAuthStore } from '../store/authStore';
 import { usePermissionStore } from '../store/permissionStore';
 import { colors, layout } from '../theme';
 import * as themeTokenChk from '../themetokenchk';
+import { actionPrimary } from '../themetokenchk';
 import { ThemeTokenProvider } from '../context/ThemeTokenContext';
 import type { MenuProps } from 'antd';
 import { accessibleTree, groupOfPath, locateRoute, type NavGroup, type NavNode } from '../config/navigation';
@@ -194,7 +194,6 @@ export default function AppLayout() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const screens = useBreakpoint();
-  const { token } = theme.useToken();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -478,7 +477,7 @@ export default function AppLayout() {
           <img src="/images/logo-vinamarine.png" alt="Logo" style={{ maxHeight: '56px' }} />
         </div>
         {isMenuFullScreen && (
-          <Typography.Title level={5} style={{ margin: 0, color: '#273e7c', textAlign: 'center', fontWeight: 600, fontSize: '15px' }}>
+          <Typography.Title level={5} style={{ margin: 0, color: actionPrimary, textAlign: 'center', fontWeight: 600, fontSize: '15px' }}>
             HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI
           </Typography.Title>
         )}
@@ -763,7 +762,7 @@ export default function AppLayout() {
                 title={sidebarHidden ? "Mở menu" : "Thu gọn menu"}
               />
             )}
-            <Typography.Title level={5} style={{ margin: 0, color: '#273e7c' }}>
+            <Typography.Title level={5} style={{ margin: 0, color: actionPrimary }}>
               HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI
             </Typography.Title>
           </Space>
@@ -785,7 +784,7 @@ export default function AppLayout() {
                   <Avatar
                     icon={<UserOutlined />}
                     className="topbar-user__avatar"
-                    style={{ backgroundColor: token.colorPrimary }}
+                    style={{ backgroundColor: actionPrimary }}
                   />
                   <span className="topbar-user__status-dot" />
                 </div>

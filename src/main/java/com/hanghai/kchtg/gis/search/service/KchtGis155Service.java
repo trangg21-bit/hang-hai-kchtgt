@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.search.service;
 
+import com.hanghai.kchtg.aissystem.entity.AisSystem;
+import com.hanghai.kchtg.aissystem.repository.AisSystemRepository;
 import com.hanghai.kchtg.beacon.entity.BeaconStation;
 import com.hanghai.kchtg.beacon.entity.Buoy;
 import com.hanghai.kchtg.beacon.repository.BeaconStationRepository;
@@ -28,6 +30,16 @@ import com.hanghai.kchtg.station.entity.*;
 import com.hanghai.kchtg.station.repository.*;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
+import com.hanghai.kchtg.cctv.entity.Cctv;
+import com.hanghai.kchtg.cctv.repository.CctvRepository;
+import com.hanghai.kchtg.scada.entity.Scada;
+import com.hanghai.kchtg.scada.repository.ScadaRepository;
+import com.hanghai.kchtg.transmission.entity.Transmission;
+import com.hanghai.kchtg.transmission.repository.TransmissionRepository;
+import com.hanghai.kchtg.vtsassist.entity.VtsAssist;
+import com.hanghai.kchtg.vtsassist.repository.VtsAssistRepository;
+import com.hanghai.kchtg.vtsoperationcenter.entity.VtsOperationCenter;
+import com.hanghai.kchtg.vtsoperationcenter.repository.VtsOperationCenterRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -71,6 +83,12 @@ public class KchtGis155Service {
       InfrastructureType.COSPAS_SARSAT_STATION,
       InfrastructureType.LRIT_STATION,
       InfrastructureType.HANOI_STATION,
+      InfrastructureType.CCTV,
+      InfrastructureType.SCADA,
+      InfrastructureType.AIS_SYSTEM,
+      InfrastructureType.VTS_ASSIST,
+      InfrastructureType.TRANSMISSION,
+      InfrastructureType.VTS_OPERATION_CENTER,
       InfrastructureType.DRY_PORT);
 
   private final PortRepository portRepository;
@@ -94,6 +112,12 @@ public class KchtGis155Service {
   private final CoastalStationCospasSarsatRepository coastalStationCospasSarsatRepository;
   private final CoastalStationLRITRepository coastalStationLRITRepository;
   private final CoastalStationHaiphongRepository coastalStationHaiphongRepository;
+  private final CctvRepository cctvRepository;
+  private final ScadaRepository scadaRepository;
+  private final AisSystemRepository aisSystemRepository;
+  private final VtsAssistRepository vtsAssistRepository;
+  private final TransmissionRepository transmissionRepository;
+  private final VtsOperationCenterRepository vtsOperationCenterRepository;
   private final jakarta.persistence.EntityManager entityManager;
 
   /**
@@ -392,6 +416,32 @@ public class KchtGis155Service {
     results.add(result);
   }
 
+  private Map<UUID, GisSpatialObject> loadSpatialMap(
+      List<UUID> refIds,
+      InfrastructureType infrastructureType,
+      List<UUID> spatialIds) {
+    Map<UUID, GisSpatialObject> spatialMap = new HashMap<>();
+    if (refIds != null && !refIds.isEmpty()) {
+      gisSpatialObjectRepository.findByRefIdInAndRefType(refIds, infrastructureType)
+          .forEach(spatial -> {
+            spatialMap.put(spatial.getId(), spatial);
+            if (spatial.getRefId() != null) {
+              spatialMap.put(spatial.getRefId(), spatial);
+            }
+          });
+    }
+    if (spatialIds != null && !spatialIds.isEmpty()) {
+      gisSpatialObjectRepository.findAllById(spatialIds)
+          .forEach(spatial -> {
+            spatialMap.put(spatial.getId(), spatial);
+            if (spatial.getRefId() != null) {
+              spatialMap.put(spatial.getRefId(), spatial);
+            }
+          });
+    }
+    return spatialMap;
+  }
+
   public KchtGisSearchPage search(
       UUID rawOrgUnitId,
       List<InfrastructureType> kchtTypes,
@@ -644,10 +694,246 @@ public class KchtGis155Service {
           }
           break;
 
+        case CCTV:
+            List<Cctv> cctvs = cctvRepository.searchCctv(
+                orgUnitId == null,
+                orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of(),
+                false, null, null, null, null, ApprovalStatus.APPROVED, null, null, null,
+                province,
+                null, null, searchLower, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+            Map<UUID, GisSpatialObject> cctvSpatialMap = new HashMap<>();
+            if (!cctvs.isEmpty()) {
+              List<UUID> cctvIds = cctvs.stream().map(Cctv::getId).collect(Collectors.toList());
+              gisSpatialObjectRepository.findByRefIdInAndRefType(cctvIds, InfrastructureType.CCTV)
+                  .forEach(so -> cctvSpatialMap.put(so.getRefId(), so));
+            }
+            for (Cctv cctv : cctvs) {
+              GisSpatialObject spatial = cctvSpatialMap.get(cctv.getId());
+              double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
+              Double lat = coords != null ? coords[0] : null;
+              Double lng = coords != null ? coords[1] : null;
+
+              KchtGisSearchResult r = KchtGisSearchResult.builder()
+                  .id(cctv.getId() != null ? cctv.getId().toString() : null)
+                  .name(cctv.getDeviceName())
+                  .code(cctv.getDeviceCode())
+                  .orgUnitId(cctv.getOrgUnitId())
+                  .orgName(getOrgName(cctv.getOrgUnitId(), orgNameMap))
+                  .infrastructureType(type)
+                  .kchtTypeLabel("Hệ thống CCTV")
+                  .mapSymbolId(cctv.getMapSymbolId())
+                  .provinceId(null)
+                  .location(cctv.getProvinceName() != null ? cctv.getProvinceName() : "")
+                  .diaChiChiTiet(cctv.getDetailedLocation() != null ? cctv.getDetailedLocation() : "")
+                  .build();
+              if (objectType != null) {
+                populateSpatialAndFilterFromMap(results, r, cctv.getSpatialId() != null ? cctv.getSpatialId() : cctv.getId(), objectType, GisObjectType.POINT, cctvSpatialMap);
+              } else {
+                results.add(r);
+                if (cctv.getSpatialId() != null) {
+                  spatialIdMap.put(r.getId(), cctv.getSpatialId());
+                } else {
+                  spatialIdMap.put(r.getId(), cctv.getId());
+                }
+              }
+            }
+            break;
+
+        case SCADA:
+            List<Scada> scadaSystems = scadaRepository.searchScada(
+                orgUnitId == null,
+                orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of(),
+                false, null, null, null, null, ApprovalStatus.APPROVED, null, null, null,
+                province,
+                null, null, searchLower, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+            Map<UUID, GisSpatialObject> scadaSpatialMap = new HashMap<>();
+            if (!scadaSystems.isEmpty()) {
+              List<UUID> scadaIds = scadaSystems.stream().map(Scada::getId).collect(Collectors.toList());
+              gisSpatialObjectRepository.findByRefIdInAndRefType(scadaIds, InfrastructureType.SCADA)
+                  .forEach(spatial -> {
+                    scadaSpatialMap.put(spatial.getRefId(), spatial);
+                    scadaSpatialMap.put(spatial.getId(), spatial);
+                  });
+            }
+            for (Scada scada : scadaSystems) {
+              KchtGisSearchResult result = KchtGisSearchResult.builder()
+                  .id(scada.getId() != null ? scada.getId().toString() : null)
+                  .name(scada.getDeviceName())
+                  .code(scada.getDeviceCode())
+                  .orgUnitId(scada.getOrgUnitId())
+                  .orgName(getOrgName(scada.getOrgUnitId(), orgNameMap))
+                  .infrastructureType(type)
+                  .kchtTypeLabel("Hệ thống SCADA")
+                  .mapSymbolId(scada.getMapSymbolId())
+                  .provinceId(null)
+                  .location(scada.getProvinceName() != null ? scada.getProvinceName() : "")
+                  .diaChiChiTiet(scada.getDetailedLocation() != null ? scada.getDetailedLocation() : "")
+                  .build();
+              UUID spatialLookupId = scada.getSpatialId() != null ? scada.getSpatialId() : scada.getId();
+              if (objectType != null) {
+                populateSpatialAndFilterFromMap(results, result, spatialLookupId, objectType,
+                    GisObjectType.POINT, scadaSpatialMap);
+              } else {
+                results.add(result);
+                if (spatialLookupId != null) {
+                  spatialIdMap.put(result.getId(), spatialLookupId);
+                }
+              }
+            }
+            break;
+
+        case AIS_SYSTEM:
+          List<AisSystem> aisSystems = aisSystemRepository.search(
+              false, List.of(), null, null, null, provinceId, null,
+              ApprovalStatus.APPROVED, searchLower, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+          Map<UUID, GisSpatialObject> aisSpatialMap = loadSpatialMap(
+              aisSystems.stream().map(AisSystem::getId).filter(Objects::nonNull).toList(),
+              InfrastructureType.AIS_SYSTEM,
+              aisSystems.stream().map(AisSystem::getSpatialId).filter(Objects::nonNull).toList());
+          for (AisSystem ais : aisSystems) {
+            KchtGisSearchResult result = KchtGisSearchResult.builder()
+                .id(ais.getId() != null ? ais.getId().toString() : null)
+                .name(ais.getName())
+                .code(ais.getCode())
+                .orgUnitId(ais.getOrgUnitId())
+                .orgName(getOrgName(ais.getOrgUnitId(), orgNameMap))
+                .infrastructureType(type)
+                .kchtTypeLabel("Hệ thống AIS")
+                .mapSymbolId(ais.getSymbolId())
+                .provinceId(ais.getProvinceId())
+                .location("")
+                .diaChiChiTiet(ais.getDetailedLocation() != null ? ais.getDetailedLocation() : "")
+                .build();
+            UUID spatialLookupId = ais.getSpatialId() != null ? ais.getSpatialId() : ais.getId();
+            if (objectType != null) {
+              populateSpatialAndFilterFromMap(results, result, spatialLookupId, objectType,
+                  GisObjectType.POINT, aisSpatialMap);
+            } else {
+              results.add(result);
+              if (spatialLookupId != null) {
+                spatialIdMap.put(result.getId(), spatialLookupId);
+              }
+            }
+          }
+          break;
+
+        case VTS_ASSIST:
+          List<VtsAssist> vtsAssistSystems = vtsAssistRepository.searchVtsAssist(
+              true, List.of(), false, List.of(), null, null, null,
+              ApprovalStatus.APPROVED, null, null, null, province, null, null,
+              searchLower, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+          Map<UUID, GisSpatialObject> vtsAssistSpatialMap = loadSpatialMap(
+              vtsAssistSystems.stream().map(VtsAssist::getId).filter(Objects::nonNull).toList(),
+              InfrastructureType.VTS_ASSIST,
+              vtsAssistSystems.stream().map(VtsAssist::getSpatialId).filter(Objects::nonNull).toList());
+          for (VtsAssist vtsAssist : vtsAssistSystems) {
+            KchtGisSearchResult result = KchtGisSearchResult.builder()
+                .id(vtsAssist.getId() != null ? vtsAssist.getId().toString() : null)
+                .name(vtsAssist.getDeviceName())
+                .code(vtsAssist.getDeviceCode())
+                .orgUnitId(vtsAssist.getOrgUnitId())
+                .orgName(getOrgName(vtsAssist.getOrgUnitId(), orgNameMap))
+                .infrastructureType(type)
+                .kchtTypeLabel("Hệ thống phụ trợ VTS")
+                .mapSymbolId(vtsAssist.getMapSymbolId())
+                .location(vtsAssist.getProvinceName() != null ? vtsAssist.getProvinceName() : "")
+                .diaChiChiTiet(vtsAssist.getDetailedLocation() != null ? vtsAssist.getDetailedLocation() : "")
+                .build();
+            UUID spatialLookupId = vtsAssist.getSpatialId() != null
+                ? vtsAssist.getSpatialId()
+                : vtsAssist.getId();
+            if (objectType != null) {
+              populateSpatialAndFilterFromMap(results, result, spatialLookupId, objectType,
+                  GisObjectType.POINT, vtsAssistSpatialMap);
+            } else {
+              results.add(result);
+              if (spatialLookupId != null) {
+                spatialIdMap.put(result.getId(), spatialLookupId);
+              }
+            }
+          }
+          break;
+
+        case TRANSMISSION:
+          List<Transmission> transmissionSystems = transmissionRepository.searchTransmission(
+              true, List.of(), false, List.of(), null, null, null,
+              ApprovalStatus.APPROVED, null, null, null, province, null, null,
+              searchLower, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+          Map<UUID, GisSpatialObject> transmissionSpatialMap = loadSpatialMap(
+              transmissionSystems.stream().map(Transmission::getId).filter(Objects::nonNull).toList(),
+              InfrastructureType.TRANSMISSION,
+              transmissionSystems.stream().map(Transmission::getSpatialId).filter(Objects::nonNull).toList());
+          for (Transmission transmission : transmissionSystems) {
+            KchtGisSearchResult result = KchtGisSearchResult.builder()
+                .id(transmission.getId() != null ? transmission.getId().toString() : null)
+                .name(transmission.getDeviceName())
+                .code(transmission.getDeviceCode())
+                .orgUnitId(transmission.getOrgUnitId())
+                .orgName(getOrgName(transmission.getOrgUnitId(), orgNameMap))
+                .infrastructureType(type)
+                .kchtTypeLabel("Hệ thống truyền dẫn")
+                .mapSymbolId(transmission.getMapSymbolId())
+                .location(transmission.getProvinceName() != null ? transmission.getProvinceName() : "")
+                .diaChiChiTiet(transmission.getDetailedLocation() != null
+                    ? transmission.getDetailedLocation()
+                    : "")
+                .build();
+            UUID spatialLookupId = transmission.getSpatialId() != null
+                ? transmission.getSpatialId()
+                : transmission.getId();
+            if (objectType != null) {
+              populateSpatialAndFilterFromMap(results, result, spatialLookupId, objectType,
+                  GisObjectType.POINT, transmissionSpatialMap);
+            } else {
+              results.add(result);
+              if (spatialLookupId != null) {
+                spatialIdMap.put(result.getId(), spatialLookupId);
+              }
+            }
+          }
+          break;
+
+        case VTS_OPERATION_CENTER:
+          List<VtsOperationCenter> vtsOperationCenters = vtsOperationCenterRepository.search(
+              false, List.of(), null, null, null, provinceId, null,
+              ApprovalStatus.APPROVED, searchLower, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+          Map<UUID, GisSpatialObject> vtsOperationCenterSpatialMap = loadSpatialMap(
+              vtsOperationCenters.stream().map(VtsOperationCenter::getId).filter(Objects::nonNull).toList(),
+              InfrastructureType.VTS_OPERATION_CENTER,
+              vtsOperationCenters.stream().map(VtsOperationCenter::getSpatialId)
+                  .filter(Objects::nonNull).toList());
+          for (VtsOperationCenter center : vtsOperationCenters) {
+            KchtGisSearchResult result = KchtGisSearchResult.builder()
+                .id(center.getId() != null ? center.getId().toString() : null)
+                .name(center.getName())
+                .code(center.getCode())
+                .orgUnitId(center.getOrgUnitId())
+                .orgName(getOrgName(center.getOrgUnitId(), orgNameMap))
+                .infrastructureType(type)
+                .kchtTypeLabel("Trung tâm điều hành VTS")
+                .mapSymbolId(center.getSymbolId())
+                .provinceId(center.getProvinceId())
+                .location("")
+                .diaChiChiTiet(center.getDetailedLocation() != null ? center.getDetailedLocation() : "")
+                .build();
+            UUID spatialLookupId = center.getSpatialId() != null ? center.getSpatialId() : center.getId();
+            if (objectType != null) {
+              populateSpatialAndFilterFromMap(results, result, spatialLookupId, objectType,
+                  GisObjectType.POINT, vtsOperationCenterSpatialMap);
+            } else {
+              results.add(result);
+              if (spatialLookupId != null) {
+                spatialIdMap.put(result.getId(), spatialLookupId);
+              }
+            }
+          }
+          break;
+
         case WATER_AREA:
           List<WaterZone> waterZones = waterZoneRepository.searchWaterZones(
-              orgUnitId, null, searchLower, null, null,
-              ApprovalStatus.APPROVED, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+                orgUnitId, null, searchLower, null, null,
+                null, PageRequest.of(0, MAX_FETCH_SIZE)).getContent()
+                .stream().filter(entity -> isApproved(entity.getApprovalStatus())).collect(Collectors.toList());
           List<UUID> vnCbIds = waterZones.stream().map(WaterZone::getPortId).filter(Objects::nonNull)
               .distinct().collect(Collectors.toList());
           Map<UUID, Port> vnPortMap = new HashMap<>();
@@ -1114,8 +1400,8 @@ public class KchtGis155Service {
                 .id(haiphong.getId() != null ? haiphong.getId().toString() : null)
                 .name(haiphong.getName())
                 .code(haiphong.getCode())
-                .orgUnitId(haiphong.getUnitId())
-                .orgName(getOrgName(haiphong.getUnitId(), orgNameMap))
+                .orgUnitId(haiphong.getOrgUnitId())
+                .orgName(getOrgName(haiphong.getOrgUnitId(), orgNameMap))
                 .infrastructureType(type)
                 .kchtTypeLabel("Đài Trung tâm xử lý thông tin hàng hải Hà Nội")
                 .provinceId(haiphong.getProvinceId())
@@ -1231,8 +1517,9 @@ public class KchtGis155Service {
 
         case BUOY_BERTH:
           List<WaterZone> benPhaos = waterZoneRepository.searchWaterZones(
-              orgUnitId, null, searchLower, WaterZoneType.MOORING_BUOY, null,
-              ApprovalStatus.APPROVED, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+                orgUnitId, null, searchLower, WaterZoneType.MOORING_BUOY, null,
+                null, PageRequest.of(0, MAX_FETCH_SIZE)).getContent()
+                .stream().filter(entity -> isApproved(entity.getApprovalStatus())).collect(Collectors.toList());
           List<UUID> bpCbIds = benPhaos.stream().map(WaterZone::getPortId).filter(Objects::nonNull).distinct()
               .collect(Collectors.toList());
           Map<UUID, Port> bpPortMap = new HashMap<>();
@@ -1286,8 +1573,9 @@ public class KchtGis155Service {
 
         case ANCHORAGE_AREA:
           List<WaterZone> anchorages = waterZoneRepository.searchWaterZones(
-              orgUnitId, null, searchLower, WaterZoneType.ANCHORAGE, null,
-              ApprovalStatus.APPROVED, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+                orgUnitId, null, searchLower, WaterZoneType.ANCHORAGE, null,
+                null, PageRequest.of(0, MAX_FETCH_SIZE)).getContent()
+                .stream().filter(entity -> isApproved(entity.getApprovalStatus())).collect(Collectors.toList());
           List<UUID> knCbIds = anchorages.stream().map(WaterZone::getPortId).filter(Objects::nonNull)
               .distinct().collect(Collectors.toList());
           Map<UUID, Port> knPortMap = new HashMap<>();
@@ -1341,8 +1629,9 @@ public class KchtGis155Service {
 
         case TRANSSHIPMENT_AREA:
           List<WaterZone> khuChuyens = waterZoneRepository.searchWaterZones(
-              orgUnitId, null, searchLower, WaterZoneType.TRANSSHIPMENT, null,
-              ApprovalStatus.APPROVED, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+                orgUnitId, null, searchLower, WaterZoneType.TRANSSHIPMENT, null,
+                null, PageRequest.of(0, MAX_FETCH_SIZE)).getContent()
+                .stream().filter(entity -> isApproved(entity.getApprovalStatus())).collect(Collectors.toList());
           List<UUID> kcCbIds = khuChuyens.stream().map(WaterZone::getPortId).filter(Objects::nonNull)
               .distinct().collect(Collectors.toList());
           Map<UUID, Port> kcPortMap = new HashMap<>();
@@ -1396,8 +1685,9 @@ public class KchtGis155Service {
 
         case STORM_SHELTER_AREA:
           List<WaterZone> khuTranhs = waterZoneRepository.searchWaterZones(
-              orgUnitId, null, searchLower, WaterZoneType.STORM_SHELTER, null,
-              ApprovalStatus.APPROVED, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+                orgUnitId, null, searchLower, WaterZoneType.STORM_SHELTER, null,
+                null, PageRequest.of(0, MAX_FETCH_SIZE)).getContent()
+                .stream().filter(entity -> isApproved(entity.getApprovalStatus())).collect(Collectors.toList());
           List<UUID> ktCbIds = khuTranhs.stream().map(WaterZone::getPortId).filter(Objects::nonNull)
               .distinct().collect(Collectors.toList());
           Map<UUID, Port> ktPortMap = new HashMap<>();

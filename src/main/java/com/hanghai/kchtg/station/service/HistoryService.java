@@ -13,7 +13,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -139,17 +145,65 @@ public class HistoryService {
         if (refType == null || refId == null) {
             return List.of();
         }
+        Specification<InfrastructureHistory> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("refType"), refType));
+            predicates.add(cb.equal(root.get("refId"), refId));
+
+            if (excludedStatuses != null && !excludedStatuses.isEmpty()) {
+                predicates.add(root.get("status").in(excludedStatuses).not());
+            }
+
+            if (fromDate != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("approvedDate"), fromDate));
+            }
+            if (toDate != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("approvedDate"), toDate));
+            }
+
+            String kw = normalizeHistoryKeyword(keyword);
+            if (kw != null && !kw.isBlank()) {
+                String pattern = "%" + kw.toLowerCase() + "%";
+                Expression<String> cf = cb.function("immutable_unaccent", String.class, cb.lower(cb.coalesce(root.get("changedField"), "")));
+                Expression<String> pv = cb.function("immutable_unaccent", String.class, cb.lower(cb.coalesce(root.get("previousValue"), "")));
+                Expression<String> nv = cb.function("immutable_unaccent", String.class, cb.lower(cb.coalesce(root.get("newValue"), "")));
+                Expression<String> rz = cb.function("immutable_unaccent", String.class, cb.lower(cb.coalesce(root.get("reason"), "")));
+
+                predicates.add(cb.or(
+                        cb.like(cf, pattern),
+                        cb.like(pv, pattern),
+                        cb.like(nv, pattern),
+                        cb.like(rz, pattern)
+                ));
+            }
+
+            query.orderBy(cb.desc(root.get("approvedDate")));
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
         List<InfrastructureHistory> rows;
-        if (excludedStatuses == null || excludedStatuses.isEmpty()) {
-            rows = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(refType, refId);
+        if (pageable != null && pageable.isPaged()) {
+            rows = historyRepository.findAll(spec, pageable).getContent();
         } else {
-            rows = historyRepository.searchChangeHistoryExcludingNoise(
-                    refType, refId, excludedStatuses,
-                    noisePatterns != null && noisePatterns.length > 0 ? noisePatterns[0] : null,
-                    noisePatterns != null && noisePatterns.length > 1 ? noisePatterns[1] : null,
-                    noisePatterns != null && noisePatterns.length > 2 ? noisePatterns[2] : null,
-                    normalizeHistoryKeyword(keyword), fromDate, toDate,
-                    pageable != null ? pageable : org.springframework.data.domain.Pageable.unpaged());
+            rows = historyRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "approvedDate"));
+        }
+
+        if (noisePatterns != null && noisePatterns.length > 1) {
+            String genericField = noisePatterns[0];
+            rows = rows.stream().filter(h -> {
+                String field = h.getChangedField();
+                if (field == null || (genericField != null && field.equals(genericField))) {
+                    String val = h.getNewValue();
+                    if (val != null) {
+                        for (int i = 1; i < noisePatterns.length; i++) {
+                            if (noisePatterns[i] != null && !noisePatterns[i].isBlank() && val.contains(noisePatterns[i])) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+                return true;
+            }).toList();
         }
 
         Map<UUID, String> userNames = resolveUserNames(rows.stream()
@@ -181,13 +235,19 @@ public class HistoryService {
         if (action == null) {
             return InfrastructureHistoryStatus.UPDATED;
         }
-        return switch (action) {
-            case CREATE -> InfrastructureHistoryStatus.CREATED;
-            case UPDATE -> InfrastructureHistoryStatus.UPDATED;
-            case DELETE -> InfrastructureHistoryStatus.DELETED;
-            case APPROVE_L1, APPROVE_L2 -> InfrastructureHistoryStatus.APPROVED;
-            case REJECT -> InfrastructureHistoryStatus.REJECTED;
-        };
+        if (action == StationHistoryActionType.CREATE) {
+            return InfrastructureHistoryStatus.CREATED;
+        }
+        if (action == StationHistoryActionType.DELETE) {
+            return InfrastructureHistoryStatus.DELETED;
+        }
+        if (action == StationHistoryActionType.APPROVE_L1 || action == StationHistoryActionType.APPROVE_L2) {
+            return InfrastructureHistoryStatus.APPROVED;
+        }
+        if (action == StationHistoryActionType.REJECT) {
+            return InfrastructureHistoryStatus.REJECTED;
+        }
+        return InfrastructureHistoryStatus.UPDATED;
     }
 
     private ApprovalLevel toApprovalLevel(StationHistoryActionType action) {
@@ -204,15 +264,21 @@ public class HistoryService {
         if (status == null) {
             return StationHistoryActionType.UPDATE;
         }
-        return switch (status) {
-            case CREATED, DRAFT_SAVED -> StationHistoryActionType.CREATE;
-            case DELETED -> StationHistoryActionType.DELETE;
-            case REJECTED -> StationHistoryActionType.REJECT;
-            case APPROVED -> level == ApprovalLevel.LEVEL_2
+        if (status == InfrastructureHistoryStatus.CREATED || status == InfrastructureHistoryStatus.DRAFT_SAVED) {
+            return StationHistoryActionType.CREATE;
+        }
+        if (status == InfrastructureHistoryStatus.DELETED) {
+            return StationHistoryActionType.DELETE;
+        }
+        if (status == InfrastructureHistoryStatus.REJECTED) {
+            return StationHistoryActionType.REJECT;
+        }
+        if (status == InfrastructureHistoryStatus.APPROVED) {
+            return level == ApprovalLevel.LEVEL_2
                     ? StationHistoryActionType.APPROVE_L2
                     : StationHistoryActionType.APPROVE_L1;
-            default -> StationHistoryActionType.UPDATE;
-        };
+        }
+        return StationHistoryActionType.UPDATE;
     }
 
     private Map<UUID, String> resolveUserNames(Collection<UUID> userIds) {

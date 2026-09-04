@@ -119,7 +119,6 @@ export const KCHT_GIS_TYPE_OPTIONS = [
   { value: 'SCADA', label: 'Hệ thống SCADA' },
   { value: 'TRANSMISSION', label: 'Hệ thống truyền dẫn' },
   { value: 'VTS_OPERATION_CENTER', label: 'Trung tâm điều hành VTS' },
-  { value: 'VHF_SYSTEM', label: 'Hệ thống thông tin liên lạc VHF' },
 ] as const;
 
 export type KchtGisType = (typeof KCHT_GIS_TYPE_OPTIONS)[number]['value'];

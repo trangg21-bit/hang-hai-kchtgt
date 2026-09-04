@@ -18,7 +18,6 @@ import java.util.UUID;
  * hh.csdl TS_QL structure. Linked to KCHT_CB / KCHT_ATHH via {@code nhom}.
  * </p>
  */
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.experimental.FieldNameConstants;
 
 @Entity

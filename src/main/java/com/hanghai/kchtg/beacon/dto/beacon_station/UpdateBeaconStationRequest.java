@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.beacon.dto.beacon_station;
 
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Size;

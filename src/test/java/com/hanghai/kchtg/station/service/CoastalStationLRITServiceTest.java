@@ -6,12 +6,14 @@ import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.station.dto.lrit.CoastalStationLRITUpdateRequest;
 import com.hanghai.kchtg.station.dto.lrit.CoastalStationLRITRequest;
+import com.hanghai.kchtg.station.dto.lrit.CoastalStationLRITResponse;
 import com.hanghai.kchtg.station.entity.CoastalStationLRIT;
 import com.hanghai.kchtg.station.repository.CoastalStationLRITRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -38,18 +40,31 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class CoastalStationLRITServiceTest {
 
-    @Mock private CoastalStationLRITRepository repository;
-    @Mock private InfrastructureApprovalService approvalService;
-    @Mock private HistoryService historyService;
-    @Mock private OrgUnitScopeService orgUnitScopeService;
-    @Mock private OrgUnitRepository orgUnitRepository;
-    @Mock private OrgUnitCacheService orgUnitCacheService;
-    @Mock private OperatingOrganizationRepository operatingOrganizationRepository;
-    @Mock private UserRepository userRepository;
-    @Mock private GisSpatialObjectService gisSpatialObjectService;
-    @Mock private InfrastructureAttachmentRepository attachmentRepository;
+    @Mock
+    private CoastalStationLRITRepository repository;
+    @Mock
+    private InfrastructureApprovalService approvalService;
+    @Mock
+    private HistoryService historyService;
+    @Mock
+    private OrgUnitScopeService orgUnitScopeService;
+    @Mock
+    private OrgUnitRepository orgUnitRepository;
+    @Mock
+    private OrgUnitCacheService orgUnitCacheService;
+    @Mock
+    private OperatingOrganizationRepository operatingOrganizationRepository;
+    @Mock
+    private UserRepository userRepository;
+    @Mock
+    private GisSpatialObjectService gisSpatialObjectService;
+    @Mock
+    private com.hanghai.kchtg.mapicon.repository.MapSymbolRepository mapSymbolRepository;
+    @Mock
+    private InfrastructureAttachmentRepository attachmentRepository;
 
-    @InjectMocks private CoastalStationLRITService service;
+    @InjectMocks
+    private CoastalStationLRITService service;
 
     @Test
     void doesNotRecordHistoryWhenCreatingDraft() {
@@ -127,6 +142,67 @@ class CoastalStationLRITServiceTest {
         service.updateStation(stationId, request);
 
         verify(historyService, never()).recordDeltaChanges(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void resolvesLineGeometryTypeInBuildResponse() {
+        UUID stationId = UUID.randomUUID();
+        UUID spatialId = UUID.randomUUID();
+        CoastalStationLRIT station = station(stationId, spatialId, ApprovalStatus.APPROVED);
+        station.setLatitude(null);
+        station.setLongitude(null);
+
+        GisSpatialObject spatialObject = new GisSpatialObject();
+        spatialObject.setId(spatialId);
+        spatialObject.setGeometryType(GisGeometryType.LINE);
+        spatialObject.setCoordinates("LINESTRING(112.06 17.80, 110.85 15.52)");
+
+        when(gisSpatialObjectService.findById(spatialId)).thenReturn(Optional.of(spatialObject));
+
+        CoastalStationLRITResponse response = service.buildResponse(station);
+
+        assertThat(response.getGeometryType()).isEqualTo("LINE");
+        assertThat(response.getObjectType()).isEqualTo("LINE");
+        assertThat(response.getCoordinates()).isEqualTo("LINESTRING(112.06 17.80, 110.85 15.52)");
+        assertThat(response.getLatitude()).isEqualByComparingTo("17.80");
+        assertThat(response.getLongitude()).isEqualByComparingTo("112.06");
+    }
+
+    @Test
+    void autoFillsLevel1ApprovalWhenDirectlyApprovedByLevel2() {
+        UUID stationId = UUID.randomUUID();
+        CoastalStationLRIT station = station(stationId, null, ApprovalStatus.PENDING_APPROVAL);
+        station.setApproverLevel1(null);
+
+        when(repository.findById(stationId)).thenReturn(Optional.of(station));
+        when(repository.save(station)).thenReturn(station);
+
+        CoastalStationLRIT approved = service.approveLevel2(stationId);
+
+        assertThat(approved.getApproverLevel1()).isNotNull();
+        assertThat(approved.getApprovedDateLevel1()).isNotNull();
+        assertThat(approved.getLevel1ApprovalContent()).isEqualTo("Cấp Cục phê duyệt trực tiếp");
+        assertThat(approved.getSubmittedBy()).isNotNull();
+        assertThat(approved.getSubmittedAt()).isNotNull();
+        verifyNoInteractions(historyService);
+    }
+
+    @Test
+    void resolvesSubmittedByNameInBuildResponse() {
+        UUID stationId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        CoastalStationLRIT station = station(stationId, null, ApprovalStatus.APPROVED);
+        station.setSubmittedBy(userId);
+
+        com.hanghai.kchtg.user.entity.User user = new com.hanghai.kchtg.user.entity.User();
+        user.setId(userId);
+        user.setFullName("Nguyễn Văn An");
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        CoastalStationLRITResponse response = service.buildResponse(station);
+
+        assertThat(response.getSubmittedBy()).isEqualTo(userId);
+        assertThat(response.getSubmittedByName()).isEqualTo("Nguyễn Văn An");
     }
 
     private CoastalStationLRIT station(UUID id, UUID spatialId, ApprovalStatus approvalStatus) {
