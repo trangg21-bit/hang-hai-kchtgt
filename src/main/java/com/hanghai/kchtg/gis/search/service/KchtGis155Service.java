@@ -28,6 +28,8 @@ import com.hanghai.kchtg.station.entity.*;
 import com.hanghai.kchtg.station.repository.*;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
+import com.hanghai.kchtg.cctv.entity.Cctv;
+import com.hanghai.kchtg.cctv.repository.CctvRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -71,6 +73,7 @@ public class KchtGis155Service {
       InfrastructureType.COSPAS_SARSAT_STATION,
       InfrastructureType.LRIT_STATION,
       InfrastructureType.HANOI_STATION,
+      InfrastructureType.CCTV,
       InfrastructureType.DRY_PORT);
 
   private final PortRepository portRepository;
@@ -94,6 +97,7 @@ public class KchtGis155Service {
   private final CoastalStationCospasSarsatRepository coastalStationCospasSarsatRepository;
   private final CoastalStationLRITRepository coastalStationLRITRepository;
   private final CoastalStationHaiphongRepository coastalStationHaiphongRepository;
+  private final CctvRepository cctvRepository;
   private final jakarta.persistence.EntityManager entityManager;
 
   /**
@@ -643,6 +647,51 @@ public class KchtGis155Service {
             }
           }
           break;
+
+        case CCTV:
+            List<Cctv> cctvs = cctvRepository.searchCctv(
+                orgUnitId == null,
+                orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of(),
+                false, null, null, null, null, ApprovalStatus.APPROVED, null, null, null,
+                province,
+                null, null, searchLower, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+            Map<UUID, GisSpatialObject> cctvSpatialMap = new HashMap<>();
+            if (!cctvs.isEmpty()) {
+              List<UUID> cctvIds = cctvs.stream().map(Cctv::getId).collect(Collectors.toList());
+              gisSpatialObjectRepository.findByRefIdInAndRefType(cctvIds, InfrastructureType.CCTV)
+                  .forEach(so -> cctvSpatialMap.put(so.getRefId(), so));
+            }
+            for (Cctv cctv : cctvs) {
+              GisSpatialObject spatial = cctvSpatialMap.get(cctv.getId());
+              double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
+              Double lat = coords != null ? coords[0] : null;
+              Double lng = coords != null ? coords[1] : null;
+
+              KchtGisSearchResult r = KchtGisSearchResult.builder()
+                  .id(cctv.getId() != null ? cctv.getId().toString() : null)
+                  .name(cctv.getDeviceName())
+                  .code(cctv.getDeviceCode())
+                  .orgUnitId(cctv.getOrgUnitId())
+                  .orgName(getOrgName(cctv.getOrgUnitId(), orgNameMap))
+                  .infrastructureType(type)
+                  .kchtTypeLabel("Hệ thống CCTV")
+                  .mapSymbolId(cctv.getMapSymbolId())
+                  .provinceId(null)
+                  .location(cctv.getProvinceName() != null ? cctv.getProvinceName() : "")
+                  .diaChiChiTiet(cctv.getDetailedLocation() != null ? cctv.getDetailedLocation() : "")
+                  .build();
+              if (objectType != null) {
+                populateSpatialAndFilterFromMap(results, r, cctv.getSpatialId() != null ? cctv.getSpatialId() : cctv.getId(), objectType, GisObjectType.POINT, cctvSpatialMap);
+              } else {
+                results.add(r);
+                if (cctv.getSpatialId() != null) {
+                  spatialIdMap.put(r.getId(), cctv.getSpatialId());
+                } else {
+                  spatialIdMap.put(r.getId(), cctv.getId());
+                }
+              }
+            }
+            break;
 
         case WATER_AREA:
           List<WaterZone> waterZones = waterZoneRepository.searchWaterZones(
