@@ -1,6 +1,6 @@
--- Kh�i ph?c c?t t?a d? cho c�c d�i th�ng tin duy�n h?i c�n l?i
--- Tuong t? nhu V20260903143000, do V82 d� x�a c�c c?t n�y kh?i database
--- nhung code Java v?n dang map @Column d?n t?i l?i SQLState 42703 khi search.
+-- Khôi phục cột tọa độ cho các đài thông tin duyên hải còn lại
+-- Tương tự như V20260903143000, do V82 đã xóa các cột này khỏi database
+-- nhưng code Java vẫn đang map @Column dẫn tới lỗi SQLState 42703 khi search.
 
 ALTER TABLE public.coastal_station_inmarsat
     ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,

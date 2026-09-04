@@ -1,7 +1,7 @@
--- coastal_station_vts v?n �nh x? latitude/longitude trong entity v� c�c lu?ng
--- CRUD, nhung V82 d� x�a hai c?t n�y khi chuy?n t?a d? sang kho GIS t?p trung.
--- Khi tra c?u KCHT v?i lo?i "T?t c?", Hibernate ch?n d? c?t entity v� l�m to�n
--- b? API l?i SQLState 42703 tru?c khi c� th? tr? danh s�ch.
+-- coastal_station_vts vẫn ánh xạ latitude/longitude trong entity và các luồng
+-- CRUD, nhưng V82 đã xóa hai cột này khi chuyển tọa độ sang kho GIS tập trung.
+-- Khi tra cứu KCHT với loại "Tất cả", Hibernate chọn đủ cột entity và làm toàn
+-- bộ API lỗi SQLState 42703 trước khi có thể trả danh sách.
 
 ALTER TABLE public.coastal_station_vts
     ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,
