@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Modal, Input, Select, DatePicker } from 'antd';
 import { aisSystemService } from '../../services/aisSystemService';
 import { vtsSystemCRUD } from '../../services/vtsSystemService';
@@ -46,6 +47,13 @@ const CONDITION_COLOR: Record<ConditionStatus, string> = {
 };
 
 export function AisSystemList() {
+  const [searchParams] = useSearchParams();
+  const linkedAction = searchParams.get("action");
+  const linkedRecordId = searchParams.get("id");
+  const isIframeModal = window.parent !== window.self;
+  const isMapLinkedView = isIframeModal && (linkedAction === "edit" || linkedAction === "detail");
+  const handledLinkedRecordRef = useRef<string | null>(null);
+
   const currentUser = useAuthStore((s) => s.user);
   const { hasPermission } = usePermissionStore();
   const hasPerm = useCallback((perm: string) => hasPermission(perm), [hasPermission]);
@@ -91,6 +99,40 @@ export function AisSystemList() {
   const [modalMode, setModalMode] = useState<'create' | 'edit' | 'detail'>('create');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<AisSystemResponse | null>(null);
+
+  useEffect(() => {
+    if (!isMapLinkedView || !linkedRecordId || !linkedAction) return;
+
+    const requestKey = `${linkedAction}:${linkedRecordId}`;
+    if (handledLinkedRecordRef.current === requestKey) return;
+    handledLinkedRecordRef.current = requestKey;
+
+    let active = true;
+    void aisSystemService.getById(linkedRecordId)
+      .then((record) => {
+        if (!active) return;
+        if (linkedAction === "edit") {
+          setEditingId(record.id);
+          setSelectedRecord(record as any);
+          setModalMode('edit');
+          setIsModalOpen(true);
+        } else {
+          setEditingId(record.id);
+          setSelectedRecord(record as any);
+          setModalMode('detail');
+          setIsModalOpen(true);
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        handledLinkedRecordRef.current = null;
+        toast.error("Không thể tải dữ liệu AIS");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isMapLinkedView, linkedAction, linkedRecordId]);
 
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);

@@ -41,6 +41,7 @@ import { useSearchParams } from "react-router-dom";
 import { DEFAULT_OPERATING_ORGANIZATIONS } from "../operatingOrganizationsData";
 import {
   fetchVtsAssistList,
+  fetchVtsAssistById,
   deleteVtsAssist,
   submitVtsAssist,
   approveVtsAssistC1,
@@ -393,9 +394,14 @@ const normalizeGeometryType = (value: unknown): 'POINT' | 'LINE' | 'POLYGON' =>
 
 const VtsAssistListPage = () => {
   const [searchParams] = useSearchParams();
+  const linkedAction = searchParams.get("action");
+  const linkedRecordId = searchParams.get("id");
+  const isIframeModal = window.parent !== window.self;
+  const isMapLinkedView = isIframeModal && (linkedAction === "edit" || linkedAction === "detail");
+  const handledLinkedRecordRef = useRef<string | null>(null);
+
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const currentUser = useAuthStore((s) => s.user);
-  const isIframeModal = window.parent !== window.self;
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState<string | null>(null);
   const [data, setData] = useState<VtsAssistResponse[]>([]);
@@ -1311,6 +1317,61 @@ const VtsAssistListPage = () => {
     );
   };
 
+  const openUpdateDrawer = useCallback((record: VtsAssistResponse) => {
+    setUpdateTarget(record);
+    setUploadFileList([]);
+    void fetchVtsAssistAttachments(record.id).then((list: any[]) => {
+      setUploadFileList(list.map((a: any) => ({ uid: a.id, name: a.fileName, size: a.fileSize, status: 'done' as const })));
+    }).catch(() => { /* ignore */ });
+    const safeRecord = {
+      ...record,
+      operationalStatus: record.operationalStatus != null
+        ? (() => {
+            switch (record.operationalStatus) {
+              case "NOT_YET_OPERATIONAL": return 0;
+              case "OPERATIONAL": return 1;
+              case "SUSPENDED": return 2;
+              default: {
+                const num = Number(record.operationalStatus);
+                return num >= 0 && num <= 2 ? num : 1;
+              }
+            }
+          })()
+        : null,
+    };
+    updateForm.setFieldsValue(safeRecord);
+    setUpdateModalOpen(true);
+  }, [updateForm, setUpdateModalOpen, setUpdateTarget, setUploadFileList]);
+
+  useEffect(() => {
+    if (!isMapLinkedView || !linkedRecordId || !linkedAction) return;
+
+    const requestKey = `${linkedAction}:${linkedRecordId}`;
+    if (handledLinkedRecordRef.current === requestKey) return;
+    handledLinkedRecordRef.current = requestKey;
+
+    let active = true;
+    void fetchVtsAssistById(linkedRecordId)
+      .then((record) => {
+        if (!active) return;
+        if (linkedAction === "edit") {
+          openUpdateDrawer(record);
+        } else {
+          setSelectedRecord(record);
+          setDetailDrawerOpen(true);
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        handledLinkedRecordRef.current = null;
+        toast.error("Không thể tải hồ sơ vts assist");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isMapLinkedView, linkedAction, linkedRecordId, openUpdateDrawer]);
+
   // ── rowActions callback ──────────────────────────────────────────
   const rowActions = useCallback(
     (record: VtsAssistResponse) => {
@@ -1335,32 +1396,7 @@ const VtsAssistListPage = () => {
           key: "edit",
           label: "Chỉnh sửa",
           icon: <EditOutlined />,
-          onClick: () => {
-            setUpdateTarget(record);
-            setUploadFileList([]);
-            void fetchVtsAssistAttachments(record.id).then((list: any[]) => {
-              setUploadFileList(list.map((a: any) => ({ uid: a.id, name: a.fileName, size: a.fileSize, status: 'done' as const })));
-            }).catch(() => { /* ignore */ });
-            // Convert operationalStatus từ string enum (backend @JsonValue) sang số (frontend dropdown)
-            const safeRecord = {
-              ...record,
-              operationalStatus: record.operationalStatus != null
-                ? (() => {
-                    switch (record.operationalStatus) {
-                      case "NOT_YET_OPERATIONAL": return 0;
-                      case "OPERATIONAL": return 1;
-                      case "SUSPENDED": return 2;
-                      default: {
-                        const num = Number(record.operationalStatus);
-                        return num >= 0 && num <= 2 ? num : 1;
-                      }
-                    }
-                  })()
-                : null,
-            };
-            updateForm.setFieldsValue(safeRecord);
-            setUpdateModalOpen(true);
-          },
+          onClick: () => openUpdateDrawer(record),
         });
       }
 

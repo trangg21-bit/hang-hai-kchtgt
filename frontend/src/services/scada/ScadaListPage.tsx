@@ -44,6 +44,7 @@ import { Tabs, Upload } from "antd";
 import type { RcFile } from "antd/es/upload/interface";
 import { useSearchParams } from "react-router-dom";
 import {
+  fetchScadaById,
   fetchScadaList,
   deleteScada,
   submitScada,
@@ -614,9 +615,14 @@ export function buildScadaCollapseItems(
 
 const ScadaListPage = () => {
   const [searchParams] = useSearchParams();
+  const linkedAction = searchParams.get("action");
+  const linkedRecordId = searchParams.get("id");
+  const isIframeModal = window.parent !== window.self;
+  const isMapLinkedView = isIframeModal && (linkedAction === "edit" || linkedAction === "detail");
+  const handledLinkedRecordRef = useRef<string | null>(null);
+
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const currentUser = useAuthStore((s) => s.user);
-  const isIframeModal = window.parent !== window.self;
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState<string | null>(null);
   const [data, setData] = useState<ScadaResponse[]>([]);
@@ -1530,6 +1536,67 @@ const ScadaListPage = () => {
       </div>
     );
   };
+
+  const openUpdateDrawer = useCallback((record: ScadaResponse) => {
+    setUpdateTarget(record);
+    setUploadFileList([]);
+    void fetchScadaAttachments(record.id).then((list: any[]) => {
+      setUploadFileList(list.map((a: any) => ({ uid: a.id, name: a.fileName, size: a.fileSize, status: 'done' as const })));
+    }).catch(() => { /* ignore */ });
+    // Convert operationalStatus từ string enum (backend @JsonValue) sang số (frontend dropdown)
+    const safeRecord = {
+      ...record,
+      operationalStatus: record.operationalStatus != null
+        ? (() => {
+            switch (record.operationalStatus) {
+              case "NOT_YET_OPERATIONAL": return 0;
+              case "OPERATIONAL": return 1;
+              case "SUSPENDED": return 2;
+              default: {
+                const num = Number(record.operationalStatus);
+                return num >= 0 && num <= 2 ? num : 1;
+              }
+            }
+          })()
+        : null,
+    updateForm.setFieldsValue(safeRecord);
+    // Fill gpsCoordList for Edit drawer
+    if (record.coordinates) {
+      setUpdateGpsCoordList(record.coordinates.map((c: any) => ({ lat: Number(c[1]), lng: Number(c[0]) })));
+    } else {
+      setUpdateGpsCoordList([]);
+    }
+    setUpdateModalOpen(true);
+  }, [updateForm, setUpdateGpsCoordList, setUpdateModalOpen, setUpdateTarget, setUploadFileList]);
+
+  useEffect(() => {
+    if (!isMapLinkedView || !linkedRecordId || !linkedAction) return;
+
+    const requestKey = `${linkedAction}:${linkedRecordId}`;
+    if (handledLinkedRecordRef.current === requestKey) return;
+    handledLinkedRecordRef.current = requestKey;
+
+    let active = true;
+    void fetchScadaById(linkedRecordId)
+      .then((record) => {
+        if (!active) return;
+        if (linkedAction === "edit") {
+          openUpdateDrawer(record);
+        } else {
+          setSelectedRecord(record);
+          setDetailDrawerOpen(true);
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        handledLinkedRecordRef.current = null;
+        toast.error("Không thể tải hồ sơ hệ thống SCADA");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isMapLinkedView, linkedAction, linkedRecordId, openUpdateDrawer]);
 
   // ── rowActions callback ──────────────────────────────────────────
   const rowActions = useCallback(

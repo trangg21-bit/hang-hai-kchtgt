@@ -36,6 +36,7 @@ import SidebarFilterField from '../../components/list-view/SidebarFilterField';
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import { useSearchParams } from 'react-router-dom';
 
 /** Số bản ghi nhật ký mỗi lần cuộn tải thêm trong drawer lịch sử. */
 const HISTORY_PAGE_SIZE = 20;
@@ -48,6 +49,13 @@ const CONDITION_COLOR: Record<ConditionStatus, string> = {
 };
 
 export default function VtsOperationCenterList() {
+  const [searchParams] = useSearchParams();
+  const linkedAction = searchParams.get("action");
+  const linkedRecordId = searchParams.get("id");
+  const isIframeModal = window.parent !== window.self;
+  const isMapLinkedView = isIframeModal && (linkedAction === "edit" || linkedAction === "detail");
+  const handledLinkedRecordRef = useRef<string | null>(null);
+
   const currentUser = useAuthStore((s: any) => s.user);
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
 
@@ -113,6 +121,40 @@ export default function VtsOperationCenterList() {
   const [countRejectedLevel2, setCountRejectedLevel2] = useState<number>(0);
   const statusCountFilterKey = useRef<string | null>(null);
   const listRequestId = useRef(0);
+
+  useEffect(() => {
+    if (!isMapLinkedView || !linkedRecordId || !linkedAction) return;
+
+    const requestKey = `${linkedAction}:${linkedRecordId}`;
+    if (handledLinkedRecordRef.current === requestKey) return;
+    handledLinkedRecordRef.current = requestKey;
+
+    let active = true;
+    void vtsOperationCenterService.getById(linkedRecordId)
+      .then((record) => {
+        if (!active) return;
+        if (linkedAction === "edit") {
+          setEditingId(record.id);
+          setSelectedRecord(record as any);
+          setModalMode('edit');
+          setIsModalOpen(true);
+        } else {
+          setEditingId(record.id);
+          setSelectedRecord(record as any);
+          setModalMode('detail');
+          setIsModalOpen(true);
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        handledLinkedRecordRef.current = null;
+        toast.error("Không thể tải hồ sơ Trung tâm Điều hành VTS");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isMapLinkedView, linkedAction, linkedRecordId]);
 
   useEffect(() => {
     (async () => {

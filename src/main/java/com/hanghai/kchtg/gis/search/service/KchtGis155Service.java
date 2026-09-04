@@ -931,8 +931,9 @@ public class KchtGis155Service {
 
         case WATER_AREA:
           List<WaterZone> waterZones = waterZoneRepository.searchWaterZones(
-              orgUnitId, null, searchLower, null, null,
-              ApprovalStatus.APPROVED, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+                orgUnitId, null, searchLower, null, null,
+                null, PageRequest.of(0, MAX_FETCH_SIZE)).getContent()
+                .stream().filter(entity -> isApproved(entity.getApprovalStatus())).collect(Collectors.toList());
           List<UUID> vnCbIds = waterZones.stream().map(WaterZone::getPortId).filter(Objects::nonNull)
               .distinct().collect(Collectors.toList());
           Map<UUID, Port> vnPortMap = new HashMap<>();
@@ -1516,8 +1517,9 @@ public class KchtGis155Service {
 
         case BUOY_BERTH:
           List<WaterZone> benPhaos = waterZoneRepository.searchWaterZones(
-              orgUnitId, null, searchLower, WaterZoneType.MOORING_BUOY, null,
-              ApprovalStatus.APPROVED, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+                orgUnitId, null, searchLower, WaterZoneType.MOORING_BUOY, null,
+                null, PageRequest.of(0, MAX_FETCH_SIZE)).getContent()
+                .stream().filter(entity -> isApproved(entity.getApprovalStatus())).collect(Collectors.toList());
           List<UUID> bpCbIds = benPhaos.stream().map(WaterZone::getPortId).filter(Objects::nonNull).distinct()
               .collect(Collectors.toList());
           Map<UUID, Port> bpPortMap = new HashMap<>();
@@ -1571,8 +1573,9 @@ public class KchtGis155Service {
 
         case ANCHORAGE_AREA:
           List<WaterZone> anchorages = waterZoneRepository.searchWaterZones(
-              orgUnitId, null, searchLower, WaterZoneType.ANCHORAGE, null,
-              ApprovalStatus.APPROVED, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+                orgUnitId, null, searchLower, WaterZoneType.ANCHORAGE, null,
+                null, PageRequest.of(0, MAX_FETCH_SIZE)).getContent()
+                .stream().filter(entity -> isApproved(entity.getApprovalStatus())).collect(Collectors.toList());
           List<UUID> knCbIds = anchorages.stream().map(WaterZone::getPortId).filter(Objects::nonNull)
               .distinct().collect(Collectors.toList());
           Map<UUID, Port> knPortMap = new HashMap<>();
@@ -1626,8 +1629,9 @@ public class KchtGis155Service {
 
         case TRANSSHIPMENT_AREA:
           List<WaterZone> khuChuyens = waterZoneRepository.searchWaterZones(
-              orgUnitId, null, searchLower, WaterZoneType.TRANSSHIPMENT, null,
-              ApprovalStatus.APPROVED, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+                orgUnitId, null, searchLower, WaterZoneType.TRANSSHIPMENT, null,
+                null, PageRequest.of(0, MAX_FETCH_SIZE)).getContent()
+                .stream().filter(entity -> isApproved(entity.getApprovalStatus())).collect(Collectors.toList());
           List<UUID> kcCbIds = khuChuyens.stream().map(WaterZone::getPortId).filter(Objects::nonNull)
               .distinct().collect(Collectors.toList());
           Map<UUID, Port> kcPortMap = new HashMap<>();
@@ -1681,8 +1685,9 @@ public class KchtGis155Service {
 
         case STORM_SHELTER_AREA:
           List<WaterZone> khuTranhs = waterZoneRepository.searchWaterZones(
-              orgUnitId, null, searchLower, WaterZoneType.STORM_SHELTER, null,
-              ApprovalStatus.APPROVED, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+                orgUnitId, null, searchLower, WaterZoneType.STORM_SHELTER, null,
+                null, PageRequest.of(0, MAX_FETCH_SIZE)).getContent()
+                .stream().filter(entity -> isApproved(entity.getApprovalStatus())).collect(Collectors.toList());
           List<UUID> ktCbIds = khuTranhs.stream().map(WaterZone::getPortId).filter(Objects::nonNull)
               .distinct().collect(Collectors.toList());
           Map<UUID, Port> ktPortMap = new HashMap<>();
