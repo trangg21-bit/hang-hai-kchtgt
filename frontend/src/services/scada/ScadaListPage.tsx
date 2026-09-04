@@ -1559,6 +1559,7 @@ const ScadaListPage = () => {
             }
           })()
         : null,
+    };
     updateForm.setFieldsValue(safeRecord);
     // Fill gpsCoordList for Edit drawer
     if (record.coordinates) {
