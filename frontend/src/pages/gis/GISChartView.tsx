@@ -1852,7 +1852,7 @@ export default function GISChartView() {
 
   const infrastructureColumns = useMemo<DataTableColumn[]>(() => [
     {
-      key: 'index', label: 'STT', width: 52, align: 'center', fixed: 'left',
+      key: 'index', label: 'STT', width: 52, align: 'center',
       render: (_value, _record, index = 0) => (searchPage - 1) * searchPageSize + index + 1,
     },
     { key: 'orgName', dataIndex: 'orgName', label: 'Đơn vị quản lý', width: 170 },
@@ -4487,7 +4487,7 @@ export default function GISChartView() {
                               scroll={{ x: 'max-content', y: tableHeight }}
                               emptyState={<EmptyState description={hasSearched ? 'Không tìm thấy kết cấu hạ tầng phù hợp' : 'Nhập điều kiện và chọn Tìm kiếm'} />}
                               rowSelection={{
-                                fixed: 'left',
+                                fixed: true,
                                 columnWidth: 44,
                                 selectedRowKeys,
                                 onChange: (keys: React.Key[]) => {

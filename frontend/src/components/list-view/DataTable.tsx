@@ -83,6 +83,8 @@ export interface DataTableColumn {
    * vào tổng bề rộng nên scroll ngang vẫn khớp.
    */
   hidden?: boolean;
+  /** Internal use only */
+  isDummy?: boolean;
 }
 
 export interface DataTableProps {
@@ -249,6 +251,17 @@ const DataTable: React.FC<DataTableProps> = ({
 
   const cols = (columns as any[]) || [];
 
+  if (rest.rowSelection?.fixed && !hasFixedColumns) {
+    cols.unshift({
+      key: '_dummy_fixed',
+      fixed: rest.rowSelection.fixed,
+      width: 0,
+      isDummy: true,
+      title: '',
+      render: () => null,
+    });
+  }
+
   const widthlessStretchColumns = shouldStretchColumns
     ? cols.filter((column) => column.width == null && !column.fixed && column.key !== 'actions')
     : [];
@@ -323,7 +336,7 @@ const DataTable: React.FC<DataTableProps> = ({
         style: {
           fontWeight: fontWeightBold,
           textTransform: 'uppercase',
-          padding: col.key === 'stt' ? '10px 4px' : tableHeaderPadding,
+          padding: col.isDummy ? 0 : (col.key === 'stt' ? '10px 4px' : tableHeaderPadding),
           cursor: isSortable ? 'pointer' : undefined,
           // Tiêu đề cột BẮT BUỘC hiển thị đủ chữ, không cắt "..." — bề rộng cột đã được nới
           // tối thiểu bằng `headerMinWidth()` nên chữ không tràn sang cột bên cạnh.
@@ -354,7 +367,7 @@ const DataTable: React.FC<DataTableProps> = ({
           style: {
             fontSize: dense ? fontSizeSm : fontSizeMd,
             color: textPrimary,
-            padding: col.key === 'stt' ? '8px 4px' : (tableCellPadding || undefined),
+            padding: col.isDummy ? 0 : (col.key === 'stt' ? '8px 4px' : (tableCellPadding || undefined)),
             whiteSpace: 'nowrap',
             overflow: col.key === 'stt' ? 'visible' : 'hidden',
             textOverflow: col.key === 'stt' ? 'clip' : 'ellipsis',
