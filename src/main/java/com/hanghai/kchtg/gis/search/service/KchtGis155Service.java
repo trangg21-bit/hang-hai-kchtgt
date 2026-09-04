@@ -98,6 +98,9 @@ public class KchtGis155Service {
   private final OrgUnitScopeService orgUnitScopeService;
   private final WaterZoneRepository waterZoneRepository;
   private final NavigationChannelRepository navigationChannelRepository;
+  private final com.hanghai.kchtg.port.repository.AnchorageRepository anchorageRepository;
+  private final com.hanghai.kchtg.port.repository.TransferAreaRepository transferAreaRepository;
+  private final com.hanghai.kchtg.port.repository.StormShelterAreaRepository stormShelterAreaRepository;
   private final DikeRevetmentRepository dikeRevetmentRepository;
   private final ShipRepairFacilityRepository shipRepairFacilityRepository;
   private final BuoyStationRepository buoyStationRepository;
@@ -933,7 +936,7 @@ public class KchtGis155Service {
           List<WaterZone> waterZones = waterZoneRepository.searchWaterZones(
                 orgUnitId, null, searchLower, null, null,
                 null, PageRequest.of(0, MAX_FETCH_SIZE)).getContent()
-                .stream().filter(entity -> isApproved(entity.getApprovalStatus())).collect(Collectors.toList());
+                .stream().collect(Collectors.toList());
           List<UUID> vnCbIds = waterZones.stream().map(WaterZone::getPortId).filter(Objects::nonNull)
               .distinct().collect(Collectors.toList());
           Map<UUID, Port> vnPortMap = new HashMap<>();
@@ -1079,7 +1082,7 @@ public class KchtGis155Service {
         case SHIP_REPAIR_FACILITY:
           String csSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
           List<ShipRepairFacility> csList = shipRepairFacilityRepository.searchFiltered(orgUnitId,
-              csSearchParam).stream().filter(entity -> isApproved(entity.getApprovalStatus())).toList();
+              csSearchParam).stream().toList();
           Map<UUID, GisSpatialObject> csSpatialMap = new HashMap<>();
           if (!csList.isEmpty()) {
             List<UUID> csSpatialIds = csList.stream().map(ShipRepairFacility::getSpatialId)
@@ -1207,7 +1210,7 @@ public class KchtGis155Service {
         case BUOY_STATION:
           String phaoSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
           List<BuoyStation> phaoList = buoyStationRepository.searchGis(orgUnitId, phaoSearchParam).stream()
-              .filter(entity -> isApproved(entity.getApprovalStatus())).toList();
+              .toList();
           Map<UUID, GisSpatialObject> phaoSpatialMap = new HashMap<>();
           if (objectType != null && !phaoList.isEmpty()) {
             List<UUID> phaoIds = phaoList.stream().map(BuoyStation::getId).collect(Collectors.toList());
@@ -1422,7 +1425,7 @@ public class KchtGis155Service {
         case VTS_SYSTEM:
           String vtsSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
           List<VtsSystem> vtsList = vtsSystemRepository.searchFiltered(orgUnitId, vtsSearchParam).stream()
-              .filter(entity -> isApproved(entity.getApprovalStatus())).toList();
+              .toList();
           Map<UUID, GisSpatialObject> vtsSpatialMap = new HashMap<>();
           if (!vtsList.isEmpty()) {
             List<UUID> vtsSpatialIds = vtsList.stream().map(VtsSystem::getSpatialId)
@@ -1474,7 +1477,7 @@ public class KchtGis155Service {
         case RADAR_STATION_LEGACY:
           String radarSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
           List<RadarStation> radarList = radarStationRepository.searchFiltered(orgUnitId, radarSearchParam)
-              .stream().filter(entity -> isApproved(entity.getApprovalStatus())).toList();
+              .stream().toList();
           Map<UUID, GisSpatialObject> radarSpatialMap = new HashMap<>();
           if (!radarList.isEmpty()) {
             List<UUID> radarIds = radarList.stream().map(RadarStation::getId).collect(Collectors.toList());
@@ -1519,7 +1522,7 @@ public class KchtGis155Service {
           List<WaterZone> benPhaos = waterZoneRepository.searchWaterZones(
                 orgUnitId, null, searchLower, WaterZoneType.MOORING_BUOY, null,
                 null, PageRequest.of(0, MAX_FETCH_SIZE)).getContent()
-                .stream().filter(entity -> isApproved(entity.getApprovalStatus())).collect(Collectors.toList());
+                .stream().collect(Collectors.toList());
           List<UUID> bpCbIds = benPhaos.stream().map(WaterZone::getPortId).filter(Objects::nonNull).distinct()
               .collect(Collectors.toList());
           Map<UUID, Port> bpPortMap = new HashMap<>();
@@ -1572,11 +1575,10 @@ public class KchtGis155Service {
           break;
 
         case ANCHORAGE_AREA:
-          List<WaterZone> anchorages = waterZoneRepository.searchWaterZones(
-                orgUnitId, null, searchLower, WaterZoneType.ANCHORAGE, null,
-                null, PageRequest.of(0, MAX_FETCH_SIZE)).getContent()
-                .stream().filter(entity -> isApproved(entity.getApprovalStatus())).collect(Collectors.toList());
-          List<UUID> knCbIds = anchorages.stream().map(WaterZone::getPortId).filter(Objects::nonNull)
+          List<com.hanghai.kchtg.port.entity.Anchorage> anchorages = anchorageRepository.searchAnchorages(
+                orgUnitId == null, orgUnitId != null ? List.of(orgUnitId) : List.of(),
+                searchLower, null, null, null, null, null, null, null, null, false, null, null, org.springframework.data.domain.PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+          List<UUID> knCbIds = anchorages.stream().map(com.hanghai.kchtg.port.entity.Anchorage::getPortId).filter(Objects::nonNull)
               .distinct().collect(Collectors.toList());
           Map<UUID, Port> knPortMap = new HashMap<>();
           if (!knCbIds.isEmpty()) {
@@ -1584,14 +1586,14 @@ public class KchtGis155Service {
           }
           Map<UUID, GisSpatialObject> knSpatialMap = new HashMap<>();
           if (!anchorages.isEmpty()) {
-            List<UUID> knSpatialIds = anchorages.stream().map(WaterZone::getSpatialId)
+            List<UUID> knSpatialIds = anchorages.stream().map(com.hanghai.kchtg.port.entity.Anchorage::getSpatialId)
                 .filter(Objects::nonNull).distinct().collect(Collectors.toList());
             if (!knSpatialIds.isEmpty()) {
               gisSpatialObjectRepository.findAllById(knSpatialIds)
                   .forEach(so -> knSpatialMap.put(so.getId(), so));
             }
           }
-          for (WaterZone vn : anchorages) {
+          for (com.hanghai.kchtg.port.entity.Anchorage vn : anchorages) {
             Port parent = (vn.getPortId() != null) ? knPortMap.get(vn.getPortId()) : null;
             String parentProvince = (parent != null && parent.getProvince() != null)
                 ? String.valueOf(parent.getProvince())
@@ -1604,8 +1606,8 @@ public class KchtGis155Service {
 
             KchtGisSearchResult r = KchtGisSearchResult.builder()
                 .id(vn.getId() != null ? vn.getId().toString() : null)
-                .name(vn.getWaterZoneName())
-                .code(vn.getWaterZoneCode())
+                .name(vn.getAnchorageName())
+                .code(vn.getAnchorageCode())
                 .orgUnitId(vn.getOrgUnitId())
                 .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
                 .infrastructureType(type)
@@ -1628,11 +1630,10 @@ public class KchtGis155Service {
           break;
 
         case TRANSSHIPMENT_AREA:
-          List<WaterZone> khuChuyens = waterZoneRepository.searchWaterZones(
-                orgUnitId, null, searchLower, WaterZoneType.TRANSSHIPMENT, null,
-                null, PageRequest.of(0, MAX_FETCH_SIZE)).getContent()
-                .stream().filter(entity -> isApproved(entity.getApprovalStatus())).collect(Collectors.toList());
-          List<UUID> kcCbIds = khuChuyens.stream().map(WaterZone::getPortId).filter(Objects::nonNull)
+          List<com.hanghai.kchtg.port.entity.TransferArea> khuChuyens = transferAreaRepository.searchTransferAreas(
+                orgUnitId == null, orgUnitId != null ? List.of(orgUnitId) : List.of(),
+                searchLower, null, null, null, null, null, null, null, false, null, null, org.springframework.data.domain.PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+          List<UUID> kcCbIds = khuChuyens.stream().map(com.hanghai.kchtg.port.entity.TransferArea::getPortId).filter(Objects::nonNull)
               .distinct().collect(Collectors.toList());
           Map<UUID, Port> kcPortMap = new HashMap<>();
           if (!kcCbIds.isEmpty()) {
@@ -1640,14 +1641,14 @@ public class KchtGis155Service {
           }
           Map<UUID, GisSpatialObject> kcSpatialMap = new HashMap<>();
           if (!khuChuyens.isEmpty()) {
-            List<UUID> kcSpatialIds = khuChuyens.stream().map(WaterZone::getSpatialId)
+            List<UUID> kcSpatialIds = khuChuyens.stream().map(com.hanghai.kchtg.port.entity.TransferArea::getSpatialId)
                 .filter(Objects::nonNull).distinct().collect(Collectors.toList());
             if (!kcSpatialIds.isEmpty()) {
               gisSpatialObjectRepository.findAllById(kcSpatialIds)
                   .forEach(so -> kcSpatialMap.put(so.getId(), so));
             }
           }
-          for (WaterZone vn : khuChuyens) {
+          for (com.hanghai.kchtg.port.entity.TransferArea vn : khuChuyens) {
             Port parent = (vn.getPortId() != null) ? kcPortMap.get(vn.getPortId()) : null;
             String parentProvince = (parent != null && parent.getProvince() != null)
                 ? String.valueOf(parent.getProvince())
@@ -1660,8 +1661,8 @@ public class KchtGis155Service {
 
             KchtGisSearchResult r = KchtGisSearchResult.builder()
                 .id(vn.getId() != null ? vn.getId().toString() : null)
-                .name(vn.getWaterZoneName())
-                .code(vn.getWaterZoneCode())
+                .name(vn.getTransferAreaName())
+                .code(vn.getTransferAreaCode())
                 .orgUnitId(vn.getOrgUnitId())
                 .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
                 .infrastructureType(type)
@@ -1687,7 +1688,7 @@ public class KchtGis155Service {
           List<WaterZone> khuTranhs = waterZoneRepository.searchWaterZones(
                 orgUnitId, null, searchLower, WaterZoneType.STORM_SHELTER, null,
                 null, PageRequest.of(0, MAX_FETCH_SIZE)).getContent()
-                .stream().filter(entity -> isApproved(entity.getApprovalStatus())).collect(Collectors.toList());
+                .stream().collect(Collectors.toList());
           List<UUID> ktCbIds = khuTranhs.stream().map(WaterZone::getPortId).filter(Objects::nonNull)
               .distinct().collect(Collectors.toList());
           Map<UUID, Port> ktPortMap = new HashMap<>();
@@ -1832,3 +1833,4 @@ public class KchtGis155Service {
     return scopedIds;
   }
 }
+
