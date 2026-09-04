@@ -1516,11 +1516,32 @@ const getRecordCoordinatesWkt = (record: any): string | null => {
 };
 
 const resolveSearchHitGeometry = (record: KchtGisSearchResult): MapHitGeometry | null => {
-  const geometryType = String(record.geometryType || record.loaiHinhHoc || '').toUpperCase();
   const geometryWkt = getRecordCoordinatesWkt(record);
   const parsedCoordinates = geometryWkt ? parseWktToCoords(geometryWkt) : null;
+  const geometryType = String(record.geometryType || record.loaiHinhHoc || '').toUpperCase();
 
-  if (geometryType === 'POINT') {
+  // Prefer detecting type from WKT if available to handle dirty data
+  if (geometryWkt) {
+    const wktUpper = geometryWkt.toUpperCase();
+    if (wktUpper.startsWith('POINT')) {
+      const coordinates = normalizePointCoordinates(parsedCoordinates);
+      if (coordinates) return { type: 'Point', coordinates };
+    }
+    if (wktUpper.startsWith('LINESTRING') || wktUpper.startsWith('MULTIPOINT')) {
+      const coordinates = normalizeLineCoordinates(parsedCoordinates);
+      if (coordinates) return { type: 'LineString', coordinates };
+    }
+    if (wktUpper.startsWith('POLYGON')) {
+      const coordinates = normalizePolygonCoordinates(parsedCoordinates);
+      if (coordinates) return { type: 'Polygon', coordinates };
+      // Legacy fallback
+      const legacyVertices = normalizeLineCoordinates(parsedCoordinates);
+      if (legacyVertices) return { type: 'Polygon', coordinates: [legacyVertices] };
+    }
+  }
+
+  // Fallback to strict type if WKT didn't match standard prefixes but parsedCoords exist
+  if (geometryType === 'POINT' || (parsedCoordinates && !Array.isArray(parsedCoordinates[0]))) {
     const coordinates = normalizePointCoordinates(parsedCoordinates)
       || normalizePointCoordinates([record.longitude, record.latitude]);
     return coordinates ? { type: 'Point', coordinates } : null;
@@ -3438,7 +3459,7 @@ export default function GISChartView() {
       if (center && hitGeometry && isVietnamMapCoordinate(center)) {
         const [lon, lat] = center;
         const geometryType = (record.geometryType || record.loaiHinhHoc || '').toUpperCase();
-        const isVectorGeometry = ['LINE', 'LINESTRING', 'POLYLINE', 'POLYGON', 'AREA'].includes(geometryType);
+        const isVectorGeometry = hitGeometry.type === 'LineString' || hitGeometry.type === 'Polygon';
 
         const openPopupAt = async (latlng: any) => {
           const requestId = ++activePopupRequestRef.current;
