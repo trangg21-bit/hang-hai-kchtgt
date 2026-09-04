@@ -237,37 +237,39 @@ export default function RegisterPage() {
                     color: sidebarBg,
                     lineHeight: 1.35,
                     marginBottom: spaceXs,
+                    fontFamily: fontSans,
                   }}
                 >
                   Gửi yêu cầu đăng ký thành công!
                 </div>
-                <div style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceMd }}>
+                <div style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceMd, fontFamily: fontSans }}>
                   Thông tin tài khoản của bạn đã được hệ thống ghi nhận
                 </div>
 
                 {/* Structured Info Box */}
                 <div
                   style={{
-                    background: '#F6F9FD',
-                    border: '1px solid rgba(14, 111, 214, 0.12)',
+                    background: '#F8FAFC',
+                    border: `1px solid ${borderDefault}`,
                     borderRadius: radiusMd,
                     padding: '14px 18px',
                     marginBottom: spaceMd,
                     textAlign: 'left',
+                    fontFamily: fontSans,
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spaceSm }}>
-                    <span style={{ fontSize: fontSizeSm, color: textSecondary }}>Email đăng ký:</span>
-                    <span style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: textPrimary }}>{successData.email}</span>
+                    <span style={{ fontSize: fontSizeSm, color: textSecondary, fontFamily: fontSans }}>Email đăng ký:</span>
+                    <span style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: textPrimary, fontFamily: fontSans }}>{successData.email}</span>
                   </div>
                   {successData.phone && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spaceSm }}>
-                      <span style={{ fontSize: fontSizeSm, color: textSecondary }}>Số điện thoại:</span>
-                      <span style={{ fontSize: fontSizeMd, fontWeight: fontWeightMedium, color: textPrimary }}>{successData.phone}</span>
+                      <span style={{ fontSize: fontSizeSm, color: textSecondary, fontFamily: fontSans }}>Số điện thoại:</span>
+                      <span style={{ fontSize: fontSizeMd, fontWeight: fontWeightMedium, color: textPrimary, fontFamily: fontSans }}>{successData.phone}</span>
                     </div>
                   )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: fontSizeSm, color: textSecondary }}>Trạng thái:</span>
+                    <span style={{ fontSize: fontSizeSm, color: textSecondary, fontFamily: fontSans }}>Trạng thái:</span>
                     <span
                       style={{
                         display: 'inline-flex',
@@ -275,14 +277,15 @@ export default function RegisterPage() {
                         gap: 6,
                         padding: '2px 10px',
                         borderRadius: radiusPill,
-                        background: '#FFF7E6',
-                        color: '#D46B08',
-                        border: '1px solid #FFD591',
+                        background: 'rgba(237, 161, 0, 0.12)',
+                        color: '#b45309',
+                        border: '1px solid rgba(237, 161, 0, 0.40)',
                         fontSize: fontSizeSm,
-                        fontWeight: fontWeightBold,
+                        fontWeight: fontWeightMedium,
+                        fontFamily: fontSans,
                       }}
                     >
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#FA8C16' }} />
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: statusAttention }} />
                       Chờ phê duyệt
                     </span>
                   </div>
@@ -294,8 +297,8 @@ export default function RegisterPage() {
                     display: 'flex',
                     alignItems: 'flex-start',
                     gap: spaceSm,
-                    background: 'rgba(14, 111, 214, 0.05)',
-                    border: '1px dashed rgba(14, 111, 214, 0.25)',
+                    background: 'rgba(39, 62, 124, 0.04)',
+                    border: '1px solid rgba(39, 62, 124, 0.15)',
                     borderRadius: radiusMd,
                     padding: '12px 16px',
                     marginBottom: spaceLg,
@@ -303,7 +306,7 @@ export default function RegisterPage() {
                   }}
                 >
                   <InfoCircleOutlined style={{ color: actionPrimary, fontSize: 16, marginTop: 2, flexShrink: 0 }} />
-                  <span style={{ fontSize: fontSizeSm, color: textSecondary, lineHeight: 1.5 }}>
+                  <span style={{ fontSize: fontSizeSm, color: textSecondary, lineHeight: 1.5, fontFamily: fontSans }}>
                     Tài khoản đang chờ Quản trị viên xem xét và phê duyệt. Sau khi được duyệt, bạn có thể đăng nhập trực tiếp vào hệ thống.
                   </span>
                 </div>
@@ -320,7 +323,8 @@ export default function RegisterPage() {
                     fontWeight: fontWeightBold,
                     background: actionPrimary,
                     borderColor: actionPrimary,
-                    boxShadow: '0 4px 14px rgba(14,111,214,0.3)',
+                    boxShadow: '0 4px 14px rgba(39, 62, 124, 0.25)',
+                    fontFamily: fontSans,
                   }}
                 >
                   Đăng nhập ngay
@@ -333,7 +337,7 @@ export default function RegisterPage() {
                       setSuccessData(null);
                       form.resetFields();
                     }}
-                    style={{ color: textSecondary, fontSize: fontSizeMd }}
+                    style={{ color: textSecondary, fontSize: fontSizeMd, fontFamily: fontSans }}
                   >
                     Đăng ký tài khoản khác
                   </Button>
