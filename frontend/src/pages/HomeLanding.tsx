@@ -5,9 +5,8 @@
  * Dữ liệu khối lấy từ config navigation.tsx (nguồn duy nhất).
  */
 import { useNavigate } from 'react-router-dom';
-import type { CSSProperties } from 'react';
 import {
-  surfaceCard as surface,
+  surfaceCard,
   textPrimary,
   textSecondary,
   borderDefault as line,
@@ -66,7 +65,7 @@ export default function HomeLanding() {
               onClick={() => home && navigate(home)}
               aria-label={disabled ? `${group.label} — chưa có chức năng được phân quyền` : group.label}
               style={{
-                ...(surface as CSSProperties),
+                background: surfaceCard,
                 border: `1px solid ${line}`,
                 borderRadius: radiusXl,
                 boxShadow: shadowMd,
