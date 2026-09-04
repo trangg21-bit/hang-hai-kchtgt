@@ -49,9 +49,38 @@ public class CoastalStationHaiphongRequest {
     // --- GIS ---
     private UUID spatialId;
     private UUID symbolId;
+    private String symbol;
     private BigDecimal latitude;
     private BigDecimal longitude;
     private String coordinates;
+
+    public void setSymbolId(Object sym) {
+        if (sym == null) {
+            this.symbolId = null;
+        } else if (sym instanceof UUID u) {
+            this.symbolId = u;
+        } else {
+            String s = sym.toString().trim();
+            if (s.isEmpty()) {
+                this.symbolId = null;
+            } else {
+                try {
+                    this.symbolId = UUID.fromString(s);
+                } catch (IllegalArgumentException e) {
+                    this.symbol = s;
+                }
+            }
+        }
+    }
+
+    public void setSymbol(String symbol) {
+        this.symbol = symbol;
+        if (symbol != null && !symbol.isBlank() && this.symbolId == null) {
+            try {
+                this.symbolId = UUID.fromString(symbol.trim());
+            } catch (IllegalArgumentException ignored) {}
+        }
+    }
 
     // Getter tương thích ngược nếu payload cũ gửi stationCode / stationName
     public void setStationCode(String stationCode) {

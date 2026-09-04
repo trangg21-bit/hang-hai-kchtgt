@@ -132,21 +132,6 @@ export const renderServicesBadges = (services?: string[] | string) => {
   );
 };
 
-// Sample mock data for Tab 4 (Vận hành & bảo trì)
-const SAMPLE_OPERATION_PLANS: OperationPlanItem[] = [
-  { id: '1', planCode: 'KH-VH-2026/01', planName: 'Kế hoạch trực vận hành xử lý thông tin thông luồng quý I/2026', startDate: '2026-01-01', endDate: '2026-03-31' },
-  { id: '2', planCode: 'KH-VH-2026/02', planName: 'Kế hoạch giám sát luồng hàng hải trực canh liên tục quý II/2026', startDate: '2026-04-01', endDate: '2026-06-30' },
-];
-
-const SAMPLE_MAINTENANCE_PLANS: MaintenancePlanItem[] = [
-  { id: '1', planCode: 'KH-BT-2026/01', planName: 'Bảo trì máy chủ tiếp nhận & xử lý thông tin luồng tàu', startTime: '2026-02-10', endTime: '2026-02-12' },
-  { id: '2', planCode: 'KH-BT-2026/02', planName: 'Kiểm định hệ thống giám sát và thông tin duyên hải', startTime: '2026-05-15', endTime: '2026-05-18' },
-];
-
-const SAMPLE_INCIDENTS: IncidentItem[] = [
-  { id: '1', incidentCode: 'SC-2026-001', incidentType: 'Nghẽn đường truyền dữ liệu thông luồng', location: 'Trạm thu phát trung tâm', incidentTime: '2026-01-18 09:30:00' },
-];
-
 export default function HanoiStationForm({
   open = true,
   editId,
@@ -266,6 +251,7 @@ export default function HanoiStationForm({
         services: undefined,
         description: undefined,
         geometryType: 'POINT',
+        symbolId: undefined,
         symbol: undefined,
         coordinateSystem: 'WGS 84 / VN-2000',
         displayRule: 'Độ, phút, giây (DMS)',
@@ -306,7 +292,8 @@ export default function HanoiStationForm({
       services: serviceList,
       description: data.description,
       geometryType: geom,
-      symbol: data.symbol || undefined,
+      symbolId: data.symbolId || data.symbol || undefined,
+      symbol: data.symbolId || data.symbol || undefined,
       coordinateSystem: data.coordinateSystem || 'WGS 84 / VN-2000',
       displayRule: data.displayRule || 'Độ, phút, giây (DMS)',
     });
@@ -364,7 +351,8 @@ export default function HanoiStationForm({
         services: servicesArray,
         description: values.description?.trim(),
         geometryType: geomType,
-        symbol: values.symbol,
+        symbolId: values.symbolId || values.symbol || undefined,
+        symbol: values.symbolId || values.symbol || undefined,
         coordinateSystem: values.coordinateSystem,
         displayRule: values.displayRule,
         coordinates: wkt || undefined,
@@ -610,18 +598,18 @@ export default function HanoiStationForm({
                         <span className="chk-detail-label">Biểu tượng</span>
                         <span className="chk-detail-value">
                           {(() => {
-                            const symId = record?.symbol;
+                            const symId = record?.symbolId || record?.symbol;
                             const sym = symbols.find((s) => s.id === symId || s.code === symId);
                             if (sym?.image) {
                               const imgSrc = sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`;
                               return (
                                 <Space size={6} style={{ display: 'inline-flex', alignItems: 'center' }}>
                                   <img src={imgSrc} alt="" style={{ width: 16, height: 16, objectFit: 'contain' }} />
-                                  <span>{sym.name}</span>
+                                  <span>{sym.name}{sym.code ? ` (${sym.code})` : ''}</span>
                                 </Space>
                               );
                             }
-                            return sym?.name || symId || 'SYM-COASTAL';
+                            return (record as any)?.symbolName || (sym ? (sym.code ? `${sym.name} (${sym.code})` : sym.name) : (symId || '—'));
                           })()}
                         </span>
                       </div>
@@ -697,10 +685,10 @@ export default function HanoiStationForm({
                     key: 'operation',
                     label: 'Thông tin vận hành khai thác',
                     children: (
-                      <DetailTable
+                      <DetailTable<OperationPlanItem>
                         scrollY="calc(100vh - 378px)"
-                        dataSource={SAMPLE_OPERATION_PLANS}
-                        emptyText="Chưa có kế hoạch vận hành"
+                        dataSource={((record as any)?.operationPlans || (initialData as any)?.operationPlans || []) as OperationPlanItem[]}
+                        emptyText="Chưa có dữ liệu"
                         rowKey="id"
                         columns={[
                           { title: 'STT', width: 60, align: 'center', render: (_: any, __: any, index: number) => index + 1 },
@@ -716,10 +704,10 @@ export default function HanoiStationForm({
                     key: 'maintenance',
                     label: 'Thông tin bảo trì',
                     children: (
-                      <DetailTable
+                      <DetailTable<MaintenancePlanItem>
                         scrollY="calc(100vh - 378px)"
-                        dataSource={SAMPLE_MAINTENANCE_PLANS}
-                        emptyText="Chưa có kế hoạch bảo trì"
+                        dataSource={((record as any)?.maintenancePlans || (initialData as any)?.maintenancePlans || []) as MaintenancePlanItem[]}
+                        emptyText="Chưa có dữ liệu"
                         rowKey="id"
                         columns={[
                           { title: 'STT', width: 60, align: 'center', render: (_: any, __: any, index: number) => index + 1 },
@@ -735,10 +723,10 @@ export default function HanoiStationForm({
                     key: 'incident',
                     label: 'Thông tin sự cố',
                     children: (
-                      <DetailTable
+                      <DetailTable<IncidentItem>
                         scrollY="calc(100vh - 378px)"
-                        dataSource={SAMPLE_INCIDENTS}
-                        emptyText="Chưa có sự cố nào ghi nhận"
+                        dataSource={((record as any)?.incidentList || (record as any)?.incidents || (initialData as any)?.incidentList || []) as IncidentItem[]}
+                        emptyText="Chưa có dữ liệu"
                         rowKey="id"
                         columns={[
                           { title: 'STT', width: 60, align: 'center', render: (_: any, __: any, index: number) => index + 1 },
@@ -768,6 +756,7 @@ export default function HanoiStationForm({
                   <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span><span className="chk-detail-value">{record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span><span className="chk-detail-value">{record.approverLevel1Name || record.approverLevel1 || '—'}</span></div>
                   <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Nội dung phê duyệt</span><span className="chk-detail-value">{record.level1ApprovalContent || record.approvalContentLevel1 || '—'}</span></div>
+                  <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt cấp Cục</span><span className="chk-detail-value">{record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt cấp Cục</span><span className="chk-detail-value">{record.approverLevel2Name || record.approverLevel2 || '—'}</span></div>
                   <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Nội dung phê duyệt</span><span className="chk-detail-value">{record.level2ApprovalContent || record.approvalContentLevel2 || '—'}</span></div>
                   {record.rejectionReason && (
@@ -797,7 +786,7 @@ export default function HanoiStationForm({
             { errorFields },
             {
               general: ['code', 'name', 'orgUnitId', 'conditionStatus', 'provinceId', 'locationAddress'],
-              gis: ['geometryType', 'symbol', 'coordinateSystem', 'displayRule'],
+              gis: ['geometryType', 'symbolId', 'symbol', 'coordinateSystem', 'displayRule'],
             },
             setTabKey
           );
@@ -1006,6 +995,7 @@ export default function HanoiStationForm({
                               } else {
                                 form.setFieldValue('coordinateSystem', undefined);
                                 form.setFieldValue('displayRule', undefined);
+                                form.setFieldValue('symbolId', undefined);
                                 form.setFieldValue('symbol', undefined);
                                 setCoordinateList([{ latitude: null, longitude: null }]);
                               }
@@ -1016,7 +1006,7 @@ export default function HanoiStationForm({
 
                       <Col span={12}>
                         <Form.Item
-                          name="symbol"
+                          name="symbolId"
                           label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '18px' }}>Biểu tượng</span>}
                           style={{ marginBottom: 0 }}
                         >
@@ -1025,7 +1015,7 @@ export default function HanoiStationForm({
                             allowClear
                             disabled={!geometryTypeState}
                             options={symbols.map((sym) => ({
-                              value: sym.code || sym.id,
+                              value: sym.id || sym.code,
                               label: (
                                 <Space size={6} style={{ display: 'inline-flex', alignItems: 'center' }}>
                                   {sym.image ? (
@@ -1041,6 +1031,9 @@ export default function HanoiStationForm({
                                 </Space>
                               ),
                             }))}
+                            onChange={(val) => {
+                              form.setFieldValue('symbol', val);
+                            }}
                             style={{ ...selectStyle, height: 38 }}
                           />
                         </Form.Item>
@@ -1315,7 +1308,7 @@ export default function HanoiStationForm({
               // Không ép null thành 0: dòng tọa độ trống mà quy thành (0, 0) sẽ làm
               // bản đồ cắm sẵn một điểm ở vịnh Guinea dù người dùng chưa chọn gì.
               coordinates: serializeCoordinatesToWkt(coordinateList, geometryTypeState || 'POINT'),
-              symbolId: form.getFieldValue('symbol'),
+              symbolId: form.getFieldValue('symbolId') || form.getFieldValue('symbol'),
             }}
             defaultGeometryType={(geometryTypeState as any) || 'POINT'}
             onChange={(val) => {
@@ -1327,6 +1320,10 @@ export default function HanoiStationForm({
               if (val.geometryType) {
                 form.setFieldValue('geometryType', val.geometryType);
                 setGeometryTypeState(val.geometryType);
+              }
+              if (val.symbolId) {
+                form.setFieldValue('symbolId', val.symbolId);
+                form.setFieldValue('symbol', val.symbolId);
               }
             }}
           />

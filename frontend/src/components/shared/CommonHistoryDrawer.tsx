@@ -4,6 +4,8 @@ import {
   HistoryOutlined,
   SearchOutlined,
   FileOutlined,
+  UserOutlined,
+  ApartmentOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { symbolService, type SymbolOption } from '../../services/symbolService';
@@ -462,7 +464,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
   }, [symbols]);
 
   const renderSymbolValue = (val: string) => {
-    if (!val || val === '—' || val === 'null' || val === '(null)') {
+    if (!val || val === '—' || val === '-' || val === 'null' || val === '(null)' || val === '(trống)' || val === '— (Trống)' || val === 'Chưa có') {
       return <span style={{ color: textTertiary }}>—</span>;
     }
     const trimmed = String(val).trim();
@@ -473,15 +475,23 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
     const sym = symbolByCode.get(upper) || symbolByCode.get(lower) || symbolById.get(lower) || symbolByName.get(lower) || symbolByName.get(norm);
 
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: textPrimary, fontWeight: fontWeightBold, verticalAlign: 'middle' }}>
-        {sym?.image ? (
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          color: textPrimary,
+          fontWeight: fontWeightMedium,
+          fontSize: fontSizeMd,
+          lineHeight: 1.5,
+        }}
+      >
+        {sym?.image && (
           <img
             src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`}
             alt=""
             style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4, flexShrink: 0 }}
           />
-        ) : (
-          <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: actionPrimary, flexShrink: 0 }} />
         )}
         <span>{sym?.name || trimmed}</span>
       </span>
@@ -514,7 +524,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
   };
 
   const getRecordActor = (r: CommonHistoryEntry): string => {
-    return r.changedByName || r.actor || r.changedBy || r.approvedBy || '—';
+    return r.changedByName || r.actor || r.approvedByName || r.changedBy || r.approvedBy || '—';
   };
 
   const formatTimestamp = (ts: string) => {
@@ -537,7 +547,9 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
     }
     if (typeof val === 'boolean') return val ? 'Có' : 'Không';
     if (typeof val === 'object') return JSON.stringify(val);
-    return String(val);
+    const s = String(val).trim();
+    if (s === '(null)' || s === 'null' || s === '(trống)' || s === '— (Trống)' || s === 'Chưa có' || s === '-') return '—';
+    return s;
   };
 
   // Filter and group records
@@ -674,7 +686,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
     >
       {/* ── Search & Filter Bar ────────────────────────────── */}
       <div style={{ flexShrink: 0 }}>
-        <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
+        <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd, alignItems: 'center' }}>
           <Input
             placeholder="Tìm kiếm nội dung thay đổi..."
             allowClear
@@ -685,7 +697,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
               if (!val) setKeyword('');
             }}
             onPressEnter={() => setKeyword(searchInput.trim())}
-            style={{ ...inputStyle, flex: 1 }}
+            style={{ ...inputStyle, borderRadius: 999, height: 38, flex: 1 }}
           />
           <DatePicker.RangePicker
             {...getRangePickerProps({
@@ -701,7 +713,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                   setDateTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
                 }
               },
-              style: { ...inputStyle, width: 280 },
+              style: { ...inputStyle, borderRadius: 999, height: 38, width: 280 },
             })}
           />
           <Button
@@ -709,7 +721,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
             icon={<SearchOutlined />}
             loading={loading}
             onClick={() => setKeyword(searchInput.trim())}
-            style={primaryButtonStyle}
+            style={{ ...primaryButtonStyle, borderRadius: 999, height: 38 }}
           >
             Tìm kiếm
           </Button>
@@ -717,7 +729,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
       </div>
 
       {/* ── Timeline Body ─────────────────────────────────── */}
-      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleBodyScroll}>
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, paddingRight: 4 }} onScroll={handleBodyScroll}>
         {loading ? (
           <div style={{ padding: spaceMd }}>
             <Skeleton active paragraph={{ rows: 6 }} />
@@ -732,7 +744,21 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
             </div>
           </div>
         ) : (
-          <div>
+          <div style={{ position: 'relative', paddingLeft: 8 }}>
+            {/* Trục Timeline dọc kết nối các mốc */}
+            {filteredGroups.length > 1 && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: 13,
+                  top: 20,
+                  bottom: 24,
+                  width: 2,
+                  background: '#E2E8F0',
+                  zIndex: 0,
+                }}
+              />
+            )}
             {filteredGroups.map((group, gIdx) => {
               // Extract all changes from items in the group
               const groupChanges: HistoryChangeItem[] = [];
@@ -758,7 +784,6 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
 
               const actionMeta = resolveAction(primaryAction);
               const isCreate = primaryAction.toUpperCase().includes('CREATE') || primaryAction.toUpperCase().includes('ADD');
-              const infoTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
               const rawUnit = group.unitName;
               const unitName = rawUnit && rawUnit !== '—' ? rawUnit : 'Cục Hàng hải Việt Nam';
 
@@ -776,68 +801,73 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                   key={gIdx}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '220px minmax(0, 1fr)',
+                    gridTemplateColumns: '240px minmax(0, 1fr)',
                     gap: spaceLg,
                     alignItems: 'start',
-                    marginBottom: gIdx < filteredGroups.length - 1 ? spaceMd : 0,
+                    marginBottom: gIdx < filteredGroups.length - 1 ? spaceLg : 0,
+                    position: 'relative',
                   }}
                 >
-                  {/* Left Column: Metadata */}
-                  <div style={{ minWidth: 0, paddingTop: spaceXs }}>
-                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: spaceSm, marginBottom: spaceXs }}>
-                      <Typography.Text
-                        style={{
-                          display: 'block',
-                          fontSize: fontSizeLg - 1,
-                          color: textPrimary,
-                          fontWeight: fontWeightBold,
-                          lineHeight: 1.5,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {group.ts ? formatTimestamp(group.ts) : '—'}
-                      </Typography.Text>
-                      <span style={{ flexShrink: 0 }}>
-                        <span
+                  {/* Left Column: Metadata with Timeline Node */}
+                  <div style={{ minWidth: 0, paddingTop: spaceXs, display: 'flex', gap: spaceSm, alignItems: 'flex-start' }}>
+                    <div
+                      style={{
+                        width: 12,
+                        height: 12,
+                        borderRadius: '50%',
+                        backgroundColor: actionMeta.color,
+                        boxShadow: `0 0 0 3px ${actionMeta.bg}`,
+                        marginTop: 5,
+                        flexShrink: 0,
+                        zIndex: 1,
+                      }}
+                    />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: spaceSm, marginBottom: spaceXs }}>
+                        <Typography.Text
                           style={{
-                            display: 'inline-flex',
-                            padding: '2px 10px',
-                            borderRadius: 999,
-                            fontSize: fontSizeSm + 1,
-                            fontWeight: fontWeightMedium,
-                            background: actionMeta.bg,
-                            color: actionMeta.color,
+                            display: 'block',
+                            fontSize: fontSizeMd,
+                            color: textPrimary,
+                            fontWeight: fontWeightBold,
+                            lineHeight: 1.5,
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          {actionMeta.label}
+                          {group.ts ? formatTimestamp(group.ts) : '—'}
+                        </Typography.Text>
+                        <span style={{ flexShrink: 0 }}>
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              padding: '1px 8px',
+                              borderRadius: 999,
+                              fontSize: fontSizeSm,
+                              fontWeight: fontWeightMedium,
+                              background: actionMeta.bg,
+                              color: actionMeta.color,
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {actionMeta.label}
+                          </span>
                         </span>
-                      </span>
-                    </div>
+                      </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: spaceXs }}>
-                      <Typography.Text
-                        style={{
-                          display: 'block',
-                          fontSize: fontSizeSm + 1,
-                          color: textSecondary,
-                          fontWeight: fontWeightMedium,
-                          lineHeight: 1.4,
-                        }}
-                      >
-                        Người cập nhật: <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{group.actor || '—'}</span>
-                      </Typography.Text>
-                      <Typography.Text
-                        style={{
-                          display: 'block',
-                          fontSize: fontSizeSm + 1,
-                          color: textSecondary,
-                          fontWeight: fontWeightMedium,
-                          lineHeight: 1.4,
-                        }}
-                      >
-                        Đơn vị: <span style={{ color: textPrimary }}>{unitName}</span>
-                      </Typography.Text>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: fontSizeSm, color: textSecondary }}>
+                          <UserOutlined style={{ fontSize: 12, color: textTertiary, flexShrink: 0 }} />
+                          <span style={{ color: textPrimary, fontWeight: fontWeightMedium, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={group.actor || '—'}>
+                            {group.actor || '—'}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: fontSizeSm, color: textSecondary }}>
+                          <ApartmentOutlined style={{ fontSize: 12, color: textTertiary, flexShrink: 0 }} />
+                          <span style={{ color: textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={unitName}>
+                            {unitName}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -852,6 +882,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                       paddingLeft: spaceLg,
                       overflow: 'hidden',
                       border: `1px solid ${borderDefault}`,
+                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
                     }}
                   >
                     {/* Left Accent Gradient Bar */}
@@ -866,18 +897,6 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                       }}
                     />
 
-                    <Typography.Text
-                      style={{
-                        display: 'block',
-                        color: colors.sidebarBg,
-                        fontSize: fontSizeMd,
-                        fontWeight: fontWeightBold,
-                        marginBottom: spaceSm,
-                      }}
-                    >
-                      {infoTitle}
-                    </Typography.Text>
-
                     {/* Change list */}
                     {validChanges.length > 0 ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}>
@@ -887,7 +906,9 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                           const nv = resolveFieldValue(change.field, change.newValue);
 
                           const renderFormattedContent = (content: string, _isOld: boolean = false) => {
-                            if (!content || content === '—') return <span style={{ color: textTertiary }}>—</span>;
+                            if (!content || content === '—' || content === '-' || content === 'null' || content === '(null)' || content === '(trống)' || content === '— (Trống)' || content === 'Chưa có') {
+                              return <span style={{ color: textTertiary }}>—</span>;
+                            }
                             const str = String(content).trim();
                             const normLabel = (label || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
                             const normField = (change.field || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
@@ -929,7 +950,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                                 key={cIdx}
                                 style={{
                                   display: 'grid',
-                                  gridTemplateColumns: '140px minmax(0, 1fr)',
+                                  gridTemplateColumns: '150px minmax(0, 1fr)',
                                   alignItems: 'flex-start',
                                   gap: spaceSm,
                                   fontSize: fontSizeMd,
@@ -952,7 +973,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                               key={cIdx}
                               style={{
                                 display: 'grid',
-                                gridTemplateColumns: '140px minmax(0, 1fr) 24px minmax(0, 1fr)',
+                                gridTemplateColumns: '150px minmax(0, 1fr) 24px minmax(0, 1fr)',
                                 alignItems: 'flex-start',
                                 gap: spaceSm,
                                 fontSize: fontSizeMd,
@@ -966,7 +987,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>
                                 {renderFormattedContent(ov, true)}
                               </div>
-                              <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>
+                              <div style={{ color: '#94A3B8', textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>
                                 →
                               </div>
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>
@@ -980,11 +1001,10 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         <Typography.Text
                           style={{
-                            display: 'block',
-                            color: textPrimary,
                             fontSize: fontSizeMd,
-                            fontWeight: fontWeightBold,
-                            marginBottom: spaceXs,
+                            fontWeight: fontWeightMedium,
+                            color: textSecondary,
+                            marginBottom: 4,
                           }}
                         >
                           Chi tiết thao tác:

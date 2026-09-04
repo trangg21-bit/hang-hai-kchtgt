@@ -87,6 +87,10 @@ class InfrastructureApprovalServiceTest {
         private UUID approverL2;
         private LocalDateTime approvedDateL2;
         private UUID createdBy;
+        private UUID submittedBy;
+        private LocalDateTime submittedAt;
+        private String level1ApprovalContent;
+        private String level2ApprovalContent;
 
         @Override public UUID getId() { return id; }
         @Override public ApprovalStatus getApprovalStatus() { return status; }
@@ -103,6 +107,14 @@ class InfrastructureApprovalServiceTest {
         @Override public void setApprovedDateLevel2(LocalDateTime d) { this.approvedDateL2 = d; }
         @Override public UUID getCreatedBy() { return createdBy; }
         public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
+        @Override public void setSubmittedBy(UUID u) { this.submittedBy = u; }
+        public UUID getSubmittedBy() { return submittedBy; }
+        @Override public void setSubmittedAt(LocalDateTime d) { this.submittedAt = d; }
+        public LocalDateTime getSubmittedAt() { return submittedAt; }
+        @Override public void setLevel1ApprovalContent(String c) { this.level1ApprovalContent = c; }
+        public String getLevel1ApprovalContent() { return level1ApprovalContent; }
+        @Override public void setLevel2ApprovalContent(String c) { this.level2ApprovalContent = c; }
+        public String getLevel2ApprovalContent() { return level2ApprovalContent; }
     }
 
     @Test
@@ -125,6 +137,11 @@ class InfrastructureApprovalServiceTest {
         approvalService.submit(entity, InfrastructureType.VTS_SYSTEM, userIdCuc);
 
         assertThat(entity.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED_LEVEL1);
+        assertThat(entity.getApproverLevel1()).isEqualTo(userIdCuc);
+        assertThat(entity.getApprovedDateLevel1()).isNotNull();
+        assertThat(entity.getLevel1ApprovalContent()).isEqualTo("Cấp Cục gửi trực tiếp");
+        assertThat(entity.getSubmittedBy()).isEqualTo(userIdCuc);
+        assertThat(entity.getSubmittedAt()).isNotNull();
     }
 
     @Test
@@ -172,6 +189,9 @@ class InfrastructureApprovalServiceTest {
 
         assertThat(entity.getApprovalStatus()).isEqualTo(ApprovalStatus.REJECTED_LEVEL1);
         assertThat(entity.getRejectionReason()).isEqualTo("Thiếu hồ sơ thiết kế");
+        assertThat(entity.getApproverLevel1()).isEqualTo(userIdC1);
+        assertThat(entity.getApprovedDateLevel1()).isNotNull();
+        assertThat(entity.getLevel1ApprovalContent()).isEqualTo("Thiếu hồ sơ thiết kế");
     }
 
     @Test
@@ -224,6 +244,25 @@ class InfrastructureApprovalServiceTest {
 
         assertThat(entity.getApprovalStatus()).isEqualTo(ApprovalStatus.REJECTED_LEVEL2);
         assertThat(entity.getRejectionReason()).isEqualTo("Không đạt tiêu chuẩn Cục");
+        assertThat(entity.getApproverLevel2()).isEqualTo(userIdC2);
+        assertThat(entity.getApprovedDateLevel2()).isNotNull();
+        assertThat(entity.getLevel2ApprovalContent()).isEqualTo("Không đạt tiêu chuẩn Cục");
+    }
+
+    @Test
+    @DisplayName("Cục gửi trực tiếp rồi phê duyệt cấp 2 thành công")
+    void testCucSubmitAndApproveC2_Success() {
+        TestEntity entity = new TestEntity();
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
+
+        approvalService.submit(entity, InfrastructureType.VTS_SYSTEM, userIdCuc);
+        assertThat(entity.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED_LEVEL1);
+        assertThat(entity.getApproverLevel1()).isEqualTo(userIdCuc);
+
+        approvalService.approveC2(entity, InfrastructureType.VTS_SYSTEM, "APPROVED", "Duyệt cấp Cục", userIdC2);
+        assertThat(entity.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED);
+        assertThat(entity.getApproverLevel2()).isEqualTo(userIdC2);
+        assertThat(entity.getLevel2ApprovalContent()).isEqualTo("Duyệt cấp Cục");
     }
 
     @Test

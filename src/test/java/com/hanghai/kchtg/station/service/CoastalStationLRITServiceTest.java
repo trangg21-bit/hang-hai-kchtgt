@@ -181,7 +181,7 @@ class CoastalStationLRITServiceTest {
 
         assertThat(approved.getApproverLevel1()).isNotNull();
         assertThat(approved.getApprovedDateLevel1()).isNotNull();
-        assertThat(approved.getLevel1ApprovalContent()).isEqualTo("Cấp Cục phê duyệt trực tiếp (đồng thuận cả 2 cấp)");
+        assertThat(approved.getLevel1ApprovalContent()).isEqualTo("Cấp Cục phê duyệt trực tiếp");
         assertThat(approved.getSubmittedBy()).isNotNull();
         assertThat(approved.getSubmittedAt()).isNotNull();
         verifyNoInteractions(historyService);

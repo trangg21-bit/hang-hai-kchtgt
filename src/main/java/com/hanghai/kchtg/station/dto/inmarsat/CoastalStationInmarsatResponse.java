@@ -95,6 +95,8 @@ public class CoastalStationInmarsatResponse {
     private String rejectionReason;
     private String level1ApprovalContent;
     private String level2ApprovalContent;
+    private String approvalContentLevel1;
+    private String approvalContentLevel2;
 
     // --- Audit ---
     private UUID createdBy;

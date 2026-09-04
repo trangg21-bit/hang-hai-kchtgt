@@ -8,3 +8,4 @@
 UPDATE public.gis_spatial_objects
 SET object_type = 14
 WHERE object_type = 5;
+

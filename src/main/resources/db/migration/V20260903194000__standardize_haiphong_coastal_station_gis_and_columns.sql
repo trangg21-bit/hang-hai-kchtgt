@@ -19,6 +19,17 @@ SET code = COALESCE(code, station_code),
 ALTER TABLE public.gis_spatial_objects ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();
 ALTER TABLE public.gis_spatial_objects ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
 
+-- 2.1. Đảm bảo trigger trg_sync_gis_spatial_geom không lỗi nếu cột geom không tồn tại
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'gis_spatial_objects' AND column_name = 'geom'
+    ) THEN
+        DROP TRIGGER IF EXISTS trg_sync_gis_spatial_geom ON public.gis_spatial_objects;
+    END IF;
+END $$;
+
 -- 3. Tạo các đối tượng GIS không gian trong gis_spatial_objects và liên kết spatial_id cho 5 đài TTXLTT
 DO $$
 DECLARE
@@ -48,7 +59,7 @@ BEGIN
             'Trung tâm Xử lý Thông tin Hàng hải Hà Nội',
             'HAIPHONG_' || v_st1_id::text,
             1, -- GisGeometryType.POINT
-            5, -- GisSpatialObjectType.POINT_OTHER
+            14, -- GisSpatialObjectType.POINT_OTHER
             '[105.787680,21.037240]',
             v_st1_id,
             23, -- InfrastructureType.HANOI_STATION
@@ -67,7 +78,7 @@ BEGIN
             'Đài TTXLTT Hàng hải Hải Phòng',
             'HAIPHONG_' || v_st2_id::text,
             1, -- GisGeometryType.POINT
-            5,
+            14, -- GisSpatialObjectType.POINT_OTHER
             '[106.688084,20.844911]',
             v_st2_id,
             23,
@@ -86,7 +97,7 @@ BEGIN
             'Đài TTXLTT Hàng hải Đà Nẵng',
             'HAIPHONG_' || v_st3_id::text,
             1, -- GisGeometryType.POINT
-            5,
+            14, -- GisSpatialObjectType.POINT_OTHER
             '[108.220833,16.054444]',
             v_st3_id,
             23,
@@ -105,7 +116,7 @@ BEGIN
             'Đài TTXLTT Hàng hải Quy Nhơn',
             'HAIPHONG_' || v_st4_id::text,
             1, -- GisGeometryType.POINT
-            5,
+            14, -- GisSpatialObjectType.POINT_OTHER
             '[109.219662,13.782967]',
             v_st4_id,
             23,
@@ -124,7 +135,7 @@ BEGIN
             'Đài TTXLTT Hàng hải Cần Thơ',
             'HAIPHONG_' || v_st5_id::text,
             1, -- GisGeometryType.POINT
-            5,
+            14, -- GisSpatialObjectType.POINT_OTHER
             '[105.783802,10.045162]',
             v_st5_id,
             23,

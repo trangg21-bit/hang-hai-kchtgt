@@ -760,7 +760,7 @@ public class CoastalStationLRITService {
         if (entity.getApproverLevel1() == null) {
             entity.setApproverLevel1(currentUserId);
             entity.setApprovedDateLevel1(now);
-            entity.setLevel1ApprovalContent("Cấp Cục phê duyệt trực tiếp (đồng thuận cả 2 cấp)");
+            entity.setLevel1ApprovalContent("Cấp Cục phê duyệt trực tiếp");
         }
 
         return repository.save(entity);
@@ -922,6 +922,23 @@ public class CoastalStationLRITService {
             }
         }
 
+        String approvalContentLevel1 = entity.getLevel1ApprovalContent();
+        if (approvalContentLevel1 == null || approvalContentLevel1.isBlank()) {
+            if (entity.getApprovalStatus() == ApprovalStatus.REJECTED_LEVEL1 && entity.getRejectionReason() != null) {
+                approvalContentLevel1 = entity.getRejectionReason();
+            } else if (entity.getApproverLevel1() != null) {
+                approvalContentLevel1 = "Đã phê duyệt";
+            }
+        }
+        String approvalContentLevel2 = entity.getLevel2ApprovalContent();
+        if (approvalContentLevel2 == null || approvalContentLevel2.isBlank()) {
+            if (entity.getApprovalStatus() == ApprovalStatus.REJECTED_LEVEL2 && entity.getRejectionReason() != null) {
+                approvalContentLevel2 = entity.getRejectionReason();
+            } else if (entity.getApproverLevel2() != null || entity.getApprovalStatus() == ApprovalStatus.APPROVED) {
+                approvalContentLevel2 = "Đã phê duyệt";
+            }
+        }
+
         return CoastalStationLRITResponse.builder()
                 .id(entity.getId())
                 .orgUnitId(effectiveOrgId)
@@ -970,13 +987,13 @@ public class CoastalStationLRITService {
                 .approverLevel1(entity.getApproverLevel1())
                 .approverLevel1Name(approver1Name)
                 .approvedDateLevel1(entity.getApprovedDateLevel1())
-                .approvalContentLevel1(entity.getLevel1ApprovalContent())
-                .level1ApprovalContent(entity.getLevel1ApprovalContent())
+                .approvalContentLevel1(approvalContentLevel1)
+                .level1ApprovalContent(approvalContentLevel1)
                 .approverLevel2(entity.getApproverLevel2())
                 .approverLevel2Name(approver2Name)
                 .approvedDateLevel2(entity.getApprovedDateLevel2())
-                .approvalContentLevel2(entity.getLevel2ApprovalContent())
-                .level2ApprovalContent(entity.getLevel2ApprovalContent())
+                .approvalContentLevel2(approvalContentLevel2)
+                .level2ApprovalContent(approvalContentLevel2)
                 .rejectionReason(entity.getRejectionReason())
                 .createdBy(entity.getCreatedBy())
                 .createdByName(createdByName)

@@ -168,7 +168,11 @@ public class VtsOperationCenterService {
 
         ApprovalStatus initialStatus = request.getApprovalStatus() != null ? request.getApprovalStatus()
                 : ApprovalStatus.DRAFT;
+        if (initialStatus == ApprovalStatus.PENDING_APPROVAL && approvalService.isDepartmentLevelUser(userId)) {
+            initialStatus = ApprovalStatus.APPROVED_LEVEL1;
+        }
         boolean isApproved = (initialStatus == ApprovalStatus.APPROVED);
+        boolean isBypassedL1 = (initialStatus == ApprovalStatus.APPROVED_LEVEL1);
         LocalDateTime now = LocalDateTime.now();
 
         VtsOperationCenter entity = VtsOperationCenter.builder()
@@ -186,10 +190,14 @@ public class VtsOperationCenterService {
                 .symbolId(request.getSymbolId())
                 .spatialId(request.getSpatialId())
                 .approvalStatus(initialStatus)
-                .approvedDateLevel1(isApproved ? now : null)
-                .approverLevel1(isApproved ? userId : null)
+                .submittedAt(isApproved || isBypassedL1 ? now : null)
+                .submittedBy(isApproved || isBypassedL1 ? userId : null)
+                .approvedDateLevel1(isApproved || isBypassedL1 ? now : null)
+                .approverLevel1(isApproved || isBypassedL1 ? userId : null)
+                .level1ApprovalContent(isApproved ? "Cấp Cục phê duyệt trực tiếp" : (isBypassedL1 ? "Cấp Cục gửi trực tiếp" : null))
                 .approvedDateLevel2(isApproved ? now : null)
                 .approverLevel2(isApproved ? userId : null)
+                .level2ApprovalContent(isApproved ? "Lưu và phê duyệt trực tiếp" : null)
                 .createdBy(userId)
                 .updatedBy(userId)
                 .createdAt(now)
@@ -1052,6 +1060,23 @@ public class VtsOperationCenterService {
             }
         }
 
+        String approvalContentLevel1 = entity.getLevel1ApprovalContent();
+        if (approvalContentLevel1 == null || approvalContentLevel1.isBlank()) {
+            if (entity.getApprovalStatus() == ApprovalStatus.REJECTED_LEVEL1 && entity.getRejectionReason() != null) {
+                approvalContentLevel1 = entity.getRejectionReason();
+            } else if (entity.getApproverLevel1() != null) {
+                approvalContentLevel1 = "Đã phê duyệt";
+            }
+        }
+        String approvalContentLevel2 = entity.getLevel2ApprovalContent();
+        if (approvalContentLevel2 == null || approvalContentLevel2.isBlank()) {
+            if (entity.getApprovalStatus() == ApprovalStatus.REJECTED_LEVEL2 && entity.getRejectionReason() != null) {
+                approvalContentLevel2 = entity.getRejectionReason();
+            } else if (entity.getApproverLevel2() != null || entity.getApprovalStatus() == ApprovalStatus.APPROVED) {
+                approvalContentLevel2 = "Đã phê duyệt";
+            }
+        }
+
         return VtsOperationCenterResponse.builder()
                 .id(entity.getId())
                 .code(entity.getCode())
@@ -1076,11 +1101,11 @@ public class VtsOperationCenterService {
                 .approverLevel1(entity.getApproverLevel1())
                 .approverLevel1Name(approver1Name)
                 .approvedDateLevel1(entity.getApprovedDateLevel1())
-                .approvalContentLevel1(entity.getLevel1ApprovalContent())
+                .approvalContentLevel1(approvalContentLevel1)
                 .approverLevel2(entity.getApproverLevel2())
                 .approverLevel2Name(approver2Name)
                 .approvedDateLevel2(entity.getApprovedDateLevel2())
-                .approvalContentLevel2(entity.getLevel2ApprovalContent())
+                .approvalContentLevel2(approvalContentLevel2)
                 .rejectionReason(entity.getRejectionReason())
                 .submittedAt(entity.getSubmittedAt())
                 .submittedBy(entity.getSubmittedBy())

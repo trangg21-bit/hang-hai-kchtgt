@@ -1,9 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { Typography, Modal, Input, Drawer, Button, DatePicker, Space, Select, Radio, Tag } from 'antd';
+import { Modal, Input, Button, DatePicker, Select } from 'antd';
 import {
-  HistoryOutlined,
   ExclamationCircleOutlined,
-  SearchOutlined,
 } from '@ant-design/icons';
 import { vtsSystemCRUD, vtsSystemApproval } from '../../services/vtsSystemService';
 import type { VtsSystemResponse, ListParams, ApprovalRequest } from '../../types/vtsSystem';
@@ -15,21 +13,19 @@ import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
 import VtsSystemForm, { invalidateVtsDetailCache } from './VtsSystemForm';
 import ApprovalModal from '../../components/shared/ApprovalModal';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
+import CommonHistoryDrawer from '../../components/shared/CommonHistoryDrawer';
 import toast, { modal } from '../../components/ToastNotification';
 import {
-  actionPrimary, textPrimary, textSecondary, textTertiary,
-  fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd, fontSizeLg,
-  radiusSm, spaceFormField, spaceMd, spaceSm, spaceXs, spaceLg, spaceXl, surfacePage,
-  statusOperational, statusDraft, statusCritical, statusAttention,
-  drawerTitleStyle, drawerCloseBtnStyle, selectStyle,
-  borderDefault, statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
-  inputStyle, textAreaStyle, colors, primaryButtonStyle,
-  getRangePickerProps, getConditionStatusColor,
+  actionPrimary, textSecondary,
+  fontWeightBold, fontSizeMd,
+  spaceFormField, spaceMd, spaceXs,
+  statusOperational, statusCritical, statusAttention, statusDraft,
+  selectStyle, statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
+  inputStyle, textAreaStyle, colors,
+  getRangePickerProps,
 } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import { deduplicateAttachmentHistoryChanges } from '../../utils/historyAttachmentDedup';
 import dayjs from 'dayjs';
 import { getProvinceNameById } from '../../types/common';
 import { OrgUnitTreeSelect, normalizeSearchText, type OrgUnitTreeOption } from '../../components/org-unit';
@@ -47,423 +43,7 @@ const CONDITION_COLOR: Record<string, string> = {
 
 const HISTORY_PAGE_SIZE = 20;
 
-// Thứ tự hiển thị field trong lịch sử theo đúng thứ tự form tạo mới VTS (VtsSystemForm.tsx)
-const HISTORY_FIELD_ORDER = [
-  'orgUnitId', 'orgUnitName', 'owningOrgId', 'owningOrgName', 'operatingOrgId', 'operatingOrgName',
-  'portId', 'portName', 'code', 'systemName', 'province', 'provinceId', 'address',
-  'operationStartDate', 'scope', 'maritimeNotice', 'conditionStatus', 'zones', 'Vùng VTS', 'note'
-];
 
-// ── History helpers ──────────────────────────────────────────────
-
-function historyFieldName(fn: string): string {
-  const map: Record<string, string> = {
-    systemName: 'Tên hệ thống VTS', code: 'Mã hệ thống VTS', province: 'Địa điểm (Tỉnh/TP)',
-    provinceId: 'Địa điểm (Tỉnh/TP)', address: 'Địa điểm chi tiết', maritimeNotice: 'Thông báo hàng hải',
-    operationStartDate: 'Thời gian bắt đầu hoạt động', scope: 'Phạm vi áp dụng',
-    note: 'Ghi chú', approvalStatus: 'Trạng thái phê duyệt', conditionStatus: 'Tình trạng',
-    orgUnitName: 'Đơn vị quản lý', owningOrgName: 'Đơn vị chủ quản',
-    operatingOrgName: 'Đơn vị vận hành khai thác', portName: 'Thuộc cảng biển',
-    zones: 'Vùng VTS', 'Vùng VTS': 'Vùng VTS', 'vung vts': 'Vùng VTS', 'danh sach vung vts': 'Danh sách vùng VTS',
-  };
-  return map[fn] || fn;
-}
-
-function historyFieldValue(fn: string, val: string | null): string {
-  if (!val || val === '(null)' || val === 'null' || val === '') return '(trống)';
-  // History values can be persisted as `Tên trường=Giá trị`, or as a
-  // semicolon-separated list of those pairs. The field label is rendered in
-  // the first column, so keep only the value here.
-  const displayValue = val.split(';').map((part) => {
-    const separator = part.indexOf('=');
-    return separator >= 0 ? part.slice(separator + 1).trim() : part.trim();
-  }).filter(Boolean).join('; ');
-  const historyFieldKeys = fn.split(/[,;]+/).map(normalizeHistoryKey);
-  const isApprovalField = fn === 'approvalStatus'
-    || historyFieldKeys.includes('approvalstatus')
-    || historyFieldKeys.includes('trang thai phe duyet');
-  if (isApprovalField) {
-    const statusMap: Record<string, string> = {
-      DRAFT: 'Lưu tạm',
-      PROPOSED: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-      PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-      PENDING: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-      APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục',
-      APPROVED_LEVEL2: 'Đã phê duyệt',
-      APPROVED: 'Đã phê duyệt',
-      REJECTED: 'Từ chối cấp Cảng vụ/Chi cục',
-      REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
-      REJECTED_LEVEL2: 'Từ chối cấp Cục',
-    };
-    return displayValue.split(';').map((value) => {
-      const normalizedValue = String(value || '').trim();
-      const fromEnum = statusMap[normalizedValue] || statusMap[normalizedValue.toUpperCase()];
-      if (fromEnum) return fromEnum;
-      const normText = normalizeHistoryKey(normalizedValue);
-      if (normText.includes('cho') && (normText.includes('cang vu') || normText.includes('chi cuc') || normText.includes('phe duyet'))) {
-        return 'Chờ Cảng vụ duyệt';
-      }
-      if (normText.includes('cho') && normText.includes('cuc')) {
-        return 'Chờ Cục duyệt';
-      }
-      if (normText.includes('da') && normText.includes('duyet')) {
-        return 'Đã duyệt';
-      }
-      if (normText.includes('tu choi') || normText.includes('tra ve')) {
-        return 'Từ chối';
-      }
-      if (normText.includes('luu tam') || normText.includes('nhap')) {
-        return 'Lưu tạm';
-      }
-      return normalizedValue;
-    }).join('; ');
-  }
-  const normFn = normalizeHistoryKey(fn);
-  if (normFn === 'orgunitid' || normFn === 'owningorgid' || normFn === 'operatingorgid' || normFn === 'portid') return displayValue;
-  if (normFn === 'province' || normFn === 'provinceid' || normFn.includes('tinh/tp') || normFn.includes('dia diem (tinh/tp)')) {
-    const num = Number(displayValue);
-    if (!isNaN(num)) return getProvinceNameById(num) || displayValue;
-    return displayValue;
-  }
-  if (normFn === 'operationstartdate' || normFn.includes('thoi gian bat dau hoat dong')) {
-    const date = dayjs(displayValue);
-    return date.isValid() ? date.format('DD/MM/YYYY') : displayValue;
-  }
-  if (normFn === 'conditionstatus' || normFn.includes('tinh trang')) {
-    const legacyConditionStatusMap: Record<string, ConditionStatus> = {
-      '0': ConditionStatus.STOPPED,
-      '1': ConditionStatus.OPERATIONAL,
-      '2': ConditionStatus.MAINTENANCE,
-      '3': ConditionStatus.UNDER_CONSTRUCTION,
-    };
-    const conditionStatus = legacyConditionStatusMap[displayValue] || displayValue;
-    return CONDITION_STATUS_MAP[conditionStatus as ConditionStatus] || displayValue;
-  }
-  return displayValue;
-}
-
-function historyTimestamp(item: any): string {
-  return item.approvedDate || item.changedAt || item.createdAt || '';
-}
-
-function historyField(item: any): string {
-  return item.changedField || item.fieldName || '';
-}
-
-function historyOldValue(item: any): string | null {
-  return item.previousValue ?? item.oldValue ?? null;
-}
-
-function historyNewValue(item: any): string | null {
-  return item.newValue ?? null;
-}
-
-function historyActor(item: any): string {
-  const raw = item?.approvedByName || item?.changedByName || item?.performedByName || item?.userName || item?.actorName || item?.approvedBy || item?.changedBy || item?.performedBy || '';
-  return raw || '—';
-}
-
-function normalizeHistoryKey(value: string): string {
-  return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
-}
-
-function normalizedHistoryFields(value: string): string[] {
-  const fields = value.split(/[,;]+/).map((field: string) => field.trim()).filter(Boolean);
-  const hasApprovalStatus = fields.some((field) => {
-    const key = normalizeHistoryKey(field);
-    return key === 'approvalstatus' || key === 'trang thai phe duyet';
-  });
-
-  // Older approval records could persist both the status and the derived
-  // approvedLevel1/approvedLevel2 flag. The approval timeline represents one
-  // workflow transition, so keep only the status row when both are present.
-  if (hasApprovalStatus) {
-    return fields.filter((field) => {
-      const key = normalizeHistoryKey(field);
-      return key !== 'approvedlevel1'
-        && key !== 'approvedlevel2'
-        && key !== 'da phe duyet cap 1'
-        && key !== 'da phe duyet cap 2';
-    });
-  }
-
-  return fields;
-}
-
-function parseHistoryAssignments(value: string | null): Map<string, string> {
-  const result = new Map<string, string>();
-  if (!value) return result;
-  value.split(';').forEach((part) => {
-    const separator = part.indexOf('=');
-    if (separator < 0) return;
-    result.set(normalizeHistoryKey(part.slice(0, separator)), part.slice(separator + 1).trim());
-  });
-  return result;
-}
-
-function historyChangeRows(item: any): Array<{ field: string; oldValue: string | null; newValue: string | null }> {
-  const fields = normalizedHistoryFields(historyField(item));
-  const oldValue = historyOldValue(item);
-  const newValue = historyNewValue(item);
-  const oldAssignments = parseHistoryAssignments(oldValue);
-  const newAssignments = parseHistoryAssignments(newValue);
-
-  // Approval entries often contain multiple field names but one status pair.
-  // Keep those as one logical change instead of duplicating the same values.
-  if (fields.length > 1 && oldAssignments.size === 0 && newAssignments.size === 0) {
-    return [{ field: fields.join(', '), oldValue, newValue }];
-  }
-
-  if (fields.length === 0) {
-    return [{ field: '', oldValue, newValue }];
-  }
-
-  return fields.map((field, index) => {
-    const displayField = historyFieldName(field);
-    const oldAssigned = oldAssignments.get(normalizeHistoryKey(field))
-      ?? oldAssignments.get(normalizeHistoryKey(displayField));
-    const newAssigned = newAssignments.get(normalizeHistoryKey(field))
-      ?? newAssignments.get(normalizeHistoryKey(displayField));
-    const oldParts = oldValue?.split(';').map((part) => part.trim()).filter(Boolean) || [];
-    const newParts = newValue?.split(';').map((part) => part.trim()).filter(Boolean) || [];
-    return {
-      field,
-      oldValue: oldAssigned ?? (fields.length === 1 ? oldValue : oldParts[index] || null),
-      newValue: newAssigned ?? (fields.length === 1 ? newValue : newParts[index] || null),
-    };
-  });
-}
-
-function isListDeltaField(fn: string): boolean {
-  const norm = normalizeHistoryKey(fn);
-  return norm.includes('vung vts') || norm.includes('zones') || norm.includes('dinh kem') || norm.includes('attachment');
-}
-
-function parseListDelta(oldVal: string | null, newVal: string | null) {
-  const removed: string[] = [];
-  const added: string[] = [];
-  const modifiedOld: string[] = [];
-  const modifiedNew: string[] = [];
-
-  const splitParts = (val: string | null) => {
-    if (!val || val === '—' || val === '(null)' || val === '(trống)' || val === 'Chưa có' || val === 'null' || val === 'undefined') return [];
-    return val.split(',').map((s) => s.trim()).filter((s) => s && s !== '—' && s !== '(null)' && s !== '(trống)' && s !== 'Chưa có' && s !== 'null' && s !== 'undefined');
-  };
-
-  const oldParts = splitParts(oldVal);
-  const newParts = splitParts(newVal);
-
-  const normalizeListItem = (value: string) => normalizeHistoryKey(value).replace(/\s+/g, ' ');
-  const oldPlain = oldParts.filter((part) => !part.startsWith('Xóa ') && !part.startsWith('Cũ: '));
-  const newPlain = newParts.filter((part) => !part.startsWith('Thêm ') && !part.startsWith('Mới: '));
-  const oldPlainKeys = new Set(oldPlain.map(normalizeListItem));
-  const newPlainKeys = new Set(newPlain.map(normalizeListItem));
-
-  oldParts.forEach((part) => {
-    if (part.startsWith('Xóa ')) {
-      removed.push(part.replace('Xóa ', '').trim());
-    } else if (part.startsWith('Cũ: ')) {
-      modifiedOld.push(part.replace('Cũ: ', '').trim());
-    } else if (part !== '—' && !newPlainKeys.has(normalizeListItem(part))) {
-      removed.push(part);
-    }
-  });
-
-  newParts.forEach((part) => {
-    if (part.startsWith('Thêm ')) {
-      added.push(part.replace('Thêm ', '').trim());
-    } else if (part.startsWith('Mới: ')) {
-      modifiedNew.push(part.replace('Mới: ', '').trim());
-    } else if (part !== '—' && !oldPlainKeys.has(normalizeListItem(part))) {
-      added.push(part);
-    }
-  });
-
-  const modifiedPairs: Array<{ oldV: string; newV: string }> = [];
-  const maxMod = Math.max(modifiedOld.length, modifiedNew.length);
-  for (let i = 0; i < maxMod; i++) {
-    modifiedPairs.push({
-      oldV: modifiedOld[i] || '—',
-      newV: modifiedNew[i] || '—',
-    });
-  }
-
-  return { removed, added, modifiedPairs };
-}
-
-function resolveHistoryActionMeta(_group?: any, _changes?: any[]): { label: string; color: string; bg: string } {
-  return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
-}
-
-function formatCoordPointDms(xStr: string, yStr?: string): string {
-  const x = Number(xStr);
-  const y = yStr !== undefined && yStr !== '' ? Number(yStr) : NaN;
-
-  const toDmsString = (val: number, isLat: boolean) => {
-    if (isNaN(val)) return '';
-    const abs = Math.abs(val);
-    const d = Math.floor(abs);
-    const minFloat = (abs - d) * 60;
-    const m = Math.floor(minFloat);
-    const s = Math.round((minFloat - m) * 60 * 10) / 10;
-    const dir = isLat ? (val >= 0 ? 'N' : 'S') : (val >= 0 ? 'E' : 'W');
-    return `${d}° ${m}' ${s.toFixed(1)}" ${dir}`;
-  };
-
-  if (!isNaN(x) && !isNaN(y)) {
-    let lat = y;
-    let lng = x;
-    if (x < 35 && y > 50) {
-      lat = x;
-      lng = y;
-    }
-    const latDms = toDmsString(lat, true);
-    const lngDms = toDmsString(lng, false);
-    return `${latDms}, ${lngDms}`;
-  }
-
-  if (!isNaN(x)) {
-    const isLat = x <= 35 && x >= -35;
-    return toDmsString(x, isLat);
-  }
-
-  return xStr;
-}
-
-function parseCoordinatesPoints(raw: string | null): { typeName?: string; points: Array<{ x: string; y: string; index: number }> } | null {
-  if (!raw || raw === '—' || raw === 'Chưa có' || raw === '(null)' || raw === '(trống)') return null;
-  const str = raw.trim();
-
-  if (/^(Đường|Vùng|Điểm)\s+bản\s+đồ\s*\(\d+\s+điểm/i.test(str)) {
-    return { typeName: str, points: [] };
-  }
-
-  let typeName = '';
-  let inner = str;
-
-  if (/^POINT\s*\(/i.test(str)) {
-    typeName = 'Điểm';
-    inner = str.replace(/^POINT\s*\(/i, '').replace(/\)\s*$/, '');
-  } else if (/^LINESTRING\s*\(/i.test(str)) {
-    typeName = 'Đường';
-    inner = str.replace(/^LINESTRING\s*\(/i, '').replace(/\)\s*$/, '');
-  } else if (/^LINE\s*\(/i.test(str)) {
-    typeName = 'Đường';
-    inner = str.replace(/^LINE\s*\(/i, '').replace(/\)\s*$/, '');
-  } else if (/^POLYGON\s*\(\(/i.test(str)) {
-    typeName = 'Vùng';
-    inner = str.replace(/^POLYGON\s*\(\(/i, '').replace(/\)\)\s*$/, '');
-  } else if (/^MULTIPOINT\s*\(/i.test(str)) {
-    typeName = 'Tập hợp điểm';
-    inner = str.replace(/^MULTIPOINT\s*\(/i, '').replace(/\)\s*$/, '');
-  } else if (str.startsWith('(') && str.endsWith(')')) {
-    inner = str.slice(1, -1);
-  }
-
-  const pointStrings = inner.split(',').map((s) => s.trim()).filter(Boolean);
-  if (pointStrings.length === 0) return null;
-
-  const points = pointStrings.map((ps, idx) => {
-    const clean = ps.replace(/[()]/g, '').trim();
-    const parts = clean.split(/\s+/).filter(Boolean);
-    if (parts.length >= 2) {
-      return { x: parts[0], y: parts[1], index: idx + 1 };
-    }
-    return { x: clean, y: '', index: idx + 1 };
-  });
-
-  return { typeName, points };
-}
-
-function renderCoordinatesDisplay(val: string | null) {
-  if (!val || val === '—' || val === 'Chưa có' || val === '(null)' || val === '(trống)') {
-    return <span style={{ color: textTertiary }}>{val === 'Chưa có' ? 'Chưa có' : '—'}</span>;
-  }
-  const parsed = parseCoordinatesPoints(val);
-  if (!parsed || parsed.points.length === 0) {
-    return <span style={{ color: textPrimary }}>{parsed?.typeName || val}</span>;
-  }
-  const { typeName, points } = parsed;
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs, width: '100%' }}>
-      {typeName && (
-        <span style={{ fontSize: fontSizeSm, fontWeight: fontWeightBold, color: actionPrimary }}>
-          {typeName} ({points.length} điểm)
-        </span>
-      )}
-      {points.map((pt) => (
-        <div key={pt.index} style={{ fontSize: fontSizeSm, color: textPrimary, lineHeight: 1.5 }}>
-          {points.length > 1 && <span style={{ color: textSecondary, marginRight: spaceXs }}>#{pt.index}:</span>}
-          <span>{formatCoordPointDms(pt.x, pt.y)}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function renderHistoryValueTag(field: string, val: string | null) {
-  if (val === null || val === undefined || val === '—') {
-    return <span style={{ color: textTertiary }}>—</span>;
-  }
-  const normKey = normalizeHistoryKey(field);
-  const displayValue = historyFieldValue(field, val);
-  const normVal = normalizeHistoryKey(displayValue);
-
-  if (normKey === 'coordinates' || normKey === 'toa do gis' || normKey.includes('toa do') || normKey.includes('coordinates')) {
-    return renderCoordinatesDisplay(val);
-  }
-
-  // Approval status
-  if (normKey === 'approvalstatus' || normKey === 'trang thai phe duyet' || normKey.includes('phe duyet') || normKey.includes('trang thai')) {
-    if (normVal === 'da duyet' || normVal === 'da phe duyet' || normVal === 'approved' || normVal === 'approved_level2') {
-      return (
-        <span style={statusBadgeStyle(statusOperational)}>
-          {displayValue}
-        </span>
-      );
-    }
-    if (normVal === 'cho cuc duyet' || normVal === 'approved_level1' || normVal.includes('cap 1') || normVal.includes('cuc duyet')) {
-      return (
-        <span style={statusBadgeStyle(actionPrimary)}>
-          {displayValue}
-        </span>
-      );
-    }
-    if (normVal === 'cho cang vu duyet' || normVal === 'cho phe duyet' || normVal === 'cho duyet' || normVal === 'pending' || normVal === 'pending_approval' || normVal === 'proposed' || normVal.includes('cang vu')) {
-      return (
-        <span style={statusBadgeStyle(statusAttention)}>
-          {displayValue}
-        </span>
-      );
-    }
-    if (normVal === 'tu choi' || normVal.includes('rejected') || normVal.includes('tra ve')) {
-      return (
-        <span style={statusBadgeStyle(statusCritical)}>
-          {displayValue}
-        </span>
-      );
-    }
-    return (
-      <span style={statusBadgeStyle(statusDraft)}>
-        {displayValue}
-      </span>
-    );
-  }
-
-  // Condition status
-  if (normKey === 'conditionstatus' || normKey === 'tinh trang' || normKey.includes('tinh trang')) {
-    const color = getConditionStatusColor(displayValue);
-    if (color && color !== textSecondary) {
-      return (
-        <span style={statusBadgeStyle(color)}>
-          {displayValue}
-        </span>
-      );
-    }
-  }
-
-  return <span title={displayValue} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>{displayValue}</span>;
-}
 
 export default function VtsSystemList() {
   const currentUser = useAuthStore((s: AuthState) => s.user);
@@ -516,28 +96,8 @@ export default function VtsSystemList() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
   const [hasMoreHistory, setHasMoreHistory] = useState(true);
-  const [historySearchInput, setHistorySearchInput] = useState('');
-  const [historySearch, setHistorySearch] = useState('');
-  const [historyDateFrom, setHistoryDateFrom] = useState<string>('');
-  const [historyDateTo, setHistoryDateTo] = useState<string>('');
-  // Số trang lịch sử đã tải. Không suy ra từ `historyRecords.length` vì backend
-  // có thể trả về ít hơn pageSize khi lọc, làm lệch số trang → sót/lặp bản ghi.
   const [historyPage, setHistoryPage] = useState(0);
-  // Tăng lên để buộc nạp lại ngay (khi nhấn Enter / nút "Tìm kiếm" / Clear).
-  const [historyReloadToken, setHistoryReloadToken] = useState(0);
-
-  // Số nhóm bản ghi lịch sử (gom theo giây + người cập nhật — giống logic timeline Cảng biển)
-  const historyGroupCount = useMemo(() => {
-    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...historyRecords].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
-    let count = 0, prevKey = '';
-    for (const r of sorted) {
-      const ts = historyTimestamp(r);
-      const key = `${ts ? toSec(ts) : 0}-${historyActor(r)}`;
-      if (key !== prevKey) { count += 1; prevKey = key; }
-    }
-    return count;
-  }, [historyRecords]);
+  const [historyFilters, setHistoryFilters] = useState<{ keyword: string; fromDate?: string; toDate?: string }>({ keyword: '' });
 
   // Count tabs
   const [countDraft, setCountDraft] = useState<number>(0);
@@ -711,10 +271,7 @@ export default function VtsSystemList() {
     setLoadingHistory(false);
     setLoadingMoreHistory(false);
     setHasMoreHistory(true);
-    setHistorySearchInput('');
-    setHistorySearch('');
-    setHistoryDateFrom('');
-    setHistoryDateTo('');
+    setHistoryFilters({ keyword: '' });
     setHistoryPage(0);
   };
 
@@ -729,9 +286,9 @@ export default function VtsSystemList() {
       setHistoryPage(0);
       try {
         const history = await vtsSystemApproval.getHistory(selectedRecord.id, 0, HISTORY_PAGE_SIZE, {
-          keyword: historySearch || undefined,
-          fromDate: historyDateFrom || undefined,
-          toDate: historyDateTo || undefined,
+          keyword: historyFilters.keyword || undefined,
+          fromDate: historyFilters.fromDate || undefined,
+          toDate: historyFilters.toDate || undefined,
         });
         if (cancelled) return;
         const items = history || [];
@@ -746,7 +303,7 @@ export default function VtsSystemList() {
     return () => {
       cancelled = true;
     };
-  }, [historyModalOpen, selectedRecord?.id, historySearch, historyDateFrom, historyDateTo, historyReloadToken]);
+  }, [historyModalOpen, selectedRecord?.id, historyFilters]);
 
   const loadMoreHistory = async () => {
     if (!selectedRecord || loadingHistory || loadingMoreHistory || !hasMoreHistory) return;
@@ -754,9 +311,9 @@ export default function VtsSystemList() {
     try {
       const nextPage = historyPage + 1;
       const history = await vtsSystemApproval.getHistory(selectedRecord.id, nextPage, HISTORY_PAGE_SIZE, {
-        keyword: historySearch,
-        fromDate: historyDateFrom,
-        toDate: historyDateTo,
+        keyword: historyFilters.keyword || undefined,
+        fromDate: historyFilters.fromDate || undefined,
+        toDate: historyFilters.toDate || undefined,
       });
       if (history && history.length > 0) {
         setHistoryRecords(prev => [...prev, ...history]);
@@ -765,13 +322,6 @@ export default function VtsSystemList() {
       setHasMoreHistory((history || []).length === HISTORY_PAGE_SIZE);
     } catch { /* ignore */ }
     finally { setLoadingMoreHistory(false); }
-  };
-
-  const handleHistoryScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const el = e.currentTarget;
-    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) {
-      loadMoreHistory();
-    }
   };
 
   const sortOrderFor = (key: string): 'ascend' | 'descend' | null =>
@@ -1124,311 +674,6 @@ export default function VtsSystemList() {
     setPage(1);
   }, []);
 
-  // ── History rendering ──────────────────────────────────────────
-
-  const fmtTime = (ts: string) => {
-    const d = dayjs(ts);
-    return `${d.format('HH:mm')} ${d.format('DD/MM/YYYY')}`;
-  };
-
-  const renderHistoryTimeline = (records: any[]) => {
-    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...records].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
-    const q = historySearch.toLowerCase().trim();
-
-    const isUpdateAction = (status: string, reason?: string) => {
-      const s = String(status || '').toUpperCase();
-      const r = String(reason || '').toLowerCase();
-      return s === 'UPDATED' || s === 'UPDATE' || s === 'EDIT' || s === 'ATTACHMENT_UPLOADED' || s === 'ATTACHMENT_DELETED'
-        || r.includes('cập nhật') || r.includes('chỉnh sửa') || r.includes('tải lên') || r.includes('xóa tệp') || r.includes('xóa tài liệu');
-    };
-
-    const isSameMinute = (t1: string, t2: string) => {
-      if (!t1 || !t2) return false;
-      return dayjs(t1).format('YYYY-MM-DD HH:mm') === dayjs(t2).format('YYYY-MM-DD HH:mm');
-    };
-
-    const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
-    for (const r of sorted) {
-      const ts = historyTimestamp(r);
-      const sec = ts ? toSec(ts) : 0;
-      const prev = groups[groups.length - 1];
-      const actor = historyActor(r);
-      const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
-      // Gom nhóm thông minh: Cùng người dùng, cùng giây HOẶC cùng phút (cho các thao tác cập nhật/đính kèm của cùng một phiên lưu)
-      const isSameGroup = prev && prev.actor === actor && (
-        prev.tsSec === sec ||
-        (isBothUpdate && (isSameMinute(prev.ts, ts) || Math.abs(prev.tsSec - sec) <= 60)) ||
-        (prev.status === r.status && isSameMinute(prev.ts, ts))
-      );
-      if (isSameGroup) {
-        prev.items.push(r);
-      } else {
-        groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
-      }
-    }
-    if (groups.length === 0) return (
-      <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
-        <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-        <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{q || historyDateFrom || historyDateTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div>
-      </div>
-    );
-    return (
-      <div>{groups.map((g, gi) => {
-        const changes = g.items.flatMap((item: any) => historyChangeRows(item)).sort((a: any, b: any) => {
-          const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
-          const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
-          return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-        });
-        const rawUnit = g.items[0]?.orgUnitName || g.items[0]?.unitName;
-        const unitName = rawUnit && rawUnit !== '—' ? rawUnit : 'Cục Hàng hải Việt Nam';
-        const informationTitle = 'Thông tin thay đổi:';
-        const formatHistoryValue = (fn: string, raw: string | null) => {
-          if (raw === null || raw === '(null)' || raw === '') return null;
-          const t = raw.trim();
-          if (t.startsWith('[') && t.endsWith(']')) {
-            if (t === '[]') return 'Không có';
-            const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
-            return `${parts.length} công trình hạ tầng`;
-          }
-          const specialFields = ['provinceId', 'symbolId', 'conditionStatus', 'approvalStatus'];
-          if (!specialFields.includes(fn) && /^-?\d+(\.\d+)?$/.test(t)) {
-            const n = Number(t);
-            return Number.isInteger(n) ? String(n) : t;
-          }
-          return historyFieldValue(fn, raw);
-        };
-        if (changes.length === 0) return null;
-        const actionMeta = resolveHistoryActionMeta(g, changes);
-        return (
-            <div
-              key={gi}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '220px minmax(0, 1fr)',
-                gap: spaceLg,
-                alignItems: 'start',
-                marginBottom: gi < groups.length - 1 ? spaceMd : 0,
-              }}
-            >
-              <div style={{ minWidth: 0, paddingTop: spaceXs }}>
-                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: spaceSm, marginBottom: spaceXs }}>
-                  <Typography.Text style={{ display: 'block', fontSize: fontSizeLg - 1, color: textPrimary, fontWeight: fontWeightBold, lineHeight: 1.5, whiteSpace: 'nowrap' }}>
-                    {g.ts ? fmtTime(g.ts) : '—'}
-                  </Typography.Text>
-                  <span style={{ flexShrink: 0 }}>
-                    <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: actionMeta.bg, color: actionMeta.color, whiteSpace: 'nowrap' }}>
-                      {actionMeta.label}
-                    </span>
-                  </span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: spaceXs }}>
-                  <Typography.Text style={{ display: 'block', fontSize: fontSizeSm + 1, color: textSecondary, fontWeight: fontWeightMedium, lineHeight: 1.4 }}>
-                    Người cập nhật: <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{g.actor || '—'}</span>
-                  </Typography.Text>
-                  <Typography.Text style={{ display: 'block', fontSize: fontSizeSm + 1, color: textSecondary, fontWeight: fontWeightMedium, lineHeight: 1.4 }}>
-                    Đơn vị: <span style={{ color: textPrimary }}>{unitName}</span>
-                  </Typography.Text>
-                </div>
-              </div>
-
-              <div style={{ position: 'relative', minWidth: 0, background: surfacePage, borderRadius: radiusSm, padding: `${spaceMd}px ${spaceLg}px`, paddingLeft: spaceLg, overflow: 'hidden', border: `1px solid ${borderDefault}` }}>
-                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: spaceXs, background: `linear-gradient(180deg, ${actionMeta.color} 0%, ${actionMeta.color}40 100%)` }} />
-                <Typography.Text style={{ display: 'block', color: colors.sidebarBg, fontSize: fontSizeMd, fontWeight: fontWeightBold, marginBottom: spaceSm }}>
-                  {informationTitle}
-                </Typography.Text>
-
-                {(() => {
-                  const isCoordField = (f: string, v: string | null | undefined): boolean => {
-                    const nk = normalizeHistoryKey(f);
-                    if (nk === 'coordinates' || nk === 'toa do gis' || nk.includes('toa do') || nk.includes('coordinates')) return true;
-                    if (!v) return false;
-                    const sv = String(v).trim().toUpperCase();
-                    return sv.startsWith('POINT') || sv.startsWith('LINESTRING') || sv.startsWith('POLYGON');
-                  };
-
-                  const renderHistoryContent = (field: string, val: string | null, _isOld: boolean = false) => {
-                    if (val === null || val === undefined || val === '—' || val === '') {
-                      return <span style={{ color: textTertiary }}>—</span>;
-                    }
-                    if (isCoordField(field, val)) {
-                      return renderCoordinatesDisplay(val);
-                    }
-                    const str = String(val).trim();
-                    if (str.includes(',') && str.length > 25) {
-                      const items = str.split(',').map((s) => s.trim()).filter(Boolean);
-                      if (items.length > 1) {
-                        return (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
-                            {items.map((item, idx) => (
-                              <div key={idx} style={{ color: textPrimary, fontWeight: fontWeightMedium, lineHeight: 1.5, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                                {item}
-                              </div>
-                            ))}
-                          </div>
-                        );
-                      }
-                    }
-                    return renderHistoryValueTag(field, val);
-                  };
-
-                  // Deduplicate changes correctly using raw values
-                  const listFields = new Set<string>();
-                  changes.forEach((c: any) => {
-                    if (isListDeltaField(c.field)) {
-                      const ov = typeof c.oldValue === 'string' ? c.oldValue.trim() : '';
-                      const nv = typeof c.newValue === 'string' ? c.newValue.trim() : '';
-                      if (ov.startsWith('[') || nv.startsWith('[')) {
-                        listFields.add(normalizeHistoryKey(c.field || ''));
-                      }
-                    }
-                  });
-
-                  const dedupedChanges = changes.filter((c: any) => {
-                    if (isListDeltaField(c.field)) {
-                      const normKey = normalizeHistoryKey(c.field || '');
-                      if (listFields.has(normKey)) {
-                        const ov = typeof c.oldValue === 'string' ? c.oldValue.trim() : '';
-                        const nv = typeof c.newValue === 'string' ? c.newValue.trim() : '';
-                        if (!ov.startsWith('[') && !nv.startsWith('[')) {
-                          return false;
-                        }
-                      }
-                    }
-                    return true;
-                  });
-
-                  const uniqueChangesMap = new Map<string, any>();
-                  dedupedChanges.forEach((c: any) => {
-                    const key = `${c.field}::${c.oldValue}::${c.newValue}`;
-                    if (!uniqueChangesMap.has(key)) {
-                      uniqueChangesMap.set(key, c);
-                    }
-                  });
-
-                  const validChanges = deduplicateAttachmentHistoryChanges(Array.from(uniqueChangesMap.values()).filter((c: any) => {
-                    if (!c.field && !c.oldValue && !c.newValue) return false;
-                    const ov = formatHistoryValue(c.field, c.oldValue);
-                    const nv = formatHistoryValue(c.field, c.newValue);
-                    if (ov == null && nv == null) return false;
-                    if (ov !== null && nv !== null && String(ov).trim() === String(nv).trim()) return false;
-                    return true;
-                  }));
-                  const reasons = g.items.map((i: any) => i.reason || i.ghiChu || i.note).filter(Boolean);
-
-                  if (validChanges.length > 0) {
-                    return (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}>
-                        {validChanges.map((change, ri: number) => {
-                          const fn = change.field;
-                          const ov = formatHistoryValue(fn, change.oldValue);
-                          const nv = formatHistoryValue(fn, change.newValue);
-
-                          if (isListDeltaField(fn)) {
-                            const delta = parseListDelta(ov, nv);
-                            const rows: Array<{ label: string; oldVal: React.ReactNode; arrow: boolean; newVal: React.ReactNode }> = [];
-
-                            delta.modifiedPairs.forEach((p, idx) => {
-                              rows.push({
-                                label: idx === 0 && rows.length === 0 ? (fn ? `${historyFieldName(fn)}:` : '—') : '',
-                                oldVal: p.oldV,
-                                arrow: true,
-                                newVal: p.newV,
-                              });
-                            });
-
-                            delta.removed.forEach((r) => {
-                              rows.push({
-                                label: rows.length === 0 ? (fn ? `${historyFieldName(fn)}:` : '—') : '',
-                                oldVal: r,
-                                arrow: true,
-                                newVal: <span style={{ color: textTertiary }}>—</span>,
-                              });
-                            });
-
-                            delta.added.forEach((a) => {
-                              rows.push({
-                                label: rows.length === 0 ? (fn ? `${historyFieldName(fn)}:` : '—') : '',
-                                oldVal: <span style={{ color: textTertiary }}>—</span>,
-                                arrow: true,
-                                newVal: a,
-                              });
-                            });
-
-                            if (rows.length === 0) {
-                              rows.push({
-                                label: fn ? `${historyFieldName(fn)}:` : '—',
-                                oldVal: ov || '—',
-                                arrow: true,
-                                newVal: nv || '—',
-                              });
-                            }
-
-                            return (
-                              <React.Fragment key={`${fn}-${ri}`}>
-                                {rows.map((row, rIdx) => (
-                                  <div key={rIdx} style={{ display: 'grid', gridTemplateColumns: '140px minmax(0, 1fr) 24px minmax(0, 1fr)', alignItems: 'flex-start', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6, padding: '3px 0' }}>
-                                    <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{row.label}</div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5, color: textPrimary }}>
-                                      {typeof row.oldVal === 'string' ? (
-                                        <span title={row.oldVal} style={{ overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>
-                                          {row.oldVal}
-                                        </span>
-                                      ) : row.oldVal}
-                                    </div>
-                                    <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>
-                                      {row.arrow ? '→' : ''}
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5, color: textPrimary }}>
-                                      {typeof row.newVal === 'string' ? (
-                                        <span title={row.newVal} style={{ overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>
-                                          {row.newVal}
-                                        </span>
-                                      ) : row.newVal}
-                                    </div>
-                                  </div>
-                                ))}
-                              </React.Fragment>
-                            );
-                          }
-
-                          return (
-                            <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '140px minmax(0, 1fr) 24px minmax(0, 1fr)', alignItems: 'flex-start', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6, padding: '3px 0' }}>
-                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>
-                                {renderHistoryContent(fn, ov, true)}
-                              </div>
-                              <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>→</div>
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>
-                                {renderHistoryContent(fn, nv, false)}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  }
-
-                if (reasons.length > 0) {
-                  return (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
-                      {reasons.map((r: string, ri: number) => (
-                        <div key={ri} style={{ fontSize: fontSizeMd, color: textPrimary }}>
-                          {r}
-                        </div>
-                      ))}
-                    </div>
-                  );
-                }
-
-                return <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có thông tin chi tiết</Typography.Text>;
-              })()}
-            </div>
-          </div>
-        );
-      })}</div>
-    );
-  };
 
   return (
     <ThemeTokenProvider tokens={themeTokenChk}>
@@ -1588,110 +833,17 @@ export default function VtsSystemList() {
       )}
 
       {/* ── History drawer ────────────────────────────────────────── */}
-      <Drawer
-        width={1000}
-        style={{ maxWidth: '95vw' }}
-        placement="right"
+      <CommonHistoryDrawer
         open={historyModalOpen}
         onClose={() => setHistoryModalOpen(false)}
-        closable={false}
-        extra={<Button type="text" aria-label="Đóng lịch sử thay đổi" onClick={() => setHistoryModalOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
-        footer={null}
-        styles={{
-          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-          body: { padding: '12px 24px 12px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
-        }}
-        title={
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-            <Space size={spaceSm} style={{ alignItems: 'center' }}>
-              <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
-              <span style={drawerTitleStyle}>
-                {selectedRecord ? `Lịch sử thay đổi — ${selectedRecord.systemName}` : 'Lịch sử thay đổi'}
-              </span>
-              {/* Lịch sử tải theo trang (cuộn vô hạn) — chỉ được gọi là "tổng cộng"
-                  khi đã tải hết, nếu không con số sẽ sai cho tới lúc cuộn xong. */}
-              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: radiusSm, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                {hasMoreHistory ? `Đã tải ${historyGroupCount}+` : `Tổng cộng ${historyGroupCount}`}
-              </span>
-            </Space>
-          </div>
-        }
-      >
-        <style>{`.history-dt-popup .ant-picker-now-btn { color: ${actionPrimary} !important; }`}</style>
-        <div style={{ flexShrink: 0 }}>
-          {!loadingHistory && (
-            <div style={{ display: 'none' }}>
-              <Radio.Group value="current" size="middle" style={{ display: 'flex', width: '100%', borderBottom: `1px solid ${borderDefault}` }}>
-                <Radio.Button value="current" style={{ flex: 1, minWidth: 0, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', borderRadius: 0, border: 'none', background: 'transparent', fontSize: fontSizeMd, padding: `0 ${spaceMd}px`, borderBottom: `2px solid ${actionPrimary}`, fontWeight: fontWeightBold, color: actionPrimary }}>Bản ghi hiện tại <Tag color="blue" style={{ borderRadius: radiusSm, fontSize: 11, marginLeft: 4 }}>{historyGroupCount}</Tag></Radio.Button>
-                {/* ALL_TAB_HIDDEN — cần backend getAllHistory cho VTS để bật tab này */}
-              </Radio.Group>
-            </div>
-          )}
-          <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
-            <Input
-              placeholder="Tìm kiếm nội dung thay đổi..."
-              allowClear
-              value={historySearchInput}
-              onChange={(e) => {
-                const val = e.target.value;
-                setHistorySearchInput(val);
-                if (!val) {
-                  setHistorySearch('');
-                  setHistoryReloadToken((token) => token + 1);
-                }
-              }}
-              onPressEnter={() => {
-                setHistorySearch(historySearchInput.trim());
-                setHistoryReloadToken((token) => token + 1);
-              }}
-              style={{ ...inputStyle, flex: 1 }}
-            />
-            <DatePicker.RangePicker
-              {...getRangePickerProps({
-                value: (historyDateFrom && historyDateTo)
-                  ? [dayjs(historyDateFrom), dayjs(historyDateTo)]
-                  : (historyDateFrom ? [dayjs(historyDateFrom), null] : (historyDateTo ? [null, dayjs(historyDateTo)] : null)),
-                onChange: (dates: any) => {
-                  if (!dates || dates.length === 0 || (!dates[0] && !dates[1])) {
-                    setHistoryDateFrom('');
-                    setHistoryDateTo('');
-                  } else {
-                    setHistoryDateFrom(dates[0] ? dates[0].startOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
-                    setHistoryDateTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
-                  }
-                },
-                style: { ...inputStyle, width: 280 },
-              })}
-            />
-            <Button
-              type="primary"
-              icon={<SearchOutlined />}
-              loading={loadingHistory}
-              onClick={() => {
-                setHistorySearch(historySearchInput.trim());
-                setHistoryReloadToken((token) => token + 1);
-              }}
-              style={primaryButtonStyle}
-            >
-              Tìm kiếm
-            </Button>
-          </div>
-        </div>
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>
-          {loadingHistory && historyRecords.length === 0 ? <LoadingSkeleton rows={5} /> :
-            historyRecords.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
-                <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-                <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
-              </div>
-            ) : (
-              <>
-                {renderHistoryTimeline(historyRecords)}
-                {loadingMoreHistory && <div style={{ textAlign: 'center', padding: `${spaceMd}px 0`, color: textTertiary, fontSize: fontSizeMd }}>Đang tải thêm...</div>}
-              </>
-            )}
-        </div>
-      </Drawer>
+        entityName={selectedRecord?.systemName || selectedRecord?.code}
+        records={historyRecords}
+        loading={loadingHistory}
+        serverFiltered
+        onFilterChange={setHistoryFilters}
+        onLoadMore={loadMoreHistory}
+        loadingMore={loadingMoreHistory}
+      />
 
       {/* Approval Modal */}
       <ApprovalModal

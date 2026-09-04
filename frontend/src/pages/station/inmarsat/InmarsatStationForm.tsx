@@ -1082,7 +1082,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                         <div className="chk-detail-row chk-detail-row--full">
                           <span className="chk-detail-label">Nội dung phê duyệt</span>
                           <span className="chk-detail-value">
-                            {record.approvalContentLevel1 || '—'}
+                            {record.approvalContentLevel1 || record.level1ApprovalContent || '—'}
                           </span>
                         </div>
 
@@ -1102,7 +1102,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
                         <div className="chk-detail-row chk-detail-row--full">
                           <span className="chk-detail-label">Nội dung phê duyệt</span>
                           <span className="chk-detail-value">
-                            {record.approvalContentLevel2 || '—'}
+                            {record.approvalContentLevel2 || record.level2ApprovalContent || '—'}
                           </span>
                         </div>
 

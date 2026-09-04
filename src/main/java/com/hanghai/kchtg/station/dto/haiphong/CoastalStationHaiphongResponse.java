@@ -56,6 +56,8 @@ public class CoastalStationHaiphongResponse {
     // --- GIS ---
     private UUID spatialId;
     private UUID symbolId;
+    private String symbol;
+    private String symbolName;
     private BigDecimal latitude;
     private BigDecimal longitude;
     private String coordinates;
@@ -71,11 +73,13 @@ public class CoastalStationHaiphongResponse {
     private String approverLevel1Name;
     private LocalDateTime approvedDateLevel1;
     private String level1ApprovalContent;
+    private String approvalContentLevel1;
 
     private UUID approverLevel2;
     private String approverLevel2Name;
     private LocalDateTime approvedDateLevel2;
     private String level2ApprovalContent;
+    private String approvalContentLevel2;
 
     private String rejectionReason;
 
@@ -102,5 +106,9 @@ public class CoastalStationHaiphongResponse {
 
     public void setStationName(String stationName) {
         this.name = stationName;
+    }
+
+    public String getSymbol() {
+        return this.symbolId != null ? this.symbolId.toString() : this.symbol;
     }
 }

@@ -98,11 +98,11 @@ class BeaconStationServiceTest {
         dummySpatial.setId(UUID.randomUUID());
         lenient().when(gisSpatialObjectService.createOrUpdate(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(dummySpatial);
-        lenient().when(orgUnitScopeService.currentUserScope()).thenReturn(com.hanghai.kchtg.orgunit.service.OrgUnitScopeService.Scope.allScope());
+        lenient().when(orgUnitScopeService.currentUserScope())
+                .thenReturn(com.hanghai.kchtg.orgunit.service.OrgUnitScopeService.Scope.allScope());
         lenient().when(orgUnitCacheService.getName(any())).thenReturn("Đơn vị Test");
         lenient().when(userResolverService.resolveName(any())).thenReturn("Admin Test");
     }
-
 
     private BeaconStation makeEntity(UUID id, String status) {
         BeaconStation entity = BeaconStation.builder()
@@ -201,11 +201,13 @@ class BeaconStationServiceTest {
         void search() {
             UUID id = UUID.randomUUID();
             BeaconStation entity = makeEntity(id, "DRAFT");
-            when(beaconStationRepo.searchFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+            when(beaconStationRepo.searchFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                    any(), any(), any(), any(), any(), any()))
                     .thenReturn(List.of(entity));
 
             List<BeaconStationResponse> result = service.search(
-                    "Đèn", "DEN", "LIGHTHOUSE", "DRAFT", null, null, null, null, null, null, null, null, null, null, null, null);
+                    "Đèn", "DEN", "LIGHTHOUSE", "DRAFT", null, null, null, null, null, null, null, null, null, null,
+                    null, null);
 
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getName()).isEqualTo("Đèn biển test");
@@ -516,13 +518,15 @@ class BeaconStationServiceTest {
             when(beaconStationRepo.findById(id)).thenReturn(Optional.of(entity));
             when(beaconStationRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-            BeaconStationResponse result = service.approveL1(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"), null);
+            BeaconStationResponse result = service.approveL1(id,
+                    java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"), null);
 
             verify(beaconStationRepo).save(beaconStationCaptor.capture());
             BeaconStation saved = beaconStationCaptor.getValue();
             assertThat(saved.getStatus()).isEqualTo(ApprovalStatus.APPROVED_LEVEL1.name());
             assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED_LEVEL1);
-            assertThat(saved.getApproverLevel1()).isEqualTo(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
+            assertThat(saved.getApproverLevel1())
+                    .isEqualTo(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
             assertThat(saved.getApprovedDateLevel1()).isNotNull();
             assertThat(result.getStatus()).isEqualTo(ApprovalStatus.APPROVED_LEVEL1.name());
             verify(infraHistoryRepo).save(any());
@@ -536,7 +540,8 @@ class BeaconStationServiceTest {
             entity.setApprovedBy(null);
             when(beaconStationRepo.findById(id)).thenReturn(Optional.of(entity));
 
-            assertThatThrownBy(() -> service.approveL1(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"), null))
+            assertThatThrownBy(() -> service.approveL1(id,
+                    java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"), null))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("Không ở trạng thái chờ phê duyệt L1");
         }
@@ -550,15 +555,16 @@ class BeaconStationServiceTest {
             when(beaconStationRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
             BeaconStationResponse result = service.reject(id,
-                    "Lý do từ chối hợp lệ (đủ 10 ký tự)", java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
+                    "Lý do từ chối hợp lệ (đủ 10 ký tự)",
+                    java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
 
             verify(beaconStationRepo).save(beaconStationCaptor.capture());
             BeaconStation saved = beaconStationCaptor.getValue();
             assertThat(saved.getStatus()).isEqualTo("DRAFT");
-            assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.REJECTED);
+            assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.REJECTED_LEVEL1);
             assertThat(saved.getRejectionReason()).isEqualTo("Lý do từ chối hợp lệ (đủ 10 ký tự)");
             assertThat(result.getStatus()).isEqualTo("DRAFT");
-            assertThat(result.getApprovalStatus()).isEqualTo("REJECTED");
+            assertThat(result.getApprovalStatus()).isEqualTo("REJECTED_LEVEL1");
             verify(notificationService).sendRejectionNotification(entity,
                     "Lý do từ chối hợp lệ (đủ 10 ký tự)");
         }
@@ -570,7 +576,8 @@ class BeaconStationServiceTest {
             BeaconStation entity = makeEntity(id, "PENDING_APPROVAL");
             when(beaconStationRepo.findById(id)).thenReturn(Optional.of(entity));
 
-            assertThatThrownBy(() -> service.reject(id, "Ngắn", java.util.UUID.fromString("00000000-0000-0000-0000-000000000002")))
+            assertThatThrownBy(
+                    () -> service.reject(id, "Ngắn", java.util.UUID.fromString("00000000-0000-0000-0000-000000000002")))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("ít nhất 10 ký tự");
         }
@@ -582,7 +589,8 @@ class BeaconStationServiceTest {
             BeaconStation entity = makeEntity(id, "PENDING_APPROVAL");
             when(beaconStationRepo.findById(id)).thenReturn(Optional.of(entity));
 
-            assertThatThrownBy(() -> service.reject(id, null, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002")))
+            assertThatThrownBy(
+                    () -> service.reject(id, null, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002")))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("ít nhất 10 ký tự");
         }

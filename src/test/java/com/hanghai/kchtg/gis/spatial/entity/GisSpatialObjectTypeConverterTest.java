@@ -48,3 +48,4 @@ class GisSpatialObjectTypeConverterTest {
         assertEquals(14, converter.convertToDatabaseColumn(GisSpatialObjectType.POINT_OTHER));
     }
 }
+

@@ -1457,7 +1457,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                             name="coverage"
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <Input.TextArea placeholder="Mô tả phạm vi hoặc vùng phủ sóng của trung tâm điều hành VTS" rows={3} maxLength={2000} showCount style={textAreaStyle} />
+                            <Input.TextArea placeholder="Mô tả phạm vi hoặc vùng phủ sóng của trung tâm điều hành VTS" rows={3} maxLength={4000} showCount style={textAreaStyle} />
                           </Form.Item>
                         </Col>
 

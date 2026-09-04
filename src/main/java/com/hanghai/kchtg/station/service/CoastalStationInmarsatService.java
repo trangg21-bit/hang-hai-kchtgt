@@ -867,6 +867,23 @@ public class CoastalStationInmarsatService {
                 resolvedGeomType = "POLYGON";
         }
 
+        String approvalContentLevel1 = entity.getLevel1ApprovalContent();
+        if (approvalContentLevel1 == null || approvalContentLevel1.isBlank()) {
+            if (entity.getApprovalStatus() == ApprovalStatus.REJECTED_LEVEL1 && entity.getRejectionReason() != null) {
+                approvalContentLevel1 = entity.getRejectionReason();
+            } else if (entity.getApproverLevel1() != null) {
+                approvalContentLevel1 = "Đã phê duyệt";
+            }
+        }
+        String approvalContentLevel2 = entity.getLevel2ApprovalContent();
+        if (approvalContentLevel2 == null || approvalContentLevel2.isBlank()) {
+            if (entity.getApprovalStatus() == ApprovalStatus.REJECTED_LEVEL2 && entity.getRejectionReason() != null) {
+                approvalContentLevel2 = entity.getRejectionReason();
+            } else if (entity.getApproverLevel2() != null || entity.getApprovalStatus() == ApprovalStatus.APPROVED) {
+                approvalContentLevel2 = "Đã phê duyệt";
+            }
+        }
+
         return CoastalStationInmarsatResponse.builder()
                 .id(entity.getId())
                 .orgUnitId(effectiveOrgUnitId)
@@ -916,8 +933,10 @@ public class CoastalStationInmarsatService {
                 .approvedByName(approvedByName)
                 .approvedDate(entity.getApprovedDate())
                 .rejectionReason(entity.getRejectionReason())
-                .level1ApprovalContent(entity.getLevel1ApprovalContent())
-                .level2ApprovalContent(entity.getLevel2ApprovalContent())
+                .level1ApprovalContent(approvalContentLevel1)
+                .approvalContentLevel1(approvalContentLevel1)
+                .level2ApprovalContent(approvalContentLevel2)
+                .approvalContentLevel2(approvalContentLevel2)
                 .createdBy(entity.getCreatedBy())
                 .createdByName(createdByName)
                 .createdAt(entity.getCreatedAt())

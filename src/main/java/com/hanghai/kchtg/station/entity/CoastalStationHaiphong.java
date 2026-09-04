@@ -211,4 +211,19 @@ public class CoastalStationHaiphong extends BaseEntity implements ApprovableEnti
             this.conditionStatus = ConditionStatus.OPERATIONAL;
         }
     }
+
+    public String getSymbol() {
+        return this.symbolId != null ? this.symbolId.toString() : null;
+    }
+
+    public void setSymbol(String symbol) {
+        if (symbol != null && !symbol.isBlank()) {
+            try {
+                this.symbolId = UUID.fromString(symbol.trim());
+            } catch (IllegalArgumentException ignored) {
+            }
+        } else {
+            this.symbolId = null;
+        }
+    }
 }

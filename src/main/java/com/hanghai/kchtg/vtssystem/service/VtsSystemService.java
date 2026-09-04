@@ -206,6 +206,10 @@ public class VtsSystemService {
                             + "các đơn vị khác phải gửi hồ sơ qua quy trình phê duyệt 2 cấp");
         }
 
+        boolean isApproved = initialStatus == ApprovalStatus.APPROVED;
+        boolean isBypassedL1 = initialStatus == ApprovalStatus.APPROVED_LEVEL1;
+        LocalDateTime now = LocalDateTime.now();
+
         VtsSystem entity = VtsSystem.builder()
                 .systemName(request.getSystemName())
                 .conditionStatus(request.getConditionStatus())
@@ -221,10 +225,14 @@ public class VtsSystemService {
                 .maritimeNotice(request.getMaritimeNotice())
                 .operationStartDate(request.getOperationStartDate())
                 .approvalStatus(initialStatus)
-                .approvedDateLevel1(initialStatus == ApprovalStatus.APPROVED ? LocalDateTime.now() : null)
-                .approverLevel1(initialStatus == ApprovalStatus.APPROVED ? userId : null)
-                .approvedDateLevel2(initialStatus == ApprovalStatus.APPROVED ? LocalDateTime.now() : null)
-                .approverLevel2(initialStatus == ApprovalStatus.APPROVED ? userId : null)
+                .submittedAt(isApproved || isBypassedL1 ? now : null)
+                .submittedBy(isApproved || isBypassedL1 ? userId : null)
+                .approvedDateLevel1(isApproved || isBypassedL1 ? now : null)
+                .approverLevel1(isApproved || isBypassedL1 ? userId : null)
+                .level1ApprovalContent(isApproved ? "Cấp Cục phê duyệt trực tiếp" : (isBypassedL1 ? "Cấp Cục gửi trực tiếp" : null))
+                .approvedDateLevel2(isApproved ? now : null)
+                .approverLevel2(isApproved ? userId : null)
+                .level2ApprovalContent(isApproved ? "Lưu và phê duyệt trực tiếp" : null)
                 .build();
 
         if (request.getZones() != null && !request.getZones().isEmpty()) {
@@ -1149,8 +1157,17 @@ public class VtsSystemService {
                             "Chỉ tài khoản cấp Cục mới được lưu và phê duyệt trực tiếp; "
                                     + "các đơn vị khác phải gửi hồ sơ qua quy trình phê duyệt 2 cấp");
                 }
+                LocalDateTime now = LocalDateTime.now();
+                if (entity.getApproverLevel1() == null) {
+                    entity.setApproverLevel1(effectiveUserId);
+                    entity.setApprovedDateLevel1(now);
+                    entity.setLevel1ApprovalContent("Cấp Cục phê duyệt trực tiếp");
+                }
                 entity.setApproverLevel2(effectiveUserId);
-                entity.setApprovedDateLevel2(LocalDateTime.now());
+                entity.setApprovedDateLevel2(now);
+                if (entity.getLevel2ApprovalContent() == null || entity.getLevel2ApprovalContent().isBlank()) {
+                    entity.setLevel2ApprovalContent("Lưu và phê duyệt trực tiếp");
+                }
                 historyRepository.save(InfrastructureHistory.builder()
                         .refId(entity.getId())
                         .refType(InfrastructureType.VTS_SYSTEM)
@@ -1519,13 +1536,20 @@ public class VtsSystemService {
         }
 
         String approvalContentLevel1 = entity.getLevel1ApprovalContent();
-        if ((approvalContentLevel1 == null || approvalContentLevel1.isBlank()) && entity.getApproverLevel1() != null) {
-            approvalContentLevel1 = "Đã phê duyệt";
+        if (approvalContentLevel1 == null || approvalContentLevel1.isBlank()) {
+            if (entity.getApprovalStatus() == ApprovalStatus.REJECTED_LEVEL1 && entity.getRejectionReason() != null) {
+                approvalContentLevel1 = entity.getRejectionReason();
+            } else if (entity.getApproverLevel1() != null) {
+                approvalContentLevel1 = "Đã phê duyệt";
+            }
         }
         String approvalContentLevel2 = entity.getLevel2ApprovalContent();
-        if ((approvalContentLevel2 == null || approvalContentLevel2.isBlank())
-                && (entity.getApproverLevel2() != null || entity.getApprovalStatus() == ApprovalStatus.APPROVED)) {
-            approvalContentLevel2 = "Đã phê duyệt";
+        if (approvalContentLevel2 == null || approvalContentLevel2.isBlank()) {
+            if (entity.getApprovalStatus() == ApprovalStatus.REJECTED_LEVEL2 && entity.getRejectionReason() != null) {
+                approvalContentLevel2 = entity.getRejectionReason();
+            } else if (entity.getApproverLevel2() != null || entity.getApprovalStatus() == ApprovalStatus.APPROVED) {
+                approvalContentLevel2 = "Đã phê duyệt";
+            }
         }
 
         return VtsSystemResponse.builder()
