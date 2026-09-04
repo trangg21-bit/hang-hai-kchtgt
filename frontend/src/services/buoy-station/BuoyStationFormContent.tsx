@@ -23,7 +23,7 @@ import type { BuoyStationResponse, CreateBuoyStationRequest } from './types';
 import { useAuthStore } from '../../store/authStore';
 import {
   sidebarBg, actionPrimary, statusCritical,
-  readonlyInputStyle, drawerTabBarStyle, drawerTabContentStyle,
+  readonlyInputStyle, drawerTabBarStyle, drawerTabContentStyle, drawerFormScrollStyle,
   outlineButtonStyle, primaryButtonStyle, spaceMd, fontSizeLg,
   spaceFormField, radiusPill, radiusMd, borderDefault, textTertiary, textPrimary,
   spaceSm, fontWeightBold, fontSizeMd, fontSizeSm, surfaceCard, uploadHintStyle,
@@ -383,7 +383,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
 
   const tabItems = [
     // Tab 1: Thông tin chung
-    { key: 'general', label: 'Thông tin chung', children: (<div style={drawerTabContentStyle}>
+    { key: 'general', label: 'Thông tin chung', children: (<div style={drawerFormScrollStyle}>
       <Row gutter={[24, 0]}>
         <Col span={12}><Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}><OrgUnitTreeSelect organizations={orgUnitTreeData} placeholder="Chọn đơn vị quản lý" loading={orgUnitOptions.length === 0 && !(organizations && organizations.length > 0)} disabled={isEdit} showPath onChange={() => { form.setFieldsValue({ portId: undefined, code: undefined }); setCoordinateList([]); }} /></Form.Item></Col>
         <Col span={12}><Form.Item name="operatingOrgId" {...labelProps('Đơn vị khai thác')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị khai thác là bắt buộc' }]}><Select placeholder="Chọn đơn vị khai thác..." options={operatingOrgs.map(o => ({ value: o.id, label: o.name }))} showSearch optionFilterProp="label" allowClear style={selectStyle} /></Form.Item></Col>
@@ -426,7 +426,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
       </div>)}
     </div>) },
     // Tab 2: Thông tin vị trí (giống BuoyFormContent tab Thông tin vị trí)
-    { key: 'gis', label: 'Thông tin vị trí', children: (<div style={drawerTabContentStyle}>
+    { key: 'gis', label: 'Thông tin vị trí', children: (<div style={drawerFormScrollStyle}>
       <Row gutter={[24, 0]}>
         <Col span={12}>
           <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
@@ -543,7 +543,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
       )}
     </div>) },
     // Tab 3: File đính kèm (chuẩn VTS CHK — Upload.Dragger + bảng STT/Tên/Dung lượng/Người tải lên/Ngày tải lên)
-    { key: 'files', label: 'File đính kèm', children: (<div style={drawerTabContentStyle}>
+    { key: 'files', label: 'File đính kèm', children: (<div style={drawerFormScrollStyle}>
       <div style={{ marginBottom: spaceMd }}>
         <Upload.Dragger
           beforeUpload={handleBeforeUpload}

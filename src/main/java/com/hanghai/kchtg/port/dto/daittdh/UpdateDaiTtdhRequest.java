@@ -2,7 +2,6 @@ package com.hanghai.kchtg.port.dto.daittdh;
 
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -12,7 +11,7 @@ import java.util.UUID;
 @Data
 public class UpdateDaiTtdhRequest {
 
-    private RecordSecurityLevel securityLevel;
+    // private RecordSecurityLevel securityLevel;
 
     @NotNull(message = "ID không được để trống")
     private UUID id;

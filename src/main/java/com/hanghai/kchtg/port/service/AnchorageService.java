@@ -88,15 +88,15 @@ public class AnchorageService {
             throw new IllegalArgumentException("Không thể tạo khu neo đậu: cảng biển cha phải ở trạng thái được phê duyệt");
         }
 
-        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
-                : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "anchorage", SecurityUtils.getCurrentUserPermissions(),
-                SecurityUtils.isElevatedAdministrator());
+        // RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
+        //         : RecordSecurityLevel.NORMAL;
+        // RecordSecurityLevel.validateAssignment(secLevel, "anchorage", SecurityUtils.getCurrentUserPermissions(),
+        //         SecurityUtils.isElevatedAdministrator());
 
         String code = generateAnchorageCode(request.getPortId());
 
         Anchorage entity = Anchorage.builder()
-                .securityLevel(secLevel)
+                // .securityLevel(secLevel)
                 .anchorageCode(code)
                 .anchorageName(request.getAnchorageName())
                 .portId(request.getPortId())
@@ -151,11 +151,11 @@ public class AnchorageService {
         // Chụp snapshot đầy đủ trước khi thay đổi để ghi lịch sử chi tiết (chuẩn Bến cảng)
         Anchorage snapshot = buildSnapshot(entity);
 
-        if (request.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "anchorage",
-                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-            entity.setSecurityLevel(request.getSecurityLevel());
-        }
+        // if (request.getSecurityLevel() != null) {
+        //     RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "anchorage",
+        //             SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+        //     entity.setSecurityLevel(request.getSecurityLevel());
+        // }
         if (request.getAnchorageName() != null)
             entity.setAnchorageName(request.getAnchorageName());
         if (request.getPortId() != null) {
@@ -429,7 +429,7 @@ public class AnchorageService {
 
         AnchorageResponse response = AnchorageResponse.builder()
                 .id(entity.getId())
-                .securityLevel(entity.getSecurityLevel())
+                // .securityLevel(entity.getSecurityLevel())
                 .anchorageCode(entity.getAnchorageCode())
                 .anchorageName(entity.getAnchorageName())
                 .portId(entity.getPortId())
@@ -606,7 +606,7 @@ public class AnchorageService {
      */
     private Anchorage buildSnapshot(Anchorage e) {
         return Anchorage.builder()
-                .securityLevel(e.getSecurityLevel())
+                // .securityLevel(e.getSecurityLevel())
                 .anchorageCode(e.getAnchorageCode())
                 .anchorageName(e.getAnchorageName())
                 .portId(e.getPortId())

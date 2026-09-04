@@ -128,7 +128,7 @@ export default function StormShelterDetailContent({
         {
           key: 'general', label: 'Thông tin chung',
           children: (
-            <div style={{ paddingTop: 3 }}>
+            <div style={{ paddingTop: 3, overflowY: 'auto', maxHeight: 'calc(100vh - 290px)' }}>
               <div className="chk-detail-grid">
                 {[
                   ['Mã khu tránh, trú bão', <span style={statusBadgeStyle(actionPrimary)}>{r.stormShelterCode || '—'}</span>],
@@ -286,8 +286,8 @@ export default function StormShelterDetailContent({
         {
           key: 'operationMaintenance', label: 'Vận hành & bảo trì',
           children: (
-            <div style={{ paddingTop: 3 }}>
-              <button type="button" style={{ cursor: 'pointer', marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setOperationOpen(!operationOpen)}>
+            <div style={{ paddingTop: 3, overflowY: 'auto', maxHeight: 'calc(100vh - 290px)' }}>
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setOperationOpen(!operationOpen)}>
                 <span style={{ color: operationOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{operationOpen ? '▼' : '▶'} Thông tin vận hành khai thác</span>
               </button>
               {operationOpen && (

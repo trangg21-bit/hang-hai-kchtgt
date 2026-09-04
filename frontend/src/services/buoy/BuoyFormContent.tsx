@@ -14,7 +14,7 @@ import {
   textTertiary, textPrimary, sidebarBg, statusCritical, actionPrimary,
   fontSizeMd, fontSizeSm, fontSizeLg, fontWeightMedium, fontWeightBold,
   radiusPill, radiusMd, spaceSm, spaceMd, spaceFormField, surfaceCard, borderDefault, uploadHintStyle,
-  readonlyInputStyle, drawerTabBarStyle, drawerTabContentStyle,
+  readonlyInputStyle, drawerTabBarStyle, drawerTabContentStyle, drawerFormScrollStyle,
   primaryButtonStyle, outlineButtonStyle,
 } from '../../themetokenchk';
 import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
@@ -220,7 +220,7 @@ export default function BuoyFormContent({
       key: 'general',
       label: 'Thông tin chung',
       children: (
-        <div style={drawerTabContentStyle}>
+        <div style={drawerFormScrollStyle}>
           <Row gutter={[24, 0]}>
             <Col span={12}>
               <Form.Item
@@ -479,7 +479,7 @@ export default function BuoyFormContent({
       key: 'gis',
       label: `Thông tin vị trí (${gpsCoordList.length})`,
       children: (
-        <div style={drawerTabContentStyle}>
+        <div style={drawerFormScrollStyle}>
           <Row gutter={[24, 0]}>
             <Col span={12}>
               <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
@@ -601,7 +601,7 @@ export default function BuoyFormContent({
       key: 'files',
       label: `File đính kèm (${uploadFileList.length})`,
       children: (
-        <div style={drawerTabContentStyle}>
+        <div style={drawerFormScrollStyle}>
           <div style={{ marginBottom: spaceMd }}>
             <Upload.Dragger
               beforeUpload={handleBeforeUpload}

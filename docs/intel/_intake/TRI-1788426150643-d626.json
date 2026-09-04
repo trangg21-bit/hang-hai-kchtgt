@@ -1,0 +1,85 @@
+{
+  "triage_id": "TRI-1788426150643-d626",
+  "created_at": 1788426150643,
+  "request_summary": "Thêm overflowY + maxHeight vào các tab \"Kết cấu hạ tầng\" và \"Vận hành & bảo trì\" trong 11 module DetailContent",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/anchorage/AnchorageDetailContent.tsx",
+      "frontend/src/pages/buoy-berth/BuoyBerthDetailContent.tsx",
+      "frontend/src/pages/dai-ttdh/DaiTtdhDetailContent.tsx",
+      "frontend/src/pages/port/BerthDetailContent.tsx",
+      "frontend/src/pages/port/DryPortDetailContent.tsx",
+      "frontend/src/pages/port/PierDetailContent.tsx",
+      "frontend/src/pages/ship-repair-yard/ShipRepairYardDetailContent.tsx",
+      "frontend/src/pages/storm-shelter/StormShelterDetailContent.tsx",
+      "frontend/src/pages/transfer-area/TransferAreaDetailContent.tsx",
+      "frontend/src/services/buoy-station/BuoyStationDetailContent.tsx",
+      "frontend/src/services/buoy/BuoyDetailContent.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/anchorage/AnchorageDetailContent.tsx",
+      "frontend/src/pages/buoy-berth/BuoyBerthDetailContent.tsx",
+      "frontend/src/pages/dai-ttdh/DaiTtdhDetailContent.tsx",
+      "frontend/src/pages/port/BerthDetailContent.tsx",
+      "frontend/src/pages/port/DryPortDetailContent.tsx",
+      "frontend/src/pages/port/PierDetailContent.tsx",
+      "frontend/src/pages/ship-repair-yard/ShipRepairYardDetailContent.tsx",
+      "frontend/src/pages/storm-shelter/StormShelterDetailContent.tsx",
+      "frontend/src/pages/transfer-area/TransferAreaDetailContent.tsx",
+      "frontend/src/services/buoy-station/BuoyStationDetailContent.tsx",
+      "frontend/src/services/buoy/BuoyDetailContent.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C2: 11 edit-target files exceed the inline gate (11 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Drawer Xem chi tiết 11 module KCHT",
+  "blast_radius": 11,
+  "done_oracle": "Tất cả 11 module DetailContent có scroll dọc trong tab Kết cấu hạ tầng và Vận hành & bảo trì",
+  "verification_commands": [
+    {
+      "command": "cd frontend && npm run build",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 120000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/port/BerthDetailContent.tsx",
+      "line": 260,
+      "quote": "<div style={{ paddingTop: 3 }}>",
+      "source_hash": "c2e491f753df689c76c9b27e4e8eff2a61d6a19bdc782b0c18048a30deab5820",
+      "quote_hash": "bdbe5ca2a62c61c49c522e25d51727af0a08be081a0ea9311372c32f732f66ff"
+    },
+    {
+      "file": "frontend/src/pages/port/PierDetailContent.tsx",
+      "line": 307,
+      "quote": "<div style={{ paddingTop: 3 }}>",
+      "source_hash": "13b8218850e38dd654186154bd45b5b6b50344ec478e2d281af57b3dcad526c0",
+      "quote_hash": "bdbe5ca2a62c61c49c522e25d51727af0a08be081a0ea9311372c32f732f66ff"
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1788424280969-0df1",
+    "breach_kind": "file_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "4c4d8e0de3627bfa5e3c72e866b96eeb6cc01677",
+    "dirty": true,
+    "captured_at": 1788426150990
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

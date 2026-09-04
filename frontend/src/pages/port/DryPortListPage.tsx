@@ -75,7 +75,7 @@ import {
   labelProps,
   readonlyInputStyle,
   drawerTabBarStyle,
-  drawerTabContentStyle,
+  drawerTabContentStyle, drawerFormScrollStyle,
   cellTitleStyle,
   cellSubtitleStyle,
   icons,
@@ -1290,7 +1290,7 @@ export default function DryPortListPage() {
       key: 'general',
       label: 'Thông tin chung',
       children: (
-        <div style={drawerTabContentStyle}>
+        <div style={drawerFormScrollStyle}>
           <Row gutter={[24, 0]}>
             <Col span={12}>
               <Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]} style={{ marginBottom: spaceFormField }}>
@@ -1414,7 +1414,7 @@ export default function DryPortListPage() {
       key: 'location',
       label: `Thông tin vị trí (${coordinateList.length})`,
       children: (
-        <div style={drawerTabContentStyle}>
+        <div style={drawerFormScrollStyle}>
           <Row gutter={[24, 0]}>
             <Col span={12}>
               <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
@@ -1495,7 +1495,7 @@ export default function DryPortListPage() {
       key: 'files',
       label: `File đính kèm (${uploadFileList.length})`,
       children: (
-        <div style={drawerTabContentStyle}>
+        <div style={drawerFormScrollStyle}>
           <div style={{ marginBottom: spaceMd }}>
             <Upload.Dragger
               beforeUpload={handleAddFile}

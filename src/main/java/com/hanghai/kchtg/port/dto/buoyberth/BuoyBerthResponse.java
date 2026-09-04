@@ -3,7 +3,6 @@ package com.hanghai.kchtg.port.dto.buoyberth;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.Builder;
 import lombok.Data;
 
@@ -16,7 +15,7 @@ import java.util.UUID;
 @Builder
 public class BuoyBerthResponse {
     private UUID id;
-    private RecordSecurityLevel securityLevel;
+    // private RecordSecurityLevel securityLevel;
     private String buoyBerthCode;
     private String buoyBerthName;
     private UUID portId;
