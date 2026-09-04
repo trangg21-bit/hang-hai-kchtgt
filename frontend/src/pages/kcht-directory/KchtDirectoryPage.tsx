@@ -738,8 +738,8 @@ export default function KchtDirectoryPage() {
     if (!key) return;
     const source = SOURCE_NODE_BY_KEY.get(key);
     if (!source) return;
-    // Node cha chỉ bật/tắt mở rộng — không điều hướng
-    if (source.children?.length) return;
+    // Node có route hợp lệ (kể cả node cha như Cảng biển, Bến cảng, Nhà trạm phao tiêu)
+    // sẽ điều hướng tới màn hình quản lý; mở rộng/thu gọn giờ dùng mũi tên caret.
     const route = source.key.startsWith('/') ? source.key : undefined;
     if (!route) return;
     if (checkRouteAccess(route)) navigate(route);
@@ -931,7 +931,7 @@ export default function KchtDirectoryPage() {
               showLine
               selectable
               multiple={false}
-              expandAction="click"
+              expandAction={false}
               showIcon={false}
               treeData={treeData}
               expandedKeys={displayExpandedKeys}

@@ -144,7 +144,7 @@ export default function BerthDetailContent({
                   })(),],
                   ['Thuộc cảng biển', <span style={{ fontWeight: fontWeightBold }}>{portOptions.find(o => o.value === r.portId)?.label || r.portId || '—'}</span>],
                   ['Thuộc luồng hàng hải', waterwayMap.get(r.waterwayId || '') || r.waterwayId || '—'],
-                  ['Đơn vị khai thác', r.operator || '—'],
+                  ['Đơn vị khai thác', r.operatingOrgName || r.operator || '—'],
                   ['Địa điểm (Tỉnh/Thành Phố)', r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '—' : '—'],
                   ['Địa điểm chi tiết', r.detailedLocation || '—'],
                   ['Loại kết cấu bến cảng', structureTypeOptions.find(o => o.value === r.structureType)?.label || r.structureType || '—'],

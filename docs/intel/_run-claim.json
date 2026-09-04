@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "started_at": "2026-06-27T18:29:15.473Z",
-  "last_modified_at": "2026-08-25T10:39:48.362Z",
+  "last_modified_at": "2026-09-04T03:24:40.456Z",
   "modules": {
     "M-001": {
       "depends_on": [],
@@ -547,21 +547,21 @@
     "M-024": {
       "depends_on": [],
       "topo_level": 0,
-      "status": "in_progress",
-      "claimed_by": "tab-b939ed9ca32dd9ed",
-      "claimed_at": "2026-08-25T10:38:45.100Z",
-      "heartbeat_at": "2026-08-25T10:39:48.362Z",
+      "status": "done",
+      "claimed_by": "tab-a11bc4b4a4ece8be",
+      "claimed_at": "2026-09-04T03:24:04.426Z",
+      "heartbeat_at": "2026-09-04T03:24:40.456Z",
       "current_stage": null,
       "started_at": "2026-08-25T07:12:51.017Z",
-      "completed_at": null,
+      "completed_at": "2026-09-04T03:24:40.456Z",
       "auto_pass_count": 0,
-      "attempt": 4,
+      "attempt": 5,
       "name": "Tái cấu trúc Menu & Navigation",
       "slug": "tai-cau-truc-menu-navigation",
       "risk_path": "M",
-      "claimed_pid": 4276,
-      "claimed_host": "PTPM-TRANGTT1-PC",
-      "previous_claimed_by": "tab-bfc630c8205a114a"
+      "claimed_pid": null,
+      "claimed_host": null,
+      "previous_claimed_by": "tab-b939ed9ca32dd9ed"
     }
   },
   "tabs": {
@@ -929,14 +929,22 @@
     "tab-b939ed9ca32dd9ed": {
       "started_at": "2026-08-25T09:33:34.257Z",
       "last_seen": "2026-08-25T10:39:48.362Z",
-      "claimed_modules": [
-        "M-024"
-      ],
+      "claimed_modules": [],
       "completed_modules": [],
       "failed_modules": [
         "M-024",
         "M-024"
       ],
+      "skipped_modules": []
+    },
+    "tab-a11bc4b4a4ece8be": {
+      "started_at": "2026-09-04T03:24:04.426Z",
+      "last_seen": "2026-09-04T03:24:40.456Z",
+      "claimed_modules": [],
+      "completed_modules": [
+        "M-024"
+      ],
+      "failed_modules": [],
       "skipped_modules": []
     }
   }
