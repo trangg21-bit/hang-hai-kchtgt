@@ -18,6 +18,7 @@ import {
 } from '../../themetokenchk';
 import type { OrgUnitTreeOption } from '../../components/org-unit';
 import DetailTable from '../../components/shared/DetailTable';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 
 // ── Style badge Tình trạng (giống Quản lý phao tiêu) ─────────────────
@@ -182,7 +183,7 @@ export default function BuoyStationDetailContent({
                     const name = orgUnits.find((o) => o.id === r.unitId)?.name || r.unitId || '—';
                     return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
                   })()],
-                ['Đơn vị khai thác', <span style={{ fontWeight: fontWeightBold }}>{orgName(r.operatingOrgId)}</span>],
+                ['Đơn vị khai thác', <span style={{ fontWeight: fontWeightBold }}>{DEFAULT_OPERATING_ORGANIZATIONS.find(o => o.id === r.operatingOrgId)?.name || r.operatingOrgId || '—'}</span>],
                 ['Thuộc cảng biển', r.portId ? (portMap.get(r.portId) || r.portId) : '—'],
                 ['Thuộc luồng hàng hải', r.waterwayId ? (waterwayMap.get(r.waterwayId) || r.waterwayId) : '—'],
                 ['Tuyến luồng hàng hải', r.waterwayRouteId ? (routeMap.get(r.waterwayRouteId) || r.waterwayRouteId) : '—'],
@@ -287,7 +288,7 @@ export default function BuoyStationDetailContent({
           key: 'operation',
           label: 'Vận hành & bảo trì',
           children: (
-            <div style={{ paddingTop: 3 }}>
+            <div style={{ paddingTop: 3, overflowY: 'auto', maxHeight: 'calc(100vh - 290px)' }}>
               <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setOperationOpen(!operationOpen)}>
                 <span style={{ color: operationOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{operationOpen ? '▼' : '▶'} Thông tin vận hành khai thác</span>
               </button>

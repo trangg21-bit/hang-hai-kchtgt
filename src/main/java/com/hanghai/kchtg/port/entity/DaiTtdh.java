@@ -4,7 +4,6 @@ import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatusConverter;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
 import lombok.*;
@@ -31,13 +30,13 @@ import java.util.UUID;
 @SuperBuilder
 @FieldNameConstants
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
-@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
+// @org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 public class DaiTtdh extends BaseEntity {
 
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
-    @Builder.Default
-    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
+    // @Enumerated(EnumType.ORDINAL)
+    // @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
+    // @Builder.Default
+    // private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
 
     @Column(name = "dai_ttdh_code", nullable = false, unique = true, length = 50)
     private String daiTtdhCode;

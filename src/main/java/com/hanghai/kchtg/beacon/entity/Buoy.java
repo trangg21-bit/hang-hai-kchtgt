@@ -14,7 +14,6 @@ import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
 
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.experimental.FieldNameConstants;
 
 /**

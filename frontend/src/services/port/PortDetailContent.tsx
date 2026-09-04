@@ -10,6 +10,7 @@ import {
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
   statusBadgeStyle, outlineButtonStyle, primaryButtonStyle,
   statusOperational, statusAttention, statusCritical,
+  DRAWER_TABLE_SCROLL_Y,
 } from '../../themetokenchk';
 import type { CangBienResponse } from './types';
 import { trangThaiPheDuyetBadge } from './schema';
@@ -127,10 +128,10 @@ export default function PortDetailContent({
                   { label: 'Phân cấp cảng biển', value: selectedRecord.portClass != null ? (selectedRecord.portClass === 5 ? 'Cấp đặc biệt' : `Cấp ${selectedRecord.portClass}`) : '—' },
                   { label: 'Đơn vị quản lý', value: orgLevel2Map.get(selectedRecord.orgUnitId || '') || selectedRecord.orgUnitName || '—', bold: true },
                   { label: 'Địa điểm (Tỉnh/Thành phố)', value: selectedRecord.province || '—' },
-                  { label: 'Địa điểm chi tiết', value: selectedRecord.detailedLocation || '—' },
-                  { label: 'Phạm vi vùng nước cảng biển', value: selectedRecord.waterAreaScope || '—' },
+                  { label: 'Địa điểm chi tiết', value: selectedRecord.detailedLocation || '—', fullWidth: true },
+                  { label: 'Phạm vi vùng nước cảng biển', value: selectedRecord.waterAreaScope || '—', fullWidth: true },
                 ].map((row, i) => (
-                  <div key={i} className="chk-detail-row">
+                  <div key={i} className={`chk-detail-row${row.fullWidth ? ' chk-detail-row--full' : ''}`}>
                     <span className="chk-detail-label">{row.label}</span>
                     <span className="chk-detail-value" style={row.bold ? { fontWeight: fontWeightBold } : undefined}>
                       {row.badge ? (
@@ -204,8 +205,9 @@ export default function PortDetailContent({
                     Xem vị trí trên bản đồ
                   </Button>
                 </div>
-                <DetailTable
-                  dataSource={parseGisCoordinates(selectedRecord).map((p) => ({ ...p }))}
+              <DetailTable
+                scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
+                dataSource={parseGisCoordinates(selectedRecord).map((p) => ({ ...p }))}
                   emptyText="Chưa có tọa độ GPS nào"
                   columns={[
                     { title: 'STT', width: 50 },
@@ -218,23 +220,6 @@ export default function PortDetailContent({
           ),
         },
         {
-          key: 'infra', label: 'Công trình KCHT trực thuộc',
-          children: (
-            <div style={{ paddingTop: 3 }}>
-              <DetailTable
-                dataSource={((selectedRecord as any).infrastructureList || []).map((i: any) => ({ ...i }))}
-                emptyText="Chưa có dữ liệu"
-                rowKey={(r: any) => r.stt ?? r.infraName ?? r.name}
-                columns={[
-                  { title: 'STT', width: 50 },
-                  { title: 'Tên công trình', dataIndex: 'infraName', key: 'name', render: (v: string, rec: any) => v || rec.name || '—' },
-                  { title: 'Số lượng', dataIndex: 'quantity', key: 'qty', width: 100, align: 'center' as const, render: (v: number) => v ?? '—' },
-                ]}
-              />
-            </div>
-          ),
-        },
-        {
           key: 'files', label: `File đính kèm (${detailFiles.length})`,
           children: (
             <div style={{ paddingTop: 3 }}>
@@ -242,6 +227,7 @@ export default function PortDetailContent({
                 <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
               </div>
               <DetailTable
+                scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
                 dataSource={detailFiles.map((f) => ({ ...f }))}
                 emptyText="Chưa có tài liệu đính kèm"
                 columns={[
@@ -256,16 +242,17 @@ export default function PortDetailContent({
           ),
         },
         {
-          key: 'infraOther', label: 'Danh sách kết cấu hạ tầng khác',
+          key: 'infraOther', label: 'Kết cấu hạ tầng',
           children: (
-            <div style={{ paddingTop: 3 }}>
+            <div style={{ paddingTop: 3, overflowY: 'auto', maxHeight: 'calc(100vh - 290px)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: spaceSm }}>
-                <span style={{ ...detailLabelStyle, display: 'inline-block' }}>Loại kết cấu hạ tầng</span>
+                <span style={{ ...detailLabelStyle, display: 'inline-block' }}>Kết cấu hạ tầng thuộc cảng biển</span>
                 <Select allowClear showSearch placeholder="Chọn loại kết cấu hạ tầng" value={infraFilter || undefined}
                   onChange={(v: string | undefined) => setInfraFilter(v || undefined)}
                   options={KCHT_TYPE_OPTIONS} style={{ width: 260, borderRadius: 999, height: 40 }} />
               </div>
               <DetailTable
+                scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
                 dataSource={otherInfra.filter((r) => !infraFilter || r.typeLabel === infraFilter)}
                 emptyText="Chưa có dữ liệu"
                 rowKey={(r: any) => r.id || r.name}
@@ -281,6 +268,18 @@ export default function PortDetailContent({
                   ) },
                 ]}
               />
+              <span style={{ ...detailLabelStyle, display: 'inline-block', marginBottom: spaceSm, marginTop: spaceMd }}>Công trình KCHT trực thuộc</span>
+              <DetailTable
+                scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
+                dataSource={((selectedRecord as any).infrastructureList || []).map((i: any) => ({ ...i }))}
+                emptyText="Chưa có dữ liệu"
+                rowKey={(r: any) => r.stt ?? r.infraName ?? r.name}
+                columns={[
+                  { title: 'STT', width: 50 },
+                  { title: 'Tên công trình', dataIndex: 'infraName', key: 'name', render: (v: string, rec: any) => v || rec.name || '—' },
+                  { title: 'Số lượng', dataIndex: 'quantity', key: 'qty', width: 100, align: 'center' as const, render: (v: number) => v ?? '—' },
+                ]}
+              />
             </div>
           ),
         },
@@ -290,14 +289,16 @@ export default function PortDetailContent({
             <div style={{ paddingTop: 3 }}>
               <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin quy hoạch</span>
               <DetailTable
+                scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
                 dataSource={(selectedRecord as any)?.planList || []}
                 emptyText="Chưa có thông tin quy hoạch"
                 rowKey={(r: any) => r?.id || r?.planDecisionNo || 'row'}
                 columns={[
                   { title: 'STT', width: 50 },
                   { title: 'Số quyết định quy hoạch', dataIndex: 'planDecisionNo', key: 'planNo', render: (v: string) => v || '—' },
-                  { title: 'Ngày quyết định quy hoạch', dataIndex: 'planDecisionDate', key: 'planDate', width: 160, align: 'center' as const, render: (v: string) => (v ? dayjs(v).format('DD/MM/YYYY') : '—') },
+                  { title: 'Ngày quyết định quy hoạch', dataIndex: 'planDecisionDate', key: 'planDate', width: 320, align: 'center' as const, render: (v: string) => (v ? dayjs(v).format('DD/MM/YYYY') : '—') },
                 ]}
+                scroll={{ x: 'max-content' }}
               />
             </div>
           ),
@@ -305,7 +306,7 @@ export default function PortDetailContent({
         {
           key: 'operation', label: 'Vận hành & bảo trì',
           children: (
-            <div style={{ paddingTop: 3 }}>
+            <div style={{ paddingTop: 3, overflowY: 'auto', maxHeight: 'calc(100vh - 290px)' }}>
               <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setOperationOpen(!operationOpen)}>
                 <span style={{ color: operationOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{operationOpen ? '▼' : '▶'} Thông tin vận hành khai thác</span>
               </button>
@@ -313,6 +314,7 @@ export default function PortDetailContent({
                 <div>
                   <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách vận hành khai thác</span>
                   <DetailTable
+                    scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
                     dataSource={(selectedRecord as any)?.operationPlanList || []}
                     emptyText="Chưa có dữ liệu"
                     rowKey={(r: any) => r?.id || r?.opPlanCode || 'row'}
@@ -333,6 +335,7 @@ export default function PortDetailContent({
                 <div>
                   <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin bảo trì</span>
                   <DetailTable
+                    scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
                     dataSource={(selectedRecord as any)?.maintenancePlanList || []}
                     emptyText="Chưa có dữ liệu"
                     rowKey={(r: any) => r?.id || r?.maintCode || 'row'}
@@ -353,6 +356,7 @@ export default function PortDetailContent({
                 <div>
                   <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin sự cố</span>
                   <DetailTable
+                    scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
                     dataSource={(selectedRecord as any)?.incidentList || []}
                     emptyText="Chưa có dữ liệu"
                     rowKey={(r: any) => r?.id || r?.incidentCode || 'row'}

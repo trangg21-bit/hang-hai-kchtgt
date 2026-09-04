@@ -142,9 +142,9 @@ public class TransmissionService {
       .coordinateSystem(request.getCoordinateSystem())
       .displayRule(request.getDisplayRule())
       .spatialId(request.getSpatialId())
-      .securityLevel(request.getSecurityLevel() != null
-        ? request.getSecurityLevel()
-        : RecordSecurityLevel.NORMAL)
+      // .securityLevel(request.getSecurityLevel() != null
+      //         ? request.getSecurityLevel()
+      //         : RecordSecurityLevel.NORMAL)
       .build();
 
     // Persist trước để entity.getId() có giá trị khi ghi infrastructure_history (ref_id NOT NULL).

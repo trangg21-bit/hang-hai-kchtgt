@@ -88,15 +88,15 @@ public class StormShelterAreaService {
             throw new IllegalArgumentException("Không thể tạo khu tránh, trú bão: cảng biển cha phải ở trạng thái được phê duyệt");
         }
 
-        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
-                : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "stormshelter", SecurityUtils.getCurrentUserPermissions(),
-                SecurityUtils.isElevatedAdministrator());
+        // RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
+        //         : RecordSecurityLevel.NORMAL;
+        // RecordSecurityLevel.validateAssignment(secLevel, "stormShelter", SecurityUtils.getCurrentUserPermissions(),
+        //         SecurityUtils.isElevatedAdministrator());
 
         String code = generateStormShelterCode(request.getPortId());
 
         StormShelterArea entity = StormShelterArea.builder()
-                .securityLevel(secLevel)
+                // .securityLevel(secLevel)
                 .stormShelterCode(code)
                 .stormShelterName(request.getStormShelterName())
                 .portId(request.getPortId())
@@ -152,11 +152,11 @@ public class StormShelterAreaService {
         // Chụp snapshot đầy đủ trước khi thay đổi để ghi lịch sử chi tiết (chuẩn Bến cảng)
         StormShelterArea snapshot = buildSnapshot(entity);
 
-        if (request.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "stormshelter",
-                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-            entity.setSecurityLevel(request.getSecurityLevel());
-        }
+        // if (request.getSecurityLevel() != null) {
+        //     RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "stormshelter",
+        //             SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+        //     entity.setSecurityLevel(request.getSecurityLevel());
+        // }
         if (request.getStormShelterName() != null)
             entity.setStormShelterName(request.getStormShelterName());
         if (request.getPortId() != null) {
@@ -433,7 +433,7 @@ public class StormShelterAreaService {
 
         StormShelterAreaResponse response = StormShelterAreaResponse.builder()
                 .id(entity.getId())
-                .securityLevel(entity.getSecurityLevel())
+                // .securityLevel(entity.getSecurityLevel())
                 .stormShelterCode(entity.getStormShelterCode())
                 .stormShelterName(entity.getStormShelterName())
                 .portId(entity.getPortId())
@@ -610,7 +610,7 @@ public class StormShelterAreaService {
      */
     private StormShelterArea buildSnapshot(StormShelterArea e) {
         return StormShelterArea.builder()
-                .securityLevel(e.getSecurityLevel())
+                // .securityLevel(e.getSecurityLevel())
                 .stormShelterCode(e.getStormShelterCode())
                 .stormShelterName(e.getStormShelterName())
                 .portId(e.getPortId())

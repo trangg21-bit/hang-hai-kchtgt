@@ -77,15 +77,15 @@ public class ShipRepairYardService {
             throw new IllegalArgumentException("Không thể tạo cơ sở sửa chữa, đóng tàu: cảng biển cha phải ở trạng thái được phê duyệt");
         }
 
-        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
-                : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "shiprepairyard", SecurityUtils.getCurrentUserPermissions(),
-                SecurityUtils.isElevatedAdministrator());
+        // RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
+        //         : RecordSecurityLevel.NORMAL;
+        // RecordSecurityLevel.validateAssignment(secLevel, "shiprepairyard", SecurityUtils.getCurrentUserPermissions(),
+        //         SecurityUtils.isElevatedAdministrator());
 
         String code = generateShipRepairYardCode(request.getPortId());
 
         ShipRepairYard entity = ShipRepairYard.builder()
-                .securityLevel(secLevel)
+        // .securityLevel(secLevel)
                 .shipRepairYardCode(code)
                 .shipRepairYardName(request.getShipRepairYardName())
                 .portId(request.getPortId())
@@ -130,11 +130,11 @@ public class ShipRepairYardService {
             coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
 
-        if (request.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "shiprepairyard",
-                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-            entity.setSecurityLevel(request.getSecurityLevel());
-        }
+        // if (request.getSecurityLevel() != null) {
+        //     RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "shiprepairyard",
+        //             SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+        //     entity.setSecurityLevel(request.getSecurityLevel());
+        // }
         if (request.getShipRepairYardName() != null)
             entity.setShipRepairYardName(request.getShipRepairYardName());
         if (request.getPortId() != null) {
@@ -361,7 +361,7 @@ public class ShipRepairYardService {
 
         ShipRepairYardResponse response = ShipRepairYardResponse.builder()
                 .id(entity.getId())
-                .securityLevel(entity.getSecurityLevel())
+                // .securityLevel(entity.getSecurityLevel())
                 .shipRepairYardCode(entity.getShipRepairYardCode())
                 .shipRepairYardName(entity.getShipRepairYardName())
                 .portId(entity.getPortId())

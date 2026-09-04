@@ -12,6 +12,7 @@ import type { Symbol as GisSymbol } from '../../services/symbolService';
 import { lineObjectService } from '../../services/lineObjectService';
 import { LineObject } from '../../types/lineObject';
 import { organizationService } from '../../services/organizationService';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { OrgUnitTreeSelect, normalizeSearchText, type OrgUnitTreeOption } from '../../components/org-unit';
 import { portCRUD } from '../../services/portService';
 import {
@@ -22,7 +23,7 @@ import type { BuoyStationResponse, CreateBuoyStationRequest } from './types';
 import { useAuthStore } from '../../store/authStore';
 import {
   sidebarBg, actionPrimary, statusCritical,
-  readonlyInputStyle, drawerTabBarStyle, drawerTabContentStyle,
+  readonlyInputStyle, drawerTabBarStyle, drawerTabContentStyle, drawerFormScrollStyle,
   outlineButtonStyle, primaryButtonStyle, spaceMd, fontSizeLg,
   spaceFormField, radiusPill, radiusMd, borderDefault, textTertiary, textPrimary,
   spaceSm, fontWeightBold, fontSizeMd, fontSizeSm, surfaceCard, uploadHintStyle,
@@ -150,6 +151,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
 }, ref) {
   const currentUser = useAuthStore((s) => s.user);
   const [orgUnitOptions, setOrgUnitOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [operatingOrgs] = useState<Array<{ id: string; name: string; code: string }>>(DEFAULT_OPERATING_ORGANIZATIONS);
 
   // Dữ liệu cây đơn vị cho OrgUnitTreeSelect: ưu tiên organizations từ parent, fallback danh sách tự fetch
   const orgUnitTreeData = useMemo<OrgUnitTreeOption[]>(() => {
@@ -381,10 +383,10 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
 
   const tabItems = [
     // Tab 1: Thông tin chung
-    { key: 'general', label: 'Thông tin chung', children: (<div style={drawerTabContentStyle}>
+    { key: 'general', label: 'Thông tin chung', children: (<div style={drawerFormScrollStyle}>
       <Row gutter={[24, 0]}>
         <Col span={12}><Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}><OrgUnitTreeSelect organizations={orgUnitTreeData} placeholder="Chọn đơn vị quản lý" loading={orgUnitOptions.length === 0 && !(organizations && organizations.length > 0)} disabled={isEdit} showPath onChange={() => { form.setFieldsValue({ portId: undefined, code: undefined }); setCoordinateList([]); }} /></Form.Item></Col>
-        <Col span={12}><Form.Item name="operatingOrgId" {...labelProps('Đơn vị khai thác')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị khai thác là bắt buộc' }]}><Select placeholder="Chọn đơn vị khai thác..." options={orgUnitOptions} showSearch allowClear filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))} style={selectStyle} /></Form.Item></Col>
+        <Col span={12}><Form.Item name="operatingOrgId" {...labelProps('Đơn vị khai thác')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị khai thác là bắt buộc' }]}><Select placeholder="Chọn đơn vị khai thác..." options={operatingOrgs.map(o => ({ value: o.id, label: o.name }))} showSearch optionFilterProp="label" allowClear style={selectStyle} /></Form.Item></Col>
       </Row>
       <Row gutter={[24, 0]}>
         <Col span={12}><Form.Item name="portId" {...labelProps('Thuộc cảng biển')} style={{ marginBottom: spaceFormField }}><Select placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : portOptions.length === 0 && !loadingPorts ? 'Không có cảng biển thuộc đơn vị quản lý' : 'Chọn cảng biển...'} loading={loadingPorts} disabled={!watchedOrgUnitId || (portOptions.length === 0 && !loadingPorts)} options={portOptions} showSearch optionFilterProp="label" filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))} notFoundContent="Không có cảng biển thuộc đơn vị quản lý" style={selectStyle} /></Form.Item></Col>
@@ -424,7 +426,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
       </div>)}
     </div>) },
     // Tab 2: Thông tin vị trí (giống BuoyFormContent tab Thông tin vị trí)
-    { key: 'gis', label: 'Thông tin vị trí', children: (<div style={drawerTabContentStyle}>
+    { key: 'gis', label: 'Thông tin vị trí', children: (<div style={drawerFormScrollStyle}>
       <Row gutter={[24, 0]}>
         <Col span={12}>
           <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
@@ -541,7 +543,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
       )}
     </div>) },
     // Tab 3: File đính kèm (chuẩn VTS CHK — Upload.Dragger + bảng STT/Tên/Dung lượng/Người tải lên/Ngày tải lên)
-    { key: 'files', label: 'File đính kèm', children: (<div style={drawerTabContentStyle}>
+    { key: 'files', label: 'File đính kèm', children: (<div style={drawerFormScrollStyle}>
       <div style={{ marginBottom: spaceMd }}>
         <Upload.Dragger
           beforeUpload={handleBeforeUpload}

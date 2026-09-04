@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Form,
@@ -7,7 +7,6 @@ import {
   InputNumber,
   Select,
   DatePicker,
-  Card,
   Table,
   Spin,
   Empty,
@@ -44,6 +43,7 @@ import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { useAuthStore } from '../../store/authStore';
 import ApprovalActionBar from '../../components/shared/ApprovalActionBar';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import AppDrawer from '../../components/shared/AppDrawer';
 import DetailTable from '../../components/shared/DetailTable';
 import {
   inputStyle,
@@ -65,7 +65,6 @@ import {
   fontSizeSm,
   fontSizeMd,
   fontSizeLg,
-  cardStyle,
   drawerTabBarStyle,
   drawerTabContentStyle,
   radiusPill,
@@ -96,7 +95,7 @@ import {
 } from '../../themetokenchk';
 import { colors } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
-import { ThemeTokenProvider, THEME_SCOPE_CLASS } from '../../context/ThemeTokenContext';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 
 export interface NavigationChannelFormProps {
   open?: boolean;
@@ -457,6 +456,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
   const routeParams = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm();
+  const submitAfterSaveRef = useRef(false);
   const currentUser = useAuthStore((s) => s.user);
   const userPermissions = currentUser?.permissions || [];
 
@@ -891,6 +891,8 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
 
   // ── Submit (trim + map + call API) ─────────────────────────────────
   const handleSubmitForm = async (values: any) => {
+    const shouldSubmitAfterSave = submitAfterSaveRef.current;
+    submitAfterSaveRef.current = false;
     setIsSubmitting(true);
     try {
       const manualCoords = coordinateList
@@ -967,6 +969,10 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
           (window.parent as any).kchtDetailCache[id] = res;
         }
         toast.success('Cập nhật thành công');
+        if (shouldSubmitAfterSave) {
+          await navigationChannelApproval.submitApproval(res?.id ?? id);
+          toast.success('Gửi phê duyệt thành công');
+        }
         if (isModalMode) {
           onSuccess?.();
         } else if (isIframe) {
@@ -1200,15 +1206,15 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
         {!isModalMode && <Breadcrumb items={breadcrumbs.map((b) => ({ title: <span>{b.title}</span> }))} style={{ marginBottom: 16 }} />}
         <Spin spinning={isLoading}>
           {formError ? (
-            <Card>
+            <div>
               <Empty description={formError} style={{ marginTop: 24 }} />
               <Button onClick={() => (isModalMode ? onCancel?.() : navigate('/navigation-channel'))} style={{ marginTop: spaceLg, ...outlineButtonStyle }}>
                 Quay lại
               </Button>
-            </Card>
+            </div>
           ) : record ? (
             <>
-              <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+              <div style={{ marginBottom: spaceMd }}>
                 {sectionTitle('Hồ sơ chính')}
                 {detailGrid([
                   ['Mã luồng hàng hải', <span style={statusBadgeStyle(actionPrimary)}>{record.channelCode || '—'}</span>],
@@ -1233,9 +1239,9 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                   ['Đơn vị ra quyết định', record.announcementDecisionIssuer || '—'],
                   ['Ghi chú', <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{record.notes || '—'}</span>],
                 ])}
-              </Card>
+              </div>
 
-              <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+              <div style={{ marginBottom: spaceMd }}>
                 {sectionTitle('Phạm vi bảo vệ và bản đồ')}
                 {detailGrid([
                   ['Phạm vi bảo vệ luồng (m)', fmtNumber(record.protectionScopeMeters)],
@@ -1247,14 +1253,14 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                 ])}
                 {parseDetailCoords(record).length > 0 && (
                   <div style={{ marginTop: spaceMd }}>
-                    <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-                      <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
+                    <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 40 }}>
+                      <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '40px', display: 'inline-flex', alignItems: 'center', height: 40 }}>
                         Tọa độ GPS ({parseDetailCoords(record).length})
                       </span>
                       <Button
                         icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
                         onClick={() => setGisModalOpenDetail(true)}
-                        style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        style={{ ...outlineButtonStyle, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                       >
                         Xem vị trí trên bản đồ
                       </Button>
@@ -1270,10 +1276,10 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                     />
                   </div>
                 )}
-              </Card>
+              </div>
 
               {record.routeDetails && record.routeDetails.length > 0 && (
-                <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+                <div style={{ marginBottom: spaceMd }}>
                   {sectionTitle('Tuyến luồng')}
                   <DetailTable
                     dataSource={record.routeDetails}
@@ -1300,11 +1306,11 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                       { title: 'Phân cấp', dataIndex: 'routeGrade', width: 80 },
                     ]}
                   />
-                </Card>
+                </div>
               )}
 
               {record.attachments && record.attachments.length > 0 && (
-                <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+                <div style={{ marginBottom: spaceMd }}>
                   {sectionTitle('File đính kèm')}
                   <DetailTable
                     dataSource={record.attachments.map((a) => ({ ...a }))}
@@ -1317,10 +1323,10 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                       { title: 'Ngày tải lên', dataIndex: 'uploadedAt', key: 'uploadedAt', width: 135, align: 'center' as const, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—' },
                     ]}
                   />
-                </Card>
+                </div>
               )}
 
-              <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+              <div style={{ marginBottom: spaceMd }}>
                 {sectionTitle('Trạng thái và phê duyệt')}
                 {detailGrid([
                   ['Trạng thái', record.approvalStatus ? <ApprovalStatusBadge status={record.approvalStatus} /> : '—'],
@@ -1336,9 +1342,9 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                   ['Nội dung duyệt cấp 2', record.level2ApprovalContent || '—'],
                   ['Lý do từ chối', record.rejectionReason || '—'],
                 ])}
-              </Card>
+              </div>
 
-              <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+              <div style={{ marginBottom: spaceMd }}>
                 <ApprovalActionBar
                   currentStatus={record.approvalStatus as ApprovalStatus}
                   permissions={userPermissions}
@@ -1348,9 +1354,9 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                   onAction={handleApprovalAction}
                   loading={isSubmitting}
                 />
-              </Card>
+              </div>
 
-              <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+              <div style={{ marginBottom: spaceMd }}>
                 {sectionTitle('Thông tin liên quan')}
                 {detailGrid([
                   ['Tên KCHT', record.relatedInfrastructureName || '—'],
@@ -1368,9 +1374,9 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                   ['Địa điểm sự cố', record.incidentLocation || '—'],
                   ['Thời gian sự cố', fmtDateTime(record.incidentTime)],
                 ])}
-              </Card>
+              </div>
 
-              <Card style={{ ...cardStyle }}>
+              <div>
                 {sectionTitle('Lịch sử thay đổi')}
                 {isLoadingHistory ? (
                   <div style={{ textAlign: 'center', padding: `${spaceLg}px 0`, color: textTertiary, fontSize: fontSizeMd }}>Đang tải lịch sử...</div>
@@ -1395,7 +1401,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                 ) : (
                   renderHistoryTimeline(history)
                 )}
-              </Card>
+              </div>
             </>
           ) : (
             <Empty description="Không có dữ liệu" />
@@ -1418,7 +1424,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
           width="94vw"
           style={{ top: 20, maxWidth: '1400px' }}
           footer={[
-            <Button key="close" type="primary" onClick={() => setGisModalOpenDetail(false)} style={{ ...primaryButtonStyle, height: 36 }}>
+            <Button key="close" type="primary" onClick={() => setGisModalOpenDetail(false)} style={{ ...primaryButtonStyle }}>
               Đóng
             </Button>,
           ]}
@@ -1438,6 +1444,36 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
   }
 
   // ── Create / Edit form (#1-#46) — chuẩn CHK ────────────────────────
+  const formFooter = (
+    <div style={{ display: 'flex', justifyContent: 'center', gap: spaceSm }}>
+      <Button
+        type="primary"
+        loading={isSubmitting}
+        onClick={() => form.submit()}
+        style={{ ...primaryButtonStyle, minWidth: 120 }}
+      >
+        {isCreateMode ? 'Tạo mới' : 'Cập nhật'}
+      </Button>
+      {!isCreateMode && isEditMode && record && (record.approvalStatus === 'PROPOSED' || (record.approvalStatus ?? '').startsWith('REJECTED')) && (
+        <Button
+          loading={isSubmitting}
+          onClick={() => { submitAfterSaveRef.current = true; form.submit(); }}
+          style={{ ...outlineButtonStyle, minWidth: 140 }}
+        >
+          Gửi phê duyệt
+        </Button>
+      )}
+      <Button
+        onClick={isIframe
+          ? () => window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*')
+          : isModalMode ? onCancel : () => navigate('/navigation-channel')}
+        style={{ ...outlineButtonStyle, minWidth: 120 }}
+      >
+        Hủy
+      </Button>
+    </div>
+  );
+
   const formContent = (
     <>
     <Form form={form} layout="vertical" onFinish={handleSubmitForm} style={{ maxWidth: 1100 }}>
@@ -1452,7 +1488,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
             children: (
               <div style={drawerTabContentStyle}>
                 {/* Hồ sơ chính */}
-                <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+                <div style={{ marginBottom: spaceMd }}>
                   {sectionTitle('Hồ sơ chính')}
                   <Row gutter={[24, 0]}>
                     <Col span={12}>
@@ -1593,10 +1629,10 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                       </Form.Item>
                     </Col>
                   </Row>
-                </Card>
+                </div>
 
                 {/* Tuyến luồng */}
-                <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+                <div style={{ marginBottom: spaceMd }}>
                   {sectionTitle('Tuyến luồng')}
                   <Button icon={<PlusOutlined />} onClick={addRouteRow} style={{ ...outlineButtonStyle, marginBottom: spaceSm }}>
                     Thêm tuyến luồng
@@ -1610,10 +1646,10 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                     scroll={{ x: 'max-content' }}
                     locale={{ emptyText: 'Chưa có tuyến luồng nào' }}
                   />
-                </Card>
+                </div>
 
                 {/* Phạm vi bảo vệ luồng */}
-                <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+                <div style={{ marginBottom: spaceMd }}>
                   {sectionTitle('Phạm vi bảo vệ luồng')}
                   <Row gutter={[24, 0]}>
                     <Col span={12}>
@@ -1627,7 +1663,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                       </Form.Item>
                     </Col>
                   </Row>
-                </Card>
+                </div>
               </div>
             ),
           },
@@ -1636,7 +1672,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
             label: `Thông tin vị trí (${coordinateList.length})`,
             children: (
               <div style={drawerTabContentStyle}>
-                <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+                <div style={{ marginBottom: spaceMd }}>
                   {sectionTitle('Thông tin vị trí')}
                   <Row gutter={[24, 0]}>
                     <Col span={12}>
@@ -1660,8 +1696,8 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                       </Form.Item>
                     </Col>
                   </Row>
-                  <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-                    <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
+                  <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 40 }}>
+                    <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '40px', display: 'inline-flex', alignItems: 'center', height: 40 }}>
                       Tọa độ GPS ({coordinateList.length})
                     </span>
                     <Space size={8}>
@@ -1669,7 +1705,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                         icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
                         onClick={() => setGisModalOpen(true)}
                         disabled={!watchedGeometryType}
-                        style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        style={{ ...outlineButtonStyle, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                       >
                         Chọn tọa độ trên bản đồ
                       </Button>
@@ -1678,7 +1714,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                         icon={<PlusOutlined />}
                         onClick={addGpsPoint}
                         disabled={!watchedGeometryType}
-                        style={{ ...primaryButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        style={{ ...primaryButtonStyle, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                       >
                         Thêm tọa độ
                       </Button>
@@ -1739,7 +1775,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                       />
                     </>
                   )}
-                </Card>
+                </div>
               </div>
             ),
           },
@@ -1748,7 +1784,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
             label: `File đính kèm (${uploadedFiles.length})`,
             children: (
               <div style={drawerTabContentStyle}>
-                <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+                <div style={{ marginBottom: spaceMd }}>
                   {sectionTitle('File đính kèm')}
                   <div style={{ marginBottom: spaceMd }}>
                     <Upload.Dragger
@@ -1769,8 +1805,8 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                       </p>
                     </Upload.Dragger>
                   </div>
-                  <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-                    <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
+                  <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 40 }}>
+                    <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '40px', display: 'inline-flex', alignItems: 'center', height: 40 }}>
                       Danh sách tệp đính kèm ({uploadedFiles.length})
                     </span>
                   </div>
@@ -1843,7 +1879,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                       },
                     ]}
                   />
-                </Card>
+                </div>
               </div>
             ),
           },
@@ -1852,7 +1888,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
             label: 'Lịch sử & Phê duyệt',
             children: (
               <div style={drawerTabContentStyle}>
-                <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+                <div style={{ marginBottom: spaceMd }}>
                   {sectionTitle('Trạng thái và phê duyệt')}
                   <div className="chk-detail-grid">
                     {[
@@ -1872,8 +1908,8 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                       </div>
                     ))}
                   </div>
-                </Card>
-                <Card style={{ ...cardStyle }}>
+                </div>
+                <div>
                   {sectionTitle('Lịch sử thay đổi')}
                   {isLoadingHistory ? (
                     <div style={{ textAlign: 'center', padding: `${spaceLg}px 0`, color: textTertiary, fontSize: fontSizeMd }}>Đang tải lịch sử...</div>
@@ -1882,31 +1918,14 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                   ) : (
                     renderHistoryTimeline(history)
                   )}
-                </Card>
+                </div>
               </div>
             ),
           }]),
         ]}
       />
-      {/* Footer */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: spaceSm, marginBottom: spaceMd }}>
-        <Button
-          htmlType="submit"
-          type="primary"
-          loading={isSubmitting}
-          style={{ ...primaryButtonStyle, minWidth: 120 }}
-        >
-          {isCreateMode ? 'Tạo mới' : 'Cập nhật'}
-        </Button>
-        <Button
-          onClick={isIframe
-            ? () => window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*')
-            : isModalMode ? onCancel : () => navigate('/navigation-channel')}
-          style={{ ...outlineButtonStyle, minWidth: 120 }}
-        >
-          Hủy
-        </Button>
-      </div>
+      {/* Footer — chế độ standalone hiển thị trong form; chế độ modal hiển thị trong footer AppDrawer */}
+      {!isModalMode && formFooter}
     </Form>
 
     {/* GIS Location Selector Modal — chọn tọa độ trên bản đồ chuyên dụng (chuẩn VTS CHK) */}
@@ -1925,14 +1944,14 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
       width="94vw"
       style={{ top: 20, maxWidth: '1400px' }}
       footer={[
-        <Button key="cancel" onClick={() => setGisModalOpen(false)} style={{ ...outlineButtonStyle, height: 36, borderRadius: radiusPill }}>
+        <Button key="cancel" onClick={() => setGisModalOpen(false)} style={{ ...outlineButtonStyle, borderRadius: radiusPill }}>
           Hủy
         </Button>,
         <Button
           key="ok"
           type="primary"
           onClick={() => setGisModalOpen(false)}
-          style={{ ...primaryButtonStyle, height: 36 }}
+          style={{ ...primaryButtonStyle }}
         >
           Xác nhận tọa độ
         </Button>,
@@ -1953,20 +1972,23 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
 
   if (isModalMode) {
     return (
-      <Modal
-        open={open}
-        onCancel={onCancel}
-        width={1080}
-        footer={null}
-        rootClassName={THEME_SCOPE_CLASS}
+      <AppDrawer
         title={
           <span style={{ color: textPrimary, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>
             {isCreateMode ? 'Tạo mới Luồng hàng hải' : isEditMode ? 'Chỉnh sửa Luồng hàng hải' : 'Chi tiết Luồng hàng hải'}
           </span>
         }
+        open={open ?? false}
+        onClose={() => onCancel?.()}
+        size={1080}
+        footer={formFooter}
+        styles={{
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '0 24px 12px 24px' },
+        }}
       >
         {formContent}
-      </Modal>
+      </AppDrawer>
     );
   }
 

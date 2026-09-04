@@ -124,7 +124,7 @@ export default function PierDetailContent({
         {
           key: 'general', label: 'Thông tin chung',
           children: (
-            <div style={{ paddingTop: 3 }}>
+            <div style={{ paddingTop: 3, overflowY: 'auto', maxHeight: 'calc(100vh - 290px)' }}>
               <div className="chk-detail-grid">
                 {[
                   ['Mã cầu cảng', <span key="pierCode" style={statusBadgeStyle(actionPrimary)}>{r.pierCode || '—'}</span>],
@@ -240,7 +240,7 @@ export default function PierDetailContent({
         {
           key: 'gis', label: `Thông tin vị trí (${coords.length})`,
           children: (
-            <div style={{ paddingTop: 3 }}>
+            <div style={{ paddingTop: 3, overflowY: 'auto', maxHeight: 'calc(100vh - 290px)' }}>
               <div className="chk-detail-grid">
                 {[
                   ['Loại đối tượng', (() => { const gt = String((r as any).geometryType || ''); const m: Record<string, string> = { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' }; return m[gt] || gt || '—'; })(),],
@@ -302,11 +302,11 @@ export default function PierDetailContent({
           ),
         },
         {
-          key: 'infra', label: 'Danh sách kết cấu hạ tầng thuộc cầu cảng',
+          key: 'infra', label: 'Kết cấu hạ tầng',
           children: (
-            <div style={{ paddingTop: 3 }}>
+            <div style={{ paddingTop: 3, overflowY: 'auto', maxHeight: 'calc(100vh - 290px)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: spaceSm }}>
-                <span style={{ ...detailLabelStyle, display: 'inline-block' }}>Danh sách kết cấu hạ tầng thuộc cầu cảng</span>
+                <span style={{ ...detailLabelStyle, display: 'inline-block' }}>Kết cấu hạ tầng thuộc cầu cảng</span>
                 <Select placeholder="Chọn loại kết cấu hạ tầng" allowClear value={infraTypeFilter || undefined}
                   onChange={(v: string | undefined) => setInfraTypeFilter(v || '')}
                   options={PIER_INFRA_TYPE_OPTIONS} style={{ width: 360, borderRadius: radiusPill, height: 40 }} />
@@ -332,7 +332,7 @@ export default function PierDetailContent({
         {
           key: 'operationMaintenance', label: 'Vận hành & bảo trì',
           children: (
-            <div style={{ paddingTop: 3 }}>
+            <div style={{ paddingTop: 3, overflowY: 'auto', maxHeight: 'calc(100vh - 290px)' }}>
               <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setOperationOpen(!operationOpen)}>
                 <span style={{ color: operationOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{operationOpen ? '▼' : '▶'} Thông tin vận hành khai thác</span>
               </button>

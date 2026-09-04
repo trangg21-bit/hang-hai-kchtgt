@@ -99,10 +99,12 @@ class KchtGis155ServiceTest {
     @Test
     void portTerminalSearchReturnsAllThreeApprovedRecordsRegardlessOfOperationalStatus() {
         UUID orgUnitId = UUID.randomUUID();
+        UUID mapSymbolId = UUID.randomUUID();
         List<Berth> approvedBerths = List.of(
                 approvedBerth(orgUnitId, "BC-01", OperationalStatus.OPERATIONAL),
                 approvedBerth(orgUnitId, "BC-02", OperationalStatus.SUSPENDED),
                 approvedBerth(orgUnitId, "BC-03", null));
+        approvedBerths.get(0).setMapSymbolId(mapSymbolId);
         when(orgUnitCacheService.getDirectory()).thenReturn(Map.of());
         when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
         when(berthRepository.searchBerths(
@@ -116,6 +118,7 @@ class KchtGis155ServiceTest {
         assertThat(result.getTotalElements()).isEqualTo(3);
         assertThat(result.getContent()).extracting("code")
                 .containsExactly("BC-01", "BC-02", "BC-03");
+        assertThat(result.getContent().get(0).getMapSymbolId()).isEqualTo(mapSymbolId);
         verify(berthRepository).searchBerths(
                 isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
                 eq(ApprovalStatus.APPROVED), any(Pageable.class));

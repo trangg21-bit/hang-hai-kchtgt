@@ -65,8 +65,23 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
     outlineButtonStyle,
   } = useThemeToken();
 
+  const isIframe = typeof window !== 'undefined' && window.self !== window.top;
+
+  const handleClose = () => {
+    if (isIframe) {
+      window.parent.postMessage({ type: 'CLOSE_GIS_MODAL' }, '*');
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+      window.parent.postMessage({ action: 'close' }, '*');
+    }
+    if (onClose) {
+      onClose();
+    }
+  };
+
   // Tính toán responsive size theo tỉ lệ % màn hình hoặc giá trị trực tiếp
   const getResponsiveSize = (): string | number => {
+    if (isIframe) return '100%';
+    
     const rawTarget = propSize || drawerSize || width || 'md';
 
     if (typeof rawTarget === 'number') {
@@ -110,12 +125,12 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
   const headerExtra = extra ? (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       {extra}
-      <Button type="text" onClick={onClose} style={drawerCloseBtnStyle}>
+      <Button type="text" onClick={handleClose} style={drawerCloseBtnStyle}>
         ✕
       </Button>
     </div>
   ) : (
-    <Button type="text" onClick={onClose} style={drawerCloseBtnStyle}>
+    <Button type="text" onClick={handleClose} style={drawerCloseBtnStyle}>
       ✕
     </Button>
   );
@@ -144,10 +159,12 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
     );
   }
 
+  const { size: _themeSize, ...safeDrawerProps } = drawerProps;
+
   return (
     <Drawer
-      {...drawerProps}
-      size={calculatedWidth}
+      {...safeDrawerProps}
+      width={calculatedWidth}
       destroyOnHidden
       open={open}
       onClose={onClose}

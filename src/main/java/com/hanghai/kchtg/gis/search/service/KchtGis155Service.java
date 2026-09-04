@@ -104,7 +104,12 @@ public class KchtGis155Service {
     if (orgUnitId == null) {
       return "Cục Hàng hải Việt Nam";
     }
-    return orgNameMap.getOrDefault(orgUnitId, "Cục Hàng hải Việt Nam");
+    String fullName = orgNameMap.getOrDefault(orgUnitId, "Cục Hàng hải Việt Nam");
+    if (fullName != null && fullName.contains(" > ")) {
+      String[] parts = fullName.split(" > ");
+      return parts[parts.length - 1].trim();
+    }
+    return fullName;
   }
 
   private double[] parseFirstCoordinateFromWkt(String wkt) {
@@ -461,6 +466,7 @@ public class KchtGis155Service {
                 .orgName(getOrgName(cb.getOrgUnitId(), orgNameMap))
                 .infrastructureType(type)
                 .kchtTypeLabel("Cảng biển")
+                .mapSymbolId(cb.getMapSymbolId())
                 .location(cb.getProvince() != null ? String.valueOf(cb.getProvince()) : "")
                 .diaChiChiTiet("")
                 .build();
@@ -509,6 +515,7 @@ public class KchtGis155Service {
                 .orgName(getOrgName(bc.getOrgUnitId(), orgNameMap))
                 .infrastructureType(type)
                 .kchtTypeLabel("Bến cảng")
+                .mapSymbolId(bc.getMapSymbolId())
                 .provinceId(bc.getProvinceId())
                 .location(parentProvince)
                 .diaChiChiTiet(bc.getWaterway() != null ? bc.getWaterway() : "")
@@ -580,6 +587,7 @@ public class KchtGis155Service {
                 .orgName(getOrgName(cc.getOrgUnitId(), orgNameMap))
                 .infrastructureType(type)
                 .kchtTypeLabel("Cầu cảng")
+                .mapSymbolId(cc.getMapSymbolId())
                 .location(parentProvince)
                 .diaChiChiTiet(
                     parentBerth != null ? "Thuộc bến cảng: " + parentBerth.getBerthName() : "")
@@ -621,6 +629,7 @@ public class KchtGis155Service {
                 .orgName(getOrgName(cc.getOrgUnitId(), orgNameMap))
                 .infrastructureType(type)
                 .kchtTypeLabel("Cảng cạn")
+                .mapSymbolId(cc.getMapSymbolId())
                 .provinceId(cc.getProvinceId())
                 .location("")
                 .diaChiChiTiet("")
@@ -673,6 +682,7 @@ public class KchtGis155Service {
                 .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
                 .infrastructureType(type)
                 .kchtTypeLabel("Vùng nước")
+                .mapSymbolId(vn.getMapSymbolId())
                 .provinceId(vn.getProvinceId())
                 .location(parentProvince)
                 .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
@@ -718,6 +728,7 @@ public class KchtGis155Service {
                 .orgName(getOrgName(nc.getOrgUnitId(), orgNameMap))
                 .infrastructureType(type)
                 .kchtTypeLabel("Luồng hàng hải")
+                .mapSymbolId(nc.getMapIconId())
                 .location("")
                 .diaChiChiTiet(nc.getDetailedLocation() != null ? nc.getDetailedLocation()
                     : (nc.getNotes() != null ? nc.getNotes() : ""))
@@ -762,6 +773,7 @@ public class KchtGis155Service {
                 .orgName(getOrgName(dk.getOrgUnitId(), orgNameMap))
                 .infrastructureType(type)
                 .kchtTypeLabel("Đê kè")
+                .mapSymbolId(dk.getSymbolId())
                 .provinceId(dk.getProvinceId())
                 .location("")
                 .diaChiChiTiet(dk.getLocation() != null ? dk.getLocation() : "")
@@ -845,6 +857,7 @@ public class KchtGis155Service {
                 .orgName(getOrgName(firstNonNull(beacon.getOrgUnitId(), beacon.getUnitId()), orgNameMap))
                 .infrastructureType(type)
                 .kchtTypeLabel("Đèn biển")
+                .mapSymbolId(beacon.getMapSymbolId())
                 .provinceId(beacon.getProvinceId())
                 .location("")
                 .diaChiChiTiet("Mô tả: " + (beacon.getLocation() != null ? beacon.getLocation() : "")
@@ -886,6 +899,7 @@ public class KchtGis155Service {
                 .orgName(getOrgName(firstNonNull(buoy.getOrgUnitId(), buoy.getUnitId()), orgNameMap))
                 .infrastructureType(type)
                 .kchtTypeLabel("Phao, tiêu")
+                .mapSymbolId(buoy.getMapSymbolId())
                 .provinceId(buoy.getProvinceId())
                 .location("")
                 .diaChiChiTiet("Mô tả: " + (buoy.getDescription() != null ? buoy.getDescription() : "")
@@ -1253,6 +1267,7 @@ public class KchtGis155Service {
                 .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
                 .infrastructureType(type)
                 .kchtTypeLabel("Bến phao")
+                .mapSymbolId(vn.getMapSymbolId())
                 .provinceId(vn.getProvinceId())
                 .location(parentProvince)
                 .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
@@ -1307,6 +1322,7 @@ public class KchtGis155Service {
                 .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
                 .infrastructureType(type)
                 .kchtTypeLabel("Khu neo đậu")
+                .mapSymbolId(vn.getMapSymbolId())
                 .provinceId(vn.getProvinceId())
                 .location(parentProvince)
                 .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
@@ -1361,6 +1377,7 @@ public class KchtGis155Service {
                 .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
                 .infrastructureType(type)
                 .kchtTypeLabel("Khu chuyển tải")
+                .mapSymbolId(vn.getMapSymbolId())
                 .provinceId(vn.getProvinceId())
                 .location(parentProvince)
                 .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
@@ -1415,6 +1432,7 @@ public class KchtGis155Service {
                 .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
                 .infrastructureType(type)
                 .kchtTypeLabel("Khu tránh trú bão")
+                .mapSymbolId(vn.getMapSymbolId())
                 .provinceId(vn.getProvinceId())
                 .location(parentProvince)
                 .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")

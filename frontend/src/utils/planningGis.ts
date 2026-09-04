@@ -1,9 +1,24 @@
 export const DEFAULT_SHOW_PLANNING = true;
 
+export type MapClickResolution = 'none' | 'planning' | 'kcht' | 'choice';
+
+/** Decide whether a map click opens one source directly or asks the user. */
+export const getMapClickResolution = (
+  planningFeatureCount: number,
+  kchtFeatureCount: number,
+): MapClickResolution => {
+  const hasPlanning = planningFeatureCount > 0;
+  const hasKcht = kchtFeatureCount > 0;
+  if (!hasPlanning && !hasKcht) return 'none';
+  if (hasPlanning && !hasKcht) return 'planning';
+  if (!hasPlanning && kchtFeatureCount === 1) return 'kcht';
+  return 'choice';
+};
+
 /**
- * Leaflet interaction policy for overlapping KCHT and port-planning data:
- * visual KCHT geometry stays below planning, while only compact KCHT markers
- * use markerPane. Do not move complete KCHT polygons above planningPane.
+ * Pane values only control drawing order. Click priority is deliberately not
+ * encoded here: the map-level dispatcher hit-tests every visible data source
+ * and lets the user choose when planning and KCHT overlap.
  */
 export const GIS_LAYER_INTERACTION_POLICY = {
   kchtGeometryPane: 'overlayPane',

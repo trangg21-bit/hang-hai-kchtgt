@@ -1302,18 +1302,19 @@ export default function PortListPage() {
   }, []);
 
   // ── rowActions callback ──────────────────────────────────────────
+  // Thứ tự: Xem chi tiết → Chỉnh sửa → Lịch sử → Phê duyệt/Từ chối → Xóa
   const rowActions = useCallback(
     (record: CangBienResponse) => {
       const actions: any[] = [
         {
           key: 'view',
-          label: 'Chi tiết',
+          label: 'Xem chi tiết',
           icon: icons.view,
           onClick: () => openDetail(record),
         },
       ];
       const status = record.approvalStatus;
-      // Chinh sua — quy tắc 12 (approval-2-level-spec.md mục 3.9)
+      // Chỉnh sửa — quy tắc 12 (approval-2-level-spec.md mục 3.9)
       if (canEditApprovalRecord(status, { hasPerm: (k: string) => !!hasPerm?.(k), resource: 'port' })) {
         actions.push({
           key: 'edit',
@@ -1402,17 +1403,17 @@ export default function PortListPage() {
           },
         });
       }
-      // Xóa: chỉ trạng thái DRAFT/NHAP
-      if (hasPerm?.(PERMISSIONS.PORT.DELETE) && (status === 'DRAFT' || status === 'NHAP')) {
+      // Lịch sử — luôn hiển thị khi có quyền
+      if (hasPerm?.(PERMISSIONS.PORT.HISTORY)) {
         actions.push({
-          key: 'delete',
-          label: 'Xóa',
-          icon: icons.delete,
-          danger: true,
-          onClick: () => handleDelete(record),
+          key: 'history',
+          label: 'Lịch sử',
+          icon: icons.history,
+          onClick: () => historyHandler(record),
         });
       }
-      // Nháp: phê duyệt thẳng thành Đã phê duyệt (mô hình 2 trạng thái)
+      // Phê duyệt / Từ chối — theo trạng thái, hiển thị trước Xóa
+      // Nháp (DRAFT/NHAP): phê duyệt thẳng thành Đã phê duyệt
       if ((status === 'DRAFT' || status === 'NHAP') && hasPerm?.('port:approve')) {
         actions.push({ key: 'approve', label: 'Phê duyệt', icon: icons.approve, onClick: () => handleApprove(record) });
       }
@@ -1432,12 +1433,14 @@ export default function PortListPage() {
           onClick: () => handleReject(record),
         });
       }
-      if (hasPerm?.(PERMISSIONS.PORT.HISTORY)) {
+      // Xóa: chỉ trạng thái DRAFT/NHAP — luôn ở cuối cùng
+      if (hasPerm?.(PERMISSIONS.PORT.DELETE) && (status === 'DRAFT' || status === 'NHAP')) {
         actions.push({
-          key: 'history',
-          label: 'Lịch sử',
-          icon: icons.history,
-          onClick: () => historyHandler(record),
+          key: 'delete',
+          label: 'Xóa',
+          icon: icons.delete,
+          danger: true,
+          onClick: () => handleDelete(record),
         });
       }
       return actions;
@@ -1472,13 +1475,14 @@ export default function PortListPage() {
         label: 'Tên cảng biển',
         dataIndex: 'portName',
         width: 280,
+        fixed: 'left' as const,
         ellipsis: false,
         sortable: true,
         sortOrder: sortField === 'portName' ? sortOrder : null,
         render: (v: string, record: CangBienResponse) => (
           <a
             onClick={() => openDetail(record)}
-            style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer' }}
+            style={{ fontWeight: fontWeightBold, color: 'inherit', cursor: 'pointer' }}
           >
             {v}
           </a>
@@ -1576,7 +1580,7 @@ export default function PortListPage() {
     padding: `0 ${spaceMd}px`,
   };
 
-  // Thứ tự hiển thị field trong lịch sử theo đúng thứ tự form tạo mới cảng biển (PortFormContent.tsx)
+  // Thứ tự hiển thị field trong lịch sử theo đúng thứ tự form tạo mới cảng biển
   const HISTORY_FIELD_ORDER = ['orgUnitId', 'portGroup', 'portCode', 'portName', 'province', 'detailedLocation', 'portClass', 'waterAreaScope', 'totalBerths', 'totalAnchoragesTransshipment', 'totalPublicChannels', 'totalDedicatedChannels', 'totalPublicChannelLength', 'totalDedicatedChannelLength', 'totalBuoysBeacons', 'totalDikes', 'totalDikeLength', 'totalLighthouses', 'buoyBerthCount', 'anchorageCount', 'transshipmentCount', 'otherWaterAreas', 'remarks', 'geometryType', 'mapSymbolId', 'coordinateSystem', 'displayRule'];
 
   // Tổng số trường thay đổi = số bản ghi changeHistory (backend ghi 1 dòng/trường thay đổi)
@@ -1968,7 +1972,7 @@ export default function PortListPage() {
               })}
               rowKey="id" rowActions={rowActions} loading={false}
               onSort={(key: string, order: 'asc' | 'desc') => { setSortField(key); setSortOrder(order === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
-              scroll={{ x: 'max-content', y: 550 }}
+              scroll={{ x: 'max-content' }}
             />
             <Pagination total={total} current={page} pageSize={pageSize}
               onChange={(p, ps) => { setPage(p); setPageSize(ps); }}

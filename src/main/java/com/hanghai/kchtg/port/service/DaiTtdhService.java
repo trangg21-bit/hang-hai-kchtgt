@@ -61,10 +61,10 @@ public class DaiTtdhService {
 
     @Transactional
     public DaiTtdhResponse create(CreateDaiTtdhRequest request) {
-        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
-                : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "daittdh", SecurityUtils.getCurrentUserPermissions(),
-                SecurityUtils.isElevatedAdministrator());
+        // RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
+        //         : RecordSecurityLevel.NORMAL;
+        // RecordSecurityLevel.validateAssignment(secLevel, "daittdh", SecurityUtils.getCurrentUserPermissions(),
+        //         SecurityUtils.isElevatedAdministrator());
 
         // Validate đơn vị quản lý trong phạm vi user (chiều GHI — Data Scope Convention)
         if (request.getOrgUnitId() != null) {
@@ -74,7 +74,7 @@ public class DaiTtdhService {
         String code = generateDaiTtdhCode();
 
         DaiTtdh entity = DaiTtdh.builder()
-                .securityLevel(secLevel)
+        // .securityLevel(secLevel)
                 .daiTtdhCode(code)
                 .daiTtdhName(request.getDaiTtdhName())
                 .orgUnitId(request.getOrgUnitId())
@@ -113,11 +113,11 @@ public class DaiTtdhService {
             coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
 
-        if (request.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "daittdh",
-                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-            entity.setSecurityLevel(request.getSecurityLevel());
-        }
+        // if (request.getSecurityLevel() != null) {
+        //     RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "daittdh",
+        //             SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+        //     entity.setSecurityLevel(request.getSecurityLevel());
+        // }
         if (request.getDaiTtdhName() != null)
             entity.setDaiTtdhName(request.getDaiTtdhName());
         if (request.getOrgUnitId() != null) {
@@ -352,7 +352,7 @@ public class DaiTtdhService {
 
         DaiTtdhResponse response = DaiTtdhResponse.builder()
                 .id(entity.getId())
-                .securityLevel(entity.getSecurityLevel())
+                // .securityLevel(entity.getSecurityLevel())
                 .daiTtdhCode(entity.getDaiTtdhCode())
                 .daiTtdhName(entity.getDaiTtdhName())
                 .orgUnitId(entity.getOrgUnitId())
