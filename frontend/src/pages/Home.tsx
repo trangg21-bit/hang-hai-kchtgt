@@ -48,7 +48,7 @@ const BLOCKS: DirectoryBlock[] = [
     key: 'kcht',
     title: 'Quản lý KCHT hàng hải',
     description: '28 loại kết cấu hạ tầng, phân cấp cha–con',
-    route: '/kcht-directory',
+    route: '/port',
     icon: <ContainerOutlined />,
   },
   {
