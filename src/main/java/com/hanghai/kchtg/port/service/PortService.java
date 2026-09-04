@@ -259,10 +259,6 @@ public class PortService {
             }
         }
 
-        // Record all fields as new in change history
-        Port emptySnapshot = new Port();
-        changeTrackingService.recordChanges("Port", saved.getId().toString(), "system", emptySnapshot, saved);
-
         log.info("Created Port [{}] code={}", saved.getId(), saved.getPortCode());
         portCacheService.evictAfterCommit();
         return toResponse(saved);
@@ -483,7 +479,13 @@ public class PortService {
         if (request.getRemarks() != null) entity.setRemarks(request.getRemarks());
 
         // ── Handle PortInfrastructure list (replace) ──────────────────
+        String oldInfraSummary = null;
+        String newInfraSummary = null;
         if (request.getInfrastructureList() != null) {
+            // Summary danh sách cũ (trước khi clear) để ghi lịch sử thay đổi
+            oldInfraSummary = entity.getInfrastructureList().stream()
+                    .map(i -> i.getInfraName() + (i.getQuantity() != null ? " (" + i.getQuantity() + ")" : ""))
+                    .collect(Collectors.joining(", "));
             entity.getInfrastructureList().clear();
             for (PortInfrastructureDto dto : request.getInfrastructureList()) {
                 PortInfrastructure infra = new PortInfrastructure();
@@ -493,6 +495,9 @@ public class PortService {
                 infra.setQuantity(dto.getQuantity());
                 entity.getInfrastructureList().add(infra);
             }
+            newInfraSummary = request.getInfrastructureList().stream()
+                    .map(i -> i.getInfraName() + (i.getQuantity() != null ? " (" + i.getQuantity() + ")" : ""))
+                    .collect(Collectors.joining(", "));
         }
 
         // ── Handle PortAttachment list (replace) ──────────────────────
@@ -512,7 +517,24 @@ public class PortService {
 
         Port saved = portRepository.save(entity);
 
+        // Actor thật từ SecurityContext — nếu truyền "system", ChangeTrackingService
+        // fallback auth.getName() (= username, không phải UUID) → approvedBy null → drawer hiện "—"
+        UUID operatorId = com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId();
+        String actorId = operatorId != null ? operatorId.toString() : "system";
+
         if (coordinates != null && !coordinates.trim().isEmpty()) {
+            // Lấy tọa độ + loại hình cũ (WKT) trước khi createOrUpdate ghi đè spatial object
+            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType oldGeomType = null;
+            String oldWkt = null;
+            if (preImage.getSpatialId() != null) {
+                com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject oldSpatial =
+                        gisSpatialObjectService.findById(preImage.getSpatialId()).orElse(null);
+                if (oldSpatial != null) {
+                    oldWkt = oldSpatial.getCoordinates();
+                    oldGeomType = oldSpatial.getGeometryType();
+                }
+            }
+
             com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
             com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_PORT;
             UUID refId = saved.getId();
@@ -528,11 +550,38 @@ public class PortService {
             );
             saved.setSpatialId(spatialObj.getId());
             saved = portRepository.save(saved);
+
+            // Lịch sử vị trí theo chuẩn Trung tâm điều hành VTS: 2 dòng riêng
+            // "Tọa độ GIS" + "Loại đối tượng GIS", kèm approvedBy = user thật.
+            if (wasApproved) {
+                String newWkt = coordinates.trim();
+                boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
+                boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
+                if (wktChanged) {
+                    changeHistoryService.insertChangeRecord("Port", saved.getId(), "Tọa độ GIS",
+                            (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
+                            newWkt, actorId);
+                }
+                if (typeChanged) {
+                    changeHistoryService.insertChangeRecord("Port", saved.getId(), "Loại đối tượng GIS",
+                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
+                            geometryTypeLabel(geomType), actorId);
+                }
+            }
         }
 
         // Record field-level change history only if the record was already approved
         if (wasApproved) {
-            changeTrackingService.recordChanges("Port", saved.getId().toString(), "system", preImage, saved);
+            changeTrackingService.recordChanges("Port", saved.getId().toString(), actorId, preImage, saved);
+
+            // Công trình KCHT trực thuộc (infrastructureList) — recordChanges reflection
+            // chỉ ghi Java toString rác nên ghi riêng summary đọc được (chuẩn VTS CHK).
+            if (oldInfraSummary != null && !oldInfraSummary.equals(newInfraSummary)) {
+                changeHistoryService.insertChangeRecord("Port", saved.getId(), "Công trình KCHT trực thuộc",
+                        (oldInfraSummary == null || oldInfraSummary.isEmpty()) ? "Chưa có" : oldInfraSummary,
+                        (newInfraSummary == null || newInfraSummary.isEmpty()) ? "Chưa có" : newInfraSummary,
+                        actorId);
+            }
         }
 
         log.info("Updated Port [{}] code={}", saved.getId(), saved.getPortCode());
@@ -541,6 +590,16 @@ public class PortService {
     }
 
     // ── DELETE ──────────────────────────────────────────────────
+
+    /** Nhãn hiển thị loại hình GIS theo chuẩn VTS CHK (dùng cho lịch sử thay đổi). */
+    private static String geometryTypeLabel(com.hanghai.kchtg.gis.spatial.entity.GisGeometryType type) {
+        if (type == null) return "Chưa có";
+        return switch (type) {
+            case POINT -> "Đối tượng điểm";
+            case LINE -> "Đối tượng đường";
+            case POLYGON -> "Đối tượng vùng";
+        };
+    }
 
     @Transactional
     public void softDelete(UUID id) {

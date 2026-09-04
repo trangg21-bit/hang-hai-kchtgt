@@ -2,8 +2,12 @@ package com.hanghai.kchtg.port.service;
 
 import com.hanghai.kchtg.common.entity.EntityFields;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.OperatingUnit;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.repository.OperatingUnitRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
@@ -16,6 +20,7 @@ import com.hanghai.kchtg.port.dto.berth.UpdateBerthRequest;
 import com.hanghai.kchtg.port.entity.Berth;
 import com.hanghai.kchtg.port.entity.BerthType;
 import com.hanghai.kchtg.port.entity.Port;
+import com.hanghai.kchtg.port.entity.Pier;
 import com.hanghai.kchtg.port.repository.BerthRepository;
 import com.hanghai.kchtg.port.repository.PierRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
@@ -71,6 +76,7 @@ public class BerthService {
     private final GisSpatialObjectService gisSpatialObjectService;
     private final AttachmentRepository attachmentRepository;
     private final OperatingUnitRepository operatingUnitRepository;
+    private final InfrastructureHistoryRepository historyRepository;
 
     @Value("${app.upload.attachment-path:uploads/attachments}")
     private String attachmentPath;
@@ -144,10 +150,6 @@ public class BerthService {
             saved.setSpatialId(spatialObj.getId());
             saved = berthRepository.save(saved);
         }
-
-        // Ghi toàn bộ trường mới vào lịch sử thay đổi (chuẩn Cảng biển)
-        Berth emptySnapshot = new Berth();
-        changeHistoryService.recordChanges("Berth", saved.getId().toString(), "system", emptySnapshot, saved);
 
         log.info("Created Berth [{}] code={}", saved.getId(), saved.getBerthCode());
         return toResponse(saved);
@@ -388,6 +390,11 @@ public class BerthService {
         boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
                 || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
 
+        // Actor thật từ SecurityContext — nếu truyền "system", ChangeHistoryService
+        // fallback auth.getName() (= username, không phải UUID) → approvedBy null → drawer hiện "—"
+        UUID operatorId = SecurityUtils.getCurrentUserId();
+        String actorId = operatorId != null ? operatorId.toString() : "system";
+
         if (wasApproved) {
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
         } else if (request.getSaveAction() != null) {
@@ -397,6 +404,17 @@ public class BerthService {
         Berth saved = berthRepository.save(entity);
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
+            // Lấy tọa độ + loại hình cũ (WKT) trước khi createOrUpdate ghi đè spatial object
+            GisGeometryType oldGeomType = null;
+            String oldWkt = null;
+            if (saved.getSpatialId() != null) {
+                GisSpatialObject oldSpatial = gisSpatialObjectService.findById(saved.getSpatialId()).orElse(null);
+                if (oldSpatial != null) {
+                    oldWkt = oldSpatial.getCoordinates();
+                    oldGeomType = oldSpatial.getGeometryType();
+                }
+            }
+
             GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType()
                     : GisGeometryType.POINT;
             GisSpatialObjectType objType = GisSpatialObjectType.POINT_PORT;
@@ -412,15 +430,43 @@ public class BerthService {
                     InfrastructureType.PORT_TERMINAL);
             saved.setSpatialId(spatialObj.getId());
             saved = berthRepository.save(saved);
+
+            // Lịch sử vị trí theo chuẩn Cảng biển / TTDH VTS: 2 dòng riêng
+            // "Tọa độ GIS" + "Loại đối tượng GIS", kèm approvedBy = user thật.
+            if (wasApproved) {
+                String newWkt = coordinates.trim();
+                boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
+                boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
+                if (wktChanged) {
+                    changeHistoryService.insertChangeRecord("Berth", saved.getId(), "Tọa độ GIS",
+                            (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
+                            newWkt, actorId);
+                }
+                if (typeChanged) {
+                    changeHistoryService.insertChangeRecord("Berth", saved.getId(), "Loại đối tượng GIS",
+                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
+                            geometryTypeLabel(geomType), actorId);
+                }
+            }
         }
 
         // Record field-level change history only if the record was already approved
         if (wasApproved) {
-            changeHistoryService.recordChanges("Berth", saved.getId().toString(), "system", snapshot, saved);
+            changeHistoryService.recordChanges("Berth", saved.getId().toString(), actorId, snapshot, saved);
         }
 
         log.info("Updated Berth [{}] code={}", saved.getId(), saved.getBerthCode());
         return toResponse(saved);
+    }
+
+    /** Nhãn hiển thị loại hình GIS theo chuẩn VTS CHK (dùng cho lịch sử thay đổi). */
+    private static String geometryTypeLabel(GisGeometryType type) {
+        if (type == null) return "Chưa có";
+        return switch (type) {
+            case POINT -> "Đối tượng điểm";
+            case LINE -> "Đối tượng đường";
+            case POLYGON -> "Đối tượng vùng";
+        };
     }
 
     @Transactional
@@ -666,6 +712,15 @@ public class BerthService {
             attachment.setContentType(file.getContentType());
             attachment.setUploadedBy(userId);
             savedAttachments.add(attachmentRepository.save(attachment));
+
+            // Ghi lịch sử file đính kèm chỉ khi bến cảng cha đã duyệt (chuẩn Cảng biển/DocumentService)
+            if ("BERTH".equalsIgnoreCase(entityType)) {
+                recordBerthAttachmentHistory(entityId, originalFilename,
+                        InfrastructureHistoryStatus.ATTACHMENT_UPLOADED);
+            } else if ("PIER".equalsIgnoreCase(entityType)) {
+                recordPierAttachmentHistory(entityId, originalFilename,
+                        InfrastructureHistoryStatus.ATTACHMENT_UPLOADED);
+            }
         }
         return savedAttachments.stream().map(this::toAttachmentDto).collect(java.util.stream.Collectors.toList());
     }
@@ -682,12 +737,101 @@ public class BerthService {
         if (!attachment.getEntityId().equals(entityId)) {
             throw new IllegalArgumentException("File không thuộc entity này");
         }
+        String fileName = attachment.getFileName();
         try {
             java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
         } catch (Exception e) {
             log.warn("Không thể xóa file: {}", attachment.getFilePath(), e);
         }
         attachmentRepository.delete(attachment);
+
+        // Ghi lịch sử file đính kèm chỉ khi bến cảng cha đã duyệt (chuẩn Cảng biển/DocumentService)
+        if ("BERTH".equalsIgnoreCase(entityType)) {
+            recordBerthAttachmentHistory(entityId, fileName, InfrastructureHistoryStatus.ATTACHMENT_DELETED);
+        } else if ("PIER".equalsIgnoreCase(entityType)) {
+            recordPierAttachmentHistory(entityId, fileName, InfrastructureHistoryStatus.ATTACHMENT_DELETED);
+        }
+    }
+
+    /**
+     * Ghi lịch sử thay đổi file đính kèm của Bến cảng (chuẩn Port/DocumentService:
+     * status ATTACHMENT_UPLOADED / ATTACHMENT_DELETED, changedField "Tài liệu đính kèm").
+     * Chỉ ghi khi bến cảng cha đã duyệt (APPROVED / APPROVED_LEVEL2).
+     */
+    private void recordBerthAttachmentHistory(UUID berthId, String fileName,
+                                              InfrastructureHistoryStatus status) {
+        try {
+            if (berthId == null || historyRepository == null) {
+                return;
+            }
+            Berth berth = berthRepository.findById(berthId).orElse(null);
+            if (berth == null) {
+                return;
+            }
+            ApprovalStatus approval = berth.getApprovalStatus();
+            boolean wasApproved = approval == ApprovalStatus.APPROVED
+                    || approval == ApprovalStatus.APPROVED_LEVEL2;
+            if (!wasApproved) {
+                return;
+            }
+            String name = fileName != null ? fileName : "không rõ tên";
+            boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(berthId)
+                    .refType(InfrastructureType.PORT_TERMINAL)
+                    .approvalLevel(ApprovalLevel.LEVEL_0)
+                    .status(status)
+                    .approvedBy(SecurityUtils.getCurrentUserId())
+                    .approvedDate(LocalDateTime.now())
+                    .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + name)
+                    .changedField("Tài liệu đính kèm")
+                    .previousValue(uploaded ? "—" : name)
+                    .newValue(uploaded ? name : "—")
+                    .build());
+            log.info("[BerthService] Đã ghi lịch sử {} file đính kèm của Bến cảng [{}]: {}",
+                    uploaded ? "tải lên" : "xóa", berthId, name);
+        } catch (Exception e) {
+            log.warn("[BerthService] Không ghi được lịch sử file đính kèm (berthId={}): {}",
+                    berthId, e.getMessage());
+        }
+    }
+
+    /**
+     * Ghi lịch sử thay đổi file đính kèm của Cầu cảng (chuẩn Port/DocumentService:
+     * status ATTACHMENT_UPLOADED / ATTACHMENT_DELETED, changedField "Tài liệu đính kèm",
+     * approvedBy = user thật từ SecurityContext). PierController ủy quyền /attachments
+     * sang BerthService với entityType = "PIER". Chỉ ghi khi cầu cảng đã duyệt (APPROVED).
+     */
+    private void recordPierAttachmentHistory(UUID pierId, String fileName,
+                                             InfrastructureHistoryStatus status) {
+        try {
+            if (pierId == null || historyRepository == null) {
+                return;
+            }
+            Pier pier = pierRepository.findById(pierId).orElse(null);
+            if (pier == null || pier.getApprovalStatus() != ApprovalStatus.APPROVED) {
+                return;
+            }
+            String name = fileName != null ? fileName : "không rõ tên";
+            boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(pierId)
+                    .refType(InfrastructureType.PIER)
+                    .approvalLevel(ApprovalLevel.LEVEL_0)
+                    .status(status)
+                    .approvedBy(SecurityUtils.getCurrentUserId())
+                    .approvedDate(LocalDateTime.now())
+                    .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + name)
+                    .changedField("Tài liệu đính kèm")
+                    .previousValue(uploaded ? "—" : name)
+                    .newValue(uploaded ? name : "—")
+                    .build());
+            log.info("[BerthService] Đã ghi lịch sử {} file đính kèm của Cầu cảng [{}]: {}",
+                    uploaded ? "tải lên" : "xóa", pierId, name);
+        } catch (Exception e) {
+            log.warn("[BerthService] Không ghi được lịch sử file đính kèm (pierId={}): {}",
+                    pierId, e.getMessage());
+        }
     }
 
     private AttachmentDto toAttachmentDto(Attachment entity) {

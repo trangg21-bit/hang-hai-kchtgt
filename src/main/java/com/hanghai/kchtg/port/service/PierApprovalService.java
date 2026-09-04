@@ -214,6 +214,38 @@ public class PierApprovalService {
                 }
             }
         }
-        return Map.of("entityType", entityType, "changeHistory", list, "entityNames", entityNames);
+        // Giải mã actor (approvedBy UUID) → họ tên như getHistory, để chế độ "all"
+        // hiện tên thật thay vì UUID (chuẩn Cảng biển / BuoyBerth history drawer).
+        Set<UUID> userIds = list.stream()
+                .map(InfrastructureHistory::getApprovedBy)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> userNameMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(
+                                User::getId,
+                                u -> u.getFullName() != null && !u.getFullName().isBlank() ? u.getFullName() : u.getUsername(),
+                                (a, b) -> a));
+        List<Map<String, Object>> changeHistory = list.stream()
+                .map(h -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("refId", h.getRefId());
+                    m.put("entityId", h.getRefId() != null ? h.getRefId().toString() : null);
+                    m.put("refType", h.getRefType());
+                    m.put("approvalLevel", h.getApprovalLevel());
+                    m.put("status", h.getStatus());
+                    m.put("approvedBy", h.getApprovedBy() != null
+                            ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
+                            : null);
+                    m.put("approvedDate", h.getApprovedDate());
+                    m.put("reason", h.getReason());
+                    m.put("changedField", h.getChangedField());
+                    m.put("previousValue", h.getPreviousValue());
+                    m.put("newValue", h.getNewValue());
+                    return m;
+                })
+                .toList();
+        return Map.of("entityType", entityType, "changeHistory", changeHistory, "entityNames", entityNames);
     }
 }

@@ -160,14 +160,22 @@ function ddToDms(dd: number): { d: number; m: number; s: number } {
 
 // ── Thứ tự hiển thị field trong lịch sử (theo thứ tự form — giống BuoyListPage) ──
 const HISTORY_FIELD_ORDER = [
-  'code', 'name', 'type', 'unitId', 'operatingOrgId', 'portId', 'waterwayId', 'waterwayRouteId',
+  'code', 'name', 'Tọa độ GIS', 'Loại đối tượng GIS', 'type', 'unitId', 'operatingOrgId',
+  'Phao tiêu trực thuộc', 'portId', 'waterwayId', 'waterwayRouteId',
   'province', 'address', 'constructionDate', 'totalArea', 'usableArea', 'staffCount',
   'lastMaintenanceYear', 'note', 'description', 'color', 'shape', 'lightCharacteristic', 'range',
   'lastInspectionDate', 'nextInspectionDate', 'lastRepairDate', 'isActive',
   'objectType', 'coordinateSystem', 'displayFormat', 'status', 'approvalStatus', 'rejectionReason',
+  'Tài liệu đính kèm',
 ];
 
 const STATION_FIELD_LABEL_OVERRIDES: Record<string, string> = {
+  // Backend InfrastructureHistory writes GIS/child/attachment rows with these literal
+  // Vietnamese changedField values (FIELD-NAME CONTRACT) — pin the display label.
+  'Tọa độ GIS': 'Tọa độ GIS',
+  'Loại đối tượng GIS': 'Loại đối tượng GIS',
+  'Phao tiêu trực thuộc': 'Phao tiêu trực thuộc',
+  'Tài liệu đính kèm': 'Tài liệu đính kèm',
   objectType: 'Loại đối tượng',
   displayFormat: 'Quy tắc hiển thị',
   operatingOrgId: 'Đơn vị khai thác',
@@ -184,11 +192,11 @@ function stationFieldLabel(fn: string): string {
 
 // ── History helpers (chuẩn VTS CHK) ───────────────────────────────
 function historyTimestamp(item: any): string {
-  return item?.changedAt || item?.createdAt || '';
+  return item?.approvedDate || item?.changedAt || item?.createdAt || '';
 }
 
 function historyActor(item: any): string {
-  const raw = item?.changedBy || item?.performedBy || item?.actorName || '';
+  const raw = item?.approvedBy || item?.changedBy || item?.performedBy || item?.actorName || '';
   return raw || '—';
 }
 
@@ -759,16 +767,17 @@ export default function BuoyStationListPage() {
     const q = historySearch.toLowerCase().trim();
     return (Array.isArray(historyData) ? historyData : []).filter((r) => {
       if (q) {
-        const fn = (r.fieldName || '').toLowerCase();
-        const ov = (r.oldValue || '').toLowerCase();
-        const nv = (r.newValue || '').toLowerCase();
-        const label = stationFieldLabel(r.fieldName || '').toLowerCase();
-        const tv = translateStationVal(r.fieldName || '', r.newValue || '').toLowerCase();
+        const fieldRaw = historyField(r);
+        const fn = fieldRaw.toLowerCase();
+        const ov = (historyOldValue(r) || '').toLowerCase();
+        const nv = (historyNewValue(r) || '').toLowerCase();
+        const label = stationFieldLabel(fieldRaw).toLowerCase();
+        const tv = translateStationVal(fieldRaw, historyNewValue(r) || '').toLowerCase();
         if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !label.includes(q) && !tv.includes(q)) return false;
       }
       if (historyMode === 'all' && historyEntityFilter && r.entityId !== historyEntityFilter) return false;
       if (historyFrom || historyTo) {
-        const cd = (r.changedAt || r.createdAt || '').substring(0, 16);
+        const cd = historyTimestamp(r).substring(0, 16);
         if (historyFrom && cd < historyFrom.replace(' ', 'T')) return false;
         if (historyTo && cd > historyTo.replace(' ', 'T') + ':59') return false;
       }
@@ -867,7 +876,7 @@ export default function BuoyStationListPage() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
                   <Typography.Text style={historyMetaRowStyle}>
-                    Người cập nhật: {g.actor || '—'}
+                    Người cập nhật: {actorName(g.actor)}
                   </Typography.Text>
                   <Typography.Text style={historyMetaRowStyle}>
                     {historyMode === 'all' && g.items[0]?.entityId

@@ -3,7 +3,11 @@ package com.hanghai.kchtg.port.service;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.EntityFields;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.entity.OperationalStatusConverter;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
@@ -31,7 +35,6 @@ import com.hanghai.kchtg.port.repository.MooringWaterAreaAnchorPointRepository;
 import com.hanghai.kchtg.port.repository.MooringWaterAreaRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.service.PortCacheService;
-import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
@@ -74,7 +77,7 @@ public class AnchorageService {
     private final GisSpatialObjectService gisSpatialObjectService;
     private final MooringWaterAreaRepository mooringWaterAreaRepository;
     private final MooringWaterAreaAnchorPointRepository mooringWaterAreaAnchorPointRepository;
-    private final ChangeHistoryService changeHistoryService;
+    private final InfrastructureHistoryRepository historyRepository;
 
     @Value("${app.upload.attachment-path:uploads/attachments}")
     private String attachmentPath;
@@ -130,8 +133,10 @@ public class AnchorageService {
         Anchorage saved = anchorageRepository.save(entity);
         persistGisAndMooring(saved, request.getGeometryType(), request.getCoordinates(),
                 request.getLongitude(), request.getLatitude(), request.getMooringWaterAreas());
-        // [TẠM TẮT GHI LỊCH SỬ] Bảng change_logs đã bị V20260825162500 drop; user yêu cầu Khu neo đậu không ghi lịch sử
-        // changeHistoryService.recordChanges("Anchorage", saved.getId().toString(), "system", new Anchorage(), saved);
+        // Ghi lịch sử thay đổi vào infrastructure_history với actor thật (chuẩn Cảng biển PortService).
+        UUID operatorId = SecurityUtils.getCurrentUserId();
+        String actorId = operatorId != null ? operatorId.toString() : "system";
+        recordFieldChanges(new Anchorage(), saved, saved.getId(), actorId);
         evictAfterCommit();
 
         return toResponse(saved);
@@ -215,12 +220,61 @@ public class AnchorageService {
             entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         }
 
+        // Actor thật từ SecurityContext — nếu truyền "system", approvedBy = null và drawer hiện "—"
+        UUID operatorId = SecurityUtils.getCurrentUserId();
+        String actorId = operatorId != null ? operatorId.toString() : "system";
+        boolean wasApproved = snapshot.getApprovalStatus() == ApprovalStatus.APPROVED
+                || snapshot.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+
+        // Tọa độ + loại hình GIS cũ (WKT) trước khi persistGisAndMooring ghi đè spatial object
+        GisGeometryType oldGeomType = null;
+        String oldWkt = null;
+        if (snapshot.getSpatialId() != null) {
+            GisSpatialObject oldSpatial = gisSpatialObjectService.findById(snapshot.getSpatialId()).orElse(null);
+            if (oldSpatial != null) {
+                oldWkt = oldSpatial.getCoordinates();
+                oldGeomType = oldSpatial.getGeometryType();
+            }
+        }
+        // Summary "Khu nước neo buộc tàu" cũ trước khi replaceMooringWaterAreas xóa + chèn lại
+        String oldMooringSummary = buildMooringWaterAreaSummary(
+                mooringWaterAreaRepository.findByAnchorageId(entity.getId()));
+
         Anchorage saved = anchorageRepository.save(entity);
         persistGisAndMooring(saved, request.getGeometryType(), coordinates,
                 request.getLongitude(), request.getLatitude(), request.getMooringWaterAreas());
 
-        // [TẠM TẮT GHI LỊCH SỬ] Bảng change_logs đã bị V20260825162500 drop; user yêu cầu Khu neo đậu không ghi lịch sử
-        // changeHistoryService.recordChanges("Anchorage", saved.getId().toString(), "system", snapshot, saved);
+        // Chỉ ghi lịch sử khi hồ sơ đã được duyệt (chuẩn PortService: 2 dòng GIS riêng + summary khu nước).
+        if (wasApproved) {
+            if (coordinates != null && !coordinates.trim().isEmpty()) {
+                GisGeometryType geomType = request.getGeometryType() != null
+                        ? request.getGeometryType() : GisGeometryType.POINT;
+                String newWkt = coordinates.trim();
+                boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
+                if (wktChanged) {
+                    insertHistoryRecord(saved.getId(), "Tọa độ GIS",
+                            (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
+                            newWkt, actorId);
+                }
+                boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
+                if (typeChanged) {
+                    insertHistoryRecord(saved.getId(), "Loại đối tượng GIS",
+                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
+                            geometryTypeLabel(geomType), actorId);
+                }
+            }
+            // Field-level thay đổi theo từng trường (recordChanges bị tắt từ migration V20260825162500)
+            recordFieldChanges(snapshot, saved, saved.getId(), actorId);
+
+            // Summary "Khu nước neo buộc tàu" đọc được — không ghi Java toString rác của reflection
+            String newMooringSummary = buildMooringWaterAreaSummary(
+                    mooringWaterAreaRepository.findByAnchorageId(saved.getId()));
+            if (!oldMooringSummary.equals(newMooringSummary)) {
+                insertHistoryRecord(saved.getId(), "Khu nước neo buộc tàu",
+                        oldMooringSummary.isEmpty() ? "Chưa có" : oldMooringSummary,
+                        newMooringSummary.isEmpty() ? "Chưa có" : newMooringSummary, actorId);
+            }
+        }
         evictAfterCommit();
 
         return toResponse(saved);
@@ -297,9 +351,11 @@ public class AnchorageService {
         Anchorage snapshot = buildSnapshot(entity);
         entity.softDelete(SecurityUtils.getCurrentUserId());
         anchorageRepository.save(entity);
-        // [TẠM TẮT GHI LỊCH SỬ] Bảng change_logs đã bị V20260825162500 drop; user yêu cầu Khu neo đậu không ghi lịch sử
-        // changeHistoryService.recordChanges("Anchorage", entity.getId().toString(), "system", snapshot, entity);
-        // changeHistoryService.insertChangeRecord("Anchorage", entity.getId(), "Trạng thái", null, "Đã xóa", "system");
+        // Ghi lịch sử xóa mềm vào infrastructure_history với actor thật (chuẩn Cảng biển).
+        UUID operatorId = SecurityUtils.getCurrentUserId();
+        String actorId = operatorId != null ? operatorId.toString() : "system";
+        recordFieldChanges(snapshot, entity, entity.getId(), actorId);
+        insertHistoryRecord(entity.getId(), "Trạng thái", null, "Đã xóa", actorId);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
@@ -367,6 +423,10 @@ public class AnchorageService {
             attachment.setContentType(file.getContentType());
             attachment.setUploadedBy(userId);
             savedAttachments.add(attachmentRepository.save(attachment));
+            if ("ANCHORAGE".equalsIgnoreCase(entityType)) {
+                recordAnchorageAttachmentHistory(entityId, originalFilename,
+                        InfrastructureHistoryStatus.ATTACHMENT_UPLOADED);
+            }
         }
         return savedAttachments.stream().map(this::toAttachmentDto).collect(java.util.stream.Collectors.toList());
     }
@@ -389,6 +449,10 @@ public class AnchorageService {
             log.warn("Không thể xóa file: {}", attachment.getFilePath(), e);
         }
         attachmentRepository.delete(attachment);
+        if ("ANCHORAGE".equalsIgnoreCase(entityType)) {
+            recordAnchorageAttachmentHistory(entityId, attachment.getFileName(),
+                    InfrastructureHistoryStatus.ATTACHMENT_DELETED);
+        }
     }
 
     private AttachmentDto toAttachmentDto(Attachment entity) {
@@ -649,5 +713,156 @@ public class AnchorageService {
         if (dt == null || dt.isBlank()) return null;
         try { return LocalDateTime.parse(dt); }
         catch (Exception e) { return null; }
+    }
+
+    // ── Lịch sử thay đổi (infrastructure_history — chuẩn Cảng biển sau migration V20260825162500) ──
+
+    /** Nhãn hiển thị loại hình GIS theo chuẩn VTS CHK (dùng cho lịch sử thay đổi). */
+    private static String geometryTypeLabel(GisGeometryType type) {
+        if (type == null) return "Chưa có";
+        return switch (type) {
+            case POINT -> "Đối tượng điểm";
+            case LINE -> "Đối tượng đường";
+            case POLYGON -> "Đối tượng vùng";
+        };
+    }
+
+    /**
+     * Chèn 1 dòng lịch sử refType = ANCHORAGE_AREA.
+     * Không dùng ChangeHistoryService.insertChangeRecord vì resolveInfrastructureType("Anchorage")
+     * rơi vào default SEAPORT (thiếu mapping ANCHORAGE) → dòng không hiển thị ở drawer Khu neo đậu.
+     */
+    private void insertHistoryRecord(UUID entityId, String fieldName, String oldValue, String newValue, String actorId) {
+        historyRepository.save(InfrastructureHistory.builder()
+                .refId(entityId)
+                .refType(InfrastructureType.ANCHORAGE_AREA)
+                .approvalLevel(ApprovalLevel.LEVEL_0)
+                .status(InfrastructureHistoryStatus.UPDATED)
+                .approvedBy(parseActorId(actorId))
+                .approvedDate(LocalDateTime.now())
+                .changedField(fieldName)
+                .previousValue(oldValue)
+                .newValue(newValue)
+                .build());
+    }
+
+    /**
+     * So sánh từng field giữa bản snapshot cũ và bản đã lưu, mỗi field thay đổi thành 1 dòng
+     * infrastructure_history (cùng ngữ nghĩa recordChanges của change_logs trước migration
+     * V20260825162500, nhưng refType = ANCHORAGE_AREA và changedBy = actor thật).
+     */
+    private void recordFieldChanges(Anchorage oldEntity, Anchorage newEntity, UUID entityId, String actorId) {
+        if (oldEntity == null || newEntity == null) return;
+        UUID actorUuid = parseActorId(actorId);
+        for (java.lang.reflect.Field field : Anchorage.class.getDeclaredFields()) {
+            if (isSkippedHistoryField(field.getName())) continue;
+            field.setAccessible(true);
+            try {
+                Object oldValue = field.get(oldEntity);
+                Object newValue = field.get(newEntity);
+                if (!historyValuesEqual(oldValue, newValue)) {
+                    historyRepository.save(InfrastructureHistory.builder()
+                            .refId(entityId)
+                            .refType(InfrastructureType.ANCHORAGE_AREA)
+                            .approvalLevel(ApprovalLevel.LEVEL_0)
+                            .status(InfrastructureHistoryStatus.UPDATED)
+                            .approvedBy(actorUuid)
+                            .approvedDate(LocalDateTime.now())
+                            .changedField(field.getName())
+                            .previousValue(historyFormatValue(oldValue))
+                            .newValue(historyFormatValue(newValue))
+                            .build());
+                }
+            } catch (IllegalAccessException e) {
+                log.warn("Không đọc được field {} của Anchorage để ghi lịch sử: {}", field.getName(), e.getMessage());
+            }
+        }
+    }
+
+    private boolean isSkippedHistoryField(String name) {
+        return EntityFields.ID.equals(name)
+                || EntityFields.CREATED_AT.equals(name)
+                || EntityFields.UPDATED_AT.equals(name)
+                || EntityFields.DELETED_AT.equals(name)
+                || EntityFields.CREATED_BY.equals(name)
+                || EntityFields.UPDATED_BY.equals(name);
+    }
+
+    private boolean historyValuesEqual(Object a, Object b) {
+        if (a == null && b == null) return true;
+        if (a == null || b == null) return false;
+        if (a instanceof Enum<?> ea && b instanceof Enum<?> eb) return ea == eb;
+        if (a instanceof Number && b instanceof Number) {
+            try {
+                return new java.math.BigDecimal(a.toString()).compareTo(new java.math.BigDecimal(b.toString())) == 0;
+            } catch (NumberFormatException e) {
+                return ((Number) a).doubleValue() == ((Number) b).doubleValue();
+            }
+        }
+        return a.equals(b);
+    }
+
+    private String historyFormatValue(Object value) {
+        if (value == null) return "(null)";
+        if (value instanceof LocalDateTime dt) return dt.toString();
+        if (value instanceof Enum<?> e) return e.name();
+        return value.toString();
+    }
+
+    private UUID parseActorId(String actorId) {
+        if (actorId == null || actorId.isBlank() || "system".equals(actorId)) return null;
+        try { return UUID.fromString(actorId); }
+        catch (Exception e) { return null; }
+    }
+
+    /**
+     * Summary đọc được của bảng con "Khu nước neo buộc tàu" (mooring_water_areas + điểm neo),
+     * dùng cho lịch sử thay đổi — không ghi Java toString rác của reflection.
+     */
+    private String buildMooringWaterAreaSummary(List<MooringWaterArea> areas) {
+        if (areas == null || areas.isEmpty()) return "";
+        List<String> parts = new ArrayList<>();
+        for (MooringWaterArea wa : areas) {
+            String desc = (wa.getDescription() == null || wa.getDescription().isBlank())
+                    ? "(khu nước không mô tả)" : wa.getDescription().trim();
+            long pointCount = mooringWaterAreaAnchorPointRepository.findByMooringWaterAreaId(wa.getId()).size();
+            parts.add(desc + " (" + pointCount + " điểm)");
+        }
+        return areas.size() + " khu nước: " + String.join("; ", parts);
+    }
+
+    /**
+     * Ghi lịch sử file đính kèm Khu neo đậu (chuẩn Cảng biển DocumentService.recordPortAttachmentHistory:
+     * status ATTACHMENT_UPLOADED / ATTACHMENT_DELETED, changedField "Tài liệu đính kèm").
+     * Chỉ ghi khi entityType = "ANCHORAGE" và hồ sơ đã duyệt.
+     */
+    private void recordAnchorageAttachmentHistory(UUID anchorageId, String fileName,
+                                                  InfrastructureHistoryStatus status) {
+        try {
+            Anchorage anchorage = anchorageRepository.findById(anchorageId).orElse(null);
+            if (anchorage == null) return;
+            ApprovalStatus approval = anchorage.getApprovalStatus();
+            boolean wasApproved = approval == ApprovalStatus.APPROVED
+                    || approval == ApprovalStatus.APPROVED_LEVEL2;
+            if (!wasApproved) return;
+            String name = fileName != null ? fileName : "không rõ tên";
+            boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(anchorageId)
+                    .refType(InfrastructureType.ANCHORAGE_AREA)
+                    .approvalLevel(ApprovalLevel.LEVEL_0)
+                    .status(status)
+                    .approvedBy(SecurityUtils.getCurrentUserId())
+                    .approvedDate(LocalDateTime.now())
+                    .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + name)
+                    .changedField("Tài liệu đính kèm")
+                    .previousValue(uploaded ? "—" : name)
+                    .newValue(uploaded ? name : "—")
+                    .build());
+            log.info("Đã ghi lịch sử {} file đính kèm của Khu neo đậu [{}]: {}",
+                    uploaded ? "tải lên" : "xóa", anchorageId, name);
+        } catch (Exception e) {
+            log.warn("Không ghi được lịch sử file đính kèm Khu neo đậu [{}]: {}", anchorageId, e.getMessage());
+        }
     }
 }

@@ -173,7 +173,8 @@ const HISTORY_FIELD_ORDER = ['code', 'name', 'type', 'classification', 'classifi
   'bodyHeight', 'diameter', 'beaconLight', 'towerHeight', 'lightHeight', 'lightModel', 'towerColor',
   'powerSupply', 'range', 'lightCharacteristic', 'lightColor', 'flashType', 'period', 'commissionedDate',
   'lastRepairDate', 'condition', 'lastInspectionDate', 'nextInspectionDate', 'isActive',
-  'geometryType', 'mapSymbolId', 'coordinateSystem', 'displayRule', 'status', 'approvalStatus', 'rejectionReason'];
+  'geometryType', 'Loại đối tượng GIS', 'Tọa độ GIS', 'mapSymbolId', 'coordinateSystem', 'displayRule',
+  'status', 'approvalStatus', 'rejectionReason', 'Tài liệu đính kèm'];
 
 // ── Bản đồ nhãn giá trị cho lịch sử (giống BerthList.historyFieldValue) ──
 const GEOMETRY_TYPE_LABELS: Record<string, string> = { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' };
@@ -237,11 +238,11 @@ function normalizeHistoryKey(value: string): string {
 /** Badge thao tác cho lịch sử (chuẩn VTS CHK) — phân biệt Thêm mới / Cập nhật / Phê duyệt / Từ chối / Trình duyệt. */
 function resolveBuoyHistoryActionMeta(group: { items: ChangeHistory[] }): { label: string; color: string; bg: string } {
   const items = group.items || [];
-  if (items.every((i) => i.oldValue == null || i.oldValue === '(null)' || i.oldValue === 'null' || i.oldValue === '')) {
+  if (items.every((i) => i.previousValue == null || i.previousValue === '(null)' || i.previousValue === 'null' || i.previousValue === '')) {
     return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
   }
   const approvalChange = items.find((i) => {
-    const k = normalizeHistoryKey(i.fieldName || '');
+    const k = normalizeHistoryKey(i.changedField || '');
     return k === 'approvalstatus' || k === 'status';
   });
   if (approvalChange) {
@@ -1104,29 +1105,29 @@ export default function BuoyListPage() {
     const safeRecords = Array.isArray(records) ? records : [];
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
     const sorted = [...safeRecords].sort((a: any, b: any) =>
-      new Date(b.changedAt || b.createdAt || 0).getTime() - new Date(a.changedAt || a.createdAt || 0).getTime());
+      new Date(b.approvedDate || 0).getTime() - new Date(a.approvedDate || 0).getTime());
     const q = historySearch.toLowerCase().trim();
     const groups: { tsSec: number; ts: string; actor: string; items: ChangeHistory[] }[] = [];
     for (const r of sorted) {
       if (q) {
-        const fn = (r.fieldName || '').toLowerCase();
-        const ov = (r.oldValue || '').toLowerCase();
+        const fn = (r.changedField || '').toLowerCase();
+        const ov = (r.previousValue || '').toLowerCase();
         const nv = (r.newValue || '').toLowerCase();
-        const label = historyFieldLabel(r.fieldName || '').toLowerCase();
-        const tv = translateBuoyVal(r.fieldName || '', r.newValue || '').toLowerCase();
+        const label = historyFieldLabel(r.changedField || '').toLowerCase();
+        const tv = translateBuoyVal(r.changedField || '', r.newValue || '').toLowerCase();
         if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !label.includes(q) && !tv.includes(q)) continue;
       }
-      if (historyEntityFilter && r.entityId !== historyEntityFilter) continue;
+      if (historyEntityFilter && r.refId !== historyEntityFilter) continue;
       if (historyFrom || historyTo) {
-        const cd = (r.changedAt || r.createdAt || '').substring(0, 16);
+        const cd = (r.approvedDate || '').substring(0, 16);
         if (historyFrom && cd < historyFrom.replace(' ', 'T')) continue;
         if (historyTo && cd > historyTo.replace(' ', 'T') + ':59') continue;
       }
-      const ts = r.changedAt || r.createdAt || '';
+      const ts = r.approvedDate || '';
       const sec = ts ? toSec(ts) : 0;
       const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === (r.changedBy || '')) prev.items.push(r);
-      else groups.push({ tsSec: sec, ts, actor: r.changedBy || '', items: [r] });
+      if (prev && prev.tsSec === sec && prev.actor === (r.approvedBy || '')) prev.items.push(r);
+      else groups.push({ tsSec: sec, ts, actor: r.approvedBy || '', items: [r] });
     }
     if (groups.length === 0) return (
       <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
@@ -1143,9 +1144,9 @@ export default function BuoyListPage() {
     return (
       <div>
         {groups.map((g, gi) => {
-          const isCreate = g.items.every((i) => i.oldValue == null || i.oldValue === '(null)' || i.oldValue === '');
+          const isCreate = g.items.every((i) => i.previousValue == null || i.previousValue === '(null)' || i.previousValue === '');
           const actionMeta = resolveBuoyHistoryActionMeta(g);
-          const visibleItems = g.items.filter((i) => i.fieldName !== 'spatialId');
+          const visibleItems = g.items.filter((i) => i.changedField !== 'spatialId');
           const barColor = actionMeta.color;
           return (
             <div key={`${g.tsSec}-${g.actor}`} style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
@@ -1169,11 +1170,11 @@ export default function BuoyListPage() {
                   {isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:'}
                 </Typography.Text>
                 {visibleItems.sort((a: any, b: any) => {
-                  const ia = HISTORY_FIELD_ORDER.indexOf(a.fieldName || '');
-                  const ib = HISTORY_FIELD_ORDER.indexOf(b.fieldName || '');
+                  const ia = HISTORY_FIELD_ORDER.indexOf(a.changedField || '');
+                  const ib = HISTORY_FIELD_ORDER.indexOf(b.changedField || '');
                   return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
                 }).map((change, ri) => {
-                  const fn = change.fieldName || '';
+                  const fn = change.changedField || '';
                   const formatHistoryValue = (raw: string | null) => {
                     if (raw === null || raw === '(null)' || raw === '') return null;
                     const t = raw.trim();
@@ -1188,7 +1189,7 @@ export default function BuoyListPage() {
                     }
                     return translateBuoyVal(fn, raw);
                   };
-                  const ov = formatHistoryValue(change.oldValue != null && change.oldValue !== 'null' ? String(change.oldValue) : null);
+                  const ov = formatHistoryValue(change.previousValue != null && change.previousValue !== 'null' ? String(change.previousValue) : null);
                   const nv = formatHistoryValue(change.newValue != null && change.newValue !== 'null' ? String(change.newValue) : null);
                   const key = change.id || `${fn}-${ri}`;
                   const renderCell = (rawVal: string | null) => {
@@ -1207,7 +1208,7 @@ export default function BuoyListPage() {
                   ) : (
                     <div key={key} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
                       <div style={historyFieldLabelStyle}>{fn ? `${historyFieldLabel(fn)}:` : '—'}</div>
-                      <span title={ov ?? '—'} style={historyOldValueStyle}>{renderCell(change.oldValue) ?? (ov ?? '—')}</span>
+                      <span title={ov ?? '—'} style={historyOldValueStyle}>{renderCell(change.previousValue) ?? (ov ?? '—')}</span>
                       <span style={historyArrowStyle}>→</span>
                       <span title={nv ?? '—'} style={historyNewValueStyle}>{renderCell(change.newValue) ?? (nv ?? '—')}</span>
                     </div>

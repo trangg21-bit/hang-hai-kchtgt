@@ -393,7 +393,7 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
   // ── Khu nước neo buộc tàu: mở/đóng Drawer, CRUD điểm neo ──
   const resetWaterAreaDrawerState = () => {
     setWaterAreaDescription('');
-    setWaterAreaGeometryType(undefined);
+    setWaterAreaGeometryType('POINT'); // Mặc định loại đối tượng là Đối tượng điểm
     setWaterAreaMapSymbolId(undefined);
     setWaterAreaCoordinateSystem(undefined);
     setWaterAreaDisplayRule(undefined);

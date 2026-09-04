@@ -126,6 +126,12 @@ const historyFieldLabels: Record<string, string> = {
   departmentApprovedAt: 'Ngày duyệt Cục', departmentApprovedBy: 'Người duyệt Cục',
   departmentApprovalContent: 'Nội dung phê duyệt Cục', rejectionReason: 'Lý do từ chối',
   activityStatus: 'Trạng thái hoạt động',
+  // infrastructure_history: GIS / tập hợp con / tệp đính kèm — backend ghi label tiếng Việt (hoặc key tiếng Anh đồng nghĩa)
+  'Tọa độ GIS': 'Tọa độ GIS', coordinates: 'Tọa độ GIS', gisLocation: 'Tọa độ GIS', spatialId: 'Tọa độ GIS',
+  'Loại đối tượng GIS': 'Loại đối tượng GIS', geometryType: 'Loại đối tượng GIS', objectType: 'Loại đối tượng GIS',
+  'Khu nước neo buộc tàu': 'Khu nước neo buộc tàu', mooringWaterAreas: 'Khu nước neo buộc tàu', mooringWaterAreaList: 'Khu nước neo buộc tàu',
+  'Tài liệu đính kèm': 'Tài liệu đính kèm', attachments: 'Tài liệu đính kèm', attachmentList: 'Tài liệu đính kèm',
+  infrastructureList: 'Danh sách hạ tầng',
   'Trạng thái': 'Hành động',
 };
 
@@ -223,7 +229,7 @@ function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; 
 
 // ── History helpers (chuẩn VTS CHK) ───────────────────────────────
 function historyTimestamp(item: any): string {
-  return item.approvedDate || item.changedAt || item.createdAt || '';
+  return item.approvedDate || item.changedAt || item.decidedAt || item.createdAt || '';
 }
 
 function historyField(item: any): string {
@@ -239,7 +245,8 @@ function historyNewValue(item: any): string | null {
 }
 
 function historyActor(item: any): string {
-  const raw = item?.approvedByName || item?.changedByName || item?.performedByName || item?.userName || item?.actorName || item?.approvedBy || item?.changedBy || item?.performedBy || '';
+  // changedBy/decidedBy do backend phân giải sẵn thành họ tên đầy đủ — ưu tiên đọc trực tiếp
+  const raw = item?.changedBy || item?.decidedBy || item?.changedByName || item?.approvedByName || item?.performedByName || item?.userName || item?.actorName || item?.approvedBy || item?.performedBy || '';
   return raw || '—';
 }
 
@@ -300,12 +307,87 @@ function historyChangeRows(item: any): Array<{ field: string; oldValue: string |
   });
 }
 
+// ── GIS WKT: tách tọa độ khỏi chuỗi WKT (POINT/LINESTRING/POLYGON/MULTIPOINT) ──
+
+function parseGisWktCoordinates(value: string): { typeName: string; points: Array<{ x: string; y: string }> } | null {
+  const str = (value || '').trim();
+  const typeMatch = /^(POINT|MULTIPOINT|LINESTRING|LINE|POLYGON)\s*\(/i.exec(str);
+  if (!typeMatch) return null;
+  const type = typeMatch[1].toUpperCase();
+  const typeName = type === 'POINT' ? 'Điểm'
+    : type === 'LINESTRING' || type === 'LINE' ? 'Đường'
+      : type === 'POLYGON' ? 'Vùng' : 'Tập hợp điểm';
+  let inner = str.slice(str.indexOf('(') + 1);
+  if (inner.endsWith(')')) inner = inner.slice(0, -1);
+  if (type === 'POLYGON') {
+    inner = inner.trim();
+    if (inner.startsWith('(') && inner.endsWith(')')) inner = inner.slice(1, -1);
+  }
+  const points = inner
+    .split(',')
+    .map((s) => s.replace(/[()]/g, '').trim().split(/\s+/).filter(Boolean))
+    .filter((p) => p.length >= 2)
+    .map((p) => ({ x: p[0], y: p[1] }));
+  if (points.length === 0) return null;
+  return { typeName, points };
+}
+
+function formatGisDms(xStr: string, yStr: string): string {
+  const x = Number(xStr);
+  const y = Number(yStr);
+  const toDms = (val: number, isLat: boolean): string => {
+    if (!Number.isFinite(val)) return '';
+    const abs = Math.abs(val);
+    const d = Math.floor(abs);
+    const mFloat = (abs - d) * 60;
+    const m = Math.floor(mFloat);
+    const s = Math.round((mFloat - m) * 600) / 10;
+    const dir = isLat ? (val >= 0 ? 'N' : 'S') : (val >= 0 ? 'E' : 'W');
+    return `${d}°${String(m).padStart(2, '0')}'${s.toFixed(1).padStart(4, '0')}"${dir}`;
+  };
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return `${xStr}, ${yStr}`;
+  // WKT lưu (lng lat); nếu cặp đảo (lat lng) thì hoán đổi để luôn hiển thị (vĩ độ, kinh độ)
+  let lat = y;
+  let lng = x;
+  if (Math.abs(x) <= 90 && Math.abs(y) > 90) { lat = x; lng = y; }
+  return `${toDms(lat, true)}, ${toDms(lng, false)}`;
+}
+
 function renderHistoryValueTag(field: string, val: string | null) {
   if (val === null || val === undefined || val === '—') {
     return <span style={{ color: textTertiary }}>—</span>;
   }
   const normKey = normalizeHistoryKey(field);
   const normVal = normalizeHistoryKey(val);
+
+  // GIS: tọa độ WKT / cặp tọa độ thập phân → hiển thị text dễ đọc, không in chuỗi WKT khổng lồ
+  const rawGisValue = String(val ?? '').trim();
+  const gisParsed = parseGisWktCoordinates(rawGisValue);
+  const isGisField = normKey.includes('toa do') || normKey.includes('coordinate') || normKey.includes('gis') || normKey.includes('khong gian') || normKey === 'spatialid';
+  if (gisParsed) {
+    const { typeName, points } = gisParsed;
+    return (
+      <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: spaceXs, minWidth: 0, maxWidth: '100%' }}>
+        <span style={{ fontSize: fontSizeSm, fontWeight: fontWeightBold, color: actionPrimary, whiteSpace: 'nowrap' }}>
+          {typeName} ({points.length} điểm)
+        </span>
+        {points.map((pt, pi) => (
+          <span key={pi} style={{ fontSize: fontSizeSm, color: textPrimary, lineHeight: 1.5, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+            {points.length > 1 ? <span style={{ color: textSecondary, marginRight: spaceXs }}>#{pi + 1}:</span> : null}
+            {formatGisDms(pt.x, pt.y)}
+          </span>
+        ))}
+      </span>
+    );
+  }
+  if (isGisField && /^-?\d+(\.\d+)?\s+-?\d+(\.\d+)?$/.test(rawGisValue)) {
+    const pair = rawGisValue.split(/\s+/);
+    return (
+      <span style={{ fontSize: fontSizeSm, color: textPrimary, lineHeight: 1.5, wordBreak: 'break-word' }}>
+        {formatGisDms(pair[0], pair[1])}
+      </span>
+    );
+  }
 
   if (normKey === 'approvalstatus' || normKey === 'trang thai phe duyet' || normKey.includes('phe duyet') || normKey.includes('trang thai')) {
     if (normVal === 'da duyet' || normVal === 'da phe duyet' || normVal === 'approved' || normVal === 'approved_level2') {
@@ -343,6 +425,11 @@ function renderHistoryValueTag(field: string, val: string | null) {
 
 function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, string>, symbolMap?: Map<string, string>, portMap?: Map<string, string>, waterwayMap?: Map<string, string>): string {
   if (!val || val === '(null)' || val === 'null') return '(trống)';
+  const fnNorm = normalizeHistoryKey(fn);
+  if (fnNorm === 'loai doi tuong gis' || fnNorm === 'loai hinh hoc' || fnNorm === 'geometrytype' || fnNorm === 'objecttype') {
+    const m: Record<string, string> = { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', LINESTRING: 'Đối tượng đường', POLYGON: 'Đối tượng vùng', MULTIPOINT: 'Tập hợp điểm' };
+    return m[val.toUpperCase()] || val;
+  }
   if (fn === 'orgUnitId' && orgMap) { const full = orgMap.get(val); return full ? full.split(' - ').pop() || full : val; }
   if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
   if (fn === 'portId' && portMap) return portMap.get(val) || val;
@@ -493,12 +580,20 @@ export default function AnchorageList() {
       const res = await api.get(`/v1/anchorage/${r.id}/history`);
       const d = res.data?.data;
       const ch = Array.isArray(d?.changeHistory) ? d.changeHistory : (Array.isArray(d) ? d : []);
-      setHistoryRecords(ch);
+      // approvalLog = quyết định duyệt/từ chối — map về shape event chuẩn để hiện actor (decidedBy) + lý do
+      const al = Array.isArray(d?.approvalLog) ? d.approvalLog : [];
+      const merged = ch.concat(al.map((a: any) => {
+        const capRaw = String(a.cap || '');
+        const capLevel = (/(?:level|cap)_?2|c2/i.test(capRaw) || capRaw === '2') ? 2
+          : ((/(?:level|cap)_?1|c1/i.test(capRaw) || capRaw === '1') ? 1 : 0);
+        return { ...a, status: a.decision, reason: a.reason, changedAt: a.decidedAt, approvedDate: a.decidedAt, changedBy: a.decidedBy, approvalLevel: capLevel };
+      }));
+      setHistoryRecords(merged);
     } catch { toast.error('Không thể tải lịch sử'); }
     finally { setHistoryLoading(false); }
   }, []);
 
-  const HISTORY_FIELD_ORDER = ['orgUnitId', 'portId', 'anchorageCode', 'anchorageName', 'navigationChannelId', 'buoyStationId', 'provinceId', 'detailedLocation', 'mapSymbolId', 'area', 'designWaterDepth', 'currentWaterDepth', 'bottomElevationDesign', 'maxVesselDWT', 'remarks', 'openingAnnouncementDate', 'publicDecision', 'investmentAgreement'];
+  const HISTORY_FIELD_ORDER = ['orgUnitId', 'portId', 'anchorageCode', 'anchorageName', 'navigationChannelId', 'buoyStationId', 'provinceId', 'detailedLocation', 'mapSymbolId', 'area', 'designWaterDepth', 'currentWaterDepth', 'bottomElevationDesign', 'maxVesselDWT', 'remarks', 'openingAnnouncementDate', 'publicDecision', 'investmentAgreement', 'Tọa độ GIS', 'Loại đối tượng GIS', 'Khu nước neo buộc tàu', 'Tài liệu đính kèm', 'coordinates', 'geometryType', 'attachments'];
 
   // Lọc + sắp xếp lịch sử client-side (API anchorage trả toàn bộ changeHistory)
   const filteredHistory = useMemo(() => {
@@ -581,7 +676,7 @@ export default function AnchorageList() {
           const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
           return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
         }).filter((c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments' && c.field !== 'spatialId');
-        const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
+        const isCreate = changes.length > 0 && changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
         const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
         const actionMeta = resolveHistoryActionMeta(g, changes);
         const barColor = actionMeta.color;
@@ -589,8 +684,11 @@ export default function AnchorageList() {
           if (raw === null || raw === '(null)' || raw === '') return null;
           const t = raw.trim();
           if (t.startsWith('[') && t.endsWith(']')) {
-            if (t === '[]') return 'Không có';
+            const fnNorm = normalizeHistoryKey(fn);
+            const isMooringAreas = fnNorm.includes('khu nuoc') || fnNorm.includes('mooring');
+            if (t === '[]') return isMooringAreas ? 'Chưa có khu nước neo buộc tàu' : 'Không có';
             const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
+            if (isMooringAreas) return `${parts.length} khu nước neo buộc tàu`;
             return `${parts.length} công trình hạ tầng`;
           }
           if (/^-?\d+(\.\d+)?$/.test(t)) {

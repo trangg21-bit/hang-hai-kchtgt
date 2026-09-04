@@ -131,6 +131,11 @@ const histLabels: Record<string, string> = {
   investmentAgreementDoc: 'Thỏa thuận đầu tư', waterAreaNeutralScope: 'Phạm vi khu nước',
   coordinateSystem: 'Hệ quy chiếu', displayRule: 'Quy tắc hiển thị',
   spatialId: 'Vị trí không gian', 'Trạng thái': 'Hành động',
+  // Backend (chuẩn VTS CHK) writes these GIS/attachment rows with the literal Vietnamese
+  // label as changedField; explicit key === label keeps histField / search / sort stable.
+  'Tọa độ GIS': 'Tọa độ GIS',
+  'Loại đối tượng GIS': 'Loại đối tượng GIS',
+  'Tài liệu đính kèm': 'Tài liệu đính kèm',
 };
 function histField(fn: string): string { return histLabels[fn] || fn; }
 function histVal(fn: string, val: string | null, orgMap?: Map<string, string>, symbolMap?: Map<string, string>, portMap?: Map<string, string>, berthMap?: Map<string, string>, waterwayMap?: Map<string, string>): string {
