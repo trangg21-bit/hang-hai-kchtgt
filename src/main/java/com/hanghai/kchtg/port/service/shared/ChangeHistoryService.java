@@ -42,6 +42,7 @@ public class ChangeHistoryService {
             case "WATERZONE", "WATER_ZONE", "VUNG_NUOC", "WATER_AREA" -> InfrastructureType.WATER_AREA;
             case "BUOY", "PHAO_TIEU" -> InfrastructureType.BUOY;
             case "BUOYSTATION", "BUOY_STATION", "TRAM_PHAO" -> InfrastructureType.BUOY_STATION;
+            case "STORMSHELTERAREA", "STORM_SHELTER_AREA", "STORM_SHELTER" -> InfrastructureType.STORM_SHELTER_AREA;
             case "DIKEREVETMENT", "DIKE_REVETMENT", "DE_KE" -> InfrastructureType.DIKE_REVETMENT;
             case "NAVIGATIONCHANNEL", "NAVIGATION_CHANNEL", "LUONG_HANG_HAI" -> InfrastructureType.NAVIGATION_CHANNEL;
             case "VTSSYSTEM", "VTS_SYSTEM" -> InfrastructureType.VTS_SYSTEM;
@@ -53,6 +54,7 @@ public class ChangeHistoryService {
             case "TRANSMISSION" -> InfrastructureType.TRANSMISSION;
             case "VTS_ASSIST", "VTSASSIST", "PHU_TRO" -> InfrastructureType.VTS_ASSIST;
             case "BEACONSTATION", "BEACON_STATION", "DEN_BIEN" -> InfrastructureType.LIGHTHOUSE;
+            case "DAITTDH", "DAI_TTDH" -> InfrastructureType.DAI_TTDH;
             case "SHIPREPAIRFACILITY", "SHIP_REPAIR_FACILITY" -> InfrastructureType.SHIP_REPAIR_FACILITY;
             default -> InfrastructureType.SEAPORT;
         };

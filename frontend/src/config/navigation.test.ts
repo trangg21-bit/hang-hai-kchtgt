@@ -12,9 +12,12 @@
  *     rows 1..28 — canonical route key per row as cross-checked by QA w2
  *     (07-qa-report-w2.md, AC-024-03 evidence).
  *   - Extra-screen inventory (screens beyond the 28 types, verified QA w2):
- *     /ship-repair-facility (2nd screen of matrix row 9), /navigation-channel-chk
- *     (CHK screen of row 5), /water-zone, /station/coastal (permission-gated
- *     screens with no matrix row of their own).
+ *     /navigation-channel-chk (CHK screen of row 5), /water-zone, /station/coastal
+ *     (permission-gated screens with no matrix row of their own).
+ *   - User decision 2026-09-04: legacy 2nd screen /ship-repair-facility (row 9)
+ *     removed from the kcht menu — matrix row 9 keeps its single canonical screen
+ *     /ship-repair-yard. The legacy route/page itself is untouched (still reachable
+ *     via /kcht-directory and GIS deep links).
  * ============================================================
  */
 import { describe, expect, it } from 'vitest';
@@ -82,7 +85,7 @@ const MATRIX_28_KEYS = [
   '/anchorage', // Khu neo đậu
   '/transfer-area', // Khu chuyển tải
   '/storm-shelter', // Khu tránh, trú bão
-  '/ship-repair-yard', // Cơ sở sửa chữa, đóng tàu (2nd screen /ship-repair-facility)
+  '/ship-repair-yard', // Cơ sở sửa chữa, đóng tàu
   '/dry-port', // Cảng cạn
   '/vts-system', // Hệ thống VTS
   '/vts-operation-center', // Trung tâm điều hành VTS
@@ -106,7 +109,6 @@ const MATRIX_28_KEYS = [
 
 /** Screens that exist for permission reasons but are NOT separate matrix types. */
 const EXTRA_SCREEN_KEYS = [
-  '/ship-repair-facility', // 2nd screen of matrix row 9 (different permission scope)
   '/navigation-channel-chk', // CHK-scope screen of Luồng hàng hải (row 5)
   '/water-zone', // permission-gated screen, no matrix row
   '/station/coastal', // Đài duyên hải VTS — operational screen, no matrix row

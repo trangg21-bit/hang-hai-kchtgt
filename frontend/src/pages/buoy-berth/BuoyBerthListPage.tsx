@@ -136,6 +136,7 @@ const historyFieldLabels: Record<string, string> = {
   portAuthorityApprovalContent: 'Nội dung phê duyệt Cảng vụ',
   departmentApprovedAt: 'Ngày duyệt Cục', departmentApprovedBy: 'Người duyệt Cục',
   departmentApprovalContent: 'Nội dung phê duyệt Cục', rejectionReason: 'Lý do từ chối',
+  'Tọa độ GIS': 'Tọa độ GIS', 'Loại đối tượng GIS': 'Loại đối tượng GIS', 'Tài liệu đính kèm': 'Tài liệu đính kèm',
   'Trạng thái': 'Hành động',
 };
 

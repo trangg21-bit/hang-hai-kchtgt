@@ -89,9 +89,7 @@ const kchtTree: NavNode[] = [
           { key: '/pier', route: '/pier', label: 'Quản lý cầu cảng', icon: icons.build },
         ],
       },
-      // Cùng 1 loại "Cơ sở sửa chữa, đóng tàu" nhưng 2 màn theo phân quyền khác nhau (giữ cả 2 để không mất lối vào)
       { key: '/ship-repair-yard', route: '/ship-repair-yard', label: 'Quản lý cơ sở sửa chữa, đóng tàu', icon: icons.tool },
-      { key: '/ship-repair-facility', route: '/ship-repair-facility', label: 'Cơ sở sửa chữa & đóng tàu', icon: icons.tool },
       { key: '/buoy-berth', route: '/buoy-berth', label: 'Quản lý bến phao', icon: icons.aim },
       { key: '/anchorage', route: '/anchorage', label: 'Quản lý khu neo đậu', icon: icons.compass },
       { key: '/transfer-area', route: '/transfer-area', label: 'Quản lý khu chuyển tải', icon: icons.export },

@@ -6,6 +6,7 @@ import {
 import {
   HistoryOutlined,
   ExclamationCircleOutlined,
+  FileOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -122,6 +123,10 @@ const historyFieldLabels: Record<string, string> = {
   portAuthorityApprovalContent: 'Nội dung phê duyệt Cảng vụ',
   departmentApprovedAt: 'Ngày duyệt Cục', departmentApprovedBy: 'Người duyệt Cục',
   departmentApprovalContent: 'Nội dung phê duyệt Cục', rejectionReason: 'Lý do từ chối',
+  // infrastructure_history: GIS + tệp đính kèm — backend ghi sẵn label tiếng Việt (kèm alias key tiếng Anh cho dữ liệu cũ)
+  'Tọa độ GIS': 'Tọa độ GIS', coordinates: 'Tọa độ GIS', gisLocation: 'Tọa độ GIS', spatialId: 'Tọa độ GIS',
+  'Loại đối tượng GIS': 'Loại đối tượng GIS', geometryType: 'Loại đối tượng GIS', objectType: 'Loại đối tượng GIS',
+  'Tài liệu đính kèm': 'Tài liệu đính kèm', attachments: 'Tài liệu đính kèm', attachmentList: 'Tài liệu đính kèm',
   'Trạng thái': 'Hành động',
 };
 
@@ -129,6 +134,11 @@ function historyFieldName(fn: string): string { return historyFieldLabels[fn] ||
 
 function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, string>, symbolMap?: Map<string, string>): string {
   if (!val || val === '(null)' || val === 'null') return '(trống)';
+  const fnNorm = normalizeHistoryKey(fn);
+  if (fnNorm === 'loai doi tuong gis' || fnNorm === 'loai hinh hoc' || fnNorm === 'geometrytype' || fnNorm === 'objecttype') {
+    const m: Record<string, string> = { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', LINESTRING: 'Đối tượng đường', POLYGON: 'Đối tượng vùng', MULTIPOINT: 'Tập hợp điểm' };
+    return m[val.toUpperCase()] || val;
+  }
   if (fn === 'orgUnitId' && orgMap) { const full = orgMap.get(val); return full ? full.split(' - ').pop() || full : val; }
   if (fn === 'operatingUnitId' && orgMap) { const full = orgMap.get(val); return full ? full.split(' - ').pop() || full : val; }
   if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
@@ -191,12 +201,144 @@ function historyChangeRows(item: any): Array<{ field: string; oldValue: string |
   });
 }
 
+// ── GIS WKT: tách tọa độ khỏi chuỗi WKT (POINT/MULTIPOINT/LINESTRING/LINE/POLYGON) ──
+function parseGisWktCoordinates(value: string): { typeName: string; points: Array<{ x: string; y: string }> } | null {
+  const str = (value || '').trim();
+  const typeMatch = /^(POINT|MULTIPOINT|LINESTRING|LINE|POLYGON)\s*\(/i.exec(str);
+  if (!typeMatch) return null;
+  const type = typeMatch[1].toUpperCase();
+  const typeName = type === 'POINT' ? 'Điểm'
+    : type === 'LINESTRING' || type === 'LINE' ? 'Đường'
+      : type === 'POLYGON' ? 'Vùng' : 'Tập hợp điểm';
+  let inner = str.slice(str.indexOf('(') + 1);
+  if (inner.endsWith(')')) inner = inner.slice(0, -1);
+  if (type === 'POLYGON') {
+    inner = inner.trim();
+    if (inner.startsWith('(') && inner.endsWith(')')) inner = inner.slice(1, -1);
+  }
+  const points = inner
+    .split(',')
+    .map((s) => s.replace(/[()]/g, '').trim().split(/\s+/).filter(Boolean))
+    .filter((p) => p.length >= 2)
+    .map((p) => ({ x: p[0], y: p[1] }));
+  if (points.length === 0) return null;
+  return { typeName, points };
+}
+
+function formatGisDms(xStr: string, yStr: string): string {
+  const x = Number(xStr);
+  const y = Number(yStr);
+  const toDms = (val: number, isLat: boolean): string => {
+    if (!Number.isFinite(val)) return '';
+    const abs = Math.abs(val);
+    const d = Math.floor(abs);
+    const mFloat = (abs - d) * 60;
+    const m = Math.floor(mFloat);
+    const s = Math.round((mFloat - m) * 600) / 10;
+    const dir = isLat ? (val >= 0 ? 'N' : 'S') : (val >= 0 ? 'E' : 'W');
+    return `${d}°${String(m).padStart(2, '0')}'${s.toFixed(1).padStart(4, '0')}"${dir}`;
+  };
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return `${xStr}, ${yStr}`;
+  // WKT lưu (lng lat); nếu cặp đảo (lat lng) thì hoán đổi để luôn hiển thị (vĩ độ, kinh độ)
+  let lat = y;
+  let lng = x;
+  if (Math.abs(x) <= 90 && Math.abs(y) > 90) { lat = x; lng = y; }
+  return `${toDms(lat, true)}, ${toDms(lng, false)}`;
+}
+
+// ── Tệp đính kèm: tách danh sách tên tệp từ JSON array / phân tách (dấu phẩy, chấm phẩy, xuống dòng) ──
+function splitHistoryFileNames(value: string): string[] {
+  const text = (value || '').trim();
+  if (!text || ['—', '-', '(null)', 'null', '(trống)', 'undefined', '[]', 'chua co'].includes(text.toLowerCase())) return [];
+  const stripPrefix = (name: string): string => name.trim().replace(/^(them|xoa|cu|moi)\s*:?\s+/i, '').trim();
+  if (text.startsWith('[') && text.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) {
+        return parsed.map((it: any) => {
+          if (it === null || it === undefined) return '';
+          if (typeof it === 'string') return it;
+          if (typeof it === 'object') return it?.originalName || it?.fileName || it?.name || it?.storagePath || '';
+          return String(it);
+        }).map(stripPrefix).filter(Boolean);
+      }
+    } catch { /* fall through to delimiter-based format */ }
+  }
+  return text.split(/[,;\n]+/).map(stripPrefix).filter((n) => n && !['—', '-', '(null)', 'null', '(trống)', 'undefined'].includes(n.toLowerCase()));
+}
+
+/** Người thao tác: backend phân giải sẵn họ tên đầy đủ trong changedBy (hoặc trường tên khác) — fallback qua userMap id→tên, không bao giờ '—' khi có tên thật. */
+function resolveHistoryActorName(item: any, userMap: Map<string, string>): string {
+  const direct = item?.changedBy || item?.createdBy || '';
+  if (direct) {
+    const mapped = userMap.get(direct);
+    if (mapped) return mapped;
+    return String(direct).trim();
+  }
+  const alt = item?.decidedBy || item?.performedBy || item?.approvedBy || item?.changedByName || item?.createdByName || item?.performedByName || item?.approvedByName || item?.userName || item?.actorName || '';
+  if (alt) {
+    const mapped = userMap.get(alt);
+    if (mapped) return mapped;
+    return String(alt).trim();
+  }
+  return '—';
+}
+
 function renderHistoryValueTag(field: string, val: string | null) {
   if (val === null || val === undefined || val === '—') {
     return <span style={{ color: textTertiary }}>—</span>;
   }
   const normKey = normalizeHistoryKey(field);
   const normVal = normalizeHistoryKey(val);
+  const rawValue = String(val ?? '').trim();
+
+  // ── Tài liệu đính kèm: hiển thị từng tên tệp trên một dòng (kèm icon), không in chuỗi nối dài ──
+  if (normKey.includes('dinh kem') || normKey.includes('attachment') || normKey.includes('tep tin') || normKey.includes('file')) {
+    const fileNames = splitHistoryFileNames(rawValue);
+    if (fileNames.length === 0) return <span style={{ color: textTertiary }}>—</span>;
+    if (fileNames.length === 1) {
+      return <span title={fileNames[0]} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{fileNames[0]}</span>;
+    }
+    return (
+      <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: spaceXs, minWidth: 0, maxWidth: '100%' }}>
+        {fileNames.map((fileName, fi) => (
+          <span key={fi} title={fileName} style={{ display: 'inline-flex', alignItems: 'center', gap: spaceXs, minWidth: 0, maxWidth: '100%' }}>
+            <FileOutlined style={{ color: actionPrimary, flexShrink: 0 }} />
+            <span style={{ color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{fileName}</span>
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  // ── GIS: tọa độ WKT / cặp tọa độ thập phân → hiển thị text dễ đọc, không in chuỗi WKT khổng lồ ──
+  const gisParsed = parseGisWktCoordinates(rawValue);
+  const isGisField = normKey.includes('toa do') || normKey.includes('coordinate') || normKey.includes('gis') || normKey.includes('khong gian') || normKey === 'spatialid';
+  if (gisParsed) {
+    const { typeName, points } = gisParsed;
+    return (
+      <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: spaceXs, minWidth: 0, maxWidth: '100%' }}>
+        <span style={{ fontSize: fontSizeSm, fontWeight: fontWeightBold, color: actionPrimary, whiteSpace: 'nowrap' }}>
+          {typeName} ({points.length} điểm)
+        </span>
+        {points.map((pt, pi) => (
+          <span key={pi} style={{ fontSize: fontSizeSm, color: textPrimary, lineHeight: 1.5, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+            {points.length > 1 ? <span style={{ color: textSecondary, marginRight: spaceXs }}>#{pi + 1}:</span> : null}
+            {formatGisDms(pt.x, pt.y)}
+          </span>
+        ))}
+      </span>
+    );
+  }
+  if (isGisField && /^-?\d+(\.\d+)?\s+-?\d+(\.\d+)?$/.test(rawValue)) {
+    const pair = rawValue.split(/\s+/);
+    return (
+      <span style={{ fontSize: fontSizeSm, color: textPrimary, lineHeight: 1.5, wordBreak: 'break-word' }}>
+        {formatGisDms(pair[0], pair[1])}
+      </span>
+    );
+  }
+
   if (normKey === 'approvalstatus' || normKey === 'trang thai phe duyet' || normKey.includes('phe duyet') || normKey.includes('trang thai')) {
     if (normVal === 'da duyet' || normVal === 'da phe duyet' || normVal === 'approved' || normVal === 'approved_level2') {
       return (<span style={statusBadgeStyle(statusOperational)}>{val}</span>);
@@ -431,7 +573,7 @@ export default function DaiTtdhList() {
                       <div style={historyInfoTitleStyle}>
                         {historyMode === 'all' && (historyEntityNames[change.entityId] || 'Đài TTDH')}
                         <span style={{ marginLeft: 'auto', color: textTertiary, fontWeight: 400 }}>
-                          {userMap.get(change.changedBy || change.createdBy || '') || change.changedBy || change.createdBy || '—'}
+                          {resolveHistoryActorName(change, userMap)}
                         </span>
                       </div>
                       <div style={historyMetaRowStyle}>

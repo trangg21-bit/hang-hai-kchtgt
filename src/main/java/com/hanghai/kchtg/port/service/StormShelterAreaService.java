@@ -2,7 +2,11 @@ package com.hanghai.kchtg.port.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.EntityFields;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
@@ -75,6 +79,7 @@ public class StormShelterAreaService {
     private final StormShelterMooringWaterAreaRepository stormShelterMooringWaterAreaRepository;
     private final StormShelterMooringWaterAreaAnchorPointRepository stormShelterMooringWaterAreaAnchorPointRepository;
     private final ChangeHistoryService changeHistoryService;
+    private final InfrastructureHistoryRepository historyRepository;
 
     @Value("${app.upload.attachment-path:uploads/attachments}")
     private String attachmentPath;
@@ -131,8 +136,10 @@ public class StormShelterAreaService {
         StormShelterArea saved = stormShelterAreaRepository.save(entity);
         persistGisAndMooring(saved, request.getGeometryType(), request.getCoordinates(),
                 request.getLongitude(), request.getLatitude(), request.getMooringWaterAreas());
-        // [TẠM TẮT GHI LỊCH SỬ] Bảng change_logs đã bị V20260825162500 drop; không ghi lịch sử (chuẩn Khu neo đậu)
-        // changeHistoryService.recordChanges("StormShelterArea", saved.getId().toString(), "system", new StormShelterArea(), saved);
+        // Ghi lịch sử thay đổi vào infrastructure_history (chuẩn Cảng biển/Bến cảng) với actor thật từ SecurityContext
+        UUID operatorId = SecurityUtils.getCurrentUserId();
+        String actorId = operatorId != null ? operatorId.toString() : "system";
+        changeHistoryService.recordChanges("StormShelterArea", saved.getId().toString(), actorId, new StormShelterArea(), saved);
         evictAfterCommit();
 
         return toResponse(saved);
@@ -218,12 +225,66 @@ public class StormShelterAreaService {
             entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         }
 
+        boolean wasApproved = snapshot.getApprovalStatus() == ApprovalStatus.APPROVED
+                || snapshot.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+        UUID operatorId = SecurityUtils.getCurrentUserId();
+        String actorId = operatorId != null ? operatorId.toString() : "system";
+
+        // Chụp tọa độ WKT + loại hình GIS cũ TRƯỚC khi persistGisAndMooring tạo/ghi đè spatial object (chuẩn PortService.update)
+        GisGeometryType oldGeomType = null;
+        String oldWkt = null;
+        if (snapshot.getSpatialId() != null) {
+            GisSpatialObject oldSpatial = gisSpatialObjectService.findById(snapshot.getSpatialId()).orElse(null);
+            if (oldSpatial != null) {
+                oldWkt = oldSpatial.getCoordinates();
+                oldGeomType = oldSpatial.getGeometryType();
+            }
+        }
+        // Chụp danh sách phạm vi khu nước neo buộc tàu cũ TRƯỚC khi replaceMooringWaterAreas xóa/ghi lại
+        String oldMooringSummary = stormShelterMooringWaterAreaRepository.findByStormShelterAreaId(entity.getId()).stream()
+                .map(StormShelterMooringWaterArea::getDescription)
+                .filter(d -> d != null && !d.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         StormShelterArea saved = stormShelterAreaRepository.save(entity);
         persistGisAndMooring(saved, request.getGeometryType(), coordinates,
                 request.getLongitude(), request.getLatitude(), request.getMooringWaterAreas());
 
-        // [TẠM TẮT GHI LỊCH SỬ] Bảng change_logs đã bị V20260825162500 drop; không ghi lịch sử (chuẩn Khu neo đậu)
-        // changeHistoryService.recordChanges("StormShelterArea", saved.getId().toString(), "system", snapshot, saved);
+        // Lịch sử thay đổi chỉ ghi khi hồ sơ ĐÃ được phê duyệt trước khi sửa (chuẩn Cảng biển/Bến cảng)
+        if (wasApproved) {
+            // 2 dòng riêng "Tọa độ GIS" + "Loại đối tượng GIS" khi có tọa độ mới (chuẩn VTS CHK)
+            if (coordinates != null && !coordinates.trim().isEmpty()) {
+                String newWkt = coordinates.trim();
+                boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
+                boolean typeChanged = request.getGeometryType() != null && oldGeomType != request.getGeometryType();
+                if (wktChanged) {
+                    changeHistoryService.insertChangeRecord("StormShelterArea", saved.getId(), "Tọa độ GIS",
+                            (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
+                            newWkt, actorId);
+                }
+                if (typeChanged) {
+                    changeHistoryService.insertChangeRecord("StormShelterArea", saved.getId(), "Loại đối tượng GIS",
+                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
+                            geometryTypeLabel(request.getGeometryType()), actorId);
+                }
+            }
+            // Phạm vi khu nước neo buộc tàu (child collection) — summary đọc được thay vì toString rác
+            String newMooringSummary = request.getMooringWaterAreas() == null ? ""
+                    : request.getMooringWaterAreas().stream()
+                            .map(StormShelterMooringWaterAreaRequest::getDescription)
+                            .filter(d -> d != null && !d.isBlank())
+                            .map(String::trim)
+                            .collect(Collectors.joining(", "));
+            if (!java.util.Objects.equals(oldMooringSummary, newMooringSummary)) {
+                changeHistoryService.insertChangeRecord("StormShelterArea", saved.getId(), "Phạm vi khu nước neo buộc tàu",
+                        oldMooringSummary.isEmpty() ? "Chưa có" : oldMooringSummary,
+                        newMooringSummary.isEmpty() ? "Chưa có" : newMooringSummary,
+                        actorId);
+            }
+            // Field-level: diff snapshot → saved, mỗi trường khác biệt một dòng (chuẩn ChangeHistoryService.recordChanges)
+            changeHistoryService.recordChanges("StormShelterArea", saved.getId().toString(), actorId, snapshot, saved);
+        }
         evictAfterCommit();
 
         return toResponse(saved);
@@ -299,11 +360,13 @@ public class StormShelterAreaService {
         }
         // Chụp snapshot trước khi xóa mềm để ghi lịch sử thay đổi (chuẩn Bến cảng)
         StormShelterArea snapshot = buildSnapshot(entity);
-        entity.softDelete(SecurityUtils.getCurrentUserId());
+        UUID operatorId = SecurityUtils.getCurrentUserId();
+        String actorId = operatorId != null ? operatorId.toString() : "system";
+        entity.softDelete(operatorId);
         stormShelterAreaRepository.save(entity);
-        // [TẠM TẮT GHI LỊCH SỬ] Bảng change_logs đã bị V20260825162500 drop; không ghi lịch sử (chuẩn Khu neo đậu)
-        // changeHistoryService.recordChanges("StormShelterArea", entity.getId().toString(), "system", snapshot, entity);
-        // changeHistoryService.insertChangeRecord("StormShelterArea", entity.getId(), "Trạng thái", null, "Đã xóa", "system");
+        // Ghi lịch sử thay đổi vào infrastructure_history (chuẩn Cảng biển/Bến cảng) với actor thật từ SecurityContext
+        changeHistoryService.recordChanges("StormShelterArea", entity.getId().toString(), actorId, snapshot, entity);
+        changeHistoryService.insertChangeRecord("StormShelterArea", entity.getId(), "Trạng thái", null, "Đã xóa", actorId);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
@@ -371,6 +434,12 @@ public class StormShelterAreaService {
             attachment.setContentType(file.getContentType());
             attachment.setUploadedBy(userId);
             savedAttachments.add(attachmentRepository.save(attachment));
+
+            // Ghi lịch sử file đính kèm chỉ khi khu tránh, trú bão đã được phê duyệt (chuẩn Bến cảng/DocumentService)
+            if ("STORM_SHELTER".equalsIgnoreCase(entityType)) {
+                recordStormShelterAttachmentHistory(entityId, originalFilename,
+                        InfrastructureHistoryStatus.ATTACHMENT_UPLOADED);
+            }
         }
         return savedAttachments.stream().map(this::toAttachmentDto).collect(java.util.stream.Collectors.toList());
     }
@@ -387,12 +456,71 @@ public class StormShelterAreaService {
         if (!attachment.getEntityId().equals(entityId)) {
             throw new IllegalArgumentException("File không thuộc entity này");
         }
+        String fileName = attachment.getFileName();
         try {
             java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
         } catch (Exception e) {
             log.warn("Không thể xóa file: {}", attachment.getFilePath(), e);
         }
         attachmentRepository.delete(attachment);
+
+        // Ghi lịch sử file đính kèm chỉ khi khu tránh, trú bão đã được phê duyệt (chuẩn Bến cảng/DocumentService)
+        if ("STORM_SHELTER".equalsIgnoreCase(entityType)) {
+            recordStormShelterAttachmentHistory(entityId, fileName, InfrastructureHistoryStatus.ATTACHMENT_DELETED);
+        }
+    }
+
+    /**
+     * Ghi lịch sử thay đổi file đính kèm của Khu tránh, trú bão (chuẩn Port/BerthService.recordBerthAttachmentHistory:
+     * status ATTACHMENT_UPLOADED / ATTACHMENT_DELETED, changedField "Tài liệu đính kèm",
+     * approvedBy = user thật từ SecurityContext). Chỉ ghi khi hồ sơ đã được phê duyệt (APPROVED / APPROVED_LEVEL2).
+     */
+    private void recordStormShelterAttachmentHistory(UUID stormShelterAreaId, String fileName,
+                                                     InfrastructureHistoryStatus status) {
+        try {
+            if (stormShelterAreaId == null || historyRepository == null) {
+                return;
+            }
+            StormShelterArea stormShelter = stormShelterAreaRepository.findById(stormShelterAreaId).orElse(null);
+            if (stormShelter == null) {
+                return;
+            }
+            ApprovalStatus approval = stormShelter.getApprovalStatus();
+            boolean wasApproved = approval == ApprovalStatus.APPROVED
+                    || approval == ApprovalStatus.APPROVED_LEVEL2;
+            if (!wasApproved) {
+                return;
+            }
+            String name = fileName != null ? fileName : "không rõ tên";
+            boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(stormShelterAreaId)
+                    .refType(InfrastructureType.STORM_SHELTER_AREA)
+                    .approvalLevel(ApprovalLevel.LEVEL_0)
+                    .status(status)
+                    .approvedBy(SecurityUtils.getCurrentUserId())
+                    .approvedDate(LocalDateTime.now())
+                    .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + name)
+                    .changedField("Tài liệu đính kèm")
+                    .previousValue(uploaded ? "—" : name)
+                    .newValue(uploaded ? name : "—")
+                    .build());
+            log.info("[StormShelterAreaService] Đã ghi lịch sử {} file đính kèm của Khu tránh, trú bão [{}]: {}",
+                    uploaded ? "tải lên" : "xóa", stormShelterAreaId, name);
+        } catch (Exception e) {
+            log.warn("[StormShelterAreaService] Không ghi được lịch sử file đính kèm (stormShelterAreaId={}): {}",
+                    stormShelterAreaId, e.getMessage());
+        }
+    }
+
+    /** Nhãn hiển thị loại hình GIS theo chuẩn VTS CHK (dùng cho lịch sử thay đổi). */
+    private static String geometryTypeLabel(GisGeometryType type) {
+        if (type == null) return "Chưa có";
+        return switch (type) {
+            case POINT -> "Đối tượng điểm";
+            case LINE -> "Đối tượng đường";
+            case POLYGON -> "Đối tượng vùng";
+        };
     }
 
     private AttachmentDto toAttachmentDto(Attachment entity) {

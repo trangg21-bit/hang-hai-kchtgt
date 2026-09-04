@@ -228,8 +228,12 @@ public class BuoyStationService {
             entity = phaoRepo.save(entity);
         }
 
+        // Actor thật từ SecurityContext — lúc create() auditor chưa chạy nên getCreatedBy() null,
+        // fallback "system" trước đây khiến ChangeHistoryService lấy username (không phải UUID)
+        // → approvedBy null → drawer lịch sử hiện "—". Chỉ fallback khi không có user đăng nhập.
+        UUID creatorId = SecurityUtils.getCurrentUserId();
         changeHistoryService.recordChanges("BuoyStation", entity.getId().toString(),
-                entity.getCreatedBy() != null ? entity.getCreatedBy().toString() : "system",
+                creatorId != null ? creatorId.toString() : "system",
                 new BuoyStation(), entity);
         notificationService.sendApprovalNotificationPhao(entity);
 
@@ -307,6 +311,16 @@ public class BuoyStationService {
 
         phaoRepo.save(entity);
 
+        // Actor thật từ SecurityContext — nếu truyền "system", ChangeHistoryService fallback
+        // auth.getName() (= username, không phải UUID) → approvedBy null → drawer lịch sử hiện "—".
+        UUID operatorId = SecurityUtils.getCurrentUserId();
+        String actorId = operatorId != null ? operatorId.toString() : "system";
+
+        // Hồ sơ đã duyệt hoàn toàn (PUBLISHED / APPROVED) mới ghi lịch sử thay đổi vị trí GIS
+        // (chuẩn PortService/BuoyService: chỉ ghi khi hồ sơ đã được duyệt).
+        boolean wasApproved = StationStatus.PUBLISHED.equals(entity.getStatus())
+                || ApprovalStatus.APPROVED.equals(entity.getApprovalStatus());
+
         String coordinates = request.getCoordinates();
         if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
                 && request.getLatitude() != null) {
@@ -314,6 +328,18 @@ public class BuoyStationService {
         }
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
+            // Lấy tọa độ + loại hình cũ (WKT) trước khi createOrUpdate ghi đè spatial object
+            GisGeometryType oldGeomType = null;
+            String oldWkt = null;
+            if (entity.getSpatialId() != null) {
+                GisSpatialObject oldSpatial = gisSpatialObjectService.findById(entity.getSpatialId())
+                        .orElse(null);
+                if (oldSpatial != null) {
+                    oldWkt = oldSpatial.getCoordinates();
+                    oldGeomType = oldSpatial.getGeometryType();
+                }
+            }
+
             GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType()
                     : GisGeometryType.POINT;
             GisSpatialObjectType objType = GisSpatialObjectType.POINT_BUOY;
@@ -328,11 +354,28 @@ public class BuoyStationService {
                     refId,
                     InfrastructureType.BUOY);
             entity.setSpatialId(spatialObj.getId());
+
+            // Lịch sử vị trí chuẩn Cảng biển: 2 dòng riêng đọc được
+            // "Tọa độ GIS" + "Loại đối tượng GIS", kèm approvedBy = user thật.
+            if (wasApproved) {
+                String newWkt = coordinates.trim();
+                boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
+                if (wktChanged) {
+                    changeHistoryService.insertChangeRecord("BuoyStation", entity.getId(), "Tọa độ GIS",
+                            (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
+                            newWkt, actorId);
+                }
+                boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
+                if (typeChanged) {
+                    changeHistoryService.insertChangeRecord("BuoyStation", entity.getId(), "Loại đối tượng GIS",
+                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
+                            geometryTypeLabel(geomType), actorId);
+                }
+            }
         }
 
         changeHistoryService.recordChanges("BuoyStation", entity.getId().toString(),
-                SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : "system",
-                snapshot, entity);
+                actorId, snapshot, entity);
 
         return toResponse(entity);
     }
@@ -463,6 +506,16 @@ public class BuoyStationService {
     }
 
     // -- HELPERS --
+
+    /** Nhãn hiển thị loại hình GIS theo chuẩn VTS CHK (dùng cho lịch sử thay đổi, mirror PortService). */
+    private static String geometryTypeLabel(GisGeometryType type) {
+        if (type == null) return "Chưa có";
+        return switch (type) {
+            case POINT -> "Đối tượng điểm";
+            case LINE -> "Đối tượng đường";
+            case POLYGON -> "Đối tượng vùng";
+        };
+    }
 
     private void validateInspectionDates(LocalDate last, LocalDate next) {
         if (last != null && last.isAfter(LocalDate.now())) {

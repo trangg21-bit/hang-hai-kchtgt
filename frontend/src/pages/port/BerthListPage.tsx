@@ -153,7 +153,10 @@ const historyFieldLabels: Record<string, string> = {
   length: 'Chiều dài', width: 'Chiều rộng',
   operationalStatus: 'Tình trạng', approvalStatus: 'Trạng thái',
   orgUnitId: 'Đơn vị quản lý', mapSymbolId: 'Biểu tượng',
-  spatialId: 'Vị trí không gian', coordinateSystem: 'Hệ quy chiếu',
+  // spatialId (và infrastructureList/attachments) bị drawer filter loại trước khi render
+  // (xem filter dưới) nên không cần label; backend mới ghi changedField tiếng Việt
+  // ('Tọa độ GIS'/'Loại đối tượng GIS'/'Tài liệu đính kèm') — fallback fn giữ nguyên.
+  coordinateSystem: 'Hệ quy chiếu',
   departmentApprovalContent: 'Nội dung phê duyệt cấp Cục',
   portAuthorityApprovalContent: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
   'Trạng thái': 'Hành động',

@@ -290,6 +290,16 @@ public class BuoyService {
         }
     }
 
+    /** Nhãn hiển thị loại hình GIS theo chuẩn Cảng biển (dùng cho lịch sử thay đổi). */
+    private static String geometryTypeLabel(GisGeometryType type) {
+        if (type == null) return "Chưa có";
+        return switch (type) {
+            case POINT -> "Đối tượng điểm";
+            case LINE -> "Đối tượng đường";
+            case POLYGON -> "Đối tượng vùng";
+        };
+    }
+
     // -- UPDATE --
 
     @Transactional
@@ -502,8 +512,25 @@ public class BuoyService {
 
         entity = buoyRepo.save(entity);
 
+        // Actor thật từ SecurityContext — truyền "system" làm ChangeHistoryService fallback
+        // auth.getName() (= username, không phải UUID) → approvedBy null → drawer hiện "—".
+        java.util.UUID operatorId = SecurityUtils.getCurrentUserId();
+        String actorId = operatorId != null ? operatorId.toString() : "system";
+
         // Sync GIS spatial object
         if (wkt != null) {
+            // Lấy tọa độ + loại hình cũ (WKT) trước khi createOrUpdate ghi đè spatial object
+            GisGeometryType oldGeomType = null;
+            String oldWkt = null;
+            if (entity.getSpatialId() != null) {
+                GisSpatialObject oldSpatial = gisSpatialObjectService
+                        .findById(entity.getSpatialId()).orElse(null);
+                if (oldSpatial != null) {
+                    oldWkt = oldSpatial.getCoordinates();
+                    oldGeomType = oldSpatial.getGeometryType();
+                }
+            }
+
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     entity.getSpatialId(),
                     entity.getName(),
@@ -516,6 +543,25 @@ public class BuoyService {
                 entity.setSpatialId(spatialObj.getId());
                 buoyRepo.save(entity);
             }
+
+            // Lịch sử vị trí theo chuẩn Cảng biển: 2 dòng đọc được
+            // "Tọa độ GIS" + "Loại đối tượng GIS", approvedBy = user thật.
+            if (wasApproved) {
+                String newWkt = wkt.trim();
+                GisGeometryType newGeomType = resolveGeometryType(entity.getGeometryType());
+                boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
+                boolean typeChanged = oldGeomType != newGeomType;
+                if (wktChanged) {
+                    changeHistoryService.insertChangeRecord("Buoy", entity.getId(), "Tọa độ GIS",
+                            (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
+                            newWkt, actorId);
+                }
+                if (typeChanged) {
+                    changeHistoryService.insertChangeRecord("Buoy", entity.getId(), "Loại đối tượng GIS",
+                            geometryTypeLabel(oldGeomType),
+                            geometryTypeLabel(newGeomType), actorId);
+                }
+            }
         }
 
         // Only record history when the record is already approved
@@ -524,7 +570,7 @@ public class BuoyService {
             logHistory(entity, BeaconHistoryActionType.UPDATE,
                     getChangedFields(oldJson, newJson), oldJson, newJson);
             changeHistoryService.recordChanges("Buoy", entity.getId().toString(),
-                    "system", snapshot, entity);
+                    actorId, snapshot, entity);
         }
         return toResponse(entity);
     }
@@ -550,8 +596,12 @@ public class BuoyService {
         entity.softDelete(SecurityUtils.getCurrentUserId());
         buoyRepo.save(entity);
 
+        // Actor thật từ SecurityContext — truyền "system" làm approvedBy null (drawer "—").
+        java.util.UUID operatorId = SecurityUtils.getCurrentUserId();
+        String actorId = operatorId != null ? operatorId.toString() : "system";
+
         logHistory(entity, BeaconHistoryActionType.SOFT_DELETE, null, null, toJson(entity));
-        changeHistoryService.insertChangeRecord("Buoy", entity.getId(), "Trạng thái", null, "Đã xóa", "system");
+        changeHistoryService.insertChangeRecord("Buoy", entity.getId(), "Trạng thái", null, "Đã xóa", actorId);
 
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());

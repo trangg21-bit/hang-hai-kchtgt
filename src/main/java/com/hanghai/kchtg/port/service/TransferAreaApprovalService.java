@@ -1,12 +1,14 @@
 package com.hanghai.kchtg.port.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.port.entity.ApprovalLog;
-import com.hanghai.kchtg.port.entity.ChangeLog;
 import com.hanghai.kchtg.port.entity.TransferArea;
-import com.hanghai.kchtg.port.repository.ApprovalLogRepository;
-import com.hanghai.kchtg.port.repository.ChangeLogRepository;
 import com.hanghai.kchtg.port.repository.TransferAreaRepository;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,8 +16,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Two-level approval service for TransferArea entity.
@@ -23,7 +30,9 @@ import java.util.UUID;
  * Level 2: CUC (Department) — PORT_AUTHORITY → APPROVED
  * Reject at any level → REJECTED
  * <p>
- * Entity type: "TransferArea" (for ApprovalLog + ChangeLog)
+ * Lịch sử thay đổi đọc từ bảng tập trung {@code infrastructure_history}
+ * (refType = TRANSSHIPMENT_AREA) — cùng cấu trúc ghi/đọc với Cảng biển / Vùng nước;
+ * actor UUID được phân giải sang họ tên (không trả UUID thô để drawer không hiển thị "—").
  * </p>
  */
 @Slf4j
@@ -32,8 +41,8 @@ import java.util.UUID;
 public class TransferAreaApprovalService {
 
     private final TransferAreaRepository transferAreaRepository;
-    private final ChangeLogRepository changeLogRepository;
-    private final ApprovalLogRepository approvalLogRepository;
+    private final InfrastructureHistoryRepository historyRepository;
+    private final UserRepository userRepository;
 
     @Transactional
     public void approve(UUID id, String userId, String cap, String content) {
@@ -113,34 +122,124 @@ public class TransferAreaApprovalService {
         String entityId = id.toString();
         String entityType = "TransferArea";
 
-        // [TẠM TẮT ĐỌC LỊCH SỬ] Bảng change_logs/approval_logs đã bị V20260825162500 drop — trả rỗng để không crash
-        List<ChangeLog> changeHistory = List.of();
-        List<ApprovalLog> approvalLogs = List.of();
+        // Đọc từ infrastructure_history (refType = TRANSSHIPMENT_AREA) — chuẩn WaterZoneApprovalService
+        List<InfrastructureHistory> list =
+                historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.TRANSSHIPMENT_AREA, id);
+        Map<UUID, String> userNameMap = resolveUserNames(list);
 
-        return java.util.Map.of(
-                "entityId", entityId,
-                "entityType", entityType,
-                "currentApprovalStatus", entity.getApprovalStatus(),
-                "changeHistory", changeHistory,
-                "approvalLog", approvalLogs
-        );
+        List<Map<String, Object>> changeHistory = list.stream()
+                .filter(h -> h.getChangedField() != null)
+                .map(h -> toChangeHistoryMap(h, entityType, entityId, userNameMap))
+                .toList();
+
+        List<Map<String, Object>> approvalLog = list.stream()
+                .filter(h -> h.getStatus() != null && h.getChangedField() == null)
+                .map(h -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("entityType", entityType);
+                    m.put("entityId", entityId);
+                    m.put("decision", h.getStatus().name());
+                    m.put("reason", h.getReason() != null ? h.getReason() : "");
+                    m.put("decidedBy", resolveActorName(h, userNameMap));
+                    m.put("decidedAt", h.getApprovedDate());
+                    m.put("cap", h.getApprovalLevel() != null ? h.getApprovalLevel().name() : "");
+                    return m;
+                })
+                .toList();
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("entityId", entityId);
+        result.put("entityType", entityType);
+        result.put("currentApprovalStatus", entity.getApprovalStatus());
+        result.put("changeHistory", changeHistory);
+        result.put("approvalLog", approvalLog);
+        return result;
     }
 
     @Transactional(readOnly = true)
     public java.util.Map<String, Object> getAllHistory() {
         String entityType = "TransferArea";
-        List<ChangeLog> changeHistory = List.of(); // [TẠM TẮT] bảng change_logs đã bị V20260825162500 drop — trả rỗng
-        java.util.Map<String, String> entityNames = new java.util.HashMap<>();
-        for (ChangeLog log : changeHistory) {
-            if (!entityNames.containsKey(log.getEntityId())) {
+        List<InfrastructureHistory> list =
+                historyRepository.findByRefTypeOrderByApprovedDateDesc(InfrastructureType.TRANSSHIPMENT_AREA);
+
+        Map<String, String> entityNames = new HashMap<>();
+        for (InfrastructureHistory h : list) {
+            if (h.getRefId() != null && !entityNames.containsKey(h.getRefId().toString())) {
                 try {
-                    transferAreaRepository.findById(UUID.fromString(log.getEntityId()))
-                        .ifPresent(a -> entityNames.put(log.getEntityId(), a.getTransferAreaName()));
+                    transferAreaRepository.findById(h.getRefId())
+                            .ifPresent(t -> entityNames.put(h.getRefId().toString(), t.getTransferAreaName()));
                 } catch (Exception e) {
-                    entityNames.put(log.getEntityId(), log.getEntityId());
+                    entityNames.put(h.getRefId().toString(), h.getRefId().toString());
                 }
             }
         }
-        return java.util.Map.of("entityType", entityType, "changeHistory", changeHistory, "entityNames", entityNames);
+
+        Map<UUID, String> userNameMap = resolveUserNames(list);
+        List<Map<String, Object>> changeHistory = list.stream()
+                .filter(h -> h.getChangedField() != null)
+                .map(h -> toChangeHistoryMap(h, entityType,
+                        h.getRefId() != null ? h.getRefId().toString() : "", userNameMap))
+                .toList();
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("entityType", entityType);
+        result.put("changeHistory", changeHistory);
+        result.put("entityNames", entityNames);
+        return result;
+    }
+
+    /** Batch resolve actor UUID → tên hiển thị (fullName, fallback username) — chuẩn WaterZoneApprovalService. */
+    private Map<UUID, String> resolveUserNames(List<InfrastructureHistory> list) {
+        Set<UUID> userIds = list.stream()
+                .map(InfrastructureHistory::getApprovedBy)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (userIds.isEmpty()) {
+            return java.util.Collections.emptyMap();
+        }
+        return userRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(
+                        User::getId,
+                        u -> u.getFullName() != null && !u.getFullName().isBlank() ? u.getFullName() : u.getUsername(),
+                        (a, b) -> a));
+    }
+
+    private String resolveActorName(InfrastructureHistory h, Map<UUID, String> userNameMap) {
+        if (h.getApprovedBy() == null) {
+            return "";
+        }
+        return userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString());
+    }
+
+    /**
+     * Map một dòng infrastructure_history sang dạng drawer đọc được: mang đồng thời cặp alias
+     * cũ/mới (changedField+fieldName, previousValue+oldValue, approvedDate+changedAt) và actor
+     * đã phân giải tên (approvedByName/changedBy) kèm UUID thô (approvedBy).
+     */
+    private Map<String, Object> toChangeHistoryMap(InfrastructureHistory h, String entityType, String entityId,
+                                                   Map<UUID, String> userNameMap) {
+        String field = h.getChangedField() != null ? h.getChangedField() : "";
+        String oldValue = h.getPreviousValue() != null ? h.getPreviousValue() : "";
+        String newValue = h.getNewValue() != null ? h.getNewValue() : "";
+        String resolvedName = resolveActorName(h, userNameMap);
+        Map<String, Object> m = new HashMap<>();
+        m.put("id", h.getId());
+        m.put("entityType", entityType);
+        m.put("entityId", entityId);
+        m.put("changedField", field);
+        m.put("fieldName", field);
+        m.put("previousValue", oldValue);
+        m.put("oldValue", oldValue);
+        m.put("newValue", newValue);
+        m.put("changedBy", resolvedName);
+        m.put("approvedByName", resolvedName);
+        m.put("approvedBy", h.getApprovedBy() != null ? h.getApprovedBy().toString() : "");
+        m.put("approvedDate", h.getApprovedDate());
+        m.put("changedAt", h.getApprovedDate());
+        m.put("status", h.getStatus() != null ? h.getStatus().name() : "");
+        m.put("reason", h.getReason() != null ? h.getReason() : "");
+        m.put("approvalLevel", h.getApprovalLevel() != null ? h.getApprovalLevel().name() : "");
+        return m;
     }
 }

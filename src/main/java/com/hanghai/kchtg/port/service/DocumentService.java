@@ -1,9 +1,21 @@
 package com.hanghai.kchtg.port.service;
 
+import com.hanghai.kchtg.beacon.entity.Buoy;
+import com.hanghai.kchtg.beacon.repository.BuoyRepository;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.port.dto.document.DocumentResponse;
 import com.hanghai.kchtg.port.entity.Document;
+import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.port.repository.DocumentRepository;
+import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.station.entity.BuoyStation;
+import com.hanghai.kchtg.station.repository.BuoyStationRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +59,10 @@ public class DocumentService {
     );
 
     private final DocumentRepository documentRepository;
+    private final InfrastructureHistoryRepository historyRepository;
+    private final PortRepository portRepository;
+    private final BuoyStationRepository buoyStationRepository;
+    private final BuoyRepository buoyRepository;
 
     @Transactional
     public DocumentResponse uploadFile(String entityType, String entityId,
@@ -88,6 +104,9 @@ public class DocumentService {
         Document saved = documentRepository.save(entity);
         log.info("[DocumentService.uploadFile] Saved Document [{}] for entity={} {}",
                 saved.getId(), entityType, entityId);
+
+        recordPortAttachmentHistory(entityType, entityId, originalFilename,
+                InfrastructureHistoryStatus.ATTACHMENT_UPLOADED);
 
         return toResponse(saved);
     }
@@ -145,8 +164,92 @@ public class DocumentService {
         entity.setUpdatedBy(UUID.fromString(userId));
         documentRepository.save(entity);
 
+        recordPortAttachmentHistory(entity.getEntityType(), entity.getEntityId(), entity.getFileName(),
+                InfrastructureHistoryStatus.ATTACHMENT_DELETED);
+
         log.info("[DocumentService.delete] Soft-deleted Document [{}] key={}, deletedBy={}",
                 id, entity.getStorageKey(), userId);
+    }
+
+    /**
+     * Ghi lịch sử thay đổi file đính kèm (chuẩn TTDH VTS: status
+     * ATTACHMENT_UPLOADED / ATTACHMENT_DELETED, changedField "Tài liệu đính kèm").
+     * Chỉ ghi khi entityType = "port", "buoy" hoặc "buoy-station" và hồ sơ đã duyệt
+     * (giống VtsOperationCenterService).
+     */
+    private void recordPortAttachmentHistory(String entityType, String entityId, String fileName,
+                                             InfrastructureHistoryStatus status) {
+        try {
+            boolean isPort = "port".equalsIgnoreCase(entityType);
+            boolean isBuoy = "buoy".equalsIgnoreCase(entityType);
+            boolean isBuoyStation = "buoy-station".equalsIgnoreCase(entityType);
+            if ((!isPort && !isBuoy && !isBuoyStation) || historyRepository == null) {
+                return;
+            }
+            UUID refId = UUID.fromString(entityId);
+            InfrastructureType refType;
+            String entityLabel;
+            if (isPort) {
+                Port port = portRepository.findById(refId).orElse(null);
+                if (port == null) {
+                    return;
+                }
+                ApprovalStatus approval = port.getApprovalStatus();
+                boolean wasApproved = approval == ApprovalStatus.APPROVED
+                        || approval == ApprovalStatus.APPROVED_LEVEL2;
+                if (!wasApproved) {
+                    return;
+                }
+                refType = InfrastructureType.SEAPORT;
+                entityLabel = "Cảng biển";
+            } else if (isBuoy) {
+                Buoy buoy = buoyRepository.findById(refId).orElse(null);
+                if (buoy == null) {
+                    return;
+                }
+                ApprovalStatus approval = buoy.getApprovalStatus();
+                boolean wasApproved = approval == ApprovalStatus.APPROVED
+                        || approval == ApprovalStatus.APPROVED_LEVEL2;
+                if (!wasApproved) {
+                    return;
+                }
+                refType = InfrastructureType.BUOY;
+                entityLabel = "Phao tiêu";
+            } else {
+                BuoyStation station = buoyStationRepository.findById(refId).orElse(null);
+                if (station == null) {
+                    return;
+                }
+                ApprovalStatus approval = station.getApprovalStatus();
+                boolean wasApproved = approval == ApprovalStatus.APPROVED
+                        || approval == ApprovalStatus.APPROVED_LEVEL2;
+                if (!wasApproved) {
+                    return;
+                }
+                refType = InfrastructureType.BUOY_STATION;
+                entityLabel = "Nhà trạm phao tiêu";
+            }
+
+            String name = fileName != null ? fileName : "không rõ tên";
+            boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(refId)
+                    .refType(refType)
+                    .approvalLevel(ApprovalLevel.LEVEL_0)
+                    .status(status)
+                    .approvedBy(SecurityUtils.getCurrentUserId())
+                    .approvedDate(LocalDateTime.now())
+                    .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + name)
+                    .changedField("Tài liệu đính kèm")
+                    .previousValue(uploaded ? "—" : name)
+                    .newValue(uploaded ? name : "—")
+                    .build());
+            log.info("[DocumentService] Đã ghi lịch sử {} file đính kèm của {} [{}]: {}",
+                    uploaded ? "tải lên" : "xóa", entityLabel, refId, name);
+        } catch (Exception e) {
+            log.warn("[DocumentService] Không ghi được lịch sử file đính kèm (entityType={}, entityId={}): {}",
+                    entityType, entityId, e.getMessage());
+        }
     }
 
     private DocumentResponse toResponse(Document entity) {

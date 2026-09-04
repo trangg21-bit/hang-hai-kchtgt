@@ -114,11 +114,3 @@ export async function fetchportHistory(
   const res = await api.get(`${BASE}/${id}/history${query}`);
   return res.data?.data || [];
 }
-
-export async function fetchPortAllHistory(params?: { page?: number; size?: number }): Promise<any> {
-  const sp = new URLSearchParams();
-  if (params?.page !== undefined) sp.set('page', String(params.page));
-  if (params?.size !== undefined) sp.set('size', String(params.size));
-  const res = await api.get(`${BASE}/history/all?${sp}`);
-  return res.data.data;
-}

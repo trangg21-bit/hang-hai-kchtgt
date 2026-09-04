@@ -121,17 +121,32 @@ export interface BuoyStationResponse {
   spatialId?: string;
 }
 
-/** One ChangeLog row (matches ChangeLog serialization — BuoyStationController GET /{id}/history). */
+/**
+ * One history row. GET /v1/buoy-station/{id}/history serializes
+ * InfrastructureHistory entities DIRECTLY (approvedBy, approvedDate, changedField,
+ * previousValue, newValue, reason, status, refId, refType, approvalLevel);
+ * legacy ChangeLog keys are kept optional for older payloads (all-history mode).
+ */
 export interface ChangeHistory {
   id: string;
-  entityType: string;
-  entityId: string;
-  fieldName: string;
-  oldValue: string | null;
-  newValue: string | null;
-  changedBy: string;
-  changedAt: string;
-  createdAt: string;
+  refId: string;
+  refType: string;
+  approvalLevel?: string;
+  status?: string;
+  approvedBy?: string;
+  approvedDate?: string;
+  reason?: string;
+  changedField?: string;
+  previousValue?: string | null;
+  newValue?: string | null;
+  // Legacy ChangeLog shape (optional).
+  entityType?: string;
+  entityId?: string;
+  fieldName?: string;
+  oldValue?: string | null;
+  changedBy?: string;
+  changedAt?: string;
+  createdAt?: string;
 }
 
 /** Body of GET /v1/buoy-station/{id}/history. */

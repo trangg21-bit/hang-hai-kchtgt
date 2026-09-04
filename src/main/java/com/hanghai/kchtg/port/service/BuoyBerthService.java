@@ -142,6 +142,20 @@ public class BuoyBerthService {
         BuoyBerth entity = buoyBerthRepository.findById(request.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến phao với id: " + request.getId()));
 
+        // Lịch sử GIS theo chuẩn Cảng biển — xác định trạng thái duyệt TRƯỚC khi mutation
+        // (chỉ ghi lịch sử khi hồ sơ đã duyệt: APPROVED / APPROVED_LEVEL2).
+        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+        String oldWkt = null;
+        GisGeometryType oldGeomType = null;
+        if (entity.getSpatialId() != null) {
+            GisSpatialObject oldSpatial = gisSpatialObjectService.findById(entity.getSpatialId()).orElse(null);
+            if (oldSpatial != null) {
+                oldWkt = oldSpatial.getCoordinates();
+                oldGeomType = oldSpatial.getGeometryType();
+            }
+        }
+
         String coordinates = request.getCoordinates();
         if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
                 && request.getLatitude() != null) {
@@ -280,6 +294,40 @@ public class BuoyBerthService {
                     .newValue(formatHistoryPairs(newValues))
                     .build());
         }
+
+        // Hồ sơ đã duyệt bị chỉnh sửa GIS → ghi 2 dòng lịch sử đọc được:
+        // "Tọa độ GIS" (WKT cũ → WKT mới) + "Loại đối tượng GIS" (nhãn cũ → nhãn mới),
+        // refType BUOY_BERTH, actor = user thật (không bao giờ chuỗi "system").
+        if (wasApproved && coordinates != null && !coordinates.trim().isEmpty()) {
+            String newWkt = coordinates.trim();
+            if (oldWkt == null || !newWkt.equals(oldWkt.trim())) {
+                historyRepository.save(InfrastructureHistory.builder()
+                        .refId(saved.getId())
+                        .refType(InfrastructureType.BUOY_BERTH)
+                        .approvalLevel(ApprovalLevel.LEVEL_0)
+                        .status(InfrastructureHistoryStatus.UPDATED)
+                        .approvedBy(SecurityUtils.getCurrentUserId())
+                        .changedField("Tọa độ GIS")
+                        .previousValue((oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim())
+                        .newValue(newWkt)
+                        .build());
+            }
+            if (request.getGeometryType() != null) {
+                GisGeometryType newGeomType = request.getGeometryType();
+                if (oldGeomType != newGeomType) {
+                    historyRepository.save(InfrastructureHistory.builder()
+                            .refId(saved.getId())
+                            .refType(InfrastructureType.BUOY_BERTH)
+                            .approvalLevel(ApprovalLevel.LEVEL_0)
+                            .status(InfrastructureHistoryStatus.UPDATED)
+                            .approvedBy(SecurityUtils.getCurrentUserId())
+                            .changedField("Loại đối tượng GIS")
+                            .previousValue(oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có")
+                            .newValue(geometryTypeLabel(newGeomType))
+                            .build());
+                }
+            }
+        }
         evictAfterCommit();
 
         return toResponse(saved);
@@ -414,6 +462,28 @@ public class BuoyBerthService {
             attachment.setUploadedBy(userId);
             savedAttachments.add(attachmentRepository.save(attachment));
         }
+
+        // Ghi lịch sử tải lên theo chuẩn Cảng biển — chỉ khi bến phao đã duyệt
+        // (ATTACHMENT_UPLOADED, refType BUOY_BERTH, actor = user thật).
+        BuoyBerth buoyBerth = buoyBerthRepository.findById(entityId).orElse(null);
+        if (buoyBerth != null
+                && (buoyBerth.getApprovalStatus() == ApprovalStatus.APPROVED
+                    || buoyBerth.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2)) {
+            for (Attachment saved : savedAttachments) {
+                String name = saved.getFileName() != null ? saved.getFileName() : "không rõ tên";
+                historyRepository.save(InfrastructureHistory.builder()
+                        .refId(entityId)
+                        .refType(InfrastructureType.BUOY_BERTH)
+                        .approvalLevel(ApprovalLevel.LEVEL_0)
+                        .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
+                        .approvedBy(SecurityUtils.getCurrentUserId())
+                        .reason("Tải lên tài liệu đính kèm: " + name)
+                        .changedField("Tài liệu đính kèm")
+                        .previousValue("—")
+                        .newValue(name)
+                        .build());
+            }
+        }
         return savedAttachments.stream().map(this::toAttachmentDto).collect(java.util.stream.Collectors.toList());
     }
 
@@ -429,12 +499,33 @@ public class BuoyBerthService {
         if (!attachment.getEntityId().equals(entityId)) {
             throw new IllegalArgumentException("File không thuộc entity này");
         }
+        // Lấy tên file TRƯỚC khi xóa để ghi lịch sử (ATTACHMENT_DELETED).
+        String fileName = attachment.getFileName();
         try {
             java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
         } catch (Exception e) {
             log.warn("Không thể xóa file: {}", attachment.getFilePath(), e);
         }
         attachmentRepository.delete(attachment);
+
+        // Chỉ ghi lịch sử xóa file khi bến phao đã duyệt (refType BUOY_BERTH, actor = user thật).
+        BuoyBerth buoyBerth = buoyBerthRepository.findById(entityId).orElse(null);
+        if (buoyBerth != null
+                && (buoyBerth.getApprovalStatus() == ApprovalStatus.APPROVED
+                    || buoyBerth.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2)) {
+            String name = fileName != null ? fileName : "không rõ tên";
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(entityId)
+                    .refType(InfrastructureType.BUOY_BERTH)
+                    .approvalLevel(ApprovalLevel.LEVEL_0)
+                    .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
+                    .approvedBy(SecurityUtils.getCurrentUserId())
+                    .reason("Xóa tài liệu đính kèm: " + name)
+                    .changedField("Tài liệu đính kèm")
+                    .previousValue(name)
+                    .newValue("—")
+                    .build());
+        }
     }
 
     private AttachmentDto toAttachmentDto(Attachment entity) {
@@ -589,6 +680,16 @@ public class BuoyBerthService {
             default:
                 entity.setApprovalStatus(ApprovalStatus.DRAFT);
         }
+    }
+
+    /** Nhãn hiển thị loại hình GIS theo chuẩn VTS CHK (dùng cho lịch sử thay đổi). */
+    private static String geometryTypeLabel(GisGeometryType type) {
+        if (type == null) return "Chưa có";
+        return switch (type) {
+            case POINT -> "Đối tượng điểm";
+            case LINE -> "Đối tượng đường";
+            case POLYGON -> "Đối tượng vùng";
+        };
     }
 
     private static String approvalLabel(ApprovalStatus st) {

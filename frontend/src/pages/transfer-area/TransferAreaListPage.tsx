@@ -150,6 +150,15 @@ const historyFieldLabels: Record<string, string> = {
   portAuthorityApprovalContent: 'Nội dung phê duyệt Cảng vụ',
   departmentApprovedAt: 'Ngày duyệt Cục', departmentApprovedBy: 'Người duyệt Cục',
   departmentApprovalContent: 'Nội dung phê duyệt Cục', rejectionReason: 'Lý do từ chối',
+  activeTransferCount: 'Số khu chuyển tải đang hoạt động',
+  publishedTransferCount: 'Số khu chuyển tải đã công bố',
+  underInvestmentTransferCount: 'Số khu chuyển tải đang đầu tư',
+  activityStartDate: 'Ngày bắt đầu hoạt động',
+  activityEndDate: 'Ngày kết thúc hoạt động',
+  'Tọa độ GIS': 'Tọa độ GIS',
+  'Loại đối tượng GIS': 'Loại đối tượng GIS',
+  'Phạm vi khu nước neo buộc tàu': 'Phạm vi khu nước neo buộc tàu',
+  'Tài liệu đính kèm': 'Tài liệu đính kèm',
   'Trạng thái': 'Hành động',
 };
 
@@ -261,9 +270,16 @@ function historyNewValue(item: any): string | null {
   return item.newValue ?? null;
 }
 
-function historyActor(item: any): string {
+/** UUID chuẩn (8-4-4-4-12 hex) — nhận diện giá trị actor còn là ID thô, chưa được phân giải tên. */
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function historyActor(item: any, userMap?: Map<string, string>): string {
   const raw = item?.approvedByName || item?.changedByName || item?.performedByName || item?.userName || item?.actorName || item?.approvedBy || item?.changedBy || item?.performedBy || '';
-  return raw || '—';
+  if (!raw) return '—';
+  // Ưu tiên tên đã phân giải sẵn (name-first order); nếu giá trị là ID, tra userMap thay vì in UUID thô.
+  const resolved = userMap ? userMap.get(raw) : undefined;
+  if (resolved) return resolved;
+  return UUID_PATTERN.test(raw.trim()) ? '—' : raw;
 }
 
 function normalizeHistoryKey(value: string): string {
@@ -490,13 +506,13 @@ export default function TransferAreaList() {
     for (const r of sorted) {
       const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
-      const actor = historyActor(r);
+      const actor = historyActor(r, userMap);
       const prev = groups[groups.length - 1];
       if (prev && prev.tsSec === sec && prev.actor === actor) continue;
       groups.push({ tsSec: sec, actor });
     }
     return groups.length;
-  }, [historyRecords]);
+  }, [historyRecords, userMap]);
 
   const openHistory = useCallback(async (r: TransferArea) => {
     setHistoryTarget(r); setHistoryOpen(true); setHistoryLoading(true); setHistoryRecords([]);
@@ -522,7 +538,7 @@ export default function TransferAreaList() {
     for (const r of sorted) {
       const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
-      const actor = historyActor(r);
+      const actor = historyActor(r, userMap);
       const prev = groups[groups.length - 1];
       if (prev && prev.tsSec === sec && prev.actor === actor && prev.status === r.status && prev.approvalLevel === r.approvalLevel) {
         prev.items.push(r);
