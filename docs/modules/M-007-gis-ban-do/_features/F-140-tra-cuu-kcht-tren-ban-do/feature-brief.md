@@ -7,7 +7,7 @@ status: proposed
 classification: local
 priority: high
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-09-03T00:00:00Z
+last-updated: 2026-09-04T00:00:00Z
 locked-fields: []
 consumed_by_modules: []
 ---
@@ -25,12 +25,14 @@ Người dùng truy cập giao diện bản đồ GIS và chọn mục tra cứu
 ## Acceptance Criteria
 - Người dùng có quyền xem dữ liệu nhìn thấy nhóm menu "Quản lý KCHT trên nền bản đồ (GIS)" và có thể mở màn tra cứu bản đồ từ thanh menu chính.
 - Người dùng có thể nhập từ khóa hoặc chọn bộ lọc để tìm kiếm KCHT trên bản đồ; đối tượng điểm hiển thị bằng marker, đối tượng đường/vùng hiển thị bằng hình học thật và tất cả kết quả xuất hiện trong danh sách bên cạnh.
+- Kết quả KCHT chỉ được hiển thị trên bản đồ sau khi người dùng chọn checkbox tương ứng trong bảng. Bỏ chọn phải xóa ngay marker hoặc hình học của bản ghi khỏi bản đồ; quy tắc này áp dụng thống nhất cho cả bản ghi nghiệp vụ có hình học GIS đồng bộ như Hệ thống CCTV.
 - Người dùng có thể click vào marker điểm hoặc bất kỳ vị trí hợp lệ trên đường/vùng để xem thông tin tóm tắt trong popup. Nếu KCHT chồng lên quy hoạch cảng biển hoặc có nhiều KCHT cùng vị trí, hệ thống hiển thị danh sách nguồn/đối tượng để người dùng chọn; cả hai loại dữ liệu đều phải truy cập được, không phụ thuộc thứ tự lớp hiển thị.
 - Khi mới mở màn hình, bộ lọc Đơn vị quản lý giữ giá trị "Tất cả đơn vị" như logic cũ và hệ thống tự tải danh sách KCHT thuộc phạm vi quyền của tài khoản. Sau khi Đặt lại, hệ thống khôi phục "Tất cả đơn vị" và tự tải lại danh sách. Lớp Quy hoạch cảng biển vẫn được điều khiển độc lập trong Quản lý lớp bản đồ.
 - Bộ lọc Loại kết cấu hạ tầng hỗ trợ chọn nhiều nhưng luôn giữ một dòng; tối đa hai thẻ được hiển thị trực tiếp, phần còn lại thu gọn thành `+N` và có nội dung đầy đủ khi hover.
 - Bảng kết quả dùng cỡ chữ nội dung chuẩn; nhóm phóng to, thu nhỏ và toàn màn hình nằm dọc ở góc phải. Nhóm vẽ nhanh đa giác, vùng tròn và chỉnh sửa nằm ở góc trái dưới, không bị panel tra cứu che.
 - Click chuột phải trên bản đồ hiển thị kinh độ, vĩ độ, mức thu phóng và cho phép sao chép đường dẫn mở lại đúng vị trí đó.
 - Popup Quy hoạch cảng biển ưu tiên chiều ngang để hạn chế xuống dòng, dùng cỡ chữ nội dung chuẩn 13px và tiêu đề 15px; không lặp nhãn loại đối tượng và chỉ cuộn khi nội dung vượt quá vùng hiển thị.
+- Khi người dùng chọn một trạng thái quy hoạch khác trạng thái hiện tại, hệ thống hiển thị hộp xác nhận nêu rõ trạng thái hiện tại và trạng thái đích; API cập nhật chỉ được gọi sau khi người dùng xác nhận. Chọn **Hủy** phải giữ nguyên popup và dữ liệu.
 - Popup KCHT hiển thị nhãn nghiệp vụ thay cho mã thô đối với tỉnh/thành phố, loại kết cấu, trạng thái hoạt động và luồng hàng hải; marker ưu tiên biểu tượng được gán cho bản ghi, sau đó mới dùng biểu tượng mặc định theo loại KCHT.
 - Chú giải bản đồ liệt kê biểu tượng của từng loại KCHT và quy ước màu/đường của lớp Quy hoạch cảng biển.
 - Người dùng có thể lọc KCHT theo loại đối tượng (điểm/đường/vùng), danh mục, tình trạng và khu vực địa lý (bounding box), kết quả được cập nhật ngay lập tức trên bản đồ.

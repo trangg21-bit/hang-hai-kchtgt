@@ -1582,6 +1582,9 @@ const buildPlanningPopupContent = (featuresAtPoint: any[]): string => {
       return `
         <button type="button" class="planning-status-option ${isActive ? 'active-opt' : ''}"
           data-status="${escapePopupText(option.status)}"
+          data-status-label="${escapePopupText(option.label)}"
+          data-current-status-label="${escapePopupText(statusPresentation.label)}"
+          data-active="${isActive}"
           data-color="${option.color}"
           data-fid="${escapePopupText(feature.fid)}"
           data-geomtype="${escapePopupText(feature.geomType)}"
@@ -1758,6 +1761,8 @@ export default function GISChartView() {
         path = `/radar-station/${id}${action === 'edit' ? '?mode=edit' : ''}`;
       } else if (label.includes('hệ thống vts') || label.includes('he thong vts')) {
         path = `/vts-system/${id}${action === 'edit' ? '?mode=edit' : ''}`;
+      } else if (label.includes('cctv')) {
+        path = `/cctv?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
       } else if (label.includes('inmarsat')) {
         path = `/station/inmarsat?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
       } else if (label.includes('cospas')) {
@@ -2474,16 +2479,26 @@ export default function GISChartView() {
     // remains available from the layer manager.
     if (!hasSearched || customGisFeatures.length === 0) return;
 
-    const resultIds = new Set(infrastructureResults.map((record) => String(record.id)));
+    const resultsById = new Map(
+      infrastructureResults.map((record) => [String(record.id), record]),
+    );
     const selectedIds = new Set(selectedRowKeys.map(String));
     const visibleCustomFeatures = customGisFeatures.filter((feature) => {
       const featureId = String(feature.id);
       const referenceId = feature.refId ? String(feature.refId) : '';
-      const matchesCurrentResults = resultIds.has(featureId)
-        || Boolean(referenceId && resultIds.has(referenceId));
-      const isAlreadyRenderedAsSelectedResult = selectedIds.has(featureId)
-        || Boolean(referenceId && selectedIds.has(referenceId));
-      return matchesCurrentResults && !isAlreadyRenderedAsSelectedResult;
+      const matchingResult = resultsById.get(referenceId) || resultsById.get(featureId);
+
+      // The result table is the source of truth for map visibility. In
+      // particular, synchronized CCTV polygons must not leak from the custom
+      // GIS layer before their business record's checkbox is selected.
+      if (!matchingResult || !selectedIds.has(String(matchingResult.id))) {
+        return false;
+      }
+
+      // Normal selected results are rendered by renderSearchMarkers. Keep this
+      // custom layer only as a fallback for legacy rows whose search response
+      // does not contain usable geometry, avoiding duplicate shapes.
+      return resolveSearchHitGeometry(matchingResult) === null;
     });
 
     visibleCustomFeatures.forEach((feature) => {
@@ -3138,6 +3153,9 @@ export default function GISChartView() {
         evt.stopPropagation();
 
         const status = opt.getAttribute('data-status');
+        const statusLabel = opt.getAttribute('data-status-label');
+        const currentStatusLabel = opt.getAttribute('data-current-status-label');
+        const isActive = opt.getAttribute('data-active') === 'true';
         const color = opt.getAttribute('data-color');
         const fid = opt.getAttribute('data-fid');
         const geomType = opt.getAttribute('data-geomtype');
@@ -3148,31 +3166,49 @@ export default function GISChartView() {
           return;
         }
 
-        try {
-          const colorInt = parseInt(color, 10);
-          await api.put(`/gis/planning/features/${geomType}/${fid}/status`, null, {
-            params: { schemaName, tableName, status, color: colorInt }
-          });
-          toast.success('Cập nhật trạng thái quy hoạch thành công');
-          
-          if (mapRef.current) {
-            mapRef.current.closePopup();
-          }
-          // Clear cache for this feature so it gets re-rendered with new color!
-          if (fid && planningLayersCacheRef.current) {
-            const featureKey = getPlanningFeatureKey(geomType, schemaName, tableName, fid);
-            const currentLayer = planningLayersCacheRef.current[featureKey];
-            currentLayer?.setStyle?.(
-              getPlanningLeafletColorStyle(geomType, colorInt, tableName, status),
-            );
-            delete planningLayersCacheRef.current[featureKey];
-          }
-          if (fetchPlanningFeaturesRef.current) {
-            await fetchPlanningFeaturesRef.current();
-          }
-        } catch (err) {
-          toast.error('Lỗi khi cập nhật trạng thái quy hoạch');
+        if (isActive) {
+          return;
         }
+
+        const targetStatusLabel = statusLabel || status;
+        const transitionDescription = currentStatusLabel
+          ? `từ "${currentStatusLabel}" sang "${targetStatusLabel}"`
+          : `sang "${targetStatusLabel}"`;
+
+        modal.confirm({
+          title: 'Xác nhận đổi trạng thái quy hoạch',
+          content: `Bạn có chắc chắn muốn đổi trạng thái quy hoạch ${transitionDescription} không?`,
+          okText: 'Xác nhận',
+          cancelText: 'Hủy',
+          onOk: async () => {
+            try {
+              const colorInt = parseInt(color, 10);
+              await api.put(`/gis/planning/features/${geomType}/${fid}/status`, null, {
+                params: { schemaName, tableName, status, color: colorInt }
+              });
+              toast.success('Cập nhật trạng thái quy hoạch thành công');
+
+              if (mapRef.current) {
+                mapRef.current.closePopup();
+              }
+              // Clear cache for this feature so it gets re-rendered with new color!
+              if (planningLayersCacheRef.current) {
+                const featureKey = getPlanningFeatureKey(geomType, schemaName, tableName, fid);
+                const currentLayer = planningLayersCacheRef.current[featureKey];
+                currentLayer?.setStyle?.(
+                  getPlanningLeafletColorStyle(geomType, colorInt, tableName, status),
+                );
+                delete planningLayersCacheRef.current[featureKey];
+              }
+              if (fetchPlanningFeaturesRef.current) {
+                await fetchPlanningFeaturesRef.current();
+              }
+            } catch (err) {
+              toast.error('Lỗi khi cập nhật trạng thái quy hoạch');
+              throw err;
+            }
+          },
+        });
         return;
       }
 
@@ -3227,8 +3263,24 @@ export default function GISChartView() {
         const id = editBtn.getAttribute('data-id');
         if (!id) return;
 
-        const feature = customGisFeaturesDataRef.current.find((f: any) => String(f.id) === id);
+        const feature = customGisFeaturesDataRef.current.find((candidate) => String(candidate.id) === id);
         if (feature) {
+          const refType = String(feature.refType ?? '').toUpperCase();
+          const kchtType = getKchtGisTypeByCategoryId(feature.categoryId);
+          const isCctvReference = Boolean(feature.refId)
+            && (refType === 'CCTV' || Number(feature.refType) === 28 || kchtType === 'CCTV');
+
+          // Hồ sơ CCTV đồng bộ hình học vào gis_spatial_objects với refId trỏ
+          // về bản ghi nghiệp vụ. Chỉnh sửa phải mở Drawer CCTV chuẩn, không
+          // được rơi vào modal chỉnh sửa đối tượng vẽ tay của Leaflet.
+          if (isCctvReference) {
+            window.handleKchtAction(String(feature.refId), 'Hệ thống CCTV', 'edit');
+            if (mapRef.current) {
+              mapRef.current.closePopup();
+            }
+            return;
+          }
+
           const editRecord = {
             id: feature.id,
             type: feature.type,

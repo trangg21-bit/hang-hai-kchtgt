@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { fmtNum, fmtInputNumber } from "../../utils/numFmt";
-import { coordinateRowsToWkt, resolveMapGeometryLocation, type EditableGeometryType } from "../../utils/gisGeometry";
+import { coordinateRowsToWkt, parseWktToCoordinates, resolveMapGeometryLocation, type EditableGeometryType } from "../../utils/gisGeometry";
 
 // Normalize form geometryType ('POINT' | 'LINE' | 'POLYGON') — fallback POINT khi chưa chọn
 const normalizeGeometryType = (value: unknown): 'POINT' | 'LINE' | 'POLYGON' =>
@@ -44,6 +44,7 @@ import type { RcFile } from "antd/es/upload/interface";
 import { useSearchParams } from "react-router-dom";
 import {
   fetchCctvList,
+  fetchCctvById,
   deleteCctv,
   submitCctv,
   approveCctvC1,
@@ -396,6 +397,9 @@ const CctvListPage = () => {
   const hasPerm = usePermissionStore((s) => s.hasPermission);
   const currentUser = useAuthStore((s) => s.user);
   const isIframeModal = window.parent !== window.self;
+  const linkedAction = searchParams.get("action");
+  const linkedRecordId = searchParams.get("id");
+  const isMapLinkedView = isIframeModal && (linkedAction === "edit" || linkedAction === "detail");
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState<string | null>(null);
   const [data, setData] = useState<CctvResponse[]>([]);
@@ -631,6 +635,82 @@ const CctvListPage = () => {
 
   // GPS coordinates for edit drawer
   const [updateGpsCoordList, setUpdateGpsCoordList] = useState<Array<{ lat: number; lng: number }>>([]);
+
+  const openUpdateDrawer = useCallback((record: CctvResponse) => {
+    setUpdateTarget(record);
+    setUploadFileList([]);
+    void fetchCctvAttachments(record.id).then((list) => {
+      setUploadFileList(list.map((attachment) => ({
+        uid: attachment.id,
+        name: attachment.fileName,
+        size: attachment.fileSize,
+        status: 'done' as const,
+      })));
+    }).catch(() => { /* attachment failure must not block the edit form */ });
+
+    const coordinates = parseWktToCoordinates(record.coordinates || undefined);
+    setUpdateGpsCoordList(coordinates.map((coordinate) => ({
+      lat: coordinate.latitude,
+      lng: coordinate.longitude,
+    })));
+
+    // Convert operationalStatus từ string enum (backend @JsonValue) sang số
+    // dùng bởi dropdown trong form CCTV.
+    const safeRecord = {
+      ...record,
+      operationalStatus: record.operationalStatus != null
+        ? (() => {
+            switch (record.operationalStatus) {
+              case "NOT_YET_OPERATIONAL": return 0;
+              case "OPERATIONAL": return 1;
+              case "SUSPENDED": return 2;
+              default: {
+                const value = Number(record.operationalStatus);
+                return value >= 0 && value <= 2 ? value : 1;
+              }
+            }
+          })()
+        : null,
+    };
+    updateForm.setFieldsValue(safeRecord);
+    setUpdateModalOpen(true);
+  }, [updateForm]);
+
+  const closeLinkedDrawer = useCallback(() => {
+    if (isMapLinkedView) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+    }
+  }, [isMapLinkedView]);
+
+  const handledLinkedRecordRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isMapLinkedView || !linkedRecordId || !linkedAction) return;
+
+    const requestKey = `${linkedAction}:${linkedRecordId}`;
+    if (handledLinkedRecordRef.current === requestKey) return;
+    handledLinkedRecordRef.current = requestKey;
+
+    let active = true;
+    void fetchCctvById(linkedRecordId)
+      .then((record) => {
+        if (!active) return;
+        if (linkedAction === "edit") {
+          openUpdateDrawer(record);
+        } else {
+          setSelectedRecord(record);
+          setDetailDrawerOpen(true);
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        handledLinkedRecordRef.current = null;
+        toast.error("Không thể tải hồ sơ hệ thống CCTV");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isMapLinkedView, linkedAction, linkedRecordId, openUpdateDrawer]);
 
   // GEOMETRY_POINT_COUNT mapping (same as Port)
   const GEOMETRY_POINT_COUNT = useMemo(() => ({ POINT: 1, LINE: 2, POLYGON: 3 }), []);
@@ -1348,32 +1428,7 @@ const CctvListPage = () => {
           key: "edit",
           label: "Chỉnh sửa",
           icon: <EditOutlined />,
-          onClick: () => {
-            setUpdateTarget(record);
-            setUploadFileList([]);
-            void fetchCctvAttachments(record.id).then((list: any[]) => {
-              setUploadFileList(list.map((a: any) => ({ uid: a.id, name: a.fileName, size: a.fileSize, status: 'done' as const })));
-            }).catch(() => { /* ignore */ });
-            // Convert operationalStatus từ string enum (backend @JsonValue) sang số (frontend dropdown)
-            const safeRecord = {
-              ...record,
-              operationalStatus: record.operationalStatus != null
-                ? (() => {
-                    switch (record.operationalStatus) {
-                      case "NOT_YET_OPERATIONAL": return 0;
-                      case "OPERATIONAL": return 1;
-                      case "SUSPENDED": return 2;
-                      default: {
-                        const num = Number(record.operationalStatus);
-                        return num >= 0 && num <= 2 ? num : 1;
-                      }
-                    }
-                  })()
-                : null,
-            };
-            updateForm.setFieldsValue(safeRecord);
-            setUpdateModalOpen(true);
-          },
+          onClick: () => openUpdateDrawer(record),
         });
       }
 
@@ -1470,7 +1525,7 @@ const CctvListPage = () => {
 
       return actions;
     },
-    [updateForm, hasPerm, currentUser]
+    [openUpdateDrawer, hasPerm, currentUser]
   );
 
   const fetchData = useCallback(async () => {
@@ -1752,6 +1807,7 @@ const CctvListPage = () => {
         setUpdateTarget(null);
         setUpdateGpsCoordList([]);
         setUploadFileList([]);
+        closeLinkedDrawer();
         fetchData();
         fetchTabCounts();
       } catch (error: unknown) {
@@ -1760,7 +1816,7 @@ const CctvListPage = () => {
         setUpdateLoading(false);
       }
     },
-    [updateTarget, fetchData, fetchTabCounts, updateGpsCoordList, uploadFileList, updateGeometryType]
+    [updateTarget, fetchData, fetchTabCounts, updateGpsCoordList, uploadFileList, updateGeometryType, closeLinkedDrawer]
   );
 
   const handleConfirmSubmit = useCallback(async () => {
@@ -2078,8 +2134,22 @@ const CctvListPage = () => {
         {...drawerProps}
         title={<span style={drawerTitleStyle}>Chi tiết hệ thống CCTV{selectedRecord ? ` - ${selectedRecord.deviceName || selectedRecord.deviceCode || ''}` : ''}</span>}
         open={detailDrawerOpen}
-        onClose={() => setDetailDrawerOpen(false)}
-        extra={<Button type="text" onClick={() => setDetailDrawerOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
+        onClose={() => {
+          setDetailDrawerOpen(false);
+          closeLinkedDrawer();
+        }}
+        extra={
+          <Button
+            type="text"
+            onClick={() => {
+              setDetailDrawerOpen(false);
+              closeLinkedDrawer();
+            }}
+            style={drawerCloseBtnStyle}
+          >
+            ✕
+          </Button>
+        }
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
           body: { padding: '0 24px 12px 24px' },
@@ -3165,6 +3235,7 @@ const CctvListPage = () => {
           updateForm.resetFields();
           setUpdateGpsCoordList([]);
           setUploadFileList([]);
+          closeLinkedDrawer();
         }}
         extra={
           <Button
@@ -3175,6 +3246,7 @@ const CctvListPage = () => {
               updateForm.resetFields();
               setUpdateGpsCoordList([]);
               setUploadFileList([]);
+              closeLinkedDrawer();
             }}
             style={drawerCloseBtnStyle}
           >

@@ -13,6 +13,12 @@ import type { HistoryEntry } from '../../types/vtsSystem';
 
 const BASE = '/v1/cctv';
 
+export interface CctvAttachmentResponse {
+  id: string;
+  fileName: string;
+  fileSize?: number;
+}
+
 // ── Đơn vị khai thác (bảng operating_organizations — endpoint chung) ──
 
 export async function fetchOperatingOrganizations(): Promise<Array<{ id: string; name: string; code: string }>> {
@@ -141,7 +147,7 @@ export async function fetchCctvHistory(
 
 export async function fetchAllCctvHistory(
   params?: { page?: number; size?: number },
-): Promise<any> {
+): Promise<unknown> {
   const sp = new URLSearchParams();
   if (params?.page !== undefined) sp.set('page', String(params.page));
   if (params?.size !== undefined) sp.set('size', String(params.size));
@@ -158,12 +164,12 @@ export async function restoreCctv(id: string): Promise<CctvResponse> {
 
 // ── Attachments (File đính kèm) ────────────────────────────────────
 
-export async function fetchCctvAttachments(id: string): Promise<any[]> {
+export async function fetchCctvAttachments(id: string): Promise<CctvAttachmentResponse[]> {
   const res = await api.get(`${BASE}/${id}/attachments`);
   return res.data.data || [];
 }
 
-export async function uploadCctvAttachment(id: string, file: File): Promise<any> {
+export async function uploadCctvAttachment(id: string, file: File): Promise<unknown> {
   const formData = new FormData();
   formData.append('files', file);
   const res = await api.post(`${BASE}/${id}/attachments`, formData, {
@@ -172,7 +178,7 @@ export async function uploadCctvAttachment(id: string, file: File): Promise<any>
   return res.data;
 }
 
-export async function deleteCctvAttachment(id: string, attachmentId: string): Promise<any> {
+export async function deleteCctvAttachment(id: string, attachmentId: string): Promise<unknown> {
   const res = await api.delete(`${BASE}/${id}/attachments/${attachmentId}`);
   return res.data;
 }
