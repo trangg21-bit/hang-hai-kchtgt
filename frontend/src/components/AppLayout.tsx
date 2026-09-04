@@ -38,8 +38,9 @@ import {
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 import { usePermissionStore } from '../store/permissionStore';
-import { layout } from '../theme';
+import { colors, layout } from '../theme';
 import type { MenuProps } from 'antd';
+import { accessibleTree, groupOfPath, locateRoute, type NavGroup, type NavNode } from '../config/navigation';
 
 const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
@@ -111,6 +112,34 @@ const canAccessMenu = (path: string): boolean => {
   
   return usePermissionStore.getState().hasPermission(required);
 };
+
+type AntMenuItem = NonNullable<NonNullable<MenuProps['items']>[number]>;
+
+/** M-024 v2: chuyển cây config (navigation.tsx) → AntD Menu items, lọc theo quyền */
+function buildNavMenuItems(
+  group: NavGroup,
+  canAccess: (route: string) => boolean,
+  go: (route: string) => void,
+): MenuProps['items'] {
+  const convert = (nodes: NavNode[]): AntMenuItem[] =>
+    nodes.flatMap((n) => {
+      const base = { key: n.key, icon: n.icon, label: n.label, disabled: n.disabled } as AntMenuItem;
+      if (n.children) {
+        const kids = convert(accessibleTree(n.children, canAccess));
+        if (kids.length > 0) {
+          const sub = {
+            ...base,
+            children: kids,
+            onTitleClick: n.route ? () => go(n.route as string) : undefined,
+          } as AntMenuItem;
+          return [sub];
+        }
+        if (!n.route) return [] as AntMenuItem[];
+      }
+      return [base];
+    });
+  return convert(accessibleTree(group.tree, canAccess));
+}
 
 function filterEmptyChildren(items: MenuProps['items']): MenuProps['items'] {
   if (!items) return [];
@@ -243,6 +272,11 @@ export default function AppLayout() {
       }
     }
   }, [selectedKey]);
+
+  // ===== M-024 v2 (chốt 2026-09-04): dashboard-first — sidebar theo KHỐI active suy từ route =====
+  const activeGroup = groupOfPath(location.pathname);
+  const navHit = activeGroup ? locateRoute(activeGroup.tree, location.pathname) : undefined;
+  const activeSelectedKey = navHit?.key ?? selectedKey;
 
   const rawMenuItems: MenuProps['items'] = [
     { key: '/', icon: <DashboardOutlined />, label: 'Trang chủ' },
@@ -508,12 +542,14 @@ export default function AppLayout() {
     canAccessMenu('/settings') ? { key: '/settings', icon: <SettingOutlined />, label: 'Cấu hình hệ thống' } : null,
   ].filter(Boolean) as MenuProps['items'];
 
-  const menuItems = filterEmptyChildren(rawMenuItems);
+  const menuItems = filterEmptyChildren(activeGroup ? buildNavMenuItems(activeGroup, canAccessMenu, navigate) : rawMenuItems);
 
   const trimmedSearchQuery = searchQuery.trim();
   const isSearching = trimmedSearchQuery.length > 0;
   const displayedItems = isSearching ? filterMenuByQuery(menuItems, trimmedSearchQuery) : menuItems;
-  const effectiveOpenKeys = isSearching ? collectOpenableKeys(displayedItems) : openKeys;
+  const effectiveOpenKeys = isSearching
+    ? collectOpenableKeys(displayedItems)
+    : Array.from(new Set([...openKeys, ...(navHit?.openKeys ?? [])]));
 
   // Keep the responsive mode aligned with Sider's `lg` breakpoint. Using
   // `md` here left a 272px layout offset while AntD had already collapsed the
@@ -577,11 +613,11 @@ export default function AppLayout() {
       </div>
 
       {/* Ô tìm kiếm — pill trong mờ, ngay dưới header */}
-      {!collapsed && !isMenuFullScreen && (
+      {!collapsed && !isMenuFullScreen && activeGroup && (
         <div className="sidebar-search">
           <SearchOutlined />
           <input
-            placeholder="Tìm kiếm"
+            placeholder="Tìm kiếm trong khối..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -589,18 +625,70 @@ export default function AppLayout() {
       )}
 
       <div className="sidebar-menu-scroll">
-        <Menu
-          theme={isMenuFullScreen ? 'light' : 'dark'}
-          mode="inline"
-          inlineCollapsed={collapsed}
-          selectedKeys={[selectedKey]}
-          openKeys={effectiveOpenKeys}
-          onOpenChange={setOpenKeys}
-          items={displayedItems}
-          onClick={handleMenuClick}
-          inlineIndent={12}
-          style={{ borderInlineEnd: 'none', paddingTop: 4 }}
-        />
+        {activeGroup ? (
+          <>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '10px 10px 6px',
+                color: colors.textOnDark,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                title="Về trang chủ"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: colors.textOnDark,
+                  cursor: 'pointer',
+                  fontSize: 16,
+                  lineHeight: 1,
+                  padding: '2px 6px',
+                }}
+              >
+                ←
+              </button>
+              <span
+                style={{
+                  fontWeight: 600,
+                  fontSize: 13,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {activeGroup.label}
+              </span>
+            </div>
+            <Menu
+              theme={isMenuFullScreen ? 'light' : 'dark'}
+              mode="inline"
+              inlineCollapsed={collapsed}
+              selectedKeys={[activeSelectedKey]}
+              openKeys={effectiveOpenKeys}
+              onOpenChange={setOpenKeys}
+              items={displayedItems}
+              onClick={handleMenuClick}
+              inlineIndent={12}
+              style={{ borderInlineEnd: 'none', paddingTop: 4 }}
+            />
+          </>
+        ) : (
+          <div
+            style={{
+              padding: '12px 14px',
+              fontSize: 12.5,
+              lineHeight: 1.6,
+              color: colors.textOnDarkMuted,
+            }}
+          >
+            Chọn một khối chức năng bên phải để bắt đầu.
+          </div>
+        )}
       </div>
 
       {/* Footer — text */}

@@ -1,198 +1,101 @@
 {
-  "module": "M-024",
-  "feature": "F-292",
+  "module_id": "M-024-tai-cau-truc-menu-navigation",
   "stage": "engineering-qa-engineer-wave-2",
-  "generated_from": "docs/modules/M-024-tai-cau-truc-menu-navigation/qa/07-qa-report-w1.md",
-  "last_updated": "2026-08-28",
-  "acceptance_map": {
-    "AC-1": {
-      "spec_ref": "lean-spec:29/282, feature-brief:39 (doct 3 docs-sync TRI-1787899754098-59d2)",
-      "description": "Tai lieu state sidebarBg = #1a3f83, khong phai #12468C",
-      "verification_method": "grep/read code: theme.ts:50 (sidebarBg), themetokenchk.ts:72 (sidebarBg)",
-      "pass_state": "pass",
-      "evidence": "grep wave-2: theme.ts:50 sidebarBg '#1a3f83'; themetokenchk.ts:72 sidebarBg '#1a3f83'; #12468C trong theme.ts: 0 match"
+  "generated_from": "docs/modules/M-024-tai-cau-truc-menu-navigation/ba/00-lean-spec.md section 8 (AC-024-01..09) + qa/07-qa-report-w2.md (wave-2 executed battery)",
+  "last_updated": "2026-09-04",
+  "execution_note": "Wave-2 executed 2026-09-04 by the QA seat: ./node_modules/.bin/vitest run src/config/navigation.test.ts = 27/27 pass, exit 0; ./node_modules/.bin/tsc --noEmit = exit 0; eslint --quiet on the v2-authored files (navigation.tsx, HomeLanding.tsx, menu-permissions.spec.ts) = exit 0; static negative scan for AC-024-07 and route-registration grep for AC-024-08 executed. Every test_name below is an oracle this seat actually ran; per-AC evidence with line anchors is in qa/07-qa-report-w2.md section 2. Browser seams (menu render/click/deep-link and restricted-user browser cases) are not-run (env-blocked): frontend/e2e/integration/menu-permissions.spec.ts requires a live Spring Boot backend plus the vite dev server, and playwright.config.ts webServer starts only vite; those seams are scheduled for the staged-environment run (wave 2 / UAT re-run). No env-blocked seam is claimed as executed.",
+  "criteria": [
+    {
+      "id": "AC-024-01",
+      "spec_ref": "lean-spec section 8 AC-024-01",
+      "criterion": "Route / renders exactly 6 block cards (label + desc + icon) from NAV_GROUPS; clicking a card navigates to the block. Executed oracle covers the static wiring (App.tsx:145 '/' -> HomeLanding; HomeLanding.tsx maps NAV_GROUPS into 6 cards); the browser render/count/click seam (e2e T2) is not-run (env-blocked: live backend + dev server required).",
+      "file": [
+        "frontend/src/App.tsx",
+        "frontend/src/pages/HomeLanding.tsx",
+        "frontend/src/config/navigation.tsx"
+      ],
+      "test_name": "./node_modules/.bin/tsc --noEmit (exit 0) + anchored static check: App.tsx:145 registers HomeLanding at '/', HomeLanding.tsx iterates NAV_GROUPS (navigation.tsx:161) into 6 cards; evidence: qa/07-qa-report-w2.md section 2 AC-024-01"
     },
-    "AC-2": {
-      "spec_ref": "lean-spec:29/282, feature-brief:39",
-      "description": "Tai lieu state accent tieu de = #273e7c",
-      "verification_method": "grep/read code: themetokenchk.ts:36 (actionPrimary), AppLayout.tsx:632/865 (title color)",
-      "pass_state": "pass",
-      "evidence": "grep wave-2: themetokenchk.ts:36 actionPrimary '#273e7c'; AppLayout.tsx:632 va :865 color '#273e7c'; docs anchors da sua thanh 632/865"
+    {
+      "id": "AC-024-02",
+      "spec_ref": "lean-spec section 8 AC-024-02",
+      "criterion": "Sidebar is block-scoped: the landing page lists no menu groups (hint text instead), and inside a block the sidebar shows the block tree plus a 'Về trang chủ' button returning to '/'. Browser .ant-menu count-0 scan on '/' (e2e T3) is not-run (env-blocked).",
+      "file": [
+        "frontend/src/config/navigation.tsx",
+        "frontend/src/components/AppLayout.tsx",
+        "frontend/src/config/navigation.test.ts"
+      ],
+      "test_name": "./node_modules/.bin/vitest run src/config/navigation.test.ts (27/27 pass, exit 0) - groupOfPath describe: '/'->undefined, '/port'->kcht, '/users'->admin; static anchors AppLayout.tsx:277 (activeGroup), :545 (per-group menuItems), :642 (Về trang chủ), :689 (landing hint)"
     },
-    "AC-3": {
-      "spec_ref": "lean-spec:29/282, feature-brief:39",
-      "description": "Tai lieu state fallback --bg-sidebar = #1a3f83",
-      "verification_method": "grep/read code: theme.ts:287 (--bg-sidebar: ${colors.sidebarBg}), theme.ts:618/1006 (var(--bg-sidebar, #1a3f83)), AppLayout.tsx:785/799",
-      "pass_state": "pass",
-      "evidence": "grep wave-2: theme.ts:618/1006 var(--bg-sidebar, #1a3f83); AppLayout.tsx:785/799 var(--bg-sidebar, #1a3f83); theme.ts:287 xac nhan gian tiep (2 nguon: design-plan muc 2 + intake seam_claims); #1E2129 trong AppLayout.tsx: 0 match"
+    {
+      "id": "AC-024-03",
+      "spec_ref": "lean-spec section 8 AC-024-03",
+      "criterion": "KCHT sidebar tree covers the 28 types of the external cha-con matrix doc, multi-layer (depth >= 3) chains preserved. e2e T4 spot check is not-run (env-blocked).",
+      "file": [
+        "frontend/src/config/navigation.tsx",
+        "frontend/src/config/navigation.test.ts",
+        "SO-DO-VA-MA-TRAN-CHA-CON-KCHT.md"
+      ],
+      "test_name": "./node_modules/.bin/vitest run src/config/navigation.test.ts (27/27 pass, exit 0) - kchtTree describe: group declares 28 types, canonical keys count === 28 vs matrix, no duplicate keys, exactly one disabled node (VHF), depth >= 3 parent-child chains"
     },
-    "AC-4": {
-      "spec_ref": "doct 3 docs-only; design-plan muc 1/4; _state.md:45",
-      "description": "Khong file code/theme/token/test nao bi sua boi pipeline docs-sync nay",
-      "verification_method": "ORCHESTRATOR ran `git status --porcelain` + `git diff --name-only HEAD` in unrestricted scope (QA session git bi policy chan: 'Effective denying pattern(s): git *')",
-      "pass_state": "pass",
-      "evidence": "Orchestrator: workspace la shared dirty tree (pre-existing doct 3 C2-solo + menu-search changes + concurrent M-026/M-027 frontend touches); cac seat pipeline (BA/SA/FE-dev) moi seat bao 0 code write; +3 anchor drift = concurrent external interference, khong phai pipeline nay; QA session nay chi ghi qa/*"
+    {
+      "id": "AC-024-04",
+      "spec_ref": "lean-spec section 8 AC-024-04",
+      "criterion": "Đài viễn thông hàng hải is a separate depth-1 root (sibling of Hệ thống VTS, not under it); VHF node is disabled with no route and must never be the result of firstAccessibleRoute. Browser VHF click leaves URL unchanged (e2e T5) - not-run (env-blocked).",
+      "file": [
+        "frontend/src/config/navigation.tsx",
+        "frontend/src/components/AppLayout.tsx",
+        "frontend/src/config/navigation.test.ts"
+      ],
+      "test_name": "./node_modules/.bin/vitest run src/config/navigation.test.ts (27/27 pass, exit 0) - firstAccessibleRoute describe never returns a disabled node; static anchors navigation.tsx:124 (kcht-vts), :145 (kcht-vienthong root), :150 (vhf-disabled, disabled true, no route); AppLayout.tsx:119-143 forwards disabled flag"
     },
-    "AC-5": {
-      "spec_ref": "feature-brief template 7 section; lean-spec:15/29/282",
-      "description": "feature-brief giu dung 7 section theo dung thu tu/tieu de; lean-spec het mau thuan (stale 'KHONG sua theme.ts' da reconciled)",
-      "verification_method": "grep '^## ' feature-brief.md + read lean-spec:29/282",
-      "pass_state": "pass",
-      "evidence": "7 headings dung thu tu (1 Mo ta ngan -> 7 Phan ky thuat - cau truc bang); lean-spec:29/282 ghi ro doct 3 DA thay doi theme.ts + AppLayout.tsx (gia tri #1a3f83/#273e7c, anchor 632/865/785/799)"
+    {
+      "id": "AC-024-05",
+      "spec_ref": "lean-spec section 8 AC-024-05",
+      "criterion": "accessibleTree prunes routes the user cannot access, drops parents whose whole subtree is denied, retains disabled nodes (not permission-gated), returns a subset of the input, and never mutates the input tree. Browser restricted-user login case is not-run (env-blocked, no spec step).",
+      "file": [
+        "frontend/src/config/navigation.tsx",
+        "frontend/src/config/navigation.test.ts"
+      ],
+      "test_name": "./node_modules/.bin/vitest run src/config/navigation.test.ts (27/27 pass, exit 0) - accessibleTree describe: allow/deny leaf pruning, denied-sibling drop, empty-parent drop, disabled retention on deny-all, output subset of input, deep-frozen input never mutated"
     },
-    "AC-6": {
-      "spec_ref": "lean-spec toan bo",
-      "description": "lean-spec bao toan moi UC/BR/VAL/D/AC truoc do (khong regression)",
-      "verification_method": "grep inventory UC-024-/BR-024-/VAL-024-/AC-024-/D-",
-      "pass_state": "pass",
-      "evidence": "UC-024-09; BR-024-04/08/09/10/11/12/13/14/15; VAL-024-01..06; AC-024-02/10/11/12/13; D-1/D-2/D-5 hien dien, noi dung khong doi"
+    {
+      "id": "AC-024-06",
+      "spec_ref": "lean-spec section 8 AC-024-06",
+      "criterion": "locateRoute picks the deepest matching route node with the correct ancestor openKeys chain, matches route detail/create suffixes, never locates a disabled node, and does not cross-match routes sharing a textual prefix (segment boundary). Browser leaf-click navigation (e2e T4/T5) is not-run (env-blocked).",
+      "file": [
+        "frontend/src/config/navigation.tsx",
+        "frontend/src/config/navigation.test.ts"
+      ],
+      "test_name": "./node_modules/.bin/vitest run src/config/navigation.test.ts (27/27 pass, exit 0) - locateRoute describe: deepest match wins with ancestor openKeys, parent node opens submenu, detail/create suffix matching, undefined on no-match and never on a disabled node, real kcht openKeys chains, no textual-prefix cross-match"
     },
-    "A1": {
-      "spec_ref": "AC-024-11, BR-024-14",
-      "description": "filterMenuByQuery: label match substring tieng Viet co dau",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed (A1-A13 + B1-B5), exit 0"
+    {
+      "id": "AC-024-07",
+      "spec_ref": "lean-spec section 8 AC-024-07 (BR-024-11, VAL-024-06)",
+      "criterion": "The old PHÊ DUYỆT group is dissolved: no menu group or node labelled PHÊ DUYỆT / Duyệt cap remains in the navigation config. Browser full-menu count-0 scan (e2e T3) is not-run (env-blocked).",
+      "file": [
+        "frontend/src/config/navigation.tsx"
+      ],
+      "test_name": "Static negative scan executed: case-insensitive search for PHÊ DUYỆT|Duyệt cap across frontend/src returns exactly 1 hit - the header comment navigation.tsx:12 stating the old group is dissolved; GroupId union at navigation.tsx:31 is kcht/asset/plan/gis/report/admin with no approval group"
     },
-    "A2": {
-      "spec_ref": "AC-024-11, VAL-024-06",
-      "description": "filterMenuByQuery: .trim() - query co khoang trang thua 2 dau cho ket qua bang",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
+    {
+      "id": "AC-024-08",
+      "spec_ref": "lean-spec section 8 AC-024-08",
+      "criterion": "Route /dashboard is registered and reachable for the Dashboard KPI page (old home content moved from '/'). Browser render of the KPI page is not-run (no e2e step exists; manual smoke or new e2e step in the staged environment).",
+      "file": [
+        "frontend/src/App.tsx"
+      ],
+      "test_name": "Route-registration grep executed: App.tsx:146 registers <Route path=\"/dashboard\"> with HomePage element (tsc --noEmit exit 0 confirms type-safety); '/' at App.tsx:145 now renders HomeLanding"
     },
-    "A3": {
-      "spec_ref": "AC-024-12, VAL-024-06",
-      "description": "filterMenuByQuery: whitespace-only query tra ve full tree",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
-    },
-    "A4": {
-      "spec_ref": "AC-024-11",
-      "description": "filterMenuByQuery: case-insensitive (CANG vs cang)",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
-    },
-    "A5": {
-      "spec_ref": "AC-024-11 (boundary am)",
-      "description": "filterMenuByQuery: khong fold dau tieng Viet (cang vs cang) - khong match",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
-    },
-    "A6": {
-      "spec_ref": "BR-024-14, D-5a",
-      "description": "filterMenuByQuery: parent/child keep+drop - parent giu qua rebuild {...node, children}, sibling khong match bi drop",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
-    },
-    "A7": {
-      "spec_ref": "BR-024-14, BR-024-13",
-      "description": "filterMenuByQuery: parent het con khop -> an nhanh (filterEmptyChildren)",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
-    },
-    "A8": {
-      "spec_ref": "BR-024-13, AC-024-11",
-      "description": "filterMenuByQuery: divider hygiene - khong divider lien tiep, khong sinh divider moi",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
-    },
-    "A9": {
-      "spec_ref": "AC-024-12",
-      "description": "filterMenuByQuery: restore-on-clear (query '') tra ve full tree deep-equal",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
-    },
-    "A10": {
-      "spec_ref": "BR-024-15",
-      "description": "filterMenuByQuery: permission gating - output key-set la subset cua input (khong bypass quyen)",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
-    },
-    "A11": {
-      "spec_ref": "BR-024-13, AC-024-11",
-      "description": "filterMenuByQuery: non-string ReactNode label guard - khong throw, khong match theo label",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
-    },
-    "A12": {
-      "spec_ref": "AC-024-11 (boundary am)",
-      "description": "filterMenuByQuery: no match -> []",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
-    },
-    "A13": {
-      "spec_ref": "AC-024-13, BR-024-13",
-      "description": "filterMenuByQuery: no navigation, no API - ham thuan, khong doi location, khong goi fetch/navigate",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx + static review than ham AppLayout.tsx:202-213",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed; than ham khong import/goi router hay API"
-    },
-    "B1": {
-      "spec_ref": "BR-024-14, D-5a, AC-024-11",
-      "description": "collectOpenableKeys: auto-open path - tra ve key moi ancestor cua node khop",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
-    },
-    "B2": {
-      "spec_ref": "AC-024-11",
-      "description": "collectOpenableKeys: no match -> []",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
-    },
-    "B3": {
-      "spec_ref": "BR-024-14",
-      "description": "collectOpenableKeys: deterministic, khong trung key, thu tu on dinh",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
-    },
-    "B4": {
-      "spec_ref": "AC-024-12",
-      "description": "collectOpenableKeys wiring: clear/whitespace -> effectiveOpenKeys = openKeys (khong ep open)",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
-    },
-    "B5": {
-      "spec_ref": "BR-024-13",
-      "description": "collectOpenableKeys: moi key la string",
-      "verification_method": "unit test vitest: src/components/AppLayout.test.tsx",
-      "pass_state": "pass",
-      "evidence": "vitest run: 18/18 passed"
-    },
-    "C1": {
-      "spec_ref": "AC-024-11",
-      "description": "Manual smoke: go query -> cay menu thu hep + ancestors auto-open",
-      "verification_method": "manual UI smoke (browser/dev server) - chua thuc thi trong pipeline (khong co browser)",
-      "pass_state": "pending_manual",
-      "evidence": "Phan tu dong hoa da cover qua A1-A13/B1-B5 (18/18 pass); smoke C1 dang cho UAT/manual"
-    },
-    "C2": {
-      "spec_ref": "AC-024-12",
-      "description": "Manual smoke: clear -> full menu khoi phuc (7 nhom cap 1)",
-      "verification_method": "manual UI smoke (browser) - chua thuc thi trong pipeline",
-      "pass_state": "pending_manual",
-      "evidence": "Phan tu dong hoa cover qua A3/A9/B4 (18/18 pass); smoke C2 dang cho UAT/manual"
-    },
-    "C3": {
-      "spec_ref": "AC-024-13",
-      "description": "Manual smoke: go + Enter khong navigate, khong request API tim kiem",
-      "verification_method": "manual UI smoke (browser + DevTools Network) - chua thuc thi trong pipeline",
-      "pass_state": "pending_manual",
-      "evidence": "Phan tu dong hoa cover qua A13 (18/18 pass); smoke C3 dang cho UAT/manual"
+    {
+      "id": "AC-024-09",
+      "spec_ref": "lean-spec section 8 AC-024-09",
+      "criterion": "Deep links /port and /dai-ttdh resolve to the correct block (kcht) and locateRoute opens the correct branch (ancestor openKeys chain). Browser direct-open behaviour (e2e T4) is not-run (env-blocked).",
+      "file": [
+        "frontend/src/config/navigation.tsx",
+        "frontend/src/config/navigation.test.ts"
+      ],
+      "test_name": "./node_modules/.bin/vitest run src/config/navigation.test.ts (27/27 pass, exit 0) - groupOfPath '/port'->kcht and '/dai-ttdh'->kcht; locateRoute returns ancestor openKeys chains for real kcht routes"
     }
-  }
+  ]
 }

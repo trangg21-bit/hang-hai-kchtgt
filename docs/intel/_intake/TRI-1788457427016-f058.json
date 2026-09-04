@@ -1,0 +1,114 @@
+{
+  "triage_id": "TRI-1788457427016-f058",
+  "created_at": 1788457427016,
+  "request_summary": "Tái thiết kế điều hướng M-024 theo preview-menu-final.html (quyết định chốt 2026-09-04): '/' thành landing 6 khối, sidebar chuyển thành ngăn cây theo khối (cây 28 loại KCHT, nhánh Đài viễn thông riêng), giải thể nhóm PHÊ DUYỆT, dời Home KPI vào khối Báo cáo; viết lại lean-spec + F-292 theo mô hình mới.",
+  "change_class": "C2",
+  "handling": "solo_lane",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-024-tai-cau-truc-menu-navigation/_features/F-292-tai-cau-truc-menu-navigation/feature-brief.md",
+      "docs/modules/M-024-tai-cau-truc-menu-navigation/ba/00-lean-spec.md",
+      "frontend/e2e/integration/menu-permissions.spec.ts",
+      "frontend/src/App.tsx",
+      "frontend/src/components/AppLayout.test.tsx",
+      "frontend/src/components/AppLayout.tsx",
+      "frontend/src/pages/Home.tsx",
+      "frontend/src/theme.ts"
+    ],
+    "impact_files": [
+      "docs/modules/M-024-tai-cau-truc-menu-navigation/_features/F-292-tai-cau-truc-menu-navigation/feature-brief.md",
+      "docs/modules/M-024-tai-cau-truc-menu-navigation/ba/00-lean-spec.md",
+      "frontend/e2e/integration/menu-permissions.spec.ts",
+      "frontend/src/App.tsx",
+      "frontend/src/components/AppLayout.test.tsx",
+      "frontend/src/components/AppLayout.tsx",
+      "frontend/src/pages/Home.tsx",
+      "frontend/src/theme.ts"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": true,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C2: brownfield-extend of a released module — A32 reconcile-add path; never re-scaffold (8 edit-target files / 1 package(s) / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Trang chủ \"/\" (landing 6 khối) + sidebar biến hình theo khối đang chọn",
+  "blast_radius": 8,
+  "done_oracle": "\"/\" render landing đúng 6 khối (kcht/asset/plan/gis/report/admin); chọn khối KCHT → sidebar hiện cây 28 loại theo ma trận cha-con, 6 đài viễn thông là nhánh root riêng; click node lá điều hướng đúng route theo phân quyền (không thấy item khi thiếu quyền); dashboard KPI cũ truy cập được từ khối Báo cáo thống kê; không còn nhóm PHÊ DUYỆT độc lập; tsc --noEmit sạch, vitest AppLayout.test.tsx pass, eslint 3 file thay đổi sạch.\"",
+  "verification_commands": [
+    {
+      "command": "bunx tsc --noEmit",
+      "cwd": "/Users/thuytrang/workspace/hang-hai-kchtgt/frontend",
+      "timeout_ms": 300000
+    },
+    {
+      "command": "bunx vitest run src/components/AppLayout.test.tsx",
+      "cwd": "/Users/thuytrang/workspace/hang-hai-kchtgt/frontend",
+      "timeout_ms": 240000
+    },
+    {
+      "command": "bunx eslint src/components/AppLayout.tsx src/pages/Home.tsx src/App.tsx",
+      "cwd": "/Users/thuytrang/workspace/hang-hai-kchtgt/frontend",
+      "timeout_ms": 180000
+    }
+  ],
+  "change_type": "architecture",
+  "declared_write_scope": [
+    "docs/modules/M-024-tai-cau-truc-menu-navigation/_features/F-292-tai-cau-truc-menu-navigation/feature-brief.md",
+    "docs/modules/M-024-tai-cau-truc-menu-navigation/ba/00-lean-spec.md",
+    "frontend/e2e/integration/menu-permissions.spec.ts",
+    "frontend/src/App.tsx",
+    "frontend/src/components/AppLayout.test.tsx",
+    "frontend/src/components/AppLayout.tsx",
+    "frontend/src/pages/Home.tsx",
+    "frontend/src/theme.ts"
+  ],
+  "seam_claims": [
+    {
+      "file": "frontend/src/components/AppLayout.tsx",
+      "line": 47,
+      "quote": "export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {",
+      "source_hash": "35587d99a9f69a7dab07d551172054deef2f88d8d2f2fa5230e21a7ac2124a42",
+      "quote_hash": "3e7f1e650d2dabcd1b240ebea622687dddad92c8e52fbc15518f825e5df22fca",
+      "note": "Map route→quyền, gating mọi item menu hiện tại"
+    },
+    {
+      "file": "frontend/src/components/AppLayout.tsx",
+      "line": 247,
+      "quote": "const rawMenuItems: MenuProps['items'] = [",
+      "source_hash": "35587d99a9f69a7dab07d551172054deef2f88d8d2f2fa5230e21a7ac2124a42",
+      "quote_hash": "5b42e12d601a6f1f3daa5600f15055eb37a06322871d24e77084b07f39b0a59d",
+      "note": "Cấu trúc menu thủ công 7-8 nhóm sẽ thay bằng model 6 khối + cây 28 loại"
+    },
+    {
+      "file": "frontend/src/pages/Home.tsx",
+      "line": 661,
+      "quote": "export default function HomePage() {",
+      "source_hash": "2c66590bfa3369fab9196fc74a5a6161c855079b643d360e548d3ee5e706bc33",
+      "quote_hash": "dab5e0c73faaa1dc1504d2e1aa65bf496a8c0f9d298ed7b524441ffce39bab7a",
+      "note": "Trang '/' hiện là dashboard KPI, sẽ thành landing 6 khối"
+    },
+    {
+      "file": "frontend/src/App.tsx",
+      "line": 144,
+      "quote": "<Route path=\"/\" element={<HomePage />} />",
+      "source_hash": "362119fef29e3858ebbfac5d3e41f0483cdfd93741b95d25b085f1fcee9484ed",
+      "quote_hash": "985b525435d9c60325bf129751bcc0fabad87d7b1f618937321f345348c4f1ff",
+      "note": "Route '/' trỏ HomePage; KPI home cần route mới khi dời sang khối Báo cáo"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "c1572411e1ce099b4b5c60656bee6d32387a9671",
+    "dirty": true,
+    "captured_at": 1788457427206
+  },
+  "budget": {
+    "wall_clock_ms": 6180000,
+    "turns": 346,
+    "turns_used": 33
+  }
+}

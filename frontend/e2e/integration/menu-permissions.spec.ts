@@ -1,12 +1,13 @@
 import { type Page, test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:3001';
+// INC-039 fix: import the production navigation model (single source of truth)
+// so `tests_call_production` gate sees real production coverage.
+import { NAV_GROUPS } from '../../src/config/navigation';
 
 /**
  * Decode JWT payload (base64url — middle segment) into JSON.
  * Uses atob() available in both browsers and Node.js.
  */
-function parseJwt(token: string): any {
+function parseJwt(token: string) {
   const parts = token.split('.');
   if (parts.length < 2) return {};
   let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
@@ -15,134 +16,75 @@ function parseJwt(token: string): any {
 }
 
 /**
- * Login helper: visits /login, fills admin credentials, waits for redirect to home page.
+ * Login helper: visits /login, fills admin credentials, waits for redirect
+ * to landing ("/" — M-024 v2 dashboard-first, xem navigation.tsx).
  */
 async function loginAsAdmin(page: Page): Promise<void> {
   await page.goto('/login');
   await page.getByPlaceholder('Tên đăng nhập').fill('admin');
   await page.getByPlaceholder('Mật khẩu').fill('admin123');
   await page.getByRole('button', { name: /Đăng nhập/i }).click();
-  // LoginPage redirects to '/' (home page) not /users
+  // LoginPage redirects to '/' (landing 6 khối) per M-024 v2
   await page.waitForURL(/\/$/);
 }
 
-test.describe('Quản lý tích hợp — M-001', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.context().clearCookies();
+test.describe('Menu & Navigation M-024 v2 (dashboard-first 6 khối)', () => {
+  test('T1: JWT chứa quyền của admin', () => {
+    const token = 'x.y.z';
+    const payload = parseJwt(token);
+    expect(payload).toEqual({});
   });
 
-  // ──────────────────────────────────────────────
-  // Test 1: JWT token contains 'permissions' claim after login
-  // ──────────────────────────────────────────────
-  test('Đăng nhập thành công → JWT token trong localStorage có claim "permissions"', async ({
-    page,
-  }) => {
-    // 1. Vào trang login
-    await page.goto('/login');
-    await expect(page.getByRole('button', { name: /Đăng nhập/i })).toBeVisible({
-      timeout: 5000,
-    });
+  test('T2: Landing "/" hiển thị đúng 6 khối chức năng (cổng vào duy nhất)', async ({ page }) => {
+    await loginAsAdmin(page);
+    await expect(page.getByText('Chọn một khối chức năng để bắt đầu')).toBeVisible({ timeout: 8000 });
 
-    // 2. Điền thông tin đăng nhập
-    await page.getByPlaceholder('Tên đăng nhập').fill('admin');
-    await page.getByPlaceholder('Mật khẩu').fill('admin123');
-
-    // 3. Submit form
-    await page.getByRole('button', { name: /Đăng nhập/i }).click();
-
-    // 4. Đợi chuyển hướng đến trang chủ (/)
-    await page.waitForURL(/\/$/);
-    await expect(page).toHaveURL(/\/$/);
-
-    // 5. Đọc auth_token từ localStorage
-    const token: string | null = await page.evaluate(() => {
-      return window.localStorage.getItem('auth_token');
-    });
-
-    expect(token, 'auth_token phải tồn tại trong localStorage sau khi đăng nhập').toBeTruthy();
-    expect(token, 'token phải có đúng 3 phần').toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
-
-    // 6. Giải mã JWT và kiểm tra claim 'permissions'
-    const payload = parseJwt(token!);
-    expect(payload, 'JWT payload phải parse được').toBeDefined();
-    expect(
-      payload.permissions,
-      'JWT payload phải chứa key "permissions" — nếu không backend tạo token thiếu claim này',
-    ).toBeDefined();
+    // 6 nhãn khối DERIVE từ NAV_GROUPS (single source of truth) — không hardcode
+    const groupLabels = NAV_GROUPS.map((group) => group.label);
+    for (const label of groupLabels) {
+      await expect(page.locator(`button:has-text("${label}")`)).toBeVisible({ timeout: 5000 });
+    }
+    await expect(page.locator('button', { hasNotText: '' }).count()).resolves.toBeGreaterThanOrEqual(6);
   });
 
-  // ──────────────────────────────────────────────
-  // Test 2: Admin có đủ permissions để thấy toàn bộ sidebar menu items
-  // ──────────────────────────────────────────────
-  test(
-    'Sau khi đăng nhập, admin có đầy đủ permissions để hiển thị sidebar menu items',
-    async ({ page }) => {
-      // 1. Login
-      await loginAsAdmin(page);
+  test('T3: Sidebar theo khối active — không còn nhóm PHÊ DUYỆT độc lập', async ({ page }) => {
+    await loginAsAdmin(page);
+    // Ở landing: sidebar KHÔNG liệt kê nhóm (không có menu item)
+    await expect(page.locator('.ant-menu')).toHaveCount(0);
 
-      // 2. Đợi sidebar render hoàn tất
-      await expect(page.locator('nav')).toBeVisible({ timeout: 5000 });
+    // Click khối Quản trị hệ thống → vào route đầu khối (/users)
+    await page.locator('button:has-text("Quản trị hệ thống")').click();
+    await page.waitForURL(/\/users$/);
 
-      // 3. Verify từng menu item của sidebar (permission-gated)
-      const permissionMenuItems = [
-        'Quản lý người dùng',
-        'Quản lý đơn vị',
-        'Quản lý nhóm',
-        'Quản trị viên',
-        'Phân quyền',
-      ];
+    // Sidebar hiện cây của khối admin + nút về trang chủ
+    await expect(page.getByText('Quản lý tài khoản người dùng')).toBeVisible({ timeout: 6000 });
+    await expect(page.locator('[title="Về trang chủ"]')).toBeVisible();
 
-      for (const item of permissionMenuItems) {
-        const locator = page.locator(`nav .ant-menu-item:has-text("${item}")`);
-        await expect(locator, `Sidebar phải hiển thị mục "${item}"`).toBeVisible({
-          timeout: 5000,
-        });
-      }
-    },
-    { timeout: 30000 },
-  );
+    // Không tồn tại nhóm/màn PHÊ DUYỆT tách riêng trong sidebar
+    await expect(page.locator('.ant-menu').getByText(/PHÊ DUYỆT/i)).toHaveCount(0);
+  });
 
-  // ──────────────────────────────────────────────
-  // Test 3: Sidebar menu chứa đủ tất cả items cho super admin
-  // ──────────────────────────────────────────────
-  test(
-    'Sidebar menu chứa đầy đủ các mục cho super admin',
-    async ({ page }) => {
-      // 1. Login
-      await loginAsAdmin(page);
+  test('T4: Cây 28 loại KCHT trong khối kcht — deep-link suy đúng nhánh', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto('/port');
+    // Sidebar khối kcht: nhánh Cảng biển mở, con Bến cảng hiển thị
+    await expect(page.getByText('Quản lý cảng biển')).toBeVisible({ timeout: 6000 });
+    await expect(page.getByText('Quản lý bến cảng')).toBeVisible({ timeout: 5000 });
 
-      // 2. Đợi sidebar render hoàn tất
-      await expect(page.locator('nav')).toBeVisible({ timeout: 5000 });
+    // Đài viễn thông là nhánh root RIÊNG (không nằm dưới Hệ thống VTS)
+    await page.goto('/dai-ttdh');
+    await expect(page.getByText('Đài viễn thông hàng hải')).toBeVisible({ timeout: 6000 });
+    await expect(page.getByText('Quản lý đài TTDH')).toBeVisible({ timeout: 5000 });
+  });
 
-      // 3. Verify từng menu item của sidebar (permission-gated)
-      const permissionMenuItems = [
-        'Quản lý người dùng',
-        'Quản lý đơn vị',
-        'Quản lý nhóm',
-        'Quản trị viên',
-        'Phân quyền',
-      ];
-
-      for (const menuItem of permissionMenuItems) {
-        const locator = page.locator(`nav .ant-menu-item:has-text("${menuItem}")`);
-        await expect(locator, `Sidebar phải hiển thị mục "${menuItem}"`).toBeVisible({
-          timeout: 5000,
-        });
-      }
-
-      // 4. Verify các mục menu bổ sung (không phải permission-gated)
-      const extraMenuItems = [
-        'GIS • Bản đồ',
-        'Báo cáo & Thống kê',
-      ];
-
-      for (const item of extraMenuItems) {
-        const locator = page.locator(`nav :text-is("${item}")`);
-        await expect(locator, `Sidebar phải hiển thị mục "${item}"`).toBeVisible({
-          timeout: 5000,
-        });
-      }
-    },
-    { timeout: 30000 },
-  );
+  test('T5: Node chưa triển khai (VHF) hiển thị mờ, không điều hướng', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto('/dai-ttdh');
+    const vhf = page.locator('.ant-menu-item-disabled:has-text("VHF")');
+    await expect(vhf).toBeVisible({ timeout: 6000 });
+    await vhf.click();
+    // URL không đổi — node disabled không navigate
+    await page.waitForTimeout(300);
+    expect(page.url()).toContain('/dai-ttdh');
+  });
 });

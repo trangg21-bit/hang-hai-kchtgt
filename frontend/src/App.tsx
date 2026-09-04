@@ -43,6 +43,7 @@ const BuoyListPage = lazy(() => import('./services/buoy/BuoyListPage'));
 const BeaconHistoryList = lazy(() => import('./pages/history/BeaconHistoryList'));
 const SymbolList = lazy(() => import('./pages/symbols/SymbolList'));
 const HomePage = lazy(() => import('./pages/Home'));
+const HomeLanding = lazy(() => import('./pages/HomeLanding'));
 const PasswordResetPage = lazy(() => import('./pages/PasswordResetPage'));
 const PortList = lazy(() => import('./services/port/PortListPage'));
 const PortApprovePage = lazy(() => import('./services/port/PortApprovePage'));
@@ -141,7 +142,8 @@ export default function App() {
 
               {/* Protected routes — inside layout */}
               <Route element={<AppLayout />}>
-                <Route path="/" element={<HomePage />} />
+                <Route path="/" element={<HomeLanding />} />
+                <Route path="/dashboard" element={<HomePage />} />
                 <Route path="/users" element={<PermissionGuard permission="user:read"><UsersPage /></PermissionGuard>} />
 
                 {/* Organization — Đơn vị */}

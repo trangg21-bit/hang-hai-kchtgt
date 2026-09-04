@@ -1,147 +1,104 @@
 ---
 id: F-292
-name: Tái cấu trúc menu & điều hướng
+name: Tái cấu trúc menu & điều hướng (mô hình v2 — dashboard-first 6 khối)
 slug: tai-cau-truc-menu-navigation
 module-id: M-024
-status: proposed
+status: implemented
 classification: local
 priority: medium
 created: 2026-08-25T09:37:14Z
-last-updated: 2026-08-28
+last-updated: 2026-09-04
 locked-fields: []
 consumed_by_modules: []
 source-paths:
-  - frontend/src/store/permissionStore.ts
-  - frontend/src/store/permissionStore.test.ts
+  - frontend/src/config/navigation.tsx
   - frontend/src/components/AppLayout.tsx
+  - frontend/src/pages/HomeLanding.tsx
+  - frontend/src/App.tsx
+  - frontend/src/components/AppLayout.test.tsx
+  - frontend/e2e/integration/menu-permissions.spec.ts
 ---
+
 # Đặc tả nghiệp vụ: Tái cấu trúc menu & điều hướng
 
 **Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu này)
 **Chức năng:** F-292
 **Module:** M-024 — Tái cấu trúc Menu & Navigation
 **Loại:** chức năng thường (không có bước phê duyệt)
-**Tham chiếu:** tài liệu nền `ba/00-lean-spec.md` (bắt buộc đọc trước — Use Cases UC-024-xx, Business Rules BR-024-xx, Domain Model 7 nhóm + 13 thực thể + Dashboard 6 khối) + `HH_Menu_21-08-2026.xlsx` + `SO-DO-VA-MA-TRAN-CHA-CON-KCHT.md`
+**Tham chiếu:** tài liệu nền `ba/00-lean-spec.md` (bắt buộc đọc trước — mô hình v2 dashboard-first 6 khối, BR-024-xx, AC-024 mới) + `preview-menu-final.html` + `frontend/src/config/navigation.tsx` (nguồn sự thật code)
 
-> **Trước khi viết:** tài liệu nền của module (M-024 lean spec) đã định nghĩa phần CHUNG — file này CHỈ ghi phần RIÊNG của chức năng, không lặp lại phần chung.
-
-> **⚠️ BẮT BUỘC KHAI BÁO PHẠM VI DỮ LIỆU THEO ĐƠN VỊ (Data Scope):**
-> Khai báo đầy đủ tại mục 5 dòng 3: chức năng này **không quản lý dữ liệu nghiệp vụ** → không có trường đơn vị, không có chiều ghi, không có ngoại lệ data scope (chi tiết xem lean spec BR-024-11).
+> **Ghi chú lịch sử:** bản trước mô tả mô hình cũ (sidebar 7 nhóm I–VII theo `HH_Menu_21-08-2026.xlsx`, nhóm III PHÊ DUYỆT, nhánh 13 thực thể) — đã được thay thế theo quyết định chốt 2026-09-04 (xem lean-spec mục 3).
 
 ---
 
 ## 1. Mô tả ngắn
 
-Tái cấu trúc toàn bộ menu & điều hướng hệ thống: (1) trang chủ hiển thị **Dashboard Grid đúng 6 khối** làm cổng vào các nhóm chức năng; (2) sidebar chuyển sang **mô hình phân cấp (PMS Model)** với đúng 7 nhóm cấp 1, trong đó nhánh "Quản lý cảng biển" hiển thị đúng **13 thực thể KCHT** theo ma trận cha–con (Cảng biển → Bến cảng → Cầu cảng; Luồng hàng hải → Bến phao / Đèn biển / Đê kè / Nhà trạm → Phao tiêu; Cảng biển → Khu neo đậu / Khu chuyển tải / Khu tránh trú bão / CS sửa chữa đóng tàu). Chức năng dùng bởi mọi người dùng đã đăng nhập; quyền truy cập từng mục theo phân quyền động (nhóm/tài khoản) hiện có. Không tạo entity mới, không đổi schema; phạm vi thay đổi giới hạn trong 4 edit-target files theo triage.
-
-Bổ sung (đợt 2 — triage TRI-1787823566528-bb3e): **ô tìm kiếm menu sidebar** (`AppLayout.tsx` dòng 561–567, input tại dòng 565 — hiện là input chết) — người dùng gõ chuỗi lọc nhanh các mục menu theo `label` tiếng Việt; chuỗi được `.trim()` trước khi so khớp (VAL-024-06); xóa chuỗi → menu khôi phục đầy đủ; chỉ thu hẹp hiển thị, không navigate, không gọi API (UC-024-09/10, BR-024-13/14/15, AC-024-11/12/13).
-
-Bổ sung (đợt 3 — triage TRI-1787899754098-59d2): sidebar & header theo chuẩn theme CHK — nền sidebar navy `#1a3f83` (`themetokenchk.sidebarBg` dòng 72, `theme.ts` `sidebarBg` dòng 50 + fallback `--bg-sidebar` dòng 287/618/1006), accent tiêu đề `#273e7c` (`themetokenchk.actionPrimary` dòng 36 — áp dụng tại `AppLayout.tsx` title topbar dòng 632/865, sidebar fullscreen dòng 785/799). Giữ dark-menu, cấu trúc 7 nhóm, phân quyền, ô tìm kiếm.
+Chức năng tái cấu trúc toàn bộ điều hướng hệ thống theo mô hình **dashboard-first**: trang chủ `/` là landing **6 khối chức năng** (Quản lý KCHT hàng hải / Quản lý tài sản KCHT / Quản lý quy hoạch & vận hành / GIS / Báo cáo thống kê / Quản trị hệ thống) làm cổng vào duy nhất. Sidebar không còn liệt kê nhóm cấp 1: khi user vào sâu một khối, sidebar hiện **cây menu của khối đó** (khối KCHT = cây 28 loại theo ma trận cha–con) kèm nút "Về trang chủ". Mọi màn điều hướng được quy tụ về **một nguồn cấu hình duy nhất** `frontend/src/config/navigation.tsx`. Người dùng: mọi tài khoản đã đăng nhập (menu lọc theo phân quyền `<resource>:<action>`).
 
 ## 2. Trường dữ liệu
 
-> Chức năng này **không có form nhập liệu nghiệp vụ** (không tạo/sửa bản ghi). Dữ liệu chức năng là **cấu trúc menu cấu hình tĩnh** trong `AppLayout.tsx` (`rawMenuItems` dòng 222) + bảng quyền `MENU_PERMISSION_MAP` dòng 44 — không lưu database. Ô tìm kiếm menu (dòng 565) là **input lọc hiển thị, state cục bộ** — không phải form nghiệp vụ, không gửi lên server (BR-292-07). Bảng dưới mô tả các trường cấu hình của một node menu (không phải form):
+Không áp dụng — chức năng điều hướng không có trường nhập liệu nghiệp vụ. "Dữ liệu" của chức năng là **cấu hình menu** (node: `key`, `route`, `label`, `icon`, `disabled`, `children`) khai báo tĩnh trong `navigation.tsx` — xem mục 6/7 (đề xuất, SA chốt).
 
-| # | Trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
+| # | Trường | Bắt buộc | Kiểu–ràng buộc | Ghi chú |
 |---|---|---|---|---|
-| 1 | `key` | Có | Text — tiếng Anh chuẩn, duy nhất trong cùng cấp; item lá bắt đầu bằng `/` (route) | VAL-024-01 |
-| 2 | `label` | Có | Text — tiếng Việt có dấu, không rỗng | VAL-024-02; BR-024-10 |
-| 3 | `parentKey` | Có (với item con) | Text — key của node cha; xác lập phân cấp theo ma trận cha–con | BR-024-03 |
-| 4 | `route` (item lá) | Có nếu có màn hình | Path tiếng Anh chuẩn, tồn tại trong router | BR-024-08; VAL-024-05 |
-| 5 | `permission` | Có nếu có phân quyền | `<resource>:<action>` có trong `MENU_PERMISSION_MAP`; nếu chưa có quyền → item disabled "Chưa triển khai" | BR-024-04; D-1 |
-| 6 | `icon` | Không | Icon từ `@ant-design/icons` | — |
-| 7 | `searchQuery` (ô tìm kiếm menu) | Không (state cục bộ, mặc định rỗng) | Text — chuỗi tìm kiếm của user; `.trim()` trước khi so khớp `label` (VAL-024-06) | State React trong `AppLayout` (dòng 565); không gửi API, không lưu DB; rỗng → hiển thị toàn bộ menu |
+| 1 | `key` | Có | string — duy nhất trong cây; lá có route bắt đầu `/` | `selectedKey` AntD |
+| 2 | `route` | Có (node có màn) | string — route tồn tại trong `App.tsx` | Không trỏ route chết (VAL-024-05) |
+| 3 | `label` | Có | string — tiếng Việt có dấu | Hiển thị menu/breadcrumb |
+| 4 | `disabled` | Không | boolean | Mờ + không navigate (BR-024-04) |
+| 5 | `children` | Không | NavNode[] — tối đa cấp 4 | Cây cha–con theo ma trận |
 
 ## 3. Trạng thái và phê duyệt
 
-- **Không có bước phê duyệt** — menu/điều hướng không phải dữ liệu nghiệp vụ có workflow phê duyệt C1/C2 (phê duyệt chỉ áp dụng cho dữ liệu KCHT trong các module nghiệp vụ).
-- Trạng thái duy nhất của chức năng là trạng thái **hiển thị** của item menu, quyết định động theo quyền user: `hiển thị` (có quyền + có route), `ẩn` (thiếu quyền hoặc submenu hết con), `disabled – Chưa triển khai` (item thuộc target menu nhưng chưa có màn hình — BR-024-08). Không lưu trạng thái số xuống database.
-- Ô tìm kiếm menu **không làm thay đổi trạng thái hiển thị** của item: chỉ thu hẹp tạm thời tập hiển thị theo từ khóa; bỏ từ khóa → trở về trạng thái hiển thị theo quyền như cũ (BR-292-07).
+Không áp dụng — chức năng không có bước phê duyệt. Lưu ý thiết kế: nhóm "PHÊ DUYỆT" tách riêng trong menu cũ **đã bị giải thể** (quyết định chốt 2026-09-04): việc duyệt C1/C2 nằm ngay trong từng màn nghiệp vụ qua StatusTabs 6 trạng thái, không tạo thêm màn tổng hợp "Duyệt…".
 
 ## 4. Quy tắc và phân quyền riêng
 
-> Chỉ ghi quy tắc **chưa có** trong tài liệu nền (phần chung ở `ba/00-lean-spec.md` BR-024-xx).
+Menu v2 **không phát sinh quyền mới**: mỗi node lá dùng đúng quyền `<resource>:<read>` của màn tương ứng qua `MENU_PERMISSION_MAP` (`AppLayout.tsx`) — node nào thiếu quyền thì ẩn (BR-024-05); node chưa có màn (VHF) hiển thị mờ `disabled`.
 
-### 4.1. Quy tắc nghiệp vụ (Business Rules)
+| Vai trò / thao tác | Xem landing 6 khối | Mở khối | Duyệt cây | Về trang chủ |
+|---|---|---|---|---|
+| User có ≥ 1 quyền nhóm | ✅ | ✅ (khối có quyền) | ✅ (node có quyền) | ✅ |
+| `ROLE_SYSTEM_ADMIN` / `admin:all` / `*` | ✅ toàn bộ | ✅ toàn bộ | ✅ toàn bộ | ✅ |
+| **Admin Cục** | ✅ | ✅ toàn bộ nhóm nghiệp vụ | ✅ | ✅ |
 
-| ID | Quy tắc | Áp dụng |
+Quy tắc riêng (chưa có trong tài liệu nền):
+- **Bảo toàn route** (BR-024-10): mọi route từng hiển thị trong menu cũ phải có mặt trong cây mới — ví dụ giữ cả `/ship-repair-yard` và `/ship-repair-facility`, giữ biến thể `/navigation-channel-chk` (CHK). Nghiêm cấm làm mất lối vào của user khi tái cấu trúc.
+- **Cây = cấu trúc hiển thị** (BR-024-08): không kéo data scope orgUnit vào menu; entity/màn nghiệp vụ vẫn tuân Data Scope Convention của chính module đó.
+
+## 5. Điểm khác biệt so với mẫu chung
+
+| # | Điểm | Khác biệt so với mẫu chung |
 |---|---|---|
-| BR-292-01 | Menu giữ đúng 7 nhóm cấp 1 theo `HH_Menu_21-08-2026.xlsx`; không tự đặt tên/đổi tên nhóm | Hierarchy |
-| BR-292-02 | Nhánh "Quản lý cảng biển" hiển thị đủ 13 thực thể KCHT, phân cấp theo chuỗi cha–con ma trận (không phẳng) | Hierarchy |
-| BR-292-03 | Mỗi item lá chỉ navigate khi có route thật; item chưa có màn hình hiển thị disabled + tooltip tiếng Việt "Chưa triển khai" — cấm navigate route giả | Navigation |
-| BR-292-04 | Item chỉ hiển thị khi user có quyền tương ứng (`canAccessMenu` + `MENU_PERMISSION_MAP`, `AppLayout.tsx` dòng 44–97); submenu không còn con → ẩn cả nhánh (`filterEmptyChildren`) | Permission |
-| BR-292-05 | Mọi permission mới (nếu có) phải seed qua `seedPermission` trong `run()` (`PermissionSeeder.java` dòng 41/726) — quyền động, không gán role | Permission |
-| BR-292-06 | Định danh kỹ thuật tiếng Anh, label tiếng Việt có dấu, không hardcode màu/spacing/font-size (theo `theme.ts`/`tokens.ts`) | Naming/UI |
-| BR-292-07 | Ô tìm kiếm menu (dòng 565) chỉ lọc hiển thị trên `menuItems` sau gating quyền (dòng 498): chuỗi `.trim()` trước khi so khớp `label` tiếng Việt (so khớp chuỗi con, không phân biệt hoa/thường); submenu hết con khớp → ẩn nhánh (BR-292-04); xóa chuỗi → khôi phục toàn bộ menu; không navigate, không gọi API | Search |
-| BR-292-08 | Tìm kiếm không bypass quyền và không phát sinh permission mới — chỉ hiển thị mục user đã có quyền (BR-292-04); không có chiều ghi dữ liệu (thống nhất BR-024-11) | Search / Permission |
+| 1 | Màn hình danh sách | Không có màn list CRUD mới — chỉ tái cấu trúc điều hướng |
+| 2 | Popup/Modal | Không phát sinh |
+| 3 | Lọc cha–con / theo đơn vị | Không áp dụng — cây menu là cấu trúc hiển thị, không phải data scope |
+| 4 | Luồng phê duyệt | Nhóm PHÊ DUYỆT cũ đã giải thể; duyệt nằm trong từng màn qua StatusTabs |
+| 5 | Trạng thái hiển thị | Giữ nguyên chuẩn 6 tab trạng thái của màn list thuộc module khác |
+| 6 | Quyền & phân cấp | Dùng lại quyền `<resource>:<read>` đã có; không phát sinh quyền mới |
+| 7 | Tìm kiếm menu | Ô tìm kiếm sidebar lọc trong cây của khối đang active (client-side, có trim) — không còn "input chết" |
+| 8 | Giao diện (theme) | Khác mẫu chung: sidebar không liệt kê nhóm, theo khối active (dashboard-first); mọi màu/spacing/font vẫn lấy từ `theme.ts`/`tokens.ts`, không hardcode |
 
-### 4.2. Acceptance Criteria kế thừa
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ SA chốt)
 
-- **AC-024-01** — Dashboard 6 khối: trang chủ render đúng 6 khối, mỗi khối có label tiếng Việt và điều hướng được.
-- **AC-024-02** — Sidebar nhánh "Quản lý cảng biển" hiển thị đúng 13 thực thể theo ma trận cha–con (đếm node = 13, quan hệ cha–con đúng chuỗi).
-- **AC-024-03** — Đúng 7 nhóm cấp 1 theo tên xlsx (I–VII).
-- **AC-024-04** — User thiếu quyền → item ẩn; submenu hết con → ẩn nhánh.
-- **AC-024-05** — User có `admin:all`/`*` → thấy toàn bộ menu.
-- **AC-024-06** — Click item lá có route → navigate đúng; `selectedKey`/`openKeys` đồng bộ đúng nhánh.
-- **AC-024-07** — Item chưa có màn hình → disabled + tooltip, không navigate route giả.
-- **AC-024-09** — `cd frontend && npx tsc --noEmit` pass; `mvn compile -DskipTests` pass.
-  Khi lỗi: item không hiển thị/vô quyền truy cập → kiểm tra lại `MENU_PERMISSION_MAP` + `hasPermissionFromList` (bypass chỉ qua `admin:all`/`*`/`resource:manage`, không phải `admin:manage`).
-- **AC-024-11** — Gõ ` cảng ` (kèm khoảng trắng thừa) → chỉ item có `label` chứa "cảng" sau `.trim()` hiển thị; item không khớp ẩn; submenu hết con khớp → ẩn nhánh; không item ngoài quyền hiển thị.
-- **AC-024-12** — Xóa toàn bộ chuỗi (hoặc chuỗi chỉ gồm khoảng trắng) → menu khôi phục đầy đủ như trước khi tìm kiếm (đúng 7 nhóm cấp 1 + item tiện ích theo quyền).
-- **AC-024-13** — Gõ từ khóa + Enter / click item khớp → không điều hướng ngoài ý muốn; không phát sinh request API tìm kiếm.
-
-### 4.3. User Stories kế thừa
-
-- **US-024-01:** Là người dùng đã đăng nhập, tôi muốn thấy 6 khối chức năng trên trang chủ để vào nhanh nhóm nghiệp vụ của mình.
-- **US-024-02:** Là người dùng có quyền quản lý KCHT, tôi muốn sidebar phân cấp 13 thực thể theo quan hệ cha–con để định vị nhanh màn hình (Cảng biển → Bến cảng → Cầu cảng; Luồng hàng hải → Bến phao/Nhà trạm/Đèn biển/Đê kè...).
-- **US-024-03:** Là người dùng không có quyền, tôi muốn menu không hiển thị các chức năng tôi không được dùng.
-- **US-024-04:** Là quản trị viên (`admin:all`), tôi muốn thấy toàn bộ menu để quản trị hệ thống.
-- **US-024-05:** Là người dùng đã đăng nhập, tôi muốn gõ từ khóa vào ô tìm kiếm menu để lọc nhanh mục cần truy cập và xóa từ khóa để menu trở lại đầy đủ.
-
-### 4.4. Phân quyền riêng
-
-| Thao tác | Quyền (`<resource>:<action>`) |
-|---|---|
-| Xem/điều hướng nhóm I — QUẢN LÝ KCHT HÀNG HẢI | `port:read`, `berth:read`, `pier:read`, `navigationchannel:read`, `dikerevetment:read`, `shiprepair:read`, `buoy:read`, `vts:read`, `radarstation:read`, `coastalstation:read`, `specialstation:read`, `dryport:read`, `data:read` (Đèn biển, Nhà trạm phao/tiêu) |
-| Xem/điều hướng nhóm II — QUẢN LÝ TÀI SẢN KCHT HÀNG HẢI | `asset:exploitation`, `asset:inventory`, `data:read` (mục khác ẩn/disabled tới khi module tài sản chốt quyền) |
-| Xem/điều hướng nhóm III — PHÊ DUYỆT | `<resource>:approve` / `approvec1` / `approvec2` (theo từng loại KCHT) |
-| Xem/điều hướng nhóm IV — BÁO CÁO THỐNG KÊ | `report:read` |
-| Xem/điều hướng nhóm V — QUẢN LÝ NGƯỜI DÙNG | `user:read`, `orgunit:read`, `group:read`, `admin:view` (Quản lý log truy cập) |
-| Xem/điều hướng nhóm VI — QUY HOẠCH & VẬN HÀNH | `document:read` (Văn bản pháp lý), `map:manage` (Biểu tượng bản đồ), `data:read` (danh mục GIS) |
-| Xem/điều hướng nhóm VII — TÍCH HỢP | `connection:read` |
-| Xem item tiện ích `Cấu hình hệ thống` | `admin:manage` |
-| Xem `Trang chủ` | Không cần quyền (mọi user đã đăng nhập) |
-| Tìm kiếm menu (ô tìm kiếm sidebar) | Không cần quyền riêng — lọc trên menu đã gating theo quyền hiện có (BR-292-04, BR-292-08) |
-
-**Admin Cục:** không cần quyền menu riêng — Admin Cục nhận full quyền theo tài liệu nền mục 3.8 (qua `orgunit:scope_all`/`admin:all` khi được gán), menu hiển thị theo quyền đã gán; menu không hiển thị metadata người tạo/người sửa (không phải màn dữ liệu) nên không phát sinh quyền xem thông tin nhạy cảm riêng. Ô tìm kiếm menu cũng không phát sinh thêm quyền hay metadata nhạy cảm cho Admin Cục.
-
-## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
-
-| # | Điểm cần khai báo | Khai báo của chức năng này |
-|---|---|---|
-| 1 | Trạng thái riêng | Không có — menu không có trạng thái nghiệp vụ; chỉ có trạng thái hiển thị động theo quyền (hiển thị / ẩn / disabled "Chưa triển khai"), không lưu DB |
-| 2 | Có bước phê duyệt không | Không — menu/điều hướng không thuộc luồng phê duyệt C1/C2 của dữ liệu KCHT |
-| 3 | Lọc cha-con / theo đơn vị | Không — chức năng không quản lý dữ liệu nghiệp vụ nên không có trường đơn vị, không có chiều ghi, không có ngoại lệ data scope; phân cấp menu theo ma trận cha–con KCHT là cấu trúc hiển thị, không phải lọc theo orgUnit (xem lean spec BR-024-11); ô tìm kiếm chỉ lọc client-side trên menu hiển thị — không quản lý dữ liệu (BR-292-08) |
-| 4 | Trường chỉ hiện trong điều kiện nào | Có — item menu chỉ hiển thị khi user có quyền tương ứng (BR-292-04); item chưa có màn hình hiển thị disabled "Chưa triển khai" (BR-292-03); ô tìm kiếm hiển thị khi sidebar mở (điều kiện render `!collapsed && !isMenuFullScreen` tại dòng 562 — hiện `collapsed = false` dòng 149, `isMenuFullScreen` dòng 151 không set true → luôn hiển thị) |
-| 5 | Quyền riêng | Không phát sinh permission mới (đề xuất — D-4): dùng lại `resource:read` hiện có trong `PermissionSeeder`; nếu SA chốt thêm `menu:view` thì seed qua `seedPermission` trong `run()` |
-| 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
-| 7 | Tải lên tệp | Không |
-| 8 | Giao diện khác mẫu chung | Có — Dashboard Grid 6 khối (trang chủ) + Sidebar phân cấp PMS Model (7 nhóm, nhánh 13 thực thể) + ô tìm kiếm menu; UI tuân thủ `theme.ts`/`tokens.ts`, không hardcode màu/spacing/font-size; ô tìm kiếm dùng CSS `.sidebar-search` có sẵn (`theme.ts` dòng 412–435) — không thêm token/class mới |
-
-## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
-
-> Không có endpoint mới — menu được cấu hình tĩnh ở frontend và gating bằng quyền hiện có (nguồn quyền: JWT `permissions` qua `authStore.ts` `parseJwt` → `permissionStore.ts`). Bảng dưới là đề xuất phương án; SA quyết định giữ tĩnh hay chuyển động.
+Không có API/endpoint mới — menu là cấu hình client-side; điều hướng bằng route nội bộ.
 
 | Method | Đường dẫn | Mô tả | Quyền |
 |---|---|---|---|
-| — (không gọi API) | — | Menu tĩnh trong `AppLayout.tsx` (`rawMenuItems` dòng 222) + `MENU_PERMISSION_MAP` dòng 44; quyền lấy từ JWT/profile hiện có — **phương án đề xuất, không thêm endpoint** | (gating theo quyền nghiệp vụ, mục 4.4) |
-| — (không gọi API) | — | Tìm kiếm menu: state cục bộ `searchQuery` trong `AppLayout.tsx`, lọc trên `menuItems` (dòng 498) sau gating quyền — không gọi backend (BR-292-07) — **đề xuất BA, SA chốt** | — (không có) |
-| GET | `/api/menu` *(chỉ khi SA chốt menu động)* | Trả cây menu theo quyền user (thay cho cấu hình tĩnh) | `*` (authenticated) |
+| — | `/` | Landing 6 khối (`HomeLanding`) — nội bộ `navigate(group.homeRoute)` | — |
+| — | `/dashboard` | Dashboard KPI cũ (Home) dời từ `/` sang | `report:read` (màn list báo cáo) |
+| GET (render) | `/port`, `/berth`, … (route có sẵn) | Node lá điều hướng tới màn có sẵn | theo quyền từng màn |
 
-## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+Nguồn dữ liệu: `frontend/src/config/navigation.tsx` (NAV_GROUPS + helpers `groupOfPath`/`locateRoute`/`accessibleTree`/`firstAccessibleRoute`) — **nguồn duy nhất**, `AppLayout.tsx` và `HomeLanding.tsx` chỉ tiêu thụ config này.
 
-Quy ước: 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường cần loại bỏ.
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ SA chốt)
 
-**Không có bảng CSDL mới** — chức năng không tạo/sửa dữ liệu nghiệp vụ, không có migration (xem lean spec mục 8: không phát sinh `orgUnitId`/`@Filter`/`@DataScope`). `searchQuery` là state React cục bộ — **không phải cột bảng**, không có migration.
+**Không có bảng CSDL mới, không migration** — chức năng không tạo/sửa dữ liệu nghiệp vụ (lean-spec mục 9: không phát sinh `orgUnitId`/`@Filter`/`@DataScope`).
 
-Nếu SA chốt chuyển menu sang **động** (phương án thay thế ở mục 6), đề xuất bảng `menu_item` (🔴 toàn bộ là trường mới): `id` (UUID, PK), `parent_id` (FK, tự tham chiếu — xác lập phân cấp), `label` (varchar, tiếng Việt có dấu), `route_key` (varchar, tiếng Anh), `permission_code` (varchar, nullable), `sort_order` (int), `level` (smallint ≤ 4), `active` (boolean) — **đề xuất BA, SA chốt; không áp dụng nếu giữ menu tĩnh**.
+Cấu trúc cấu hình (trong code, thay cho bảng):
+
+```
+NAV_GROUPS: { id, label, desc, icon, tree: NavNode[] }[]
+NavNode: { key, route?, label, icon?, disabled?, note?, children? }
+```
+
+Nếu SA chốt chuyển menu sang **động** (phương án thay thế trong tương lai): bảng `menu_item` (`id` UUID PK, `parent_id` FK tự tham chiếu, `label`, `route_key`, `permission_code`, `sort_order`, `level` ≤ 4, `active`) — đề xuất BA, SA chốt; **không áp dụng** khi giữ menu tĩnh theo config (hiện tại).
