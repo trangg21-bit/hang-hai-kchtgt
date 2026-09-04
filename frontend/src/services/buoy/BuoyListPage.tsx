@@ -1656,7 +1656,7 @@ export default function BuoyListPage() {
                 style={{ borderRadius: radiusPill, height: 40 }} />
             </div>
             <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/TP)</div>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành Phố)</div>
               <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
                 filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
                 value={filterProvince || undefined} onChange={(v) => { setFilterProvince(v || ''); setPage(1); }}

@@ -56,6 +56,8 @@ public class CreateBerthRequest {
     @Size(max = 255)
     private String operator;
 
+    private UUID operatingOrgId;
+
     @DecimalMin("0")
     private BigDecimal totalArea;
 

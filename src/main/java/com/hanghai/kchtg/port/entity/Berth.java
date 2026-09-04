@@ -116,6 +116,9 @@ public class Berth extends BaseEntity implements ApprovableEntity {
     @Column(name = "operator", length = 255)
     private String operator;
 
+    @Column(name = "operating_org_id")
+    private UUID operatingOrgId;
+
     @Column(name = "total_area", precision = 19, scale = 4)
     private BigDecimal totalArea;
 

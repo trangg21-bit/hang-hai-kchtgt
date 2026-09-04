@@ -2,18 +2,19 @@ import { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallba
 import dayjs from 'dayjs';
 import {
   Row, Col, Form, Input, Select, InputNumber, Tabs,
-  Button, Upload, Space, DatePicker, Table, Modal,
+  Button, Space, DatePicker, Modal,
 } from 'antd';
 import type { UploadFile } from 'antd';
-import { PlusOutlined, DeleteOutlined, FileOutlined, InboxOutlined, DownloadOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import { colors, DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
+import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import {
-  textPrimary, textTertiary, borderDefault, actionPrimary, statusCritical,
-  fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
-  radiusPill, radiusMd, spaceSm, spaceMd, spaceFormField,
+  textTertiary, borderDefault, actionPrimary, statusCritical,
+  fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
+  radiusPill, radiusMd, spaceSm, spaceFormField,
   surfaceCard, readonlyInputStyle, sidebarBg,
-  primaryButtonStyle, outlineButtonStyle, drawerTabBarStyle, drawerTabContentStyle, drawerFormScrollStyle,
+  primaryButtonStyle, outlineButtonStyle, drawerTabBarStyle, drawerFormScrollStyle,
 } from '../../themetokenchk';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import type { SaveAction } from '../../types/port';
@@ -68,14 +69,14 @@ const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?:
     if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
     if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length-1].longitude) pts.pop(); return pts; } }
     const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    const pm = wkt.match(/POINT\s*\(([\d.\-]+)\s+([\d.\-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
+    const pm = wkt.match(/POINT\s*\(([\d.-]+)\s+([\d.-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
   } catch { /* ignore */ }
   return [];
 };
 
 function ddToDms(dd: number | null | undefined): { d: number | null; m: number | null; s: number | null } {
   if (dd == null || isNaN(dd)) return { d: null, m: null, s: null };
-  let abs = Math.abs(dd);
+  const abs = Math.abs(dd);
   let d = Math.floor(abs);
   let mFloat = (abs - d) * 60;
   if (mFloat > 59.999999999) { d += 1; mFloat = 0; }
@@ -201,8 +202,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
   const [coordinateList, setCoordinateList] = useState<Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>>([]);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gisModalOpen, setGisModalOpen] = useState(false);
-  const [gpsPage, setGpsPage] = useState(1);
-  const [filePage, setFilePage] = useState(1);
+  const [gpsPage] = useState(1);
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
   const [, setExistingFiles] = useState<any[]>([]);
 
@@ -572,7 +572,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
           <Col span={12}>
             <Form.Item name="publicDecision" {...labelProps('Quyết định công bố/ Văn bản cho phép khai thác')} style={{ marginBottom: spaceFormField }}
               validateStatus={atMax.publicDecision ? 'error' : undefined} help={atMax.publicDecision ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
-              <Input placeholder="Nhập quyết định công bố" maxLength={2000} showCount style={inputStyle} />
+              <Input.TextArea rows={1} autoSize={{ minRows: 1 }} placeholder="Nhập quyết định công bố" maxLength={2000} showCount style={{ borderRadius: radiusPill, height: 'auto' }} />
             </Form.Item>
           </Col>
         </Row>
@@ -580,7 +580,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
           <Col span={12}>
             <Form.Item name="investmentAgreement" {...labelProps('Văn bản thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }}
               validateStatus={atMax.investmentAgreement ? 'error' : undefined} help={atMax.investmentAgreement ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
-              <Input placeholder="Nhập văn bản thỏa thuận" maxLength={2000} showCount style={inputStyle} />
+              <Input.TextArea rows={1} autoSize={{ minRows: 1 }} placeholder="Nhập văn bản thỏa thuận" maxLength={2000} showCount style={{ borderRadius: radiusPill, height: 'auto' }} />
             </Form.Item>
           </Col>
         </Row>
@@ -704,102 +704,16 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
         </>
       )}
     </div>) },
-    // Tab 5: File đính kèm
-    { key: 'files', label: 'File đính kèm', children: (<div style={drawerFormScrollStyle}>
-      <div style={{ marginBottom: spaceMd }}>
-        <Upload.Dragger
-          beforeUpload={handleBeforeUpload}
-          showUploadList={false}
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif"
-          multiple
-          style={{ background: '#fafbfc', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, padding: '24px 16px' }}
-        >
-          <p style={{ marginBottom: 8 }}>
-            <InboxOutlined style={{ fontSize: 44, color: actionPrimary }} />
-          </p>
-          <p style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: textPrimary, marginBottom: 4 }}>
-            Kéo thả tệp vào đây hoặc nhấp để chọn tệp tải lên
-          </p>
-          <p style={{ fontSize: fontSizeSm, color: textTertiary, margin: 0 }}>
-            Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Mỗi file ≤ 20MB.
-          </p>
-        </Upload.Dragger>
-      </div>
-      <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-        <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
-          Danh sách tệp đính kèm ({uploadedFiles.length})
-        </span>
-      </div>
-      <Table
-        size="small"
-        pagination={uploadedFiles.length > 10 ? {
-          current: filePage,
-          pageSize: 10,
-          total: uploadedFiles.length,
-          onChange: (p) => setFilePage(p),
-          showSizeChanger: false,
-          size: 'small',
-        } : false}
-        dataSource={uploadedFiles.map((f, i) => ({ ...f, key: f.uid, _idx: i, name: f.name }))}
-        rowKey={(r) => r.uid || r._idx}
-        locale={{ emptyText: 'Chưa có tài liệu đính kèm nào' }}
-        scroll={{ x: 720 }}
-        columns={[
-          {
-            title: 'STT',
-            width: 60,
-            align: 'center',
-            render: (_v, _r, idx) => (filePage - 1) * 10 + idx + 1,
-          },
-          {
-            title: 'Tên tài liệu',
-            key: 'name',
-            dataIndex: 'name',
-            render: (name: string) => (
-              <a
-                onClick={() => toast.info(`Đang tải xuống tệp: ${name}`)}
-                style={{ fontSize: fontSizeMd, color: actionPrimary, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontWeight: fontWeightMedium, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
-              >
-                <FileOutlined />
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-              </a>
-            ),
-          },
-          {
-            title: 'Dung lượng',
-            key: 'size',
-            width: 120,
-            align: 'right' as const,
-            render: (_v, rec: any) => rec.size ? (rec.size > 1024 * 1024 ? `${(rec.size / (1024 * 1024)).toFixed(2)} MB` : `${(rec.size / 1024).toFixed(1)} KB`) : '—',
-          },
-          {
-            title: 'Người tải lên',
-            key: 'uploadedBy',
-            width: 180,
-            render: () => currentUser?.fullName || currentUser?.username || '—',
-          },
-          {
-            title: 'Ngày tải lên',
-            key: 'uploadedDate',
-            width: 160,
-            align: 'center' as const,
-            render: (_v, rec: any) => rec.uploadedDate ? dayjs(rec.uploadedDate).format('DD/MM/YYYY HH:mm') : '—',
-          },
-          {
-            title: '',
-            key: 'actions',
-            width: 80,
-            align: 'center',
-            render: (_v, record: any) => (
-              <Space size={4}>
-                <Button type="text" icon={<DownloadOutlined style={{ color: actionPrimary }} />} onClick={() => toast.info(`Đang tải xuống tệp: ${record.name}`)} />
-                <Button type="text" danger icon={<DeleteOutlined />} onClick={() => setUploadedFiles(uploadedFiles.filter(x => x.uid !== record.uid))} />
-              </Space>
-            ),
-          },
-        ]}
+    // Tab 5: File đính kèm (chuẩn VTS CHK — InfrastructureAttachmentTab)
+    { key: 'files', label: 'File đính kèm', children: (
+      <InfrastructureAttachmentTab
+        attachments={uploadedFiles.map((f) => ({ id: f.uid, fileName: f.name, fileSize: f.size, ...f }))}
+        readonly={false}
+        onUpload={(file) => { handleBeforeUpload(file); return false; }}
+        onDelete={(id) => { setUploadedFiles((p) => p.filter((x) => x.uid !== id)); }}
+        onDownload={(_id, name) => { toast.info(`Đang tải xuống tệp: ${name}`); }}
       />
-    </div>) },
+    ) },
   ];
 
   useImperativeHandle(ref, () => ({ submit: (saveAction: SaveAction) => handleSave(saveAction) }), [handleSave]);

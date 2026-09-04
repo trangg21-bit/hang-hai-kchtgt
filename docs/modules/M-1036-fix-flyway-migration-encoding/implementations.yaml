@@ -1,0 +1,21 @@
+module_id: M-1036
+module_name: "Sửa lỗi encoding 2 file migration Flyway chặn khởi động backend"
+type: bounded-context
+slug: fix-flyway-migration-encoding
+
+# Map logical module → physical implementations across apps/services/libs.
+# Updated by `from-code` Phase 5 (auto-detect) or `dev` agent (manual).
+implementations:
+  apps: []
+  services: []
+  libs: []
+  packages: []
+
+# Stakeholder roster (BA fills business-owner; tech-lead fills tech-lead)
+stakeholders:
+  business-owner: ""
+  tech-lead: ""
+  qa-lead: ""
+
+# Cross-references
+depends_on: []

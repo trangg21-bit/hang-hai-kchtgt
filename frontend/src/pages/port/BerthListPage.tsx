@@ -809,7 +809,7 @@ export default function BerthList() {
           style={{ borderRadius: radiusPill, height: 40 }} />
       </div>
       <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/TP)</div>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành Phố)</div>
         <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
           filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
           value={filterProvince || undefined} onChange={(v) => { setFilterProvince(v || ''); setPage(1); }}
@@ -1097,6 +1097,7 @@ export default function BerthList() {
 
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
       <AppDrawer
+        size={1000}
         title={<span style={drawerTitleStyle}>Chi tiết bến cảng{detailRecord ? ` - ${detailRecord.berthName}` : ''}</span>}
         open={detailDrawerVisible}
         onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); }}

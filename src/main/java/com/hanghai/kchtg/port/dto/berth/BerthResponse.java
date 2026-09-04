@@ -4,6 +4,7 @@ import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.port.entity.BerthType;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.Builder;
 import lombok.Data;
 
@@ -48,6 +49,8 @@ public class BerthResponse {
     private Integer coordinateSystem;
     private Integer displayRule;
     private String operator;
+    private UUID operatingOrgId;
+    private String operatingOrgName;
     private BigDecimal totalArea;
     private BigDecimal designThroughput;
     private BigDecimal currentThroughput;

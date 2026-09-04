@@ -1,0 +1,21 @@
+module_id: M-1037
+module_name: "Đồng bộ tab File đính kèm 10 module KCHT"
+type: bounded-context
+slug: dong-bo-tab-file-dinh-kem-10-module-kcht
+
+# Map logical module → physical implementations across apps/services/libs.
+# Updated by `from-code` Phase 5 (auto-detect) or `dev` agent (manual).
+implementations:
+  apps: []
+  services: []
+  libs: []
+  packages: []
+
+# Stakeholder roster (BA fills business-owner; tech-lead fills tech-lead)
+stakeholders:
+  business-owner: ""
+  tech-lead: ""
+  qa-lead: ""
+
+# Cross-references
+depends_on: []

@@ -1,12 +1,13 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import dayjs from 'dayjs';
-import { Tabs, Form, Row, Col, InputNumber, Select, Input, Upload, DatePicker, Table, Space, Button, Modal } from 'antd';
+import { Tabs, Form, Row, Col, InputNumber, Select, Input, DatePicker, Table, Space, Button, Modal } from 'antd';
 import type { FormInstance, UploadFile } from 'antd';
-import { PlusOutlined, DeleteOutlined, FileOutlined, EnvironmentOutlined, InboxOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import api from '../../services/api';
 import toast from '../../components/ToastNotification';
 import { fmtInputNumber } from '../../utils/numFmt';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import { symbolService } from '../../services/symbolService';
 import type { Symbol as GisSymbol } from '../../services/symbolService';
 import { lineObjectService } from '../../services/lineObjectService';
@@ -20,13 +21,12 @@ import {
 } from './api';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import type { BuoyStationResponse, CreateBuoyStationRequest } from './types';
-import { useAuthStore } from '../../store/authStore';
 import {
   sidebarBg, actionPrimary, statusCritical,
-  readonlyInputStyle, drawerTabBarStyle, drawerTabContentStyle, drawerFormScrollStyle,
-  outlineButtonStyle, primaryButtonStyle, spaceMd, fontSizeLg,
-  spaceFormField, radiusPill, radiusMd, borderDefault, textTertiary, textPrimary,
-  spaceSm, fontWeightBold, fontSizeMd, fontSizeSm, surfaceCard, uploadHintStyle,
+  readonlyInputStyle, drawerTabBarStyle, drawerFormScrollStyle,
+  outlineButtonStyle, primaryButtonStyle, fontSizeLg,
+  spaceFormField, radiusPill, radiusMd, borderDefault, textTertiary,
+  spaceSm, fontWeightBold, fontSizeMd, fontSizeSm, surfaceCard,
 } from '../../themetokenchk';
 
 import {
@@ -146,10 +146,8 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
   setUploadedFiles,
   existingFiles,
   organizations,
-  userMap,
   onFinish,
 }, ref) {
-  const currentUser = useAuthStore((s) => s.user);
   const [orgUnitOptions, setOrgUnitOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [operatingOrgs] = useState<Array<{ id: string; name: string; code: string }>>(DEFAULT_OPERATING_ORGANIZATIONS);
 
@@ -169,7 +167,6 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const [indexOpen, setIndexOpen] = useState(true); // Toggle 'Chỉ số tổng hợp' trong tab Thông tin chung (mặc định MỞ)
   const [gpsPage, setGpsPage] = useState(1);
-  const [filePage, setFilePage] = useState(1);
   const [activeTabKey, setActiveTabKey] = useState('general');
   const editPortIdRef = useRef<string | undefined>(undefined);
 
@@ -377,7 +374,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
       }
       onFinish(true);
     } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra'); }
-  }, [form, isEdit, entityData, coordinateList, uploadedFiles, currentUser, onFinish]);
+  }, [form, isEdit, entityData, coordinateList, uploadedFiles, onFinish]);
 
   useImperativeHandle(ref, () => ({ submit: (saveAction: SaveAction) => void handleSave(saveAction) }), [handleSave]);
 
@@ -542,101 +539,19 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
         </>
       )}
     </div>) },
-    // Tab 3: File đính kèm (chuẩn VTS CHK — Upload.Dragger + bảng STT/Tên/Dung lượng/Người tải lên/Ngày tải lên)
-    { key: 'files', label: 'File đính kèm', children: (<div style={drawerFormScrollStyle}>
-      <div style={{ marginBottom: spaceMd }}>
-        <Upload.Dragger
-          beforeUpload={handleBeforeUpload}
-          showUploadList={false}
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif"
-          multiple
-          style={{ background: '#fafbfc', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, padding: '24px 16px' }}
-        >
-          <p style={{ marginBottom: 8 }}>
-            <InboxOutlined style={{ fontSize: 44, color: actionPrimary }} />
-          </p>
-          <p style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: textPrimary, marginBottom: 4 }}>
-            Kéo thả tệp vào đây hoặc nhấp để chọn tệp tải lên
-          </p>
-          <p style={{ fontSize: fontSizeSm, color: textTertiary, margin: 0 }}>
-            Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Mỗi file ≤ 20MB.
-          </p>
-        </Upload.Dragger>
-      </div>
-      <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-        <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
-          Danh sách tệp đính kèm ({uploadedFiles.length + existingFiles.length})
-        </span>
-      </div>
-      <Table
-        size="small"
-        scroll={{ x: 720 }}
-        pagination={(uploadedFiles.length + existingFiles.length) > 10 ? {
-          current: filePage,
-          pageSize: 10,
-          total: uploadedFiles.length + existingFiles.length,
-          onChange: (p) => setFilePage(p),
-          showSizeChanger: false,
-          size: 'small',
-        } : false}
-        dataSource={[
-          ...uploadedFiles.map((f, i) => ({ key: f.uid, _idx: i, uid: f.uid, name: f.name, size: f.size, removable: true })),
-          ...existingFiles.map((f, i) => ({ key: f.id, _idx: i, uid: f.id, name: f.fileName || f.name, size: f.fileSize, removable: false, uploadedBy: (f as any).uploadedBy, uploadedAt: (f as any).uploadedAt })),
+    // Tab 3: File đính kèm (chuẩn VTS CHK — InfrastructureAttachmentTab)
+    { key: 'files', label: 'File đính kèm', children: (
+      <InfrastructureAttachmentTab
+        attachments={[
+          ...uploadedFiles.map((f) => ({ id: f.uid, fileName: f.name, fileSize: f.size, ...f })),
+          ...existingFiles.map((f) => ({ id: f.id, fileName: f.fileName || f.name || '—', fileSize: f.fileSize, uploadedBy: f.uploadedBy, uploadedAt: f.uploadedAt })),
         ]}
-        rowKey={(r) => r.uid || r._idx}
-        locale={{ emptyText: 'Chưa có tài liệu đính kèm nào' }}
-        columns={[
-          {
-            title: 'STT',
-            width: 60,
-            align: 'center',
-            render: (_v, _r, idx) => (filePage - 1) * 10 + idx + 1,
-          },
-          {
-            title: 'Tên tài liệu',
-            key: 'name',
-            dataIndex: 'name',
-            render: (name: string) => (
-              <span title={name} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: fontSizeMd, color: textPrimary }}>
-                <FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}
-              </span>
-            ),
-          },
-          {
-            title: 'Dung lượng',
-            key: 'size',
-            width: 120,
-            align: 'right' as const,
-            render: (_v, rec: any) => rec.size ? (rec.size > 1024 * 1024 ? `${(rec.size / (1024 * 1024)).toFixed(2)} MB` : `${(rec.size / 1024).toFixed(1)} KB`) : '—',
-          },
-          {
-            title: 'Người tải lên',
-            key: 'uploadedBy',
-            width: 180,
-            render: (_v, rec: any) => rec.uploadedBy ? (userMap?.get(String(rec.uploadedBy)) || rec.uploadedBy) : (currentUser?.fullName || currentUser?.username || '—'),
-          },
-          {
-            title: 'Ngày tải lên',
-            key: 'uploadedAt',
-            width: 160,
-            align: 'center' as const,
-            render: (_v, rec: any) => rec.uploadedAt ? dayjs(rec.uploadedAt).format('DD/MM/YYYY HH:mm') : '—',
-          },
-          {
-            title: '',
-            key: 'actions',
-            width: 80,
-            align: 'center',
-            render: (_v, record: any) => record.removable ? (
-              <Button type="text" danger icon={<DeleteOutlined />} onClick={() => setUploadedFiles(p => p.filter(x => x.uid !== record.uid))} />
-            ) : null,
-          },
-        ]}
+        readonly={false}
+        onUpload={(file) => { handleBeforeUpload(file); return false; }}
+        onDelete={(id) => { setUploadedFiles((p) => p.filter((x) => x.uid !== id)); }}
+        onDownload={(_id, name) => { toast.info(`Đang tải xuống tệp: ${name}`); }}
       />
-      <div style={{ marginTop: spaceSm }}>
-        <span style={uploadHintStyle}>Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤20MB.</span>
-      </div>
-    </div>) },
+    ) },
   ];
 
   return (

@@ -2,24 +2,26 @@ import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 're
 import dayjs from 'dayjs';
 import {
   Row, Col, Form, Input, Select, InputNumber, Tabs,
-  Button, Upload, Space, DatePicker, Table, Modal,
+  Button, Space, DatePicker, Modal,
 } from 'antd';
 import DetailTable from '../../components/shared/DetailTable';
+import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import type { UploadFile } from 'antd';
-import { PlusOutlined, DeleteOutlined, FileOutlined, InboxOutlined, DownloadOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import {
   colors, DRAWER_TABLE_SCROLL_Y,
-  textPrimary, textTertiary, borderDefault, actionPrimary, statusCritical,
-  fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
-  radiusPill, radiusMd, spaceSm, spaceMd, spaceFormField,
+  textTertiary, borderDefault, actionPrimary, statusCritical,
+  fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
+  radiusPill, radiusMd, spaceSm, spaceFormField,
   surfaceCard, readonlyInputStyle, sidebarBg,
-  primaryButtonStyle, outlineButtonStyle, drawerTabBarStyle, drawerTabContentStyle, drawerFormScrollStyle,
+  primaryButtonStyle, outlineButtonStyle, drawerTabBarStyle, drawerFormScrollStyle,
 } from '../../themetokenchk';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { BERTH_ACTIVITY_STATUS_MAP } from '../../types/port';
 import type { Berth, SaveAction } from '../../types/port';
 import api from '../../services/api';
 import toast from '../../components/ToastNotification';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { organizationService } from '../../services/organizationService';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
@@ -147,13 +149,14 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
   const [loadingOrgs, setLoadingOrgs] = useState(false);
   const [portOptions, setPortOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [loadingPorts, setLoadingPorts] = useState(false);
+  const [operatingOrgs, setOperatingOrgs] = useState<Array<{ id: string; name: string; code: string }>>(DEFAULT_OPERATING_ORGANIZATIONS);
+  useEffect(() => { api.get('/common/options/operating-units').then(r => { const list = r.data?.data; if (Array.isArray(list) && list.length) setOperatingOrgs(list); }).catch(() => {}); }, []);
   const [waterwayOptions, setWaterwayOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [symbols, setSymbols] = useState<Symbol[]>([]);
   const [coordinateList, setCoordinateList] = useState<Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>>([]);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gisModalOpen, setGisModalOpen] = useState(false);
-  const [gpsPage, setGpsPage] = useState(1);
-  const [filePage, setFilePage] = useState(1);
+  const [gpsPage] = useState(1);
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
   const [, setExistingFiles] = useState<any[]>([]);
 
@@ -210,7 +213,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
         editPortIdRef.current = data.portId;
         form.setFieldsValue({
           orgUnitId: data.orgUnitId, portId: data.portId, berthCode: data.berthCode, berthName: data.berthName,
-          waterwayId: data.waterwayId, operator: data.operator,
+          waterwayId: data.waterwayId, operatingOrgId: data.operatingOrgId,
           provinceId: data.provinceId ? VIETNAM_PROVINCES[data.provinceId - 1] ?? undefined : undefined,
           detailedLocation: data.detailedLocation, structureType: data.structureType, operationalFunction: data.operationalFunction,
           totalArea: data.totalArea, designThroughput: data.designThroughput, currentThroughput: data.currentThroughput,
@@ -283,7 +286,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
         latitude: manualCoords.length > 0 ? manualCoords[0].latitude : undefined,
         longitude: manualCoords.length > 0 ? manualCoords[0].longitude : undefined,
         coordinates: manualCoords.length > 1 ? `MULTIPOINT(${manualCoords.map(c => `(${c.longitude} ${c.latitude})`).join(',')})` : manualCoords.length === 1 ? `POINT(${manualCoords[0].longitude} ${manualCoords[0].latitude})` : undefined,
-        operator: values.operator || undefined, provinceId: provinceName ? VIETNAM_PROVINCES.indexOf(provinceName) + 1 : undefined,
+        operatingOrgId: values.operatingOrgId || undefined, provinceId: provinceName ? VIETNAM_PROVINCES.indexOf(provinceName) + 1 : undefined,
         detailedLocation: values.detailedLocation || undefined, structureType: values.structureType != null ? Number(values.structureType) : undefined,
         operationalFunction: values.operationalFunction || undefined,
         totalArea: values.totalArea != null && !isNaN(Number(values.totalArea)) ? Number(values.totalArea) : undefined,
@@ -351,14 +354,14 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
           </Form.Item>
         </Col>
         <Col span={12}>
-          <Form.Item name="operator" {...labelProps('Đơn vị khai thác')} style={{ marginBottom: spaceFormField }}>
-            <Input placeholder="Nhập đơn vị khai thác" maxLength={255} showCount style={inputStyle} />
+          <Form.Item name="operatingOrgId" {...labelProps('Đơn vị khai thác')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị khai thác không được để trống' }]}>
+            <Select placeholder="Chọn đơn vị khai thác..." options={operatingOrgs.map(o => ({ value: o.id, label: o.name }))} showSearch optionFilterProp="label" allowClear style={selectStyle} />
           </Form.Item>
         </Col>
       </Row>
       <Row gutter={[24, 0]}>
         <Col span={12}>
-          <Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành Phố)')} style={{ marginBottom: spaceFormField }}>
+          <Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành Phố)')} required style={{ marginBottom: spaceFormField }}>
             <Select placeholder="Chọn địa điểm" showSearch optionFilterProp="label" filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())} options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))} style={selectStyle} />
           </Form.Item>
         </Col>
@@ -558,101 +561,19 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
       )}
     </div>) },
     // Tab 3: File đính kèm
-    { key: 'files', label: `File đính kèm (${uploadedFiles.length})`, children: (<div style={drawerFormScrollStyle}>
-      <div style={{ marginBottom: spaceMd }}>
-        <Upload.Dragger
-          beforeUpload={handleBeforeUpload}
-          showUploadList={false}
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif"
-          multiple
-          style={{ background: '#fafbfc', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, padding: '24px 16px' }}
-        >
-          <p style={{ marginBottom: 8 }}>
-            <InboxOutlined style={{ fontSize: 44, color: actionPrimary }} />
-          </p>
-          <p style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: textPrimary, marginBottom: 4 }}>
-            Kéo thả tệp vào đây hoặc nhấp để chọn tệp tải lên
-          </p>
-          <p style={{ fontSize: fontSizeSm, color: textTertiary, margin: 0 }}>
-            Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Mỗi file ≤ 20MB.
-          </p>
-        </Upload.Dragger>
-      </div>
-      <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-        <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
-          Danh sách tệp đính kèm ({uploadedFiles.length})
-        </span>
-      </div>
-      <Table
-        size="small"
-        pagination={uploadedFiles.length > 10 ? {
-          current: filePage,
-          pageSize: 10,
-          total: uploadedFiles.length,
-          onChange: (p) => setFilePage(p),
-          showSizeChanger: false,
-          size: 'small',
-        } : false}
-        dataSource={uploadedFiles.map((f, i) => ({ ...f, key: f.uid, _idx: i, name: f.name }))}
-        rowKey={(r) => r.uid || r._idx}
-        locale={{ emptyText: 'Chưa có tài liệu đính kèm nào' }}
-        scroll={{ x: 720 }}
-        columns={[
-          {
-            title: 'STT',
-            width: 60,
-            align: 'center',
-            render: (_v, _r, idx) => (filePage - 1) * 10 + idx + 1,
-          },
-          {
-            title: 'Tên tài liệu',
-            key: 'name',
-            dataIndex: 'name',
-            render: (name: string) => (
-              <a
-                onClick={() => toast.info(`Đang tải xuống tệp: ${name}`)}
-                style={{ fontSize: fontSizeMd, color: actionPrimary, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontWeight: fontWeightMedium, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
-              >
-                <FileOutlined />
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-              </a>
-            ),
-          },
-          {
-            title: 'Dung lượng',
-            key: 'size',
-            width: 120,
-            align: 'right' as const,
-            render: (_v, rec: any) => rec.size ? (rec.size > 1024 * 1024 ? `${(rec.size / (1024 * 1024)).toFixed(2)} MB` : `${(rec.size / 1024).toFixed(1)} KB`) : '—',
-          },
-          {
-            title: 'Người tải lên',
-            key: 'uploadedBy',
-            width: 180,
-            render: () => currentUser?.fullName || currentUser?.username || '—',
-          },
-          {
-            title: 'Ngày tải lên',
-            key: 'uploadedDate',
-            width: 160,
-            align: 'center' as const,
-            render: (_v, rec: any) => rec.uploadedDate ? dayjs(rec.uploadedDate).format('DD/MM/YYYY HH:mm') : '—',
-          },
-          {
-            title: '',
-            key: 'actions',
-            width: 80,
-            align: 'center',
-            render: (_v, record: any) => (
-              <Space size={4}>
-                <Button type="text" icon={<DownloadOutlined style={{ color: actionPrimary }} />} onClick={() => toast.info(`Đang tải xuống tệp: ${record.name}`)} />
-                <Button type="text" danger icon={<DeleteOutlined />} onClick={() => setUploadedFiles(uploadedFiles.filter(x => x.uid !== record.uid))} />
-              </Space>
-            ),
-          },
-        ]}
-      />
-    </div>) },
+    {
+      key: 'files',
+      label: `File đính kèm (${uploadedFiles.length})`,
+      children: (
+        <InfrastructureAttachmentTab
+          attachments={uploadedFiles.map((f) => ({ id: f.uid, fileName: f.name, fileSize: f.size, ...f }))}
+          readonly={false}
+          onUpload={(file) => { handleBeforeUpload(file); return false; }}
+          onDelete={(uid) => { setUploadedFiles((prev) => prev.filter((x) => x.uid !== uid)); }}
+          onDownload={(_uid, name) => { toast.info(`Đang tải xuống tệp: ${name}`); }}
+        />
+      ),
+    },
   ];
 
   useImperativeHandle(ref, () => ({ submit: (saveAction: SaveAction) => handleSave(saveAction) }), [handleSave]);
