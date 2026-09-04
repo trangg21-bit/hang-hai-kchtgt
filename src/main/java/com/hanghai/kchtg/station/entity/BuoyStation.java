@@ -18,7 +18,6 @@ import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDate;
 import java.util.UUID;
 
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.Builder;
 import lombok.experimental.FieldNameConstants;
 

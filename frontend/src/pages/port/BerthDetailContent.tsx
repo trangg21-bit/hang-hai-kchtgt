@@ -133,7 +133,7 @@ export default function BerthDetailContent({
         {
           key: 'general', label: 'Thông tin chung',
           children: (
-            <div style={{ paddingTop: 3 }}>
+            <div style={{ paddingTop: 3, overflowY: 'auto', maxHeight: 'calc(100vh - 290px)' }}>
               <div className="chk-detail-grid">
                 {[
                   ['Mã bến cảng', <span style={statusBadgeStyle(actionPrimary)}>{r.berthCode || '—'}</span>],
@@ -188,7 +188,7 @@ export default function BerthDetailContent({
         {
           key: 'gis', label: `Thông tin vị trí (${parseGisCoordinates(r).length})`,
           children: (
-            <div style={{ paddingTop: 3 }}>
+            <div style={{ paddingTop: 3, overflowY: 'auto', maxHeight: 'calc(100vh - 290px)' }}>
               <div className="chk-detail-grid">
                 {[
                   ['Loại đối tượng', ({ POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' } as Record<string, string>)[(r as any).geometryType || ''] || (r as any).geometryType || '—'],
@@ -257,7 +257,7 @@ export default function BerthDetailContent({
         {
           key: 'infra', label: 'Kết cấu hạ tầng',
           children: (
-            <div style={{ paddingTop: 3 }}>
+            <div style={{ paddingTop: 3, overflowY: 'auto', maxHeight: 'calc(100vh - 290px)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: spaceSm }}>
                 <span style={{ ...detailLabelStyle, display: 'inline-block' }}>Kết cấu hạ tầng thuộc bến cảng</span>
                 <Select allowClear placeholder="Chọn loại kết cấu hạ tầng" value={infraTypeFilter || undefined}
@@ -286,7 +286,7 @@ export default function BerthDetailContent({
         {
           key: 'operationMaintenance', label: 'Vận hành & bảo trì',
           children: (
-            <div style={{ paddingTop: 3 }}>
+            <div style={{ paddingTop: 3, overflowY: 'auto', maxHeight: 'calc(100vh - 290px)' }}>
               <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setOperationOpen(!operationOpen)}>
                 <span style={{ color: operationOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{operationOpen ? '▼' : '▶'} Thông tin vận hành khai thác</span>
               </button>

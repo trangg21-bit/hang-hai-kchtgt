@@ -3,7 +3,6 @@ package com.hanghai.kchtg.port.dto.shiprepairyard;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.Builder;
 import lombok.Data;
 
@@ -15,7 +14,7 @@ import java.util.UUID;
 @Builder
 public class ShipRepairYardResponse {
     private UUID id;
-    private RecordSecurityLevel securityLevel;
+    // private RecordSecurityLevel securityLevel;
     private String shipRepairYardCode;
     private String shipRepairYardName;
     private UUID portId;

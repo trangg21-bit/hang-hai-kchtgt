@@ -2,7 +2,6 @@ package com.hanghai.kchtg.port.dto.anchorage;
 
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -16,7 +15,7 @@ import java.util.UUID;
 @Data
 public class UpdateAnchorageRequest {
 
-    private RecordSecurityLevel securityLevel;
+    // private RecordSecurityLevel securityLevel;
 
     @NotNull(message = "ID không được để trống")
     private UUID id;

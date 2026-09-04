@@ -113,6 +113,13 @@ export const KCHT_GIS_TYPE_OPTIONS = [
   { value: 'HANOI_STATION', label: 'Đài Trung tâm xử lý thông tin hàng hải Hà Nội' },
   { value: 'VTS_SYSTEM', label: 'Hệ thống VTS' },
   { value: 'RADAR_STATION_LEGACY', label: 'Trạm radar' },
+  { value: 'AIS_SYSTEM', label: 'Hệ thống AIS' },
+  { value: 'CCTV', label: 'Hệ thống CCTV' },
+  { value: 'VTS_ASSIST', label: 'Hệ thống phụ trợ VTS' },
+  { value: 'SCADA', label: 'Hệ thống SCADA' },
+  { value: 'TRANSMISSION', label: 'Hệ thống truyền dẫn' },
+  { value: 'VTS_OPERATION_CENTER', label: 'Trung tâm điều hành VTS' },
+  { value: 'VHF_SYSTEM', label: 'Hệ thống thông tin liên lạc VHF' },
 ] as const;
 
 export type KchtGisType = (typeof KCHT_GIS_TYPE_OPTIONS)[number]['value'];

@@ -4,7 +4,9 @@ import {
   CheckOutlined, CloseOutlined, PlusOutlined, SearchOutlined, ReloadOutlined,
   EnvironmentOutlined,
 } from '@ant-design/icons';
-import { colors as baseColors } from './theme';
+import { colors as baseColors, layout as baseLayout } from './theme';
+
+export const layout = baseLayout;
 
 
 // ============================================================

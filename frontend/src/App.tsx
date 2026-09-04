@@ -43,6 +43,7 @@ const BuoyListPage = lazy(() => import('./services/buoy/BuoyListPage'));
 const BeaconHistoryList = lazy(() => import('./pages/history/BeaconHistoryList'));
 const SymbolList = lazy(() => import('./pages/symbols/SymbolList'));
 const HomePage = lazy(() => import('./pages/Home'));
+const KchtDirectoryPage = lazy(() => import('./pages/kcht-directory/KchtDirectoryPage'));
 const PasswordResetPage = lazy(() => import('./pages/PasswordResetPage'));
 const PortList = lazy(() => import('./services/port/PortListPage'));
 const PortApprovePage = lazy(() => import('./services/port/PortApprovePage'));
@@ -142,6 +143,9 @@ export default function App() {
               {/* Protected routes — inside layout */}
               <Route element={<AppLayout />}>
                 <Route path="/" element={<HomePage />} />
+
+                {/* Danh mục KCHT hàng hải — cây 28 loại KCHT theo sơ đồ cha–con */}
+                <Route path="/kcht-directory" element={<KchtDirectoryPage />} />
                 <Route path="/users" element={<PermissionGuard permission="user:read"><UsersPage /></PermissionGuard>} />
 
                 {/* Organization — Đơn vị */}

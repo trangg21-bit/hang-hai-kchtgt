@@ -82,15 +82,15 @@ public class TransferAreaService {
             throw new IllegalArgumentException("Không thể tạo khu chuyển tải: cảng biển cha phải ở trạng thái được phê duyệt");
         }
 
-        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
-                : RecordSecurityLevel.NORMAL;
-        RecordSecurityLevel.validateAssignment(secLevel, "transferarea", SecurityUtils.getCurrentUserPermissions(),
-                SecurityUtils.isElevatedAdministrator());
+        // RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
+        //         : RecordSecurityLevel.NORMAL;
+        // RecordSecurityLevel.validateAssignment(secLevel, "transferArea", SecurityUtils.getCurrentUserPermissions(),
+        //         SecurityUtils.isElevatedAdministrator());
 
         String code = generateTransferAreaCode(request.getPortId());
 
         TransferArea entity = TransferArea.builder()
-                .securityLevel(secLevel)
+                // .securityLevel(secLevel)
                 .transferAreaCode(code)
                 .transferAreaName(request.getTransferAreaName())
                 .portId(request.getPortId())
@@ -146,11 +146,11 @@ public class TransferAreaService {
         // Chụp snapshot đầy đủ trước khi thay đổi để ghi lịch sử chi tiết (chuẩn Bến cảng)
         TransferArea snapshot = buildSnapshot(entity);
 
-        if (request.getSecurityLevel() != null) {
-            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "transferarea",
-                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
-            entity.setSecurityLevel(request.getSecurityLevel());
-        }
+        // if (request.getSecurityLevel() != null) {
+        //     RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "transferarea",
+        //             SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+        //     entity.setSecurityLevel(request.getSecurityLevel());
+        // }
         if (request.getTransferAreaName() != null)
             entity.setTransferAreaName(request.getTransferAreaName());
         if (request.getPortId() != null) {
@@ -402,7 +402,7 @@ public class TransferAreaService {
 
         TransferAreaResponse response = TransferAreaResponse.builder()
                 .id(entity.getId())
-                .securityLevel(entity.getSecurityLevel())
+                // .securityLevel(entity.getSecurityLevel())
                 .transferAreaCode(entity.getTransferAreaCode())
                 .transferAreaName(entity.getTransferAreaName())
                 .portId(entity.getPortId())
@@ -579,7 +579,7 @@ public class TransferAreaService {
      */
     private TransferArea buildSnapshot(TransferArea e) {
         return TransferArea.builder()
-                .securityLevel(e.getSecurityLevel())
+                // .securityLevel(e.getSecurityLevel())
                 .transferAreaCode(e.getTransferAreaCode())
                 .transferAreaName(e.getTransferAreaName())
                 .portId(e.getPortId())

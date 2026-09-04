@@ -104,7 +104,12 @@ public class KchtGis155Service {
     if (orgUnitId == null) {
       return "Cục Hàng hải Việt Nam";
     }
-    return orgNameMap.getOrDefault(orgUnitId, "Cục Hàng hải Việt Nam");
+    String fullName = orgNameMap.getOrDefault(orgUnitId, "Cục Hàng hải Việt Nam");
+    if (fullName != null && fullName.contains(" > ")) {
+      String[] parts = fullName.split(" > ");
+      return parts[parts.length - 1].trim();
+    }
+    return fullName;
   }
 
   private double[] parseFirstCoordinateFromWkt(String wkt) {

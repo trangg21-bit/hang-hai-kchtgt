@@ -1,0 +1,49 @@
+{
+  "triage_id": "TRI-1788424280969-0df1",
+  "created_at": 1788424280969,
+  "request_summary": "Thay Tab File đính kèm từ Table + Upload.Dragger inline bằng InfrastructureAttachmentTab dùng chung với VTS",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/services/port/PortForm.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/services/port/PortForm.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Tab File đính kèm trong form thêm mới/chỉnh sửa cảng biển",
+  "blast_radius": 1,
+  "done_oracle": "Tab File đính kèm sử dụng InfrastructureAttachmentTab với DetailTable, scroll chuẩn, styling nhất quán với VTS",
+  "verification_commands": [
+    {
+      "command": "cd frontend && npm run lint -- --quiet",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 60000
+    }
+  ],
+  "change_type": "implementation",
+  "escalated_from": {
+    "triage_id": "AUTO-C0-1788422949480",
+    "breach_kind": "loc_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "4c4d8e0de3627bfa5e3c72e866b96eeb6cc01677",
+    "dirty": true,
+    "captured_at": 1788424281235
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

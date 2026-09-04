@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import lombok.experimental.FieldNameConstants;
+
 /**
  * Entity representing a VTS Assist System (Hệ thống phụ trợ VTS) — M-NEW entity.
  * Corresponds to table: vts_assist.

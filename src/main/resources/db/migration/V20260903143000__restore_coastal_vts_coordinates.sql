@@ -1,67 +1,8 @@
--- coastal_station_vts vẫn ánh xạ latitude/longitude trong entity và các luồng
--- CRUD, nhưng V82 đã xóa hai cột này khi chuyển tọa độ sang kho GIS tập trung.
--- Khi tra cứu KCHT với loại "Tất cả", Hibernate chọn đủ cột entity và làm toàn
--- bộ API lỗi SQLState 42703 trước khi có thể trả danh sách.
+-- coastal_station_vts v?n �nh x? latitude/longitude trong entity v� c�c lu?ng
+-- CRUD, nhung V82 d� x�a hai c?t n�y khi chuy?n t?a d? sang kho GIS t?p trung.
+-- Khi tra c?u KCHT v?i lo?i "T?t c?", Hibernate ch?n d? c?t entity v� l�m to�n
+-- b? API l?i SQLState 42703 tru?c khi c� th? tr? danh s�ch.
 
 ALTER TABLE public.coastal_station_vts
     ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,
     ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
-
-ALTER TABLE public.coastal_station_inmarsat
-    ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,
-    ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
-
-ALTER TABLE public.coastal_station_lrit
-    ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,
-    ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
-
-ALTER TABLE public.coastal_station_haiphong
-    ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,
-    ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
-
--- Khôi phục giá trị hiển thị/CRUD từ POINT trong kho GIS khi có thể. Tọa độ GIS
--- tập trung vẫn là nguồn dùng để vẽ bản đồ; hai cột này giữ tương thích entity.
-WITH point_coordinates AS (
-    SELECT
-        spatial.id,
-        spatial.ref_id,
-        regexp_match(
-            spatial.coordinates,
-            '^[[:space:]]*POINT[[:space:]]*[(][[:space:]]*([+-]?[0-9]+[.]?[0-9]*)[[:space:]]+([+-]?[0-9]+[.]?[0-9]*)[[:space:]]*[)]',
-            'i'
-        ) AS coordinate_parts
-    FROM public.gis_spatial_objects spatial
-    WHERE spatial.deleted_at IS NULL
-      AND spatial.coordinates IS NOT NULL
-)
-UPDATE public.coastal_station_vts station
-SET longitude = COALESCE(station.longitude, point.coordinate_parts[1]::DOUBLE PRECISION),
-    latitude = COALESCE(station.latitude, point.coordinate_parts[2]::DOUBLE PRECISION)
-FROM point_coordinates point
-WHERE point.coordinate_parts IS NOT NULL
-  AND (station.spatial_id = point.id OR station.id = point.ref_id)
-  AND (station.longitude IS NULL OR station.latitude IS NULL);
-
-UPDATE public.coastal_station_inmarsat station
-SET longitude = COALESCE(station.longitude, point.coordinate_parts[1]::DOUBLE PRECISION),
-    latitude = COALESCE(station.latitude, point.coordinate_parts[2]::DOUBLE PRECISION)
-FROM point_coordinates point
-WHERE point.coordinate_parts IS NOT NULL
-  AND (station.spatial_id = point.id OR station.id = point.ref_id)
-  AND (station.longitude IS NULL OR station.latitude IS NULL);
-
-UPDATE public.coastal_station_lrit station
-SET longitude = COALESCE(station.longitude, point.coordinate_parts[1]::DOUBLE PRECISION),
-    latitude = COALESCE(station.latitude, point.coordinate_parts[2]::DOUBLE PRECISION)
-FROM point_coordinates point
-WHERE point.coordinate_parts IS NOT NULL
-  AND (station.spatial_id = point.id OR station.id = point.ref_id)
-  AND (station.longitude IS NULL OR station.latitude IS NULL);
-
-UPDATE public.coastal_station_haiphong station
-SET longitude = COALESCE(station.longitude, point.coordinate_parts[1]::DOUBLE PRECISION),
-    latitude = COALESCE(station.latitude, point.coordinate_parts[2]::DOUBLE PRECISION)
-FROM point_coordinates point
-WHERE point.coordinate_parts IS NOT NULL
-  AND (station.spatial_id = point.id OR station.id = point.ref_id)
-  AND (station.longitude IS NULL OR station.latitude IS NULL);

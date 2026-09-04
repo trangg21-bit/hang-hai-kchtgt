@@ -14,7 +14,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 
 /**
  * Entity representing a storm shelter area (Khu tránh, trú bão) — child of Port.
@@ -36,13 +35,13 @@ import com.hanghai.kchtg.security.RecordSecurityLevel;
 @SuperBuilder
 @FieldNameConstants
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
-@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
+// @org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 public class StormShelterArea extends BaseEntity {
 
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
-    @Builder.Default
-    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
+    // @Enumerated(EnumType.ORDINAL)
+    // @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
+    // @Builder.Default
+    // private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
 
     @Column(name = "storm_shelter_code", nullable = false, unique = true, length = 50)
     private String stormShelterCode;

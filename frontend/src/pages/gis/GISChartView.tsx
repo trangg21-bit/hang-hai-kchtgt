@@ -789,6 +789,9 @@ const fetchAndFormatPopupDetails = async (record: any) => {
   
   const headerHtml = `
     <div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 450px; padding: 4px;">
+      <div style="margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(11,46,79,0.09); font-size: 15px; font-weight: 600; color: #12468C; text-transform: uppercase;">
+        ${type || 'Thông tin chi tiết'}
+      </div>
       <div style="max-height: 450px; overflow-y: auto; padding-right: 6px;">
         <table style="width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13px; line-height: 1.5; color: #0c2438;">
           <thead>
@@ -802,6 +805,12 @@ const fetchAndFormatPopupDetails = async (record: any) => {
                       <svg viewBox="0 0 24 24" width="16px" height="16px" fill="none" stroke="#0E6FD6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle;">
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                         <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                    </button>
+                    <button onclick="window.handleKchtAction('${id}', '${type}', 'edit')" title="Chỉnh sửa" style="border: none; background: none; padding: 2px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; outline: none;">
+                      <svg viewBox="0 0 24 24" width="16px" height="16px" fill="none" stroke="#52c41a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle;">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                       </svg>
                     </button>
                   </div>
@@ -918,6 +927,27 @@ const fetchAndFormatPopupDetails = async (record: any) => {
     canBoCapNhat: 'Cán bộ cập nhật',
     operationalStatus: 'Trạng thái hoạt động',
     conditionStatus: 'Trạng thái hoạt động',
+    // Dynamic Fields (zobjDataSub / Extended)
+    waterAreaScope: 'Phạm vi vùng nước',
+    totalBerths: 'Tổng số bến cảng',
+    totalAnchoragesTransshipment: 'Tổng số khu neo đậu, chuyển tải',
+    totalPublicChannels: 'Tổng số luồng công cộng',
+    totalDedicatedChannels: 'Tổng số luồng chuyên dùng',
+    totalPublicChannelLength: 'Tổng chiều dài luồng công cộng',
+    totalDedicatedChannelLength: 'Tổng chiều dài luồng chuyên dùng',
+    totalBuoysBeacons: 'Tổng số phao, tiêu',
+    totalDikes: 'Tổng số đê, kè',
+    totalDikeLength: 'Tổng chiều dài đê, kè',
+    totalLighthouses: 'Tổng số đèn biển',
+    buoyBerthCount: 'Số lượng bến phao',
+    anchorageCount: 'Số lượng khu neo đậu',
+    transshipmentCount: 'Số lượng khu chuyển tải',
+    otherWaterAreas: 'Các vùng nước khác',
+    remarks: 'Ghi chú',
+    detailedLocation: 'Vị trí chi tiết',
+    portClass: 'Phân loại cảng',
+    coordinateSystem: 'Hệ tọa độ',
+    displayRule: 'Quy tắc hiển thị',
     activityStatus: 'Trạng thái xử lý',
     approvalStatus: 'Trạng thái phê duyệt',
     province: 'Tỉnh / Thành phố',
@@ -1188,7 +1218,8 @@ const fetchAndFormatPopupDetails = async (record: any) => {
       
       const orgId = data.orgUnitId || data.orgUnitId || data.unitId || data.donViQuanLy || data.unitId;
       if (orgId) {
-        orgUnitNameResolved = data.donViQuanLy || data.orgName || data.orgUnitName || '';
+        const rawOrgName = data.donViQuanLy || data.orgName || data.orgUnitName || '';
+        orgUnitNameResolved = rawOrgName.split(' > ').pop()?.trim() || rawOrgName;
       }
       if (data.portId || data.tenCangBien) {
         cangBienNameResolved = data.tenCangBien || (data.portId ? await resolveName(data.portId, 'Port') : '');
@@ -1248,7 +1279,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
           const valExists = data[k] !== undefined && data[k] !== null && data[k] !== '';
           let val = valExists ? data[k] : '';
           
-          if (['orgUnitId', 'orgUnitId', 'unitId', 'donViQuanLy', 'unitId', 'unitName'].includes(k)) {
+          if (['orgUnitId', 'orgName', 'orgUnitName', 'unitId', 'donViQuanLy', 'unitName'].includes(k)) {
             val = orgUnitNameResolved || val;
           } else if (k === 'portId') {
             val = cangBienNameResolved || val;
@@ -1295,7 +1326,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
             const label = KEY_LABELS[k] || k;
             let val = data[k];
             
-            if (['orgUnitId', 'orgUnitId', 'unitId', 'donViQuanLy'].includes(k)) {
+            if (['orgUnitId', 'orgName', 'orgUnitName', 'unitId', 'donViQuanLy', 'unitName'].includes(k)) {
               val = orgUnitNameResolved || val;
             } else if (k === 'portId') {
               val = cangBienNameResolved || val;
@@ -1323,9 +1354,9 @@ const fetchAndFormatPopupDetails = async (record: any) => {
         const lowerK = k.toLowerCase();
         if (
           lowerK === 'id' || lowerK === 'uuid' || lowerK === 'geom' || lowerK === 'geometry' ||
-          lowerK === 'toado' || lowerK === 'coordinates' ||
-          lowerK === 'attachments' || lowerK === 'zones' ||
-          lowerK === 'bieutuongid' || lowerK === 'iconid' ||
+          lowerK === 'toado' || lowerK === 'coordinates' || lowerK === 'coordinatelist' ||
+          lowerK === 'attachments' || lowerK === 'zones' || lowerK === 'infrastructurelist' ||
+          lowerK === 'bieutuongid' || lowerK === 'iconid' || lowerK === 'mapsymbolid' || lowerK === 'mapsymbolname' ||
           lowerK === 'symbolid' || lowerK === 'khonggianid' || lowerK === 'spatialid' || lowerK === 'deletedat' ||
           lowerK === 'tencangbien' || lowerK === 'tenbencang' || lowerK === 'portname' || lowerK === 'orgname' ||
           lowerK === 'orgunitname' || lowerK === 'parentorgname' || lowerK === 'donviid' ||
@@ -1350,6 +1381,8 @@ const fetchAndFormatPopupDetails = async (record: any) => {
             displayVal = benCangNameResolved || val;
           } else if (k === 'waterway' || k === 'navigationChannelId') {
             displayVal = waterwayNameResolved || val;
+          } else if (k === 'portGroup' && displayVal) {
+            displayVal = `Nhóm ${displayVal}`;
           }
           if (k === 'type') {
             if (displayType === 'Đèn biển') {
@@ -1469,9 +1502,22 @@ const circleLayerToPolygonFeature = (layer: any, vertexCount = 32) => {
   };
 };
 
+const getRecordCoordinatesWkt = (record: any): string | null => {
+  if (record.coordinates) return record.coordinates;
+  if (record.toaDo) return record.toaDo;
+  if (Array.isArray(record.coordinateList) && record.coordinateList.length > 0) {
+    const type = String(record.geometryType || record.loaiHinhHoc || '').toUpperCase();
+    const pts = record.coordinateList.map((c: any) => `${Number(c.longitude ?? c.lng)} ${Number(c.latitude ?? c.lat)}`).join(', ');
+    if (['LINE', 'LINESTRING', 'POLYLINE'].includes(type)) return `LINESTRING(${pts})`;
+    if (['POLYGON', 'AREA'].includes(type)) return `POLYGON((${pts}))`;
+    if (type === 'POINT') return `POINT(${pts.split(', ')[0]})`;
+  }
+  return null;
+};
+
 const resolveSearchHitGeometry = (record: KchtGisSearchResult): MapHitGeometry | null => {
   const geometryType = String(record.geometryType || record.loaiHinhHoc || '').toUpperCase();
-  const geometryWkt = record.coordinates || record.toaDo;
+  const geometryWkt = getRecordCoordinatesWkt(record);
   const parsedCoordinates = geometryWkt ? parseWktToCoords(geometryWkt) : null;
 
   if (geometryType === 'POINT') {
@@ -1905,7 +1951,7 @@ export default function GISChartView() {
         return {
           ...x,
           location: x.location || getProvinceNameById(x.provinceId) || '',
-          toaDo: x.coordinates,
+          toaDo: getRecordCoordinatesWkt(x),
           loaiHinhHoc: x.geometryType,
           latitude: mapLocation?.center[1],
           longitude: mapLocation?.center[0],
@@ -1973,7 +2019,7 @@ export default function GISChartView() {
 
   const handleRowClick = useCallback(async (record: KchtGisSearchResult) => {
     const mapLocation = resolveMapGeometryLocation(
-      record.coordinates || record.toaDo,
+      getRecordCoordinatesWkt(record),
       record.longitude,
       record.latitude,
     );
@@ -2250,20 +2296,9 @@ export default function GISChartView() {
 
   const getOrgNameByUnitId = (unitId?: string) => {
     if (!unitId) return '—';
-    const pathList: string[] = [];
-    let currentId: string | undefined = unitId;
-    let limit = 10;
-    while (currentId && limit > 0) {
-      const found = orgUnits.find(u => u.id === currentId);
-      if (found) {
-        pathList.unshift(found.name);
-        currentId = found.parentId;
-      } else {
-        break;
-      }
-      limit--;
-    }
-    return pathList.length > 0 ? pathList.join(' > ') : '—';
+    const found = orgUnits.find(u => u.id === unitId);
+    if (!found || !found.name) return unitId;
+    return found.name.split(' > ').pop()?.trim() || found.name;
   };
 
   const getObjectTypeLabel = (type: string, objectType: string, categoryId?: number) => {
@@ -3393,7 +3428,7 @@ export default function GISChartView() {
 
     selectedRecords.forEach((record) => {
       const mapLocation = resolveMapGeometryLocation(
-        record.coordinates || record.toaDo,
+        getRecordCoordinatesWkt(record),
         record.longitude,
         record.latitude,
       );
@@ -3578,7 +3613,7 @@ export default function GISChartView() {
       const pts: Array<[number, number]> = [];
       selectedRecords.forEach(record => {
         const mapLocation = resolveMapGeometryLocation(
-          record.coordinates || record.toaDo,
+          getRecordCoordinatesWkt(record),
           record.longitude,
           record.latitude,
         );
@@ -4227,13 +4262,12 @@ export default function GISChartView() {
               {!searchPanelVisible && (
                 <Button
                   type="primary"
-                  icon={<SearchOutlined />}
                   onClick={() => setSearchPanelVisible(true)}
                   style={{
                     ...primaryButtonStyle,
                     position: 'absolute',
                     top: spaceSm,
-                    left: controlHeight + spaceMd,
+                    left: spaceMd,
                     zIndex: 1000,
                     boxShadow: shadowMd,
                   }}
@@ -4453,6 +4487,7 @@ export default function GISChartView() {
                               scroll={{ x: 'max-content', y: tableHeight }}
                               emptyState={<EmptyState description={hasSearched ? 'Không tìm thấy kết cấu hạ tầng phù hợp' : 'Nhập điều kiện và chọn Tìm kiếm'} />}
                               rowSelection={{
+                                fixed: true,
                                 columnWidth: 44,
                                 selectedRowKeys,
                                 onChange: (keys: React.Key[]) => {
@@ -4732,6 +4767,7 @@ export default function GISChartView() {
       <Modal
         open={!!activeModalUrl}
         footer={null}
+        closable={false}
         onCancel={() => setActiveModalUrl(null)}
         width={850}
         destroyOnHidden

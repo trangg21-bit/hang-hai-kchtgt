@@ -1,107 +1,146 @@
-# M-024 — Báo cáo review đợt 3 (docs-sync theme CHK) — engineering-code-reviewer
-
-> **Module:** M-024 — Tái cấu trúc Menu & Navigation
-> **Feature:** F-292 — Tái cấu trúc menu & điều hướng
-> **Change được review:** đợt 3 docs-sync (triage `TRI-1787899754098-59d2`, change_class C2 solo lane — theme CHK). Pipeline **không đổi code** — review phán xét tài liệu phản ánh đúng code hiện tại hay không, có mâu thuẫn nào không.
-> **Files thuộc pipeline đợt 3:** `ba/00-lean-spec.md` (BA), `_features/F-292-.../feature-brief.md` (BA), `design/00-design-plan.md` (SA), `qa/07-qa-report-w2.md` + `qa/acceptance-map.json` (QA), `dev/05-fe-dev-w1-theme-chk-docs-sync.md` (dev).
-> **Verdict: Pass** — F-1 đã được SA đóng (`design/00-design-plan.md:28/29/70` cập nhật sang 632/865/785/799); re-grep phiên này: **0** stale 629/862/782/796 trong design-plan (E-14).
-> **Ngày:** 2026-08-28
-
+---
+stage: engineering-code-reviewer
+module: M-024
+feature: F-292
+triage: TRI-1788409709741-75fa
+do-t: 5
+reviewed: 2026-09-03
+scope: frontend/src/App.tsx, frontend/src/components/AppLayout.tsx, frontend/src/pages/Home.tsx, frontend/src/pages/kcht-directory/KchtDirectoryPage.tsx
+verdict: Pass
 ---
 
-## 1. Bằng chứng đã thực thi trong phiên này (không re-derive từ prior stage)
+# M-024 Đợt 5 — Code Review: mô hình 2 màn hình (6 khối → `/kcht-directory` 28 loại KCHT)
 
-| # | Lệnh / thao tác | Kết quả quan sát |
+> Review seat reads the change against `ba/00-lean-spec.md` AC-024-01..16, `design/00-design-plan.md` §8 (5
+> quyết định), `design/wireframe-menu-khoi.md`, `SO-DO-VA-MA-TRAN-CHA-CON-KCHT.md`, and weighs
+> `qa/07-qa-report-w2.md` OBS-1/2/5/8. All 4 files read in full this session; typecheck re-run on record
+> (exit 0). No code modified (read-only scope).
+
+## 1. Verification run on record
+
+| Gate | Command | Result |
 |---|---|---|
-| E-1 | `grep "1a3f83\|1A3F83"` trong `frontend/src/theme.ts` | `:50 sidebarBg: '#1a3f83'`; `:369` (comment); `:618 var(--bg-sidebar, #1a3f83) !important`; `:1004` (comment); `:1006 var(--bg-sidebar, #1a3f83) !important`; `:2356` (comment) |
-| E-2 | `grep "bg-sidebar"` trong `frontend/src/theme.ts` | `:287 --bg-sidebar: ${colors.sidebarBg};` (định nghĩa CSS var) + 11 usage `var(--bg-sidebar)` |
-| E-3 | `grep "12468C\|12468c"` trong `frontend/src/theme.ts` | **0 match** |
-| E-4 | `grep "1E2129\|1e2129"` trong `frontend/src/components/AppLayout.tsx` | **0 match** |
-| E-5 | `grep "273e7c\|273E7C"` trong `AppLayout.tsx` | `:632` (sidebar fullscreen title) · `:865` (topbar title) |
-| E-6 | `grep "bg-sidebar"` trong `AppLayout.tsx` | `:785 background: isMenuFullScreen ? '#fff' : 'var(--bg-sidebar, #1a3f83)'` · `:799 styles={{ body: { ..., background: 'var(--bg-sidebar, #1a3f83)' }, ... }}` |
-| E-7 | `grep "1a3f83"` + `"273e7c"` trong `themetokenchk.ts` | `:36 export const actionPrimary = '#273e7c'` · `:72 export const sidebarBg = '#1a3f83'` |
-| E-8 | read ngữ cảnh `AppLayout.tsx:620-649` / `:770-814` / `:850-879` | Xác nhận `#273e7c` là `Typography.Title` (HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI) tại sidebar fullscreen + topbar; `var(--bg-sidebar,#1a3f83)` là nền `Sider` desktop + `Drawer` mobile |
-| E-9 | `grep "629\|862\|782\|796"` toàn cây `docs/modules/M-024-tai-cau-truc-menu-navigation` | Chỉ còn trong `design/00-design-plan.md:28/:29/:70` (live docs) + các file `.archive/` (lịch sử, ngoài scope) — **lean-spec và feature-brief sạch** |
-| E-10 | `npx vitest run src/components/AppLayout.test.tsx` (workdir frontend) | **18 tests, 18 passed** (A1–A13 + B1–B5), exit 0 |
-| E-11 | `npx tsc --noEmit` (workdir frontend) | **0 violations**, exit 0 |
-| E-12 | read `frontend/vitest.config.ts` | `include: ['src/store/**/*.test.ts', 'src/services/**/*.test.ts', 'src/components/AppLayout.test.tsx']`; `exclude: ['node_modules','dist','tests/**','e2e/**','src/hooks/**']` — không chứa `src/**/*.test.tsx` trong include, `src/hooks/**` vẫn bị loại |
-| E-13 | `grep "^## "` trong `feature-brief.md` | Đúng 7 section `##` theo thứ tự template: 1 Mô tả ngắn `:33`, 2 Trường dữ liệu `:41`, 3 Trạng thái và phê duyệt `:55`, 4 Quy tắc và phân quyền riêng `:61`, 5 Điểm khác biệt `:118`, 6 Phần kỹ thuật — đường dẫn gọi dữ liệu `:131`, 7 Phần kỹ thuật — cấu trúc bảng `:141` |
-| E-14 | `grep "629\|862\|782\|796"` trong `design/00-design-plan.md` (re-verify F-1 fix) | **0 match**; rows 5-6 (`:28/:29`) + bảng risk (`:70`) giờ cite **632/865/785/799** (read) — F-1 closed |
+| Typecheck (GATE-1) | `npx --no-install tsc --noEmit` (cwd `frontend/`) | **exit 0, no output** — reproduced by reviewer 2026-09-03 |
+| Hex scan | grep `#[0-9A-Fa-f]{3,8}\b` on `Home.tsx`, `KchtDirectoryPage.tsx` | **0 matches** (reviewer run) |
+| Hex scan | same pattern on `AppLayout.tsx` | 12 matches, **all at lines ≥ 436** (chrome) — none in menu/gating region (≤ ~401) |
+| Hierarchy | grep `level: 'C[0-3]'` on `KchtDirectoryPage.tsx` | **exactly 28 matches** (reviewer run, lines 75–144) |
 
-**Hạn chế độc lập:** lệnh `git status` / `git diff` bị permission layer từ chối trong phiên này (3 lần, không retry). Kết luận scope docs-only dựa trên: (a) QA-w2 AC-4 Pass trên orchestrator git evidence (shared dirty tree; pipeline seats 0 code writes — `qa/07-qa-report-w2.md:40-43`), (b) tóm tắt prior-stage của từng seat (BA/SA/QA/dev: mỗi seat khai write chỉ vào docs của mình), (c) chính `design/00-design-plan.md` ghi nhận docs-only. Không có bằng chứng nào cho thấy pipeline đợt 3 ghi vào file code/theme/token/test.
+## 2. Per-file judgement
 
----
+### 2.1 `frontend/src/App.tsx` — **PASS (no findings)**
 
-## 2. Điểm review 1 — docs ↔ code anchors (theme CHK)
+- `HomePage` lazy `:45`; `KchtDirectoryPage` lazy `:46`.
+- Landing: `<Route path="/" element={<HomePage />} />` `:145` inside the shared `<Route element={<AppLayout />}>` branch → the first screen after login is the 6-block "Danh mục chức năng" (catch-all `UnknownRouteRedirect` sends authenticated users to `'/'` — `:325`). ✓ AC-024-01 seam.
+- `<Route path="/kcht-directory" element={<KchtDirectoryPage />} />` `:148` — no `PermissionGuard` wrapper: correct by design, the page aggregates 28 different permissions and gates per node.
+- **Route/guard parity verified for every navigable directory key**: `/port`, `/berth`, `/pier`, `/navigation-channel`, `/buoy-berth`, `/buoys`, `/beacon-stations`, `/dike-revetment`, `/anchorage`, `/transfer-area`, `/storm-shelter`, `/ship-repair-facility`, `/vts-system`, `/vts-operation-center`, `/radar-station`, `/ais-system`, `/cctv`, `/scada`, `/transmission`, `/vts-assist`, `/dry-port`, `/dai-ttdh`, `/station/inmarsat|cospas-sarsat|lrit|hanoi` are all registered with a `PermissionGuard` whose permission string/array equals the directory's `ROUTE_PERMISSIONS` entry (spot-checked `:232` water-zone, `:281-284` asset, `:299` `/station/hanoi`, `:302` symbols). No leaf navigates to an unregistered route. ✓ AC-024-07 (no fake-route navigation).
+- No hex/spacing/font-size literals, no filter-bar components on the two routes. ✓ AC-024-08/14.
 
-| Anchor (dispatch note) | Code hiện tại (grep phiên này) | Docs cite | Kết quả |
-|---|---|---|---|
-| `theme.ts` `sidebarBg` = `#1a3f83` tại `:50` | `:50 sidebarBg: '#1a3f83'` (E-1) | lean-spec:29/282, feature-brief:39, design-plan:24, QA-w2 AC-1 | ✅ |
-| Fallback `--bg-sidebar` `#1a3f83` tại `:287/618/1006` | `:287` định nghĩa `--bg-sidebar: ${colors.sidebarBg}` (resolves `#1a3f83`); `:618` + `:1006` literal fallback `var(--bg-sidebar, #1a3f83)` (E-1/E-2) | lean-spec:29/282, feature-brief:39, design-plan:25, QA-w2 AC-3 | ✅ |
-| `themetokenchk.ts` `actionPrimary` `#273e7c` tại `:36` | `:36 export const actionPrimary = '#273e7c'` (E-7) | lean-spec:29, feature-brief:39, design-plan:27, QA-w2 AC-2 | ✅ |
-| `themetokenchk.ts` `sidebarBg` `#1a3f83` tại `:72` | `:72 export const sidebarBg = '#1a3f83'` (E-7) | lean-spec:29, feature-brief:39, design-plan:26, QA-w2 AC-1 | ✅ |
-| `AppLayout.tsx` `#273e7c` tại `:632/:865` | `:632` + `:865` (E-5, E-8) | lean-spec:29/282, feature-brief:39, design-plan:28, QA-w2 AC-2 | ✅ (anchor cell) |
-| `AppLayout.tsx` `var(--bg-sidebar,#1a3f83)` tại `:785/:799` | `:785` + `:799` (E-6, E-8) | lean-spec:29/282, feature-brief:39, design-plan:29, QA-w2 AC-3 | ✅ (anchor cell) |
+### 2.2 `frontend/src/pages/Home.tsx` — **PASS** (D1 raised below, resolved in đợt-5 fix — §7)
 
-**F-1 — đã đóng (resolved; re-verify phiên này):** `design/00-design-plan.md` trước đây còn số dòng CŨ 629/862 (row 5), 782/796 (row 6 + bảng risk `:70`) trong cột "Claim". SA đã sửa cả 3 spot sang **632/865** (`:28`), **785/799** (`:29`), **785/799** (`:70`); re-grep phiên này xác nhận **0** stale token còn lại (E-14), và cột claim giờ khớp cả code (E-5/E-6) lẫn nguồn trích dẫn lean-spec:29/282 + feature-brief:39 (E-9).
+- `BLOCKS` `:44–85` = exactly 6 entries, correct names and order matching AC-024-01 / design §8.1: kcht `:47`, asset `:54`, planning `:61`, approval `:68`, reports `:75`, admin `:82`.
+- Block 1 route `'/kcht-directory'` `:49` → navigates to screen 2. ✓ AC-024-02 seam.
+- Heading "Danh mục chức năng" `:157`; render `Row gutter` + `BLOCKS.map` → `<button onClick={() => navigate(block.route)}>` `:164–176`; no `usePermissionStore` import (see O2).
+- No Input/Select/DatePicker/RangePicker anywhere — no filter bar. ✓ AC-024-14.
+- All colors/spacing/fonts via `themetokenchk` tokens (`surfaceCard`, `actionPrimary`, `fontSizeLg/Md`, `spaceSm/Md/Lg/Xl`, `radiusLg/Xl`, `fontWeightBold`, `shadowMd`); only layout numbers (`width/height: 56`, `lineHeight: 1.5`, `margin: 0`). Reviewer hex grep = 0. ✓ AC-024-08.
+- **D1 (defect, see §3):** block 4 "Phê duyệt" has `route: '/'` `:70` → `navigate('/')` from the `'/'` page is a no-op self-loop; no user feedback, no screen, while the sibling navigation surface renders the same function `disabled: true, title: 'Chưa triển khai'` (`AppLayout.tsx:254`). AC-024-01 asserts each block is navigable but the model defines no Phê duyệt target — spec row and code jointly unsatisfiable as written.
 
----
+### 2.3 `frontend/src/pages/kcht-directory/KchtDirectoryPage.tsx` — **PASS (observations O3, O4)**
 
-## 3. Điểm review 2 — Giá trị (values)
+- `KCHT_TREE` `:71–145`; reviewer grep `level: 'C[0-3]'` = **28 nodes** (75, 81–82, 87, 89, 93–94, 96–97, 100–103, 109, 115, 117–122, 127, 134, 138, 141–144). Hierarchy matches AC-024-15 / design §8.2 / SO-DO chains exactly:
+  - Cảng biển C0 `:75` → Bến cảng C1 `:81` → Cầu cảng C2 `:82`; → Luồng hàng hải C1 `:87` → Bến phao C2 `:89`, Nhà trạm QLVH phao tiêu C2 `:93` → Phao, tiêu C3 `:94`, Đèn biển & nhà trạm C2 `:96`, Đê chắn sóng… C2 `:97`; → Khu neo đậu/chuyển tải/tránh-trú bão/Cơ sở SCĐT C1 `:100–103`.
+  - Hệ thống VTS C0 `:109` → TTĐH VTS C1 `:115` → 6 hệ thống C2 `:117–122`; Cảng cạn C0 `:127`.
+  - Nhóm "Đài viễn thông hàng hải" (không level) `note: 'gắn lỏng'` `:131` → 6 đài/hệ thống C1 `:134–144`.
+  - 28 types non-duplicate (unique keys). ✓ AC-024-02/15/16. Old 7-groups/13-entity sidebar model absent. ✓ AC-024-16.
+- Gating: `ROUTE_PERMISSIONS` `:150–172`; `checkRouteAccess` via `hasPermission`/`hasAnyPermission` of `usePermissionStore` (permissionStore grants bypass only for `admin:all`/`*` per `permissionStore.ts` — anchors re-verified by QA wave-2); no-route leaf (Hệ thống VHF) `:139, 273–275` disabled + tooltip; leaf lacking permission → `disabled: true` + `<Tooltip NO_PERMISSION_NOTE>` (`NO_PERMISSION_NOTE` `:180`); submenu `onTitleClick` navigates only `if (route && checkRouteAccess(route))` `:287+`. ✓ AC-024-04/05/07.
+- `DEFAULT_OPEN_KEYS` `:183–190` opens the 7 submenus so the full tree is visible on load.
+- No filter bar: `ScreenHeader` breadcrumb + description + card containing `<Menu mode="inline">` only. ✓ AC-024-14.
+- Token-only styling; `LevelBadge` uses `colors.sidebarBg` / `actionPrimary` + `${color}15/40` alpha suffixes, `radiusPill`, `'2px 10px'` — Pill Badge Standard. Reviewer hex grep = 0. ✓ AC-024-08.
+- **O3:** display name `'Nhà trạm QLVH phao tiêu'` `:92` abbreviates the asserted string "Nhà trạm quản lý vận hành phao tiêu" (AC-024-15 `:283`, design §8.2). Cosmetic abbreviation, no functional impact.
+- **O4:** the 6 telecom children carry a fixed `C1` badge while SO-DO marks them "Cấp 1–2" (gắn lỏng) and design/wireframe list them without levels. Informational simplification; harmless since the parent group node has no level badge.
 
-| Yêu cầu | Bằng chứng | Kết quả |
+### 2.4 `frontend/src/components/AppLayout.tsx` — **PASS (observations O1, O5, O6)**
+
+- Top level of `rawMenuItems` `:215–381`: utility leaf `/` ("Danh mục chức năng") `:216` + **exactly 6 business groups** in block order — KCHT as a **single leaf** `/kcht-directory` with no children `:219` (old 13-entity tree removed; reviewer+QA grep of old entity keys = 0), asset-management `:223`, planning-operation `:236`, approval **disabled leaf** "Chưa triển khai" `:254`, reports-parent `:257`, system-admin `:368`. ✓ AC-024-03 (scoped reading, see O1).
+- Gating: `MENU_PERMISSION_MAP` `:38–90`; `canAccessMenu` `:95–105` (delegates to `hasPermission`/`hasAnyPermission` — bypass only `admin:all`/`*` per `permissionStore.ts`, QA anchor verified); per-child conditional spreads `:227–230`/`:240–249`/`:372–377`; empty groups pruned by `filterEmptyChildren` `:106–128`, applied `:382`. ✓ AC-024-04/05 (sidebar facet).
+- Nav sync: `selectedKey` collapses every KCHT/technical route segment into `/kcht-directory` `:168–198`; `openKeys` effect opens the correct parent group `:200–215`; `handleMenuClick` navigates only keys starting with `/` `:394–399`. ✓ AC-024-06.
+- Sidebar search (đợt 2, retained): `filterMenuByQuery` trims+lowercases `:130–142`; restore on empty query `:384–387`. ✓ AC-024-11/12/13.
+- Menu region contains no style objects with hex/font/size literals (reviewer hex scan: all 12 hits ≥ `:436`). ✓ AC-024-08 (menu scope).
+- **O1 (QA OBS-1, weighed):** the reports group retains a nested 2-level folder tree (`reports-chung` `:263`, `reports-kcht` `:276`, … `reports-thtn` `:354`; leaves `F-141..F-189N`). This is the pre-existing report catalog the xlsx/lean-spec §2.2/2.3 D6 explicitly keep ("giữ nguyên cây báo cáo F-141..F-189") — NOT the removed KCHT-entity tree, and lean-spec §1 qualifies "KHÔNG còn submenu đa cấp sâu … như mô hình cũ … nhánh 13 thực thể KCHT". Under that scoped reading AC-024-03 holds (6 flat level-1 groups, KCHT single leaf). If BA intended every business group to be fully flat, AC-024-03/§1 need an explicit re-scope — owner decision, not a code defect of this change.
+- **O5 (QA OBS-8, weighed):** chrome hex below the menu region — `:436`/`:444` (`color: '#273e7c'`, `fontWeight: 600`, `fontSize: '15px'` inside `isMenuFullScreen` branch), `:483`, `:507`, `:526`, `:565`, `:594`, `:610`, `:649`, `:667`, `:673`, `:677`. Pre-existing header/topbar code outside the menu redesign; `isMenuFullScreen` is hard-wired `false` (`:157`), so `:444` is dead at runtime. Maintenance note only — does not refute AC-024-08 (menu scope). QA anchor `:452` points into the same fullscreen-title block; actual literal is `:444`.
+- **O6:** visibility-map vs route-guard drift (pre-existing rows): `MENU_PERMISSION_MAP` grants `'/asset/increase|decrease|inventory|exploitation': 'data:read'` `:63–66` while App.tsx guards them `assetincrease|decrease|inventoryasset|assetexploitation:manage` (`App.tsx:281–284`); `'/water-zone': 'waterarea:read'` `:56` vs guard `waterzone:read` (`App.tsx:232`); `'/symbols': 'map:manage'` `:89` vs guard `data:read` (`App.tsx:302`). A user with only `data:read` sees the asset items but every click bounces off the stricter guard; reverse drift hides `/symbols`. Guard is authoritative → no security exposure (BR-024-12); visibility inconsistency only. Cross-module (M-002) debt, pre-existing; recommend a follow-up work order to align map ↔ App guards.
+
+## 3. Defects (blocking)
+
+> **D1 RESOLVED** by the đợt-5 build-side fix + BA docs amendment — see §7. Historical record below.
+
+### D1 — Block "Phê duyệt" on the landing is a dead self-loop (RESOLVED)
+- **Anchor:** `Home.tsx:68–70` (`route: '/'` for `title: 'Phê duyệt'`) + `Home.tsx:170` (`onClick={() => navigate(block.route)}`).
+- **Failure scenario:** any authenticated user on the post-login screen clicks the 4th tile "Phê duyệt" → `navigate('/')` from `'/'` performs no route change and shows no feedback; the tile advertises an entry into the Phê duyệt business group that does not exist anywhere in the app.
+- **Evidence:** (a) tile route is `'/'` — the page it is already on; (b) the same function on the sibling surface is `disabled: true, title: 'Chưa triển khai'` (`AppLayout.tsx:254`), i.e., the change's own convention (BR-024-08 / AC-024-07: an item without a real screen must not behave as a navigable gateway) is applied to the sidebar but not to the tile; (c) no đợt-5 document defines a Phê duyệt target screen, so AC-024-01's unconditional "điều hướng được" cannot be satisfied by any implementation without a spec change. Dev handoff flagged this as an unresolved oracle ("QA wave-2 cần quyết định oracle"); QA wave-2 recorded it as OBS-5 but the oracle decision was never made.
+- **Required correction (code):** mirror the sidebar pattern — render block 4 disabled with the Vietnamese tooltip "Chưa triển khai" (blocks stay 6, satisfying the count in AC-024-01); **and (docs):** BA amends AC-024-01 wording to exempt block 4 via the AC-024-07 convention, or the owner names a real approval route to point at. Owner: frontend-dev wave + BA (doc row).
+
+## 4. Observations weighed (QA OBS-1/2/5/8) — dispositions
+
+| # | Observation | Disposition |
 |---|---|---|
-| Không còn `#12468C` trong `theme.ts` | E-3: 0 match | ✅ |
-| Không còn `#1E2129` trong `AppLayout.tsx` | E-4: 0 match | ✅ |
-| Docs ghi đúng `#1a3f83` / `#273e7c` | lean-spec:29/282, feature-brief:39, design-plan:24-29, QA-w2 AC-1..3 — tất cả ghi `#1a3f83` cho sidebarBg/fallback và `#273e7c` cho accent | ✅ |
+| OBS-1 | reports-parent residual subfolders | Non-blocking (O1) — pre-existing catalog kept per spec; owner decision only if full flattening intended |
+| OBS-2 | Home blocks not permission-gated | Non-blocking (O2) — design §8 decision 1 specifies a fixed 6-block list; AC-024-04's block-screen facet has no seam and contradicts AC-024-01; no unauthorized data reachable (guards downstream). Recommend BA re-scope AC-024-04 to sidebar+directory |
+| OBS-5 | Block "Phê duyệt" route `'/'` self-loop | **Blocking — D1** (see §3): no-op affordance on the headline screen; unapproved placeholder choice |
+| OBS-8 | AppLayout chrome hex (`:452`, actual `:444`) | Non-blocking (O5) — pre-existing, dead branch, outside menu region; maintenance |
 
-Ghi nhận phi-blocking (đã có owner, ngoài scope đợt 3): `tokens.ts:53` vẫn giữ `sidebarBg = '#12468C'` (giá trị đợt 1) — trùng QA-w2 OBS-2; `AppLayout.tsx` không tiêu thụ `tokens.sidebarBg` (dùng `var(--bg-sidebar,#1a3f83)` từ theme.ts), nên không ảnh hưởng hành vi.
+## 5. AC-024-01..16 disposition (code as verified this session)
 
----
+| AC | Verdict | Basis |
+|---|---|---|
+| 01 | PASS | 6 blocks exact `Home.tsx:46–88`; block 4 disabled + tooltip + no route (fix §7.2); AC-024-01 amended docs-side to exempt block 4 (§7.3) |
+| 02 | PASS | block-1 route `:49` → route `App.tsx:148`; 28 types verified (2.3) |
+| 03 | PASS | 6 flat level-1 groups + KCHT leaf `AppLayout.tsx:216/219`; scoped reading (O1) |
+| 04 | PASS | sidebar per-item gating `:227–230`… + `filterEmptyChildren` `:382`; directory disabled+tooltip; block-screen facet = O2 (spec conflict, not code) |
+| 05 | PASS | `canAccessMenu` delegation; store bypass `admin:all`/`*` only |
+| 06 | PASS | selectedKey/openKeys collapse `:168–215`; `handleMenuClick` `:394–399` |
+| 07 | PASS | disabled + tooltip `AppLayout.tsx:254`, `KchtDirectoryPage.tsx:139/180/273–275`; no fake-route navigation |
+| 08 | PASS | English keys/routes, Vietnamese labels, 0 hex in Home/KchtDirectory (reviewer grep), menu region clean |
+| 09 | PASS | typecheck re-run exit 0 (§1); mvn clause N/A (frontend-only triage) |
+| 10 | PASS (vacuous) | D-4 = none; no `menu:` permission tokens in the 4 files |
+| 11/12/13 | PASS | search retained `:130–142`, `:384–387`; no navigate/API from search |
+| 14 | PASS | no filter bar on either screen (component inventory of both files) |
+| 15 | PASS | chains match SO-DO/AC text node-for-node (2.3); O3 = display abbreviation |
+| 16 | PASS | exactly 28 leveled nodes, no duplicates, C0–C3 |
 
-## 4. Điểm review 3 — Template integrity
+## 6. Not covered
 
-- **feature-brief:** đúng 7 section `##` theo đúng thứ tự template (E-13); note đợt 3 tại mục 1 dòng 39 (sau note đợt 2), ghi đúng anchor 632/865/785/799 và giá trị `#1a3f83`/`#273e7c` (read `:30-59`). ✅
-- **lean-spec:** reconciled đợt 3 tại `:15` (triage), `:29` (Bổ sung đợt 3 — khai rõ đợt 3 ĐÃ thay đổi theme.ts + AppLayout.tsx với đủ anchor), `:282` (ngoại lệ out-of-scope — ghi rõ câu "KHÔNG thiết kế lại visual theme" chỉ ràng buộc đợt 1/2, không áp dụng đợt 3). Không có mâu thuẫn giữa lean-spec và thay đổi đợt 3. ✅
+- Browser runtime (real click/hover/tooltip rendering) not executed — static + typecheck + unit-suite (QA GATE-2 18/18, suite survives) only.
+- Full working-tree diff vs HEAD was **not runnable** under this dispatch's narrowed bash permissions (`git diff <paths>` refused) — change-delta claims rely on the dev implementation summary's per-file statements cross-checked against the spec, not on a mechanical diff.
+- Backend (PermissionSeeder presence of `buoyberth:read`, `anchorage:read`, … newly referenced permissions) not verified — directory gates merely hide/disable; a user granted one of these keys with no matching DB seed row would still be blocked by route guards, so no security regression either way. Recommend QA/backend wave confirm seed rows for the 6 D-1 routes before release.
 
----
+## 7. Re-review — đợt-5 D1 fix (re-dispatch attempt 2, 2026-09-03)
 
-## 5. Điểm review 4 — Scope (docs-only)
+> Supersedes the §3 D1 verdict. **Verdict: Pass** — D1 resolved, no new blocking findings; AC-024-01..16 all PASS.
 
-- Mọi seat trong pipeline đợt 3 khai write chỉ vào docs: BA → `ba/00-lean-spec.md` + `feature-brief.md` (line-number fix only); SA → `design/00-design-plan.md`; QA → `qa/07-qa-report-w2.md` + `qa/acceptance-map.json`; dev → `dev/05-fe-dev-w1-theme-chk-docs-sync.md`.
-- QA-w2 AC-4 Pass trên orchestrator git evidence (`07-qa-report-w2.md:40-43`): pipeline seats 0 code writes.
-- Hạn chế: không thể chạy lại `git status`/`git diff` độc lập trong phiên này (permission deny — xem mục 1). Không có dấu hiệu ngược lại; không phát hiện file code/theme/token/test nào bị pipeline đợt 3 sửa.
+### 7.1 Typecheck re-run on record
 
----
+| Gate | Command | Result |
+|---|---|---|
+| Typecheck (GATE-1) | `cd frontend && npx --no-install tsc --noEmit` | **exit 0, no output** — re-run by reviewer this session (2026-09-03) |
 
-## 6. Xác nhận 7 điểm của work statement (đối chiếu docs ↔ code của chức năng search — code C2 lane, không đổi trong pipeline này)
+### 7.2 D1 resolution evidence — `frontend/src/pages/Home.tsx` block 4
 
-| # | Điểm | Bằng chứng (code hiện tại) | Kết quả |
-|---|---|---|---|
-| 1 | `filterMenuByQuery`: trim → lowercase → substring trên string label; trả SAME reference khi query rỗng/whitespace; giữ submenu iff ≥1 descendant khớp (D-5a); tái dùng `filterEmptyChildren`; không mutate input | `AppLayout.tsx:204-216`: `:205 const q = query.trim().toLowerCase();` · `:206 if (!q) return items;` (identity-restore, AC-024-12) · `:211-212 typeof node.label === 'string' && node.label.toLowerCase().includes(q)` · `:209-213` đệ quy keepMatching giữ chuỗi cha-con · `:215 return filterEmptyChildren(keepMatching(items));` · copy bằng spread `{ ...node, children }`, không mutate | ✅ |
-| 2 | `collectOpenableKeys` trả key submenu còn giữ; `effectiveOpenKeys` swap về `openKeys` khi clear | `AppLayout.tsx:218-226` (đệ quy thu key node có children) · `:575 const effectiveOpenKeys = isSearching ? collectOpenableKeys(displayedItems) : openKeys;` | ✅ |
-| 3 | Filter chạy SAU permission gating | `rawMenuItems` dùng `canAccessMenu(...)` (`:558-565`); `:570 menuItems = filterEmptyChildren(rawMenuItems)`; `:574 displayedItems = isSearching ? filterMenuByQuery(menuItems, trimmedSearchQuery) : menuItems` — filter áp trên tập đã gating (BR-024-15) | ✅ |
-| 4 | Không navigation/Enter/form/API trong search path | input duy nhất `AppLayout.tsx:642` chỉ có `value={searchQuery}` + `onChange={(e) => setSearchQuery(e.target.value)}` (read `:620-649`); navigate chỉ trong `handleMenuClick` (menu click, `:580-586`) — AC-024-13 | ✅ |
-| 5 | `AppLayout.test.tsx` cover A1–A13 + B1–B5 với assert thật | read full file (230 dòng): A1..A13 (`filterMenuByQuery`) + B1..B5 (`collectOpenableKeys`), assert cụ thể (toContain/toEqual/toBe reference/no-mutation snapshot/divider positions); **E-10: 18/18 pass** | ✅ |
-| 6 | `vitest.config.ts` thay đổi tối thiểu, không mở rộng | E-12: include chỉ thêm đúng `src/components/AppLayout.test.tsx`; không có `src/**/*.test.tsx` broad trong include; `src/hooks/**` vẫn bị exclude; test component khác (vd `PermissionGuard.test.tsx`) không bị collect | ✅ |
-| 7 | Không scope creep; không hardcode màu/spacing mới; identifiers English, UI text tiếng Việt có dấu | Pipeline đợt 3 chỉ sửa docs (mục 5); các dòng `#273e7c`/`var(--bg-sidebar,#1a3f83)` là code C2 lane đã verify; label UI tiếng Việt có dấu (HỆ THỐNG THÔNG TIN…, Tìm kiếm, Quản lý cảng biển…), identifiers/key tiếng Anh | ✅ |
+- Block 4 "Phê duyệt" `Home.tsx:69–73`: `disabled: true` `:73`, **no `route` field** (interface keeps `route?` optional `:40`). Route-bearing blocks only: `:51` `/kcht-directory`, `:58` `/asset/inventory`, `:65` `/gis/map`, `:79` `/reports`, `:86` `/users`. The `route: '/'` self-loop (old `:70`) is gone — grep confirms zero `route` occurrences in the approval entry.
+- Render seam `Home.tsx:167–180`: `<Tooltip title={block.disabled ? 'Chưa triển khai' : undefined}>` `:169`; disabled visual `cursor: 'not-allowed', opacity: 0.6, filter: 'saturate(0.5)'` `:174–176`; `disabled={block.disabled}` `:178`; `onClick={() => block.route && navigate(block.route)}` `:179` — a disabled block can never navigate. Mirrors the sidebar disabled leaf `AppLayout.tsx:253–254` (`disabled: true, title: 'Chưa triển khai'`), i.e. the change's own AC-024-07 / BR-024-08 convention.
+- 6 blocks preserved: `BLOCKS` `Home.tsx:46–88` = kcht / asset / planning / approval / reports / admin → count 6 and order still satisfy AC-024-01.
 
----
+### 7.3 Docs↔code consistency (amended AC-024-01)
 
-## 7. Findings
+- `ba/00-lean-spec.md:269` (AC-024-01): "riêng khối (4) 'Phê duyệt' hiển thị disabled + tooltip 'Chưa triển khai', KHÔNG navigate (BR-024-08 / AC-024-07)" — matches Home.tsx block 4 exactly.
+- `feature-brief.md:37` (§1) and `:88` (AC-024-01) carry the identical exemption wording — consistent across lean-spec, feature-brief, and code. No đợt-5 doc asserts block 4 navigates; spec and code are now jointly satisfiable.
 
-| ID | Mức độ | Vị trí | Mô tả | Bằng chứng | Fix đề xuất |
-|---|---|---|---|---|---|
-| **F-1** | **Closed (resolved)** | `design/00-design-plan.md:28/:29/:70` | Anchor drift đã được SA sửa: cột "Claim" rows 5-6 + bảng risk giờ cite **632/865/785/799** đúng code; re-grep phiên này **0** stale 629/862/782/796 (E-14). | E-14 (grep 0 match + read rows), E-5/E-6 (code = 632/865/785/799), E-9 (lean-spec/feature-brief sạch) | Không còn hành động — đóng tại lượt review này |
-| OBS-A | Non-blocking (pre-existing, đợt 2) | `lean-spec.md:25/:83`, `feature-brief.md:39` (note đợt 2) | Anchor search input vẫn ghi "`AppLayout.tsx` dòng 561–567, input tại dòng 565 — hiện là input chết"; code hiện tại: input duy nhất tại `:642`, đã live `value`/`onChange` (E-9, read `:620-649`). Drift ~77 dòng từ đợt 2; cùng class QA-w1 OBS-1 (menuItems 498→567, hiện tại `:570`). Ngoài phạm vi thay đổi đợt 3 | grep `<input` = 1 match tại `:642` | BA sửa anchor + bỏ mô tả "input chết" ở vòng docs-sync kế tiếp |
-| OBS-B | Non-blocking | `tokens.ts:53` | `sidebarBg = '#12468C'` (đợt 1) lệch `theme.ts:50` = `#1a3f83`. Đã ghi nhận QA-w2 OBS-2; ngoài scope đợt 3 | E-3 (theme.ts sạch), grep tokens.ts | PMO/BA vòng theme kế tiếp |
+### 7.4 Re-verified holdings (untouched by the D1 fix — §5 dispositions still stand)
 
----
+- `App.tsx:45–46` (lazy imports), `:145` `/` → HomePage, `:148` `/kcht-directory` → KchtDirectoryPage — re-grepped, unchanged.
+- `AppLayout.tsx:219` KCHT single leaf `/kcht-directory`; `:253–254` approval disabled leaf — unchanged.
+- `KchtDirectoryPage.tsx` — grep `level: 'C[0-3]'` re-run: 28 nodes (lines 75–144), unchanged; gating / `ROUTE_PERMISSIONS` / no-filter-bar holdings untouched by the fix.
+- AC-024-01 upgraded from "PASS (except D1)" to full **PASS** (§5 table updated); AC-024-02..16 remain PASS per §5.
 
-## 8. Kết luận
+### 7.5 Not covered (unchanged from §6)
 
-Đợt 3 docs-sync đã đồng bộ **đúng** phần lớn: toàn bộ anchor `theme.ts` (`:50/:287/:618/:1006`), `themetokenchk.ts` (`:36/:72`), `AppLayout.tsx` (`:632/:865/:785/:799`) khớp code hiện tại (grep phiên này); không còn `#12468C` trong theme.ts, không còn `#1E2129` trong AppLayout.tsx; feature-brief đủ 7 section đúng thứ tự; lean-spec reconciled không mâu thuẫn; chức năng search vẫn xanh (vitest 18/18, tsc 0); vitest.config.ts tối thiểu; không scope creep.
-
-Residual drift trước đó trong `design/00-design-plan.md` (`:28/:29/:70` — số dòng cũ 629/862/782/796) **đã được SA sửa** và re-grep phiên này xác nhận **0** stale token (E-14); cột claim giờ khớp cả code lẫn nguồn trích dẫn. Đáp ứng đầy đủ tiêu chí dispatch note ("Re-grep the code and flag any residual drift"; "If docs↔code consistent … Pass").
-
-**Verdict: Pass** — F-1 closed; toàn bộ docs ↔ code khớp; không còn finding blocking. OBS-A/OBS-B là quan sát phi-blocking có owner (BA vòng docs kế tiếp / PMO vòng theme kế tiếp), không chặn release.
+- Browser runtime tooltip rendering over a natively-disabled `<button>` not executed (static + typecheck only). Whether the hover tooltip visually triggers on a disabled button is browser-dependent; spec is satisfied at the DOM level (disabled attribute + antd Tooltip 'Chưa triển khai'). Cosmetic, non-blocking.
