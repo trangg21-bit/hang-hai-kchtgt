@@ -35,9 +35,9 @@ export const layout = baseLayout;
 
 // --- COLOR PALETTE ---
 
-// Action — --primary-color / --kt-primary-active của chk (đồng bộ với màu nền sidebar #1a3f83)
-export const actionPrimary = '#1a3f83';
-export const actionHover = '#15336a';
+// Action — --primary-color / --kt-primary-active của chk (tăng nhẹ độ sáng #204e9c để bù đắp tương phản nền trắng, nhìn cân bằng với thanh taskbar #1a3f83)
+export const actionPrimary = '#204e9c';
+export const actionHover = '#1a3f83';
 
 // Status — bảng màu semantic chuẩn đồng bộ toàn hệ thống
 export const statusOperational = '#1BAF7A';
@@ -48,7 +48,7 @@ export const statusDraft = '#93A3B3';
 export const statusNeutral = statusDraft;
 
 // Data — chart series
-export const dataPrimary = '#1a3f83';
+export const dataPrimary = '#204e9c';
 export const dataSecondary = '#63abfd';       // --box-report-bg-color
 
 // Surface
@@ -87,7 +87,7 @@ export const shadowLg = '0 4px 16px rgba(0,0,0,0.10)';
 export const colors = {
   ...baseColors,
   primary: actionPrimary,
-  primaryHover: '#2252a8',
+  primaryHover: '#2961bd',
   primaryActive: actionHover,
   bodyBg: surfacePage,
   sidebarBg,
@@ -706,8 +706,8 @@ textarea.ant-input {
   font-weight: 500 !important;
 }
 .ant-modal .ant-modal-footer .ant-btn-primary {
-  background: ${sidebarBg} !important;
-  border-color: ${sidebarBg} !important;
+  background: ${actionPrimary} !important;
+  border-color: ${actionPrimary} !important;
 }
 
 /* ── Chuẩn hóa ô chọn nhiều (Select mode="multiple") hiển thị toàn bộ ── */

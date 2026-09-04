@@ -632,7 +632,7 @@ export const globalCssVars = `
 
 /* Active item: PILL trắng trong mờ trên nền navy — trung tính, bỏ glow & màu
    azure colorPrimary (#1B84FF) để sidebar đồng tông với action primary navy
-   của nút (#1a3f83). TRI-1788504980955-c557 */
+   của nút (#204e9c). TRI-1788504980955-c557 */
 .ant-menu-dark .ant-menu-item-selected {
   position: relative;
   font-weight: 600;
