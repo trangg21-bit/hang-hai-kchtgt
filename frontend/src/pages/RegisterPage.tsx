@@ -380,7 +380,7 @@ export default function RegisterPage() {
                 >
                   <Input
                     prefix={<UserOutlined style={{ color: textTertiary }} />}
-                    placeholder="Ví dụ: Nguyễn Văn A"
+                    placeholder="Nhập họ và tên"
                     style={{ borderRadius: radiusPill, height: 40 }}
                   />
                 </Form.Item>
@@ -397,7 +397,7 @@ export default function RegisterPage() {
                 >
                   <Input
                     prefix={<MailOutlined style={{ color: textTertiary }} />}
-                    placeholder="email@example.com"
+                    placeholder="Nhập email"
                     autoComplete="email"
                     style={{ borderRadius: radiusPill, height: 40 }}
                   />
@@ -417,7 +417,7 @@ export default function RegisterPage() {
                 >
                   <Input
                     prefix={<PhoneOutlined style={{ color: textTertiary }} />}
-                    placeholder="0912345678"
+                    placeholder="Nhập số điện thoại"
                     autoComplete="tel"
                     style={{ borderRadius: radiusPill, height: 40 }}
                   />
@@ -438,7 +438,7 @@ export default function RegisterPage() {
                 >
                   <Input.Password
                     prefix={<LockOutlined style={{ color: textTertiary }} />}
-                    placeholder="Nhập mật khẩu an toàn"
+                    placeholder="Nhập mật khẩu"
                     autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}

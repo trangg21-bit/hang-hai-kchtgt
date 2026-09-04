@@ -403,7 +403,7 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
                     >
                       <Input
                         prefix={<MailOutlined style={{ color: textTertiary }} />}
-                        placeholder="Ví dụ: user@example.com"
+                        placeholder="Nhập email"
                         style={{ borderRadius: radiusPill, height: 40 }}
                       />
                     </Form.Item>

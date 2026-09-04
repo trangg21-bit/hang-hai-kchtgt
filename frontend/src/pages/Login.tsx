@@ -450,7 +450,7 @@ export default function LoginPage() {
                   >
                     <Input.Password
                       prefix={<LockOutlined style={{ color: textTertiary, marginRight: 4 }} />}
-                      placeholder="Mật khẩu"
+                      placeholder="Nhập mật khẩu"
                       autoComplete="current-password"
                       style={{ borderRadius: radiusPill, height: 40, fontFamily: fontSans, fontSize: fontSizeMd }}
                     />
