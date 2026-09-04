@@ -2563,6 +2563,8 @@ export default function GISChartView() {
             { direction: 'top', offset: [0, -5], opacity: 0.9 }
           );
 
+          const isPort = feature.refType === 0 || feature.refType === 'SEAPORT';
+
           const getPopupHtml = (portName: string) => `
             <div style="min-width: 250px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 4px;">
               <!-- Header -->
@@ -2590,10 +2592,12 @@ export default function GISChartView() {
                   <span style="color: #666; font-style: italic;">${feature.restrictionLevel}</span>
                 </div>
                 ` : ''}
+                ${isPort ? `
                 <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f9f9f9; padding-bottom: 4px;">
                   <span style="font-weight: 600; color: #888;">Cảng biển:</span>
                   <span style="color: #222;">${portName}</span>
                 </div>
+                ` : ''}
                 <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f9f9f9; padding-bottom: 4px;">
                   <span style="font-weight: 600; color: #888;">Đơn vị QL:</span>
                   <span style="color: #222; text-align: right; max-width: 140px; word-break: break-word;">${getOrgNameByUnitId(feature.unitId)}</span>
@@ -2620,7 +2624,7 @@ export default function GISChartView() {
             const requestId = ++activePopupRequestRef.current;
             const popup = L.popup({ minWidth: 280, maxWidth: 360, autoPanPadding: [50, 100] })
               .setLatLng(latlng)
-              .setContent(getPopupHtml(feature.refId ? 'Đang tải...' : '—'))
+              .setContent(getPopupHtml(feature.refId && isPort ? 'Đang tải...' : '—'))
               .openOn(mapRef.current);
 
             activePopupRef.current = popup;
@@ -2632,7 +2636,7 @@ export default function GISChartView() {
               }
             });
 
-            if (!feature.refId) return;
+            if (!feature.refId || !isPort) return;
             try {
               const port = await portCRUD.findById(feature.refId);
               if (
