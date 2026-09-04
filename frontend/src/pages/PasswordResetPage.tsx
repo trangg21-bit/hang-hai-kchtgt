@@ -10,6 +10,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
+import * as themeTokenChk from '../themetokenchk';
 import {
   actionPrimary,
   surfaceCard,
@@ -36,7 +37,8 @@ import {
   fontWeightMedium,
   fontSans,
   sidebarBg,
-} from '../tokens';
+} from '../themetokenchk';
+import { ThemeTokenProvider } from '../context/ThemeTokenContext';
 
 interface PasswordResetPageProps {
   mode: 'forgot' | 'reset';
@@ -150,7 +152,8 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
   };
 
   return (
-    <div
+    <ThemeTokenProvider tokens={themeTokenChk}>
+      <div
       style={{
         position: 'relative',
         minHeight: '100vh',
@@ -587,5 +590,6 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
           </div>
         </div>
       </div>
-    );
+    </ThemeTokenProvider>
+  );
 }

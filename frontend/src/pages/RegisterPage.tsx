@@ -12,6 +12,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { message } from '../components/ToastNotification';
+import * as themeTokenChk from '../themetokenchk';
 import {
   actionPrimary,
   surfaceCard,
@@ -39,7 +40,8 @@ import {
   fontWeightMedium,
   fontSans,
   sidebarBg,
-} from '../tokens';
+} from '../themetokenchk';
+import { ThemeTokenProvider } from '../context/ThemeTokenContext';
 import {
   registerAccount,
   getRegistrationConfig,
@@ -138,7 +140,8 @@ export default function RegisterPage() {
   });
 
   return (
-    <div
+    <ThemeTokenProvider tokens={themeTokenChk}>
+      <div
       style={{
         position: 'relative',
         minHeight: '100vh',
@@ -597,5 +600,6 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
+    </ThemeTokenProvider>
   );
 }
