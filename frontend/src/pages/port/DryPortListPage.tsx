@@ -267,6 +267,11 @@ const historyFieldLabels: Record<string, string> = {
   approvalStatus: 'Trạng thái phê duyệt', orgUnitId: 'Đơn vị quản lý',
   'Lý do từ chối': 'Lý do từ chối',
   'Trạng thái': 'Hành động',
+  // changedField do backend ghi trực tiếp bằng tiếng Việt (chuẩn VTS CHK / PortService):
+  // giữ key === label để historyFieldName / tìm kiếm / sort nhất quán.
+  'Tọa độ GIS': 'Tọa độ GIS',
+  'Loại đối tượng GIS': 'Loại đối tượng GIS',
+  'Tài liệu đính kèm': 'Tài liệu đính kèm',
 };
 function historyFieldName(fn: string) { return historyFieldLabels[fn] || fn; }
 

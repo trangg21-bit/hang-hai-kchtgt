@@ -174,10 +174,6 @@ public class PierService {
 
         Pier saved = pierRepository.save(entity);
 
-        // Ghi toàn bộ trường mới vào lịch sử thay đổi (chuẩn Cảng biển)
-        Pier emptySnapshot = new Pier();
-        changeHistoryService.recordChanges("Pier", saved.getId().toString(), "system", emptySnapshot, saved);
-
         log.info("Created Pier [{}] code={}", saved.getId(), saved.getPierCode());
         return toResponse(saved);
     }
@@ -433,6 +429,18 @@ public class PierService {
         if (request.getWaterAreaNeutralScope() != null)
             entity.setWaterAreaNeutralScope(request.getWaterAreaNeutralScope());
 
+        // Lấy tọa độ + loại hình GIS cũ (WKT) trước khi createOrUpdate ghi đè spatial object
+        // (chuẩn Cảng biển PortService.update — dùng cho lịch sử "Tọa độ GIS" / "Loại đối tượng GIS").
+        String oldWkt = null;
+        GisGeometryType oldGeomType = null;
+        if (entity.getSpatialId() != null) {
+            GisSpatialObject oldSpatial = gisSpatialObjectService.findById(entity.getSpatialId()).orElse(null);
+            if (oldSpatial != null) {
+                oldWkt = oldSpatial.getCoordinates();
+                oldGeomType = oldSpatial.getGeometryType();
+            }
+        }
+
         if (request.getCoordinates() != null) {
             if (request.getCoordinates().trim().isEmpty()) {
                 if (entity.getSpatialId() != null) {
@@ -480,9 +488,34 @@ public class PierService {
 
         Pier saved = pierRepository.save(entity);
 
+        // Actor thật từ SecurityContext — nếu truyền "system", ChangeHistoryService
+        // fallback auth.getName() (= username, không phải UUID) → approvedBy null → drawer hiện "—"
+        UUID operatorId = SecurityUtils.getCurrentUserId();
+        String actorId = operatorId != null ? operatorId.toString() : "system";
+
         if (wasApproved) {
+            // Lịch sử vị trí theo chuẩn Cảng biển (PortService.update): 2 dòng riêng
+            // "Tọa độ GIS" + "Loại đối tượng GIS", kèm actor thật (không phải "system").
+            if (request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty()) {
+                GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType()
+                        : GisGeometryType.LINE;
+                String newWkt = request.getCoordinates().trim();
+                boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
+                if (wktChanged) {
+                    changeHistoryService.insertChangeRecord("Pier", saved.getId(), "Tọa độ GIS",
+                            (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
+                            newWkt, actorId);
+                }
+                boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
+                if (typeChanged) {
+                    changeHistoryService.insertChangeRecord("Pier", saved.getId(), "Loại đối tượng GIS",
+                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
+                            geometryTypeLabel(geomType), actorId);
+                }
+            }
+
             changeHistoryService.recordChanges("Pier", saved.getId().toString(),
-                    "system", snapshot, saved);
+                    actorId, snapshot, saved);
         }
 
         log.info("Updated Pier [{}] code={}", saved.getId(), saved.getPierCode());
@@ -554,8 +587,12 @@ public class PierService {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
         pierRepository.save(entity);
-        changeHistoryService.recordChanges("Pier", entity.getId().toString(), "system", snapshot, entity);
-        changeHistoryService.insertChangeRecord("Pier", entity.getId(), "Trạng thái", null, "Đã xóa", "system");
+
+        // Actor thật từ SecurityContext — nếu truyền "system", drawer lịch sử hiện "—"
+        UUID operatorId = SecurityUtils.getCurrentUserId();
+        String actorId = operatorId != null ? operatorId.toString() : "system";
+        changeHistoryService.recordChanges("Pier", entity.getId().toString(), actorId, snapshot, entity);
+        changeHistoryService.insertChangeRecord("Pier", entity.getId(), "Trạng thái", null, "Đã xóa", actorId);
         log.info("Soft-deleted Pier [{}] code={}", entity.getId(), entity.getPierCode());
     }
 
@@ -657,6 +694,16 @@ public class PierService {
                 .portAuthorityApprovalContent(e.getPortAuthorityApprovalContent())
                 .departmentApprovalContent(e.getDepartmentApprovalContent())
                 .build();
+    }
+
+    /** Nhãn hiển thị loại hình GIS theo chuẩn VTS CHK (dùng cho lịch sử thay đổi). */
+    private static String geometryTypeLabel(GisGeometryType type) {
+        if (type == null) return "Chưa có";
+        return switch (type) {
+            case POINT -> "Đối tượng điểm";
+            case LINE -> "Đối tượng đường";
+            case POLYGON -> "Đối tượng vùng";
+        };
     }
 
     private GisGeometryType parseGeometryType(String typeStr) {

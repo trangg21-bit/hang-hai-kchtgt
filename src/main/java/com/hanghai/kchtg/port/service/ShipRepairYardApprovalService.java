@@ -1,21 +1,26 @@
 package com.hanghai.kchtg.port.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.port.entity.ApprovalLog;
-import com.hanghai.kchtg.port.entity.ChangeLog;
 import com.hanghai.kchtg.port.entity.ShipRepairYard;
 import com.hanghai.kchtg.port.repository.ApprovalLogRepository;
 import com.hanghai.kchtg.port.repository.ChangeLogRepository;
 import com.hanghai.kchtg.port.repository.ShipRepairYardRepository;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.vtssystem.dto.HistoryEntry;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.*;
+import java.util.stream.Collectors;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
 
 /**
  * Two-level approval service for ShipRepairYard entity.
@@ -34,6 +39,8 @@ public class ShipRepairYardApprovalService {
     private final ShipRepairYardRepository shipRepairYardRepository;
     private final ChangeLogRepository changeLogRepository;
     private final ApprovalLogRepository approvalLogRepository;
+    private final InfrastructureHistoryRepository historyRepository;
+    private final UserRepository userRepository;
 
     @Transactional
     public void approve(UUID id, String userId, String cap, String content) {
@@ -111,34 +118,104 @@ public class ShipRepairYardApprovalService {
         String entityId = id.toString();
         String entityType = "ShipRepairYard";
 
-        // [TẠM TẮT ĐỌC LỊCH SỬ] Bảng change_logs/approval_logs đã bị V20260825162500 drop — trả rỗng để không crash
-        List<ChangeLog> changeHistory = List.of();
-        List<ApprovalLog> approvalLogs = List.of();
+        // Lịch sử thay đổi tập trung infrastructure_history (chuẩn Cảng biển PortApprovalService).
+        List<InfrastructureHistory> historyRows = historyRepository
+                .findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SHIP_REPAIR_YARD, id);
+        Map<UUID, User> userMap = resolveUsers(historyRows);
+        Map<UUID, String> userNameMap = new HashMap<>();
+        userMap.forEach((userId, user) -> userNameMap.put(userId, formatUserIdentity(user)));
+        List<HistoryEntry> changeHistory = historyRows.stream()
+                .map(h -> toHistoryEntry(h, userMap, userNameMap))
+                .collect(Collectors.toList());
 
         return java.util.Map.of(
                 "entityId", entityId,
                 "entityType", entityType,
                 "currentApprovalStatus", entity.getApprovalStatus(),
                 "changeHistory", changeHistory,
-                "approvalLog", approvalLogs
+                "approvalLog", List.of()
         );
     }
 
     @Transactional(readOnly = true)
     public java.util.Map<String, Object> getAllHistory() {
         String entityType = "ShipRepairYard";
-        List<ChangeLog> changeHistory = List.of(); // [TẠM TẮT] bảng change_logs đã bị V20260825162500 drop — trả rỗng
-        java.util.Map<String, String> entityNames = new java.util.HashMap<>();
-        for (ChangeLog log : changeHistory) {
-            if (!entityNames.containsKey(log.getEntityId())) {
-                try {
-                    shipRepairYardRepository.findById(UUID.fromString(log.getEntityId()))
-                        .ifPresent(a -> entityNames.put(log.getEntityId(), a.getShipRepairYardName()));
-                } catch (Exception e) {
-                    entityNames.put(log.getEntityId(), log.getEntityId());
+        List<InfrastructureHistory> historyRows = historyRepository
+                .findByRefTypeOrderByApprovedDateDesc(InfrastructureType.SHIP_REPAIR_YARD);
+        Map<UUID, User> userMap = resolveUsers(historyRows);
+        Map<UUID, String> userNameMap = new HashMap<>();
+        userMap.forEach((userId, user) -> userNameMap.put(userId, formatUserIdentity(user)));
+        List<HistoryEntry> changeHistory = historyRows.stream()
+                .map(h -> toHistoryEntry(h, userMap, userNameMap))
+                .collect(Collectors.toList());
+
+        Map<String, String> entityNames = new HashMap<>();
+        for (InfrastructureHistory logItem : historyRows) {
+            if (logItem.getRefId() != null) {
+                String refIdStr = logItem.getRefId().toString();
+                if (!entityNames.containsKey(refIdStr)) {
+                    try {
+                        shipRepairYardRepository.findById(logItem.getRefId())
+                                .ifPresent(a -> entityNames.put(refIdStr, a.getShipRepairYardName()));
+                    } catch (Exception e) {
+                        entityNames.put(refIdStr, refIdStr);
+                    }
                 }
             }
         }
         return java.util.Map.of("entityType", entityType, "changeHistory", changeHistory, "entityNames", entityNames);
+    }
+
+    /** Map lịch sử → HistoryEntry với approvedBy đã resolve thành tên người dùng thật. */
+    private HistoryEntry toHistoryEntry(InfrastructureHistory h,
+                                        Map<UUID, User> userMap, Map<UUID, String> userNameMap) {
+        User userActor = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
+        return HistoryEntry.builder()
+                .id(h.getId())
+                .approvalLevel(h.getApprovalLevel())
+                .status(h.getStatus() != null ? h.getStatus().getCode() : null)
+                .approvedBy(h.getApprovedBy() != null ? userNameMap.get(h.getApprovedBy()) : null)
+                .orgUnitName(userActor != null && userActor.getOrgUnit() != null
+                        ? userActor.getOrgUnit().getName() : null)
+                .approvedDate(h.getApprovedDate())
+                .reason(h.getReason())
+                .changedField(h.getChangedField())
+                .previousValue(h.getPreviousValue())
+                .newValue(h.getNewValue())
+                .build();
+    }
+
+    private Map<UUID, User> resolveUsers(List<InfrastructureHistory> rows) {
+        if (rows == null || rows.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Set<UUID> userIds = rows.stream()
+                .map(InfrastructureHistory::getApprovedBy)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        return resolveUsers(userIds);
+    }
+
+    private Map<UUID, User> resolveUsers(Collection<UUID> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Set<UUID> nonNullIds = userIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        if (nonNullIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return userRepository.findAllByIdInWithOrgUnit(nonNullIds).stream()
+                .collect(Collectors.toMap(User::getId, user -> user, (first, second) -> first));
+    }
+
+    private String formatUserIdentity(User user) {
+        if (user == null) return null;
+        if (user.getFullName() != null && !user.getFullName().trim().isEmpty()) {
+            return user.getFullName().trim();
+        }
+        if (user.getUsername() != null && !user.getUsername().trim().isEmpty()) {
+            return user.getUsername().trim();
+        }
+        return null;
     }
 }

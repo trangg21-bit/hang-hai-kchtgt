@@ -31,17 +31,23 @@ export interface ApiResponseEnvelope<T> {
   data: T;
 }
 
-/** One ChangeLog row (matches ChangeLog serialization — BuoyController GET /{id}/history). */
+/**
+ * One InfrastructureHistory row — BuoyController GET /buoys/{id}/history serializes
+ * the entity DIRECTLY. JSON keys: id, refId, refType, approvalLevel, status,
+ * approvedBy (UUID), approvedDate, reason, changedField, previousValue, newValue.
+ */
 export interface ChangeHistory {
   id: string;
-  entityType: string;
-  entityId: string;
-  fieldName: string;
-  oldValue: string | null;
+  refId: string;
+  refType: string;
+  approvalLevel: string;
+  status: string;
+  approvedBy: string | null;
+  approvedDate: string;
+  reason: string | null;
+  changedField: string | null;
+  previousValue: string | null;
   newValue: string | null;
-  changedBy: string;
-  changedAt: string;
-  createdAt: string;
 }
 
 /** Body of GET /buoys/{id}/history. */

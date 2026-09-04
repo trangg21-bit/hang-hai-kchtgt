@@ -18,9 +18,9 @@ import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.port.entity.DaiTtdh;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.port.repository.DaiTtdhRepository;
+import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -55,6 +55,7 @@ public class DaiTtdhService {
     private final OrgUnitScopeService orgUnitScopeService;
     private final AttachmentRepository attachmentRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
+    private final ChangeHistoryService changeHistoryService;
 
     @Value("${app.upload.attachment-path:uploads/attachments}")
     private String attachmentPath;
@@ -113,6 +114,21 @@ public class DaiTtdhService {
             coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
 
+        // ── Lịch sử thay đổi (chuẩn Cảng biển PortService/BuoyBerthService) ──
+        // Chụp GIS cũ (WKT + loại hình) và trạng thái phê duyệt TRƯỚC khi mutate,
+        // để sau persistGis so sánh và ghi dòng "Tọa độ GIS"/"Loại đối tượng GIS".
+        GisGeometryType oldGeomType = null;
+        String oldWkt = null;
+        if (entity.getSpatialId() != null) {
+            GisSpatialObject oldSpatial = gisSpatialObjectService.findById(entity.getSpatialId()).orElse(null);
+            if (oldSpatial != null) {
+                oldWkt = oldSpatial.getCoordinates();
+                oldGeomType = oldSpatial.getGeometryType();
+            }
+        }
+        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+
         // if (request.getSecurityLevel() != null) {
         //     RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "daittdh",
         //             SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
@@ -156,6 +172,9 @@ public class DaiTtdhService {
         DaiTtdh saved = daiTtdhRepository.save(entity);
         persistGis(saved, request.getGeometryType(), coordinates,
                 request.getLongitude(), request.getLatitude());
+        // Lịch sử GIS — chỉ khi hồ sơ ĐÃ duyệt bị sửa (chuẩn Cảng biển)
+        recordGisHistory(saved, wasApproved, oldGeomType, oldWkt,
+                request.getGeometryType(), coordinates);
         evictAfterCommit();
 
         return toResponse(saved);
@@ -204,6 +223,12 @@ public class DaiTtdhService {
         }
         entity.softDelete(SecurityUtils.getCurrentUserId());
         daiTtdhRepository.save(entity);
+        // Lịch sử xóa mềm (chuẩn Cảng biển): changedField "Trạng thái" → "Đã xóa", actor = user thật
+        String deleteActorId = currentActorId(null);
+        if (deleteActorId != null) {
+            changeHistoryService.insertChangeRecord("DAI_TTDH", entity.getId(), "Trạng thái",
+                    null, "Đã xóa", deleteActorId);
+        }
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
@@ -259,6 +284,8 @@ public class DaiTtdhService {
             attachment.setContentType(file.getContentType());
             attachment.setUploadedBy(userId);
             savedAttachments.add(attachmentRepository.save(attachment));
+            // Lịch sử "Tài liệu đính kèm" — chỉ khi hồ sơ đã duyệt (chuẩn Cảng biển)
+            recordAttachmentHistory(entityType, entityId, originalFilename, true);
         }
         return savedAttachments.stream().map(this::toAttachmentDto).collect(Collectors.toList());
     }
@@ -281,6 +308,8 @@ public class DaiTtdhService {
             log.warn("Không thể xóa file: {}", attachment.getFilePath(), e);
         }
         attachmentRepository.delete(attachment);
+        // Lịch sử "Tài liệu đính kèm" — chỉ khi hồ sơ đã duyệt (chuẩn Cảng biển)
+        recordAttachmentHistory(entityType, entityId, attachment.getFileName(), false);
     }
 
     private AttachmentDto toAttachmentDto(Attachment entity) {
@@ -295,6 +324,91 @@ public class DaiTtdhService {
         dto.setUploadedBy(entity.getUploadedBy());
         dto.setUploadedAt(entity.getUploadedAt());
         return dto;
+    }
+
+    // ── Lịch sử thay đổi (infrastructure_history, refType DAI_TTDH) ────────
+
+    /** Nhãn hiển thị loại hình GIS theo chuẩn VTS CHK (dùng cho lịch sử thay đổi). */
+    private static String geometryTypeLabel(GisGeometryType type) {
+        if (type == null) return "Chưa có";
+        return switch (type) {
+            case POINT -> "Đối tượng điểm";
+            case LINE -> "Đối tượng đường";
+            case POLYGON -> "Đối tượng vùng";
+        };
+    }
+
+    /**
+     * Actor thật từ SecurityContext — không bao giờ trả về chuỗi "system"
+     * (approvedBy null → drawer hiện "—").
+     */
+    private String currentActorId(UUID fallbackUserId) {
+        UUID current = SecurityUtils.getCurrentUserId();
+        if (current != null) {
+            return current.toString();
+        }
+        return fallbackUserId != null ? fallbackUserId.toString() : null;
+    }
+
+    /**
+     * Lịch sử GIS theo chuẩn Cảng biển (PortService/BuoyBerthService): ghi 2 dòng
+     * "Tọa độ GIS" + "Loại đối tượng GIS" (refType DAI_TTDH) chỉ khi hồ sơ ĐÃ duyệt
+     * bị sửa vị trí/loại hình. Với bản ghi mới tạo (create) wasApproved luôn false
+     * nên không có dòng nào được ghi — giống hệt PortService/BuoyBerthService.
+     */
+    private void recordGisHistory(DaiTtdh saved, boolean wasApproved,
+                                  GisGeometryType oldGeomType, String oldWkt,
+                                  GisGeometryType requestGeomType, String coordinates) {
+        if (!wasApproved) return;
+        if (coordinates == null || coordinates.trim().isEmpty()) return;
+        String actorId = currentActorId(null);
+        if (actorId == null) return;
+
+        String newWkt = coordinates.trim();
+        if (oldWkt == null || !newWkt.equals(oldWkt.trim())) {
+            changeHistoryService.insertChangeRecord("DAI_TTDH", saved.getId(), "Tọa độ GIS",
+                    (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
+                    newWkt, actorId);
+        }
+        GisGeometryType newGeomType = requestGeomType != null ? requestGeomType : GisGeometryType.POINT;
+        if (requestGeomType != null && oldGeomType != newGeomType) {
+            changeHistoryService.insertChangeRecord("DAI_TTDH", saved.getId(), "Loại đối tượng GIS",
+                    oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
+                    geometryTypeLabel(newGeomType), actorId);
+        }
+    }
+
+    /**
+     * Lịch sử "Tài liệu đính kèm" (chuẩn Cảng biển ShipRepairYardService) — chỉ
+     * khi hồ sơ đã duyệt (APPROVED/APPROVED_LEVEL2). Actor = user thật.
+     */
+    private void recordAttachmentHistory(String entityType, UUID entityId, String fileName, boolean uploaded) {
+        try {
+            if (entityType == null || !InfrastructureType.DAI_TTDH.name().equalsIgnoreCase(entityType)) {
+                return;
+            }
+            DaiTtdh daiTtdh = daiTtdhRepository.findById(entityId).orElse(null);
+            if (daiTtdh == null) {
+                return;
+            }
+            boolean wasApproved = daiTtdh.getApprovalStatus() == ApprovalStatus.APPROVED
+                    || daiTtdh.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+            if (!wasApproved) {
+                return;
+            }
+            String actorId = currentActorId(null);
+            if (actorId == null) {
+                return;
+            }
+            String name = fileName != null ? fileName : "không rõ tên";
+            changeHistoryService.insertChangeRecord("DAI_TTDH", entityId, "Tài liệu đính kèm",
+                    uploaded ? "—" : name,
+                    uploaded ? name : "—",
+                    actorId);
+        } catch (Exception e) {
+            log.warn("Không ghi được lịch sử file đính kèm DaiTtdh (entityType={}, entityId={}): {}",
+                    entityType, entityId, e.getMessage());
+        }
     }
 
     // ── GIS ─────────────────────────────────────────────────────────────

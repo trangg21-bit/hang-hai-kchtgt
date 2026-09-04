@@ -2,7 +2,11 @@ package com.hanghai.kchtg.port.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.EntityFields;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
@@ -64,6 +68,7 @@ public class DryPortService {
     private final AuditLogService auditLogService;
     private final UserResolverService userResolverService;
     private final UserRepository userRepository;
+    private final InfrastructureHistoryRepository historyRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final OrgUnitCacheService orgUnitCacheService;
     private final OrgUnitScopeService orgUnitScopeService;
@@ -162,6 +167,11 @@ public class DryPortService {
 
         DryPort saved = dryPortRepository.save(entity);
 
+        // Actor thật từ SecurityContext — nếu truyền "system", ChangeHistoryService
+        // fallback auth.getName() (= username, không phải UUID) → approvedBy null → drawer hiện "—"
+        UUID operatorId = SecurityUtils.getCurrentUserId();
+        String actorId = operatorId != null ? operatorId.toString() : "system";
+
         // Spatial sync
         String coordinates = request.getCoordinates();
         if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
@@ -184,13 +194,22 @@ public class DryPortService {
                     InfrastructureType.DRY_PORT);
             saved.setSpatialId(spatialObj.getId());
             saved = dryPortRepository.save(saved);
+
+            // Lịch sử vị trí theo chuẩn Cảng biển: 2 dòng riêng "Tọa độ GIS" +
+            // "Loại đối tượng GIS" khi hồ sơ được tạo mới ở trạng thái đã duyệt
+            // (saveAction = approve), kèm approvedBy = user thật.
+            if (isApprove) {
+                changeHistoryService.insertChangeRecord("DryPort", saved.getId(), "Tọa độ GIS",
+                        "Chưa có", coordinates.trim(), actorId);
+                changeHistoryService.insertChangeRecord("DryPort", saved.getId(), "Loại đối tượng GIS",
+                        "Chưa có", geometryTypeLabel(geomType), actorId);
+            }
         }
 
         // If approve action, write audit log
         if (isApprove) {
-            UUID currentUserId = SecurityUtils.getCurrentUserId();
             auditLogService.writeAuditLog(
-                    currentUserId != null ? currentUserId.toString() : "system",
+                    actorId,
                     "DRYPORT_CREATE_APPROVE",
                     "Tạo mới và phê duyệt cảng cạn: " + saved.getDryPortCode(),
                     null);
@@ -198,7 +217,7 @@ public class DryPortService {
 
         // Record all fields as new in change history
         DryPort emptySnapshot = new DryPort();
-        changeHistoryService.recordChanges("DryPort", saved.getId().toString(), "system", emptySnapshot, saved);
+        changeHistoryService.recordChanges("DryPort", saved.getId().toString(), actorId, emptySnapshot, saved);
 
         log.info("Created DryPort [{}] code={} action={}", saved.getId(), saved.getDryPortCode(), action);
         return toResponse(saved);
@@ -385,6 +404,11 @@ public class DryPortService {
 
         DryPort saved = dryPortRepository.save(entity);
 
+        // Actor thật từ SecurityContext — nếu truyền "system", ChangeHistoryService
+        // fallback auth.getName() (= username, không phải UUID) → approvedBy null → drawer hiện "—"
+        UUID operatorId = SecurityUtils.getCurrentUserId();
+        String actorId = operatorId != null ? operatorId.toString() : "system";
+
         // Spatial sync
         String coordinates = request.getCoordinates();
         if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
@@ -393,6 +417,19 @@ public class DryPortService {
         }
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
+            // Lấy tọa độ + loại hình cũ (WKT) từ pre-image (snapshot) trước khi
+            // createOrUpdate ghi đè spatial object (chuẩn PortService update).
+            GisGeometryType oldGeomType = null;
+            String oldWkt = null;
+            if (snapshot.getSpatialId() != null) {
+                GisSpatialObject oldSpatial = gisSpatialObjectService.findById(snapshot.getSpatialId())
+                        .orElse(null);
+                if (oldSpatial != null) {
+                    oldWkt = oldSpatial.getCoordinates();
+                    oldGeomType = oldSpatial.getGeometryType();
+                }
+            }
+
             GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType()
                     : GisGeometryType.POINT;
             GisSpatialObjectType objType = getSpatialObjectType(geomType);
@@ -407,11 +444,29 @@ public class DryPortService {
                     InfrastructureType.DRY_PORT);
             saved.setSpatialId(spatialObj.getId());
             saved = dryPortRepository.save(saved);
+
+            // Lịch sử vị trí theo chuẩn Cảng biển: 2 dòng riêng "Tọa độ GIS" +
+            // "Loại đối tượng GIS", kèm approvedBy = user thật (chỉ khi hồ sơ đã duyệt).
+            if (wasApproved) {
+                String newWkt = coordinates.trim();
+                boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
+                boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
+                if (wktChanged) {
+                    changeHistoryService.insertChangeRecord("DryPort", saved.getId(), "Tọa độ GIS",
+                            (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
+                            newWkt, actorId);
+                }
+                if (typeChanged) {
+                    changeHistoryService.insertChangeRecord("DryPort", saved.getId(), "Loại đối tượng GIS",
+                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
+                            geometryTypeLabel(geomType), actorId);
+                }
+            }
         }
 
         if (wasApproved) {
             java.util.List<String> changed = changeHistoryService.recordChanges("DryPort", saved.getId().toString(),
-                    "system", snapshot, saved);
+                    actorId, snapshot, saved);
             log.info("DryPort update: recorded {} changed fields for id={}: {}", changed.size(), saved.getId(), changed);
         }
 
@@ -438,7 +493,9 @@ public class DryPortService {
         DryPort snapshot = captureSnapshot(entity);
         entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         DryPort saved = dryPortRepository.save(entity);
-        changeHistoryService.recordChanges("DryPort", saved.getId().toString(), "system", snapshot, saved);
+        UUID operatorId = SecurityUtils.getCurrentUserId();
+        String actorId = operatorId != null ? operatorId.toString() : "system";
+        changeHistoryService.recordChanges("DryPort", saved.getId().toString(), actorId, snapshot, saved);
         log.info("Submitted DryPort [{}] for approval", saved.getId());
         return toResponse(saved);
     }
@@ -453,10 +510,12 @@ public class DryPortService {
             throw new IllegalArgumentException("Chỉ được xóa cảng cạn ở trạng thái Nháp");
         }
         DryPort snapshot = captureSnapshot(entity);
-        entity.softDelete(SecurityUtils.getCurrentUserId());
+        UUID operatorId = SecurityUtils.getCurrentUserId();
+        String actorId = operatorId != null ? operatorId.toString() : "system";
+        entity.softDelete(operatorId);
         DryPort saved = dryPortRepository.save(entity);
-        changeHistoryService.recordChanges("DryPort", saved.getId().toString(), "system", snapshot, saved);
-        changeHistoryService.insertChangeRecord("DryPort", saved.getId(), "Trạng thái", null, "Đã xóa", "system");
+        changeHistoryService.recordChanges("DryPort", saved.getId().toString(), actorId, snapshot, saved);
+        changeHistoryService.insertChangeRecord("DryPort", saved.getId(), "Trạng thái", null, "Đã xóa", actorId);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
@@ -600,15 +659,88 @@ public class DryPortService {
 
     // ── Attachment operations ──────────────────────────────────────────
 
+    /**
+     * Ghi lịch sử thay đổi file đính kèm của Cảng cạn (chuẩn Port/DocumentService:
+     * status ATTACHMENT_UPLOADED / ATTACHMENT_DELETED, changedField "Tài liệu đính kèm").
+     * Chỉ ghi khi hồ sơ đã duyệt (APPROVED / APPROVED_LEVEL2). DryPortService không lưu
+     * trữ file vật lý (luồng giao diện hiện tại đi qua hệ thống documents), nên phương
+     * thức này bổ sung lịch sử cho thao tác gọi qua endpoint attachments của cảng cạn.
+     */
     @Transactional
     public void uploadAttachments(UUID id, List<MultipartFile> files, UUID userId) {
         // basic upload — saves to disk, placeholder for now
         log.info("Uploaded {} files for DryPort id={}", files.size(), id);
+        if (id == null || files == null || files.isEmpty() || historyRepository == null) {
+            return;
+        }
+        DryPort dryPort = dryPortRepository.findById(id).orElse(null);
+        if (dryPort == null) {
+            return;
+        }
+        ApprovalStatus approval = dryPort.getApprovalStatus();
+        boolean wasApproved = approval == ApprovalStatus.APPROVED
+                || approval == ApprovalStatus.APPROVED_LEVEL2;
+        if (!wasApproved) {
+            return;
+        }
+        UUID actor = SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId() : userId;
+        for (MultipartFile file : files) {
+            String name = file.getOriginalFilename() != null ? file.getOriginalFilename() : "không rõ tên";
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(id)
+                    .refType(InfrastructureType.DRY_PORT)
+                    .approvalLevel(ApprovalLevel.LEVEL_0)
+                    .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
+                    .approvedBy(actor)
+                    .approvedDate(LocalDateTime.now())
+                    .reason("Tải lên tài liệu đính kèm: " + name)
+                    .changedField("Tài liệu đính kèm")
+                    .previousValue("—")
+                    .newValue(name)
+                    .build());
+        }
+        log.info("[DryPortService] Đã ghi lịch sử tải lên {} file đính kèm của Cảng cạn [{}]", files.size(), id);
     }
 
     @Transactional
     public void deleteAttachment(UUID id, UUID attId) {
         log.info("Deleted attachment {} for DryPort id={}", attId, id);
+        if (id == null || attId == null || historyRepository == null) {
+            return;
+        }
+        DryPort dryPort = dryPortRepository.findById(id).orElse(null);
+        if (dryPort == null) {
+            return;
+        }
+        ApprovalStatus approval = dryPort.getApprovalStatus();
+        boolean wasApproved = approval == ApprovalStatus.APPROVED
+                || approval == ApprovalStatus.APPROVED_LEVEL2;
+        if (!wasApproved) {
+            return;
+        }
+        historyRepository.save(InfrastructureHistory.builder()
+                .refId(id)
+                .refType(InfrastructureType.DRY_PORT)
+                .approvalLevel(ApprovalLevel.LEVEL_0)
+                .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
+                .approvedBy(SecurityUtils.getCurrentUserId())
+                .approvedDate(LocalDateTime.now())
+                .reason("Xóa tài liệu đính kèm (mã tệp): " + attId)
+                .changedField("Tài liệu đính kèm")
+                .previousValue(attId.toString())
+                .newValue("—")
+                .build());
+        log.info("[DryPortService] Đã ghi lịch sử xóa file đính kèm của Cảng cạn [{}]: {}", id, attId);
+    }
+
+    /** Nhãn hiển thị loại hình GIS theo chuẩn VTS CHK (dùng cho lịch sử thay đổi). */
+    private static String geometryTypeLabel(GisGeometryType type) {
+        if (type == null) return "Chưa có";
+        return switch (type) {
+            case POINT -> "Đối tượng điểm";
+            case LINE -> "Đối tượng đường";
+            case POLYGON -> "Đối tượng vùng";
+        };
     }
 
     private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {

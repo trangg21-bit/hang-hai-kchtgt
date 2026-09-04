@@ -123,7 +123,7 @@ const historyFieldLabels: Record<string, string> = {
   portAuthorityApprovalContent: 'Nội dung phê duyệt Cảng vụ',
   departmentApprovedAt: 'Ngày duyệt Cục', departmentApprovedBy: 'Người duyệt Cục',
   departmentApprovalContent: 'Nội dung phê duyệt Cục', rejectionReason: 'Lý do từ chối',
-  'Trạng thái': 'Hành động',
+  'Trạng thái': 'Hành động', 'Tọa độ GIS': 'Tọa độ GIS', 'Loại đối tượng GIS': 'Loại đối tượng GIS', 'Tài liệu đính kèm': 'Tài liệu đính kèm', 'File đính kèm': 'Tài liệu đính kèm',
 };
 
 function historyFieldName(fn: string): string { return historyFieldLabels[fn] || fn; }
@@ -153,7 +153,7 @@ function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; 
   }
 
   // Tải lên / xóa tệp đính kèm
-  if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || item.changedField?.includes('đính kèm')) {
+  if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || (item.changedField?.includes('đính kèm') && !rawReason.includes('xóa') && !rawReason.includes('xoa'))) {
     return { label: 'Tải lên tệp', color: '#0284c7', bg: '#0284c718' };
   }
   if (rawStatus === 'ATTACHMENT_DELETED' || rawReason.includes('xóa tài liệu') || rawReason.includes('xóa tệp') || rawReason.includes('xoa tep')) {
@@ -248,9 +248,9 @@ function historyNewValue(item: any): string | null {
   return item.newValue ?? null;
 }
 
-function historyActor(item: any): string {
+function historyActor(item: any, userMap?: Map<string, string>): string {
   const raw = item?.approvedByName || item?.changedByName || item?.performedByName || item?.userName || item?.actorName || item?.approvedBy || item?.changedBy || item?.performedBy || '';
-  return raw || '—';
+  return (raw && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw) && userMap?.get(raw)) || raw || '—';
 }
 
 function normalizeHistoryKey(value: string): string {
@@ -508,7 +508,7 @@ export default function ShipRepairYardList() {
       }
       const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
-      const actor = historyActor(r);
+      const actor = historyActor(r, userMap);
       const prev = groups[groups.length - 1];
       if (prev && prev.tsSec === sec && prev.actor === actor && prev.status === r.status && prev.approvalLevel === r.approvalLevel) {
         prev.items.push(r);

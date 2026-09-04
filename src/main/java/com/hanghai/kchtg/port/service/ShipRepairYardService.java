@@ -2,7 +2,11 @@ package com.hanghai.kchtg.port.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.EntityFields;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
@@ -39,6 +43,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -64,6 +69,7 @@ public class ShipRepairYardService {
     private final UserRepository userRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final ChangeHistoryService changeHistoryService;
+    private final InfrastructureHistoryRepository historyRepository;
 
     @Value("${app.upload.attachment-path:uploads/attachments}")
     private String attachmentPath;
@@ -123,6 +129,23 @@ public class ShipRepairYardService {
     public ShipRepairYardResponse update(UpdateShipRepairYardRequest request) {
         ShipRepairYard entity = shipRepairYardRepository.findById(request.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cơ sở sửa chữa, đóng tàu với id: " + request.getId()));
+
+        // ── Lịch sử thay đổi (chuẩn Cảng biển PortService.update) ──────
+        // Chụp preImage (trạng thái cũ) TRƯỚC khi mutate. Chỉ ghi lịch sử khi hồ sơ
+        // ĐÃ duyệt (APPROVED / APPROVED_LEVEL2) trước lần sửa này.
+        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+        ShipRepairYard preImage = snapshotHistoryFields(entity);
+        // WKT + loại hình GIS cũ phải đọc TRƯỚC khi persistGis ghi đè spatial object.
+        String oldWkt = null;
+        GisGeometryType oldGeomType = null;
+        if (preImage.getSpatialId() != null) {
+            GisSpatialObject oldSpatial = gisSpatialObjectService.findById(preImage.getSpatialId()).orElse(null);
+            if (oldSpatial != null) {
+                oldWkt = oldSpatial.getCoordinates();
+                oldGeomType = oldSpatial.getGeometryType();
+            }
+        }
 
         String coordinates = request.getCoordinates();
         if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
@@ -185,6 +208,35 @@ public class ShipRepairYardService {
         ShipRepairYard saved = shipRepairYardRepository.save(entity);
         persistGis(saved, request.getGeometryType(), coordinates,
                 request.getLongitude(), request.getLatitude());
+
+        // ── Ghi lịch sử thay đổi (chuẩn Cảng biển PortService.update) ──
+        // Chỉ ghi khi hồ sơ ĐÃ duyệt (APPROVED / APPROVED_LEVEL2) trước lần sửa này.
+        // Actor LUÔN là user thật (real UUID từ SecurityContext) — KHÔNG BAO GIỜ truyền
+        // "system": ChangeHistoryService fallback auth.getName() = username → approvedBy
+        // null → drawer hiện "—".
+        if (wasApproved) {
+            UUID actorId = currentActorId();
+            if (coordinates != null && !coordinates.trim().isEmpty()) {
+                String newWkt = coordinates.trim();
+                boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
+                GisGeometryType geomType = request.getGeometryType() != null
+                        ? request.getGeometryType() : GisGeometryType.POINT;
+                boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
+                if (wktChanged) {
+                    saveShipRepairYardHistoryRow(saved.getId(), InfrastructureHistoryStatus.UPDATED, "Tọa độ GIS",
+                            (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
+                            newWkt, null, actorId);
+                }
+                if (typeChanged) {
+                    saveShipRepairYardHistoryRow(saved.getId(), InfrastructureHistoryStatus.UPDATED, "Loại đối tượng GIS",
+                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
+                            geometryTypeLabel(geomType), null, actorId);
+                }
+            }
+            // Field-level cho các trường khác — key khớp historyFieldLabels phía frontend.
+            recordFieldLevelHistory(preImage, saved, actorId);
+        }
+
         evictAfterCommit();
 
         return toResponse(saved);
@@ -312,6 +364,9 @@ public class ShipRepairYardService {
             attachment.setContentType(file.getContentType());
             attachment.setUploadedBy(userId);
             savedAttachments.add(attachmentRepository.save(attachment));
+            // Lịch sử "Tài liệu đính kèm" — chỉ khi hồ sơ đã duyệt (chuẩn Cảng biển)
+            recordAttachmentHistory(entityType, entityId, originalFilename,
+                    InfrastructureHistoryStatus.ATTACHMENT_UPLOADED);
         }
         return savedAttachments.stream().map(this::toAttachmentDto).collect(java.util.stream.Collectors.toList());
     }
@@ -334,6 +389,9 @@ public class ShipRepairYardService {
             log.warn("Không thể xóa file: {}", attachment.getFilePath(), e);
         }
         attachmentRepository.delete(attachment);
+        // Lịch sử "Tài liệu đính kèm" — chỉ khi hồ sơ đã duyệt (chuẩn Cảng biển)
+        recordAttachmentHistory(entityType, entityId, attachment.getFileName(),
+                InfrastructureHistoryStatus.ATTACHMENT_DELETED);
     }
 
     private AttachmentDto toAttachmentDto(Attachment entity) {
@@ -435,6 +493,184 @@ public class ShipRepairYardService {
         return pierRepository.findById(pierId)
                 .map(Pier::getPierName)
                 .orElse(null);
+    }
+
+    // ── Ghi lịch sử thay đổi (chuẩn Cảng biển) ────────────────────────
+
+    /** Các trường field-level — key khớp historyFieldLabels phía frontend ShipRepairYard. */
+    private static final List<String> HISTORY_FIELD_NAMES = List.of(
+            ShipRepairYard.Fields.shipRepairYardCode,
+            ShipRepairYard.Fields.shipRepairYardName,
+            ShipRepairYard.Fields.portId,
+            ShipRepairYard.Fields.pierId,
+            ShipRepairYard.Fields.provinceId,
+            ShipRepairYard.Fields.detailedLocation,
+            ShipRepairYard.Fields.operationalStatus,
+            ShipRepairYard.Fields.usageFunction,
+            ShipRepairYard.Fields.workshopArea,
+            ShipRepairYard.Fields.vesselType,
+            ShipRepairYard.Fields.vesselDwt,
+            ShipRepairYard.Fields.businessType,
+            ShipRepairYard.Fields.activity,
+            ShipRepairYard.Fields.slipwayCount,
+            ShipRepairYard.Fields.remarks,
+            ShipRepairYard.Fields.mapSymbolId,
+            ShipRepairYard.Fields.coordinateSystem,
+            ShipRepairYard.Fields.displayRule);
+
+    /** preImage snapshot: các trường theo dõi + spatialId (để đọc WKT/loại hình GIS cũ). */
+    private static final List<String> SNAPSHOT_FIELD_NAMES;
+    static {
+        List<String> names = new java.util.ArrayList<>(HISTORY_FIELD_NAMES);
+        names.add(ShipRepairYard.Fields.spatialId);
+        SNAPSHOT_FIELD_NAMES = List.copyOf(names);
+    }
+
+    /** Chụp bản sao entity trước khi mutate để diff lịch sử. */
+    private ShipRepairYard snapshotHistoryFields(ShipRepairYard entity) {
+        ShipRepairYard snapshot = new ShipRepairYard();
+        for (String fieldName : SNAPSHOT_FIELD_NAMES) {
+            try {
+                Field field = entity.getClass().getDeclaredField(fieldName);
+                field.setAccessible(true);
+                field.set(snapshot, field.get(entity));
+            } catch (ReflectiveOperationException e) {
+                log.warn("Không snapshot được trường {} của ShipRepairYard: {}", fieldName, e.getMessage());
+            }
+        }
+        return snapshot;
+    }
+
+    /** Diff field-level giữa preImage và entity sau khi lưu — chỉ ghi trường thực sự đổi. */
+    private void recordFieldLevelHistory(ShipRepairYard preImage, ShipRepairYard saved, UUID actorId) {
+        for (String fieldName : HISTORY_FIELD_NAMES) {
+            Object oldValue = readHistoryField(preImage, fieldName);
+            Object newValue = readHistoryField(saved, fieldName);
+            if (historyValuesEqual(oldValue, newValue)) {
+                continue;
+            }
+            saveShipRepairYardHistoryRow(saved.getId(), InfrastructureHistoryStatus.UPDATED, fieldName,
+                    historyFormatValue(oldValue), historyFormatValue(newValue), null, actorId);
+        }
+    }
+
+    private static Object readHistoryField(Object entity, String fieldName) {
+        try {
+            Field field = entity.getClass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+            return field.get(entity);
+        } catch (ReflectiveOperationException e) {
+            return null;
+        }
+    }
+
+    private static boolean historyValuesEqual(Object a, Object b) {
+        if (a == null && b == null) return true;
+        if (a == null || b == null) return false;
+        if (a instanceof Enum<?> ea && b instanceof Enum<?> eb) return ea == eb;
+        if (a instanceof List<?> la && b instanceof List<?> lb) return la.equals(lb);
+        if (a instanceof Number && b instanceof Number) {
+            try {
+                return new java.math.BigDecimal(a.toString())
+                        .compareTo(new java.math.BigDecimal(b.toString())) == 0;
+            } catch (NumberFormatException e) {
+                return ((Number) a).doubleValue() == ((Number) b).doubleValue();
+            }
+        }
+        return a.equals(b);
+    }
+
+    private static String historyFormatValue(Object value) {
+        if (value == null) return "(null)";
+        if (value instanceof LocalDateTime dt) return dt.toString();
+        if (value instanceof Enum<?> e) return e.name();
+        return value.toString();
+    }
+
+    /**
+     * Ghi 1 dòng infrastructure_history với refType = SHIP_REPAIR_YARD.
+     * KHÔNG đi qua ChangeHistoryService.insertChangeRecord/recordChanges vì
+     * resolveInfrastructureType chưa có nhánh SHIP_REPAIR_YARD → rơi vào mặc định
+     * SEAPORT, làm getHistory trả rỗng.
+     */
+    private void saveShipRepairYardHistoryRow(UUID refId, InfrastructureHistoryStatus status,
+                                              String changedField, String previousValue,
+                                              String newValue, String reason, UUID actorId) {
+        try {
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(refId)
+                    .refType(InfrastructureType.SHIP_REPAIR_YARD)
+                    .approvalLevel(ApprovalLevel.LEVEL_0)
+                    .status(status)
+                    .approvedBy(actorId)
+                    .approvedDate(LocalDateTime.now())
+                    .reason(reason)
+                    .changedField(changedField)
+                    .previousValue(previousValue)
+                    .newValue(newValue)
+                    .build());
+        } catch (Exception e) {
+            log.warn("Không ghi được lịch sử ShipRepairYard [{}] field={}: {}", refId, changedField, e.getMessage());
+        }
+    }
+
+    /** Actor thật từ SecurityContext — không bao giờ truyền "system". */
+    private static UUID currentActorId() {
+        UUID actorId = SecurityUtils.getCurrentUserId();
+        if (actorId != null) return actorId;
+        org.springframework.security.core.Authentication auth =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getName() != null && !"anonymousUser".equals(auth.getName())) {
+            try {
+                return UUID.fromString(auth.getName());
+            } catch (IllegalArgumentException ignored) {
+                // username (không phải UUID) — không đủ dữ liệu để gán actor; để null.
+            }
+        }
+        return null;
+    }
+
+    /** Nhãn hiển thị loại hình GIS (chuẩn VTS CHK — dùng cho lịch sử thay đổi). */
+    private static String geometryTypeLabel(GisGeometryType type) {
+        if (type == null) return "Chưa có";
+        return switch (type) {
+            case POINT -> "Đối tượng điểm";
+            case LINE -> "Đối tượng đường";
+            case POLYGON -> "Đối tượng vùng";
+        };
+    }
+
+    /**
+     * Ghi lịch sử "Tài liệu đính kèm" của ShipRepairYard (chuẩn Cảng biển
+     * DocumentService.recordPortAttachmentHistory) — chỉ khi hồ sơ đã duyệt.
+     */
+    private void recordAttachmentHistory(String entityType, UUID entityId, String fileName,
+                                         InfrastructureHistoryStatus status) {
+        try {
+            if (entityType == null || !InfrastructureType.SHIP_REPAIR_YARD.name().equalsIgnoreCase(entityType)) {
+                return;
+            }
+            ShipRepairYard yard = shipRepairYardRepository.findById(entityId).orElse(null);
+            if (yard == null) {
+                return;
+            }
+            ApprovalStatus approval = yard.getApprovalStatus();
+            boolean wasApproved = approval == ApprovalStatus.APPROVED
+                    || approval == ApprovalStatus.APPROVED_LEVEL2;
+            if (!wasApproved) {
+                return;
+            }
+            String name = fileName != null ? fileName : "không rõ tên";
+            boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
+            saveShipRepairYardHistoryRow(entityId, status, "Tài liệu đính kèm",
+                    uploaded ? "—" : name,
+                    uploaded ? name : "—",
+                    (uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + name,
+                    currentActorId());
+        } catch (Exception e) {
+            log.warn("Không ghi được lịch sử file đính kèm ShipRepairYard (entityType={}, entityId={}): {}",
+                    entityType, entityId, e.getMessage());
+        }
     }
 
     private void persistGis(ShipRepairYard saved, GisGeometryType geometryType, String coordinates,
