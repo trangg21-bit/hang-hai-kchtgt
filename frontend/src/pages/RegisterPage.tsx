@@ -385,6 +385,7 @@ export default function RegisterPage() {
                   <Input
                     prefix={<UserOutlined style={{ color: textTertiary }} />}
                     placeholder="Nhập họ và tên"
+                    spellCheck={false}
                     style={{ borderRadius: radiusPill, height: 40 }}
                   />
                 </Form.Item>
@@ -403,6 +404,9 @@ export default function RegisterPage() {
                     prefix={<MailOutlined style={{ color: textTertiary }} />}
                     placeholder="Nhập email"
                     autoComplete="email"
+                    spellCheck={false}
+                    autoCorrect="off"
+                    autoCapitalize="off"
                     style={{ borderRadius: radiusPill, height: 40 }}
                   />
                 </Form.Item>
@@ -423,6 +427,7 @@ export default function RegisterPage() {
                     prefix={<PhoneOutlined style={{ color: textTertiary }} />}
                     placeholder="Nhập số điện thoại"
                     autoComplete="tel"
+                    spellCheck={false}
                     style={{ borderRadius: radiusPill, height: 40 }}
                   />
                 </Form.Item>
@@ -444,6 +449,7 @@ export default function RegisterPage() {
                     prefix={<LockOutlined style={{ color: textTertiary }} />}
                     placeholder="Nhập mật khẩu"
                     autoComplete="new-password"
+                    spellCheck={false}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     style={{ borderRadius: radiusPill, height: 40 }}
@@ -538,6 +544,7 @@ export default function RegisterPage() {
                     prefix={<LockOutlined style={{ color: textTertiary }} />}
                     placeholder="Nhập lại mật khẩu"
                     autoComplete="new-password"
+                    spellCheck={false}
                     style={{ borderRadius: radiusPill, height: 40 }}
                   />
                 </Form.Item>

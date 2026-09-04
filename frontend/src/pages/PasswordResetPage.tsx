@@ -410,6 +410,9 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
                       <Input
                         prefix={<MailOutlined style={{ color: textTertiary }} />}
                         placeholder="Nhập email"
+                        spellCheck={false}
+                        autoCorrect="off"
+                        autoCapitalize="off"
                         style={{ borderRadius: radiusPill, height: 40, fontFamily: fontSans, fontSize: fontSizeMd }}
                       />
                     </Form.Item>
@@ -462,6 +465,7 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
                       <Input.Password
                         prefix={<LockOutlined style={{ color: textTertiary }} />}
                         placeholder="Nhập mật khẩu mới"
+                        spellCheck={false}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         style={{ borderRadius: radiusPill, height: 40, fontFamily: fontSans, fontSize: fontSizeMd }}
@@ -544,6 +548,7 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
                       <Input.Password
                         prefix={<LockOutlined style={{ color: textTertiary }} />}
                         placeholder="Nhập lại mật khẩu mới"
+                        spellCheck={false}
                         style={{ borderRadius: radiusPill, height: 40, fontFamily: fontSans, fontSize: fontSizeMd }}
                       />
                     </Form.Item>

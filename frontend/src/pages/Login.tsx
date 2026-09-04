@@ -278,6 +278,12 @@ export default function LoginPage() {
             caret-color: ${textPrimary} !important;
             transition: background-color 5000s ease-in-out 0s;
           }
+          .chk-login-card input::selection,
+          .chk-login-card .ant-input::selection {
+            background: rgba(39, 62, 124, 0.22) !important;
+            color: ${textPrimary} !important;
+            -webkit-text-fill-color: ${textPrimary} !important;
+          }
         `}</style>
 
         {/* ===== Background Layers ===== */}
@@ -383,6 +389,9 @@ export default function LoginPage() {
                       maxLength={6}
                       value={totpCode}
                       onChange={(e) => setTotpCode(e.target.value)}
+                      spellCheck={false}
+                      autoCorrect="off"
+                      autoCapitalize="off"
                       style={{ borderRadius: radiusPill, height: 40, fontFamily: fontSans, fontSize: fontSizeMd, borderColor: borderDefault }}
                     />
                   </Form.Item>
@@ -438,6 +447,9 @@ export default function LoginPage() {
                       prefix={<UserOutlined style={{ color: textTertiary, marginRight: 4 }} />}
                       placeholder="Nhập email hoặc tên đăng nhập"
                       autoComplete="username"
+                      spellCheck={false}
+                      autoCorrect="off"
+                      autoCapitalize="off"
                       style={{ borderRadius: radiusPill, height: 40, fontFamily: fontSans, fontSize: fontSizeMd }}
                     />
                   </Form.Item>
@@ -452,6 +464,7 @@ export default function LoginPage() {
                       prefix={<LockOutlined style={{ color: textTertiary, marginRight: 4 }} />}
                       placeholder="Nhập mật khẩu"
                       autoComplete="current-password"
+                      spellCheck={false}
                       style={{ borderRadius: radiusPill, height: 40, fontFamily: fontSans, fontSize: fontSizeMd }}
                     />
                   </Form.Item>
