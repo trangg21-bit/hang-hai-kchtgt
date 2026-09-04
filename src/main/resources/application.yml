@@ -16,10 +16,10 @@ spring:
     name: kchtg-m001-quan-tri-he-thong
   devtools:
     restart:
-      enabled: false
+      enabled: true
     livereload:
-      enabled: false
-  # Default profile (dev with H2)
+      enabled: true
+  # Default profile (local with PostgreSQL)
   profiles:
     active: local
 

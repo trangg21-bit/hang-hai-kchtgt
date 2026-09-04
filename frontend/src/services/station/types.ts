@@ -77,6 +77,7 @@ export interface CoastalStationInmarsatRequest {
   spatialId?: string;
   objectType?: string;
   symbol?: string;
+  symbolId?: string;
   coordinateSystem?: string;
   displayRule?: string;
   latitude?: number;
@@ -135,6 +136,7 @@ export interface CoastalStationInmarsatResponse {
   approverLevel1Name?: string;
   approvedDateLevel1?: string;
   approvalContentLevel1?: string;
+  level1ApprovalContent?: string;
   approvalReasonLevel1?: string;
   rejectionReasonLevel1?: string;
   approverLevel2?: string;
@@ -142,6 +144,7 @@ export interface CoastalStationInmarsatResponse {
   approverLevel2Name?: string;
   approvedDateLevel2?: string;
   approvalContentLevel2?: string;
+  level2ApprovalContent?: string;
   approvalReasonLevel2?: string;
   rejectionReasonLevel2?: string;
   approvedBy?: string;

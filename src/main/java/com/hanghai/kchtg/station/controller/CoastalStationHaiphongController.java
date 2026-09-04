@@ -49,12 +49,12 @@ public class CoastalStationHaiphongController {
      * sắp bằng COALESCE cho khớp đúng chữ hiển thị trên bảng.
      */
     private static final Map<String, String> SORTABLE_LIST_FIELDS = Map.ofEntries(
-            Map.entry("name", "COALESCE(t.name, t.stationName)"),
-            Map.entry("stationName", "COALESCE(t.name, t.stationName)"),
-            Map.entry("code", "COALESCE(t.code, t.stationCode)"),
-            Map.entry("stationCode", "COALESCE(t.code, t.stationCode)"),
+            Map.entry("name", "t.name"),
+            Map.entry("stationName", "t.name"),
+            Map.entry("code", "t.code"),
+            Map.entry("stationCode", "t.code"),
             Map.entry("portName", "t.portName"),
-            Map.entry("orgUnitName", "COALESCE(o.name, ou.name)"),
+            Map.entry("orgUnitName", "o.name"),
             Map.entry("orgUnitId", "t.orgUnitId"),
             Map.entry("operatingOrgName", "COALESCE(oo.name, oorg.name)"),
             Map.entry("operatingOrgId", "t.operatingOrgId"),

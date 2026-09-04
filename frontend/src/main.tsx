@@ -17,6 +17,33 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   static getDerivedStateFromError(error: Error) { return { error }; }
   render() {
     if (this.state.error) {
+      const isDynamicImportError = this.state.error.message?.includes('Failed to fetch dynamically imported module')
+        || this.state.error.message?.includes('Loading chunk');
+
+      if (isDynamicImportError) {
+        return (
+          <div style={{ padding: 40, textAlign: 'center', fontFamily: 'sans-serif' }}>
+            <h3 style={{ color: '#0F172A', marginBottom: 8 }}>Hệ thống vừa cập nhật phiên bản mới</h3>
+            <p style={{ color: '#64748B', marginBottom: 20 }}>Mã nguồn vừa được làm mới trên máy chủ. Vui lòng tải lại trang để tiếp tục.</p>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                padding: '10px 24px',
+                borderRadius: 999,
+                background: '#0E6FD6',
+                color: '#fff',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 500,
+                fontSize: 14,
+              }}
+            >
+              Tải lại trang (F5)
+            </button>
+          </div>
+        );
+      }
+
       return (
         <div style={{ padding: 40, fontFamily: 'monospace', color: 'red', background: '#fff' }}>
           <h2>❌ React Render Error</h2>

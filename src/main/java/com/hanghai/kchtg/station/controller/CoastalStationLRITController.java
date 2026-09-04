@@ -5,6 +5,7 @@ import com.hanghai.kchtg.security.annotation.DataScope;
 import com.hanghai.kchtg.station.dto.lrit.*;
 import com.hanghai.kchtg.station.entity.CoastalStationLRIT;
 import com.hanghai.kchtg.station.service.CoastalStationLRITService;
+import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -50,12 +51,12 @@ public class CoastalStationLRITController {
      * bằng COALESCE cho khớp đúng chữ hiển thị trên bảng.
      */
     private static final Map<String, String> SORTABLE_LIST_FIELDS = Map.ofEntries(
-            Map.entry("name", "COALESCE(t.name, t.stationName)"),
-            Map.entry("stationName", "COALESCE(t.name, t.stationName)"),
-            Map.entry("code", "COALESCE(t.code, t.stationCode)"),
-            Map.entry("stationCode", "COALESCE(t.code, t.stationCode)"),
+            Map.entry("name", "t.name"),
+            Map.entry("stationName", "t.name"),
+            Map.entry("code", "t.code"),
+            Map.entry("stationCode", "t.code"),
             Map.entry("terminalId", "t.terminalId"),
-            Map.entry("orgUnitName", "COALESCE(o.name, ou.name)"),
+            Map.entry("orgUnitName", "o.name"),
             Map.entry("orgUnitId", "t.orgUnitId"),
             Map.entry("operatingOrgName", "COALESCE(oo.name, oorg.name)"),
             Map.entry("operatingOrgId", "t.operatingOrgId"),
@@ -122,8 +123,9 @@ public class CoastalStationLRITController {
         Pageable sanitizedPageable = PageRequest.of(
                 pageable.getPageNumber(), safeSize, resolveListSort(pageable.getSort()));
 
+        ConditionStatus parsedCondition = CoastalStationLRITService.parseConditionStatus(conditionStatus);
         Page<CoastalStationLRITResponse> results = service.searchPaged(
-                orgUnitId, keyword, name, code, operatingOrgId, provinceId, conditionStatus, approvalStatus,
+                orgUnitId, keyword, name, code, operatingOrgId, provinceId, parsedCondition, approvalStatus,
                 updatedBy, updatedFrom, updatedTo, sanitizedPageable);
         return ResponseEntity.ok(results);
     }
@@ -142,8 +144,9 @@ public class CoastalStationLRITController {
             @RequestParam(required = false) Integer provinceId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime updatedFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime updatedTo) {
+        ConditionStatus parsedCondition = CoastalStationLRITService.parseConditionStatus(conditionStatus);
         return ResponseEntity.ok(service.countByApprovalStatus(
-                orgUnitId, keyword, name, code, conditionStatus, provinceId, updatedFrom, updatedTo));
+                orgUnitId, keyword, name, code, parsedCondition, provinceId, updatedFrom, updatedTo));
     }
 
     @GetMapping("/options")

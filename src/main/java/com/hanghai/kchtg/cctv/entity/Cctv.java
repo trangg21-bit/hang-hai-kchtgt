@@ -16,7 +16,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import lombok.experimental.FieldNameConstants;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 
 /**
  * Entity representing a CCTV system (Hệ thống CCTV) — M-NEW entity.

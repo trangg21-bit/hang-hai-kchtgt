@@ -19,14 +19,13 @@ import { focusErrorTab } from '../../utils/formValidationHelper';
 import { vtsSystemCRUD, vtsSystemApproval } from '../../services/vtsSystemService';
 import { vtsOperationCenterService } from '../../services/vtsOperationCenterService';
 import { radarStationService } from '../../services/radarStationService';
-import { aisSystemService } from '../../services/aisSystemService';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import type {
   VtsSystemResponse,
   CreateVtsSystemRequest,
   UpdateVtsSystemRequest,
 } from '../../types/vtsSystem';
-import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/vtsSystem';
+import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS } from '../../types/vtsSystem';
 import {
   drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle,
   requiredMarkStyle, inputStyle,
@@ -38,6 +37,8 @@ import {
   generateTempId,
   getDatePickerProps,
   DRAWER_TABLE_SCROLL_Y,
+  getConditionStatusColor,
+  getConditionStatusLabel,
 } from '../../themetokenchk';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
 import { useAuthStore, type AuthState } from '../../store/authStore';
@@ -114,23 +115,9 @@ export interface VtsSystemFormProps {
   onSuccess?: () => void;
 }
 
-const CONDITION_COLOR: Record<string, string> = {
-  [ConditionStatus.OPERATIONAL]: statusOperational,
-  [ConditionStatus.STOPPED]: statusCritical,
-  [ConditionStatus.MAINTENANCE]: statusAttention,
-  [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
-};
-
-export const ConditionStatusBadge: React.FC<{ status?: ConditionStatus | number }> = React.memo(({ status }) => {
-  const legacyConditionStatusMap: Record<string, ConditionStatus> = {
-    '0': ConditionStatus.STOPPED,
-    '1': ConditionStatus.OPERATIONAL,
-    '2': ConditionStatus.MAINTENANCE,
-    '3': ConditionStatus.UNDER_CONSTRUCTION,
-  };
-  const normalizedStatus = legacyConditionStatusMap[String(status)] || String(status ?? ConditionStatus.OPERATIONAL);
-  const label = CONDITION_STATUS_MAP[normalizedStatus] || normalizedStatus;
-  const color = CONDITION_COLOR[normalizedStatus] || textSecondary;
+export const ConditionStatusBadge: React.FC<{ status?: ConditionStatus | number | string }> = React.memo(({ status }) => {
+  const label = getConditionStatusLabel(status);
+  const color = getConditionStatusColor(status);
 
   return (
     <span
@@ -154,11 +141,10 @@ export const ConditionStatusBadge: React.FC<{ status?: ConditionStatus | number 
   );
 });
 
-export const renderConditionStatusBadge = (status?: ConditionStatus | string) => {
+export const renderConditionStatusBadge = (status?: ConditionStatus | string | number) => {
   if (status == null || status === '') return <span>—</span>;
-  const key = String(status);
-  const label = (key === '1' || key === 'OPERATIONAL') ? 'Đang hoạt động' : (key === '2' || key === 'MAINTENANCE') ? 'Đang bảo trì' : (key === '0' || key === 'STOPPED') ? 'Dừng hoạt động' : (key === '3' || key === 'UNDER_CONSTRUCTION') ? 'Đang xây dựng' : key;
-  const color = (key === '1' || key === 'OPERATIONAL') ? statusOperational : (key === '2' || key === 'MAINTENANCE') ? statusAttention : (key === '0' || key === 'STOPPED') ? statusCritical : (key === '3' || key === 'UNDER_CONSTRUCTION') ? actionPrimary : textSecondary;
+  const label = getConditionStatusLabel(status);
+  const color = getConditionStatusColor(status);
   return (
     <span
       style={{
@@ -227,12 +213,12 @@ export const PortDisplay: React.FC<{ portId?: string; ports?: any[] }> = React.m
 const renderApprovalBadge = (status?: ApprovalStatus | string) => {
   const map: Record<string, { label: string; color: string }> = {
     DRAFT: { label: 'Lưu tạm', color: textTertiary },
-    PENDING_APPROVAL: { label: 'Chờ Cảng vụ duyệt', color: statusAttention },
-    APPROVED_LEVEL1: { label: 'Chờ Cục duyệt', color: '#0082fb' },
-    APPROVED: { label: 'Đã duyệt', color: statusOperational },
-    REJECTED_LEVEL1: { label: 'Từ chối (C1)', color: statusCritical },
-    REJECTED_LEVEL2: { label: 'Từ chối (C2)', color: statusCritical },
-    ARCHIVED: { label: 'Lưu trữ', color: textTertiary },
+    PENDING_APPROVAL: { label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: statusAttention },
+    APPROVED_LEVEL1: { label: 'Chờ phê duyệt cấp Cục', color: '#0284C7' },
+    APPROVED: { label: 'Đã phê duyệt', color: statusOperational },
+    REJECTED_LEVEL1: { label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
+    REJECTED_LEVEL2: { label: 'Từ chối cấp Cục', color: statusCritical },
+    ARCHIVED: { label: 'Đã xóa', color: textTertiary },
   };
   const item = map[String(status || '').toUpperCase()] || { label: String(status || '—'), color: textSecondary };
   return (
@@ -322,9 +308,11 @@ export default function VtsSystemForm({
   const [isLoadingZones, setIsLoadingZones] = useState(false);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
 
-  const [otherInfraTypeFilter, setOtherInfraTypeFilter] = useState<string>('ALL');
+  const [otherInfraTypeFilter, setOtherInfraTypeFilter] = useState<string>('VTS_OPERATION_CENTER');
+  const [otherInfraPage, setOtherInfraPage] = useState<number>(1);
+  const [otherInfraPageSize, setOtherInfraPageSize] = useState<number>(20);
+  const [otherInfraTotal, setOtherInfraTotal] = useState<number>(0);
   const [otherInfraList, setOtherInfraList] = useState<Array<{ id: string; type: string; typeLabel: string; name: string }>>([]);
-  const [otherInfraLoaded, setOtherInfraLoaded] = useState(false);
   const [isLoadingOtherInfra, setIsLoadingOtherInfra] = useState(false);
   const [otherInfraError, setOtherInfraError] = useState<string | null>(null);
 
@@ -538,94 +526,62 @@ export default function VtsSystemForm({
     }
   }, [editId, detailTabKey, tabKey, filesLoaded, isDetailMode]);
 
-  // Lazy load other infrastructure when user switches to 'otherInfra' tab in detail mode
+  // Tải danh sách kết cấu hạ tầng con thuộc loại đối tượng đang chọn (phân trang 20 bản ghi)
   useEffect(() => {
-    if (!editId || otherInfraLoaded) return;
-    if (isDetailMode && detailTabKey === 'otherInfra') {
-      setIsLoadingOtherInfra(true);
-      setOtherInfraError(null);
-      Promise.allSettled([
-        vtsOperationCenterService.search({ vtsSystemId: editId, size: 50 } as any),
-        radarStationService.search({ vtsSystemId: editId, size: 50 } as any),
-        aisSystemService.search({ vtsSystemId: editId, size: 50 } as any),
-      ]).then((results) => {
-        const combined: Array<{ id: string; type: string; typeLabel: string; name: string }> = [];
-        const failedCount = results.filter((result) => result.status === 'rejected').length;
-        const truncated = results.some((result) => {
-          if (result.status !== 'fulfilled') return false;
-          const response = result.value as any;
-          const data = response?.data || response;
-          const items = Array.isArray(data?.items) ? data.items
-            : (Array.isArray(data?.content) ? data.content : (Array.isArray(data) ? data : []));
-          const total = Number(data?.total ?? data?.totalElements ?? response?.total ?? response?.totalElements ?? items.length);
-          return total > items.length;
-        });
+    if (!editId || !isDetailMode || detailTabKey !== 'otherInfra') return;
 
-        // 1. Trung tâm điều hành VTS
-        if (results[0].status === 'fulfilled' && results[0].value) {
-          const res = results[0].value as any;
-          const items = Array.isArray(res?.data?.items) ? res.data.items : (Array.isArray(res?.items) ? res.items : (Array.isArray(res?.data) ? res.data : []));
-          items.forEach((item: any) => {
-            combined.push({
-              id: item.id,
-              type: 'VTS_OPERATION_CENTER',
-              typeLabel: 'Trung tâm điều hành VTS',
-              name: item.name || item.code || '—',
-            });
+    let cancelled = false;
+    setIsLoadingOtherInfra(true);
+    setOtherInfraError(null);
+
+    const fetchOtherInfra = async () => {
+      try {
+        if (otherInfraTypeFilter === 'VTS_OPERATION_CENTER') {
+          const res = await vtsOperationCenterService.search({
+            vtsSystemId: editId,
+            page: otherInfraPage,
+            size: otherInfraPageSize,
           });
-        }
-
-        // 2. Trạm Radar VTS
-        if (results[1].status === 'fulfilled' && results[1].value) {
-          const res = results[1].value as any;
-          const items = Array.isArray(res?.data?.items) ? res.data.items : (Array.isArray(res?.items) ? res.items : (Array.isArray(res?.data) ? res.data : []));
-          items.forEach((item: any) => {
-            combined.push({
-              id: item.id,
-              type: 'RADAR_STATION',
-              typeLabel: 'Trạm Radar VTS',
-              name: item.name || item.code || '—',
-            });
+          if (cancelled) return;
+          const items = (res.items || []).map((item: any) => ({
+            id: item.id,
+            type: 'VTS_OPERATION_CENTER',
+            typeLabel: 'Trung tâm điều hành VTS',
+            name: item.name || item.code || '—',
+          }));
+          setOtherInfraList(items);
+          setOtherInfraTotal(res.total || items.length);
+        } else if (otherInfraTypeFilter === 'RADAR_STATION') {
+          const res = await radarStationService.search({
+            vtsSystemId: editId,
+            page: otherInfraPage,
+            size: otherInfraPageSize,
           });
+          if (cancelled) return;
+          const items = (res.items || []).map((item: any) => ({
+            id: item.id,
+            type: 'RADAR_STATION',
+            typeLabel: 'Trạm Radar VTS',
+            name: item.stationName || item.name || item.code || '—',
+          }));
+          setOtherInfraList(items);
+          setOtherInfraTotal(res.total || items.length);
         }
-
-        // 3. Trạm AIS / Hệ thống AIS
-        if (results[2].status === 'fulfilled' && results[2].value) {
-          const res = results[2].value as any;
-          const items = Array.isArray(res?.data?.items) ? res.data.items : (Array.isArray(res?.items) ? res.items : (Array.isArray(res?.data) ? res.data : []));
-          items.forEach((item: any) => {
-            combined.push({
-              id: item.id,
-              type: 'AIS_SYSTEM',
-              typeLabel: 'Trạm AIS / Hệ thống AIS',
-              name: item.name || item.code || '—',
-            });
-          });
-        }
-
-        setOtherInfraList(combined);
-        if (failedCount === results.length) {
-          setOtherInfraError('Không tải được danh sách kết cấu hạ tầng liên quan.');
-        } else if (failedCount > 0) {
-          setOtherInfraError('Một số nhóm kết cấu hạ tầng liên quan không tải được; dữ liệu đang hiển thị có thể chưa đầy đủ.');
-        } else if (truncated) {
-          setOtherInfraError('Danh sách đang hiển thị tối đa 50 bản ghi cho mỗi nhóm.');
-        }
-        setOtherInfraLoaded(true);
-      }).catch(() => {
+      } catch (err: any) {
+        if (cancelled) return;
         setOtherInfraList([]);
+        setOtherInfraTotal(0);
         setOtherInfraError('Không tải được danh sách kết cấu hạ tầng liên quan.');
-        setOtherInfraLoaded(true);
-      }).finally(() => {
-        setIsLoadingOtherInfra(false);
-      });
-    }
-  }, [editId, detailTabKey, otherInfraLoaded, isDetailMode]);
+      } finally {
+        if (!cancelled) setIsLoadingOtherInfra(false);
+      }
+    };
 
-  const filteredOtherInfra = useMemo(() => {
-    if (!otherInfraTypeFilter || otherInfraTypeFilter === 'ALL') return otherInfraList;
-    return otherInfraList.filter((item) => item.type === otherInfraTypeFilter);
-  }, [otherInfraList, otherInfraTypeFilter]);
+    fetchOtherInfra();
+    return () => {
+      cancelled = true;
+    };
+  }, [editId, detailTabKey, otherInfraTypeFilter, otherInfraPage, otherInfraPageSize, isDetailMode]);
 
   const populateForm = (data: VtsSystemResponse) => {
     form.setFieldsValue({
@@ -981,18 +937,18 @@ export default function VtsSystemForm({
                       Loại đối tượng
                     </span>
                     <Select
-                      allowClear
                       showSearch
-                      placeholder="Chọn loại đối tượng"
-                      value={otherInfraTypeFilter === 'ALL' ? undefined : otherInfraTypeFilter}
-                      onChange={(val) => setOtherInfraTypeFilter(val || 'ALL')}
+                      value={otherInfraTypeFilter}
+                      onChange={(val) => {
+                        setOtherInfraTypeFilter(val);
+                        setOtherInfraPage(1);
+                      }}
                       filterOption={(input, option) =>
                         normalizeSearchText(String(option?.label || '')).includes(normalizeSearchText(input))
                       }
                       options={[
                         { value: 'VTS_OPERATION_CENTER', label: 'Trung tâm điều hành VTS' },
                         { value: 'RADAR_STATION', label: 'Trạm Radar VTS' },
-                        { value: 'AIS_SYSTEM', label: 'Trạm AIS / Hệ thống AIS' },
                       ]}
                       style={{ ...selectStyle, width: 280, height: 38 }}
                     />
@@ -1000,7 +956,15 @@ export default function VtsSystemForm({
                   {otherInfraError && <Alert type="warning" showIcon message={otherInfraError} style={{ marginBottom: spaceMd }} />}
                   <DetailTable
                     scrollY="calc(100vh - 378px)"
-                    dataSource={filteredOtherInfra}
+                    dataSource={otherInfraList}
+                    total={otherInfraTotal}
+                    pageSize={otherInfraPageSize}
+                    currentPage={otherInfraPage}
+                    onPageChange={(page, size) => {
+                      setOtherInfraPage(page);
+                      if (size) setOtherInfraPageSize(size);
+                    }}
+                    loading={isLoadingOtherInfra}
                     emptyText={isLoadingOtherInfra ? 'Đang tải dữ liệu KCHT khác...' : 'Chưa có kết cấu hạ tầng khác thuộc hệ thống VTS'}
                     rowKey={(r: any) => r.id || `${r.type}-${r.name}`}
                     columns={[
@@ -1008,7 +972,7 @@ export default function VtsSystemForm({
                         title: 'STT',
                         width: 60,
                         align: 'center',
-                        render: (_: any, __: any, index: number) => index + 1,
+                        render: (_: any, __: any, index: number) => (otherInfraPage - 1) * otherInfraPageSize + index + 1,
                       },
                       {
                         title: 'Loại đối tượng',
@@ -1309,9 +1273,18 @@ export default function VtsSystemForm({
                     <div className="chk-detail-row chk-detail-row--full">
                       <span className="chk-detail-label">Nội dung phê duyệt</span>
                       <span className="chk-detail-value">
-                        {record.approvalContentLevel2 || record.rejectionReason || '—'}
+                        {record.approvalContentLevel2 || '—'}
                       </span>
                     </div>
+
+                    {record.rejectionReason && (
+                      <div className="chk-detail-row chk-detail-row--full">
+                        <span className="chk-detail-label">Lý do từ chối</span>
+                        <span className="chk-detail-value" style={{ color: statusCritical }}>
+                          {record.rejectionReason}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ),
@@ -1602,6 +1575,7 @@ export default function VtsSystemForm({
                           <Form.Item
                             label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thông báo hàng hải</span>}
                             name="maritimeNotice"
+                            rules={[{ required: true, message: 'Vui lòng nhập thông báo hàng hải' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Input.TextArea rows={3} placeholder="Nhập thông báo hàng hải" showCount maxLength={2000} style={textAreaStyle} />

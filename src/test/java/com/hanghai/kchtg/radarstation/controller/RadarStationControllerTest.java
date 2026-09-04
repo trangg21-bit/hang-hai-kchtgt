@@ -121,7 +121,7 @@ class RadarStationControllerTest {
 
     @Test
     void testGetHistory() {
-        when(service.getHistory(TEST_ID)).thenReturn(Collections.emptyList());
+        when(service.getHistory(eq(TEST_ID), any(), any(), any(), any(), any())).thenReturn(Collections.emptyList());
         ResponseEntity<?> result = controller.getHistory(TEST_ID);
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }

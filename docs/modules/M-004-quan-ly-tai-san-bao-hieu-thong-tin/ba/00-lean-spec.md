@@ -101,22 +101,22 @@ Module M-004 quản lý các tài sản báo hiệu hàng hải và đài thông
 | # | Tên trường nghiệp vụ | Tên thuộc tính Java | Tên cột trong CSDL (DB Column) | Kiểu CSDL & Ràng buộc | Ghi chú |
 |---|---|---|---|---|---|
 | 1 | Khóa chính | `id` | `id` | `UUID PRIMARY KEY` | Kế thừa BaseEntity |
-| 2 | Đơn vị quản lý | `orgUnitId` | `org_unit_id` (`unit_id`) | `UUID NOT NULL` | Scope filter phân cấp đơn vị |
+| 2 | Đơn vị quản lý | `orgUnitId` | `org_unit_id` | `UUID NOT NULL` | Scope filter phân cấp đơn vị (đã dọn unit_id) |
 | 3 | Đơn vị khai thác | `operatingOrgId` | `operating_org_id` | `UUID` | Đơn vị vận hành khai thác |
-| 4 | Mã đài | `code` / `deviceCode` | `code` (`device_code`) | `VARCHAR(50) UNIQUE` | Tự sinh format `INMARSAT-{seq}` |
-| 5 | Tên đài | `name` / `stationName` | `name` (`station_name`) | `VARCHAR(255) NOT NULL` | Tên đài vệ tinh Inmarsat |
+| 4 | Mã đài | `code` | `code` | `VARCHAR(50) UNIQUE` | Tự sinh format `INMARSAT-{seq}` (đã dọn device_code) |
+| 5 | Tên đài | `name` | `name` | `VARCHAR(255) NOT NULL` | Tên đài vệ tinh Inmarsat (đã dọn station_name) |
 | 6 | Địa điểm (Tỉnh/TP) | `provinceId` | `province_id` | `INTEGER NOT NULL` | Mã tỉnh thành (provinces) |
-| 7 | Địa điểm chi tiết | `locationAddress` | `location_address` (`location_detail`) | `VARCHAR(1000) NOT NULL` | Địa chỉ cụ thể |
-| 8 | Tình trạng hoạt động | `conditionStatus` | `condition_status` | `VARCHAR(50) DEFAULT 'OPERATIONAL'` | OPERATIONAL, MAINTENANCE, STOPPED |
-| 9 | Vùng phủ sóng | `coverageZone` | `coverage_zone` (`coverage_area`) | `VARCHAR(1000)` | Vùng biển/vệ tinh phủ sóng |
+| 7 | Địa điểm chi tiết | `locationAddress` | `location_address` | `VARCHAR(1000) NOT NULL` | Địa chỉ cụ thể |
+| 8 | Tình trạng hoạt động | `conditionStatus` | `condition_status` | `VARCHAR(50) DEFAULT 'OPERATIONAL'` | OPERATIONAL, MAINTENANCE, STOPPED, STANDBY, DEGRADED |
+| 9 | Vùng phủ sóng | `coverageArea` | `coverage_area` | `VARCHAR(1000)` | Vùng biển/vệ tinh phủ sóng (đã dọn coverage_zone) |
 | 10 | Dịch vụ cung cấp | `services` | `services` | `VARCHAR(1000)` | Multi-select JSON / chuỗi |
 | 11 | Tần số liên lạc | `frequency` | `frequency` | `VARCHAR(500)` | Tần số hoạt động |
 | 12 | Loại Modem / Thiết bị | `modemType` | `modem_type` | `VARCHAR(500)` | Loại thiết bị |
 | 13 | Mã SAR (TKCN) | `sarCode` | `sar_code` | `VARCHAR(500)` | Mã tìm kiếm cứu nạn |
 | 14 | Hệ thống vệ tinh | `satelliteSystem` | `satellite_system` | `VARCHAR(500)` | Hệ thống vệ tinh |
-| 15 | Ghi chú | `notes` / `description` | `notes` (`description`) | `TEXT` / `VARCHAR(1000)` | Ghi chú kỹ thuật |
+| 15 | Ghi chú | `notes` | `notes` | `TEXT` | Ghi chú kỹ thuật (đã dọn description) |
 | 16 | Cán bộ liên hệ | `contactPerson` | `contact_person` | `VARCHAR(500)` | Cán bộ trực ban |
-| 17 | SĐT liên hệ | `contactPhone` | `contact_phone` | `VARCHAR(500)` | Số điện thoại liên lạc |
+| 17 | SĐT liên hệ | `contactPhone` | `contact_phone` | `VARCHAR(20)` | Số điện thoại liên lạc (chuẩn hóa VARCHAR(20)) |
 | 18 | Loại đối tượng (GIS) | `objectType` | `object_type` | `VARCHAR(50)` | POINT, LINE, POLYGON |
 | 19 | Biểu tượng bản đồ | `symbol` | `symbol` | `VARCHAR(100)` | Ký hiệu icon bản đồ |
 | 20 | Hệ quy chiếu | `coordinateSystem` | `coordinate_system` | `VARCHAR(50) DEFAULT 'WGS84'` | WGS84 |
@@ -130,16 +130,18 @@ Module M-004 quản lý các tài sản báo hiệu hàng hải và đài thông
 | 28 | Cán bộ gửi duyệt | `submittedBy` | `submitted_by` | `UUID` | FK app_users.id |
 | 29 | Cán bộ duyệt C1 | `approverLevel1` | `approver_level1` | `UUID` | Cấp Cảng vụ/Chi cục |
 | 30 | Thời điểm duyệt C1 | `approvedDateLevel1`| `approved_date_level1` | `TIMESTAMP` | Thời điểm C1 |
-| 31 | Cán bộ duyệt C2 | `approverLevel2` | `approver_level2` (`approved_by`)| `UUID` | Cấp Cục Hàng hải |
-| 32 | Thời điểm duyệt C2 | `approvedDateLevel2`| `approved_date_level2` (`approved_date`)| `TIMESTAMP` | Thời điểm C2 |
-| 33 | Nội dung duyệt / Từ chối| `rejectionReason` | `rejection_reason` | `VARCHAR(1000)` | Tối thiểu 10 ký tự nếu từ chối |
-| 34 | Cán bộ tạo | `createdBy` | `created_by` | `UUID` | Kế thừa BaseEntity |
-| 35 | Thời điểm tạo | `createdAt` | `created_at` | `TIMESTAMP` | Kế thừa BaseEntity |
-| 36 | Cán bộ cập nhật | `updatedBy` | `updated_by` | `UUID` | Kế thừa BaseEntity |
-| 37 | Thời điểm cập nhật | `updatedAt` | `updated_at` | `TIMESTAMP` | Kế thừa BaseEntity |
-| 38 | Thông tin vận hành | Liên thông M-011 | Bảng `operation_plans` | `asset_id = inmarsat.id` | Mã KH, Tên KH, Ngày BĐ, Ngày KT |
-| 39 | Thông tin bảo trì | Liên thông M-011 | Bảng `maintenance_plans` | `asset_id = inmarsat.id` | Mã KH, Tên KH, TG BĐ, TG KT |
-| 40 | Thông tin sự cố | Liên thông M-011 | Bảng `incidents` | `asset_id = inmarsat.id` | Mã sự cố, Loại, Địa điểm, Thời gian |
+| 31 | Nội dung duyệt C1 | `level1ApprovalContent` | `level1_approval_content` | `VARCHAR(2000)` | Nội dung xét duyệt vòng 1 |
+| 32 | Cán bộ duyệt C2 | `approverLevel2` | `approver_level2` | `UUID` | Cấp Cục Hàng hải |
+| 33 | Thời điểm duyệt C2 | `approvedDateLevel2`| `approved_date_level2` | `TIMESTAMP` | Thời điểm C2 |
+| 34 | Nội dung duyệt C2 | `level2ApprovalContent` | `level2_approval_content` | `VARCHAR(2000)` | Nội dung xét duyệt vòng 2 |
+| 35 | Nội dung duyệt / Từ chối| `rejectionReason` | `rejection_reason` | `VARCHAR(1000)` | Tối thiểu 10 ký tự nếu từ chối |
+| 36 | Cán bộ tạo | `createdBy` | `created_by` | `UUID` | Kế thừa BaseEntity |
+| 37 | Thời điểm tạo | `createdAt` | `created_at` | `TIMESTAMP` | Kế thừa BaseEntity |
+| 38 | Cán bộ cập nhật | `updatedBy` | `updated_by` | `UUID` | Kế thừa BaseEntity |
+| 39 | Thời điểm cập nhật | `updatedAt` | `updated_at` | `TIMESTAMP` | Kế thừa BaseEntity |
+| 40 | Thông tin vận hành | Liên thông M-011 | Bảng `operation_plans` | `asset_id = inmarsat.id` | Mã KH, Tên KH, Ngày BĐ, Ngày KT |
+| 41 | Thông tin bảo trì | Liên thông M-011 | Bảng `maintenance_plans` | `asset_id = inmarsat.id` | Mã KH, Tên KH, TG BĐ, TG KT |
+| 42 | Thông tin sự cố | Liên thông M-011 | Bảng `incidents` | `asset_id = inmarsat.id` | Mã sự cố, Loại, Địa điểm, Thời gian |
 
 ### Other Entities (summary)
 

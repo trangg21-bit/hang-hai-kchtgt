@@ -1327,24 +1327,6 @@ const VtsAssistListPage = () => {
             }).catch(() => setDetailFiles([]));
           },
         },
-        {
-          key: "history",
-          label: "Lịch sử",
-          icon: <HistoryOutlined />,
-          onClick: () => {
-            setSelectedRecord(record);
-            setHistoryEntityName(record.deviceName || '');
-            setHistoryModalVisible(true);
-            setHistoryRecords([]);
-            setLoadingHistory(false);
-            setLoadingMoreHistory(false);
-            setHasMoreHistory(true);
-            setHistorySearch('');
-            setHistoryDateFrom('');
-            setHistoryDateTo('');
-            setHistoryPage(0);
-          },
-        },
       ];
 
       // Cho phép cập nhật bất kể trạng thái phê duyệt (yêu cầu nghiệp vụ 2026-08-26).
@@ -1381,6 +1363,25 @@ const VtsAssistListPage = () => {
           },
         });
       }
+
+      actions.push({
+        key: "history",
+        label: "Lịch sử",
+        icon: <HistoryOutlined />,
+        onClick: () => {
+          setSelectedRecord(record);
+          setHistoryEntityName(record.deviceName || '');
+          setHistoryModalVisible(true);
+          setHistoryRecords([]);
+          setLoadingHistory(false);
+          setLoadingMoreHistory(false);
+          setHasMoreHistory(true);
+          setHistorySearch('');
+          setHistoryDateFrom('');
+          setHistoryDateTo('');
+          setHistoryPage(0);
+        },
+      });
 
       // DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2 + vtsassist:update → Gửi phê duyệt (submitVtsAssist)
       if (
@@ -2265,12 +2266,12 @@ const VtsAssistListPage = () => {
                         { key: 'approvalContentLevel2', label: 'Nội dung phê duyệt', value: selectedRecord.approvalContentLevel2 || '—', fullWidth: true },
                         { key: 'approvedDateLevel2', label: 'Ngày phê duyệt cấp Cục', value: selectedRecord.approvedDateLevel2 ? formatDate(selectedRecord.approvedDateLevel2) : '—' },
                         { key: 'approvedByLevel2', label: 'Cán bộ phê duyệt cấp Cục', value: selectedRecord.approverLevel2Name || '—' },
-                        { key: 'approvalContentExtra', label: 'Nội dung phê duyệt', value: selectedRecord.rejectionReason || '—', fullWidth: true },
+                        ...(selectedRecord.rejectionReason ? [{ key: 'rejectionReason', label: 'Lý do từ chối', value: selectedRecord.rejectionReason, fullWidth: true, color: statusCritical }] : []),
                         { key: 'status', label: 'Trạng thái', value: renderApprovalBadge(selectedRecord.approvalStatus), fullWidth: true },
                       ].map((row) => (
                         <div key={row.key} className="detail-row" style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
                           <span className="detail-label">{row.label}</span>
-                          <span className="detail-value">{row.value}</span>
+                          <span className="detail-value" style={row.color ? { color: row.color } : undefined}>{row.value}</span>
                         </div>
                       ))}
                     </div>

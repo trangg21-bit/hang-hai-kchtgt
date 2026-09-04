@@ -30,15 +30,16 @@ import type {
   IncidentItem,
 } from '../../../types/lritStation';
 import { LRIT_SERVICE_OPTIONS } from '../../../types/lritStation';
-import { ConditionStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP, ApprovalStatus } from '../../../types/vtsSystem';
+import { ConditionStatus, CONDITION_STATUS_OPTIONS, ApprovalStatus } from '../../../types/vtsSystem';
 import {
   drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle,
   drawerTabBarStyle, drawerStyles, drawerFormScrollStyle, drawerGisControlBoxStyle, DRAWER_TABLE_SCROLL_Y,
   spaceFormField, radiusPill, sidebarBg,
   fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd, fontSizeLg,
   textPrimary, textSecondary, textTertiary, borderDefault,
-  statusCritical, statusOperational, statusAttention, actionPrimary, textAreaStyle,
+  statusCritical, statusOperational, actionPrimary, textAreaStyle,
   readonlyInputStyle, drawerCloseBtnStyle, selectStyle, inputStyle, requiredMarkStyle,
+  statusBadgeStyle, getConditionStatusColor, getConditionStatusLabel,
 } from '../../../themetokenchk';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../../types/common';
 import { useAuthStore } from '../../../store/authStore';
@@ -79,31 +80,12 @@ export interface LritStationFormProps {
   onSuccess?: () => void;
 }
 
-const CONDITION_COLOR: Record<string, string> = {
-  [ConditionStatus.OPERATIONAL]: statusOperational,
-  [ConditionStatus.STOPPED]: statusCritical,
-  [ConditionStatus.MAINTENANCE]: statusAttention,
-  [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
-};
-
-const renderConditionBadge = (status?: ConditionStatus | string) => {
-  if (!status) return '—';
-  const label = CONDITION_STATUS_MAP[status as ConditionStatus] || status;
-  const color = CONDITION_COLOR[status as ConditionStatus] || textSecondary;
+const renderConditionBadge = (status?: ConditionStatus | string | number) => {
+  if (!status && status !== 0) return '—';
+  const label = getConditionStatusLabel(status);
+  const color = getConditionStatusColor(status);
   return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        padding: '2px 10px',
-        borderRadius: radiusPill,
-        fontSize: fontSizeMd,
-        fontWeight: fontWeightMedium,
-        background: `${color}15`,
-        border: `1px solid ${color}40`,
-        color,
-      }}
-    >
+    <span style={statusBadgeStyle(color)}>
       {label}
     </span>
   );
@@ -237,6 +219,25 @@ export default function LritStationForm({
     return orgUnits.filter((u: any) => allowedIds.has(u.id));
   }, [orgUnits, user, isCucLevel]);
 
+  // Sync symbol field when symbols list finishes loading
+  useEffect(() => {
+    if (record && symbols.length > 0) {
+      const symIdOrCode = (record as any).symbolId || record.symbol;
+      if (symIdOrCode) {
+        const found = symbols.find(
+          (s) => s.id === symIdOrCode || s.code === symIdOrCode || String(s.id) === String(symIdOrCode)
+        );
+        if (found) {
+          const finalVal = found.id || found.code;
+          if (form.getFieldValue('symbolId') !== finalVal) {
+            form.setFieldValue('symbolId', finalVal);
+            form.setFieldValue('symbol', finalVal);
+          }
+        }
+      }
+    }
+  }, [symbols, record, form]);
+
   // Load record details
   useEffect(() => {
     if (!open) {
@@ -251,19 +252,27 @@ export default function LritStationForm({
       return;
     }
 
-    if (initialData) {
-      setRecord(initialData);
-      populateFormData(initialData);
-    } else if (editId) {
+    const currentId = editId || initialData?.id;
+    if (currentId) {
+      if (initialData) {
+        setRecord(initialData);
+        populateFormData(initialData);
+      }
       setLoading(true);
-      lritStationService.getById(editId)
-        .then((res) => {
+      Promise.all([
+        lritStationService.getById(currentId),
+        lritStationService.getAttachments(currentId),
+      ])
+        .then(([res, atts]) => {
           setRecord(res);
+          setAttachments(atts || []);
           populateFormData(res);
         })
         .catch(() => {
-          toast.error('Không thể tải thông tin đài LRIT');
-          onClose?.();
+          if (!initialData) {
+            toast.error('Không thể tải thông tin đài LRIT');
+            onClose?.();
+          }
         })
         .finally(() => setLoading(false));
     } else {
@@ -284,6 +293,7 @@ export default function LritStationForm({
         coverageArea: undefined,
         description: undefined,
         geometryType: 'POINT',
+        symbolId: undefined,
         symbol: undefined,
         coordinateSystem: 'WGS 84 / VN-2000',
         displayRule: 'Độ, phút, giây (DMS)',
@@ -311,8 +321,43 @@ export default function LritStationForm({
       serviceList = data.servicesProvided.split(/[,;]+/).map((s) => s.trim()).filter(Boolean);
     }
 
-    const geom = data.geometryType || 'POINT';
+    let initialCoords: { latitude: number | null; longitude: number | null }[] = [];
+    if (data.coordinates) {
+      const coords = parseWktToCoordinates(data.coordinates);
+      initialCoords = coords.map((c) => ({ latitude: c.latitude ?? null, longitude: c.longitude ?? null }));
+    } else if (data.latitude != null && data.longitude != null) {
+      initialCoords = [{ latitude: Number(data.latitude), longitude: Number(data.longitude) }];
+    }
+
+    let geom = data.geometryType || (data as any).objectType;
+    if (!geom || geom === 'POINT') {
+      if (data.coordinates) {
+        const uc = data.coordinates.toUpperCase();
+        if (uc.startsWith('LINE')) geom = 'LINE';
+        else if (uc.startsWith('POLYGON')) geom = 'POLYGON';
+      }
+    }
+    if (!geom || geom === 'POINT') {
+      if (initialCoords.length > 2) geom = 'POLYGON';
+      else if (initialCoords.length > 1) geom = 'LINE';
+      else geom = 'POINT';
+    }
+    data.geometryType = geom;
+    (data as any).objectType = geom;
     setGeometryTypeState(geom);
+    setCoordinateList(adjustCoordinateListForGeometry(initialCoords, geom));
+
+    const rawSym = (data as any).symbolId || data.symbol;
+    let initialSymVal = rawSym;
+    if (rawSym && symbols.length > 0) {
+      const matched = symbols.find(
+        (s) => s.id === rawSym || s.code === rawSym || String(s.id) === String(rawSym)
+      );
+      if (matched) {
+        initialSymVal = matched.id || matched.code;
+      }
+    }
+
     form.setFieldsValue({
       orgUnitId: data.orgUnitId,
       operatingOrgId: data.operatingOrgId,
@@ -325,19 +370,11 @@ export default function LritStationForm({
       services: serviceList,
       description: data.description,
       geometryType: geom,
-      symbol: data.symbol || undefined,
+      symbolId: initialSymVal || undefined,
+      symbol: initialSymVal || undefined,
       coordinateSystem: data.coordinateSystem || 'WGS 84 / VN-2000',
       displayRule: data.displayRule || 'Độ, phút, giây (DMS)',
     });
-
-    let initialCoords: { latitude: number | null; longitude: number | null }[] = [];
-    if (data.coordinates) {
-      const coords = parseWktToCoordinates(data.coordinates);
-      initialCoords = coords.map((c) => ({ latitude: c.latitude ?? null, longitude: c.longitude ?? null }));
-    } else if (data.latitude != null && data.longitude != null) {
-      initialCoords = [{ latitude: Number(data.latitude), longitude: Number(data.longitude) }];
-    }
-    setCoordinateList(adjustCoordinateListForGeometry(initialCoords, geom));
 
     if (data.id) {
       lritStationService.getAttachments(data.id)
@@ -373,6 +410,13 @@ export default function LritStationForm({
       const servicesArray = Array.isArray(values.services) ? values.services : [];
       const servicesString = servicesArray.join(', ');
 
+      const rawSelectedSym = values.symbolId || values.symbol;
+      const matchedSym = symbols.find(
+        (s) => s.id === rawSelectedSym || s.code === rawSelectedSym || String(s.id) === String(rawSelectedSym)
+      );
+      const payloadSymbolId = matchedSym?.id || rawSelectedSym || undefined;
+      const payloadSymbolCode = matchedSym?.code || matchedSym?.name || rawSelectedSym || undefined;
+
       const payload: CreateLritStationRequest = {
         orgUnitId: values.orgUnitId,
         operatingOrgId: values.operatingOrgId,
@@ -386,7 +430,8 @@ export default function LritStationForm({
         services: servicesArray,
         description: values.description?.trim(),
         geometryType: geomType,
-        symbol: values.symbol,
+        symbolId: payloadSymbolId,
+        symbol: payloadSymbolCode || payloadSymbolId,
         coordinateSystem: values.coordinateSystem,
         displayRule: values.displayRule,
         // Chuỗi rỗng có nghĩa là người dùng chủ động bỏ vị trí; BE sẽ xóa
@@ -530,6 +575,13 @@ export default function LritStationForm({
     }
   };
 
+  const isUuidString = (val?: string | null) => !!val && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-/.test(val);
+  const formatPersonDisplayName = (name?: string | null, fallbackName?: string | null) => {
+    if (name && !isUuidString(name)) return name;
+    if (fallbackName && !isUuidString(fallbackName)) return fallbackName;
+    return '—';
+  };
+
   // DMS helper for coordinates
   const updateGpsPoint = (i: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => {
     const decimal = (d == null && m == null && s == null) ? null : dmsToDd(d ?? 0, m ?? 0, s ?? 0);
@@ -622,7 +674,7 @@ export default function LritStationForm({
           },
           {
             key: 'gis',
-            label: 'Vị trí (GIS)',
+            label: 'Thông tin vị trí',
             children: (
               <DetailTable
                 scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
@@ -631,13 +683,21 @@ export default function LritStationForm({
                 headerNode={
                   <>
                     <div className="chk-detail-grid" style={{ marginBottom: 12 }}>
-                      <div className="chk-detail-row"><span className="chk-detail-label">Loại đối tượng</span><span className="chk-detail-value">{record?.geometryType === 'LINE' ? 'Đối tượng đường' : record?.geometryType === 'POLYGON' ? 'Đối tượng vùng' : 'Đối tượng điểm'}</span></div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label">Loại đối tượng</span>
+                        <span className="chk-detail-value">
+                          {(() => {
+                            const g = (geometryTypeState || record?.geometryType || (record as any)?.objectType || '').toUpperCase();
+                            return g.startsWith('LINE') ? 'Đối tượng đường' : g.startsWith('POLYGON') ? 'Đối tượng vùng' : 'Đối tượng điểm';
+                          })()}
+                        </span>
+                      </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label">Biểu tượng</span>
                         <span className="chk-detail-value">
                           {(() => {
-                            const symId = record?.symbol;
-                            const sym = symbols.find((s) => s.id === symId || s.code === symId);
+                            const symId = (record as any)?.symbolId || record?.symbol;
+                            const sym = symbols.find((s) => s.id === symId || s.code === symId || String(s.id) === String(symId));
                             if (sym?.image) {
                               const imgSrc = sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`;
                               return (
@@ -647,7 +707,7 @@ export default function LritStationForm({
                                 </Space>
                               );
                             }
-                            return sym?.name || symId || 'SYM-COASTAL';
+                            return sym?.name || (record as any)?.symbolName || symId || '—';
                           })()}
                         </span>
                       </div>
@@ -788,15 +848,15 @@ export default function LritStationForm({
                 <div className="chk-detail-grid">
                   <div className="chk-detail-row"><span className="chk-detail-label">Trạng thái</span><span className="chk-detail-value"><ApprovalStatusBadge status={record.approvalStatus || 'DRAFT'} /></span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Ngày cập nhật</span><span className="chk-detail-value">{record.updatedAt || record.createdAt ? dayjs(record.updatedAt || record.createdAt).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ cập nhật</span><span className="chk-detail-value">{record.updatedByName || record.createdByName || '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Ngày gửi phê duyệt</span><span className="chk-detail-value">{record.submittedAt ? dayjs(record.submittedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ gửi phê duyệt</span><span className="chk-detail-value">{record.submittedByName || record.submittedBy || '—'}</span></div>
+                  <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ cập nhật</span><span className="chk-detail-value">{formatPersonDisplayName(record.updatedByName, record.createdByName)}</span></div>
+                  <div className="chk-detail-row"><span className="chk-detail-label">Ngày gửi phê duyệt</span><span className="chk-detail-value">{record.submittedAt || record.createdAt ? dayjs(record.submittedAt || record.createdAt).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
+                  <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ gửi phê duyệt</span><span className="chk-detail-value">{formatPersonDisplayName(record.submittedByName, record.createdByName)}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span><span className="chk-detail-value">{record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span><span className="chk-detail-value">{record.approverLevel1Name || record.approverLevel1 || '—'}</span></div>
-                  <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Nội dung phê duyệt cấp 1</span><span className="chk-detail-value">{record.approvalContentLevel1 || '—'}</span></div>
+                  <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span><span className="chk-detail-value">{formatPersonDisplayName(record.approverLevel1Name)}</span></div>
+                  <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Nội dung phê duyệt</span><span className="chk-detail-value">{record.approvalContentLevel1 || (record as any).level1ApprovalContent || '—'}</span></div>
                   <div className="chk-detail-row"><span className="chk-detail-label">Ngày phê duyệt cấp Cục</span><span className="chk-detail-value">{record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt cấp Cục</span><span className="chk-detail-value">{record.approverLevel2Name || record.approverLevel2 || '—'}</span></div>
-                  <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Nội dung phê duyệt cấp 2</span><span className="chk-detail-value">{record.approvalContentLevel2 || record.rejectionReason || '—'}</span></div>
+                  <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ phê duyệt cấp Cục</span><span className="chk-detail-value">{formatPersonDisplayName(record.approverLevel2Name)}</span></div>
+                  <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Nội dung phê duyệt</span><span className="chk-detail-value">{record.approvalContentLevel2 || (record as any).level2ApprovalContent || '—'}</span></div>
                   {record.rejectionReason && (
                     <div className="chk-detail-row chk-detail-row--full">
                       <span className="chk-detail-label" style={{ color: statusCritical }}>Lý do từ chối</span>
@@ -1022,7 +1082,7 @@ export default function LritStationForm({
             },
             {
               key: 'gis',
-              label: 'Vị trí (GIS)',
+              label: 'Thông tin vị trí',
               children: (
                 <div>
                   <div style={drawerGisControlBoxStyle}>
@@ -1052,6 +1112,7 @@ export default function LritStationForm({
                               } else {
                                 form.setFieldValue('coordinateSystem', undefined);
                                 form.setFieldValue('displayRule', undefined);
+                                form.setFieldValue('symbolId', undefined);
                                 form.setFieldValue('symbol', undefined);
                                 setCoordinateList([{ latitude: null, longitude: null }]);
                               }
@@ -1062,7 +1123,7 @@ export default function LritStationForm({
 
                       <Col span={12}>
                         <Form.Item
-                          name="symbol"
+                          name="symbolId"
                           label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '18px' }}>Biểu tượng</span>}
                           style={{ marginBottom: 0 }}
                         >
@@ -1071,7 +1132,7 @@ export default function LritStationForm({
                             allowClear
                             disabled={!geometryTypeState}
                             options={symbols.map((sym) => ({
-                              value: sym.code || sym.id,
+                              value: sym.id || sym.code,
                               label: (
                                 <Space size={6} style={{ display: 'inline-flex', alignItems: 'center' }}>
                                   {sym.image ? (
@@ -1087,6 +1148,10 @@ export default function LritStationForm({
                                 </Space>
                               ),
                             }))}
+                            onChange={(val) => {
+                              form.setFieldValue('symbolId', val);
+                              form.setFieldValue('symbol', val);
+                            }}
                             style={{ ...selectStyle, height: 38 }}
                           />
                         </Form.Item>

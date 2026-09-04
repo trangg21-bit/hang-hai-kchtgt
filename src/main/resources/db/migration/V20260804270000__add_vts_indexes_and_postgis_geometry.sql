@@ -48,29 +48,37 @@ BEGIN
         CREATE INDEX IF NOT EXISTS idx_gis_spatial_objects_geom ON public.gis_spatial_objects USING GIST(geom);
     END IF;
 
+    -- 4. Create trigger to automatically keep geom synchronized when coordinates are inserted/updated
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'gis_spatial_objects' AND column_name = 'geom'
+    ) THEN
+        EXECUTE '
+            CREATE OR REPLACE FUNCTION public.fn_sync_gis_spatial_geom()
+            RETURNS TRIGGER AS $trg$
+            BEGIN
+                IF NEW.coordinates IS NOT NULL AND trim(NEW.coordinates) <> '''' THEN
+                    BEGIN
+                        NEW.geom := ST_SetSRID(ST_GeomFromText(NEW.coordinates), 4326);
+                    EXCEPTION WHEN OTHERS THEN
+                        NEW.geom := NULL;
+                    END;
+                ELSE
+                    NEW.geom := NULL;
+                END IF;
+                RETURN NEW;
+            END;
+            $trg$ LANGUAGE plpgsql;
+
+            DROP TRIGGER IF EXISTS trg_sync_gis_spatial_geom ON public.gis_spatial_objects;
+            CREATE TRIGGER trg_sync_gis_spatial_geom
+            BEFORE INSERT OR UPDATE OF coordinates ON public.gis_spatial_objects
+            FOR EACH ROW
+            EXECUTE FUNCTION public.fn_sync_gis_spatial_geom();
+        ';
+    END IF;
+
 EXCEPTION WHEN OTHERS THEN
     RAISE NOTICE 'PostGIS setup notice: %', SQLERRM;
 END $$;
 
--- 4. Create trigger to automatically keep geom synchronized when coordinates are inserted/updated
-CREATE OR REPLACE FUNCTION public.fn_sync_gis_spatial_geom()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF NEW.coordinates IS NOT NULL AND trim(NEW.coordinates) <> '' THEN
-        BEGIN
-            NEW.geom := ST_SetSRID(ST_GeomFromText(NEW.coordinates), 4326);
-        EXCEPTION WHEN OTHERS THEN
-            NEW.geom := NULL;
-        END;
-    ELSE
-        NEW.geom := NULL;
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_sync_gis_spatial_geom ON public.gis_spatial_objects;
-CREATE TRIGGER trg_sync_gis_spatial_geom
-BEFORE INSERT OR UPDATE OF coordinates ON public.gis_spatial_objects
-FOR EACH ROW
-EXECUTE FUNCTION public.fn_sync_gis_spatial_geom();

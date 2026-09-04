@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.station.dto.cospas;
 
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

@@ -884,6 +884,7 @@ export const globalCssVars = `
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
+  background-color: #273e7c;
 }
 .topbar-user__info {
   display: flex;

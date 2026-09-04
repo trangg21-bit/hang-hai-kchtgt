@@ -40,7 +40,6 @@ public class VtsOperationCenterRequest {
     @Size(max = 500, message = "Địa điểm chi tiết tối đa 500 ký tự")
     private String detailedLocation;
 
-    @Size(max = 255, message = "Vùng phủ sóng tối đa 255 ký tự")
     private String coverage;
 
     @NotNull(message = "Tình trạng không được để trống")

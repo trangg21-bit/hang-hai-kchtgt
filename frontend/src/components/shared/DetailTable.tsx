@@ -7,6 +7,7 @@ import Pagination from '../list-view/Pagination';
 export interface DetailTableProps<T = any> extends Omit<TableProps<T>, 'pagination'> {
   columns: ColumnsType<T>;
   dataSource: T[];
+  total?: number;
   pageSize?: number;
   pageSizeOptions?: number[];
   rowKey?: string | ((record: T, index?: number) => string);
@@ -103,7 +104,7 @@ export const DetailTable = <T extends object = any>({
   columns,
   dataSource = [],
   pageSize: propPageSize,
-  pageSizeOptions = [10, 20, 50],
+  pageSizeOptions = [20, 50, 100],
   rowKey,
   emptyText = 'Không có dữ liệu',
   currentPage,
@@ -117,12 +118,14 @@ export const DetailTable = <T extends object = any>({
   padEmptyRows = false,
   scrollY,
   scroll,
+  total,
   ...rest
 }: DetailTableProps<T>) => {
   const [internalPageSize, setInternalPageSize] = useState<number>(propPageSize ?? 20);
   const pageSize = propPageSize !== undefined ? propPageSize : internalPageSize;
   const [internalPage, setInternalPage] = useState<number>(1);
   const activePage = currentPage !== undefined ? currentPage : internalPage;
+  const effectiveTotal = total !== undefined ? total : dataSource.length;
 
   const handlePageChange = (page: number, newPageSize: number) => {
     if (newPageSize !== pageSize) {
@@ -142,8 +145,11 @@ export const DetailTable = <T extends object = any>({
   };
 
   const rawPagedData = useMemo(() => {
+    if (onPageChange && total !== undefined) {
+      return dataSource;
+    }
     return dataSource.slice((activePage - 1) * pageSize, activePage * pageSize);
-  }, [dataSource, activePage, pageSize]);
+  }, [dataSource, activePage, pageSize, onPageChange, total]);
 
   // Tự động đệm các hàng trống nếu bật padEmptyRows
   const pagedData = useMemo(() => {
@@ -159,14 +165,12 @@ export const DetailTable = <T extends object = any>({
   }, [rawPagedData, pageSize, activePage, padEmptyRows]);
 
   // Chuẩn hóa và làm giàu cấu hình cột tự động
-  const { enhancedColumns, totalTableWidth } = useMemo(() => {
-    let totalW = 0;
+  const enhancedColumns = useMemo(() => {
     const enhanced = columns.map((col: any) => {
       const originalRender = col.render;
       const width = getSmartColumnWidth(col);
       const align = getSmartColumnAlign(col);
       const sorter = getSmartSorter(col);
-      if (width !== undefined) totalW += width;
 
       return {
         ...col,
@@ -217,7 +221,7 @@ export const DetailTable = <T extends object = any>({
       };
     });
 
-    return { enhancedColumns: enhanced, totalTableWidth: totalW };
+    return enhanced;
   }, [columns, activePage, pageSize]);
 
   const resolveRowKey = (record: any, idx: number = 0) => {
@@ -337,10 +341,10 @@ export const DetailTable = <T extends object = any>({
           {...rest}
         />
       </div>
-      {dataSource.length > 0 && (
+      {effectiveTotal > 0 && (
         <div style={{ marginTop: 8, marginBottom: 8, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%' }}>
           <Pagination
-            total={dataSource.length}
+            total={effectiveTotal}
             current={activePage}
             pageSize={pageSize}
             pageSizeOptions={pageSizeOptions}

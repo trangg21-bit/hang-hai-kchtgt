@@ -47,7 +47,7 @@ public class VtsOperationCenter extends BaseApprovableEntity {
     @Column(name = "detailed_location", length = 500)
     private String detailedLocation;
 
-    @Column(name = "coverage", length = 255)
+    @Column(name = "coverage", columnDefinition = "TEXT")
     private String coverage;
 
     @Enumerated(EnumType.ORDINAL)

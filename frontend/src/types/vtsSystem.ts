@@ -187,16 +187,17 @@ export const CONDITION_STATUS_MAP: Record<string, string> = {
   STOPPED: 'Dừng hoạt động',
   MAINTENANCE: 'Đang bảo trì',
   UNDER_CONSTRUCTION: 'Đang xây dựng',
+  NOT_OPERATIONAL: 'Dừng hoạt động',
 };
 
 export const APPROVAL_STATUS_MAP: Record<string, string> = {
   DRAFT: 'Lưu tạm',
-  PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
-  APPROVED_LEVEL1: 'Chờ Cục duyệt',
-  APPROVED: 'Đã duyệt',
+  PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+  APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục',
+  APPROVED: 'Đã phê duyệt',
   ARCHIVED: 'Lưu trữ',
-  REJECTED_LEVEL1: 'Cảng vụ trả về',
-  REJECTED_LEVEL2: 'Cục trả về',
+  REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
+  REJECTED_LEVEL2: 'Từ chối cấp Cục',
 };
 
 export const CONDITION_STATUS_TAG_MAP: Record<string, { label: string; color: string }> = {
@@ -208,10 +209,10 @@ export const CONDITION_STATUS_TAG_MAP: Record<string, { label: string; color: st
 
 export const APPROVAL_STATUS_TAG_MAP: Record<string, { label: string; color: string }> = {
   DRAFT: { label: 'Lưu tạm', color: 'default' },
-  PENDING_APPROVAL: { label: 'Chờ Cảng vụ duyệt', color: 'processing' },
-  APPROVED_LEVEL1: { label: 'Chờ Cục duyệt', color: 'cyan' },
-  APPROVED: { label: 'Đã duyệt', color: 'success' },
+  PENDING_APPROVAL: { label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: 'processing' },
+  APPROVED_LEVEL1: { label: 'Chờ phê duyệt cấp Cục', color: 'cyan' },
+  APPROVED: { label: 'Đã phê duyệt', color: 'success' },
   ARCHIVED: { label: 'Lưu trữ', color: 'default' },
-  REJECTED_LEVEL1: { label: 'Cảng vụ trả về', color: 'error' },
-  REJECTED_LEVEL2: { label: 'Cục trả về', color: 'error' },
+  REJECTED_LEVEL1: { label: 'Từ chối cấp Cảng vụ/Chi cục', color: 'error' },
+  REJECTED_LEVEL2: { label: 'Từ chối cấp Cục', color: 'error' },
 };

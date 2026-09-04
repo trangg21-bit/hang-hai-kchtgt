@@ -382,12 +382,12 @@ export default function GisLocationSelector({
     const createPinIcon = (index?: number) => {
       const label = index !== undefined ? `${index}` : '';
       const html = `
-        <div style="position: relative; width: 28px; height: 34px; transform: translate(-50%, -100%);">
+        <div style="position: relative; width: 28px; height: 34px;">
           <svg viewBox="0 0 28 34" width="28" height="34" style="filter: drop-shadow(0 2px 5px rgba(0,0,0,0.35)); display: block;">
             <path d="M14 0C6.27 0 0 6.27 0 14c0 10.5 14 20 14 20s14-9.5 14-20c0-7.73-6.27-14-14-14z" fill="${colors.primary}" />
             <circle cx="14" cy="13" r="8" fill="#ffffff" />
           </svg>
-          ${label ? `<span style="position: absolute; top: 3px; left: 0; right: 0; text-align: center; font-size: 11px; font-weight: 700; color: ${colors.primary}; line-height: 20px; font-family: sans-serif;">${label}</span>` : ''}
+          ${label ? `<span style="position: absolute; top: 3px; left: 0; right: 0; text-align: center; font-size: 11px; font-weight: 700; color: ${colors.primary}; line-height: 20px; font-family: sans-serif; user-select: none;">${label}</span>` : ''}
         </div>
       `;
       return L.divIcon({
@@ -395,6 +395,7 @@ export default function GisLocationSelector({
         html,
         iconSize: [28, 34],
         iconAnchor: [14, 34],
+        popupAnchor: [0, -34],
       });
     };
 
@@ -403,8 +404,10 @@ export default function GisLocationSelector({
 
       if (internalGeom === 'POINT') {
         // POINT mode: LUÔN dùng LayerGroup để hỗ trợ chọn NHIỀU tọa độ trên bản đồ (không ghi đè marker cũ)
-        const coords: [number, number][] = validVertices.map((v) => [v.lat, v.lng]);
-        layer = L.layerGroup(coords.map((c: [number, number]) => L.marker(c)));
+        layer = L.layerGroup(validVertices.map((v, idx) => L.marker([v.lat, v.lng], {
+          icon: createPinIcon(validVertices.length > 1 ? idx + 1 : 1),
+          draggable: !disabled,
+        })));
       } else if (internalGeom === 'LINE') {
         const coords = validVertices.map((v) => [v.lat, v.lng]);
         if (validVertices.length === 1) {
@@ -859,6 +862,12 @@ export default function GisLocationSelector({
 
   const mapContent = (
     <div style={{ padding: inline ? 0 : '12px 0 0 0' }}>
+      <style>{`
+        .custom-map-pin {
+          background: transparent !important;
+          border: none !important;
+        }
+      `}</style>
       <Row gutter={[16, 16]}>
         <Col xs={24} md={13}>
           <div style={{ position: 'relative' }}>

@@ -2,8 +2,7 @@ package com.hanghai.kchtg.station.dto.inmarsat;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
-import com.hanghai.kchtg.station.entity.StationStatus;
+import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -47,8 +46,8 @@ public class CoastalStationInmarsatResponse {
     private String locationAddress;
     private String locationDetail;
 
-    private String conditionStatus;
-    private StationStatus status;
+    private ConditionStatus conditionStatus;
+    private String conditionStatusLabel;
     private Boolean isActive;
 
     // --- Thông số đặc thù Inmarsat ---
@@ -56,17 +55,14 @@ public class CoastalStationInmarsatResponse {
     private String coverageArea;
     private String services;
     private String frequency;
-    private String modemType;
-    private String sarCode;
-    private String satelliteSystem;
     private String notes;
     private String description;
-    private String contactPerson;
-    private String contactPhone;
 
     // --- GIS ---
     private UUID spatialId;
+    private String symbolId;
     private String objectType;
+    private String geometryType;
     private String symbol;
     private String coordinateSystem;
     private String displayRule;
@@ -84,10 +80,12 @@ public class CoastalStationInmarsatResponse {
 
     private UUID approverLevel1;
     private String approverNameLevel1;
+    private String approverLevel1Name;
     private LocalDateTime approvedDateLevel1;
 
     private UUID approverLevel2;
     private String approverNameLevel2;
+    private String approverLevel2Name;
     private LocalDateTime approvedDateLevel2;
 
     private UUID approvedBy;
@@ -95,6 +93,10 @@ public class CoastalStationInmarsatResponse {
     private LocalDateTime approvedDate;
 
     private String rejectionReason;
+    private String level1ApprovalContent;
+    private String level2ApprovalContent;
+    private String approvalContentLevel1;
+    private String approvalContentLevel2;
 
     // --- Audit ---
     private UUID createdBy;

@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.beacon.dto.beacon_station;
 
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

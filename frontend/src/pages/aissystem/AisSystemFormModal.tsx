@@ -829,7 +829,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
     },
     {
       key: 'gis',
-      label: 'Vị trí (GIS)',
+      label: 'Thông tin vị trí',
       children: (
         <div style={drawerTabContentStyle}>
           {/* Row 1: 11. Loại đối tượng & 12. Biểu tượng */}

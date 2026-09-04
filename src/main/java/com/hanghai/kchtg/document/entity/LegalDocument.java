@@ -9,7 +9,6 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.FieldNameConstants;
 import lombok.experimental.SuperBuilder;
 import com.hanghai.kchtg.common.entity.BaseEntity;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

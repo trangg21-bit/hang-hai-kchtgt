@@ -1,7 +1,7 @@
--- coastal_station_vts v?n ánh x? latitude/longitude trong entity và các lu?ng
--- CRUD, nhung V82 dã xóa hai c?t này khi chuy?n t?a d? sang kho GIS t?p trung.
--- Khi tra c?u KCHT v?i lo?i "T?t c?", Hibernate ch?n d? c?t entity và làm toàn
--- b? API l?i SQLState 42703 tru?c khi có th? tr? danh sách.
+ï»¿-- coastal_station_vts van anh xa latitude/longitude trong entity va cac luong
+-- CRUD, nhung V82 da xoa hai cot nay khi chuyen toa do sang kho GIS tap trung.
+-- Khi tra cuu KCHT voi loai Tat ca, Hibernate chon du cot entity va lam toan
+-- bo API loi SQLState 42703 truoc khi co the tra danh sach.
 
 ALTER TABLE public.coastal_station_vts
     ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,

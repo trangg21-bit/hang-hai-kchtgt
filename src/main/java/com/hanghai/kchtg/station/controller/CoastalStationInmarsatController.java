@@ -5,6 +5,7 @@ import com.hanghai.kchtg.security.annotation.DataScope;
 import com.hanghai.kchtg.station.dto.inmarsat.*;
 import com.hanghai.kchtg.station.entity.CoastalStationInmarsat;
 import com.hanghai.kchtg.station.service.CoastalStationInmarsatService;
+import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -101,7 +102,7 @@ public class CoastalStationInmarsatController {
             @RequestParam(required = false) String code,
             @RequestParam(required = false) UUID operatingOrgId,
             @RequestParam(required = false) Integer provinceId,
-            @RequestParam(required = false) String conditionStatus,
+            @RequestParam(required = false) ConditionStatus conditionStatus,
             @RequestParam(required = false) ApprovalStatus approvalStatus,
             @RequestParam(required = false) UUID updatedBy,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime updatedFrom,
@@ -139,7 +140,7 @@ public class CoastalStationInmarsatController {
     public ResponseEntity<Map<String, Long>> getCounts(
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String conditionStatus) {
+            @RequestParam(required = false) ConditionStatus conditionStatus) {
         return ResponseEntity.ok(service.countByApprovalStatus(orgUnitId, keyword, conditionStatus));
     }
 

@@ -2,6 +2,7 @@ package com.hanghai.kchtg.station.repository;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.station.entity.CoastalStationLRIT;
+import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -24,7 +25,7 @@ public interface CoastalStationLRITRepository extends JpaRepository<CoastalStati
     @Query("SELECT c FROM CoastalStationLRIT c WHERE c.imoNumber = :imoNumber AND c.deletedAt IS NULL")
     Optional<CoastalStationLRIT> findByImoNumber(@Param("imoNumber") String imoNumber);
 
-    @Query("SELECT c FROM CoastalStationLRIT c WHERE (c.stationCode = :code OR c.code = :code) AND c.deletedAt IS NULL")
+    @Query("SELECT c FROM CoastalStationLRIT c WHERE c.code = :code AND c.deletedAt IS NULL")
     Optional<CoastalStationLRIT> findByCode(@Param("code") String code);
 
     boolean existsByCodeAndDeletedAtIsNull(String code);
@@ -54,7 +55,6 @@ public interface CoastalStationLRITRepository extends JpaRepository<CoastalStati
     @Query("""
         SELECT t FROM CoastalStationLRIT t
         LEFT JOIN OrgUnit o ON o.id = t.orgUnitId
-        LEFT JOIN OrgUnit ou ON ou.id = t.unitId
         LEFT JOIN OperatingOrganization oo ON oo.id = t.operatingOrgId
         LEFT JOIN OrgUnit oorg ON oorg.id = t.operatingOrgId
         LEFT JOIN User uu ON uu.id = t.updatedBy
@@ -63,19 +63,19 @@ public interface CoastalStationLRITRepository extends JpaRepository<CoastalStati
         LEFT JOIN User ua2 ON ua2.id = t.approverLevel2
         WHERE t.deletedAt IS NULL
           AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
-          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds OR t.unitId IN :scopeOrgUnitIds)
-          AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId OR t.unitId = :orgUnitId)
+          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
+          AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (:operatingOrgId IS NULL OR t.operatingOrgId = :operatingOrgId)
           AND (:provinceId IS NULL OR t.provinceId = :provinceId)
           AND (CAST(:keyword AS string) IS NULL OR
-            CAST(function('immutable_unaccent', LOWER(COALESCE(t.name, t.stationName, ''))) AS string) LIKE CAST(:keyword AS string) OR
-            CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, t.stationCode, ''))) AS string) LIKE CAST(:keyword AS string) OR
+            CAST(function('immutable_unaccent', LOWER(COALESCE(t.name, ''))) AS string) LIKE CAST(:keyword AS string) OR
+            CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, ''))) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(COALESCE(t.locationAddress, ''))) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(COALESCE(t.terminalId, ''))) AS string) LIKE CAST(:keyword AS string))
           AND (CAST(:name AS string) IS NULL OR
-            CAST(function('immutable_unaccent', LOWER(COALESCE(t.name, t.stationName, ''))) AS string) LIKE CAST(:name AS string))
+            CAST(function('immutable_unaccent', LOWER(COALESCE(t.name, ''))) AS string) LIKE CAST(:name AS string))
           AND (CAST(:code AS string) IS NULL OR
-            CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, t.stationCode, ''))) AS string) LIKE CAST(:code AS string))
+            CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, ''))) AS string) LIKE CAST(:code AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus
                OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
@@ -95,7 +95,7 @@ public interface CoastalStationLRITRepository extends JpaRepository<CoastalStati
         @Param("code") String code,
         @Param("operatingOrgId") UUID operatingOrgId,
         @Param("provinceId") Integer provinceId,
-        @Param("conditionStatus") String conditionStatus,
+        @Param("conditionStatus") ConditionStatus conditionStatus,
         @Param("approvalStatus") ApprovalStatus approvalStatus,
         @Param("updatedBy") UUID updatedBy,
         @Param("updatedFrom") LocalDateTime updatedFrom,
@@ -107,17 +107,17 @@ public interface CoastalStationLRITRepository extends JpaRepository<CoastalStati
         SELECT t.approvalStatus, COUNT(t) FROM CoastalStationLRIT t
         WHERE t.deletedAt IS NULL
           AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
-          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds OR t.unitId IN :scopeOrgUnitIds)
-          AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId OR t.unitId = :orgUnitId)
+          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
+          AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (CAST(:keyword AS string) IS NULL OR (
-                CAST(function('immutable_unaccent', LOWER(COALESCE(t.name, t.stationName, ''))) AS string) LIKE CAST(:keyword AS string) OR
-                CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, t.stationCode, ''))) AS string) LIKE CAST(:keyword AS string) OR
+                CAST(function('immutable_unaccent', LOWER(COALESCE(t.name, ''))) AS string) LIKE CAST(:keyword AS string) OR
+                CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, ''))) AS string) LIKE CAST(:keyword AS string) OR
                 CAST(function('immutable_unaccent', LOWER(COALESCE(t.locationAddress, ''))) AS string) LIKE CAST(:keyword AS string)
               ))
           AND (CAST(:name AS string) IS NULL OR
-            CAST(function('immutable_unaccent', LOWER(COALESCE(t.name, t.stationName, ''))) AS string) LIKE CAST(:name AS string))
+            CAST(function('immutable_unaccent', LOWER(COALESCE(t.name, ''))) AS string) LIKE CAST(:name AS string))
           AND (CAST(:code AS string) IS NULL OR
-            CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, t.stationCode, ''))) AS string) LIKE CAST(:code AS string))
+            CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, ''))) AS string) LIKE CAST(:code AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:provinceId IS NULL OR t.provinceId = :provinceId)
           AND (CAST(:updatedFrom AS timestamp) IS NULL OR t.updatedAt >= :updatedFrom)
@@ -136,7 +136,7 @@ public interface CoastalStationLRITRepository extends JpaRepository<CoastalStati
         @Param("keyword") String keyword,
         @Param("name") String name,
         @Param("code") String code,
-        @Param("conditionStatus") String conditionStatus,
+        @Param("conditionStatus") ConditionStatus conditionStatus,
         @Param("provinceId") Integer provinceId,
         @Param("updatedFrom") LocalDateTime updatedFrom,
         @Param("updatedTo") LocalDateTime updatedTo
@@ -146,8 +146,8 @@ public interface CoastalStationLRITRepository extends JpaRepository<CoastalStati
         SELECT t FROM CoastalStationLRIT t
         WHERE t.deletedAt IS NULL
           AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
-          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds OR t.unitId IN :scopeOrgUnitIds)
-          AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId OR t.unitId = :orgUnitId)
+          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
+          AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
         ORDER BY LOWER(t.name) ASC
     """)
     List<CoastalStationLRIT> findApprovedOptions(
@@ -159,7 +159,7 @@ public interface CoastalStationLRITRepository extends JpaRepository<CoastalStati
     @Query("SELECT c FROM CoastalStationLRIT c WHERE " +
             "c.deletedAt IS NULL AND " +
             "(c.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR c.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2) AND " +
-            "(:orgUnitId IS NULL OR c.unitId = :orgUnitId OR c.orgUnitId = :orgUnitId) AND " +
+            "(:orgUnitId IS NULL OR c.orgUnitId = :orgUnitId) AND " +
             "(:search IS NULL OR LOWER(c.name) LIKE :search OR LOWER(c.code) LIKE :search)")
     List<CoastalStationLRIT> searchGis(
             @Param("orgUnitId") UUID orgUnitId,

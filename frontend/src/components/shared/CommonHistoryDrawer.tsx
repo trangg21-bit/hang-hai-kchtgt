@@ -4,6 +4,8 @@ import {
   HistoryOutlined,
   SearchOutlined,
   FileOutlined,
+  UserOutlined,
+  ApartmentOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { symbolService, type SymbolOption } from '../../services/symbolService';
@@ -32,6 +34,8 @@ import {
   fontWeightBold,
   inputStyle,
   primaryButtonStyle,
+  statusBadgeStyle,
+  getConditionStatusColor,
 } from '../../themetokenchk';
 import { deduplicateAttachmentHistoryChanges } from '../../utils/historyAttachmentDedup';
 
@@ -286,7 +290,7 @@ function renderCoordinatesDisplay(val: string | null) {
         </span>
       )}
       {points.map((pt) => (
-        <div key={pt.index} style={{ fontSize: fontSizeSm, color: textPrimary, lineHeight: 1.5 }}>
+        <div key={pt.index} style={{ fontSize: fontSizeSm, color: textPrimary, lineHeight: 1.5, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
           {points.length > 1 && <span style={{ color: textSecondary, marginRight: spaceXs }}>#{pt.index}:</span>}
           <span>{formatCoordPointDms(pt.x, pt.y)}</span>
         </div>
@@ -302,62 +306,82 @@ export function renderCommonHistoryValueTag(field: string, val: string) {
   const normKey = field.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
   const normVal = val.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
 
-  if (normKey.includes('trang thai') || normKey.includes('status') || normKey.includes('hieu luc') || normKey.includes('tinh trang')) {
-    // Các giá trị PHỦ ĐỊNH phải xét TRƯỚC: "dừng hoạt động" cũng chứa "hoạt động"
-    // nên nếu để nhánh xanh chạy trước thì nó bị tô như đang hoạt động.
-    if (normVal.includes('dung hoat dong') || normVal.includes('ngung hoat dong')
-        || normVal.includes('tam dung') || normVal.includes('khong hoat dong')) {
+  // 1. Tình trạng hoạt động (ConditionStatus)
+  if (normKey === 'conditionstatus' || normKey === 'tinh trang' || normKey.includes('tinh trang')) {
+    const color = getConditionStatusColor(val);
+    if (color && color !== textSecondary) {
       return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: statusCritical, background: `${statusCritical}18`, border: `1px solid ${statusCritical}40` }}>
-          {val}
-        </span>
-      );
-    }
-    if (normVal.includes('bao tri') || normVal.includes('sua chua') || normVal.includes('maintenance')) {
-      return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: statusAttention, background: `${statusAttention}18`, border: `1px solid ${statusAttention}40` }}>
-          {val}
-        </span>
-      );
-    }
-    if (normVal.includes('xay dung') || normVal.includes('construction')) {
-      return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: actionPrimary, background: `${actionPrimary}18`, border: `1px solid ${actionPrimary}40` }}>
-          {val}
-        </span>
-      );
-    }
-    if (normVal.includes('da phe duyet') || normVal.includes('con hieu luc') || normVal.includes('hoat dong') || normVal.includes('active') || normVal.includes('approved') || normVal.includes('valid')) {
-      return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: statusOperational, background: `${statusOperational}18`, border: `1px solid ${statusOperational}40` }}>
-          {val}
-        </span>
-      );
-    }
-    if (normVal.includes('tu choi') || normVal.includes('het hieu luc') || normVal.includes('hong') || normVal.includes('inactive') || normVal.includes('rejected') || normVal.includes('expired')) {
-      return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: statusCritical, background: `${statusCritical}18`, border: `1px solid ${statusCritical}40` }}>
-          {val}
-        </span>
-      );
-    }
-    if (normVal.includes('dang xem xet') || normVal.includes('chua co hieu luc') || normVal.includes('review') || normVal.includes('under_review') || normVal.includes('da phe duyet cap 1') || normVal.includes('cap 1')) {
-      return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: actionPrimary, background: `${actionPrimary}18`, border: `1px solid ${actionPrimary}40` }}>
-          {val}
-        </span>
-      );
-    }
-    if (normVal.includes('cho phe duyet') || normVal.includes('can bao duong') || normVal.includes('pending') || normVal.includes('draft') || normVal.includes('warning') || normVal.includes('proposed')) {
-      return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: statusAttention, background: `${statusAttention}18`, border: `1px solid ${statusAttention}40` }}>
+        <span style={statusBadgeStyle(color)}>
           {val}
         </span>
       );
     }
   }
 
-  return <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{val}</span>;
+  // 2. Trạng thái phê duyệt (ApprovalStatus) & Trạng thái chung
+  if (normKey.includes('trang thai') || normKey.includes('status') || normKey.includes('hieu luc')) {
+    // Các giá trị PHỦ ĐỊNH phải xét TRƯỚC: "dừng hoạt động" cũng chứa "hoạt động"
+    if (normVal.includes('dung hoat dong') || normVal.includes('ngung hoat dong')
+        || normVal.includes('tam dung') || normVal.includes('khong hoat dong')
+        || normVal === 'stopped' || normVal === 'not_operational') {
+      return (
+        <span style={statusBadgeStyle(statusCritical)}>
+          {val}
+        </span>
+      );
+    }
+    if (normVal.includes('bao tri') || normVal.includes('bao duong') || normVal.includes('sua chua') || normVal.includes('maintenance')) {
+      return (
+        <span style={statusBadgeStyle(statusAttention)}>
+          {val}
+        </span>
+      );
+    }
+    if (normVal.includes('xay dung') || normVal.includes('construction') || normVal.includes('under_construction')) {
+      return (
+        <span style={statusBadgeStyle(actionPrimary)}>
+          {val}
+        </span>
+      );
+    }
+    if (normVal.includes('da phe duyet') || normVal.includes('con hieu luc') || normVal.includes('hoat dong') || normVal.includes('active') || normVal.includes('approved') || normVal.includes('valid')) {
+      return (
+        <span style={statusBadgeStyle(statusOperational)}>
+          {val}
+        </span>
+      );
+    }
+    if (normVal.includes('tu choi') || normVal.includes('het hieu luc') || normVal.includes('hong') || normVal.includes('inactive') || normVal.includes('rejected') || normVal.includes('expired')) {
+      return (
+        <span style={statusBadgeStyle(statusCritical)}>
+          {val}
+        </span>
+      );
+    }
+    if (normVal.includes('dang xem xet') || normVal.includes('chua co hieu luc') || normVal.includes('review') || normVal.includes('under_review') || normVal.includes('da phe duyet cap 1') || normVal.includes('cap 1') || normVal.includes('approved_level1')) {
+      return (
+        <span style={statusBadgeStyle(actionPrimary)}>
+          {val}
+        </span>
+      );
+    }
+    if (normVal.includes('cho phe duyet') || normVal.includes('can bao duong') || normVal.includes('pending') || normVal.includes('draft') || normVal.includes('warning') || normVal.includes('proposed') || normVal.includes('cho')) {
+      return (
+        <span style={statusBadgeStyle(statusAttention)}>
+          {val}
+        </span>
+      );
+    }
+  }
+
+  return (
+    <span
+      title={typeof val === 'string' ? val : undefined}
+      style={{ color: textPrimary, fontWeight: fontWeightBold, wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'normal', lineHeight: 1.5 }}
+    >
+      {val}
+    </span>
+  );
 }
 
 const drawerTitleStyle: React.CSSProperties = {
@@ -383,7 +407,6 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
   fieldLabelMap = {},
   formatValue,
   width,
-  size,
   serverFiltered = false,
   onFilterChange,
   onLoadMore,
@@ -441,7 +464,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
   }, [symbols]);
 
   const renderSymbolValue = (val: string) => {
-    if (!val || val === '—' || val === 'null' || val === '(null)') {
+    if (!val || val === '—' || val === '-' || val === 'null' || val === '(null)' || val === '(trống)' || val === '— (Trống)' || val === 'Chưa có') {
       return <span style={{ color: textTertiary }}>—</span>;
     }
     const trimmed = String(val).trim();
@@ -452,15 +475,23 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
     const sym = symbolByCode.get(upper) || symbolByCode.get(lower) || symbolById.get(lower) || symbolByName.get(lower) || symbolByName.get(norm);
 
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: textPrimary, fontWeight: fontWeightBold, verticalAlign: 'middle' }}>
-        {sym?.image ? (
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          color: textPrimary,
+          fontWeight: fontWeightMedium,
+          fontSize: fontSizeMd,
+          lineHeight: 1.5,
+        }}
+      >
+        {sym?.image && (
           <img
             src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`}
             alt=""
             style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4, flexShrink: 0 }}
           />
-        ) : (
-          <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: actionPrimary, flexShrink: 0 }} />
         )}
         <span>{sym?.name || trimmed}</span>
       </span>
@@ -493,7 +524,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
   };
 
   const getRecordActor = (r: CommonHistoryEntry): string => {
-    return r.changedByName || r.actor || r.changedBy || r.approvedBy || '—';
+    return r.changedByName || r.actor || r.approvedByName || r.changedBy || r.approvedBy || '—';
   };
 
   const formatTimestamp = (ts: string) => {
@@ -516,7 +547,9 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
     }
     if (typeof val === 'boolean') return val ? 'Có' : 'Không';
     if (typeof val === 'object') return JSON.stringify(val);
-    return String(val);
+    const s = String(val).trim();
+    if (s === '(null)' || s === 'null' || s === '(trống)' || s === '— (Trống)' || s === 'Chưa có' || s === '-') return '—';
+    return s;
   };
 
   // Filter and group records
@@ -577,7 +610,12 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
       return timeB - timeA;
     });
 
-    // Group items with same second and same actor
+    const isSameMinute = (t1: string, t2: string) => {
+      if (!t1 || !t2) return false;
+      return dayjs(t1).format('YYYY-MM-DD HH:mm') === dayjs(t2).format('YYYY-MM-DD HH:mm');
+    };
+
+    // Group items with same second or minute and same actor
     const groups: { tsSec: number; ts: string; actor: string; unitName: string; items: CommonHistoryEntry[] }[] = [];
     for (const r of sorted) {
       const ts = getRecordTimestamp(r);
@@ -586,7 +624,13 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
       const unitName = r.orgUnitName || r.unitName || '';
       const prev = groups[groups.length - 1];
 
-      if (prev && prev.tsSec === tsSec && prev.actor === actor) {
+      const isSameGroup = prev && prev.actor === actor && (
+        prev.tsSec === tsSec ||
+        isSameMinute(prev.ts, ts) ||
+        Math.abs(prev.tsSec - tsSec) <= 60
+      );
+
+      if (isSameGroup) {
         prev.items.push(r);
       } else {
         groups.push({ tsSec, ts, actor, unitName, items: [r] });
@@ -599,8 +643,8 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
   return (
     <Drawer
       rootClassName="vtssystemchk-theme-scope"
-      size={width ? undefined : (size || 960)}
-      width={width || 960}
+      width={width || 1000}
+      style={{ maxWidth: '95vw' }}
       placement="right"
       open={open}
       onClose={onClose}
@@ -642,7 +686,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
     >
       {/* ── Search & Filter Bar ────────────────────────────── */}
       <div style={{ flexShrink: 0 }}>
-        <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
+        <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd, alignItems: 'center' }}>
           <Input
             placeholder="Tìm kiếm nội dung thay đổi..."
             allowClear
@@ -653,7 +697,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
               if (!val) setKeyword('');
             }}
             onPressEnter={() => setKeyword(searchInput.trim())}
-            style={{ ...inputStyle, flex: 1 }}
+            style={{ ...inputStyle, borderRadius: 999, height: 38, flex: 1 }}
           />
           <DatePicker.RangePicker
             {...getRangePickerProps({
@@ -669,7 +713,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                   setDateTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
                 }
               },
-              style: { ...inputStyle, width: 280 },
+              style: { ...inputStyle, borderRadius: 999, height: 38, width: 280 },
             })}
           />
           <Button
@@ -677,7 +721,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
             icon={<SearchOutlined />}
             loading={loading}
             onClick={() => setKeyword(searchInput.trim())}
-            style={primaryButtonStyle}
+            style={{ ...primaryButtonStyle, borderRadius: 999, height: 38 }}
           >
             Tìm kiếm
           </Button>
@@ -685,7 +729,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
       </div>
 
       {/* ── Timeline Body ─────────────────────────────────── */}
-      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleBodyScroll}>
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, paddingRight: 4 }} onScroll={handleBodyScroll}>
         {loading ? (
           <div style={{ padding: spaceMd }}>
             <Skeleton active paragraph={{ rows: 6 }} />
@@ -700,7 +744,21 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
             </div>
           </div>
         ) : (
-          <div>
+          <div style={{ position: 'relative', paddingLeft: 8 }}>
+            {/* Trục Timeline dọc kết nối các mốc */}
+            {filteredGroups.length > 1 && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: 13,
+                  top: 20,
+                  bottom: 24,
+                  width: 2,
+                  background: '#E2E8F0',
+                  zIndex: 0,
+                }}
+              />
+            )}
             {filteredGroups.map((group, gIdx) => {
               // Extract all changes from items in the group
               const groupChanges: HistoryChangeItem[] = [];
@@ -726,7 +784,6 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
 
               const actionMeta = resolveAction(primaryAction);
               const isCreate = primaryAction.toUpperCase().includes('CREATE') || primaryAction.toUpperCase().includes('ADD');
-              const infoTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
               const rawUnit = group.unitName;
               const unitName = rawUnit && rawUnit !== '—' ? rawUnit : 'Cục Hàng hải Việt Nam';
 
@@ -744,68 +801,73 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                   key={gIdx}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'minmax(310px, 0.38fr) minmax(0, 1fr)',
+                    gridTemplateColumns: '240px minmax(0, 1fr)',
                     gap: spaceLg,
                     alignItems: 'start',
-                    marginBottom: gIdx < filteredGroups.length - 1 ? spaceMd : 0,
+                    marginBottom: gIdx < filteredGroups.length - 1 ? spaceLg : 0,
+                    position: 'relative',
                   }}
                 >
-                  {/* Left Column: Metadata */}
-                  <div style={{ minWidth: 0, paddingTop: spaceXs }}>
-                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: spaceSm, marginBottom: spaceXs }}>
-                      <Typography.Text
-                        style={{
-                          display: 'block',
-                          fontSize: fontSizeLg - 1,
-                          color: textPrimary,
-                          fontWeight: fontWeightBold,
-                          lineHeight: 1.5,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {group.ts ? formatTimestamp(group.ts) : '—'}
-                      </Typography.Text>
-                      <span style={{ flexShrink: 0 }}>
-                        <span
+                  {/* Left Column: Metadata with Timeline Node */}
+                  <div style={{ minWidth: 0, paddingTop: spaceXs, display: 'flex', gap: spaceSm, alignItems: 'flex-start' }}>
+                    <div
+                      style={{
+                        width: 12,
+                        height: 12,
+                        borderRadius: '50%',
+                        backgroundColor: actionMeta.color,
+                        boxShadow: `0 0 0 3px ${actionMeta.bg}`,
+                        marginTop: 5,
+                        flexShrink: 0,
+                        zIndex: 1,
+                      }}
+                    />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: spaceSm, marginBottom: spaceXs }}>
+                        <Typography.Text
                           style={{
-                            display: 'inline-flex',
-                            padding: '2px 10px',
-                            borderRadius: 999,
-                            fontSize: fontSizeSm + 1,
-                            fontWeight: fontWeightMedium,
-                            background: actionMeta.bg,
-                            color: actionMeta.color,
+                            display: 'block',
+                            fontSize: fontSizeMd,
+                            color: textPrimary,
+                            fontWeight: fontWeightBold,
+                            lineHeight: 1.5,
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          {actionMeta.label}
+                          {group.ts ? formatTimestamp(group.ts) : '—'}
+                        </Typography.Text>
+                        <span style={{ flexShrink: 0 }}>
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              padding: '1px 8px',
+                              borderRadius: 999,
+                              fontSize: fontSizeSm,
+                              fontWeight: fontWeightMedium,
+                              background: actionMeta.bg,
+                              color: actionMeta.color,
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {actionMeta.label}
+                          </span>
                         </span>
-                      </span>
-                    </div>
+                      </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: spaceXs }}>
-                      <Typography.Text
-                        style={{
-                          display: 'block',
-                          fontSize: fontSizeSm + 1,
-                          color: textSecondary,
-                          fontWeight: fontWeightMedium,
-                          lineHeight: 1.4,
-                        }}
-                      >
-                        Người cập nhật: <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{group.actor || '—'}</span>
-                      </Typography.Text>
-                      <Typography.Text
-                        style={{
-                          display: 'block',
-                          fontSize: fontSizeSm + 1,
-                          color: textSecondary,
-                          fontWeight: fontWeightMedium,
-                          lineHeight: 1.4,
-                        }}
-                      >
-                        Đơn vị: <span style={{ color: textPrimary }}>{unitName}</span>
-                      </Typography.Text>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: fontSizeSm, color: textSecondary }}>
+                          <UserOutlined style={{ fontSize: 12, color: textTertiary, flexShrink: 0 }} />
+                          <span style={{ color: textPrimary, fontWeight: fontWeightMedium, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={group.actor || '—'}>
+                            {group.actor || '—'}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: fontSizeSm, color: textSecondary }}>
+                          <ApartmentOutlined style={{ fontSize: 12, color: textTertiary, flexShrink: 0 }} />
+                          <span style={{ color: textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={unitName}>
+                            {unitName}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -820,6 +882,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                       paddingLeft: spaceLg,
                       overflow: 'hidden',
                       border: `1px solid ${borderDefault}`,
+                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
                     }}
                   >
                     {/* Left Accent Gradient Bar */}
@@ -834,18 +897,6 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                       }}
                     />
 
-                    <Typography.Text
-                      style={{
-                        display: 'block',
-                        color: colors.sidebarBg,
-                        fontSize: fontSizeMd,
-                        fontWeight: fontWeightBold,
-                        marginBottom: spaceSm,
-                      }}
-                    >
-                      {infoTitle}
-                    </Typography.Text>
-
                     {/* Change list */}
                     {validChanges.length > 0 ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}>
@@ -855,7 +906,9 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                           const nv = resolveFieldValue(change.field, change.newValue);
 
                           const renderFormattedContent = (content: string, _isOld: boolean = false) => {
-                            if (!content || content === '—') return <span style={{ color: textTertiary }}>—</span>;
+                            if (!content || content === '—' || content === '-' || content === 'null' || content === '(null)' || content === '(trống)' || content === '— (Trống)' || content === 'Chưa có') {
+                              return <span style={{ color: textTertiary }}>—</span>;
+                            }
                             const str = String(content).trim();
                             const normLabel = (label || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
                             const normField = (change.field || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
@@ -880,7 +933,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                                 return (
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
                                     {items.map((item, idx) => (
-                                      <div key={idx} style={{ color: textPrimary, fontWeight: fontWeightMedium, lineHeight: '20px', wordBreak: 'break-word' }}>
+                                      <div key={idx} style={{ color: textPrimary, fontWeight: fontWeightMedium, lineHeight: '20px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                                         {item}
                                       </div>
                                     ))}
@@ -897,18 +950,18 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                                 key={cIdx}
                                 style={{
                                   display: 'grid',
-                                  gridTemplateColumns: '170px minmax(100px, 1fr)',
+                                  gridTemplateColumns: '150px minmax(0, 1fr)',
                                   alignItems: 'flex-start',
                                   gap: spaceSm,
                                   fontSize: fontSizeMd,
                                   lineHeight: 1.6,
-                                  padding: '3px 0',
+                                  padding: '4px 0',
                                 }}
                               >
-                                <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>
+                                <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                                   {label ? `${label}:` : '—'}
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word', color: textPrimary }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5, color: textPrimary }}>
                                   {renderFormattedContent(nv, false)}
                                 </div>
                               </div>
@@ -920,24 +973,24 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                               key={cIdx}
                               style={{
                                 display: 'grid',
-                                gridTemplateColumns: '170px minmax(100px, 1fr) 24px minmax(100px, 1fr)',
+                                gridTemplateColumns: '150px minmax(0, 1fr) 24px minmax(0, 1fr)',
                                 alignItems: 'flex-start',
                                 gap: spaceSm,
                                 fontSize: fontSizeMd,
                                 lineHeight: 1.6,
-                                padding: '3px 0',
+                                padding: '4px 0',
                               }}
                             >
-                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>
+                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                                 {label ? `${label}:` : '—'}
                               </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>
                                 {renderFormattedContent(ov, true)}
                               </div>
-                              <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>
+                              <div style={{ color: '#94A3B8', textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>
                                 →
                               </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>
                                 {renderFormattedContent(nv, false)}
                               </div>
                             </div>
@@ -948,11 +1001,10 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         <Typography.Text
                           style={{
-                            display: 'block',
-                            color: textPrimary,
                             fontSize: fontSizeMd,
-                            fontWeight: fontWeightBold,
-                            marginBottom: spaceXs,
+                            fontWeight: fontWeightMedium,
+                            color: textSecondary,
+                            marginBottom: 4,
                           }}
                         >
                           Chi tiết thao tác:

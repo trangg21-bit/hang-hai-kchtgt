@@ -18,7 +18,7 @@ Module M-015 quản lý 5 nhóm Đài thông tin duyên hải, mỗi nhóm 6 fea
 | Đài Inmarsat | F-098..F-103 | `CoastalStationInmarsat` / `coastal_station_inmarsat` | `/api/v1/stations/inmarsat` | "Đài Inmarsat" (~1622) | `INMARSAT-%04d` — có generateCode |
 | Đài Cospas-Sarsat | F-104..F-109 | `CoastalStationCospasSarsat` / `coastal_station_cospas_sarsat` | `/api/v1/stations/cospas-sarsat` | "Đài Cospas-Sarsat" (~1725) | `SARSAT-{seq}` — **DRIFT #2: code không có generateCode, nhận từ request** |
 | Đài LRIT | F-110..F-115 | `CoastalStationLRIT` / `coastal_station_lrit` | `/api/v1/stations/lrit` | "Đài LRIT" (~1674) | `LRIT-%04d` — có generateCode |
-| Đài TTXLTT Hà Nội | F-116..F-121 | `CoastalStationHaiphong` / `coastal_station_haiphong` | `/api/v1/stations/haiphong` | "Đài TTXLTT Hà Nội" (~1777) | `TTXLTT-%04d` — có generateCode |
+| Đài TTXLTT Hàng hải | F-116..F-121 | `CoastalStationHaiphong` / `coastal_station_haiphong` | `/api/v1/stations/haiphong` | "Đài TTXLTT Hà Nội" (~1777) | `TTXLTT-%04d` — có generateCode |
 
 > KHÔNG dùng sheet "Hệ thống VHF" (~1562) — thuộc M-013.
 
@@ -72,7 +72,7 @@ Nguồn: `docs/conventions/approval-2-level-spec.md` §3 + `InfrastructureApprov
 | 1 | Enum `status`/`approvalStatus`: 5 entity coastal dùng `@Enumerated(ORDINAL)` smallint (ĐÚNG convention INT); `conditionStatus` là String ("OPERATIONAL") không phải enum; `BaseStation` (cha BuoyStation) dùng STRING | entity/*.java | Ghi nhận: ORDINAL đúng; String conditionStatus là lựa chọn hiện tại |
 | 2 | Auto-code: VTS (DTTDH-) và Cospas (SARSAT-) **không có generateCode()** — mã nhận từ request; Inmarsat/LRIT/Haiphong có generateCode() | CoastalStationVTSService/CospasSarsatService vs Inmarsat/LRIT/HaiphongService | F-092/F-104 cần SA chốt: bổ sung generateCode hay chấp nhận client truyền |
 | 3 | Tên endpoint duyệt: VTS/Inmarsat/Cospas dùng `approve-l1`/`approve-l2`; LRIT/Haiphong dùng `approve-c1`/`approve-c2` (chuẩn) | controllers | Thống nhất tên hoặc alias; SA chốt |
-| 4 | Entity `CoastalStationHaiphong` / bảng `coastal_station_haiphong` / type history "HAIPHONG" vs nhãn feature "Đài TTXLTT Hà Nội" | entity + StationHistoryService map | Ghi nhận tên code vs nhãn nghiệp vụ |
+| 4 | Entity `CoastalStationHaiphong` / bảng `coastal_station_haiphong` / type history "HAIPHONG" vs nhãn menu/UI "Đài TTXLTT Hàng hải" | entity + StationHistoryService map + UI AppLayout | Chuẩn hóa nhãn menu và form/danh sách là "Đài TTXLTT Hàng hải" |
 | 5 | Feature-brief ghi "trạng thái pending/Chờ phê duyệt sau khi tạo" — code thực tế `DRAFT` (chỉ submit mới sang PENDING_APPROVAL) | @PrePersist setDefaultStatus + approvalService.submit | Brief sai — lean-spec là nguồn đúng; KHÔNG sửa brief |
 | 6 | Prefix auto-code biến thể: DTTDH-/SARSAT- (Excel, chưa code) vs INMARSAT-/LRIT-/TTXLTT- (code, %04d) | Excel vs services | Liên quan drift #2 |
 

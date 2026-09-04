@@ -26,11 +26,11 @@ interface ApprovalStatusBadgeProps {
  */
 export const APPROVAL_STATUS_STYLE: Record<string, { label: string; color: string }> = {
   DRAFT: { label: 'Lưu tạm', color: statusDraft },
-  PENDING_APPROVAL: { label: 'Chờ Cảng vụ duyệt', color: statusAttention },
-  APPROVED_LEVEL1: { label: 'Chờ Cục duyệt', color: '#0284C7' },
-  REJECTED_LEVEL1: { label: 'Cảng vụ trả về', color: statusCritical },
-  REJECTED_LEVEL2: { label: 'Cục trả về', color: statusCritical },
-  APPROVED: { label: 'Đã duyệt', color: statusOperational },
+  PENDING_APPROVAL: { label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: statusAttention },
+  APPROVED_LEVEL1: { label: 'Chờ phê duyệt cấp Cục', color: '#0284C7' },
+  REJECTED_LEVEL1: { label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
+  REJECTED_LEVEL2: { label: 'Từ chối cấp Cục', color: statusCritical },
+  APPROVED: { label: 'Đã phê duyệt', color: statusOperational },
   ARCHIVED: { label: 'Đã xóa', color: textTertiary },
 };
 
