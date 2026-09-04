@@ -16,6 +16,25 @@ body {
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
 }
 
+/* ---- Text selection (bôi đen) mềm mại, thanh lịch, chuẩn tông Navy CHK ---- */
+::selection {
+  background: rgba(39, 62, 124, 0.20) !important;
+  color: #0F172A !important;
+}
+
+::-moz-selection {
+  background: rgba(39, 62, 124, 0.20) !important;
+  color: #0F172A !important;
+}
+
+input::selection,
+textarea::selection,
+.ant-input::selection {
+  background: rgba(39, 62, 124, 0.22) !important;
+  color: #0F172A !important;
+  -webkit-text-fill-color: #0F172A !important;
+}
+
 /* ---- Scrollbar ---- */
 *,
 *::before,

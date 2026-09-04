@@ -10,12 +10,14 @@ import {
 } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
+import * as themeTokenChk from '../themetokenchk';
 import {
   actionPrimary,
   surfaceCard,
   textPrimary,
   textSecondary,
   textTertiary,
+  borderDefault,
   statusOperational,
   statusCritical,
   statusAttention,
@@ -36,7 +38,8 @@ import {
   fontWeightMedium,
   fontSans,
   sidebarBg,
-} from '../tokens';
+} from '../themetokenchk';
+import { ThemeTokenProvider } from '../context/ThemeTokenContext';
 
 interface PasswordResetPageProps {
   mode: 'forgot' | 'reset';
@@ -150,7 +153,8 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
   };
 
   return (
-    <div
+    <ThemeTokenProvider tokens={themeTokenChk}>
+      <div
       style={{
         position: 'relative',
         minHeight: '100vh',
@@ -244,11 +248,12 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
                   color: sidebarBg,
                   lineHeight: 1.35,
                   marginBottom: spaceXs,
+                  fontFamily: fontSans,
                 }}
               >
                 {mode === 'forgot' ? 'Đã gửi yêu cầu thành công!' : 'Đặt lại mật khẩu thành công!'}
               </div>
-              <div style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceMd }}>
+              <div style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceMd, fontFamily: fontSans }}>
                 {mode === 'forgot'
                   ? 'Vui lòng kiểm tra hộp thư email để nhận liên kết xác thực'
                   : 'Mật khẩu của bạn đã được cập nhật thành công'}
@@ -256,22 +261,23 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
 
               <div
                 style={{
-                  background: '#F6F9FD',
-                  border: '1px solid rgba(14, 111, 214, 0.12)',
+                  background: '#F8FAFC',
+                  border: `1px solid ${borderDefault}`,
                   borderRadius: radiusMd,
                   padding: '14px 18px',
                   marginBottom: spaceMd,
                   textAlign: 'left',
+                  fontFamily: fontSans,
                 }}
               >
                 {mode === 'forgot' ? (
                   <>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spaceSm }}>
-                      <span style={{ fontSize: fontSizeSm, color: textSecondary }}>Email nhận liên kết:</span>
-                      <span style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: textPrimary }}>{submittedEmail}</span>
+                      <span style={{ fontSize: fontSizeSm, color: textSecondary, fontFamily: fontSans }}>Email nhận liên kết:</span>
+                      <span style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: textPrimary, fontFamily: fontSans }}>{submittedEmail}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: fontSizeSm, color: textSecondary }}>Thời hạn hiệu lực:</span>
+                      <span style={{ fontSize: fontSizeSm, color: textSecondary, fontFamily: fontSans }}>Thời hạn hiệu lực:</span>
                       <span
                         style={{
                           display: 'inline-flex',
@@ -279,20 +285,21 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
                           gap: 6,
                           padding: '2px 10px',
                           borderRadius: radiusPill,
-                          background: '#FFF7E6',
-                          color: '#D46B08',
-                          border: '1px solid #FFD591',
+                          background: 'rgba(237, 161, 0, 0.12)',
+                          color: '#b45309',
+                          border: '1px solid rgba(237, 161, 0, 0.40)',
                           fontSize: fontSizeSm,
-                          fontWeight: fontWeightBold,
+                          fontWeight: fontWeightMedium,
+                          fontFamily: fontSans,
                         }}
                       >
-                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#FA8C16' }} />
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: statusAttention }} />
                         60 phút
                       </span>
                     </div>
                   </>
                 ) : (
-                  <div style={{ fontSize: fontSizeMd, color: textPrimary, textAlign: 'center', padding: `${spaceXs}px 0` }}>
+                  <div style={{ fontSize: fontSizeMd, color: textPrimary, textAlign: 'center', padding: `${spaceXs}px 0`, fontFamily: fontSans }}>
                     Tài khoản đã sẵn sàng để đăng nhập với mật khẩu mới.
                   </div>
                 )}
@@ -304,8 +311,8 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
                     display: 'flex',
                     alignItems: 'flex-start',
                     gap: spaceSm,
-                    background: 'rgba(14, 111, 214, 0.05)',
-                    border: '1px dashed rgba(14, 111, 214, 0.25)',
+                    background: 'rgba(39, 62, 124, 0.04)',
+                    border: '1px solid rgba(39, 62, 124, 0.15)',
                     borderRadius: radiusMd,
                     padding: '12px 16px',
                     marginBottom: spaceLg,
@@ -313,7 +320,7 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
                   }}
                 >
                   <InfoCircleOutlined style={{ color: actionPrimary, fontSize: 16, marginTop: 2, flexShrink: 0 }} />
-                  <span style={{ fontSize: fontSizeSm, color: textSecondary, lineHeight: 1.5 }}>
+                  <span style={{ fontSize: fontSizeSm, color: textSecondary, lineHeight: 1.5, fontFamily: fontSans }}>
                     Nếu không thấy thư trong hộp thư đến, vui lòng kiểm tra thêm mục <strong>Thư rác (Spam)</strong> hoặc Quảng cáo.
                   </span>
                 </div>
@@ -330,7 +337,8 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
                   fontWeight: fontWeightBold,
                   background: actionPrimary,
                   borderColor: actionPrimary,
-                  boxShadow: '0 4px 14px rgba(14,111,214,0.3)',
+                  boxShadow: '0 4px 14px rgba(39, 62, 124, 0.25)',
+                  fontFamily: fontSans,
                 }}
               >
                 Quay lại Đăng nhập
@@ -344,7 +352,7 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
                       setSuccess(false);
                       setSubmittedEmail('');
                     }}
-                    style={{ color: textSecondary, fontSize: fontSizeMd }}
+                    style={{ color: textSecondary, fontSize: fontSizeMd, fontFamily: fontSans }}
                   >
                     Gửi lại yêu cầu khác
                   </Button>
@@ -361,22 +369,23 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
                 />
                 <div
                   style={{
-                    fontSize: fontSizeXl,
+                    fontSize: 20,
                     fontWeight: fontWeightBold,
                     color: sidebarBg,
                     lineHeight: 1.35,
                     marginBottom: spaceXs,
+                    fontFamily: fontSans,
                   }}
                 >
                   {mode === 'forgot' ? 'Quên mật khẩu' : 'Đặt lại mật khẩu'}
                 </div>
-                <div style={{ fontSize: fontSizeMd, color: textSecondary }}>
+                <div style={{ fontSize: fontSizeMd, color: textSecondary, fontFamily: fontSans }}>
                   Hệ thống thông tin Quản lý kết cấu hạ tầng giao thông Hàng Hải
                 </div>
               </div>
 
               <div>
-                <p style={{ textAlign: 'center', fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceMd }}>
+                <p style={{ textAlign: 'center', fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceMd, fontFamily: fontSans }}>
                   {mode === 'forgot'
                     ? 'Nhập địa chỉ email đã đăng ký để nhận liên kết đặt lại mật khẩu'
                     : 'Vui lòng nhập mật khẩu mới cho tài khoản của bạn'}
@@ -391,7 +400,7 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
                   >
                     <Form.Item
                       name="email"
-                      label={<span style={{ fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Email đăng ký</span>}
+                      label={<span style={{ fontWeight: fontWeightMedium, fontSize: fontSizeMd, color: textPrimary, fontFamily: fontSans }}>Email đăng ký</span>}
                       rules={[
                         { required: true, message: 'Vui lòng nhập email' },
                         { type: 'email', message: 'Địa chỉ email không đúng định dạng' },
@@ -400,8 +409,11 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
                     >
                       <Input
                         prefix={<MailOutlined style={{ color: textTertiary }} />}
-                        placeholder="Ví dụ: user@example.com"
-                        style={{ borderRadius: radiusPill, height: 40 }}
+                        placeholder="Nhập email"
+                        spellCheck={false}
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        style={{ borderRadius: radiusPill, height: 40, fontFamily: fontSans, fontSize: fontSizeMd }}
                       />
                     </Form.Item>
 
@@ -418,7 +430,8 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
                           fontWeight: fontWeightBold,
                           background: actionPrimary,
                           borderColor: actionPrimary,
-                          boxShadow: '0 4px 14px rgba(14,111,214,0.3)',
+                          boxShadow: '0 4px 14px rgba(39, 62, 124, 0.25)',
+                          fontFamily: fontSans,
                         }}
                       >
                         Gửi yêu cầu
@@ -430,7 +443,7 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
                         type="link"
                         icon={<ArrowLeftOutlined />}
                         onClick={() => navigate('/login')}
-                        style={{ color: actionPrimary, fontSize: fontSizeMd }}
+                        style={{ color: actionPrimary, fontSize: fontSizeMd, fontFamily: fontSans }}
                       >
                         Quay lại Đăng nhập
                       </Button>
@@ -445,27 +458,29 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
                   >
                     <Form.Item
                       name="newPassword"
-                      label={<span style={{ fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Mật khẩu mới</span>}
+                      label={<span style={{ fontWeight: fontWeightMedium, fontSize: fontSizeMd, color: textPrimary, fontFamily: fontSans }}>Mật khẩu mới</span>}
                       rules={[{ required: true, message: 'Vui lòng nhập mật khẩu mới' }]}
                       style={{ marginBottom: spaceFormField }}
                     >
                       <Input.Password
                         prefix={<LockOutlined style={{ color: textTertiary }} />}
                         placeholder="Nhập mật khẩu mới"
+                        spellCheck={false}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        style={{ borderRadius: radiusPill, height: 40 }}
+                        style={{ borderRadius: radiusPill, height: 40, fontFamily: fontSans, fontSize: fontSizeMd }}
                       />
                     </Form.Item>
 
                     {password && (
-                      <div style={{ marginBottom: spaceFormField }}>
+                      <div style={{ marginBottom: spaceFormField, fontFamily: fontSans }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <span style={{ fontSize: fontSizeSm, color: textSecondary }}>Độ mạnh:</span>
+                          <span style={{ fontSize: fontSizeSm, color: textSecondary, fontFamily: fontSans }}>Độ mạnh:</span>
                           <span
                             style={{
                               fontSize: fontSizeSm,
                               fontWeight: fontWeightBold,
+                              fontFamily: fontSans,
                               color:
                                 strengthStatus === 'success'
                                   ? statusOperational
@@ -500,10 +515,11 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
                         marginBottom: spaceFormField,
                         fontSize: fontSizeSm,
                         color: textSecondary,
+                        fontFamily: fontSans,
                       }}
                     >
-                      <div style={{ fontWeight: fontWeightBold, marginBottom: 4 }}>Yêu cầu mật khẩu:</div>
-                      <ul style={{ margin: 0, paddingLeft: 18 }}>
+                      <div style={{ fontWeight: fontWeightBold, marginBottom: 4, fontFamily: fontSans }}>Yêu cầu mật khẩu:</div>
+                      <ul style={{ margin: 0, paddingLeft: 18, fontFamily: fontSans }}>
                         <li>Tối thiểu {policy.minLength} ký tự</li>
                         {policy.requireUppercase && <li>Có ít nhất một chữ hoa (A-Z)</li>}
                         {policy.requireLowercase && <li>Có ít nhất một chữ thường (a-z)</li>}
@@ -514,7 +530,7 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
 
                     <Form.Item
                       name="confirmPassword"
-                      label={<span style={{ fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Xác nhận mật khẩu mới</span>}
+                      label={<span style={{ fontWeight: fontWeightMedium, fontSize: fontSizeMd, color: textPrimary, fontFamily: fontSans }}>Xác nhận mật khẩu mới</span>}
                       dependencies={['newPassword']}
                       rules={[
                         { required: true, message: 'Vui lòng xác nhận mật khẩu mới' },
@@ -532,7 +548,8 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
                       <Input.Password
                         prefix={<LockOutlined style={{ color: textTertiary }} />}
                         placeholder="Nhập lại mật khẩu mới"
-                        style={{ borderRadius: radiusPill, height: 40 }}
+                        spellCheck={false}
+                        style={{ borderRadius: radiusPill, height: 40, fontFamily: fontSans, fontSize: fontSizeMd }}
                       />
                     </Form.Item>
 
@@ -549,27 +566,28 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
                           fontWeight: fontWeightBold,
                           background: actionPrimary,
                           borderColor: actionPrimary,
-                          boxShadow: '0 4px 14px rgba(14,111,214,0.3)',
+                          boxShadow: '0 4px 14px rgba(39, 62, 124, 0.25)',
+                          fontFamily: fontSans,
                         }}
                       >
                         Lưu mật khẩu mới
                       </Button>
                     </Form.Item>
 
-                      <div style={{ textAlign: 'center', marginTop: spaceSm }}>
-                        <Button
-                          type="link"
-                          icon={<ArrowLeftOutlined />}
-                          onClick={() => navigate('/login')}
-                          style={{ color: actionPrimary, fontSize: fontSizeMd }}
-                        >
-                          Quay lại Đăng nhập
-                        </Button>
-                      </div>
-                    </Form>
-                  )}
-                </div>
-              </>
+                    <div style={{ textAlign: 'center', marginTop: spaceSm }}>
+                      <Button
+                        type="link"
+                        icon={<ArrowLeftOutlined />}
+                        onClick={() => navigate('/login')}
+                        style={{ color: actionPrimary, fontSize: fontSizeMd, fontFamily: fontSans }}
+                      >
+                        Quay lại Đăng nhập
+                      </Button>
+                    </div>
+                  </Form>
+                )}
+              </div>
+            </>
             )}
           </div>
 
@@ -587,5 +605,6 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
           </div>
         </div>
       </div>
-    );
+    </ThemeTokenProvider>
+  );
 }
