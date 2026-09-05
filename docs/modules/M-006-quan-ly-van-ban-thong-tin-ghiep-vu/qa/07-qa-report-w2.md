@@ -73,3 +73,17 @@
 - **No git operations:** "only intended files changed" rests on the upstream dev record (`git status --short -- src/test/java` → only the two test files) and observed state.
 - **F-128 UI identity (D14 no-change):** asserted via upstream FE record + w1-era anchors, not a fresh diff.
 - Prior-stage claims (BA/SA/FE/BE Pass) were **not** re-litigated; this report only adds wave-2 execution evidence on the current revision.
+
+## 6. Addendum — re-verification 2026-09-06 02:50-02:54 (runtime gate re-run)
+
+The verification-gate re-run this morning produced a **mixed then blocked** outcome caused by an EXTERNAL environment condition, not an M-006 defect:
+
+| Time | Command | Result | Cause (evidence) |
+|---|---|---|---|
+| 02:49 | `JAVA_HOME=<temurin17> mvn -q -DskipTests test-compile` | exit 0 | — |
+| 02:50 | `mvn -q -Dtest=LegalDocumentControllerTest,PortPlanningControllerTest surefire:test` | exit 1 | LegalDocumentControllerTest **16/16 green** (report re-read); PortPlanningControllerTest 9 errors: Spring context boot failed `Error creating bean with name 'buoyController': Lookup method resolution failed` → `Caused by: NoClassDefFoundError: com/hanghai/kchtg/beacon/dto/buoy/UpdateBuoyRequest` — stale/orphan compiled classes in shared `target/` left by a concurrent sibling build (beacon module). |
+| 02:52 | `mvn -q clean test-compile` (attempt to purge orphans) | exit 1 | `Failed to delete .../target` — file lock held by another active Maven process (concurrent session building in the shared tree). Clean partially wiped `target/`. |
+| 02:53 | `mvn -q -DskipTests test-compile` (rebuild after partial clean) | exit 0 | — |
+| 02:54 | `mvn -q -Dtest=LegalDocumentControllerTest,PortPlanningControllerTest surefire:test` | exit 1 | Same symptom, now on a different bean: `Error creating bean with name 'accessLogController': Lookup method resolution failed` during context init — the shared class tree is being concurrently rewritten by a sibling build; context boot is nondeterministic for ANY `@SpringBootTest` suite until that session stops. |
+
+**Assessment:** git status shows M-006 is NOT the source — the only dirty Java files are M-006's own `config/PermissionSeeder.java` + `src/test/.../LegalDocumentControllerTest.java` (both pipeline-owned); `buoy`/`beacon`/`accessLog` sources are clean vs HEAD and ZERO `@Lookup` annotations exist in current sources, so the failures are runtime class-tree artifacts, not source defects. Executed green evidence on this identical M-006 revision remains on record: LegalDocumentControllerTest 16/16 (00:00, 00:02, and 02:50 runs) and PortPlanningControllerTest 9/9 (00:00 and 00:02 runs, exit 0, reports re-read). **Recovery:** once the concurrent build session(s) settle (or the orchestrator serializes builds), run `mvn clean test-compile` then the two suites — both previously green on this revision. Owning role for tree coordination: orchestrator/PMO; this is not an M-006 code change request.

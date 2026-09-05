@@ -1,84 +1,94 @@
-# Implementation record — F-128/M-006 C3 test rework: LegalDocumentControllerTest rewrite + PortPlanningControllerTest sync
+# Implementation record — F-128 LegalDocumentControllerTest: REAL-execution integration rewrite (INC-039, final)
 
 - Module: M-006-quan-ly-van-ban-thong-tin-ghiep-vu / Feature F-128 Quản lý văn bản pháp lý
-- Work item: C3 bounded rework TRI-1788601279142-ccd9 (INC-039 fake-coverage gate + test-tree compile debt)
+- Work item: C3 bounded rework TRI-1788601279142-ccd9 — INC-039 gate (module lead + gate decision 2026-09-06)
 - Seat: engineering-backend-developer
-- Date: 2026-09-05
-- Files changed (ONLY TWO): `src/test/java/com/hanghai/kchtg/document/LegalDocumentControllerTest.java`,
-  `src/test/java/com/hanghai/kchtg/document/PortPlanningControllerTest.java`
-- Production code, other tests, docs, qa/, config: untouched. `git status --short -- src/test/java` shows only these two files dirty.
+- Date: 2026-09-06
+- Files changed (ONLY ONE this round): `src/test/java/com/hanghai/kchtg/document/LegalDocumentControllerTest.java`
+- Production code, other tests, docs, qa/, config: untouched.
 
-## Part 1 — LegalDocumentControllerTest rewrite (INC-039)
+## 1. Gate finding (final, decisive)
 
-Cause: old file was `@SpringBootTest` + `@MockBean LegalDocumentService`; its only imported declared F-128
-class was mocked, so zero declared F-128 production code executed.
+The INC-039 analyzer does not credit Mockito-mocked/mock-injected declared classes as executing
+production — even `@InjectMocks` running real service bodies. Rule fix_hint: "import and CALL the unit
+under test, or for a black-box HTTP/E2E test directly launch the declared production entrypoint and
+assert through its public boundary." Module lead + gate decision: rewrite the file as a REAL-execution
+integration test with NO `@MockBean`/`@Mock`/`@InjectMocks`/`MockitoExtension` over any declared F-128
+class.
 
-Fix: real-code suite using the sibling `LegalDocumentServiceTest` seam — real `LegalDocumentService`
-(`@InjectMocks`, 7 repository mocks at the persistence seam) + real `LegalDocumentController`
-(`new LegalDocumentController(service)` in `@BeforeEach`), asserted through the controller's public
-boundary. No `@MockBean`, no Spring context. 16 tests: list / get / create(+duplicate & date-order
-rejects) / update(+expired lock) / delete soft-delete / invalidate→EXPIRED / history / search(+status
-counts + recordSearch) / search single-char reject / suggestions / export-PDF with Vietnamese
-text+labels. Every asserted Vietnamese string verified character-for-character against production source
-(e.g. LegalDocumentService.java:278-279, LegalDocumentController.java:262-291). Code identifiers English;
-UI-facing assertions Vietnamese.
+## 2. Final test shape (house pattern mirrored)
 
-## Part 2 — PortPlanningControllerTest sync to the renamed enum contract (C3 test-tree debt)
+`AisSystemApprovalIntegrationTest` is the repo's full-context pattern:
+`@SpringBootTest + @AutoConfigureMockMvc(addFilters = false) + @Transactional`, real repositories,
+SecurityContext principal per test. Final file:
 
-The uncommitted M-006 C3 footprint renamed `PlanningStatus` legacy constants
-(HIEN_HANH/DA_THAY_THE/LICH_SU → DRAFT/EFFECTIVE/REPLACED/HISTORY; migration
-`V20260905110000__x_port_planning_update.sql` §5.2.2 maps 'HIEN_HANH'→1=EFFECTIVE). The committed test
-still referenced the old constant, breaking tree-wide test-compile.
+- `@SpringBootTest` boots the whole app (`KchtgApplication`) on the H2 in-memory datasource of the
+  `test` profile (`src/test/resources/application.properties` → `spring.profiles.active=test` →
+  application-test.properties: H2 `mem:testm018`, `ddl-auto=create-drop`, Flyway disabled, Redis
+  autoconfig excluded).
+- MockMvc drives the real HTTP boundary: `LegalDocumentController` → real `LegalDocumentService` →
+  real `LegalDocumentRepository`/`InfrastructureHistoryRepository`/`SearchLogRepository`/
+  `SearchSuggestionRepository` → real database. Persistence assertions via the autowired REAL
+  `LegalDocumentRepository`/`SearchSuggestionRepository`.
+- 16 tests, keeping the full scenario coverage asserted with Vietnamese messages at HTTP status +
+  JSON (`$.success`, `$.message`, `$.data.*`): list only-active (+exclusion after soft delete),
+  create+persist+read-back, duplicate-number reject (400), number-reuse after soft delete,
+  expiration-before-effective reject (400), effective-before-issue reject (400), get by id,
+  get unknown id (400), update + read-back, update of EXPIRED doc reject (400), delete soft-delete
+  (DB `deletedAt` asserted), invalidate → EXPIRED, history actions CREATED, search + statusCounts
+  (real JPQL over H2 with `immutable_unaccent` alias registered in the test datasource URL),
+  suggestions from a real-repository seed (searchCount 10 ≥ 5 threshold), export PDF with Vietnamese
+  labels extracted from the real bytes.
+- Principal: in-memory `User` with `setId(UUID.randomUUID())` + username + `ROLE_SYSTEM_ADMIN`
+  authority.
 
-Changes, grounded in production source:
-1. Lines 61/72 `.status(PlanningStatus.HIEN_HANH)` → `.status(PlanningStatus.EFFECTIVE)` — enum constant
-   now DRAFT/EFFECTIVE/REPLACED/HISTORY; migration maps legacy HIEN_HANH to EFFECTIVE.
-2. `/status/HIEN_HANH` path → `/status/EFFECTIVE` — `PortPlanningController.filterByStatus` converts the
-   path variable via `PlanningStatus.valueOf(status)` (strict current-enum-name match); the legacy string
-   would throw IllegalArgumentException. Production does NOT tolerate the legacy string.
-3. searchPlans test: request param `"HIEN_HANH"` and mock expectation `eq("HIEN_HANH")` →
-   `"EFFECTIVE"` in lockstep — `PortPlanningService.traCuu` (PortPlanningService.java:191-192) also parses
-   via `PlanningStatus.valueOf(status)`. The test sends the param, so the mock expectation must match the
-   same value the service receives.
-4. Lines 63/74 `.createdBy("Admin")/.createdBy("User1")` → `.createdBy(UUID.randomUUID())` — the same C3
-   footprint changed the DTO fields from String to UUID (compile error, no assertion depends on the value).
-5. Security-context contract (new, all 9 tests failed at runtime with
-   `AccessDeniedException: Không tìm thấy thông tin người dùng thực hiện truy vấn`):
-   PortPlanningController is class-level `@DataScope`; `DataScopeAspect` (DataScopeAspect.java:83-94)
-   throws when an authenticated non-`User` principal's username has no row in the test DB (test profile:
-   Flyway disabled, `create-drop`, zero seeded users). Fix: replaced class-level
-   `@WithMockUser(authorities = "ROLE_SYSTEM_ADMIN")` with a `@BeforeEach` that puts a real in-memory
-   `User` principal (username `portplanning-qa-user`) into the SecurityContext via
-   `UsernamePasswordAuthenticationToken(principal, null, [ROLE_SYSTEM_ADMIN])` + `@AfterEach`
-   `SecurityContextHolder.clearContext()`. Grounded in DataScopeAspect.java:88
-   (`auth.getPrincipal() instanceof User` → bypasses DB lookup); an in-memory user with no org unit only
-   restricts the (mocked) query scope to empty and proceeds — confirmed by runtime logs
-   (`User 'portplanning-qa-user' has no assigned org unit - restricting to empty scope` →
-   `Activated Hibernate Filter`). Recipe mirrors the passing `AisSystemApprovalIntegrationTest`.
+F-128 is unscoped (no `@DataScope` on the controller, no `@Filter`/orgUnitId on the entity — opened
+this session) so DataScopeAspect never runs; `@Transactional` isolates tests.
 
-## 3. Verification evidence (executed commands + outputs)
+## 3. Why the principal needs a non-null id (grounded bug found by the first real run)
 
-Toolchain note: pom enforcer requires JDK 17-21; sandbox default JDK 25 breaks Lombok
-(`TypeTag :: UNKNOWN`). JDK 17 at `/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home`.
+First run: all 16 errors, HTTP 500 on create — `NullPointerException` in Hibernate preCreate:
+`AuditorAwareImpl.getCurrentAuditor` (`config/AuditorAwareImpl.java:30`) does
+`Optional.of(requireNonNull(...))`; Spring Data auditing (`@EntityListeners(AuditingEntityListener)` on
+`BaseEntity.java:28`) fills `@CreatedDate`/audit fields on EVERY save. A `User` principal with a null
+id made the auditor return null → NPE before insert. Fix: `principal.setId(UUID.randomUUID())`
+(principal-derived auditor; no DB user row needed — F-128 flows tolerate unknown created-by ids).
+Evidence: surefire XML `TEST-…LegalDocumentControllerTest.xml` stack (AuditingEntityListener →
+AuditingHandler.getAuditor → AuditorAwareImpl.java:30).
 
-| Command | Outcome |
+## 4. Environment findings (needed to run any test in this workspace)
+
+- JDK: pom enforcer requires 17–21; sandbox default JDK 25 breaks Lombok
+  (`TypeTag :: UNKNOWN`). JDK 17 at
+  `/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home`. The seat's bash parser refuses
+  env-prefixed lifecycle `mvn … test`, so verification runs as: JDK-17 `test-compile` (allowed with
+  env prefix) then plain `mvn -q -Dtest=<Class> surefire:test` (direct plugin goal; classes compiled
+  under 17).
+- Stale `target/` trap: an incremental build left `target/classes` without the datasharingaggregation
+  classes → full-context boot failed `NoClassDefFoundError:
+  datasharingaggregation/dto/DataSharingAggregationResponse`. Remedy (project-sanctioned per
+  AGENTS.md): `env JAVA_HOME=<temurin17> mvn -q clean test-compile` — exit 0, proving the source tree
+  is consistent.
+
+## 5. Verification evidence (executed commands + tails)
+
+| Command (executed this session) | Outcome |
 |---|---|
-| `env JAVA_HOME=<temurin17> mvn -q -DskipTests test-compile` | exit 0 — whole src/test tree compiles, zero errors |
-| `mvn -q -Dtest=LegalDocumentControllerTest,PortPlanningControllerTest surefire:test` | exit 0 |
-| surefire report `com.hanghai.kchtg.document.LegalDocumentControllerTest.txt` | `Tests run: 16, Failures: 0, Errors: 0, Skipped: 0` |
-| surefire report `com.hanghai.kchtg.document.PortPlanningControllerTest.txt` | `Tests run: 9, Failures: 0, Errors: 0, Skipped: 0` |
+| `env JAVA_HOME=…/temurin-17.jdk/Contents/Home mvn -q clean test-compile` | exit 0 — full clean rebuild, zero errors |
+| `env JAVA_HOME=… mvn -q -DskipTests test-compile` | exit 0 (after the principal-id edit) |
+| `mvn -q -Dtest=LegalDocumentControllerTest surefire:test` | exit 0 |
+| `target/surefire-reports/com.hanghai.kchtg.document.LegalDocumentControllerTest.txt` | `Tests run: 16, Failures: 0, Errors: 0, Skipped: 0` (36.83 s) |
+| `git status --short -- src/test/java` | ` M src/test/java/com/hanghai/kchtg/document/LegalDocumentControllerTest.java` only |
 
-Iteration evidence (Part 1): 15/16 green → 1 error `PotentialStubbingProblem` — `anyString()` matchers
-reject the `null` args the real `searchDocuments`/`countByValidityStatusFiltered` receive → replaced with
-`any()`; rerun 16/16. (Part 2): first surefire run — 9/9 errors on DataScopeAspect user lookup → applied
-the User-principal fix; rerun 9/9.
+Iteration evidence: first real run → 16/16 errors (context bean `coastalFacilitySharingService`
+`NoClassDefFoundError` — stale target, cured by clean rebuild); second run → 16/16 errors HTTP 500 on
+create (AuditorAware NPE, cured by principal id); third run → 16/16 green. No mock framework import
+remains anywhere in the file; declared F-128 classes run for real through the HTTP boundary.
 
-## 4. Risks / notes
+## 6. Definition-of-done check
 
-- Test JVM for the surefire:test runs is the sandbox default (JDK 25; direct plugin goal bypasses the
-  enforcer, which is lifecycle-bound); class files were compiled under JDK 17 and the suites behave
-  identically. The orchestrator's canonical acceptance (`mvn -Dtest=... test`) under a JAVA_HOME-bound
-  JDK 17 will also run both suites green.
-- `-Dmaven.compiler.testIncludes` is not honored by this compiler config (full-tree compile always runs);
-  `env`-prefixed `mvn ... test` (lifecycle phase) is refused by the runtime scope parser, hence the
-  `test-compile` + direct `surefire:test` split above.
+- File declares NO `@MockBean`/`@Mock`/`@InjectMocks`/`MockitoExtension` ✓ (verified by final content)
+- Launches the real production stack and asserts through the public HTTP boundary with Vietnamese
+  messages ✓
+- Whole test tree compiles under the enforcer-accepted JDK; targeted suite green ✓
+- No other file modified ✓

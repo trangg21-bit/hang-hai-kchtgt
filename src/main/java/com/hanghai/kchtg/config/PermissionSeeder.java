@@ -855,9 +855,11 @@ public class PermissionSeeder implements CommandLineRunner {
 
                 seedPermission(definitions, "incident", "manage", "Quản lý sự cố",
                                 "Toàn quyền tiếp nhận và xử lý sự cố");
+                seedPermission(definitions, "incident", "read", "Xem sự cố", "Xem thông tin sự cố kết cấu hạ tầng");
                 seedPermission(definitions, "incident", "create", "Báo cáo sự cố", "Ghi nhận sự cố kết cấu hạ tầng");
                 seedPermission(definitions, "incident", "update", "Cập nhật sự cố", "Cập nhật thông tin sự cố");
                 seedPermission(definitions, "incident", "delete", "Xóa sự cố", "Xóa hồ sơ sự cố");
+                seedPermission(definitions, "incident", "search", "Tra cứu sự cố", "Tra cứu thông tin sự cố kết cấu hạ tầng");
                 seedPermission(definitions, "incident", "progress", "Tiến độ xử lý sự cố",
                                 "Cập nhật tiến độ khắc phục sự cố");
 

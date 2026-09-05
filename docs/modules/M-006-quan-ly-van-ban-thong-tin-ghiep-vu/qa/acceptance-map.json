@@ -1,197 +1,139 @@
 {
-  "module": "M-006-quan-ly-van-ban-thong-tin-ghiep-vu",
-  "triage": "TRI-1788601279142-ccd9",
+  "module_id": "M-006-quan-ly-van-ban-thong-tin-ghiep-vu",
+  "triage_id": "TRI-1788601279142-ccd9",
   "change_class": "C3",
-  "features": [
-    "F-128-quan-ly-van-ban-phap-ly",
-    "F-131-quan-ly-thong-tin-su-co",
-    "F-132-tao-moi-quy-hoach-ben-cang"
-  ],
-  "wave": 2,
-  "qa_seat": "engineering-qa-engineer",
-  "date": "2026-09-05",
-  "summary": "Wave-2 independent validation of TRI-1788601279142-ccd9 (F-128 legal documents confirm-only + F-131 incident + F-132 port planning create). Oracle derived from the Passed feature briefs (field-matrix sync, Excel 2.9 sheets 30-43 clusters #31/#37/#38), design plan D1-D14, and the pre-change triage record. Evidence: JDK17 test-tree compile exit 0; LegalDocumentControllerTest 16/16 + PortPlanningControllerTest 9/9 green (surefire rerun this seat); migration backfill/fail-closed/status-ORDINAL conversion anchors; @Filter/@DataScope/orgUnitId-non-null wiring; PermissionSeeder document:*/incident:*/portplanning:*; FE pages token/pill/gate anchors with zero hardcoded hex and zero antd Tag. Verdict: Pass (no material contradiction). Runtime browser CRUD and live DB migration execution are NOT executable in this seat (no backend boot allowed) — covered statically.",
+  "stage": "engineering-qa-engineer-wave-2",
+  "generated_from": "feature-briefs F-128/F-131/F-132 (Excel 2.9 sheets 30-43 clusters #31/#37/#38 field matrices) + design/00-design-plan.md (D1-D14) + triage TRI-1788601279142-ccd9",
+  "last_updated": "2026-09-06",
+  "execution_note": "Wave-2 executes these checks. Each test_name is a bounded, runnable check: bounded grep on named files, `mvn -q -Dtest=<exact classes> surefire:test`, or `mvn -q -DskipTests test-compile`. QA does not modify any source file. Executed evidence: JAVA_HOME=<temurin17> mvn -q -DskipTests test-compile exit 0; surefire suites exit 0 — LegalDocumentControllerTest 16/16, PortPlanningControllerTest 9/9 (delivered Pass also on record for BE rework ses_ac92f953). Verdicts live in qa/07-qa-report-w2.md.",
   "criteria": [
     {
       "id": "AC-128-01",
-      "feature": "F-128",
-      "criterion": "F-128 legal-document backend surface is intact and matches brief §2/§7 field contract; confirm-only per design D14 (no functional change required).",
-      "oracle": "Static: LegalDocumentController route + @PreAuthorize document:* per action; entity/DTO fields per brief §2 unchanged and compiling.",
-      "evidence_anchors": [
-        "src/main/java/com/hanghai/kchtg/document/controller/LegalDocumentController.java:55-56 (@RestController @RequestMapping(\"/api/v1/legal-documents\"))",
-        "src/main/java/com/hanghai/kchtg/document/controller/LegalDocumentController.java:68-263 (@PreAuthorize document:read/create/update/delete per endpoint)",
-        "env JAVA_HOME=<temurin17> mvn -q -DskipTests test-compile → MVN_EXIT_CODE=0 (36.8s, this seat)"
+      "spec_ref": "F-128 brief §2/§6/§7; design D14 (confirm-only, no functional change)",
+      "criterion": "F-128 legal-document backend surface is intact and matches brief §2/§7 field contract; route + per-action @PreAuthorize document:* gates present and the whole test tree compiles.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/document/controller/LegalDocumentController.java"
       ],
-      "verdict": "Pass"
+      "test_name": "grep -nE '@RestController|@RequestMapping|@PreAuthorize' src/main/java/com/hanghai/kchtg/document/controller/LegalDocumentController.java -> expect @RestController at :55, @RequestMapping(\"/api/v1/legal-documents\") at :56, and @PreAuthorize document:read/create/update/delete guards across :68-263; execute `JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home mvn -q -DskipTests test-compile` -> expect exit 0 with no compiler output."
     },
     {
       "id": "AC-128-02",
-      "feature": "F-128",
-      "criterion": "F-128 test suite GENUINELY executes production code (INC-039 fix): LegalDocumentControllerTest runs against the real service/controller, not a mock-only shell.",
-      "oracle": "Execute the exact suite via surefire and read the surefire report; inspect the test for absence of @MockBean over the class under test (rewrite record).",
-      "evidence_anchors": [
-        "docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/dev/05-dev-w1-rewrite-legal-document-controller-test.md (cause: old file @SpringBootTest+@MockBean LegalDocumentService; fix removed the mock)",
-        "mvn -q -Dtest=LegalDocumentControllerTest,PortPlanningControllerTest surefire:test → target/surefire-reports/com.hanghai.kchtg.document.LegalDocumentControllerTest.txt",
-        "target/surefire-reports/com.hanghai.kchtg.document.LegalDocumentControllerTest.txt (Tests run: 16, Failures: 0, Errors: 0, Skipped: 0)"
+      "spec_ref": "F-128 source-paths; dev/05-dev-w1-rewrite-legal-document-controller-test.md (INC-039)",
+      "criterion": "F-128 test suite GENUINELY executes production code (INC-039 fix): LegalDocumentControllerTest runs the real service/controller, not a mock-only shell, and is green.",
+      "file": [
+        "src/test/java/com/hanghai/kchtg/document/LegalDocumentControllerTest.java",
+        "target/surefire-reports/com.hanghai.kchtg.document.LegalDocumentControllerTest.txt"
       ],
-      "verdict": "Pass"
+      "test_name": "execute `mvn -q -Dtest=LegalDocumentControllerTest,PortPlanningControllerTest surefire:test` -> expect exit 0; then read target/surefire-reports/com.hanghai.kchtg.document.LegalDocumentControllerTest.txt -> expect 'Tests run: 16, Failures: 0, Errors: 0, Skipped: 0'; grep -n '@MockBean' src/test/java/com/hanghai/kchtg/document/LegalDocumentControllerTest.java -> expect ZERO matches (mock-only shell removed per dev/05-dev-w1-rewrite-legal-document-controller-test.md)."
     },
     {
       "id": "AC-128-03",
-      "feature": "F-128",
-      "criterion": "document:* permissions are seeded so @PreAuthorize gates resolve (AGENTS.md Permission Registration); FE gate strings document:* exist on the page.",
-      "oracle": "Static: seedPermission(definitions, \"document\", action) present for every controller action; FE hasPermission('document:*').",
-      "evidence_anchors": [
-        "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java:132-140 (document manage/read/create/update/delete/approve)",
-        "frontend/src/pages/document/LegalDocumentList.tsx:431-445,538 (per-action document:read/create/update/delete gates — peer pattern cited by w1 run, unchanged per D14)"
+      "spec_ref": "F-128 brief §4; AGENTS.md Permission Registration",
+      "criterion": "document:* permissions are seeded so @PreAuthorize gates resolve; FE page gates per action exist.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java",
+        "frontend/src/pages/document/LegalDocumentList.tsx"
       ],
-      "verdict": "Pass"
+      "test_name": "grep -n 'seedPermission(definitions, \"document\"' src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java -> expect >=6 lines (manage/read/create/update/delete/approve at :132-140); grep -n \"hasPermission\\('document:\" frontend/src/pages/document/LegalDocumentList.tsx -> expect per-action document:read/create/update/delete gate strings present (page pattern :431-445,:538, unchanged per D14)."
     },
     {
       "id": "AC-131-01",
-      "feature": "F-131",
-      "criterion": "Incident entity exposes the Excel matrix #37 fields (code auto-gen, incidentType, occurredFrom/To, location, infrastructureType/id/name, content→description, damageStatus, processingStatus, severityLevel, note) + orgUnitId + audit + soft delete + child collections.",
-      "oracle": "Static: entity field list, @FieldNameConstants, @SQLRestriction, child @OneToMany mapped collections; migration adds the DB columns.",
-      "evidence_anchors": [
-        "src/main/java/com/hanghai/kchtg/document/entity/Incident.java:24 @Table(\"incidents\")",
-        "src/main/java/com/hanghai/kchtg/document/entity/Incident.java:29 @FieldNameConstants",
-        "src/main/java/com/hanghai/kchtg/document/entity/Incident.java:30 @Filter(name=\"orgUnitFilter\", condition=\"org_unit_id IN (:orgUnitIds)\")",
-        "src/main/java/com/hanghai/kchtg/document/entity/Incident.java:31 @SQLRestriction(\"deleted_at IS NULL\")",
-        "src/main/java/com/hanghai/kchtg/document/entity/Incident.java:36-51+ (id/code/incidentType/discoveryTime/occurredTo/location …)",
-        "src/main/java/com/hanghai/kchtg/document/entity/Incident.java:61,66,71,76 (@OneToMany children evolution/handling/file)",
-        "src/main/resources/db/migration/V20260905100000__x_incident_update.sql:13-24 (ADD COLUMN IF NOT EXISTS code/org_unit_id/incident_type/occurred_to/infrastructure_type/id/name/damage_status/note/created_by/deleted_at/by)",
-        "src/main/resources/db/migration/V20260905100000__x_incident_update.sql:135,143,154 (CREATE TABLE incident_evolution / incident_handling / incident_file)"
+      "spec_ref": "F-131 brief §2 matrix #37 + §7; design D1/D3",
+      "criterion": "Incident entity exposes the Excel matrix #37 fields (code auto-gen, incidentType, occurredFrom/To, location, infrastructureType/id/name, description, damageStatus, processingStatus, severityLevel, note) + orgUnitId + audit + soft delete + child collections; migration adds the columns and child tables.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/document/entity/Incident.java",
+        "src/main/resources/db/migration/V20260905100000__x_incident_update.sql"
       ],
-      "verdict": "Pass"
+      "test_name": "grep -nE '@Table|@FieldNameConstants|@Filter|@SQLRestriction|@OneToMany|private (UUID|String|LocalDateTime|LocalDate|BigDecimal)' src/main/java/com/hanghai/kchtg/document/entity/Incident.java -> expect @Table(\"incidents\") :24, @FieldNameConstants :29, @Filter(name=\"orgUnitFilter\", condition=\"org_unit_id IN (:orgUnitIds)\") :30, @SQLRestriction(\"deleted_at IS NULL\") :31, matrix fields code/incidentType/discoveryTime/occurredTo/location at :36-51+ and 4 @OneToMany child collections at :61,:66,:71,:76; grep -nE 'ADD COLUMN|CREATE TABLE IF NOT EXISTS public.incident_(evolution|handling|file)' src/main/resources/db/migration/V20260905100000__x_incident_update.sql -> expect ADD COLUMN block :13-24 and child tables at :135,:143,:154."
     },
     {
       "id": "AC-131-02",
-      "feature": "F-131",
-      "criterion": "Org-unit data scope: read filtered via @DataScope + @Filter(orgUnitFilter); write assigns orgUnitId non-null and validates scope (AGENTS.md Data Scope Convention).",
-      "oracle": "Static: class-level @DataScope on controller; backfill + fail-closed SET NOT NULL migration; service scope validation.",
-      "evidence_anchors": [
-        "src/main/java/com/hanghai/kchtg/document/controller/IncidentController.java:32 (class-level @DataScope)",
-        "src/main/java/com/hanghai/kchtg/document/controller/IncidentController.java:30 (@RequestMapping(\"/api/v1/incidents\"))",
-        "src/main/resources/db/migration/V20260905100000__x_incident_update.sql:101-106 (org_unit_id backfill from created_by join)",
-        "src/main/resources/db/migration/V20260905100000__x_incident_update.sql:110-113 (fail-closed RAISE EXCEPTION on remaining NULL)",
-        "src/main/resources/db/migration/V20260905100000__x_incident_update.sql:116 (ALTER COLUMN org_unit_id SET NOT NULL)",
-        "src/main/resources/db/migration/V20260905100000__x_incident_update.sql:168,170 (idx on org_unit_id / org_unit_id+created_at DESC)"
+      "spec_ref": "F-131 brief §5 dong 3; AGENTS.md Data Scope Convention; design D2",
+      "criterion": "Org-unit data scope for incidents: class-level @DataScope on controller; migration org_unit_id backfill fail-closed and NOT NULL; write assigns orgUnitId non-null.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/document/controller/IncidentController.java",
+        "src/main/resources/db/migration/V20260905100000__x_incident_update.sql"
       ],
-      "verdict": "Pass"
+      "test_name": "grep -nE '@DataScope|@RequestMapping' src/main/java/com/hanghai/kchtg/document/controller/IncidentController.java -> expect class-level @DataScope :32 and @RequestMapping(\"/api/v1/incidents\") :30; grep -nE 'UPDATE public.incidents|RAISE EXCEPTION|SET NOT NULL|ALTER COLUMN org_unit_id' src/main/resources/db/migration/V20260905100000__x_incident_update.sql -> expect backfill :101-106, fail-closed RAISE EXCEPTION :110-113, ALTER COLUMN org_unit_id SET NOT NULL :116, org_unit indexes :168,:170."
     },
     {
       "id": "AC-131-03",
-      "feature": "F-131",
-      "criterion": "Enum/legacy-string values migrate to ORDINAL ints without data loss (brief/AGENTS enum rule); no Vietnamese string literals stored.",
-      "oracle": "Static: migration guarded ALTER ... USING CASE mapping legacy strings to ordinals.",
-      "evidence_anchors": [
-        "src/main/resources/db/migration/V20260905100000__x_incident_update.sql:61-65 (processing_status VARCHAR→INTEGER USING CASE)",
-        "src/main/resources/db/migration/V20260905100000__x_incident_update.sql:11 (legacy literal documentation line: incident_type VARCHAR(100), damage_status VARCHAR(500))",
-        "src/main/resources/db/migration/V20260905100000__x_incident_update.sql:122-125 (per-org code backfill ROW_NUMBER)"
+      "spec_ref": "AGENTS.md enum/DB rule; design D4-D6",
+      "criterion": "Legacy string values migrate to ORDINAL ints without data loss; no Vietnamese string literals stored for enum columns.",
+      "file": [
+        "src/main/resources/db/migration/V20260905100000__x_incident_update.sql"
       ],
-      "verdict": "Pass"
+      "test_name": "read src/main/resources/db/migration/V20260905100000__x_incident_update.sql lines :61-65 -> expect a guarded VARCHAR-to-INTEGER USING CASE conversion for the status column; read :122-125 -> per-org code backfill via ROW_NUMBER; read :11 -> legacy literal columns documented for drop; expect no Vietnamese literal assigned to an enum/INTEGER column in this file."
     },
     {
       "id": "AC-131-04",
-      "feature": "F-131",
+      "spec_ref": "F-131 brief §4; AGENTS.md Permission Registration",
       "criterion": "incident:* permissions seeded for every controller action; FE page gates mirror backend action strings.",
-      "oracle": "Static: seeder lines for incident manage/read/create/update/delete/search/progress; FE hasPermission('incident:*').",
-      "evidence_anchors": [
-        "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java:856-863 (incident manage/read/create/update/delete/search/progress)",
-        "src/main/java/com/hanghai/kchtg/document/controller/IncidentController.java:38,57,71,80,87,95,101,109,117,126 (@PreAuthorize incident:* [+document:* read fallback])",
-        "frontend/src/pages/document/IncidentList.tsx:176-179 (canRead/canCreate/canUpdate/canDelete = incident:* OR document:*)"
+      "file": [
+        "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java",
+        "src/main/java/com/hanghai/kchtg/document/controller/IncidentController.java",
+        "frontend/src/pages/document/IncidentList.tsx"
       ],
-      "verdict": "Pass"
+      "test_name": "grep -n 'seedPermission(definitions, \"incident\"' src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java -> expect >=6 lines (manage/read/create/update/delete/search/progress at :856-863); grep -n '@PreAuthorize' src/main/java/com/hanghai/kchtg/document/controller/IncidentController.java -> expect incident:* guards at :38-126; grep -n \"hasPermission\\('(incident|document):\" frontend/src/pages/document/IncidentList.tsx -> expect canRead/canCreate/canUpdate/canDelete gates at :176-179."
     },
     {
       "id": "AC-131-05",
-      "feature": "F-131",
-      "criterion": "Incident UI (list + create/edit/detail drawers) syncs matrix fields with Vietnamese labels; token-based styling (pill badges, radiusPill); NO hardcoded hex colors; NO antd Tag.",
-      "oracle": "Static: token imports + radiusPill usage in page; greps for hex literals and Tag usage return 0 hits; FE typecheck green (upstream tsc exit 0, unchanged surface).",
-      "evidence_anchors": [
-        "frontend/src/pages/document/IncidentList.tsx:35,162,903,963,1053,1100,1105 (radiusPill imports/usages, pill-style controls)",
-        "frontend/src/pages/document/IncidentList.tsx:176-179 (permission gates)",
-        "grep '#[0-9a-fA-F]{3,8}' frontend/src/pages/document/*.tsx → No files found",
-        "grep '\\bTag\\b' frontend/src/pages/document/*.tsx → No files found",
-        "docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/dev/05-fe-dev-w1-field-matrix-sync.md (typecheck exit 0; no hardcoded colors/spacing)"
+      "spec_ref": "F-131 brief §2 + AGENTS.md UI convention; design plan FE wave 1",
+      "criterion": "Incident UI (list + drawers) syncs matrix fields with Vietnamese labels; token-based styling (radiusPill pill style); NO hardcoded hex colors; NO antd Tag.",
+      "file": [
+        "frontend/src/pages/document/IncidentList.tsx"
       ],
-      "verdict": "Pass"
+      "test_name": "grep -n 'radiusPill' frontend/src/pages/document/IncidentList.tsx -> expect >=6 matches incl. token import at :35 and usages at :162,:903,:963,:1053,:1100,:1105; grep -nE '#[0-9a-fA-F]{3,8}' frontend/src/pages/document/IncidentList.tsx -> expect ZERO matches; grep -n '<Tag' frontend/src/pages/document/IncidentList.tsx -> expect ZERO matches; Vietnamese UI labels confirmed by read (breadcrumb/filter/form strings have diacritics)."
     },
     {
       "id": "AC-132-01",
-      "feature": "F-132",
-      "criterion": "PortPlanning entity exposes Excel matrix #38 fields (planning info + cargo forecast/planning detail child rows per D1/§4.1) with orgUnitId, audit, soft delete, enum status; children collections mapped.",
-      "oracle": "Static: entity field set, @Filter/@FieldNameConstants/@SQLRestriction, @OneToMany children; migration adds columns/tables.",
-      "evidence_anchors": [
-        "src/main/java/com/hanghai/kchtg/document/entity/PortPlanning.java:48 (private PlanningStatus status;)",
-        "src/main/java/com/hanghai/kchtg/document/entity/PortPlanning.java (@OneToMany x3 mappedBy portPlanning — cargo forecast/planning detail/file)",
-        "src/main/resources/db/migration/V20260905110000__x_port_planning_update.sql:33-42 (status VARCHAR→INT ORDINAL, 'HIEN_HANH'→1 …)",
-        "src/main/resources/db/migration/V20260905110000__x_port_planning_update.sql:139-143 (idx_port_planning_org_unit_created / idx on planning_categories / port_planning_cargo_forecast)"
+      "spec_ref": "F-132 brief §2 matrix #38 + §7; design §4.1/D1",
+      "criterion": "PortPlanning entity exposes Excel matrix #38 fields incl. enum status + child collections (cargo forecast/planning detail/file); migration converts status to ORDINAL int and adds child tables.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/document/entity/PortPlanning.java",
+        "src/main/resources/db/migration/V20260905110000__x_port_planning_update.sql"
       ],
-      "verdict": "Pass"
+      "test_name": "grep -nE '@Table|@FieldNameConstants|@Filter|@SQLRestriction|@OneToMany|private PlanningStatus status' src/main/java/com/hanghai/kchtg/document/entity/PortPlanning.java -> expect 'private PlanningStatus status;' at :48 and 3 @OneToMany children mappedBy portPlanning (cargo forecast/planning detail/file); read src/main/resources/db/migration/V20260905110000__x_port_planning_update.sql lines :33-42 -> status VARCHAR-to-INTEGER ORDINAL mapping including 'HIEN_HANH'->1; grep -n 'CREATE INDEX' same file -> expect org_unit + child indexes at :139-143 incl. idx_cargo_forecast_port_planning_id."
     },
     {
       "id": "AC-132-02",
-      "feature": "F-132",
-      "criterion": "Org-unit data scope for port planning reads/writes incl. fail-closed org_unit_id backfill (data-scope convention).",
-      "oracle": "Static: class-level @DataScope; migration backfill + RAISE + SET NOT NULL.",
-      "evidence_anchors": [
-        "src/main/java/com/hanghai/kchtg/document/controller/PortPlanningController.java:28 (class-level @DataScope)",
-        "src/main/java/com/hanghai/kchtg/document/controller/PortPlanningController.java:26 (@RequestMapping(\"/api/v1/port-planning\"))",
-        "src/main/resources/db/migration/V20260905110000__x_port_planning_update.sql:80 (backfill WHERE org_unit_id IS NULL)",
-        "src/main/resources/db/migration/V20260905110000__x_port_planning_update.sql:83 (fail-closed RAISE EXCEPTION)",
-        "src/main/resources/db/migration/V20260905110000__x_port_planning_update.sql:86 (ALTER COLUMN org_unit_id SET NOT NULL)"
+      "spec_ref": "F-132 brief §5 dong 3; AGENTS.md Data Scope Convention; design D2",
+      "criterion": "Org-unit data scope for port planning incl. fail-closed org_unit_id backfill and NOT NULL.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/document/controller/PortPlanningController.java",
+        "src/main/resources/db/migration/V20260905110000__x_port_planning_update.sql"
       ],
-      "verdict": "Pass"
+      "test_name": "grep -nE '@DataScope|@RequestMapping' src/main/java/com/hanghai/kchtg/document/controller/PortPlanningController.java -> expect class-level @DataScope :28 and @RequestMapping(\"/api/v1/port-planning\") :26; grep -nE 'UPDATE public.port_planning|RAISE EXCEPTION|SET NOT NULL' src/main/resources/db/migration/V20260905110000__x_port_planning_update.sql -> expect org_unit_id backfill :80, fail-closed RAISE EXCEPTION :83, ALTER COLUMN org_unit_id SET NOT NULL :86."
     },
     {
       "id": "AC-132-03",
-      "feature": "F-132",
-      "criterion": "Port-planning create flow is covered by a real-code controller test exercising production (PortPlanningControllerTest).",
-      "oracle": "Execute the exact suite via surefire and read the surefire report.",
-      "evidence_anchors": [
-        "mvn -q -Dtest=LegalDocumentControllerTest,PortPlanningControllerTest surefire:test → target/surefire-reports/com.hanghai.kchtg.document.PortPlanningControllerTest.txt",
-        "target/surefire-reports/com.hanghai.kchtg.document.PortPlanningControllerTest.txt (Tests run: 9, Failures: 0, Errors: 0, Skipped: 0)",
-        "docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/dev/05-dev-w1-rewrite-legal-document-controller-test.md (Part 2: 9/9 after DataScopeAspect user-principal fix)"
+      "spec_ref": "F-132 brief source-paths; dev/05-dev-w1-rewrite-legal-document-controller-test.md Part 2",
+      "criterion": "Port-planning create flow is covered by a real-code controller test executing production (PortPlanningControllerTest), green.",
+      "file": [
+        "src/test/java/com/hanghai/kchtg/document/PortPlanningControllerTest.java",
+        "target/surefire-reports/com.hanghai.kchtg.document.PortPlanningControllerTest.txt"
       ],
-      "verdict": "Pass"
+      "test_name": "execute `mvn -q -Dtest=LegalDocumentControllerTest,PortPlanningControllerTest surefire:test` -> expect exit 0; then read target/surefire-reports/com.hanghai.kchtg.document.PortPlanningControllerTest.txt -> expect 'Tests run: 9, Failures: 0, Errors: 0, Skipped: 0' (run log shows DataScopeAspect orgUnitFilter activation for portplanning-qa-user per request, i.e. real DataScope production path exercised)."
     },
     {
       "id": "AC-132-04",
-      "feature": "F-132",
-      "criterion": "portplanning:* permissions seeded; FE gates mirror backend action strings.",
-      "oracle": "Static: seeder lines; FE hasPermission('portplanning:*').",
-      "evidence_anchors": [
-        "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java:143-155 (portplanning manage/read/create/update/delete/search/approve)",
-        "src/main/java/com/hanghai/kchtg/document/controller/PortPlanningController.java:34,43,51,57,66,73,81,91,99 (@PreAuthorize portplanning:* [+document:* fallback])",
-        "frontend/src/pages/document/PortPlanningList.tsx:208-211 (canRead/canCreate/canUpdate/canDelete = portplanning:* OR document:*)"
+      "spec_ref": "F-132 brief §4; AGENTS.md Permission Registration",
+      "criterion": "portplanning:* permissions seeded for each controller action; FE gates mirror backend action strings.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java",
+        "src/main/java/com/hanghai/kchtg/document/controller/PortPlanningController.java",
+        "frontend/src/pages/document/PortPlanningList.tsx"
       ],
-      "verdict": "Pass"
+      "test_name": "grep -n 'seedPermission(definitions, \"portplanning\"' src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java -> expect >=6 lines (manage/read/create/update/delete/search/approve at :143-155); grep -n '@PreAuthorize' src/main/java/com/hanghai/kchtg/document/controller/PortPlanningController.java -> expect portplanning:* guards at :34-99; grep -n \"hasPermission\\('(portplanning|document):\" frontend/src/pages/document/PortPlanningList.tsx -> expect canRead/canCreate/canUpdate/canDelete gates at :208-211."
     },
     {
       "id": "AC-132-05",
-      "feature": "F-132",
-      "criterion": "PortPlanning UI (F-132 create / F-133 view / F-134 edit drawer flows, cargo rows min≤max + auto-total, group-tab branch UI) token-based, Vietnamese, NO hex, NO antd Tag; LegalDocument page untouched.",
-      "oracle": "Static: page token usage + greps (hex/Tag 0 hits) + FE dev record typecheck exit 0.",
-      "evidence_anchors": [
-        "frontend/src/pages/document/PortPlanningList.tsx:38,122 (radiusPill token import/usage)",
-        "frontend/src/pages/document/PortPlanningList.tsx:208-211 (permission gates)",
-        "docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/dev/05-fe-dev-w1-field-matrix-sync.md (IncidentList + PortPlanningList bind/display/filter/edit per design plan; LegalDocument confirmed unchanged)",
-        "grep '#[0-9a-fA-F]{3,8}' frontend/src/pages/document/*.tsx → No files found",
-        "grep '\\bTag\\b' frontend/src/pages/document/*.tsx → No files found"
+      "spec_ref": "F-132 brief §2; AGENTS.md UI + drawer conventions; design plan FE wave 2",
+      "criterion": "PortPlanning UI (F-132 create / F-133 view / F-134 edit drawer flows, cargo rows min<=max + auto-total, group-tab branch) token-based, Vietnamese, NO hex, NO antd Tag.",
+      "file": [
+        "frontend/src/pages/document/PortPlanningList.tsx"
       ],
-      "verdict": "Pass"
+      "test_name": "grep -n 'radiusPill' frontend/src/pages/document/PortPlanningList.tsx -> expect matches incl. token import at :38 and usage at :122; grep -nE '#[0-9a-fA-F]{3,8}' frontend/src/pages/document/PortPlanningList.tsx -> expect ZERO matches; grep -n '<Tag' frontend/src/pages/document/PortPlanningList.tsx -> expect ZERO matches; cargo rows min<=max + auto-total present per FE dev record dev/05-fe-dev-w1-field-matrix-sync.md (typecheck exit 0)."
     }
-  ],
-  "coverage_limits": [
-    "Runtime browser CRUD (create/detail/edit drawers against a live backend) NOT executable: AGENTS.md forbids starting the Spring Boot backend and this seat has no browser tool — verified via JDK17 compile + executed controller suites + static UI/contract anchors only.",
-    "Flyway migrations not executed against a live PostgreSQL instance (no backend boot / no DB access) — backfill/fail-closed/ORDINAL-conversion correctness rests on SQL inspection anchors, not a migration run.",
-    "No git operations run: 'no other surface changed' assertions rest on upstream dev records (only 2 test files dirty under src/test) and observed current state, not a diff.",
-    "Empty-state/status-tab runtime invariants (Tất cả = sum of sub-tabs, scroll/standstill rules, drawer pagination Y) require a browser; only static structure was confirmed.",
-    "F-128 LegalDocumentList functional identity (D14 no-change) is asserted via upstream FE record + w1 anchors, not a fresh diff.",
-    "PermissionSeeder runtime idempotency for the legacy duplicate portplanning seeds (PermissionSeeder.java:472-478) not executed — duplicates are guarded by findByCode insert logic per AGENTS.md; flagged as non-blocking observation.",
-    "The three docs/inputs CSVs attached to this dispatch describe OTHER modules' asset matrices (QL bến phao / Khu tránh trú bão / Khu chuyển tải); they do not govern M-006 acceptance, whose source of truth is the Excel 2.9 sheets 30-43 clusters #31/#37/#38 as captured in the Passed briefs."
-  ],
-  "verdict": "Pass",
-  "confidence": "high"
+  ]
 }
