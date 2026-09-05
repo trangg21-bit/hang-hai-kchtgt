@@ -1,10 +1,13 @@
 package com.hanghai.kchtg.document.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.document.dto.OperationConfirmationCreateRequest;
+import com.hanghai.kchtg.document.dto.OperationConfirmationResponse;
 import com.hanghai.kchtg.document.dto.OperationPlanCreateRequest;
 import com.hanghai.kchtg.document.dto.OperationPlanResponse;
 import com.hanghai.kchtg.document.entity.OperationStatus;
 import com.hanghai.kchtg.document.service.OperationPlanService;
+import com.hanghai.kchtg.security.annotation.DataScope;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,6 +26,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/operation-plans")
 @RequiredArgsConstructor
+@DataScope
 public class OperationPlanController {
 
     private final OperationPlanService operationPlanService;
@@ -84,6 +88,19 @@ public class OperationPlanController {
     public ResponseEntity<ApiResponse<Void>> deletePlan(@PathVariable UUID id) {
         operationPlanService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Xóa kế hoạch vận hành thành công", null));
+    }
+
+    /**
+     * POST /api/v1/operation-plans/{id}/confirmation
+     * Records the operation confirmation (chỉ khi trạng thái Hoàn thành — 1 bản ghi/kế hoạch).
+     */
+    @PostMapping("/{id}/confirmation")
+    @PreAuthorize("@auth.check(authentication, 'operationplan:update') or @auth.check(authentication, 'document:update')")
+    public ResponseEntity<ApiResponse<OperationConfirmationResponse>> recordConfirmation(
+            @PathVariable UUID id,
+            @RequestBody @Valid OperationConfirmationCreateRequest request) {
+        OperationConfirmationResponse response = operationPlanService.recordConfirmation(id, request);
+        return ResponseEntity.ok(ApiResponse.success("Ghi nhận xác nhận vận hành thành công", response));
     }
 
     // ── Filter Endpoints ──────────────────────────────────────────────

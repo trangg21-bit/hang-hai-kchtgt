@@ -5,10 +5,14 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.experimental.FieldNameConstants;
+import org.hibernate.annotations.Filter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -21,6 +25,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@FieldNameConstants
+@Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
 public class MaintenancePlan {
 
     @Id
@@ -47,6 +53,27 @@ public class MaintenancePlan {
     @Column(name = "estimated_cost", precision = 15, scale = 2)
     private BigDecimal estimatedCost;
 
+    @Column(name = "org_unit_id")
+    private UUID orgUnitId;
+
+    @Column(name = "operating_org_unit_id")
+    private UUID operatingOrgUnitId;
+
+    @Column(name = "infrastructure_type", length = 50)
+    private String infrastructureType;
+
+    @Column(name = "code", length = 50)
+    private String code;
+
+    @Column(name = "name", length = 255)
+    private String name;
+
+    @Column(name = "content", columnDefinition = "TEXT")
+    private String content;
+
+    @Column(name = "note", length = 500)
+    private String note;
+
     @Column(name = "created_by")
     private UUID createdBy;
 
@@ -58,6 +85,18 @@ public class MaintenancePlan {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedDate;
+
+    @OneToMany(mappedBy = "maintenancePlan", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<MaintenanceResult> results = new ArrayList<>();
+
+    @OneToMany(mappedBy = "maintenancePlan", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<MaintenancePlanWork> workItems = new ArrayList<>();
+
+    @OneToMany(mappedBy = "maintenancePlan", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<MaintenancePlanFile> files = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {

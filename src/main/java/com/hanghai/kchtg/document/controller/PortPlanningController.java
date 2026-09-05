@@ -6,6 +6,7 @@ import com.hanghai.kchtg.document.dto.PortPlanningCreateRequest;
 import com.hanghai.kchtg.document.dto.PortPlanningResponse;
 import com.hanghai.kchtg.document.entity.PlanningStatus;
 import com.hanghai.kchtg.document.service.PortPlanningService;
+import com.hanghai.kchtg.security.annotation.DataScope;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -18,11 +19,13 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * REST controller for F-132 Quản lý quy hoạch bến cảng.
+ * REST controller for F-132/133/134 Quản lý quy hoạch bến cảng.
+ * Class-level @DataScope activates the Hibernate orgUnitFilter for every read.
  */
 @RestController
 @RequestMapping("/api/v1/port-planning")
 @RequiredArgsConstructor
+@DataScope
 public class PortPlanningController {
 
     private final PortPlanningService portPlanningService;
@@ -66,8 +69,6 @@ public class PortPlanningController {
         return ResponseEntity.ok(ApiResponse.success("Xóa quy hoạch bến cảng thành công", null));
     }
 
-    // ── Filter Endpoints ──────────────────────────────────────────────
-
     @GetMapping("/status/{status}")
     @PreAuthorize("@auth.check(authentication, 'portplanning:read') or @auth.check(authentication, 'document:read')")
     public ResponseEntity<ApiResponse<List<PortPlanningResponse>>> filterByStatus(
@@ -93,8 +94,6 @@ public class PortPlanningController {
             @RequestParam LocalDate end) {
         return ResponseEntity.ok(ApiResponse.success(portPlanningService.findByApprovalDateBetween(start, end)));
     }
-
-    // ── Dynamic Search Endpoint (F-133) ───────────────────────────────
 
     @GetMapping("/search")
     @PreAuthorize("@auth.check(authentication, 'portplanning:search') or @auth.check(authentication, 'portplanning:read') or @auth.check(authentication, 'document:read')")

@@ -6,6 +6,8 @@ import com.hanghai.kchtg.document.dto.PortPlanningCreateRequest;
 import com.hanghai.kchtg.document.dto.PortPlanningResponse;
 import com.hanghai.kchtg.document.entity.PlanningStatus;
 import com.hanghai.kchtg.document.service.PortPlanningService;
+import com.hanghai.kchtg.user.entity.User;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +17,9 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
@@ -31,7 +35,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
-@WithMockUser(authorities = "ROLE_SYSTEM_ADMIN")
 class PortPlanningControllerTest {
 
     @Autowired
@@ -58,9 +61,9 @@ class PortPlanningControllerTest {
                 .approvalDate(LocalDate.of(2025, 12, 15))
                 .applicationScope("Khu vực Bắc Bến Cảng A")
                 .mapScale("1/500")
-                .status(PlanningStatus.HIEN_HANH)
+                .status(PlanningStatus.EFFECTIVE)
                 .filePath("/files/quy-hoach-a-gd2.pdf")
-                .createdBy("Admin")
+                .createdBy(UUID.randomUUID())
                 .build();
 
         createRequest = PortPlanningCreateRequest.builder()
@@ -69,10 +72,34 @@ class PortPlanningControllerTest {
                 .approvalDate(LocalDate.of(2026, 1, 10))
                 .applicationScope("Khu vực Nam Bến Cảng B")
                 .mapScale("1/1000")
-                .status(PlanningStatus.HIEN_HANH)
+                .status(PlanningStatus.EFFECTIVE)
                 .filePath("/files/quy-hoach-b-gd1.pdf")
-                .createdBy("User1")
+                .createdBy(UUID.randomUUID())
                 .build();
+    }
+
+    /**
+     * Real principal for DataScopeAspect. PortPlanningController is class-level
+     * @DataScope, so every request passes DataScopeAspect, which throws when the
+     * authenticated principal's username has no row in the (empty, Flyway-disabled
+     * test) database. When the principal IS a {@link User} instance the aspect uses
+     * it directly (bypassing the DB lookup); an in-memory user with no org unit is
+     * restricted to an empty scope, which only parameterises the Hibernate filter and
+     * does not affect this suite (PortPlanningService is mocked). ROLE_SYSTEM_ADMIN
+     * satisfies the @PreAuthorize checks, mirroring the old @WithMockUser authority.
+     */
+    @BeforeEach
+    void setUpSecurityContext() {
+        User principal = new User();
+        principal.setUsername("portplanning-qa-user");
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(principal, null,
+                        List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -140,7 +167,7 @@ class PortPlanningControllerTest {
         when(portPlanningService.findByStatus(any(PlanningStatus.class)))
                 .thenReturn(List.of(testResponse));
 
-        mockMvc.perform(get("/api/v1/port-planning/status/HIEN_HANH"))
+        mockMvc.perform(get("/api/v1/port-planning/status/EFFECTIVE"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }
@@ -181,12 +208,12 @@ class PortPlanningControllerTest {
                 .build();
 
         when(portPlanningService.traCuu(
-                eq("Bến Cảng A"), eq("HIEN_HANH"), eq(LocalDate.of(2025, 1, 1)), eq(LocalDate.of(2025, 12, 31)), eq(0), eq(20)))
+                eq("Bến Cảng A"), eq("EFFECTIVE"), eq(LocalDate.of(2025, 1, 1)), eq(LocalDate.of(2025, 12, 31)), eq(0), eq(20)))
                 .thenReturn(searchResult);
 
         mockMvc.perform(get("/api/v1/port-planning/search")
                         .param("keyword", "Bến Cảng A")
-                        .param("status", "HIEN_HANH")
+                        .param("status", "EFFECTIVE")
                         .param("yearStart", "2025-01-01")
                         .param("yearEnd", "2025-12-31")
                         .param("page", "0").param("size", "20"))

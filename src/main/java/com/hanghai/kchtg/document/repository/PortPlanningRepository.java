@@ -7,44 +7,37 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
+@Repository
 public interface PortPlanningRepository extends JpaRepository<PortPlanning, UUID> {
 
-  boolean existsByProjectName(String projectName);
+    boolean existsByProjectName(String projectName);
 
-  boolean existsByProjectNameAndIdNot(String projectName, UUID id);
+    boolean existsByProjectNameAndIdNot(String projectName, UUID id);
 
-  /**
-   * Find by planning status
-   */
-  List<PortPlanning> findByStatus(PlanningStatus status);
+    Optional<PortPlanning> findByProjectName(String projectName);
 
-  /**
-   * Search by project name (partial match)
-   */
-  Page<PortPlanning> findByProjectNameContaining(String projectName, Pageable pageable);
+    List<PortPlanning> findByStatus(PlanningStatus status);
 
-  /**
-   * Find by approval date range
-   */
-  List<PortPlanning> findByApprovalDateBetween(LocalDate start, LocalDate end);
+    Page<PortPlanning> findByProjectNameContaining(String projectName, Pageable pageable);
 
-  /**
-   * Dynamic JPQL search with pagination (F-133).
-   */
-  @Query("SELECT q FROM PortPlanning q WHERE " +
-    "(cast(:keyword as string) IS NULL OR LOWER(q.projectName) LIKE :keyword) AND " +
-    "(:status IS NULL OR q.status = :status) AND " +
-    "(cast(:yearStart as date) IS NULL OR q.approvalDate >= :yearStart) AND " +
-    "(cast(:yearEnd as date) IS NULL OR q.approvalDate <= :yearEnd)")
-  Page<PortPlanning> findAllWithSearch(
-    @Param("keyword") String keyword,
-    @Param("status") PlanningStatus status,
-    @Param("yearStart") LocalDate yearStart,
-    @Param("yearEnd") LocalDate yearEnd,
-    Pageable pageable);
+    List<PortPlanning> findByApprovalDateBetween(LocalDate start, LocalDate end);
+
+    @Query("SELECT q FROM PortPlanning q WHERE " +
+            "(cast(:keyword as string) IS NULL OR LOWER(q.projectName) LIKE :keyword) AND " +
+            "(:status IS NULL OR q.status = :status) AND " +
+            "(cast(:yearStart as date) IS NULL OR q.approvalDate >= :yearStart) AND " +
+            "(cast(:yearEnd as date) IS NULL OR q.approvalDate <= :yearEnd)")
+    Page<PortPlanning> findAllWithSearch(
+            @Param("keyword") String keyword,
+            @Param("status") PlanningStatus status,
+            @Param("yearStart") LocalDate yearStart,
+            @Param("yearEnd") LocalDate yearEnd,
+            Pageable pageable);
 }

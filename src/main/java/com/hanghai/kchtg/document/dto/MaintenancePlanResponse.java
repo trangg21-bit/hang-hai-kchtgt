@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -28,8 +29,22 @@ public class MaintenancePlanResponse {
     private LocalDate estimatedEndDate;
     private MaintenanceStatus status;
     private BigDecimal estimatedCost;
+
+    private UUID orgUnitId;
+    private String orgUnitName;
+    private UUID operatingOrgUnitId;
+    private String infrastructureType;
+    private String code;
+    private String name;
+    private String content;
+    private String note;
+
     private UUID createdBy;
     private LocalDateTime createdDate;
     private UUID updatedBy;
     private LocalDateTime updatedDate;
+
+    private List<MaintenancePlanWorkResponse> workItems;
+    private List<MaintenancePlanFileResponse> files;
+    private List<MaintenanceResultResponse> results;
 }

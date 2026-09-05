@@ -23,6 +23,7 @@ public class MaintenanceResultResponse {
     private LocalDateTime actualStartDate;
     private LocalDateTime actualEndDate;
     private String resultDescription;
+    private String resultNote;
     private String replacedParts;
     private Long downtimeDuration;
     private String recorder;

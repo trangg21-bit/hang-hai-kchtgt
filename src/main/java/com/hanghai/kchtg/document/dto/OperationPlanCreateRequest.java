@@ -25,5 +25,15 @@ public class OperationPlanCreateRequest {
     private LocalTime startTime;
     private LocalTime endTime;
     private OperationStatus status;
+
+    private UUID orgUnitId;
+    private UUID operatingOrgUnitId;
+    private String infrastructureType;
+    private String code;
+    private String name;
+    private String content;
+    private LocalDate expectedStartDate;
+    private LocalDate expectedEndDate;
+    private String note;
     private UUID createdBy;
 }

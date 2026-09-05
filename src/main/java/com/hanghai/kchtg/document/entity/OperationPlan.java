@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.experimental.FieldNameConstants;
+import org.hibernate.annotations.Filter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -23,6 +25,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@FieldNameConstants
+@Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
 public class OperationPlan {
 
     @Id
@@ -48,6 +52,33 @@ public class OperationPlan {
     @Column(name = "status", length = 30)
     private OperationStatus status;
 
+    @Column(name = "org_unit_id")
+    private UUID orgUnitId;
+
+    @Column(name = "operating_org_unit_id")
+    private UUID operatingOrgUnitId;
+
+    @Column(name = "infrastructure_type", length = 50)
+    private String infrastructureType;
+
+    @Column(name = "code", length = 50)
+    private String code;
+
+    @Column(name = "name", length = 255)
+    private String name;
+
+    @Column(name = "content", columnDefinition = "TEXT")
+    private String content;
+
+    @Column(name = "expected_start_date")
+    private LocalDate expectedStartDate;
+
+    @Column(name = "expected_end_date")
+    private LocalDate expectedEndDate;
+
+    @Column(name = "note", length = 500)
+    private String note;
+
     @Column(name = "created_by")
     private UUID createdBy;
 
@@ -63,6 +94,18 @@ public class OperationPlan {
     @OneToMany(mappedBy = "operationPlan", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<OperationDetail> operationDetails = new ArrayList<>();
+
+    @OneToMany(mappedBy = "operationPlan", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<OperationPlanWork> workItems = new ArrayList<>();
+
+    @OneToMany(mappedBy = "operationPlan", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<OperationPlanFile> files = new ArrayList<>();
+
+    @OneToMany(mappedBy = "operationPlan", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<OperationConfirmation> confirmations = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
