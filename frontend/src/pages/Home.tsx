@@ -16,7 +16,6 @@ import {
 import {
   actionPrimary,
   colors,
-  dataSea3,
   fontSizeDisplay,
   fontSizeHeading,
   fontSizeLandingIcon,
@@ -70,9 +69,9 @@ const LANDING_CARD_CSS = `
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .landing-block-card:hover:not(:disabled) {
-  transform: translateY(-4px);
-  border-color: ${actionPrimary};
-  box-shadow: ${shadowLg};
+  transform: translateY(-3px);
+  border-color: ${actionPrimary} !important;
+  box-shadow: 0 10px 25px -4px rgba(32, 78, 156, 0.14) !important;
 }
 .landing-block-card:focus-visible {
   outline: 2px solid ${actionPrimary};
@@ -80,16 +79,58 @@ const LANDING_CARD_CSS = `
 }
 @media (prefers-reduced-motion: reduce) {
   .landing-block-card { transition: none; }
-}`;
+}
+`;
+
+const CompassMaritimeSvg = () => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height="220"
+    style={{
+      color: '#ffffff',
+      opacity: 0.08,
+      pointerEvents: 'none',
+      position: 'absolute',
+      right: -20,
+      top: '50%',
+      transform: 'translateY(-50%)',
+    }}
+    viewBox="0 0 200 200"
+    width="220"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <circle cx="100" cy="100" r="92" stroke="currentColor" strokeDasharray="2 4" strokeWidth="1.5" />
+    <circle cx="100" cy="100" r="84" stroke="currentColor" strokeWidth="1" />
+    <circle cx="100" cy="100" r="76" stroke="currentColor" strokeDasharray="4 4" strokeWidth="0.75" />
+    <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="1" />
+    <circle cx="100" cy="100" r="20" stroke="currentColor" strokeWidth="1" />
+    <line stroke="currentColor" strokeWidth="1" x1="100" x2="100" y1="4" y2="196" />
+    <line stroke="currentColor" strokeWidth="1" x1="4" x2="196" y1="100" y2="100" />
+    <line stroke="currentColor" strokeDasharray="2 2" strokeWidth="0.75" x1="32" x2="168" y1="32" y2="168" />
+    <line stroke="currentColor" strokeDasharray="2 2" strokeWidth="0.75" x1="32" x2="168" y1="168" y2="32" />
+    <polygon fill="currentColor" points="100,16 105,85 100,78 95,85" />
+    <polygon fill="currentColor" points="100,184 105,115 100,122 95,115" />
+    <polygon fill="currentColor" points="184,100 115,105 122,100 115,95" />
+    <polygon fill="currentColor" points="16,100 85,105 78,100 85,95" />
+    <polygon fill="currentColor" points="160,40 112,92 118,88 108,82" />
+    <polygon fill="currentColor" points="40,160 88,108 82,112 92,118" />
+    <polygon fill="currentColor" points="160,160 112,108 118,112 108,118" />
+    <polygon fill="currentColor" points="40,40 88,92 82,88 92,82" />
+    <circle cx="100" cy="100" fill="currentColor" r="5" />
+  </svg>
+);
 
 const HERO_STYLE: CSSProperties = {
-  background: `radial-gradient(90% 90% at 100% 0%, ${dataSea3} 0%, transparent 55%), linear-gradient(135deg, ${actionPrimary} 0%, ${sidebarBg} 100%)`,
+  background: `linear-gradient(135deg, ${sidebarBg} 0%, #1e4b94 50%, ${actionPrimary} 100%)`,
   borderRadius: radiusXl,
   boxShadow: shadowLg,
   boxSizing: 'border-box',
   color: surfaceCard,
   marginBottom: spaceMd,
+  overflow: 'hidden',
   padding: `${spaceLg}px ${spaceXl}px`,
+  position: 'relative',
   width: '100%',
 };
 
@@ -202,11 +243,12 @@ export default function HomePage() {
   const roleLabel = user?.role?.replace('ROLE_', '') || 'Quản trị viên';
 
   return (
-    <div style={{ boxSizing: 'border-box' }}>
+    <div style={{ boxSizing: 'border-box', margin: '0 auto', maxWidth: 1400, padding: '0 8px' }}>
       <style>{LANDING_CARD_CSS}</style>
 
-      {/* Hero — gradient navy (actionPrimary → sidebarBg) */}
+      {/* Hero — gradient navy (sidebarBg → #1e4b94 → actionPrimary) + la bàn chìm */}
       <section aria-label="Chào mừng" style={HERO_STYLE}>
+        <CompassMaritimeSvg />
         <h1
           style={{
             color: surfaceCard,
@@ -340,10 +382,17 @@ export default function HomePage() {
                     >
                       <div
                         style={{
+                          alignItems: 'center',
+                          background: '#edf3fc',
+                          borderRadius: '12px',
                           color: actionPrimary,
+                          display: 'flex',
                           fontSize: fontSizeLandingIcon,
+                          height: 48,
+                          justifyContent: 'center',
                           lineHeight: 1,
                           marginBottom: spaceMd,
+                          width: 48,
                         }}
                       >
                         {card.icon}

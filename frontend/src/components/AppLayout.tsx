@@ -193,17 +193,20 @@ export function collectOpenableKeys(items: MenuProps['items']): string[] {
   }, []);
 }
 
-export default function AppLayout({ initialSidebarHidden = false }: { initialSidebarHidden?: boolean } = {}) {
+export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidden?: boolean } = {}) {
   const isInIframe = window.self !== window.top;
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const collapsed = false;
-  const [sidebarHidden, setSidebarHidden] = useState(initialSidebarHidden);
+  const location = useLocation();
+  const [sidebarHidden, setSidebarHidden] = useState(() => {
+    if (initialSidebarHidden !== undefined) return initialSidebarHidden;
+    return location.pathname === '/';
+  });
   const isMenuFullScreen = false;
   const [openKeys, setOpenKeys] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   // M-024 rework: chips C0..C3 — tập level đang được phép hiển thị trong cây khối kcht
   const navigate = useNavigate();
-  const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const screens = useBreakpoint();
@@ -463,7 +466,14 @@ export default function AppLayout({ initialSidebarHidden = false }: { initialSid
     prevPathnameRef.current = location.pathname;
     if (prev === location.pathname) return;
     if (prev === '/' || location.pathname === '/') setSearchQuery('');
-  }, [location.pathname]);
+    if (initialSidebarHidden === undefined) {
+      if (location.pathname === '/') {
+        setSidebarHidden(true);
+      } else if (prev === '/') {
+        setSidebarHidden(false);
+      }
+    }
+  }, [location.pathname, initialSidebarHidden]);
   const displayedItems = isSearching ? filterMenuByQuery(menuItems, trimmedSearchQuery) : menuItems;
   const effectiveOpenKeys = isSearching
     ? collectOpenableKeys(displayedItems)
