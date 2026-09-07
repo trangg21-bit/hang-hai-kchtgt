@@ -23,9 +23,9 @@ import type { ReactNode } from 'react';
 import {
   DashboardOutlined, SettingOutlined, CompassOutlined, ContainerOutlined,
   BankOutlined, EnvironmentOutlined, GlobalOutlined, ApiOutlined,
-  BuildOutlined, ToolOutlined, AimOutlined, ExportOutlined, SafetyOutlined,
+  BuildOutlined, BulbOutlined, ToolOutlined, AimOutlined, ExportOutlined, SafetyOutlined,
   TruckOutlined, ApartmentOutlined, BlockOutlined, VideoCameraOutlined,
-  MonitorOutlined, FileTextOutlined, PieChartOutlined,
+  MonitorOutlined, FileTextOutlined, PieChartOutlined, RadarChartOutlined, DeploymentUnitOutlined,
 } from '@ant-design/icons';
 
 import { landingGroupIcons } from '../themetokenchk';
@@ -57,6 +57,7 @@ const icons = {
   compass: <CompassOutlined />,
   container: <ContainerOutlined />,
   bank: <BankOutlined />,
+  bulb: <BulbOutlined />,
   environment: <EnvironmentOutlined />,
   global: <GlobalOutlined />,
   api: <ApiOutlined />,
@@ -68,10 +69,12 @@ const icons = {
   truck: <TruckOutlined />,
   apartment: <ApartmentOutlined />,
   block: <BlockOutlined />,
+  deployment: <DeploymentUnitOutlined />,
   video: <VideoCameraOutlined />,
   monitor: <MonitorOutlined />,
   file: <FileTextOutlined />,
   pie: <PieChartOutlined />,
+  radar: <RadarChartOutlined />,
 };
 
 /* ============ CÂY KCHT — 28 loại theo ma trận cha–con ============ */
@@ -111,8 +114,8 @@ const kchtTree: NavNode[] = [
               { key: '/buoys', route: '/buoys', label: 'Quản lý Phao, tiêu', icon: icons.environment },
             ],
           },
-          { key: '/beacon-stations', route: '/beacon-stations', label: 'Đèn biển và nhà trạm', icon: icons.environment },
-          { key: '/dike-revetment', route: '/dike-revetment', label: 'Quản lý đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ', icon: icons.block },
+          { key: '/beacon-stations', route: '/beacon-stations', label: 'Quản lý Đèn biển và nhà trạm gắn với Đèn biển', icon: icons.bulb },
+          { key: '/dike-revetment', route: '/dike-revetment', label: 'Quản lý đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ', icon: icons.deployment },
         ],
       },
     ],
@@ -129,7 +132,7 @@ const kchtTree: NavNode[] = [
         route: '/vts-operation-center',
         label: 'Trung tâm điều hành VTS',
         children: [
-          { key: '/radar-station', route: '/radar-station', label: 'Trạm Radar' },
+          { key: '/radar-station', route: '/radar-station', label: 'Quản lý trạm radar', icon: icons.radar },
           { key: '/ais-system', route: '/ais-system', label: 'Hệ thống trạm bờ AIS' },
           { key: '/cctv', route: '/cctv', label: 'Quản lý hệ thống CCTV', icon: icons.video },
           { key: '/scada', route: '/scada', label: 'Quản lý hệ thống SCADA', icon: icons.monitor },
@@ -186,7 +189,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: '/documents/legal', route: '/documents/legal', label: 'Văn bản pháp lý' },
       { key: '/documents/operation', route: '/documents/operation', label: 'Thông tin vận hành' },
       { key: '/documents/maintenance', route: '/documents/maintenance', label: 'Thông tin bảo trì' },
-      { key: 'ship-port-call-disabled', label: 'Tàu biển ra vào cảng biển', disabled: true, note: 'Chức năng đang được xây dựng' },
     ],
   },
   {

@@ -9,6 +9,7 @@ import lombok.Data;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
+
 /**
  * Request DTO for creating a new CCTV system.
  */

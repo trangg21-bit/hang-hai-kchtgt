@@ -105,6 +105,7 @@ Nguồn gốc duy nhất của các trường dữ liệu trên Bảng danh sác
    - Số lượng trên tab "Tất cả" **BẮT BUỘC** bằng tổng số lượng của các tab trạng thái con:
      $$\text{Tất cả} = \text{Lưu tạm} + \text{Chờ Cảng vụ duyệt} + \text{Chờ Cục duyệt} + \text{Đã duyệt} + \text{Từ chối}$$
    - Tab "Từ chối" trên Frontend tự động gom tổng: `REJECTED_LEVEL1` + `REJECTED_LEVEL2`.
+   - **Biến thể được phép (đã áp dụng màn `/cctv` và Bến phao):** tách thành 2 tab theo cấp — `Từ chối cấp Cảng vụ/Chi cục` (`REJECTED_LEVEL1`) và `Từ chối cấp cục` (`REJECTED_LEVEL2`); khi tách, mỗi tab lọc đúng 1 mã và công thức "Tất cả = tổng các tab con" vẫn giữ nguyên.
    - Backend `countByApprovalStatus` trả về số lượng chính xác theo từng trạng thái chuẩn.
 
 4. **Dọn sạch trạng thái legacy trong DB và Code**:

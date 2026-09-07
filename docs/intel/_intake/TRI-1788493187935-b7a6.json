@@ -1,0 +1,91 @@
+{
+  "triage_id": "TRI-1788493187935-b7a6",
+  "created_at": 1788493187935,
+  "request_summary": "Hoàn thiện khớp ma trận sheet QL Trạm radar: gộp cột Danh sách (Tên/Mã; Cán bộ kèm ngày), bỏ cột Loại trạm, bổ sung hiển thị Nội dung phê duyệt 2 cấp + tab KCHT con & VH&BT (EmptyState) trong Xem chi tiết.",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/radarstation/RadarStationList.tsx",
+      "frontend/src/types/radarStation.ts",
+      "src/main/java/com/hanghai/kchtg/radarstation/dto/RadarStationResponse.java",
+      "src/main/java/com/hanghai/kchtg/radarstation/service/RadarStationService.java",
+      "src/test/java/com/hanghai/kchtg/radarstation/service/RadarStationServiceTest.java"
+    ],
+    "impact_files": [
+      "frontend/src/pages/radarstation/RadarStationList.tsx",
+      "frontend/src/types/radarStation.ts",
+      "src/main/java/com/hanghai/kchtg/radarstation/dto/RadarStationResponse.java",
+      "src/main/java/com/hanghai/kchtg/radarstation/service/RadarStationService.java",
+      "src/test/java/com/hanghai/kchtg/radarstation/service/RadarStationServiceTest.java"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C1: 5 edit-target files in one package, no one-way door — pre-declared write scope required (5 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn danh sách /radar-station: cột bảng + drawer Xem chi tiết (Thông tin phê duyệt + tab).",
+  "blast_radius": 5,
+  "done_oracle": "List /radar-station: cột 'Tên / Mã trạm radar' gộp Mã+Tên; nhóm Xử lý & theo dõi gộp thành 4 cột 'Cán bộ cập nhật/gửi phê duyệt/phê duyệt cấp Cảng vụ-Chi cục/phê duyệt cấp Cục' (mỗi cột hiện tên+ngày); cột thừa 'Loại trạm' bỏ. Detail: mục Thông tin phê duyệt hiển thị 'Nội dung phê duyệt' cấp Cảng vụ/Chi cục & cấp Cục khi backend trả level1ApprovalContent/level2ApprovalContent; tab KCHT thuộc trạm radar + Vận hành & bảo trì hiển thị EmptyState nếu chưa có nguồn. Typecheck FE + build FE xanh; file radar 0 lỗi tsc.",
+  "verification_commands": [
+    {
+      "command": "node ./node_modules/typescript/bin/tsc -p tsconfig.app.json --noEmit",
+      "cwd": "frontend",
+      "timeout_ms": 600000
+    },
+    {
+      "command": "npm run build",
+      "cwd": "frontend",
+      "timeout_ms": 600000
+    }
+  ],
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "frontend/src/pages/radarstation/RadarStationList.tsx",
+    "frontend/src/types/radarStation.ts",
+    "src/main/java/com/hanghai/kchtg/radarstation/dto/RadarStationResponse.java",
+    "src/main/java/com/hanghai/kchtg/radarstation/service/RadarStationService.java",
+    "src/test/java/com/hanghai/kchtg/radarstation/service/RadarStationServiceTest.java"
+  ],
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/radarstation/RadarStationList.tsx",
+      "line": 825,
+      "quote": "key: 'code', label: 'Mã trạm radar', dataIndex: 'code', width: 150, fixed: 'left' as const,",
+      "source_hash": "a3f5f5b7645accd627311f628e85b07b779369bb78dfd3e4be7fcd3bad912c86",
+      "quote_hash": "1de5102ea5f713fe7c92c3aabf1733a97e92eca1ae3ef423dd864c80ab89c34f",
+      "note": "Cột code tách riêng — sẽ gộp vào 'Tên / Mã trạm radar'"
+    },
+    {
+      "file": "frontend/src/pages/radarstation/RadarStationList.tsx",
+      "line": 877,
+      "quote": "key: 'stationType', label: 'Loại trạm', dataIndex: 'stationType', width: 130,",
+      "source_hash": "a3f5f5b7645accd627311f628e85b07b779369bb78dfd3e4be7fcd3bad912c86",
+      "quote_hash": "77baaee25d5e35aacaef30c18fc80f4e906dc57eb7fd7b9b2b635808e2caa77b",
+      "note": "Cột stationType thừa (không có trong sheet) — sẽ bỏ"
+    },
+    {
+      "file": "frontend/src/pages/radarstation/RadarStationList.tsx",
+      "line": 918,
+      "quote": "key: 'updatedAt', label: 'Ngày cập nhật', dataIndex: 'updatedAt', width: 160,",
+      "source_hash": "a3f5f5b7645accd627311f628e85b07b779369bb78dfd3e4be7fcd3bad912c86",
+      "quote_hash": "b5a26f047d059a17590e31b6ef5b17541f6596ede56a1e2be57b9a1f7de97898",
+      "note": "Cặp Ngày cập nhật/Cán bộ cập nhật tách rời — sẽ gộp 1 cột Cán bộ kèm ngày"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "3b07a5a6421c35cc8b0c2382bc435e35e9fc5c34",
+    "dirty": true,
+    "captured_at": 1788493188123
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

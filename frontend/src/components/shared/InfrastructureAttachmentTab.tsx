@@ -1,4 +1,3 @@
-import React from 'react';
 import { Upload, Button } from 'antd';
 import {
   InboxOutlined,

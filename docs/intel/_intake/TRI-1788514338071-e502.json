@@ -1,0 +1,89 @@
+{
+  "triage_id": "TRI-1788514338071-e502",
+  "created_at": 1788514338071,
+  "request_summary": "Màn Lịch sử (ApprovalHistory) của 4 màn cctv/scada/transmission/vts-assist hiện hiển thị cả log nháp/lưu tạm tạo hồ sơ. Yêu cầu (UC8/M-1025): chỉ hiển thị thay đổi của hồ sơ ĐÃ DUYỆT — nếu chưa phê duyệt cấp cuối (approvedDateLevel2 null) trả rỗng; chỉ trả log có approvedDate >= approvedDateLevel2 (ẩn nháp/gửi duyệt/C1 trước mốc). Áp theo tiền lệ AisSystemService.getHistory (đã gate sẵn).",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/java/com/hanghai/kchtg/cctv/service/CctvApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/scada/service/ScadaApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/transmission/service/TransmissionApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/vtsassist/service/VtsAssistApprovalService.java"
+    ],
+    "impact_files": [
+      "src/main/java/com/hanghai/kchtg/cctv/service/CctvApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/scada/service/ScadaApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/transmission/service/TransmissionApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/vtsassist/service/VtsAssistApprovalService.java"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "backend"
+  },
+  "rationale": "C1: 4 edit-target files in one package, no one-way door — pre-declared write scope required (4 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "/cctv, /scada, /transmission, /vts-assist → menu hành động dòng 'Lịch sử' (GET /{type}/{id}/history)",
+  "blast_radius": 4,
+  "done_oracle": "Tạo mới hồ sơ → Nháp → Lưu tạm: màn Lịch sử trống. Sau khi hồ sơ được duyệt C2 (APPROVED) rồi sửa bằng 'Lưu và phê duyệt': màn Lịch sử hiển thị đúng các thay đổi (old→new) phát sinh sau mốc duyệt; log nháp/gửi duyệt cũ không xuất hiện. `mvn -DskipTests compile` thành công.",
+  "verification_commands": [
+    {
+      "command": "mvn -DskipTests -q compile",
+      "cwd": "D:\\Projects\\bxd.hh.kcht",
+      "timeout_ms": 600000
+    }
+  ],
+  "change_type": "business_rule",
+  "declared_write_scope": [
+    "src/main/java/com/hanghai/kchtg/cctv/service/CctvApprovalService.java",
+    "src/main/java/com/hanghai/kchtg/scada/service/ScadaApprovalService.java",
+    "src/main/java/com/hanghai/kchtg/transmission/service/TransmissionApprovalService.java",
+    "src/main/java/com/hanghai/kchtg/vtsassist/service/VtsAssistApprovalService.java"
+  ],
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/cctv/service/CctvApprovalService.java",
+      "line": 124,
+      "quote": "ensureExists(id);",
+      "source_hash": "bd1f0e1015e45726aefb3816cf66767fd54fe4bc17306a415353dadde061a7a1",
+      "quote_hash": "fad6f6064ff0f334c9780e21e54f61ebda275ee035f1f0a74d47c5a97c509177",
+      "note": "getHistory không gate theo approvedDateLevel2 — hiện trả cả log nháp"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/scada/service/ScadaApprovalService.java",
+      "line": 124,
+      "quote": "ensureExists(id);",
+      "source_hash": "f40c3347a30244eaabb401d61f06b9a0c1d568078fe1548ff00744011fbb14e2",
+      "quote_hash": "fad6f6064ff0f334c9780e21e54f61ebda275ee035f1f0a74d47c5a97c509177",
+      "note": "ScadaApprovalService template giống hệt cctv"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/transmission/service/TransmissionApprovalService.java",
+      "line": 124,
+      "quote": "ensureExists(id);",
+      "source_hash": "f8e0813247772248a374f161951fa68d88b1f460c84f5c82c83a9cdd79eae850",
+      "quote_hash": "fad6f6064ff0f334c9780e21e54f61ebda275ee035f1f0a74d47c5a97c509177",
+      "note": "TransmissionApprovalService template giống hệt"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/vtsassist/service/VtsAssistApprovalService.java",
+      "line": 124,
+      "quote": "ensureExists(id);",
+      "source_hash": "77387bab4b78f4f19d910e62288c428e61a70380c40f521ce48dbe5646dd99ed",
+      "quote_hash": "fad6f6064ff0f334c9780e21e54f61ebda275ee035f1f0a74d47c5a97c509177",
+      "note": "VtsAssistApprovalService template giống hệt"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "3b07a5a6421c35cc8b0c2382bc435e35e9fc5c34",
+    "dirty": true,
+    "captured_at": 1788514338217
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

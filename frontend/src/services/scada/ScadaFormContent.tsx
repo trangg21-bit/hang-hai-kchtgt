@@ -13,7 +13,7 @@ import {
   borderDefault,
   radiusPill,
   spaceMd,
-} from '../../tokens';
+} from '../../themetokenchk';
 
 interface ScadaFormProps {
   initialData?: ScadaResponse;

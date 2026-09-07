@@ -26,14 +26,14 @@ export type RadarStationStatus =
 
 export const RADAR_STATION_STATUS_MAP: Record<string, { label: string }> = {
   DRAFT: { label: 'Lưu tạm' },
-  PROPOSED: { label: 'Chờ Cảng vụ duyệt' },
-  PENDING_APPROVAL: { label: 'Chờ Cảng vụ duyệt' },
-  APPROVED_LEVEL1: { label: 'Chờ Cục duyệt' },
-  REJECTED_LEVEL1: { label: 'Cảng vụ trả về' },
-  REJECTED_LEVEL2: { label: 'Cục trả về' },
-  APPROVED: { label: 'Đã duyệt' },
-  APPROVED_LEVEL2: { label: 'Đã duyệt' },
-  REJECTED: { label: 'Từ chối' },
+  PROPOSED: { label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  PENDING_APPROVAL: { label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  APPROVED_LEVEL1: { label: 'Chờ phê duyệt cấp Cục' },
+  REJECTED_LEVEL1: { label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  REJECTED_LEVEL2: { label: 'Từ chối cấp Cục' },
+  APPROVED: { label: 'Đã phê duyệt' },
+  APPROVED_LEVEL2: { label: 'Đã phê duyệt' },
+  REJECTED: { label: 'Từ chối cấp Cảng vụ/Chi cục' },
 };
 
 export interface RadarStationResponse {
@@ -75,11 +75,20 @@ export interface RadarStationResponse {
   approverLevel2?: string;
   approvedDateLevel2?: string;
   rejectionReason?: string;
+  level1ApprovalContent?: string;
+  level2ApprovalContent?: string;
   attachments?: RadarStationAttachment[];
   createdAt?: string;
   updatedAt?: string;
   createdBy?: string;
   updatedBy?: string;
+  createdByName?: string;
+  updatedByName?: string;
+  submittedByName?: string;
+  approverLevel1Name?: string;
+  approverLevel2Name?: string;
+  createdDate?: string;
+  updatedDate?: string;
   spatialId?: string;
   geometryType?: 'POINT' | 'LINE' | 'POLYGON';
   coordinates?: string;
@@ -125,6 +134,7 @@ export interface UpdateRadarStationRequest extends Partial<CreateRadarStationReq
 
 export interface ListParams {
   keyword?: string;
+  code?: string;
   orgUnitId?: string;
   seaportId?: string;
   vtsSystemId?: string;
@@ -157,18 +167,18 @@ export interface HistoryEntry {
 }
 
 export const CONDITION_STATUS_MAP: Record<string, { label: string }> = {
-  '1': { label: 'Đang khai thác' },
-  '0': { label: 'Ngừng hoạt động' },
-  '2': { label: 'Chưa hoạt động' },
-  OPERATIONAL: { label: 'Đang khai thác' },
-  STOPPED: { label: 'Ngừng hoạt động' },
+  '0': { label: 'Chưa khai thác/vận hành' },
+  '1': { label: 'Đang khai thác/vận hành' },
+  '2': { label: 'Dừng khai thác/vận hành' },
+  OPERATIONAL: { label: 'Đang khai thác/vận hành' },
+  STOPPED: { label: 'Dừng khai thác/vận hành' },
   MAINTENANCE: { label: 'Bảo trì' },
 };
 
 export const CONDITION_STATUS_OPTIONS = [
-  { value: '1', label: 'Đang khai thác' },
-  { value: '0', label: 'Ngừng hoạt động' },
-  { value: '2', label: 'Chưa hoạt động' },
+  { value: '0', label: 'Chưa khai thác/vận hành' },
+  { value: '1', label: 'Đang khai thác/vận hành' },
+  { value: '2', label: 'Dừng khai thác/vận hành' },
 ];
 
 export const UNIT_OF_MEASURE_OPTIONS = [

@@ -230,7 +230,7 @@ class RadarStationServiceTest {
 
     @Test
     void testSearch() {
-        when(repository.searchPaged(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(repository.searchPaged(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(Page.empty());
         List<RadarStationResponse> responses = service.search(null, null, null, null);
         assertNotNull(responses);

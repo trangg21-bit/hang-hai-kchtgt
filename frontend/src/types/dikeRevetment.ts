@@ -45,8 +45,11 @@ export interface DikeRevetmentAttachment {
   id: string;
   fileName: string;
   fileUrl?: string;
+  filePath?: string;
   fileSize?: number;
+  uploadedBy?: string;
   uploadedDate?: string;
+  uploadDate?: string;
 }
 
 export type DikeRevetmentType =
@@ -86,8 +89,8 @@ export interface DikeRevetmentResponse {
   orgUnitName?: string;
   seaportId?: string;
   seaportName?: string;
-  donViVanHanhId?: string;
-  donViVanHanhName?: string;
+  operatingUnitId?: string;
+  operatingUnitName?: string;
   locationDetail?: string;
   constructionDate?: string;
   lastMaintenanceYear?: string;
@@ -136,7 +139,7 @@ export interface CreateDikeRevetmentRequest {
   dikeRevetmentName: string;
   code?: string;
   seaportId?: string;
-  donViVanHanhName?: string;
+  operatingUnitId?: string;
   locationDetail?: string;
   constructionDate?: string;
   lastMaintenanceYear?: string;
@@ -174,4 +177,17 @@ export const DIKE_REVETMENT_TYPE_LABELS: Record<DikeRevetmentType, string> = {
   TRAFFIC: 'Đê giao thông',
   WAVE_BREAK_REVETMENT: 'Kè chắn sóng',
   SAND_BREAK_REVETMENT: 'Kè chắn cát',
+};
+
+/**
+ * Nhãn 6 trạng thái phê duyệt theo đúng từ ngữ nghiệp vụ của màn QL đê kè
+ * (ghi đè nhãn chuẩn ApprovalStatusBadge RIÊNG cho màn này — chuẩn hoá phê duyệt 2 cấp).
+ */
+export const DIKE_REVETMENT_STATUS_LABELS: Record<string, string> = {
+  DRAFT: 'Lưu tạm',
+  PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+  APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục',
+  APPROVED: 'Đã phê duyệt',
+  REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
+  REJECTED_LEVEL2: 'Từ chối cấp Cục',
 };

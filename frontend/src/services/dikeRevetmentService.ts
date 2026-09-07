@@ -21,12 +21,15 @@ function buildSearchParams(params: Record<string, string | number | undefined>) 
 
 export interface ListParams {
   keyword?: string;
+  code?: string;
+  location?: string;
+  commissioningYear?: string;
   orgUnitId?: string;
   seaportId?: string;
   dikeRevetmentType?: DikeRevetmentType;
   conditionStatus?: string;
-  approvalStatus?: string;
   status?: string;
+  approvalStatus?: string;
   updatedBy?: string;
   updatedFrom?: string;
   updatedTo?: string;
@@ -68,6 +71,9 @@ export const dikeRevetmentCRUD = {
   async searchPaged(params?: ListParams): Promise<SearchResponse<DikeRevetmentResponse>> {
     const sp = buildSearchParams({
       keyword: params?.keyword,
+      code: params?.code,
+      location: params?.location,
+      commissioningYear: params?.commissioningYear,
       orgUnitId: params?.orgUnitId,
       seaportId: params?.seaportId,
       dikeRevetmentType: params?.dikeRevetmentType,
@@ -109,6 +115,21 @@ export const dikeRevetmentCRUD = {
 
   async delete(id: string): Promise<void> {
     await api.delete(`${BASE_PATH}/${id}`);
+  },
+
+  async downloadAttachment(id: string, attId: string, fileName?: string): Promise<void> {
+    const res = await api.get(`${BASE_PATH}/${id}/attachments/${attId}/download`, {
+      responseType: 'blob',
+    });
+    const blob = new Blob([res.data]);
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName || 'attachment';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   },
 };
 

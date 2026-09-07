@@ -12,7 +12,7 @@ import {
   radiusPill,
   spaceMd,
   spaceFormField,
-} from '../../tokens';
+} from '../../themetokenchk';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;

@@ -220,8 +220,6 @@ export default function App() {
 
                 <Route path="/storm-shelter" element={<PermissionGuard permission="stormshelter:read"><StormShelterList /></PermissionGuard>} />
 
-
-
                 <Route path="/buoy-berth" element={<PermissionGuard permission="buoyberth:read"><BuoyBerthList /></PermissionGuard>} />
 
                 <Route path="/dai-ttdh" element={<PermissionGuard permission="daittdh:read"><DaiTtdhList /></PermissionGuard>} />

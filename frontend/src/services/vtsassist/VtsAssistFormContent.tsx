@@ -15,7 +15,7 @@ import {
   radiusPill,
   spaceFormField,
   spaceMd,
-} from '../../tokens';
+} from '../../themetokenchk';
 
 interface VtsAssistFormProps {
   initialData?: VtsAssistResponse;

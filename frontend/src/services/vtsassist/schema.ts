@@ -10,33 +10,12 @@ export const OPERATIONAL_STATUS_OPTIONS: Array<{ label: string; value: number }>
   { label: 'Dừng khai thác/vận hành', value: 2 },
 ];
 
-export const APPROVAL_STATUS_OPTIONS: Array<{ label: string; value: string }> = [
-  { label: 'Chờ phê duyệt', value: 'CHO_PHE_DUYET' },
-  { label: 'Đã phê duyệt', value: 'APPROVED' },
-  { label: 'Từ chối', value: 'TU_CHOI' },
-];
-
 // ── Attached infrastructure type ────────────────────────────────────
 
 export const ATTACHED_INFRA_TYPE_OPTIONS: Array<{ label: string; value: number }> = [
   { label: 'TTDH VTS', value: 1 },
   { label: 'Trạm Radar', value: 2 },
 ];
-
-// ── List filter schema ──────────────────────────────────────────────
-
-export const listFiltersSchema = z.object({
-  search: z.string().optional(),
-  operationalStatus: z.coerce.number().int().min(0).max(2).optional().or(z.nan()),
-  approvalStatus: z.enum(['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED']).optional(),
-  yearOfUse: z.coerce.number().int().optional().or(z.nan()),
-  sortBy: z.enum(['deviceCode', 'deviceName', 'createdAt', 'updatedAt']).default('updatedAt'),
-  sortOrder: z.enum(['asc', 'desc']).default('desc'),
-  page: z.coerce.number().int().min(0).default(0),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20),
-});
-
-export type ListFilters = z.infer<typeof listFiltersSchema>;
 
 // ── Create schema ───────────────────────────────────────────────────
 
@@ -63,7 +42,7 @@ export const createSchema = z.object({
   attachedInfrastructureType: z.coerce.number().int().optional().or(z.nan()),
   attachedInfrastructureId: z.string().uuid().optional().or(z.literal('')),
   unitOfMeasure: z.coerce.number().int().optional().or(z.nan()),
-  yearOfUse: z.coerce.number().int().min(1900).max(2100).optional().or(z.nan()),
+  yearOfUse: z.coerce.number().int().optional().or(z.nan()),
   operationalStatus: z.coerce.number().int().min(0).max(2).optional().or(z.nan()),
   specifications: z.string().max(2000, 'Thông số kỹ thuật tối đa 2000 ký tự').optional().or(z.literal('')),
   maintenanceInformation: z.string().max(2000, 'Thông tin bảo trì tối đa 2000 ký tự').optional().or(z.literal('')),
@@ -97,7 +76,7 @@ export const updateSchema = z.object({
   attachedInfrastructureType: z.coerce.number().int().optional().or(z.nan()),
   attachedInfrastructureId: z.string().uuid().optional().nullable(),
   unitOfMeasure: z.coerce.number().int().optional().or(z.nan()),
-  yearOfUse: z.coerce.number().int().min(1900).max(2100).optional().or(z.nan()),
+  yearOfUse: z.coerce.number().int().optional().or(z.nan()),
   operationalStatus: z.coerce.number().int().min(0).max(2).optional().or(z.nan()),
   specifications: z.string().max(2000, 'Thông số kỹ thuật tối đa 2000 ký tự').optional().nullable(),
   maintenanceInformation: z.string().max(2000, 'Thông tin bảo trì tối đa 2000 ký tự').optional().nullable(),
@@ -145,33 +124,4 @@ export const operationalStatusBadge = (status: number | undefined | null): { col
   if (status === 1) return { color: statusOperational, label: 'Đang khai thác/vận hành' };
   if (status === 2) return { color: statusCritical, label: 'Dừng khai thác/vận hành' };
   return { color: 'default', label: String(status ?? '—') };
-};
-
-export const approvalStatusBadge = (status: string): { color: string; label: string } => {
-  const norm = String(status || '').normalize('NFC').toUpperCase().trim();
-  if (
-    norm === 'CHO_PHE_DUYET' ||
-    norm === 'PENDING' ||
-    norm === 'PENDING_APPROVAL'
-  ) {
-    return { color: 'orange', label: 'Chờ phê duyệt' };
-  }
-  if (
-    norm === 'DA_PHE_DUYET' ||
-    norm === 'APPROVED' ||
-    norm === 'DUC_PHI_DUYET'
-  ) {
-    return { color: 'green', label: 'Đã phê duyệt' };
-  }
-  if (
-    norm === 'TU_CHOI' ||
-    norm === 'REJECTED' ||
-    norm === 'TU_CHOI'
-  ) {
-    return { color: 'red', label: 'Từ chối' };
-  }
-  if (norm === 'DRAFT') {
-    return { color: 'default', label: 'Nháp' };
-  }
-  return { color: 'default', label: status };
 };

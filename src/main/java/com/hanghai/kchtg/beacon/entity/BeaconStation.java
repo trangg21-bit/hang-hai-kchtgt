@@ -14,6 +14,7 @@ import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
 
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.experimental.FieldNameConstants;
 
 /**
@@ -67,7 +68,6 @@ public class BeaconStation extends BaseEntity {
     private String primaryLightModel;
 
     @DecimalMin("0.01")
-    @DecimalMax("100.0")
     @Column(name = "area")
     private Double area;
 
