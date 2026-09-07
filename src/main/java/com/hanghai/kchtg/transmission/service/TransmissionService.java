@@ -732,12 +732,17 @@ public class TransmissionService {
         .stream().map(this::toAttachmentDto).toList();
   }
 
-  /** Lấy file đính kèm để tải xuống — mirror /vts-operation-center (VtsOperationCenterService.getAttachment). */
+  /**
+   * Lấy file đính kèm để tải xuống — mirror /vts-operation-center (VtsOperationCenterService.getAttachment).
+   */
   @Transactional(readOnly = true)
   public Attachment getAttachment(UUID entityId, UUID attachmentId) {
+    Transmission parent = transmissionRepository.findById(entityId)
+      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống truyền dẫn: " + entityId));
+    orgUnitScopeService.requireOrganizationInScope(parent.getOrgUnitId());
     Attachment attachment = attachmentRepository.findById(attachmentId)
-        .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
-    if (!attachment.getEntityId().equals(entityId)) {
+      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
+    if (!"TRANSMISSION".equals(attachment.getEntityType()) || !attachment.getEntityId().equals(entityId)) {
       throw new IllegalArgumentException("File không thuộc hệ thống truyền dẫn này");
     }
     return attachment;

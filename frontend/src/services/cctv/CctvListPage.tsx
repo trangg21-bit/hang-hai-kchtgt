@@ -150,6 +150,7 @@ import {
   spaceSm,
   spaceXs,
   spaceXl,
+  spaceLg,
   drawerProps,
   drawerTitleStyle,
   drawerCloseBtnStyle,

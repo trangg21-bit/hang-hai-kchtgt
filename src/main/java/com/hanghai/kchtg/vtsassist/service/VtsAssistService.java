@@ -722,13 +722,18 @@ public class VtsAssistService {
         .stream().map(this::toAttachmentDto).toList();
   }
 
-  /** Lấy file đính kèm để tải xuống — mirror /vts-operation-center (VtsOperationCenterService.getAttachment). */
+  /**
+   * Lấy file đính kèm để tải xuống — mirror /vts-operation-center (VtsOperationCenterService.getAttachment).
+   */
   @Transactional(readOnly = true)
   public Attachment getAttachment(UUID entityId, UUID attachmentId) {
+    VtsAssist parent = vtsAssistRepository.findById(entityId)
+      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thiết bị VTS Assist: " + entityId));
+    orgUnitScopeService.requireOrganizationInScope(parent.getOrgUnitId());
     Attachment attachment = attachmentRepository.findById(attachmentId)
-        .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
-    if (!attachment.getEntityId().equals(entityId)) {
-      throw new IllegalArgumentException("File không thuộc hệ thống phụ trợ VTS này");
+      .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
+    if (!"VTS_ASSIST".equals(attachment.getEntityType()) || !attachment.getEntityId().equals(entityId)) {
+      throw new IllegalArgumentException("File không thuộc thiết bị VTS Assist này");
     }
     return attachment;
   }

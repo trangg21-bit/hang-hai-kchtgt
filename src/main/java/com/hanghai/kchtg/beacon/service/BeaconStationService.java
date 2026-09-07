@@ -978,14 +978,19 @@ public class BeaconStationService {
         }
     }
 
-    /** Lấy file đính kèm của đèn biển (dùng cho endpoint tải xuống — chuẩn /vts-operation-center). */
+    /**
+     * Lấy file đính kèm của đèn biển (dùng cho endpoint tải xuống — chuẩn /vts-operation-center).
+     */
     public Attachment getAttachment(UUID entityId, UUID attachmentId) {
-        Attachment attachment = attachmentRepository.findById(attachmentId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
-        if (!attachment.getEntityId().equals(entityId)) {
-            throw new IllegalArgumentException("File không thuộc đèn biển này");
-        }
-        return attachment;
+      BeaconStation parent = beaconStationRepo.findById(entityId)
+        .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy đèn biển: " + entityId));
+      orgUnitScopeService.requireOrganizationInScope(parent.getOrgUnitId());
+      Attachment attachment = attachmentRepository.findById(attachmentId)
+        .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
+      if (!"BEACON_LIGHT".equals(attachment.getEntityType()) || !attachment.getEntityId().equals(entityId)) {
+        throw new IllegalArgumentException("File không thuộc đèn biển này");
+      }
+      return attachment;
     }
 
     private static GisGeometryType resolveGisGeometryType(String geometryType, String wkt) {
