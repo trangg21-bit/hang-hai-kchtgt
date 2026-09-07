@@ -63,7 +63,6 @@ const StormShelterList = lazy(() => import('./pages/storm-shelter/StormShelterLi
 const BuoyBerthList = lazy(() => import('./pages/buoy-berth/BuoyBerthListPage'));
 const DaiTtdhList = lazy(() => import('./pages/dai-ttdh/DaiTtdhListPage'));
 const ShipRepairYardList = lazy(() => import('./pages/ship-repair-yard/ShipRepairYardListPage'));
-const SeaportThroughputList = lazy(() => import('./pages/seaport-throughput/SeaportThroughputPage'));
 
 const PierListPage = lazy(() => import('./pages/port/PierListPage'));
 const DryPortListPage = lazy(() => import('./pages/port/DryPortListPage'));
@@ -94,7 +93,6 @@ const LegalDocumentList = lazy(() => import('./pages/document/LegalDocumentList'
 const IncidentList = lazy(() => import('./pages/document/IncidentList'));
 const PortPlanningList = lazy(() => import('./pages/document/PortPlanningList'));
 const OperationList = lazy(() => import('./pages/document/OperationList'));
-const ShipPortCallPage = lazy(() => import('./pages/shipportcall/ShipPortCallPage'));
 const MaintenanceList = lazy(() => import('./pages/document/MaintenanceList'));
 
 // M-014: Quản lý Nhà trạm phao tiêu
@@ -222,7 +220,7 @@ export default function App() {
 
                 <Route path="/storm-shelter" element={<PermissionGuard permission="stormshelter:read"><StormShelterList /></PermissionGuard>} />
 
-                <Route path="/seaport-throughput" element={<PermissionGuard permission="seaportthroughput:read"><SeaportThroughputList /></PermissionGuard>} />
+
 
                 <Route path="/buoy-berth" element={<PermissionGuard permission="buoyberth:read"><BuoyBerthList /></PermissionGuard>} />
 
@@ -293,7 +291,6 @@ export default function App() {
                 <Route path="/documents/incidents" element={<PermissionGuard permission="document:read"><IncidentList /></PermissionGuard>} />
                 <Route path="/documents/port-planning" element={<PermissionGuard permission="document:read"><PortPlanningList /></PermissionGuard>} />
                 <Route path="/documents/operation" element={<PermissionGuard permission="document:read"><OperationList /></PermissionGuard>} />
-                <Route path="/ship-port-call" element={<PermissionGuard permission="shipportcall:read"><ShipPortCallPage /></PermissionGuard>} />
                 <Route path="/documents/maintenance" element={<PermissionGuard permission="document:read"><MaintenanceList /></PermissionGuard>} />
 
                 {/* M-014: Quản lý Nhà trạm */}

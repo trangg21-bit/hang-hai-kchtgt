@@ -68,7 +68,6 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/anchorage': 'anchorage:read',
   '/transfer-area': 'transferarea:read',
   '/storm-shelter': 'stormshelter:read',
-  '/seaport-throughput': 'seaportthroughput:read',
   '/buoy-berth': 'buoyberth:read',
   '/dai-ttdh': 'daittdh:read',
   '/ship-repair-yard': 'shiprepairyard:read',
@@ -104,7 +103,6 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/documents/incidents': 'document:read',
   '/documents/port-planning': 'document:read',
   '/documents/operation': 'document:read',
-  '/ship-port-call': 'shipportcall:read',
   '/documents/maintenance': 'document:read',
 };
 
@@ -297,8 +295,7 @@ export default function AppLayout({ initialSidebarHidden = false }: { initialSid
         canAccessMenu('/documents/incidents') ? { key: '/documents/incidents', label: 'Sự cố hàng hải' } : null,
         canAccessMenu('/documents/port-planning') ? { key: '/documents/port-planning', label: 'Quy hoạch bến cảng' } : null,
         canAccessMenu('/documents/operation') ? { key: '/documents/operation', label: 'Thông tin vận hành' } : null,
-        canAccessMenu('/ship-port-call') ? { key: '/ship-port-call', label: 'Tàu biển ra vào cảng biển' } : null,
-        canAccessMenu('/seaport-throughput') ? { key: '/seaport-throughput', label: 'Sản lượng cảng biển' } : null,
+
         canAccessMenu('/documents/maintenance') ? { key: '/documents/maintenance', label: 'Thông tin bảo trì' } : null,
         canAccessMenu('/symbols') ? { key: '/symbols', label: 'Quản lý biểu tượng trên bản đồ' } : null,
         canAccessMenu('/water-zone') ? { key: '/water-zone', label: 'Quản lý vùng nước' } : null,
