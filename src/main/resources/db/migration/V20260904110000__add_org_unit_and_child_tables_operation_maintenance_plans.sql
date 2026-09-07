@@ -1,4 +1,4 @@
--- V20260904100000: F-129 / F-130 — add data-scope org_unit_id + Excel header columns to
+-- V20260904110000: F-129 / F-130 — add data-scope org_unit_id + Excel header columns to
 -- operation_plans / maintenance_plans, create 5 child tables, reuse maintenance_results (result_note).
 -- Additive only: no column dropped, no existing data reinterpreted.
 
@@ -34,7 +34,7 @@ DO $$
 DECLARE
     root_org_id UUID;
 BEGIN
-    SELECT id INTO root_org_id FROM org_units WHERE parent_id IS NULL AND deleted_at IS NULL LIMIT 1;
+    SELECT id INTO root_org_id FROM org_units LIMIT 1;
     IF root_org_id IS NOT NULL THEN
         UPDATE operation_plans SET org_unit_id = root_org_id WHERE org_unit_id IS NULL;
         UPDATE maintenance_plans SET org_unit_id = root_org_id WHERE org_unit_id IS NULL;

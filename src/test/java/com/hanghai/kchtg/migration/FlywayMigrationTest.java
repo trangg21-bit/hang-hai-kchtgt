@@ -160,13 +160,16 @@ class FlywayMigrationTest {
         // V20260825162500: unified infrastructure_history table with approved_by UUID column
         assertThat(columnType("infrastructure_history", "approved_by")).isEqualTo("uuid");
 
-        // V90 exclusions: these stay text because the entities declare String. Their
-        // names arrive via V86 (nguoi_tao -> created_by, nguoi_duyet -> approved_by).
-        assertThat(columnType("port_planning", "created_by")).isEqualTo("character varying");
-        assertThat(columnType("port_planning", "updated_by")).isEqualTo("character varying");
+        // V90 exclusions: adjustment_approvals stays text because the entity declares String.
+        // port_planning audit columns were converted to UUID by V20260905110000.
+        assertThat(columnType("port_planning", "created_by")).isEqualTo("uuid");
+        assertThat(columnType("port_planning", "updated_by")).isEqualTo("uuid");
+        assertThat(columnType("port_planning", "org_unit_id")).isEqualTo("uuid");
         assertThat(columnType("adjustment_approvals", "approved_by")).isEqualTo("character varying");
-        assertThat(count("SELECT count(*) FROM port_planning WHERE created_by = 'nguyenvana'"))
-                .as("excluded columns keep their data").isEqualTo(1);
+        assertThat(count("SELECT count(*) FROM port_planning WHERE created_by IS NULL"))
+                .as("the 'nguyenvana' username is not a UUID and must be cleared").isEqualTo(1);
+        assertThat(count("SELECT count(*) FROM port_planning WHERE org_unit_id IS NOT NULL"))
+                .as("org_unit_id must be backfilled").isEqualTo(1);
 
         // V91: the legacy document tables were created with BIGINT identity PKs, but
         // their entities type id as UUID. Before V91 the mismatch aborted startup with

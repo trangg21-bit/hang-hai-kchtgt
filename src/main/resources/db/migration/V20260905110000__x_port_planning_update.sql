@@ -48,17 +48,39 @@ END $$;
 
 -- 5.2.3 Audit + org_unit_id backfill + NOT NULL (mirror §5.1 steps 4-5).
 DO $$
-DECLARE
-    v_remaining INTEGER;
 BEGIN
-    -- (a) Best-effort created_by backfill from legacy audit names.
-    UPDATE public.port_planning p
-    SET created_by = u.id
-    FROM public.users u
-    WHERE p.created_by IS NULL
-      AND p.updated_by IS NOT NULL
-      AND (u.full_name = p.updated_by OR u.username = p.updated_by);
-    -- (b) Guarded updated_by VARCHAR -> UUID cast.
+    -- (a) Best-effort created_by / updated_by backfill from legacy audit names before converting to UUID.
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_schema = 'public' AND table_name = 'port_planning'
+                 AND column_name = 'created_by' AND udt_name = 'varchar') THEN
+        UPDATE public.port_planning p
+        SET created_by = u.id::varchar
+        FROM public.users u
+        WHERE u.full_name = p.created_by OR u.username = p.created_by;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_schema = 'public' AND table_name = 'port_planning'
+                 AND column_name = 'updated_by' AND udt_name = 'varchar') THEN
+        UPDATE public.port_planning p
+        SET updated_by = u.id::varchar
+        FROM public.users u
+        WHERE u.full_name = p.updated_by OR u.username = p.updated_by;
+    END IF;
+END $$;
+
+-- (b) Guarded created_by & updated_by VARCHAR -> UUID cast.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_schema = 'public' AND table_name = 'port_planning'
+                 AND column_name = 'created_by' AND udt_name = 'varchar') THEN
+        ALTER TABLE public.port_planning
+            ALTER COLUMN created_by TYPE UUID
+            USING CASE WHEN created_by ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                       THEN created_by::uuid ELSE NULL END;
+    END IF;
+
     IF EXISTS (SELECT 1 FROM information_schema.columns
                WHERE table_schema = 'public' AND table_name = 'port_planning'
                  AND column_name = 'updated_by' AND udt_name = 'varchar') THEN
@@ -67,13 +89,26 @@ BEGIN
             USING CASE WHEN updated_by ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
                        THEN updated_by::uuid ELSE NULL END;
     END IF;
-    -- (c) org_unit_id backfill from resolved creator + fail-closed check.
+END $$;
+
+-- (c) org_unit_id backfill from resolved creator + fallback + fail-closed check.
+DO $$
+DECLARE
+    v_remaining INTEGER;
+BEGIN
     UPDATE public.port_planning p
     SET org_unit_id = u.org_unit_id
     FROM public.users u
     WHERE p.org_unit_id IS NULL
       AND p.created_by = u.id
       AND u.org_unit_id IS NOT NULL;
+
+    -- Fallback for legacy rows whose creator cannot be resolved: assign root org unit if available
+    IF EXISTS (SELECT 1 FROM public.org_units) THEN
+        UPDATE public.port_planning
+        SET org_unit_id = (SELECT id FROM public.org_units LIMIT 1)
+        WHERE org_unit_id IS NULL;
+    END IF;
 
     SELECT COUNT(*) INTO v_remaining
     FROM public.port_planning

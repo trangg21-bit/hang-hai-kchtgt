@@ -8,6 +8,8 @@ import com.hanghai.kchtg.document.dto.MaintenanceResultResponse;
 import com.hanghai.kchtg.document.entity.MaintenanceStatus;
 import com.hanghai.kchtg.document.entity.MaintenanceType;
 import com.hanghai.kchtg.document.service.MaintenancePlanService;
+import com.hanghai.kchtg.user.entity.User;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +18,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
@@ -34,7 +38,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
-@WithMockUser(authorities = "ROLE_SYSTEM_ADMIN")
 class MaintenancePlanControllerTest {
 
     @Autowired
@@ -51,6 +54,21 @@ class MaintenancePlanControllerTest {
     private MaintenanceResultRequest resultRequest;
     private UUID testId;
     private UUID testUserId;
+
+    @BeforeEach
+    void setUpSecurityContext() {
+        User principal = new User();
+        principal.setId(UUID.randomUUID());
+        principal.setUsername("maintenance-qa-user");
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(principal, null,
+                        List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     @BeforeEach
     void setUp() {

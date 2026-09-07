@@ -8,6 +8,8 @@ import com.hanghai.kchtg.document.dto.ProcessingProgressResponse;
 import com.hanghai.kchtg.document.entity.ProcessingStatus;
 import com.hanghai.kchtg.document.entity.SeverityLevel;
 import com.hanghai.kchtg.document.service.IncidentService;
+import com.hanghai.kchtg.user.entity.User;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +18,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
@@ -32,7 +36,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
-@WithMockUser(authorities = "ROLE_SYSTEM_ADMIN")
 class IncidentControllerTest {
 
     @Autowired
@@ -50,9 +53,23 @@ class IncidentControllerTest {
     private UUID testId;
 
     @BeforeEach
+    void setUpSecurityContext() {
+        User principal = new User();
+        principal.setId(UUID.randomUUID());
+        principal.setUsername("incident-qa-user");
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(principal, null,
+                        List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @BeforeEach
     void setUp() {
         testId = UUID.randomUUID();
-        UUID testUserId = UUID.randomUUID();
 
         testResponse = IncidentResponse.builder()
                 .id(testId)
@@ -80,7 +97,7 @@ class IncidentControllerTest {
 
     @Test
     void listIncidents_shouldReturnAll() throws Exception {
-        when(incidentService.findAll(anyInt(), anyInt()))
+        when(incidentService.findAllWithSearch(any(), any(), any(), any(), any(), any(), anyInt(), anyInt()))
                 .thenReturn(new PageImpl<>(java.util.Objects.requireNonNull(List.of(testResponse)), PageRequest.of(0, 20), 1));
 
         mockMvc.perform(get("/api/v1/incidents")
