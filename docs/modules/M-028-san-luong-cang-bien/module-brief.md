@@ -1,9 +1,9 @@
 ---
-module-id: M-025
-module-name: "Quản lý tàu biển"
-slug: quan-ly-tau-bien
+module-id: M-028
+module-name: "Sản lượng cảng biển"
+slug: san-luong-cang-bien
 canonical-source: docs/intel/_snapshot.md
-generated-at: "2026-09-06T11:01:51Z"
+generated-at: "2026-09-06T10:59:50Z"
 generator-version: "v1-mcp"
 scope:
   modules: []
@@ -16,18 +16,18 @@ metrics:
   total-rules-in-scope: 0
 ---
 
-# Module Brief: Quản lý tàu biển
+# Module Brief: Sản lượng cảng biển
 
 ## Purpose
 
-Quản lý tàu biển ra vào cảng biển (F-300) theo Excel #30.
+Khai báo và thống kê sản lượng cảng biển theo tháng/tuyến/cảng biển (entity seaport_throughput + bảng con seaport_throughput_file), API CRUD + phê duyệt 2 cấp Cảng vụ→Cục, permission seaportthroughput:*, frontend list/form, migration Flyway.
 
 ## Scope
 
 | Dimension | Value |
 |---|---|
-| Module ID | M-025 |
-| Slug | quan-ly-tau-bien |
+| Module ID | M-028 |
+| Slug | san-luong-cang-bien |
 | Primary service | `—` |
 | Depends-on | none |
 | Modules in scope | — |
