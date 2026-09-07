@@ -28,6 +28,8 @@ import {
   MonitorOutlined, FileTextOutlined, PieChartOutlined,
 } from '@ant-design/icons';
 
+import { landingGroupIcons } from '../themetokenchk';
+
 export type GroupId = 'kcht' | 'asset' | 'plan' | 'gis' | 'report' | 'admin';
 
 export interface NavNode {
@@ -90,18 +92,16 @@ const kchtTree: NavNode[] = [
         ],
       },
       { key: '/ship-repair-yard', route: '/ship-repair-yard', label: 'Quản lý cơ sở sửa chữa, đóng tàu', icon: icons.tool },
-      { key: '/buoy-berth', route: '/buoy-berth', label: 'Quản lý bến phao', icon: icons.aim },
       { key: '/anchorage', route: '/anchorage', label: 'Quản lý khu neo đậu', icon: icons.compass },
       { key: '/transfer-area', route: '/transfer-area', label: 'Quản lý khu chuyển tải', icon: icons.export },
       { key: '/storm-shelter', route: '/storm-shelter', label: 'Quản lý khu tránh, trú bão', icon: icons.safety },
-      { key: '/water-zone', route: '/water-zone', label: 'Quản lý vùng nước' },
       {
         key: '/navigation-channel',
         route: '/navigation-channel',
         label: 'Luồng hàng hải',
         icon: icons.container,
         children: [
-          { key: '/navigation-channel-chk', route: '/navigation-channel-chk', label: 'Luồng hàng hải CHK' },
+          { key: '/buoy-berth', route: '/buoy-berth', label: 'Quản lý bến phao', icon: icons.aim },
           {
             key: '/buoy-station',
             route: '/buoy-station',
@@ -119,11 +119,11 @@ const kchtTree: NavNode[] = [
   },
   { key: '/dry-port', route: '/dry-port', label: 'Quản lý cảng cạn', icon: icons.truck },
   {
-    key: 'kcht-vts',
+    key: '/vts-system',
+    route: '/vts-system',
     label: 'Hệ thống VTS',
     icon: icons.compass,
     children: [
-      { key: '/vts-system', route: '/vts-system', label: 'Thông tin hệ thống VTS' },
       {
         key: '/vts-operation-center',
         route: '/vts-operation-center',
@@ -146,7 +146,6 @@ const kchtTree: NavNode[] = [
     children: [
       { key: '/dai-ttdh', route: '/dai-ttdh', label: 'Quản lý đài TTDH', icon: icons.aim },
       { key: 'vhf-disabled', label: 'VHF', disabled: true, note: 'Chức năng đang được xây dựng' },
-      { key: '/station/coastal', route: '/station/coastal', label: 'Đài duyên hải VTS' },
       { key: '/station/inmarsat', route: '/station/inmarsat', label: 'Đài vệ tinh Inmarsat' },
       { key: '/station/cospas-sarsat', route: '/station/cospas-sarsat', label: 'Đài Cospas-Sarsat' },
       { key: '/station/lrit', route: '/station/lrit', label: 'Đài LRIT' },
@@ -161,14 +160,14 @@ export const NAV_GROUPS: NavGroup[] = [
     id: 'kcht',
     label: 'Quản lý KCHT hàng hải',
     desc: '28 loại KCHT theo phân cấp cha – con',
-    icon: icons.container,
+    icon: landingGroupIcons.kcht,
     tree: kchtTree,
   },
   {
     id: 'asset',
     label: 'Quản lý tài sản KCHT hàng hải',
     desc: 'Tăng, giảm, kiểm kê và khai thác tài sản',
-    icon: icons.pie,
+    icon: landingGroupIcons.asset,
     tree: [
       { key: '/asset/increase', route: '/asset/increase', label: 'Yêu cầu tăng tài sản' },
       { key: '/asset/decrease', route: '/asset/decrease', label: 'Yêu cầu giảm tài sản' },
@@ -180,18 +179,21 @@ export const NAV_GROUPS: NavGroup[] = [
     id: 'plan',
     label: 'Quản lý quy hoạch & vận hành',
     desc: 'Quy hoạch, văn bản pháp lý và sự cố',
-    icon: icons.file,
+    icon: landingGroupIcons.plan,
     tree: [
       { key: '/documents/port-planning', route: '/documents/port-planning', label: 'Quy hoạch bến cảng' },
       { key: '/documents/incidents', route: '/documents/incidents', label: 'Sự cố hàng hải' },
       { key: '/documents/legal', route: '/documents/legal', label: 'Văn bản pháp lý' },
+      { key: '/documents/operation', route: '/documents/operation', label: 'Thông tin vận hành' },
+      { key: '/documents/maintenance', route: '/documents/maintenance', label: 'Thông tin bảo trì' },
+      { key: '/ship-port-call', route: '/ship-port-call', label: 'Tàu biển ra vào cảng biển' },
     ],
   },
   {
     id: 'gis',
     label: 'Quản lý KCHT trên nền bản đồ (GIS)',
     desc: 'Danh mục đối tượng, lớp bản đồ và biểu tượng',
-    icon: icons.compass,
+    icon: landingGroupIcons.gis,
     tree: [
       { key: '/gis/map', route: '/gis/map', label: 'Quản lý thông tin KCHT hàng hải trên bản đồ' },
       { key: '/gis/points', route: '/gis/points', label: 'Quản lý danh mục đối tượng điểm' },
@@ -205,9 +207,11 @@ export const NAV_GROUPS: NavGroup[] = [
     id: 'report',
     label: 'Báo cáo thống kê',
     desc: 'Dashboard KPI và báo cáo thống kê định kỳ',
-    icon: icons.dashboard,
+    icon: landingGroupIcons.report,
     tree: [
-      { key: '/dashboard', route: '/dashboard', label: 'Dashboard KPI tổng quan', icon: icons.dashboard },
+      // 2026-09-06 (M-024 rework): node '/dashboard' ĐÃ GỠ — nội dung KPI không còn trong
+      // code (chỉ còn orphan services/dashboardApi của M-022, không có page). Route
+      // '/dashboard' trong App.tsx redirect về '/' (quyết định ghi lean-spec mục 3 / F-292).
       { key: '/reports', route: '/reports', label: 'Tất cả báo cáo', icon: icons.pie },
     ],
   },
@@ -215,7 +219,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: 'admin',
     label: 'Quản trị hệ thống',
     desc: 'Người dùng, đơn vị, nhóm, tích hợp và cấu hình',
-    icon: icons.setting,
+    icon: landingGroupIcons.admin,
     tree: [
       { key: '/users', route: '/users', label: 'Quản lý tài khoản người dùng' },
       { key: '/organizations', route: '/organizations', label: 'Quản lý đơn vị' },
@@ -333,6 +337,101 @@ export function collectRoutes(nodes: NavNode[]): string[] {
     for (const n of ns) {
       if (n.route && !n.disabled) out.push(n.route);
       if (n.children) walk(n.children);
+    }
+  };
+  walk(nodes);
+  return out;
+}
+
+/**
+ * Landing search (R-1, M-024): chuẩn hóa text tìm kiếm — trim → lowercase →
+ * bỏ dấu tiếng Việt (NFD strip combining marks) → đ/Đ → d. Dùng cho CẢ query
+ * lẫn nội dung node để khớp không dấu (vd "cau cang" ↔ "cầu cảng").
+ */
+export function normalizeSearchText(text: string): string {
+  return text
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd');
+}
+
+/** Label-collector: gom nhãn của mọi node (cha lẫn con) trong một cây nhóm. */
+export function collectNavLabels(nodes: NavNode[]): string[] {
+  const out: string[] = [];
+  const walk = (ns: NavNode[]) => {
+    for (const n of ns) {
+      out.push(n.label);
+      if (n.children) walk(n.children);
+    }
+  };
+  walk(nodes);
+  return out;
+}
+
+/**
+ * Lọc nhóm chức năng theo query (R-2..R-7, M-024): khớp trên group.label +
+ * group.desc + nhãn mọi node con trong group.tree. Query rỗng/khoảng trắng →
+ * trả nguyên 6 khối (R-2 reset). Không mutate/gán lại NAV_GROUPS.
+ */
+export function searchNavGroups(query: string, groups: NavGroup[] = NAV_GROUPS): NavGroup[] {
+  const q = normalizeSearchText(query);
+  if (!q) return groups;
+  return groups.filter((group) => {
+    const haystack = [group.label, group.desc, ...collectNavLabels(group.tree)]
+      .map(normalizeSearchText)
+      .join(' ');
+    return haystack.includes(q);
+  });
+}
+
+/**
+ * M-024 rework: độ sâu (level C0..C3) của từng node trong cây nhóm.
+ * level = số lượng tổ tiên (root = 0) — khớp lv0..lv3 trong preview-menu-final.html
+ * (chips C0..C3 lọc theo level). Không mutate cây gốc.
+ */
+export function treeNodeLevels(nodes: NavNode[]): Map<string, number> {
+  const levels = new Map<string, number>();
+  const walk = (ns: NavNode[], depth: number) => {
+    for (const n of ns) {
+      levels.set(n.key, depth);
+      if (n.children) walk(n.children, depth + 1);
+    }
+  };
+  walk(nodes, 0);
+  return levels;
+}
+
+/**
+ * M-024 rework: lọc cây theo level (chips C0..C3, mockup preview-menu-final.html).
+ * Node có level không nằm trong tập cho phép bị bỏ CẢ nhánh con (con chỉ hiển thị
+ * bên trong cha của nó) — đúng semantics mockup renderNode. Node trả về là bản sao,
+ * không mutate node/cây gốc.
+ */
+export function pruneTreeByLevel(
+  nodes: NavNode[],
+  allowedLevels: ReadonlySet<number>,
+  levels?: Map<string, number>,
+): NavNode[] {
+  const lv = levels ?? treeNodeLevels(nodes);
+  const out: NavNode[] = [];
+  for (const n of nodes) {
+    if (!allowedLevels.has(lv.get(n.key) ?? 0)) continue;
+    out.push({ ...n, children: n.children ? pruneTreeByLevel(n.children, allowedLevels, lv) : undefined });
+  }
+  return out;
+}
+
+/** Key của mọi node có children trong cây (cho "Mở rộng / Thu gọn tất cả"). */
+export function collectParentKeys(nodes: NavNode[]): string[] {
+  const out: string[] = [];
+  const walk = (ns: NavNode[]) => {
+    for (const n of ns) {
+      if (n.children && n.children.length > 0) {
+        out.push(n.key);
+        walk(n.children);
+      }
     }
   };
   walk(nodes);

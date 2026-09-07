@@ -11,9 +11,10 @@
  *   - 28-type matrix: `SO-DO-VA-MA-TRAN-CHA-CON-KCHT.md` §2 (repo root),
  *     rows 1..28 — canonical route key per row as cross-checked by QA w2
  *     (07-qa-report-w2.md, AC-024-03 evidence).
- *   - Extra-screen inventory (screens beyond the 28 types, verified QA w2):
- *     /navigation-channel-chk (CHK screen of row 5), /water-zone, /station/coastal
- *     (permission-gated screens with no matrix row of their own).
+ *   - Màn hình ngoài ma trận (quyết định 2026-09-07): /navigation-channel-chk,
+ *     /water-zone, /station/coastal và node '/vts-system — Thông tin hệ thống VTS'
+ *     KHÔNG còn nằm trong cây menu KCHT — route/page giữ nguyên, chỉ không còn
+ *     trong menu 28 loại (user: "menu phải hiển thị đúng file SO-DO…").
  *   - User decision 2026-09-04: legacy 2nd screen /ship-repair-facility (row 9)
  *     removed from the kcht menu — matrix row 9 keeps its single canonical screen
  *     /ship-repair-yard. The legacy route/page itself is untouched (still reachable
@@ -24,9 +25,16 @@ import { describe, expect, it } from 'vitest';
 import {
   NAV_GROUPS,
   accessibleTree,
+  collectNavLabels,
+  collectParentKeys,
+  collectRoutes,
   firstAccessibleRoute,
   groupOfPath,
   locateRoute,
+  normalizeSearchText,
+  pruneTreeByLevel,
+  searchNavGroups,
+  treeNodeLevels,
   type NavGroup,
   type NavNode,
 } from './navigation';
@@ -107,15 +115,8 @@ const MATRIX_28_KEYS = [
   '/station/hanoi', // Đài TTXLTT Hà Nội
 ] as const;
 
-/** Screens that exist for permission reasons but are NOT separate matrix types. */
-const EXTRA_SCREEN_KEYS = [
-  '/navigation-channel-chk', // CHK-scope screen of Luồng hàng hải (row 5)
-  '/water-zone', // permission-gated screen, no matrix row
-  '/station/coastal', // Đài duyên hải VTS — operational screen, no matrix row
-] as const;
-
 /** Route-less grouping parents (structural, not matrix rows). */
-const GROUPING_ROOT_KEYS = ['kcht-vts', 'kcht-vienthong'] as const;
+const GROUPING_ROOT_KEYS = ['kcht-vienthong'] as const;
 
 // ---------------------------------------------------------------------------
 // AC-024-03 — kchtTree covers exactly 28 types of the cha–con matrix
@@ -134,15 +135,12 @@ describe('navigation.kchtTree — AC-024-03 (28 KCHT types, external matrix)', (
     expect(MATRIX_28_KEYS).toHaveLength(28);
     // every matrix row is represented in the tree
     expect(keys).toEqual(expect.arrayContaining([...MATRIX_28_KEYS]));
-    // type-level inventory is stable: 28 canonical + 4 documented extra screens
-    // + 2 route-less grouping roots and nothing else
-    expect(keys.length).toBe(
-      MATRIX_28_KEYS.length + EXTRA_SCREEN_KEYS.length + GROUPING_ROOT_KEYS.length,
-    );
+    // type-level inventory is stable: 28 canonical types + the single route-less
+    // grouping root (Đài viễn thông hàng hải) and nothing else.
+    expect(keys.length).toBe(MATRIX_28_KEYS.length + GROUPING_ROOT_KEYS.length);
     const unknown = keys.filter(
       (k) =>
         !(MATRIX_28_KEYS as readonly string[]).includes(k) &&
-        !(EXTRA_SCREEN_KEYS as readonly string[]).includes(k) &&
         !(GROUPING_ROOT_KEYS as readonly string[]).includes(k),
     );
     expect(unknown).toEqual([]);
@@ -167,10 +165,12 @@ describe('navigation.kchtTree — AC-024-03 (28 KCHT types, external matrix)', (
     const byKey = new Map(entries.map((e) => [e.key, e]));
     // Cảng biển → Bến cảng → Cầu cảng
     expect(byKey.get('/pier')?.ancestors).toEqual(['/port', '/berth']);
+    // Cảng biển → Luồng hàng hải → Bến phao (sửa 2026-09-07: khớp ma trận #4)
+    expect(byKey.get('/buoy-berth')?.ancestors).toEqual(['/port', '/navigation-channel']);
     // Luồng hàng hải → Nhà trạm phao tiêu → Phao tiêu
     expect(byKey.get('/buoys')?.ancestors).toEqual(['/port', '/navigation-channel', '/buoy-station']);
-    // Hệ thống VTS → Trung tâm điều hành VTS → Trạm Radar
-    expect(byKey.get('/radar-station')?.ancestors).toEqual(['kcht-vts', '/vts-operation-center']);
+    // Hệ thống VTS (node route '/vts-system') → Trung tâm điều hành VTS → Trạm Radar
+    expect(byKey.get('/radar-station')?.ancestors).toEqual(['/vts-system', '/vts-operation-center']);
     expect(byKey.get('/dai-ttdh')?.ancestors).toEqual(['kcht-vienthong']);
   });
 });
@@ -328,16 +328,18 @@ describe('navigation.locateRoute — AC-024-06', () => {
   });
 
   it('does not cross-match routes sharing a textual prefix (segment boundary)', () => {
-    // '/navigation-channel/1' must resolve to the parent (its child screens sit deeper),
-    // while '/navigation-channel-chk/7' resolves to the CHK leaf, not to /navigation-channel
+    // '/navigation-channel/1' resolves to the Luồng node (id detail suffix), while
+    // '/buoy-berth/7' resolves to the Bến phao leaf under Luồng — nhưng path chỉ
+    // "bắt đầu bằng" cùng text ('/buoy-berth-extra/7') không được khớp '/buoy-berth'.
     expect(locateRoute(kchtTree, '/navigation-channel/1')).toEqual({
       key: '/navigation-channel',
       openKeys: ['/port', '/navigation-channel'],
     });
-    expect(locateRoute(kchtTree, '/navigation-channel-chk/7')).toEqual({
-      key: '/navigation-channel-chk',
+    expect(locateRoute(kchtTree, '/buoy-berth/7')).toEqual({
+      key: '/buoy-berth',
       openKeys: ['/port', '/navigation-channel'],
     });
+    expect(locateRoute(kchtTree, '/buoy-berth-extra/7')).toBeUndefined();
   });
 });
 
@@ -365,5 +367,165 @@ describe('navigation.firstAccessibleRoute — AC-024-04', () => {
     ];
     const group: NavGroup = { id: 'kcht', label: 'T', desc: 'D', icon: null, tree };
     expect(firstAccessibleRoute(group, () => true)).toBe('/ok');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// M-024 rework 2026-09-06 — treeNodeLevels / pruneTreeByLevel / collectParentKeys
+// (chips C0..C3, back-row, Mở rộng/Thu gọn tất cả — preview-menu-final.html)
+// ---------------------------------------------------------------------------
+
+describe('navigation.treeNodeLevels — chips C0..C3 depth oracle', () => {
+  it('levels real kcht routes by depth (root = C0)', () => {
+    const levels = treeNodeLevels(kchtTree);
+    // Chain evidence khớp locateRoute (external): /port(root) → /berth → /pier
+    expect(levels.get('/pier')).toBe(2);
+    // /port → /navigation-channel → /buoy-station → /buoys
+    expect(levels.get('/buoys')).toBe(3);
+    // kcht-vienthong (root) → /station/hanoi
+    expect(levels.get('/station/hanoi')).toBe(1);
+  });
+
+  it('stays within the C0..C3 chip range for the whole kcht tree', () => {
+    const levels = treeNodeLevels(kchtTree);
+    const maxLevel = Math.max(0, ...levels.values());
+    expect(maxLevel).toBeLessThanOrEqual(3);
+  });
+
+  it('does not mutate the source tree', () => {
+    const before = collectRoutes(kchtTree).length;
+    treeNodeLevels(kchtTree);
+    expect(collectRoutes(kchtTree).length).toBe(before);
+  });
+});
+
+describe('navigation.pruneTreeByLevel — chips filter semantics', () => {
+  const sample: NavNode[] = [
+    {
+      key: '/a',
+      route: '/a',
+      label: 'A',
+      children: [
+        {
+          key: '/b',
+          route: '/b',
+          label: 'B',
+          children: [{ key: '/c', route: '/c', label: 'C' }],
+        },
+        { key: '/d', route: '/d', label: 'D' },
+      ],
+    },
+  ];
+  const sampleKeys = (nodes: NavNode[]): string[] =>
+    nodes.flatMap((n) => [n.key, ...(n.children ? sampleKeys(n.children) : [])]);
+
+  it('keeps every node when all four levels are allowed', () => {
+    const pruned = pruneTreeByLevel(sample, new Set([0, 1, 2, 3]));
+    expect(sampleKeys(pruned)).toEqual(['/a', '/b', '/c', '/d']);
+  });
+
+  it('drops an excluded level together with its whole descendant subtree', () => {
+    // Bỏ C1 → node /b (lv1) mất cùng con /c (lv2) — con chỉ hiện trong cha (mockup)
+    const pruned = pruneTreeByLevel(sample, new Set([0, 2]));
+    expect(sampleKeys(pruned)).toEqual(['/a']);
+  });
+
+  it('hides only the leaves of an excluded deep level', () => {
+    const pruned = pruneTreeByLevel(sample, new Set([0, 1]));
+    expect(sampleKeys(pruned)).toEqual(['/a', '/b', '/d']);
+  });
+
+  it('never mutates source nodes (returns copies)', () => {
+    const sourceChildren = sample[0].children;
+    pruneTreeByLevel(sample, new Set([0, 1, 2, 3]));
+    expect(sample[0].children).toBe(sourceChildren);
+    expect(sample[0].children?.length).toBe(2);
+  });
+});
+
+describe('navigation.collectParentKeys — Mở rộng / Thu gọn tất cả', () => {
+  it('returns only keys of nodes that have children', () => {
+    const keys = collectParentKeys(kchtTree);
+    expect(keys).toContain('/port');
+    expect(keys).toContain('/berth');
+    expect(keys).toContain('/navigation-channel');
+    expect(keys).not.toContain('/pier'); // lá không có children
+  });
+});
+
+/* ============================================================================
+ * M-024 follow-up (2026-09-06): landing search — normalizeSearchText + collectNavLabels +
+ * searchNavGroups (R-1..R-7 của triage TRI-1788710986171). Chuẩn hóa không dấu /
+ * đ→d; lọc NAV_GROUPS theo group.label + group.desc + nhãn node con trong tree.
+ * ==========================================================================*/
+describe('navigation.normalizeSearchText — landing search chuẩn hóa (R-1)', () => {
+  it('trims whitespace and lowercases ASCII text', () => {
+    expect(normalizeSearchText('  Quan Ly Cang  ')).toBe('quan ly cang');
+  });
+
+  it('strips Vietnamese diacritics via NFD (no combining marks survive)', () => {
+    expect(normalizeSearchText('Quản lý KCHT hàng hải')).toBe('quan ly kcht hang hai');
+    expect(normalizeSearchText('Đà Nẵng')).toBe('da nang');
+    expect(normalizeSearchText('Bến phao, khu neo đậu')).toBe('ben phao, khu neo dau');
+  });
+
+  it('maps đ/Đ to d after lowercasing', () => {
+    expect(normalizeSearchText('Đài viễn thông')).toBe('dai vien thong');
+    expect(normalizeSearchText('đèn biển')).toBe('den bien');
+  });
+
+  it('is idempotent on an already-normalized input', () => {
+    const once = normalizeSearchText('  Bến Phao  ');
+    expect(once).toBe('ben phao');
+    expect(normalizeSearchText(once)).toBe(once);
+  });
+});
+
+describe('navigation.collectNavLabels — label-collector của searchNavGroups', () => {
+  it('collects parent and child labels across the whole tree', () => {
+    const labels = collectNavLabels(kchtTree);
+    expect(labels).toContain('Quản lý cảng biển'); // cha
+    expect(labels).toContain('Quản lý cầu cảng'); // lá sâu
+    expect(labels).toContain('Đài viễn thông hàng hải'); // nhánh root riêng
+  });
+});
+
+describe('navigation.searchNavGroups — lọc 6 khối landing (R-2..R-7)', () => {
+  it('R-2: empty/whitespace query returns the full NAV_GROUPS (reset, no filtering)', () => {
+    expect(searchNavGroups('')).toHaveLength(6);
+    expect(searchNavGroups('   ')).toHaveLength(6);
+    expect(searchNavGroups('')).toEqual(NAV_GROUPS);
+  });
+
+  it('matches a group by its own label with diacritic-insensitive input', () => {
+    const hits = searchNavGroups('tai san kcht hang hai', NAV_GROUPS);
+    expect(hits.map((g) => g.id)).toEqual(['asset']);
+    // accented query and unaccented haystack must agree
+    expect(searchNavGroups('tài sản KCHT hàng hải', NAV_GROUPS).map((g) => g.id)).toEqual(['asset']);
+  });
+
+  it('matches a group via a deep child label inside group.tree', () => {
+    // '/pier' — Quản lý cầu cảng — là lá sâu (level 3) của cây kcht
+    const hits = searchNavGroups('cau cang', NAV_GROUPS);
+    expect(hits.map((g) => g.id)).toEqual(['kcht']);
+    expect(searchNavGroups('cầu cảng', NAV_GROUPS).map((g) => g.id)).toEqual(['kcht']);
+  });
+
+  it('matches a group by its desc text', () => {
+    // desc kcht: "28 loại KCHT theo phân cấp cha – con"
+    const hits = searchNavGroups('28 loai', NAV_GROUPS);
+    expect(hits.map((g) => g.id)).toEqual(['kcht']);
+  });
+
+  it('R-7: no match → empty array, never throws', () => {
+    expect(searchNavGroups('zzzz-khong-ton-tai', NAV_GROUPS)).toEqual([]);
+  });
+
+  it('does not mutate NAV_GROUPS — returns original group references', () => {
+    const snapshot = NAV_GROUPS.map((g) => g.id).join(',');
+    searchNavGroups('cang', NAV_GROUPS);
+    searchNavGroups('zzzz', NAV_GROUPS);
+    expect(NAV_GROUPS.map((g) => g.id).join(',')).toBe(snapshot);
+    expect(searchNavGroups('cang', NAV_GROUPS)[0]).toBe(NAV_GROUPS[0]);
   });
 });

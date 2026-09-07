@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preview — Sidebar 1 cột biến hình (KCHT hàng hải)</title>
+<style>
+  :root{
+    --navy-900:#16264f; --navy-800:#1a3f83; --navy-700:#22509e; --navy-100:#eaf1fb;
+    --ink:#1f2a44; --muted:#8892a5; --line:#e2e8f0; --bg:#eef1f6; --card:#ffffff;
+    --c0:#273e7c; --c1:#2d6fb0; --c2:#7a4fd0; --c3:#0f8f6a; --dim:#93a3b3;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  .shell{display:flex;height:100vh;overflow:hidden;}
+
+  /* ===== SIDEBAR (1 CỘT DUY NHẤT, BIẾN HÌNH) ===== */
+  .sidebar{width:264px;background:var(--navy-900);color:#eaf1fb;flex-shrink:0;display:flex;flex-direction:column;
+    transition:width .18s ease;overflow:hidden;}
+  .sidebar.rail{width:60px;}
+  .sb-head{display:flex;align-items:center;gap:8px;padding:14px 12px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;}
+  .sb-toggle{width:28px;height:28px;border-radius:8px;border:none;background:rgba(255,255,255,.08);color:#cfe0fb;
+    cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .sb-toggle:hover{background:rgba(255,255,255,.16);}
+  .brand{font-size:12px;font-weight:700;letter-spacing:.3px;color:#fff;white-space:nowrap;overflow:hidden;}
+  .sb-body{flex:1;overflow-y:auto;padding:10px 8px;}
+
+  /* Trạng thái A: 6 khối chức năng */
+  .grp{display:flex;align-items:center;gap:10px;padding:10px 10px;border-radius:9px;font-size:13px;cursor:pointer;
+    white-space:nowrap;}
+  .grp:hover{background:rgba(255,255,255,.08);}
+  .grp.on{background:rgba(255,255,255,.16);font-weight:600;}
+  .grp .gic{width:20px;text-align:center;flex-shrink:0;font-size:15px;}
+  .grp .gtx{overflow:hidden;text-overflow:ellipsis;}
+  .grp .chevr{margin-left:auto;font-size:11px;color:#9fb3d6;flex-shrink:0;}
+  .rail .grp .gtx, .rail .grp .chevr, .rail .brand{display:none;}
+  .rail .grp{justify-content:center;padding:10px 0;}
+
+  /* Trạng thái B: cây 28 loại (thay thế khối) */
+  .back-row{display:flex;align-items:center;gap:6px;padding:8px 10px;margin-bottom:6px;font-size:12px;
+    color:#bcd0f2;cursor:pointer;border-radius:8px;white-space:nowrap;}
+  .back-row:hover{background:rgba(255,255,255,.08);}
+  .rail .back-row{justify-content:center;padding:8px 0;}
+  .rail .back-row span.lbl{display:none;}
+
+  .tree-tools{padding:0 4px 10px;}
+  .rail .tree-tools{display:none;}
+  .tsearch{width:100%;padding:7px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.06);color:#fff;font-size:12.5px;margin-bottom:8px;}
+  .tsearch::placeholder{color:#8fa3c8;}
+  .chips{display:flex;gap:5px;flex-wrap:wrap;}
+  .chip{padding:3px 9px;border-radius:999px;font-size:10.5px;font-weight:700;cursor:pointer;user-select:none;
+    border:1px solid rgba(255,255,255,.18);color:#b9c8e6;background:transparent;}
+  .chip.on{background:#fff;color:var(--navy-900);border-color:#fff;}
+  .exp-row{display:flex;gap:10px;padding:6px 10px 10px;font-size:11px;color:#9fb3d6;}
+  .exp-row span{cursor:pointer;text-decoration:underline;}
+  .rail .exp-row{display:none;}
+
+  .tree{padding:0 2px;}
+  .node{display:flex;align-items:center;gap:5px;padding:6px 6px;border-radius:7px;cursor:pointer;font-size:12.8px;
+    white-space:nowrap;}
+  .node:hover{background:rgba(255,255,255,.08);}
+  .node.active{background:#2b5bb0;font-weight:600;}
+  .node.dim{opacity:.4;cursor:not-allowed;}
+  .node.dim:hover{background:transparent;}
+  .chev{width:14px;flex-shrink:0;text-align:center;font-size:10px;color:#9fb3d6;cursor:pointer;}
+  .chev:hover{color:#fff;}
+  .chev.empty{cursor:default;}
+  .nic{width:18px;text-align:center;flex-shrink:0;font-size:13px;}
+  .nlbl{flex:1;overflow:hidden;text-overflow:ellipsis;cursor:pointer;}
+  .nlv{font-size:9px;font-weight:800;padding:1px 6px;border-radius:999px;flex-shrink:0;color:#0b1730;}
+  .lv0{background:#fff;} .lv1{background:#9fc4ff;} .lv2{background:#c6b3ff;} .lv3{background:#8de3c6;}
+  .kids{border-left:1px dashed rgba(255,255,255,.18);margin-left:16px;padding-left:6px;}
+  .rail .tree{display:none;}
+  mark{background:#ffe08a;color:#3a2e00;border-radius:3px;padding:0 1px;}
+
+  /* Landing: sidebar chỉ giữ logo + search, không liệt kê lại 6 nhóm (đã có ở content) */
+  .landing-note{padding:10px 8px;font-size:11.5px;color:#8fa3c8;line-height:1.5;}
+  .rail .landing-note{display:none;}
+
+  .sb-foot{padding:12px;font-size:10.5px;color:#7f93ba;text-align:center;border-top:1px solid rgba(255,255,255,.08);
+    white-space:nowrap;overflow:hidden;}
+  .rail .sb-foot{display:none;}
+
+  /* ===== CONTENT ===== */
+  .main{flex:1;overflow:auto;padding:22px 26px;min-width:0;}
+  .crumb{font-size:12px;color:var(--muted);margin-bottom:10px;}
+  .crumb b{color:var(--navy-800);}
+  .titlebar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+  h1{font-size:18px;margin:0;color:var(--navy-800);}
+  .addbtn{background:var(--navy-900);color:#fff;border:none;padding:9px 16px;border-radius:8px;font-size:13px;
+    font-weight:600;cursor:pointer;}
+
+  .kh{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:860px;}
+  .block{border:1px solid var(--line);border-radius:14px;padding:18px;background:var(--card);cursor:pointer;}
+  .block:hover{border-color:var(--navy-800);box-shadow:0 6px 18px rgba(39,62,124,.12);}
+  .block .ic{font-size:26px;}
+  .block .tt{font-size:14px;font-weight:700;color:#26334d;margin-top:10px;}
+  .block .ds{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.4;}
+
+  .tabs{display:flex;gap:18px;border-bottom:1px solid var(--line);margin-bottom:14px;font-size:13px;color:var(--muted);}
+  .tabs span{padding:8px 2px;cursor:pointer;}
+  .tabs span.on{color:var(--navy-800);font-weight:700;border-bottom:2px solid var(--navy-800);}
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  th{background:#f6f8fb;text-align:left;font-size:11.5px;color:#5b6b85;padding:10px 12px;border-bottom:1px solid var(--line);}
+  td{padding:11px 12px;font-size:13px;border-bottom:1px solid #f0f3f8;color:#2b3752;}
+  tr:last-child td{border-bottom:none;}
+  .muted{color:var(--muted);}
+  .hint{background:#fff8e1;border:1px solid #ffe4a3;color:#7a5b00;font-size:12px;padding:10px 12px;border-radius:8px;
+    margin-bottom:14px;}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ================= SIDEBAR 1 CỘT DUY NHẤT ================= -->
+  <div class="sidebar" id="sidebar">
+    <div class="sb-head">
+      <button class="sb-toggle" id="railBtn" title="Thu gọn / Mở rộng">☰</button>
+      <div class="brand" id="brandTxt">HỆ THỐNG KCHT HÀNG HẢI</div>
+    </div>
+
+    <div class="sb-body" id="sbBody"><!-- render bằng JS --></div>
+
+    <div class="sb-foot">Cục Hàng Hải và Đường Thủy Việt Nam</div>
+  </div>
+
+  <!-- ================= CONTENT ================= -->
+  <div class="main" id="main"><!-- render bằng JS --></div>
+</div>
+
+<script>
+/* ---------- DỮ LIỆU 6 KHỐI CHỨC NĂNG CẤP 1 ---------- */
+const GROUPS = [
+  { id:'kcht', ic:'📋', name:'Quản lý KCHT hàng hải', desc:'28 loại kết cấu hạ tầng, phân cấp cha–con', hasTree:true },
+  { id:'asset', ic:'🏗️', name:'Quản lý tài sản KCHT hàng hải', desc:'Tài sản, kiểm kê, xử lý tài sản', hasTree:false },
+  { id:'plan', ic:'🗺️', name:'Quản lý quy hoạch & vận hành', desc:'Quy hoạch, vận hành, bảo trì, sự cố', hasTree:false },
+  { id:'gis', ic:'🌐', name:'Quản lý KCHT trên nền bản đồ (GIS)', desc:'Trực quan hoá KCHT trên bản đồ số', hasTree:false },
+  { id:'report', ic:'📊', name:'Báo cáo thống kê', desc:'Các biểu mẫu báo cáo nghiệp vụ', hasTree:false },
+  { id:'admin', ic:'⚙️', name:'Quản trị hệ thống', desc:'Người dùng, nhóm, đơn vị, tích hợp', hasTree:false },
+];
+
+/* ---------- CÂY 28 LOẠI KCHT — MỌI NODE ĐỀU LÀ MÀN DỮ LIỆU ---------- */
+const TREE = [
+  { id:'cang-bien', n:'Cảng biển', lv:0, ic:'⚓', kids:[
+    { id:'ben-cang', n:'Bến cảng', lv:1, ic:'🏗️', kids:[
+      { id:'cau-cang', n:'Cầu cảng', lv:2, ic:'🚢' }
+    ]},
+    { id:'luong-hh', n:'Luồng hàng hải', lv:1, ic:'🌊', kids:[
+      { id:'ben-phao', n:'Bến phao', lv:2, ic:'🛟' },
+      { id:'nha-tram-pt', n:'Nhà trạm QLVH phao tiêu', lv:2, ic:'🏠', kids:[
+        { id:'phao-tieu', n:'Phao, tiêu', lv:3, ic:'🔺' }
+      ]},
+      { id:'den-bien', n:'Đèn biển & nhà trạm', lv:2, ic:'💡' },
+      { id:'de-chan-song', n:'Đê chắn sóng, đê chắn cát, kè', lv:2, ic:'🧱' }
+    ]},
+    { id:'khu-neo-dau', n:'Khu neo đậu', lv:1, ic:'⚓' },
+    { id:'khu-chuyen-tai', n:'Khu chuyển tải', lv:1, ic:'🔄' },
+    { id:'khu-tranh-bao', n:'Khu tránh, trú bão', lv:1, ic:'🌀' },
+    { id:'cs-sua-chua', n:'Cơ sở sửa chữa, đóng tàu', lv:1, ic:'🔧' }
+  ]},
+  { id:'vts', n:'Hệ thống VTS', lv:0, ic:'🛰️', kids:[
+    { id:'ttdh-vts', n:'Trung tâm điều hành VTS', lv:1, ic:'🖥️', kids:[
+      { id:'radar', n:'Trạm Radar', lv:2, ic:'📡' },
+      { id:'ais', n:'Hệ thống AIS', lv:2, ic:'📶' },
+      { id:'cctv', n:'Hệ thống CCTV', lv:2, ic:'🎥' },
+      { id:'scada', n:'Hệ thống SCADA', lv:2, ic:'🎛️' },
+      { id:'truyen-dan', n:'Hệ thống truyền dẫn', lv:2, ic:'🔗' },
+      { id:'phu-tro-vts', n:'Hệ thống phụ trợ VTS', lv:2, ic:'⚙️' }
+    ]}
+  ]},
+  { id:'cang-can', n:'Cảng cạn', lv:0, ic:'🚚' },
+  { id:'dai-vt', n:'Đài viễn thông hàng hải', lv:0, ic:'📡', kids:[
+    { id:'ttdh', n:'Đài TTDH', lv:1, ic:'📻' },
+    { id:'vhf', n:'Hệ thống VHF', lv:1, ic:'📡', disabled:true },
+    { id:'inmarsat', n:'Đài Inmarsat', lv:1, ic:'🛰️' },
+    { id:'lrit', n:'Đài LRIT', lv:1, ic:'🛰️' },
+    { id:'cospas', n:'Đài Cospas-Sarsat', lv:1, ic:'🛰️' },
+    { id:'ttxltt', n:'Đài TTXLTT Hà Nội', lv:1, ic:'🏢' }
+  ]}
+];
+
+/* ---------- STATE ---------- */
+let view = 'groups';          // 'groups' | 'tree'
+let activeGroup = null;
+let activeNode = null;        // node id đang xem ở content
+let openMap = {};             // id -> bool (mở/đóng nhánh)
+let filterLv = new Set([0,1,2,3]);
+let query = '';
+let railMode = false;
+
+const sidebar = document.getElementById('sidebar');
+const sbBody = document.getElementById('sbBody');
+const mainEl = document.getElementById('main');
+
+/* ---------- Helpers cây ---------- */
+function findNode(list, id){
+  for(const n of list){
+    if(n.id === id) return n;
+    if(n.kids){ const f = findNode(n.kids, id); if(f) return f; }
+  }
+  return null;
+}
+function pathTo(list, id, trail=[]){
+  for(const n of list){
+    const nt = trail.concat(n);
+    if(n.id === id) return nt;
+    if(n.kids){ const f = pathTo(n.kids, id, nt); if(f) return f; }
+  }
+  return null;
+}
+function openAncestors(id){
+  const p = pathTo(TREE, id);
+  if(!p) return;
+  p.forEach(n => { if(n.kids) openMap[n.id] = true; });
+}
+
+/* ---------- Render sidebar ---------- */
+function renderSidebar(){
+  sidebar.className = 'sidebar' + (railMode ? ' rail' : '');
+  sbBody.innerHTML = '';
+
+  if(view === 'groups'){
+    // Landing: content bên phải đã là nơi chọn nhóm (6 card) → sidebar KHÔNG liệt kê lại,
+    // chỉ giữ ô tìm kiếm toàn hệ thống để tránh trùng lặp vai trò điều hướng.
+    sbBody.innerHTML = `
+      <input class="tsearch" style="margin:2px 4px 8px;width:calc(100% - 8px)" placeholder="Tìm kiếm...">
+      <div class="landing-note">Chọn một khối chức năng ở bên phải để bắt đầu. Menu điều hướng chi tiết sẽ hiện ở đây sau khi bạn chọn.</div>`;
+    return;
+  }
+
+  // view === 'tree'
+  const back = document.createElement('div');
+  back.className = 'back-row';
+  back.innerHTML = `<span>←</span><span class="lbl">Quay lại Danh mục chức năng</span>`;
+  back.onclick = () => { view = 'groups'; activeGroup = null; renderAll(); };
+  sbBody.appendChild(back);
+
+  const tools = document.createElement('div');
+  tools.className = 'tree-tools';
+  tools.innerHTML = `
+    <input class="tsearch" placeholder="Tìm loại KCHT…" value="${query}">
+    <div class="chips">
+      ${[0,1,2,3].map(l => `<span class="chip ${filterLv.has(l)?'on':''}" data-lv="${l}">C${l}</span>`).join('')}
+    </div>
+    <div class="exp-row"><span data-act="expand">Mở rộng tất cả</span><span data-act="collapse">Thu gọn tất cả</span></div>
+  `;
+  sbBody.appendChild(tools);
+  tools.querySelector('.tsearch').addEventListener('input', e => { query = e.target.value.trim().toLowerCase(); renderAll(); });
+  tools.querySelectorAll('.chip').forEach(ch => ch.onclick = () => {
+    const lv = +ch.dataset.lv;
+    filterLv.has(lv) ? filterLv.delete(lv) : filterLv.add(lv);
+    renderAll();
+  });
+  tools.querySelector('[data-act="expand"]').onclick = () => { setAllOpen(TREE, true); renderAll(); };
+  tools.querySelector('[data-act="collapse"]').onclick = () => { setAllOpen(TREE, false); renderAll(); };
+
+  const treeWrap = document.createElement('div');
+  treeWrap.className = 'tree';
+  TREE.forEach(n => renderNode(n, treeWrap));
+  sbBody.appendChild(treeWrap);
+}
+
+function setAllOpen(list, val){
+  list.forEach(n => { if(n.kids){ openMap[n.id] = val; setAllOpen(n.kids, val); } });
+}
+
+function renderNode(node, parentEl){
+  if(!filterLv.has(node.lv)) return;
+  const hasKids = node.kids && node.kids.length;
+  const isOpen = openMap[node.id] !== false && openMap[node.id] !== undefined ? openMap[node.id] : (hasKids ? !!openMap[node.id] : false);
+  const match = query && node.n.toLowerCase().includes(query);
+
+  const row = document.createElement('div');
+  row.className = 'node' + (node.id === activeNode ? ' active' : '') + (node.disabled ? ' dim' : '');
+  if(node.disabled) row.title = 'Chức năng đang được xây dựng';
+
+  const chev = document.createElement('span');
+  chev.className = 'chev' + (hasKids ? '' : ' empty');
+  chev.textContent = hasKids ? (openMap[node.id] ? '▾' : '▸') : '';
+  if(hasKids && !node.disabled){
+    chev.onclick = (e) => { e.stopPropagation(); openMap[node.id] = !openMap[node.id]; renderAll(); };
+  }
+  row.appendChild(chev);
+
+  const ic = document.createElement('span'); ic.className = 'nic'; ic.textContent = node.ic || '•';
+  row.appendChild(ic);
+
+  const lbl = document.createElement('span'); lbl.className = 'nlbl';
+  if(match){
+    const i = node.n.toLowerCase().indexOf(query);
+    lbl.innerHTML = node.n.slice(0,i) + '<mark>' + node.n.slice(i,i+query.length) + '</mark>' + node.n.slice(i+query.length);
+  } else { lbl.textContent = node.n; }
+  if(!node.disabled){
+    lbl.onclick = (e) => { e.stopPropagation(); activeNode = node.id; renderAll(); };
+  }
+  row.appendChild(lbl);
+
+  parentEl.appendChild(row);
+
+  if(hasKids && openMap[node.id]){
+    const kids = document.createElement('div'); kids.className = 'kids';
+    node.kids.forEach(k => renderNode(k, kids));
+    parentEl.appendChild(kids);
+  }
+}
+
+/* ---------- Render content bên phải ---------- */
+function renderMain(){
+  if(view === 'groups'){
+    mainEl.innerHTML = `
+      <div class="crumb">Danh mục chức năng</div>
+      <h1 style="margin-bottom:6px">Danh mục chức năng</h1>
+      <p class="muted" style="font-size:13px;margin:0 0 16px">Chọn một khối chức năng để tiếp tục.</p>
+      <div class="kh">
+        ${GROUPS.map(g => `<div class="block" data-g="${g.id}"><div class="ic">${g.ic}</div><div class="tt">${g.name}</div><div class="ds">${g.desc}</div></div>`).join('')}
+      </div>`;
+    mainEl.querySelectorAll('.block').forEach(b => b.onclick = () => {
+      const g = GROUPS.find(x => x.id === b.dataset.g);
+      activeGroup = g.id;
+      if(g.hasTree){ view = 'tree'; if(!activeNode){ activeNode='phao-tieu'; openAncestors(activeNode);} }
+      renderAll();
+    });
+    return;
+  }
+
+  // view === 'tree' → hiển thị màn dữ liệu của activeNode
+  const node = findNode(TREE, activeNode);
+  const p = pathTo(TREE, activeNode) || [];
+  const crumbTxt = p.map(n => n.n).join(' &nbsp;›&nbsp; ');
+
+  mainEl.innerHTML = `
+    <div class="crumb">Quản lý KCHT hàng hải &nbsp;›&nbsp; <b>${crumbTxt}</b></div>
+    <div class="titlebar">
+      <h1>Quản lý ${node ? node.n : ''}</h1>
+      <button class="addbtn">+ Thêm mới</button>
+    </div>
+    <div class="hint">Đây là dữ liệu minh hoạ để xem luồng điều hướng. Bấm các node khác trong cây bên trái (bấm vào <b>tên</b> để chuyển màn, bấm vào <b>mũi tên ▸/▾</b> để chỉ mở/đóng nhánh mà không rời màn hiện tại).</div>
+    <div class="tabs">
+      <span class="on">Tất cả&nbsp;7</span><span>Lưu tạm&nbsp;3</span><span>Chờ phê duyệt&nbsp;3</span><span>Đã phê duyệt&nbsp;0</span>
+    </div>
+    <table>
+      <thead><tr><th>STT</th><th>TÊN / MÃ</th><th>ĐƠN VỊ QUẢN LÝ</th><th>ĐỊA ĐIỂM</th></tr></thead>
+      <tbody>
+        ${[1,2,3].map(i => `<tr><td>${i}</td><td><b>${node ? node.n : ''} ${i}</b><br><span class="muted" style="font-size:11.5px">MÃ-${String(i).padStart(3,'0')}</span></td><td>Tổng Công ty bảo đảm an toàn hàng hải</td><td>—</td></tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function renderAll(){ renderSidebar(); renderMain(); }
+
+document.getElementById('railBtn').onclick = () => { railMode = !railMode; renderSidebar(); };
+
+renderAll();
+</script>
+</body>
+</html>
