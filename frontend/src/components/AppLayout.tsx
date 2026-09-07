@@ -54,7 +54,6 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/gis/lines': 'data:read',
   '/gis/polygons': 'data:read',
   '/gis/layers': 'map:manage',
-  '/gis/map': 'data:read',
   '/gis/permits': 'data:read',
   '/beacon-stations': 'beaconstation:read',
   '/buoys': 'buoy:read',
@@ -134,7 +133,7 @@ function buildNavMenuItems(
           const sub = {
             ...base,
             children: kids,
-            onTitleClick: n.route ? () => go(n.route as string) : undefined,
+            onTitleClick: n.route && canAccess(n.route) ? () => go(n.route as string) : undefined,
           } as AntMenuItem;
           return [sub];
         }
@@ -205,6 +204,7 @@ export default function AppLayout({ initialSidebarHidden = false }: { initialSid
   const navigate = useNavigate();
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
+  usePermissionStore((s) => s.permissions);
   const logout = useAuthStore((s) => s.logout);
   const screens = useBreakpoint();
 

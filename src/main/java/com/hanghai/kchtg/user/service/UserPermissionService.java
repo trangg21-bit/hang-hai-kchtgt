@@ -31,6 +31,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class UserPermissionService {
 
+    private static final Set<String> PROTECTED_SYSTEM_PERMISSIONS = Set.of(
+            "*", "admin:all", "orgunit:scope_all"
+    );
+
     private final UserRepository userRepository;
     private final PermissionRepository permissionRepository;
     private final UserPermissionOverrideRepository overrideRepository;
@@ -39,7 +43,7 @@ public class UserPermissionService {
 
     public List<UserPermissionOverrideResponse> list(UUID userId) {
         assertAuthenticated();
-        assertSuperAdmin();
+        assertCanViewPermissions();
         assertTargetUserInScope(userId);
         return overrideRepository.findActiveByUserId(userId).stream()
                 .map(UserPermissionOverrideResponse::from)
@@ -157,6 +161,9 @@ public class UserPermissionService {
 
         for (UserPermissionOverride override : current) {
             String code = override.getPermissionCode().toLowerCase(Locale.ROOT);
+            if (PROTECTED_SYSTEM_PERMISSIONS.contains(code)) {
+                continue;
+            }
             if (!requested.contains(code)) {
                 assertCanRevokePermission(user, code);
                 override.softDelete(SecurityUtils.getCurrentUserId());
@@ -236,6 +243,9 @@ public class UserPermissionService {
 
         for (UserPermissionOverride override : current) {
             String code = override.getPermissionCode().toLowerCase(Locale.ROOT);
+            if (PROTECTED_SYSTEM_PERMISSIONS.contains(code)) {
+                continue;
+            }
             if (!requested.contains(code)) {
                 override.softDelete(null);
                 overrideRepository.save(override);
@@ -290,6 +300,22 @@ public class UserPermissionService {
             throw new AccessDeniedException(
                     "Chỉ Quản trị viên cấp cao (Super Admin) mới có quyền cấp hoặc thu hồi quyền trực tiếp cho người dùng");
         }
+    }
+
+    private void assertCanViewPermissions() {
+        if (SecurityUtils.isElevatedAdministrator()) {
+            return;
+        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getAuthorities() != null && auth.getAuthorities().stream().anyMatch(a ->
+                "user:manage".equalsIgnoreCase(a.getAuthority())
+                || "admin:manage".equalsIgnoreCase(a.getAuthority())
+                || "user:read".equalsIgnoreCase(a.getAuthority())
+                || "user:permission".equalsIgnoreCase(a.getAuthority()))) {
+            return;
+        }
+        throw new AccessDeniedException(
+                "Bạn không có quyền xem thông tin phân quyền của người dùng");
     }
 
     private void assertTargetUserInScope(UUID userId) {

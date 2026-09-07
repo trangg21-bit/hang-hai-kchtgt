@@ -150,7 +150,20 @@ public class PermissionMiddleware extends OncePerRequestFilter {
         if (path.endsWith("/options") || path.endsWith("/options/") || path.contains("/options")) {
             return true;
         }
-        if (HttpMethod.GET.name().equalsIgnoreCase(method) && SKIP_PERMISSION_ORG_UNIT_PATHS.contains(path)) {
+        if (HttpMethod.GET.name().equalsIgnoreCase(method)) {
+            if (SKIP_PERMISSION_ORG_UNIT_PATHS.contains(path)) {
+                return true;
+            }
+            if ("/api/permissions".equals(path) || "/api/v1/permissions".equals(path)
+                    || "/api/permissions/".equals(path) || "/api/v1/permissions/".equals(path)) {
+                return true;
+            }
+            if (path.startsWith("/api/symbols") || path.startsWith("/api/search")) {
+                return true;
+            }
+        }
+        // Các API bản đồ không cần phân quyền
+        if (path.startsWith("/api/gis/") || path.startsWith("/api/v1/gis/") || path.startsWith("/api/v1/kchtgis/") || path.startsWith("/api/kchtgis/")) {
             return true;
         }
         return PUBLIC_PATH_PREFIXES.stream().anyMatch(path::startsWith);
@@ -251,6 +264,11 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             entry("point-objects", "pointobject"),
             entry("line-objects", "lineobject"),
             entry("polygon-objects", "polygonobject"),
+            entry("gis", "data"),
+            entry("kchtgis", "data"),
+            entry("kchtgis_155", "data"),
+            entry("charts", "data"),
+            entry("planning", "data"),
             entry("map-layers", "map"),
             entry("map-icons", "map"),
             entry("symbols", "map"),
@@ -283,6 +301,7 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             entry("buoy-stations", "buoystation"),
             entry("stations", "station"),
             entry("users", "user"),
+            entry("permissions", "admin"),
             entry("approvals", "approve"),
             entry("dashboard", "dashboard"),
             entry("backups", "admin"),
@@ -321,7 +340,11 @@ public class PermissionMiddleware extends OncePerRequestFilter {
         if (normalizedPath.contains("/lock") || normalizedPath.contains("/unlock")) {
             return "lock";
         }
-        if (normalizedPath.contains("/permissions")) {
+        if (normalizedPath.contains("/permissions")
+                && !normalizedPath.equals("/api/permissions")
+                && !normalizedPath.equals("/api/v1/permissions")
+                && !normalizedPath.equals("/api/permissions/")
+                && !normalizedPath.equals("/api/v1/permissions/")) {
             return "permission";
         }
         if (normalizedPath.contains("/members")) {

@@ -127,12 +127,12 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
         console.error('Không tải được danh sách cảng biển', err);
       }
       try {
-        const vts = await vtsSystemCRUD.list({ size: 500 });
+        const vts = await vtsSystemCRUD.getOptions();
         setVtsOptions(
-          (vts.items || []).map((item) => ({
+          (vts || []).map((item) => ({
             id: item.id,
             code: item.code,
-            systemName: item.systemName,
+            systemName: item.name,
           })),
         );
       } catch (err) {

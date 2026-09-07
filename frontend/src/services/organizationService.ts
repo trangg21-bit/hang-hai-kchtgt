@@ -30,6 +30,16 @@ export interface Organization {
   rank?: OrgUnitRankName;
 }
 
+export interface CandidateParent {
+  id: string;
+  name: string;
+  level?: number;
+  rank?: OrgUnitRankName;
+  currentParent: boolean;
+  disabled: boolean;
+  disabledReason?: string;
+}
+
 export interface CreateOrganizationPayload {
   name: string;
   code?: string;
@@ -114,12 +124,18 @@ function mapOrgUnit(
     ? orgMap.get(item.parentId)?.name
     : undefined;
 
-  // Compute level: root (no parentId) = 1, else parent.level + 1
-  let level = 1;
-  if (item.parentId) {
-    const parent = orgMap.get(item.parentId);
-    if (parent && parent.level !== undefined) {
-      level = parent.level + 1;
+  // Compute level: if item has level > 0 use it; else if parent exists parent.level + 1; else root = 1
+  let level = (item.level && item.level > 0) ? item.level : undefined;
+  if (!level) {
+    if (item.parentId) {
+      const parent = orgMap.get(item.parentId);
+      if (parent && parent.level !== undefined) {
+        level = parent.level + 1;
+      } else {
+        level = 2;
+      }
+    } else {
+      level = 1;
     }
   }
 
@@ -306,13 +322,19 @@ export const organizationService = {
 
         // Now compute parentOrgName and level
         const data: Organization[] = flatList.map((item) => {
-          let level = item.level ?? 1;
+          let level = (item.level && item.level > 0) ? item.level : undefined;
           let parentOrgName: string | undefined;
           if (item.parentId) {
             const parent = orgMap.get(item.parentId);
             if (parent) {
               parentOrgName = parent.name;
+              if (!level && parent.level) {
+                level = parent.level + 1;
+              }
             }
+          }
+          if (!level) {
+            level = item.parentId ? 2 : 1;
           }
 
           const childCount = flatList.filter(
@@ -420,7 +442,7 @@ export const organizationService = {
    * GET /api/org-units/tree
    * Returns hierarchical tree with children populated.
    */
-  async getTree(): Promise<Organization[]> {
+  async getTree(_options?: { allowMockFallback?: boolean }): Promise<Organization[]> {
     const cached = getCachedOrgs();
     if (cached) {
       return cached;
@@ -433,15 +455,16 @@ export const organizationService = {
 
     const flatList: Organization[] = [];
 
-    const flatten = (node: any) => {
+    const flatten = (node: any, currentLevel = 1) => {
       if (!node) return;
+      const nodeLevel = (node.level && node.level > 0) ? node.level : currentLevel;
       const org: Organization = {
         id: node.id ?? "",
         name: node.name ?? "",
         code: node.code,
         parentId: node.parentId ? String(node.parentId) : undefined,
         parentOrgName: undefined,
-        level: node.level,
+        level: nodeLevel,
         type: node.type as Organization["type"],
         description: node.description,
         provinceId: node.provinceId != null ? Number(node.provinceId) : undefined,
@@ -457,11 +480,11 @@ export const organizationService = {
       flatList.push(org);
 
       if (Array.isArray(node.children)) {
-        node.children.forEach(flatten);
+        node.children.forEach((child: any) => flatten(child, nodeLevel + 1));
       }
     };
 
-    items.forEach(flatten);
+    items.forEach((item: any) => flatten(item, 1));
 
     // Enrich parentOrgName
     const orgMap = new Map<string, Organization>();
@@ -648,6 +671,27 @@ export const organizationService = {
       childCount: 0,
       createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
       updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined),
+    }));
+  },
+
+  /**
+   * GET /api/org-units/candidate-parents?unitId=:id
+   * Returns eligible parent candidates filtered and validated by backend (max 3 levels, anti-cycle).
+   */
+  async getCandidateParents(unitId?: string): Promise<CandidateParent[]> {
+    const resp = await api.get("/org-units/candidate-parents", {
+      params: unitId ? { unitId } : undefined,
+    });
+    const items: any[] = extractData(resp) ?? [];
+    if (!Array.isArray(items)) return [];
+    return items.map((item) => ({
+      id: item.id ?? "",
+      name: item.name ?? "",
+      level: item.level,
+      rank: item.rank as OrgUnitRankName | undefined,
+      currentParent: Boolean(item.currentParent),
+      disabled: Boolean(item.disabled),
+      disabledReason: item.disabledReason,
     }));
   },
 };

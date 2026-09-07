@@ -599,9 +599,11 @@ export default function DryPortListPage() {
   const [createForm] = Form.useForm();
   const [updateForm] = Form.useForm();
 
+  const activeForm = createModalOpen ? createForm : updateForm;
+
   /** true khi field đã đạt đủ max ký tự — bật viền đỏ ô nhập + message bên dưới (dùng Form context — tự bind đúng form create/update đang render). */
   const useMaxReached = (name: string, max: number): boolean => {
-    const raw = Form.useWatch(name) ?? '';
+    const raw = Form.useWatch(name, activeForm) ?? '';
     const len = (typeof raw === 'string' ? raw : String(raw ?? '')).length;
     return len >= max;
   };
@@ -1622,7 +1624,7 @@ export default function DryPortListPage() {
       >{renderDetailContent()}</Drawer>
 
       {/* Delete Modal */}
-      <Modal maskStyle={{ background: 'rgba(0, 0, 0, 0.4)' }} title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận xóa cảng cạn</span>}
+      <Modal styles={{ mask: { background: 'rgba(0, 0, 0, 0.4)' } }} title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận xóa cảng cạn</span>}
         open={deleteModalOpen} onCancel={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
         footer={[
           <Button key="cancel" onClick={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
@@ -1650,7 +1652,7 @@ export default function DryPortListPage() {
       />
 
       {/* Reject Modal */}
-      <Modal maskStyle={{ background: 'rgba(0, 0, 0, 0.4)' }} title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Từ chối phê duyệt</span>}
+      <Modal styles={{ mask: { background: 'rgba(0, 0, 0, 0.4)' } }} title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Từ chối phê duyệt</span>}
         open={rejectModalOpen} onCancel={() => { setRejectModalOpen(false); setRejectingRecord(null); setRejectReason(''); }}
         footer={[
           <Button key="cancel" onClick={() => { setRejectModalOpen(false); setRejectingRecord(null); setRejectReason(''); }}
@@ -1844,7 +1846,7 @@ export default function DryPortListPage() {
         }
         open={gisModalOpen}
         onCancel={() => setGisModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[
