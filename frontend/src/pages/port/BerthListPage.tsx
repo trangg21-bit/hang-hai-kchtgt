@@ -53,7 +53,6 @@ import {
   textSecondary,
   textTertiary,
   borderDefault,
-  fontSizeMd,
   fontSizeLg,
   fontSizeSm,
   fontWeightMedium,
@@ -93,6 +92,8 @@ import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import { AppDrawer } from '../../components/shared/AppDrawer';
+
+const fontSizeMd = 13.5;
 
 // ── Constants ────────────────────────────────────────────────────────
 
@@ -643,8 +644,47 @@ export default function BerthList() {
     setActiveTab('all'); setPage(1);
   }, []);
 
+  // Hỗ trợ cuộn ngang mượt mà bằng con lăn chuột khi thanh trạng thái tràn trên màn hình nhỏ/zoom
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      const container = e.currentTarget as HTMLElement;
+      if (container && container.scrollWidth > container.clientWidth) {
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+          e.preventDefault();
+          container.scrollLeft += e.deltaY;
+        }
+      }
+    };
+
+    const attach = () => {
+      const tabsEl = document.querySelector('.berth-page-wrapper div:has(> button[aria-pressed])') as HTMLElement;
+      if (tabsEl) {
+        tabsEl.removeEventListener('wheel', handleWheel);
+        tabsEl.addEventListener('wheel', handleWheel, { passive: false });
+      }
+    };
+
+    attach();
+    const timer = setTimeout(attach, 400);
+
+    return () => {
+      clearTimeout(timer);
+      const tabsEl = document.querySelector('.berth-page-wrapper div:has(> button[aria-pressed])') as HTMLElement;
+      if (tabsEl) {
+        tabsEl.removeEventListener('wheel', handleWheel);
+      }
+    };
+  }, []);
+
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key); setPage(1);
+    // Tự động cuộn nhẹ tab vào khung nhìn nếu tab nằm sát mép ngoài
+    requestAnimationFrame(() => {
+      const activeBtn = document.querySelector(`.berth-page-wrapper button[aria-pressed="true"]`) as HTMLElement;
+      if (activeBtn) {
+        activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+      }
+    });
   }, []);
 
   // ── Detail drawer ────────────────────────────────────────────────
@@ -1034,12 +1074,141 @@ export default function BerthList() {
     );
   };
 
+  const customBerthTokens = useMemo(() => ({
+    ...themeTokenChk,
+    fontSizeMd: 13.5,
+  }), []);
+
   // ── JSX ─────────────────────────────────────────────────────────
 
   return (
-    <ThemeTokenProvider tokens={themeTokenChk}>
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
-      <style>{`.range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }`}</style>
+    <ThemeTokenProvider tokens={customBerthTokens}>
+    <div className="berth-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      <style>{`
+        .range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }
+
+        /* ── Cỡ chữ 13.5px chuẩn toàn màn Quản lý bến cảng & các popup/drawer con ── */
+        .berth-page-wrapper,
+        .berth-page-wrapper .ant-table,
+        .berth-page-wrapper .ant-table-cell,
+        .berth-page-wrapper .ant-table-thead > tr > th,
+        .berth-page-wrapper .ant-table-tbody > tr > td,
+        .berth-page-wrapper .ant-input,
+        .berth-page-wrapper .ant-select,
+        .berth-page-wrapper .ant-select-selection-item,
+        .berth-page-wrapper .ant-select-item-option-content,
+        .berth-page-wrapper .ant-picker,
+        .berth-page-wrapper .ant-picker-input > input,
+        .berth-page-wrapper .ant-btn,
+        .berth-page-wrapper .ant-pagination,
+        .berth-page-wrapper .ant-pagination-item,
+        .berth-page-wrapper .ant-pagination-total-text,
+        .berth-page-wrapper .ant-breadcrumb,
+        .berth-page-wrapper .ant-form-item-label > label,
+        .berth-drawer-scope,
+        .berth-drawer-scope .ant-drawer-content,
+        .berth-drawer-scope .ant-tabs-tab,
+        .berth-drawer-scope .chk-detail-label,
+        .berth-drawer-scope .chk-detail-value,
+        .berth-drawer-scope .ant-table,
+        .berth-drawer-scope .ant-table-cell,
+        .berth-drawer-scope .ant-table-thead > tr > th,
+        .berth-drawer-scope .ant-btn,
+        .berth-drawer-scope .ant-select,
+        .berth-drawer-scope .ant-input,
+        .berth-drawer-scope .ant-form-item-label > label,
+        .berth-modal-scope,
+        .berth-modal-scope .ant-modal-content,
+        .berth-modal-scope .ant-btn,
+        .berth-modal-scope .ant-input {
+          font-size: 13.5px !important;
+        }
+
+        /* ── Responsive StatusTabs: Căn giữa khi đủ chỗ, thanh cuộn ngang khi tràn màn hình ── */
+        .berth-page-wrapper div:has(> button[aria-pressed]) {
+          display: flex !important;
+          flex-wrap: nowrap !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          justify-content: center !important;
+          justify-content: safe center !important;
+          align-items: center !important;
+          scrollbar-width: thin !important;
+          scrollbar-color: #cbd5e1 #f8fafc !important;
+          scroll-behavior: smooth !important;
+          -webkit-overflow-scrolling: touch !important;
+          padding: 2px 16px 6px 16px !important;
+          gap: 20px !important;
+        }
+        .berth-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
+          height: 6px !important;
+          display: block !important;
+        }
+        .berth-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
+          background: #f1f5f9 !important;
+          border-radius: 999px !important;
+        }
+        .berth-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
+          background: #cbd5e1 !important;
+          border-radius: 999px !important;
+        }
+        .berth-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8 !important;
+        }
+        .berth-page-wrapper div:has(> button[aria-pressed]) > button {
+          white-space: nowrap !important;
+          flex-shrink: 0 !important;
+          cursor: pointer !important;
+        }
+
+        /* ── Footer Sidebar Bộ lọc: Cân đối nút Reload và Tìm kiếm ── */
+        .berth-page-wrapper div:has(> button .anticon-reload) {
+          display: flex !important;
+          justify-content: space-between !important;
+          gap: 8px !important;
+          align-items: center !important;
+        }
+        .berth-page-wrapper div:has(> button .anticon-reload) > div[style*="visibility: hidden"] {
+          display: none !important;
+        }
+        .berth-page-wrapper div:has(> button .anticon-reload) > button.ant-btn-primary {
+          flex: 1 !important;
+        }
+
+        /* ── Responsive ScreenHeader co dãn đẹp khi zoom ── */
+        .berth-page-wrapper > div:first-of-type {
+          flex-wrap: wrap !important;
+          gap: 10px !important;
+        }
+
+        /* ── Responsive Drawers: Không tràn viền khi màn hình nhỏ / zoom cao ── */
+        .berth-drawer-scope .ant-drawer-content-wrapper {
+          max-width: 100vw !important;
+        }
+        @media (max-width: 1024px) {
+          .berth-drawer-scope .chk-detail-grid {
+            grid-template-columns: 1fr !important;
+            column-gap: 0 !important;
+          }
+          .berth-drawer-scope .chk-detail-row--full {
+            grid-column: 1 !important;
+          }
+        }
+        @media (max-width: 640px) {
+          .berth-drawer-scope .chk-detail-row {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 4px !important;
+            padding: 8px 0 !important;
+          }
+          .berth-drawer-scope .chk-detail-label {
+            width: 100% !important;
+          }
+          .berth-drawer-scope .chk-detail-value {
+            width: 100% !important;
+          }
+        }
+      `}</style>
       <ScreenHeader
         breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý bến cảng' }]}
         actions={headerActions}
@@ -1070,6 +1239,9 @@ export default function BerthList() {
 
       {/* ── Create Drawer ──────────────────────────────────────────── */}
       <AppDrawer
+        width="min(920px, 96vw)"
+        rootClassName="berth-drawer-scope"
+        className="berth-drawer-scope"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới Bến cảng</span>}
         open={createDrawerVisible}
         destroyOnHidden
@@ -1096,6 +1268,9 @@ export default function BerthList() {
 
       {/* ── Edit Drawer ────────────────────────────────────────────── */}
       <AppDrawer
+        width="min(920px, 96vw)"
+        rootClassName="berth-drawer-scope"
+        className="berth-drawer-scope"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin — {editBerthName || 'Bến cảng'}</span>}
         open={!!editBerthId}
         onClose={() => { setEditBerthId(undefined); setEditBerthName(''); updateForm.resetFields(); }}
@@ -1119,13 +1294,16 @@ export default function BerthList() {
 
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
       <AppDrawer
-        size={1000}
+        width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
+        style={{ maxWidth: '96vw' }}
+        rootClassName="berth-drawer-scope"
+        className="berth-drawer-scope"
         title={<span style={drawerTitleStyle}>Chi tiết bến cảng{detailRecord ? ` - ${detailRecord.berthName}` : ''}</span>}
         open={detailDrawerVisible}
         onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); }}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-          body: { padding: '0 24px 12px 24px' },
+          body: { padding: '0 24px 12px 24px', overflow: 'hidden' },
         }}
         footer={null}
       >
@@ -1134,6 +1312,7 @@ export default function BerthList() {
 
       {/* ── Delete Confirmation Modal ────────────────────────────── */}
       <Modal
+        rootClassName="berth-modal-scope"
         title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận xóa bến cảng</span>}
         open={deleteModalOpen}
         onCancel={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
@@ -1163,6 +1342,7 @@ export default function BerthList() {
 
       {/* ── Reject Reason Modal ──────────────────────────────────── */}
       <Modal
+        rootClassName="berth-modal-scope"
         title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Từ chối phê duyệt</span>}
         open={rejectModalOpen}
         onCancel={() => { setRejectModalOpen(false); setRejectingRecord(null); setRejectReason(''); }}
@@ -1188,6 +1368,7 @@ export default function BerthList() {
 
       {/* ── Submit Modal ──────────────────────────────────────────── */}
       <Modal
+        rootClassName="berth-modal-scope"
         title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận gửi Cảng vụ phê duyệt</span>}
         open={submitModalOpen}
         onCancel={() => { setSubmitModalOpen(false); setSubmittingRecord(null); }}
@@ -1215,7 +1396,9 @@ export default function BerthList() {
 
       {/* ── Pier Detail Drawer (sibling — tránh drawer lồng bị đẩy kích thước) ── */}
       <AppDrawer
-        size={950}
+        width="min(950px, 96vw)"
+        rootClassName="berth-drawer-scope"
+        className="berth-drawer-scope"
         title={<span style={drawerTitleStyle}>Chi tiết cầu cảng{pierDetailRecord ? ` - ${pierDetailRecord.pierName || pierDetailRecord.pierCode || ''}` : ''}</span>}
         open={pierDetailOpen}
         onClose={() => setPierDetailOpen(false)}
@@ -1252,7 +1435,9 @@ export default function BerthList() {
 
       {/* ── History Drawer ──────────────────────────────────────── */}
       <AppDrawer
-        size={880}
+        width="min(880px, 96vw)"
+        rootClassName="berth-drawer-scope"
+        className="berth-drawer-scope"
         mask
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
