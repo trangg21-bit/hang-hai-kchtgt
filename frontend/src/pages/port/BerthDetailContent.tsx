@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Tabs, Select, Tooltip, Button, Modal } from 'antd';
 import { FileOutlined, EnvironmentOutlined, EyeOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { colors } from '../../themetokenchk';
+import { colors, DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import { fmtNum } from '../../utils/numFmt';
 import {
   textTertiary, surfaceCard,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
@@ -72,8 +73,8 @@ const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> =
   return out;
 };
 
-const fmtDateTime = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—');
-const fmtDate = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY') : '—');
+const fmtDateTime = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '');
+const fmtDate = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY') : '');
 
 export default function BerthDetailContent({
   selectedRecord,
@@ -136,48 +137,51 @@ export default function BerthDetailContent({
             <div style={{ paddingTop: 3, overflowY: 'auto', maxHeight: 'calc(100vh - 290px)' }}>
               <div className="chk-detail-grid">
                 {[
-                  ['Mã bến cảng', <span style={statusBadgeStyle(actionPrimary)}>{r.berthCode || '—'}</span>],
-                  ['Tên bến cảng', <span style={{ fontWeight: fontWeightBold }}>{r.berthName || '—'}</span>],
-                  ['Đơn vị quản lý', (() => {
-                    const name = orgMap.get(r.orgUnitId || '') || r.orgUnitId || '—';
-                    return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
-                  })(),],
-                  ['Thuộc cảng biển', <span style={{ fontWeight: fontWeightBold }}>{portOptions.find(o => o.value === r.portId)?.label || r.portId || '—'}</span>],
-                  ['Thuộc luồng hàng hải', waterwayMap.get(r.waterwayId || '') || r.waterwayId || '—'],
-                  ['Đơn vị khai thác', r.operatingOrgName || r.operator || '—'],
-                  ['Địa điểm (Tỉnh/Thành Phố)', r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '—' : '—'],
-                  ['Địa điểm chi tiết', r.detailedLocation || '—'],
-                  ['Loại kết cấu bến cảng', structureTypeOptions.find(o => o.value === r.structureType)?.label || r.structureType || '—'],
-                  ['Công năng khai thác', r.operationalFunction || '—'],
-                  ['Tổng diện tích (ha)', r.totalArea != null ? r.totalArea : '—'],
-                  ['Năng lực thông qua thiết kế', r.designThroughput != null ? `${r.designThroughput} tấn/năm` : '—'],
-                  ['Năng lực thông qua hiện trạng', r.currentThroughput != null ? `${r.currentThroughput} tấn/năm` : '—'],
-                  ['Quy hoạch năng lực thông qua', r.plannedThroughput != null ? `${r.plannedThroughput} tấn/năm` : '—'],
-                  ['Sản lượng thực tế năm gần nhất', r.latestCargoVolume != null ? `${r.latestCargoVolume} tấn/năm` : '—'],
-                  ['Cỡ tàu tiếp nhận lớn nhất (DWT)', r.maxVesselSize != null ? r.maxVesselSize : '—'],
-                  ['Tình trạng', (() => { const s = r.operationalStatus; const m: Record<string,{color:string;label:string}> = { OPERATIONAL:{color:statusOperational,label:'Đang khai thác/Vận hành'}, NOT_YET_OPERATIONAL:{color:statusAttention,label:'Chưa khai thác/Vận hành'}, SUSPENDED:{color:statusCritical,label:'Dừng khai thác/Vận hành'} }; const b = s && m[s]; return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : '—'; })(),],
-                ].map(([label, value], i) => (
-                  <div key={i} className="chk-detail-row">
-                    <span className="chk-detail-label">{label}</span>
-                    <span className="chk-detail-value">{value}</span>
+                  { label: 'Mã bến cảng', value: r.berthCode ? <span style={statusBadgeStyle(actionPrimary)}>{r.berthCode}</span> : '' },
+                  { label: 'Tên bến cảng', value: r.berthName ? <span style={{ fontWeight: fontWeightBold }}>{r.berthName}</span> : '' },
+                  { label: 'Đơn vị quản lý', value: (() => {
+                    const name = orgMap.get(r.orgUnitId || '') || r.orgUnitId || '';
+                    return name ? <span style={{ fontWeight: fontWeightBold }}>{name}</span> : '';
+                  })() },
+                  { label: 'Thuộc cảng biển', value: (() => {
+                    const name = portOptions.find(o => o.value === r.portId)?.label || r.portId || '';
+                    return name ? <span style={{ fontWeight: fontWeightBold }}>{name}</span> : '';
+                  })() },
+                  { label: 'Thuộc luồng hàng hải', value: waterwayMap.get(r.waterwayId || '') || r.waterwayId || '' },
+                  { label: 'Đơn vị khai thác', value: r.operatingOrgName || r.operator || '' },
+                  { label: 'Địa điểm (Tỉnh/Thành Phố)', value: r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '' : '' },
+                  { label: 'Loại kết cấu bến cảng', value: structureTypeOptions.find(o => o.value === r.structureType)?.label || (r.structureType != null ? String(r.structureType) : '') },
+                  { label: 'Công năng khai thác', value: r.operationalFunction || '' },
+                  { label: 'Tổng diện tích (ha)', value: r.totalArea != null ? fmtNum(r.totalArea) : '' },
+                  { label: 'Năng lực thông qua thiết kế', value: r.designThroughput != null ? `${fmtNum(r.designThroughput)} tấn/năm` : '' },
+                  { label: 'Năng lực thông qua hiện trạng', value: r.currentThroughput != null ? `${fmtNum(r.currentThroughput)} tấn/năm` : '' },
+                  { label: 'Quy hoạch năng lực thông qua', value: r.plannedThroughput != null ? `${fmtNum(r.plannedThroughput)} tấn/năm` : '' },
+                  { label: 'Sản lượng thực tế năm gần nhất', value: r.latestCargoVolume != null ? `${fmtNum(r.latestCargoVolume)} tấn/năm` : '' },
+                  { label: 'Cỡ tàu tiếp nhận lớn nhất (DWT)', value: r.maxVesselSize != null ? fmtNum(r.maxVesselSize) : '' },
+                  { label: 'Tình trạng', value: (() => { const s = r.operationalStatus; const m: Record<string,{color:string;label:string}> = { OPERATIONAL:{color:statusOperational,label:'Đang khai thác/Vận hành'}, NOT_YET_OPERATIONAL:{color:statusAttention,label:'Chưa khai thác/Vận hành'}, SUSPENDED:{color:statusCritical,label:'Dừng khai thác/Vận hành'} }; const b = s && m[s]; return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : ''; })() },
+                  { label: 'Địa điểm chi tiết', value: r.detailedLocation || '', fullWidth: true },
+                ].map((row, i) => (
+                  <div key={i} className={`chk-detail-row${row.fullWidth ? ' chk-detail-row--full' : ''}`} style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
+                    <span className="chk-detail-label">{row.label}</span>
+                    <span className="chk-detail-value">{row.value}</span>
                   </div>
                 ))}
               </div>
 
-              {/* ── Toggle: Thông tin công bố mở, đưa vào sử dụng (gom vào tab Thông tin chung — giống BẾN PHAO) ── */}
+              {/* ── Toggle: Thông tin công bố mở, đưa vào sử dụng ── */}
               <button type="button" style={{ cursor: 'pointer', marginTop: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setAnnouncementOpen(!announcementOpen)}>
                 <span style={{ color: announcementOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{announcementOpen ? '▼' : '▶'} Thông tin công bố mở, đưa vào sử dụng</span>
               </button>
               {announcementOpen && (
                 <div className="chk-detail-grid" style={{ marginTop: 4 }}>
                   {[
-                    ['Thời điểm công bố, đưa vào sử dụng', fmtDate(r.openingAnnouncementDate)],
-                    ['Quyết định công bố/ Văn bản cho phép khai thác', r.openingDecision || '—'],
-                    ['Văn bản thỏa thuận đầu tư xây dựng', r.investmentAgreement || '—'],
-                  ].map(([label, value], i) => (
-                    <div key={i} className="chk-detail-row">
-                      <span className="chk-detail-label">{label}</span>
-                      <span className="chk-detail-value">{value}</span>
+                    { label: 'Thời điểm công bố, đưa vào sử dụng', value: fmtDate(r.openingAnnouncementDate), fullWidth: true },
+                    { label: 'Quyết định công bố/ Văn bản cho phép khai thác', value: r.openingDecision || '', fullWidth: true },
+                    { label: 'Văn bản thỏa thuận đầu tư xây dựng', value: r.investmentAgreement || '', fullWidth: true },
+                  ].map((row, i) => (
+                    <div key={i} className={`chk-detail-row${row.fullWidth ? ' chk-detail-row--full' : ''}`} style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
+                      <span className="chk-detail-label">{row.label}</span>
+                      <span className="chk-detail-value">{row.value}</span>
                     </div>
                   ))}
                 </div>
@@ -191,14 +195,14 @@ export default function BerthDetailContent({
             <div style={{ paddingTop: 3, overflowY: 'auto', maxHeight: 'calc(100vh - 290px)' }}>
               <div className="chk-detail-grid">
                 {[
-                  ['Loại đối tượng', ({ POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' } as Record<string, string>)[(r as any).geometryType || ''] || (r as any).geometryType || '—'],
-                  ['Biểu tượng', (() => { const symId = r.mapSymbolId || ''; const symName = symbolMap.get(symId) || symId || '—'; const symImg = symbolImageMap.get(symId); return <span style={{ display:'inline-flex',alignItems:'center',gap:8 }}>{symImg ? <img src={symImg} alt="" style={{ width:24,height:24,objectFit:'contain' }} /> : null}{symName}</span>; })(),],
-                  ['Hệ quy chiếu', r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : r.coordinateSystem || '—'],
-                  ['Quy tắc hiển thị', ((r as any).geometryType || (r as any).coordinates || (r as any).latitude != null || (r as any).longitude != null) ? 'Độ, phút, giây (DMS)' : '—'],
-                ].map(([label, value], i) => (
+                  { label: 'Loại đối tượng', value: ({ POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' } as Record<string, string>)[(r as any).geometryType || ''] || (r as any).geometryType || '' },
+                  { label: 'Biểu tượng', value: (() => { const symId = r.mapSymbolId || ''; const symName = symbolMap.get(symId) || symId || ''; const symImg = symbolImageMap.get(symId); return <span style={{ display:'inline-flex',alignItems:'center',gap:8 }}>{symImg ? <img src={symImg} alt="" style={{ width:20,height:20,objectFit:'contain' }} /> : null}{symName}</span>; })() },
+                  { label: 'Hệ quy chiếu', value: r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : (r.coordinateSystem ? String(r.coordinateSystem) : '') },
+                  { label: 'Quy tắc hiển thị', value: ((r as any).geometryType || (r as any).coordinates || (r as any).latitude != null || (r as any).longitude != null) ? 'Độ, phút, giây (DMS)' : '' },
+                ].map((row, i) => (
                   <div key={i} className="chk-detail-row">
-                    <span className="chk-detail-label">{label}</span>
-                    <span className="chk-detail-value">{value}</span>
+                    <span className="chk-detail-label">{row.label}</span>
+                    <span className="chk-detail-value">{row.value}</span>
                   </div>
                 ))}
               </div>
@@ -221,6 +225,7 @@ export default function BerthDetailContent({
                     <DetailTable
                       dataSource={pts.map((p) => ({ ...p }))}
                       emptyText="Chưa có tọa độ GPS nào"
+                      scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
                       columns={[
                         { title: 'STT', width: 50 },
                         { title: 'Vĩ độ (Latitude - N)', key: 'lat', render: (_v: any, rec: any) => { const dms = ddToDms(rec.lat); return `${dms.d}° ${dms.m}' ${dms.s}" N`; } },
@@ -237,18 +242,19 @@ export default function BerthDetailContent({
           key: 'files', label: `File đính kèm (${detailFiles.length})`,
           children: (
             <div style={{ paddingTop: 3 }}>
-              <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
+              <div style={{ marginBottom: spaceSm }}>
                 <span style={detailLabelStyle}>File đính kèm</span>
               </div>
               <DetailTable
                 dataSource={detailFiles.map((f) => ({ ...f }))}
                 emptyText="Chưa có tài liệu đính kèm"
+                scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
                 columns={[
                   { title: 'STT', width: 50 },
-                  { title: 'Tên tài liệu', dataIndex: 'fileName', key: 'fileName', render: (v: string) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{v || '—'}</span> },
-                  { title: 'Dung lượng', dataIndex: 'fileSize', key: 'fileSize', width: 120, align: 'right' as const, render: (v: number) => v ? (v > 1024 * 1024 ? `${(v / (1024 * 1024)).toFixed(2)} MB` : `${(v / 1024).toFixed(1)} KB`) : '—' },
-                  { title: 'Người tải lên', dataIndex: 'uploadedBy', key: 'uploadedBy', width: 180, render: (v: string) => userMap.get(v) || v || '—' },
-                  { title: 'Ngày tải lên', dataIndex: 'uploadedAt', key: 'uploadedAt', width: 135, align: 'center' as const, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—' },
+                  { title: 'Tên tài liệu', dataIndex: 'fileName', key: 'fileName', render: (v: string) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{v || ''}</span> },
+                  { title: 'Dung lượng', dataIndex: 'fileSize', key: 'fileSize', width: 120, align: 'right' as const, render: (v: number) => v ? (v > 1024 * 1024 ? `${(v / (1024 * 1024)).toFixed(2)} MB` : `${(v / 1024).toFixed(1)} KB`) : '' },
+                  { title: 'Người tải lên', dataIndex: 'uploadedBy', key: 'uploadedBy', width: 180, render: (v: string) => userMap.get(v) || v || '' },
+                  { title: 'Ngày tải lên', dataIndex: 'uploadedAt', key: 'uploadedAt', width: 135, align: 'center' as const, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '' },
                 ]}
               />
             </div>
@@ -268,10 +274,11 @@ export default function BerthDetailContent({
                 dataSource={infraRows}
                 emptyText="Chưa có dữ liệu"
                 rowKey={(r: any) => r.id || r.infraName || r.name}
+                scrollY={DRAWER_TABLE_SCROLL_Y.withButton}
                 columns={[
                   { title: 'STT', width: 50 },
-                  { title: 'Loại kết cấu hạ tầng', dataIndex: 'infraType', key: 'type', render: (_v: string, rec: any) => <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{rec.infraType === 'Pier' ? 'Cầu cảng' : rec.infraType || '—'}</span> },
-                  { title: 'Tên kết cấu hạ tầng', dataIndex: 'infraName', key: 'name', render: (v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: actionPrimary, cursor: 'pointer', fontWeight: fontWeightBold }} onClick={() => onViewPierDetail?.(rec.id)}>{v || rec.name || '—'}</span> },
+                  { title: 'Loại kết cấu hạ tầng', dataIndex: 'infraType', key: 'type', render: (_v: string, rec: any) => <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{rec.infraType === 'Pier' ? 'Cầu cảng' : rec.infraType || ''}</span> },
+                  { title: 'Tên kết cấu hạ tầng', dataIndex: 'infraName', key: 'name', render: (v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: actionPrimary, cursor: 'pointer', fontWeight: fontWeightBold }} onClick={() => onViewPierDetail?.(rec.id)}>{v || rec.name || ''}</span> },
                   { title: 'Thao tác', key: 'actions', width: 100, align: 'center' as const, render: (_v: any, rec: any) => (
                     <Tooltip title="Xem chi tiết">
                       <Button type="text" size="small" icon={<EyeOutlined />} style={{ color: actionPrimary, fontSize: fontSizeMd }}
@@ -291,40 +298,40 @@ export default function BerthDetailContent({
                 <span style={{ color: operationOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{operationOpen ? '▼' : '▶'} Thông tin vận hành khai thác</span>
               </button>
               {operationOpen && (
-                <div>
-              <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách vận hành khai thác</span>
-              <DetailTable
-                dataSource={operationPlanList}
-                emptyText="Chưa có dữ liệu"
-                rowKey={(r: any) => r.id || r.planCode || r.code}
-                columns={[
-                  { title: 'STT', width: 50 },
-                  { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '—' },
-                  { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '—' },
-                  { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'start', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.startTime || rec.start || null) },
-                  { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'end', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.endTime || rec.end || null) },
-                ]}
-              />
+                <div style={{ marginBottom: spaceMd }}>
+                  <DetailTable
+                    dataSource={operationPlanList}
+                    emptyText="Chưa có dữ liệu"
+                    rowKey={(r: any) => r.id || r.planCode || r.code}
+                    scrollY={160}
+                    columns={[
+                      { title: 'STT', width: 50 },
+                      { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '' },
+                      { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '' },
+                      { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'start', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.startTime || rec.start || null) },
+                      { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'end', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.endTime || rec.end || null) },
+                    ]}
+                  />
                 </div>
               )}
               <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setMaintenanceOpen(!maintenanceOpen)}>
                 <span style={{ color: maintenanceOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{maintenanceOpen ? '▼' : '▶'} Thông tin bảo trì</span>
               </button>
               {maintenanceOpen && (
-                <div>
-              <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin bảo trì</span>
-              <DetailTable
-                dataSource={maintenancePlanList}
-                emptyText="Chưa có dữ liệu"
-                rowKey={(r: any) => r.id || r.planCode || r.code}
-                columns={[
-                  { title: 'STT', width: 50 },
-                  { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '—' },
-                  { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '—' },
-                  { title: 'Thời gian bắt đầu', dataIndex: 'startTime', key: 'start', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.start || rec.startDate || null) },
-                  { title: 'Thời gian kết thúc', dataIndex: 'endTime', key: 'end', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.end || rec.endDate || null) },
-                ]}
-              />
+                <div style={{ marginBottom: spaceMd }}>
+                  <DetailTable
+                    dataSource={maintenancePlanList}
+                    emptyText="Chưa có dữ liệu"
+                    rowKey={(r: any) => r.id || r.planCode || r.code}
+                    scrollY={160}
+                    columns={[
+                      { title: 'STT', width: 50 },
+                      { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '' },
+                      { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '' },
+                      { title: 'Thời gian bắt đầu', dataIndex: 'startTime', key: 'start', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.start || rec.startDate || null) },
+                      { title: 'Thời gian kết thúc', dataIndex: 'endTime', key: 'end', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.end || rec.endDate || null) },
+                    ]}
+                  />
                 </div>
               )}
               <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setIncidentOpen(!incidentOpen)}>
@@ -332,19 +339,19 @@ export default function BerthDetailContent({
               </button>
               {incidentOpen && (
                 <div>
-              <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin sự cố</span>
-              <DetailTable
-                dataSource={incidentList}
-                emptyText="Chưa có dữ liệu"
-                rowKey={(r: any) => r.id || r.incidentCode || r.code}
-                columns={[
-                  { title: 'STT', width: 50 },
-                  { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '—' },
-                  { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'type', render: (v: string, rec: any) => v || rec.type || '—' },
-                  { title: 'Địa điểm', dataIndex: 'location', key: 'location', render: (v: string) => v || '—' },
-                  { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.time || null) },
-                ]}
-              />
+                  <DetailTable
+                    dataSource={incidentList}
+                    emptyText="Chưa có dữ liệu"
+                    rowKey={(r: any) => r.id || r.incidentCode || r.code}
+                    scrollY={160}
+                    columns={[
+                      { title: 'STT', width: 50 },
+                      { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '' },
+                      { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'type', render: (v: string, rec: any) => v || rec.type || '' },
+                      { title: 'Địa điểm', dataIndex: 'location', key: 'location', render: (v: string) => v || '' },
+                      { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.time || null) },
+                    ]}
+                  />
                 </div>
               )}
             </div>
@@ -356,21 +363,21 @@ export default function BerthDetailContent({
             <div style={{ paddingTop: 3 }}>
               <div className="chk-detail-grid">
                 {[
-                  ['Trạng thái', r.approvalStatus && approvalStyleMap[r.approvalStatus] ? <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>{approvalStyleMap[r.approvalStatus].label}</span> : '—'],
-                  ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.updatedBy || '') || r.updatedBy || '—'}</span>],
-                  ['Ngày cập nhật', fmtDateTime(r.updatedAt)],
-                  ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.submittedForApprovalBy || '') || r.submittedForApprovalBy || '—'}</span>],
-                  ['Ngày gửi phê duyệt', fmtDateTime(r.submittedForApprovalAt)],
-                  ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.portAuthorityApprovedBy || '') || r.portAuthorityApprovedBy || '—'}</span>],
-                  ['Ngày phê duyệt cấp Cảng vụ/Chi cục', fmtDateTime(r.portAuthorityApprovedAt)],
-                  ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.departmentApprovedBy || '') || r.departmentApprovedBy || '—'}</span>],
-                  ['Ngày phê duyệt cấp Cục', fmtDateTime(r.departmentApprovedAt)],
-                  ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.portAuthorityApprovalContent || '—'],
-                  ['Nội dung phê duyệt cấp Cục', r.departmentApprovalContent || '—'],
-                ].map(([label, value], i) => (
-                  <div key={i} className="chk-detail-row" style={label === 'Trạng thái' ? { gridColumn: '1 / -1' } : undefined}>
-                    <span className="chk-detail-label">{label}</span>
-                    <span className="chk-detail-value">{value}</span>
+                  { label: 'Trạng thái', value: r.approvalStatus && approvalStyleMap[r.approvalStatus] ? <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>{approvalStyleMap[r.approvalStatus].label}</span> : '', fullWidth: true },
+                  { label: 'Cán bộ cập nhật', value: userMap.get(r.updatedBy || '') || r.updatedBy ? <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.updatedBy || '') || r.updatedBy}</span> : '' },
+                  { label: 'Ngày cập nhật', value: fmtDateTime(r.updatedAt) },
+                  { label: 'Cán bộ gửi phê duyệt', value: userMap.get(r.submittedForApprovalBy || '') || r.submittedForApprovalBy ? <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.submittedForApprovalBy || '') || r.submittedForApprovalBy}</span> : '' },
+                  { label: 'Ngày gửi phê duyệt', value: fmtDateTime(r.submittedForApprovalAt) },
+                  { label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: userMap.get(r.portAuthorityApprovedBy || '') || r.portAuthorityApprovedBy ? <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.portAuthorityApprovedBy || '') || r.portAuthorityApprovedBy}</span> : '' },
+                  { label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', value: fmtDateTime(r.portAuthorityApprovedAt) },
+                  { label: 'Cán bộ phê duyệt cấp Cục', value: userMap.get(r.departmentApprovedBy || '') || r.departmentApprovedBy ? <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.departmentApprovedBy || '') || r.departmentApprovedBy}</span> : '' },
+                  { label: 'Ngày phê duyệt cấp Cục', value: fmtDateTime(r.departmentApprovedAt) },
+                  { label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục', value: r.portAuthorityApprovalContent || '', fullWidth: true },
+                  { label: 'Nội dung phê duyệt cấp Cục', value: r.departmentApprovalContent || '', fullWidth: true },
+                ].map((row, i) => (
+                  <div key={i} className={`chk-detail-row${row.fullWidth ? ' chk-detail-row--full' : ''}`} style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
+                    <span className="chk-detail-label">{row.label}</span>
+                    <span className="chk-detail-value">{row.value}</span>
                   </div>
                 ))}
               </div>

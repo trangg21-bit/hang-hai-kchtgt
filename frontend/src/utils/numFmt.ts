@@ -1,6 +1,10 @@
-export function fmtNum(v: number | null | undefined, maxDec = 2): string {
-  if (v === null || v === undefined) return '—';
-  return v.toFixed(maxDec).replace(/\.?0+$/, '');
+export function fmtNum(v: number | string | null | undefined, maxDec = 2): string {
+  if (v === null || v === undefined || v === '') return '';
+  const num = typeof v === 'number' ? v : Number(v);
+  if (isNaN(num)) return '';
+  return new Intl.NumberFormat('en-US', {
+    maximumFractionDigits: maxDec,
+  }).format(num);
 }
 
 /**

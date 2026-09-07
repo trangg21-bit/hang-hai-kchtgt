@@ -359,8 +359,12 @@ const DataTable: React.FC<DataTableProps> = ({
         let cellTitleText: string | undefined = undefined;
         if (col.cellTitle) {
           cellTitleText = col.cellTitle(record);
-        } else if (dataKey && record && record[dataKey] != null && typeof record[dataKey] !== 'object') {
-          cellTitleText = String(record[dataKey]);
+        } else if (!col.render && dataKey && record && record[dataKey] != null && typeof record[dataKey] !== 'object') {
+          const raw = String(record[dataKey]);
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw);
+          if (!isUuid) {
+            cellTitleText = raw;
+          }
         }
         return {
           title: cellTitleText,

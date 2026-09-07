@@ -42,6 +42,7 @@ import toast from '../../components/ToastNotification';
 import BerthForm from './BerthForm';
 import BerthDetailContent from './BerthDetailContent';
 import PierDetailContent from './PierDetailContent';
+import { fmtNum } from '../../utils/numFmt';
 import {
   statusOperational,
   statusAttention,
@@ -435,8 +436,7 @@ export default function BerthList() {
             return `${parts.length} công trình hạ tầng`;
           }
           if (/^-?\d+(\.\d+)?$/.test(t)) {
-            const n = Number(t);
-            return Number.isInteger(n) ? String(n) : t;
+            return fmtNum(t);
           }
           return historyFieldValue(fn, raw, orgMap, symbolMap, portMap);
         };
@@ -776,8 +776,7 @@ export default function BerthList() {
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
       </div>
 
-      {/* ── Nâng cao: toggle 8 trường ──────────────────────────── */}
-      {filterCollapsed && (<>
+      {/* ── Toàn bộ bộ lọc hiển thị trực tiếp trên sidebar cuộn dọc 280px ── */}
       <div style={{ marginBottom: 12 }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
         <Select placeholder="Chọn cảng biển" allowClear showSearch optionFilterProp="label"
@@ -822,12 +821,11 @@ export default function BerthList() {
       <div style={{ marginBottom: 12 }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
         <DatePicker.RangePicker format="DD/MM/YYYY"
-          placeholder={['Từ ngày', 'Đến ngày']} allowClear popupClassName="range-single-panel"
+          placeholder={['Từ ngày', 'Đến ngày']} allowClear popupClassName="chk-range-datepicker-popup"
           value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
           onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined); setPage(1); }}
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
       </div>
-      </>)}
     </>
   );
 
@@ -882,18 +880,34 @@ export default function BerthList() {
           </div>
         ) },
       { key: 'orgUnitId', label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', width: 260, sortable: true, sortOrder,
-        render: (_v: string | null, record: Berth) => <span style={{ fontWeight: fontWeightBold }}>{resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || '—'}</span> },
+        cellTitle: (record: Berth) => resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || '—',
+        render: (_v: string | null, record: Berth) => {
+          const name = resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || '—';
+          return <span style={{ fontWeight: fontWeightBold }} title={name}>{name}</span>;
+        } },
       { key: 'structureType', label: 'Loại kết cấu bến cảng', dataIndex: 'structureType', width: 240, sortable: true, sortOrder,
+        cellTitle: (record: Berth) => record.structureType != null ? (STRUCTURE_TYPE_OPTIONS.find(o => o.value === record.structureType)?.label || record.structureType.toString()) : '—',
         render: (v: number | null) => (v != null ? (STRUCTURE_TYPE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : '—') },
       { key: 'portId', label: 'Thuộc cảng biển', dataIndex: 'portId', width: 200, sortable: true, sortOrder,
+        cellTitle: (record: Berth) => portOptions.find(o => o.value === record.portId)?.label || record.portId || '—',
         render: (v: string | null) => portOptions.find(o => o.value === v)?.label || v || '—' },
       { key: 'waterwayId', label: 'Thuộc luồng hàng hải', dataIndex: 'waterwayId', width: 280, ellipsis: true, sortable: true, sortOrder,
+        cellTitle: (record: Berth) => record.waterwayId ? (waterwayMap.get(record.waterwayId) || record.waterwayId) : '—',
         render: (v?: string) => (v ? (waterwayMap.get(v) || v) : '—') },
       { key: 'provinceId', label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'provinceId', width: 250, sortable: true, sortOrder,
+        cellTitle: (record: Berth) => record.provinceId ? (VIETNAM_PROVINCES[record.provinceId - 1] || '—') : '—',
         render: (v: number | null) => v ? VIETNAM_PROVINCES[v - 1] : '—' },
       { key: 'operationalFunction', label: 'Công năng khai thác', dataIndex: 'operationalFunction', width: 240, sortable: true, sortOrder,
         render: (v: string | null) => v || '—' },
       { key: 'operationalStatus', label: 'Tình trạng', dataIndex: 'operationalStatus', width: 190, sortable: true, sortOrder,
+        cellTitle: (record: Berth) => {
+          const m: Record<string, string> = {
+            OPERATIONAL: 'Đang khai thác/vận hành',
+            NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
+            SUSPENDED: 'Dừng khai thác/vận hành',
+          };
+          return m[record.operationalStatus || ''] || record.operationalStatus || '—';
+        },
         render: (v: string | null) => {
           const m: Record<string, { color: string; label: string }> = {
             OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/vận hành' },
@@ -943,6 +957,10 @@ export default function BerthList() {
 
     const tailColumns: any[] = [
       { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 260, sortable: true, sortOrder, ellipsis: false,
+        cellTitle: (record: Berth) => {
+          const s = APPROVAL_STYLE_MAP[record.approvalStatus] || APPROVAL_STYLE_MAP[record.approvalStatus?.toUpperCase()] || { label: record.approvalStatus || '—' };
+          return s.label;
+        },
         render: (v: string) => {
           const s = APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v?.toUpperCase()] || { color: textTertiary, label: v || '—' };
           return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
@@ -955,6 +973,7 @@ export default function BerthList() {
         sortable: true,
         sortOrder,
         ellipsis: false,
+        cellTitle: (record: Berth) => `${userMap.get(record.updatedBy || '') || record.updatedBy || '—'} - ${record.updatedAt ? dayjs(record.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}`,
         render: (v: string | null, record: Berth) => (
           <div style={{ lineHeight: '1.35' }}>
             <div style={{ fontWeight: fontWeightBold, color: '#0F172A', fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -1032,8 +1051,8 @@ export default function BerthList() {
         onStatusTabChange={handleTabChange}
         onFilterApply={handleFilterApply}
         onFilterReset={handleFilterReset}
-        filterCollapsed={filterCollapsed}
-        onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
+        hideFilterToggle={true}
+        filterCollapsed={false}
         loading={isLoading}
         error={isError}
         onRetry={() => void fetchData()}
