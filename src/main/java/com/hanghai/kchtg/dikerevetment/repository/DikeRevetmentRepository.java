@@ -33,6 +33,11 @@ public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UU
     @Query("SELECT MAX(d.code) FROM DikeRevetment d WHERE d.code IS NOT NULL")
     String findMaxCode();
 
+    @Query("SELECT dikeRevetment.code FROM DikeRevetment dikeRevetment " + "WHERE dikeRevetment.code LIKE 'DK-%'")
+    List<String> findAllCodesWithDikePrefix();
+
+    boolean existsByCode(String code);
+
     @Query("SELECT d FROM DikeRevetment d WHERE " +
             "d.deletedAt IS NULL AND " +
             "(:scopeEnabled = false OR d.orgUnitId IN :scopeOrgUnitIds) AND " +

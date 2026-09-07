@@ -87,6 +87,9 @@ public class DikeRevetmentService {
     private static final List<String> ALLOWED_EXTENSIONS = List.of(
             "pdf", "doc", "docx", "xls", "xlsx", "jpg", "jpeg", "png", "gif", "tiff", "tif");
 
+    private static final String DIKE_REVETMENT_CODE_PREFIX = "DK-";
+    private static final int MAX_CODE_GENERATION_ATTEMPTS = 5;
+
     private Scope resolveEffectiveScope(UUID explicitOrgUnitId) {
         Scope userScope = orgUnitScopeService.currentUserScope();
         if (explicitOrgUnitId == null) {
@@ -109,9 +112,7 @@ public class DikeRevetmentService {
         FieldWriteGuard.validateObject(req);
         validateAllowedOrgUnit(req.getOrgUnitId());
 
-        String code = req.getCode() != null && !req.getCode().trim().isEmpty()
-                ? req.getCode().trim()
-                : generateDikeRevetmentCode();
+        String code = req.getCode() != null && !req.getCode().trim().isEmpty() ? req.getCode().trim() : generateUniqueDikeRevetmentCode();
 
         DikeRevetment dr = DikeRevetment.builder()
                 .dikeRevetmentType(req.getDikeRevetmentType())
@@ -448,17 +449,27 @@ public class DikeRevetmentService {
     }
 
     public String generateDikeRevetmentCode() {
-        String maxCode = repo.findMaxCode();
-        if (maxCode != null && maxCode.startsWith("DK-")) {
-            try {
-                int seq = Integer.parseInt(maxCode.substring(3));
-                return String.format("DK-%06d", seq + 1);
-            } catch (NumberFormatException ignored) {
-                // Mã cũ không đúng số — rơi xuống bắt đầu chuẩn bên dưới.
-            }
+      List<String> allExistingCodes = repo.findAllCodesWithDikePrefix();
+
+      int highestSequenceNumber = allExistingCodes.stream().filter(existingCode -> existingCode != null && existingCode.startsWith(DIKE_REVETMENT_CODE_PREFIX)).mapToInt(existingCode -> {
+        try {
+          return Integer.parseInt(existingCode.substring(DIKE_REVETMENT_CODE_PREFIX.length()));
+        } catch (NumberFormatException invalidNumberException) {
+          return 0; // Mã không đúng định dạng số — bỏ qua, không tính vào giá trị lớn nhất
         }
-        // Chuẩn mã đê kè: DK- + 6 chữ số (DK-000001, DK-000002, ...).
-        return "DK-000001";
+      }).max().orElse(0);
+
+      return String.format("%s%06d", DIKE_REVETMENT_CODE_PREFIX, highestSequenceNumber + 1);
+    }
+
+    private String generateUniqueDikeRevetmentCode() {
+      for (int attemptIndex = 0; attemptIndex < MAX_CODE_GENERATION_ATTEMPTS; attemptIndex++) {
+        String candidateCode = generateDikeRevetmentCode();
+        if (!repo.existsByCode(candidateCode)) {
+          return candidateCode;
+        }
+      }
+      throw new IllegalStateException("Không thể sinh mã đê kè duy nhất sau " + MAX_CODE_GENERATION_ATTEMPTS + " lần thử");
     }
 
     @Transactional(readOnly = true)
