@@ -14,7 +14,7 @@ import {
   radiusPill,
   spaceFormField,
   spaceMd,
-} from '../../tokens';
+} from '../../themetokenchk';
 
 interface TransmissionFormProps {
   initialData?: TransmissionResponse;

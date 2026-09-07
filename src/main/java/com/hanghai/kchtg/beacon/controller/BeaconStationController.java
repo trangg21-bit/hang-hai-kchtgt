@@ -1,21 +1,29 @@
 package com.hanghai.kchtg.beacon.controller;
 
+import com.hanghai.kchtg.beacon.dto.BeaconHistoryEntry;
 import com.hanghai.kchtg.beacon.dto.beacon_station.BeaconStationResponse;
 import com.hanghai.kchtg.beacon.dto.beacon_station.CreateBeaconStationRequest;
 import com.hanghai.kchtg.beacon.dto.beacon_station.UpdateBeaconStationRequest;
 import com.hanghai.kchtg.beacon.service.BeaconStationService;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
+import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 import com.hanghai.kchtg.security.annotation.DataScope;
@@ -56,6 +64,7 @@ public class BeaconStationController {
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String code,
             @RequestParam(required = false) String type,
+            @RequestParam(required = false) String primaryLightModel,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) UUID unitId,
             @RequestParam(required = false) UUID seaportId,
@@ -70,7 +79,7 @@ public class BeaconStationController {
             @RequestParam(required = false) String updatedFrom,
             @RequestParam(required = false) String updatedTo) {
         return ResponseEntity.ok(ApiResponse.success(
-                beaconStationService.search(name, code, type, status,
+                beaconStationService.search(name, code, type, primaryLightModel, status,
                         unitId, seaportId, operator, provinceId,
                         operationalStatus, stationArea, approvalStatus, updatedBy,
                         commissionedFrom, commissionedTo, updatedFrom, updatedTo)));
@@ -81,6 +90,7 @@ public class BeaconStationController {
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String code,
             @RequestParam(required = false) String type,
+            @RequestParam(required = false) String primaryLightModel,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) UUID unitId,
             @RequestParam(required = false) UUID seaportId,
@@ -98,7 +108,7 @@ public class BeaconStationController {
             @RequestParam(defaultValue = "20") int size) {
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
         return ResponseEntity.ok(ApiResponse.success(
-                beaconStationService.searchPaged(name, code, type, status,
+                beaconStationService.searchPaged(name, code, type, primaryLightModel, status,
                         unitId, seaportId, operator, provinceId,
                         operationalStatus, stationArea, approvalStatus, updatedBy,
                         commissionedFrom, commissionedTo, updatedFrom, updatedTo,
@@ -175,6 +185,19 @@ public class BeaconStationController {
 
     // ── Attachment endpoints ────────────────────────────────────────
 
+    @GetMapping("/{id}/history")
+    @PreAuthorize("@auth.check(authentication, 'beaconstation:read') or @auth.check(authentication, 'data:read')")
+    public ResponseEntity<ApiResponse<List<BeaconHistoryEntry>>> getHistory(
+            @PathVariable UUID id,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate) {
+        return ResponseEntity.ok(ApiResponse.success(
+                beaconStationService.getHistory(id, page, pageSize, keyword, fromDate, toDate)));
+    }
+
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
             @PathVariable UUID id,
@@ -197,5 +220,32 @@ public class BeaconStationController {
             @PathVariable UUID attachmentId) {
         beaconStationService.deleteAttachment(id, attachmentId);
         return ResponseEntity.ok(ApiResponse.success("Đã xóa file đính kèm", null));
+    }
+
+    @PreAuthorize("@auth.check(authentication, 'beaconstation:read') or @auth.check(authentication, 'data:read')")
+    @GetMapping("/{id}/attachments/{attachmentId}/download")
+    public ResponseEntity<Resource> downloadAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attachmentId) {
+        Attachment attachment = beaconStationService.getAttachment(id, attachmentId);
+        Path path = Paths.get(attachment.getFilePath()).toAbsolutePath().normalize();
+        if (!Files.isRegularFile(path)) {
+            return ResponseEntity.notFound().build();
+        }
+        Resource resource = new FileSystemResource(path);
+        String contentType;
+        try {
+            contentType = Files.probeContentType(path);
+        } catch (Exception ignored) {
+            contentType = null;
+        }
+        MediaType mediaType = contentType == null
+                ? MediaType.APPLICATION_OCTET_STREAM
+                : MediaType.parseMediaType(contentType);
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + (attachment.getFileName() != null ? attachment.getFileName().replace("\"", "") : "attachment") + "\"")
+                .body(resource);
     }
 }

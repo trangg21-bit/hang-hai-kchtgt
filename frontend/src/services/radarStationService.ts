@@ -52,6 +52,7 @@ export const radarStationCRUD = {
   async searchPaged(params?: ListParams): Promise<SearchResponse<RadarStationResponse>> {
     const sp = buildSearchParams({
       keyword: params?.keyword,
+      code: params?.code,
       orgUnitId: params?.orgUnitId,
       seaportId: params?.seaportId,
       vtsSystemId: params?.vtsSystemId,
@@ -134,11 +135,11 @@ export const radarStationApproval = {
   },
 
   // Legacy aliases
-  async approveL1(id: string, approverId?: string): Promise<RadarStationResponse> {
+  async approveL1(id: string, _approverId?: string): Promise<RadarStationResponse> {
     return this.approveLevel1(id);
   },
 
-  async reject(id: string, rejectReason: string, approverId?: string): Promise<RadarStationResponse> {
+  async reject(id: string, rejectReason: string, _approverId?: string): Promise<RadarStationResponse> {
     return this.rejectLevel1(id, rejectReason);
   },
 
@@ -177,6 +178,21 @@ export const radarStationAttachment = {
 
   async remove(id: string, attachmentId: string): Promise<void> {
     return this.delete(id, attachmentId);
+  },
+
+  async download(id: string, attachmentId: string, fileName?: string): Promise<void> {
+    const res = await api.get(`${BASE_PATH}/${id}/attachments/${attachmentId}/download`, {
+      responseType: 'blob',
+    });
+    const blob = new Blob([res.data]);
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName || 'attachment';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   },
 };
 

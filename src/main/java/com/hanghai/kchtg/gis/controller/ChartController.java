@@ -24,7 +24,6 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/gis/charts")
 @RequiredArgsConstructor
-@PreAuthorize("@auth.check(authentication, 'admin:manage')")
 public class ChartController {
 
     private final ChartIntegrationService chartIntegrationService;
@@ -34,6 +33,7 @@ public class ChartController {
     // S-57 / S-63 Chart Import Endpoints
     // ========================================================================
 
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     @PostMapping("/s57/import")
     public ResponseEntity<ApiResponse<ChartCell>> importS57(
             @RequestParam("file") MultipartFile file) throws IOException {
@@ -45,6 +45,7 @@ public class ChartController {
                 .body(ApiResponse.success("Nhập hải đồ S-57 thành công", cell));
     }
 
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     @PostMapping("/s63/import")
     public ResponseEntity<ApiResponse<ChartCell>> importS63(
             @RequestParam("file") MultipartFile file) throws IOException {
@@ -97,6 +98,7 @@ public class ChartController {
         return ResponseEntity.ok(ApiResponse.success(chartIntegrationService.getAllPermits()));
     }
 
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     @PostMapping("/permits")
     public ResponseEntity<ApiResponse<S63Permit>> registerPermit(
             @Valid @RequestBody PermitRequest request) {
@@ -111,6 +113,7 @@ public class ChartController {
                 .body(ApiResponse.success(message, permit));
     }
 
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     @DeleteMapping("/permits/{id}")
     public ResponseEntity<ApiResponse<Void>> deletePermit(@PathVariable UUID id) {
         chartIntegrationService.deletePermit(id);
@@ -121,6 +124,7 @@ public class ChartController {
     // Coordinate Calibration Endpoint
     // ========================================================================
 
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     @PostMapping("/calibrate")
     public ResponseEntity<ApiResponse<CoordinateCalibrationService.CoordinateResult>> calibrate(
             @Valid @RequestBody CalibrationRequest request) {

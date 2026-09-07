@@ -1,0 +1,49 @@
+{
+  "triage_id": "TRI-1788502513559-a704",
+  "created_at": 1788502513559,
+  "request_summary": "Chuẩn hóa Drawer \"Xem chi tiết\" màn /dike-revetment theo sheet QL đê kè: gom nhóm kỹ thuật + thời gian vào tab \"Thông tin cơ bản\", đổi tab \"Các thông tin khác\" thành \"Vận hành & bảo trì\", thêm tab \"Xử lý & theo dõi\" chứa 11 trường log phê duyệt, thêm count vào tab vị trí/file, bổ sung cột Dung lượng/Ngày tải lên cho file đính kèm.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/dikerevetment/DikeRevetmentList.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/dikerevetment/DikeRevetmentList.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Drawer \"Xem chi tiết\" mở từ menu dòng (Xem chi tiết) trên màn danh sách /dike-revetment",
+  "blast_radius": 1,
+  "done_oracle": "Drawer Xem chi tiết có 5 tab đúng sheet (Thông tin cơ bản gồm 16 trường, Vị trí GIS, File đính kèm, Vận hành & bảo trì, Xử lý & theo dõi) và đủ 45/45 trường; typecheck: file DikeRevetmentList.tsx không xuất hiện trong danh sách lỗi tsc toàn dự án.",
+  "verification_commands": [
+    {
+      "command": "node node_modules/typescript/bin/tsc --noEmit -p tsconfig.app.json",
+      "cwd": "frontend",
+      "timeout_ms": 420000
+    },
+    {
+      "command": "npm run build",
+      "cwd": "frontend",
+      "timeout_ms": 600000
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "3b07a5a6421c35cc8b0c2382bc435e35e9fc5c34",
+    "dirty": true,
+    "captured_at": 1788502513716
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

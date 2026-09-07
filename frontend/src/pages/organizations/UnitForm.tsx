@@ -1,10 +1,9 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { Card, Form, Button, Space, Typography, Input, Select, Row, Col } from 'antd';
+import { Card, Form, Button, Space, Typography } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { organizationService, RANK_OPTIONS } from '../../services/organizationService';
-import type { CreateOrganizationPayload, UpdateOrganizationPayload } from '../../services/organizationService';
-import type { Organization } from '../../services/organizationService';
+import type { CreateOrganizationPayload, UpdateOrganizationPayload, CandidateParent } from '../../services/organizationService';
 import FormField from '../../components/FormField';
 import toast from '../../components/ToastNotification';
 import { spaceMd, spaceLg, radiusPill, fontSizeMd, fontWeightBold, borderDefault, textSecondary } from '../../tokens';
@@ -18,19 +17,22 @@ export default function UnitForm() {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [initialData, setInitialData] = useState<UpdateOrganizationPayload & { parentOrgId?: string } | null>(null);
-  const [orgOptions, setOrgOptions] = useState<Organization[]>([]);
+  const [candidateParents, setCandidateParents] = useState<CandidateParent[]>([]);
 
-  // Load org tree for parent selector
+  // Load eligible candidate parents from backend
   useEffect(() => {
-    (async () => {
-      try {
-        const orgs = await organizationService.getTree({ allowMockFallback: false });
-        setOrgOptions(orgs);
-      } catch {
-        // ignore
-      }
-    })();
-  }, []);
+    let active = true;
+    organizationService.getCandidateParents(id)
+      .then((candidates) => {
+        if (active) setCandidateParents(candidates);
+      })
+      .catch(() => {
+        if (active) setCandidateParents([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [id]);
 
   // Load existing data for edit
   useEffect(() => {
@@ -67,33 +69,21 @@ export default function UnitForm() {
   }, [isEdit, id, form, navigate]);
 
   const parentOptions = useMemo(() => {
-    const currentOrg = orgOptions.find((org) => org.id === id);
-    const parentLevel = currentOrg?.level && currentOrg.level > 1 ? currentOrg.level - 1 : undefined;
-    const isDescendant = (candidateId: string) => {
-      if (!id) return false;
-      let current = orgOptions.find((org) => org.id === candidateId);
-      const visited = new Set<string>();
-      while (current?.parentId && !visited.has(current.parentId)) {
-        if (current.parentId === id) return true;
-        visited.add(current.parentId);
-        current = orgOptions.find((org) => org.id === current?.parentId);
-      }
-      return false;
-    };
-
-    return orgOptions
-      .filter((org) => org.id !== id && !isDescendant(org.id))
-      .filter((org) => org.operationalStatus !== 'inactive')
-      .filter((org) => parentLevel === undefined ? (org.level ?? 0) < 3 : org.level === parentLevel)
-      .map((org) => ({ value: org.id, label: `${org.name}${org.level ? ` (Cấp ${org.level})` : ''}` }));
-  }, [id, orgOptions]);
+    return candidateParents
+      .filter((cand) => !cand.disabled || cand.currentParent)
+      .map((cand) => ({
+        value: cand.id,
+        label: cand.currentParent ? `${cand.name} (Hiện tại)` : cand.name,
+        disabled: cand.disabled,
+      }));
+  }, [candidateParents]);
 
   const handleSubmit = useCallback(async () => {
     try {
       const values = await form.validateFields();
       setSubmitting(true);
 
-      const targetParentId = values.parentId || undefined;
+      const targetParentId = values.parentId ? values.parentId : (isEdit && initialData?.parentId ? '00000000-0000-0000-0000-000000000000' : undefined);
 
       if (isEdit) {
         const payload: UpdateOrganizationPayload = {

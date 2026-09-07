@@ -1,0 +1,115 @@
+{
+  "triage_id": "TRI-1788511833935-22a3",
+  "created_at": 1788511833935,
+  "request_summary": "(A) Chuẩn hóa tab GIS 'Thông tin vị trí' trong Drawer Thêm mới/Chỉnh sửa của /scada, /transmission, /vts-assist theo chuẩn /vts-operation-center (đã làm cho /cctv): GIS control box drawerGisControlBoxStyle + DetailTable withGisForm, xóa layout flat cũ. (B) Thống nhất hiển thị 'Tình trạng' tab Thông tin chung Xem chi tiết 4 màn (cctv/scada/transmission/vts-assist) giống pill ở bảng danh sách.",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/services/cctv/CctvListPage.tsx",
+      "frontend/src/services/scada/ScadaListPage.tsx",
+      "frontend/src/services/transmission/TransmissionListPage.tsx",
+      "frontend/src/services/vtsassist/VtsAssistListPage.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/services/cctv/CctvListPage.tsx",
+      "frontend/src/services/scada/ScadaListPage.tsx",
+      "frontend/src/services/transmission/TransmissionListPage.tsx",
+      "frontend/src/services/vtsassist/VtsAssistListPage.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C1: 4 edit-target files in one package, no one-way door — pre-declared write scope required (4 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "/cctv, /scada, /transmission, /vts-assist → Drawer Thêm mới/Chỉnh sửa tab 'Thông tin vị trí'; Drawer Xem chi tiết tab 'Thông tin chung' dòng 'Tình trạng'",
+  "blast_radius": 4,
+  "done_oracle": "Mở 3 màn scada/transmission/vts-assist: tab Thông tin vị trí của Drawer Thêm mới & Chỉnh sửa hiển thị khung GIS giống /vts-operation-center (như /cctv đã chuẩn), thao tác bản đồ/thêm-xóa tọa độ/lưu vẫn chạy. Dòng 'Tình trạng' trong Xem chi tiết → Thông tin chung của 4 màn hiển thị pill cùng màu/nhãn/style như cột ở bảng danh sách. Scoped tsc mỗi file: không phát sinh lỗi TS mới ngoài baseline sẵn có.",
+  "verification_commands": [
+    {
+      "command": "npx tsc -p tsconfig.app.json --noEmit",
+      "cwd": "frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "frontend/src/services/cctv/CctvListPage.tsx",
+    "frontend/src/services/scada/ScadaListPage.tsx",
+    "frontend/src/services/transmission/TransmissionListPage.tsx",
+    "frontend/src/services/vtsassist/VtsAssistListPage.tsx"
+  ],
+  "seam_claims": [
+    {
+      "file": "frontend/src/services/cctv/CctvListPage.tsx",
+      "line": 2649,
+      "quote": "return <span style={statusBadgeStyle(st.color)}>{st.label}</span>; })() },",
+      "source_hash": "cd21d489805c5682ae454539fe17c81c73e0f09ce68195322439aa09cc01519a",
+      "quote_hash": "8d9cd16a3aafffa88a65006f9a4105d5fa6fe870650810bf60b6aca34fd751cb",
+      "note": "Đã sửa: Tình trạng chi tiết dùng statusBadgeStyle như bảng (trước đó grey do renderCctvStatusBadge hex)"
+    },
+    {
+      "file": "frontend/src/services/scada/ScadaListPage.tsx",
+      "line": 3317,
+      "quote": "label: 'Thông tin vị trí',",
+      "source_hash": "be1470d8090dcc2f5a28b1079a9e113a23ea0e4537dec0fec1cf189c39a2b32d",
+      "quote_hash": "4bd55c4b5fbcdb42ae68357716d989cd95d56fce2e4dbd6d6ab5f8342b981992",
+      "note": "Tab GIS create đang layout flat cũ cần chuẩn hóa"
+    },
+    {
+      "file": "frontend/src/services/scada/ScadaListPage.tsx",
+      "line": 2442,
+      "quote": "{ label: 'Tình trạng', value: (() => {",
+      "source_hash": "be1470d8090dcc2f5a28b1079a9e113a23ea0e4537dec0fec1cf189c39a2b32d",
+      "quote_hash": "7da8192496fd151085fcbecb3fae765eab3f55798d251bb5d6155ab6b950cd1b",
+      "note": "Dòng Tình trạng Xem chi tiết — dùng renderScadaStatusBadge"
+    },
+    {
+      "file": "frontend/src/services/transmission/TransmissionListPage.tsx",
+      "line": 3158,
+      "quote": "label: 'Thông tin vị trí',",
+      "source_hash": "40a1b740f7378a34188628d7d4b31799120acd5868a907387538ad8b099251b6",
+      "quote_hash": "4bd55c4b5fbcdb42ae68357716d989cd95d56fce2e4dbd6d6ab5f8342b981992",
+      "note": "Tab GIS create layout flat cũ"
+    },
+    {
+      "file": "frontend/src/services/transmission/TransmissionListPage.tsx",
+      "line": 2257,
+      "quote": "{ label: 'Tình trạng', value: (() => {",
+      "source_hash": "40a1b740f7378a34188628d7d4b31799120acd5868a907387538ad8b099251b6",
+      "quote_hash": "7da8192496fd151085fcbecb3fae765eab3f55798d251bb5d6155ab6b950cd1b",
+      "note": "Dòng Tình trạng Xem chi tiết — style lệch bảng (statusBadgeStyle vs badgeBaseStyle)"
+    },
+    {
+      "file": "frontend/src/services/vtsassist/VtsAssistListPage.tsx",
+      "line": 2995,
+      "quote": "label: 'Thông tin vị trí',",
+      "source_hash": "173d44a295d2b9cd802e57fe3cb07e008f8066efc00c882ee85ea8ab16645725",
+      "quote_hash": "4bd55c4b5fbcdb42ae68357716d989cd95d56fce2e4dbd6d6ab5f8342b981992",
+      "note": "Tab GIS create layout flat cũ"
+    },
+    {
+      "file": "frontend/src/services/vtsassist/VtsAssistListPage.tsx",
+      "line": 2153,
+      "quote": "{ label: 'Tình trạng', value: (() => {",
+      "source_hash": "173d44a295d2b9cd802e57fe3cb07e008f8066efc00c882ee85ea8ab16645725",
+      "quote_hash": "7da8192496fd151085fcbecb3fae765eab3f55798d251bb5d6155ab6b950cd1b",
+      "note": "Dòng Tình trạng Xem chi tiết"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "3b07a5a6421c35cc8b0c2382bc435e35e9fc5c34",
+    "dirty": true,
+    "captured_at": 1788511834104
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

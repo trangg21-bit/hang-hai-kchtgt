@@ -201,18 +201,16 @@ class BeaconStationServiceTest {
         void search() {
             UUID id = UUID.randomUUID();
             BeaconStation entity = makeEntity(id, "DRAFT");
-            when(beaconStationRepo.searchFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
-                    any(), any(), any(), any(), any(), any()))
+            when(beaconStationRepo.searchFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                     .thenReturn(List.of(entity));
 
             List<BeaconStationResponse> result = service.search(
-                    "Đèn", "DEN", "LIGHTHOUSE", "DRAFT", null, null, null, null, null, null, null, null, null, null,
-                    null, null);
+                    "Đèn", "DEN", "LIGHTHOUSE", null, "DRAFT", null, null, null, null, null, null, null, null, null, null, null, null);
 
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getName()).isEqualTo("Đèn biển test");
             verify(beaconStationRepo).searchFiltered("Đèn", "DEN",
-                    "LIGHTHOUSE", "DRAFT", null, null, null, null, null, null, null, null, null, null, null, null);
+                    "LIGHTHOUSE", null, "DRAFT", null, null, null, null, null, null, null, null, null, null, null, null);
         }
     }
 
@@ -384,7 +382,8 @@ class BeaconStationServiceTest {
 
             BeaconStationResponse result = service.update(id, request);
 
-            assertThat(result.getStatus()).isEqualTo("APPROVED_L2");
+            // Sửa bản Đã phê duyệt (action mặc định draft) → giữ trạng thái chuẩn APPROVED
+            assertThat(result.getStatus()).isEqualTo("APPROVED");
             assertThat(result.getApprovalStatus()).isEqualTo("APPROVED");
             verify(infraHistoryRepo, atLeastOnce()).save(any());
         }
@@ -497,6 +496,23 @@ class BeaconStationServiceTest {
         }
 
         @Test
+        @DisplayName("submitForApproval — resubmit từ REJECTED_LEVEL1/REJECTED_LEVEL2 (gửi lại sau khi bị trả về)")
+        void submitForApprovalFromRejected() {
+            UUID id = UUID.randomUUID();
+            BeaconStation entity = makeEntity(id, "REJECTED_LEVEL1");
+            when(beaconStationRepo.findById(id)).thenReturn(Optional.of(entity));
+            when(beaconStationRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+            service.submitForApproval(id);
+
+            verify(beaconStationRepo).save(beaconStationCaptor.capture());
+            BeaconStation saved = beaconStationCaptor.getValue();
+            assertThat(saved.getStatus()).isEqualTo("PENDING_APPROVAL");
+            assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.PROPOSED);
+            assertThat(saved.getApprovalLevel()).isEqualTo(1);
+        }
+
+        @Test
         @DisplayName("submitForApproval — throws when not DRAFT")
         void submitForApprovalNotDraft() {
             UUID id = UUID.randomUUID();
@@ -505,7 +521,7 @@ class BeaconStationServiceTest {
 
             assertThatThrownBy(() -> service.submitForApproval(id))
                     .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("Chỉ có thể gửi phê duyệt khi status = DRAFT");
+                    .hasMessageContaining("Lưu tạm hoặc bị trả về");
 
             verify(beaconStationRepo, never()).save(any());
         }
@@ -547,7 +563,7 @@ class BeaconStationServiceTest {
         }
 
         @Test
-        @DisplayName("reject with valid reason — transitions to DRAFT + REJECTED")
+        @DisplayName("reject with valid reason — transitions to REJECTED_LEVEL1 (theo cấp đang chờ)")
         void rejectValid() {
             UUID id = UUID.randomUUID();
             BeaconStation entity = makeEntity(id, "PENDING_APPROVAL");
@@ -560,10 +576,10 @@ class BeaconStationServiceTest {
 
             verify(beaconStationRepo).save(beaconStationCaptor.capture());
             BeaconStation saved = beaconStationCaptor.getValue();
-            assertThat(saved.getStatus()).isEqualTo("DRAFT");
+            assertThat(saved.getStatus()).isEqualTo("REJECTED_LEVEL1");
             assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.REJECTED_LEVEL1);
             assertThat(saved.getRejectionReason()).isEqualTo("Lý do từ chối hợp lệ (đủ 10 ký tự)");
-            assertThat(result.getStatus()).isEqualTo("DRAFT");
+            assertThat(result.getStatus()).isEqualTo("REJECTED_LEVEL1");
             assertThat(result.getApprovalStatus()).isEqualTo("REJECTED_LEVEL1");
             verify(notificationService).sendRejectionNotification(entity,
                     "Lý do từ chối hợp lệ (đủ 10 ký tự)");

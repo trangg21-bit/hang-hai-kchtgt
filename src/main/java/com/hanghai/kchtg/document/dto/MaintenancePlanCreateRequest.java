@@ -29,4 +29,12 @@ public class MaintenancePlanCreateRequest {
     private MaintenanceStatus status;
     private BigDecimal estimatedCost;
     private UUID createdBy;
+
+    private UUID orgUnitId;
+    private UUID operatingOrgUnitId;
+    private String infrastructureType;
+    private String code;
+    private String name;
+    private String content;
+    private String note;
 }

@@ -925,16 +925,20 @@ export const globalCssVars = `
 .topbar-user__avatar-wrap {
   position: relative;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: flex-end;
+  line-height: 0;
 }
 .topbar-user__status-dot {
   position: absolute;
   bottom: 0;
-  right: -1px;
-  width: 9px;
-  height: 9px;
+  right: 0;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: var(--color-success);
   border: 2px solid var(--bg-container);
+  box-sizing: border-box;
 }
 
 /* ---------- Body background ---------- */

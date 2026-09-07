@@ -17,7 +17,14 @@ import com.hanghai.kchtg.transmission.dto.UpdateTransmissionRequest;
 import com.hanghai.kchtg.transmission.service.TransmissionApprovalService;
 import com.hanghai.kchtg.transmission.service.TransmissionService;
 import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
+import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.security.SecurityUtils;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -220,7 +227,35 @@ public class TransmissionController {
       @PathVariable UUID id,
       @PathVariable UUID attachmentId) {
     log.info("Deleting transmission attachment: id={}, attachmentId={}", id, attachmentId);
-    transmissionService.deleteAttachment(id, attachmentId);
+    transmissionService.deleteAttachment(id, attachmentId, SecurityUtils.getCurrentUserId());
     return ResponseEntity.ok(ApiResponse.success("Đã xóa file đính kèm", null));
+  }
+
+  // Tải xuống file đính kèm — mirror /vts-operation-center (VtsOperationCenterController.downloadAttachment)
+  @GetMapping("/{id}/attachments/{attachmentId}/download")
+  @PreAuthorize("@auth.check(authentication, 'transmission:read')")
+  public ResponseEntity<Resource> downloadAttachment(
+      @PathVariable UUID id,
+      @PathVariable UUID attachmentId) {
+    Attachment attachment = transmissionService.getAttachment(id, attachmentId);
+    Path path = Paths.get(attachment.getFilePath()).toAbsolutePath().normalize();
+    if (!Files.isRegularFile(path)) {
+      return ResponseEntity.notFound().build();
+    }
+    Resource resource = new FileSystemResource(path);
+    String contentType;
+    try {
+      contentType = Files.probeContentType(path);
+    } catch (Exception ignored) {
+      contentType = null;
+    }
+    MediaType mediaType = contentType == null
+        ? MediaType.APPLICATION_OCTET_STREAM
+        : MediaType.parseMediaType(contentType);
+    return ResponseEntity.ok()
+        .contentType(mediaType)
+        .header(HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=\"" + (attachment.getFileName() != null ? attachment.getFileName().replace("\"", "") : "attachment") + "\"")
+        .body(resource);
   }
 }

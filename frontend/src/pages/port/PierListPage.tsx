@@ -1055,7 +1055,7 @@ export default function PierListPage() {
         </div>
       </Modal>
 
-      <Modal maskStyle={{ background: 'rgba(0, 0, 0, 0.4)' }} title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Từ chối phê duyệt</span>}
+      <Modal styles={{ mask: { background: 'rgba(0, 0, 0, 0.4)' } }} title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Từ chối phê duyệt</span>}
         open={rejectModalOpen} onCancel={() => { setRejectModalOpen(false); setRejectingRecord(null); setRejectReason(''); setRejectError(''); }}
         footer={[
           <Button key="cancel" onClick={() => { setRejectModalOpen(false); setRejectingRecord(null); setRejectReason(''); setRejectError(''); }}
@@ -1079,7 +1079,7 @@ export default function PierListPage() {
         </div>
       </Modal>
 
-      <Modal maskStyle={{ background: 'rgba(0, 0, 0, 0.4)' }}
+      <Modal styles={{ mask: { background: 'rgba(0, 0, 0, 0.4)' } }}
         title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Gửi phê duyệt</span>}
         open={submitModalOpen} onCancel={() => { setSubmitModalOpen(false); setSubmittingRecord(null); }}
         footer={[

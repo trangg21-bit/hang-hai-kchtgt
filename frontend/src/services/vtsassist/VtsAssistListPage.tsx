@@ -1,6 +1,12 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { fmtNum } from "../../utils/numFmt";
-import { coordinateRowsToWkt, resolveMapGeometryLocation, type EditableGeometryType } from "../../utils/gisGeometry";
+import {
+  parseWktToCoordinates,
+  serializeCoordinatesToWkt,
+  adjustCoordinateListForGeometry,
+  ddToDms,
+  GEOMETRY_POINT_COUNT,
+} from "../../utils/gisGeometry";
 import { usePermissionStore } from "../../store/permissionStore";
 import {
   Alert,
@@ -8,7 +14,6 @@ import {
   Checkbox,
   DatePicker,
   Space,
-  Tag,
   Row,
   Col,
   Input,
@@ -18,25 +23,22 @@ import {
   InputNumber,
   Typography,
   Drawer,
-  Table,
 } from "antd";
 import { OrgUnitTreeSelect } from "../../components/org-unit";
+import GisLocationSelector from "../../components/gis/GisLocationSelector";
+import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from "../../components/shared/InfrastructureAttachmentTab";
+import { DetailTable } from "../../components/shared/DetailTable";
+import { deduplicateAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
+import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
 import {
   PlusOutlined,
-  EditOutlined,
+  SearchOutlined,
   DeleteOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  SendOutlined,
-  EyeOutlined,
   HistoryOutlined,
-  UploadOutlined,
   ExclamationCircleOutlined,
-  FileOutlined,
   EnvironmentOutlined,
 } from "@ant-design/icons";
-import { Tabs, Upload } from "antd";
-import type { RcFile } from "antd/es/upload/interface";
+import { Tabs } from "antd";
 import { useSearchParams } from "react-router-dom";
 import { DEFAULT_OPERATING_ORGANIZATIONS } from "../operatingOrganizationsData";
 import {
@@ -53,6 +55,7 @@ import {
   fetchVtsAssistAttachments,
   uploadVtsAssistAttachment,
   deleteVtsAssistAttachment,
+  downloadVtsAssistAttachment,
 } from "./api";
 import {
   OPERATIONAL_STATUS_OPTIONS,
@@ -71,23 +74,56 @@ import {
   DataTable,
   Pagination,
   FilterTableLayout,
-  PagedTable,
 } from "../../components/list-view";
 import {
-  historyBadgeStyle,
-  historyGroupGridStyle,
-  historyTimeStyle,
-  historyMetaRowStyle,
-  historyInfoCardStyle,
-  historyAccentBarStyle,
-  historyInfoTitleStyle,
-  historyChangeRowStyle,
-  historyCreateRowStyle,
-  historyFieldLabelStyle,
-  historyOldValueStyle,
-  historyNewValueStyle,
-  historyArrowStyle,
-} from "../../tokens";
+  // Design + status tokens (themetokenchk — thay cho ../../tokens cũ)
+  colors,
+  actionPrimary,
+  statusInfo,
+  statusCritical,
+  statusAttention,
+  statusDraft,
+  statusOperational,
+  textPrimary,
+  textSecondary,
+  textTertiary,
+  borderDefault,
+  surfaceCard,
+  surfacePage,
+  radiusPill,
+  radiusSm,
+  fontSans,
+  fontSizeSm,
+  fontSizeMd,
+  fontSizeLg,
+  fontWeightMedium,
+  fontWeightBold,
+  spaceXs,
+  spaceSm,
+  spaceMd,
+  spaceFormField,
+  spaceLg,
+  spaceXl,
+  statusBadgeStyle,
+  icons,
+  labelProps,
+  drawerProps,
+  drawerTitleStyle,
+  drawerCloseBtnStyle,
+  drawerFooterStyle,
+  primaryButtonStyle,
+  outlineButtonStyle,
+  selectStyle,
+  readonlyInputStyle,
+  drawerGisControlBoxStyle,
+  DRAWER_TABLE_SCROLL_Y,
+  requiredMarkStyle,
+  getRangePickerProps,
+  inputStyle,
+} from "../../themetokenchk";
+import { cellTitleStyle, cellSubtitleStyle } from "../../themetokenchk";
+import * as themeTokenChk from "../../themetokenchk";
+import { ThemeTokenProvider, THEME_SCOPE_CLASS } from "../../context/ThemeTokenContext";
 
 /** Map unitOfMeasure code (Integer) → label cho hiển thị */
 const UOM_LABELS: Record<number, string> = {
@@ -124,46 +160,6 @@ function formatUnitOfMeasure(code: number | null | undefined): string {
   return code != null && UOM_LABELS[code] ? UOM_LABELS[code] : '—';
 }
 
-// ── labelProps — matches PortFormContent.tsx ────────────────
-const labelProps = (text: string) => ({
-  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
-});
-
-import {
-  colors,
-  fontSizeMd,
-  fontSizeLg,
-  fontSizeSm,
-  fontWeightBold,
-  fontWeightMedium,
-  textPrimary,
-  textSecondary,
-  textTertiary,
-  statusCritical,
-  statusAttention,
-  statusDraft,
-  statusOperational,
-  actionPrimary,
-  borderDefault,
-  surfaceCard,
-  radiusPill,
-  radiusMd,
-  fontSans,
-  spaceMd,
-  spaceFormField,
-  spaceSm,
-  spaceXs,
-  spaceXl,
-  badgeBaseStyle,
-  drawerProps,
-  drawerTitleStyle,
-  drawerCloseBtnStyle,
-  drawerFooterStyle,
-  primaryButtonStyle,
-  outlineButtonStyle,
-  requiredMarkStyle,
-  uploadHintStyle,
-} from "../../tokens";
 import dayjs from "dayjs";
 
 const { Text } = Typography;
@@ -181,7 +177,7 @@ const APPROVAL_STATUS_MAP: Record<string, string> = {
 const APPROVAL_COLOR: Record<string, string> = {
   DRAFT: statusDraft,
   PENDING_APPROVAL: statusAttention,
-  APPROVED_LEVEL1: '#0284C7',
+  APPROVED_LEVEL1: statusInfo,
   APPROVED: statusOperational,
   REJECTED_LEVEL1: statusCritical,
   REJECTED_LEVEL2: statusCritical,
@@ -211,7 +207,7 @@ function renderVtsAssistStatusBadge(b: { color: string; label: string }) {
   if (b.color === 'green') c = statusOperational;
   else if (b.color === 'red') c = statusCritical;
   else if (b.color === 'orange') c = statusAttention;
-  return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${c}15`, color: c }}>{b.label}</span>;
+  return <span style={statusBadgeStyle(c)}>{b.label}</span>;
 }
 
 /** Badge trạng thái phê duyệt 2 cấp — dùng APPROVAL_STATUS_MAP + APPROVAL_COLOR (quy chuẩn AGENTS.md) */
@@ -220,154 +216,9 @@ function renderApprovalBadge(status: string | null | undefined) {
   const display = APPROVAL_STATUS_MAP[status] || status;
   const color = APPROVAL_COLOR[status] || textTertiary;
   return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        padding: '2px 10px',
-        border: `1px solid ${color}40`,
-        borderRadius: radiusPill,
-        fontSize: fontSizeMd,
-        fontWeight: fontWeightMedium,
-        background: `${color}15`,
-        color,
-        whiteSpace: 'nowrap',
-      }}
-    >
+    <span style={statusBadgeStyle(color)}>
       {display}
     </span>
-  );
-}
-
-/* Bảng tham chiếu (Vận hành khai thác / Bảo trì / Sự cố) — placeholder theo chuẩn
-   PortRefTable của /port; bảng rỗng chờ tích hợp dữ liệu kế hoạch/sự cố sau này */
-const VTS_ASSIST_TAB_PAGE_SIZE = 20;
-function VtsAssistRefTable({ title, emptyText, columns, dataSource = [] }: { title: string; emptyText: string; columns: Array<{ title: string; dataIndex?: string; width?: number }>; dataSource?: any[] }) {
-  const [page, setPage] = useState(1);
-  const maxPage = Math.max(1, Math.ceil(dataSource.length / VTS_ASSIST_TAB_PAGE_SIZE));
-  const cur = Math.min(page, maxPage);
-  const rows = dataSource
-    .map((row, idx) => ({ ...row, key: row?.key ?? idx, __index: idx + 1 }))
-    .slice((cur - 1) * VTS_ASSIST_TAB_PAGE_SIZE, cur * VTS_ASSIST_TAB_PAGE_SIZE);
-  const refHdr = () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } });
-  return (
-    <div style={{ paddingTop: 3 }}>
-      <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
-        <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{title}</span>
-      </div>
-      <Table
-        className="list-view-table"
-        dataSource={rows}
-        pagination={false} size="middle" bordered
-        style={{ marginLeft: 12, marginRight: 12 }}
-        locale={{ emptyText: <div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>{emptyText}</span></div> }}
-      >
-        <Table.Column title="STT" key="index" dataIndex="__index" width={60} align="center"
-          render={(v: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{v}</span>}
-          onHeaderCell={refHdr} />
-        {columns.map((c) => (
-          <Table.Column key={c.title} title={c.title} dataIndex={c.dataIndex} width={c.width} align="center"
-            render={(v: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
-            onHeaderCell={refHdr} />
-        ))}
-        <Table.Column title="Thao tác" key="actions" width={100} align="center"
-          render={() => <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>}
-          onHeaderCell={refHdr} />
-      </Table>
-      <div style={{ margin: '0 12px' }}>
-        <Pagination total={dataSource.length} current={cur} pageSize={VTS_ASSIST_TAB_PAGE_SIZE} pageSizeOptions={[10, 20, 50]} onChange={setPage} />
-      </div>
-    </div>
-  );
-}
-
-/* Tab File đính kèm (Tạo mới/Cập nhật) — format theo chuẩn Port: label + nút Thêm file,
-   empty state, danh sách file cục bộ (upload thực hiện lúc submit) */
-function VtsAssistFilesTab({ uploadFileList, setUploadFileList, entityId }: { uploadFileList: any[]; setUploadFileList: React.Dispatch<React.SetStateAction<any[]>>; entityId?: string }) {
-  const beforeUpload = (file: RcFile): boolean => {
-    if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB'); return false; }
-    const ext = file.name.split('.').pop()?.toLowerCase();
-    if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) { toast.error('Định dạng không hỗ trợ'); return false; }
-    if (uploadFileList.length >= 10) { toast.error('Tối đa 10 file'); return false; }
-    setUploadFileList([...uploadFileList, { uid: `${Date.now()}`, name: file.name, status: 'done' as const, originFileObj: file }]);
-    return false;
-  };
-  return (
-    <div style={{ paddingTop: 16 }}>
-      <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
-        {uploadFileList.length > 0 && (
-          <Upload
-            beforeUpload={beforeUpload}
-            showUploadList={false}
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif"
-            multiple
-          >
-            <Button type="dashed" size="small" icon={<PlusOutlined />} style={{ borderRadius: radiusPill }}>
-              Thêm file
-            </Button>
-          </Upload>
-        )}
-      </div>
-      {uploadFileList.length === 0 ? (
-        <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
-          <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>
-            Chưa có file đính kèm.
-          </span>
-          <Upload
-            beforeUpload={beforeUpload}
-            showUploadList={false}
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif"
-            multiple
-          >
-            <Button type="dashed" icon={<UploadOutlined />} style={{ borderRadius: radiusPill }}>
-              Chọn file
-            </Button>
-          </Upload>
-        </div>
-      ) : (
-        <PagedTable
-          dataSource={uploadFileList.map((f, i) => ({ ...f, _idx: i }))}
-          tableProps={{ scroll: { x: 400 } }}
-        >
-          <Table.Column
-            title="Tên file"
-            key="name"
-            dataIndex="name"
-            render={(name: string) => (
-              <span style={{ fontSize: fontSizeMd, color: textPrimary }}>
-                <FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />
-                {name}
-              </span>
-            )}
-            onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })}
-          />
-          <Table.Column
-            title=""
-            key="actions"
-            width={44}
-            align="center"
-            render={(_: any, record: any) => (
-              <Button type="link" danger size="small" icon={<DeleteOutlined />}
-                onClick={() => {
-                  const uid = record.uid;
-                  if (entityId && typeof uid === 'string' && uid.includes('-')) {
-                    void deleteVtsAssistAttachment(entityId, uid).catch(() => { /* ignore */ });
-                  }
-                  setUploadFileList(uploadFileList.filter((_, idx) => idx !== record._idx));
-                }} />
-            )}
-            onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })}
-          />
-        </PagedTable>
-      )}
-      <div style={{ marginTop: spaceSm }}>
-        <span style={uploadHintStyle}>
-          Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤20MB.
-        </span>
-      </div>
-    </div>
   );
 }
 
@@ -391,6 +242,249 @@ const tableMetaStyle: React.CSSProperties = {
 // Normalize form geometryType ('POINT' | 'LINE' | 'POLYGON') — fallback POINT khi chưa chọn
 const normalizeGeometryType = (value: unknown): 'POINT' | 'LINE' | 'POLYGON' =>
   value === 'LINE' || value === 'POLYGON' ? value : 'POINT';
+
+type GpsCoordRow = { lat: number; lng: number };
+
+/** Ô nhập DMS (Độ/Phút/Giây) dùng chung cho bảng Tọa độ của Tạo mới & Cập nhật (chuẩn /vts-operation-center). */
+function VtsAssistDmsEditorCell({
+  row,
+  index,
+  field,
+  onUpdatePoint,
+}: {
+  row: GpsCoordRow;
+  index: number;
+  field: 'lat' | 'lng';
+  onUpdatePoint: (index: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => void;
+}) {
+  const value = field === 'lat' ? row.lat : row.lng;
+  const dms = ddToDms(value);
+  const dMax = field === 'lat' ? 90 : 180;
+  const sepStyle = (middle: boolean): React.CSSProperties => ({
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '0 6px',
+    background: colors.bodyBg,
+    border: `1px solid ${borderDefault}`,
+    borderLeft: 0,
+    ...(middle ? { borderRight: 0 } : {}),
+    fontSize: fontSizeSm,
+    color: textTertiary,
+    whiteSpace: 'nowrap' as const,
+  });
+  return (
+    <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
+      <InputNumber
+        value={dms.d}
+        min={0}
+        max={dMax}
+        precision={0}
+        placeholder="Độ"
+        controls={false}
+        onFocus={(e) => e.currentTarget.select()}
+        onChange={(x) => onUpdatePoint(index, field, x, dms.m, dms.s)}
+        style={{ flex: 1, minWidth: 0, textAlign: 'center' }}
+      />
+      <span style={sepStyle(true)}>°</span>
+      <InputNumber
+        value={dms.m}
+        min={0}
+        max={59}
+        precision={0}
+        placeholder="Phút"
+        controls={false}
+        onFocus={(e) => e.currentTarget.select()}
+        onChange={(x) => onUpdatePoint(index, field, dms.d, x, dms.s)}
+        style={{ flex: 1, minWidth: 0, textAlign: 'center' }}
+      />
+      <span style={sepStyle(true)}>'</span>
+      <InputNumber
+        value={dms.s}
+        min={0}
+        max={59.9999}
+        step={0.01}
+        placeholder="Giây"
+        controls={false}
+        onFocus={(e) => e.currentTarget.select()}
+        onChange={(x) => onUpdatePoint(index, field, dms.d, dms.m, x)}
+        style={{ flex: 1.2, minWidth: 0, textAlign: 'center' }}
+      />
+      <span style={sepStyle(false)}>{'"'}</span>
+    </Space.Compact>
+  );
+}
+
+/**
+ * Tab GIS 'Thông tin vị trí' trong Drawer Tạo mới/Chỉnh sửa — chuẩn /vts-operation-center:
+ * khung drawerGisControlBoxStyle (Loại đối tượng/Biểu tượng/Hệ quy chiếu/Quy tắc hiển thị)
+ * + thanh 'Tọa độ' + DetailTable DMS (DRAWER_TABLE_SCROLL_Y.withGisForm).
+ * Dùng chung 2 chế độ create/edit (props phân biệt state + handler của từng form).
+ */
+function VtsAssistGisTab({
+  geometryType,
+  rows,
+  symbols,
+  onAddRow,
+  onUpdatePoint,
+  onDeleteRow,
+  minPoints,
+  onOpenMap,
+}: {
+  geometryType?: string | null;
+  rows: GpsCoordRow[];
+  symbols: MapSymbolType[];
+  onAddRow: () => void;
+  onUpdatePoint: (index: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => void;
+  onDeleteRow: (index: number) => void;
+  minPoints: number;
+  onOpenMap: () => void;
+}) {
+  const geom = normalizeGeometryType(geometryType);
+  const isPoint = geom === 'POINT';
+  // POINT chỉ hiển thị đúng 1 dòng đầu (slice(0,1)); LINE/POLYGON hiện toàn bộ
+  const shown = (isPoint ? rows.slice(0, 1) : rows).map((c, i) => ({ ...c, _idx: i }));
+  const gisLabel = (text: string) => (
+    <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '18px' }}>{text}</span>
+  );
+  return (
+    <div>
+      <div style={drawerGisControlBoxStyle}>
+        <Row gutter={[24, 0]} style={{ height: 68, marginBottom: 8 }}>
+          <Col span={12}>
+            <Form.Item label={gisLabel('Loại đối tượng')} name="geometryType" style={{ marginBottom: 0 }}>
+              <Select
+                placeholder="Chọn loại đối tượng"
+                allowClear
+                options={[
+                  { value: 'POINT', label: 'Đối tượng điểm' },
+                  { value: 'LINE', label: 'Đối tượng đường' },
+                  { value: 'POLYGON', label: 'Đối tượng vùng' },
+                ]}
+                style={{ ...selectStyle, height: 38 }}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item label={gisLabel('Biểu tượng')} name="mapSymbolId" style={{ marginBottom: 0 }}>
+              <Select
+                placeholder="Chọn biểu tượng bản đồ"
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                disabled={!geometryType}
+                style={{ ...selectStyle, height: 38 }}
+              >
+                {symbols.map((sym) => (
+                  <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
+                    <Space size={6} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                      {sym.image ? (
+                        <img
+                          src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`}
+                          alt={sym.name}
+                          style={{ width: 16, height: 16, objectFit: 'contain', verticalAlign: 'middle' }}
+                        />
+                      ) : (
+                        <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: actionPrimary }} />
+                      )}
+                      <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
+                    </Space>
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={[24, 0]} style={{ height: 68, marginBottom: 8 }}>
+          <Col span={12}>
+            <Form.Item label={gisLabel('Hệ quy chiếu')} name="coordinateSystem" style={{ marginBottom: 0 }}>
+              <Select
+                placeholder="Chọn hệ quy chiếu"
+                options={[
+                  { value: 1, label: 'WGS-84' },
+                  { value: 2, label: 'VN-2000' },
+                ]}
+                style={{ ...selectStyle, height: 38 }}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item label={gisLabel('Quy tắc hiển thị')} name="displayRule" style={{ marginBottom: 0 }}>
+              <Input disabled style={{ ...readonlyInputStyle, borderRadius: radiusPill, height: 38 }} />
+            </Form.Item>
+          </Col>
+        </Row>
+        <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32, boxSizing: 'border-box' }}>
+          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
+            Tọa độ
+          </span>
+          <Space>
+            <Button
+              icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+              onClick={onOpenMap}
+              style={{ borderRadius: radiusPill, height: 32, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 6, borderColor: actionPrimary, color: actionPrimary }}
+            >
+              Chọn vị trí trên bản đồ
+            </Button>
+            {!isPoint && rows.length > 0 && (
+              <Button type="primary" icon={<PlusOutlined />} onClick={onAddRow} style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 32 }}>
+                Thêm tọa độ
+              </Button>
+            )}
+          </Space>
+        </div>
+      </div>
+      <DetailTable
+        scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
+        dataSource={shown}
+        emptyText="Chưa có tọa độ nào"
+        rowKey="_idx"
+        columns={[
+          {
+            title: 'STT',
+            key: 'stt',
+            width: 60,
+            align: 'center',
+            render: (_: any, __: any, i: number) => (
+              <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>
+            ),
+          },
+          {
+            title: 'Vĩ độ (N)',
+            key: 'lat',
+            render: (_: any, r: any) => <VtsAssistDmsEditorCell row={r} index={r._idx} field="lat" onUpdatePoint={onUpdatePoint} />,
+          },
+          {
+            title: 'Kinh độ (E)',
+            key: 'lng',
+            render: (_: any, r: any) => <VtsAssistDmsEditorCell row={r} index={r._idx} field="lng" onUpdatePoint={onUpdatePoint} />,
+          },
+          {
+            title: '',
+            key: 'actions',
+            width: 50,
+            align: 'center' as const,
+            render: (_: any, r: any) => {
+              if (isPoint) return null;
+              // Chỉ cho xóa khi còn trên số điểm tối thiểu (LINE 2 / POLYGON 3)
+              if (rows.length <= minPoints) return null;
+              return (
+                <Button
+                  type="text"
+                  danger
+                  size="small"
+                  icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                  style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                  onClick={() => onDeleteRow(r._idx)}
+                  title="Xóa tọa độ"
+                />
+              );
+            },
+          },
+        ]}
+      />
+    </div>
+  );
+}
 
 const VtsAssistListPage = () => {
   const [searchParams] = useSearchParams();
@@ -581,7 +675,7 @@ const VtsAssistListPage = () => {
   }, [fetchOperatingOrganizations]);
 
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
-  const [detailFiles, setDetailFiles] = useState<Array<{ id: string; fileName?: string; fileSize?: number }>>([]);
+  const [detailFiles, setDetailFiles] = useState<InfrastructureAttachmentItem[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<VtsAssistResponse | null>(
     null
   );
@@ -640,10 +734,12 @@ const VtsAssistListPage = () => {
   // GPS coordinates for edit drawer
   const [updateGpsCoordList, setUpdateGpsCoordList] = useState<Array<{ lat: number; lng: number }>>([]);
 
-  // GEOMETRY_POINT_COUNT mapping (same as Port)
-  const GEOMETRY_POINT_COUNT = useMemo(() => ({ POINT: 1, LINE: 2, POLYGON: 3 }), []);
+  // Modal bản đồ GIS: 'create' | 'edit' | 'detail' (chuẩn /vts-operation-center)
+  const [gisMapModal, setGisMapModal] = useState<'create' | 'edit' | 'detail' | null>(null);
 
-  // Auto-fill Hệ quy chiếu + Quy tắc hiển thị + GPS khi chọn Loại đối tượng (giống /pier)
+  // Auto-fill Hệ quy chiếu + Quy tắc hiển thị + GPS khi chọn Loại đối tượng (giống /pier).
+  // Chuyển Loại đối tượng sẽ GIỮ NGUYÊN các điểm đã nhập, chỉ thêm/bớt theo mức tối thiểu
+  // của loại mới (POINT=1 / LINE=2 / POLYGON=3) — adjustCoordinateListForGeometry.
   useEffect(() => {
     if (!createGeometryType) {
       createForm.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined });
@@ -651,34 +747,171 @@ const VtsAssistListPage = () => {
       return;
     }
     createForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
-    const count = GEOMETRY_POINT_COUNT[createGeometryType as keyof typeof GEOMETRY_POINT_COUNT] ?? 0;
-    setGpsCoordList(Array.from({ length: count }, () => ({ lat: 0, lng: 0 })));
-  }, [createGeometryType, GEOMETRY_POINT_COUNT, createForm]);
+    setGpsCoordList((prev) => {
+      const base = prev.length > 0 ? prev.map((p) => ({ latitude: p.lat, longitude: p.lng })) : [];
+      return adjustCoordinateListForGeometry(base, String(createGeometryType))
+        .map((x) => ({ lat: x.latitude ?? 0, lng: x.longitude ?? 0 }));
+    });
+  }, [createGeometryType, createForm]);
 
-  // Chỉ reset Hệ quy chiếu/Quy tắc hiển thị khi NGƯỜI DÙNG xóa lựa chọn Loại đối tượng,
-  // không reset khi mở modal edit (VtsAssistResponse không trả geometryType → watch luôn undefined khi mở)
-  const prevUpdateGeometryType = useRef<string | null>(null);
+  // Effect Loại đối tượng trong Drawer Sửa: giữ nguyên các điểm đã nhập. Tọa độ mở sẵn
+  // được nạp từ WKT (record.coordinates) trong hành động "Chỉnh sửa" — effect KHÔNG xóa
+  // danh sách khi mở drawer (chỉ xóa khi người dùng chủ động bỏ chọn Loại đối tượng).
   useEffect(() => {
-    const hadSelection = prevUpdateGeometryType.current != null;
-    prevUpdateGeometryType.current = (updateGeometryType as string | null) ?? null;
     if (!updateGeometryType) {
+      updateForm.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined });
       setUpdateGpsCoordList([]);
-      if (hadSelection) {
-        updateForm.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined });
-      }
       return;
     }
     updateForm.setFieldsValue({ displayRule: 'Độ, phút, giây (DMS)' });
     if (updateForm.getFieldValue('coordinateSystem') == null) {
       updateForm.setFieldsValue({ coordinateSystem: 1 });
     }
-    const count = GEOMETRY_POINT_COUNT[updateGeometryType as keyof typeof GEOMETRY_POINT_COUNT] ?? 1;
-    setUpdateGpsCoordList((prev) => {
-      if (prev.length >= count) return prev;
-      const added = Array.from({ length: count - prev.length }, () => ({ lat: 0, lng: 0 }));
-      return [...prev, ...added];
+    setUpdateGpsCoordList((prevList) => {
+      const base = prevList.length > 0 ? prevList.map((p) => ({ latitude: p.lat, longitude: p.lng })) : [];
+      return adjustCoordinateListForGeometry(base, String(updateGeometryType))
+        .map((x) => ({ lat: x.latitude ?? 0, lng: x.longitude ?? 0 }));
     });
-  }, [updateGeometryType, GEOMETRY_POINT_COUNT, updateForm]);
+  }, [updateGeometryType, updateForm]);
+
+  // ── GPS DMS: sửa 1 ô bất kỳ → recompute từ CẢ 3 thành phần hiện tại (lossless, chuẩn /vts-operation-center) ──
+  const updateCreateGpsPoint = (i: number, field: 'lat' | 'lng', dVal: number | null, mVal: number | null, sVal: number | null) => {
+    const d = dVal ?? 0;
+    const m = mVal ?? 0;
+    const s = sVal ?? 0;
+    const dMax = field === 'lat' ? 90 : 180;
+    const dClamped = Math.min(dMax, Math.max(0, d));
+    const mClamped = Math.min(59, Math.max(0, m));
+    const sClamped = Math.min(59.9999, Math.max(0, s));
+    const decimal = dClamped + mClamped / 60 + sClamped / 3600;
+    setGpsCoordList((prev) => prev.map((g, idx) => (
+      idx === i ? { ...g, ...(field === 'lat' ? { lat: decimal } : { lng: decimal }) } : g
+    )));
+  };
+
+  const updateEditGpsPoint = (i: number, field: 'lat' | 'lng', dVal: number | null, mVal: number | null, sVal: number | null) => {
+    const d = dVal ?? 0;
+    const m = mVal ?? 0;
+    const s = sVal ?? 0;
+    const dMax = field === 'lat' ? 90 : 180;
+    const dClamped = Math.min(dMax, Math.max(0, d));
+    const mClamped = Math.min(59, Math.max(0, m));
+    const sClamped = Math.min(59.9999, Math.max(0, s));
+    const decimal = dClamped + mClamped / 60 + sClamped / 3600;
+    setUpdateGpsCoordList((prev) => prev.map((g, idx) => (
+      idx === i ? { ...g, ...(field === 'lat' ? { lat: decimal } : { lng: decimal }) } : g
+    )));
+  };
+
+  // ── File đính kèm (dùng chung cho Drawer Thêm mới và Sửa) ──
+  const handleEditUploadFile = (file: File): boolean => {
+    if (uploadFileList.length >= 10) {
+      toast.error('Số lượng tệp đính kèm tối đa là 10 tệp');
+      return false;
+    }
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    setUploadFileList((prev) => [...prev, {
+      id: tempId,
+      fileName: file.name,
+      fileSize: file.size,
+      uploadedByName: currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
+      uploadedDate: new Date().toISOString(),
+      file,
+    }]);
+    toast.success(`Đã thêm tệp ${file.name}`);
+    return false;
+  };
+
+  const handleEditDeleteFile = (attId: string): void => {
+    if (!String(attId).startsWith('temp_') && updateTarget?.id) {
+      void deleteVtsAssistAttachment(updateTarget.id, attId).catch(() => { /* ignore */ });
+    }
+    setUploadFileList((prev) => prev.filter((a) => a.id !== attId));
+  };
+
+  const handleDownloadAttachmentItem = useCallback(async (attId: string, fileName?: string) => {
+    const item = uploadFileList.find((a) => a.id === attId);
+    const isTemp = String(attId).startsWith('temp_');
+    const localFile = isTemp ? item : undefined;
+    const downloadName = fileName || item?.fileName || 'file';
+    // Tệp chưa upload (đang chờ lưu hồ sơ) → tải blob cục bộ
+    if (localFile?.file) {
+      const url = URL.createObjectURL(localFile.file);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = downloadName;
+      a.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
+    // Tệp đã lưu: tải qua endpoint chuẩn giống /vts-operation-center
+    // (GET /v1/vtsassist/{id}/attachments/{attId}/download → blob).
+    const targetId = selectedRecord?.id || updateTarget?.id;
+    if (!targetId) {
+      toast.error('Không thể tải xuống tệp đính kèm');
+      return;
+    }
+    try {
+      await downloadVtsAssistAttachment(targetId, attId, downloadName);
+    } catch {
+      toast.error('Không thể tải xuống tệp đính kèm');
+    }
+  }, [uploadFileList, selectedRecord?.id, updateTarget?.id]);
+
+  const normalizeAttachmentItem = (a: any) => ({
+    id: a.id,
+    fileName: a.fileName,
+    fileSize: a.fileSize,
+    uploadedByName: a.uploadedByName,
+    uploadedBy: a.uploadedBy,
+    uploadedDate: a.uploadedAt ?? a.uploadedDate,
+    createdAt: a.uploadedAt ?? a.createdAt,
+  });
+
+  // ── GIS map modal ──
+  const openGisMap = (mode: 'create' | 'edit' | 'detail') => setGisMapModal(mode);
+
+  const applyGisMapResult = (val?: { geometryType?: string; coordinates?: string; symbolId?: string }) => {
+    if (!gisMapModal || gisMapModal === 'detail') return;
+    const pts = parseWktToCoordinates(val?.coordinates);
+    const geom = normalizeGeometryType(val?.geometryType);
+    const rows = adjustCoordinateListForGeometry(
+      pts.length > 0 ? pts.map((p) => ({ latitude: p.latitude, longitude: p.longitude })) : [],
+      geom
+    ).map((x) => ({ lat: x.latitude ?? 0, lng: x.longitude ?? 0 }));
+    if (gisMapModal === 'create') {
+      setGpsCoordList(rows);
+      createForm.setFieldsValue({
+        geometryType: geom,
+        coordinateSystem: 1,
+        displayRule: 'Độ, phút, giây (DMS)',
+      });
+      if (val?.symbolId) createForm.setFieldValue('mapSymbolId', val.symbolId);
+    } else {
+      setUpdateGpsCoordList(rows);
+      updateForm.setFieldsValue({ geometryType: geom, displayRule: 'Độ, phút, giây (DMS)' });
+      if (updateForm.getFieldValue('coordinateSystem') == null) {
+        updateForm.setFieldsValue({ coordinateSystem: 1 });
+      }
+      if (val?.symbolId) updateForm.setFieldValue('mapSymbolId', val.symbolId);
+    }
+  };
+
+  const gisMapContext = useMemo(() => {
+    if (!gisMapModal) return null;
+    const isDetail = gisMapModal === 'detail';
+    const geom = isDetail
+      ? normalizeGeometryType(selectedRecord?.geometryType)
+      : normalizeGeometryType(gisMapModal === 'create' ? createGeometryType : updateGeometryType);
+    const rows = isDetail
+      ? parseWktToCoordinates(selectedRecord?.coordinates ?? undefined)
+      : (gisMapModal === 'create' ? gpsCoordList : updateGpsCoordList)
+        .map((c) => ({ latitude: c.lat, longitude: c.lng }));
+    const symbolId = isDetail
+      ? (selectedRecord?.mapSymbolId ?? undefined)
+      : (gisMapModal === 'create' ? createForm : updateForm).getFieldValue('mapSymbolId') as string | undefined;
+    return { geom, rows, symbolId };
+  }, [gisMapModal, gpsCoordList, updateGpsCoordList, createGeometryType, updateGeometryType, selectedRecord, createForm, updateForm]);
 
   // Submissions
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
@@ -696,6 +929,7 @@ const VtsAssistListPage = () => {
   const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
   const [hasMoreHistory, setHasMoreHistory] = useState(true);
   const [historySearch, setHistorySearch] = useState('');
+  const [historySearchInput, setHistorySearchInput] = useState('');
   const [historyDateFrom, setHistoryDateFrom] = useState<string>('');
   const [historyDateTo, setHistoryDateTo] = useState<string>('');
   const [historyPage, setHistoryPage] = useState(0);
@@ -744,7 +978,7 @@ const VtsAssistListPage = () => {
         <div style={{ lineHeight: "1.35", overflow: "hidden" }}>
           <div
             title={name || "—"}
-            style={{ fontWeight: fontWeightBold, color: "#0F172A", fontSize: fontSizeMd, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+            style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
           >
             {name || "—"}
           </div>
@@ -769,7 +1003,7 @@ const VtsAssistListPage = () => {
       },
       {
         key: "deviceName",
-        label: "Tên/Mã thiết bị",
+        label: "Tên / Mã thiết bị",
         dataIndex: "deviceName",
         width: 300,
         fixed: "left" as const,
@@ -784,12 +1018,12 @@ const VtsAssistListPage = () => {
                 setSelectedRecord(record);
                 setDetailDrawerOpen(true);
               }}
-              style={{ background: "none", border: "none", padding: 0, textAlign: "left", font: "inherit", fontWeight: fontWeightBold, color: actionPrimary, cursor: "pointer", display: "block", width: "100%", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+              style={{ ...cellTitleStyle, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", width: "100%" }}
               title={val || "—"}
             >
               {val || "—"}
             </button>
-            <span style={{ opacity: 0.85, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{record.deviceCode || "—"}</span>
+            <span style={{ ...cellSubtitleStyle }}>{record.deviceCode || "—"}</span>
           </div>
         ),
       },
@@ -843,7 +1077,7 @@ const VtsAssistListPage = () => {
         key: "quantity",
         label: "Số lượng",
         dataIndex: "quantity",
-        width: 110,
+        width: 140,
         type: "number" as const,
         align: "center" as const,
         render: (val: number) => (
@@ -856,7 +1090,7 @@ const VtsAssistListPage = () => {
         key: "yearOfUse",
         label: "Năm đưa vào sử dụng",
         dataIndex: "yearOfUse",
-        width: 200,
+        width: 220,
         type: "mono" as const,
         align: "center" as const,
         ellipsis: false,
@@ -877,21 +1111,21 @@ const VtsAssistListPage = () => {
         key: "submittedInfo",
         label: "Cán bộ gửi phê duyệt",
         dataIndex: "submittedByName",
-        width: 200,
+        width: 230,
         render: (_: unknown, record: VtsAssistResponse) => renderInfoStack(record.submittedByName, record.submittedDate),
       },
       {
         key: "approvedLevel1Info",
         label: "Cán bộ phê duyệt cấp Cảng vụ/Chi cục",
         dataIndex: "approverLevel1Name",
-        width: 200,
+        width: 380,
         render: (_: unknown, record: VtsAssistResponse) => renderInfoStack(record.approverLevel1Name, record.approvedDateLevel1),
       },
       {
         key: "approvedLevel2Info",
         label: "Cán bộ phê duyệt cấp Cục",
         dataIndex: "approverLevel2Name",
-        width: 200,
+        width: 270,
         render: (_: unknown, record: VtsAssistResponse) => renderInfoStack(record.approverLevel2Name, record.approvedDateLevel2),
       },
       {
@@ -911,14 +1145,7 @@ const VtsAssistListPage = () => {
             label: String(val || "—"),
           };
           return (
-            <span style={{
-              ...badgeBaseStyle,
-              fontSize: fontSizeMd,
-              padding: '2px 10px',
-              display: 'inline-flex',
-              background: `${s.color}15`,
-              color: s.color,
-            }}>
+            <span style={statusBadgeStyle(s.color)}>
               {s.label}
             </span>
           );
@@ -982,18 +1209,31 @@ const VtsAssistListPage = () => {
     }
     if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
     if (fn === 'approvalStatus') {
-      const m: Record<string, string> = {
-        DRAFT: 'Nháp',
-        PROPOSED: 'Đề xuất',
-        PENDING: 'Chờ duyệt',
-        CHO_PHE_DUYET: 'Chờ phê duyệt',
-        PENDING_APPROVAL: 'Chờ phê duyệt',
-        APPROVED: 'Đã phê duyệt',
-        DA_PHE_DUYET: 'Đã phê duyệt',
-        REJECTED: 'Từ chối',
-        TU_CHOI: 'Từ chối',
+      // Mã legacy (dữ liệu cũ) quy đổi về mã chuẩn 7 trạng thái rồi tra nhãn dùng chung.
+      const ALIAS: Record<string, string> = {
+        NHAP: 'DRAFT',
+        PROPOSED: 'PENDING_APPROVAL',
+        PENDING: 'PENDING_APPROVAL',
+        CHO_PHE_DUYET: 'PENDING_APPROVAL',
+        CHO_PD_CAP_CUC: 'APPROVED_LEVEL1',
+        APPROVED_L1: 'APPROVED_LEVEL1',
+        APPROVED_LEVEL2: 'APPROVED',
+        APPROVED_L2: 'APPROVED',
+        DA_PHE_DUYET: 'APPROVED',
+        DUC_PHI_DUYET: 'APPROVED',
+        REJECTED: 'REJECTED_LEVEL1',
+        TU_CHOI: 'REJECTED_LEVEL1',
       };
-      return m[val] || m[val?.toUpperCase()] || val;
+      const m: Record<string, string> = {
+        DRAFT: 'Lưu tạm',
+        PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
+        APPROVED_LEVEL1: 'Chờ Cục duyệt',
+        APPROVED: 'Đã duyệt',
+        REJECTED_LEVEL1: 'Cảng vụ trả về',
+        REJECTED_LEVEL2: 'Cục trả về',
+      };
+      const norm = ALIAS[String(val || '').trim().toUpperCase()] || String(val || '').trim().toUpperCase();
+      return m[norm] || val;
     }
     if (fn === 'operationalStatus') {
       const m: Record<string, string> = {
@@ -1038,7 +1278,8 @@ const VtsAssistListPage = () => {
     return raw || '—';
   };
 
-  const resolveHistoryActionMeta = (item: any): { label: string; color: string } => {
+  const resolveHistoryActionMeta = (item: any): { label: string; color: string; bg: string } => {
+    const meta = ((): { label: string; color: string } => {
     const rawStatus = String(item?.status ?? item?.action ?? '').toUpperCase();
     const rawReason = String(item?.reason ?? '').toLowerCase();
     const rawField = String(item?.changedField ?? item?.fieldName ?? '').toLowerCase();
@@ -1046,21 +1287,55 @@ const VtsAssistListPage = () => {
       return { label: 'Thêm mới', color: statusOperational };
     }
     if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || (rawField.includes('đính kèm') && rawReason.includes('tải'))) {
-      return { label: 'Tải lên tệp', color: '#0284c7' };
+      return { label: 'Tải lên tệp', color: statusInfo };
     }
     if (rawStatus === 'ATTACHMENT_DELETED' || rawReason.includes('xóa tài liệu') || rawReason.includes('xoa tai lieu') || rawReason.includes('xóa tệp')) {
-      return { label: 'Xóa tệp', color: '#ea580c' };
+      return { label: 'Xóa tệp', color: statusCritical };
     }
-    if (rawStatus === 'APPROVED' || rawStatus === 'APPROVED_LEVEL2') {
+    // Xóa bản ghi (soft delete)
+    if (rawStatus === 'DELETED' || rawStatus === 'ARCHIVED' || rawStatus === 'DELETE' || rawReason.includes('xóa bản ghi') || rawReason.includes('xoa ban ghi')) {
+      return { label: 'Xóa', color: textTertiary };
+    }
+
+    // Gửi phê duyệt — kiểm tra trước nhánh phê duyệt (lý do gửi có thể chứa từ "phê duyệt")
+    if (rawStatus === 'SUBMITTED' || rawStatus === 'PROPOSED' || rawStatus === 'PENDING' || rawStatus === 'PENDING_APPROVAL' || rawReason.includes('gửi phê duyệt') || rawReason.includes('gui phe duyet') || rawReason.includes('trình duyệt') || rawReason.includes('trinh duyet')) {
+      return { label: 'Gửi phê duyệt', color: statusAttention };
+    }
+
+    // Từ chối — phân biệt cấp (Cảng vụ/Chi cục = vòng 1, Cục = vòng 2)
+    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawStatus === 'REJECTED_LEVEL1' || rawStatus === 'REJECTED_LEVEL2' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
+      const levelRaw = String(item?.approvalLevel ?? '').toUpperCase();
+      const isLevel2 = levelRaw === '2' || levelRaw.includes('LEVEL_2') || levelRaw === 'C2' || levelRaw.includes('CUC');
+      const isLevel1 = levelRaw === '1' || levelRaw.includes('LEVEL_1') || levelRaw === 'C1' || levelRaw.includes('CANG_VU');
+      if (rawStatus === 'REJECTED_LEVEL2' || isLevel2 || rawReason.includes('cấp cục') || rawReason.includes('cap cuc')) {
+        return { label: 'Từ chối cấp Cục', color: statusCritical };
+      }
+      if (rawStatus === 'REJECTED_LEVEL1' || isLevel1 || rawReason.includes('cấp cảng vụ') || rawReason.includes('cap cang vu') || rawReason.includes('chi cục')) {
+        return { label: 'Từ chối cấp Cảng vụ', color: statusCritical };
+      }
+      return { label: 'Từ chối', color: statusCritical };
+    }
+
+    // Phê duyệt — phân biệt cấp (C1 Cảng vụ/Chi cục → C2 Cục)
+    if (rawStatus === 'APPROVED' || rawStatus === 'APPROVE' || rawStatus === 'APPROVED_LEVEL1' || rawStatus === 'APPROVED_LEVEL2') {
+      const levelRaw2 = String(item?.approvalLevel ?? '').toUpperCase();
+      const isL2 = levelRaw2 === '2' || levelRaw2.includes('LEVEL_2') || levelRaw2 === 'C2' || levelRaw2.includes('CUC');
+      const isL1 = levelRaw2 === '1' || levelRaw2.includes('LEVEL_1') || levelRaw2 === 'C1' || levelRaw2.includes('CANG_VU');
+      if (rawStatus === 'APPROVED' || rawStatus === 'APPROVED_LEVEL2' || isL2) {
+        return { label: 'Phê duyệt cấp Cục', color: statusOperational };
+      }
+      if (rawStatus === 'APPROVED_LEVEL1' || isL1) {
+        return { label: 'Phê duyệt cấp Cảng vụ', color: statusInfo };
+      }
       return { label: 'Phê duyệt', color: statusOperational };
     }
-    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT') {
-      return { label: 'Từ chối', color: '#E34948' };
-    }
-    if (rawStatus === 'PROPOSED' || rawStatus === 'PENDING_APPROVAL' || rawReason.includes('gửi phê duyệt') || rawReason.includes('gui phe duyet')) {
-      return { label: 'Gửi phê duyệt', color: '#EDA100' };
+
+    if (rawStatus === 'UPDATED' || rawStatus === 'UPDATE' || rawStatus === 'EDIT' || rawReason.includes('cập nhật') || rawReason.includes('cap nhat')) {
+      return { label: 'Cập nhật', color: actionPrimary };
     }
     return { label: 'Chỉnh sửa', color: actionPrimary };
+    })();
+    return { ...meta, bg: `${meta.color}15` };
   };
 
   useEffect(() => {
@@ -1132,8 +1407,6 @@ const VtsAssistListPage = () => {
     'objectType', 'mapSymbolId', 'coordinateSystem', 'displayRule',
   ];
 
-  const historyFieldCount = useMemo(() => historyRecords.length, [historyRecords]);
-
   const renderVtsAssistHistoryTimeline = (records: any[]) => {
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
     const sorted = [...records].sort(
@@ -1141,22 +1414,36 @@ const VtsAssistListPage = () => {
         new Date(historyTimestamp(b) || 0).getTime() -
         new Date(historyTimestamp(a) || 0).getTime()
     );
+    const q = historySearch.toLowerCase().trim();
+
+    // Chuẩn /vts-operation-center: gộp nhóm theo ĐÚNG giây (một lần Lưu ghi nhiều dòng cùng
+    // thời điểm) và merge liên tiếp các hành động dạng update (UPDATED/đính kèm) cùng người dùng.
+    const isUpdateAction = (status: string, reason?: string) => {
+      const s = String(status || '').toUpperCase();
+      const r = String(reason || '').toLowerCase();
+      return s === 'UPDATED' || s === 'UPDATE' || s === 'EDIT' || s === 'ATTACHMENT_UPLOADED' || s === 'ATTACHMENT_DELETED'
+        || r.includes('cập nhật') || r.includes('chỉnh sửa') || r.includes('tải lên') || r.includes('xóa tệp') || r.includes('xóa tài liệu');
+    };
+
     const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
 
     for (const r of sorted) {
       const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
       const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === historyActor(r) && prev.status === r.status && prev.approvalLevel === r.approvalLevel)
+      const actor = historyActor(r);
+      const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
+      const isSameGroup = prev && prev.tsSec === sec && prev.actor === actor && (prev.status === r.status || isBothUpdate);
+      if (isSameGroup)
         prev.items.push(r);
-      else groups.push({ tsSec: sec, ts, actor: historyActor(r), status: r.status, approvalLevel: r.approvalLevel, items: [r] });
+      else groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
     }
 
     if (groups.length === 0)
       return (
         <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
           <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-          <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
+          <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{q || historyDateFrom || historyDateTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div>
         </div>
       );
 
@@ -1176,13 +1463,14 @@ const VtsAssistListPage = () => {
             (orgName ? orgName.split(' - ').pop() || orgName : undefined) ||
             rec0.unitName ||
             selectedRecord?.orgUnitName ||
-            '—';
-          const barColor = actionPrimary;
-          const changes = g.items.map((item: any) => ({
-            field: historyField(item) || '—',
-            oldValue: historyOldValue(item),
-            newValue: historyNewValue(item),
-          }));
+            'Cục Hàng hải Việt Nam';
+          // Chuẩn /vts-operation-center: dedup thay đổi đính kèm (upload/delete cùng lúc).
+          const changes = deduplicateAttachmentHistoryChanges(
+            g.items.flatMap((item: any) => {
+              const fn = historyField(item);
+              return fn ? [{ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) }] : [];
+            })
+          );
           const actionMeta = resolveHistoryActionMeta(g.items[0] || {});
           const isCreate = changes.every(
             (c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === ''
@@ -1200,6 +1488,15 @@ const VtsAssistListPage = () => {
 
           const formatHistoryValue = (fn: string, raw: string | null) => {
             if (raw === null || raw === '(null)' || raw === '') return null;
+            // GIS: nhãn loại đối tượng + tọa độ DMS nhiều dòng (chuẩn /cctv).
+            const gisKey = String(fn || '').toLowerCase();
+            if (gisKey.includes('loai doi tuong') || gisKey.includes('loại đối tượng') || gisKey.includes('geometrytype')) {
+              return gisGeometryTypeLabel(raw);
+            }
+            if (gisKey.includes('toa do') || gisKey.includes('tọa độ') || gisKey.includes('coordinates')) {
+              const coords = gisCoordinatesToLines(raw);
+              if (coords != null) return coords;
+            }
             const t = raw.trim();
             if (t.startsWith('[') && t.endsWith(']')) {
               if (t === '[]') return 'Không có';
@@ -1219,29 +1516,36 @@ const VtsAssistListPage = () => {
             <div
               key={gi}
               style={{
-                ...historyGroupGridStyle,
-                marginBottom: gi < groups.length - 1 ? spaceSm : 0,
+                display: 'grid',
+                gridTemplateColumns: 'minmax(310px, 0.38fr) minmax(0, 1fr)',
+                gap: spaceLg,
+                alignItems: 'start',
+                marginBottom: gi < groups.length - 1 ? spaceMd : 0,
               }}
             >
               <div style={{ minWidth: 0, paddingTop: spaceXs }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
-                  <Typography.Text style={historyTimeStyle}>{g.ts ? fmtTime(g.ts) : '—'}</Typography.Text>
+                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: spaceSm, marginBottom: spaceXs }}>
+                  <Typography.Text style={{ display: 'block', fontSize: fontSizeLg - 1, color: textPrimary, fontWeight: fontWeightBold, lineHeight: 1.5, whiteSpace: 'nowrap' }}>
+                    {g.ts ? fmtTime(g.ts) : '—'}
+                  </Typography.Text>
                   <span style={{ flexShrink: 0 }}>
-                    <span style={historyBadgeStyle(actionMeta.color)}>{actionMeta.label}</span>
+                    <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: actionMeta.bg, color: actionMeta.color, whiteSpace: 'nowrap' }}>
+                      {actionMeta.label}
+                    </span>
                   </span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
-                  <Typography.Text style={historyMetaRowStyle}>
-                    Người cập nhật: {g.actor || '—'}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: spaceXs }}>
+                  <Typography.Text style={{ display: 'block', fontSize: fontSizeSm + 1, color: textSecondary, fontWeight: fontWeightMedium, lineHeight: 1.4 }}>
+                    Người cập nhật: <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{g.actor || '—'}</span>
                   </Typography.Text>
-                  <Typography.Text style={historyMetaRowStyle}>
-                    Đơn vị: {unitName}
+                  <Typography.Text style={{ display: 'block', fontSize: fontSizeSm + 1, color: textSecondary, fontWeight: fontWeightMedium, lineHeight: 1.4 }}>
+                    Đơn vị: <span style={{ color: textPrimary }}>{unitName}</span>
                   </Typography.Text>
                 </div>
               </div>
-              <div style={historyInfoCardStyle}>
-                <div style={historyAccentBarStyle(barColor)} />
-                <Typography.Text style={historyInfoTitleStyle}>{informationTitle}</Typography.Text>
+              <div style={{ position: 'relative', minWidth: 0, background: surfacePage, borderRadius: radiusSm, padding: `${spaceMd}px ${spaceLg}px`, paddingLeft: spaceLg, overflow: 'hidden', border: `1px solid ${borderDefault}` }}>
+                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: spaceXs, background: `linear-gradient(180deg, ${actionMeta.color} 0%, ${actionMeta.color}40 100%)` }} />
+                <Typography.Text style={{ display: 'block', color: colors.sidebarBg, fontSize: fontSizeMd, fontWeight: fontWeightBold, marginBottom: spaceSm }}>{informationTitle}</Typography.Text>
                 {orderedChanges.length > 0 ? (
                   <div>
                     {orderedChanges.map((change, ri: number) => {
@@ -1267,39 +1571,55 @@ const VtsAssistListPage = () => {
                         }
                         return null;
                       };
-                      return isCreate ? (
+                      const gisCellStyle = isGisHistoryField(fn)
+                        ? { whiteSpace: 'pre-line' as const, lineHeight: 1.5 }
+                        : {};
+                      if (isCreate) {
+                        return (
+                          <div
+                            key={`${fn}-${ri}`}
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: '170px minmax(0, 1fr)',
+                              alignItems: 'flex-start',
+                              gap: spaceSm,
+                              fontSize: fontSizeMd,
+                              lineHeight: 1.6,
+                              padding: '3px 0',
+                            }}
+                          >
+                            <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>
+                              {fn ? `${historyFieldName(fn)}:` : '—'}
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word', color: textPrimary, ...gisCellStyle }}>
+                              {renderCell(change.newValue) ?? nv ?? '—'}
+                            </div>
+                          </div>
+                        );
+                      }
+                      return (
                         <div
                           key={`${fn}-${ri}`}
                           style={{
-                            ...historyCreateRowStyle,
-                            paddingTop: ri > 0 ? spaceXs : 0,
+                            display: 'grid',
+                            gridTemplateColumns: '170px minmax(100px, 1fr) 24px minmax(100px, 1fr)',
+                            alignItems: 'flex-start',
+                            gap: spaceSm,
+                            fontSize: fontSizeMd,
+                            lineHeight: 1.6,
+                            padding: '3px 0',
                           }}
                         >
-                          <div style={historyFieldLabelStyle}>
+                          <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>
                             {fn ? `${historyFieldName(fn)}:` : '—'}
                           </div>
-                          <span title={nv ?? '—'} style={historyNewValueStyle}>
-                            {renderCell(change.newValue) ?? nv ?? '—'}
-                          </span>
-                        </div>
-                      ) : (
-                        <div
-                          key={`${fn}-${ri}`}
-                          style={{
-                            ...historyChangeRowStyle,
-                            paddingTop: ri > 0 ? spaceXs : 0,
-                          }}
-                        >
-                          <div style={historyFieldLabelStyle}>
-                            {fn ? `${historyFieldName(fn)}:` : '—'}
-                          </div>
-                          <span title={ov ?? '—'} style={historyOldValueStyle}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word', color: textPrimary, ...gisCellStyle }}>
                             {renderCell(change.oldValue) ?? ov ?? '—'}
-                          </span>
-                          <span style={historyArrowStyle}>→</span>
-                          <span title={nv ?? '—'} style={historyNewValueStyle}>
+                          </div>
+                          <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>→</div>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word', color: textPrimary, ...gisCellStyle }}>
                             {renderCell(change.newValue) ?? nv ?? '—'}
-                          </span>
+                          </div>
                         </div>
                       );
                     })}
@@ -1379,31 +1699,77 @@ const VtsAssistListPage = () => {
         {
           key: "view",
           label: "Xem chi tiết",
-          icon: <EyeOutlined />,
+          icon: icons.view,
           onClick: () => {
             setSelectedRecord(record);
             setDetailDrawerOpen(true);
             void fetchVtsAssistAttachments(record.id).then((list: any[]) => {
-              setDetailFiles(Array.isArray(list) ? list : []);
+              setDetailFiles((Array.isArray(list) ? list : []).map(normalizeAttachmentItem));
             }).catch(() => setDetailFiles([]));
           },
         },
       ];
 
-      // Cho phép cập nhật bất kể trạng thái phê duyệt (yêu cầu nghiệp vụ 2026-08-26).
-      {
+      // Chỉnh sửa: hồ sơ Lưu tạm (DRAFT) mở cho mọi quyền; hồ sơ Đã duyệt (APPROVED) chỉ
+      // người có quyền phê duyệt cấp Cục (vtsassist:approvec2) mới sửa được — chuẩn CHK.
+      // Các trạng thái PENDING / REJECTED không mở chỉnh sửa.
+      if (record.approvalStatus === "DRAFT" || (record.approvalStatus === "APPROVED" && canSaveAndApprove)) {
         actions.push({
           key: "edit",
           label: "Chỉnh sửa",
-          icon: <EditOutlined />,
-          onClick: () => openUpdateDrawer(record),
+          icon: icons.edit,
+          onClick: () => {
+            setUpdateTarget(record);
+            setUploadFileList([]);
+            void fetchVtsAssistAttachments(record.id).then((list: any[]) => {
+              setUploadFileList((Array.isArray(list) ? list : []).map(normalizeAttachmentItem));
+            }).catch(() => { /* ignore */ });
+            // Convert operationalStatus từ string enum (backend @JsonValue) sang số (frontend dropdown)
+            const safeRecord = {
+              ...record,
+              operationalStatus: record.operationalStatus != null
+                ? (() => {
+                    switch (record.operationalStatus) {
+                      case "NOT_YET_OPERATIONAL": return 0;
+                      case "OPERATIONAL": return 1;
+                      case "SUSPENDED": return 2;
+                      default: {
+                        const num = Number(record.operationalStatus);
+                        return num >= 0 && num <= 2 ? num : 1;
+                      }
+                    }
+                  })()
+                : null,
+            };
+            // Nạp sẵn tọa độ từ WKT (record.coordinates) khi mở Sửa — tránh 0 dòng → mất hình học khi lưu
+            const wktPoints = parseWktToCoordinates(record.coordinates ?? undefined);
+            const rawEditGeom = String((record as any)?.geometryType || '').toUpperCase();
+            let editGeom: 'POINT' | 'LINE' | 'POLYGON' = 'POINT';
+            if (rawEditGeom === 'LINE') editGeom = 'LINE';
+            else if (rawEditGeom === 'POLYGON') editGeom = 'POLYGON';
+            else if (rawEditGeom === 'POINT' && wktPoints.length > 1) editGeom = wktPoints.length === 2 ? 'LINE' : 'POLYGON';
+            else if (wktPoints.length === 2) editGeom = 'LINE';
+            else if (wktPoints.length >= 3) editGeom = 'POLYGON';
+            const preloadedPoints = wktPoints.map((p) => ({ latitude: p.latitude, longitude: p.longitude }));
+            updateForm.setFieldsValue({
+              ...safeRecord,
+              geometryType: editGeom,
+              coordinateSystem: (safeRecord as any)?.coordinateSystem ?? 1,
+              displayRule: (safeRecord as any)?.displayRule ?? 'Độ, phút, giây (DMS)',
+            });
+            setUpdateGpsCoordList(
+              adjustCoordinateListForGeometry(preloadedPoints, editGeom).map((x) => ({ lat: x.latitude ?? 0, lng: x.longitude ?? 0 }))
+            );
+            setUpdateModalOpen(true);
+          },
         });
       }
 
+      // Lịch sử thay đổi (mở từ menu dòng, không nằm trong drawer chi tiết)
       actions.push({
         key: "history",
         label: "Lịch sử",
-        icon: <HistoryOutlined />,
+        icon: icons.history,
         onClick: () => {
           setSelectedRecord(record);
           setHistoryEntityName(record.deviceName || '');
@@ -1413,6 +1779,7 @@ const VtsAssistListPage = () => {
           setLoadingMoreHistory(false);
           setHasMoreHistory(true);
           setHistorySearch('');
+          setHistorySearchInput('');
           setHistoryDateFrom('');
           setHistoryDateTo('');
           setHistoryPage(0);
@@ -1429,7 +1796,7 @@ const VtsAssistListPage = () => {
         actions.push({
           key: "submit",
           label: "Gửi phê duyệt",
-          icon: <SendOutlined />,
+          icon: icons.submit,
           onClick: () => {
             setSubmittingRecord(record);
             setSubmitContent("");
@@ -1445,7 +1812,7 @@ const VtsAssistListPage = () => {
         actions.push({
           key: "approveC1",
           label: isCreatorSelfApprove ? "Phê duyệt cấp Cảng vụ (không thể tự duyệt)" : "Phê duyệt cấp Cảng vụ",
-          icon: <CheckCircleOutlined />,
+          icon: icons.approve,
           disabled: isCreatorSelfApprove,
           onClick: () => {
             setApproveTarget(record);
@@ -1456,7 +1823,7 @@ const VtsAssistListPage = () => {
         actions.push({
           key: "rejectC1",
           label: isCreatorSelfApprove ? "Từ chối cấp Cảng vụ (không thể tự duyệt)" : "Từ chối cấp Cảng vụ",
-          icon: <CloseCircleOutlined />,
+          icon: icons.reject,
           danger: true,
           disabled: isCreatorSelfApprove,
           onClick: () => {
@@ -1474,7 +1841,7 @@ const VtsAssistListPage = () => {
         actions.push({
           key: "approveC2",
           label: isSelfApproval ? "Phê duyệt cấp Cục (không thể tự duyệt)" : "Phê duyệt cấp Cục",
-          icon: <CheckCircleOutlined />,
+          icon: icons.approve,
           disabled: isSelfApproval,
           onClick: () => {
             setApproveTarget(record);
@@ -1485,7 +1852,7 @@ const VtsAssistListPage = () => {
         actions.push({
           key: "rejectC2",
           label: isSelfApproval ? "Từ chối cấp Cục (không thể tự duyệt)" : "Từ chối cấp Cục",
-          icon: <CloseCircleOutlined />,
+          icon: icons.reject,
           danger: true,
           disabled: isSelfApproval,
           onClick: () => {
@@ -1501,7 +1868,7 @@ const VtsAssistListPage = () => {
         actions.push({
           key: "delete",
           label: "Xóa",
-          icon: <DeleteOutlined />,
+          icon: icons.delete,
           danger: true,
           onClick: () => {
             setDeleteConfirmText("");
@@ -1702,11 +2069,9 @@ const VtsAssistListPage = () => {
       try {
         // Build WKT từ GPS state (lưu vào gis_spatial_objects qua spatial_id — chuẩn GIS dự án)
         const createGeomType = normalizeGeometryType(values.geometryType);
-        const createWktType: EditableGeometryType =
-          createGeomType === 'LINE' ? 'LineString' : createGeomType === 'POLYGON' ? 'Polygon' : 'Point';
-        const coordinates = coordinateRowsToWkt(
-          createWktType,
-          gpsCoordList.map(c => ({ lng: c.lng, lat: c.lat }))
+        const coordinates = serializeCoordinatesToWkt(
+          gpsCoordList.map(c => ({ latitude: c.lat, longitude: c.lng })),
+          createGeomType
         );
 
         const payload = {
@@ -1727,7 +2092,7 @@ const VtsAssistListPage = () => {
         });
         if (created?.id && uploadFileList.length > 0) {
           for (const f of uploadFileList) {
-            if (f.originFileObj) await uploadVtsAssistAttachment(created.id, f.originFileObj);
+            if (f?.file) await uploadVtsAssistAttachment(created.id, f.file);
           }
         }
         toast.success(
@@ -1759,11 +2124,9 @@ const VtsAssistListPage = () => {
       try {
         // Build WKT từ GPS state (lưu vào gis_spatial_objects qua spatial_id — chuẩn GIS dự án)
         const updateGeomType = normalizeGeometryType(updateGeometryType);
-        const updateWktType: EditableGeometryType =
-          updateGeomType === 'LINE' ? 'LineString' : updateGeomType === 'POLYGON' ? 'Polygon' : 'Point';
-        const coordinates = coordinateRowsToWkt(
-          updateWktType,
-          updateGpsCoordList.map(c => ({ lng: c.lng, lat: c.lat }))
+        const coordinates = serializeCoordinatesToWkt(
+          updateGpsCoordList.map(c => ({ latitude: c.lat, longitude: c.lng })),
+          updateGeomType
         );
 
         // Chuẩn VTS: Lưu tạm (chỉ update) / Lưu và gửi phê duyệt (update + submit) /
@@ -1780,7 +2143,7 @@ const VtsAssistListPage = () => {
         });
         if (uploadFileList.length > 0) {
           for (const f of uploadFileList) {
-            if (f.originFileObj) await uploadVtsAssistAttachment(updateTarget.id, f.originFileObj);
+            if (f?.file) await uploadVtsAssistAttachment(updateTarget.id, f.file);
           }
         }
         if (currentAction === 'submit') {
@@ -1826,8 +2189,12 @@ const VtsAssistListPage = () => {
     }
   }, [submittingRecord, submitContent, fetchData, fetchTabCounts]);
 
+  // Số điểm tối thiểu theo Loại đối tượng hình học (POINT=1 / LINE=2 / POLYGON=3)
+  const createMinPoints = createGeometryType ? (GEOMETRY_POINT_COUNT[String(createGeometryType).toUpperCase()] ?? 1) : 1;
+  const updateMinPoints = updateGeometryType ? (GEOMETRY_POINT_COUNT[String(updateGeometryType).toUpperCase()] ?? 1) : 1;
+
   return (
-    <>
+    <ThemeTokenProvider tokens={themeTokenChk}>
       <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader
         breadcrumb={[
@@ -1839,11 +2206,13 @@ const VtsAssistListPage = () => {
             ? {
                 key: "create",
                 label: "Thêm mới",
-                icon: <PlusOutlined />,
+                icon: icons.create,
                 variant: "primary" as const,
                 onClick: () => {
                   setUploadFileList([]);
                   setCreateModalOpen(true);
+                  // Mặc định Tình trạng = 'Đang khai thác/vận hành' (1) khi mở drawer Tạo mới — người dùng có thể đổi sau đó
+                  createForm.setFieldsValue({ operationalStatus: 1 });
                   // Sinh trước mã thiết bị để hiển thị preview (giống Mã cảng biển /port)
                   setDeviceCodeLoading(true);
                   generateVtsAssistCode()
@@ -2055,7 +2424,7 @@ const VtsAssistListPage = () => {
             key: "APPROVED_LEVEL1",
             label: "Chờ Cục duyệt",
             count: tabCounts["APPROVED_LEVEL1"] ?? 0,
-            color: "#0284C7",
+            color: statusInfo,
             active: filterValues.approvalStatus === "APPROVED_LEVEL1",
           },
           {
@@ -2067,16 +2436,21 @@ const VtsAssistListPage = () => {
           },
           {
             key: "REJECTED_LEVEL1",
-            label: "Từ chối",
-            count: (tabCounts["REJECTED_LEVEL1"] ?? 0) + (tabCounts["REJECTED_LEVEL2"] ?? 0),
+            label: "Từ chối cấp Cảng vụ/Chi cục",
+            count: tabCounts["REJECTED_LEVEL1"] ?? 0,
             color: statusCritical,
-            active:
-              filterValues.approvalStatus === "REJECTED_LEVEL1" ||
-              filterValues.approvalStatus === "REJECTED_LEVEL2",
+            active: filterValues.approvalStatus === "REJECTED_LEVEL1",
+          },
+          {
+            key: "REJECTED_LEVEL2",
+            label: "Từ chối cấp cục",
+            count: tabCounts["REJECTED_LEVEL2"] ?? 0,
+            color: statusCritical,
+            active: filterValues.approvalStatus === "REJECTED_LEVEL2",
           },
         ]}
         onStatusTabChange={(key) => {
-          // Tab "Từ chối" có key REJECTED_LEVEL1 — active khi filter là REJECTED_LEVEL1 hoặc REJECTED_LEVEL2
+          // Mỗi tab trạng thái lọc đúng 1 mã (từ chối tách 2 tab theo cấp); "Tất cả" bỏ lọc.
           const approvalStatus = key === "all" ? "" : key;
           setFilterValues((prev) => ({
             ...prev,
@@ -2094,7 +2468,7 @@ const VtsAssistListPage = () => {
               dataSource={data}
               rowKey="id"
               loading={isLoading}
-              scroll={{ x: 'max-content', y: 540 }}
+              scroll={{ x: 'max-content' }}
               onSort={handleSort}
               rowActions={rowActions}
               locale={{
@@ -2120,6 +2494,7 @@ const VtsAssistListPage = () => {
       {/* Detail Drawer */}
       <Drawer
         {...drawerProps}
+        rootClassName={THEME_SCOPE_CLASS}
         title={<span style={drawerTitleStyle}>Chi tiết hệ thống phụ trợ VTS{selectedRecord ? ` - ${selectedRecord.deviceName || selectedRecord.deviceCode || ''}` : ''}</span>}
         open={detailDrawerOpen}
         onClose={() => setDetailDrawerOpen(false)}
@@ -2141,8 +2516,7 @@ const VtsAssistListPage = () => {
                 label: "Thông tin chung",
                 children: (
                   <div style={{ paddingTop: 3 }}>
-                    <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-label { width: 150px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; } .ant-tabs-nav{margin-bottom:0!important;padding-left:12px!important}`}</style>
-                    <div className="detail-grid">
+                    <div className="chk-detail-grid">
                       {([
                         { label: 'Mã thiết bị', value: selectedRecord.deviceCode, badge: true },
                         { label: 'Tên thiết bị', value: selectedRecord.deviceName, bold: true },
@@ -2158,34 +2532,17 @@ const VtsAssistListPage = () => {
                         { label: 'Model', value: selectedRecord.model || '—' },
                         { label: 'Hãng sản xuất', value: selectedRecord.manufacturer || '—' },
                         { label: 'Phê duyệt', value: renderApprovalBadge(selectedRecord.approvalStatus) },
+                        { label: 'Thông số kỹ thuật', value: selectedRecord.specifications || '—', fullWidth: true },
+                        { label: 'Thông tin bảo trì', value: selectedRecord.maintenanceInformation || '—', fullWidth: true },
+                        { label: 'Ghi chú', value: selectedRecord.note || '—', fullWidth: true },
                       ] as Array<{ label: string; value: React.ReactNode; badge?: boolean; bold?: boolean; fullWidth?: boolean }>).map((row) => (
-                        <div key={row.label} className="detail-row" style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
-                          <span className="detail-label">{row.label}</span>
-                          <span className="detail-value" style={{ whiteSpace: 'pre-wrap', ...(row.bold ? { fontWeight: fontWeightBold } : undefined) }}>
+                        <div key={row.label} className={row.fullWidth ? 'chk-detail-row chk-detail-row--full' : 'chk-detail-row'}>
+                          <span className="chk-detail-label">{row.label}</span>
+                          <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', ...(row.bold ? { fontWeight: fontWeightBold } : undefined) }}>
                             {row.badge ? (
-                              <Tag color={colors.primary} style={{ borderRadius: radiusPill, margin: 0, fontWeight: fontWeightMedium }}>{row.value}</Tag>
+                              <span style={statusBadgeStyle(actionPrimary)}>{row.value}</span>
                             ) : row.value}
                           </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                key: "technical",
-                label: "Thông số kỹ thuật",
-                children: (
-                  <div style={{ paddingTop: 3 }}>
-                    <div className="detail-grid">
-                      {[
-                        ['Thông số kỹ thuật', selectedRecord.specifications || '—'],
-                        ['Thông tin bảo trì', selectedRecord.maintenanceInformation || '—'],
-                        ['Ghi chú', selectedRecord.note || '—'],
-                      ].map(([label, value]) => (
-                        <div key={label} className="detail-row" style={{ gridColumn: '1 / -1' }}>
-                          <span className="detail-label">{label}</span>
-                          <span className="detail-value" style={{ whiteSpace: 'pre-wrap' }}>{value}</span>
                         </div>
                       ))}
                     </div>
@@ -2196,92 +2553,130 @@ const VtsAssistListPage = () => {
                 key: "gis",
                 label: "Thông tin vị trí",
                 children: (
-                  <div style={{ paddingTop: 3 }}>
-                    <div className="detail-grid">
-                      {([
-                        ['Thuộc loại hạ tầng', selectedRecord.attachedInfrastructureName || '—'],
-                        ['Biểu tượng', (() => { const sym = (symbols || []).find((s) => s.id === selectedRecord.mapSymbolId); return sym ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{sym.image ? <img src={sym.image} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}{sym.name}</span> : selectedRecord.mapSymbolName || '—'; })(),],
-                        ['Hệ quy chiếu', selectedRecord.coordinateSystem === 1 ? 'WGS-84' : selectedRecord.coordinateSystem === 2 ? 'VN-2000' : (selectedRecord.coordinateSystem != null ? String(selectedRecord.coordinateSystem) : '—')],
-                        ['Quy tắc hiển thị', selectedRecord.displayRule != null ? String(selectedRecord.displayRule) : '—'],
-                      ] as const).map(([label, value]) => (
-                        <div key={label} className="detail-row">
-                          <span className="detail-label">{label}</span>
-                          <span className="detail-value">{value}</span>
+                  <DetailTable
+                    scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
+                    dataSource={parseWktToCoordinates(selectedRecord.coordinates || '')}
+                    emptyText="Không có tọa độ"
+                    pageSize={10}
+                    headerNode={
+                      <>
+                        <div className="chk-detail-grid" style={{ marginBottom: 12 }}>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label">Loại đối tượng</span>
+                            <span className="chk-detail-value">{selectedRecord.geometryType === 'POINT' ? 'Đối tượng điểm' : selectedRecord.geometryType === 'LINE' ? 'Đối tượng đường' : selectedRecord.geometryType === 'POLYGON' ? 'Đối tượng vùng' : '—'}</span>
+                          </div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Biểu tượng bản đồ</span><span className="chk-detail-value">{selectedRecord.mapSymbolName || '—'}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Hệ quy chiếu</span><span className="chk-detail-value">{selectedRecord.coordinateSystem === 1 ? 'WGS-84' : selectedRecord.coordinateSystem === 2 ? 'VN-2000' : '—'}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Quy tắc hiển thị</span><span className="chk-detail-value">{selectedRecord.displayRule != null ? 'Độ, phút, giây (DMS)' : '—'}</span></div>
                         </div>
-                      ))}
-                    </div>
-                    <div style={{ marginTop: spaceSm, padding: '0 12px' }}>
-                      <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS</span>
-                      <PagedTable dataSource={(() => {
-                        const loc = resolveMapGeometryLocation((selectedRecord as any)?.coordinates);
-                        return loc ? loc.coordinates.map(([lng, lat]) => ({ lat, lng })) : [];
-                      })()}
-                        emptyText={<div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><EnvironmentOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tọa độ</span></div>}
-                      >
-                        <Table.Column title="Vĩ độ (N)" key="lat" align="center"
-                          render={(_: any, record: any) => {
-                            const dd = record.lat || 0;
-                            const d = Math.floor(dd);
-                            const m = Math.floor((dd - d) * 60);
-                            const s = ((dd - d - m / 60) * 3600);
-                            return (
-                              <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
-                                <InputNumber value={d} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} />
-                                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span>
-                                <InputNumber value={m} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} />
-                                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span>
-                                <InputNumber value={s.toFixed(2)} readOnly tabIndex={-1} style={{ flex: 1.2, textAlign: 'center', pointerEvents: 'none' }} />
-                                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>{'"'}</span>
-                              </Space.Compact>
-                            );
-                          }}
-                          onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                        <Table.Column title="Kinh độ (E)" key="lng" align="center"
-                          render={(_: any, record: any) => {
-                            const dd = record.lng || 0;
-                            const d = Math.floor(dd);
-                            const m = Math.floor((dd - d) * 60);
-                            const s = ((dd - d - m / 60) * 3600);
-                            return (
-                              <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
-                                <InputNumber value={d} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} />
-                                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span>
-                                <InputNumber value={m} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} />
-                                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span>
-                                <InputNumber value={s.toFixed(2)} readOnly tabIndex={-1} style={{ flex: 1.2, textAlign: 'center', pointerEvents: 'none' }} />
-                                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>{'"'}</span>
-                              </Space.Compact>
-                            );
-                          }}
-                          onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                      </PagedTable>
-                    </div>
-                  </div>
+                        <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+                          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px' }}>
+                            Tọa độ GPS
+                          </span>
+                          <Button
+                            type="primary"
+                            icon={<EnvironmentOutlined />}
+                            onClick={() => openGisMap('detail')}
+                            style={{
+                              ...primaryButtonStyle,
+                              height: 32,
+                              fontSize: fontSizeSm,
+                              padding: '0 14px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                            }}
+                          >
+                            Xem vị trí trên bản đồ
+                          </Button>
+                        </div>
+                      </>
+                    }
+                    columns={[
+                      { title: 'STT', width: 60, align: 'center' },
+                      {
+                        title: 'Vĩ độ (Latitude - N)',
+                        key: 'lat',
+                        render: (_v: any, r: any) => {
+                          const dms = ddToDms(r.latitude);
+                          return dms.d !== null && dms.m !== null && dms.s !== null ? `${dms.d}° ${dms.m}' ${dms.s.toFixed(2)}" N` : '—';
+                        },
+                      },
+                      {
+                        title: 'Kinh độ (Longitude - E)',
+                        key: 'lng',
+                        render: (_v: any, r: any) => {
+                          const dms = ddToDms(r.longitude);
+                          return dms.d !== null && dms.m !== null && dms.s !== null ? `${dms.d}° ${dms.m}' ${dms.s.toFixed(2)}" E` : '—';
+                        },
+                      },
+                    ]}
+                  />
                 ),
               },
               {
                 key: "operationMaintenance",
                 label: "Vận hành & bảo trì",
                 children: (
-                  <div>
-                    <VtsAssistRefTable title="Thông tin vận hành khai thác" emptyText="Chưa có dữ liệu" columns={[
-                      { title: 'Mã kế hoạch', dataIndex: 'opPlanCode', width: 180 },
-                      { title: 'Tên kế hoạch', dataIndex: 'opPlanName', width: 220 },
-                      { title: 'Ngày bắt đầu', dataIndex: 'opStartDate', width: 200 },
-                      { title: 'Ngày kết thúc', dataIndex: 'opEndDate', width: 200 },
-                    ]} />
-                    <VtsAssistRefTable title="Thông tin bảo trì" emptyText="Chưa có dữ liệu" columns={[
-                      { title: 'Mã kế hoạch', dataIndex: 'maintCode', width: 180 },
-                      { title: 'Tên kế hoạch', dataIndex: 'maintName', width: 220 },
-                      { title: 'Thời gian bắt đầu', dataIndex: 'maintStart', width: 200 },
-                      { title: 'Thời gian kết thúc', dataIndex: 'maintEnd', width: 200 },
-                    ]} />
-                    <VtsAssistRefTable title="Thông tin sự cố" emptyText="Chưa có dữ liệu" columns={[
-                      { title: 'Mã sự cố', dataIndex: 'incidentCode', width: 150 },
-                      { title: 'Loại sự cố', dataIndex: 'incidentType', width: 150 },
-                      { title: 'Địa điểm', dataIndex: 'incidentLocation', width: 200 },
-                      { title: 'Thời gian', dataIndex: 'incidentTime', width: 180 },
-                    ]} />
+                  <div style={{ paddingTop: 3 }}>
+                    <Tabs
+                      size="small"
+                      tabBarStyle={{ marginBottom: 0 }}
+                      items={[
+                        {
+                          key: "operationPlan",
+                          label: "Thông tin vận hành khai thác",
+                          children: (
+                            <DetailTable
+                              dataSource={[]}
+                              pageSize={10}
+                              emptyText="Chưa có dữ liệu"
+                              columns={[
+                                { title: 'STT', width: 60, align: 'center' },
+                                { title: 'Mã / Tên kế hoạch', dataIndex: 'planName', key: 'planName', width: 420 },
+                                { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'startDate', width: 150, align: 'center' },
+                                { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'endDate', width: 150, align: 'center' },
+                              ]}
+                            />
+                          ),
+                        },
+                        {
+                          key: "maintenancePlan",
+                          label: "Thông tin bảo trì",
+                          children: (
+                            <DetailTable
+                              dataSource={[]}
+                              pageSize={10}
+                              emptyText="Chưa có dữ liệu"
+                              columns={[
+                                { title: 'STT', width: 60, align: 'center' },
+                                { title: 'Mã / Tên kế hoạch', dataIndex: 'planName', key: 'planName', width: 420 },
+                                { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'startDate', width: 150, align: 'center' },
+                                { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'endDate', width: 150, align: 'center' },
+                              ]}
+                            />
+                          ),
+                        },
+                        {
+                          key: "incidentInfo",
+                          label: "Thông tin sự cố",
+                          children: (
+                            <DetailTable
+                              dataSource={[]}
+                              pageSize={10}
+                              emptyText="Chưa có dữ liệu"
+                              columns={[
+                                { title: 'STT', width: 60, align: 'center' },
+                                { title: 'Mã / Tên sự cố', dataIndex: 'incidentName', key: 'incidentName', width: 420 },
+                                { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'incidentType', width: 180 },
+                                { title: 'Địa điểm', dataIndex: 'incidentLocation', key: 'incidentLocation', width: 220 },
+                                { title: 'Thời gian', dataIndex: 'incidentTime', key: 'incidentTime', width: 150, align: 'center' },
+                              ]}
+                            />
+                          ),
+                        },
+                      ]}
+                    />
                   </div>
                 ),
               },
@@ -2290,24 +2685,24 @@ const VtsAssistListPage = () => {
                 label: "Xử lý & theo dõi",
                 children: (
                   <div style={{ paddingTop: 3 }}>
-                    <div className="detail-grid">
+                    <div className="chk-detail-grid">
                       {[
                         { key: 'updatedDate', label: 'Ngày cập nhật', value: selectedRecord.updatedAt ? formatDate(selectedRecord.updatedAt) : '—' },
                         { key: 'updatedByUser', label: 'Cán bộ cập nhật', value: selectedRecord.updatedByName || '—' },
                         { key: 'submittedDate', label: 'Ngày gửi phê duyệt', value: selectedRecord.submittedDate ? formatDate(selectedRecord.submittedDate) : '—' },
                         { key: 'submittedByUser', label: 'Cán bộ gửi phê duyệt', value: selectedRecord.submittedByName || '—' },
-                        { key: 'approvalContentLevel1', label: 'Nội dung phê duyệt', value: selectedRecord.approvalContentLevel1 || '—', fullWidth: true },
+                        { key: 'approvalContentLevel1', label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục', value: selectedRecord.approvalContentLevel1 || '—', fullWidth: true },
                         { key: 'approvedDateLevel1', label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', value: selectedRecord.approvedDateLevel1 ? formatDate(selectedRecord.approvedDateLevel1) : '—' },
                         { key: 'approvedByLevel1', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: selectedRecord.approverLevel1Name || '—' },
-                        { key: 'approvalContentLevel2', label: 'Nội dung phê duyệt', value: selectedRecord.approvalContentLevel2 || '—', fullWidth: true },
+                        { key: 'approvalContentLevel2', label: 'Nội dung phê duyệt cấp Cục', value: selectedRecord.approvalContentLevel2 || '—', fullWidth: true },
                         { key: 'approvedDateLevel2', label: 'Ngày phê duyệt cấp Cục', value: selectedRecord.approvedDateLevel2 ? formatDate(selectedRecord.approvedDateLevel2) : '—' },
                         { key: 'approvedByLevel2', label: 'Cán bộ phê duyệt cấp Cục', value: selectedRecord.approverLevel2Name || '—' },
-                        ...(selectedRecord.rejectionReason ? [{ key: 'rejectionReason', label: 'Lý do từ chối', value: selectedRecord.rejectionReason, fullWidth: true, color: statusCritical }] : []),
+                        { key: 'approvalContentExtra', label: 'Lý do từ chối', value: selectedRecord.rejectionReason || '—', fullWidth: true },
                         { key: 'status', label: 'Trạng thái', value: renderApprovalBadge(selectedRecord.approvalStatus), fullWidth: true },
                       ].map((row) => (
-                        <div key={row.key} className="detail-row" style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
-                          <span className="detail-label">{row.label}</span>
-                          <span className="detail-value" style={row.color ? { color: row.color } : undefined}>{row.value}</span>
+                        <div key={row.key} className={row.fullWidth ? 'chk-detail-row chk-detail-row--full' : 'chk-detail-row'}>
+                          <span className="chk-detail-label">{row.label}</span>
+                          <span className="chk-detail-value">{row.value}</span>
                         </div>
                       ))}
                     </div>
@@ -2318,21 +2713,7 @@ const VtsAssistListPage = () => {
                 key: 'files', label: 'File đính kèm',
                 children: (
                   <div style={{ paddingTop: 3 }}>
-                    <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
-                      <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
-                    </div>
-                    <PagedTable dataSource={detailFiles.map((f) => ({ ...f }))}
-                      emptyText={(
-                        <div style={{ padding: '32px 0', textAlign: 'center' }}>
-                          <div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div>
-                          <span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tài liệu đính kèm</span>
-                        </div>
-                      )}
-                    >
-                      <Table.Column title="Tên file" key="name" dataIndex="fileName" align="center"
-                        render={(name: string) => <div style={{ textAlign: 'left', fontSize: fontSizeMd, color: textPrimary }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}</div>}
-                        onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                    </PagedTable>
+                    <InfrastructureAttachmentTab attachments={detailFiles} readonly onDownload={handleDownloadAttachmentItem} />
                   </div>
                 ),
               },
@@ -2587,6 +2968,7 @@ const VtsAssistListPage = () => {
       {/* ── Create Drawer ─────────────────────────────── */}
       <Drawer
         {...drawerProps}
+        rootClassName={THEME_SCOPE_CLASS}
         title={
           <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
             Thêm mới hệ thống phụ trợ VTS
@@ -2661,7 +3043,7 @@ const VtsAssistListPage = () => {
                 key: 'general',
                 label: 'Thông tin chung',
                 children: (
-                  <div style={{ paddingTop: 16 }}>
+                  <div style={{ ...themeTokenChk.drawerFormScrollStyle, paddingTop: spaceMd }}>
                     <Row gutter={16}>
                       <Col xs={24} sm={12}>
                         <Form.Item
@@ -2689,7 +3071,7 @@ const VtsAssistListPage = () => {
                         >
                           <Input
                             placeholder="Nhập tên thiết bị..."
-                            maxLength={255}
+                            maxLength={255} showCount
                             style={{ ...pillStyle, fontFamily: fontSans }}
                           />
                         </Form.Item>
@@ -2811,7 +3193,7 @@ const VtsAssistListPage = () => {
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input
-                            maxLength={500}
+                            maxLength={500} showCount
                             placeholder="Nhập địa điểm chi tiết..."
                             style={{ ...pillStyle, fontFamily: fontSans }}
                           />
@@ -2883,12 +3265,18 @@ const VtsAssistListPage = () => {
                         <Form.Item
                           name="yearOfUse"
                           {...labelProps('Năm đưa vào sử dụng')}
+                          normalize={(value: dayjs.Dayjs | null) => (value ? value.year() : null)}
+                          getValueProps={(value: number | null | undefined) => ({
+                            value: value != null && !Number.isNaN(Number(value)) ? dayjs(String(value)) : null,
+                          })}
                           style={{ marginBottom: spaceFormField }}
                         >
-                          <Select
-                            style={{ width: "100%", ...pillStyle }}
+                          <DatePicker
+                            picker="year"
+                            format="YYYY"
                             placeholder="Chọn năm"
-                            options={yearOfUseOptions}
+                            allowClear
+                            style={{ width: '100%', ...pillStyle }}
                           />
                         </Form.Item>
                       </Col>
@@ -2918,7 +3306,7 @@ const VtsAssistListPage = () => {
                         >
                           <Input
                             placeholder="Nhập model..."
-                            maxLength={255}
+                            maxLength={255} showCount
                             style={{ ...pillStyle, fontFamily: fontSans }}
                           />
                         </Form.Item>
@@ -2932,7 +3320,7 @@ const VtsAssistListPage = () => {
                         >
                           <Input
                             placeholder="Nhập hãng..."
-                            maxLength={50}
+                            maxLength={50} showCount
                             style={{ ...pillStyle, fontFamily: fontSans }}
                           />
                         </Form.Item>
@@ -2947,8 +3335,8 @@ const VtsAssistListPage = () => {
                       <Input.TextArea
                         rows={3}
                         placeholder="Nhập thông số kỹ thuật..."
-                        maxLength={2000}
-                        style={textAreaStyle}
+                        maxLength={2000} showCount
+                        style={themeTokenChk.textAreaStyle}
                       />
                     </Form.Item>
                     <Form.Item
@@ -2960,21 +3348,21 @@ const VtsAssistListPage = () => {
                       <Input.TextArea
                         rows={3}
                         placeholder="Nhập thông tin bảo trì..."
-                        maxLength={2000}
-                        style={textAreaStyle}
+                        maxLength={2000} showCount
+                        style={themeTokenChk.textAreaStyle}
                       />
                     </Form.Item>
                     <Form.Item
                       name="note"
                       {...labelProps('Ghi chú')}
-                      rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 500 ? Promise.reject(new Error('Đã đạt tối đa 500 ký tự')) : Promise.resolve() }]}
+                      rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 2000 ? Promise.reject(new Error('Đã đạt tối đa 2000 ký tự')) : Promise.resolve() }]}
                       style={{ marginBottom: 0 }}
                     >
                       <Input.TextArea
-                        rows={2}
+                        rows={3}
                         placeholder="Nhập ghi chú..."
-                        maxLength={500}
-                        style={textAreaStyle}
+                        maxLength={2000} showCount
+                        style={themeTokenChk.textAreaStyle}
                       />
                     </Form.Item>
                   </div>
@@ -2985,225 +3373,16 @@ const VtsAssistListPage = () => {
                 label: 'Thông tin vị trí',
                 children: (
                   <div style={{ paddingTop: 16 }}>
-                    <Row gutter={16}>
-                      <Col span={12}>
-                        <Form.Item
-                          name="geometryType"
-                          {...labelProps('Loại đối tượng')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            placeholder="Chọn loại đối tượng"
-                            allowClear
-                            options={[
-                              { value: 'POINT', label: 'Đối tượng điểm' },
-                              { value: 'LINE', label: 'Đối tượng đường' },
-                              { value: 'POLYGON', label: 'Đối tượng vùng' },
-                            ]}
-                            style={{ ...pillStyle, width: '100%' }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col span={12}>
-                        <Form.Item
-                          name="mapSymbolId"
-                          {...labelProps('Biểu tượng')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            placeholder="Chọn biểu tượng bản đồ"
-                            allowClear
-                            showSearch
-                            optionFilterProp="label"
-                            disabled={!createGeometryType}
-                            style={{ ...pillStyle, width: '100%' }}
-                          >
-                            {symbols.map((sym) => (
-                              <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
-                                <Space>
-                                  {sym.image && (
-                                    <img
-                                      src={
-                                        sym.image.startsWith('data:')
-                                          ? sym.image
-                                          : `data:image/png;base64,${sym.image}`
-                                      }
-                                      alt={sym.name}
-                                      style={{ width: 20, height: 20, objectFit: 'contain' }}
-                                    />
-                                  )}
-                                  <span>
-                                    {sym.code ? `${sym.name} (${sym.code})` : sym.name}
-                                  </span>
-                                </Space>
-                              </Select.Option>
-                            ))}
-                          </Select>
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col span={12}>
-                        <Form.Item
-                          name="coordinateSystem"
-                          {...labelProps('Hệ quy chiếu')}
-                          style={{ marginBottom: spaceFormField }}
-                          rules={createGeometryType ? [{ required: true, message: 'Hệ quy chiếu là bắt buộc khi chọn loại đối tượng' }] : []}
-                        >
-                          <Select
-                            placeholder="Chọn hệ quy chiếu"
-                            disabled
-                            options={[
-                              { value: 1, label: 'WGS-84' },
-                              { value: 2, label: 'VN-2000' },
-                            ]}
-                            style={{ ...pillStyle, width: '100%' }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col span={12}>
-                        <Form.Item
-                          name="displayRule"
-                          {...labelProps('Quy tắc hiển thị')}
-                          style={{ marginBottom: spaceFormField }}
-                          rules={createGeometryType ? [{ required: true, message: 'Quy tắc hiển thị là bắt buộc khi chọn loại đối tượng' }] : []}
-                        >
-                          <Input
-                            placeholder="Chọn quy tắc hiển thị"
-                            disabled
-                            style={{ ...pillStyle, color: '#8c8c8c', cursor: 'not-allowed' }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    {/* GPS Coordinates (DMS) */}
-                    <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>
-                        <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS{createGeometryType && <span style={{ color: colors.error, marginLeft: 4, fontSize: fontSizeMd }}>*</span>}</span>
-                      </span>
-                      {gpsCoordList.length > 0 && (
-                        <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={() => setGpsCoordList([...gpsCoordList, { lat: 0, lng: 0 }])} disabled={!createGeometryType} style={{ borderRadius: radiusPill }}>
-                          Thêm tọa độ
-                        </Button>
-                      )}
-                    </div>
-                    {gpsCoordList.length === 0 ? (
-                      <div style={{
-                        padding: '32px 16px',
-                        textAlign: 'center',
-                        border: `1px dashed ${borderDefault}`,
-                        borderRadius: radiusMd,
-                        background: surfaceCard,
-                      }}>
-                        <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>
-                          Chưa có tọa độ nào.
-                        </span>
-                        <Button type="dashed" icon={<PlusOutlined />} onClick={() => setGpsCoordList([...gpsCoordList, { lat: 0, lng: 0 }])} disabled={!createGeometryType} style={{ borderRadius: radiusPill }}>
-                          Thêm tọa độ
-                        </Button>
-                      </div>
-                    ) : (
-                      <PagedTable
-                        dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i }))}
-                        tableProps={{ scroll: { x: 820 } }}
-                      >
-                        <Table.Column
-                          title="Vĩ độ (N)"
-                          key="lat"
-                          render={(_: any, record: any) => {
-                            const dd = record.lat || 0;
-                            const d = Math.floor(dd);
-                            const m = Math.floor((dd - d) * 60);
-                            const s = ((dd - d - m / 60) * 3600);
-                            return (
-                              <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
-                                <InputNumber value={d} min={0} max={90} placeholder="Độ"
-                                  onChange={(v) => setGpsCoordList(gpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lat: Number(v ?? 0) } : g))}
-                                  style={{ flex: 1 }} controls={false} />
-                                <span style={{
-                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
-                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
-                                  fontSize: fontSizeSm, color: textTertiary,
-                                }}>°</span>
-                                <InputNumber value={m} min={0} max={59} placeholder="Phút"
-                                  onChange={(v) => setGpsCoordList(gpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lat: d + (Number(v ?? 0)) / 60 } : g))}
-                                  style={{ flex: 1 }} controls={false} />
-                                <span style={{
-                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
-                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
-                                  fontSize: fontSizeSm, color: textTertiary,
-                                }}>'</span>
-                                <InputNumber value={Math.round(s * 100) / 100} min={0} max={59.99} step={0.01} placeholder="Giây"
-                                  onChange={(v) => setGpsCoordList(gpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lat: d + m / 60 + (Number(v ?? 0)) / 3600 } : g))}
-                                  style={{ flex: 1.2 }} controls={false} />
-                                <span style={{
-                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
-                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0,
-                                  fontSize: fontSizeSm, color: textTertiary,
-                                }}>{'"'}</span>
-                              </Space.Compact>
-                            );
-                          }}
-                          onHeaderCell={() => ({
-                            style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' },
-                          })}
-                        />
-                        <Table.Column
-                          title="Kinh độ (E)"
-                          key="lng"
-                          render={(_: any, record: any) => {
-                            const dd = record.lng || 0;
-                            const d = Math.floor(dd);
-                            const m = Math.floor((dd - d) * 60);
-                            const s = ((dd - d - m / 60) * 3600);
-                            return (
-                              <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
-                                <InputNumber value={d} min={0} max={180} placeholder="Độ"
-                                  onChange={(v) => setGpsCoordList(gpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lng: Number(v ?? 0) } : g))}
-                                  style={{ flex: 1 }} controls={false} />
-                                <span style={{
-                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
-                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
-                                  fontSize: fontSizeSm, color: textTertiary,
-                                }}>°</span>
-                                <InputNumber value={m} min={0} max={59} placeholder="Phút"
-                                  onChange={(v) => setGpsCoordList(gpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lng: d + (Number(v ?? 0)) / 60 } : g))}
-                                  style={{ flex: 1 }} controls={false} />
-                                <span style={{
-                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
-                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
-                                  fontSize: fontSizeSm, color: textTertiary,
-                                }}>'</span>
-                                <InputNumber value={Math.round(s * 100) / 100} min={0} max={59.99} step={0.01} placeholder="Giây"
-                                  onChange={(v) => setGpsCoordList(gpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lng: d + m / 60 + (Number(v ?? 0)) / 3600 } : g))}
-                                  style={{ flex: 1.2 }} controls={false} />
-                                <span style={{
-                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
-                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0,
-                                  fontSize: fontSizeSm, color: textTertiary,
-                                }}>{'"'}</span>
-                              </Space.Compact>
-                            );
-                          }}
-                          onHeaderCell={() => ({
-                            style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' },
-                          })}
-                        />
-                        <Table.Column
-                          title=""
-                          key="actions"
-                          width={44}
-                          align="center"
-                          render={(_: any, record: any) => (
-                            <Button type="link" danger size="small" icon={<DeleteOutlined />}
-                              onClick={() => setGpsCoordList(gpsCoordList.filter((_, idx) => idx !== record._idx))} />
-                          )}
-                          onHeaderCell={() => ({
-                            style: { background: colors.bodyBg, padding: '12px 6px' },
-                          })}
-                        />
-                      </PagedTable>
-                    )}
+                    <VtsAssistGisTab
+                      geometryType={createGeometryType}
+                      rows={gpsCoordList}
+                      symbols={symbols}
+                      onAddRow={() => setGpsCoordList((prev) => [...prev, { lat: 0, lng: 0 }])}
+                      onUpdatePoint={updateCreateGpsPoint}
+                      onDeleteRow={(index) => setGpsCoordList((prev) => prev.filter((_, idx) => idx !== index))}
+                      minPoints={createMinPoints}
+                      onOpenMap={() => openGisMap('create')}
+                    />
                   </div>
                 ),
               },
@@ -3211,7 +3390,9 @@ const VtsAssistListPage = () => {
                 key: 'attachments',
                 label: 'File đính kèm',
                 children: (
-                  <VtsAssistFilesTab uploadFileList={uploadFileList} setUploadFileList={setUploadFileList} entityId={updateTarget?.id} />
+                  <div style={themeTokenChk.drawerFormScrollStyle}>
+                    <InfrastructureAttachmentTab attachments={uploadFileList} onUpload={handleEditUploadFile} onDelete={handleEditDeleteFile} onDownload={handleDownloadAttachmentItem} />
+                  </div>
                 ),
               },
             ]}
@@ -3222,6 +3403,7 @@ const VtsAssistListPage = () => {
       {/* ── Edit Drawer ──────────────────────────────────────────────── */}
       <Drawer
         {...drawerProps}
+        rootClassName={THEME_SCOPE_CLASS}
         title={
           <span style={drawerTitleStyle}>
             Chỉnh sửa thông tin — {updateTarget?.deviceName || '—'}
@@ -3252,6 +3434,7 @@ const VtsAssistListPage = () => {
         }
         footer={
           <div style={drawerFooterStyle}>
+            {updateTarget?.approvalStatus !== 'APPROVED' && (
             <Button
               onClick={() => { updateActionTypeRef.current = 'draft'; setUpdateActionType('draft'); updateForm.submit(); }}
               loading={updateLoading && updateActionType === 'draft'}
@@ -3259,6 +3442,7 @@ const VtsAssistListPage = () => {
             >
               Lưu tạm
             </Button>
+            )}
             {(updateTarget?.approvalStatus === 'DRAFT' || updateTarget?.approvalStatus === 'REJECTED_LEVEL1' || updateTarget?.approvalStatus === 'REJECTED_LEVEL2') && (
               <Button
                 type="primary"
@@ -3300,7 +3484,7 @@ const VtsAssistListPage = () => {
                 key: 'general',
                 label: 'Thông tin chung',
                 children: (
-                  <div style={{ paddingTop: 16 }}>
+                  <div style={{ ...themeTokenChk.drawerFormScrollStyle, paddingTop: spaceMd }}>
                     <Row gutter={16}>
                       <Col xs={24} sm={12}>
                         <Form.Item
@@ -3327,7 +3511,7 @@ const VtsAssistListPage = () => {
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input
-                            maxLength={255}
+                            maxLength={255} showCount
                             style={{ ...pillStyle, fontFamily: fontSans }}
                           />
                         </Form.Item>
@@ -3446,7 +3630,7 @@ const VtsAssistListPage = () => {
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input
-                            maxLength={500}
+                            maxLength={500} showCount
                             placeholder="Nhập địa điểm chi tiết..."
                             style={{ ...pillStyle, fontFamily: fontSans }}
                           />
@@ -3518,12 +3702,18 @@ const VtsAssistListPage = () => {
                         <Form.Item
                           name="yearOfUse"
                           {...labelProps('Năm đưa vào sử dụng')}
+                          normalize={(value: dayjs.Dayjs | null) => (value ? value.year() : null)}
+                          getValueProps={(value: number | null | undefined) => ({
+                            value: value != null && !Number.isNaN(Number(value)) ? dayjs(String(value)) : null,
+                          })}
                           style={{ marginBottom: spaceFormField }}
                         >
-                          <Select
-                            style={{ width: "100%", ...pillStyle }}
-                            placeholder="Chọn năm"
-                            options={yearOfUseOptions}
+                          <DatePicker
+                            picker="year"
+                            format="YYYY"
+                            placeholder="Chọn năm đưa vào sử dụng"
+                            allowClear
+                            style={{ width: '100%', ...pillStyle }}
                           />
                         </Form.Item>
                       </Col>
@@ -3552,7 +3742,7 @@ const VtsAssistListPage = () => {
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input
-                            maxLength={255}
+                            maxLength={255} showCount
                             style={{ ...pillStyle, fontFamily: fontSans }}
                           />
                         </Form.Item>
@@ -3564,7 +3754,7 @@ const VtsAssistListPage = () => {
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input
-                            maxLength={50}
+                            maxLength={50} showCount
                             style={{ ...pillStyle, fontFamily: fontSans }}
                           />
                         </Form.Item>
@@ -3579,8 +3769,8 @@ const VtsAssistListPage = () => {
                       <Input.TextArea
                         rows={3}
                         placeholder="Nhập thông số kỹ thuật..."
-                        maxLength={2000}
-                        style={textAreaStyle}
+                        maxLength={2000} showCount
+                        style={themeTokenChk.textAreaStyle}
                       />
                     </Form.Item>
                     <Form.Item
@@ -3592,21 +3782,21 @@ const VtsAssistListPage = () => {
                       <Input.TextArea
                         rows={3}
                         placeholder="Nhập thông tin bảo trì..."
-                        maxLength={2000}
-                        style={textAreaStyle}
+                        maxLength={2000} showCount
+                        style={themeTokenChk.textAreaStyle}
                       />
                     </Form.Item>
                     <Form.Item
                       name="note"
                       {...labelProps('Ghi chú')}
-                      rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 500 ? Promise.reject(new Error('Đã đạt tối đa 500 ký tự')) : Promise.resolve() }]}
+                      rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 2000 ? Promise.reject(new Error('Đã đạt tối đa 2000 ký tự')) : Promise.resolve() }]}
                       style={{ marginBottom: 0 }}
                     >
                       <Input.TextArea
-                        rows={2}
+                        rows={3}
                         placeholder="Nhập ghi chú..."
-                        maxLength={500}
-                        style={textAreaStyle}
+                        maxLength={2000} showCount
+                        style={themeTokenChk.textAreaStyle}
                       />
                     </Form.Item>
                   </div>
@@ -3617,225 +3807,16 @@ const VtsAssistListPage = () => {
                 label: 'Thông tin vị trí',
                 children: (
                   <div style={{ paddingTop: 16 }}>
-                    <Row gutter={16}>
-                      <Col span={12}>
-                        <Form.Item
-                          name="geometryType"
-                          {...labelProps('Loại đối tượng')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            placeholder="Chọn loại đối tượng"
-                            allowClear
-                            options={[
-                              { value: 'POINT', label: 'Đối tượng điểm' },
-                              { value: 'LINE', label: 'Đối tượng đường' },
-                              { value: 'POLYGON', label: 'Đối tượng vùng' },
-                            ]}
-                            style={{ ...pillStyle, width: '100%' }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col span={12}>
-                        <Form.Item
-                          name="mapSymbolId"
-                          {...labelProps('Biểu tượng')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            placeholder="Chọn biểu tượng bản đồ"
-                            allowClear
-                            showSearch
-                            optionFilterProp="label"
-                            disabled={!updateGeometryType}
-                            style={{ ...pillStyle, width: '100%' }}
-                          >
-                            {symbols.map((sym) => (
-                              <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
-                                <Space>
-                                  {sym.image && (
-                                    <img
-                                      src={
-                                        sym.image.startsWith('data:')
-                                          ? sym.image
-                                          : `data:image/png;base64,${sym.image}`
-                                      }
-                                      alt={sym.name}
-                                      style={{ width: 20, height: 20, objectFit: 'contain' }}
-                                    />
-                                  )}
-                                  <span>
-                                    {sym.code ? `${sym.name} (${sym.code})` : sym.name}
-                                  </span>
-                                </Space>
-                              </Select.Option>
-                            ))}
-                          </Select>
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col span={12}>
-                        <Form.Item
-                          name="coordinateSystem"
-                          {...labelProps('Hệ quy chiếu')}
-                          style={{ marginBottom: spaceFormField }}
-                          rules={updateGeometryType ? [{ required: true, message: 'Hệ quy chiếu là bắt buộc khi chọn loại đối tượng' }] : []}
-                        >
-                          <Select
-                            placeholder="Chọn hệ quy chiếu"
-                            disabled
-                            options={[
-                              { value: 1, label: 'WGS-84' },
-                              { value: 2, label: 'VN-2000' },
-                            ]}
-                            style={{ ...pillStyle, width: '100%' }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col span={12}>
-                        <Form.Item
-                          name="displayRule"
-                          {...labelProps('Quy tắc hiển thị')}
-                          style={{ marginBottom: spaceFormField }}
-                          rules={updateGeometryType ? [{ required: true, message: 'Quy tắc hiển thị là bắt buộc khi chọn loại đối tượng' }] : []}
-                        >
-                          <Input
-                            placeholder="Chọn quy tắc hiển thị"
-                            disabled
-                            style={{ ...pillStyle, color: '#8c8c8c', cursor: 'not-allowed' }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    {/* GPS Coordinates (DMS) */}
-                    <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>
-                        <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS{updateGeometryType && <span style={{ color: colors.error, marginLeft: 4, fontSize: fontSizeMd }}>*</span>}</span>
-                      </span>
-                      {updateGpsCoordList.length > 0 && (
-                        <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={() => setUpdateGpsCoordList([...updateGpsCoordList, { lat: 0, lng: 0 }])} disabled={!updateGeometryType} style={{ borderRadius: radiusPill }}>
-                          Thêm tọa độ
-                        </Button>
-                      )}
-                    </div>
-                    {updateGpsCoordList.length === 0 ? (
-                      <div style={{
-                        padding: '32px 16px',
-                        textAlign: 'center',
-                        border: `1px dashed ${borderDefault}`,
-                        borderRadius: radiusMd,
-                        background: surfaceCard,
-                      }}>
-                        <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>
-                          Chưa có tọa độ nào.
-                        </span>
-                        <Button type="dashed" icon={<PlusOutlined />} onClick={() => setUpdateGpsCoordList([...updateGpsCoordList, { lat: 0, lng: 0 }])} disabled={!updateGeometryType} style={{ borderRadius: radiusPill }}>
-                          Thêm tọa độ
-                        </Button>
-                      </div>
-                    ) : (
-                      <PagedTable
-                        dataSource={updateGpsCoordList.map((c, i) => ({ ...c, _idx: i }))}
-                        tableProps={{ scroll: { x: 820 } }}
-                      >
-                        <Table.Column
-                          title="Vĩ độ (N)"
-                          key="lat"
-                          render={(_: any, record: any) => {
-                            const dd = record.lat || 0;
-                            const d = Math.floor(dd);
-                            const m = Math.floor((dd - d) * 60);
-                            const s = ((dd - d - m / 60) * 3600);
-                            return (
-                              <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
-                                <InputNumber value={d} min={0} max={90} placeholder="Độ"
-                                  onChange={(v) => setUpdateGpsCoordList(updateGpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lat: Number(v ?? 0) } : g))}
-                                  style={{ flex: 1 }} controls={false} />
-                                <span style={{
-                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
-                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
-                                  fontSize: fontSizeSm, color: textTertiary,
-                                }}>°</span>
-                                <InputNumber value={m} min={0} max={59} placeholder="Phút"
-                                  onChange={(v) => setUpdateGpsCoordList(updateGpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lat: d + (Number(v ?? 0)) / 60 } : g))}
-                                  style={{ flex: 1 }} controls={false} />
-                                <span style={{
-                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
-                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
-                                  fontSize: fontSizeSm, color: textTertiary,
-                                }}>'</span>
-                                <InputNumber value={Math.round(s * 100) / 100} min={0} max={59.99} step={0.01} placeholder="Giây"
-                                  onChange={(v) => setUpdateGpsCoordList(updateGpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lat: d + m / 60 + (Number(v ?? 0)) / 3600 } : g))}
-                                  style={{ flex: 1.2 }} controls={false} />
-                                <span style={{
-                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
-                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0,
-                                  fontSize: fontSizeSm, color: textTertiary,
-                                }}>{'"'}</span>
-                              </Space.Compact>
-                            );
-                          }}
-                          onHeaderCell={() => ({
-                            style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' },
-                          })}
-                        />
-                        <Table.Column
-                          title="Kinh độ (E)"
-                          key="lng"
-                          render={(_: any, record: any) => {
-                            const dd = record.lng || 0;
-                            const d = Math.floor(dd);
-                            const m = Math.floor((dd - d) * 60);
-                            const s = ((dd - d - m / 60) * 3600);
-                            return (
-                              <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
-                                <InputNumber value={d} min={0} max={180} placeholder="Độ"
-                                  onChange={(v) => setUpdateGpsCoordList(updateGpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lng: Number(v ?? 0) } : g))}
-                                  style={{ flex: 1 }} controls={false} />
-                                <span style={{
-                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
-                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
-                                  fontSize: fontSizeSm, color: textTertiary,
-                                }}>°</span>
-                                <InputNumber value={m} min={0} max={59} placeholder="Phút"
-                                  onChange={(v) => setUpdateGpsCoordList(updateGpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lng: d + (Number(v ?? 0)) / 60 } : g))}
-                                  style={{ flex: 1 }} controls={false} />
-                                <span style={{
-                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
-                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
-                                  fontSize: fontSizeSm, color: textTertiary,
-                                }}>'</span>
-                                <InputNumber value={Math.round(s * 100) / 100} min={0} max={59.99} step={0.01} placeholder="Giây"
-                                  onChange={(v) => setUpdateGpsCoordList(updateGpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lng: d + m / 60 + (Number(v ?? 0)) / 3600 } : g))}
-                                  style={{ flex: 1.2 }} controls={false} />
-                                <span style={{
-                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
-                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0,
-                                  fontSize: fontSizeSm, color: textTertiary,
-                                }}>{'"'}</span>
-                              </Space.Compact>
-                            );
-                          }}
-                          onHeaderCell={() => ({
-                            style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' },
-                          })}
-                        />
-                        <Table.Column
-                          title=""
-                          key="actions"
-                          width={44}
-                          align="center"
-                          render={(_: any, record: any) => (
-                            <Button type="link" danger size="small" icon={<DeleteOutlined />}
-                              onClick={() => setUpdateGpsCoordList(updateGpsCoordList.filter((_, idx) => idx !== record._idx))} />
-                          )}
-                          onHeaderCell={() => ({
-                            style: { background: colors.bodyBg, padding: '12px 6px' },
-                          })}
-                        />
-                      </PagedTable>
-                    )}
+                    <VtsAssistGisTab
+                      geometryType={updateGeometryType}
+                      rows={updateGpsCoordList}
+                      symbols={symbols}
+                      onAddRow={() => setUpdateGpsCoordList((prev) => [...prev, { lat: 0, lng: 0 }])}
+                      onUpdatePoint={updateEditGpsPoint}
+                      onDeleteRow={(index) => setUpdateGpsCoordList((prev) => prev.filter((_, idx) => idx !== index))}
+                      minPoints={updateMinPoints}
+                      onOpenMap={() => openGisMap('edit')}
+                    />
                   </div>
                 ),
               },
@@ -3843,7 +3824,9 @@ const VtsAssistListPage = () => {
                 key: 'attachments',
                 label: 'File đính kèm',
                 children: (
-                  <VtsAssistFilesTab uploadFileList={uploadFileList} setUploadFileList={setUploadFileList} entityId={updateTarget?.id} />
+                  <div style={themeTokenChk.drawerFormScrollStyle}>
+                    <InfrastructureAttachmentTab attachments={uploadFileList} onUpload={handleEditUploadFile} onDelete={handleEditDeleteFile} onDownload={handleDownloadAttachmentItem} />
+                  </div>
                 ),
               },
             ]}
@@ -3854,7 +3837,8 @@ const VtsAssistListPage = () => {
       {/* ── History Drawer ─────────────────────────────────────── */}
       <Drawer
         {...drawerProps}
-        size={isIframeModal ? '100%' : 880}
+        rootClassName={THEME_SCOPE_CLASS}
+        size={isIframeModal ? '100%' : 960}
         mask={!isIframeModal}
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
@@ -3863,7 +3847,10 @@ const VtsAssistListPage = () => {
               <span style={drawerTitleStyle}>
                 {historyEntityName ? `Lịch sử thay đổi — ${historyEntityName}` : 'Lịch sử thay đổi'}
               </span>
-              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>{hasMoreHistory ? `Đã tải ${historyFieldCount}+` : `Tổng cộng ${historyFieldCount}`}</span>
+              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: radiusSm, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
+                {/* Nhật ký nạp theo trang nên đây là số đã tải, không phải tổng (chuẩn /vts-operation-center). */}
+                {`Đã tải ${historyRecords.length}`}
+              </span>
             </Space>
           </div>
         }
@@ -3876,15 +3863,50 @@ const VtsAssistListPage = () => {
           body: { padding: '12px 24px 12px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
         }}>
         <div style={{ display: 'flex', gap: spaceSm, alignItems: 'center', paddingBottom: spaceMd }}>
-          <Input placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
-            onChange={(e) => setHistorySearch(e.target.value)} style={{ flex: 1 }} />
-          <DatePicker placeholder="Từ ngày" value={historyDateFrom ? dayjs(historyDateFrom) : null}
-            onChange={(d) => setHistoryDateFrom(d ? d.startOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
-            style={{ width: 170 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
-          <DatePicker placeholder="Đến ngày" value={historyDateTo ? dayjs(historyDateTo) : null}
-            onChange={(d) => setHistoryDateTo(d ? d.endOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
-            style={{ width: 170 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
-          <Button type="primary" loading={loadingHistory} onClick={() => setHistoryReloadToken((t) => t + 1)}>Tìm kiếm</Button>
+          <Input
+            placeholder="Tìm kiếm nội dung thay đổi..."
+            allowClear
+            value={historySearchInput}
+            onChange={(e) => {
+              const val = e.target.value;
+              setHistorySearchInput(val);
+              if (!val) setHistorySearch('');
+            }}
+            onPressEnter={() => {
+              setHistorySearch(historySearchInput.trim());
+              setHistoryReloadToken((t) => t + 1);
+            }}
+            style={{ ...inputStyle, flex: 1 }}
+          />
+          <DatePicker.RangePicker
+            {...getRangePickerProps({
+              value: (historyDateFrom && historyDateTo)
+                ? [dayjs(historyDateFrom), dayjs(historyDateTo)]
+                : (historyDateFrom ? [dayjs(historyDateFrom), null] : (historyDateTo ? [null, dayjs(historyDateTo)] : null)),
+              onChange: (dates: any) => {
+                if (!dates || dates.length === 0 || (!dates[0] && !dates[1])) {
+                  setHistoryDateFrom('');
+                  setHistoryDateTo('');
+                } else {
+                  setHistoryDateFrom(dates[0] ? dates[0].startOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
+                  setHistoryDateTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
+                }
+              },
+              style: { ...inputStyle, width: 280 },
+            })}
+          />
+          <Button
+            type="primary"
+            icon={<SearchOutlined />}
+            loading={loadingHistory}
+            onClick={() => {
+              setHistorySearch(historySearchInput.trim());
+              setHistoryReloadToken((t) => t + 1);
+            }}
+            style={primaryButtonStyle}
+          >
+            Tìm kiếm
+          </Button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>
           {loadingHistory && historyRecords.length === 0 ? <LoadingSkeleton rows={5} /> : historyRecords.length === 0 ? (
@@ -3897,7 +3919,55 @@ const VtsAssistListPage = () => {
           )}
         </div>
       </Drawer>
-    </>
+      {/* Modal bản đồ GIS — Chọn tọa độ (Thêm mới/Sửa) / Xem vị trí (Chi tiết) */}
+      {gisMapModal && gisMapContext && (
+        <Modal
+          title={
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <EnvironmentOutlined style={{ color: actionPrimary }} />
+              <span style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: fontSizeLg }}>
+                {gisMapModal === 'detail' ? 'Xem vị trí trên bản đồ' : 'Chọn tọa độ trên bản đồ'}
+              </span>
+            </div>
+          }
+          open
+          onCancel={() => setGisMapModal(null)}
+          destroyOnHidden
+          width="90vw"
+          style={{ top: 20, maxWidth: '1400px' }}
+          footer={
+            gisMapModal === 'detail' ? null : [
+              <Button
+                key="ok"
+                type="primary"
+                onClick={() => {
+                  setGisMapModal(null);
+                  toast.success('Đã xác nhận tọa độ từ bản đồ');
+                }}
+                style={{ ...primaryButtonStyle, height: 36, borderRadius: radiusPill }}
+              >
+                Xác nhận tọa độ
+              </Button>,
+            ]
+          }
+        >
+          <div style={{ padding: '8px 0' }}>
+            <GisLocationSelector
+              inline
+              height={560}
+              disabled={gisMapModal === 'detail'}
+              value={{
+                geometryType: gisMapContext.geom,
+                coordinates: serializeCoordinatesToWkt(gisMapContext.rows, gisMapContext.geom),
+                symbolId: gisMapContext.symbolId,
+              }}
+              defaultGeometryType={gisMapContext.geom}
+              onChange={(val) => applyGisMapResult(val)}
+            />
+          </div>
+        </Modal>
+      )}
+    </ThemeTokenProvider>
   );
 };
 

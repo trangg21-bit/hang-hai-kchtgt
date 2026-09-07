@@ -1,12 +1,15 @@
 package com.hanghai.kchtg.document.service;
 
 import com.hanghai.kchtg.common.entity.EntityFields;
-
 import com.hanghai.kchtg.document.dto.*;
 import com.hanghai.kchtg.document.entity.*;
 import com.hanghai.kchtg.document.repository.MaintenancePlanRepository;
 import com.hanghai.kchtg.document.repository.MaintenanceReportRepository;
 import com.hanghai.kchtg.document.repository.MaintenanceResultRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
+import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -17,6 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -26,22 +31,39 @@ import java.util.stream.Collectors;
 @Slf4j
 public class MaintenancePlanService {
 
+    private static final DateTimeFormatter CODE_DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
+
     private final MaintenancePlanRepository maintenancePlanRepository;
     private final MaintenanceResultRepository maintenanceResultRepository;
     private final MaintenanceReportRepository maintenanceReportRepository;
+    private final OrgUnitScopeService orgUnitScopeService;
+    private final OrgUnitCacheService orgUnitCacheService;
 
     // ── CRUD ──────────────────────────────────────────────────────────
 
     @Transactional
     public MaintenancePlanResponse create(MaintenancePlanCreateRequest request) {
         log.info("Creating MaintenancePlan: {}", request.getEquipment());
+        UUID orgUnitId = resolveOrgUnitId(request.getOrgUnitId());
+        orgUnitScopeService.requireOrganizationInScope(orgUnitId);
+        MaintenanceStatus status = request.getStatus() != null ? request.getStatus() : MaintenanceStatus.CHO_DOI_PHUY;
+        String code = (request.getCode() != null && !request.getCode().isBlank())
+                ? request.getCode() : generateMaintenanceCode();
+
         MaintenancePlan maintenancePlan = MaintenancePlan.builder()
                 .equipment(request.getEquipment())
                 .maintenanceType(request.getMaintenanceType())
                 .estimatedStartDate(request.getEstimatedStartDate())
                 .estimatedEndDate(request.getEstimatedEndDate())
-                .status(request.getStatus())
+                .status(status)
                 .estimatedCost(request.getEstimatedCost())
+                .orgUnitId(orgUnitId)
+                .operatingOrgUnitId(request.getOperatingOrgUnitId())
+                .infrastructureType(request.getInfrastructureType())
+                .code(code)
+                .name(request.getName())
+                .content(request.getContent())
+                .note(request.getNote())
                 .createdBy(request.getCreatedBy())
                 .build();
         return toResponse(maintenancePlanRepository.save(maintenancePlan));
@@ -77,6 +99,17 @@ public class MaintenancePlanService {
         if (request.getEstimatedEndDate() != null) maintenancePlan.setEstimatedEndDate(request.getEstimatedEndDate());
         if (request.getStatus() != null) maintenancePlan.setStatus(request.getStatus());
         if (request.getEstimatedCost() != null) maintenancePlan.setEstimatedCost(request.getEstimatedCost());
+
+        if (request.getOrgUnitId() != null) {
+            orgUnitScopeService.requireOrganizationInScope(request.getOrgUnitId());
+            maintenancePlan.setOrgUnitId(request.getOrgUnitId());
+        }
+        if (request.getOperatingOrgUnitId() != null) maintenancePlan.setOperatingOrgUnitId(request.getOperatingOrgUnitId());
+        if (request.getInfrastructureType() != null) maintenancePlan.setInfrastructureType(request.getInfrastructureType());
+        if (request.getCode() != null && !request.getCode().isBlank()) maintenancePlan.setCode(request.getCode());
+        if (request.getName() != null) maintenancePlan.setName(request.getName());
+        if (request.getContent() != null) maintenancePlan.setContent(request.getContent());
+        if (request.getNote() != null) maintenancePlan.setNote(request.getNote());
 
         return toResponse(maintenancePlanRepository.save(maintenancePlan));
     }
@@ -129,6 +162,7 @@ public class MaintenancePlanService {
                 .actualStartDate(request.getActualStartDate())
                 .actualEndDate(request.getActualEndDate())
                 .resultDescription(request.getResultDescription())
+                .resultNote(request.getResultNote())
                 .replacedParts(request.getReplacedParts())
                 .downtimeDuration(request.getDowntimeDuration())
                 .recorder(request.getRecorder())
@@ -156,7 +190,36 @@ public class MaintenancePlanService {
 
     // ── Helpers ───────────────────────────────────────────────────────
 
+    private UUID resolveOrgUnitId(UUID requestOrgUnitId) {
+        if (requestOrgUnitId != null) {
+            return requestOrgUnitId;
+        }
+        User user = SecurityUtils.getCurrentUser();
+        if (user != null && user.getOrgUnit() != null) {
+            return user.getOrgUnit().getId();
+        }
+        throw new IllegalArgumentException("Không xác định được đơn vị quản lý cho bản ghi");
+    }
+
+    private String generateMaintenanceCode() {
+        String prefix = "MT-" + LocalDate.now().format(CODE_DATE) + "-";
+        long count = maintenancePlanRepository.countByCodeStartingWith(prefix);
+        return prefix + String.format("%04d", count + 1);
+    }
+
     private MaintenancePlanResponse toResponse(MaintenancePlan maintenancePlan) {
+        List<MaintenancePlanWorkResponse> workList = maintenancePlan.getWorkItems() == null
+                ? new ArrayList<>()
+                : maintenancePlan.getWorkItems().stream().map(this::toWorkResponse).collect(Collectors.toList());
+
+        List<MaintenancePlanFileResponse> fileList = maintenancePlan.getFiles() == null
+                ? new ArrayList<>()
+                : maintenancePlan.getFiles().stream().map(this::toFileResponse).collect(Collectors.toList());
+
+        List<MaintenanceResultResponse> resultList = maintenancePlan.getResults() == null
+                ? new ArrayList<>()
+                : maintenancePlan.getResults().stream().map(this::toResultResponse).collect(Collectors.toList());
+
         return MaintenancePlanResponse.builder()
                 .id(maintenancePlan.getId())
                 .equipment(maintenancePlan.getEquipment())
@@ -165,10 +228,44 @@ public class MaintenancePlanService {
                 .estimatedEndDate(maintenancePlan.getEstimatedEndDate())
                 .status(maintenancePlan.getStatus())
                 .estimatedCost(maintenancePlan.getEstimatedCost())
+                .orgUnitId(maintenancePlan.getOrgUnitId())
+                .orgUnitName(maintenancePlan.getOrgUnitId() != null ? orgUnitCacheService.getName(maintenancePlan.getOrgUnitId()) : null)
+                .operatingOrgUnitId(maintenancePlan.getOperatingOrgUnitId())
+                .infrastructureType(maintenancePlan.getInfrastructureType())
+                .code(maintenancePlan.getCode())
+                .name(maintenancePlan.getName())
+                .content(maintenancePlan.getContent())
+                .note(maintenancePlan.getNote())
                 .createdBy(maintenancePlan.getCreatedBy())
                 .createdDate(maintenancePlan.getCreatedDate())
                 .updatedBy(maintenancePlan.getUpdatedBy())
                 .updatedDate(maintenancePlan.getUpdatedDate())
+                .workItems(workList)
+                .files(fileList)
+                .results(resultList)
+                .build();
+    }
+
+    private MaintenancePlanWorkResponse toWorkResponse(MaintenancePlanWork w) {
+        return MaintenancePlanWorkResponse.builder()
+                .id(w.getId())
+                .infrastructureId(w.getInfrastructureId())
+                .infrastructureName(w.getInfrastructureName())
+                .portName(w.getPortName())
+                .location(w.getLocation())
+                .cost(w.getCost())
+                .build();
+    }
+
+    private MaintenancePlanFileResponse toFileResponse(MaintenancePlanFile f) {
+        return MaintenancePlanFileResponse.builder()
+                .id(f.getId())
+                .fileCategory(f.getFileCategory())
+                .fileType(f.getFileType())
+                .fileName(f.getFileName())
+                .filePath(f.getFilePath())
+                .uploadedBy(f.getUploadedBy())
+                .uploadedAt(f.getUploadedAt())
                 .build();
     }
 
@@ -192,6 +289,7 @@ public class MaintenancePlanService {
                 .actualStartDate(kqb.getActualStartDate())
                 .actualEndDate(kqb.getActualEndDate())
                 .resultDescription(kqb.getResultDescription())
+                .resultNote(kqb.getResultNote())
                 .replacedParts(kqb.getReplacedParts())
                 .downtimeDuration(kqb.getDowntimeDuration())
                 .recorder(kqb.getRecorder())

@@ -210,9 +210,15 @@ public class MaterializedPathService {
                 .orElseThrow(() -> new EntityNotFoundException("Đơn vị không tồn tại: " + nodeId));
 
         String prefix = node.getPath();
-        // All descendants have paths that start with prefix + descendantId/
-        String childPrefix = prefix + "/";
-        return repo.findByPathLikeAndDeletedAtIsNull(childPrefix);
+        if (prefix == null || prefix.isBlank()) {
+            prefix = computePathForUnit(node);
+        }
+        if (!prefix.endsWith("/")) {
+            prefix = prefix + "/";
+        }
+        return repo.findByPathLikeAndDeletedAtIsNull(prefix).stream()
+                .filter(u -> !u.getId().equals(nodeId))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -224,7 +230,13 @@ public class MaterializedPathService {
                 .orElseThrow(() -> new EntityNotFoundException("Đơn vị không tồn tại: " + nodeId));
 
         String prefix = node.getPath();
-        return repo.findAllByPathLikeOrderBySortOrder(prefix + "%");
+        if (prefix == null || prefix.isBlank()) {
+            prefix = computePathForUnit(node);
+        }
+        if (!prefix.endsWith("/")) {
+            prefix = prefix + "/";
+        }
+        return repo.findAllByPathLikeOrderBySortOrder(prefix);
     }
 
     // ── Subtree cascade move ─────────────────────────────────────────
@@ -279,8 +291,7 @@ public class MaterializedPathService {
         repo.save(movedNode);
 
         // Refresh all affected entities from DB to ensure consistency
-        List<OrgUnit> affected = repo.findByPathLikeAndDeletedAtIsNull(newPath + "%");
-        affected.add(movedNode);
+        List<OrgUnit> affected = repo.findByPathLikeAndDeletedAtIsNull(newPath);
         for (OrgUnit u : affected) {
             u.setLevel(calculateLevel(u.getPath()));
         }

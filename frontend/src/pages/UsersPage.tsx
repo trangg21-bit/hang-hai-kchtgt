@@ -7,6 +7,7 @@ import {
 import dayjs from 'dayjs';
 import { useUsers, useUser, useCreateUser, useUpdateUser, useDeleteUser, useToggleLockUser, useResetPassword, useForgotPassword, useChangeStatusUser } from '../hooks/useUsers';
 import { usePermissionStore } from '../store/permissionStore';
+import { useAuthStore } from '../store/authStore';
 import { ScreenHeader, DataTable } from '../components/list-view';
 import FilterTableLayout from '../components/list-view/FilterTableLayout';
 import Pagination from '../components/list-view/Pagination';
@@ -95,8 +96,8 @@ export default function UsersPage() {
   const [detailUserId, setDetailUserId] = useState<string | null>(null);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
 
-  const { tree: rawPermissionTree, allKeys: allPermissionKeys, isLoading: permissionCatalogLoading } = usePermissions();
   const [permissionUser, setPermissionUser] = useState<User | null>(null);
+  const { tree: rawPermissionTree, allKeys: allPermissionKeys, isLoading: permissionCatalogLoading } = usePermissions({ enabled: Boolean(permissionUser) });
   const [selectedPermissionKeys, setSelectedPermissionKeys] = useState<string[]>([]);
   const [appliedPermissionSearch, setAppliedPermissionSearch] = useState('');
   const [permissionLoading, setPermissionLoading] = useState(false);
@@ -308,23 +309,50 @@ export default function UsersPage() {
     setPermissionLoading(true);
     try {
       const grants = await userService.getUserPermissions(user.id);
-      setSelectedPermissionKeys(grants.map((grant) => typeof grant === 'string' ? grant : grant.permissionCode).filter(Boolean));
+      const rawCodes = grants.map((grant) => typeof grant === 'string' ? grant : grant.permissionCode).filter(Boolean);
+      if (rawCodes.includes('admin:all') || rawCodes.includes('*')) {
+        setSelectedPermissionKeys(allPermissionKeys);
+      } else {
+        setSelectedPermissionKeys(rawCodes);
+      }
     } catch (err: any) {
-      setSelectedPermissionKeys(user.permissionCodes || []);
+      const fallbackCodes = user.permissionCodes || [];
+      if (fallbackCodes.includes('admin:all') || fallbackCodes.includes('*')) {
+        setSelectedPermissionKeys(allPermissionKeys);
+      } else {
+        setSelectedPermissionKeys(fallbackCodes);
+      }
       toast.error(err.response?.data?.message || err.message || 'Không thể tải quyền trực tiếp của người dùng');
     } finally {
       setPermissionLoading(false);
     }
-  }, []);
+  }, [allPermissionKeys]);
+
+  useEffect(() => {
+    if (permissionUser && allPermissionKeys.length > 0) {
+      setSelectedPermissionKeys((prev) => {
+        if (prev.includes('admin:all') || prev.includes('*')) {
+          return allPermissionKeys;
+        }
+        return prev;
+      });
+    }
+  }, [permissionUser, allPermissionKeys]);
 
   const handlePermissionSave = useCallback(async () => {
     if (!permissionUser) return;
     setPermissionSaving(true);
     try {
-      await userService.replaceDirectPermissions(permissionUser.id, selectedPermissionKeys);
+      const keysToSave = selectedPermissionKeys.filter((k) => k !== '*');
+      await userService.replaceDirectPermissions(permissionUser.id, keysToSave);
       toast.success('Đã cập nhật quyền trực tiếp cho người dùng');
       setPermissionUser(null);
       await refetch();
+
+      const currentAuthUser = useAuthStore.getState().user;
+      if (currentAuthUser && (currentAuthUser.id === permissionUser.id || currentAuthUser.username === permissionUser.username)) {
+        await useAuthStore.getState().refreshPermissions();
+      }
     } catch (err: any) {
       toast.error(err.response?.data?.message || err.message || 'Cập nhật quyền trực tiếp thất bại');
     } finally {
@@ -522,7 +550,7 @@ export default function UsersPage() {
         </FilterTableLayout>
 
         <Drawer
-          width="50%"
+          size="50%"
           placement="right"
           closable={false}
           open={modalOpen}
@@ -743,7 +771,7 @@ export default function UsersPage() {
         </Modal>
 
         <Drawer
-          width="50%"
+          size="50%"
           placement="right"
           closable={false}
           open={Boolean(permissionUser)}
@@ -751,7 +779,7 @@ export default function UsersPage() {
             setPermissionUser(null);
             setAppliedPermissionSearch('');
           }}
-          destroyOnClose
+          destroyOnHidden
           styles={drawerStyles}
           title={
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -828,10 +856,14 @@ export default function UsersPage() {
                       checkedKeys={getVisiblePermissionKeys(selectedPermissionKeys, permissionTreeData)}
                       onCheck={(checked) => {
                         const keys = Array.isArray(checked) ? checked : checked.checked;
-                        setSelectedPermissionKeys(
-                          mergePermissionKeys(selectedPermissionKeys, keys.map(String), permissionTreeData)
-                            .filter((key) => !key.startsWith('group_')),
-                        );
+                        const nextMerged = mergePermissionKeys(selectedPermissionKeys, keys.map(String), permissionTreeData)
+                          .filter((key) => !key.startsWith('group_'));
+                        const isFull = allPermissionKeys.length > 0 && allPermissionKeys.every((k) => nextMerged.includes(k));
+                        if (!isFull) {
+                          setSelectedPermissionKeys(nextMerged.filter((k) => k !== 'admin:all' && k !== '*'));
+                        } else {
+                          setSelectedPermissionKeys(nextMerged);
+                        }
                       }}
                     />
                   </div>
@@ -842,7 +874,7 @@ export default function UsersPage() {
         </Drawer>
 
         <Drawer
-          width="50%"
+          size="50%"
           placement="right"
           closable={false}
           open={detailUserId !== null}

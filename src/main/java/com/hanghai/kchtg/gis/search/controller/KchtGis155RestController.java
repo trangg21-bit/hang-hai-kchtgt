@@ -26,7 +26,6 @@ public class KchtGis155RestController {
     private final KchtGis155Service kchtGis155Service;
 
     @GetMapping("/search")
-    @PreAuthorize("@auth.check(authentication, 'data:read')")
     public ResponseEntity<ApiResponse<KchtGisSearchPage>> search(
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(name = "kchtType", required = false) List<InfrastructureType> kchtTypes,

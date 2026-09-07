@@ -81,6 +81,9 @@ public class RadarStation extends BaseApprovableEntity {
     @Column(name = "radar_range", precision = 20)
     private BigDecimal radarRange;
 
+    @Column(name = "map_icon", length = 64)
+    private String mapIcon;
+
     @PrePersist
     protected void onCreate() {
         if (getApprovalStatus() == null) {

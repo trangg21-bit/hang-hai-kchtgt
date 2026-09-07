@@ -24,4 +24,7 @@ public interface MaintenancePlanRepository extends JpaRepository<MaintenancePlan
 
     /** Find by expected start date range */
     List<MaintenancePlan> findByEstimatedStartDateBetween(LocalDate start, LocalDate end);
+
+    /** Count plans whose auto-generated code starts with the given prefix (for code generation). */
+    long countByCodeStartingWith(String prefix);
 }

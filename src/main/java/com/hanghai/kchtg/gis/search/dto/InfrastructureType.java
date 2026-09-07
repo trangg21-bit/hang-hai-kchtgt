@@ -32,5 +32,6 @@ public enum InfrastructureType {
     CCTV,
     SCADA,
     TRANSMISSION,
-    VTS_ASSIST
+    VTS_ASSIST,
+    SEAPORT_THROUGHPUT
 }

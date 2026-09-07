@@ -14,8 +14,8 @@ import {
   Col,
   Breadcrumb,
   Popconfirm,
+  Tabs,
   Upload,
-  message,
 } from 'antd';
 import type { UploadFile } from 'antd';
 import { CheckCircleOutlined, CloseCircleOutlined, DeleteOutlined, SendOutlined, UploadOutlined, FileOutlined } from '@ant-design/icons';
@@ -36,15 +36,17 @@ import {
   UNIT_OF_MEASURE_OPTIONS,
 } from '../../types/radarStation';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
-import { usePermissionStore } from '../../store/permissionStore';
+import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
 import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
 import RejectionModal from '../../components/shared/RejectionModal';
+import ApprovalModal from '../../components/shared/ApprovalModal';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
-import { colors } from '../../theme';
-import { fontWeightBold, fontSizeLg, fontSizeMd, spaceFormField, radiusLg, radiusPill, borderDefault, textTertiary, textPrimary, surfaceCard, outlineButtonStyle, primaryButtonStyle, badgeBaseStyle, statusDraft, statusAttention, statusOperational, statusCritical } from '../../tokens';
+import { colors, fontWeightBold, fontSizeLg, fontSizeMd, spaceFormField, radiusLg, radiusPill, borderDefault, textTertiary, textPrimary, surfaceCard, outlineButtonStyle, primaryButtonStyle, statusBadgeStyle, statusDraft, statusAttention, statusOperational, statusCritical, statusInfo, inputStyle, selectStyle } from '../../themetokenchk';
+import * as themeTokenChk from '../../themetokenchk';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 
 export interface RadarStationFormProps {
   open?: boolean;
@@ -62,15 +64,15 @@ const getProvinceLabel = (provinceId?: string): string =>
 // Status badge — semantic tokens (AGENTS.md: không hardcode màu), label từ RADAR_STATION_STATUS_MAP
 const RADAR_STATION_STATUS_STYLE_MAP: Record<string, { color: string; label: string }> = {
   DRAFT: { color: statusDraft, label: RADAR_STATION_STATUS_MAP.DRAFT?.label || 'Lưu tạm' },
-  PROPOSED: { color: statusAttention, label: RADAR_STATION_STATUS_MAP.PROPOSED?.label || 'Chờ Cảng vụ duyệt' },
-  PENDING: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
-  PENDING_APPROVAL: { color: statusAttention, label: RADAR_STATION_STATUS_MAP.PENDING_APPROVAL?.label || 'Chờ Cảng vụ duyệt' },
-  APPROVED_LEVEL1: { color: '#0284C7', label: RADAR_STATION_STATUS_MAP.APPROVED_LEVEL1?.label || 'Chờ Cục duyệt' },
-  APPROVED_LEVEL2: { color: statusOperational, label: RADAR_STATION_STATUS_MAP.APPROVED_LEVEL2?.label || 'Đã duyệt' },
-  APPROVED: { color: statusOperational, label: RADAR_STATION_STATUS_MAP.APPROVED?.label || 'Đã duyệt' },
-  REJECTED: { color: statusCritical, label: RADAR_STATION_STATUS_MAP.REJECTED?.label || 'Từ chối' },
-  REJECTED_LEVEL1: { color: statusCritical, label: RADAR_STATION_STATUS_MAP.REJECTED_LEVEL1?.label || 'Cảng vụ trả về' },
-  REJECTED_LEVEL2: { color: statusCritical, label: RADAR_STATION_STATUS_MAP.REJECTED_LEVEL2?.label || 'Cục trả về' },
+  PROPOSED: { color: statusAttention, label: RADAR_STATION_STATUS_MAP.PROPOSED?.label || 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  PENDING: { color: statusAttention, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  PENDING_APPROVAL: { color: statusAttention, label: RADAR_STATION_STATUS_MAP.PENDING_APPROVAL?.label || 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  APPROVED_LEVEL1: { color: statusInfo, label: RADAR_STATION_STATUS_MAP.APPROVED_LEVEL1?.label || 'Chờ phê duyệt cấp Cục' },
+  APPROVED_LEVEL2: { color: statusOperational, label: RADAR_STATION_STATUS_MAP.APPROVED_LEVEL2?.label || 'Đã phê duyệt' },
+  APPROVED: { color: statusOperational, label: RADAR_STATION_STATUS_MAP.APPROVED?.label || 'Đã phê duyệt' },
+  REJECTED: { color: statusCritical, label: RADAR_STATION_STATUS_MAP.REJECTED?.label || 'Từ chối cấp Cảng vụ/Chi cục' },
+  REJECTED_LEVEL1: { color: statusCritical, label: RADAR_STATION_STATUS_MAP.REJECTED_LEVEL1?.label || 'Từ chối cấp Cảng vụ/Chi cục' },
+  REJECTED_LEVEL2: { color: statusCritical, label: RADAR_STATION_STATUS_MAP.REJECTED_LEVEL2?.label || 'Từ chối cấp Cục' },
 };
 
 export default function RadarStationForm({ open, editId, mode, onCancel, onSuccess }: RadarStationFormProps = {}) {
@@ -78,7 +80,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   const { id: routeId } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm();
-  const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
 
   const isIframe = window.self !== window.top;
   const isModalMode = open !== undefined;
@@ -94,6 +96,9 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState<string | undefined>();
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c1');
+  const [rejectLevel, setRejectLevel] = useState<'c1' | 'c2'>('c1');
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
 
   const handleBeforeUpload = useCallback((file: any): false => {
@@ -127,12 +132,12 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
         console.error('Không tải được danh sách cảng biển', err);
       }
       try {
-        const vts = await vtsSystemCRUD.list({ size: 500 });
+        const vts = await vtsSystemCRUD.getOptions();
         setVtsOptions(
-          (vts.items || []).map((item) => ({
+          (vts || []).map((item) => ({
             id: item.id,
             code: item.code,
-            systemName: item.systemName,
+            systemName: item.name,
           })),
         );
       } catch (err) {
@@ -190,10 +195,6 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
             conditionStatus: data.conditionStatus || '1',
             towerHeight: data.towerHeight,
             radarRange: data.radarRange,
-            coverage: data.coverage,
-            emissionArea: data.emissionArea,
-            stationType: data.stationType,
-            source: data.source,
             note: data.note,
             gisLocation:
               data.longitude != null && data.latitude != null
@@ -205,7 +206,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
           }
           void refreshAttachments(id);
         } catch (err: unknown) {
-          message.error(err instanceof Error ? err.message : 'Không thể tải thông tin trạm radar');
+          toast.error(err instanceof Error ? err.message : 'Không thể tải thông tin trạm radar');
         } finally {
           setIsLoading(false);
         }
@@ -224,19 +225,19 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
     }
   }, [open, isCreateMode, id, isDetailMode, isModalMode, form, loadHistory, refreshAttachments]);
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = useCallback(async (submitMode: 'save' | 'submit' | 'approve' = 'save') => {
     try {
       const values = await form.validateFields();
 
       let longitude: number | undefined;
       let latitude: number | undefined;
       const gis = values.gisLocation;
-      if (gis && gis.coordinates) {
-        const match = String(gis.coordinates).match(/POINT\(([^)]+)\)/);
+      if (gis?.coordinates) {
+        // GisLocationSelector xuất WKT dạng "POINT (lng lat)" — có khoảng trắng sau POINT
+        const match = String(gis.coordinates).match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
         if (match) {
-          const parts = match[1].split(' ');
-          longitude = parseFloat(parts[0]);
-          latitude = parseFloat(parts[1]);
+          longitude = parseFloat(match[1]);
+          latitude = parseFloat(match[2]);
         }
       }
 
@@ -254,10 +255,6 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
         conditionStatus: values.conditionStatus || '1',
         towerHeight: values.towerHeight,
         radarRange: values.radarRange,
-        coverage: values.coverage?.trim() || undefined,
-        emissionArea: values.emissionArea,
-        stationType: values.stationType?.trim() || undefined,
-        source: values.source?.trim() || undefined,
         note: values.note?.trim() || undefined,
         longitude,
         latitude,
@@ -268,24 +265,50 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
       setIsSubmitting(true);
       if (isCreateMode) {
         const created = await radarStationCRUD.create(payload);
+        const savedId = created.id || null;
         const newFiles = uploadedFiles.filter((f) => f.originFileObj).map((f) => f.originFileObj as File);
-        if (newFiles.length > 0) {
+        if (savedId && newFiles.length > 0) {
           try {
-            await Promise.all(newFiles.map((f) => radarStationAttachment.upload(created.id, f)));
+            await Promise.all(newFiles.map((f) => radarStationAttachment.upload(savedId, f)));
           } catch (err) {
             console.error('Không tải lên được tài liệu đính kèm', err);
           }
         }
-        if (window.parent && (window.parent as any).kchtDetailCache) {
-          (window.parent as any).kchtDetailCache[created.id] = created;
+        if (savedId && window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[savedId] = created;
         }
-        toast.success('Tạo mới trạm radar thành công');
+        if (submitMode !== 'save' && savedId) {
+          const submitted = await radarStationApproval.submitForApproval(savedId);
+          if (submitMode === 'approve' && (submitted.status === 'APPROVED_LEVEL1' || submitted.approvalStatus === 'APPROVED_LEVEL1')) {
+            await radarStationApproval.approveLevel2(savedId);
+            toast.success('Đã phê duyệt');
+          } else if (submitMode === 'approve') {
+            toast.info('Đã tạo mới và gửi phê duyệt — hồ sơ đang chờ Cảng vụ/Chi cục duyệt');
+          } else {
+            toast.success('Đã tạo mới và gửi phê duyệt trạm radar');
+          }
+        } else {
+          toast.success('Đã tạo mới trạm radar');
+        }
       } else if (id && isEditMode) {
         const updated = await radarStationCRUD.update(id, payload as UpdateRadarStationRequest);
+        const savedId = updated.id || id;
         if (window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[id] = updated;
         }
-        toast.success('Cập nhật trạm radar thành công');
+        if (submitMode !== 'save' && savedId) {
+          const submitted = await radarStationApproval.submitForApproval(savedId);
+          if (submitMode === 'approve' && (submitted.status === 'APPROVED_LEVEL1' || submitted.approvalStatus === 'APPROVED_LEVEL1')) {
+            await radarStationApproval.approveLevel2(savedId);
+            toast.success('Đã phê duyệt');
+          } else if (submitMode === 'approve') {
+            toast.info('Đã cập nhật và gửi phê duyệt — hồ sơ đang chờ Cảng vụ/Chi cục duyệt');
+          } else {
+            toast.success('Đã cập nhật và gửi phê duyệt trạm radar');
+          }
+        } else {
+          toast.success('Đã cập nhật trạm radar');
+        }
       }
 
       if (isModalMode) {
@@ -327,16 +350,29 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
     }
   }, [id, isModalMode, isIframe, navigate, onCancel, onSuccess]);
 
-  const handleApprove = useCallback(async () => {
+  // ── Phê duyệt 2 cấp (C1: Cảng vụ/Chi cục → C2: Cục) qua ApprovalModal — khớp RadarStationList ──
+  const openApproveModal = useCallback((level: 'c1' | 'c2' = 'c1') => {
+    setApproveLevel(level);
+    setApproveModalOpen(true);
+  }, []);
+
+  const closeApproveModal = useCallback(() => {
+    setApproveModalOpen(false);
+  }, []);
+
+  const confirmApprove = useCallback(async () => {
     if (!id || !record) return;
     setIsSubmitting(true);
     try {
-      const approverId = useAuthStore.getState().user?.userId || 'system';
-      const updated = await radarStationApproval.approveL1(id, approverId);
+      const updated =
+        approveLevel === 'c2'
+          ? await radarStationApproval.approveLevel2(id)
+          : await radarStationApproval.approveLevel1(id);
       if (window.parent && (window.parent as any).kchtDetailCache) {
         (window.parent as any).kchtDetailCache[id] = updated;
       }
-      toast.success('Đã phê duyệt');
+      toast.success(approveLevel === 'c2' ? 'Đã phê duyệt cấp Cục' : 'Đã phê duyệt cấp Cảng vụ/Chi cục');
+      setApproveModalOpen(false);
       setRecord(updated);
       void loadHistory(id);
       onSuccess?.();
@@ -345,7 +381,12 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
     } finally {
       setIsSubmitting(false);
     }
-  }, [id, record, loadHistory, onSuccess]);
+  }, [id, record, approveLevel, loadHistory, onSuccess]);
+
+  const openRejectModal = useCallback((level: 'c1' | 'c2' = 'c1') => {
+    setRejectLevel(level);
+    setRejectModalVisible(true);
+  }, []);
 
   const handleRejectConfirm = useCallback(
     async (reason: string) => {
@@ -357,12 +398,14 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
       }
       setIsSubmitting(true);
       try {
-        const approverId = useAuthStore.getState().user?.userId || 'system';
-        const updated = await radarStationApproval.reject(id, trimmedReason, approverId);
+        const updated =
+          rejectLevel === 'c2'
+            ? await radarStationApproval.rejectLevel2(id, trimmedReason)
+            : await radarStationApproval.rejectLevel1(id, trimmedReason);
         if (window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[id] = updated;
         }
-        toast.success('Đã từ chối phê duyệt');
+        toast.success(rejectLevel === 'c2' ? 'Đã từ chối cấp Cục' : 'Đã từ chối cấp Cảng vụ/Chi cục');
         setRejectModalVisible(false);
         setRecord(updated);
         void loadHistory(id);
@@ -373,7 +416,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
         setIsSubmitting(false);
       }
     },
-    [id, record, loadHistory, onSuccess],
+    [id, record, rejectLevel, loadHistory, onSuccess],
   );
 
   const handleSubmitApproval = useCallback(async () => {
@@ -434,62 +477,75 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
 
   const title = isDetailMode ? 'Chi tiết trạm radar' : isEditMode ? 'Chỉnh sửa trạm radar' : 'Tạo trạm radar mới';
 
+  // Trạng thái hiện tại của bản ghi (khớp RadarStationList: status || approvalStatus)
+  const st = record?.status || record?.approvalStatus || '';
+  const currentUserId = useAuthStore.getState().user?.userId;
+  // Chỉ những trạng thái chưa duyệt xong mới được gửi duyệt (lại) từ màn Cập nhật
+  const canResubmit = isEditMode && ['DRAFT', 'PROPOSED', 'REJECTED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(st);
+
   // ── Nội dung chế độ xem chi tiết ────────────────────────────────────
-  const renderDetail = () => (
+  const renderDetailGeneralTab = () => (
+    <>
+      {record ? (
+        <Descriptions column={2} bordered size="small" style={{ marginTop: 16 }}>
+          <Descriptions.Item label="Mã trạm radar">{record.code || '—'}</Descriptions.Item>
+          <Descriptions.Item label="Tên trạm radar">{record.stationName || '—'}</Descriptions.Item>
+          <Descriptions.Item label="Đơn vị quản lý">{record.orgUnitName || orgNameById(record.orgUnitId)}</Descriptions.Item>
+          <Descriptions.Item label="Cảng biển">{record.seaportName || seaportLabelById(record.seaportId)}</Descriptions.Item>
+          <Descriptions.Item label="Hệ thống VTS">{record.vtsSystemName || vtsLabelById(record.vtsSystemId)}</Descriptions.Item>
+          <Descriptions.Item label="Trung tâm điều hành VTS">
+            {record.vtsOperationCenterName || vtsLabelById(record.vtsOperationCenterId)}
+          </Descriptions.Item>
+          <Descriptions.Item label="Đơn vị khai thác">{orgNameById(record.operatingUnitId)}</Descriptions.Item>
+          <Descriptions.Item label="Địa điểm (Tỉnh/TP)">{getProvinceLabel(record.provinceId)}</Descriptions.Item>
+          <Descriptions.Item label="Đơn vị tính">{record.unitOfMeasure || '—'}</Descriptions.Item>
+          <Descriptions.Item label="Số lượng">{record.quantity != null ? record.quantity : '—'}</Descriptions.Item>
+          <Descriptions.Item label="Tình trạng">
+            {record.conditionStatus ? (CONDITION_STATUS_MAP[record.conditionStatus]?.label || record.conditionStatus) : '—'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Chiều cao tháp radar (m)">
+            {record.towerHeight != null ? Number(record.towerHeight).toLocaleString('vi-VN') : '—'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Tầm hiệu lực radar">{record.radarRange || '—'}</Descriptions.Item>
+          <Descriptions.Item label="Trạng thái">
+            {(() => {
+              const s = RADAR_STATION_STATUS_STYLE_MAP[st] || { color: textTertiary, label: st || '—' };
+              return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
+            })()}
+          </Descriptions.Item>
+          <Descriptions.Item label="Người tạo">{record.createdBy || '—'}</Descriptions.Item>
+          <Descriptions.Item label="Ngày tạo">{record.createdAt ? new Date(record.createdAt).toLocaleString('vi-VN') : '—'}</Descriptions.Item>
+          <Descriptions.Item label="Người cập nhật cuối">{record.updatedBy || '—'}</Descriptions.Item>
+          <Descriptions.Item label="Ngày cập nhật">{record.updatedAt ? new Date(record.updatedAt).toLocaleString('vi-VN') : '—'}</Descriptions.Item>
+          {record.rejectionReason && (
+            <Descriptions.Item label="Lý do từ chối" span={2}>{record.rejectionReason}</Descriptions.Item>
+          )}
+        </Descriptions>
+      ) : (
+        <Spin spinning={isLoading}>
+          <div style={{ padding: '40px 0', textAlign: 'center' }}>Đang tải thông tin trạm radar...</div>
+        </Spin>
+      )}
+    </>
+  );
+
+  const renderDetailGisTab = () => (
     <>
       {record ? (
         <>
           <Descriptions column={2} bordered size="small" style={{ marginTop: 16 }}>
-            <Descriptions.Item label="Mã trạm radar">{record.code || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Tên trạm radar">{record.stationName || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Đơn vị quản lý">{record.orgUnitName || orgNameById(record.orgUnitId)}</Descriptions.Item>
-            <Descriptions.Item label="Cảng biển">{record.seaportName || seaportLabelById(record.seaportId)}</Descriptions.Item>
-            <Descriptions.Item label="Hệ thống VTS">{record.vtsSystemName || vtsLabelById(record.vtsSystemId)}</Descriptions.Item>
-            <Descriptions.Item label="Trung tâm điều hành VTS">
-              {record.vtsOperationCenterName || vtsLabelById(record.vtsOperationCenterId)}
-            </Descriptions.Item>
-            <Descriptions.Item label="Đơn vị khai thác">{orgNameById(record.operatingUnitId)}</Descriptions.Item>
-            <Descriptions.Item label="Địa điểm (Tỉnh/TP)">{getProvinceLabel(record.provinceId)}</Descriptions.Item>
-            <Descriptions.Item label="Đơn vị tính">{record.unitOfMeasure || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Số lượng">{record.quantity != null ? record.quantity : '—'}</Descriptions.Item>
-            <Descriptions.Item label="Tình trạng">
-              {record.conditionStatus ? (CONDITION_STATUS_MAP[record.conditionStatus]?.label || record.conditionStatus) : '—'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Loại trạm">{record.stationType || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Chiều cao tháp radar (m)">
-              {record.towerHeight != null ? Number(record.towerHeight).toLocaleString('vi-VN') : '—'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Tầm hiệu lực radar">{record.radarRange || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Vùng phủ sóng">{record.coverage || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Diện tích phát xạ (km²)">
-              {record.emissionArea != null ? Number(record.emissionArea).toLocaleString('vi-VN') : '—'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Nguồn gốc">{record.source || '—'}</Descriptions.Item>
             <Descriptions.Item label="Kinh độ">{record.longitude != null ? Number(record.longitude).toFixed(6) : '—'}</Descriptions.Item>
             <Descriptions.Item label="Vĩ độ">{record.latitude != null ? Number(record.latitude).toFixed(6) : '—'}</Descriptions.Item>
             <Descriptions.Item label="Vị trí" span={2}>{record.location || '—'}</Descriptions.Item>
             <Descriptions.Item label="Ghi chú" span={2}>{record.note || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Trạng thái">
-              {(() => {
-                const s = RADAR_STATION_STATUS_STYLE_MAP[record.status || ''] || { color: textTertiary, label: record.status || '—' };
-                return <span style={{ ...badgeBaseStyle, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
-              })()}
-            </Descriptions.Item>
-            <Descriptions.Item label="Người tạo">{record.createdBy || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Ngày tạo">{record.createdAt ? new Date(record.createdAt).toLocaleString('vi-VN') : '—'}</Descriptions.Item>
-            <Descriptions.Item label="Người cập nhật cuối">{record.updatedBy || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Ngày cập nhật">{record.updatedAt ? new Date(record.updatedAt).toLocaleString('vi-VN') : '—'}</Descriptions.Item>
-            {record.rejectionReason && (
-              <Descriptions.Item label="Lý do từ chối" span={2}>{record.rejectionReason}</Descriptions.Item>
-            )}
             <Descriptions.Item label="Tài liệu đính kèm" span={2}>
               <AttachmentList attachments={record.attachments || []} readonly />
             </Descriptions.Item>
           </Descriptions>
 
-          {/* Nút phê duyệt 1 cấp + Gửi duyệt + Xóa (trong Popconfirm) */}
+          {/* Nút phê duyệt 2 cấp (C1: Cảng vụ/Chi cục → C2: Cục) + Gửi duyệt + Xóa — khớp RadarStationList */}
           <Space wrap style={{ marginTop: 16, marginBottom: 8 }}>
-            {(record.status === 'DRAFT' || record.status === 'REJECTED') && hasPerm('radarstation:update') && (
+            {['DRAFT', 'PROPOSED', 'REJECTED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(st) && hasPerm('radarstation:update') && (
               <Popconfirm
                 title="Gửi duyệt?"
                 description="Sau khi gửi duyệt, trạm radar chuyển sang trạng thái chờ phê duyệt."
@@ -502,25 +558,27 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
                 </Button>
               </Popconfirm>
             )}
-            {record.status === 'PENDING_APPROVAL' && hasPerm('radarstation:approvec1') && (
-              <Popconfirm
-                title="Phê duyệt?"
-                description="Sau khi phê duyệt, trạm radar chuyển sang trạng thái đã phê duyệt."
-                okText="Phê duyệt"
-                cancelText="Hủy"
-                onConfirm={handleApprove}
-              >
-                <Button type="primary" icon={<CheckCircleOutlined />} loading={isSubmitting}>
-                  Phê duyệt
-                </Button>
-              </Popconfirm>
-            )}
-            {record.status === 'PENDING_APPROVAL' && hasPerm('radarstation:approvec1') && (
-              <Button danger icon={<CloseCircleOutlined />} onClick={() => setRejectModalVisible(true)}>
-                Từ chối
+            {st === 'PENDING_APPROVAL' && hasPerm('radarstation:approvec1') && currentUserId !== record.createdBy && (
+              <Button type="primary" icon={<CheckCircleOutlined />} loading={isSubmitting} onClick={() => openApproveModal('c1')}>
+                Phê duyệt cấp Cảng vụ/Chi cục
               </Button>
             )}
-            {record.status === 'APPROVED' && hasPerm('radarstation:delete') && (
+            {st === 'PENDING_APPROVAL' && hasPerm('radarstation:approvec1') && currentUserId !== record.createdBy && (
+              <Button danger icon={<CloseCircleOutlined />} onClick={() => openRejectModal('c1')}>
+                Từ chối cấp Cảng vụ/Chi cục
+              </Button>
+            )}
+            {st === 'APPROVED_LEVEL1' && hasPerm('radarstation:approvec2') && currentUserId !== record.approverLevel1 && (
+              <Button type="primary" icon={<CheckCircleOutlined />} loading={isSubmitting} onClick={() => openApproveModal('c2')}>
+                Phê duyệt cấp Cục
+              </Button>
+            )}
+            {st === 'APPROVED_LEVEL1' && hasPerm('radarstation:approvec2') && currentUserId !== record.approverLevel1 && (
+              <Button danger icon={<CloseCircleOutlined />} onClick={() => openRejectModal('c2')}>
+                Từ chối cấp Cục
+              </Button>
+            )}
+            {st === 'DRAFT' && hasPerm('radarstation:delete') && (
               <Popconfirm
                 title="Xác nhận xóa"
                 description={`Bạn có chắc muốn xóa trạm radar "${record.stationName || record.code}"?`}
@@ -557,19 +615,37 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
     </>
   );
 
+  const renderDetail = () => (
+    <Tabs
+      defaultActiveKey="1"
+      items={[
+        {
+          key: '1',
+          label: 'Thông tin chung',
+          children: renderDetailGeneralTab(),
+        },
+        {
+          key: '2',
+          label: 'Thông tin vị trí GIS',
+          children: renderDetailGisTab(),
+        },
+      ]}
+    />
+  );
+
   // ── Nội dung chế độ tạo mới / chỉnh sửa ─────────────────────────────
-  const renderForm = () => (
+  const renderFormGeneralTab = () => (
     <Form
       form={form}
       layout="vertical"
-      onFinish={handleSubmit}
+      onFinish={() => handleSubmit('save')}
       autoComplete="off"
       style={{ marginTop: 16, maxHeight: '62vh', overflowY: 'auto', paddingRight: 12 }}
     >
       <Row gutter={16}>
         <Col span={12}>
           <Form.Item label="Mã trạm radar" name="code">
-            <Input disabled placeholder="Tự sinh (RADAR-...)" style={{ borderRadius: radiusPill, height: 40 }} />
+            <Input disabled placeholder="Tự sinh (RADAR-...)" style={inputStyle} />
           </Form.Item>
         </Col>
         <Col span={12}>
@@ -581,7 +657,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
               { max: 255, message: 'Tên trạm radar tối đa 255 ký tự' },
             ]}
           >
-            <Input placeholder="VD: Trạm radar Hải Phòng 1" style={{ borderRadius: radiusPill, height: 40 }} />
+            <Input placeholder="VD: Trạm radar Hải Phòng 1" style={inputStyle} />
           </Form.Item>
         </Col>
       </Row>
@@ -609,7 +685,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
                 value: port.id,
                 label: port.portCode ? `${port.portCode} - ${port.portName || ''}` : port.portName || port.id,
               }))}
-              style={{ borderRadius: radiusPill, height: 40 }}
+              style={selectStyle}
             />
           </Form.Item>
         </Col>
@@ -628,7 +704,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
                 label: vts.code ? `${vts.code} - ${vts.systemName || ''}` : vts.systemName || vts.id,
               }))}
               onChange={() => form.setFieldValue('vtsOperationCenterId', undefined)}
-              style={{ borderRadius: radiusPill, height: 40 }}
+              style={selectStyle}
             />
           </Form.Item>
         </Col>
@@ -643,7 +719,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
                 value: vts.id,
                 label: vts.code ? `${vts.code} - ${vts.systemName || ''}` : vts.systemName || vts.id,
               }))}
-              style={{ borderRadius: radiusPill, height: 40 }}
+              style={selectStyle}
             />
           </Form.Item>
         </Col>
@@ -657,7 +733,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
               placeholder="Chọn đơn vị khai thác"
               allowClear
               showSearch
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+              style={{ width: '100%', ...selectStyle }}
             />
           </Form.Item>
         </Col>
@@ -669,7 +745,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
               showSearch
               optionFilterProp="label"
               options={VIETNAM_PROVINCE_OPTIONS}
-              style={{ borderRadius: radiusPill, height: 40 }}
+              style={selectStyle}
             />
           </Form.Item>
         </Col>
@@ -682,7 +758,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
               placeholder="Chọn đơn vị tính"
               allowClear
               options={UNIT_OF_MEASURE_OPTIONS}
-              style={{ borderRadius: radiusPill, height: 40 }}
+              style={selectStyle}
             />
           </Form.Item>
         </Col>
@@ -719,12 +795,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
             name="conditionStatus"
             rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
           >
-            <Select placeholder="Chọn tình trạng" options={CONDITION_STATUS_OPTIONS} style={{ borderRadius: radiusPill, height: 40 }} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item label="Loại trạm" name="stationType">
-            <Input placeholder="VD: Radar X, Radar S" style={{ borderRadius: radiusPill, height: 40 }} />
+            <Select placeholder="Chọn tình trạng" options={CONDITION_STATUS_OPTIONS} style={selectStyle} />
           </Form.Item>
         </Col>
       </Row>
@@ -737,40 +808,21 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
         </Col>
         <Col span={12}>
           <Form.Item label="Tầm hiệu lực radar" name="radarRange">
-            <Input placeholder="Nhập tầm hiệu lực (tối đa 20 ký tự)" maxLength={20} style={{ borderRadius: radiusPill, height: 40 }} />
+            <Input placeholder="Nhập tầm hiệu lực (tối đa 20 ký tự)" maxLength={20} style={inputStyle} />
           </Form.Item>
         </Col>
       </Row>
+    </Form>
+  );
 
-      <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item label="Vùng phủ sóng" name="coverage">
-            <Input placeholder="VD: Luồng vào cảng Hải Phòng" style={{ borderRadius: radiusPill, height: 40 }} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Diện tích phát xạ (km²)"
-            name="emissionArea"
-            rules={[
-              {
-                validator: (_, value) => {
-                  if (value == null || value === '') return Promise.resolve();
-                  if (value <= 0) return Promise.reject(new Error('Diện tích phát xạ phải lớn hơn 0'));
-                  return Promise.resolve();
-                },
-              },
-            ]}
-          >
-            <InputNumber min={0} step={0.01} placeholder="Nhập diện tích phát xạ" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-          </Form.Item>
-        </Col>
-      </Row>
-
-      <Form.Item label="Nguồn gốc" name="source">
-        <Input placeholder="VD: Nhập khẩu - Nhật Bản" style={{ borderRadius: radiusPill, height: 40 }} />
-      </Form.Item>
-
+  const renderFormGisTab = () => (
+    <Form
+      form={form}
+      layout="vertical"
+      onFinish={() => handleSubmit('save')}
+      autoComplete="off"
+      style={{ marginTop: 16, maxHeight: '62vh', overflowY: 'auto', paddingRight: 12 }}
+    >
       <Form.Item
         label="Vị trí"
         name="location"
@@ -788,7 +840,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
 
       <Form.Item label="Tọa độ GIS (điểm)">
         <Form.Item name="gisLocation" noStyle>
-          <GisLocationSelector defaultGeometryType="POINT" />
+          <GisLocationSelector defaultGeometryType="POINT" disabled={isDetailMode} />
         </Form.Item>
       </Form.Item>
 
@@ -824,9 +876,28 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
     </Form>
   );
 
+  const renderForm = () => (
+    <Tabs
+      defaultActiveKey="1"
+      items={[
+        {
+          key: '1',
+          label: 'Thông tin chung',
+          children: renderFormGeneralTab(),
+        },
+        {
+          key: '2',
+          label: 'Thông tin vị trí GIS',
+          children: renderFormGisTab(),
+        },
+      ]}
+    />
+  );
+
   // ── Modal (chế độ dùng chung từ danh sách) ──────────────────────────
   if (isModalMode) {
     return (
+      <ThemeTokenProvider tokens={themeTokenChk}>
       <>
         <Modal
           title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{title}</span>}
@@ -840,12 +911,39 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
               <Button type="primary" onClick={onCancel} style={outlineButtonStyle}>
                 Đóng
               </Button>
+            ) : isEditMode ? (
+              <>
+                <Button onClick={onCancel} style={outlineButtonStyle}>Hủy</Button>
+                <Button type="primary" onClick={() => handleSubmit('save')} loading={isSubmitting} style={primaryButtonStyle}>
+                  Cập nhật
+                </Button>
+                {canResubmit && (
+                  <>
+                    <Button onClick={() => handleSubmit('submit')} loading={isSubmitting} style={outlineButtonStyle}>
+                      Lưu và gửi phê duyệt
+                    </Button>
+                    {hasPerm('radarstation:approvec2') && (
+                      <Button type="primary" onClick={() => handleSubmit('approve')} loading={isSubmitting} style={primaryButtonStyle}>
+                        Lưu và phê duyệt
+                      </Button>
+                    )}
+                  </>
+                )}
+              </>
             ) : (
               <>
                 <Button onClick={onCancel} style={outlineButtonStyle}>Hủy</Button>
-                <Button type="primary" onClick={() => form.submit()} loading={isSubmitting} style={primaryButtonStyle}>
-                  {isEditMode ? 'Cập nhật' : 'Tạo mới'}
+                <Button onClick={() => handleSubmit('save')} loading={isSubmitting} style={outlineButtonStyle}>
+                  Lưu tạm
                 </Button>
+                <Button type="primary" onClick={() => handleSubmit('submit')} loading={isSubmitting} style={primaryButtonStyle}>
+                  Lưu và gửi phê duyệt
+                </Button>
+                {hasPerm('radarstation:approvec2') && (
+                  <Button type="primary" onClick={() => handleSubmit('approve')} loading={isSubmitting} style={primaryButtonStyle}>
+                    Lưu và phê duyệt
+                  </Button>
+                )}
               </>
             )
           }
@@ -860,18 +958,27 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
           onConfirm={handleRejectConfirm}
           onCancel={() => setRejectModalVisible(false)}
         />
+        <ApprovalModal
+          open={approveModalOpen}
+          level={approveLevel}
+          loading={isSubmitting}
+          onConfirm={confirmApprove}
+          onCancel={closeApproveModal}
+        />
       </>
+      </ThemeTokenProvider>
     );
   }
 
   // ── Trang độc lập (route /radar-station/create | /radar-station/:id) ──
   const breadcrumbs = [
     { title: 'Trang chủ', onClick: () => navigate('/') },
-    { title: 'Trạm Radar', onClick: () => navigate('/radar-station') },
+    { title: 'Quản lý trạm radar', onClick: () => navigate('/radar-station') },
     { title: isCreateMode ? 'Tạo mới' : isEditMode ? 'Chỉnh sửa' : 'Chi tiết' },
   ];
 
   return (
+    <ThemeTokenProvider tokens={themeTokenChk}>
     <div style={{ padding: '24px' }}>
       {!isIframe && <Breadcrumb items={breadcrumbs} style={{ marginBottom: 16 }} />}
       <div style={{ background: surfaceCard, borderRadius: radiusLg, padding: '16px 24px' }}>
@@ -886,9 +993,39 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
             <Button style={outlineButtonStyle} onClick={isIframe ? () => window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*') : () => navigate('/radar-station')}>
               Hủy
             </Button>
-            <Button type="primary" style={primaryButtonStyle} onClick={() => form.submit()} loading={isSubmitting}>
-              {isEditMode ? 'Cập nhật' : 'Tạo mới'}
-            </Button>
+            {isEditMode ? (
+              <>
+                <Button type="primary" style={primaryButtonStyle} onClick={() => handleSubmit('save')} loading={isSubmitting}>
+                  Cập nhật
+                </Button>
+                {canResubmit && (
+                  <>
+                    <Button style={outlineButtonStyle} onClick={() => handleSubmit('submit')} loading={isSubmitting}>
+                      Lưu và gửi phê duyệt
+                    </Button>
+                    {hasPerm('radarstation:approvec2') && (
+                      <Button type="primary" style={primaryButtonStyle} onClick={() => handleSubmit('approve')} loading={isSubmitting}>
+                        Lưu và phê duyệt
+                      </Button>
+                    )}
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                <Button style={outlineButtonStyle} onClick={() => handleSubmit('save')} loading={isSubmitting}>
+                  Lưu tạm
+                </Button>
+                <Button type="primary" style={primaryButtonStyle} onClick={() => handleSubmit('submit')} loading={isSubmitting}>
+                  Lưu và gửi phê duyệt
+                </Button>
+                {hasPerm('radarstation:approvec2') && (
+                  <Button type="primary" style={primaryButtonStyle} onClick={() => handleSubmit('approve')} loading={isSubmitting}>
+                    Lưu và phê duyệt
+                  </Button>
+                )}
+              </>
+            )}
           </Space>
         )}
       </div>
@@ -898,6 +1035,14 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
         onConfirm={handleRejectConfirm}
         onCancel={() => setRejectModalVisible(false)}
       />
+      <ApprovalModal
+        open={approveModalOpen}
+        level={approveLevel}
+        loading={isSubmitting}
+        onConfirm={confirmApprove}
+        onCancel={closeApproveModal}
+      />
     </div>
+    </ThemeTokenProvider>
   );
 }

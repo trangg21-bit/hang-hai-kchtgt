@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Card, Form, Button, Space, Typography, Row, Col, Tag, Select } from 'antd';
+import { Card, Form, Button, Space, Typography, Row, Col, Tag } from 'antd';
 import { ArrowLeftOutlined, SendOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { beaconStationCRUD, approval } from '../../services/beaconService';
@@ -10,7 +10,7 @@ import {
   type BeaconStatus,
 } from '../../types/beacon';
 import FormField from '../../components/FormField';
-import { radiusPill, fontSizeMd, borderDefault, textSecondary } from '../../tokens';
+import { radiusPill, fontSizeMd, borderDefault, textSecondary } from '../../themetokenchk';
 import toast, { message } from '../../components/ToastNotification';
 import { organizationService } from '../../services/organizationService';
 
@@ -232,6 +232,7 @@ export default function BeaconStationForm() {
             name="unitId"
             label="Đơn vị quản lý"
             placeholder="Chọn đơn vị quản lý"
+            disabled={isEdit}
             options={organizations.map((org) => ({
               value: org.id,
               label: org.code ? `${org.code} - ${org.name}` : org.name,

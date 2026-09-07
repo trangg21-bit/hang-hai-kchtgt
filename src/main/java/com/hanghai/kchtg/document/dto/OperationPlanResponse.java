@@ -28,9 +28,25 @@ public class OperationPlanResponse {
     private LocalTime startTime;
     private LocalTime endTime;
     private OperationStatus status;
+
+    private UUID orgUnitId;
+    private String orgUnitName;
+    private UUID operatingOrgUnitId;
+    private String infrastructureType;
+    private String code;
+    private String name;
+    private String content;
+    private LocalDate expectedStartDate;
+    private LocalDate expectedEndDate;
+    private String note;
+
     private UUID createdBy;
     private LocalDateTime createdDate;
     private UUID updatedBy;
     private LocalDateTime updatedDate;
+
     private List<OperationDetailResponse> operationDetails;
+    private List<OperationPlanWorkResponse> workItems;
+    private List<OperationPlanFileResponse> files;
+    private List<OperationConfirmationResponse> confirmations;
 }

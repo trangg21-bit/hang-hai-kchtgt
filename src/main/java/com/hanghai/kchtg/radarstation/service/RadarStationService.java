@@ -42,6 +42,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.text.Normalizer;
 
 @Service
@@ -92,10 +93,10 @@ public class RadarStationService {
     @Transactional(readOnly = true)
     public String generateCode() {
         long next = repository.count() + 1;
-        String code = String.format("RADAR-%04d", next);
+        String code = String.format("RADAR-%06d", next);
         while (repository.existsByCode(code)) {
             next++;
-            code = String.format("RADAR-%04d", next);
+            code = String.format("RADAR-%06d", next);
         }
         return code;
     }
@@ -109,7 +110,10 @@ public class RadarStationService {
         }
 
         String code = generateCode();
-        ApprovalStatus initialStatus = "submit".equals(action) ? ApprovalStatus.PENDING_APPROVAL : ApprovalStatus.DRAFT;
+        // Tạo mới luôn khởi tạo Lưu tạm (DRAFT); nhánh action=submit được áp qua
+        // approvalService.submit() cuối phương thức — Rule 14: người cấp Cục gửi vào thẳng
+        // APPROVED_LEVEL1 ('Chờ Cục duyệt'), cấp Cảng vụ/Chi cục vào PENDING_APPROVAL.
+        ApprovalStatus initialStatus = ApprovalStatus.DRAFT;
 
         RadarStation entity = RadarStation.builder()
                 .code(code)
@@ -131,6 +135,7 @@ public class RadarStationService {
                 .note(trimToNull(request.getNote()))
                 .towerHeight(request.getTowerHeight())
                 .radarRange(request.getRadarRange())
+                .mapIcon(request.getMapIcon())
                 .approvalStatus(initialStatus)
                 .build();
 
@@ -156,6 +161,13 @@ public class RadarStationService {
                     InfrastructureType.RADAR_STATION_LEGACY
             );
             saved.setSpatialId(spatialObj.getId());
+            saved = repository.save(saved);
+        }
+
+        if ("submit".equals(action)) {
+            // 'Lưu và gửi phê duyệt' khi tạo mới: đi qua đúng luồng submit chuẩn (Rule 14),
+            // ghi submittedAt/submittedBy + set trạng thái theo cấp đơn vị người gửi.
+            approvalService.submit(saved, InfrastructureType.RADAR_STATION, createdBy);
             saved = repository.save(saved);
         }
 
@@ -272,6 +284,7 @@ public class RadarStationService {
         if (request.getNote() != null) entity.setNote(request.getNote().trim());
         if (request.getTowerHeight() != null) entity.setTowerHeight(request.getTowerHeight());
         if (request.getRadarRange() != null) entity.setRadarRange(request.getRadarRange());
+        if (request.getMapIcon() != null) entity.setMapIcon(request.getMapIcon().trim());
 
         RadarStation saved = repository.save(entity);
 
@@ -292,7 +305,7 @@ public class RadarStationService {
                     objType,
                     coordinates,
                     refId,
-                    InfrastructureType.RADAR_STATION
+                    InfrastructureType.RADAR_STATION_LEGACY
             );
             if (saved.getSpatialId() == null) {
                 saved.setSpatialId(spatialObj.getId());
@@ -431,7 +444,8 @@ public class RadarStationService {
         counts.put("DRAFT", 0L);
         counts.put("PENDING_APPROVAL", 0L);
         counts.put("APPROVED_LEVEL1", 0L);
-        counts.put("REJECTED", 0L);
+        counts.put("REJECTED_LEVEL1", 0L);
+        counts.put("REJECTED_LEVEL2", 0L);
         counts.put("APPROVED", 0L);
 
         long total = 0L;
@@ -445,7 +459,8 @@ public class RadarStationService {
                 case DRAFT, PROPOSED -> counts.put("DRAFT", counts.get("DRAFT") + count);
                 case PENDING_APPROVAL -> counts.put("PENDING_APPROVAL", counts.get("PENDING_APPROVAL") + count);
                 case APPROVED_LEVEL1 -> counts.put("APPROVED_LEVEL1", counts.get("APPROVED_LEVEL1") + count);
-                case REJECTED_LEVEL1, REJECTED_LEVEL2, REJECTED -> counts.put("REJECTED", counts.get("REJECTED") + count);
+                case REJECTED_LEVEL1, REJECTED -> counts.put("REJECTED_LEVEL1", counts.get("REJECTED_LEVEL1") + count);
+                case REJECTED_LEVEL2 -> counts.put("REJECTED_LEVEL2", counts.get("REJECTED_LEVEL2") + count);
                 case APPROVED, APPROVED_LEVEL2 -> counts.put("APPROVED", counts.get("APPROVED") + count);
                 default -> {}
             }
@@ -455,7 +470,7 @@ public class RadarStationService {
     }
 
     @Transactional(readOnly = true)
-    public Page<RadarStationResponse> searchPaged(String keyword, UUID orgUnitId, UUID seaportId,
+    public Page<RadarStationResponse> searchPaged(String keyword, String code, UUID orgUnitId, UUID seaportId,
                                                    UUID vtsSystemId, UUID vtsOperationCenterId,
                                                    UUID operatingUnitId, Integer provinceId,
                                                    String conditionStatus, String approvalStatusStr,
@@ -465,12 +480,15 @@ public class RadarStationService {
         String keywordPattern = (keyword != null && !keyword.trim().isEmpty())
                 ? "%" + keyword.trim().toLowerCase() + "%"
                 : null;
+        String codePattern = (code != null && !code.trim().isEmpty())
+                ? "%" + code.trim().toLowerCase() + "%"
+                : null;
         ApprovalStatus statusEnum = (approvalStatusStr != null && !approvalStatusStr.trim().isEmpty())
                 ? ApprovalStatus.fromString(approvalStatusStr)
                 : null;
 
         return repository.searchPaged(
-                !scope.unrestricted(), scope.orgUnitIds(), orgUnitId, keywordPattern,
+                !scope.unrestricted(), scope.orgUnitIds(), orgUnitId, keywordPattern, codePattern,
                 seaportId, vtsSystemId, vtsOperationCenterId, operatingUnitId, provinceId,
                 conditionStatus, statusEnum, updatedBy, updatedFrom, updatedTo, pageable)
                 .map(this::toResponse);
@@ -478,7 +496,7 @@ public class RadarStationService {
 
     @Transactional(readOnly = true)
     public List<RadarStationResponse> search(UUID orgUnitId, String keyword, String conditionStatus, String approvalStatusStr) {
-        return searchPaged(keyword, orgUnitId, null, null, null, null, null,
+        return searchPaged(keyword, null, orgUnitId, null, null, null, null, null,
                 conditionStatus, approvalStatusStr, null, null, null, null, Pageable.unpaged())
                 .getContent();
     }
@@ -515,20 +533,44 @@ public class RadarStationService {
                 .map(InfrastructureHistory::getApprovedBy)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-        Map<UUID, String> userNames = resolveUserNames(userIds);
+        Map<UUID, com.hanghai.kchtg.user.entity.User> userMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.findAllByIdInWithOrgUnit(userIds).stream()
+                        .collect(Collectors.toMap(com.hanghai.kchtg.user.entity.User::getId, u -> u, (a, b) -> a));
 
-        return historyList.stream().map(h -> HistoryEntry.builder()
-                .id(h.getId())
-                .approvalLevel(h.getApprovalLevel())
-                .status(h.getStatus() != null ? h.getStatus().getCode() : null)
-                .approvedBy(h.getApprovedBy() != null ? userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : null)
-                .orgUnitName(null)
-                .approvedDate(h.getApprovedDate())
-                .reason(h.getReason())
-                .changedField(h.getChangedField())
-                .previousValue(h.getPreviousValue())
-                .newValue(h.getNewValue())
-                .build()).toList();
+        return historyList.stream().map(h -> {
+            com.hanghai.kchtg.user.entity.User u = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
+            // list-screen-ui-standard §3: chỉ Họ và tên (hoặc tên đăng nhập);
+            // không để lộ email hay UUID ra giao diện.
+            String userName = u != null
+                    ? (u.getFullName() != null && !u.getFullName().trim().isEmpty() ? u.getFullName()
+                            : (u.getUsername() != null && !u.getUsername().trim().isEmpty() ? u.getUsername() : null))
+                    : null;
+            String orgUnitName = null;
+            if (u != null) {
+                if (u.getOrgUnit() != null && u.getOrgUnit().getName() != null && !u.getOrgUnit().getName().isBlank()) {
+                    orgUnitName = u.getOrgUnit().getName();
+                } else if (u.getDepartment() != null && !u.getDepartment().isBlank()) {
+                    orgUnitName = u.getDepartment();
+                } else {
+                    orgUnitName = "Cục Hàng hải Việt Nam";
+                }
+            }
+            if (orgUnitName == null) {
+                orgUnitName = "Cục Hàng hải Việt Nam";
+            }
+            return HistoryEntry.builder()
+                    .id(h.getId())
+                    .approvalLevel(h.getApprovalLevel())
+                    .status(h.getStatus() != null ? h.getStatus().getCode() : null)
+                    .approvedBy(userName)
+                    .orgUnitName(orgUnitName)
+                    .approvedDate(h.getApprovedDate())
+                    .reason(h.getReason())
+                    .changedField(h.getChangedField())
+                    .previousValue(h.getPreviousValue())
+                    .newValue(h.getNewValue())
+                    .build();
+        }).toList();
     }
 
     private static String normalizeSearchKeyword(String keyword) {
@@ -536,25 +578,6 @@ public class RadarStationService {
         return Normalizer.normalize(keyword.trim().toLowerCase(java.util.Locale.ROOT), Normalizer.Form.NFD)
                 .replaceAll("\\p{M}+", "")
                 .replace('đ', 'd');
-    }
-
-    private Map<UUID, String> resolveUserNames(Collection<UUID> userIds) {
-        if (userIds == null || userIds.isEmpty()) {
-            return Collections.emptyMap();
-        }
-        Set<UUID> nonNullIds = userIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
-        if (nonNullIds.isEmpty()) {
-            return Collections.emptyMap();
-        }
-        List<com.hanghai.kchtg.user.entity.User> users = userRepository.findAllByIdInWithOrgUnit(nonNullIds);
-        Map<UUID, String> map = new java.util.HashMap<>();
-        for (com.hanghai.kchtg.user.entity.User u : users) {
-            String userStr = (u.getFullName() != null && !u.getFullName().trim().isEmpty())
-                    ? u.getFullName()
-                    : u.getUsername();
-            map.put(u.getId(), userStr);
-        }
-        return map;
     }
 
     // ── Attachment operations ─────────────────────────────────────────
@@ -652,6 +675,16 @@ public class RadarStationService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public InfrastructureAttachment getAttachment(UUID id, UUID attId) {
+        RadarStation entity = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
+
+        return attachmentRepository.findByIdAndRefIdAndRefType(attId, id, InfrastructureType.RADAR_STATION)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy file đính kèm với ID: " + attId));
+    }
+
     private RadarStationAttachmentResponse toAttachmentResponse(InfrastructureAttachment a) {
         return RadarStationAttachmentResponse.builder()
                 .id(a.getId())
@@ -668,6 +701,26 @@ public class RadarStationService {
         List<RadarStationAttachmentResponse> attachments = attachmentRepository
                 .findByRefIdAndRefTypeOrderByUploadedDateDesc(entity.getId(), InfrastructureType.RADAR_STATION)
                 .stream().map(this::toAttachmentResponse).toList();
+
+        // Gom 5 người dùng (tạo / sửa / gửi duyệt / duyệt C1 / duyệt C2) vào một truy vấn.
+        Set<UUID> relatedUserIds = Stream
+                .of(entity.getCreatedBy(), entity.getUpdatedBy(), entity.getApproverLevel1(),
+                        entity.getApproverLevel2(), entity.getSubmittedBy())
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> relatedUserNames = new HashMap<>();
+        if (!relatedUserIds.isEmpty()) {
+            userRepository.findAllById(relatedUserIds).stream()
+                    .forEach(u -> relatedUserNames.put(u.getId(),
+                            u.getFullName() != null && !u.getFullName().isBlank()
+                                    ? u.getFullName().trim() : u.getUsername()));
+        }
+
+        String createdByName = relatedUserNames.get(entity.getCreatedBy());
+        String updatedByName = relatedUserNames.get(entity.getUpdatedBy());
+        String submittedByName = relatedUserNames.get(entity.getSubmittedBy());
+        String approverLevel1Name = relatedUserNames.get(entity.getApproverLevel1());
+        String approverLevel2Name = relatedUserNames.get(entity.getApproverLevel2());
 
         RadarStationResponse.RadarStationResponseBuilder builder = RadarStationResponse.builder()
                 .id(entity.getId())
@@ -699,19 +752,29 @@ public class RadarStationService {
                 .approvalStatus(entity.getApprovalStatus())
                 .status(entity.getApprovalStatus() != null ? entity.getApprovalStatus().name() : "DRAFT")
                 .approverLevel1(entity.getApproverLevel1())
+                .approverLevel1Name(approverLevel1Name)
                 .approvedDateLevel1(entity.getApprovedDateLevel1())
                 .approvedLevel1(entity.getApproverLevel1() != null)
                 .approverLevel2(entity.getApproverLevel2())
+                .approverLevel2Name(approverLevel2Name)
                 .approvedDateLevel2(entity.getApprovedDateLevel2())
                 .approvedLevel2(entity.getApproverLevel2() != null)
                 .rejectionReason(entity.getRejectionReason())
+                .level1ApprovalContent(entity.getLevel1ApprovalContent())
+                .level2ApprovalContent(entity.getLevel2ApprovalContent())
+                .submittedForApprovalBy(entity.getSubmittedBy())
+                .submittedForApprovalAt(entity.getSubmittedAt())
+                .submittedByName(submittedByName)
                 .createdBy(entity.getCreatedBy())
+                .createdByName(createdByName)
                 .createdDate(entity.getCreatedAt())
                 .updatedBy(entity.getUpdatedBy())
+                .updatedByName(updatedByName)
                 .updatedDate(entity.getUpdatedAt())
                 .attachments(attachments)
                 .towerHeight(entity.getTowerHeight())
-                .radarRange(entity.getRadarRange());
+                .radarRange(entity.getRadarRange())
+                .mapIcon(entity.getMapIcon());
 
         if (entity.getSpatialId() != null) {
             builder.spatialId(entity.getSpatialId());

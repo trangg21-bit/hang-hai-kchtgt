@@ -43,7 +43,6 @@ const BuoyListPage = lazy(() => import('./services/buoy/BuoyListPage'));
 const BeaconHistoryList = lazy(() => import('./pages/history/BeaconHistoryList'));
 const SymbolList = lazy(() => import('./pages/symbols/SymbolList'));
 const HomePage = lazy(() => import('./pages/Home'));
-const PortalHome = lazy(() => import('./pages/PortalHome'));
 const PasswordResetPage = lazy(() => import('./pages/PasswordResetPage'));
 const PortList = lazy(() => import('./services/port/PortListPage'));
 const PortApprovePage = lazy(() => import('./services/port/PortApprovePage'));
@@ -93,6 +92,8 @@ const AssetExploitationList = lazy(() => import('./pages/assetmovement/AssetExpl
 const LegalDocumentList = lazy(() => import('./pages/document/LegalDocumentList'));
 const IncidentList = lazy(() => import('./pages/document/IncidentList'));
 const PortPlanningList = lazy(() => import('./pages/document/PortPlanningList'));
+const OperationList = lazy(() => import('./pages/document/OperationList'));
+const MaintenanceList = lazy(() => import('./pages/document/MaintenanceList'));
 
 // M-014: Quản lý Nhà trạm phao tiêu
 // M-015: Đài duyên hải
@@ -136,14 +137,16 @@ export default function App() {
               <Routes>
               {/* Login & Registration — outside layout */}
               <Route path="/login" element={<LoginPage />} />
-              <Route path="/" element={<PortalHome />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/forgot-password" element={<PasswordResetPage mode="forgot" />} />
               <Route path="/reset-password/:token" element={<PasswordResetPage mode="reset" />} />
 
               {/* Protected routes — inside layout */}
               <Route element={<AppLayout />}>
-                <Route path="/dashboard" element={<HomePage />} />
+                {/* Landing v2 (M-024): 6 khối chức năng trong AppLayout — PortalHome fullscreen đã gỡ */}
+                <Route path="/" element={<HomePage />} />
+                {/* '/dashboard' de-dup: nội dung KPI không còn trong tree (v2) → redirect về landing 6 khối (quyết định ghi lean-spec/F-292) */}
+                <Route path="/dashboard" element={<Navigate to="/" replace />} />
                 <Route path="/users" element={<PermissionGuard permission="user:read"><UsersPage /></PermissionGuard>} />
 
                 {/* Organization — Đơn vị */}
@@ -176,7 +179,7 @@ export default function App() {
                 <Route path="/gis/layers" element={<PermissionGuard permission="map:manage"><MapLayerList /></PermissionGuard>} />
 
                 <Route path="/gis/search" element={<PermissionGuard permission="data:read"><GISSearch /></PermissionGuard>} />
-                <Route path="/gis/map" element={<PermissionGuard permission="data:read"><GISChartView /></PermissionGuard>} />
+                <Route path="/gis/map" element={<GISChartView />} />
                 <Route path="/gis/permits" element={<PermissionGuard permission="data:read"><S63PermitsPage /></PermissionGuard>} />
 
                 {/* Connections — Liên thông & tích hợp dữ liệu */}
@@ -285,6 +288,8 @@ export default function App() {
                 <Route path="/documents/legal" element={<PermissionGuard permission="document:read"><LegalDocumentList /></PermissionGuard>} />
                 <Route path="/documents/incidents" element={<PermissionGuard permission="document:read"><IncidentList /></PermissionGuard>} />
                 <Route path="/documents/port-planning" element={<PermissionGuard permission="document:read"><PortPlanningList /></PermissionGuard>} />
+                <Route path="/documents/operation" element={<PermissionGuard permission="document:read"><OperationList /></PermissionGuard>} />
+                <Route path="/documents/maintenance" element={<PermissionGuard permission="document:read"><MaintenanceList /></PermissionGuard>} />
 
                 {/* M-014: Quản lý Nhà trạm */}
                 <Route path="/buoy-station" element={<PermissionGuard permission="buoystation:read"><BuoyStationListPage /></PermissionGuard>} />

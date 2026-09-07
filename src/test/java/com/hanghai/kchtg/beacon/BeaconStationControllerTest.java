@@ -139,7 +139,7 @@ class BeaconStationControllerTest {
     @DisplayName("GET /api/beacon-stations/search — returns 200 with filtered list")
     void testSearch() throws Exception {
         UUID id = UUID.randomUUID();
-        when(beaconStationService.search(eq("Đèn"), any(), any(), any(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull()))
+        when(beaconStationService.search(eq("Đèn"), any(), any(), any(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull()))
                 .thenReturn(List.of(makeResponse(id)));
 
         mockMvc.perform(get("/api/beacon-stations/search")
@@ -148,13 +148,13 @@ class BeaconStationControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data").isArray());
 
-        verify(beaconStationService).search(eq("Đèn"), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull());
+        verify(beaconStationService).search(eq("Đèn"), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull());
     }
 
     @Test
     @DisplayName("GET /api/beacon-stations/search — with all params")
     void testSearchWithAllParams() throws Exception {
-        when(beaconStationService.search(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(List.of());
+        when(beaconStationService.search(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(List.of());
 
         mockMvc.perform(get("/api/beacon-stations/search")
                         .param("name", "Đèn")
@@ -165,7 +165,7 @@ class BeaconStationControllerTest {
                 .andExpect(jsonPath("$.success").value(true));
 
         verify(beaconStationService)
-                .search("Đèn", "DEN", "LIGHTHOUSE", "DRAFT", null, null, null, null, null, null, null, null, null, null, null, null);
+                .search("Đèn", "DEN", "LIGHTHOUSE", "DRAFT", null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     // ── CREATE ───────────────────────────────────────────────────

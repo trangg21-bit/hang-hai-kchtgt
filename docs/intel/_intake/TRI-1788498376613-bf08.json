@@ -1,0 +1,59 @@
+{
+  "triage_id": "TRI-1788498376613-bf08",
+  "created_at": 1788498376613,
+  "request_summary": "Loại bỏ các trường UI thừa so với sheet QL Trạm radar (46 trường): stationType, coverage, emissionArea, source khỏi detail/form; bỏ bộ lọc nâng cao không thuộc cột Bộ lọc=true.",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/radarstation/RadarStationForm.tsx",
+      "frontend/src/pages/radarstation/RadarStationList.tsx",
+      "frontend/src/types/radarStation.ts"
+    ],
+    "impact_files": [
+      "frontend/src/pages/radarstation/RadarStationForm.tsx",
+      "frontend/src/pages/radarstation/RadarStationList.tsx",
+      "frontend/src/types/radarStation.ts"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C1: 3 edit-target files in one package, no one-way door — pre-declared write scope required (3 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn /radar-station: drawer Xem chi tiết + form Thêm mới/Cập nhật + panel bộ lọc + trang route RadarStationForm.",
+  "blast_radius": 3,
+  "done_oracle": "Màn /radar-station (list+drawer+trang route) chỉ còn các trường đúng 46 trường sheet QL Trạm radar: bỏ khỏi UI các trường không có trong sheet — 'Loại trạm' (stationType), 'Vùng phủ sóng' (coverage), 'Diện tích phát xạ' (emissionArea), 'Nguồn gốc/source' ở detail + form tạo/sửa; bộ lọc nâng cao bỏ các trường Bộ lọc=false của sheet ('Đơn vị khai thác', 'Ngày cập nhật', 'Cán bộ cập nhật') — chỉ giữ bộ lọc TRUE (ĐVQL, Cảng, VTS, TTDH, Tỉnh/TP, Tình trạng, Trạng thái PD + ô tìm Mã/Tên). Build FE exit 0.",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "frontend",
+      "timeout_ms": 600000
+    },
+    {
+      "command": "node ./node_modules/typescript/bin/tsc -p tsconfig.app.json --noEmit",
+      "cwd": "frontend",
+      "timeout_ms": 600000
+    }
+  ],
+  "change_type": "scope_shrink",
+  "declared_write_scope": [
+    "frontend/src/pages/radarstation/RadarStationForm.tsx",
+    "frontend/src/pages/radarstation/RadarStationList.tsx",
+    "frontend/src/types/radarStation.ts"
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "3b07a5a6421c35cc8b0c2382bc435e35e9fc5c34",
+    "dirty": true,
+    "captured_at": 1788498376793
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

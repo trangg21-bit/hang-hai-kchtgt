@@ -2,6 +2,7 @@ package com.hanghai.kchtg.dikerevetment.dto;
 
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,6 +23,7 @@ public class DikeRevetmentUpdateRequest {
 
     private DikeRevetmentType dikeRevetmentType;
     private String location;
+    private String locationDetail;
     private String dikeRevetmentName;
     private Double length;
     private Double crestElevation;
@@ -31,6 +33,8 @@ public class DikeRevetmentUpdateRequest {
     private String status;
     private String note;
     private UUID orgUnitId;
+    private UUID seaportId;
+    private UUID operatingUnitId;
     private GisGeometryType geometryType;
     private String coordinates;
     private UUID symbolId;

@@ -49,6 +49,8 @@ public class PermissionController {
     @GetMapping
     @PreAuthorize("@auth.check(authentication, 'admin:manage') or "
             + "@auth.check(authentication, 'user:manage') or "
+            + "@auth.check(authentication, 'user:read') or "
+            + "@auth.check(authentication, 'user:permission') or "
             + "@auth.check(authentication, 'group:permission')")
     public ResponseEntity<ApiResponse<List<Permission>>> list() {
         List<Permission> permissions = permissionRepository.findAll();

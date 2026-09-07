@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.orgunit.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.orgunit.dto.CandidateParentResponse;
 import com.hanghai.kchtg.orgunit.dto.CreateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
 import com.hanghai.kchtg.orgunit.dto.UpdateOrgUnitRequest;
@@ -115,6 +116,17 @@ public class OrgUnitController {
     public ResponseEntity<ApiResponse<List<OrgUnitResponse>>> getTree() {
         return ResponseEntity.ok(ApiResponse.success(
                 organizationService.buildTree(orgUnitScopeService.currentUserScope())));
+    }
+
+    /**
+     * Eligible parent units for creating or updating an organizational unit.
+     */
+    @GetMapping("/candidate-parents")
+    @PreAuthorize("@auth.check(authentication, 'orgunit:read')")
+    public ResponseEntity<ApiResponse<List<CandidateParentResponse>>> getCandidateParents(
+            @RequestParam(required = false) UUID unitId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                organizationService.findCandidateParents(unitId, orgUnitScopeService.currentUserScope())));
     }
 
     /**

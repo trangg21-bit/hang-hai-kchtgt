@@ -164,7 +164,7 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
   return (
     <Drawer
       {...safeDrawerProps}
-      width={calculatedWidth}
+      size={calculatedWidth}
       destroyOnHidden
       open={open}
       onClose={onClose}
