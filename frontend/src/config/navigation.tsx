@@ -39,6 +39,7 @@ export interface NavNode {
   label: string;
   icon?: ReactNode;
   disabled?: boolean;
+  hidden?: boolean;
   note?: string;
   children?: NavNode[];
 }
@@ -49,6 +50,7 @@ export interface NavGroup {
   desc: string;
   icon: ReactNode;
   tree: NavNode[];
+  underDevelopment?: boolean;
 }
 
 const icons = {
@@ -145,7 +147,7 @@ const kchtTree: NavNode[] = [
     icon: icons.apartment,
     children: [
       { key: '/dai-ttdh', route: '/dai-ttdh', label: 'Quản lý đài TTDH', icon: icons.aim },
-      { key: 'vhf-disabled', label: 'VHF', disabled: true, note: 'Chức năng đang được xây dựng' },
+      { key: 'vhf-disabled', label: 'VHF', disabled: true, hidden: true, note: 'Chức năng đang được xây dựng' },
       { key: '/station/inmarsat', route: '/station/inmarsat', label: 'Đài vệ tinh Inmarsat' },
       { key: '/station/cospas-sarsat', route: '/station/cospas-sarsat', label: 'Đài Cospas-Sarsat' },
       { key: '/station/lrit', route: '/station/lrit', label: 'Đài LRIT' },
@@ -168,6 +170,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Quản lý tài sản KCHT hàng hải',
     desc: 'Tăng, giảm, kiểm kê và khai thác tài sản',
     icon: landingGroupIcons.asset,
+    underDevelopment: true,
     tree: [
       { key: '/asset/increase', route: '/asset/increase', label: 'Yêu cầu tăng tài sản' },
       { key: '/asset/decrease', route: '/asset/decrease', label: 'Yêu cầu giảm tài sản' },
@@ -208,6 +211,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Báo cáo thống kê',
     desc: 'Dashboard KPI và báo cáo thống kê định kỳ',
     icon: landingGroupIcons.report,
+    underDevelopment: true,
     tree: [
       // 2026-09-06 (M-024 rework): node '/dashboard' ĐÃ GỠ — nội dung KPI không còn trong
       // code (chỉ còn orphan services/dashboardApi của M-022, không có page). Route
@@ -275,10 +279,11 @@ export function groupOfPath(pathname: string): NavGroup | undefined {
   return hit?.g;
 }
 
-/** Lọc cây theo quyền — giữ node disabled (mờ), bỏ nhánh không còn route truy cập được */
+/** Lọc cây theo quyền — giữ node disabled (mờ), bỏ nhánh không còn route truy cập được, ẩn node hidden */
 export function accessibleTree(nodes: NavNode[], canAccess: (route: string) => boolean): NavNode[] {
   const out: NavNode[] = [];
   for (const n of nodes) {
+    if (n.hidden) continue;
     const children = n.children ? accessibleTree(n.children, canAccess) : undefined;
     const selfOk = !n.route || canAccess(n.route);
     if (n.disabled) {
@@ -294,6 +299,7 @@ export function accessibleTree(nodes: NavNode[], canAccess: (route: string) => b
 
 /** Route đầu tiên trong khối mà user truy cập được (cho card landing) */
 export function firstAccessibleRoute(group: NavGroup, canAccess: (route: string) => boolean): string | undefined {
+  if (group.underDevelopment) return undefined;
   const walk = (nodes: NavNode[]): string | undefined => {
     for (const n of nodes) {
       if (n.route && !n.disabled && canAccess(n.route)) return n.route;

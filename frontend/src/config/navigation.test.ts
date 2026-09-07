@@ -185,7 +185,7 @@ describe('navigation.accessibleTree — AC-024-05', () => {
     // Production-shaped prune: only /pier allowed → only its ancestor chain survives
     const out = accessibleTree(kchtTree, (r) => r === '/pier');
     const outKeys = flatKeysOf(out);
-    expect(outKeys.sort()).toEqual(['/berth', '/pier', '/port', 'kcht-vienthong', 'vhf-disabled']);
+    expect(outKeys.sort()).toEqual(['/berth', '/pier', '/port']);
     // denied route screens must NOT survive alongside the retained disabled VHF
     expect(outKeys).not.toContain('/dai-ttdh');
     expect(outKeys).not.toContain('/dry-port');
@@ -233,7 +233,9 @@ describe('navigation.accessibleTree — AC-024-05', () => {
 
   it('allow-all keeps the whole tree identical (no accidental pruning)', () => {
     const out = accessibleTree(kchtTree, () => true);
-    expect(flatKeysOf(out).sort()).toEqual(flatKeysOf(kchtTree).sort());
+    // hidden nodes (vhf-disabled) are pruned even under allow-all
+    const expectedKeys = flatKeysOf(kchtTree).filter((k) => k !== 'vhf-disabled');
+    expect(flatKeysOf(out).sort()).toEqual(expectedKeys.sort());
   });
 
   it('does NOT mutate its input — deep-frozen tree survives every call', () => {
