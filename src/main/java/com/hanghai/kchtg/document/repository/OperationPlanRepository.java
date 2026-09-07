@@ -42,4 +42,7 @@ public interface OperationPlanRepository extends JpaRepository<OperationPlan, UU
             @Param("endTime") java.time.LocalTime endTime,
             @Param("pier") String pier,
             @Param("equipment") String equipment);
+
+    /** Count plans whose auto-generated code starts with the given prefix (for code generation). */
+    long countByCodeStartingWith(String prefix);
 }

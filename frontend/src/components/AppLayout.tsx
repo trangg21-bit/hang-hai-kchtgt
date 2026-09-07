@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import {
   Layout,
@@ -13,6 +13,7 @@ import {
 } from 'antd';
 import {
   UserOutlined,
+  ArrowLeftOutlined,
   LogoutOutlined,
   DashboardOutlined,
   SettingOutlined,
@@ -31,7 +32,16 @@ import * as themeTokenChk from '../themetokenchk';
 import { actionPrimary } from '../themetokenchk';
 import { ThemeTokenProvider } from '../context/ThemeTokenContext';
 import type { MenuProps } from 'antd';
-import { accessibleTree, groupOfPath, locateRoute, type NavGroup, type NavNode } from '../config/navigation';
+import {
+  NAV_GROUPS,
+  accessibleTree,
+  firstAccessibleRoute,
+  groupOfPath,
+  locateRoute,
+  searchNavGroups,
+  type NavGroup,
+  type NavNode,
+} from '../config/navigation';
 
 const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
@@ -58,6 +68,7 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/anchorage': 'anchorage:read',
   '/transfer-area': 'transferarea:read',
   '/storm-shelter': 'stormshelter:read',
+  '/seaport-throughput': 'seaportthroughput:read',
   '/buoy-berth': 'buoyberth:read',
   '/dai-ttdh': 'daittdh:read',
   '/ship-repair-yard': 'shiprepairyard:read',
@@ -92,6 +103,9 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/documents/legal': 'document:read',
   '/documents/incidents': 'document:read',
   '/documents/port-planning': 'document:read',
+  '/documents/operation': 'document:read',
+  '/ship-port-call': 'shipportcall:read',
+  '/documents/maintenance': 'document:read',
 };
 
 const canAccessMenu = (path: string): boolean => {
@@ -181,14 +195,15 @@ export function collectOpenableKeys(items: MenuProps['items']): string[] {
   }, []);
 }
 
-export default function AppLayout() {
+export default function AppLayout({ initialSidebarHidden = false }: { initialSidebarHidden?: boolean } = {}) {
   const isInIframe = window.self !== window.top;
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const collapsed = false;
-  const [sidebarHidden, setSidebarHidden] = useState(false);
+  const [sidebarHidden, setSidebarHidden] = useState(initialSidebarHidden);
   const isMenuFullScreen = false;
   const [openKeys, setOpenKeys] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  // M-024 rework: chips C0..C3 — tập level đang được phép hiển thị trong cây khối kcht
   const navigate = useNavigate();
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
@@ -245,6 +260,8 @@ export default function AppLayout() {
   const activeGroup = groupOfPath(location.pathname);
   const navHit = activeGroup ? locateRoute(activeGroup.tree, location.pathname) : undefined;
   const activeSelectedKey = navHit?.key ?? selectedKey;
+  // M-024 rework: khối kcht có cây 28 loại (chips C0..C3 lọc theo level node)
+  const isKchtGroup = activeGroup?.id === 'kcht';
 
   const rawMenuItems: MenuProps['items'] = [
     { key: '/', icon: <DashboardOutlined />, label: 'Danh mục chức năng' },
@@ -279,6 +296,10 @@ export default function AppLayout() {
         canAccessMenu('/documents/legal') ? { key: '/documents/legal', label: 'Văn bản pháp lý' } : null,
         canAccessMenu('/documents/incidents') ? { key: '/documents/incidents', label: 'Sự cố hàng hải' } : null,
         canAccessMenu('/documents/port-planning') ? { key: '/documents/port-planning', label: 'Quy hoạch bến cảng' } : null,
+        canAccessMenu('/documents/operation') ? { key: '/documents/operation', label: 'Thông tin vận hành' } : null,
+        canAccessMenu('/ship-port-call') ? { key: '/ship-port-call', label: 'Tàu biển ra vào cảng biển' } : null,
+        canAccessMenu('/seaport-throughput') ? { key: '/seaport-throughput', label: 'Sản lượng cảng biển' } : null,
+        canAccessMenu('/documents/maintenance') ? { key: '/documents/maintenance', label: 'Thông tin bảo trì' } : null,
         canAccessMenu('/symbols') ? { key: '/symbols', label: 'Quản lý biểu tượng trên bản đồ' } : null,
         canAccessMenu('/water-zone') ? { key: '/water-zone', label: 'Quản lý vùng nước' } : null,
       ].filter(Boolean),
@@ -413,10 +434,39 @@ export default function AppLayout() {
     },
   ].filter(Boolean) as MenuProps['items'];
 
-  const menuItems = filterEmptyChildren(activeGroup ? buildNavMenuItems(activeGroup, canAccessMenu, navigate) : rawMenuItems);
+  const activeTreeForMenu = activeGroup ? activeGroup.tree : undefined;
+  const menuItems = filterEmptyChildren(
+    activeGroup && activeTreeForMenu
+      ? buildNavMenuItems({ ...activeGroup, tree: activeTreeForMenu }, canAccessMenu, navigate)
+      : rawMenuItems,
+  );
 
   const trimmedSearchQuery = searchQuery.trim();
   const isSearching = trimmedSearchQuery.length > 0;
+
+  // ===== Landing search (R-1..R-7, M-024): chỉ active ở '/'; trong một khối,
+  // search chỉ lọc menu sidebar như cũ (hành vi M-025/M-028 không đổi) =====
+  const isLandingRoute = location.pathname === '/';
+  const landingHits =
+    isLandingRoute && trimmedSearchQuery.length > 0 ? searchNavGroups(trimmedSearchQuery, NAV_GROUPS) : [];
+  const firstLandingTarget = (() => {
+    for (const group of landingHits) {
+      const home = firstAccessibleRoute(group, canAccessMenu);
+      if (home) return home;
+    }
+    return undefined;
+  })();
+
+  // Text search chỉ sống ở '/': rời landing (click card / Enter / menu trang chủ)
+  // hoặc quay lại landing từ một khối → dọn text cũ, tránh text landing làm nhiễu
+  // bộ lọc menu của khối. Điều hướng TRONG khối không đụng tới searchQuery.
+  const prevPathnameRef = useRef(location.pathname);
+  useEffect(() => {
+    const prev = prevPathnameRef.current;
+    prevPathnameRef.current = location.pathname;
+    if (prev === location.pathname) return;
+    if (prev === '/' || location.pathname === '/') setSearchQuery('');
+  }, [location.pathname]);
   const displayedItems = isSearching ? filterMenuByQuery(menuItems, trimmedSearchQuery) : menuItems;
   const effectiveOpenKeys = isSearching
     ? collectOpenableKeys(displayedItems)
@@ -426,6 +476,9 @@ export default function AppLayout() {
   // `md` here left a 272px layout offset while AntD had already collapsed the
   // Sider to 80px on tablet widths (768-991px).
   const isMobile = !screens.lg;
+
+  const handleKchtExpandAll = () => setOpenKeys(collectOpenableKeys(displayedItems));
+  const handleKchtCollapseAll = () => setOpenKeys([]);
 
   const handleMenuClick = (e: { key: string }) => {
     if (e.key.startsWith('/')) {
@@ -484,13 +537,25 @@ export default function AppLayout() {
       </div>
 
       {/* Ô tìm kiếm — pill trong mờ, ngay dưới header */}
-      {!collapsed && !isMenuFullScreen && activeGroup && (
+      {!collapsed && !isMenuFullScreen && (
         <div className="sidebar-search">
           <SearchOutlined />
           <input
-            placeholder="Tìm kiếm trong khối..."
+            placeholder={!activeGroup ? 'Tìm kiếm...' : isKchtGroup ? 'Tìm loại KCHT…' : 'Tìm kiếm trong khối...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                // R-5: ở landing, Enter → route đầu tiên truy cập được của khối khớp đầu tiên
+                if (isLandingRoute && firstLandingTarget) {
+                  setSearchQuery('');
+                  navigate(firstLandingTarget);
+                }
+                // trong khối: Enter không có hành động — search chỉ lọc menu như hiện tại
+              } else if (e.key === 'Escape') {
+                setSearchQuery('');
+              }
+            }}
           />
         </div>
       )}
@@ -510,31 +575,83 @@ export default function AppLayout() {
               <button
                 type="button"
                 onClick={() => navigate('/')}
-                title="Về trang chủ"
+                aria-label="Về Danh mục chức năng"
+                title="Về Danh mục chức năng"
                 style={{
                   background: 'transparent',
                   border: 'none',
                   color: colors.textOnDark,
                   cursor: 'pointer',
-                  fontSize: 16,
+                  fontSize: 14,
                   lineHeight: 1,
-                  padding: '2px 6px',
+                  padding: '4px 6px',
                 }}
               >
-                ←
+                <ArrowLeftOutlined />
               </button>
-              <span
-                style={{
-                  fontWeight: 600,
-                  fontSize: 13,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {activeGroup.label}
-              </span>
+              <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <span
+                  style={{
+                    fontWeight: 600,
+                    fontSize: 13,
+                    lineHeight: 1.3,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {activeGroup.label}
+                </span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    lineHeight: 1.4,
+                    color: colors.textOnDarkMuted,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {activeGroup.desc}
+                </span>
+              </div>
             </div>
+            {isKchtGroup && !collapsed && !isMenuFullScreen && (
+              <div style={{ padding: '0 10px 8px' }}>
+                <div style={{ display: 'flex', gap: themeTokenChk.spaceMd, paddingBottom: themeTokenChk.spaceXs }}>
+                  <button
+                    type="button"
+                    onClick={handleKchtExpandAll}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      color: colors.textOnDarkMuted,
+                      fontSize: themeTokenChk.fontSizeSm,
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    Mở rộng tất cả
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleKchtCollapseAll}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      color: colors.textOnDarkMuted,
+                      fontSize: themeTokenChk.fontSizeSm,
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    Thu gọn tất cả
+                  </button>
+                </div>
+              </div>
+            )}
             <Menu
               theme={isMenuFullScreen ? 'light' : 'dark'}
               mode="inline"
@@ -557,7 +674,7 @@ export default function AppLayout() {
               color: colors.textOnDarkMuted,
             }}
           >
-            Chọn một khối chức năng bên phải để bắt đầu.
+            Chọn một khối chức năng ở bên phải để bắt đầu. Menu điều hướng chi tiết sẽ hiện ở đây sau khi bạn chọn.
           </div>
         )}
       </div>
@@ -651,7 +768,7 @@ export default function AppLayout() {
           ` : ''}
         `}</style>
           <Content style={{ padding: 16, minHeight: '100vh', background: isModalIframe ? 'transparent' : '#fff' }}>
-            <Outlet />
+            <Outlet context={{ searchQuery }} />
           </Content>
       </Layout>
     );
@@ -762,14 +879,60 @@ export default function AppLayout() {
                 title={sidebarHidden ? "Mở menu" : "Thu gọn menu"}
               />
             )}
-            <Typography.Title level={5} style={{ margin: 0, color: actionPrimary }}>
-              HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI
-            </Typography.Title>
+            {!sidebarHidden && (
+              <Typography.Title level={5} style={{ margin: 0, color: actionPrimary }}>
+                HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI
+              </Typography.Title>
+            )}
           </Space>
 
+          {/* sidebarHidden: header rút gọn — trái CHỈ còn nút mở menu; giữa = MỘT khối
+              (logo 40px + tên hệ thống 1 dòng ellipsis), click → '/'. Không bao giờ
+              2 logo / 2 title cùng lúc. */}
           {sidebarHidden && (
-            <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => navigate('/')}>
-              <img src="/images/logo-vinamarine.png" alt="Logo" style={{ maxHeight: '56px' }} />
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label="Về trang chủ"
+              title="Về trang chủ"
+              onClick={() => navigate('/')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  navigate('/');
+                }
+              }}
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: 0,
+                bottom: 0,
+                transform: 'translateX(-50%)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: themeTokenChk.spaceSm,
+                cursor: 'pointer',
+                maxWidth: 'calc(100% - 320px)',
+              }}
+            >
+              <img
+                src="/images/logo-vinamarine.png"
+                alt="Logo Cục Hàng Hải Việt Nam"
+                style={{ height: 40, width: 'auto', display: 'block', flexShrink: 0 }}
+              />
+              <span
+                style={{
+                  color: actionPrimary,
+                  fontWeight: themeTokenChk.fontWeightBold,
+                  fontSize: themeTokenChk.fontSizeLg,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  minWidth: 0,
+                }}
+              >
+                HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI
+              </span>
             </div>
           )}
 
@@ -815,7 +978,7 @@ export default function AppLayout() {
             overflow: location.pathname === '/gis/map' ? 'hidden' : 'auto',
           }}
         >
-          <Outlet />
+          <Outlet context={{ searchQuery }} />
         </Content>
       </Layout>
     </Layout>

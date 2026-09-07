@@ -105,19 +105,26 @@ export async function fetchLegalDocumentSuggestions(keyword: string): Promise<Ar
 export async function fetchIncidentList(params: {
   page?: number;
   size?: number;
-  viTri?: string;
+  keyword?: string;
+  orgUnitId?: string;
+  occurredFrom?: string;
+  occurredTo?: string;
+  processingStatus?: string;
+  incidentType?: string;
+  damageStatus?: string;
 }): Promise<PageResponse<SuCoResponse>> {
   const sp = new URLSearchParams();
   if (params.page !== undefined) sp.set('page', String(params.page));
   if (params.size !== undefined) sp.set('size', String(params.size));
+  if (params.keyword) sp.set('keyword', params.keyword);
+  if (params.orgUnitId) sp.set('orgUnitId', params.orgUnitId);
+  if (params.occurredFrom) sp.set('occurredFrom', params.occurredFrom);
+  if (params.occurredTo) sp.set('occurredTo', params.occurredTo);
+  if (params.processingStatus) sp.set('processingStatus', params.processingStatus);
+  if (params.incidentType) sp.set('incidentType', params.incidentType);
+  if (params.damageStatus) sp.set('damageStatus', params.damageStatus);
 
-  let url = '/v1/incidents';
-  if (params.viTri) {
-    sp.set('location', params.viTri);
-    url = '/v1/incidents/search/location';
-  }
-
-  const res = await api.get(`${url}?${sp}`);
+  const res = await api.get(`/v1/incidents?${sp}`);
   const data = res.data.data;
   if (Array.isArray(data)) {
     return {
@@ -126,9 +133,23 @@ export async function fetchIncidentList(params: {
       totalPages: 1,
       size: data.length,
       number: 0,
+      statusCounts: {},
     };
   }
-  return data || { content: [], totalElements: 0, totalPages: 1, size: 10, number: 0 };
+  const page = data || {};
+  return {
+    content: page.content || [],
+    totalElements: page.totalElements || 0,
+    totalPages: page.totalPages || 1,
+    size: page.size || 10,
+    number: page.number || 0,
+    statusCounts: page.statusCounts || {},
+  };
+}
+
+export async function fetchIncidentById(id: string): Promise<SuCoResponse> {
+  const res = await api.get(`/v1/incidents/${id}`);
+  return res.data.data;
 }
 
 export async function createSuCo(payload: SuCoCreateRequest): Promise<SuCoResponse> {
@@ -152,13 +173,21 @@ export async function fetchPortPlanningList(params: {
   page?: number;
   size?: number;
   keyword?: string;
+  orgUnitId?: string;
   status?: string;
+  decisionNumber?: string;
+  decisionFrom?: string;
+  decisionTo?: string;
 }): Promise<PageResponse<QuyHoachBenCangResponse>> {
   const sp = new URLSearchParams();
   if (params.page !== undefined) sp.set('page', String(params.page));
   if (params.size !== undefined) sp.set('size', String(params.size));
   if (params.keyword) sp.set('keyword', params.keyword);
+  if (params.orgUnitId) sp.set('orgUnitId', params.orgUnitId);
   if (params.status) sp.set('status', params.status);
+  if (params.decisionNumber) sp.set('decisionNumber', params.decisionNumber);
+  if (params.decisionFrom) sp.set('decisionFrom', params.decisionFrom);
+  if (params.decisionTo) sp.set('decisionTo', params.decisionTo);
 
   const res = await api.get(`/v1/port-planning/search?${sp}`);
   const data = res.data.data;
@@ -168,7 +197,13 @@ export async function fetchPortPlanningList(params: {
     totalPages: data.totalPages || 1,
     size: data.pageSize || 10,
     number: data.currentPage || 0,
+    statusCounts: data.statusCounts || {},
   };
+}
+
+export async function fetchPortPlanningById(id: string): Promise<QuyHoachBenCangResponse> {
+  const res = await api.get(`/v1/port-planning/${id}`);
+  return res.data.data;
 }
 
 export async function createQuyHoach(payload: QuyHoachBenCangCreateRequest): Promise<QuyHoachBenCangResponse> {

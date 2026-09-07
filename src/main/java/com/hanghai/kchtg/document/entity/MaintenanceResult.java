@@ -39,6 +39,9 @@ public class MaintenanceResult {
     @Column(name = "result_description", columnDefinition = "TEXT")
     private String resultDescription;
 
+    @Column(name = "result_note", columnDefinition = "TEXT")
+    private String resultNote;
+
     @Column(name = "replaced_parts", length = 500)
     private String replacedParts;
 

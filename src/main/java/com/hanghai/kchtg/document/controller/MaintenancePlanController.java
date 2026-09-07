@@ -8,6 +8,7 @@ import com.hanghai.kchtg.document.dto.MaintenanceResultResponse;
 import com.hanghai.kchtg.document.entity.MaintenanceStatus;
 import com.hanghai.kchtg.document.entity.MaintenanceType;
 import com.hanghai.kchtg.document.service.MaintenancePlanService;
+import com.hanghai.kchtg.security.annotation.DataScope;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,6 +26,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/maintenance-plans")
 @RequiredArgsConstructor
+@DataScope
 public class MaintenancePlanController {
 
     private final MaintenancePlanService maintenancePlanService;
