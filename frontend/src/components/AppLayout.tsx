@@ -198,18 +198,31 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const collapsed = false;
   const location = useLocation();
+  const activeGroup = groupOfPath(location.pathname);
+  const navHit = activeGroup ? locateRoute(activeGroup.tree, location.pathname) : undefined;
+
   const [sidebarHidden, setSidebarHidden] = useState(() => {
     if (initialSidebarHidden !== undefined) return initialSidebarHidden;
     return location.pathname === '/';
   });
   const isMenuFullScreen = false;
-  const [openKeys, setOpenKeys] = useState<string[]>([]);
+  const [openKeys, setOpenKeys] = useState<string[]>(() => navHit?.openKeys ?? []);
   const [searchQuery, setSearchQuery] = useState('');
   // M-024 rework: chips C0..C3 — tập level đang được phép hiển thị trong cây khối kcht
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const screens = useBreakpoint();
+
+  const prevPathnameForOpenRef = useRef(location.pathname);
+  useEffect(() => {
+    if (prevPathnameForOpenRef.current !== location.pathname) {
+      prevPathnameForOpenRef.current = location.pathname;
+      if (navHit?.openKeys && navHit.openKeys.length > 0) {
+        setOpenKeys((prev) => Array.from(new Set([...prev, ...(navHit.openKeys ?? [])])));
+      }
+    }
+  }, [location.pathname, navHit]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -257,10 +270,8 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
     }
   }, [selectedKey]);
 
-  // ===== M-024 v2 (chốt 2026-09-04): dashboard-first — sidebar theo KHỐI active suy từ route =====
-  const activeGroup = groupOfPath(location.pathname);
-  const navHit = activeGroup ? locateRoute(activeGroup.tree, location.pathname) : undefined;
   const activeSelectedKey = navHit?.key ?? selectedKey;
+
   // M-024 rework: khối kcht có cây 28 loại (chips C0..C3 lọc theo level node)
   const isKchtGroup = activeGroup?.id === 'kcht';
 
@@ -475,17 +486,12 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
     }
   }, [location.pathname, initialSidebarHidden]);
   const displayedItems = isSearching ? filterMenuByQuery(menuItems, trimmedSearchQuery) : menuItems;
-  const effectiveOpenKeys = isSearching
-    ? collectOpenableKeys(displayedItems)
-    : Array.from(new Set([...openKeys, ...(navHit?.openKeys ?? [])]));
+  const effectiveOpenKeys = isSearching ? collectOpenableKeys(displayedItems) : openKeys;
 
   // Keep the responsive mode aligned with Sider's `lg` breakpoint. Using
   // `md` here left a 272px layout offset while AntD had already collapsed the
   // Sider to 80px on tablet widths (768-991px).
   const isMobile = !screens.lg;
-
-  const handleKchtExpandAll = () => setOpenKeys(collectOpenableKeys(displayedItems));
-  const handleKchtCollapseAll = () => setOpenKeys([]);
 
   const handleMenuClick = (e: { key: string }) => {
     if (e.key.startsWith('/')) {
@@ -609,56 +615,8 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
                 >
                   {activeGroup.label}
                 </span>
-                <span
-                  style={{
-                    fontSize: 11,
-                    lineHeight: 1.4,
-                    color: colors.textOnDarkMuted,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {activeGroup.desc}
-                </span>
               </div>
             </div>
-            {isKchtGroup && !collapsed && !isMenuFullScreen && (
-              <div style={{ padding: '0 10px 8px' }}>
-                <div style={{ display: 'flex', gap: themeTokenChk.spaceMd, paddingBottom: themeTokenChk.spaceXs }}>
-                  <button
-                    type="button"
-                    onClick={handleKchtExpandAll}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      padding: 0,
-                      cursor: 'pointer',
-                      color: colors.textOnDarkMuted,
-                      fontSize: themeTokenChk.fontSizeSm,
-                      textDecoration: 'underline',
-                    }}
-                  >
-                    Mở rộng tất cả
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleKchtCollapseAll}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      padding: 0,
-                      cursor: 'pointer',
-                      color: colors.textOnDarkMuted,
-                      fontSize: themeTokenChk.fontSizeSm,
-                      textDecoration: 'underline',
-                    }}
-                  >
-                    Thu gọn tất cả
-                  </button>
-                </div>
-              </div>
-            )}
             <Menu
               theme={isMenuFullScreen ? 'light' : 'dark'}
               mode="inline"
