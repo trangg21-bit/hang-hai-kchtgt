@@ -379,12 +379,12 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
     expect(html).toContain('title="Về Danh mục chức năng"');
     // sidebar header = context header: group label + desc (không còn "Quay lại…")
     expect(html).toContain('Quản lý KCHT hàng hải');
-    expect(html).toContain('28 loại KCHT theo phân cấp cha – con');
+    expect(html).not.toContain('28 loại KCHT theo phân cấp cha – con');
     expect(html).not.toContain('Quay lại Danh mục chức năng');
-    // chips C0..C3 removed — internal hierarchy terms không hiển thị cho người dùng
+    // chips C0..C3 và expand/collapse đã bỏ — menu tinh gọn
     expect(html).not.toContain('aria-pressed');
-    expect(html).toContain('Mở rộng tất cả');
-    expect(html).toContain('Thu gọn tất cả');
+    expect(html).not.toContain('Mở rộng tất cả');
+    expect(html).not.toContain('Thu gọn tất cả');
     expect(html).toContain('placeholder="Tìm loại KCHT');
     // kcht tree (real config) rendered in sidebar
     expect(html).toContain('Quản lý cảng biển');
