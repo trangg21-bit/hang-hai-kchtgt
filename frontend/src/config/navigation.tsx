@@ -186,7 +186,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: '/documents/legal', route: '/documents/legal', label: 'Văn bản pháp lý' },
       { key: '/documents/operation', route: '/documents/operation', label: 'Thông tin vận hành' },
       { key: '/documents/maintenance', route: '/documents/maintenance', label: 'Thông tin bảo trì' },
-      { key: '/ship-port-call', route: '/ship-port-call', label: 'Tàu biển ra vào cảng biển' },
+      { key: 'ship-port-call-disabled', label: 'Tàu biển ra vào cảng biển', disabled: true, note: 'Chức năng đang được xây dựng' },
     ],
   },
   {
