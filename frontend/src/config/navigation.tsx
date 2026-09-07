@@ -95,6 +95,8 @@ const kchtTree: NavNode[] = [
       { key: '/transfer-area', route: '/transfer-area', label: 'Quản lý khu chuyển tải', icon: icons.export },
       { key: '/storm-shelter', route: '/storm-shelter', label: 'Quản lý khu tránh, trú bão', icon: icons.safety },
       { key: '/ship-repair-yard', route: '/ship-repair-yard', label: 'Quản lý cơ sở sửa chữa, đóng tàu', icon: icons.tool },
+      { key: '/beacon-stations', route: '/beacon-stations', label: 'Quản lý đèn biển và nhà trạm', icon: icons.environment },
+      { key: '/dike-revetment', route: '/dike-revetment', label: 'Quản lý đê, kè bảo vệ bờ', icon: icons.block },
     ],
   },
   {
@@ -113,8 +115,6 @@ const kchtTree: NavNode[] = [
           { key: '/buoys', route: '/buoys', label: 'Quản lý Phao, tiêu', icon: icons.environment },
         ],
       },
-      { key: '/beacon-stations', route: '/beacon-stations', label: 'Quản lý đèn biển và nhà trạm', icon: icons.environment },
-      { key: '/dike-revetment', route: '/dike-revetment', label: 'Quản lý đê, kè bảo vệ bờ', icon: icons.block },
     ],
   },
   { key: '/dry-port', route: '/dry-port', label: 'Quản lý cảng cạn', icon: icons.truck },
