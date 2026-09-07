@@ -34,6 +34,9 @@ public class DikeRevetment extends BaseApprovableEntity {
     @Column(name = "location", nullable = false, length = 200)
     private String location;
 
+    @Column(name = "location_detail", length = 500)
+    private String locationDetail;
+
     @Column(name = "dike_revetment_name", length = 255)
     private String dikeRevetmentName;
 
@@ -42,6 +45,9 @@ public class DikeRevetment extends BaseApprovableEntity {
 
     @Column(name = "seaport_id")
     private UUID seaportId;
+
+    @Column(name = "operating_unit_id")
+    private UUID operatingUnitId;
 
     @Column(name = "length")
     private Double length;

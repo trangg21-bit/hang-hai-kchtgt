@@ -295,7 +295,6 @@ export default function AppLayout({ initialSidebarHidden = false }: { initialSid
         canAccessMenu('/documents/incidents') ? { key: '/documents/incidents', label: 'Sự cố hàng hải' } : null,
         canAccessMenu('/documents/port-planning') ? { key: '/documents/port-planning', label: 'Quy hoạch bến cảng' } : null,
         canAccessMenu('/documents/operation') ? { key: '/documents/operation', label: 'Thông tin vận hành' } : null,
-
         canAccessMenu('/documents/maintenance') ? { key: '/documents/maintenance', label: 'Thông tin bảo trì' } : null,
         canAccessMenu('/symbols') ? { key: '/symbols', label: 'Quản lý biểu tượng trên bản đồ' } : null,
         canAccessMenu('/water-zone') ? { key: '/water-zone', label: 'Quản lý vùng nước' } : null,

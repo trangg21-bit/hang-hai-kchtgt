@@ -45,9 +45,11 @@ export default function ApprovalModal({
   }, [isModalOpen, form]);
 
   const handleConfirm = () => {
-    const text = content.trim() || 'Đã phê duyệt';
-    if (onConfirm) onConfirm(text);
-    if (onOk) onOk(text);
+    const text = content.trim();
+    if (text) {
+      if (onConfirm) onConfirm(text);
+      if (onOk) onOk(text);
+    }
     setContent('');
     form.resetFields();
   };

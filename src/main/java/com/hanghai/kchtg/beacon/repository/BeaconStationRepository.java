@@ -32,6 +32,7 @@ public interface BeaconStationRepository extends JpaRepository<BeaconStation, UU
            "(:name IS NULL OR LOWER(b.name) LIKE LOWER(CONCAT('%', cast(:name as string), '%'))) AND " +
            "(:code IS NULL OR LOWER(b.code) LIKE LOWER(CONCAT('%', cast(:code as string), '%'))) AND " +
            "(:type IS NULL OR b.type = :type) AND " +
+           "(:primaryLightModel IS NULL OR LOWER(b.primaryLightModel) LIKE LOWER(CONCAT('%', CAST(:primaryLightModel AS string), '%'))) AND " +
            "(:status IS NULL OR b.status = :status) AND " +
            "(:unitId IS NULL OR b.unitId = :unitId) AND " +
            "(:seaportId IS NULL OR b.seaportId = :seaportId) AND " +
@@ -49,6 +50,7 @@ public interface BeaconStationRepository extends JpaRepository<BeaconStation, UU
         @Param("name") String name,
         @Param("code") String code,
         @Param("type") String type,
+        @Param("primaryLightModel") String primaryLightModel,
         @Param("status") String status,
         @Param("unitId") UUID unitId,
         @Param("seaportId") UUID seaportId,
@@ -68,6 +70,7 @@ public interface BeaconStationRepository extends JpaRepository<BeaconStation, UU
            "(:name IS NULL OR LOWER(b.name) LIKE LOWER(CONCAT('%', cast(:name as string), '%'))) AND " +
            "(:code IS NULL OR LOWER(b.code) LIKE LOWER(CONCAT('%', cast(:code as string), '%'))) AND " +
            "(:type IS NULL OR b.type = :type) AND " +
+           "(:primaryLightModel IS NULL OR LOWER(b.primaryLightModel) LIKE LOWER(CONCAT('%', CAST(:primaryLightModel AS string), '%'))) AND " +
            "(:status IS NULL OR b.status = :status) AND " +
            "(:unitId IS NULL OR b.unitId = :unitId) AND " +
            "(:seaportId IS NULL OR b.seaportId = :seaportId) AND " +
@@ -85,6 +88,7 @@ public interface BeaconStationRepository extends JpaRepository<BeaconStation, UU
         @Param("name") String name,
         @Param("code") String code,
         @Param("type") String type,
+        @Param("primaryLightModel") String primaryLightModel,
         @Param("status") String status,
         @Param("unitId") UUID unitId,
         @Param("seaportId") UUID seaportId,

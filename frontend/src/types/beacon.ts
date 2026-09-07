@@ -51,14 +51,20 @@ export type BeaconStatus =
 
 export const BEACON_STATUS_MAP: Record<string, { color: string; label: string }> = {
   DRAFT: { color: 'default', label: 'Lưu tạm' },
-  PROPOSED: { color: 'orange', label: 'Chờ Cảng vụ duyệt' },
-  PENDING_APPROVAL: { color: 'orange', label: 'Chờ Cảng vụ duyệt' },
-  APPROVED_LEVEL1: { color: 'blue', label: 'Chờ Cục duyệt' },
-  APPROVED_LEVEL2: { color: 'green', label: 'Đã duyệt' },
-  APPROVED: { color: 'green', label: 'Đã duyệt' },
-  REJECTED: { color: 'red', label: 'Từ chối' },
-  REJECTED_LEVEL1: { color: 'red', label: 'Cảng vụ trả về' },
-  REJECTED_LEVEL2: { color: 'red', label: 'Cục trả về' },
+  PROPOSED: { color: 'orange', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  PENDING: { color: 'orange', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  PENDING_APPROVAL: { color: 'orange', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  APPROVED_L1: { color: 'blue', label: 'Chờ phê duyệt cấp Cục' },
+  APPROVED_LEVEL1: { color: 'blue', label: 'Chờ phê duyệt cấp Cục' },
+  APPROVED_L2: { color: 'green', label: 'Đã phê duyệt' },
+  APPROVED_LEVEL2: { color: 'green', label: 'Đã phê duyệt' },
+  PUBLISHED: { color: 'green', label: 'Đã phê duyệt' },
+  APPROVED: { color: 'green', label: 'Đã phê duyệt' },
+  REJECTED: { color: 'red', label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  REJECTED_L1: { color: 'red', label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  REJECTED_LEVEL1: { color: 'red', label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  REJECTED_L2: { color: 'red', label: 'Từ chối cấp Cục' },
+  REJECTED_LEVEL2: { color: 'red', label: 'Từ chối cấp Cục' },
   DELETED: { color: 'default', label: 'Đã xóa' },
 };
 
@@ -103,6 +109,7 @@ export interface BeaconStation {
   coordinateSystem?: number;
   displayRule?: string;
   updatedBy?: string;
+  updatedByName?: string;
   submittedBy?: string;
   submittedAt?: string;
   submittedByName?: string;
@@ -140,7 +147,7 @@ export interface CreateBeaconStationRequest {
   lastRepairDate?: string;
   commissionedDate?: string;
   isActive?: boolean;
-  action?: 'draft' | 'submit';
+  action?: 'draft' | 'submit' | 'approved';
   provinceId?: number;
   seaportId?: string;
   operator?: string;
@@ -165,6 +172,8 @@ export interface CreateBeaconStationRequest {
 }
 
 export interface UpdateBeaconStationRequest {
+  /** Hành động lưu khi cập nhật: draft (giữ trạng thái) | submit (gửi phê duyệt) | approved (Lưu và phê duyệt). */
+  action?: 'draft' | 'submit' | 'approved';
   name?: string;
   type?: BeaconLightType;
   latitude?: number;

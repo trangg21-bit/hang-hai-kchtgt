@@ -2,6 +2,7 @@ package com.hanghai.kchtg.radarstation.dto;
 
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -45,17 +46,24 @@ public class RadarStationResponse {
     private String status;
     private UUID submittedForApprovalBy;
     private LocalDateTime submittedForApprovalAt;
+    private String submittedByName;
     private ApprovalStatus approvalStatus;
     private Boolean approvedLevel1;
     private UUID approverLevel1;
+    private String approverLevel1Name;
     private LocalDateTime approvedDateLevel1;
     private Boolean approvedLevel2;
     private UUID approverLevel2;
+    private String approverLevel2Name;
     private LocalDateTime approvedDateLevel2;
     private String rejectionReason;
+    private String level1ApprovalContent;
+    private String level2ApprovalContent;
     private UUID createdBy;
+    private String createdByName;
     private LocalDateTime createdDate;
     private UUID updatedBy;
+    private String updatedByName;
     private LocalDateTime updatedDate;
     private List<RadarStationAttachmentResponse> attachments;
 
@@ -65,4 +73,6 @@ public class RadarStationResponse {
 
     private BigDecimal towerHeight;
     private BigDecimal radarRange;
+
+    private String mapIcon;
 }

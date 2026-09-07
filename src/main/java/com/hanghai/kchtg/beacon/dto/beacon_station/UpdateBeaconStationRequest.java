@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.beacon.dto.beacon_station;
 
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Size;
@@ -14,6 +15,7 @@ import java.time.LocalDate;
  * Request DTO for updating an existing BeaconStation (F-069).
  * NOTE: code and type are NOT mutable (BR-069-01, BR-069-02).
  * NOTE: longitude/latitude are NOT mutable (BR-069-03).
+ * action: "draft" (mặc định, giữ trạng thái) | "submit" (gửi phê duyệt) | "approved" (Lưu và phê duyệt).
  */
 @Data
 @NoArgsConstructor
@@ -40,7 +42,6 @@ public class UpdateBeaconStationRequest {
     private Double lightRange;
 
     @DecimalMin("0.01")
-    @DecimalMax("100.0")
     private Double area;
 
     @Size(max = 1000)
@@ -51,6 +52,9 @@ public class UpdateBeaconStationRequest {
     private LocalDate lastRepairDate;
     private LocalDate commissionedDate;
     private Boolean isActive;
+
+    @Builder.Default
+    private String action = "draft";
 
     private String shape;
     private String structure;
@@ -90,4 +94,7 @@ public class UpdateBeaconStationRequest {
 
     @Size(max = 255)
     private String displayRule;
+
+    /** Tọa độ GIS dạng WKT (vd: POINT (106.7 20.8)) — chuẩn /vts-operation-center; khi sửa có thể đổi vị trí. */
+    private String coordinates;
 }

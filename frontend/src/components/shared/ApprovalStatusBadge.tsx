@@ -13,6 +13,8 @@ export type ApprovalStatusType = 'PROPOSED' | 'PENDING' | 'PENDING_APPROVAL' | '
 interface ApprovalStatusBadgeProps {
   status: ApprovalStatusType;
   size?: 'default' | 'small';
+  /** Ghi đè nhãn hiển thị theo trạng thái chuẩn hoá — dùng khi một màn cần đúng từ ngữ nghiệp vụ riêng. */
+  labelOverrides?: Partial<Record<string, string>>;
 }
 
 /**
@@ -67,15 +69,15 @@ const STATUS_COLOR_TOKEN: Record<string, 'statusDraft' | 'statusAttention' | 'st
   ARCHIVED: 'textTertiary',
 };
 
-export default function ApprovalStatusBadge({ status, size = 'default' }: ApprovalStatusBadgeProps) {
+export default function ApprovalStatusBadge({ status, size = 'default', labelOverrides }: ApprovalStatusBadgeProps) {
   const t = useThemeToken();
   // Chuẩn hóa mã legacy (PROPOSED, PUBLISHED, APPROVED_L1, NHAP, CHO_PHE_DUYET...)
   // trước khi tra nhãn, để không màn nào hiển thị ra mã thô.
   const normalized = normalizeApprovalStatus(status);
   const base = APPROVAL_STATUS_STYLE[normalized];
-  // Nhãn vẫn lấy từ bảng chuẩn dùng chung; riêng MÀU đi qua theme đang áp.
+  // Nhãn vẫn lấy từ bảng chuẩn dùng chung; cho phép màn ghi đè từ ngữ riêng khi cần.
   const config = {
-    label: base?.label ?? (status || '—'),
+    label: labelOverrides?.[normalized] ?? base?.label ?? (status || '—'),
     color: t[STATUS_COLOR_TOKEN[normalized] ?? 'textTertiary'],
   };
 

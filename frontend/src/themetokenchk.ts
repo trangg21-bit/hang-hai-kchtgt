@@ -566,7 +566,7 @@ export const themeScopedCss = (scope: string): string => `
 .${scope} .ant-btn { border-radius: 999px !important; }
 .${scope} input.ant-input:not(.ant-space-compact *) { border-radius: 999px !important; }
 .${scope} .ant-input:not(textarea):not(.ant-space-compact *) { border-radius: 999px !important; }
-.${scope} .ant-input-affix-wrapper:not(.ant-input-affix-wrapper-textarea-with-clear-btn):not(.ant-space-compact *) {
+.${scope} .ant-input-affix-wrapper:not(.ant-input-textarea-affix-wrapper):not(.ant-input-affix-wrapper-textarea-with-clear-btn):not(.ant-space-compact *) {
   border-radius: 999px !important;
   padding: 0 12px !important;
   height: 40px !important;
@@ -585,10 +585,13 @@ export const themeScopedCss = (scope: string): string => `
   font-size: 13px !important;
   line-height: 38px !important;
 }
-.${scope} textarea.ant-input,
 .${scope} .ant-input-textarea,
-.${scope} .ant-input-textarea > textarea,
 .${scope} .ant-input-textarea-show-count,
+.${scope} .ant-input-textarea-affix-wrapper {
+  padding: 0 !important;
+}
+.${scope} textarea.ant-input,
+.${scope} .ant-input-textarea > textarea,
 .${scope} .ant-input-textarea-show-count textarea,
 textarea.ant-input {
   border-radius: 20px !important;

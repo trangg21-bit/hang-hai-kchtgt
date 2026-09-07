@@ -1,0 +1,103 @@
+{
+  "triage_id": "TRI-1788490444758-e5aa",
+  "created_at": 1788490444758,
+  "request_summary": "Chuẩn hóa UI phê duyệt màn /cctv (Hệ thống CCTV): tách tab 'Từ chối' thành 2 tab theo cấp (Từ chối cấp Cảng vụ/Chi cục, Từ chối cấp cục) để lọc đủ cả REJECTED_LEVEL2, chân form sửa hồ sơ Đã duyệt bỏ nút 'Lưu tạm' chỉ giữ 'Lưu và phê duyệt' (theo chuẩn §3.6), nhãn lịch sử/chi tiết phân biệt cấp phê duyệt, dọn nhãn legacy + đính chính tài liệu convention",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/conventions/list-screen-ui-standard.md",
+      "docs/TODO-chuan-hoa-ui-va-phe-duyet.md",
+      "frontend/src/services/cctv/CctvListPage.tsx",
+      "frontend/src/services/cctv/schema.ts"
+    ],
+    "impact_files": [
+      "docs/conventions/list-screen-ui-standard.md",
+      "docs/TODO-chuan-hoa-ui-va-phe-duyet.md",
+      "frontend/src/services/cctv/CctvListPage.tsx",
+      "frontend/src/services/cctv/schema.ts"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "frontend/src/services/cctv/schema.ts"
+      }
+    ],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C3: one-way door: schema:frontend/src/services/cctv/schema.ts — floors at C3 regardless of size (4 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn /cctv (Hệ thống CCTV): StatusTabs phê duyệt, drawer Chỉnh sửa/Cập nhật, modal Lịch sử, drawer Xem chi tiết",
+  "blast_radius": 4,
+  "done_oracle": "Tại /cctv: 7 tab (Tất cả, Lưu tạm, Chờ Cảng vụ duyệt, Chờ Cục duyệt, Đã duyệt, Từ chối cấp Cảng vụ/Chi cục, Từ chối cấp cục); bấm tab 'Từ chối cấp cục' ra đúng bản ghi REJECTED_LEVEL2 (hết lỗi bỏ sót hiện tại); mở Chỉnh sửa hồ sơ Đã duyệt không còn nút Lưu tạm (chỉ Hủy + Lưu và phê duyệt khi có cctv:approvec2); lịch sử phân biệt 'Phê duyệt cấp Cảng vụ'/'Phê duyệt cấp Cục'/'Từ chối cấp Cảng vụ'/'Từ chối cấp Cục'; chi tiết không còn nhãn 'Nội dung phê duyệt' lặp 3 lần.",
+  "verification_commands": [
+    {
+      "command": "npx tsc --noEmit -p tsconfig.app.json",
+      "cwd": "frontend",
+      "timeout_ms": 300000
+    },
+    {
+      "command": "npm run build",
+      "cwd": "frontend",
+      "timeout_ms": 600000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/services/cctv/CctvListPage.tsx",
+      "line": 196,
+      "quote": "  REJECTED_LEVEL2: 'Cục trả về',",
+      "source_hash": "dccd99a4c864a63f4a47457387408f43d28f8405d8d3a153df8fc4825b167118",
+      "quote_hash": "26d0a6f385ddf90c509722d87b27df6f558d62d2c4c568951ae885e15e2ec5fe",
+      "note": "Label map 6 trạng thái phê duyệt của màn /cctv"
+    },
+    {
+      "file": "frontend/src/services/cctv/CctvListPage.tsx",
+      "line": 2261,
+      "quote": "count: (tabCounts[\"REJECTED_LEVEL1\"] ?? 0) + (tabCounts[\"REJECTED_LEVEL2\"] ?? 0),",
+      "source_hash": "dccd99a4c864a63f4a47457387408f43d28f8405d8d3a153df8fc4825b167118",
+      "quote_hash": "e55794b81ab0f4c6bc2377f2c0d6118b520f4f9da5f24157f8b0752a2dde3994",
+      "note": "Tab Từ chối hiện đếm gộp 2 cấp — sẽ tách thành 2 tab riêng"
+    },
+    {
+      "file": "frontend/src/services/cctv/CctvListPage.tsx",
+      "line": 3455,
+      "quote": "{updateTarget?.approvalStatus === 'APPROVED' && canSaveAndApprove && (",
+      "source_hash": "dccd99a4c864a63f4a47457387408f43d28f8405d8d3a153df8fc4825b167118",
+      "quote_hash": "089ac70f9d566a9cc4885fa028f3f7201b5487a0d3a4b116ca4355ffb2cc5a8d",
+      "note": "Điều kiện hiện nút Lưu và phê duyệt khi sửa hồ sơ Đã duyệt"
+    },
+    {
+      "file": "frontend/src/services/cctv/CctvListPage.tsx",
+      "line": 1279,
+      "quote": "if (rawStatus === 'APPROVED' || rawStatus === 'APPROVED_LEVEL2') {",
+      "source_hash": "dccd99a4c864a63f4a47457387408f43d28f8405d8d3a153df8fc4825b167118",
+      "quote_hash": "169b0fd07bf7d2f80ce9b7cb1b8f1dc39312c66b27b2130a14b647bfe6a12909",
+      "note": "History resolver đang gộp nhãn Phê duyệt chung — sẽ phân biệt theo cấp C1/C2"
+    },
+    {
+      "file": "frontend/src/services/cctv/schema.ts",
+      "line": 31,
+      "quote": "z.enum(['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED'])",
+      "source_hash": "33b06d789451102ac2acd039d7ed66565ec948262564de6006c9603b7c9bf1d9",
+      "quote_hash": "be274c0fc9d11a6e70e282fbc12b4be4ffbf254fcbbe7db2905791a0d46f458c",
+      "note": "Legacy schema lọc 4 trạng thái thiếu REJECTED_LEVEL1/2"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "3b07a5a6421c35cc8b0c2382bc435e35e9fc5c34",
+    "dirty": true,
+    "captured_at": 1788490444919
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

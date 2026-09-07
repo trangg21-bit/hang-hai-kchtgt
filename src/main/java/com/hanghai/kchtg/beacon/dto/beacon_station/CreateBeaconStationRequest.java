@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.beacon.dto.beacon_station;
 
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,7 +11,7 @@ import java.time.LocalDate;
 
 /**
  * Request DTO for creating a new BeaconStation (F-068).
- * Includes "action" field: "draft" → DRAFT status, "submit" → PENDING_APPROVAL.
+ * Includes "action" field: "draft" → DRAFT, "submit" → PENDING_APPROVAL, "approved" → APPROVED (Lưu và phê duyệt).
  */
 @Data
 @NoArgsConstructor
@@ -43,7 +44,6 @@ public class CreateBeaconStationRequest {
     private String primaryLightModel;
 
     @DecimalMin("0.01")
-    @DecimalMax("100.0")
     private Double area;
 
     @Size(max = 1000)
@@ -98,4 +98,7 @@ public class CreateBeaconStationRequest {
 
     @Size(max = 255)
     private String displayRule;
+
+    /** Tọa độ GIS dạng WKT (vd: POINT (106.7 20.8), LINESTRING (…), POLYGON ((…))) — chuẩn /vts-operation-center. */
+    private String coordinates;
 }

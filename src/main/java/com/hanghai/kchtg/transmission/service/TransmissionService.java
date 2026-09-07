@@ -8,16 +8,19 @@ import com.hanghai.kchtg.transmission.entity.Transmission;
 import com.hanghai.kchtg.transmission.repository.TransmissionRepository;
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatusConverter;
 import com.hanghai.kchtg.common.entity.OperatingOrganization;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.vtsoperationcenter.entity.VtsOperationCenter;
 import com.hanghai.kchtg.vtsoperationcenter.repository.VtsOperationCenterRepository;
 import com.hanghai.kchtg.security.SecurityUtils;
@@ -75,6 +78,7 @@ public class TransmissionService {
   private final AttachmentRepository attachmentRepository;
   private final InfrastructureApprovalService approvalService;
   private final UserRepository userRepository;
+  private final InfrastructureHistoryRepository historyRepository;
 
   /**
    * Generate device code in format TRD-NNNNNN.
@@ -142,9 +146,6 @@ public class TransmissionService {
       .coordinateSystem(request.getCoordinateSystem())
       .displayRule(request.getDisplayRule())
       .spatialId(request.getSpatialId())
-      // .securityLevel(request.getSecurityLevel() != null
-      //         ? request.getSecurityLevel()
-      //         : RecordSecurityLevel.NORMAL)
       .build();
 
     // Persist trước để entity.getId() có giá trị khi ghi infrastructure_history (ref_id NOT NULL).
@@ -326,6 +327,19 @@ public class TransmissionService {
     if (request.getDisplayRule() != null) entity.setDisplayRule(request.getDisplayRule());
     if (request.getSpatialId() != null) entity.setSpatialId(request.getSpatialId());
 
+    // Chụp trạng thái GIS cũ trước khi đồng bộ để ghi 'Tọa độ GIS'/'Loại đối tượng GIS'
+    // vào lịch sử khi sửa hồ sơ ĐÃ DUYỆT — mirror /vts-operation-center.
+    String oldCoordinates = null;
+    String oldGeometryType = null;
+    if (entity.getSpatialId() != null) {
+      Optional<GisSpatialObject> oldSpatialOpt = gisSpatialObjectService.findById(entity.getSpatialId());
+      if (oldSpatialOpt.isPresent()) {
+        oldCoordinates = oldSpatialOpt.get().getCoordinates();
+        GisGeometryType oldGeom = oldSpatialOpt.get().getGeometryType();
+        oldGeometryType = oldGeom != null ? oldGeom.name() : null;
+      }
+    }
+
     // Đồng bộ tọa độ GPS vào gis_spatial_objects (giống AIS): coordinates != null → upsert;
     // chuỗi rỗng → xóa spatial cũ (trả null). Không gửi coordinates → giữ nguyên spatial hiện tại.
     if (request.getCoordinates() != null) {
@@ -366,6 +380,35 @@ public class TransmissionService {
     // hồ sơ đang chờ duyệt hoặc bị trả về KHÔNG ghi lịch sử.
     if (approvedEdit) {
       changeHistoryService.recordChanges("TRANSMISSION", saved.getId().toString(), currentUserId.toString(), snapshot, saved);
+      // Ghi 'Tọa độ GIS'/'Loại đối tượng GIS' khi thực sự đổi — mirror /vts-operation-center.
+      String oldCoordKey = oldCoordinates != null ? oldCoordinates.trim() : "";
+      if (request.getCoordinates() != null && !request.getCoordinates().trim().equals(oldCoordKey)) {
+        historyRepository.save(InfrastructureHistory.builder()
+            .refId(saved.getId())
+            .refType(InfrastructureType.TRANSMISSION)
+            .approvalLevel(ApprovalLevel.LEVEL_2)
+            .status(InfrastructureHistoryStatus.UPDATED)
+            .approvedBy(currentUserId)
+            .changedField("Tọa độ GIS")
+            .previousValue(oldCoordinates != null ? oldCoordinates.trim() : "Chưa có")
+            .newValue(request.getCoordinates().trim())
+            .reason("Cập nhật thông tin Tọa độ GIS")
+            .build());
+      }
+      String oldGeomKey = oldGeometryType != null ? oldGeometryType : "";
+      if (request.getGeometryType() != null && !request.getGeometryType().name().equals(oldGeomKey)) {
+        historyRepository.save(InfrastructureHistory.builder()
+            .refId(saved.getId())
+            .refType(InfrastructureType.TRANSMISSION)
+            .approvalLevel(ApprovalLevel.LEVEL_2)
+            .status(InfrastructureHistoryStatus.UPDATED)
+            .approvedBy(currentUserId)
+            .changedField("Loại đối tượng GIS")
+            .previousValue(oldGeometryType != null ? oldGeometryType : "Chưa có")
+            .newValue(request.getGeometryType().name())
+            .reason("Cập nhật thông tin Loại đối tượng GIS")
+            .build());
+      }
     }
 
     return toResponse(saved);
@@ -441,7 +484,6 @@ public class TransmissionService {
 
     return TransmissionResponse.builder()
       .id(entity.getId())
-      .securityLevel(entity.getSecurityLevel())
       .deviceCode(entity.getDeviceCode())
       .deviceName(entity.getDeviceName())
       .detailedLocation(entity.getDetailedLocation())
@@ -642,6 +684,11 @@ public class TransmissionService {
     }
     List<Attachment> saved = new ArrayList<>();
     java.nio.file.Path basePath = java.nio.file.Paths.get(uploadPath).toAbsolutePath().normalize();
+    // Ghi nhật ký 'Tài liệu đính kèm' (ATTACHMENT_UPLOADED) khi hồ sơ ĐÃ DUYỆT — mirror /vts-operation-center.
+    Transmission entity = transmissionRepository.findById(entityId).orElse(null);
+    boolean wasApproved = entity != null
+        && (ApprovalStatus.APPROVED.equals(entity.getApprovalStatus())
+            || ApprovalStatus.APPROVED_LEVEL2.equals(entity.getApprovalStatus()));
     for (MultipartFile file : files) {
       String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
       String storageFileName = System.currentTimeMillis() + "_" + originalFilename;
@@ -662,6 +709,20 @@ public class TransmissionService {
       attachment.setContentType(file.getContentType());
       attachment.setUploadedBy(userId);
       saved.add(attachmentRepository.save(attachment));
+      if (wasApproved) {
+        historyRepository.save(InfrastructureHistory.builder()
+            .refId(entityId)
+            .refType(InfrastructureType.TRANSMISSION)
+            .approvalLevel(ApprovalLevel.LEVEL_0)
+            .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
+            .approvedBy(userId)
+            .approvedDate(LocalDateTime.now())
+            .reason("Tải lên tài liệu đính kèm: " + originalFilename)
+            .changedField("Tài liệu đính kèm")
+            .previousValue("—")
+            .newValue(originalFilename)
+            .build());
+      }
     }
     return saved.stream().map(this::toAttachmentDto).toList();
   }
@@ -671,8 +732,19 @@ public class TransmissionService {
         .stream().map(this::toAttachmentDto).toList();
   }
 
+  /** Lấy file đính kèm để tải xuống — mirror /vts-operation-center (VtsOperationCenterService.getAttachment). */
+  @Transactional(readOnly = true)
+  public Attachment getAttachment(UUID entityId, UUID attachmentId) {
+    Attachment attachment = attachmentRepository.findById(attachmentId)
+        .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
+    if (!attachment.getEntityId().equals(entityId)) {
+      throw new IllegalArgumentException("File không thuộc hệ thống truyền dẫn này");
+    }
+    return attachment;
+  }
+
   @Transactional
-  public void deleteAttachment(UUID entityId, UUID attachmentId) {
+  public void deleteAttachment(UUID entityId, UUID attachmentId, UUID userId) {
     Attachment attachment = attachmentRepository.findById(attachmentId)
         .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
     if (!attachment.getEntityId().equals(entityId)) {
@@ -684,6 +756,19 @@ public class TransmissionService {
       // ignore file deletion failure; the DB record is still removed
     }
     attachmentRepository.delete(attachment);
+    // Ghi nhật ký 'Tài liệu đính kèm' (ATTACHMENT_DELETED) — mirror /vts-operation-center.
+    historyRepository.save(InfrastructureHistory.builder()
+        .refId(entityId)
+        .refType(InfrastructureType.TRANSMISSION)
+        .approvalLevel(ApprovalLevel.LEVEL_0)
+        .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
+        .approvedBy(userId)
+        .approvedDate(LocalDateTime.now())
+        .reason("Xóa tài liệu đính kèm: " + attachment.getFileName())
+        .changedField("Tài liệu đính kèm")
+        .previousValue(attachment.getFileName())
+        .newValue("—")
+        .build());
   }
 
   private AttachmentDto toAttachmentDto(Attachment entity) {

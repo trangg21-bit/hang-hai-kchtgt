@@ -121,20 +121,21 @@ public class ScadaApprovalService {
 
   public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize, String keyword,
       LocalDateTime fromDate, LocalDateTime toDate) {
-    ensureExists(id);
+    if (!scadaRepository.existsById(id)) {
+      throw new EntityNotFoundException("Không tìm thấy hệ thống SCADA với id: " + id);
+    }
+    // Nhật ký: copy đúng /vts-operation-center (VtsOperationCenterService.getHistory) — trả về mọi
+    // dòng nhật ký (mặc định) hoặc lọc từ khóa/khoảng ngày; KHÔNG lọc theo mốc/status.
+    String normalizedKeyword = normalizeSearchKeyword(keyword);
+    boolean paged = page != null && pageSize != null && pageSize > 0;
     List<InfrastructureHistory> list;
-    if (page != null && pageSize != null && pageSize > 0) {
-      Pageable pageable = PageRequest.of(page, pageSize);
-      String normalizedKeyword = normalizeSearchKeyword(keyword);
-      if (normalizedKeyword == null && fromDate == null && toDate == null) {
-        list = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
-            InfrastructureType.SCADA, id, pageable);
-      } else {
-        list = historyRepository.searchHistory(InfrastructureType.SCADA, id, normalizedKeyword,
-            fromDate, toDate, pageable);
-      }
+    if (normalizedKeyword == null && fromDate == null && toDate == null) {
+      list = paged
+          ? historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SCADA, id, PageRequest.of(page, pageSize))
+          : historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SCADA, id);
     } else {
-      list = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SCADA, id);
+      list = historyRepository.searchHistory(InfrastructureType.SCADA, id, normalizedKeyword, fromDate, toDate,
+          paged ? PageRequest.of(page, pageSize) : Pageable.unpaged());
     }
     Set<UUID> userIds = list.stream()
         .map(InfrastructureHistory::getApprovedBy)
@@ -161,12 +162,6 @@ public class ScadaApprovalService {
             .newValue(h.getNewValue())
             .build())
         .collect(Collectors.toList());
-  }
-
-  private void ensureExists(UUID id) {
-    if (!scadaRepository.existsById(id)) {
-      throw new EntityNotFoundException("Không tìm thấy hệ thống SCADA với id: " + id);
-    }
   }
 
   private static String normalizeSearchKeyword(String keyword) {

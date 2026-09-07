@@ -1,0 +1,149 @@
+{
+  "triage_id": "TRI-1788489845534-02f2",
+  "created_at": 1788489845534,
+  "request_summary": "Chuẩn hóa phê duyệt 2 cấp tại màn /radar-station theo 12 điều vàng CHK: đủ 6 trạng thái nhãn chuẩn (Lưu tạm, Chờ phê duyệt cấp Cảng vụ/Chi cục, Chờ phê duyệt cấp cục, Đã phê duyệt, Từ chối cấp Cảng vụ/Chi cục, Từ chối cấp cục), bộ nút Lưu tạm/Lưu và gửi phê duyệt/Lưu và phê duyệt trong Thêm mới/Cập nhật, đồng bộ UI + filter theo trạng thái phê duyệt.",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-059-phe-duyet-tram-radar/feature-brief.md",
+      "frontend/e2e/m003-tram-radar.spec.ts",
+      "frontend/src/App.tsx",
+      "frontend/src/pages/radarstation/RadarStationForm.tsx",
+      "frontend/src/pages/radarstation/RadarStationList.tsx",
+      "frontend/src/services/radarStationService.ts",
+      "frontend/src/types/radarStation.ts",
+      "src/main/java/com/hanghai/kchtg/radarstation/controller/RadarStationController.java",
+      "src/main/java/com/hanghai/kchtg/radarstation/dto/RadarStationCreateRequest.java",
+      "src/main/java/com/hanghai/kchtg/radarstation/dto/RadarStationUpdateRequest.java",
+      "src/main/java/com/hanghai/kchtg/radarstation/repository/RadarStationRepository.java",
+      "src/main/java/com/hanghai/kchtg/radarstation/service/RadarStationService.java",
+      "src/test/java/com/hanghai/kchtg/radarstation/controller/RadarStationControllerTest.java",
+      "src/test/java/com/hanghai/kchtg/radarstation/entity/RadarStationEntityTest.java",
+      "src/test/java/com/hanghai/kchtg/radarstation/service/RadarStationServiceTest.java"
+    ],
+    "impact_files": [
+      "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-059-phe-duyet-tram-radar/feature-brief.md",
+      "frontend/e2e/m003-tram-radar.spec.ts",
+      "frontend/src/App.tsx",
+      "frontend/src/pages/radarstation/RadarStationForm.tsx",
+      "frontend/src/pages/radarstation/RadarStationList.tsx",
+      "frontend/src/services/radarStationService.ts",
+      "frontend/src/types/radarStation.ts",
+      "src/main/java/com/hanghai/kchtg/radarstation/controller/RadarStationController.java",
+      "src/main/java/com/hanghai/kchtg/radarstation/dto/RadarStationCreateRequest.java",
+      "src/main/java/com/hanghai/kchtg/radarstation/dto/RadarStationUpdateRequest.java",
+      "src/main/java/com/hanghai/kchtg/radarstation/repository/RadarStationRepository.java",
+      "src/main/java/com/hanghai/kchtg/radarstation/service/RadarStationService.java",
+      "src/test/java/com/hanghai/kchtg/radarstation/controller/RadarStationControllerTest.java",
+      "src/test/java/com/hanghai/kchtg/radarstation/entity/RadarStationEntityTest.java",
+      "src/test/java/com/hanghai/kchtg/radarstation/service/RadarStationServiceTest.java"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C2: 15 edit-target files exceed the inline gate (15 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn hình danh sách /radar-station (RadarStationList.tsx): tabs/badge trạng thái phê duyệt + drawer Thêm mới/Cập nhật/Xem chi tiết + bộ lọc trạng thái.",
+  "blast_radius": 15,
+  "done_oracle": "Trên /radar-station: badge + tabs + bộ lọc hiển thị đủ và đúng 6 nhãn chuẩn CHK (Tất cả = tổng các tab con); drawer Thêm mới/Cập nhật cung cấp đủ Lưu tạm / Lưu và gửi phê duyệt / Lưu và phê duyệt với chuyển trạng thái đúng luồng 2 cấp (DRAFT→PENDING_APPROVAL→APPROVED_LEVEL1→APPROVED; từ chối c1→REJECTED_LEVEL1, c2→REJECTED_LEVEL2) và chống tự duyệt; trang/form phê duyệt 1 cấp legacy không còn gây nhập nhằng luồng; typecheck + FE build + mvn compile xanh; tài liệu F-059/UI đồng bộ.",
+  "verification_commands": [
+    {
+      "command": "npx tsc --noEmit -p tsconfig.app.json",
+      "cwd": "frontend",
+      "timeout_ms": 600000
+    },
+    {
+      "command": "npm run build",
+      "cwd": "frontend",
+      "timeout_ms": 600000
+    },
+    {
+      "command": "mvn -q clean compile",
+      "cwd": ".",
+      "timeout_ms": 600000
+    }
+  ],
+  "change_type": "business_rule",
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/radarstation/service/RadarStationService.java",
+      "line": 106,
+      "quote": "String action = request.getAction() != null ? request.getAction().trim().toLowerCase() : \"draft\";",
+      "source_hash": "57be34e2d38c5f0ce14631a41c831be59de377f6338dfd6905618ec5301be7bd",
+      "quote_hash": "0ee7d654edae081408d2fb0e14f48e8d5828c2149b7dd550ec380885c16fc765",
+      "note": "Create chỉ nhận action draft/submit — chưa có nhánh 'Lưu và phê duyệt'"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/radarstation/service/RadarStationService.java",
+      "line": 112,
+      "quote": "ApprovalStatus initialStatus = \"submit\".equals(action) ? ApprovalStatus.PENDING_APPROVAL : ApprovalStatus.DRAFT;",
+      "source_hash": "57be34e2d38c5f0ce14631a41c831be59de377f6338dfd6905618ec5301be7bd",
+      "quote_hash": "504b5aca48a30e3ec782098228093fa6816087e13e9264f395c65a958da6ddaa",
+      "note": "Map action->trạng thái khởi tạo 2 nhánh, không có approve trực tiếp"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/radarstation/service/RadarStationService.java",
+      "line": 371,
+      "quote": "approvalService.approveC1(entity, InfrastructureType.RADAR_STATION, \"APPROVED\", note, userId);",
+      "source_hash": "57be34e2d38c5f0ce14631a41c831be59de377f6338dfd6905618ec5301be7bd",
+      "quote_hash": "51da6410b9eea87c468ff5171624bc9d3314b83e9852e310c11eb5e4f840e039",
+      "note": "Duyệt cấp 1 (Cảng vụ/Chi cục) qua InfrastructureApprovalService"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/radarstation/service/RadarStationService.java",
+      "line": 387,
+      "quote": "approvalService.approveC1(entity, InfrastructureType.RADAR_STATION, \"REJECTED\", reason, userId);",
+      "source_hash": "57be34e2d38c5f0ce14631a41c831be59de377f6338dfd6905618ec5301be7bd",
+      "quote_hash": "53cf640f1ef027a8d5192ed99b507448e429df7154c901330ba84238e0562792",
+      "note": "Từ chối cấp 1 — cần xác minh ghi REJECTED_LEVEL1 đúng chuẩn F-059"
+    },
+    {
+      "file": "frontend/src/pages/radarstation/RadarStationList.tsx",
+      "line": 131,
+      "quote": "{ key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },",
+      "source_hash": "0491b2edea504eb9dedd69e40ed079a76792d627c6fbd5ab2201a01bacae34b2",
+      "quote_hash": "1f8e6f2c0f9c38951f8cefa152da92283a7eb2300ac9302d8f49561a43538015",
+      "note": "STATUS_TAB_LIST hiện chỉ 6 tab gộp 'Từ chối' 1 cấp — chưa tách 'Từ chối cấp cục'"
+    },
+    {
+      "file": "frontend/src/pages/radarstation/RadarStationList.tsx",
+      "line": 158,
+      "quote": "REJECTED_LEVEL1: { color: statusCritical, label: 'Cảng vụ trả về' },",
+      "source_hash": "0491b2edea504eb9dedd69e40ed079a76792d627c6fbd5ab2201a01bacae34b2",
+      "quote_hash": "259af2041be2b263195937bf21b3fcc22a37abd59b8879370f08f82e639bdc17",
+      "note": "Badge nhãn lệch chuẩn 6 nhãn (phải là 'Từ chối cấp Cảng vụ/Chi cục')"
+    },
+    {
+      "file": "frontend/src/pages/radarstation/RadarStationList.tsx",
+      "line": 1376,
+      "quote": "{editingRecord ? 'Cập nhật' : 'Tạo mới'}",
+      "source_hash": "0491b2edea504eb9dedd69e40ed079a76792d627c6fbd5ab2201a01bacae34b2",
+      "quote_hash": "734d21cb03c81fa577b82e402982ceb51f149b5797aa430ffb3ce4d5356a03a2",
+      "note": "Drawer chỉ 1 nút submit — thiếu bộ Lưu tạm / Lưu và gửi phê duyệt / Lưu và phê duyệt"
+    },
+    {
+      "file": "frontend/src/types/radarStation.ts",
+      "line": 32,
+      "quote": "REJECTED_LEVEL1: { label: 'Cảng vụ trả về' },",
+      "source_hash": "b1e1d245c631ba124092143e63a7e77b30cbf31092a5fbe8cdb0e7d01d80b61a",
+      "quote_hash": "971b599854b3c9a27a370a37ddb77dafeb9a5d99722f550cf97c1c53a51cde52",
+      "note": "Status map type lệch chuẩn nhãn 6 trạng thái"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "3b07a5a6421c35cc8b0c2382bc435e35e9fc5c34",
+    "dirty": false,
+    "captured_at": 1788489845696
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

@@ -40,6 +40,7 @@ export const beaconStationCRUD = {
     name?: string;
     code?: string;
     type?: string;
+    primaryLightModel?: string;
     status?: string;
     unitId?: string;
     seaportId?: string;
@@ -60,6 +61,7 @@ export const beaconStationCRUD = {
       name: params?.name,
       code: params?.code,
       type: params?.type,
+      primaryLightModel: params?.primaryLightModel,
       status: params?.status,
       unitId: params?.unitId,
       seaportId: params?.seaportId,
@@ -118,6 +120,11 @@ export const beaconStationCRUD = {
 
   async deleteAttachment(id: string, attachmentId: string): Promise<void> {
     await api.delete(`/beacon-stations/${id}/attachments/${attachmentId}`);
+  },
+
+  async downloadAttachment(id: string, attachmentId: string): Promise<Blob> {
+    const res = await api.get(`/beacon-stations/${id}/attachments/${attachmentId}/download`, { responseType: 'blob' });
+    return res.data as Blob;
   },
 };
 
@@ -243,5 +250,26 @@ export const beaconHistory = {
       page: (pageData.number ?? 0) + 1, // 0-based → 1-based
       pageSize: pageData.size ?? 20,
     };
+  },
+
+  /**
+   * Lịch sử chuẩn /vts-operation-center & /vts-system: đọc từ infrastructure_history,
+   * lọc + phân trang Ở SERVER qua GET /beacon-stations/{id}/history.
+   */
+  async getPagedHistory(
+    id: string,
+    page?: number,
+    pageSize?: number,
+    filters?: { keyword?: string; fromDate?: string; toDate?: string },
+  ): Promise<any[]> {
+    const sp = new URLSearchParams();
+    if (page !== undefined) sp.set('page', String(page));
+    if (pageSize !== undefined) sp.set('pageSize', String(pageSize));
+    if (filters?.keyword?.trim()) sp.set('keyword', filters.keyword.trim());
+    if (filters?.fromDate) sp.set('fromDate', filters.fromDate);
+    if (filters?.toDate) sp.set('toDate', filters.toDate);
+    const qs = sp.toString();
+    const res = await api.get(`/beacon-stations/${id}/history${qs ? `?${qs}` : ''}`);
+    return res.data?.data || [];
   },
 };

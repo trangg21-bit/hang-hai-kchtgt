@@ -1,21 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Input, Tooltip, DatePicker, Drawer, Button } from 'antd';
+import { Input, DatePicker, Drawer, Button } from 'antd';
 import { message } from '../components/ToastNotification';
-import { EyeOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { ScreenHeader, DataTable, Pagination } from '../components/list-view';
 import FilterTableLayout from '../components/list-view/FilterTableLayout';
 import type { DataTableColumn } from '../components/list-view/DataTable';
 import LoadingSkeleton from '../components/LoadingSkeleton';
-import EmptyState from '../components/EmptyState';
 import {
-  textPrimary, textTertiary, statusCritical,
+  textPrimary, textTertiary,
   spaceFormField, spaceMd, spaceSm, radiusPill,
   fontSizeMd,
   fontWeightBold,
-  fontMono, borderDefault, radiusLg, controlHeight,
+  fontMono, borderDefault, controlHeight,
   drawerProps, drawerTitleStyle, drawerCloseBtnStyle,
+  getRangePickerProps, icons,
 } from '../themetokenchk';
 import { colors } from '../themetokenchk';
 import * as themeTokenChk from '../themetokenchk';
@@ -24,16 +23,6 @@ import { logService, type AccessLogEntry } from '../services/logService';
 import api from '../services/api';
 import { OrgUnitTreeSelect } from '../components/org-unit';
 import { useAuthStore } from '../store/authStore';
-
-// ── Constants ──────────────────────────────────────────────────────────────────
-
-const TYPE_OPTIONS = [
-  { value: 'access', label: 'Thao tác' },
-  { value: 'login', label: 'Đăng nhập' },
-  { value: 'error', label: 'Lỗi hệ thống' },
-  { value: 'account', label: 'Tài khoản' },
-  { value: 'configuration', label: 'Cấu hình' },
-];
 
 // ── Action translation: English code → Vietnamese display ─────────────────────
 
@@ -348,10 +337,6 @@ export default function LogsPage() {
     return current.isBefore(minDate, 'day') || current.isAfter(today, 'day');
   };
 
-  const handleAdvancedSearch = useCallback(() => {
-    setPage(1);
-  }, []);
-
   const handlePageChange = (newPage: number, newPageSize: number) => {
     setPage(newPage);
     if (newPageSize !== pageSize) {
@@ -388,7 +373,7 @@ export default function LogsPage() {
     {
       key: 'view',
       label: 'Xem chi tiết',
-      icon: <EyeOutlined />,
+      icon: icons.view,
       onClick: () => openDetail(record),
     },
   ], []);
@@ -399,7 +384,6 @@ export default function LogsPage() {
       label: 'STT',
       dataIndex: '_rowIndex',
       width: 72,
-      fixed: 'left' as const,
       type: 'mono' as const,
       align: 'center',
       render: (val: any) => (
@@ -411,10 +395,10 @@ export default function LogsPage() {
       label: 'Email',
       dataIndex: 'email',
       width: 260,
-      fixed: 'left' as const,
+      ellipsis: true,
       render: (val: any) =>
         val ? (
-          <span style={{ color: textPrimary, fontSize: fontSizeMd }} title={val}>{val}</span>
+          <span style={{ color: textPrimary, fontSize: fontSizeMd }}>{val}</span>
         ) : (
           <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>
         ),
@@ -424,10 +408,11 @@ export default function LogsPage() {
       label: 'Đơn vị',
       dataIndex: 'orgUnit',
       width: 280,
+      ellipsis: true,
       render: (val: any) => {
         const name = orgUnits.find((o) => o.id === val)?.name;
         return val ? (
-          <span style={{ color: textPrimary, fontSize: fontSizeMd, fontWeight: fontWeightBold }} title={val}>{name || val}</span>
+          <span style={{ color: textPrimary, fontSize: fontSizeMd, fontWeight: fontWeightBold }}>{name || val}</span>
         ) : (
           <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>
         );
@@ -438,12 +423,11 @@ export default function LogsPage() {
       label: 'Chức năng',
       width: 240,
       dataIndex: 'action',
+      ellipsis: true,
       render: (val: any) => (
-        <Tooltip title={val}>
-          <span style={{ color: textPrimary, fontSize: fontSizeMd, fontWeight: fontWeightBold }}>
-            {translateAction(val)}
-          </span>
-        </Tooltip>
+        <span style={{ color: textPrimary, fontSize: fontSizeMd, fontWeight: fontWeightBold }}>
+          {translateAction(val)}
+        </span>
       ),
     },
     {
@@ -451,6 +435,7 @@ export default function LogsPage() {
       label: 'Địa chỉ IP',
       dataIndex: 'ipAddress',
       width: 180,
+      ellipsis: true,
       render: (val: any) => (
         <span style={{ fontFamily: fontMono, color: textPrimary, fontSize: fontSizeMd }}>
           {val}
@@ -462,14 +447,13 @@ export default function LogsPage() {
       label: 'Thông tin trình duyệt',
       dataIndex: 'userAgent',
       width: 300,
+      ellipsis: true,
       render: (val: any) => {
         if (!val) {
           return <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>;
         }
         return (
-          <span style={{ color: textPrimary, fontSize: fontSizeMd, whiteSpace: 'normal', wordBreak: 'break-word', display: 'block', lineHeight: 1.4 }}>
-            {val}
-          </span>
+          <span style={{ color: textPrimary, fontSize: fontSizeMd }}>{val}</span>
         );
       },
     },
@@ -478,14 +462,13 @@ export default function LogsPage() {
       label: 'Phiên đăng nhập',
       dataIndex: 'sessionId',
       width: 240,
+      ellipsis: true,
       render: (val: any) => {
         if (!val) {
           return <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>;
         }
         return (
-          <span style={{ fontFamily: fontMono, color: textPrimary, fontSize: fontSizeMd, whiteSpace: 'normal', wordBreak: 'break-all', display: 'block', lineHeight: 1.4 }}>
-            {val}
-          </span>
+          <span style={{ fontFamily: fontMono, color: textPrimary, fontSize: fontSizeMd }}>{val}</span>
         );
       },
     },
@@ -543,21 +526,20 @@ export default function LogsPage() {
         filterContent={
           <>
             <div style={{ marginBottom: spaceFormField, marginTop: spaceMd }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày truy cập <span style={{ color: statusCritical }}>*</span></div>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày truy cập</div>
               <DatePicker.RangePicker
-                placeholder={['Từ ngày', 'Đến ngày']}
-                allowClear
-                format="DD/MM/YYYY"
-                value={filterValues.dateRange}
-                disabledDate={disabledDate}
-                onChange={(dates) => {
-                  if (!dates || !dates[0] || !dates[1]) {
-                    message.error('Ngày truy cập là bắt buộc');
-                    return;
-                  }
-                  setFilterValues((prev) => ({ ...prev, dateRange: dates }));
-                }}
-                style={{ width: '100%', borderRadius: radiusPill, height: controlHeight, fontSize: fontSizeMd }}
+                {...getRangePickerProps({
+                  value: filterValues.dateRange,
+                  allowClear: true,
+                  disabledDate,
+                  onChange: (dates: [Dayjs | null, Dayjs | null] | null) => {
+                    if (!dates || !dates[0] || !dates[1]) {
+                      message.error('Ngày truy cập là bắt buộc');
+                      return;
+                    }
+                    setFilterValues((prev) => ({ ...prev, dateRange: dates }));
+                  },
+                })}
               />
             </div>
             <div style={{ marginBottom: spaceFormField }}>
@@ -592,29 +574,15 @@ export default function LogsPage() {
         hideStatusTabs
       >
         <div ref={tableWrapRef} style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-          <style>{`.list-view-table .ant-table-cell { padding-block: 8.5px !important; }`}</style>
-          {error ? null : !loading && data.length === 0 ? (
-            <DataTable
-              fill
-              columns={columns}
-              dataSource={[]}
-              rowKey="id"
-              loading={false}
-              scroll={{ x: 'max-content', y: tableBodyHeight }}
-              emptyState={<EmptyState description="Không có log nào phù hợp với bộ lọc. Thử thay đổi tiêu chí tìm kiếm." />}
-            />
-          ) : !loading && !error && data.length > 0 ? (
-            <DataTable
-              fill
-              columns={columns}
-              dataSource={tableData}
-              rowKey="id"
-              rowActions={rowActions}
-              loading={false}
-              scroll={{ x: 'max-content', y: tableBodyHeight }}
-              emptyState={<EmptyState description="Không có log nào phù hợp với bộ lọc. Thử thay đổi tiêu chí tìm kiếm." />}
-            />
-          ) : null}
+          <DataTable
+            fill
+            columns={columns}
+            dataSource={tableData}
+            rowKey="id"
+            rowActions={rowActions}
+            loading={loading}
+            scroll={{ x: 'max-content', y: tableBodyHeight }}
+          />
           <div style={{ height: 6, flexShrink: 0 }} />
           <Pagination
             total={total}
@@ -647,8 +615,7 @@ export default function LogsPage() {
       >
         {detailLoading ? <LoadingSkeleton rows={6} /> : r ? (
           <div style={{ paddingTop: 3 }}>
-            <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-label { width: 200px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; min-width: 0; overflow-wrap: anywhere; } .detail-value-full { grid-column: 1 / -1; }`}</style>
-            <div className="detail-grid">
+            <div className="chk-detail-grid">
               {[
                 ['Đơn vị', orgUnits.find((o) => o.id === r.orgUnit)?.name || r.orgUnit || '—'],
                 ['Email', r.email || '—'],
@@ -658,9 +625,9 @@ export default function LogsPage() {
                 ['Phiên đăng nhập', <span style={{ fontFamily: fontMono, wordBreak: 'break-all' }}>{r.sessionId || '—'}</span>, true],
                 ['Ngày truy cập', dayjs(r.createdAt).format('DD/MM/YYYY HH:mm:ss'), true],
               ].map(([label, value, full], i) => (
-                <div key={i} className={full ? 'detail-row detail-value-full' : 'detail-row'}>
-                  <span className="detail-label">{label}</span>
-                  <span className="detail-value">{value}</span>
+                <div key={i} className={full ? 'chk-detail-row chk-detail-row--full' : 'chk-detail-row'}>
+                  <span className="chk-detail-label">{label}</span>
+                  <span className="chk-detail-value">{value}</span>
                 </div>
               ))}
             </div>
