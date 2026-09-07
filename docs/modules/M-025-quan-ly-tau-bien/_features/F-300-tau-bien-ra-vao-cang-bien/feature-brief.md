@@ -7,24 +7,31 @@ status: proposed
 classification: local
 priority: medium
 created: 2026-09-02
-last-updated: 2026-09-02
+last-updated: 2026-09-06T12:06:16Z
 locked-fields: []
 consumed_by_modules: []
+source-paths:
+  - src/main/java/com/hanghai/kchtg/shipportcall/entity/ShipPortCall.java
+  - src/main/java/com/hanghai/kchtg/shipportcall/dto/ShipPortCallCreateRequest.java
+  - src/main/java/com/hanghai/kchtg/shipportcall/dto/ShipPortCallResponse.java
+  - src/main/java/com/hanghai/kchtg/shipportcall/repository/ShipPortCallRepository.java
+  - src/main/java/com/hanghai/kchtg/shipportcall/service/ShipPortCallService.java
+  - src/main/java/com/hanghai/kchtg/shipportcall/controller/ShipPortCallController.java
+  - src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java
+  - src/main/resources/db/migration/V20260906120000__create_ship_port_call.sql
+  - frontend/src/pages/shipportcall/ShipPortCallPage.tsx
+  - frontend/src/services/shipPortCallService.ts
+  - frontend/src/types/shipPortCall.ts
+  - frontend/src/config/navigation.tsx
+  - frontend/src/components/AppLayout.tsx
+  - frontend/src/App.tsx
+  - frontend/src/services/shipPortCallService.test.ts
 ---
-
 # Đặc tả nghiệp vụ: Tàu biển ra vào cảng biển
 
-**Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu 7-section)
-**Chức năng:** F-XXX (chờ scaffold gán ID)
-**Module:** M-025 — Quản lý tàu biển
-**Loại:** chức năng thường (không có bước phê duyệt)
-**Tham chiếu:** tài liệu nền `ba/00-lean-spec.md` (module M-025) + Excel root sheet `30->43` cụm #30
-
-> **Trước khi viết:** đọc tài liệu nền `ba/00-lean-spec.md` để biết phần CHUNG (domain model, data scope, liên thông). File này CHỈ ghi phần RIÊNG của chức năng.
->
-> **⚠️ Lưu ý trung thực với Excel:** (1) Excel nguồn KHÔNG khai báo cột "Bắt buộc" → bảng §2 không có cột bắt buộc, BA/SA chốt sau. (2) 2 trường "Hành khách đến/rời cảng" có toàn bộ cờ = false; 2 ô "Sửa" (Mã doanh nghiệp, Trạng thái) = "?" → đều đánh dấu **UNRESOLVED**, không bịa giá trị.
-
----
+> **⚠️ Ghi chú trung thực với Excel (cụm #30):**
+> (1) Cột **"Bắt buộc"** (required) KHÔNG được Excel khai báo (ô trống/blank) — BA suy luận các trường bắt buộc từ ngữ cảnh nghiệp vụ; BA/SA phải chốt riêng (nguồn: lean-spec §4.2).
+> (2) **UNRESOLVED — chờ SA/operator chốt:** 2 trường hành khách `passengersArrival` / `passengersDeparture` (Excel flag = false toàn bộ) và 2 ô `Sửa` = "?" (`enterpriseCode` — Mã doanh nghiệp; `status` — Trạng thái, đồng thời all-false). Không tự bịa khi scaffold (vd: trạng thái sổ).
 
 ## 1. Mô tả ngắn
 
