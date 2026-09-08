@@ -1129,7 +1129,7 @@ export default function NavigationChannelList() {
       <FilterTableLayout
         filterContent={filterContent}
         statusTabs={statusTabs}
-        hideFilterToggle={true}
+        hideFilterToggle={false}
         onStatusTabChange={handleTabChange}
         onFilterApply={handleFilterApply}
         onFilterReset={handleFilterReset}
