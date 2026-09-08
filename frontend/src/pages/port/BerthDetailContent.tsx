@@ -730,15 +730,18 @@ export default function BerthDetailContent({
                         const isImg = isImageFile(rec.fileName);
                         return (
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                            {isImg && (
+                            {isImg ? (
                               <Tooltip title="Xem chi tiết ảnh">
                                 <Button
                                   type="text"
                                   size="small"
                                   icon={<EyeOutlined style={{ color: actionPrimary, fontSize: 16 }} />}
                                   onClick={() => handlePreviewImage(rec)}
+                                  style={{ width: 28, height: 28, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                 />
                               </Tooltip>
+                            ) : (
+                              <span style={{ width: 28, height: 28, display: 'inline-block' }} />
                             )}
                             <Tooltip title="Tải xuống tệp">
                               <Button
@@ -746,6 +749,7 @@ export default function BerthDetailContent({
                                 size="small"
                                 icon={<DownloadOutlined style={{ color: actionPrimary, fontSize: 16 }} />}
                                 onClick={() => handleDownloadFile(rec.id, rec.fileName)}
+                                style={{ width: 28, height: 28, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                               />
                             </Tooltip>
                           </div>
@@ -790,7 +794,7 @@ export default function BerthDetailContent({
           {
             key: 'operationMaintenance', label: 'Vận hành & bảo trì',
             children: (
-              <div style={{ paddingTop: 6, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 290px)' }}>
+              <div style={{ paddingTop: 6, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)' }}>
                 {/* ── Section Vận hành ── */}
                 <div style={{ ...sectionBoxStyle, padding: operationOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
                   <div

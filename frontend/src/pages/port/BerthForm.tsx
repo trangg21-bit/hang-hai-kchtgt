@@ -689,10 +689,28 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
               </span>
               <Space size={8}>
                 <Button
-                  icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+                  icon={<EnvironmentOutlined style={{ color: !watchedGeometryType ? undefined : actionPrimary }} />}
                   onClick={() => setGisModalOpen(true)}
                   disabled={!watchedGeometryType}
-                  style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  style={!watchedGeometryType ? {
+                    height: 32,
+                    fontSize: fontSizeSm,
+                    padding: '0 14px',
+                    borderRadius: radiusPill,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    opacity: 0.6,
+                    cursor: 'not-allowed',
+                  } : {
+                    ...outlineButtonStyle,
+                    height: 32,
+                    fontSize: fontSizeSm,
+                    padding: '0 14px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
                 >
                   Chọn tọa độ trên bản đồ
                 </Button>
@@ -701,7 +719,27 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
                   icon={<PlusOutlined />}
                   onClick={addGpsPoint}
                   disabled={!watchedGeometryType}
-                  style={{ ...primaryButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  style={!watchedGeometryType ? {
+                    height: 32,
+                    fontSize: fontSizeSm,
+                    padding: '0 14px',
+                    borderRadius: radiusPill,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    background: '#f5f5f5',
+                    borderColor: '#d9d9d9',
+                    color: 'rgba(0, 0, 0, 0.25)',
+                    cursor: 'not-allowed',
+                  } : {
+                    ...primaryButtonStyle,
+                    height: 32,
+                    fontSize: fontSizeSm,
+                    padding: '0 14px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
                 >
                   Thêm tọa độ
                 </Button>
@@ -709,8 +747,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
             </div>
             {coordinateList.length === 0 ? (
               <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
-                <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có tọa độ nào.</span>
-                <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!watchedGeometryType} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
+                <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block' }}>Chưa có tọa độ nào.</span>
               </div>
             ) : (
               <>
@@ -744,10 +781,26 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
                     },
                     {
                       title: '',
-                      width: 50,
+                      width: 60,
                       align: 'center' as const,
                       render: (_v: any, record: any) => (
-                        <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeCoordinate(record._idx)} />
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+                          <Button
+                            type="text"
+                            danger
+                            icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                            onClick={() => removeCoordinate(record._idx)}
+                            style={{
+                              width: 32,
+                              height: 32,
+                              padding: 0,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                            title="Xóa tọa độ"
+                          />
+                        </div>
                       ),
                     },
                   ]}

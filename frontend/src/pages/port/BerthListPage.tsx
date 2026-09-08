@@ -395,9 +395,9 @@ export default function BerthList() {
         if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue;
       }
       if (historyFrom || historyTo) {
-        const cd = (r.changedAt || r.createdAt || '').substring(0, 16);
-        if (historyFrom && cd < historyFrom.replace(' ', 'T')) continue;
-        if (historyTo && cd > historyTo.replace(' ', 'T') + ':59') continue;
+        const cd = (r.changedAt || r.createdAt || '');
+        if (historyFrom && cd.substring(0, 10) < historyFrom) continue;
+        if (historyTo && cd.substring(0, 10) > historyTo) continue;
       }
       const ts = r.changedAt || r.createdAt || '';
       const sec = ts ? toSec(ts) : 0;
@@ -1456,11 +1456,11 @@ export default function BerthList() {
             <Input placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
               onChange={e => setHistorySearch(e.target.value)} style={{ flex: 1, borderRadius: radiusPill, height: 40 }} />
             <DatePicker placeholder="Từ ngày" classNames={{ popup: { root: 'history-dt-popup' } }} value={historyFrom ? dayjs(historyFrom) : null}
-              onChange={d => setHistoryFrom(d ? d.format('YYYY-MM-DD HH:mm') : '')}
-              style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
+              onChange={d => setHistoryFrom(d ? d.format('YYYY-MM-DD') : '')}
+              style={{ width: 140, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY" />
             <DatePicker placeholder="Đến ngày" classNames={{ popup: { root: 'history-dt-popup' } }} value={historyTo ? dayjs(historyTo) : null}
-              onChange={d => setHistoryTo(d ? d.format('YYYY-MM-DD HH:mm') : '')}
-              style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
+              onChange={d => setHistoryTo(d ? d.format('YYYY-MM-DD') : '')}
+              style={{ width: 140, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY" />
             <Button type="primary" icon={<SearchOutlined />} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Tìm kiếm</Button>
           </div>
         )}

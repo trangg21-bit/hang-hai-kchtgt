@@ -301,7 +301,7 @@ export default function InfrastructureAttachmentTab({
         if (readonly) {
           return (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-              {isImg && (
+              {isImg ? (
                 <Button
                   type="text"
                   icon={<EyeOutlined style={{ fontSize: 16, color: actionPrimary }} />}
@@ -316,6 +316,8 @@ export default function InfrastructureAttachmentTab({
                   onClick={() => handlePreview(record)}
                   title="Xem chi tiết ảnh"
                 />
+              ) : (
+                <span style={{ width: 32, height: 32, display: 'inline-block' }} />
               )}
               <Button
                 type="text"
@@ -337,7 +339,7 @@ export default function InfrastructureAttachmentTab({
 
         return (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-            {isImg && (
+            {isImg ? (
               <Button
                 type="text"
                 icon={<EyeOutlined style={{ fontSize: 16, color: actionPrimary }} />}
@@ -352,6 +354,8 @@ export default function InfrastructureAttachmentTab({
                 onClick={() => handlePreview(record)}
                 title="Xem chi tiết ảnh"
               />
+            ) : (
+              <span style={{ width: 32, height: 32, display: 'inline-block' }} />
             )}
             <Button
               type="text"
