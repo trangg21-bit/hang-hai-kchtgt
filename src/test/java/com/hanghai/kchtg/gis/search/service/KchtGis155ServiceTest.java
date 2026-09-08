@@ -49,6 +49,8 @@ import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -90,6 +92,35 @@ class KchtGis155ServiceTest {
     @Mock private EntityManager entityManager;
 
     @InjectMocks private KchtGis155Service service;
+
+    @Test
+    void searchSupportsFiveThousandRecordsPerPageWithoutSkippingOrRepeatingRecords() {
+        UUID orgUnitId = UUID.randomUUID();
+        List<Berth> berths = IntStream.rangeClosed(1, 5200)
+                .mapToObj(index -> approvedBerth(orgUnitId, "BC-%04d".formatted(index), OperationalStatus.OPERATIONAL))
+                .toList();
+        when(orgUnitCacheService.getDirectory()).thenReturn(Map.of());
+        when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
+        when(berthRepository.searchBerths(
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
+                eq(ApprovalStatus.APPROVED), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(berths));
+
+        KchtGisSearchPage first = service.search(
+                null, List.of(InfrastructureType.PORT_TERMINAL), null, null, null, null, 0, 5000);
+        KchtGisSearchPage second = service.search(
+                null, List.of(InfrastructureType.PORT_TERMINAL), null, null, null, null, 1, 5000);
+
+        assertThat(first.getSize()).isEqualTo(5000);
+        assertThat(first.getTotalElements()).isEqualTo(5200);
+        assertThat(first.getContent()).hasSize(5000);
+        assertThat(second.getSize()).isEqualTo(5000);
+        assertThat(second.getPage()).isEqualTo(1);
+        assertThat(second.getTotalElements()).isEqualTo(5200);
+        assertThat(second.getContent()).hasSize(200);
+        assertThat(Stream.concat(first.getContent().stream(), second.getContent().stream())
+                .map(record -> record.getId()).distinct().count()).isEqualTo(5200);
+    }
 
     @Test
     void representativeCoordinateUsesLongitudeLatitudeOrderForPoint() {

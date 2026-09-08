@@ -27,7 +27,7 @@ import { shipRepairYardCRUD, portCRUD, pierCRUD } from '../../services/portServi
 import { symbolService } from '../../services/symbolService';
 import type { Symbol as IconSymbol } from '../../services/symbolService';
 import { useAuthStore } from '../../store/authStore';
-import { GEOMETRY_POINT_COUNT } from '../../utils/gisGeometry';
+import { GEOMETRY_POINT_COUNT, validateDmsCoordinates, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
 
 const labelProps = (text: string) => ({
   label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
@@ -310,6 +310,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
     const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
     // GIỮ tọa độ đã nhập/chọn khi đổi loại đối tượng — chỉ thêm dòng trống cho đủ số lượng
     setCoordinateList((prev) => {
+      if (watchedGeometryType === 'POINT' && prev && prev.length > 1) return prev.slice(0, 1);
       if (!prev || prev.length >= count) return prev;
       const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       return [...prev, ...added];
@@ -376,21 +377,42 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
 
   const handleSave = useCallback(async (saveAction: SaveAction) => {
     let values: any;
-    try { values = await form.validateFields(); }
-    catch (e: any) {
+    try {
+      values = await form.validateFields();
+    } catch (e: any) {
       // Khi lưu thất bại do thiếu trường bắt buộc, nhảy về đúng tab chứa lỗi để người dùng biết.
-      const errFields: Array<{ name: Array<string | number> }> = e?.errorFields ?? [];
+      const errFields: Array<{ name: Array<string | number>; errors?: string[] }> = e?.errorFields ?? [];
+      const firstError = errFields[0]?.errors?.[0] || 'Vui lòng kiểm tra và điền đầy đủ các thông tin bắt buộc (*)';
+      toast.error(firstError);
       if (errFields.some((f) => f.name[0] === 'mapSymbolId' || f.name[0] === 'coordinateSystem' || f.name[0] === 'displayRule' || f.name[0] === 'geometryType')) setActiveTabKey('location');
       else setActiveTabKey('general');
       return false;
     }
-    const manualCoords = coordinateList
-      .filter(c => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null))
-      .map(c => ({ latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600, longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600 }));
-    if (values.geometryType && manualCoords.length === 0) {
-      toast.error('Vui lòng nhập ít nhất 1 tọa độ GPS');
-      return;
+
+    // Bắt buộc chọn địa điểm và tình trạng
+    if (!values.provinceId) {
+      toast.error('Địa điểm (Tỉnh/Thành Phố) là bắt buộc');
+      setActiveTabKey('general');
+      return false;
     }
+    if (!values.operationalStatus) {
+      toast.error('Tình trạng là bắt buộc');
+      setActiveTabKey('general');
+      return false;
+    }
+
+    // Kiểm tra tính đầy đủ và hợp lệ của tọa độ GPS
+    const coordResult = validateDmsCoordinates(coordinateList, values.geometryType);
+    if (!coordResult.valid) {
+      const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
+      toast.error(errMsg);
+      setGpsError(errMsg);
+      setActiveTabKey('location');
+      return false;
+    }
+    const validCoords = coordResult.validCoords;
+    const wktCoordinates = serializeCoordinatesToWkt(validCoords, values.geometryType || 'POINT');
+
     setSubmitting(true);
     onSubmittingChange?.(true);
     try {
@@ -410,9 +432,9 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
         activity: values.activity || undefined,
         slipwayCount: toNumber(values.slipwayCount),
         remarks: values.remarks || undefined,
-        latitude: manualCoords.length > 0 ? manualCoords[0].latitude : undefined,
-        longitude: manualCoords.length > 0 ? manualCoords[0].longitude : undefined,
-        coordinates: manualCoords.length > 1 ? `MULTIPOINT(${manualCoords.map(c => `(${c.longitude} ${c.latitude})`).join(',')})` : manualCoords.length === 1 ? `POINT(${manualCoords[0].longitude} ${manualCoords[0].latitude})` : undefined,
+        latitude: validCoords.length > 0 ? validCoords[0].latitude : undefined,
+        longitude: validCoords.length > 0 ? validCoords[0].longitude : undefined,
+        coordinates: wktCoordinates || undefined,
         geometryType: values.geometryType || undefined, mapSymbolId: values.mapSymbolId || undefined,
         coordinateSystem: values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined,
         displayRule: values.displayRule != null ? Number(values.displayRule) : undefined,
@@ -614,7 +636,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
             type="primary"
             icon={<PlusOutlined />}
             onClick={addGpsPoint}
-            disabled={!watchedGeometryType}
+            disabled={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)}
             style={{ ...primaryButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
           >
             Thêm tọa độ
@@ -624,7 +646,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
       {coordinateList.length === 0 ? (
         <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
           <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có tọa độ nào.</span>
-          <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!watchedGeometryType} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
+          <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
         </div>
       ) : (
         <>

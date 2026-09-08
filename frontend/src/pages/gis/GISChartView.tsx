@@ -1912,7 +1912,7 @@ export default function GISChartView() {
 
   const infrastructureColumns = useMemo<DataTableColumn[]>(() => [
     {
-      key: 'index', label: 'STT', width: 52, align: 'center',
+      key: 'stt', label: 'STT', width: 60, align: 'center',
       render: (_value, _record, index = 0) => (searchPage - 1) * searchPageSize + index + 1,
     },
     { key: 'orgName', dataIndex: 'orgName', label: 'Đơn vị quản lý', width: 170 },
@@ -4473,23 +4473,17 @@ export default function GISChartView() {
                         <Select
                           mode="multiple"
                           showSearch
-                          maxTagCount={2}
-                          maxTagTextLength={18}
-                          maxTagPlaceholder={(omittedValues) => (
-                            <span title={omittedValues.map((item) => String(item.label ?? item.value)).join(', ')}>
-                              +{omittedValues.length}
-                            </span>
-                          )}
-                          filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                          filterOption={(input, option) => String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
                           placeholder="Chọn loại kết cấu..."
-                          style={{ ...selectStyle, width: '100%' }}
-                          options={KCHT_GIS_TYPE_OPTIONS}
+                          style={{ ...selectStyle, width: '100%', height: 'auto', minHeight: controlHeight }}
+                          options={[...KCHT_GIS_TYPE_OPTIONS]}
                         />
                       </Form.Item>
 
                       <Form.Item name="province" label={<span style={filterLabelStyle}>Địa điểm (Tỉnh/Thành phố)</span>} style={formFieldStyle}>
                         <Select
                           showSearch
+                          allowClear
                           placeholder="Chọn tỉnh/thành phố..."
                           style={selectStyle}
                           filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
@@ -4658,6 +4652,7 @@ export default function GISChartView() {
                                 total={totalSearchElements}
                                 current={searchPage}
                                 pageSize={searchPageSize}
+                                pageSizeOptions={[20, 50, 100, 5000]}
                                 onChange={(page, pageSize) => void handleSearchInfrastructure(page, pageSize)}
                               />
                             </div>

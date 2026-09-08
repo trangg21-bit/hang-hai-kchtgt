@@ -18,7 +18,7 @@ interface JwtPayload {
 export interface User {
   username: string;
   fullName: string;
-  permissions: string[];
+  permissions?: string[];
   role: string;
   status: string;
   userId?: string;
@@ -26,7 +26,7 @@ export interface User {
   email?: string;
   orgUnitId?: string | number;
   unitType?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface AuthState {
@@ -67,7 +67,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
       initialUser = {
         username: claims.sub,
         fullName: claims.sub || 'Unknown User',
-        permissions: claims.permissions || [],
+        permissions: claims.permissions,
         role: claims.role || 'ROLE_USER',
         status: 'authenticated',
         userId: claims.user_id,
@@ -102,7 +102,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
         user: {
           username: username || claims.sub,
           fullName: claims.sub || username || 'Unknown User',
-          permissions: claims.permissions || [],
+          permissions: claims.permissions,
           role,
           status: 'authenticated',
           userId: claims.user_id,
@@ -176,7 +176,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
           user: {
             username: claims.sub,
             fullName: claims.sub || state.user.fullName || 'Unknown User',
-            permissions: claims.permissions || [],
+            permissions: claims.permissions ?? state.user.permissions,
             role,
             status: 'authenticated',
             userId: claims.user_id,
@@ -225,7 +225,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
           user: {
             username: claims.sub,
             fullName: claims.sub || 'Unknown User',
-            permissions: claims.permissions || [],
+            permissions: claims.permissions,
             role,
             status: 'authenticated',
             userId: claims.user_id,
@@ -258,7 +258,11 @@ export const useAuthStore = create<AuthState>((set, get) => {
         if (!state.user) return;
         set({ user: { ...state.user, permissions: perms } });
       } catch {
-        // Không lấy được quyền thì giữ nguyên trạng thái hiện tại, không chặn UI.
+        // Fallback to empty array on failure so UI does not hang
+        const state = get();
+        if (state.user && state.user.permissions === undefined) {
+          set({ user: { ...state.user, permissions: [] } });
+        }
       }
     },
   };

@@ -57,8 +57,8 @@ import java.util.regex.Pattern;
 @Transactional(readOnly = true)
 public class KchtGis155Service {
 
-  private static final int MAX_PAGE_SIZE = 100;
-  private static final int MAX_FETCH_SIZE = 1000;
+  private static final int MAX_PAGE_SIZE = 5000;
+  private static final int MAX_FETCH_SIZE = 5000;
   private static final Pattern WKT_COORDINATE_PATTERN = Pattern.compile(
       "(-?\\d+(?:\\.\\d+)?)\\s+(-?\\d+(?:\\.\\d+)?)");
   private static final List<InfrastructureType> SEARCHABLE_TYPES = List.of(

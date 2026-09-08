@@ -442,10 +442,109 @@ export interface CoordinateItem {
   longitude: number | null;
 }
 
+export interface DmsCoordinateItem {
+  latD?: number | null;
+  latM?: number | null;
+  latS?: number | null;
+  lngD?: number | null;
+  lngM?: number | null;
+  lngS?: number | null;
+}
+
+export interface DmsValidationResult {
+  valid: boolean;
+  errorMessage?: string;
+  validCoords: Array<{ latitude: number; longitude: number }>;
+}
+
 export const GEOMETRY_POINT_COUNT: Record<string, number> = {
   POINT: 1,
   LINE: 2,
   POLYGON: 3,
+};
+
+/**
+ * Validate chi tiết từng dòng tọa độ GPS dạng DMS (Độ/Phút/Giây):
+ * - Nếu người dùng đã bắt đầu nhập một dòng tọa độ, bắt buộc phải nhập đủ Độ, Phút, Giây cho cả Vĩ độ và Kinh độ.
+ * - Kiểm tra dải giá trị hợp lệ (Vĩ độ: 0-90°, Phút/Giây: 0-59.99'; Kinh độ: 0-180°, Phút/Giây: 0-59.99').
+ * - Kiểm tra số lượng tọa độ tối thiểu và tối đa theo loại đối tượng (POINT: đúng 1, LINE: >= 2, POLYGON: >= 3).
+ */
+export const validateDmsCoordinates = (
+  coordinateList: DmsCoordinateItem[],
+  geometryType?: string,
+): DmsValidationResult => {
+  for (let i = 0; i < coordinateList.length; i++) {
+    const c = coordinateList[i];
+    const hasAnyLat = c.latD != null || c.latM != null || c.latS != null;
+    const hasAnyLng = c.lngD != null || c.lngM != null || c.lngS != null;
+    const isStarted = hasAnyLat || hasAnyLng;
+
+    if (isStarted) {
+      const missing: string[] = [];
+      if (c.latD == null) missing.push('Độ (Vĩ độ)');
+      if (c.latM == null) missing.push('Phút (Vĩ độ)');
+      if (c.latS == null) missing.push('Giây (Vĩ độ)');
+      if (c.lngD == null) missing.push('Độ (Kinh độ)');
+      if (c.lngM == null) missing.push('Phút (Kinh độ)');
+      if (c.lngS == null) missing.push('Giây (Kinh độ)');
+
+      if (missing.length > 0) {
+        return {
+          valid: false,
+          errorMessage: `Tọa độ GPS dòng ${i + 1} chưa nhập đầy đủ: thiếu ${missing.join(', ')}`,
+          validCoords: [],
+        };
+      }
+
+      if (c.latD! < 0 || c.latD! > 90) {
+        return { valid: false, errorMessage: `Tọa độ GPS dòng ${i + 1}: Vĩ độ (Độ) phải trong khoảng 0 - 90`, validCoords: [] };
+      }
+      if (c.latM! < 0 || c.latM! > 59) {
+        return { valid: false, errorMessage: `Tọa độ GPS dòng ${i + 1}: Vĩ độ (Phút) phải trong khoảng 0 - 59`, validCoords: [] };
+      }
+      if (c.latS! < 0 || c.latS! >= 60) {
+        return { valid: false, errorMessage: `Tọa độ GPS dòng ${i + 1}: Vĩ độ (Giây) phải trong khoảng 0 - 59.99`, validCoords: [] };
+      }
+      if (c.lngD! < 0 || c.lngD! > 180) {
+        return { valid: false, errorMessage: `Tọa độ GPS dòng ${i + 1}: Kinh độ (Độ) phải trong khoảng 0 - 180`, validCoords: [] };
+      }
+      if (c.lngM! < 0 || c.lngM! > 59) {
+        return { valid: false, errorMessage: `Tọa độ GPS dòng ${i + 1}: Kinh độ (Phút) phải trong khoảng 0 - 59`, validCoords: [] };
+      }
+      if (c.lngS! < 0 || c.lngS! >= 60) {
+        return { valid: false, errorMessage: `Tọa độ GPS dòng ${i + 1}: Kinh độ (Giây) phải trong khoảng 0 - 59.99`, validCoords: [] };
+      }
+    }
+  }
+
+  const validCoords = coordinateList
+    .filter((c) => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null)
+    .map((c) => ({
+      latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600,
+      longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600,
+    }));
+
+  if (geometryType) {
+    const geom = String(geometryType).toUpperCase();
+    if (geom === 'POINT') {
+      if (validCoords.length === 0) {
+        return { valid: false, errorMessage: 'Đối tượng điểm (Point) cần đúng 1 tọa độ GPS hợp lệ', validCoords };
+      }
+      if (validCoords.length > 1) {
+        return { valid: false, errorMessage: 'Đối tượng điểm (Point) chỉ cho phép 1 tọa độ GPS. Vui lòng xóa bớt dòng tọa độ dư thừa.', validCoords };
+      }
+    } else if (geom === 'LINE' || geom === 'LINESTRING') {
+      if (validCoords.length < 2) {
+        return { valid: false, errorMessage: 'Đối tượng đường (Line) cần ít nhất 2 tọa độ GPS hợp lệ', validCoords };
+      }
+    } else if (geom === 'POLYGON') {
+      if (validCoords.length < 3) {
+        return { valid: false, errorMessage: 'Đối tượng vùng (Polygon) cần ít nhất 3 tọa độ GPS hợp lệ', validCoords };
+      }
+    }
+  }
+
+  return { valid: true, validCoords };
 };
 
 /**

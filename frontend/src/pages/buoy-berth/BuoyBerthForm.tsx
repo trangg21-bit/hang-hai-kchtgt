@@ -31,7 +31,7 @@ import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { LineObject } from '../../types/lineObject';
 import type { Symbol as IconSymbol } from '../../services/symbolService';
 import { useAuthStore } from '../../store/authStore';
-import { GEOMETRY_POINT_COUNT } from '../../utils/gisGeometry';
+import { GEOMETRY_POINT_COUNT, validateDmsCoordinates, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
 
 const labelProps = (text: string) => ({
   label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
@@ -306,6 +306,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
     form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
     const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
     setCoordinateList((prev) => {
+      if (watchedGeometryType === 'POINT' && prev && prev.length > 1) return prev.slice(0, 1);
       if (!prev || prev.length >= count) return prev;
       const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       return [...prev, ...added];
@@ -380,23 +381,41 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
 
   const handleSave = useCallback(async (saveAction: SaveAction) => {
     const values = form.getFieldsValue();
-    try { await form.validateFields(); } catch (e: any) {
-      const errFields: Array<{ name: Array<string | number> }> = e?.errorFields ?? [];
+    try {
+      await form.validateFields();
+    } catch (e: any) {
+      const errFields: Array<{ name: Array<string | number>; errors?: string[] }> = e?.errorFields ?? [];
+      const firstError = errFields[0]?.errors?.[0] || 'Vui lòng kiểm tra và điền đầy đủ các thông tin bắt buộc (*)';
+      toast.error(firstError);
       if (errFields.some((f) => f.name[0] === 'orgUnitId' || f.name[0] === 'portId' || f.name[0] === 'buoyBerthName' || f.name[0] === 'operatingOrgId')) setActiveTabKey('general');
       else if (errFields.some((f) => f.name[0] === 'mapSymbolId' || f.name[0] === 'coordinateSystem' || f.name[0] === 'displayRule' || f.name[0] === 'geometryType')) setActiveTabKey('location');
       return false;
     }
-    const manualCoords = coordinateList
-      .filter(c => (c.latD != null && c.lngD != null) || (c.latM != null && c.lngM != null) || (c.latS != null && c.lngS != null))
-      .map(c => ({ latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600, longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600 }));
-    if (values.geometryType) {
-      const minCount = GEOMETRY_POINT_COUNT[values.geometryType] ?? 1;
-      if (manualCoords.length < minCount) {
-        toast.error(values.geometryType === 'POLYGON' ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ' : values.geometryType === 'LINE' ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ' : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ');
-        setActiveTabKey('location');
-        return;
-      }
+
+    // Bắt buộc chọn địa điểm và tình trạng
+    if (!values.provinceId) {
+      toast.error('Địa điểm (Tỉnh/Thành Phố) là bắt buộc');
+      setActiveTabKey('general');
+      return false;
     }
+    if (!values.operationalStatus) {
+      toast.error('Tình trạng là bắt buộc');
+      setActiveTabKey('general');
+      return false;
+    }
+
+    // Kiểm tra tính đầy đủ và hợp lệ của tọa độ GPS
+    const coordResult = validateDmsCoordinates(coordinateList, values.geometryType);
+    if (!coordResult.valid) {
+      const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
+      toast.error(errMsg);
+      setGpsError(errMsg);
+      setActiveTabKey('location');
+      return false;
+    }
+    const validCoords = coordResult.validCoords;
+    const wktCoordinates = serializeCoordinatesToWkt(validCoords, values.geometryType || 'POINT');
+
     setSubmitting(true);
     onSubmittingChange?.(true);
     try {
@@ -424,16 +443,9 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
         openingAnnouncementDate: values.openingAnnouncementDate ? (typeof values.openingAnnouncementDate === 'string' ? values.openingAnnouncementDate : values.openingAnnouncementDate.format('YYYY-MM-DD') + 'T00:00:00') : undefined,
         publicDecision: values.publicDecision || undefined, investmentAgreement: values.investmentAgreement || undefined,
         mooringWaterAreaScope: values.mooringWaterAreaScope || undefined,
-        latitude: manualCoords.length > 0 ? manualCoords[0].latitude : undefined,
-        longitude: manualCoords.length > 0 ? manualCoords[0].longitude : undefined,
-        coordinates: (() => {
-          if (manualCoords.length === 0) return undefined;
-          if (manualCoords.length === 1) return `POINT(${manualCoords[0].longitude} ${manualCoords[0].latitude})`;
-          const geom = values.geometryType;
-          if (geom === 'LINE') return `LINESTRING(${manualCoords.map(c => `${c.longitude} ${c.latitude}`).join(',')})`;
-          if (geom === 'POLYGON') return `POLYGON((${[...manualCoords, manualCoords[0]].map(c => `${c.longitude} ${c.latitude}`).join(',')}))`;
-          return `MULTIPOINT(${manualCoords.map(c => `(${c.longitude} ${c.latitude})`).join(',')})`;
-        })(),
+        latitude: validCoords.length > 0 ? validCoords[0].latitude : undefined,
+        longitude: validCoords.length > 0 ? validCoords[0].longitude : undefined,
+        coordinates: wktCoordinates || undefined,
         geometryType: values.geometryType || undefined, mapSymbolId: values.mapSymbolId || undefined,
         coordinateSystem: values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined,
         displayRule: values.displayRule != null ? Number(values.displayRule) : undefined,
@@ -711,7 +723,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
             type="primary"
             icon={<PlusOutlined />}
             onClick={addGpsPoint}
-            disabled={!watchedGeometryType}
+            disabled={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)}
             style={{ ...primaryButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
           >
             Thêm tọa độ
@@ -721,7 +733,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
       {coordinateList.length === 0 ? (
         <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
           <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có tọa độ nào.</span>
-          <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!watchedGeometryType} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
+          <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
         </div>
       ) : (
         <>

@@ -54,8 +54,7 @@ const CONSTRUCTION_GRADE_OPTIONS = [
 ];
 const GEOMETRY_TYPE_OPTIONS = [{ value: 'POINT', label: 'Đối tượng điểm' }, { value: 'LINE', label: 'Đối tượng đường' }, { value: 'POLYGON', label: 'Đối tượng vùng' }];
 const COORD_SYS_OPTIONS = [{ value: 1, label: 'WGS-84' }, { value: 2, label: 'VN-2000' }];
-// Số lượng tọa độ mặc định tương ứng với từng loại đối tượng: điểm → 1, đường → 2, vùng → 3
-const GEOMETRY_POINT_COUNT: Record<string, number> = { POINT: 1, LINE: 2, POLYGON: 3 };
+import { GEOMETRY_POINT_COUNT, validateDmsCoordinates, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
 
 // Helper chuyển đổi giữa chuỗi "MM/YYYY" (lưu DB) và dayjs (DatePicker month)
 const parseMonthYear = (s?: string | null) => {
@@ -281,6 +280,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
       // Chỉnh sửa: giữ tọa độ đã nhập, tự thêm dòng trống cho đủ số lượng theo loại đối tượng (điểm → 1, đường → 2, vùng → 3)
       const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
       setCoordinateList((prev) => {
+        if (watchedGeometryType === 'POINT' && prev.length > 1) return prev.slice(0, 1);
         if (prev.length >= count) return prev;
         const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
         return [...prev, ...added];
@@ -366,37 +366,47 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
 
   const handleSave = useCallback(async (saveAction: SaveAction) => {
     const vals = form.getFieldsValue();
-    try { await form.validateFields(); } catch (e: any) {
-      const errFields: Array<{ name: Array<string | number> }> = e?.errorFields ?? [];
+    try {
+      await form.validateFields();
+    } catch (e: any) {
+      const errFields: Array<{ name: Array<string | number>; errors?: string[] }> = e?.errorFields ?? [];
+      const firstError = errFields[0]?.errors?.[0] || 'Vui lòng kiểm tra và điền đầy đủ các thông tin bắt buộc (*)';
+      toast.error(firstError);
       if (errFields.some((f) => f.name[0] === 'mapSymbolId' || f.name[0] === 'coordinateSystem' || f.name[0] === 'displayRule' || f.name[0] === 'geometryType')) setActiveTabKey('location');
       else setActiveTabKey('general');
       return;
     }
-    const manualCoords = coordinateList
-      .filter(c => (c.latD != null && c.lngD != null) || (c.latM != null && c.lngM != null) || (c.latS != null && c.lngS != null))
-      .map(c => ({ latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600, longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600 }));
-    if (vals.geometryType) {
-      const minCount = GEOMETRY_POINT_COUNT[vals.geometryType] ?? 1;
-      if (manualCoords.length < minCount) {
-        toast.error(vals.geometryType === 'POLYGON' ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ' : vals.geometryType === 'LINE' ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ' : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ');
-        setActiveTabKey('location');
-        return;
-      }
+    // Bắt buộc chọn địa điểm và tình trạng
+    if (!vals.province) {
+      toast.error('Địa điểm (Tỉnh/Thành Phố) là bắt buộc');
+      setActiveTabKey('general');
+      return;
     }
+    if (!vals.operationalStatus) {
+      toast.error('Tình trạng là bắt buộc');
+      setActiveTabKey('general');
+      return;
+    }
+
+    // Kiểm tra tính đầy đủ và hợp lệ của tọa độ GPS
+    const coordResult = validateDmsCoordinates(coordinateList, vals.geometryType);
+    if (!coordResult.valid) {
+      const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
+      toast.error(errMsg);
+      setGpsError(errMsg);
+      setActiveTabKey('location');
+      return;
+    }
+    const validCoords = coordResult.validCoords;
+    const wktCoordinates = serializeCoordinatesToWkt(validCoords, vals.geometryType || 'POINT');
+
     onSubmittingChange?.(true);
     try {
       const payload: Record<string, unknown> = { pierCode: vals.pierCode?.trim(), pierName: vals.pierName?.trim(), berthId: vals.berthId, portId: vals.portId || undefined, navigationChannelId: vals.navigationChannelId || undefined, length: vals.length != null ? Number(vals.length) : undefined, width: vals.width != null ? Number(vals.width) : undefined, operationalFunction: vals.operationalFunction || undefined, operationalStatus: vals.operationalStatus || undefined, province: vals.province || undefined, detailedLocation: vals.detailedLocation || undefined, constructionGrade: vals.constructionGrade ?? undefined, structureType: vals.structureType ?? undefined, currentWaterDepth: vals.currentWaterDepth || undefined, designBedElevation: vals.designBedElevation || undefined, publishedVesselDWT: vals.publishedVesselDWT || undefined, maintenanceApprovalDate: fmtMonthYear(vals.maintenanceApprovalDate), safetyAssessmentDate: fmtMonthYear(vals.safetyAssessmentDate), lastInspectionDate: fmtMonthYear(vals.lastInspectionDate), operatingPierCount: vals.operatingPierCount ?? undefined, publishedPierCount: vals.publishedPierCount ?? undefined, investmentAgreementPierCount: vals.investmentAgreementPierCount ?? undefined, cargoThroughput: vals.cargoThroughput != null ? Number(vals.cargoThroughput) : undefined, receivesLargeVessel: vals.receivesLargeVessel ?? undefined, documentNumber: vals.documentNumber || undefined, documentDate: vals.documentDate ? dayjs(vals.documentDate).format('YYYY-MM-DD') : undefined, openingAnnouncementDate: vals.openingAnnouncementDate ? dayjs(vals.openingAnnouncementDate).format('YYYY-MM-DD') : undefined, openingDecision: vals.openingDecision || undefined, investmentAgreementDoc: vals.investmentAgreementDoc || undefined, waterAreaNeutralScope: vals.waterAreaNeutralScope || undefined, geometryType: vals.geometryType || undefined, mapSymbolId: vals.mapSymbolId || undefined, coordinateSystem: vals.coordinateSystem, displayRule: vals.displayRule };
-      // Process GPS coordinates into WKT format (chuẩn VTS CHK — giống Bến phao)
-      (payload as any).latitude = manualCoords.length > 0 ? manualCoords[0].latitude : undefined;
-      (payload as any).longitude = manualCoords.length > 0 ? manualCoords[0].longitude : undefined;
-      (payload as any).coordinates = (() => {
-        if (manualCoords.length === 0) return undefined;
-        if (manualCoords.length === 1) return `POINT(${manualCoords[0].longitude} ${manualCoords[0].latitude})`;
-        const geom = vals.geometryType;
-        if (geom === 'LINE') return `LINESTRING(${manualCoords.map(c => `${c.longitude} ${c.latitude}`).join(',')})`;
-        if (geom === 'POLYGON') return `POLYGON((${[...manualCoords, manualCoords[0]].map(c => `${c.longitude} ${c.latitude}`).join(',')}))`;
-        return `MULTIPOINT(${manualCoords.map(c => `(${c.longitude} ${c.latitude})`).join(',')})`;
-      })();
+      (payload as any).latitude = validCoords.length > 0 ? validCoords[0].latitude : undefined;
+      (payload as any).longitude = validCoords.length > 0 ? validCoords[0].longitude : undefined;
+      (payload as any).coordinates = wktCoordinates || undefined;
+
       if (saveAction !== 'UPDATE') (payload as any).saveAction = saveAction;
       Object.keys(payload).forEach((k) => { if (payload[k] === undefined) delete payload[k]; });
       let createdId: string | undefined;
@@ -483,7 +493,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
             type="primary"
             icon={<PlusOutlined />}
             onClick={addGpsPoint}
-            disabled={!watchedGeometryType}
+            disabled={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)}
             style={{ ...primaryButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
           >
             Thêm tọa độ
@@ -493,7 +503,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
       {coordinateList.length === 0 ? (
         <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
           <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có tọa độ nào.</span>
-          <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!watchedGeometryType} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
+          <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
         </div>
       ) : (
         <>

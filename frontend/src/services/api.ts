@@ -24,7 +24,15 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
+let lastErrorTime = 0;
+let lastErrorMsg = '';
 const showUniqueError = (msg: string) => {
+  const now = Date.now();
+  if (msg === lastErrorMsg && now - lastErrorTime < 800) {
+    return;
+  }
+  lastErrorTime = now;
+  lastErrorMsg = msg;
   toast.error(msg);
 };
 
@@ -62,9 +70,17 @@ api.interceptors.response.use(
       friendlyMsg = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.';
     } else if (status === 400) {
       const serverMsg = error.response?.data?.message;
-      const validationData = error.response?.data?.data;
-      if (serverMsg === 'Validation failed' && validationData && typeof validationData === 'object') {
-        friendlyMsg = Object.values(validationData).join(', ');
+      const validationData = error.response?.data?.data ?? error.response?.data?.errors;
+      if (validationData && typeof validationData === 'object') {
+        const errorList = Array.isArray(validationData)
+          ? validationData.map((v) => (typeof v === 'string' ? v : v?.message || v?.defaultMessage || JSON.stringify(v)))
+          : Object.values(validationData).map((v) => (typeof v === 'string' ? v : (v as any)?.message || String(v)));
+        const validErrors = errorList.filter(Boolean);
+        if (validErrors.length > 0) {
+          friendlyMsg = validErrors.join('; ');
+        } else {
+          friendlyMsg = serverMsg || 'Dữ liệu đầu vào không hợp lệ. Vui lòng kiểm tra lại.';
+        }
       } else if (serverMsg === 'Account is locked') {
         friendlyMsg = 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.';
       } else if (serverMsg?.startsWith('Account is locked until')) {
@@ -73,8 +89,12 @@ api.interceptors.response.use(
         friendlyMsg = 'Tên đăng nhập hoặc mật khẩu không chính xác.';
       } else if (serverMsg === 'Invalid TOTP code' || serverMsg === 'Mã TOTP không đúng hoặc hết hạn') {
         friendlyMsg = 'Mã xác thực TOTP không chính xác hoặc đã hết hạn.';
+      } else if (serverMsg === 'Lỗi dữ liệu đầu vào không hợp lệ' || serverMsg === 'Validation failed') {
+        friendlyMsg = 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại các trường bắt buộc (*) và thông tin tọa độ GPS.';
+      } else if (serverMsg) {
+        friendlyMsg = serverMsg;
       } else {
-        friendlyMsg = serverMsg || 'Yêu cầu không hợp lệ (400).';
+        friendlyMsg = 'Dữ liệu không hợp lệ (400). Vui lòng kiểm tra lại các trường thông tin.';
       }
     } else if (status === 401) {
       friendlyMsg = 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.';

@@ -47,6 +47,9 @@ export const modal: any = new Proxy({} as any, {
   },
 });
 
+let lastToastErrorTime = 0;
+let lastToastErrorMsg = '';
+
 /**
  * ToastNotification — wrapper xung quanh antd message,
  * chuẩn hóa success/error/info/toast feedback throughout app.
@@ -55,14 +58,21 @@ export const toast = {
   success: (msg: string, duration = 3) =>
     activeMessage.success({ content: msg, duration, type: typeMap.success }),
 
-  error: (msg: string, duration = 5) =>
-    activeMessage.error({ content: msg, duration, type: typeMap.error }),
+  error: (msg: string, duration = 5) => {
+    const now = Date.now();
+    if (msg === lastToastErrorMsg && now - lastToastErrorTime < 800) {
+      return;
+    }
+    lastToastErrorTime = now;
+    lastToastErrorMsg = msg;
+    activeMessage.error({ content: msg, duration, key: msg, type: typeMap.error });
+  },
 
   info: (msg: string, duration = 3) =>
     activeMessage.info({ content: msg, duration, type: typeMap.info }),
 
   warning: (msg: string, duration = 3) =>
-    activeMessage.warning({ content: msg, duration, type: typeMap.warning }),
+    activeMessage.warning({ content: msg, duration, key: msg, type: typeMap.warning }),
 };
 
 export default toast;

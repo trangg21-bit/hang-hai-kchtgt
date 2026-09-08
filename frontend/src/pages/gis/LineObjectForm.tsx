@@ -1,208 +1,284 @@
-import { useState, useCallback, useEffect } from 'react';
-import { Form, Button, Space, Input, InputNumber, Select, Row, Col } from 'antd';
+import { forwardRef, useImperativeHandle, useEffect, useState, useCallback } from 'react';
+import { Form, Input, Select, Row, Col, Button, type FormInstance } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
-import { lineObjectService } from '../../services/lineObjectService';
-import type { CreateLineObjectPayload, UpdateLineObjectPayload } from '../../types/lineObject';
-import {
-  LINE_OBJECT_TYPE_OPTIONS,
-} from '../../types/lineObject';
-import toast, { message } from '../../components/ToastNotification';
+import { BankOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import { spatialObjectCategoryService } from '../../services/spatialObjectCategoryService';
+import type { SpatialObjectCategory } from '../../services/spatialObjectCategoryService';
+import { symbolService } from '../../services/symbolService';
+import type { Symbol as MapSymbolItem } from '../../services/symbolService';
 import { ScreenHeader } from '../../components/list-view';
+import toast from '../../components/ToastNotification';
+import { colors } from '../../themetokenchk';
 import {
-  spaceMd, spaceLg, spaceFormField,
-  radiusPill, fontSizeMd, fontWeightMedium,
-  textSecondary,
-} from '../../tokens';
+  actionPrimary,
+  fontSizeMd,
+  fontWeightBold,
+  radiusPill,
+  spaceFormField,
+  spaceMd,
+  primaryButtonStyle,
+  outlineButtonStyle,
+  requiredMarkStyle,
+} from '../../themetokenchk';
 
-const INPUT_STYLE: React.CSSProperties = {
-  borderRadius: radiusPill,
-  height: 40,
+export interface LineObjectFormRef {
+  submit: () => void;
+}
+
+export interface LineObjectFormProps {
+  form?: FormInstance;
+  id?: string;
+  initialRecord?: SpatialObjectCategory | null;
+  onFinish?: () => void;
+  onSubmittingChange?: (submitting: boolean) => void;
+}
+
+const sectionBoxStyle: React.CSSProperties = {
+  background: '#ffffff',
+  border: '1px solid #e2e8f0',
+  borderRadius: 8,
+  padding: '14px 18px 10px 18px',
+  marginBottom: 14,
+  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
 };
 
-const SELECT_STYLE: React.CSSProperties = {
-  borderRadius: radiusPill,
-  height: 40,
-  width: '100%',
+const sectionHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginBottom: 12,
+  paddingBottom: 8,
+  borderBottom: '1px solid #f1f5f9',
 };
 
-const BTN_STYLE: React.CSSProperties = {
-  borderRadius: radiusPill,
-  height: 40,
-  fontWeight: fontWeightMedium,
-  fontSize: fontSizeMd,
+const sectionTitleStyle: React.CSSProperties = {
+  color: colors.sidebarBg,
+  fontWeight: fontWeightBold,
+  fontSize: fontSizeMd + 0.5,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
 };
 
-export default function LineObjectForm() {
-  const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
-  const isEdit = !!id;
-  const [form] = Form.useForm();
-  const [submitting, setSubmitting] = useState(false);
+const STATUS_OPTIONS = [
+  { value: 1, label: 'Sử dụng' },
+  { value: 0, label: 'Khóa' },
+];
 
-  useEffect(() => {
-    if (isEdit) {
-      (async () => {
-        try {
-          const data = await lineObjectService.getById(id!);
+export const LineObjectForm = forwardRef<LineObjectFormRef, LineObjectFormProps>(
+  ({ form: externalForm, id: propId, initialRecord, onFinish, onSubmittingChange }, ref) => {
+    const navigate = useNavigate();
+    const routeParams = useParams<{ id: string }>();
+    const effectiveId = propId || routeParams.id;
+    const isStandalonePage = !externalForm;
+
+    const [internalForm] = Form.useForm();
+    const form = externalForm || internalForm;
+
+    const [symbols, setSymbols] = useState<MapSymbolItem[]>([]);
+    const [submitting, setSubmitting] = useState(false);
+
+    useEffect(() => {
+      symbolService.list({ pageSize: 1000 }).then((res) => {
+        setSymbols(res.data || []);
+      }).catch(() => {});
+    }, []);
+
+    useEffect(() => {
+      if (initialRecord) {
+        form.setFieldsValue({
+          code: initialRecord.code,
+          name: initialRecord.name,
+          iconId: initialRecord.iconId,
+          status: initialRecord.status ?? 1,
+        });
+      } else if (effectiveId) {
+        spatialObjectCategoryService.getById(effectiveId).then((data) => {
           form.setFieldsValue({
-            name: data.name,
             code: data.code,
-            objectType: data.objectType,
-            coordinates: data.coordinates,
-            description: data.description,
-            length: data.length,
-            material: data.material,
-            yearBuilt: data.yearBuilt,
+            name: data.name,
+            iconId: data.iconId,
+            status: data.status ?? 1,
           });
-        } catch {
+        }).catch(() => {
           toast.error('Không thể tải thông tin đối tượng đường');
+        });
+      } else {
+        form.setFieldsValue({ status: 1 });
+      }
+    }, [effectiveId, initialRecord, form]);
+
+    const handleFormSubmit = useCallback(async () => {
+      try {
+        const values = await form.validateFields();
+        setSubmitting(true);
+        onSubmittingChange?.(true);
+
+        const payload = {
+          code: values.code?.trim(),
+          name: values.name?.trim(),
+          geometryType: 2, // Line
+          iconId: values.iconId,
+          status: values.status ?? 1,
+        };
+
+        if (effectiveId) {
+          await spatialObjectCategoryService.update(effectiveId, payload);
+          toast.success('Đã cập nhật danh mục đối tượng đường');
+        } else {
+          await spatialObjectCategoryService.create(payload);
+          toast.success('Đã thêm mới danh mục đối tượng đường');
+        }
+
+        if (onFinish) {
+          onFinish();
+        } else if (isStandalonePage) {
           navigate('/gis/lines');
         }
-      })();
-    }
-  }, [isEdit, id, form, navigate]);
-
-  const validateWKT = (value: string): boolean => {
-    if (!value) return false;
-    return value.trim().startsWith('LINESTRING');
-  };
-
-  const handleSubmit = useCallback(async () => {
-    try {
-      const values = await form.validateFields();
-
-      if (!validateWKT(values.coordinates)) {
-        message.error('Tọa độ phải ở định dạng WKT LINESTRING (VD: LINESTRING(106.7 21.0, 106.8 21.1))');
-        return;
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'errorFields' in err) {
+          // validation error
+        } else {
+          toast.error(err instanceof Error ? err.message : 'Thao tác thất bại');
+        }
+      } finally {
+        setSubmitting(false);
+        onSubmittingChange?.(false);
       }
+    }, [effectiveId, form, onFinish, onSubmittingChange, isStandalonePage, navigate]);
 
-      setSubmitting(true);
+    useImperativeHandle(ref, () => ({
+      submit: handleFormSubmit,
+    }));
 
-      if (isEdit) {
-        const payload: UpdateLineObjectPayload = {
-          name: values.name,
-          objectType: values.objectType,
-          coordinates: values.coordinates,
-          description: values.description,
-          length: values.length,
-          material: values.material,
-          yearBuilt: values.yearBuilt,
-        };
-        await lineObjectService.update(id!, payload);
-        toast.success('Đã cập nhật đối tượng đường');
-      } else {
-        const payload: CreateLineObjectPayload = {
-          name: values.name,
-          code: values.code,
-          objectType: values.objectType,
-          coordinates: values.coordinates,
-          description: values.description,
-          length: values.length,
-          material: values.material,
-          yearBuilt: values.yearBuilt,
-        };
-        await lineObjectService.create(payload);
-        toast.success('Đã tạo đối tượng đường');
-      }
-
-      navigate('/gis/lines');
-    } catch {
-      // validation error
-    } finally {
-      setSubmitting(false);
-    }
-  }, [isEdit, id, form, navigate]);
-
-  return (
-    <>
-      <ScreenHeader
-        breadcrumb={[
-          { label: 'Trang chủ', path: '/' },
-          { label: 'Quản lý KCHT trên nền bản đồ (GIS)' },
-          { label: 'Quản lý danh mục đối tượng đường', path: '/gis/lines' },
-          { label: isEdit ? 'Chỉnh sửa đối tượng đường' : 'Thêm đối tượng đường mới' },
-        ]}
-      />
-
-      <div style={{ maxWidth: 700, margin: '0 auto' }}>
-        <Form form={form} layout="vertical" onFinish={handleSubmit}>
-          {!isEdit && (
-            <Form.Item name="code" label="Mã đối tượng"
-              rules={[{ required: true, message: 'Vui lòng nhập mã' }]}
-              style={{ marginBottom: spaceFormField }}>
-              <Input placeholder="VD: LN-ROUTE-001" style={INPUT_STYLE} />
-            </Form.Item>
-          )}
-
-          {isEdit && (
-            <Form.Item name="code" label="Mã đối tượng"
-              style={{ marginBottom: spaceFormField }}>
-              <Input disabled style={INPUT_STYLE} />
-            </Form.Item>
-          )}
-
-          <Form.Item name="name" label="Tên đối tượng"
-            rules={[{ required: true, message: 'Vui lòng nhập tên' }]}
-            style={{ marginBottom: spaceFormField }}>
-            <Input placeholder="VD: Tuyến hàng hải Hải Phòng - Quảng Ninh" style={INPUT_STYLE} />
-          </Form.Item>
-
-          <Form.Item name="objectType" label="Loại đối tượng"
-            rules={[{ required: true, message: 'Vui lòng chọn loại' }]}
-            style={{ marginBottom: spaceFormField }}>
-            <Select placeholder="Chọn loại đối tượng" options={LINE_OBJECT_TYPE_OPTIONS} style={SELECT_STYLE} />
-          </Form.Item>
-
-          <Form.Item name="coordinates" label="Tọa độ (WKT LINESTRING)"
-            rules={[{ required: true, message: 'Vui lòng nhập tọa độ WKT' }]}
-            style={{ marginBottom: spaceFormField }}>
-            <Input placeholder="LINESTRING(106.7000 20.8500, 106.8000 20.9000, 107.0000 21.0000)" style={INPUT_STYLE} />
-          </Form.Item>
-
+    const formBody = (
+      <>
+        <style>{requiredMarkStyle}</style>
+        {/* ── Section 1: Thông tin định danh ── */}
+        <div style={sectionBoxStyle}>
+          <div style={sectionHeaderStyle}>
+            <span style={sectionTitleStyle}>
+              <BankOutlined style={{ color: actionPrimary }} />
+              Thông tin nhận diện & phân loại
+            </span>
+          </div>
           <Row gutter={spaceMd}>
             <Col span={12}>
-              <Form.Item name="length" label="Chiều dài (km)"
-                style={{ marginBottom: spaceFormField }}>
-                <InputNumber placeholder="Tùy chọn" min={0} step={0.01}
-                  style={{ ...INPUT_STYLE, width: '100%' }} />
+              <Form.Item
+                name="code"
+                label={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Mã đối tượng đường</span>}
+                rules={[{ required: true, message: 'Vui lòng nhập mã đối tượng đường' }]}
+                style={{ marginBottom: spaceFormField }}
+              >
+                <Input
+                  placeholder="VD: LUONG_HANG_HAI"
+                  style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
+                  disabled={!!effectiveId}
+                />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="yearBuilt" label="Năm xây dựng"
-                style={{ marginBottom: spaceFormField }}>
-                <InputNumber placeholder="Tùy chọn" min={1900} max={9999}
-                  style={{ ...INPUT_STYLE, width: '100%' }} />
+              <Form.Item
+                name="status"
+                label={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Trạng thái</span>}
+                rules={[{ required: true }]}
+                style={{ marginBottom: spaceFormField }}
+              >
+                <Select
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
+                  options={STATUS_OPTIONS}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={24}>
+              <Form.Item
+                name="name"
+                label={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tên đối tượng đường</span>}
+                rules={[{ required: true, message: 'Vui lòng nhập tên đối tượng đường' }]}
+                style={{ marginBottom: spaceFormField }}
+              >
+                <Input
+                  placeholder="VD: Luồng hàng hải"
+                  style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
+                />
               </Form.Item>
             </Col>
           </Row>
+        </div>
 
-          <Form.Item name="material" label="Vật liệu"
-            style={{ marginBottom: spaceFormField }}>
-            <Input placeholder="Tùy chọn" style={INPUT_STYLE} />
-          </Form.Item>
-
+        {/* ── Section 2: Cấu hình biểu tượng bản đồ ── */}
+        <div style={sectionBoxStyle}>
+          <div style={sectionHeaderStyle}>
+            <span style={sectionTitleStyle}>
+              <EnvironmentOutlined style={{ color: actionPrimary }} />
+              Cấu hình biểu tượng bản đồ
+            </span>
+          </div>
           <Row gutter={spaceMd}>
+            <Col span={24}>
+              <Form.Item
+                name="iconId"
+                label={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Biểu tượng liên kết</span>}
+                style={{ marginBottom: spaceFormField }}
+              >
+                <Select
+                  placeholder="Chọn biểu tượng thể hiện trên bản đồ"
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                >
+                  {symbols.map((s) => (
+                    <Select.Option key={s.id} value={s.id} label={`${s.name} ${s.code}`}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        {s.image ? (
+                          <img
+                            src={s.image}
+                            alt={s.name}
+                            style={{ width: 22, height: 22, objectFit: 'contain' }}
+                          />
+                        ) : (
+                          <EnvironmentOutlined style={{ color: colors.textTertiary }} />
+                        )}
+                        <span>{s.name} ({s.code})</span>
+                      </div>
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
           </Row>
+        </div>
+      </>
+    );
 
-          <Form.Item name="description" label="Mô tả"
-            style={{ marginBottom: 0 }}>
-            <Input.TextArea placeholder="Mô tả về đối tượng đường..." rows={3}
-              style={{ borderRadius: radiusPill }} />
-          </Form.Item>
-
-          <Form.Item style={{ marginTop: spaceLg }}>
-            <Space>
-              <Button type="primary" htmlType="submit" loading={submitting} style={BTN_STYLE}>
-                {isEdit ? 'Cập nhật' : 'Tạo đối tượng'}
-              </Button>
-              <Button onClick={() => navigate('/gis/lines')}
-                style={{ ...BTN_STYLE, borderColor: textSecondary, color: textSecondary }}>
+    if (isStandalonePage) {
+      return (
+        <div style={{ padding: '0 24px 24px 24px' }}>
+          <ScreenHeader
+            breadcrumb={[
+              { label: 'Quản lý KCHT trên nền bản đồ (GIS)' },
+              { label: 'Quản lý danh mục đối tượng đường' },
+              { label: effectiveId ? 'Chỉnh sửa' : 'Thêm mới' },
+            ]}
+          />
+          <Form form={form} layout="vertical" style={{ maxWidth: 800, marginTop: 16 }}>
+            {formBody}
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 16 }}>
+              <Button onClick={() => navigate('/gis/lines')} style={outlineButtonStyle}>
                 Hủy
               </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </div>
-    </>
-  );
-}
+              <Button type="primary" onClick={handleFormSubmit} loading={submitting} style={primaryButtonStyle}>
+                {effectiveId ? 'Lưu thay đổi' : 'Tạo mới'}
+              </Button>
+            </div>
+          </Form>
+        </div>
+      );
+    }
+
+    return formBody;
+  }
+);
+
+export default LineObjectForm;

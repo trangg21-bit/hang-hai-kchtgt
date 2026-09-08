@@ -29,6 +29,7 @@ import { symbolService } from '../../services/symbolService';
 import type { Symbol as IconSymbol } from '../../services/symbolService';
 import { useAuthStore } from '../../store/authStore';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import { validateDmsCoordinates, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
 
 const labelProps = (text: string) => ({
   label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
@@ -347,7 +348,6 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
   useEffect(() => { if (!isSystemAdmin && !isEdit) { api.get('/users/me').then(r => { const p = r.data?.data ?? r.data; if (p?.orgUnitId) form.setFieldsValue({ orgUnitId: p.orgUnitId }); }).catch(() => {}); } }, []);
 
   // Khi chọn loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và thêm sẵn số dòng tọa độ tương ứng
-  // (GIỮ tọa độ đã nhập/chọn, chỉ thêm dòng trống cho đủ số lượng — không xóa dữ liệu cũ)
   useEffect(() => {
     if (!watchedGeometryType) return;
     form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
@@ -357,6 +357,7 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
       setCoordinateList(Array.from({ length: count }, () => emptyDmsPoint()));
     } else {
       setCoordinateList((prev) => {
+        if (watchedGeometryType === 'POINT' && prev.length > 1) return prev.slice(0, 1);
         if (prev.length >= count) return prev;
         const added = Array.from({ length: count - prev.length }, () => emptyDmsPoint());
         return [...prev, ...added];
@@ -503,10 +504,9 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
   const saveWaterArea = () => {
     if (!waterAreaDescription.trim()) { toast.error('Phạm vi khu nước neo buộc tàu không được để trống'); return; }
     if (waterAreaGeometryType) {
-      const minCount = GEOMETRY_POINT_COUNT[waterAreaGeometryType] ?? 1;
-      const validPoints = waterAreaAnchorPoints.filter(p => p.latD != null && p.lngD != null);
-      if (validPoints.length < minCount) {
-        toast.error(waterAreaGeometryType === 'POLYGON' ? 'Đối tượng vùng cần ít nhất 3 tọa độ điểm neo hợp lệ' : waterAreaGeometryType === 'LINE' ? 'Đối tượng đường cần ít nhất 2 tọa độ điểm neo hợp lệ' : 'Đối tượng điểm cần ít nhất 1 tọa độ điểm neo hợp lệ');
+      const anchorResult = validateDmsCoordinates(waterAreaAnchorPoints, waterAreaGeometryType);
+      if (!anchorResult.valid) {
+        toast.error(anchorResult.errorMessage || 'Tọa độ điểm neo không hợp lệ');
         return;
       }
     }
@@ -536,12 +536,41 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
 
   const handleSave = useCallback(async (saveAction: SaveAction) => {
     const values = form.getFieldsValue();
-    try { await form.validateFields(); } catch (e: any) {
-      const errFields: Array<{ name: Array<string | number> }> = e?.errorFields ?? [];
+    try {
+      await form.validateFields();
+    } catch (e: any) {
+      const errFields: Array<{ name: Array<string | number>; errors?: string[] }> = e?.errorFields ?? [];
+      const firstError = errFields[0]?.errors?.[0] || 'Vui lòng kiểm tra và điền đầy đủ các thông tin bắt buộc (*)';
+      toast.error(firstError);
       if (errFields.some((f) => f.name[0] === 'orgUnitId' || f.name[0] === 'portId' || f.name[0] === 'transferAreaName')) setActiveTabKey('general');
       else if (errFields.some((f) => f.name[0] === 'mapSymbolId' || f.name[0] === 'coordinateSystem' || f.name[0] === 'displayRule' || f.name[0] === 'geometryType')) setActiveTabKey('location');
       return false;
     }
+
+    // Bắt buộc chọn địa điểm và tình trạng
+    if (!values.provinceId) {
+      toast.error('Địa điểm (Tỉnh/Thành Phố) là bắt buộc');
+      setActiveTabKey('general');
+      return false;
+    }
+    if (!values.operationalStatus) {
+      toast.error('Tình trạng là bắt buộc');
+      setActiveTabKey('general');
+      return false;
+    }
+
+    // Kiểm tra tính đầy đủ và hợp lệ của tọa độ GPS
+    const coordResult = validateDmsCoordinates(coordinateList, values.geometryType);
+    if (!coordResult.valid) {
+      const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
+      toast.error(errMsg);
+      setGpsError(errMsg);
+      setActiveTabKey('location');
+      return false;
+    }
+    const validCoords = coordResult.validCoords;
+    const wktCoordinates = serializeCoordinatesToWkt(validCoords, values.geometryType || 'POINT');
+
     const mooringWaterAreas = waterAreaList
       .filter(w => w.description && w.description.trim())
       .map(w => ({
@@ -558,15 +587,7 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
             longitude: p.longitude != null && !isNaN(Number(p.longitude)) ? Number(p.longitude) : undefined,
           })),
       }));
-    const manualCoords = coordinateList.filter(c => c.latD != null && c.lngD != null).map(c => dmsPointToDecimal(c));
-    if (values.geometryType) {
-      const minCount = GEOMETRY_POINT_COUNT[values.geometryType] ?? 1;
-      if (manualCoords.length < minCount) {
-        toast.error(values.geometryType === 'POLYGON' ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ' : values.geometryType === 'LINE' ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ' : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ');
-        setActiveTabKey('location');
-        return;
-      }
-    }
+
     setSubmitting(true);
     onSubmittingChange?.(true);
     try {
@@ -583,15 +604,15 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
         activeTransferCount: values.activeTransferCount != null && !isNaN(Number(values.activeTransferCount)) ? Number(values.activeTransferCount) : undefined,
         publishedTransferCount: values.publishedTransferCount != null && !isNaN(Number(values.publishedTransferCount)) ? Number(values.publishedTransferCount) : undefined,
         underInvestmentTransferCount: values.underInvestmentTransferCount != null && !isNaN(Number(values.underInvestmentTransferCount)) ? Number(values.underInvestmentTransferCount) : undefined,
-        operationalFunctions: values.operationalFunctions && values.operationalFunctions.length > 0 ? values.operationalFunctions.join(',') : undefined,
+        operationalFunctions: Array.isArray(values.operationalFunctions) && values.operationalFunctions.length > 0 ? values.operationalFunctions.join(',') : undefined,
         operationalStatus: values.operationalStatus || undefined, remarks: values.remarks || undefined,
         openingAnnouncementDate: values.openingAnnouncementDate ? (typeof values.openingAnnouncementDate === 'string' ? values.openingAnnouncementDate : values.openingAnnouncementDate.format('YYYY-MM-DD') + 'T00:00:00') : undefined,
         activityStartDate: values.activityStartDate ? (typeof values.activityStartDate === 'string' ? values.activityStartDate : values.activityStartDate.format('YYYY-MM-DD') + 'T00:00:00') : undefined,
         activityEndDate: values.activityEndDate ? (typeof values.activityEndDate === 'string' ? values.activityEndDate : values.activityEndDate.format('YYYY-MM-DD') + 'T00:00:00') : undefined,
         publicDecision: values.publicDecision || undefined, investmentAgreement: values.investmentAgreement || undefined,
-        latitude: manualCoords.length > 0 ? manualCoords[0].latitude : undefined,
-        longitude: manualCoords.length > 0 ? manualCoords[0].longitude : undefined,
-        coordinates: manualCoords.length > 1 ? `MULTIPOINT(${manualCoords.map(c => `(${c.longitude} ${c.latitude})`).join(',')})` : manualCoords.length === 1 ? `POINT(${manualCoords[0].longitude} ${manualCoords[0].latitude})` : undefined,
+        latitude: validCoords.length > 0 ? validCoords[0].latitude : undefined,
+        longitude: validCoords.length > 0 ? validCoords[0].longitude : undefined,
+        coordinates: wktCoordinates || undefined,
         geometryType: values.geometryType || undefined, mapSymbolId: values.mapSymbolId || undefined,
         coordinateSystem: values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined,
         displayRule: values.displayRule != null ? Number(values.displayRule) : undefined,
@@ -914,7 +935,7 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
             type="primary"
             icon={<PlusOutlined />}
             onClick={addGpsPoint}
-            disabled={!watchedGeometryType}
+            disabled={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)}
             style={{ ...primaryButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
           >
             Thêm tọa độ
@@ -924,7 +945,7 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
       {coordinateList.length === 0 ? (
         <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
           <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có tọa độ nào.</span>
-          <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!watchedGeometryType} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
+          <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
         </div>
       ) : (
         <>

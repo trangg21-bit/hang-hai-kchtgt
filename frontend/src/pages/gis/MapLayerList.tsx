@@ -1,25 +1,18 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Button,
   Form,
   Input,
-  InputNumber,
   Select,
-  Switch,
-  Row,
-  Col,
-  Modal,
-  Alert,
 } from 'antd';
 import {
   PlusOutlined,
-  ExclamationCircleOutlined,
   EyeOutlined,
   EyeInvisibleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { mapLayerService } from '../../services/mapLayerService';
-import type { MapLayer, CreateMapLayerPayload, UpdateMapLayerPayload } from '../../types/mapLayer';
+import type { MapLayer } from '../../types/mapLayer';
 import {
   MAP_LAYER_TYPE_OPTIONS,
   MapLayer as MapLayerEnum,
@@ -30,8 +23,12 @@ import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
-import toast from '../../components/ToastNotification';
 import { AppDrawer } from '../../components/shared/AppDrawer';
+import { DeleteConfirmModal } from '../../components/shared/DeleteConfirmModal';
+import { CommonHistoryDrawer, type CommonHistoryEntry } from '../../components/shared/CommonHistoryDrawer';
+import MapLayerForm, { type MapLayerFormRef } from './MapLayerForm';
+import MapLayerDetailContent from './MapLayerDetailContent';
+import toast from '../../components/ToastNotification';
 import {
   actionPrimary,
   statusOperational,
@@ -41,27 +38,21 @@ import {
   textTertiary,
   borderDefault,
   radiusPill,
-  radiusMd,
-  radiusTextArea,
-  fontSizeSm,
-  fontSizeMd,
   fontWeightMedium,
   fontWeightBold,
   spaceFormField,
   spaceSm,
-  spaceMd,
   drawerTitleStyle,
   drawerFooterStyle,
   primaryButtonStyle,
   outlineButtonStyle,
-  requiredMarkStyle,
-  surfaceCard,
-  badgeBaseStyle,
   icons,
   colors,
 } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+
+const fontSizeMd = 13.5;
 
 const LAYER_TYPE_LABEL_MAP: Record<string, string> = {
   [MapLayerEnum.LayerType.POINT]: 'Đối tượng điểm',
@@ -87,12 +78,14 @@ const STATUS_OPTIONS = [
 export default function MapLayerList() {
   const hasPerm = usePermissionStore((s) => s.hasPermission);
 
+  // ── Filter states ────────────────────────────────────────────────
   const [keyword, setKeyword] = useState('');
   const [filterType, setFilterType] = useState<string | undefined>();
   const [filterVisible, setFilterVisible] = useState<boolean | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [activeStatusTab, setActiveStatusTab] = useState<string>('all');
 
+  // ── Pagination states ────────────────────────────────────────────
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
@@ -102,17 +95,31 @@ export default function MapLayerList() {
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const [form] = Form.useForm();
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  // ── Drawer & Modal states ────────────────────────────────────────
+  const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
+  const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<MapLayer | null>(null);
   const [detailRecord, setDetailRecord] = useState<MapLayer | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Delete modal state
+  const createFormRef = useRef<MapLayerFormRef>(null);
+  const editFormRef = useRef<MapLayerFormRef>(null);
+  const [createForm] = Form.useForm();
+  const [editForm] = Form.useForm();
+
+  // ── Delete confirmation ─────────────────────────────────────────
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<MapLayer | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // ── History drawer ──────────────────────────────────────────────
+  const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
+  const [historyTarget, setHistoryTarget] = useState<MapLayer | null>(null);
+  const [historyRecords, setHistoryRecords] = useState<CommonHistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  // ── Fetch data ──────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setIsError(false);
@@ -161,6 +168,7 @@ export default function MapLayerList() {
     };
   }, [allLayers]);
 
+  // ── Filter handlers ─────────────────────────────────────────────
   const handleFilterApply = useCallback(() => {
     setPage(1);
     void fetchData();
@@ -179,101 +187,117 @@ export default function MapLayerList() {
     setActiveStatusTab(key);
     if (key === 'all') {
       setFilterStatus(undefined);
-    } else {
-      setFilterStatus(key);
+    } else if (key === 'active') {
+      setFilterStatus('ACTIVE');
+    } else if (key === 'inactive') {
+      setFilterStatus('INACTIVE');
     }
     setPage(1);
   }, []);
 
-  const handleToggleVisible = useCallback(
-    async (record: MapLayer) => {
-      const newVisible = !record.visible;
-      try {
-        await mapLayerService.update(record.id, { visible: newVisible });
-        toast.success(newVisible ? 'Đã bật hiển thị lớp bản đồ' : 'Đã tắt hiển thị lớp bản đồ');
-        void fetchData();
-      } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : 'Cập nhật hiển thị thất bại');
-      }
-    },
-    [fetchData],
-  );
-
+  // ── Drawers open/close ──────────────────────────────────────────
   const openCreateDrawer = useCallback(() => {
-    setEditingRecord(null);
-    form.resetFields();
-    form.setFieldsValue({ visible: true, opacity: 1, order: 0, status: 'ACTIVE' });
-    setDrawerOpen(true);
-  }, [form]);
+    createForm.resetFields();
+    createForm.setFieldsValue({
+      layerType: MapLayerEnum.LayerType.POINT,
+      visible: true,
+      opacity: 100,
+      order: 1,
+      status: 'ACTIVE',
+    });
+    setCreateDrawerOpen(true);
+  }, [createForm]);
 
   const openEditDrawer = useCallback((record: MapLayer) => {
     setEditingRecord(record);
-    form.setFieldsValue({
-      name: record.name,
+    const opVal = typeof record.opacity === 'number'
+      ? record.opacity <= 1
+        ? Math.round(record.opacity * 100)
+        : record.opacity
+      : 100;
+    editForm.setFieldsValue({
       code: record.code,
+      name: record.name,
       layerType: record.layerType,
       source: record.source,
       visible: record.visible ?? true,
-      opacity: record.opacity ?? 1,
-      order: record.order ?? 0,
+      opacity: opVal,
+      order: record.order ?? 1,
       styleConfig: record.styleConfig,
       status: record.status || 'ACTIVE',
     });
-    setDrawerOpen(true);
-  }, [form]);
+    setEditDrawerOpen(true);
+  }, [editForm]);
 
   const openDetailDrawer = useCallback((record: MapLayer) => {
     setDetailRecord(record);
     setDetailDrawerOpen(true);
   }, []);
 
-  const handleSubmit = useCallback(async () => {
-    try {
-      const values = await form.validateFields();
-      setSubmitting(true);
+  // ── History drawer ──────────────────────────────────────────────
+  const openHistoryDrawer = useCallback(async (record: MapLayer) => {
+    setHistoryTarget(record);
+    setHistoryDrawerOpen(true);
+    setHistoryLoading(true);
+    setHistoryRecords([]);
 
-      if (editingRecord) {
-        const payload: UpdateMapLayerPayload = {
-          name: values.name,
-          layerType: values.layerType,
-          source: values.source,
-          visible: values.visible,
-          opacity: values.opacity,
-          order: values.order,
-          styleConfig: values.styleConfig,
-        };
-        await mapLayerService.update(editingRecord.id, payload);
-        toast.success('Đã cập nhật lớp bản đồ');
-      } else {
-        const payload: CreateMapLayerPayload = {
-          name: values.name,
-          code: values.code,
-          layerType: values.layerType,
-          source: values.source,
-          visible: values.visible,
-          opacity: values.opacity,
-          order: values.order,
-          styleConfig: values.styleConfig,
-        };
-        await mapLayerService.create(payload);
-        toast.success('Đã tạo lớp bản đồ mới');
+    try {
+      const entries: CommonHistoryEntry[] = [];
+
+      // Mốc tạo mới
+      if (record.createdAt) {
+        entries.push({
+          id: `create-${record.id}`,
+          action: 'CREATE',
+          status: 'Tạo mới',
+          actor: 'Quản trị viên GIS',
+          timestamp: record.createdAt,
+          description: `Khởi tạo lớp bản đồ "${record.name}"`,
+          changes: [
+            { field: 'Mã lớp', oldValue: null, newValue: record.code },
+            { field: 'Tên lớp', oldValue: null, newValue: record.name },
+            { field: 'Loại lớp', oldValue: null, newValue: LAYER_TYPE_LABEL_MAP[record.layerType] || record.layerType },
+            { field: 'Hiển thị', oldValue: null, newValue: record.visible ? 'Bật' : 'Tắt' },
+            { field: 'Trạng thái', oldValue: null, newValue: record.status === 'ACTIVE' ? 'Hoạt động' : 'Không hoạt động' },
+          ],
+        });
       }
 
-      setDrawerOpen(false);
-      void fetchData();
-    } catch {
-      // validation error
+      // Mốc cập nhật gần nhất
+      if (record.updatedAt && record.updatedAt !== record.createdAt) {
+        entries.push({
+          id: `update-${record.id}`,
+          action: 'UPDATE',
+          status: 'Cập nhật',
+          actor: 'Quản trị viên GIS',
+          timestamp: record.updatedAt,
+          description: `Cập nhật thông tin lớp bản đồ "${record.name}"`,
+          changes: [
+            { field: 'Tên lớp', oldValue: '—', newValue: record.name },
+            { field: 'Trạng thái', oldValue: '—', newValue: record.status === 'ACTIVE' ? 'Hoạt động' : 'Không hoạt động' },
+          ],
+        });
+      }
+
+      setHistoryRecords(entries);
     } finally {
-      setSubmitting(false);
+      setHistoryLoading(false);
     }
-  }, [editingRecord, form, fetchData]);
+  }, []);
+
+  // ── Delete confirmation ─────────────────────────────────────────
+  const openDeleteModal = useCallback((record: MapLayer) => {
+    setDeleteTarget(record);
+    setDeleteModalOpen(true);
+  }, []);
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
       await mapLayerService.delete(deleteTarget.id);
-      toast.success('Đã xóa lớp bản đồ');
+      toast.success('Đã xóa lớp bản đồ thành công');
+      setDeleteModalOpen(false);
       setDeleteTarget(null);
       void fetchData();
     } catch (err: unknown) {
@@ -283,7 +307,7 @@ export default function MapLayerList() {
     }
   }, [deleteTarget, fetchData]);
 
-  // ── DataTable Columns ─────────────────────────────────────────────
+  // ── DataTable Columns ───────────────────────────────────────────
   const columns = useMemo(() => [
     {
       key: 'stt',
@@ -300,7 +324,7 @@ export default function MapLayerList() {
       key: 'name',
       label: 'Tên lớp bản đồ',
       dataIndex: 'name',
-      width: 260,
+      width: 280,
       fixed: 'left' as const,
       ellipsis: false,
       render: (name: string, record: MapLayer) => (
@@ -322,7 +346,7 @@ export default function MapLayerList() {
           </div>
           <div
             style={{
-              fontSize: fontSizeMd,
+              fontSize: fontSizeMd - 0.5,
               fontWeight: fontWeightMedium,
               color: textSecondary,
               whiteSpace: 'nowrap',
@@ -341,16 +365,16 @@ export default function MapLayerList() {
       label: 'Loại lớp',
       dataIndex: 'layerType',
       width: 160,
-      align: 'left' as const,
-      ellipsis: false,
+      align: 'center' as const,
       render: (type: string) => {
-        const label = LAYER_TYPE_LABEL_MAP[type] || type || '—';
         const color = LAYER_TYPE_COLOR_MAP[type] || actionPrimary;
+        const label = LAYER_TYPE_LABEL_MAP[type] || type;
         return (
           <span
             style={{
               display: 'inline-flex',
               alignItems: 'center',
+              justifyContent: 'center',
               borderRadius: radiusPill,
               padding: '2px 10px',
               fontSize: fontSizeMd,
@@ -367,12 +391,37 @@ export default function MapLayerList() {
       },
     },
     {
-      key: 'opacity',
-      label: 'Độ mờ',
-      dataIndex: 'opacity',
-      width: 100,
+      key: 'visible',
+      label: 'Hiển thị',
+      dataIndex: 'visible',
+      width: 120,
       align: 'center' as const,
-      render: (v: number) => <span style={{ fontSize: fontSizeMd }}>{v != null ? `${(v * 100).toFixed(0)}%` : '100%'}</span>,
+      render: (visible: boolean) => (
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: fontSizeMd,
+            color: visible ? statusOperational : textTertiary,
+            fontWeight: fontWeightMedium,
+          }}
+        >
+          {visible ? <EyeOutlined style={{ color: statusOperational }} /> : <EyeInvisibleOutlined />}
+          {visible ? 'Hiển thị' : 'Ẩn'}
+        </span>
+      ),
+    },
+    {
+      key: 'opacity',
+      label: 'Độ trong suốt',
+      dataIndex: 'opacity',
+      width: 130,
+      align: 'center' as const,
+      render: (val: number) => {
+        const percent = val > 1 ? val : Math.round((val ?? 1) * 100);
+        return <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{percent}%</span>;
+      },
     },
     {
       key: 'order',
@@ -380,39 +429,32 @@ export default function MapLayerList() {
       dataIndex: 'order',
       width: 90,
       align: 'center' as const,
-      render: (v: number) => <span style={{ fontSize: fontSizeMd }}>{v ?? 0}</span>,
-    },
-    {
-      key: 'visible',
-      label: 'Hiển thị',
-      dataIndex: 'visible',
-      width: 110,
-      align: 'center' as const,
-      render: (visible: boolean, record: MapLayer) => (
-        <Switch
-          checked={visible}
-          onChange={() => handleToggleVisible(record)}
-          size="small"
-        />
+      render: (order: number) => (
+        <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightMedium }}>
+          {order ?? '—'}
+        </span>
       ),
     },
     {
       key: 'updatedAt',
-      label: 'Ngày cập nhật',
+      label: 'Thời gian cập nhật',
       dataIndex: 'updatedAt',
       width: 180,
       ellipsis: false,
-      render: (text: string) => (
-        <span style={{ fontSize: fontSizeMd, color: textSecondary }}>
-          {text ? dayjs(text).format('DD/MM/YYYY HH:mm:ss') : '—'}
-        </span>
-      ),
+      render: (date: string | null, record: MapLayer) => {
+        const d = date || record.createdAt;
+        return (
+          <span style={{ fontSize: fontSizeMd, color: textSecondary }}>
+            {d ? dayjs(d).format('DD/MM/YYYY HH:mm:ss') : '—'}
+          </span>
+        );
+      },
     },
     {
       key: 'status',
       label: 'Trạng thái',
       dataIndex: 'status',
-      width: 160,
+      width: 150,
       align: 'center' as const,
       ellipsis: false,
       render: (status: string) => {
@@ -440,42 +482,41 @@ export default function MapLayerList() {
         );
       },
     },
-  ], [page, pageSize, openDetailDrawer, handleToggleVisible]);
+  ], [page, pageSize, openDetailDrawer]);
 
   // ── Row Actions ──────────────────────────────────────────────────
-  const rowActions = useCallback((record: MapLayer) => {
-    const actions = [
-      {
-        key: 'view',
-        label: 'Xem chi tiết',
-        icon: icons.view,
-        onClick: () => openDetailDrawer(record),
-      },
-    ];
-    if (hasPerm('gis.layer.edit') || hasPerm('map:manage')) {
-      actions.push({
-        key: 'edit',
-        label: 'Chỉnh sửa',
-        icon: icons.edit,
-        onClick: () => openEditDrawer(record),
-      });
-    }
-    if (hasPerm('gis.layer.delete') || hasPerm('map:manage')) {
-      actions.push({
-        key: 'delete',
-        label: 'Xóa',
-        icon: icons.delete,
-        danger: true,
-        onClick: () => setDeleteTarget(record),
-      });
-    }
-    return actions;
-  }, [hasPerm, openDetailDrawer, openEditDrawer]);
+  const rowActions = useCallback((record: MapLayer) => [
+    {
+      key: 'view',
+      label: 'Xem chi tiết',
+      icon: icons.view,
+      onClick: () => openDetailDrawer(record),
+    },
+    {
+      key: 'edit',
+      label: 'Chỉnh sửa',
+      icon: icons.edit,
+      onClick: () => openEditDrawer(record),
+    },
+    {
+      key: 'history',
+      label: 'Lịch sử',
+      icon: icons.history,
+      onClick: () => void openHistoryDrawer(record),
+    },
+    {
+      key: 'delete',
+      label: 'Xóa',
+      icon: icons.delete,
+      danger: true,
+      onClick: () => openDeleteModal(record),
+    },
+  ], [openDetailDrawer, openEditDrawer, openHistoryDrawer, openDeleteModal]);
 
-  // ── Header Actions ────────────────────────────────────────────────
+  // ── Header Actions ───────────────────────────────────────────────
   const headerActions = useMemo(() => {
     const actions: ScreenHeaderAction[] = [];
-    if (hasPerm('gis.layer.create') || hasPerm('map:manage')) {
+    if (hasPerm('map:manage')) {
       actions.push({
         key: 'create',
         label: 'Thêm mới',
@@ -487,10 +528,10 @@ export default function MapLayerList() {
     return actions;
   }, [hasPerm, openCreateDrawer]);
 
-  // ── Sidebar Filter Content ────────────────────────────────────────
+  // ── Sidebar Filter Content ───────────────────────────────────────
   const filterContent = (
     <>
-      <div style={{ marginBottom: spaceFormField, marginTop: spaceMd }}>
+      <div style={{ marginBottom: spaceFormField, marginTop: spaceSm }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
           Từ khóa tìm kiếm
         </div>
@@ -506,7 +547,7 @@ export default function MapLayerList() {
 
       <div style={{ marginBottom: spaceFormField }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-          Loại lớp
+          Loại lớp bản đồ
         </div>
         <Select
           placeholder="Tất cả loại lớp"
@@ -523,14 +564,14 @@ export default function MapLayerList() {
           Hiển thị trên bản đồ
         </div>
         <Select
-          placeholder="Tất cả trạng thái"
+          placeholder="Tất cả"
           allowClear
           value={filterVisible}
           onChange={(val) => setFilterVisible(val)}
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
           options={[
-            { value: true, label: 'Đang hiển thị (Bật)' },
-            { value: false, label: 'Đang ẩn (Tắt)' },
+            { value: true, label: 'Đang hiển thị' },
+            { value: false, label: 'Đang ẩn' },
           ]}
         />
       </div>
@@ -553,8 +594,8 @@ export default function MapLayerList() {
 
   const statusTabs = [
     { key: 'all', label: 'Tất cả', count: tabCounts.all, color: actionPrimary, active: activeStatusTab === 'all' },
-    { key: 'ACTIVE', label: 'Hoạt động', count: tabCounts.active, color: statusOperational, active: activeStatusTab === 'ACTIVE' },
-    { key: 'INACTIVE', label: 'Không hoạt động', count: tabCounts.inactive, color: statusDraft, active: activeStatusTab === 'INACTIVE' },
+    { key: 'active', label: 'Hoạt động', count: tabCounts.active, color: statusOperational, active: activeStatusTab === 'active' },
+    { key: 'inactive', label: 'Không hoạt động', count: tabCounts.inactive, color: statusDraft, active: activeStatusTab === 'inactive' },
   ];
 
   const renderContent = () => {
@@ -618,28 +659,27 @@ export default function MapLayerList() {
           {renderContent()}
         </FilterTableLayout>
 
-        {/* ── Create / Edit AppDrawer ──────────────────────────────── */}
+        {/* ── Create AppDrawer ─────────────────────────────────────── */}
         <AppDrawer
-          title={
-            <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
-              {editingRecord ? 'Chỉnh sửa lớp bản đồ' : 'Thêm mới lớp bản đồ'}
-            </span>
-          }
-          open={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
-          drawerSize="md"
+          width="min(920px, 96vw)"
+          rootClassName="chk-drawer-scope"
+          className="chk-drawer-scope"
+          title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới lớp bản đồ</span>}
+          open={createDrawerOpen}
+          destroyOnHidden
+          onClose={() => setCreateDrawerOpen(false)}
           footer={
             <div style={drawerFooterStyle}>
-              <Button onClick={() => setDrawerOpen(false)} style={outlineButtonStyle}>
+              <Button onClick={() => setCreateDrawerOpen(false)} style={outlineButtonStyle}>
                 Hủy
               </Button>
               <Button
                 type="primary"
-                onClick={handleSubmit}
+                onClick={() => createFormRef.current?.submit()}
                 loading={submitting}
                 style={primaryButtonStyle}
               >
-                {editingRecord ? 'Cập nhật' : 'Tạo mới'}
+                Tạo mới
               </Button>
             </div>
           }
@@ -648,316 +688,132 @@ export default function MapLayerList() {
             body: { padding: '20px 24px' },
           }}
         >
-          <style>{requiredMarkStyle}</style>
-          <Form form={form} layout="vertical">
-            <Row gutter={spaceMd}>
-              <Col span={12}>
-                <Form.Item
-                  name="code"
-                  label={<span style={{ fontWeight: fontWeightMedium }}>Mã lớp</span>}
-                  rules={[{ required: true, message: 'Vui lòng nhập mã lớp' }]}
-                  style={{ marginBottom: spaceFormField }}
-                >
-                  <Input
-                    placeholder="VD: LAY-PT-001"
-                    style={{ borderRadius: radiusPill, height: 40 }}
-                    disabled={!!editingRecord}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="name"
-                  label={<span style={{ fontWeight: fontWeightMedium }}>Tên lớp bản đồ</span>}
-                  rules={[{ required: true, message: 'Vui lòng nhập tên lớp' }]}
-                  style={{ marginBottom: spaceFormField }}
-                >
-                  <Input
-                    placeholder="VD: Đối tượng điểm cảng biển"
-                    style={{ borderRadius: radiusPill, height: 40 }}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={spaceMd}>
-              <Col span={12}>
-                <Form.Item
-                  name="layerType"
-                  label={<span style={{ fontWeight: fontWeightMedium }}>Loại lớp</span>}
-                  rules={[{ required: true, message: 'Vui lòng chọn loại lớp' }]}
-                  style={{ marginBottom: spaceFormField }}
-                >
-                  <Select
-                    placeholder="Chọn loại lớp"
-                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                    options={MAP_LAYER_TYPE_OPTIONS}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="source"
-                  label={<span style={{ fontWeight: fontWeightMedium }}>Nguồn dữ liệu</span>}
-                  style={{ marginBottom: spaceFormField }}
-                >
-                  <Input
-                    placeholder="VD: WMS, GeoJSON, File Shape..."
-                    style={{ borderRadius: radiusPill, height: 40 }}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={spaceMd}>
-              <Col span={12}>
-                <Form.Item
-                  name="opacity"
-                  label={<span style={{ fontWeight: fontWeightMedium }}>Độ mờ (0 - 1)</span>}
-                  style={{ marginBottom: spaceFormField }}
-                >
-                  <InputNumber
-                    placeholder="1"
-                    min={0}
-                    max={1}
-                    step={0.1}
-                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="order"
-                  label={<span style={{ fontWeight: fontWeightMedium }}>Thứ tự hiển thị</span>}
-                  style={{ marginBottom: spaceFormField }}
-                >
-                  <InputNumber
-                    placeholder="0"
-                    min={0}
-                    step={1}
-                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Form.Item
-              name="styleConfig"
-              label={<span style={{ fontWeight: fontWeightMedium }}>Cấu hình style (JSON)</span>}
-              style={{ marginBottom: spaceFormField }}
-            >
-              <Input.TextArea
-                placeholder='{"color": "#ff0000", "width": 2}'
-                rows={3}
-                style={{ borderRadius: radiusTextArea }}
-              />
-            </Form.Item>
-
-            <Row gutter={spaceMd}>
-              <Col span={12}>
-                <Form.Item
-                  name="visible"
-                  label={<span style={{ fontWeight: fontWeightMedium }}>Hiển thị trên bản đồ</span>}
-                  valuePropName="checked"
-                  style={{ marginBottom: spaceFormField }}
-                >
-                  <Switch checkedChildren="Bật" unCheckedChildren="Tắt" />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="status"
-                  label={<span style={{ fontWeight: fontWeightMedium }}>Trạng thái</span>}
-                  style={{ marginBottom: spaceFormField }}
-                >
-                  <Select
-                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                    options={STATUS_OPTIONS}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
+          <Form form={createForm} layout="vertical">
+            <MapLayerForm
+              ref={createFormRef}
+              form={createForm}
+              onFinish={() => {
+                setCreateDrawerOpen(false);
+                void fetchData();
+              }}
+              onSubmittingChange={setSubmitting}
+            />
           </Form>
+        </AppDrawer>
+
+        {/* ── Edit AppDrawer ───────────────────────────────────────── */}
+        <AppDrawer
+          width="min(920px, 96vw)"
+          rootClassName="chk-drawer-scope"
+          className="chk-drawer-scope"
+          title={
+            <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
+              Chỉnh sửa lớp bản đồ — {editingRecord?.name || ''}
+            </span>
+          }
+          open={editDrawerOpen}
+          destroyOnHidden
+          onClose={() => {
+            setEditDrawerOpen(false);
+            setEditingRecord(null);
+          }}
+          footer={
+            <div style={drawerFooterStyle}>
+              <Button
+                onClick={() => {
+                  setEditDrawerOpen(false);
+                  setEditingRecord(null);
+                }}
+                style={outlineButtonStyle}
+              >
+                Hủy
+              </Button>
+              <Button
+                type="primary"
+                onClick={() => editFormRef.current?.submit()}
+                loading={submitting}
+                style={primaryButtonStyle}
+              >
+                Lưu thay đổi
+              </Button>
+            </div>
+          }
+          styles={{
+            header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+            body: { padding: '20px 24px' },
+          }}
+        >
+          {editingRecord && (
+            <Form form={editForm} layout="vertical">
+              <MapLayerForm
+                ref={editFormRef}
+                form={editForm}
+                id={editingRecord.id}
+                initialRecord={editingRecord}
+                onFinish={() => {
+                  setEditDrawerOpen(false);
+                  setEditingRecord(null);
+                  void fetchData();
+                }}
+                onSubmittingChange={setSubmitting}
+              />
+            </Form>
+          )}
         </AppDrawer>
 
         {/* ── View Detail AppDrawer ────────────────────────────────── */}
         <AppDrawer
+          width="min(920px, 96vw)"
+          rootClassName="chk-drawer-scope"
+          className="chk-drawer-scope"
           title={
-            <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
+            <span style={drawerTitleStyle}>
               Chi tiết lớp bản đồ{detailRecord ? ` - ${detailRecord.name}` : ''}
             </span>
           }
           open={detailDrawerOpen}
-          onClose={() => setDetailDrawerOpen(false)}
-          drawerSize="md"
+          onClose={() => {
+            setDetailDrawerOpen(false);
+            setDetailRecord(null);
+          }}
           footer={null}
           styles={{
             header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
             body: { padding: '20px 24px' },
           }}
         >
-          {detailRecord && (() => {
-            const isOperational = detailRecord.status === 'ACTIVE';
-            const color = isOperational ? statusOperational : statusDraft;
-            const statusLabel = isOperational ? 'Hoạt động' : 'Không hoạt động';
-            const layerLabel = LAYER_TYPE_LABEL_MAP[detailRecord.layerType] || detailRecord.layerType || '—';
-            const layerColor = LAYER_TYPE_COLOR_MAP[detailRecord.layerType] || actionPrimary;
-
-            return (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spaceMd }}>
-                <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
-                  <div style={{ color: textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>Mã lớp</div>
-                  <div style={{ color: textPrimary, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
-                    {detailRecord.code || '—'}
-                  </div>
-                </div>
-                <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
-                  <div style={{ color: textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>Trạng thái</div>
-                  <div>
-                    <span
-                      style={{
-                        ...badgeBaseStyle,
-                        borderRadius: radiusPill,
-                        padding: '2px 10px',
-                        fontSize: fontSizeMd,
-                        fontWeight: fontWeightMedium,
-                        background: `${color}15`,
-                        border: `1px solid ${color}40`,
-                        color,
-                      }}
-                    >
-                      {statusLabel}
-                    </span>
-                  </div>
-                </div>
-                <div style={{ gridColumn: '1 / -1', padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
-                  <div style={{ color: textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>Tên lớp bản đồ</div>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
-                    {detailRecord.name}
-                  </div>
-                </div>
-                <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
-                  <div style={{ color: textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>Loại lớp</div>
-                  <div>
-                    <span
-                      style={{
-                        ...badgeBaseStyle,
-                        borderRadius: radiusPill,
-                        padding: '2px 10px',
-                        fontSize: fontSizeMd,
-                        fontWeight: fontWeightMedium,
-                        background: `${layerColor}15`,
-                        border: `1px solid ${layerColor}40`,
-                        color: layerColor,
-                      }}
-                    >
-                      {layerLabel}
-                    </span>
-                  </div>
-                </div>
-                <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
-                  <div style={{ color: textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>Nguồn dữ liệu</div>
-                  <div style={{ color: textPrimary, fontSize: fontSizeMd }}>
-                    {detailRecord.source || '—'}
-                  </div>
-                </div>
-                <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
-                  <div style={{ color: textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>Độ mờ (Opacity)</div>
-                  <div style={{ color: textPrimary, fontSize: fontSizeMd }}>
-                    {detailRecord.opacity != null ? `${(detailRecord.opacity * 100).toFixed(0)}%` : '100%'}
-                  </div>
-                </div>
-                <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
-                  <div style={{ color: textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>Thứ tự hiển thị</div>
-                  <div style={{ color: textPrimary, fontSize: fontSizeMd }}>
-                    {detailRecord.order ?? 0}
-                  </div>
-                </div>
-                <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
-                  <div style={{ color: textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>Hiển thị trên bản đồ</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: spaceSm }}>
-                    {detailRecord.visible ? (
-                      <>
-                        <EyeOutlined style={{ color: statusOperational }} />
-                        <span style={{ color: statusOperational, fontWeight: fontWeightMedium }}>Bật</span>
-                      </>
-                    ) : (
-                      <>
-                        <EyeInvisibleOutlined style={{ color: textTertiary }} />
-                        <span style={{ color: textTertiary }}>Tắt</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-                <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
-                  <div style={{ color: textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>Ngày cập nhật</div>
-                  <div style={{ color: textPrimary, fontSize: fontSizeMd }}>
-                    {detailRecord.updatedAt ? dayjs(detailRecord.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}
-                  </div>
-                </div>
-                {detailRecord.styleConfig && (
-                  <div style={{ gridColumn: '1 / -1', padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
-                    <div style={{ color: textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>Cấu hình style (JSON)</div>
-                    <pre
-                      style={{
-                        margin: 0,
-                        padding: spaceSm,
-                        background: '#0F172A',
-                        color: '#38BDF8',
-                        borderRadius: radiusMd,
-                        fontSize: fontSizeSm,
-                        overflowX: 'auto',
-                      }}
-                    >
-                      {detailRecord.styleConfig}
-                    </pre>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
+          {detailRecord && (
+            <MapLayerDetailContent selectedRecord={detailRecord} />
+          )}
         </AppDrawer>
 
+        {/* ── History Drawer ──────────────────────────────────────── */}
+        <CommonHistoryDrawer
+          open={historyDrawerOpen}
+          onClose={() => {
+            setHistoryDrawerOpen(false);
+            setHistoryTarget(null);
+          }}
+          entityName={historyTarget?.name || 'lớp bản đồ'}
+          records={historyRecords}
+          loading={historyLoading}
+        />
+
         {/* ── Delete Confirmation Modal ────────────────────────────── */}
-        <Modal
-          title={
-            <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
-              Xác nhận xóa lớp bản đồ
-            </span>
-          }
-          open={!!deleteTarget}
-          onCancel={() => setDeleteTarget(null)}
-          footer={[
-            <Button key="cancel" onClick={() => setDeleteTarget(null)} style={outlineButtonStyle}>
-              Hủy
-            </Button>,
-            <Button
-              key="delete"
-              type="primary"
-              danger
-              loading={deleting}
-              onClick={handleDeleteConfirm}
-              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
-            >
-              Xác nhận xóa
-            </Button>,
-          ]}
-          width={480}
-        >
-          <div style={{ padding: '8px 0' }}>
-            <Alert
-              message="Hành động này không thể hoàn tác"
-              type="warning"
-              showIcon
-              icon={<ExclamationCircleOutlined />}
-              style={{ marginBottom: spaceFormField, borderRadius: radiusPill }}
-            />
-            <p style={{ fontSize: fontSizeMd, color: textPrimary }}>
-              Bạn có chắc chắn muốn xóa lớp bản đồ{' '}
-              <strong style={{ color: colors.sidebarBg }}>"{deleteTarget?.name}"</strong>?
-            </p>
-          </div>
-        </Modal>
+        <DeleteConfirmModal
+          open={deleteModalOpen}
+          onCancel={() => {
+            if (!deleting) {
+              setDeleteModalOpen(false);
+              setDeleteTarget(null);
+            }
+          }}
+          onConfirm={handleDeleteConfirm}
+          loading={deleting}
+          itemType="lớp bản đồ"
+          itemName={deleteTarget?.name}
+          itemCode={deleteTarget?.code}
+        />
       </div>
     </ThemeTokenProvider>
   );
