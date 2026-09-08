@@ -8,6 +8,7 @@ import {
   AuditOutlined,
   EnvironmentOutlined,
   FileOutlined,
+  FileImageOutlined,
   DownloadOutlined,
   EyeOutlined,
   DownOutlined,
@@ -29,9 +30,14 @@ import {
   radiusPill,
   fontSizeSm,
   fontSizeLg,
+  fontWeightMedium,
   fontWeightBold,
   primaryButtonStyle,
+  outlineButtonStyle,
   statusBadgeStyle,
+  spaceSm,
+  spaceMd,
+  spaceFormField,
 } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -157,6 +163,7 @@ export default function NavigationChannelDetailContent({
   const [operationOpen, setOperationOpen] = useState(true);
   const [maintenanceOpen, setMaintenanceOpen] = useState(true);
   const [incidentOpen, setIncidentOpen] = useState(true);
+  const [routesOpen, setRoutesOpen] = useState(true);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const coordinates = useMemo(
@@ -638,22 +645,12 @@ export default function NavigationChannelDetailContent({
                   </div>
                   <div className="chk-detail-grid">
                     <div className="chk-detail-row">
-                      <span className="chk-detail-label">Hệ quy chiếu</span>
-                      <span className="chk-detail-value">{r.coordinateReferenceSystem || ''}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Loại đối tượng GIS</span>
-                      <span className="chk-detail-value">
-                        {GEOMETRY_TYPE_MAP[r.geometryType || ''] || r.geometryType || ''}
-                      </span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Quy tắc hiển thị</span>
-                      <span className="chk-detail-value">{r.displayRule || ''}</span>
-                    </div>
-                    <div className="chk-detail-row">
                       <span className="chk-detail-label">Phạm vi bảo vệ luồng (m)</span>
                       <span className="chk-detail-value">{fmtNum(r.protectionScopeMeters)}</span>
+                    </div>
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label">KL nạo vét (m³)</span>
+                      <span className="chk-detail-value">{fmtNum(r.latestDredgingVolumeCubicMeters)}</span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label">Sửa chữa trạm gần nhất</span>
@@ -663,11 +660,7 @@ export default function NavigationChannelDetailContent({
                       <span className="chk-detail-label">Năm bảo trì gần nhất</span>
                       <span className="chk-detail-value">{fmtNum(r.latestMaintenanceYear)}</span>
                     </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">KL nạo vét (m³)</span>
-                      <span className="chk-detail-value">{fmtNum(r.latestDredgingVolumeCubicMeters)}</span>
-                    </div>
-                    <div className="chk-detail-row">
+                    <div className="chk-detail-row chk-detail-row--full">
                       <span className="chk-detail-label">Ghi chú phạm vi bảo vệ</span>
                       <span className="chk-detail-value">{r.protectionNotes || ''}</span>
                     </div>
@@ -787,27 +780,80 @@ export default function NavigationChannelDetailContent({
             ),
           },
           {
-            key: 'location',
+            key: 'gis',
             label: `Thông tin vị trí (${coordinates.length})`,
             children: (
-              <div>
-                <div style={{ marginBottom: 10 }}>
-                  <Button
-                    type="primary"
-                    icon={<EnvironmentOutlined />}
-                    onClick={() => setGisOpen(true)}
-                    style={{ ...primaryButtonStyle, height: 32, fontSize: fontSizeMd, borderRadius: radiusPill }}
-                  >
-                    Xem vị trí trên bản đồ chuyên dụng
-                  </Button>
+              <div style={{ paddingTop: 6, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)', minHeight: 350 }}>
+                {/* ── Section Card: Thông số đối tượng bản đồ ── */}
+                <div style={sectionBoxStyle}>
+                  <div style={sectionHeaderStyle}>
+                    <div style={sectionTitleStyle}>
+                      <EnvironmentOutlined style={{ color: actionPrimary }} />
+                      <span>Thông số đối tượng bản đồ</span>
+                    </div>
+                  </div>
+                  <div className="chk-detail-grid">
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label">Loại đối tượng</span>
+                      <span className="chk-detail-value">
+                        {({ POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' } as Record<string, string>)[r.geometryType || ''] || r.geometryType || ''}
+                      </span>
+                    </div>
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label">Biểu tượng</span>
+                      <span className="chk-detail-value">{r.mapIconId || r.mapSymbolId || ''}</span>
+                    </div>
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label">Hệ quy chiếu</span>
+                      <span className="chk-detail-value">{r.coordinateReferenceSystem || 'WGS-84'}</span>
+                    </div>
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label">Quy tắc hiển thị</span>
+                      <span className="chk-detail-value">{r.displayRule || (coordinates.length > 0 ? 'Độ, phút, giây (DMS)' : '')}</span>
+                    </div>
+                  </div>
                 </div>
-                <DetailTable<NavigationChannelCoordinateResponse>
-                  dataSource={coordinates}
-                  columns={coordinateColumns}
-                  rowKey="id"
-                  scrollY={DRAWER_TABLE_SCROLL_Y.withButton}
-                  emptyText="Chưa có dữ liệu tọa độ"
-                />
+
+                {/* ── Bảng Tọa độ GPS ── */}
+                <div style={{ marginTop: spaceMd }}>
+                  <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+                    <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
+                      Tọa độ GPS ({coordinates.length})
+                    </span>
+                    <Button
+                      icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+                      onClick={() => setGisOpen(true)}
+                      style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4, borderRadius: radiusPill }}
+                    >
+                      Xem vị trí trên bản đồ
+                    </Button>
+                  </div>
+                  <DetailTable
+                    dataSource={coordinates.map((p, i) => ({ ...p, _idx: i }))}
+                    emptyText="Chưa có tọa độ GPS nào"
+                    rowKey={(rec: any) => String(rec._idx ?? `${rec.latitude}-${rec.longitude}`)}
+                    scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
+                    columns={[
+                      { title: 'STT', width: 50, align: 'center' },
+                      {
+                        title: 'Vĩ độ (Latitude - N)',
+                        key: 'lat',
+                        render: (_v: any, rec: any) => {
+                          const dms = ddToDms(rec.latitude);
+                          return `${dms.d}° ${dms.m}' ${dms.s}" N`;
+                        },
+                      },
+                      {
+                        title: 'Kinh độ (Longitude - E)',
+                        key: 'lng',
+                        render: (_v: any, rec: any) => {
+                          const dms = ddToDms(rec.longitude);
+                          return `${dms.d}° ${dms.m}' ${dms.s}" E`;
+                        },
+                      },
+                    ]}
+                  />
+                </div>
               </div>
             ),
           },
@@ -815,26 +861,160 @@ export default function NavigationChannelDetailContent({
             key: 'files',
             label: `File đính kèm (${attachments.length})`,
             children: (
-              <DetailTable<AttachmentRow>
-                dataSource={attachments}
-                columns={attachmentColumns}
-                rowKey="id"
-                scrollY={DRAWER_TABLE_SCROLL_Y.pureTable}
-                emptyText="Chưa có tài liệu đính kèm"
-              />
+              <div style={{ paddingTop: 6, overflowY: 'auto', maxHeight: 'calc(100vh - 190px)' }}>
+                <div style={{ marginBottom: spaceSm }}>
+                  <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
+                </div>
+                <DetailTable<AttachmentRow>
+                  dataSource={attachments}
+                  emptyText="Chưa có tài liệu đính kèm"
+                  scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
+                  columns={[
+                    { title: 'STT', width: 50, align: 'center', render: (_: unknown, __: unknown, i: number) => i + 1 },
+                    {
+                      title: 'Tên tài liệu',
+                      dataIndex: 'fileName',
+                      key: 'fileName',
+                      render: (v: string, rec: AttachmentRow) => {
+                        const isImg = isImageFile(v);
+                        const url = rec.filePath || rec.fileUrl || rec.fileName || '';
+                        return (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              cursor: 'pointer',
+                              color: actionPrimary,
+                              fontWeight: fontWeightMedium,
+                            }}
+                            title={isImg ? `${v} (Nhấp để xem chi tiết ảnh)` : `${v} (Nhấp để tải xuống)`}
+                            onClick={() => {
+                              if (isImg) setPreviewImage(url);
+                              else if (url) window.open(url, '_blank');
+                            }}
+                          >
+                            {isImg ? (
+                              <FileImageOutlined style={{ color: actionPrimary, flexShrink: 0 }} />
+                            ) : (
+                              <FileOutlined style={{ color: textTertiary, flexShrink: 0 }} />
+                            )}
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {v || ''}
+                            </span>
+                          </span>
+                        );
+                      },
+                    },
+                    {
+                      title: 'Dung lượng',
+                      dataIndex: 'fileSize',
+                      key: 'fileSize',
+                      width: 120,
+                      align: 'right' as const,
+                      render: (size?: number) => {
+                        if (!size) return '';
+                        return size >= 1024 * 1024 ? `${(size / (1024 * 1024)).toFixed(2)} MB` : `${Math.round(size / 1024)} KB`;
+                      },
+                    },
+                    {
+                      title: 'Người tải lên',
+                      dataIndex: 'uploadedBy',
+                      key: 'uploadedBy',
+                      width: 180,
+                      render: (id?: string) => actorName(id),
+                    },
+                    {
+                      title: 'Ngày tải lên',
+                      dataIndex: 'uploadedAt',
+                      key: 'uploadedAt',
+                      width: 135,
+                      align: 'center' as const,
+                      render: (v?: string) => fmtDateTime(v),
+                    },
+                    {
+                      title: 'Thao tác',
+                      key: 'actions',
+                      width: 90,
+                      align: 'center' as const,
+                      render: (_: any, rec: AttachmentRow) => {
+                        const isImg = isImageFile(rec.fileName);
+                        const url = rec.filePath || rec.fileUrl || rec.fileName || '';
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                            {isImg ? (
+                              <Tooltip title="Xem chi tiết ảnh">
+                                <Button
+                                  type="text"
+                                  size="small"
+                                  icon={<EyeOutlined style={{ color: actionPrimary, fontSize: 16 }} />}
+                                  onClick={() => setPreviewImage(url)}
+                                  style={{ width: 28, height: 28, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                />
+                              </Tooltip>
+                            ) : (
+                              <span style={{ width: 28, height: 28, display: 'inline-block' }} />
+                            )}
+                            <Tooltip title="Tải xuống tệp">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<DownloadOutlined style={{ color: actionPrimary, fontSize: 16 }} />}
+                                onClick={() => {
+                                  if (url) window.open(url, '_blank');
+                                }}
+                                style={{ width: 28, height: 28, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                              />
+                            </Tooltip>
+                          </div>
+                        );
+                      },
+                    },
+                  ]}
+                />
+              </div>
             ),
           },
           {
             key: 'routes',
             label: `Tuyến luồng (${routeDetails.length})`,
             children: (
-              <DetailTable<ChannelRouteDetailResponse>
-                dataSource={routeDetails}
-                columns={routeColumns}
-                rowKey="id"
-                scrollY={DRAWER_TABLE_SCROLL_Y.pureTable}
-                emptyText="Chưa có phân đoạn tuyến luồng"
-              />
+              <div style={{ paddingTop: 6, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)' }}>
+                {/* ── Section Card: Thông tin phân đoạn tuyến luồng ── */}
+                <div style={{ ...sectionBoxStyle, padding: routesOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
+                  <div
+                    style={{
+                      ...sectionHeaderStyle,
+                      marginBottom: routesOpen ? 12 : 0,
+                      paddingBottom: routesOpen ? 8 : 0,
+                      borderBottom: routesOpen ? '1px solid #f1f5f9' : 'none',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                    }}
+                    onClick={() => setRoutesOpen(!routesOpen)}
+                  >
+                    <div style={sectionTitleStyle}>
+                      <SlidersOutlined style={{ color: actionPrimary }} />
+                      <span>Thông tin phân đoạn tuyến luồng</span>
+                    </div>
+                    <span style={{ color: actionPrimary, fontSize: 12 }}>
+                      {routesOpen ? <DownOutlined /> : <RightOutlined />}
+                    </span>
+                  </div>
+                  {routesOpen && (
+                    <DetailTable<ChannelRouteDetailResponse>
+                      dataSource={routeDetails}
+                      emptyText="Chưa có dữ liệu"
+                      rowKey={(r: any) => r.id || r.routeCode || r.routeName}
+                      scrollY={DRAWER_TABLE_SCROLL_Y.pureTable}
+                      columns={routeColumns}
+                    />
+                  )}
+                </div>
+              </div>
             ),
           },
           {
@@ -851,15 +1031,22 @@ export default function NavigationChannelDetailContent({
                   minHeight: 350,
                 }}
               >
-                {/* ── Kế hoạch vận hành ── */}
-                <div style={sectionBoxStyle}>
+                {/* ── Thông tin vận hành khai thác ── */}
+                <div style={{ ...sectionBoxStyle, padding: operationOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
                   <div
-                    style={{ ...sectionHeaderStyle, cursor: 'pointer', marginBottom: operationOpen ? 10 : 0, borderBottom: operationOpen ? '1px solid #f1f5f9' : 'none' }}
+                    style={{
+                      ...sectionHeaderStyle,
+                      marginBottom: operationOpen ? 12 : 0,
+                      paddingBottom: operationOpen ? 8 : 0,
+                      borderBottom: operationOpen ? '1px solid #f1f5f9' : 'none',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                    }}
                     onClick={() => setOperationOpen(!operationOpen)}
                   >
                     <div style={sectionTitleStyle}>
                       <SlidersOutlined style={{ color: actionPrimary }} />
-                      <span>Kế hoạch vận hành</span>
+                      <span>Thông tin vận hành khai thác</span>
                     </div>
                     <span style={{ color: actionPrimary, fontSize: 12 }}>
                       {operationOpen ? <DownOutlined /> : <RightOutlined />}
@@ -876,20 +1063,28 @@ export default function NavigationChannelDetailContent({
                         { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'endDate', width: 140, align: 'center', render: (v: string) => fmtDate(v) },
                       ]}
                       rowKey="planCode"
-                      emptyText="Chưa có dữ liệu kế hoạch vận hành"
+                      scrollY={160}
+                      emptyText="Chưa có dữ liệu"
                     />
                   )}
                 </div>
 
-                {/* ── Kế hoạch bảo trì ── */}
-                <div style={sectionBoxStyle}>
+                {/* ── Thông tin bảo trì ── */}
+                <div style={{ ...sectionBoxStyle, padding: maintenanceOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
                   <div
-                    style={{ ...sectionHeaderStyle, cursor: 'pointer', marginBottom: maintenanceOpen ? 10 : 0, borderBottom: maintenanceOpen ? '1px solid #f1f5f9' : 'none' }}
+                    style={{
+                      ...sectionHeaderStyle,
+                      marginBottom: maintenanceOpen ? 12 : 0,
+                      paddingBottom: maintenanceOpen ? 8 : 0,
+                      borderBottom: maintenanceOpen ? '1px solid #f1f5f9' : 'none',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                    }}
                     onClick={() => setMaintenanceOpen(!maintenanceOpen)}
                   >
                     <div style={sectionTitleStyle}>
                       <SlidersOutlined style={{ color: actionPrimary }} />
-                      <span>Kế hoạch bảo trì</span>
+                      <span>Thông tin bảo trì</span>
                     </div>
                     <span style={{ color: actionPrimary, fontSize: 12 }}>
                       {maintenanceOpen ? <DownOutlined /> : <RightOutlined />}
@@ -902,24 +1097,32 @@ export default function NavigationChannelDetailContent({
                         { title: 'STT', width: 50, align: 'center', render: (_: unknown, __: unknown, i: number) => i + 1 },
                         { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'planCode', render: (v: string) => v || '' },
                         { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'planName', render: (v: string) => v || '' },
-                        { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'startDate', width: 140, align: 'center', render: (v: string) => fmtDate(v) },
-                        { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'endDate', width: 140, align: 'center', render: (v: string) => fmtDate(v) },
+                        { title: 'Thời gian bắt đầu', dataIndex: 'startDate', key: 'startDate', width: 140, align: 'center', render: (v: string) => fmtDate(v) },
+                        { title: 'Thời gian kết thúc', dataIndex: 'endDate', key: 'endDate', width: 140, align: 'center', render: (v: string) => fmtDate(v) },
                       ]}
                       rowKey="planCode"
-                      emptyText="Chưa có dữ liệu kế hoạch bảo trì"
+                      scrollY={160}
+                      emptyText="Chưa có dữ liệu"
                     />
                   )}
                 </div>
 
-                {/* ── Lịch sử sự cố ── */}
-                <div style={sectionBoxStyle}>
+                {/* ── Thông tin sự cố ── */}
+                <div style={{ ...sectionBoxStyle, padding: incidentOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
                   <div
-                    style={{ ...sectionHeaderStyle, cursor: 'pointer', marginBottom: incidentOpen ? 10 : 0, borderBottom: incidentOpen ? '1px solid #f1f5f9' : 'none' }}
+                    style={{
+                      ...sectionHeaderStyle,
+                      marginBottom: incidentOpen ? 12 : 0,
+                      paddingBottom: incidentOpen ? 8 : 0,
+                      borderBottom: incidentOpen ? '1px solid #f1f5f9' : 'none',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                    }}
                     onClick={() => setIncidentOpen(!incidentOpen)}
                   >
                     <div style={sectionTitleStyle}>
-                      <AuditOutlined style={{ color: actionPrimary }} />
-                      <span>Lịch sử sự cố & cảnh báo</span>
+                      <SlidersOutlined style={{ color: actionPrimary }} />
+                      <span>Thông tin sự cố</span>
                     </div>
                     <span style={{ color: actionPrimary, fontSize: 12 }}>
                       {incidentOpen ? <DownOutlined /> : <RightOutlined />}
@@ -936,7 +1139,8 @@ export default function NavigationChannelDetailContent({
                         { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 160, align: 'center', render: (v: string) => fmtDateTime(v) },
                       ]}
                       rowKey="incidentCode"
-                      emptyText="Chưa có ghi nhận sự cố"
+                      scrollY={160}
+                      emptyText="Chưa có dữ liệu"
                     />
                   )}
                 </div>
