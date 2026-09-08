@@ -1011,75 +1011,70 @@ export default function NavigationChannelList() {
           style={filterInputStyle}
         />
       </div>
-
-      {filterCollapsed && (
-        <>
-          <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Mã luồng</div>
-            <Input
-              placeholder="Nhập mã luồng..."
-              allowClear
-              value={filterChannelCode}
-              onChange={(e) => { setFilterChannelCode(e.target.value); setPage(1); }}
-              onPressEnter={handleFilterApply}
-              style={filterInputStyle}
-            />
-          </div>
-          <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Địa điểm Tỉnh/TP</div>
-            <Select
-              placeholder="Chọn tỉnh/thành phố..."
-              allowClear
-              showSearch
-              className="chk-filter-select"
-              optionFilterProp="label"
-              value={filterProvinceId}
-              onChange={(v) => { setFilterProvinceId(v); setPage(1); }}
-              options={VIETNAM_PROVINCE_OPTIONS}
-              style={filterInputStyle}
-            />
-          </div>
-          <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Tình trạng</div>
-            <Select
-              placeholder="Chọn tình trạng"
-              allowClear
-              className="chk-filter-select"
-              value={filterConditionStatus}
-              onChange={(v) => { setFilterConditionStatus(v); setPage(1); }}
-              options={CONDITION_STATUS_OPTIONS}
-              style={filterInputStyle}
-            />
-          </div>
-          <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Cán bộ cập nhật</div>
-            <Select
-              placeholder="Chọn cán bộ cập nhật"
-              allowClear
-              showSearch
-              className="chk-filter-select"
-              value={filterUpdatedBy}
-              onChange={(v) => { setFilterUpdatedBy(v || undefined); setPage(1); }}
-              options={userOptions}
-              style={filterInputStyle}
-            />
-          </div>
-          <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Ngày cập nhật</div>
-            <DatePicker.RangePicker
-              placeholder={['Từ ngày', 'Đến ngày']}
-              format="DD/MM/YYYY"
-              value={filterUpdatedFrom && filterUpdatedTo ? [dayjs(filterUpdatedFrom), dayjs(filterUpdatedTo)] : null}
-              onChange={(range) => {
-                setFilterUpdatedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : '');
-                setFilterUpdatedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : '');
-                setPage(1);
-              }}
-              style={filterInputStyle}
-            />
-          </div>
-        </>
-      )}
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Mã luồng</div>
+        <Input
+          placeholder="Nhập mã luồng..."
+          allowClear
+          value={filterChannelCode}
+          onChange={(e) => { setFilterChannelCode(e.target.value); setPage(1); }}
+          onPressEnter={handleFilterApply}
+          style={filterInputStyle}
+        />
+      </div>
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Địa điểm Tỉnh/TP</div>
+        <Select
+          placeholder="Chọn tỉnh/thành phố..."
+          allowClear
+          showSearch
+          className="chk-filter-select"
+          optionFilterProp="label"
+          value={filterProvinceId}
+          onChange={(v) => { setFilterProvinceId(v); setPage(1); }}
+          options={VIETNAM_PROVINCE_OPTIONS}
+          style={filterInputStyle}
+        />
+      </div>
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Tình trạng</div>
+        <Select
+          placeholder="Chọn tình trạng"
+          allowClear
+          className="chk-filter-select"
+          value={filterConditionStatus}
+          onChange={(v) => { setFilterConditionStatus(v); setPage(1); }}
+          options={CONDITION_STATUS_OPTIONS}
+          style={filterInputStyle}
+        />
+      </div>
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Cán bộ cập nhật</div>
+        <Select
+          placeholder="Chọn cán bộ cập nhật"
+          allowClear
+          showSearch
+          className="chk-filter-select"
+          value={filterUpdatedBy}
+          onChange={(v) => { setFilterUpdatedBy(v || undefined); setPage(1); }}
+          options={userOptions}
+          style={filterInputStyle}
+        />
+      </div>
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Ngày cập nhật</div>
+        <DatePicker.RangePicker
+          placeholder={['Từ ngày', 'Đến ngày']}
+          format="DD/MM/YYYY"
+          value={filterUpdatedFrom && filterUpdatedTo ? [dayjs(filterUpdatedFrom), dayjs(filterUpdatedTo)] : null}
+          onChange={(range) => {
+            setFilterUpdatedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : '');
+            setFilterUpdatedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : '');
+            setPage(1);
+          }}
+          style={filterInputStyle}
+        />
+      </div>
     </>
   );
 

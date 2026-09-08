@@ -4,6 +4,8 @@ import type { ColumnsType } from 'antd/es/table';
 import {
   EnvironmentOutlined,
   FileOutlined,
+  DownloadOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
@@ -198,6 +200,13 @@ export default function NavigationChannelDetailContent({
   ];
 
   // ── Tab 3: File đính kèm ───────────────────────────────────────────
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const isImageFile = (fileName?: string) => {
+    if (!fileName) return false;
+    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+    return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp'].includes(ext);
+  };
+
   const attachmentColumns: ColumnsType<AttachmentRow> = [
     {
       title: 'STT',
@@ -210,8 +219,8 @@ export default function NavigationChannelDetailContent({
       title: 'Tên tài liệu',
       dataIndex: 'fileName',
       width: 320,
-      render: (name: string) => (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: '100%' }}>
+      render: (name: string, rec: AttachmentRow) => (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%' }}>
           <FileOutlined style={{ color: actionPrimary }} />
           <Tooltip title={name}>
             <span style={{ color: textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name || ''}</span>
@@ -239,6 +248,41 @@ export default function NavigationChannelDetailContent({
       dataIndex: 'uploadedAt',
       width: 170,
       render: (v?: string) => fmtDateTime(v),
+    },
+    {
+      title: 'Thao tác',
+      key: 'actions',
+      width: 100,
+      align: 'center',
+      render: (_: unknown, rec: AttachmentRow) => {
+        const isImg = isImageFile(rec.fileName);
+        const url = (rec as any).filePath || rec.fileUrl || rec.fileName || '';
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            {isImg ? (
+              <Button
+                type="text"
+                size="small"
+                icon={<EyeOutlined style={{ color: actionPrimary }} />}
+                onClick={() => setPreviewImage(url)}
+                title="Xem ảnh"
+              />
+            ) : (
+              <Button
+                type="text"
+                size="small"
+                icon={<DownloadOutlined style={{ color: actionPrimary }} />}
+                onClick={() => {
+                  if (url) {
+                    window.open(url, '_blank');
+                  }
+                }}
+                title="Tải xuống"
+              />
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -762,6 +806,22 @@ export default function NavigationChannelDetailContent({
             }}
           />
         </div>
+      </Modal>
+
+      {/* ── Modal xem ảnh phóng to ── */}
+      <Modal
+        open={!!previewImage}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xem trước hình ảnh</span>}
+        footer={null}
+        onCancel={() => setPreviewImage(null)}
+        destroyOnClose
+        width={800}
+      >
+        {previewImage && (
+          <div style={{ textAlign: 'center', padding: '12px 0' }}>
+            <img src={previewImage} alt="Preview" style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 4 }} />
+          </div>
+        )}
       </Modal>
     </div>
   );

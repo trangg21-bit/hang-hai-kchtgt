@@ -1883,45 +1883,6 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
               </div>
             ),
           },
-          ...(isCreateMode ? [] : [{
-            key: 'history',
-            label: 'Lịch sử & Phê duyệt',
-            children: (
-              <div style={drawerTabContentStyle}>
-                <div style={{ marginBottom: spaceMd }}>
-                  {sectionTitle('Trạng thái và phê duyệt')}
-                  <div className="chk-detail-grid">
-                    {[
-                      ['Trạng thái', record?.approvalStatus ? <ApprovalStatusBadge status={record.approvalStatus} /> : '—'],
-                      ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{record ? (userMap.get(record.updatedBy || '') || record.updatedBy || '—') : '—'}</span>],
-                      ['Ngày cập nhật', record?.updatedAt ? dayjs(record.updatedAt).format('DD/MM/YYYY HH:mm') : '—'],
-                      ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{record ? (userMap.get(record.submittedBy || '') || record.submittedBy || '—') : '—'}</span>],
-                      ['Ngày gửi phê duyệt', record?.submittedAt ? dayjs(record.submittedAt).format('DD/MM/YYYY HH:mm') : '—'],
-                      ['Cán bộ duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{record ? (userMap.get(record.level1ApprovedBy || '') || record.level1ApprovedBy || '—') : '—'}</span>],
-                      ['Ngày duyệt cấp Cảng vụ/Chi cục', record?.level1ApprovedAt ? dayjs(record.level1ApprovedAt).format('DD/MM/YYYY HH:mm') : '—'],
-                      ['Cán bộ duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{record ? (userMap.get(record.level2ApprovedBy || '') || record.level2ApprovedBy || '—') : '—'}</span>],
-                      ['Ngày duyệt cấp Cục', record?.level2ApprovedAt ? dayjs(record.level2ApprovedAt).format('DD/MM/YYYY HH:mm') : '—'],
-                    ].map(([label, value], i) => (
-                      <div key={i} className="chk-detail-row">
-                        <span className="chk-detail-label">{label}</span>
-                        <span className="chk-detail-value">{value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  {sectionTitle('Lịch sử thay đổi')}
-                  {isLoadingHistory ? (
-                    <div style={{ textAlign: 'center', padding: `${spaceLg}px 0`, color: textTertiary, fontSize: fontSizeMd }}>Đang tải lịch sử...</div>
-                  ) : historyError ? (
-                    <div style={{ textAlign: 'center', padding: `${spaceLg}px 0`, color: statusCritical, fontSize: fontSizeMd }}>{historyError}</div>
-                  ) : (
-                    renderHistoryTimeline(history)
-                  )}
-                </div>
-              </div>
-            ),
-          }]),
         ]}
       />
       {/* Footer — chế độ standalone hiển thị trong form; chế độ modal hiển thị trong footer AppDrawer */}
