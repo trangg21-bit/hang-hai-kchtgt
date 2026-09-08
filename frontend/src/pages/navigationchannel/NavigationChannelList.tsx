@@ -964,8 +964,13 @@ export default function NavigationChannelList() {
   const filterContent = (
     <>
       <style>{`
+        .channel-page-wrapper .ant-select .ant-select-selector,
+        .channel-page-wrapper .ant-tree-select .ant-select-selector,
+        .channel-page-wrapper .ant-picker,
+        .channel-page-wrapper .ant-input,
         .chk-filter-select.ant-select .ant-select-selector,
         .chk-filter-select.ant-tree-select .ant-select-selector,
+        .chk-filter-select.ant-picker,
         .chk-filter-select .ant-select-selector {
           border-radius: 999px !important;
           height: 40px !important;
@@ -987,20 +992,6 @@ export default function NavigationChannelList() {
         />
       </div>
       <div style={{ marginBottom: spaceFormField }}>
-        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Thuộc cảng biển</div>
-        <Select
-          placeholder="Chọn cảng biển..."
-          allowClear
-          showSearch
-          className="chk-filter-select"
-          optionFilterProp="label"
-          value={filterSeaportId}
-          onChange={(v) => { setFilterSeaportId(v); setPage(1); }}
-          options={seaportOptions.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : p.portName || p.id }))}
-          style={filterInputStyle}
-        />
-      </div>
-      <div style={{ marginBottom: spaceFormField }}>
         <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Tên luồng</div>
         <Input
           placeholder="Tìm theo tên luồng..."
@@ -1008,31 +999,6 @@ export default function NavigationChannelList() {
           value={filterKeyword}
           onChange={(e) => { setFilterKeyword(e.target.value); setPage(1); }}
           onPressEnter={handleFilterApply}
-          style={filterInputStyle}
-        />
-      </div>
-      <div style={{ marginBottom: spaceFormField }}>
-        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Mã luồng</div>
-        <Input
-          placeholder="Nhập mã luồng..."
-          allowClear
-          value={filterChannelCode}
-          onChange={(e) => { setFilterChannelCode(e.target.value); setPage(1); }}
-          onPressEnter={handleFilterApply}
-          style={filterInputStyle}
-        />
-      </div>
-      <div style={{ marginBottom: spaceFormField }}>
-        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Địa điểm Tỉnh/TP</div>
-        <Select
-          placeholder="Chọn tỉnh/thành phố..."
-          allowClear
-          showSearch
-          className="chk-filter-select"
-          optionFilterProp="label"
-          value={filterProvinceId}
-          onChange={(v) => { setFilterProvinceId(v); setPage(1); }}
-          options={VIETNAM_PROVINCE_OPTIONS}
           style={filterInputStyle}
         />
       </div>
@@ -1048,33 +1014,78 @@ export default function NavigationChannelList() {
           style={filterInputStyle}
         />
       </div>
-      <div style={{ marginBottom: spaceFormField }}>
-        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Cán bộ cập nhật</div>
-        <Select
-          placeholder="Chọn cán bộ cập nhật"
-          allowClear
-          showSearch
-          className="chk-filter-select"
-          value={filterUpdatedBy}
-          onChange={(v) => { setFilterUpdatedBy(v || undefined); setPage(1); }}
-          options={userOptions}
-          style={filterInputStyle}
-        />
-      </div>
-      <div style={{ marginBottom: spaceFormField }}>
-        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Ngày cập nhật</div>
-        <DatePicker.RangePicker
-          placeholder={['Từ ngày', 'Đến ngày']}
-          format="DD/MM/YYYY"
-          value={filterUpdatedFrom && filterUpdatedTo ? [dayjs(filterUpdatedFrom), dayjs(filterUpdatedTo)] : null}
-          onChange={(range) => {
-            setFilterUpdatedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : '');
-            setFilterUpdatedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : '');
-            setPage(1);
-          }}
-          style={filterInputStyle}
-        />
-      </div>
+
+      {filterCollapsed && (
+        <>
+          <div style={{ marginBottom: spaceFormField }}>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Thuộc cảng biển</div>
+            <Select
+              placeholder="Chọn cảng biển..."
+              allowClear
+              showSearch
+              className="chk-filter-select"
+              optionFilterProp="label"
+              value={filterSeaportId}
+              onChange={(v) => { setFilterSeaportId(v); setPage(1); }}
+              options={seaportOptions.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : p.portName || p.id }))}
+              style={filterInputStyle}
+            />
+          </div>
+          <div style={{ marginBottom: spaceFormField }}>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Mã luồng</div>
+            <Input
+              placeholder="Nhập mã luồng..."
+              allowClear
+              value={filterChannelCode}
+              onChange={(e) => { setFilterChannelCode(e.target.value); setPage(1); }}
+              onPressEnter={handleFilterApply}
+              style={filterInputStyle}
+            />
+          </div>
+          <div style={{ marginBottom: spaceFormField }}>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Địa điểm Tỉnh/TP</div>
+            <Select
+              placeholder="Chọn tỉnh/thành phố..."
+              allowClear
+              showSearch
+              className="chk-filter-select"
+              optionFilterProp="label"
+              value={filterProvinceId}
+              onChange={(v) => { setFilterProvinceId(v); setPage(1); }}
+              options={VIETNAM_PROVINCE_OPTIONS}
+              style={filterInputStyle}
+            />
+          </div>
+          <div style={{ marginBottom: spaceFormField }}>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Cán bộ cập nhật</div>
+            <Select
+              placeholder="Chọn cán bộ cập nhật"
+              allowClear
+              showSearch
+              className="chk-filter-select"
+              value={filterUpdatedBy}
+              onChange={(v) => { setFilterUpdatedBy(v || undefined); setPage(1); }}
+              options={userOptions}
+              style={filterInputStyle}
+            />
+          </div>
+          <div style={{ marginBottom: spaceFormField }}>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Ngày cập nhật</div>
+            <DatePicker.RangePicker
+              placeholder={['Từ ngày', 'Đến ngày']}
+              format="DD/MM/YYYY"
+              className="chk-filter-select"
+              value={filterUpdatedFrom && filterUpdatedTo ? [dayjs(filterUpdatedFrom), dayjs(filterUpdatedTo)] : null}
+              onChange={(range) => {
+                setFilterUpdatedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : '');
+                setFilterUpdatedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : '');
+                setPage(1);
+              }}
+              style={filterInputStyle}
+            />
+          </div>
+        </>
+      )}
     </>
   );
 
@@ -1120,7 +1131,7 @@ export default function NavigationChannelList() {
 
   return (
     <ThemeTokenProvider tokens={themeTokenChk}>
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+    <div className="channel-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader
         breadcrumb={[{ label: 'KCHT hàng hải' }, { label: 'Luồng hàng hải' }]}
         actions={headerActions}
