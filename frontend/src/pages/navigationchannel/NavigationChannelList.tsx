@@ -40,7 +40,6 @@ import {
   cellSubtitleStyle,
   icons,
   colors,
-  filterInputStyle,
   filterLabelStyle,
   drawerProps,
   drawerTitleStyle,
@@ -389,8 +388,8 @@ export default function NavigationChannelList() {
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [sortField, setSortField] = useState<string | undefined>();
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
+  const [sortField, setSortField] = useState<string | undefined>('updatedAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>('desc');
   const [dataSource, setDataSource] = useState<NavigationChannelResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -543,6 +542,9 @@ export default function NavigationChannelList() {
   }, []);
 
   const refreshAfterMutation = useCallback(() => {
+    setSortField('updatedAt');
+    setSortOrder('desc');
+    setPage(1);
     void fetchData();
     void fetchCounts();
   }, [fetchData, fetchCounts]);
@@ -842,6 +844,7 @@ export default function NavigationChannelList() {
         width: 260,
         fixed: 'left' as const,
         sortable: true,
+        sortOrder: sortField === 'channelName' ? (sortOrder === 'asc' ? ('ascend' as const) : ('descend' as const)) : undefined,
         ellipsis: false,
         render: (v: string | undefined, record: NavigationChannelResponse) => (
           <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -889,6 +892,7 @@ export default function NavigationChannelList() {
         dataIndex: 'conditionStatus',
         width: 150,
         sortable: true,
+        sortOrder: sortField === 'conditionStatus' ? (sortOrder === 'asc' ? ('ascend' as const) : ('descend' as const)) : undefined,
         render: (v: string | undefined) => {
           if (!v) return null;
           const s = CONDITION_STATUS_STYLE_MAP[v] || { label: CONDITION_STATUS_MAP[v as keyof typeof CONDITION_STATUS_MAP] || v, color: textTertiary };
@@ -908,6 +912,7 @@ export default function NavigationChannelList() {
         dataIndex: 'updatedAt',
         width: 220,
         sortable: true,
+        sortOrder: sortField === 'updatedAt' ? (sortOrder === 'asc' ? ('ascend' as const) : ('descend' as const)) : undefined,
         ellipsis: false,
         render: (v: string | undefined, record: NavigationChannelResponse) => {
           const name = record.updatedBy ? userMap.get(record.updatedBy) : undefined;
@@ -922,7 +927,7 @@ export default function NavigationChannelList() {
         },
       },
     ];
-  }, [page, pageSize, seaportOptions, openDetail, userMap]);
+  }, [page, pageSize, seaportOptions, openDetail, userMap, sortField, sortOrder]);
 
   const rowActions = useCallback(
     (record: NavigationChannelResponse) => {
@@ -1100,9 +1105,30 @@ export default function NavigationChannelList() {
     [hasPerm, openModal],
   );
 
+  const getSortValue = useCallback((r: any, field: string): string | number => {
+    if (field === 'seaportId') return seaportOptions.find((o) => o.id === r.seaportId)?.portName ?? r.seaportId ?? '';
+    if (field === 'provinceId') return VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(r.provinceId))?.label ?? '';
+    if (field === 'orgUnitId') return r.orgUnitName ?? r.orgUnitId ?? '';
+    if (field === 'updatedAt') return new Date(r.updatedAt || r.createdAt || 0).getTime();
+    if (field === 'submittedAt') return new Date(r.submittedAt || 0).getTime();
+    return r[field] ?? '';
+  }, [seaportOptions]);
+
+  const sortedData = useMemo(() => {
+    return [...dataSource].sort((a: any, b: any) => {
+      if (!sortField) return 0;
+      const aVal = getSortValue(a, sortField);
+      const bVal = getSortValue(b, sortField);
+      const cmp = typeof aVal === 'number' && typeof bVal === 'number'
+        ? aVal - bVal
+        : String(aVal).localeCompare(String(bVal), 'vi');
+      return sortOrder === 'asc' ? cmp : -cmp;
+    });
+  }, [dataSource, sortField, sortOrder, getSortValue]);
+
   const tableData = useMemo(
-    () => dataSource.map((item, idx) => ({ ...item, key: item.id, _rowIndex: (page - 1) * pageSize + idx + 1 })),
-    [dataSource, page, pageSize],
+    () => sortedData.map((item, idx) => ({ ...item, key: item.id, _rowIndex: (page - 1) * pageSize + idx + 1 })),
+    [sortedData, page, pageSize],
   );
 
   // ── orgMap / seaportMap cho timeline lịch sử ────────────────────────
