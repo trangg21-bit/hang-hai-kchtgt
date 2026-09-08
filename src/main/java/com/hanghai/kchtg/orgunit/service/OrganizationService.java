@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.orgunit.service;
 
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
+import com.hanghai.kchtg.orgunit.dto.CandidateParentResponse;
 import com.hanghai.kchtg.orgunit.dto.CreateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
 import com.hanghai.kchtg.orgunit.dto.UpdateOrgUnitRequest;
@@ -165,6 +166,96 @@ public class OrganizationService {
     }
 
     /**
+     * Retrieve eligible parent units for creating or editing an organizational unit.
+     */
+    @Transactional(readOnly = true)
+    public List<CandidateParentResponse> findCandidateParents(UUID unitId) {
+        return findCandidateParents(unitId, OrgUnitScopeService.Scope.allScope());
+    }
+
+    @Transactional(readOnly = true)
+    public List<CandidateParentResponse> findCandidateParents(UUID unitId, OrgUnitScopeService.Scope scope) {
+        List<OrgUnit> allUnits = scope.unrestricted()
+                ? orgUnitRepo.findAllActiveOrderByPath()
+                : scope.orgUnitIds().isEmpty()
+                        ? List.of()
+                        : orgUnitRepo.findAllActiveByIds(scope.orgUnitIds());
+
+        UUID currentParentId = null;
+        java.util.Set<UUID> forbiddenIds = new java.util.HashSet<>();
+        int maxSubtreeDepth = 0;
+
+        if (unitId != null) {
+            OrgUnit targetUnit = orgUnitRepo.findById(unitId).orElse(null);
+            if (targetUnit != null) {
+                currentParentId = targetUnit.getParentId();
+                forbiddenIds.add(unitId);
+                int targetLevel = resolveLevel(targetUnit);
+
+                List<OrgUnit> subtree = materializedPathService.getSubtree(unitId);
+                for (OrgUnit desc : subtree) {
+                    forbiddenIds.add(desc.getId());
+                    int descLevel = resolveLevel(desc);
+                    maxSubtreeDepth = Math.max(maxSubtreeDepth, Math.max(0, descLevel - targetLevel));
+                }
+            }
+        }
+
+        List<CandidateParentResponse> result = new java.util.ArrayList<>();
+        final UUID finalCurrentParentId = currentParentId;
+        final int finalMaxSubtreeDepth = maxSubtreeDepth;
+
+        for (OrgUnit u : allUnits) {
+            // Exclude self and any descendants (prevent circular hierarchy)
+            if (forbiddenIds.contains(u.getId())) {
+                continue;
+            }
+
+            boolean isCurrentParent = finalCurrentParentId != null && u.getId().equals(finalCurrentParentId);
+
+            // Skip suspended units unless it's the current parent
+            if (!isCurrentParent && u.getOperationalStatus() == OperationalStatus.SUSPENDED) {
+                continue;
+            }
+
+            int candLevel = resolveLevel(u);
+            boolean exceedsDepth = candLevel >= 3 || (candLevel + 1 + finalMaxSubtreeDepth > 3);
+            if (!isCurrentParent && exceedsDepth) {
+                continue;
+            }
+
+            result.add(CandidateParentResponse.builder()
+                    .id(u.getId())
+                    .name(u.getName())
+                    .level(candLevel)
+                    .rank(u.getRank())
+                    .currentParent(isCurrentParent)
+                    .disabled(false)
+                    .disabledReason(null)
+                    .build());
+        }
+
+        // Ensure current parent is included at the top if missing from scope/list
+        if (currentParentId != null) {
+            boolean hasCurrentParent = result.stream().anyMatch(r -> r.getId().equals(finalCurrentParentId));
+            if (!hasCurrentParent) {
+                orgUnitRepo.findById(currentParentId).ifPresent(p -> {
+                    result.add(0, CandidateParentResponse.builder()
+                            .id(p.getId())
+                            .name(p.getName())
+                            .level(resolveLevel(p))
+                            .rank(p.getRank())
+                            .currentParent(true)
+                            .disabled(false)
+                            .build());
+                });
+            }
+        }
+
+        return result;
+    }
+
+    /**
      * Direct children of a specific parent (flat list).
      */
     @Transactional(readOnly = true)
@@ -302,7 +393,11 @@ public class OrganizationService {
         unit.setId(UUID.randomUUID());
         String computedPath = materializedPathService.computePath(request.getParentId(), unit.getId());
         unit.setPath(computedPath);
-        unit.setLevel(materializedPathService.calculateLevel(computedPath));
+        int computedLevel = materializedPathService.calculateLevel(computedPath);
+        if (computedLevel > 3) {
+            throw new IllegalArgumentException("Cây đơn vị chỉ được phép tối đa 3 cấp");
+        }
+        unit.setLevel(computedLevel);
 
         // Compute sortOrder: max existing children + 1
         if (parent != null) {
@@ -348,8 +443,11 @@ public class OrganizationService {
                 }
                 // Nil UUID: clear parent (move to root)
                 if (unit.getParentId() != null) {
+                    validateSubtreeDepth(unit, null);
                     materializedPathService.cascadePathRebuild(id, null);
                     unit.setParentId(null);
+                    unit.setPath(materializedPathService.computePath(null, unit.getId()));
+                    unit.setLevel(materializedPathService.calculateLevel(unit.getPath()));
                 }
             } else {
                 requireAllowed(scope, newParentId);
@@ -374,6 +472,8 @@ public class OrganizationService {
 
                 unit.setParentId(newParentId);
                 materializedPathService.cascadePathRebuild(unit.getId(), newParentId);
+                unit.setPath(materializedPathService.computePath(newParentId, unit.getId()));
+                unit.setLevel(materializedPathService.calculateLevel(unit.getPath()));
             }
         }
 
@@ -421,9 +521,26 @@ public class OrganizationService {
             return requested;
         if (parent == null)
             return OrgUnitRank.DEPARTMENT;
-        return parent.getLevel() != null && parent.getLevel() == 1
+        int pLevel = resolveLevel(parent);
+        return pLevel <= 1
                 ? OrgUnitRank.BRANCH
                 : OrgUnitRank.REPRESENTATIVE;
+    }
+
+    private int resolveLevel(OrgUnit unit) {
+        if (unit == null) {
+            return 0;
+        }
+        if (unit.getLevel() != null && unit.getLevel() > 0) {
+            return unit.getLevel();
+        }
+        if (unit.getPath() != null && !unit.getPath().isBlank()) {
+            int calculated = materializedPathService.calculateLevel(unit.getPath());
+            if (calculated > 0) {
+                return calculated;
+            }
+        }
+        return unit.getParentId() == null ? 1 : 2;
     }
 
     /**
@@ -437,22 +554,26 @@ public class OrganizationService {
         if (parent.getOperationalStatus() == OperationalStatus.SUSPENDED) {
             throw new IllegalArgumentException("Không thể chọn đơn vị không sử dụng làm đơn vị cha");
         }
-        if (parent.getLevel() != null && parent.getLevel() >= 3) {
+        if (resolveLevel(parent) >= 3) {
             throw new IllegalArgumentException("Cây đơn vị chỉ được phép tối đa 3 cấp");
         }
     }
 
     private void validateSubtreeDepth(OrgUnit unit, OrgUnit newParent) {
-        if (unit.getLevel() == null || newParent.getLevel() == null) {
-            return;
-        }
-        int deepestRelativeLevel = materializedPathService.getSubtree(unit.getId()).stream()
-                .map(OrgUnit::getLevel)
-                .filter(level -> level != null)
-                .mapToInt(level -> level - unit.getLevel())
+        int parentLevel = newParent != null ? resolveLevel(newParent) : 0;
+        int unitCurrentLevel = resolveLevel(unit);
+
+        List<OrgUnit> subtree = materializedPathService.getSubtree(unit.getId());
+        int deepestRelativeLevel = subtree.stream()
+                .mapToInt(descendant -> {
+                    int descLevel = resolveLevel(descendant);
+                    return Math.max(0, descLevel - unitCurrentLevel);
+                })
                 .max()
                 .orElse(0);
-        if (newParent.getLevel() + 1 + deepestRelativeLevel > 3) {
+
+        int newUnitLevel = parentLevel + 1;
+        if (newUnitLevel + deepestRelativeLevel > 3) {
             throw new IllegalArgumentException("Cây đơn vị chỉ được phép tối đa 3 cấp");
         }
     }

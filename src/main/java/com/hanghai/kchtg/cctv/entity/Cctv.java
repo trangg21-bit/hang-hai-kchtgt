@@ -16,7 +16,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import lombok.experimental.FieldNameConstants;
-
 /**
  * Entity representing a CCTV system (Hệ thống CCTV) — M-NEW entity.
  * Corresponds to table: cctv.

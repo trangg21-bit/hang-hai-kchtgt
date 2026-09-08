@@ -3,7 +3,7 @@ package com.hanghai.kchtg.vtsassist.dto;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
+
 import lombok.Builder;
 import lombok.Data;
 
@@ -18,7 +18,6 @@ import java.util.UUID;
 public class VtsAssistResponse {
 
     private UUID id;
-    private RecordSecurityLevel securityLevel;
     private String deviceCode;
     private String deviceName;
     private String detailedLocation;

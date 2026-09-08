@@ -1,0 +1,143 @@
+{
+  "triage_id": "TRI-1788489911150-71c6",
+  "created_at": 1788489911151,
+  "request_summary": "Chuẩn hóa phê duyệt 2 cấp tại màn /dike-revetment: đủ trạng thái (Lưu tạm/Chờ Cảng vụ-Chi cục/Chờ Cục/Đã duyệt/Từ chối Cảng vụ-Chi cục/Từ chối Cục), footer Thêm mới & Cập nhật (Lưu tạm/Lưu và gửi phê duyệt/Lưu và phê duyệt), UI + filter theo trạng thái phê duyệt theo 12 điều vàng GIAO_DIEN_CHK_PLAYBOOK",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/dikerevetment/DikeRevetmentForm.tsx",
+      "frontend/src/pages/dikerevetment/DikeRevetmentList.tsx",
+      "frontend/src/services/dikeRevetmentService.ts",
+      "frontend/src/types/dikeRevetment.ts"
+    ],
+    "impact_files": [
+      "frontend/src/pages/dikerevetment/DikeRevetmentForm.tsx",
+      "frontend/src/pages/dikerevetment/DikeRevetmentList.tsx",
+      "frontend/src/services/dikeRevetmentService.ts",
+      "frontend/src/types/dikeRevetment.ts"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C1: 4 edit-target files in one package, no one-way door — pre-declared write scope required (4 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn /dike-revetment (DikeRevetmentList + DikeRevetmentForm, route /dike-revetment)",
+  "blast_radius": 4,
+  "done_oracle": "Tại /dike-revetment: StatusTabs + filter trạng thái phê duyệt phản ánh đủ DRAFT/PENDING_APPROVAL/APPROVED_LEVEL1/APPROVED/REJECTED_LEVEL1/REJECTED_LEVEL2 với nhãn chuẩn; row action Gửi phê duyệt (DRAFT/REJECTED_*), Phê duyệt/Từ chối cấp Cảng vụ-Chi cục (PENDING_APPROVAL), Phê duyệt/Từ chối cấp Cục (APPROVED_LEVEL1) đúng endpoint approvec1/2 rejectc1/2; footer tạo: Lưu tạm/Lưu và gửi phê duyệt/Lưu và phê duyệt; footer sửa theo trạng thái; không còn mã legacy PROPOSED/REJECTED trong tab/query/action; tsc + vite build sạch lỗi",
+  "verification_commands": [
+    {
+      "command": "npx tsc --noEmit -p tsconfig.app.json",
+      "cwd": "frontend",
+      "timeout_ms": 300000
+    },
+    {
+      "command": "npm run build",
+      "cwd": "frontend",
+      "timeout_ms": 600000
+    }
+  ],
+  "declared_write_scope": [
+    "frontend/src/pages/dikerevetment/DikeRevetmentForm.tsx",
+    "frontend/src/pages/dikerevetment/DikeRevetmentList.tsx",
+    "frontend/src/services/dikeRevetmentService.ts",
+    "frontend/src/types/dikeRevetment.ts"
+  ],
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/dikerevetment/DikeRevetmentList.tsx",
+      "line": 147,
+      "quote": "const STATUS_TAB_LIST = [",
+      "source_hash": "6e3516003093d5a7b4cf8382f31495c931d4cce525d61fbfb613b878cfdd42a3",
+      "quote_hash": "b41e02bae6122bc669d76ecaadcdc081b4737b99413195f78f385d60b2ec3e3b",
+      "note": "Tabs trạng thái phê duyệt tại List — thiếu tách cấp từ chối, dùng map riêng thay vì nguồn chuẩn"
+    },
+    {
+      "file": "frontend/src/pages/dikerevetment/DikeRevetmentList.tsx",
+      "line": 159,
+      "quote": "  PROPOSED: 'DRAFT',",
+      "source_hash": "6e3516003093d5a7b4cf8382f31495c931d4cce525d61fbfb613b878cfdd42a3",
+      "quote_hash": "f43691f2a340858798a502b639325046d3e0591d5e9c9db1f42530b37fd836e7",
+      "note": "TAB_QUERY_MAP map legacy PROPOSED sang DRAFT — backend tạo mới = DRAFT nên nhánh này thừa/gây lệch"
+    },
+    {
+      "file": "frontend/src/pages/dikerevetment/DikeRevetmentList.tsx",
+      "line": 163,
+      "quote": "  REJECTED: 'REJECTED',",
+      "source_hash": "6e3516003093d5a7b4cf8382f31495c931d4cce525d61fbfb613b878cfdd42a3",
+      "quote_hash": "ed29fcdc92064d391509132a96fddf32103198faf2f6f6f2d7d5fef20e71d0cf",
+      "note": "Tab Từ chối filter theo mã legacy REJECTED — không khớp REJECTED_LEVEL1/REJECTED_LEVEL2 thực tế nên luôn 0 bản ghi"
+    },
+    {
+      "file": "frontend/src/pages/dikerevetment/DikeRevetmentList.tsx",
+      "line": 762,
+      "quote": "      await dikeRevetmentApproval.approveL1(approvingRecord.id, note);",
+      "source_hash": "6e3516003093d5a7b4cf8382f31495c931d4cce525d61fbfb613b878cfdd42a3",
+      "quote_hash": "1db0311bbb8c615ac6539145576ea80b43fd2946656eb674ca8fb1e1773bdd57",
+      "note": "Luôn duyệt cấp C1 bất kể trạng thái hồ sơ — thiếu nhánh duyệt cấp Cục (approveC2 khi APPROVED_LEVEL1)"
+    },
+    {
+      "file": "frontend/src/pages/dikerevetment/DikeRevetmentList.tsx",
+      "line": 788,
+      "quote": "      await dikeRevetmentApproval.reject(rejectingRecord.id, rejectReason.trim());",
+      "source_hash": "6e3516003093d5a7b4cf8382f31495c931d4cce525d61fbfb613b878cfdd42a3",
+      "quote_hash": "2d37ae7a3d3c32e26a37746cbf1f2d0849cc8dfeb48f1b404ee1760020709fe7",
+      "note": "Từ chối luôn cấp C1 (reject=rejectLevel1) — không phân cấp C1/C2 theo trạng thái hồ sơ"
+    },
+    {
+      "file": "frontend/src/pages/dikerevetment/DikeRevetmentList.tsx",
+      "line": 1538,
+      "quote": "            <Button type=\"primary\" onClick={() => handleSubmit('update')} loading={submitting} style={primaryButtonStyle}>",
+      "source_hash": "6e3516003093d5a7b4cf8382f31495c931d4cce525d61fbfb613b878cfdd42a3",
+      "quote_hash": "6deb709a4c89f40b45d9426723c26ad0c9469685c7c94d7595f6c6172c95470e",
+      "note": "Footer chỉnh sửa chỉ 1 nút Cập nhật — chưa theo trạng thái hồ sơ (Hủy · Lưu tạm · Lưu và gửi phê duyệt / Hủy · Lưu và phê duyệt)"
+    },
+    {
+      "file": "frontend/src/pages/dikerevetment/DikeRevetmentList.tsx",
+      "line": 1546,
+      "quote": "                  Lưu và phê duyệt",
+      "source_hash": "6e3516003093d5a7b4cf8382f31495c931d4cce525d61fbfb613b878cfdd42a3",
+      "quote_hash": "3e3da576390fc7e68374f0302c0815f6877d1e3d6704de5a0351409584020ccb",
+      "note": "Nhãn nút trong footer tạo mới sai ngữ nghĩa — hành vi thực tế là create + submitForApproval (PENDING_APPROVAL) nên phải là 'Lưu và gửi phê duyệt'; thiếu nút 'Lưu và phê duyệt' thật"
+    },
+    {
+      "file": "frontend/src/pages/dikerevetment/DikeRevetmentList.tsx",
+      "line": 1901,
+      "quote": "        level=\"c1\"",
+      "source_hash": "6e3516003093d5a7b4cf8382f31495c931d4cce525d61fbfb613b878cfdd42a3",
+      "quote_hash": "5a0db9dde791d4ac6f8d7faa4a45b4e8d61280267271a22484186ca7aba8003f",
+      "note": "ApprovalModal gắn cứng level c1 — phải theo cấp duyệt của hồ sơ (c1 khi PENDING_APPROVAL, c2 khi APPROVED_LEVEL1)"
+    },
+    {
+      "file": "frontend/src/pages/dikerevetment/DikeRevetmentForm.tsx",
+      "line": 285,
+      "quote": "        // Luồng phê duyệt 1 cấp — PENDING_APPROVAL → APPROVED",
+      "source_hash": "1af972512f640d19e0a011a1aa86a91657b69e966f70c905ece5d532f62c1ddd",
+      "quote_hash": "2e40ea9fde0e88aef11923e6002cd60893a8c9e900b4288021909232ac51cf49",
+      "note": "Form chi tiết (route /:id) còn luồng 1 cấp, approveL1 set thẳng APPROVED — thiếu cấp Cục và trạng thái trung gian"
+    },
+    {
+      "file": "frontend/src/pages/dikerevetment/DikeRevetmentForm.tsx",
+      "line": 467,
+      "quote": "            {record.approvalStatus === 'PROPOSED' || record.approvalStatus === 'REJECTED' ? (",
+      "source_hash": "1af972512f640d19e0a011a1aa86a91657b69e966f70c905ece5d532f62c1ddd",
+      "quote_hash": "1299bdd2c5ad720bb224bb714b7d3e0e666c9ef8efc899f7048fbfeb04447b1b",
+      "note": "Action bar chỉ hiện Gửi phê duyệt cho PROPOSED/REJECTED (legacy) — hồ sơ DRAFT và APPROVED_LEVEL1 không có nút hành động đúng"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "3b07a5a6421c35cc8b0c2382bc435e35e9fc5c34",
+    "dirty": true,
+    "captured_at": 1788489911304
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

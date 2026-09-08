@@ -12,7 +12,7 @@ import {
 } from '@ant-design/icons';
 import { organizationService, RANK_OPTIONS, RANK_LABELS, fromApiOperationalStatus } from '../../services/organizationService';
 import { userService } from '../../services/userService';
-import type { Organization, OrgUnitRankName } from '../../services/organizationService';
+import type { Organization, OrgUnitRankName, CandidateParent } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
 import { ScreenHeader } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
@@ -69,6 +69,8 @@ export default function UnitList() {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
+  const [candidateParents, setCandidateParents] = useState<CandidateParent[]>([]);
+  const [loadingCandidates, setLoadingCandidates] = useState(false);
 
   const getStatusKey = useCallback((org: Organization) => (
     fromApiOperationalStatus(org.operationalStatus) === 'inactive' ? 'inactive' : 'active'
@@ -161,7 +163,7 @@ export default function UnitList() {
     try {
       const values = await form.validateFields();
       setSubmitting(true);
-      const parentId = values.parentId || undefined;
+      const parentId = values.parentId ? values.parentId : (editingOrg?.parentId ? '00000000-0000-0000-0000-000000000000' : undefined);
       if (editingOrg) {
         await organizationService.update(editingOrg.id, {
           name: values.name,
@@ -197,25 +199,34 @@ export default function UnitList() {
     }
   }, [editingOrg, form, fetchOrgs]);
 
-  const parentOptions = useMemo(() => {
-    const parentLevel = editingOrg?.level && editingOrg.level > 1 ? editingOrg.level - 1 : undefined;
-    const isDescendantOfEditingUnit = (candidateId: string) => {
-      if (!editingOrg) return false;
-      let current = allOrgs.find((org) => org.id === candidateId);
-      const visited = new Set<string>();
-      while (current?.parentId && !visited.has(current.parentId)) {
-        if (current.parentId === editingOrg.id) return true;
-        visited.add(current.parentId);
-        current = allOrgs.find((org) => org.id === current?.parentId);
-      }
-      return false;
+  useEffect(() => {
+    if (!modalOpen || isViewing) return;
+    let active = true;
+    setLoadingCandidates(true);
+    organizationService.getCandidateParents(editingOrg?.id)
+      .then((candidates) => {
+        if (active) setCandidateParents(candidates);
+      })
+      .catch(() => {
+        if (active) setCandidateParents([]);
+      })
+      .finally(() => {
+        if (active) setLoadingCandidates(false);
+      });
+    return () => {
+      active = false;
     };
-    return allOrgs
-      .filter((org) => !editingOrg || (org.id !== editingOrg.id && !isDescendantOfEditingUnit(org.id)))
-      .filter((org) => org.operationalStatus !== 'inactive')
-      .filter((org) => parentLevel === undefined ? (org.level ?? 0) < 3 : org.level === parentLevel)
-      .map((org) => ({ value: org.id, label: `${org.name}${org.level ? ` (Cấp ${org.level})` : ''}` }));
-  }, [allOrgs, editingOrg]);
+  }, [modalOpen, isViewing, editingOrg?.id]);
+
+  const parentOptions = useMemo(() => {
+    return candidateParents
+      .filter((cand) => !cand.disabled || cand.currentParent)
+      .map((cand) => ({
+        value: cand.id,
+        label: cand.currentParent ? `${cand.name} (Hiện tại)` : cand.name,
+        disabled: cand.disabled,
+      }));
+  }, [candidateParents]);
 
   const handleDelete = useCallback((org: Organization) => {
     modal.confirm({
@@ -399,7 +410,7 @@ export default function UnitList() {
                   <div style={{ flex: 1, minWidth: 260, color: textSecondary, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>TÊN ĐƠN VỊ</div>
                   <div style={{ width: 240, minWidth: 240, flexShrink: 0, color: textSecondary, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>CẤP ĐƠN VỊ</div>
                   <div style={{ width: 220, minWidth: 220, flexShrink: 0, color: textSecondary, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>CÁN BỘ CẬP NHẬT</div>
-                  <div style={{ width: 140, minWidth: 140, flexShrink: 0, color: textSecondary, fontWeight: fontWeightBold, fontSize: fontSizeMd, textAlign: 'center' }}>TRẠNG THÁI</div>
+                  <div style={{ width: 140, minWidth: 140, flexShrink: 0, color: textSecondary, fontWeight: fontWeightBold, fontSize: fontSizeMd, textAlign: 'left' }}>TRẠNG THÁI</div>
                   <div style={{ width: 60, minWidth: 60, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: textSecondary, fontSize: fontSizeMd }}>
                     <UnorderedListOutlined />
                   </div>
@@ -493,14 +504,14 @@ export default function UnitList() {
                           {updatedAtText}
                         </div>
                       </div>
-                      <div style={{ width: 140, minWidth: 140, flexShrink: 0, textAlign: 'center' }}>
+                      <div style={{ width: 140, minWidth: 140, flexShrink: 0, textAlign: 'left', display: 'flex', alignItems: 'center' }}>
                         <span
                           title={STATUS_LABELS[statusKey]}
                           style={{
                             display: 'inline-block',
                             padding: '2px 10px',
                             borderRadius: radiusPill,
-                            fontSize: fontSizeSm,
+                            fontSize: fontSizeMd,
                             fontWeight: fontWeightMedium,
                             backgroundColor: `${color}15`,
                             border: `1px solid ${color}40`,
@@ -648,6 +659,7 @@ export default function UnitList() {
                                 placeholder="Chọn đơn vị cha"
                                 allowClear
                                 showSearch
+                                loading={loadingCandidates}
                                 optionFilterProp="label"
                                 filterOption={(input, option) => normalizeSearchText(String(option?.label ?? '')).includes(normalizeSearchText(input))}
                                 style={{ ...selectStyle, borderRadius: radiusPill, height: 40, width: '100%' }}

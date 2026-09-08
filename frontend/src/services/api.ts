@@ -136,7 +136,10 @@ api.interceptors.response.use(
       error.config?.url?.includes('/org-units/') ||
       error.config?.url?.includes('/api/symbols') ||
       error.config?.url?.includes('/vts-operation-center/options') ||
-      error.config?.url?.includes('/radar-station');
+      error.config?.url?.includes('/radar-station') ||
+      error.config?.url?.includes('/permissions') ||
+      error.config?.url?.includes('/gis/') ||
+      error.config?.url?.includes('/kchtgis/');
 
     // Endpoint /buoy-station/{id}/buoys chưa được backend triển khai — 404 là trạng thái chấp nhận
     // được (tab hiện 'Chưa có dữ liệu'), không spam toast đỏ mỗi lần mở Chi tiết nhà trạm.

@@ -4623,9 +4623,7 @@ export default function GISChartView() {
                                     newKeySet.has(String(record.id))
                                     && resolveSearchHitGeometry(record) === null
                                   ));
-                                  const invalidIds = new Set(invalidRecords.map((record) => String(record.id)));
-                                  const validKeys = keys.filter((key) => !invalidIds.has(String(key)));
-                                  const hasNewSelection = validKeys.some((key) => !selectedRowKeys.includes(key));
+                                  const hasNewSelection = keys.some((key) => !selectedRowKeys.includes(key));
 
                                   if (invalidRecords.length > 0) {
                                     const recordLabels = invalidRecords
@@ -4634,11 +4632,11 @@ export default function GISChartView() {
                                       .join(', ');
                                     const remainingCount = invalidRecords.length - 3;
                                     toast.warning(
-                                      `Không thể hiển thị ${recordLabels}${remainingCount > 0 ? ` và ${remainingCount} bản ghi khác` : ''}: có đỉnh tọa độ không hợp lệ.`,
+                                      `Đã chọn ${recordLabels}${remainingCount > 0 ? ` và ${remainingCount} bản ghi khác` : ''}, nhưng chưa thể hiển thị trên bản đồ do thiếu tọa độ hoặc có đỉnh tọa độ không hợp lệ.`,
                                     );
                                   }
 
-                                  setSelectedRowKeys(validKeys);
+                                  setSelectedRowKeys(keys);
                                   if (hasNewSelection && screens.md === false) {
                                     setSearchPanelVisible(false);
                                   }

@@ -1,0 +1,71 @@
+{
+  "triage_id": "TRI-1788521318170-4f89",
+  "created_at": 1788521318170,
+  "request_summary": "Ghi 'Tài liệu đính kèm' vào infrastructure_history khi upload/xóa file lúc cập nhật hồ sơ (approved-edit) — mirror /vts-operation-center: upload ghi ATTACHMENT_UPLOADED khi entity APPROVED/APPROVED_LEVEL2; delete ghi ATTACHMENT_DELETED (actor userId truyền từ controller).",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/java/com/hanghai/kchtg/cctv/controller/CctvController.java",
+      "src/main/java/com/hanghai/kchtg/cctv/service/CctvService.java"
+    ],
+    "impact_files": [
+      "src/main/java/com/hanghai/kchtg/cctv/controller/CctvController.java",
+      "src/main/java/com/hanghai/kchtg/cctv/service/CctvService.java"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "backend"
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "/cctv → hồ sơ Đã duyệt → sửa (Lưu và phê duyệt) → upload/xóa file đính kèm → màn Lịch sử phải hiện 'Tài liệu đính kèm'",
+  "blast_radius": 2,
+  "done_oracle": "Sau khi sửa hồ sơ APPROVED & upload file: màn Lịch sử hiện dòng 'Tài liệu đính kèm' Tải lên tệp; xóa file hiện 'Xóa tệp'; các thao tác trên hồ sơ nháp vẫn không hiện (do gate lịch sử sau duyệt cấp cuối).",
+  "verification_commands": [
+    {
+      "command": "mvn -DskipTests -q compile",
+      "cwd": "D:\\Projects\\bxd.hh.kcht",
+      "timeout_ms": 600000
+    }
+  ],
+  "change_type": "business_rule",
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/cctv/service/CctvService.java",
+      "line": 632,
+      "quote": "public List<AttachmentDto> uploadAttachments(UUID entityId, List<MultipartFile> files, UUID userId) {",
+      "source_hash": "996305879e375b6346d0727c7aec885c21486a1209104e095439e0549d62139b",
+      "quote_hash": "b4d4f4d5b246f370742fbba10c89232ddcbfcb93ebe517d09e0812ec5d013521",
+      "note": "Upload hiện không ghi infrastructure_history khi hồ sơ ĐÃ DUYỆT"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/cctv/service/CctvService.java",
+      "line": 681,
+      "quote": "public void deleteAttachment(UUID entityId, UUID attachmentId) {",
+      "source_hash": "996305879e375b6346d0727c7aec885c21486a1209104e095439e0549d62139b",
+      "quote_hash": "8cc5c57b6c36b8b3508c40fde6ba69b43b463727d31aabcd306ef1e9c752a5a2",
+      "note": "Delete hiện không ghi ATTACHMENT_DELETED & thiếu userId"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/cctv/controller/CctvController.java",
+      "line": 217,
+      "quote": "cctvService.deleteAttachment(id, attachmentId);",
+      "source_hash": "04dc4dc93648ed7a01bfaae1c9131d487165a8017ff081cb78a5e15d0bd5ae6a",
+      "quote_hash": "a21294e35bde95615f3c566540c93f27c48f1933b3c1ec10bec18e352d2f43a3",
+      "note": "Controller cần truyền SecurityUtils.getCurrentUserId()"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "3b07a5a6421c35cc8b0c2382bc435e35e9fc5c34",
+    "dirty": true,
+    "captured_at": 1788521318425
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

@@ -574,6 +574,7 @@ export default function PortListPage() {
 
   const [createForm] = Form.useForm();
   const [updateForm] = Form.useForm();
+  const [updateTabKey, setUpdateTabKey] = useState('general');
   const [submitting, setSubmitting] = useState(false);
   const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve'>('submit');
   const actionTypeRef = useRef<'draft' | 'submit' | 'approve'>('submit');
@@ -1027,8 +1028,11 @@ export default function PortListPage() {
     }
   };
 
-  const handleFormFailed = () => {
-    // Lỗi validation được hiển thị trực tiếp viền đỏ + message dưới từng trường (AntD), không popup toast
+  // Khi lưu thất bại do thiếu trường bắt buộc, tự chuyển về đúng tab chứa lỗi để người dùng biết
+  // (tab 'gis' = Thông tin vị trí chứa nhóm loại đối tượng/hệ quy chiếu; còn lại là tab Thông tin chung).
+  const jumpToTabWithError = (setKey: (k: string) => void) => (info?: unknown) => {
+    const f0 = (info as { errorFields?: { name?: (string | number)[] }[] } | undefined)?.errorFields?.[0]?.name?.[0];
+    setKey(['geometryType', 'mapSymbolId', 'coordinateSystem', 'displayRule'].includes(String(f0)) ? 'gis' : 'general');
   };
 
   const handleUpdateFinish = async (values: Record<string, unknown>) => {
@@ -1661,7 +1665,7 @@ export default function PortListPage() {
                   style={{ borderRadius: radiusPill, height: 40 }} />
               </div>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân cấp</div>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân cấp cảng biển</div>
                 <Select placeholder="Chọn phân cấp" allowClear
                   value={filterValues.portClass || undefined}
                   onChange={(val) => setFilterValues((prev) => ({ ...prev, portClass: val }))}
@@ -1815,7 +1819,7 @@ export default function PortListPage() {
             uploadFileList={uploadFileList}
             setUploadFileList={setUploadFileList}
             onFinish={handleCreateFinish}
-            onFinishFailed={handleFormFailed}
+            onFinishFailed={jumpToTabWithError(setCreateTabKey)}
           />
         </AppDrawer>
       )}
@@ -1868,7 +1872,9 @@ export default function PortListPage() {
             uploadFileList={uploadFileList}
             setUploadFileList={setUploadFileList}
             onFinish={handleUpdateFinish}
-            onFinishFailed={handleFormFailed}
+            onFinishFailed={jumpToTabWithError(setUpdateTabKey)}
+            activeTabKey={updateTabKey}
+            onTabChange={setUpdateTabKey}
           />
         </AppDrawer>
       )}

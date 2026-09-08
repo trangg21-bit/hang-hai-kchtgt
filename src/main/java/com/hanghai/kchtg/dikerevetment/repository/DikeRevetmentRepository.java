@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -32,6 +33,11 @@ public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UU
     @Query("SELECT MAX(d.code) FROM DikeRevetment d WHERE d.code IS NOT NULL")
     String findMaxCode();
 
+    @Query("SELECT dikeRevetment.code FROM DikeRevetment dikeRevetment " + "WHERE dikeRevetment.code LIKE 'DK-%'")
+    List<String> findAllCodesWithDikePrefix();
+
+    boolean existsByCode(String code);
+
     @Query("SELECT d FROM DikeRevetment d WHERE " +
             "d.deletedAt IS NULL AND " +
             "(:scopeEnabled = false OR d.orgUnitId IN :scopeOrgUnitIds) AND " +
@@ -46,7 +52,11 @@ public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UU
             "(CAST(:keyword AS string) IS NULL OR " +
             "  CAST(function('immutable_unaccent', LOWER(d.dikeRevetmentName)) AS string) LIKE CAST(:keyword AS string) OR " +
             "  CAST(function('immutable_unaccent', LOWER(d.code)) AS string) LIKE CAST(:keyword AS string) OR " +
-            "  CAST(function('immutable_unaccent', LOWER(d.location)) AS string) LIKE CAST(:keyword AS string))")
+            "  CAST(function('immutable_unaccent', LOWER(d.location)) AS string) LIKE CAST(:keyword AS string)) AND " +
+            "(:code IS NULL OR CAST(function('immutable_unaccent', LOWER(d.code)) AS string) LIKE :code) AND " +
+            "(:location IS NULL OR d.location = :location) AND " +
+            "(:commissioningFrom IS NULL OR d.commissioningDate >= :commissioningFrom) AND " +
+            "(:commissioningTo IS NULL OR d.commissioningDate <= :commissioningTo)")
     Page<DikeRevetment> searchPaged(
             @Param("scopeEnabled") boolean scopeEnabled,
             @Param("scopeOrgUnitIds") Collection<UUID> scopeOrgUnitIds,
@@ -59,6 +69,10 @@ public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UU
             @Param("updatedBy") UUID updatedBy,
             @Param("updatedFrom") LocalDateTime updatedFrom,
             @Param("updatedTo") LocalDateTime updatedTo,
+            @Param("code") String code,
+            @Param("location") String location,
+            @Param("commissioningFrom") LocalDate commissioningFrom,
+            @Param("commissioningTo") LocalDate commissioningTo,
             Pageable pageable);
 
     @Query("SELECT d.approvalStatus, COUNT(d) FROM DikeRevetment d WHERE " +

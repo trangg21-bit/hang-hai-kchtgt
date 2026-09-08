@@ -2275,22 +2275,23 @@ textarea::placeholder,
 .chk-detail-grid {
   display: grid !important;
   grid-template-columns: 1fr 1fr !important;
-  column-gap: 24px !important;
+  column-gap: 32px !important;
   row-gap: 0 !important;
 }
 .chk-detail-row {
   display: flex !important;
   align-items: flex-start !important;
   min-height: 38px !important;
-  padding: 8px 0 !important;
+  padding: 9px 0 !important;
   border-bottom: 1px solid #e2e8f0 !important;
   line-height: 1.5 !important;
+  gap: 12px !important;
 }
 .chk-detail-row--full {
   grid-column: 1 / -1 !important;
 }
 .chk-detail-label {
-  width: 190px !important;
+  width: 230px !important;
   flex-shrink: 0 !important;
   color: #1a3f83 !important;
   font-weight: 700 !important;
@@ -2301,6 +2302,7 @@ textarea::placeholder,
 .chk-detail-label::after {
   content: ':' !important;
   margin-left: 1px !important;
+  margin-right: 4px !important;
 }
 .chk-detail-value {
   color: #1e293b !important;
@@ -2309,7 +2311,7 @@ textarea::placeholder,
   min-width: 0 !important;
   text-align: left !important;
   line-height: 1.5 !important;
-  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
 }
 
 /* --- Tabs thanh cuộn ngang mượt mà, sticky cố định trên đầu khi scroll --- */

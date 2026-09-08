@@ -1,0 +1,64 @@
+{
+  "triage_id": "TRI-1788521642106-98a3",
+  "created_at": 1788521642106,
+  "request_summary": "Màn /dike-revetment không ghi lịch sử khi cập nhật file đính kèm — bắt chước /vts-operation-center: FE xóa file qua endpoint entity (ghi InfrastructureHistory ATTACHMENT_*) thay vì /v1/documents/{id}, và BE upload chỉ ghi nhật ký khi hồ sơ ĐÃ DUYỆT (wasApproved)",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/dikerevetment/DikeRevetmentList.tsx",
+      "src/main/java/com/hanghai/kchtg/dikerevetment/service/DikeRevetmentService.java"
+    ],
+    "impact_files": [
+      "frontend/src/pages/dikerevetment/DikeRevetmentList.tsx",
+      "src/main/java/com/hanghai/kchtg/dikerevetment/service/DikeRevetmentService.java"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn danh sách /dike-revetment → Drawer Thêm mới/Chỉnh sửa (tab File đính kèm) → xem kết quả ở nút Lịch sử thay đổi",
+  "blast_radius": 2,
+  "done_oracle": "Sau khi chỉnh hồ sơ ĐÃ DUYỆT và thêm/xóa file đính kèm trong drawer, mở Lịch sử thay đổi thấy sự kiện Tải lên tệp / Xóa tệp (changedField 'Tài liệu đính kèm') giống /vts-operation-center; việc xóa file đi qua DELETE /v1/dike-revetment/{id}/attachments/{attId} (không còn gọi /v1/documents/{attachmentId})",
+  "verification_commands": [
+    {
+      "command": "npx tsc -p tsconfig.app.json",
+      "cwd": "frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/dikerevetment/service/DikeRevetmentService.java",
+      "line": 616,
+      "quote": "if (approvalHistoryRepo != null) {",
+      "source_hash": "d9df73adbcb0b918c0500d8ae0fb852e057f720b83d6e7c9e402d0807a63c48e",
+      "quote_hash": "8eddc414c924f23c0965f97ccd7ee390580ced4330e7efaf849694e678a18331",
+      "note": "Guard ghi InfrastructureHistory ATTACHMENT_UPLOADED trong uploadAttachments — chưa có điều kiện wasApproved như VtsOperationCenterService"
+    },
+    {
+      "file": "frontend/src/pages/dikerevetment/DikeRevetmentList.tsx",
+      "line": 477,
+      "quote": "await api.delete(`/v1/documents/${target.attachmentId}`);",
+      "source_hash": "3f49aec792dea3c2b52209bfe768e42acfb4f6e0083fdd1682e64408868fd73c",
+      "quote_hash": "34bfc3c7596ce855de35da1cb44cffe3a5c00beec14b9d07f6626f3630dadf42",
+      "note": "Drawer dike-revetment xóa file đã lưu qua endpoint generic của bảng document (port) — không xóa row infrastructure_attachment, không ghi history; VTS xóa qua endpoint entity"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "3b07a5a6421c35cc8b0c2382bc435e35e9fc5c34",
+    "dirty": true,
+    "captured_at": 1788521642286
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

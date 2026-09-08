@@ -54,7 +54,6 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/gis/lines': 'data:read',
   '/gis/polygons': 'data:read',
   '/gis/layers': 'map:manage',
-  '/gis/map': 'data:read',
   '/gis/permits': 'data:read',
   '/beacon-stations': 'beaconstation:read',
   '/buoys': 'buoy:read',
@@ -134,7 +133,7 @@ function buildNavMenuItems(
           const sub = {
             ...base,
             children: kids,
-            onTitleClick: n.route ? () => go(n.route as string) : undefined,
+            onTitleClick: n.route && canAccess(n.route) ? () => go(n.route as string) : undefined,
           } as AntMenuItem;
           return [sub];
         }
@@ -211,6 +210,7 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
   // M-024 rework: chips C0..C3 — tập level đang được phép hiển thị trong cây khối kcht
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  usePermissionStore((s) => s.permissions);
   const logout = useAuthStore((s) => s.logout);
   const screens = useBreakpoint();
 
@@ -309,7 +309,6 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
         canAccessMenu('/documents/incidents') ? { key: '/documents/incidents', label: 'Sự cố hàng hải' } : null,
         canAccessMenu('/documents/port-planning') ? { key: '/documents/port-planning', label: 'Quy hoạch bến cảng' } : null,
         canAccessMenu('/documents/operation') ? { key: '/documents/operation', label: 'Thông tin vận hành' } : null,
-
         canAccessMenu('/documents/maintenance') ? { key: '/documents/maintenance', label: 'Thông tin bảo trì' } : null,
         canAccessMenu('/symbols') ? { key: '/symbols', label: 'Quản lý biểu tượng trên bản đồ' } : null,
         canAccessMenu('/water-zone') ? { key: '/water-zone', label: 'Quản lý vùng nước' } : null,

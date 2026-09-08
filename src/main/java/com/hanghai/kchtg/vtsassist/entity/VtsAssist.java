@@ -29,7 +29,6 @@ import lombok.experimental.FieldNameConstants;
 @Table(name = "vts_assist",
         uniqueConstraints = @UniqueConstraint(columnNames = "device_code"))
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
-// @org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -37,11 +36,6 @@ import lombok.experimental.FieldNameConstants;
 @SuperBuilder
 @FieldNameConstants
 public class VtsAssist extends BaseEntity implements ApprovableEntity {
-
-    // @Enumerated(EnumType.ORDINAL)
-    // @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
-    // @Builder.Default
-    // private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
 
     // ── Basic information ───────────────────────────────────────────────
 

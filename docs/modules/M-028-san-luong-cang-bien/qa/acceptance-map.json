@@ -1,0 +1,256 @@
+{
+  "module_id": "M-028-san-luong-cang-bien",
+  "stage": "engineering-qa-engineer-wave-2",
+  "generated_from": "docs/modules/M-028-san-luong-cang-bien/qa/07-qa-report-w1.md (wave-1 acceptance oracle: 9 use cases UC-SLCB-01..09, 15 business rules BR-SLCB-01..15; oracle families TC-UC/TC-APP/TC-VAL/TC-FILE/TC-DS/TC-PERM/TC-UI/TC-STR/TC-SEC in report section 7) + qa/07-qa-report-w2.md (executed battery section 1, per-TC verdicts section 4, rework R-1..R-5) + design/00-design-plan.md (DP-1..10, BE-1..6, FE-1..5) + ba/00-lean-spec.md (7-state 2-level approval, permission matrix, DataScope)",
+  "last_updated": "2026-09-06",
+  "execution_note": "Wave-2 battery executed 2026-09-06 (w2 section 1 + R-1): mvn -q -DskipTests compile exit 0 (JAVA_HOME=temurin-17); npm run build exit 0 (vite 3534 modules); npx vitest run src/services/seaportThroughputService.test.ts 13/13 exit 0. F-01/F-02 resolved by dev rework (R-2/R-3); verdict Pass static + battery. Not-run: runtime HTTP, visual 4-state UI, JUnit, concurrency TOCTOU, file hardening.",
+  "criteria": [
+    {
+      "id": "UC-SLCB-01",
+      "spec_ref": "lean-spec UC-SLCB-01; design DP-1/DP-2/BE-2; feature-brief F-301 fields 1-29",
+      "criterion": "Create record defaults to DRAFT; 24 DECIMAL metric columns (domestic/foreign/route x container/dry/liquid/other x ton/ton_km) and passenger_trips default 0; org_unit_id mandatory and inside user DataScope; report_month mandatory; response returns orgUnitId + orgUnitName + files.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/entity/SeaportThroughput.java",
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/service/SeaportThroughputService.java",
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/dto/SeaportThroughputCreateRequest.java"
+      ],
+      "test_name": "Oracle TC-UC-01 (w1 section 7, JUnit BE-4): POST create with orgUnitId + reportMonth + metrics; assert DRAFT, zero-filled metrics, orgUnitName from cache; endpoint gated by seaportthroughput:create. Wave-2 PASS-STATIC (w2 section 4): service builder gán orgUnitId/reportMonth/24 valueOrZero, approvalStatus DRAFT; toResponse map orgUnitName + files; controller @PreAuthorize create."
+    },
+    {
+      "id": "UC-SLCB-02",
+      "spec_ref": "lean-spec UC-SLCB-02; BR-SLCB-05/BR-SLCB-10/BR-SLCB-12",
+      "criterion": "Edit allowed only while editable (DRAFT or REJECTED_*); delete only when DRAFT via soft delete that records deletedBy + centralized history; APPROVED record fields are frozen.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/service/SeaportThroughputService.java",
+        "src/main/java/com/hanghai/kchtg/common/service/InfrastructureApprovalService.java"
+      ],
+      "test_name": "Oracle TC-UC-02 (w1 section 7): update DRAFT ok; delete APPROVED rejected; delete DRAFT sets ARCHIVED + deletedBy. Wave-2 PASS-STATIC: delete calls approvalService.deleteDraft (InfrastructureApprovalService L257-269, DRAFT-only) + entity.softDelete(userId) + recordSoftDelete; update asserts editable before APPROVED."
+    },
+    {
+      "id": "UC-SLCB-03",
+      "spec_ref": "lean-spec UC-SLCB-03; BR-SLCB-06/BR-SLCB-13/BR-SLCB-14",
+      "criterion": "Submit transitions DRAFT or REJECTED_LEVEL1/REJECTED_LEVEL2 to PENDING_APPROVAL and records submittedAt/submittedBy; a Cục-level org unit (OrgUnit.level) may submit straight to APPROVED_LEVEL1 (skip round 1).",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/service/SeaportThroughputService.java",
+        "src/main/java/com/hanghai/kchtg/common/service/InfrastructureApprovalService.java"
+      ],
+      "test_name": "Oracle TC-UC-03 + TC-APP-09/10 (w1 section 7): submit DRAFT and REJECTED_LEVEL1/2 each reach PENDING_APPROVAL with submittedAt/By; Cục user submit reaches APPROVED_LEVEL1. Wave-2 PASS-STATIC: service submit gọi approvalService.submit; REJECTED_LEVEL1/2 resubmit allowed L62-63; orgUnit level check maps to APPROVED_LEVEL1."
+    },
+    {
+      "id": "UC-SLCB-04",
+      "spec_ref": "lean-spec UC-SLCB-04; approval-2-level-spec; BR-SLCB-07/BR-SLCB-08",
+      "criterion": "Level-1 (Cảng vụ/Chi cục) approve moves PENDING_APPROVAL to APPROVED_LEVEL1; reject moves it to REJECTED_LEVEL1 with a mandatory Vietnamese reason; self-approval of own record is forbidden.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/controller/SeaportThroughputController.java",
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/service/SeaportThroughputService.java"
+      ],
+      "test_name": "Oracle TC-UC-04 + TC-APP-07 (w1 section 7): two distinct accounts, declarer vs approver C1; endpoint POST approve/c1 gated by seaportthroughput:approve (runtime 403 pending integration). Wave-2 PASS-STATIC: approveC1 L250-264; InfrastructureApprovalService L136 set REJECTED_LEVEL1; assertNotSelfApproval L464-467 rejects userId == createdBy/submittedBy with message Người kê khai không được tự phê duyệt bản ghi của mình."
+    },
+    {
+      "id": "UC-SLCB-05",
+      "spec_ref": "lean-spec UC-SLCB-05; approval-2-level-spec; BR-SLCB-08",
+      "criterion": "Level-2 (Cục) approve_level2 moves APPROVED_LEVEL1 to APPROVED (ban hành, official data); reject moves it to REJECTED_LEVEL2 with mandatory reason; official records become source input for downstream statistics.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/service/SeaportThroughputService.java",
+        "src/main/java/com/hanghai/kchtg/common/entity/ApprovalStatus.java"
+      ],
+      "test_name": "Oracle TC-UC-05 + TC-APP-02/03/04 (w1 section 7): approve_level2 and reject with/without reason; endpoint POST approve/c2 gated by seaportthroughput:approve_level2. Wave-2 PASS-STATIC: approveC2 L266-286; InfrastructureApprovalService L188 REJECTED_LEVEL2; reject reason null raises message Vui lòng nhập lý do từ chối; level selected by current status PENDING_APPROVAL to L1 / APPROVED_LEVEL1 to L2."
+    },
+    {
+      "id": "UC-SLCB-06",
+      "spec_ref": "lean-spec UC-SLCB-06; list-screen-ui-standard; BR-SLCB-15",
+      "criterion": "List view filters by org unit tree (OrgUnitTreeSelect), keyword (trimmed), report month, updated range, and 6 approval-status tabs; default sort updatedAt descending; tab Từ chối aggregates both reject levels.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/controller/SeaportThroughputController.java",
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/repository/SeaportThroughputRepository.java",
+        "frontend/src/pages/seaport-throughput/SeaportThroughputPage.tsx"
+      ],
+      "test_name": "Oracle TC-UC-06 + TC-UI-01..04 (w1 section 7): list + each filter + sort; route/menu guard and four screen states loading/error/empty/data. Wave-2 PASS-STATIC: JPQL search with 5 filters and statuses IN; service sort UPDATED_AT DESC L421; controller L61-79 splits comma statuses; Page uses shared list-view FilterTableLayout + Meta 6 tabs; UI 4-state check PARTIAL (loading/error code present, empty/data via shared DataTable/EmptyState, visual not run)."
+    },
+    {
+      "id": "UC-SLCB-07",
+      "spec_ref": "lean-spec UC-SLCB-07; BR-SLCB-11; audit convention section 10",
+      "criterion": "Detail view returns orgUnitName + 24 metrics + passenger_trips + files; history (infrastructure_history refType SEAPORT_THROUGHPUT) returns one row per transition, newest first, with date/officer/content for submit/approve/reject steps.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/service/SeaportThroughputService.java",
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/controller/SeaportThroughputController.java",
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/dto/SeaportThroughputResponse.java"
+      ],
+      "test_name": "Oracle TC-UC-07 + TC-UI-05..08 (w1 section 7): GET /{id} + GET /{id}/history ordering; drawer view/create/edit with approval toggle, history from rowActions, no log tab. Wave-2 PASS-STATIC: getHistory uses findByRefTypeAndRefIdOrderByApprovedDateDesc; response carries metadata + files; drawer visual checks PARTIAL pending browser run."
+    },
+    {
+      "id": "UC-SLCB-08",
+      "spec_ref": "lean-spec UC-SLCB-08; BR-SLCB-09; design DP-9/BE-6",
+      "criterion": "Bulk update from Excel import validates org unit + report month per row, reports row-level errors clearly, and never writes partial data; permission seaportthroughput:import gates the endpoint.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/controller/SeaportThroughputController.java",
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/service/SeaportThroughputService.java",
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/dto/SeaportThroughputImportResponse.java",
+        "frontend/src/services/seaportThroughputService.ts"
+      ],
+      "test_name": "Oracle TC-FILE-03/04/05 (w1 section 7): import 403 without permission; per-row error report; no partial write. Wave-2 initially FAIL (F-02: no endpoint/method/FE call despite seeded import action); rework R-3 resolved import surface (POST /import + service parse + FE importExcel, ImportResponse DTO present); PASS-STATIC post-rework; row-level/no-partial behavior still needs integration run."
+    },
+    {
+      "id": "UC-SLCB-09",
+      "spec_ref": "lean-spec UC-SLCB-09; seaport_throughput_file child table; BR-SLCB-10",
+      "criterion": "Upload and delete attachment files of a not-yet-official record (assertEditable); file rows cascade with parent; each upload/delete writes audit history; multipart field name and endpoints match FE contract.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/entity/SeaportThroughputFile.java",
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/controller/SeaportThroughputController.java",
+        "frontend/src/services/seaportThroughputService.ts",
+        "frontend/src/pages/seaport-throughput/SeaportThroughputDrawer.tsx"
+      ],
+      "test_name": "Oracle TC-FILE-01/02 (w1 section 7): upload then delete file of DRAFT record; upload rejected on APPROVED record. Wave-2 initially PARTIAL (BE correct uploadFiles/deleteFile; FE URL/field mismatch F-01); rework R-4 resolved: FE posts multipart field files, files read from GET /{id} detail response, no GET /files endpoint needed; PASS-STATIC post-rework. File type/size hardening not explicit in uploadFiles (security M-04 PARTIAL, SA/dev follow-up)."
+    },
+    {
+      "id": "BR-SLCB-01",
+      "spec_ref": "lean-spec BR-SLCB-01; section 3.1 unique (org_unit_id, report_month)",
+      "criterion": "Unique (org_unit_id, report_month): duplicate unit+month on create or edit fails with Vietnamese message Đã tồn tại số liệu sản lượng của đơn vị trong tháng này.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/service/SeaportThroughputService.java",
+        "src/main/resources/db/migration/V20260905120000__seaport_throughput.sql"
+      ],
+      "test_name": "Oracle TC-VAL-01 + TC-VAL-03 (w1 section 7): create duplicate then edit-to-duplicate. Wave-2 PASS-STATIC: service existsByOrgUnitIdAndReportMonth (create L96-99) and existsByOrgUnitIdAndReportMonthAndIdNot (update L141-149); migration unique index uq_seaport_throughput_unit_month."
+    },
+    {
+      "id": "BR-SLCB-02",
+      "spec_ref": "lean-spec BR-SLCB-02; DataScope section 6",
+      "criterion": "Org unit is mandatory (never NULL), defaults to the declarer unit or a unit within DataScope, is validated against user scope on write, and is immutable on edit.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/service/SeaportThroughputService.java",
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/entity/SeaportThroughput.java",
+        "src/main/resources/db/migration/V20260905120000__seaport_throughput.sql"
+      ],
+      "test_name": "Oracle TC-VAL-02 + TC-DS-01..07 (w1 section 7): create without orgUnit; create with out-of-scope orgUnit; edit carries no orgUnitId field; scope tree needs 3+ OrgUnit nodes and one Cục account (w1 section 8 note 4). Wave-2 PASS-STATIC: entity @Filter orgUnitFilter + controller @DataScope class-level; message Vui lòng chọn Đơn vị quản lý L73-75; requireOrganizationInScope L460-466 message Đơn vị quản lý nằm ngoài phạm vi được phép; update request has no orgUnitId; migration org_unit_id UUID NOT NULL with backfill from created_by; runtime visibility check awaits integration."
+    },
+    {
+      "id": "BR-SLCB-03",
+      "spec_ref": "lean-spec BR-SLCB-03; report_month month-only DATE",
+      "criterion": "Report month is mandatory, selected as month MM/YYYY, and never allows a second record for the same unit in the same month.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/service/SeaportThroughputService.java",
+        "src/main/resources/db/migration/V20260905120000__seaport_throughput.sql"
+      ],
+      "test_name": "Oracle TC-VAL-03 (w1 section 7): create/update missing month. Wave-2 PASS-STATIC: parseReportMonth L469-479 raises message Vui lòng chọn Thời gian tổng hợp sản lượng; duplicate month blocked by BR-SLCB-01 checks + unique index."
+    },
+    {
+      "id": "BR-SLCB-04",
+      "spec_ref": "lean-spec BR-SLCB-04; 24 DECIMAL columns + passenger_trips",
+      "criterion": "All 24 metric columns and passenger_trips are >= 0 (default 0); negative input on any column is rejected with the Vietnamese message for the offending field.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/service/SeaportThroughputService.java",
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/dto/SeaportThroughputCreateRequest.java"
+      ],
+      "test_name": "Oracle TC-VAL-04/05 (w1 section 7): negative value on each of the 24 columns and on passenger_trips. Wave-2 PASS-STATIC: validateMetrics L481-487 signum below zero raises Giá trị không được nhỏ hơn 0 for all 24 create params L78-95 and update L150-167; validatePassengerTrips raises Lượt hành khách không được nhỏ hơn 0."
+    },
+    {
+      "id": "BR-SLCB-05",
+      "spec_ref": "lean-spec BR-SLCB-05; freeze after ban hành",
+      "criterion": "APPROVED (ban hành) records are frozen: declarable fields cannot be edited or deleted; only view and follow-up remain.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/service/SeaportThroughputService.java",
+        "src/main/java/com/hanghai/kchtg/common/service/InfrastructureApprovalService.java"
+      ],
+      "test_name": "Oracle TC-APP-10/12 (w1 section 7): edit and delete rejected after APPROVED. Wave-2 PASS-STATIC: assertEditable L218-221 permits only DRAFT/REJECTED_LEVEL1/REJECTED_LEVEL2 edits; deleteDraft DRAFT-only; update of approved record goes through recordSaveAndApprove flow."
+    },
+    {
+      "id": "BR-SLCB-06",
+      "spec_ref": "lean-spec BR-SLCB-06; state machine section 4",
+      "criterion": "Submit is only valid from DRAFT or REJECTED_LEVEL1/REJECTED_LEVEL2 (after fixing); other states cannot submit.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/service/SeaportThroughputService.java",
+        "src/main/java/com/hanghai/kchtg/common/service/InfrastructureApprovalService.java"
+      ],
+      "test_name": "Oracle TC-APP-10 (w1 section 7): submit from PENDING_APPROVAL and APPROVED rejected. Wave-2 PASS-STATIC: approvalService.submit accepts DRAFT and REJECTED_LEVEL1/2 (L62-63); state machine exposes no other submit path."
+    },
+    {
+      "id": "BR-SLCB-07",
+      "spec_ref": "lean-spec BR-SLCB-07; 4-eyes principle",
+      "criterion": "4-eyes: the declarer of a record must never approve it at any level; test must use two distinct accounts.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/service/SeaportThroughputService.java"
+      ],
+      "test_name": "Oracle TC-APP-07 (w1 section 7; two-account rule in w1 section 8 note 3): same-user approve attempt. Wave-2 PASS-STATIC: assertNotSelfApproval L464-467 compares userId to createdBy/submittedBy and raises Người kê khai không được tự phê duyệt bản ghi của mình; invoked at head of approveLevel1/2 and reject."
+    },
+    {
+      "id": "BR-SLCB-08",
+      "spec_ref": "lean-spec BR-SLCB-08; mandatory reject reason",
+      "criterion": "Rejection at any level requires a reason; reason is trimmed and persisted as rejection_reason plus approval content and history.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/service/SeaportThroughputService.java",
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/entity/SeaportThroughput.java"
+      ],
+      "test_name": "Oracle TC-APP-02/03/08 (w1 section 7): reject without reason and reject with reason at both levels. Wave-2 PASS-STATIC: reject L288 null reason raises Vui lòng nhập lý do từ chối; reason trimmed and persisted via approveC1/C2; recordHistory REJECTED written."
+    },
+    {
+      "id": "BR-SLCB-09",
+      "spec_ref": "lean-spec BR-SLCB-09; design DP-9; SA decision per-row errors, no partial write",
+      "criterion": "Excel import validates the column list and mandatory org unit + month per row, reports clear row-level errors, and never persists a partial batch.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/controller/SeaportThroughputController.java",
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/service/SeaportThroughputService.java",
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/dto/SeaportThroughputImportResponse.java"
+      ],
+      "test_name": "Oracle TC-FILE-03/04/05 (w1 section 7): malformed row reports row number + reason and no row of the batch is written. Wave-2: initially FAIL (F-02 no import surface), resolved by rework R-3 (import endpoint/service/FE method exist, PASS-STATIC); transactional no-partial-write behavior awaits JUnit integration run."
+    },
+    {
+      "id": "BR-SLCB-10",
+      "spec_ref": "lean-spec BR-SLCB-10; audit section 10; threat-model M-05",
+      "criterion": "Every state change, edit, and delete records full audit identity (operatorId/updatedBy/deletedBy) and writes centralized history without duplicate transition rows.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/service/SeaportThroughputService.java",
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/entity/SeaportThroughput.java"
+      ],
+      "test_name": "Oracle TC-APP-11/12 (w1 section 7): history has one row per transition with actor metadata; post-APPROVED edits still recorded. Wave-2 PASS-STATIC: recordHistory per step (DRAFT_SAVED/UPDATED/PROPOSED/APPROVED/REJECTED/ATTACHMENT_*); soft delete records deletedBy via recordSoftDelete."
+    },
+    {
+      "id": "BR-SLCB-11",
+      "spec_ref": "lean-spec BR-SLCB-11; OrgUnitCacheService convention",
+      "criterion": "No free-text org unit names: name always resolved from the OrgUnit tree via OrgUnitCacheService; every response carries orgUnitId + orgUnitName.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/service/SeaportThroughputService.java",
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/dto/SeaportThroughputResponse.java"
+      ],
+      "test_name": "Oracle TC-UC-01/07 + TC-DS-07 (w1 section 7): response contains orgUnitName resolved from cache; list/detail of a child-unit record invisible to a sibling-unit account (subtree visibility static). Wave-2 PASS-STATIC: toResponse maps orgUnitName from cache; orgUnitName not stored on entity; write paths carry orgUnitId only."
+    },
+    {
+      "id": "BR-SLCB-12",
+      "spec_ref": "lean-spec BR-SLCB-12; freeze PENDING_APPROVAL/APPROVED_LEVEL1",
+      "criterion": "Records are frozen while PENDING_APPROVAL or APPROVED_LEVEL1 (no edit/delete); soft delete only from DRAFT.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/service/SeaportThroughputService.java",
+        "src/main/java/com/hanghai/kchtg/common/service/InfrastructureApprovalService.java"
+      ],
+      "test_name": "Oracle TC-APP-10 + TC-UC-02 (w1 section 7): edit/delete while pending rejected; delete DRAFT to ARCHIVED. Wave-2 PASS-STATIC: assertEditable L218-221 blocks PENDING_APPROVAL/APPROVED_LEVEL1; deleteDraft L257-269 DRAFT-only."
+    },
+    {
+      "id": "BR-SLCB-13",
+      "spec_ref": "lean-spec BR-SLCB-13; OrgUnit.level Cục direct submit",
+      "criterion": "A submitter whose OrgUnit.level is Cục submits straight to APPROVED_LEVEL1 (round 1 skipped), never to PENDING_APPROVAL.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/service/SeaportThroughputService.java",
+        "src/main/java/com/hanghai/kchtg/common/service/InfrastructureApprovalService.java"
+      ],
+      "test_name": "Oracle TC-APP-09 (w1 section 7): Cục-level declarer submits; state must be APPROVED_LEVEL1. Wave-2 PASS-STATIC: InfrastructureApprovalService L36 logic maps orgUnit level 1 submit to APPROVED_LEVEL1."
+    },
+    {
+      "id": "BR-SLCB-14",
+      "spec_ref": "lean-spec BR-SLCB-14; no downgrade to DRAFT",
+      "criterion": "A submitted record is never downgraded to DRAFT; fixing a REJECTED_LEVEL1/2 record and resubmitting returns it to PENDING_APPROVAL.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/service/SeaportThroughputService.java",
+        "src/main/java/com/hanghai/kchtg/common/service/InfrastructureApprovalService.java"
+      ],
+      "test_name": "Oracle TC-APP-10 (w1 section 7): reject at C1 then edit+resubmit to PENDING_APPROVAL; reject at C2 then edit+resubmit (no jump to APPROVED_LEVEL1 for non-Cục user). Wave-2 PASS-STATIC: state machine exposes no downgrade edge; assertEditable + submit path per BR-SLCB-06."
+    },
+    {
+      "id": "BR-SLCB-15",
+      "spec_ref": "lean-spec BR-SLCB-15; .trim() input processing",
+      "criterion": "All text inputs (note, keyword search, reject reason, file name, report month) are trimmed of leading/trailing whitespace before persistence or filtering.",
+      "file": [
+        "src/main/java/com/hanghai/kchtg/seaportthroughput/service/SeaportThroughputService.java"
+      ],
+      "test_name": "Oracle TC-VAL-06 (w1 section 7): inputs padded with spaces persist and search as trimmed values. Wave-2 PASS-STATIC: trimToNull L497-504 applied to note, keyword search, reject reason, file name, reportMonth."
+    }
+  ]
+}

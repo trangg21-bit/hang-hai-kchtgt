@@ -28,20 +28,20 @@ import toast, { modal } from '../components/ToastNotification';
 import { formLabelProps as labelProps } from '../components/shared/formLabel';
 
 const FEATURE_OPTIONS = [
-  { value: 'phanhien', label: 'Phản hiện' },
+  { value: 'phanhien', label: 'Phân hệ' },
   { value: 'baocao', label: 'Báo cáo' },
   { value: 'danhmuc', label: 'Danh mục' },
-  { value: 'admin', label: 'Admin' },
+  { value: 'admin', label: 'Quản trị hệ thống' },
 ];
 
 const ACTION_OPTIONS = [
-  { value: 'read', label: 'read' },
-  { value: 'write', label: 'write' },
-  { value: 'delete', label: 'delete' },
-  { value: 'approve', label: 'approve' },
-  { value: 'export', label: 'export' },
-  { value: 'manage', label: 'manage' },
-  { value: 'full', label: 'full' },
+  { value: 'read', label: 'Xem (read)' },
+  { value: 'write', label: 'Ghi (write)' },
+  { value: 'delete', label: 'Xóa (delete)' },
+  { value: 'approve', label: 'Phê duyệt (approve)' },
+  { value: 'export', label: 'Xuất dữ liệu (export)' },
+  { value: 'manage', label: 'Quản trị (manage)' },
+  { value: 'full', label: 'Toàn quyền (full)' },
 ];
 
 interface Permission {
@@ -233,7 +233,7 @@ export default function PermissionsPage() {
       },
       {
         key: 'resource',
-        label: 'Resource',
+        label: 'Tài nguyên',
         dataIndex: 'resource',
         width: 140,
         align: 'center' as const,
@@ -444,12 +444,12 @@ export default function PermissionsPage() {
               <Col xs={24} md={12}>
                 <Form.Item
                   name="resource"
-                  {...labelProps('Resource')}
+                  {...labelProps('Tài nguyên')}
                   style={{ marginBottom: spaceFormField }}
-                  rules={[{ required: true, message: 'Vui lòng chọn resource' }]}
+                  rules={[{ required: true, message: 'Vui lòng chọn tài nguyên' }]}
                 >
                   <Select
-                    placeholder="Chọn resource"
+                    placeholder="Chọn tài nguyên"
                     options={FEATURE_OPTIONS}
                     style={{ borderRadius: radiusPill, height: 40 }}
                   />

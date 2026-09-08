@@ -16,8 +16,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import lombok.experimental.FieldNameConstants;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
-
 /**
  * Entity representing a transmission system (Hệ thống truyền dẫn) — M-NEW entity.
  * Corresponds to table: transmission.
@@ -37,10 +35,6 @@ import com.hanghai.kchtg.security.RecordSecurityLevel;
 @SuperBuilder
 @FieldNameConstants
 public class Transmission extends BaseEntity implements ApprovableEntity {
-
-    @Transient
-    @Builder.Default
-    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
 
     // ── Basic information ───────────────────────────────────────────────
 

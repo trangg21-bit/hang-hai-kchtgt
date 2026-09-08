@@ -1,21 +1,17 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   Button,
-  Space,
-  Tag,
-  Tooltip,
-  Modal,
   Form,
   Input,
   Select,
   Row,
   Col,
-  Typography,
+  Modal,
+  Alert,
 } from 'antd';
 import {
   PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { spatialObjectCategoryService } from '../../services/spatialObjectCategoryService';
@@ -23,49 +19,59 @@ import type { SpatialObjectCategory } from '../../services/spatialObjectCategory
 import { symbolService } from '../../services/symbolService';
 import type { Symbol as MapSymbolItem } from '../../services/symbolService';
 import { usePermissionStore } from '../../store/permissionStore';
-import { ScreenHeader, FilterBar, DataTable } from '../../components/list-view';
+import { ScreenHeader, FilterTableLayout, DataTable, type ScreenHeaderAction } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
-import toast, { modal } from '../../components/ToastNotification';
+import toast from '../../components/ToastNotification';
+import { AppDrawer } from '../../components/shared/AppDrawer';
 import {
-  spaceMd, spaceFormField, spaceLg, spaceXs,
-  radiusPill, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
+  actionPrimary,
+  statusOperational,
+  statusCritical,
+  textPrimary,
+  textSecondary,
   textTertiary,
-} from '../../tokens';
-import { colors } from '../../theme';
+  borderDefault,
+  radiusPill,
+  radiusMd,
+  fontSizeSm,
+  fontSizeMd,
+  fontWeightMedium,
+  fontWeightBold,
+  spaceFormField,
+  spaceSm,
+  spaceMd,
+  spaceLg,
+  drawerTitleStyle,
+  drawerFooterStyle,
+  primaryButtonStyle,
+  outlineButtonStyle,
+  requiredMarkStyle,
+  surfaceCard,
+  surfacePage,
+  badgeBaseStyle,
+  icons,
+  colors,
+} from '../../themetokenchk';
+import * as themeTokenChk from '../../themetokenchk';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 
-const MODAL_FORM_STYLE: React.CSSProperties = {
-  marginTop: spaceMd,
-  maxHeight: '60vh',
-  overflowY: 'auto',
-  paddingRight: spaceFormField,
-};
-
-const INPUT_STYLE: React.CSSProperties = {
-  borderRadius: radiusPill,
-  height: 40,
-};
-
-const SELECT_STYLE: React.CSSProperties = {
-  borderRadius: radiusPill,
-  height: 40,
-  width: '100%',
-};
-
-const BTN_STYLE: React.CSSProperties = {
-  borderRadius: radiusPill,
-  height: 40,
-  fontWeight: fontWeightMedium,
-  fontSize: fontSizeMd,
-};
+const STATUS_OPTIONS = [
+  { value: 1, label: 'Sử dụng' },
+  { value: 0, label: 'Khóa' },
+];
 
 export default function LineObjectList() {
   const hasPerm = usePermissionStore((s) => s.hasPermission);
 
-  const [search, setSearch] = useState('');
+  const [keyword, setKeyword] = useState('');
+  const [filterIconId, setFilterIconId] = useState<string | undefined>();
   const [filterStatus, setFilterStatus] = useState<number | undefined>();
+  const [activeStatusTab, setActiveStatusTab] = useState<string>('all');
+  const [tabCounts, setTabCounts] = useState<{ all: number; active: number; locked: number }>({ all: 0, active: 0, locked: 0 });
+
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
@@ -76,12 +82,19 @@ export default function LineObjectList() {
 
   const [symbols, setSymbols] = useState<MapSymbolItem[]>([]);
   const [form] = Form.useForm();
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<SpatialObjectCategory | null>(null);
+  const [detailRecord, setDetailRecord] = useState<SpatialObjectCategory | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Delete modal state
+  const [deleteTarget, setDeleteTarget] = useState<SpatialObjectCategory | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Load Map Symbols for select dropdown
   useEffect(() => {
-    symbolService.list({ pageSize: 100 }).then(res => setSymbols(res.data)).catch(() => {});
+    symbolService.list({ pageSize: 100 }).then((res) => setSymbols(res.data)).catch(() => {});
   }, []);
 
   const fetchData = useCallback(async () => {
@@ -91,7 +104,7 @@ export default function LineObjectList() {
       const res = await spatialObjectCategoryService.list({
         page,
         pageSize,
-        search: search || undefined,
+        search: keyword || undefined,
         status: filterStatus,
         geometryType: 2, // Line
       });
@@ -103,18 +116,74 @@ export default function LineObjectList() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, search, filterStatus]);
+  }, [page, pageSize, keyword, filterStatus]);
 
-  useEffect(() => { void fetchData(); }, [fetchData]);
+  // Fetch counts for status tabs
+  const fetchCounts = useCallback(async () => {
+    try {
+      const [resAll, resActive, resLocked] = await Promise.all([
+        spatialObjectCategoryService.list({ page: 1, pageSize: 1, geometryType: 2 }),
+        spatialObjectCategoryService.list({ page: 1, pageSize: 1, geometryType: 2, status: 1 }),
+        spatialObjectCategoryService.list({ page: 1, pageSize: 1, geometryType: 2, status: 0 }),
+      ]);
+      const activeCount = resActive?.totalElements || 0;
+      const lockedCount = resLocked?.totalElements || 0;
+      const allCount = resAll?.totalElements || (activeCount + lockedCount);
+      setTabCounts({
+        all: allCount,
+        active: activeCount,
+        locked: lockedCount,
+      });
+    } catch {
+      // ignore
+    }
+  }, []);
 
-  const openCreateModal = useCallback(() => {
+  useEffect(() => {
+    queueMicrotask(() => {
+      void fetchData();
+    });
+  }, [fetchData]);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      void fetchCounts();
+    });
+  }, [fetchCounts]);
+
+  const handleFilterApply = useCallback(() => {
+    setPage(1);
+    void fetchData();
+  }, [fetchData]);
+
+  const handleFilterReset = useCallback(() => {
+    setKeyword('');
+    setFilterIconId(undefined);
+    setFilterStatus(undefined);
+    setActiveStatusTab('all');
+    setPage(1);
+  }, []);
+
+  const handleStatusTabChange = useCallback((key: string) => {
+    setActiveStatusTab(key);
+    if (key === 'all') {
+      setFilterStatus(undefined);
+    } else if (key === 'active') {
+      setFilterStatus(1);
+    } else if (key === 'locked') {
+      setFilterStatus(0);
+    }
+    setPage(1);
+  }, []);
+
+  const openCreateDrawer = useCallback(() => {
     setEditingRecord(null);
     form.resetFields();
     form.setFieldsValue({ status: 1 });
-    setIsModalOpen(true);
+    setDrawerOpen(true);
   }, [form]);
 
-  const openEditModal = useCallback((record: SpatialObjectCategory) => {
+  const openEditDrawer = useCallback((record: SpatialObjectCategory) => {
     setEditingRecord(record);
     form.setFieldsValue({
       name: record.name,
@@ -122,8 +191,13 @@ export default function LineObjectList() {
       iconId: record.iconId,
       status: record.status ?? 1,
     });
-    setIsModalOpen(true);
+    setDrawerOpen(true);
   }, [form]);
+
+  const openDetailDrawer = useCallback((record: SpatialObjectCategory) => {
+    setDetailRecord(record);
+    setDetailDrawerOpen(true);
+  }, []);
 
   const handleFormSubmit = useCallback(async () => {
     try {
@@ -150,228 +224,579 @@ export default function LineObjectList() {
         toast.success('Đã tạo danh mục đối tượng đường mới');
       }
 
-      setIsModalOpen(false);
+      setDrawerOpen(false);
       void fetchData();
+      void fetchCounts();
     } catch {
       // validation error
     } finally {
       setSubmitting(false);
     }
-  }, [editingRecord, form, fetchData]);
+  }, [editingRecord, form, fetchData, fetchCounts]);
 
-  const handleDelete = useCallback(
-    async (record: SpatialObjectCategory) => {
-      try {
-        toast.success('Đã xóa danh mục đối tượng đường');
-        fetchData();
-      } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
-      }
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await spatialObjectCategoryService.delete(deleteTarget.id);
+      toast.success('Đã xóa danh mục đối tượng đường');
+      setDeleteTarget(null);
+      void fetchData();
+      void fetchCounts();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
+    } finally {
+      setDeleting(false);
+    }
+  }, [deleteTarget, fetchData, fetchCounts]);
+
+  // ── DataTable Columns ─────────────────────────────────────────────
+  const columns = useMemo(() => [
+    {
+      key: 'stt',
+      label: 'STT',
+      width: 60,
+      fixed: 'left' as const,
+      align: 'center' as const,
+      type: 'mono' as const,
+      render: (_: unknown, __: SpatialObjectCategory, idx: number) => (
+        <span style={{ fontSize: fontSizeMd, color: textTertiary }}>{(page - 1) * pageSize + idx + 1}</span>
+      ),
     },
-    [fetchData],
+    {
+      key: 'name',
+      label: 'Tên đối tượng đường',
+      dataIndex: 'name',
+      width: 260,
+      fixed: 'left' as const,
+      ellipsis: false,
+      render: (name: string, record: SpatialObjectCategory) => (
+        <div style={{ lineHeight: '1.4' }}>
+          <div
+            onClick={() => openDetailDrawer(record)}
+            style={{
+              fontWeight: fontWeightBold,
+              fontSize: fontSizeMd,
+              color: colors.sidebarBg,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+            title={name}
+          >
+            {name}
+          </div>
+          <div
+            style={{
+              fontSize: fontSizeMd,
+              fontWeight: fontWeightMedium,
+              color: textSecondary,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+            title={record.code}
+          >
+            {record.code || '—'}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'icon',
+      label: 'Biểu tượng',
+      dataIndex: 'iconId',
+      width: 120,
+      align: 'center' as const,
+      render: (_: unknown, record: SpatialObjectCategory) => {
+        const sym = symbols.find((s) => s.id === record.iconId);
+        const imgSrc = record.iconUrl || sym?.image;
+        return imgSrc ? (
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 36,
+              height: 36,
+              background: surfacePage,
+              border: `1px solid ${borderDefault}`,
+              borderRadius: radiusMd,
+              padding: 2,
+            }}
+          >
+            <img src={imgSrc} alt={record.name} style={{ maxHeight: 26, maxWidth: 30, objectFit: 'contain' }} />
+          </div>
+        ) : (
+          <span style={{ color: textTertiary }}>—</span>
+        );
+      },
+    },
+    {
+      key: 'updatedBy',
+      label: 'Cán bộ cập nhật',
+      dataIndex: 'updatedBy',
+      width: 200,
+      ellipsis: false,
+      render: (v: string | null, record: SpatialObjectCategory) => {
+        const name = v || record.createdBy || 'SYSTEM';
+        const date = record.updatedAt || record.createdAt;
+        return (
+          <div style={{ lineHeight: '1.35' }}>
+            <div
+              style={{
+                fontWeight: fontWeightBold,
+                color: '#0F172A',
+                fontSize: fontSizeMd,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+              title={name}
+            >
+              {name}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'status',
+      label: 'Trạng thái',
+      dataIndex: 'status',
+      width: 160,
+      align: 'center' as const,
+      ellipsis: false,
+      render: (status: number) => {
+        const isOperational = status === 1;
+        const color = isOperational ? statusOperational : statusCritical;
+        const label = isOperational ? 'Sử dụng' : 'Khóa';
+        return (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: radiusPill,
+              padding: '2px 10px',
+              fontSize: fontSizeMd,
+              fontWeight: fontWeightMedium,
+              background: `${color}15`,
+              border: `1px solid ${color}40`,
+              color,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {label}
+          </span>
+        );
+      },
+    },
+  ], [page, pageSize, symbols, openDetailDrawer]);
+
+  // ── Row Actions ──────────────────────────────────────────────────
+  const rowActions = useCallback((record: SpatialObjectCategory) => [
+    {
+      key: 'view',
+      label: 'Xem chi tiết',
+      icon: icons.view,
+      onClick: () => openDetailDrawer(record),
+    },
+    {
+      key: 'edit',
+      label: 'Chỉnh sửa',
+      icon: icons.edit,
+      onClick: () => openEditDrawer(record),
+    },
+    {
+      key: 'delete',
+      label: 'Xóa',
+      icon: icons.delete,
+      danger: true,
+      onClick: () => setDeleteTarget(record),
+    },
+  ], [openDetailDrawer, openEditDrawer]);
+
+  // ── Header actions ────────────────────────────────────────────────
+  const headerActions = useMemo(() => {
+    const actions: ScreenHeaderAction[] = [];
+    if (hasPerm('data:create')) {
+      actions.push({
+        key: 'create',
+        label: 'Thêm mới',
+        variant: 'primary',
+        icon: <PlusOutlined />,
+        onClick: openCreateDrawer,
+      });
+    }
+    return actions;
+  }, [hasPerm, openCreateDrawer]);
+
+  // ── Sidebar Filter Content ────────────────────────────────────────
+  const filterContent = (
+    <>
+      <div style={{ marginBottom: spaceFormField, marginTop: spaceMd }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+          Từ khóa tìm kiếm
+        </div>
+        <Input
+          placeholder="Tìm theo mã, tên đối tượng..."
+          allowClear
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          onPressEnter={handleFilterApply}
+          style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
+        />
+      </div>
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+          Biểu tượng
+        </div>
+        <Select
+          placeholder="Chọn biểu tượng"
+          allowClear
+          value={filterIconId}
+          onChange={(val) => setFilterIconId(val)}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+          options={symbols.map((s) => ({
+            value: s.id,
+            label: s.name ? `${s.name}${s.code ? ` (${s.code})` : ''}` : s.code,
+          }))}
+        />
+      </div>
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+          Trạng thái
+        </div>
+        <Select
+          placeholder="Tất cả trạng thái"
+          allowClear
+          value={filterStatus}
+          onChange={(val) => setFilterStatus(val)}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+          options={STATUS_OPTIONS}
+        />
+      </div>
+    </>
   );
 
-  const columns = useMemo(() => [
-    { key: 'sequenceNo', label: 'STT', width: 60, align: 'center' as const, type: 'mono' as const,
-      render: (_: unknown, __: SpatialObjectCategory, idx: number) =>
-        <span style={{ color: textTertiary }}>{(page - 1) * pageSize + idx + 1}</span> },
-    { key: 'name', label: 'Tên đối tượng đường', dataIndex: 'name',
-      render: (text: string) => <Typography.Text strong>{text}</Typography.Text> },
-    { key: 'iconUrl', label: 'Biểu tượng', dataIndex: 'iconUrl', width: 120, align: 'center' as const,
-      render: (iconUrl: string, record: SpatialObjectCategory) => {
-        const sym = symbols.find(s => s.id === record.iconId);
-        const imgSrc = iconUrl || sym?.image;
-        return imgSrc ? (
-          <img src={imgSrc} alt={record.name} style={{ height: 28, maxWidth: 50, objectFit: 'contain' }} />
-        ) : (
-          <Typography.Text type="secondary">—</Typography.Text>
-        );
-      } },
-    { key: 'updatedAt', label: 'Ngày cập nhật', dataIndex: 'updatedAt', width: 180,
-      type: 'date' as const,
-      render: (text: string) => (text ? dayjs(text).format('DD/MM/YYYY HH:mm:ss') : '—') },
-    { key: 'updatedBy', label: 'Người cập nhật', dataIndex: 'updatedBy', width: 130,
-      render: (text: string) => text || 'SYSTEM' },
-    { key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 120, align: 'center' as const,
-      type: 'status' as const,
-      render: (status: number) => (
-        <Tag color={status === 1 ? 'green' : 'default'}>
-          {status === 1 ? 'Sử dụng' : 'Khóa'}
-        </Tag>
-      ) },
-    { key: 'actions', label: 'Thao tác', width: 100, align: 'center' as const,
-      type: 'action' as const,
-      render: (_: unknown, record: SpatialObjectCategory) => (
-        <Space size={spaceXs}>
-          <Tooltip title="Sửa">
-            <Button type="link" size="small" icon={<EditOutlined />}
-              onClick={() => openEditModal(record)} />
-          </Tooltip>
-          <Tooltip title="Xóa">
-            <Button type="link" size="small" danger icon={<DeleteOutlined />}
-              onClick={() => {
-                modal.confirm({
-                  title: 'Xác nhận xóa',
-                  content: `Bạn có chắc muốn xóa "${record.name}"?`,
-                  okText: 'Xóa',
-                  okType: 'danger',
-                  cancelText: 'Hủy',
-                  onOk: () => handleDelete(record),
-                });
-              }}
-            />
-          </Tooltip>
-        </Space>
-      ) },
-  ], [page, pageSize, symbols, openEditModal, handleDelete]);
+  const statusTabs = [
+    { key: 'all', label: 'Tất cả', count: tabCounts.all, color: actionPrimary, active: activeStatusTab === 'all' },
+    { key: 'active', label: 'Sử dụng', count: tabCounts.active, color: statusOperational, active: activeStatusTab === 'active' },
+    { key: 'locked', label: 'Khóa', count: tabCounts.locked, color: statusCritical, active: activeStatusTab === 'locked' },
+  ];
 
-  return (
-    <div style={{ padding: spaceLg }}>
-      <ScreenHeader
-        title="Quản lý danh mục đối tượng đường"
-        breadcrumbs={[
-          { label: 'Trang chủ', href: '/' },
-          { label: 'Quản lý KCHT trên nền bản đồ (GIS)' },
-          { label: 'Quản lý danh mục đối tượng đường' },
-        ]}
-        actions={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            style={BTN_STYLE}
-            onClick={openCreateModal}
-          >
-            Thêm đối tượng đường
-          </Button>
-        }
-      />
-
-      <FilterBar
-        searchPlaceholder="Tìm theo tên, mã..."
-        searchValue={search}
-        onSearchChange={setSearch}
-        statusOptions={[
-          { value: 1, label: 'Hoạt động' },
-          { value: 0, label: 'Ngừng hoạt động' },
-        ]}
-        statusValue={filterStatus}
-        onStatusChange={setFilterStatus}
-        onSearch={() => setPage(1)}
-        onReset={() => {
-          setSearch('');
-          setFilterStatus(undefined);
-          setPage(1);
-        }}
-      />
-
-      {isLoading ? (
-        <LoadingSkeleton />
-      ) : isError ? (
+  const renderContent = () => {
+    if (isLoading) return <LoadingSkeleton rows={8} type="table" />;
+    if (isError) {
+      return (
         <ErrorState
           message={error?.message || 'Không thể tải danh sách đối tượng đường'}
           onRetry={fetchData}
         />
-      ) : dataSource.length === 0 ? (
-        <EmptyState description="Chưa có danh mục đối tượng đường nào" />
-      ) : (
-        <>
-          <DataTable
-            columns={columns}
-            dataSource={dataSource}
-            rowKey="id"
-          />
-          <Pagination
-            currentPage={page}
-            pageSize={pageSize}
-            totalItems={total}
-            onPageChange={setPage}
-            onPageSizeChange={(size) => {
-              setPageSize(size);
-              setPage(1);
-            }}
-          />
-        </>
-      )}
+      );
+    }
+    if (dataSource.length === 0) {
+      return <EmptyState description="Chưa có danh mục đối tượng đường nào" />;
+    }
+    return (
+      <>
+        <DataTable
+          columns={columns}
+          dataSource={dataSource}
+          rowKey="id"
+          rowActions={rowActions}
+          scroll={{ x: 'max-content' }}
+        />
+        <Pagination
+          total={total}
+          current={page}
+          pageSize={pageSize}
+          pageSizeOptions={[10, 20, 50]}
+          onChange={(p, sz) => {
+            setPage(p);
+            if (sz) setPageSize(sz);
+          }}
+        />
+      </>
+    );
+  };
 
-      <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingRecord ? 'Chỉnh sửa đối tượng đường' : 'Thêm mới đối tượng đường'}</span>}
-        open={isModalOpen}
-        onCancel={() => setIsModalOpen(false)}
-        footer={[
-          <Button key="cancel" style={BTN_STYLE} onClick={() => setIsModalOpen(false)}>
-            Hủy
-          </Button>,
-          <Button
-            key="submit"
-            type="primary"
-            style={BTN_STYLE}
-            loading={submitting}
-            onClick={handleFormSubmit}
-          >
-            {editingRecord ? 'Cập nhật' : 'Tạo mới'}
-          </Button>,
-        ]}
-        width={600}
-        destroyOnHidden
-      >
-        <Form form={form} layout="vertical" style={MODAL_FORM_STYLE}>
-          <Row gutter={spaceMd}>
-            <Col span={12}>
-              <Form.Item
-                name="code"
-                label="Mã đối tượng"
-                rules={[{ required: true, message: 'Vui lòng nhập mã đối tượng' }]}
-                style={{ marginBottom: spaceFormField }}
-              >
-                <Input placeholder="VD: LUONG_HH" style={INPUT_STYLE} disabled={!!editingRecord} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="name"
-                label="Tên đối tượng đường"
-                rules={[{ required: true, message: 'Vui lòng nhập tên đối tượng' }]}
-                style={{ marginBottom: spaceFormField }}
-              >
-                <Input placeholder="VD: Luồng hàng hải" style={INPUT_STYLE} />
-              </Form.Item>
-            </Col>
-          </Row>
+  return (
+    <ThemeTokenProvider tokens={themeTokenChk}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+        <ScreenHeader
+          breadcrumb={[
+            { label: 'Quản lý KCHT trên nền bản đồ (GIS)' },
+            { label: 'Quản lý danh mục đối tượng đường' },
+          ]}
+          actions={headerActions}
+        />
 
-          <Row gutter={spaceMd}>
-            <Col span={12}>
-              <Form.Item
-                name="iconId"
-                label="Biểu tượng"
-                style={{ marginBottom: spaceFormField }}
+        <FilterTableLayout
+          hideFilterToggle
+          onFilterApply={handleFilterApply}
+          onFilterReset={handleFilterReset}
+          loading={isLoading}
+          error={isError}
+          onRetry={fetchData}
+          filterContent={filterContent}
+          statusTabs={statusTabs}
+          onStatusTabChange={handleStatusTabChange}
+        >
+          {renderContent()}
+        </FilterTableLayout>
+
+        {/* ── Create / Edit AppDrawer ──────────────────────────────── */}
+        <AppDrawer
+          title={
+            <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
+              {editingRecord ? 'Chỉnh sửa đối tượng đường' : 'Thêm mới đối tượng đường'}
+            </span>
+          }
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          drawerSize="md"
+          footer={
+            <div style={drawerFooterStyle}>
+              <Button onClick={() => setDrawerOpen(false)} style={outlineButtonStyle}>
+                Hủy
+              </Button>
+              <Button
+                type="primary"
+                onClick={handleFormSubmit}
+                loading={submitting}
+                style={primaryButtonStyle}
               >
-                <Select placeholder="Chọn biểu tượng" style={SELECT_STYLE} allowClear>
-                  {symbols.map(s => (
-                    <Select.Option key={s.id} value={s.id}>
-                      <Space>
-                        {s.image && <img src={s.image} alt={s.name} style={{ width: 20, height: 20, objectFit: 'contain' }} />}
-                        <span>{s.name} ({s.code})</span>
-                      </Space>
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="status"
-                label="Trạng thái"
-                style={{ marginBottom: spaceFormField }}
-              >
-                <Select style={SELECT_STYLE}>
-                  <Select.Option value={1}>Sử dụng</Select.Option>
-                  <Select.Option value={0}>Khóa</Select.Option>
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-        </Form>
-      </Modal>
-    </div>
+                {editingRecord ? 'Cập nhật' : 'Tạo mới'}
+              </Button>
+            </div>
+          }
+          styles={{
+            header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+            body: { padding: '20px 24px' },
+          }}
+        >
+          <style>{requiredMarkStyle}</style>
+          <Form form={form} layout="vertical">
+            <Row gutter={spaceMd}>
+              <Col span={12}>
+                <Form.Item
+                  name="code"
+                  label={<span style={{ fontWeight: fontWeightMedium }}>Mã đối tượng</span>}
+                  rules={[{ required: true, message: 'Vui lòng nhập mã đối tượng' }]}
+                  style={{ marginBottom: spaceFormField }}
+                >
+                  <Input
+                    placeholder="VD: LUONG_HANG_HAI"
+                    style={{ borderRadius: radiusPill, height: 40 }}
+                    disabled={!!editingRecord}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="name"
+                  label={<span style={{ fontWeight: fontWeightMedium }}>Tên đối tượng đường</span>}
+                  rules={[{ required: true, message: 'Vui lòng nhập tên đối tượng' }]}
+                  style={{ marginBottom: spaceFormField }}
+                >
+                  <Input
+                    placeholder="VD: Luồng hàng hải"
+                    style={{ borderRadius: radiusPill, height: 40 }}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={spaceMd}>
+              <Col span={12}>
+                <Form.Item
+                  name="iconId"
+                  label={<span style={{ fontWeight: fontWeightMedium }}>Biểu tượng</span>}
+                  style={{ marginBottom: spaceFormField }}
+                >
+                  <Select
+                    placeholder="Chọn biểu tượng"
+                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                    allowClear
+                  >
+                    {symbols.map((s) => (
+                      <Select.Option key={s.id} value={s.id}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceSm }}>
+                          {s.image && (
+                            <img
+                              src={s.image}
+                              alt={s.name}
+                              style={{ width: 20, height: 20, objectFit: 'contain' }}
+                            />
+                          )}
+                          <span>{s.name} ({s.code})</span>
+                        </div>
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="status"
+                  label={<span style={{ fontWeight: fontWeightMedium }}>Trạng thái</span>}
+                  style={{ marginBottom: spaceFormField }}
+                >
+                  <Select
+                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                    options={STATUS_OPTIONS}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Form>
+        </AppDrawer>
+
+        {/* ── View Detail AppDrawer ────────────────────────────────── */}
+        <AppDrawer
+          title={
+            <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
+              Chi tiết đối tượng đường{detailRecord ? ` - ${detailRecord.name}` : ''}
+            </span>
+          }
+          open={detailDrawerOpen}
+          onClose={() => setDetailDrawerOpen(false)}
+          drawerSize="md"
+          footer={null}
+          styles={{
+            header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+            body: { padding: '20px 24px' },
+          }}
+        >
+          {detailRecord && (() => {
+            const sym = symbols.find((s) => s.id === detailRecord.iconId);
+            const imgSrc = detailRecord.iconUrl || sym?.image;
+            const isOperational = detailRecord.status === 1;
+            const color = isOperational ? statusOperational : statusCritical;
+            const statusLabel = isOperational ? 'Sử dụng' : 'Khóa';
+
+            return (
+              <div>
+                {imgSrc && (
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: spaceLg }}>
+                    <div
+                      style={{
+                        width: 80,
+                        height: 80,
+                        background: surfacePage,
+                        border: `1px solid ${borderDefault}`,
+                        borderRadius: radiusMd,
+                        padding: spaceSm,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <img
+                        src={imgSrc}
+                        alt={detailRecord.name}
+                        style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                      />
+                    </div>
+                  </div>
+                )}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spaceMd }}>
+                  <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
+                    <div style={{ color: textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>Mã đối tượng</div>
+                    <div style={{ color: textPrimary, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
+                      {detailRecord.code || '—'}
+                    </div>
+                  </div>
+                  <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
+                    <div style={{ color: textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>Trạng thái</div>
+                    <div>
+                      <span
+                        style={{
+                          ...badgeBaseStyle,
+                          borderRadius: radiusPill,
+                          padding: '2px 10px',
+                          fontSize: fontSizeMd,
+                          fontWeight: fontWeightMedium,
+                          background: `${color}15`,
+                          border: `1px solid ${color}40`,
+                          color,
+                        }}
+                      >
+                        {statusLabel}
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ gridColumn: '1 / -1', padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
+                    <div style={{ color: textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>Tên đối tượng đường</div>
+                    <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
+                      {detailRecord.name}
+                    </div>
+                  </div>
+                  <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
+                    <div style={{ color: textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>Người cập nhật</div>
+                    <div style={{ color: textPrimary, fontSize: fontSizeMd }}>
+                      {detailRecord.updatedBy || detailRecord.createdBy || 'SYSTEM'}
+                    </div>
+                  </div>
+                  <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
+                    <div style={{ color: textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>Ngày cập nhật</div>
+                    <div style={{ color: textPrimary, fontSize: fontSizeMd }}>
+                      {detailRecord.updatedAt ? dayjs(detailRecord.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </AppDrawer>
+
+        {/* ── Delete Confirmation Modal ────────────────────────────── */}
+        <Modal
+          title={
+            <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
+              Xác nhận xóa đối tượng đường
+            </span>
+          }
+          open={!!deleteTarget}
+          onCancel={() => setDeleteTarget(null)}
+          footer={[
+            <Button key="cancel" onClick={() => setDeleteTarget(null)} style={outlineButtonStyle}>
+              Hủy
+            </Button>,
+            <Button
+              key="delete"
+              type="primary"
+              danger
+              loading={deleting}
+              onClick={handleDeleteConfirm}
+              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
+            >
+              Xác nhận xóa
+            </Button>,
+          ]}
+          width={480}
+        >
+          <div style={{ padding: '8px 0' }}>
+            <Alert
+              message="Hành động này không thể hoàn tác"
+              type="warning"
+              showIcon
+              icon={<ExclamationCircleOutlined />}
+              style={{ marginBottom: spaceFormField, borderRadius: radiusPill }}
+            />
+            <p style={{ fontSize: fontSizeMd, color: textPrimary }}>
+              Bạn có chắc chắn muốn xóa đối tượng đường{' '}
+              <strong style={{ color: colors.sidebarBg }}>"{deleteTarget?.name}"</strong>?
+            </p>
+          </div>
+        </Modal>
+      </div>
+    </ThemeTokenProvider>
   );
 }

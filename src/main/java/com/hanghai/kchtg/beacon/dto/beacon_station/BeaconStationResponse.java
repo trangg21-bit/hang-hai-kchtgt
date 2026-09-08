@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.beacon.dto.beacon_station;
 
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -75,4 +76,10 @@ public class BeaconStationResponse {
     private UUID mapSymbolId;
     private Integer coordinateSystem;
     private String displayRule;
+    /** Tọa độ GIS dạng WKT đọc từ spatial object (null nếu chưa có vị trí). */
+    private String coordinates;
+    /** Vĩ độ điểm đầu (tiện hiển thị/lấy lại form; null nếu chưa có vị trí). */
+    private Double latitude;
+    /** Kinh độ điểm đầu (tiện hiển thị/lấy lại form; null nếu chưa có vị trí). */
+    private Double longitude;
 }

@@ -4,6 +4,7 @@ import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.dikerevetment.dto.*;
@@ -56,6 +57,7 @@ class DikeRevetmentServiceTest {
     @Mock private OrgUnitScopeService orgUnitScopeService;
     @Mock private PortCacheService portCacheService;
     @Mock private UserResolverService userResolverService;
+    @Mock private InfrastructureAttachmentRepository infrastructureAttachmentRepository;
 
     private DikeRevetmentService service;
     private DikeRevetment testEntity;
@@ -68,7 +70,8 @@ class DikeRevetmentServiceTest {
 
         service = new DikeRevetmentService(
                 repo, attachmentRepo, approvalHistoryRepo, approvalService, gisSpatialObjectService,
-                orgUnitCacheService, orgUnitScopeService, portCacheService, userResolverService);
+                orgUnitCacheService, orgUnitScopeService, portCacheService, userResolverService,
+                infrastructureAttachmentRepository);
 
         testEntity = DikeRevetment.builder()
                 .id(TEST_ID)

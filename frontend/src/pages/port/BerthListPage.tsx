@@ -42,6 +42,7 @@ import toast from '../../components/ToastNotification';
 import BerthForm from './BerthForm';
 import BerthDetailContent from './BerthDetailContent';
 import PierDetailContent from './PierDetailContent';
+import { fmtNum } from '../../utils/numFmt';
 import {
   statusOperational,
   statusAttention,
@@ -52,7 +53,6 @@ import {
   textSecondary,
   textTertiary,
   borderDefault,
-  fontSizeMd,
   fontSizeLg,
   fontSizeSm,
   fontWeightMedium,
@@ -92,6 +92,8 @@ import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import { AppDrawer } from '../../components/shared/AppDrawer';
+
+const fontSizeMd = 13.5;
 
 // ── Constants ────────────────────────────────────────────────────────
 
@@ -435,8 +437,7 @@ export default function BerthList() {
             return `${parts.length} công trình hạ tầng`;
           }
           if (/^-?\d+(\.\d+)?$/.test(t)) {
-            const n = Number(t);
-            return Number.isInteger(n) ? String(n) : t;
+            return fmtNum(t);
           }
           return historyFieldValue(fn, raw, orgMap, symbolMap, portMap);
         };
@@ -643,8 +644,47 @@ export default function BerthList() {
     setActiveTab('all'); setPage(1);
   }, []);
 
+  // Hỗ trợ cuộn ngang mượt mà bằng con lăn chuột khi thanh trạng thái tràn trên màn hình nhỏ/zoom
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      const container = e.currentTarget as HTMLElement;
+      if (container && container.scrollWidth > container.clientWidth) {
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+          e.preventDefault();
+          container.scrollLeft += e.deltaY;
+        }
+      }
+    };
+
+    const attach = () => {
+      const tabsEl = document.querySelector('.berth-page-wrapper div:has(> button[aria-pressed])') as HTMLElement;
+      if (tabsEl) {
+        tabsEl.removeEventListener('wheel', handleWheel);
+        tabsEl.addEventListener('wheel', handleWheel, { passive: false });
+      }
+    };
+
+    attach();
+    const timer = setTimeout(attach, 400);
+
+    return () => {
+      clearTimeout(timer);
+      const tabsEl = document.querySelector('.berth-page-wrapper div:has(> button[aria-pressed])') as HTMLElement;
+      if (tabsEl) {
+        tabsEl.removeEventListener('wheel', handleWheel);
+      }
+    };
+  }, []);
+
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key); setPage(1);
+    // Tự động cuộn nhẹ tab vào khung nhìn nếu tab nằm sát mép ngoài
+    requestAnimationFrame(() => {
+      const activeBtn = document.querySelector(`.berth-page-wrapper button[aria-pressed="true"]`) as HTMLElement;
+      if (activeBtn) {
+        activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+      }
+    });
   }, []);
 
   // ── Detail drawer ────────────────────────────────────────────────
@@ -776,8 +816,7 @@ export default function BerthList() {
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
       </div>
 
-      {/* ── Nâng cao: toggle 8 trường ──────────────────────────── */}
-      {filterCollapsed && (<>
+      {/* ── Toàn bộ bộ lọc hiển thị trực tiếp trên sidebar cuộn dọc 280px ── */}
       <div style={{ marginBottom: 12 }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
         <Select placeholder="Chọn cảng biển" allowClear showSearch optionFilterProp="label"
@@ -822,12 +861,11 @@ export default function BerthList() {
       <div style={{ marginBottom: 12 }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
         <DatePicker.RangePicker format="DD/MM/YYYY"
-          placeholder={['Từ ngày', 'Đến ngày']} allowClear popupClassName="range-single-panel"
+          placeholder={['Từ ngày', 'Đến ngày']} allowClear popupClassName="chk-range-datepicker-popup"
           value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
           onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined); setPage(1); }}
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
       </div>
-      </>)}
     </>
   );
 
@@ -882,18 +920,34 @@ export default function BerthList() {
           </div>
         ) },
       { key: 'orgUnitId', label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', width: 260, sortable: true, sortOrder,
-        render: (_v: string | null, record: Berth) => <span style={{ fontWeight: fontWeightBold }}>{resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || '—'}</span> },
+        cellTitle: (record: Berth) => resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || '—',
+        render: (_v: string | null, record: Berth) => {
+          const name = resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || '—';
+          return <span style={{ fontWeight: fontWeightBold }} title={name}>{name}</span>;
+        } },
       { key: 'structureType', label: 'Loại kết cấu bến cảng', dataIndex: 'structureType', width: 240, sortable: true, sortOrder,
+        cellTitle: (record: Berth) => record.structureType != null ? (STRUCTURE_TYPE_OPTIONS.find(o => o.value === record.structureType)?.label || record.structureType.toString()) : '—',
         render: (v: number | null) => (v != null ? (STRUCTURE_TYPE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : '—') },
       { key: 'portId', label: 'Thuộc cảng biển', dataIndex: 'portId', width: 200, sortable: true, sortOrder,
+        cellTitle: (record: Berth) => portOptions.find(o => o.value === record.portId)?.label || record.portId || '—',
         render: (v: string | null) => portOptions.find(o => o.value === v)?.label || v || '—' },
       { key: 'waterwayId', label: 'Thuộc luồng hàng hải', dataIndex: 'waterwayId', width: 280, ellipsis: true, sortable: true, sortOrder,
+        cellTitle: (record: Berth) => record.waterwayId ? (waterwayMap.get(record.waterwayId) || record.waterwayId) : '—',
         render: (v?: string) => (v ? (waterwayMap.get(v) || v) : '—') },
       { key: 'provinceId', label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'provinceId', width: 250, sortable: true, sortOrder,
+        cellTitle: (record: Berth) => record.provinceId ? (VIETNAM_PROVINCES[record.provinceId - 1] || '—') : '—',
         render: (v: number | null) => v ? VIETNAM_PROVINCES[v - 1] : '—' },
       { key: 'operationalFunction', label: 'Công năng khai thác', dataIndex: 'operationalFunction', width: 240, sortable: true, sortOrder,
         render: (v: string | null) => v || '—' },
       { key: 'operationalStatus', label: 'Tình trạng', dataIndex: 'operationalStatus', width: 190, sortable: true, sortOrder,
+        cellTitle: (record: Berth) => {
+          const m: Record<string, string> = {
+            OPERATIONAL: 'Đang khai thác/vận hành',
+            NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
+            SUSPENDED: 'Dừng khai thác/vận hành',
+          };
+          return m[record.operationalStatus || ''] || record.operationalStatus || '—';
+        },
         render: (v: string | null) => {
           const m: Record<string, { color: string; label: string }> = {
             OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/vận hành' },
@@ -943,6 +997,10 @@ export default function BerthList() {
 
     const tailColumns: any[] = [
       { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 260, sortable: true, sortOrder, ellipsis: false,
+        cellTitle: (record: Berth) => {
+          const s = APPROVAL_STYLE_MAP[record.approvalStatus] || APPROVAL_STYLE_MAP[record.approvalStatus?.toUpperCase()] || { label: record.approvalStatus || '—' };
+          return s.label;
+        },
         render: (v: string) => {
           const s = APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v?.toUpperCase()] || { color: textTertiary, label: v || '—' };
           return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
@@ -955,6 +1013,7 @@ export default function BerthList() {
         sortable: true,
         sortOrder,
         ellipsis: false,
+        cellTitle: (record: Berth) => `${userMap.get(record.updatedBy || '') || record.updatedBy || '—'} - ${record.updatedAt ? dayjs(record.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}`,
         render: (v: string | null, record: Berth) => (
           <div style={{ lineHeight: '1.35' }}>
             <div style={{ fontWeight: fontWeightBold, color: '#0F172A', fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -1015,12 +1074,141 @@ export default function BerthList() {
     );
   };
 
+  const customBerthTokens = useMemo(() => ({
+    ...themeTokenChk,
+    fontSizeMd: 13.5,
+  }), []);
+
   // ── JSX ─────────────────────────────────────────────────────────
 
   return (
-    <ThemeTokenProvider tokens={themeTokenChk}>
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
-      <style>{`.range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }`}</style>
+    <ThemeTokenProvider tokens={customBerthTokens}>
+    <div className="berth-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      <style>{`
+        .range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }
+
+        /* ── Cỡ chữ 13.5px chuẩn toàn màn Quản lý bến cảng & các popup/drawer con ── */
+        .berth-page-wrapper,
+        .berth-page-wrapper .ant-table,
+        .berth-page-wrapper .ant-table-cell,
+        .berth-page-wrapper .ant-table-thead > tr > th,
+        .berth-page-wrapper .ant-table-tbody > tr > td,
+        .berth-page-wrapper .ant-input,
+        .berth-page-wrapper .ant-select,
+        .berth-page-wrapper .ant-select-selection-item,
+        .berth-page-wrapper .ant-select-item-option-content,
+        .berth-page-wrapper .ant-picker,
+        .berth-page-wrapper .ant-picker-input > input,
+        .berth-page-wrapper .ant-btn,
+        .berth-page-wrapper .ant-pagination,
+        .berth-page-wrapper .ant-pagination-item,
+        .berth-page-wrapper .ant-pagination-total-text,
+        .berth-page-wrapper .ant-breadcrumb,
+        .berth-page-wrapper .ant-form-item-label > label,
+        .berth-drawer-scope,
+        .berth-drawer-scope .ant-drawer-content,
+        .berth-drawer-scope .ant-tabs-tab,
+        .berth-drawer-scope .chk-detail-label,
+        .berth-drawer-scope .chk-detail-value,
+        .berth-drawer-scope .ant-table,
+        .berth-drawer-scope .ant-table-cell,
+        .berth-drawer-scope .ant-table-thead > tr > th,
+        .berth-drawer-scope .ant-btn,
+        .berth-drawer-scope .ant-select,
+        .berth-drawer-scope .ant-input,
+        .berth-drawer-scope .ant-form-item-label > label,
+        .berth-modal-scope,
+        .berth-modal-scope .ant-modal-content,
+        .berth-modal-scope .ant-btn,
+        .berth-modal-scope .ant-input {
+          font-size: 13.5px !important;
+        }
+
+        /* ── Responsive StatusTabs: Căn giữa khi đủ chỗ, thanh cuộn ngang khi tràn màn hình ── */
+        .berth-page-wrapper div:has(> button[aria-pressed]) {
+          display: flex !important;
+          flex-wrap: nowrap !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          justify-content: center !important;
+          justify-content: safe center !important;
+          align-items: center !important;
+          scrollbar-width: thin !important;
+          scrollbar-color: #cbd5e1 #f8fafc !important;
+          scroll-behavior: smooth !important;
+          -webkit-overflow-scrolling: touch !important;
+          padding: 2px 16px 6px 16px !important;
+          gap: 20px !important;
+        }
+        .berth-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
+          height: 6px !important;
+          display: block !important;
+        }
+        .berth-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
+          background: #f1f5f9 !important;
+          border-radius: 999px !important;
+        }
+        .berth-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
+          background: #cbd5e1 !important;
+          border-radius: 999px !important;
+        }
+        .berth-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8 !important;
+        }
+        .berth-page-wrapper div:has(> button[aria-pressed]) > button {
+          white-space: nowrap !important;
+          flex-shrink: 0 !important;
+          cursor: pointer !important;
+        }
+
+        /* ── Footer Sidebar Bộ lọc: Cân đối nút Reload và Tìm kiếm ── */
+        .berth-page-wrapper div:has(> button .anticon-reload) {
+          display: flex !important;
+          justify-content: space-between !important;
+          gap: 8px !important;
+          align-items: center !important;
+        }
+        .berth-page-wrapper div:has(> button .anticon-reload) > div[style*="visibility: hidden"] {
+          display: none !important;
+        }
+        .berth-page-wrapper div:has(> button .anticon-reload) > button.ant-btn-primary {
+          flex: 1 !important;
+        }
+
+        /* ── Responsive ScreenHeader co dãn đẹp khi zoom ── */
+        .berth-page-wrapper > div:first-of-type {
+          flex-wrap: wrap !important;
+          gap: 10px !important;
+        }
+
+        /* ── Responsive Drawers: Không tràn viền khi màn hình nhỏ / zoom cao ── */
+        .berth-drawer-scope .ant-drawer-content-wrapper {
+          max-width: 100vw !important;
+        }
+        @media (max-width: 1024px) {
+          .berth-drawer-scope .chk-detail-grid {
+            grid-template-columns: 1fr !important;
+            column-gap: 0 !important;
+          }
+          .berth-drawer-scope .chk-detail-row--full {
+            grid-column: 1 !important;
+          }
+        }
+        @media (max-width: 640px) {
+          .berth-drawer-scope .chk-detail-row {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 4px !important;
+            padding: 8px 0 !important;
+          }
+          .berth-drawer-scope .chk-detail-label {
+            width: 100% !important;
+          }
+          .berth-drawer-scope .chk-detail-value {
+            width: 100% !important;
+          }
+        }
+      `}</style>
       <ScreenHeader
         breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý bến cảng' }]}
         actions={headerActions}
@@ -1032,8 +1220,8 @@ export default function BerthList() {
         onStatusTabChange={handleTabChange}
         onFilterApply={handleFilterApply}
         onFilterReset={handleFilterReset}
-        filterCollapsed={filterCollapsed}
-        onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
+        hideFilterToggle={true}
+        filterCollapsed={false}
         loading={isLoading}
         error={isError}
         onRetry={() => void fetchData()}
@@ -1051,6 +1239,9 @@ export default function BerthList() {
 
       {/* ── Create Drawer ──────────────────────────────────────────── */}
       <AppDrawer
+        width="min(920px, 96vw)"
+        rootClassName="berth-drawer-scope"
+        className="berth-drawer-scope"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới Bến cảng</span>}
         open={createDrawerVisible}
         destroyOnHidden
@@ -1077,6 +1268,9 @@ export default function BerthList() {
 
       {/* ── Edit Drawer ────────────────────────────────────────────── */}
       <AppDrawer
+        width="min(920px, 96vw)"
+        rootClassName="berth-drawer-scope"
+        className="berth-drawer-scope"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin — {editBerthName || 'Bến cảng'}</span>}
         open={!!editBerthId}
         onClose={() => { setEditBerthId(undefined); setEditBerthName(''); updateForm.resetFields(); }}
@@ -1100,13 +1294,16 @@ export default function BerthList() {
 
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
       <AppDrawer
-        size={1000}
+        width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
+        style={{ maxWidth: '96vw' }}
+        rootClassName="berth-drawer-scope"
+        className="berth-drawer-scope"
         title={<span style={drawerTitleStyle}>Chi tiết bến cảng{detailRecord ? ` - ${detailRecord.berthName}` : ''}</span>}
         open={detailDrawerVisible}
         onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); }}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-          body: { padding: '0 24px 12px 24px' },
+          body: { padding: '0 24px 12px 24px', overflow: 'hidden' },
         }}
         footer={null}
       >
@@ -1115,6 +1312,7 @@ export default function BerthList() {
 
       {/* ── Delete Confirmation Modal ────────────────────────────── */}
       <Modal
+        rootClassName="berth-modal-scope"
         title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận xóa bến cảng</span>}
         open={deleteModalOpen}
         onCancel={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
@@ -1144,6 +1342,7 @@ export default function BerthList() {
 
       {/* ── Reject Reason Modal ──────────────────────────────────── */}
       <Modal
+        rootClassName="berth-modal-scope"
         title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Từ chối phê duyệt</span>}
         open={rejectModalOpen}
         onCancel={() => { setRejectModalOpen(false); setRejectingRecord(null); setRejectReason(''); }}
@@ -1169,6 +1368,7 @@ export default function BerthList() {
 
       {/* ── Submit Modal ──────────────────────────────────────────── */}
       <Modal
+        rootClassName="berth-modal-scope"
         title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận gửi Cảng vụ phê duyệt</span>}
         open={submitModalOpen}
         onCancel={() => { setSubmitModalOpen(false); setSubmittingRecord(null); }}
@@ -1196,7 +1396,9 @@ export default function BerthList() {
 
       {/* ── Pier Detail Drawer (sibling — tránh drawer lồng bị đẩy kích thước) ── */}
       <AppDrawer
-        size={950}
+        width="min(950px, 96vw)"
+        rootClassName="berth-drawer-scope"
+        className="berth-drawer-scope"
         title={<span style={drawerTitleStyle}>Chi tiết cầu cảng{pierDetailRecord ? ` - ${pierDetailRecord.pierName || pierDetailRecord.pierCode || ''}` : ''}</span>}
         open={pierDetailOpen}
         onClose={() => setPierDetailOpen(false)}
@@ -1233,7 +1435,9 @@ export default function BerthList() {
 
       {/* ── History Drawer ──────────────────────────────────────── */}
       <AppDrawer
-        size={880}
+        width="min(880px, 96vw)"
+        rootClassName="berth-drawer-scope"
+        className="berth-drawer-scope"
         mask
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>

@@ -176,3 +176,20 @@ export async function deleteScadaAttachment(id: string, attachmentId: string): P
   const res = await api.delete(`${BASE}/${id}/attachments/${attachmentId}`);
   return res.data;
 }
+
+// Download file đính kèm — mirror /vts-operation-center (vtsOperationCenterService.downloadAttachment):
+// GET /{id}/attachments/{attId}/download → blob → lưu file qua <a download>.
+export async function downloadScadaAttachment(id: string, attId: string, fileName?: string): Promise<void> {
+  const res = await api.get(`${BASE}/${id}/attachments/${attId}/download`, {
+    responseType: 'blob',
+  });
+  const blob = new Blob([res.data]);
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName || 'attachment';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}

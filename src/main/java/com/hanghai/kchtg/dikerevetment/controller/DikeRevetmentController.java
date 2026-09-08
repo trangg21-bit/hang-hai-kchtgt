@@ -2,8 +2,10 @@ package com.hanghai.kchtg.dikerevetment.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 import com.hanghai.kchtg.dikerevetment.dto.*;
 import com.hanghai.kchtg.vtssystem.dto.HistoryEntry;
+import com.hanghai.kchtg.vtssystem.dto.VtsSystemAttachmentResponse;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
 import com.hanghai.kchtg.dikerevetment.service.DikeRevetmentService;
 import com.hanghai.kchtg.user.entity.User;
@@ -14,10 +16,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -112,6 +116,9 @@ public class DikeRevetmentController {
             @RequestParam(required = false) UUID updatedBy,
             @RequestParam(required = false) String updatedFrom,
             @RequestParam(required = false) String updatedTo,
+            @RequestParam(required = false) String code,
+            @RequestParam(required = false) String location,
+            @RequestParam(required = false) Integer commissioningYear,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "updatedAt") String sortBy,
@@ -124,7 +131,8 @@ public class DikeRevetmentController {
                     : null;
             Page<DikeRevetmentResponse> responses = service.searchPaged(
                     orgUnitId, keyword, seaportId, dikeRevetmentType, conditionStatus,
-                    statusEnum, updatedBy, parseLocalDateTime(updatedFrom), parseLocalDateTime(updatedTo), pageable);
+                    statusEnum, updatedBy, parseLocalDateTime(updatedFrom), parseLocalDateTime(updatedTo),
+                    code, location, commissioningYear, pageable);
             return ResponseEntity.ok(ApiResponse.success("Tìm kiếm đê kè thành công", responses));
         } catch (Exception e) {
             log.warn("Lỗi khi tìm kiếm phân trang đê kè: {}", e.getMessage());
@@ -242,6 +250,47 @@ public class DikeRevetmentController {
 
     public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(UUID id) {
         return getHistory(id, null, null, null, null, null);
+    }
+
+    @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("@auth.check(authentication, 'dikerevetment:update')")
+    public ResponseEntity<ApiResponse<List<VtsSystemAttachmentResponse>>> uploadAttachments(
+            @PathVariable UUID id,
+            @RequestParam("files") List<MultipartFile> files,
+            Authentication authentication) {
+        List<VtsSystemAttachmentResponse> uploaded = service.uploadAttachments(id, files, getUserId(authentication));
+        return ResponseEntity.ok(ApiResponse.success("Tải lên tệp đính kèm thành công", uploaded));
+    }
+
+    @GetMapping("/{id}/attachments")
+    @PreAuthorize("@auth.check(authentication, 'dikerevetment:read')")
+    public ResponseEntity<ApiResponse<List<VtsSystemAttachmentResponse>>> listAttachments(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(service.listAttachments(id)));
+    }
+
+    @DeleteMapping("/{id}/attachments/{attId}")
+    @PreAuthorize("@auth.check(authentication, 'dikerevetment:update')")
+    public ResponseEntity<ApiResponse<Void>> deleteAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId,
+            Authentication authentication) {
+        service.deleteAttachment(id, attId, getUserId(authentication));
+        return ResponseEntity.ok(ApiResponse.success("Đã xóa tệp đính kèm", null));
+    }
+
+    @GetMapping("/{id}/attachments/{attId}/download")
+    @PreAuthorize("@auth.check(authentication, 'dikerevetment:read')")
+    public ResponseEntity<byte[]> downloadAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId) throws java.io.IOException {
+        InfrastructureAttachment att = service.getAttachment(id, attId);
+        java.nio.file.Path p = java.nio.file.Paths.get(att.getFilePath());
+        byte[] data = java.nio.file.Files.readAllBytes(p);
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + att.getFileName() + "\"")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(data);
     }
 
     private LocalDateTime parseLocalDateTime(String dateStr) {

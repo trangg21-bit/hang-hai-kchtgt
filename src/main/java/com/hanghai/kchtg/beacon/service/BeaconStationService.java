@@ -2,6 +2,7 @@ package com.hanghai.kchtg.beacon.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hanghai.kchtg.beacon.dto.BeaconHistoryEntry;
 import com.hanghai.kchtg.beacon.dto.beacon_station.BeaconStationResponse;
 import com.hanghai.kchtg.beacon.dto.beacon_station.CreateBeaconStationRequest;
 import com.hanghai.kchtg.beacon.dto.beacon_station.UpdateBeaconStationRequest;
@@ -28,6 +29,7 @@ import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
 import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.user.entity.User;
@@ -99,7 +101,7 @@ public class BeaconStationService {
     }
 
     public List<BeaconStationResponse> search(
-            String name, String code, String type, String status,
+            String name, String code, String type, String primaryLightModel, String status,
             UUID unitId, UUID seaportId, String operator, Integer provinceId,
             Integer operationalStatus, Double stationArea, String approvalStatus, UUID updatedBy,
             String commissionedFrom, String commissionedTo,
@@ -108,6 +110,7 @@ public class BeaconStationService {
                 name,
                 code,
                 type,
+                primaryLightModel,
                 status,
                 unitId,
                 seaportId,
@@ -126,14 +129,14 @@ public class BeaconStationService {
     }
 
     public org.springframework.data.domain.Page<BeaconStationResponse> searchPaged(
-            String name, String code, String type, String status,
+            String name, String code, String type, String primaryLightModel, String status,
             UUID unitId, UUID seaportId, String operator, Integer provinceId,
             Integer operationalStatus, Double stationArea, String approvalStatus, UUID updatedBy,
             String commissionedFrom, String commissionedTo,
             String updatedFrom, String updatedTo,
             org.springframework.data.domain.Pageable pageable) {
         return beaconStationRepo.searchFilteredPaged(
-                name, code, type, status,
+                name, code, type, primaryLightModel, status,
                 unitId, seaportId, operator, provinceId,
                 operationalStatus, stationArea, parseApprovalStatus(approvalStatus), updatedBy,
                 parseLocalDate(commissionedFrom), parseLocalDate(commissionedTo),
@@ -143,6 +146,60 @@ public class BeaconStationService {
     }
 
     // -- CREATE --
+
+    @Transactional
+    public BeaconHistoryEntry toHistoryEntry(InfrastructureHistory h) {
+        BeaconHistoryEntry e = new BeaconHistoryEntry();
+        e.setId(h.getId());
+        e.setApprovalLevel(h.getApprovalLevel());
+        e.setStatus(h.getStatus() != null ? h.getStatus().getCode() : null);
+        e.setApprovedBy(h.getApprovedBy() != null ? userResolverService.resolveName(h.getApprovedBy()) : null);
+        e.setOrgUnitName(null);
+        e.setApprovedDate(h.getApprovedDate());
+        e.setReason(h.getReason());
+        e.setChangedField(h.getChangedField());
+        e.setPreviousValue(h.getPreviousValue());
+        e.setNewValue(h.getNewValue());
+        return e;
+    }
+
+    /**
+     * Nhật ký thay đổi/phê duyệt của một đèn biển — đọc từ bảng dùng chung
+     * infrastructure_history (refType = LIGHTHOUSE), lọc + phân trang Ở SERVER
+     * giống /vts-operation-center & /vts-system.
+     */
+    @Transactional(readOnly = true)
+    public List<BeaconHistoryEntry> getHistory(UUID id, Integer page, Integer pageSize, String keyword,
+            String fromDate, String toDate) {
+        beaconStationRepo.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Đèn biển không tìm thấy: " + id));
+        String normalizedKeyword = normalizeHistoryKeyword(keyword);
+        boolean paged = page != null && pageSize != null && pageSize > 0;
+        java.time.LocalDateTime from = parseLocalDateTime(fromDate);
+        java.time.LocalDateTime to = parseLocalDateTime(toDate);
+        List<InfrastructureHistory> list;
+        if (normalizedKeyword == null && from == null && to == null) {
+            list = paged
+                    ? infraHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+                            InfrastructureType.LIGHTHOUSE, id,
+                            org.springframework.data.domain.PageRequest.of(page, pageSize))
+                    : infraHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+                            InfrastructureType.LIGHTHOUSE, id);
+        } else {
+            list = infraHistoryRepo.searchHistory(
+                    InfrastructureType.LIGHTHOUSE, id, normalizedKeyword, from, to,
+                    paged ? org.springframework.data.domain.PageRequest.of(page, pageSize)
+                            : org.springframework.data.domain.Pageable.unpaged());
+        }
+        return list.stream().map(this::toHistoryEntry).collect(java.util.stream.Collectors.toList());
+    }
+
+    private static String normalizeHistoryKeyword(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) return null;
+        String n = java.text.Normalizer.normalize(keyword.trim().toLowerCase(java.util.Locale.ROOT),
+                java.text.Normalizer.Form.NFD).replaceAll("\\p{M}", "");
+        return "%" + n + "%";
+    }
 
     @Transactional
     public BeaconStationResponse create(CreateBeaconStationRequest request) {
@@ -203,16 +260,50 @@ public class BeaconStationService {
         if ("submit".equals(request.getAction())) {
             entity.setStatus("PENDING_APPROVAL");
             entity.setApprovalLevel(1);
+            entity.setSubmittedBy(SecurityUtils.getCurrentUserId());
+            entity.setSubmittedAt(LocalDateTime.now());
+        } else if ("approved".equals(request.getAction())) {
+            // "Lưu và phê duyệt" — duyệt thẳng 2 cấp (chuẩn KCHT, mirror BuoyService.create)
+            requireApproveC2Permission();
+            entity.setStatus("APPROVED");
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            entity.setApprovalLevel(2);
+            java.util.UUID uid = SecurityUtils.getCurrentUserId();
+            entity.setSubmittedBy(uid);
+            entity.setSubmittedAt(LocalDateTime.now());
+            entity.setApproverLevel1(uid);
+            entity.setApprovedDateLevel1(LocalDateTime.now());
+            entity.setApproverLevel2(uid);
+            entity.setApprovedDateLevel2(LocalDateTime.now());
         }
 
         entity = beaconStationRepo.save(entity);
 
-        // No GIS sync on create: coordinates no longer travel on the create request
-        // (they were moved out to the spatial object). They arrive via update, which
-        // creates the spatial object once a real position is known. Writing one here
-        // would persist a meaningless "POINT(null null)".
+        // Đồng bộ tọa độ GIS ngay khi tạo (chuẩn /vts-operation-center): coordinates = WKT từ form.
+        // Chỉ tạo spatial object khi đã có vị trí thật — không ghi "POINT(null null)".
+        if (request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty()) {
+            GisGeometryType geomType = resolveGisGeometryType(request.getGeometryType(), request.getCoordinates());
+            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                    null,
+                    entity.getName(),
+                    "DENBIEN_" + entity.getCode(),
+                    geomType,
+                    resolveSpatialObjectType(geomType),
+                    request.getCoordinates().trim(),
+                    entity.getId(),
+                    InfrastructureType.LIGHTHOUSE);
+            entity.setSpatialId(spatialObj.getId());
+            entity = beaconStationRepo.save(entity);
+        }
 
-        logHistory(entity, BeaconHistoryActionType.CREATE, null, null, toJson(entity));
+        // Chuẩn phê duyệt M-1006 mục 5 (Ca sử dụng 8): màn Lịch sử chỉ hiển thị các
+        // thay đổi của hồ sơ ĐÃ DUYỆT (ghi bản cũ khi sửa hồ sơ đã duyệt) và các mốc duyệt —
+        // KHÔNG ghi khi tạo mới rồi chỉ chọn "Lưu tạm" (DRAFT).
+        // Ở create: chỉ ghi khi hồ sơ được tạo và đi thẳng vào luồng phê duyệt
+        // ("Lưu và gửi phê duyệt" / "Lưu và phê duyệt").
+        if ("submit".equals(request.getAction()) || "approved".equals(request.getAction())) {
+            logHistory(entity, BeaconHistoryActionType.CREATE, null, null, toJson(entity));
+        }
         notificationService.sendApprovalNotification(entity);
 
         return toResponse(entity);
@@ -245,31 +336,20 @@ public class BeaconStationService {
             entity.setType(request.getType());
         }
 
-        // Handle latitude/longitude updates
-        Double currentLon = null;
-        Double currentLat = null;
+        // Tọa độ GIS (chuẩn /vts-operation-center): nhận coordinates = WKT từ form;
+        // nếu trống → giữ vị trí spatial hiện có (chỉ đổi khi người dùng chọn vị trí mới).
+        String requestedWkt = request.getCoordinates() != null ? request.getCoordinates().trim() : "";
+        String existingWkt = null;
         if (entity.getSpatialId() != null) {
             Optional<GisSpatialObject> spatialObjOpt = gisSpatialObjectService.findById(entity.getSpatialId());
             if (spatialObjOpt.isPresent()) {
-                String coordsStr = spatialObjOpt.get().getCoordinates();
-                try {
-                    String clean = coordsStr.replace("POINT", "").replace("(", "").replace(")", "").trim();
-                    String[] parts = clean.split("\\s+");
-                    if (parts.length == 2) {
-                        currentLon = Double.parseDouble(parts[0]);
-                        currentLat = Double.parseDouble(parts[1]);
-                    }
-                } catch (Exception ex) {
-                    // ignore
-                }
+                existingWkt = spatialObjOpt.get().getCoordinates();
             }
         }
-        // The update request no longer carries coordinates, so the existing spatial
-        // position is the only source; keep it as-is.
-        String wkt = null;
-        if (currentLon != null && currentLat != null) {
-            wkt = "POINT(" + currentLon + " " + currentLat + ")";
-        }
+        String wkt = !requestedWkt.isEmpty() ? requestedWkt : existingWkt;
+        GisGeometryType updateGeomType = !requestedWkt.isEmpty()
+                ? resolveGisGeometryType(request.getGeometryType(), requestedWkt)
+                : (existingWkt != null ? resolveGisGeometryType(entity.getGeometryType(), existingWkt) : GisGeometryType.POINT);
 
         if (request.getTowerColor() != null)
             entity.setTowerColor(request.getTowerColor());
@@ -339,21 +419,46 @@ public class BeaconStationService {
                 || entity.getApprovalStatus() == ApprovalStatus.APPROVED
                 || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
 
-        if (wasApproved) {
-            entity.setStatus("APPROVED_L2");
+        // Chuyển trạng thái theo action lưu (chuẩn 2 cấp KCHT):
+        //   approved → APPROVED ("Lưu và phê duyệt", cấp Cục — giữ nguyên hiệu lực)
+        //   submit   → PENDING_APPROVAL ("Cập nhật và gửi phê duyệt")
+        //   draft    → giữ nguyên trạng thái (Lưu tạm / Bị trả về vẫn ở trạng thái sửa được)
+        if ("approved".equals(request.getAction())) {
+            requireApproveC2Permission();
+            entity.setStatus("APPROVED");
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            entity.setApprovalLevel(2);
+            java.util.UUID uid = SecurityUtils.getCurrentUserId();
+            entity.setSubmittedBy(uid);
+            entity.setSubmittedAt(LocalDateTime.now());
+            // Duyệt thẳng từ Lưu tạm/Bị trả về: đánh dấu luôn người duyệt cấp Cảng vụ/Chi cục (đủ 2 cấp)
+            if (entity.getApproverLevel1() == null) {
+                entity.setApproverLevel1(uid);
+                entity.setApprovedDateLevel1(LocalDateTime.now());
+            }
+            entity.setApproverLevel2(uid);
+            entity.setApprovedDateLevel2(LocalDateTime.now());
+        } else if ("submit".equals(request.getAction())) {
+            entity.setStatus("PENDING_APPROVAL");
+            entity.setApprovalStatus(ApprovalStatus.PROPOSED);
+            entity.setApprovalLevel(1);
+            entity.setSubmittedBy(SecurityUtils.getCurrentUserId());
+            entity.setSubmittedAt(LocalDateTime.now());
+        } else if (wasApproved) {
+            entity.setStatus("APPROVED");
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
         }
 
         entity = beaconStationRepo.save(entity);
 
-        // Sync GIS spatial object
+        // Sync GIS spatial object (chuẩn /vts-operation-center: tạo khi chưa có, cập nhật WKT/loại hình)
         if (wkt != null) {
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     entity.getSpatialId(),
                     entity.getName(),
                     "DENBIEN_" + entity.getCode(),
-                    GisGeometryType.POINT,
-                    GisSpatialObjectType.POINT_LIGHTHOUSE,
+                    updateGeomType,
+                    resolveSpatialObjectType(updateGeomType),
                     wkt, entity.getId(),
                     InfrastructureType.LIGHTHOUSE);
             if (entity.getSpatialId() == null) {
@@ -407,9 +512,11 @@ public class BeaconStationService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Đèn biển không tìm thấy: " + id));
 
-        if (!"DRAFT".equals(entity.getStatus())) {
+        if (!"DRAFT".equals(entity.getStatus())
+                && !"REJECTED_LEVEL1".equals(entity.getStatus())
+                && !"REJECTED_LEVEL2".equals(entity.getStatus())) {
             throw new IllegalStateException(
-                    "Chỉ có thể gửi phê duyệt khi status = DRAFT");
+                    "Chỉ có thể gửi phê duyệt khi đèn biển ở trạng thái Lưu tạm hoặc bị trả về");
         }
 
         entity.setStatus("PENDING_APPROVAL");
@@ -439,6 +546,7 @@ public class BeaconStationService {
                     "Bạn không thể phê duyệt bản do chính mình gửi");
         }
 
+        ApprovalStatus previousApprovalStatus = entity.getApprovalStatus();
         entity.setStatus("APPROVED_LEVEL1");
         entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         entity.setApprovalLevel(1);
@@ -447,7 +555,10 @@ public class BeaconStationService {
         entity.setApprovalContentLevel1(note);
         beaconStationRepo.save(entity);
 
-        logHistory(entity, BeaconHistoryActionType.APPROVE_L1, null, null, null);
+        // Ghi nội dung chuyển trạng thái (chuẩn /vts-operation-center) — tránh log rỗng không có khối thông tin
+        logHistory(entity, BeaconHistoryActionType.APPROVE_L1, "approvalStatus",
+                previousApprovalStatus != null ? previousApprovalStatus.getLabel() : null,
+                entity.getApprovalStatus().getLabel());
 
         return toResponse(entity);
     }
@@ -469,6 +580,7 @@ public class BeaconStationService {
                     "Bạn không thể phê duyệt bản do chính mình gửi");
         }
 
+        ApprovalStatus previousApprovalStatus = entity.getApprovalStatus();
         entity.setStatus("APPROVED");
         entity.setApprovalStatus(ApprovalStatus.APPROVED);
         entity.setApprovalLevel(2);
@@ -477,7 +589,10 @@ public class BeaconStationService {
         entity.setApprovalContentLevel2(note);
         beaconStationRepo.save(entity);
 
-        logHistory(entity, BeaconHistoryActionType.APPROVE_L2, null, null, null);
+        // Ghi nội dung chuyển trạng thái (chuẩn /vts-operation-center) — tránh log rỗng không có khối thông tin
+        logHistory(entity, BeaconHistoryActionType.APPROVE_L2, "approvalStatus",
+                previousApprovalStatus != null ? previousApprovalStatus.getLabel() : null,
+                entity.getApprovalStatus().getLabel());
 
         return toResponse(entity);
     }
@@ -494,7 +609,7 @@ public class BeaconStationService {
         }
 
         boolean atLevel2 = "APPROVED_LEVEL1".equals(entity.getStatus());
-        entity.setStatus("DRAFT");
+        entity.setStatus(atLevel2 ? "REJECTED_LEVEL2" : "REJECTED_LEVEL1");
         entity.setApprovalStatus(atLevel2 ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
         entity.setRejectionReason(rejectReason);
         beaconStationRepo.save(entity);
@@ -613,12 +728,14 @@ public class BeaconStationService {
     private BeaconStationResponse toResponse(BeaconStation entity) {
         String unitName = orgUnitCacheService.getName(entity.getUnitId());
 
+        String coordinates = null;
         Double latitude = null;
         Double longitude = null;
         if (entity.getSpatialId() != null) {
             Optional<GisSpatialObject> spatialObjOpt = gisSpatialObjectService.findById(entity.getSpatialId());
             if (spatialObjOpt.isPresent()) {
                 String coordsStr = spatialObjOpt.get().getCoordinates();
+                coordinates = coordsStr;
                 try {
                     String clean = coordsStr.replace("POINT", "").replace("(", "").replace(")", "").trim();
                     String[] parts = clean.split("\\s+");
@@ -685,6 +802,9 @@ public class BeaconStationService {
                 .mapSymbolId(entity.getMapSymbolId())
                 .coordinateSystem(entity.getCoordinateSystem())
                 .displayRule(entity.getDisplayRule())
+                .coordinates(coordinates)
+                .latitude(latitude)
+                .longitude(longitude)
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .updatedBy(entity.getUpdatedBy())
@@ -692,13 +812,15 @@ public class BeaconStationService {
     }
 
     private boolean isApprovedStatus(String status) {
-        return "APPROVED_L1".equals(status)
+        return "APPROVED".equals(status)
                 || "APPROVED_L2".equals(status)
+                || "APPROVED_LEVEL2".equals(status)
                 || "PUBLISHED".equals(status);
     }
 
     private boolean isInApprovalProcess(String status) {
         return "PENDING_APPROVAL".equals(status)
+                || "APPROVED_LEVEL1".equals(status)
                 || "APPROVED_L1".equals(status)
                 || "APPROVED_L2".equals(status);
     }
@@ -716,6 +838,24 @@ public class BeaconStationService {
 
     private java.util.UUID resolveCreatedBy(BeaconStation entity) {
         return entity.getCreatedBy();
+    }
+
+    /**
+     * "Lưu và phê duyệt" (action=approved) chỉ được phép cho người có quyền duyệt C2
+     * hoặc quản trị nâng cao (chuẩn F-092/AC-006 — backend chặn non-Cục).
+     */
+    private void requireApproveC2Permission() {
+        if (SecurityUtils.isElevatedAdministrator()) {
+            return;
+        }
+        java.util.Set<String> perms = SecurityUtils.getCurrentUserPermissions();
+        if (perms == null
+                || !perms.contains("beaconstation:approvec2")
+                && !perms.contains("beaconstation:approve")
+                && !perms.contains("data:approvec2")) {
+            throw new AccessDeniedException(
+                    "Bạn không có quyền phê duyệt — thao tác \"Lưu và phê duyệt\" cần quyền duyệt cấp Cục");
+        }
     }
 
     // -- BUG FIX #1: Shared ObjectMapper + JsonNode comparison --
@@ -798,6 +938,16 @@ public class BeaconStationService {
             attachment.setUploadedBy(userId);
             saved.add(attachmentRepository.save(attachment));
         }
+        // Ghi nhật ký "Tài liệu đính kèm" (chuẩn /vts-operation-center) — chỉ khi bản ghi ĐÃ DUYỆT
+        BeaconStation station = beaconStationRepo.findById(entityId).orElse(null);
+        if (station != null && (isApprovedStatus(station.getStatus())
+                || station.getApprovalStatus() == ApprovalStatus.APPROVED
+                || station.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2)) {
+            String uploadedNames = files.stream()
+                    .map(f -> f.getOriginalFilename() != null ? f.getOriginalFilename() : "unknown")
+                    .collect(java.util.stream.Collectors.joining("; "));
+            logHistory(station, BeaconHistoryActionType.UPDATE, "attachments", null, uploadedNames);
+        }
         return saved.stream().map(this::toAttachmentDto).toList();
     }
 
@@ -819,6 +969,47 @@ public class BeaconStationService {
             // ignore file deletion failure; the DB record is still removed
         }
         attachmentRepository.delete(attachment);
+        // Ghi nhật ký xóa "Tài liệu đính kèm" (chuẩn /vts-operation-center) — chỉ khi bản ghi ĐÃ DUYỆT
+        BeaconStation station = beaconStationRepo.findById(entityId).orElse(null);
+        if (station != null && (isApprovedStatus(station.getStatus())
+                || station.getApprovalStatus() == ApprovalStatus.APPROVED
+                || station.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2)) {
+            logHistory(station, BeaconHistoryActionType.UPDATE, "attachments", attachment.getFileName(), null);
+        }
+    }
+
+    /**
+     * Lấy file đính kèm của đèn biển (dùng cho endpoint tải xuống — chuẩn /vts-operation-center).
+     */
+    public Attachment getAttachment(UUID entityId, UUID attachmentId) {
+      BeaconStation parent = beaconStationRepo.findById(entityId)
+        .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy đèn biển: " + entityId));
+      orgUnitScopeService.requireOrganizationInScope(parent.getOrgUnitId());
+      Attachment attachment = attachmentRepository.findById(attachmentId)
+        .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
+      if (!"BEACON_LIGHT".equals(attachment.getEntityType()) || !attachment.getEntityId().equals(entityId)) {
+        throw new IllegalArgumentException("File không thuộc đèn biển này");
+      }
+      return attachment;
+    }
+
+    private static GisGeometryType resolveGisGeometryType(String geometryType, String wkt) {
+        String g = geometryType != null ? geometryType.trim().toUpperCase(java.util.Locale.ROOT) : "";
+        if (g.contains("POLYGON")) return GisGeometryType.POLYGON;
+        if (g.contains("LINE")) return GisGeometryType.LINE;
+        if (g.contains("POINT")) return GisGeometryType.POINT;
+        String w = wkt != null ? wkt.trim().toUpperCase(java.util.Locale.ROOT) : "";
+        if (w.contains("POLYGON")) return GisGeometryType.POLYGON;
+        if (w.contains("LINESTRING") || w.contains("LINE")) return GisGeometryType.LINE;
+        return GisGeometryType.POINT;
+    }
+
+    private static GisSpatialObjectType resolveSpatialObjectType(GisGeometryType geomType) {
+        return switch (geomType) {
+            case LINE -> GisSpatialObjectType.LINE_OTHER;
+            case POLYGON -> GisSpatialObjectType.POLYGON_OTHER;
+            default -> GisSpatialObjectType.POINT_LIGHTHOUSE;
+        };
     }
 
     private AttachmentDto toAttachmentDto(Attachment entity) {

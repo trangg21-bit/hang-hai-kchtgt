@@ -1,0 +1,117 @@
+{
+  "triage_id": "TRI-1788491846105-2714",
+  "created_at": 1788491846105,
+  "request_summary": "Áp cùng chuẩn hóa phê duyệt đã làm cho /cctv sang 3 màn cùng template: scada, transmission, vts-assist (tách tab Từ chối theo cấp, ẩn Lưu tạm khi sửa APPROVED, gate quyền duyệt cho Chỉnh sửa hồ sơ đã duyệt, lịch sử/chi tiết phân cấp, dọn legacy schema)",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/TODO-chuan-hoa-ui-va-phe-duyet.md",
+      "frontend/src/services/scada/ScadaListPage.tsx",
+      "frontend/src/services/scada/schema.ts",
+      "frontend/src/services/transmission/schema.ts",
+      "frontend/src/services/transmission/TransmissionListPage.tsx",
+      "frontend/src/services/vtsassist/schema.ts",
+      "frontend/src/services/vtsassist/VtsAssistListPage.tsx"
+    ],
+    "impact_files": [
+      "docs/TODO-chuan-hoa-ui-va-phe-duyet.md",
+      "frontend/src/services/scada/ScadaListPage.tsx",
+      "frontend/src/services/scada/schema.ts",
+      "frontend/src/services/transmission/schema.ts",
+      "frontend/src/services/transmission/TransmissionListPage.tsx",
+      "frontend/src/services/vtsassist/schema.ts",
+      "frontend/src/services/vtsassist/VtsAssistListPage.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "frontend/src/services/scada/schema.ts"
+      },
+      {
+        "group": "schema",
+        "path": "frontend/src/services/transmission/schema.ts"
+      },
+      {
+        "group": "schema",
+        "path": "frontend/src/services/vtsassist/schema.ts"
+      }
+    ],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C3: one-way door: schema:frontend/src/services/scada/schema.ts, schema:frontend/src/services/transmission/schema.ts, schema:frontend/src/services/vtsassist/schema.ts — floors at C3 regardless of size (7 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "3 màn /scada, /transmission, /vts-assist (Hệ thống SCADA, truyền dẫn, phụ trợ VTS): StatusTabs + drawer Chỉnh sửa + modal Lịch sử + drawer chi tiết",
+  "blast_radius": 7,
+  "done_oracle": "Tại /scada, /transmission, /vts-assist: 7 tab trạng thái phê duyệt (tách 'Từ chối cấp Cảng vụ/Chi cục' và 'Từ chối cấp cục', mỗi tab lọc đúng 1 mã REJECTED_LEVEL1/2 — hết lỗi tab đếm gộp nhưng chỉ lọc L1); chân form SỬA hồ sơ Đã duyệt không còn nút 'Lưu tạm' (chỉ Hủy + 'Lưu và phê duyệt', và người mở Chỉnh sửa hồ sơ APPROVED phải có quyền approvec2 của module); lịch sử phân biệt 'Phê duyệt cấp Cảng vụ/Cấp Cục'/'Từ chối cấp Cảng vụ/Cấp Cục'; chi tiết hết nhãn 'Nội dung phê duyệt' lặp 3 lần; schema mỗi module bỏ legacy APPROVAL_STATUS_OPTIONS/approvalStatusBadge/listFiltersSchema (không còn file nào import).",
+  "verification_commands": [
+    {
+      "command": "npx biome check src/services/scada/ScadaListPage.tsx src/services/scada/schema.ts src/services/transmission/TransmissionListPage.tsx src/services/transmission/schema.ts src/services/vtsassist/VtsAssistListPage.tsx src/services/vtsassist/schema.ts",
+      "cwd": "frontend",
+      "timeout_ms": 300000
+    },
+    {
+      "command": "npx tsc --noEmit -p tsconfig.app.json",
+      "cwd": "frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/services/scada/ScadaListPage.tsx",
+      "line": 2238,
+      "quote": "            label: \"Từ chối\",",
+      "source_hash": "fa26fe9483e6b1a64a8d8032e9bb99e9c330eafbcc54fd3517480cb6a333240b",
+      "quote_hash": "cead7c5ab97a6ef7caa0bcad8bb29cbdc64a88b0405fef2eea3bb75367866983",
+      "note": "Tab Từ chối gộp 2 cấp của SCADA"
+    },
+    {
+      "file": "frontend/src/services/scada/ScadaListPage.tsx",
+      "line": 1557,
+      "quote": "      if (record.approvalStatus === \"DRAFT\" || record.approvalStatus === \"APPROVED\") {",
+      "source_hash": "fa26fe9483e6b1a64a8d8032e9bb99e9c330eafbcc54fd3517480cb6a333240b",
+      "quote_hash": "920956fa61e03e4839434ca26a8379e061e164c66dbb51aa4eebf93539b80a65",
+      "note": "Gate Chỉnh sửa SCADA: DRAFT hoặc APPROVED, thiếu điều kiện quyền duyệt cho APPROVED"
+    },
+    {
+      "file": "frontend/src/services/transmission/TransmissionListPage.tsx",
+      "line": 2062,
+      "quote": "            label: \"Từ chối\",",
+      "source_hash": "5ec4594bb253ebe9640e007adec9ac7f9ad42b690fd2386d548f42a725e8604d",
+      "quote_hash": "cead7c5ab97a6ef7caa0bcad8bb29cbdc64a88b0405fef2eea3bb75367866983",
+      "note": "Tab Từ chối gộp 2 cấp của Transmission"
+    },
+    {
+      "file": "frontend/src/services/vtsassist/VtsAssistListPage.tsx",
+      "line": 2033,
+      "quote": "            count: (tabCounts[\"REJECTED_LEVEL1\"] ?? 0) + (tabCounts[\"REJECTED_LEVEL2\"] ?? 0),",
+      "source_hash": "64a4ad7cf8a7cbe667be319b9d728c778b0feb78d4fe98242b0ebe6091115efd",
+      "quote_hash": "e55794b81ab0f4c6bc2377f2c0d6118b520f4f9da5f24157f8b0752a2dde3994",
+      "note": "Count tab Từ chối đang gộp REJECTED_LEVEL1+2"
+    },
+    {
+      "file": "frontend/src/services/vtsassist/VtsAssistListPage.tsx",
+      "line": 3259,
+      "quote": "            {updateTarget?.approvalStatus === 'APPROVED' && canSaveAndApprove && (",
+      "source_hash": "64a4ad7cf8a7cbe667be319b9d728c778b0feb78d4fe98242b0ebe6091115efd",
+      "quote_hash": "089ac70f9d566a9cc4885fa028f3f7201b5487a0d3a4b116ca4355ffb2cc5a8d",
+      "note": "Nút Lưu và phê duyệt ở footer sửa — Lưu tạm phía trên cần ẩn khi APPROVED"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "3b07a5a6421c35cc8b0c2382bc435e35e9fc5c34",
+    "dirty": true,
+    "captured_at": 1788491846296
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

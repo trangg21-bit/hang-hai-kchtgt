@@ -93,7 +93,7 @@ Trái với `docs/conventions/list-screen-ui-standard.md`. Ba màn in đậm là
 
 Theo `docs/conventions/approval-2-level-spec.md` (kết quả rà soát 2026-08-26):
 
-- [ ] **CCTV** — chỉ `/approve` + `/reject`, không có `/submit`; tạo mới set thẳng `APPROVED`.
+- [x] **CCTV** — đã đủ luồng chuẩn 2 cấp (`/submit`, `/approve/c1`, `/approve/c2`, T12 lưu-và-phê-duyệt — kiểm chứng lại 2026-09-04). UI `/cctv` đã chuẩn hóa cùng ngày: 7 tab trạng thái (tách "Từ chối" theo cấp Cảng vụ/Chi cục và cấp cục), chân form sửa hồ sơ Đã duyệt chỉ còn "Lưu và phê duyệt", lịch sử phân biệt cấp phê duyệt. Đợt 2026-09-04: áp dụng cùng chuẩn cho **`/scada`, `/transmission`, `/vts-assist`** (3 màn clone template của `/cctv`).
 - [ ] **Đèn biển & nhà trạm (BeaconStation)** — chỉ `/approve-l1`, `approveL1` set thẳng `APPROVED`.
 - [ ] **Trạm Radar** — backend đủ c1/c2 nhưng frontend chỉ dựng 1 cấp
       (`RadarStationList.tsx` ghi rõ "approval 1 cấp"), hồ sơ kẹt ở `APPROVED_LEVEL1`.
@@ -103,10 +103,14 @@ Theo `docs/conventions/approval-2-level-spec.md` (kết quả rà soát 2026-08-
       (VTS và Cospas-Sarsat đã sửa xong, hai đài này làm y hệt cách đó.)
 - [ ] **Cơ sở sửa chữa & đóng tàu** — có `/approve/c1`, `/c2` nhưng **không có endpoint submit**;
       dùng status legacy `PROPOSED`/`REJECTED`.
-- [ ] **Đê kè (frontend)** — `DikeRevetmentList` gọi `dikeRevetmentApproval.approveL1()` /
-      `.reject()` là hai hàm **không tồn tại** trong service → bấm Phê duyệt/Từ chối lỗi JS.
-      `TAB_QUERY_MAP` map tab "Nháp" → `PROPOSED` trong khi backend tạo mới = `DRAFT`
-      → tab Nháp luôn 0 và không hiện nút Gửi phê duyệt / Xóa.
+- [x] **Đê kè (frontend)** — ĐÃ CHUẨN HÓA 04/09/2026 (C1 inline, TRI-1788489911150-71c6):
+      `DikeRevetmentList` + `DikeRevetmentForm` dùng trạng thái chuẩn 7 mức
+      (DRAFT / PENDING_APPROVAL / APPROVED_LEVEL1 / APPROVED / REJECTED_LEVEL1 /
+      REJECTED_LEVEL2), tab & filter hết mã legacy PROPOSED/REJECTED; duyệt/từ chối
+      phân cấp đúng endpoint (approvec1/approvec2, rejectc1/rejectc2); footer Tạo mới &
+      Cập nhật theo trạng thái hồ sơ (Lưu tạm / Lưu và gửi phê duyệt / Lưu và phê duyệt);
+      xóa chỉ hồ sơ Lưu tạm (quy tắc 11). Ghi chú: bộ nút vẫn tự dựng — chưa gom về
+      `FormSaveFooter` (còn lại trong mục 1).
 
 ### 4b. Quy tắc 12 + nhãn trạng thái — ĐÃ LÀM 26/08/2026
 

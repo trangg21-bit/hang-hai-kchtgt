@@ -566,7 +566,7 @@ export const themeScopedCss = (scope: string): string => `
 .${scope} .ant-btn { border-radius: 999px !important; }
 .${scope} input.ant-input:not(.ant-space-compact *) { border-radius: 999px !important; }
 .${scope} .ant-input:not(textarea):not(.ant-space-compact *) { border-radius: 999px !important; }
-.${scope} .ant-input-affix-wrapper:not(.ant-input-affix-wrapper-textarea-with-clear-btn):not(.ant-space-compact *) {
+.${scope} .ant-input-affix-wrapper:not(.ant-input-textarea-affix-wrapper):not(.ant-input-affix-wrapper-textarea-with-clear-btn):not(.ant-space-compact *) {
   border-radius: 999px !important;
   padding: 0 12px !important;
   height: 40px !important;
@@ -585,10 +585,13 @@ export const themeScopedCss = (scope: string): string => `
   font-size: 13px !important;
   line-height: 38px !important;
 }
-.${scope} textarea.ant-input,
 .${scope} .ant-input-textarea,
-.${scope} .ant-input-textarea > textarea,
 .${scope} .ant-input-textarea-show-count,
+.${scope} .ant-input-textarea-affix-wrapper {
+  padding: 0 !important;
+}
+.${scope} textarea.ant-input,
+.${scope} .ant-input-textarea > textarea,
 .${scope} .ant-input-textarea-show-count textarea,
 textarea.ant-input {
   border-radius: 20px !important;
@@ -632,7 +635,7 @@ textarea.ant-input {
 .${scope} .chk-detail-grid {
   display: grid !important;
   grid-template-columns: 1fr 1fr !important;
-  column-gap: 24px !important;
+  column-gap: 32px !important;
   row-gap: 0 !important;
 }
 .chk-detail-row,
@@ -640,9 +643,10 @@ textarea.ant-input {
   display: flex !important;
   align-items: flex-start !important;
   min-height: 38px !important;
-  padding: 8px 0 !important;
+  padding: 9px 0 !important;
   border-bottom: 1px solid ${borderDefault} !important;
   line-height: 1.5 !important;
+  gap: 12px !important;
 }
 .chk-detail-row--full,
 .${scope} .chk-detail-row--full {
@@ -650,7 +654,7 @@ textarea.ant-input {
 }
 .chk-detail-label,
 .${scope} .chk-detail-label {
-  width: 190px !important;
+  width: 230px !important;
   flex-shrink: 0 !important;
   color: ${sidebarBg} !important;
   font-weight: ${fontWeightBold} !important;
@@ -662,6 +666,7 @@ textarea.ant-input {
 .${scope} .chk-detail-label::after {
   content: ':' !important;
   margin-left: 1px !important;
+  margin-right: 4px !important;
 }
 .chk-detail-value,
 .${scope} .chk-detail-value {
@@ -671,7 +676,7 @@ textarea.ant-input {
   min-width: 0 !important;
   text-align: left !important;
   line-height: 1.5 !important;
-  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
 }
 
 /* ── Modal chuẩn giao diện ── */
