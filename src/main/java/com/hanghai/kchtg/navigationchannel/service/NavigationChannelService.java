@@ -600,7 +600,7 @@ public class NavigationChannelService {
         String keywordLike = (kw != null && !kw.trim().isEmpty()) ? "%" + kw.trim().toLowerCase() + "%" : null;
         Page<NavigationChannel> r = repo.searchDocuments(orgUnitId, seaportId, provinceId, conditionStatus,
                 keywordLike, status,
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
+                PageRequest.of(page, size, Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT), Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID))));
         return SearchResultResponse.builder()
                 .results(r.getContent().stream().map(nc -> toResponse(nc, false)).collect(Collectors.toList()))
                 .totalElements(r.getTotalElements())

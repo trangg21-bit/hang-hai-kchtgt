@@ -1199,9 +1199,20 @@ export default function NavigationChannelList() {
         editId={editingId}
         mode={modalMode}
         onCancel={() => { setIsModalOpen(false); setEditingId(null); }}
-        onSuccess={() => {
+        onSuccess={(savedRecord) => {
           setIsModalOpen(false);
           setEditingId(null);
+          setActiveTab('all');
+          setPage(1);
+          setSortField('updatedAt');
+          setSortOrder('desc');
+          if (savedRecord && savedRecord.id) {
+            setDataSource((prev) => {
+              const filtered = prev.filter((item) => item.id !== savedRecord.id);
+              const now = new Date().toISOString();
+              return [{ ...savedRecord, updatedAt: savedRecord.updatedAt || now }, ...filtered];
+            });
+          }
           refreshAfterMutation();
         }}
       />

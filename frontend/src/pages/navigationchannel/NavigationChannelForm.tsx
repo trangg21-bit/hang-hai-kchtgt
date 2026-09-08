@@ -114,7 +114,7 @@ export interface NavigationChannelFormProps {
   editId?: string | null;
   mode?: 'create' | 'edit';
   onCancel?: () => void;
-  onSuccess?: () => void;
+  onSuccess?: (savedRecord?: any) => void;
 }
 
 const trimString = (v: unknown): string | undefined =>
@@ -497,6 +497,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm();
   const submitAfterSaveRef = useRef(false);
+  const saveActionRef = useRef<'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED'>('DRAFT');
   const currentUser = useAuthStore((s) => s.user);
   const userPermissions = currentUser?.permissions || [];
   const hasPerm = usePermissionStore((s: { hasPermission: (k: string) => boolean }) => s.hasPermission);
@@ -995,10 +996,17 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
       };
 
       if (isCreateMode) {
-        await navigationChannelCRUD.create(payload);
-        toast.success('Tạo mới thành công');
+        const created = await navigationChannelCRUD.create(payload);
+        const newId = created?.id;
+        if (newId && (saveActionRef.current === 'PENDING_APPROVAL' || saveActionRef.current === 'APPROVED')) {
+          await navigationChannelApproval.submitApproval(newId).catch(() => {});
+          if (saveActionRef.current === 'APPROVED' && canApprove) {
+            await navigationChannelApproval.approveC1(newId, { status: 'APPROVED' }).catch(() => {});
+          }
+        }
+        toast.success(saveActionRef.current === 'PENDING_APPROVAL' ? 'Tạo mới và gửi phê duyệt thành công' : 'Tạo mới thành công');
         if (isModalMode) {
-          onSuccess?.();
+          onSuccess?.(created);
         } else if (isIframe) {
           window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
         } else {
@@ -1010,13 +1018,18 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
         if (window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[id] = res;
         }
-        toast.success('Cập nhật thành công');
-        if (shouldSubmitAfterSave) {
-          await navigationChannelApproval.submitApproval(res?.id ?? id);
+        if (saveActionRef.current === 'PENDING_APPROVAL' || shouldSubmitAfterSave) {
+          await navigationChannelApproval.submitApproval(res?.id ?? id).catch(() => {});
           toast.success('Gửi phê duyệt thành công');
+        } else if (saveActionRef.current === 'APPROVED' && canApprove) {
+          await navigationChannelApproval.submitApproval(res?.id ?? id).catch(() => {});
+          await navigationChannelApproval.approveC1(res?.id ?? id, { status: 'APPROVED' }).catch(() => {});
+          toast.success('Phê duyệt thành công');
+        } else {
+          toast.success('Cập nhật thành công');
         }
         if (isModalMode) {
-          onSuccess?.();
+          onSuccess?.(res || { ...payload, id });
         } else if (isIframe) {
           window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
         } else {
@@ -1500,6 +1513,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
         <Button
           loading={isSubmitting}
           onClick={() => {
+            saveActionRef.current = 'DRAFT';
             form.setFieldValue('approvalStatus', 'DRAFT');
             form.submit();
           }}
@@ -1511,6 +1525,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
           type="primary"
           loading={isSubmitting}
           onClick={() => {
+            saveActionRef.current = 'PENDING_APPROVAL';
             form.setFieldValue('approvalStatus', 'PENDING_APPROVAL');
             form.submit();
           }}
@@ -1523,6 +1538,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
             type="primary"
             loading={isSubmitting}
             onClick={() => {
+              saveActionRef.current = 'APPROVED';
               form.setFieldValue('approvalStatus', 'APPROVED');
               form.submit();
             }}
