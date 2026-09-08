@@ -1,24 +1,22 @@
 import { useState, useMemo } from 'react';
-import { Row, Col, Form, Input, Select, InputNumber, Tabs, Button, Space, Table, Modal } from 'antd';
+import { Row, Col, Form, Input, Select, InputNumber, Tabs, Button, Space, Modal, type FormInstance, type InputNumberProps } from 'antd';
 import { PlusOutlined, DeleteOutlined, EnvironmentOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
 import toast from '../../components/ToastNotification';
-import { OrgUnitTreeSelect } from '../../components/org-unit';
+import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import {
-  colors, textPrimary, textTertiary, borderDefault, statusCritical,
-  fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
-  radiusPill, radiusMd, spaceSm, spaceMd, spaceFormField, surfaceCard,
-  readonlyInputStyle, actionPrimary, sidebarBg,
-  drawerTabBarStyle, drawerTabContentStyle, drawerFormScrollStyle,
+  colors, textSecondary, textTertiary, borderDefault, statusCritical,
+  fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
+  radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField, surfaceCard,
+  readonlyInputStyle, actionPrimary, sidebarBg, textAreaStyle,
+  drawerTabBarStyle, drawerFormScrollStyle,
   outlineButtonStyle, primaryButtonStyle,
   DRAWER_TABLE_SCROLL_Y,
 } from '../../themetokenchk';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import { useAuthStore } from '../../store/authStore';
-import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
 import DetailTable from '../../components/shared/DetailTable';
 
 // ── Styles ──────────────────────────────────────────────────────────
@@ -27,8 +25,30 @@ const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40,
 const numberInputStyle: React.CSSProperties = { width: '100%', borderRadius: radiusPill, height: 40 };
 const dmsUnitStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, height: 32, fontSize: fontSizeSm, color: textTertiary };
 const dmsUnitEndStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, height: 32, borderRadius: '0 999px 999px 0', fontSize: fontSizeSm, color: textTertiary };
+type NumberInputWithCountProps = InputNumberProps<number> & { maxLength: number };
 
-/** Nhóm 3 ô nhập Độ/Phút/Giây dùng chung cho bảng tọa độ GPS (chuẩn VTS CHK: viên thuốc 999px). */
+/** Hiển thị số ký tự đã nhập để giới hạn 5/20 chữ số của các chỉ số tổng hợp dễ nhận biết. */
+function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
+  const count = String(value ?? '').length;
+
+  return (
+    <InputNumber
+      {...inputProps}
+      value={value}
+      maxLength={maxLength}
+      suffix={<span aria-label={`${count} trên ${maxLength} ký tự`} style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
+    />
+  );
+}
+
+/**
+ * Nhóm 3 ô nhập Độ/Phút/Giây dùng chung cho bảng tọa độ GPS (chuẩn VTS CHK: viên thuốc 999px).
+ *
+ * Mỗi ô (Độ/Phút/Giây) là một cột flex riêng (Độ=1 · Phút=1 · Giây=1.2 — cùng template như cột
+ * Vĩ độ để message dưới Vĩ độ và Kinh độ thẳng hàng dọc). Message "X bắt buộc" hiển thị thành
+ * từng dòng riêng NGAY DƯỚI chính ô nhập còn thiếu, chỉ sau khi người dùng đã nhập giá trị đầu
+ * tiên của nhóm đó (dòng để trống hoàn toàn không hiện gì → không làm nhiễu lúc vừa mở form).
+ */
 const renderDmsGroup = (
   dVal: number | null | undefined,
   mVal: number | null | undefined,
@@ -36,15 +56,77 @@ const renderDmsGroup = (
   maxDeg: number,
   onChange: (d: number | null, m: number | null, s: number | null) => void,
 ) => {
+  // Chỉ "bắt buộc" khi người dùng đã bắt đầu nhập (ít nhất 1 trong 3 ô có giá trị).
+  const started = dVal != null || mVal != null || sVal != null;
+
+  // 3 cột Độ·Phút·Giây — một nguồn sự thật duy nhất dùng chung cho CẢ hàng input lẫn hàng
+  // message bên dưới (cùng flex basis 1 / 1 / 1.2 và cùng width) để text lỗi nằm đúng dưới ô
+  // của nó và 2 cột (Vĩ độ, Kinh độ) trong bảng luôn thẳng hàng.
+  const inputs = [
+    {
+      key: 'd', base: 'Độ', value: dVal, max: maxDeg,
+      radius: '999px 0 0 999px', unit: '°', unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
+      step: 1,
+      msg: started && dVal == null ? 'Độ bắt buộc' : undefined,
+      onEdit: (v: number | null) => onChange(v, mVal ?? null, sVal ?? null),
+    },
+    {
+      key: 'm', base: 'Phút', value: mVal, max: 59,
+      radius: '0', unit: '\'', unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
+      step: 1,
+      msg: started && mVal == null ? 'Phút bắt buộc' : undefined,
+      onEdit: (v: number | null) => onChange(dVal ?? null, v, sVal ?? null),
+    },
+    {
+      key: 's', base: 'Giây', value: sVal, max: 59.99,
+      radius: '0', unit: '"', unitStyle: dmsUnitEndStyle, basis: '1.2 0 130px', width: 130,
+      step: 0.01, formatter: fmtInputNumber,
+      msg: started && sVal == null ? 'Giây bắt buộc' : undefined,
+      onEdit: (v: number | null) => onChange(dVal ?? null, mVal ?? null, v),
+    },
+  ] as const;
+
+  const inputRow = (
+    <div style={{ display: 'flex', alignItems: 'center', width: '100%', minWidth: 0 }}>
+      {inputs.map((inp) => (
+        <div key={inp.key} style={{ display: 'flex', flex: inp.basis, minWidth: 0, width: inp.width }}>
+          <InputNumber
+            value={inp.value}
+            min={0}
+            max={inp.max}
+            step={inp.step}
+            placeholder={inp.base}
+            formatter={inp.formatter}
+            status={inp.msg ? 'error' : undefined}
+            onFocus={(e) => e.currentTarget.select()}
+            onChange={(raw) => inp.onEdit(raw == null ? null : Number(raw))}
+            style={{ flex: 1, minWidth: 0, borderRadius: inp.radius, height: 32 }}
+            controls={false}
+          />
+          <span style={inp.unitStyle}>{inp.unit}</span>
+        </div>
+      ))}
+    </div>
+  );
+
+  // Hàng message LUÔN có mặt với chiều cao cố định (height 14px) → khi cột Vĩ độ hiện message
+  // còn cột Kinh độ không (hoặc ngược lại), tổng chiều cao 2 ô của nhóm vẫn bằng nhau và 2
+  // input thẳng hàng; chỉ chèn text "X bắt buộc" khi cần.
+  const messageRow = (
+    <div aria-live="polite" style={{ display: 'flex', alignItems: 'flex-start', width: '100%', minWidth: 0, marginTop: spaceXs, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
+      {inputs.map((inp) => (
+        <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
+          {inp.msg && <span role="alert" style={{ color: statusCritical, fontSize: fontSizeSm, whiteSpace: 'nowrap' }}>{inp.msg}</span>}
+        </div>
+      ))}
+    </div>
+  );
+
   return (
-    <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
-      <InputNumber value={dVal} min={0} max={maxDeg} placeholder="Độ" onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(v ?? null, mVal ?? null, sVal ?? null)} style={{ flex: 1, minWidth: 0, borderRadius: '999px 0 0 999px', height: 32 }} controls={false} />
-      <span style={dmsUnitStyle}>°</span>
-      <InputNumber value={mVal} min={0} max={59} placeholder="Phút" onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(dVal ?? null, v ?? null, sVal ?? null)} style={{ flex: 1, minWidth: 0, height: 32 }} controls={false} />
-      <span style={dmsUnitStyle}>'</span>
-      <InputNumber value={sVal} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber} onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(dVal ?? null, mVal ?? null, v ?? null)} style={{ flex: 1.2, minWidth: 0, height: 32 }} controls={false} />
-      <span style={dmsUnitEndStyle}>"</span>
-    </Space.Compact>
+    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0 }}>
+      {inputRow}
+      {messageRow}
+    </div>
   );
 };
 
@@ -56,14 +138,14 @@ const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?:
     if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
     if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude) pts.pop(); return pts; } }
     const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    const pm = wkt.match(/POINT\s*\(([\d.\-]+)\s+([\d.\-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
+    const pm = wkt.match(/POINT\s*\(([\d.-]+)\s+([\d.-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
   } catch { /* ignore */ }
   return [];
 };
 
 function ddToDms(dd: number | null | undefined): { d: number | null; m: number | null; s: number | null } {
   if (dd == null || isNaN(dd)) return { d: null, m: null, s: null };
-  let abs = Math.abs(dd);
+  const abs = Math.abs(dd);
   let d = Math.floor(abs);
   let mFloat = (abs - d) * 60;
   if (mFloat > 59.999999999) { d += 1; mFloat = 0; }
@@ -85,16 +167,44 @@ export interface GpsCoordPoint {
   lngS: number | null;
 }
 
+interface MapSymbol {
+  id: string;
+  name: string;
+  code?: string;
+  image?: string;
+}
+
+interface PortInfrastructureEntry {
+  stt: number;
+  infraName: string;
+  quantity: number | null;
+}
+
+/** Kiểu upload nội bộ (trạng thái file trong Upload.Dragger) — không kế thừa InfrastructureAttachmentItem
+ *  vì file mới thêm chỉ có { uid, name, size, status, originFileObj }, chưa có id/fileName.
+ *  Chỉ chuyển sang InfrastructureAttachmentItem tại mappedAttachments (spread trước, override sau). */
+interface PortUploadFile {
+  uid: string;
+  /** Tên gốc file (mappedAttachments → fileName). */
+  name: string;
+  size?: number;
+  status?: string;
+  originFileObj?: File;
+}
+
+type IndexedGpsCoordPoint = GpsCoordPoint & { _idx: number };
+type IndexedPortInfrastructureEntry = PortInfrastructureEntry & { _idx: number };
+
 export interface PortFormProps {
-  form: any;
+  form: FormInstance;
   mode: 'create' | 'update';
   geometryType: string | undefined;
   atMax: Record<string, boolean>;
   activeTabKey?: string;
   onTabChange?: (key: string) => void;
   portCodeLoading?: boolean;
-  orgUnits: any[];
-  symbols: any[];
+  orgUnits: OrgUnitTreeOption[];
+  symbols: MapSymbol[];
   gpsCoordList: GpsCoordPoint[];
   gpsError: string | null;
   gpsPage: number;
@@ -105,13 +215,13 @@ export interface PortFormProps {
   /** Đổ tọa độ chọn trên bản đồ (GisLocationSelector) vào gpsCoordList */
   setGpsCoordList?: (list: GpsCoordPoint[]) => void;
   /** Danh sách công trình KCHT trực thuộc (tab 4) */
-  infraList: Array<{ stt: number; infraName: string; quantity: number | null }>;
+  infraList: PortInfrastructureEntry[];
   addInfra: () => void;
   removeInfra: (index: number) => void;
   updateInfraName: (index: number, value: string) => void;
   updateInfraQty: (index: number, value: number | null) => void;
-  uploadFileList: any[];
-  setUploadFileList: (files: any[]) => void;
+  uploadFileList: PortUploadFile[];
+  setUploadFileList: (files: PortUploadFile[]) => void;
   onFinish: (values: Record<string, unknown>) => void;
   onFinishFailed: () => void;
 }
@@ -149,16 +259,18 @@ export default function PortForm({
   // Toggle cụm "Chỉ số tổng hợp" trong tab Thông tin chung (mặc định MỞ)
   const [indexOpen, setIndexOpen] = useState(true);
   const [gisModalOpen, setGisModalOpen] = useState(false);
-  const [infraPage, setInfraPage] = useState(1);
-  const currentUser = useAuthStore((s: any) => s.user);
+  void onGpsPageChange;
 
-  // Transform uploadFileList từ { uid, name, size } sang { id, fileName, fileSize } cho InfrastructureAttachmentTab
-  const mappedAttachments = useMemo(() =>
+  // Transform uploadFileList từ kiểu upload nội bộ { uid, name, size, status, originFileObj }
+  // sang InfrastructureAttachmentItem ({ id, fileName, ... }) cho InfrastructureAttachmentTab.
+  // Spread `...f` TRƯỚC rồi override id/fileName/fileSize theo `f` — tránh cảnh báo ghi đè.
+  const mappedAttachments = useMemo<InfrastructureAttachmentItem[]>(() =>
     uploadFileList.map((f) => ({
+      ...f,
       id: f.uid,
       fileName: f.name,
       fileSize: f.size,
-      ...f,
+      file: f.originFileObj,
     })),
     [uploadFileList],
   );
@@ -283,9 +395,7 @@ export default function PortForm({
               style={{ marginBottom: spaceFormField }}
               validateStatus={atMax.detailedLocation ? 'error' : undefined} help={atMax.detailedLocation ? 'Đã đạt tối đa 500 ký tự' : undefined}
             >
-               <Input.TextArea rows={2} placeholder="Nhập địa điểm chi tiết"  maxLength={500} showCount
-                styles={{ textarea: { borderRadius: radiusPill, resize: 'none', padding: '12px 16px' } }}
-              />
+              <Input.TextArea rows={3} placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={textAreaStyle} />
             </Form.Item>
           </Col>
         </Row>
@@ -298,9 +408,7 @@ export default function PortForm({
               style={{ marginBottom: spaceFormField }}
               validateStatus={atMax.waterAreaScope ? 'error' : undefined} help={atMax.waterAreaScope ? 'Đã đạt tối đa 2000 ký tự' : undefined}
             >
-              <Input.TextArea rows={2} placeholder="Nhập phạm vi vùng nước" maxLength={2000} showCount
-                styles={{ textarea: { borderRadius: radiusPill, resize: 'none', padding: '12px 16px' } }}
-              />
+              <Input.TextArea rows={3} placeholder="Nhập phạm vi vùng nước" maxLength={2000} showCount style={textAreaStyle} />
             </Form.Item>
           </Col>
         </Row>
@@ -318,7 +426,7 @@ export default function PortForm({
                 style={{ marginBottom: spaceFormField }}
                 validateStatus={atMax.totalBerths ? 'error' : undefined} help={atMax.totalBerths ? 'Đã đạt tối đa 5 ký tự' : undefined}
               >
-                <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
+                <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -328,7 +436,7 @@ export default function PortForm({
                 style={{ marginBottom: spaceFormField }}
                 validateStatus={atMax.totalAnchoragesTransshipment ? 'error' : undefined} help={atMax.totalAnchoragesTransshipment ? 'Đã đạt tối đa 5 ký tự' : undefined}
               >
-                <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
+                <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
               </Form.Item>
             </Col>
           </Row>
@@ -340,7 +448,7 @@ export default function PortForm({
                 style={{ marginBottom: spaceFormField }}
                 validateStatus={atMax.totalPublicChannels ? 'error' : undefined} help={atMax.totalPublicChannels ? 'Đã đạt tối đa 5 ký tự' : undefined}
               >
-                <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
+                <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -350,7 +458,7 @@ export default function PortForm({
                 style={{ marginBottom: spaceFormField }}
                 validateStatus={atMax.totalDedicatedChannels ? 'error' : undefined} help={atMax.totalDedicatedChannels ? 'Đã đạt tối đa 5 ký tự' : undefined}
               >
-                <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
+                <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
               </Form.Item>
             </Col>
           </Row>
@@ -362,7 +470,7 @@ export default function PortForm({
                 style={{ marginBottom: spaceFormField }}
                 validateStatus={atMax.totalPublicChannelLength ? 'error' : undefined} help={atMax.totalPublicChannelLength ? 'Đã đạt tối đa 20 ký tự' : undefined}
               >
-                <InputNumber min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
+                <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -372,7 +480,7 @@ export default function PortForm({
                 style={{ marginBottom: spaceFormField }}
                 validateStatus={atMax.totalDedicatedChannelLength ? 'error' : undefined} help={atMax.totalDedicatedChannelLength ? 'Đã đạt tối đa 20 ký tự' : undefined}
               >
-                <InputNumber min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
+                <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
               </Form.Item>
             </Col>
           </Row>
@@ -384,7 +492,7 @@ export default function PortForm({
                 style={{ marginBottom: spaceFormField }}
                 validateStatus={atMax.totalBuoysBeacons ? 'error' : undefined} help={atMax.totalBuoysBeacons ? 'Đã đạt tối đa 5 ký tự' : undefined}
               >
-                <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
+                <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -394,7 +502,7 @@ export default function PortForm({
                 style={{ marginBottom: spaceFormField }}
                 validateStatus={atMax.totalDikes ? 'error' : undefined} help={atMax.totalDikes ? 'Đã đạt tối đa 5 ký tự' : undefined}
               >
-                <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
+                <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
               </Form.Item>
             </Col>
           </Row>
@@ -406,7 +514,7 @@ export default function PortForm({
                 style={{ marginBottom: spaceFormField }}
                 validateStatus={atMax.totalDikeLength ? 'error' : undefined} help={atMax.totalDikeLength ? 'Đã đạt tối đa 20 ký tự' : undefined}
               >
-                <InputNumber min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
+                <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -416,7 +524,7 @@ export default function PortForm({
                 style={{ marginBottom: spaceFormField }}
                 validateStatus={atMax.totalLighthouses ? 'error' : undefined} help={atMax.totalLighthouses ? 'Đã đạt tối đa 5 ký tự' : undefined}
               >
-                <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
+                <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
               </Form.Item>
             </Col>
           </Row>
@@ -428,7 +536,7 @@ export default function PortForm({
                 style={{ marginBottom: spaceFormField }}
                 validateStatus={atMax.buoyBerthCount ? 'error' : undefined} help={atMax.buoyBerthCount ? 'Đã đạt tối đa 5 ký tự' : undefined}
               >
-                <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
+                <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -438,7 +546,7 @@ export default function PortForm({
                 style={{ marginBottom: spaceFormField }}
                 validateStatus={atMax.anchorageCount ? 'error' : undefined} help={atMax.anchorageCount ? 'Đã đạt tối đa 5 ký tự' : undefined}
               >
-                <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
+                <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
               </Form.Item>
             </Col>
           </Row>
@@ -450,17 +558,17 @@ export default function PortForm({
                 style={{ marginBottom: spaceFormField }}
                 validateStatus={atMax.transshipmentCount ? 'error' : undefined} help={atMax.transshipmentCount ? 'Đã đạt tối đa 5 ký tự' : undefined}
               >
-                <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
+                <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col span={24}>
               <Form.Item
                 name="otherWaterAreas"
                 {...labelProps('Các khu nước, vùng nước khác')}
                 style={{ marginBottom: spaceFormField }}
                 validateStatus={atMax.otherWaterAreas ? 'error' : undefined} help={atMax.otherWaterAreas ? 'Đã đạt tối đa 2000 ký tự' : undefined}
               >
-                <Input placeholder="Mô tả" maxLength={2000} showCount style={inputStyle} />
+                <Input.TextArea rows={3} placeholder="Mô tả" maxLength={2000} showCount style={textAreaStyle} />
               </Form.Item>
             </Col>
           </Row>
@@ -472,9 +580,7 @@ export default function PortForm({
                 style={{ marginBottom: spaceFormField }}
                 validateStatus={atMax.remarks ? 'error' : undefined} help={atMax.remarks ? 'Đã đạt tối đa 2000 ký tự' : undefined}
               >
-                <Input.TextArea rows={3} placeholder="Ghi chú" maxLength={2000} showCount
-                  styles={{ textarea: { borderRadius: radiusPill, resize: 'none', padding: '12px 16px' } }}
-                />
+                <Input.TextArea rows={3} placeholder="Ghi chú" maxLength={2000} showCount style={textAreaStyle} />
               </Form.Item>
             </Col>
           </Row>
@@ -616,34 +722,46 @@ export default function PortForm({
               <span style={{ color: statusCritical, fontSize: fontSizeMd, flex: 1 }}>⚠ {gpsError}</span>
             </div>
           )}
-          <DetailTable
+          <DetailTable<IndexedGpsCoordPoint>
             size="small"
             scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
             dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i }))}
-            rowKey={(r: any, idx?: number) => r._idx ?? String(idx)}
+            rowKey={(record, index) => String(record._idx ?? index)}
             emptyText="Chưa có tọa độ GPS nào"
             columns={[
               {
                 title: 'STT',
                 width: 60,
                 align: 'center' as const,
-                render: (_v: any, _r: any, idx: number) => (gpsPage - 1) * 10 + idx + 1,
+                render: (_value, _record, index) => (gpsPage - 1) * 10 + index + 1,
               },
               {
-                title: 'Vĩ độ (Latitude - N)',
+                title: <span>Vĩ độ (Latitude - N){geometryType && <span aria-hidden="true" style={{ color: statusCritical, marginLeft: spaceXs }}>*</span>}</span>,
                 key: 'lat',
-                render: (_v: any, record: any) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
+                  render: (_value, record) => renderDmsGroup(
+                  record.latD,
+                  record.latM,
+                  record.latS,
+                  90,
+                  (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s),
+                ),
               },
               {
-                title: 'Kinh độ (Longitude - E)',
+                title: <span>Kinh độ (Longitude - E){geometryType && <span aria-hidden="true" style={{ color: statusCritical, marginLeft: spaceXs }}>*</span>}</span>,
                 key: 'lng',
-                render: (_v: any, record: any) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
+                  render: (_value, record) => renderDmsGroup(
+                  record.lngD,
+                  record.lngM,
+                  record.lngS,
+                  180,
+                  (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s),
+                ),
               },
               {
                 title: '',
                 width: 50,
                 align: 'center' as const,
-                render: (_v: any, record: any) => (
+                render: (_value, record) => (
                   <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeGpsPoint(record._idx)} />
                 ),
               },
@@ -698,23 +816,23 @@ export default function PortForm({
             <Button type="dashed" icon={<PlusOutlined />} onClick={addInfra} style={{ borderRadius: radiusPill }}>Thêm công trình</Button>
           </div>
         ) : (
-          <DetailTable
+          <DetailTable<IndexedPortInfrastructureEntry>
             size="small"
             scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
             dataSource={infraList.map((inf, i) => ({ ...inf, _idx: i }))}
-            rowKey={(r: any) => r._idx}
+            rowKey={(record) => String(record._idx)}
             emptyText="Chưa có công trình nào"
             columns={[
               {
                 title: 'STT',
                 width: 60,
                 align: 'center' as const,
-                render: (_v: any, _r: any, idx: number) => idx + 1,
+                render: (_value, _record, index) => index + 1,
               },
               {
                 title: 'Tên',
                 key: 'name',
-                render: (_v: any, record: any) => (
+                render: (_value, record) => (
                   <Input
                     value={record.infraName}
                     onChange={(e) => updateInfraName(record._idx, e.target.value)}
@@ -730,7 +848,7 @@ export default function PortForm({
                 key: 'quantity',
                 width: 120,
                 align: 'center' as const,
-                render: (_v: any, record: any) => (
+                render: (_value, record) => (
                   <InputNumber
                     value={record.quantity}
                     onChange={(v) => updateInfraQty(record._idx, v)}
@@ -746,7 +864,7 @@ export default function PortForm({
                 key: 'actions',
                 width: 50,
                 align: 'center' as const,
-                render: (_v: any, record: any) => (
+                render: (_value, record) => (
                   <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeInfra(record._idx)} />
                 ),
               },
@@ -767,7 +885,8 @@ export default function PortForm({
         initialValues={isCreate ? { approvalStatus: 'APPROVED' } : undefined}
       >
         <Tabs
-          {...(isCreate ? { activeKey: activeTabKey, onChange: onTabChange } : { defaultActiveKey: 'general' })}
+          activeKey={activeTabKey}
+          onChange={onTabChange}
           tabBarStyle={drawerTabBarStyle}
           items={tabItems}
         />
