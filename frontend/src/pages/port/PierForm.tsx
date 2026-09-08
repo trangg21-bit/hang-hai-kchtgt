@@ -21,7 +21,7 @@ import { colors, DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import {
   textTertiary, borderDefault, actionPrimary, statusCritical,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
-  radiusPill, radiusMd, spaceSm, spaceFormField,
+  radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField,
   surfaceCard, readonlyInputStyle, sidebarBg,
   primaryButtonStyle, outlineButtonStyle, drawerTabBarStyle, drawerFormScrollStyle,
 } from '../../themetokenchk';
@@ -99,7 +99,13 @@ function ddToDms(dd: number | null | undefined): { d: number | null; m: number |
 const dmsUnitStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, height: 32, fontSize: fontSizeSm, color: textTertiary };
 const dmsUnitEndStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, height: 32, borderRadius: '0 999px 999px 0', fontSize: fontSizeSm, color: textTertiary };
 
-/** Nhóm 3 ô nhập Độ/Phút/Giây dùng chung cho bảng tọa độ GPS (chuẩn VTS CHK: viên thuốc 999px). */
+/** Nhóm 3 ô nhập Độ/Phút/Giây dùng chung cho bảng tọa độ GPS (chuẩn VTS CHK: viên thuốc 999px).
+ *
+ * Mỗi ô (Độ/Phút/Giây) là một cột flex riêng (Độ=1 · Phút=1 · Giây=1.2 — cùng template như cột
+ * Vĩ độ để message dưới Vĩ độ và Kinh độ thẳng hàng dọc). Message "X bắt buộc" hiển thị thành
+ * từng dòng riêng NGAY DƯỚI chính ô nhập còn thiếu, chỉ sau khi người dùng đã nhập giá trị đầu
+ * tiên của nhóm đó (dòng để trống hoàn toàn không hiện gì → không làm nhiễu lúc vừa mở form).
+ */
 const renderDmsGroup = (
   dVal: number | null | undefined,
   mVal: number | null | undefined,
@@ -107,15 +113,77 @@ const renderDmsGroup = (
   maxDeg: number,
   onChange: (d: number | null, m: number | null, s: number | null) => void,
 ) => {
+  // Chỉ "bắt buộc" khi người dùng đã bắt đầu nhập (ít nhất 1 trong 3 ô có giá trị).
+  const started = dVal != null || mVal != null || sVal != null;
+
+  // 3 cột Độ·Phút·Giây — một nguồn sự thật duy nhất dùng chung cho CẢ hàng input lẫn hàng
+  // message bên dưới (cùng flex basis 1 / 1 / 1.2 và cùng width) để text lỗi nằm đúng dưới ô
+  // của nó và 2 cột (Vĩ độ, Kinh độ) trong bảng luôn thẳng hàng.
+  const inputs = [
+    {
+      key: 'd', base: 'Độ', value: dVal, max: maxDeg,
+      radius: '999px 0 0 999px', unit: '°', unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
+      step: 1,
+      msg: started && dVal == null ? 'Độ bắt buộc' : undefined,
+      onEdit: (v: number | null) => onChange(v, mVal ?? null, sVal ?? null),
+    },
+    {
+      key: 'm', base: 'Phút', value: mVal, max: 59,
+      radius: '0', unit: "'", unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
+      step: 1,
+      msg: started && mVal == null ? 'Phút bắt buộc' : undefined,
+      onEdit: (v: number | null) => onChange(dVal ?? null, v, sVal ?? null),
+    },
+    {
+      key: 's', base: 'Giây', value: sVal, max: 59.99,
+      radius: '0', unit: '"', unitStyle: dmsUnitEndStyle, basis: '1.2 0 130px', width: 130,
+      step: 0.01, formatter: fmtInputNumber,
+      msg: started && sVal == null ? 'Giây bắt buộc' : undefined,
+      onEdit: (v: number | null) => onChange(dVal ?? null, mVal ?? null, v),
+    },
+  ] as const;
+
+  const inputRow = (
+    <div style={{ display: 'flex', alignItems: 'center', width: '100%', minWidth: 0 }}>
+      {inputs.map((inp) => (
+        <div key={inp.key} style={{ display: 'flex', flex: inp.basis, minWidth: 0, width: inp.width }}>
+          <InputNumber
+            value={inp.value}
+            min={0}
+            max={inp.max}
+            step={inp.step}
+            placeholder={inp.base}
+            formatter={inp.formatter}
+            status={inp.msg ? 'error' : undefined}
+            onFocus={(e) => e.currentTarget.select()}
+            onChange={(raw) => inp.onEdit(raw == null ? null : Number(raw))}
+            style={{ flex: 1, minWidth: 0, borderRadius: inp.radius, height: 32 }}
+            controls={false}
+          />
+          <span style={inp.unitStyle}>{inp.unit}</span>
+        </div>
+      ))}
+    </div>
+  );
+
+  // Hàng message LUÔN có mặt với chiều cao cố định (height 14px) → khi cột Vĩ độ hiện message
+  // còn cột Kinh độ không (hoặc ngược lại), tổng chiều cao 2 ô của nhóm vẫn bằng nhau và 2
+  // input thẳng hàng; chỉ chèn text "X bắt buộc" khi cần.
+  const messageRow = (
+    <div aria-live="polite" style={{ display: 'flex', alignItems: 'flex-start', width: '100%', minWidth: 0, marginTop: spaceXs, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
+      {inputs.map((inp) => (
+        <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
+          {inp.msg && <span role="alert" style={{ color: statusCritical, fontSize: fontSizeSm, whiteSpace: 'nowrap' }}>{inp.msg}</span>}
+        </div>
+      ))}
+    </div>
+  );
+
   return (
-    <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
-      <InputNumber value={dVal} min={0} max={maxDeg} placeholder="Độ" onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(v, mVal ?? null, sVal ?? null)} style={{ flex: 1, minWidth: 0, borderRadius: '999px 0 0 999px', height: 32 }} controls={false} />
-      <span style={dmsUnitStyle}>°</span>
-      <InputNumber value={mVal} min={0} max={59} placeholder="Phút" onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(dVal ?? null, v, sVal ?? null)} style={{ flex: 1, minWidth: 0, height: 32 }} controls={false} />
-      <span style={dmsUnitStyle}>'</span>
-      <InputNumber value={sVal} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber} onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(dVal ?? null, mVal ?? null, v)} style={{ flex: 1.2, minWidth: 0, height: 32 }} controls={false} />
-      <span style={dmsUnitEndStyle}>"</span>
-    </Space.Compact>
+    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0 }}>
+      {inputRow}
+      {messageRow}
+    </div>
   );
 };
 
