@@ -390,6 +390,7 @@ export default function NavigationChannelList() {
   const [pageSize, setPageSize] = useState(20);
   const [sortField, setSortField] = useState<string | undefined>('updatedAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>('desc');
+  const [reloadToken, setReloadToken] = useState(0);
   const [dataSource, setDataSource] = useState<NavigationChannelResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -488,7 +489,7 @@ export default function NavigationChannelList() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, activeTab, filterKeyword, filterChannelCode, filterOrgUnitId, filterSeaportId, filterProvinceId, filterConditionStatus, filterUpdatedFrom, filterUpdatedTo, filterUpdatedBy, sortField, sortOrder]);
+  }, [page, pageSize, activeTab, filterKeyword, filterChannelCode, filterOrgUnitId, filterSeaportId, filterProvinceId, filterConditionStatus, filterUpdatedFrom, filterUpdatedTo, filterUpdatedBy, sortField, sortOrder, reloadToken]);
 
   // ── Tab counts ──────────────────────────────────────────────────────
   const fetchCounts = useCallback(async () => {
@@ -545,9 +546,8 @@ export default function NavigationChannelList() {
     setSortField('updatedAt');
     setSortOrder('desc');
     setPage(1);
-    void fetchData();
-    void fetchCounts();
-  }, [fetchData, fetchCounts]);
+    setReloadToken((t) => t + 1);
+  }, []);
 
   const openModal = useCallback((mode: 'create' | 'edit', id?: string) => {
     setModalMode(mode);
