@@ -404,17 +404,22 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
   const handleSave = useCallback(async (saveAction: SaveAction) => {
     const values = form.getFieldsValue();
     const berthName = String(values.berthName ?? '').trim();
-    try { await form.validateFields(); } catch (e: any) {
+    try {
+      if (saveAction !== 'DRAFT') {
+        await form.validateFields();
+      } else {
+        await form.validateFields(['berthName']);
+      }
+    } catch (e: any) {
       const errFields: Array<{ name: Array<string | number> }> = e?.errorFields ?? [];
       if (errFields.some((f) => f.name[0] === 'mapSymbolId' || f.name[0] === 'coordinateSystem' || f.name[0] === 'displayRule' || f.name[0] === 'geometryType')) setActiveTabKey('location');
       else setActiveTabKey('general');
       return;
     }
-    // Bắt buộc khi gửi duyệt (SUBMIT/APPROVED) — không bắt buộc khi lưu nháp (DRAFT) hay cập nhật (UPDATE), theo đặc tả CSV
-    const isSubmitOrApprove = saveAction === 'SUBMIT' || saveAction === 'APPROVED';
-    if (isSubmitOrApprove) {
-      if (!values.provinceId) { toast.error('Địa điểm (Tỉnh/Thành phố) là bắt buộc khi gửi duyệt'); setActiveTabKey('general'); return; }
-      if (!values.operationalStatus) { toast.error('Tình trạng là bắt buộc khi gửi duyệt'); setActiveTabKey('general'); return; }
+    // Bắt buộc khi gửi duyệt hoặc lưu (SUBMIT / APPROVED / UPDATE) — không bắt buộc khi lưu nháp (DRAFT)
+    if (saveAction !== 'DRAFT') {
+      if (!values.provinceId) { toast.error('Địa điểm (Tỉnh/Thành phố) là bắt buộc'); setActiveTabKey('general'); return; }
+      if (!values.operationalStatus) { toast.error('Tình trạng là bắt buộc'); setActiveTabKey('general'); return; }
     }
     const manualCoords = coordinateList
       .filter(c => (c.latD != null && c.lngD != null) || (c.latM != null && c.lngM != null) || (c.latS != null && c.lngS != null))
@@ -524,7 +529,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành Phố)')} required style={{ marginBottom: spaceFormField }}>
+                <Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành Phố)')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Địa điểm (Tỉnh/Thành phố) là bắt buộc' }]}>
                   <Select placeholder="Chọn địa điểm" showSearch optionFilterProp="label" filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())} options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))} style={selectStyle} />
                 </Form.Item>
               </Col>
@@ -781,26 +786,26 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
                     },
                     {
                       title: '',
-                      width: 60,
+                      width: 50,
                       align: 'center' as const,
+                      // Align with the inputs, excluding the reserved validation message row.
+                      onCell: () => ({ style: { verticalAlign: 'top' } }),
                       render: (_v: any, record: any) => (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
-                          <Button
-                            type="text"
-                            danger
-                            icon={<DeleteOutlined style={{ fontSize: 16 }} />}
-                            onClick={() => removeCoordinate(record._idx)}
-                            style={{
-                              width: 32,
-                              height: 32,
-                              padding: 0,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                            title="Xóa tọa độ"
-                          />
-                        </div>
+                        <Button
+                          type="text"
+                          danger
+                          icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                          onClick={() => removeCoordinate(record._idx)}
+                          style={{
+                            width: 32,
+                            height: 32,
+                            padding: 0,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                          title="Xóa tọa độ"
+                        />
                       ),
                     },
                   ]}

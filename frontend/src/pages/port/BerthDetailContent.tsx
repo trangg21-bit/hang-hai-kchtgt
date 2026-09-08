@@ -537,11 +537,6 @@ export default function BerthDetailContent({
                     <div style={sectionTitleStyle}>
                       <AuditOutlined style={{ color: actionPrimary }} />
                       <span>Thông tin phê duyệt</span>
-                      {r.approvalStatus && approvalStyleMap[r.approvalStatus] && (
-                        <span style={{ ...statusBadgeStyle(approvalStyleMap[r.approvalStatus].color), marginLeft: 8 }}>
-                          {approvalStyleMap[r.approvalStatus].label}
-                        </span>
-                      )}
                     </div>
                     <span style={{ color: actionPrimary, fontSize: 12 }}>
                       {approvalOpen ? <DownOutlined /> : <RightOutlined />}
@@ -678,7 +673,7 @@ export default function BerthDetailContent({
                 <DetailTable
                   dataSource={detailFiles.map((f) => ({ ...f }))}
                   emptyText="Chưa có tài liệu đính kèm"
-                  scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
+                  scrollY={detailFiles.length === 0 ? undefined : DRAWER_TABLE_SCROLL_Y.detailView}
                   columns={[
                     { title: 'STT', width: 50 },
                     {

@@ -321,6 +321,7 @@ export default function BerthList() {
   const [createDrawerVisible, setCreateDrawerVisible] = useState(false);
   const [editBerthId, setEditBerthId] = useState<string | undefined>();
   const [editBerthName, setEditBerthName] = useState('');
+  const [editBerthRecord, setEditBerthRecord] = useState<Berth | null>(null);
   const [createForm] = Form.useForm();
   const [updateForm] = Form.useForm();
   const berthFormRef = useRef<any>(null);
@@ -892,7 +893,7 @@ export default function BerthList() {
       const st = record.approvalStatus || '';
       // Chỉnh sửa chỉ áp dụng cho Lưu tạm (DRAFT) và Đã phê duyệt (APPROVED) — chuẩn VTS CHK
       const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'berth', extraApprovePerms: ['berth:approve'] });
-      if (editable) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => { setEditBerthId(record.id); setEditBerthName(record.berthName || ''); } });
+      if (editable) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => { setEditBerthId(record.id); setEditBerthName(record.berthName || ''); setEditBerthRecord(record); } });
       if (['DRAFT','NHAP'].includes(st) && hasPerm('berth:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
       // Lịch sử — luôn hiển thị khi có quyền
       if (hasPerm('berth:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
@@ -1167,20 +1168,6 @@ export default function BerthList() {
           cursor: pointer !important;
         }
 
-        /* ── Footer Sidebar Bộ lọc: Cân đối nút Reload và Tìm kiếm ── */
-        .berth-page-wrapper div:has(> button .anticon-reload) {
-          display: flex !important;
-          justify-content: space-between !important;
-          gap: 8px !important;
-          align-items: center !important;
-        }
-        .berth-page-wrapper div:has(> button .anticon-reload) > div[style*="visibility: hidden"] {
-          display: none !important;
-        }
-        .berth-page-wrapper div:has(> button .anticon-reload) > button.ant-btn-primary {
-          flex: 1 !important;
-        }
-
         /* ── Responsive ScreenHeader co dãn đẹp khi zoom ── */
         .berth-page-wrapper > div:first-of-type {
           flex-wrap: wrap !important;
@@ -1279,10 +1266,38 @@ export default function BerthList() {
         className="berth-drawer-scope"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin — {editBerthName || 'Bến cảng'}</span>}
         open={!!editBerthId}
-        onClose={() => { setEditBerthId(undefined); setEditBerthName(''); updateForm.resetFields(); }}
+        onClose={() => { setEditBerthId(undefined); setEditBerthName(''); setEditBerthRecord(null); updateForm.resetFields(); }}
         footer={
           <div style={drawerFooterStyle}>
-            <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); editBerthFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
+            {(!editBerthRecord?.approvalStatus || ['DRAFT', 'NHAP'].includes(editBerthRecord.approvalStatus.toUpperCase())) && (
+              <Button
+                onClick={() => {
+                  actionTypeRef.current = 'draft';
+                  setActionType('draft');
+                  editBerthFormRef.current?.submit('DRAFT');
+                }}
+                loading={submitting && actionType === 'draft'}
+                style={outlineButtonStyle}
+              >
+                Lưu tạm
+              </Button>
+            )}
+            <Button
+              type="primary"
+              onClick={() => {
+                actionTypeRef.current = 'approve';
+                setActionType('approve');
+                editBerthFormRef.current?.submit('APPROVED');
+              }}
+              loading={submitting && actionType === 'approve'}
+              style={{
+                ...primaryButtonStyle,
+                background: statusOperational,
+                borderColor: statusOperational,
+              }}
+            >
+              Lưu và phê duyệt
+            </Button>
           </div>
         }
         styles={{

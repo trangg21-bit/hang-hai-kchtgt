@@ -303,12 +303,21 @@ export const DetailTable = <T extends object = any>({
           min-height: ${typeof effectiveScrollY === 'number' ? `${effectiveScrollY}px` : effectiveScrollY} !important;
           max-height: ${typeof effectiveScrollY === 'number' ? `${effectiveScrollY}px` : effectiveScrollY} !important;
           overflow-x: auto !important;
+          ${pagedData.length === 0 ? 'overflow-y: hidden !important;' : 'overflow-y: auto !important;'}
         }
         .${instanceId} .ant-table-placeholder .ant-table-cell,
         .${instanceId} .ant-table-placeholder > td,
         .${instanceId} .ant-table-tbody > tr.ant-table-placeholder > td {
           height: ${typeof effectiveScrollY === 'number' ? `${effectiveScrollY}px` : effectiveScrollY} !important;
           border-bottom: none !important;
+        }
+        .${instanceId} .ant-table-tbody > tr > td:last-child {
+          padding-left: 4px !important;
+          padding-right: 4px !important;
+        }
+        .${instanceId} .ant-table-thead > tr > th:last-child {
+          padding-left: 4px !important;
+          padding-right: 4px !important;
         }
       `}</style>
       <div>
@@ -330,7 +339,7 @@ export const DetailTable = <T extends object = any>({
           }}
           loading={loading}
           scroll={{
-            y: effectiveScrollY,
+            y: pagedData.length === 0 ? undefined : effectiveScrollY,
             ...scroll,
           }}
           onRow={(record: any) => {
