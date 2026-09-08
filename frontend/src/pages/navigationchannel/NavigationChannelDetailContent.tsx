@@ -2,8 +2,13 @@ import { useState, useMemo } from 'react';
 import { Tabs, Button, Modal, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
+  BankOutlined,
+  SlidersOutlined,
+  FileTextOutlined,
+  AuditOutlined,
   EnvironmentOutlined,
   FileOutlined,
+  DownOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
@@ -17,13 +22,20 @@ import {
   textPrimary,
   textSecondary,
   textTertiary,
+  borderDefault,
+  surfaceCard,
   radiusPill,
+  radiusSm,
+  spaceXs,
+  spaceSm,
+  spaceMd,
+  spaceXl,
   fontSizeSm,
+  fontSizeMd,
   fontSizeLg,
   fontWeightMedium,
   fontWeightBold,
   primaryButtonStyle,
-  statusBadgeStyle,
 } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -36,8 +48,6 @@ import type {
   NavigationChannelAttachment,
 } from '../../types/navigationChannel';
 import { getProvinceNameById } from '../../types/common';
-
-const fontSizeMd = 13.5;
 
 // ── Màu pill cho Tình trạng hoạt động (#8) — đồng bộ NavigationChannelList ──
 const CONDITION_COLOR_MAP: Record<string, string> = {
@@ -65,31 +75,29 @@ const ddToDms = (dd: number): { d: number; m: number; s: number } => {
 };
 
 const fmtDms = (dd?: number | null): string => {
-  if (dd === null || dd === undefined || Number.isNaN(dd)) return '';
+  if (dd === null || dd === undefined || Number.isNaN(dd)) return '—';
   const { d, m, s } = ddToDms(dd);
   return `${d}° ${m}' ${s}"`;
 };
 
-const fmtDateTime = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '');
-const fmtDate = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY') : '');
-const fmtMonthYear = (v?: string | null): string => (v ? dayjs(v).format('MM/YYYY') : '');
+const fmtDateTime = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—');
+const fmtDate = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY') : '—');
+const fmtMonthYear = (v?: string | null): string => (v ? dayjs(v).format('MM/YYYY') : '—');
 const fmtNum = (v?: number | null, unit?: string): string =>
-  v === null || v === undefined || Number.isNaN(v) ? '' : `${v}${unit ? ` ${unit}` : ''}`;
+  v === null || v === undefined || Number.isNaN(v) ? '—' : `${v}${unit ? ` ${unit}` : ''}`;
 
 type AttachmentRow = NavigationChannelAttachment & { uploadedBy?: string; uploadedAt?: string };
 
-export interface NavigationChannelDetailContentProps {
+interface NavigationChannelDetailContentProps {
   record: NavigationChannelResponse;
   userMap?: Map<string, string>;
-  onClose?: () => void;
 }
 
 /** Pill badge cho tình trạng hoạt động — chuẩn Pill Badge (cấm antd Tag). */
 const ConditionPill = ({ status }: { status?: string | null }) => {
   const s = status || '';
-  if (!s) return null;
   const color = CONDITION_COLOR_MAP[s] || textTertiary;
-  const label = CONDITION_STATUS_MAP[s as keyof typeof CONDITION_STATUS_MAP] || s || '';
+  const label = CONDITION_STATUS_MAP[s as keyof typeof CONDITION_STATUS_MAP] || s || '—';
   return (
     <span
       style={{
@@ -110,38 +118,113 @@ const ConditionPill = ({ status }: { status?: string | null }) => {
   );
 };
 
+/** Một ô nhãn + giá trị trong lưới 2 cột. */
+const InfoField = ({ label, value }: { label: string; value: React.ReactNode }) => (
+  <div style={{ display: 'flex', gap: spaceSm, minWidth: 0, alignItems: 'baseline' }}>
+    <span style={{ color: textSecondary, fontSize: fontSizeSm, fontWeight: fontWeightMedium, flexShrink: 0, minWidth: 150 }}>
+      {label}
+    </span>
+    <span style={{ color: textPrimary, fontSize: fontSizeMd, fontWeight: fontWeightMedium, wordBreak: 'break-word', minWidth: 0 }}>
+      {value}
+    </span>
+  </div>
+);
+
+/** Section accordion — tiêu đề có toggle mở/gập. */
+const Section = ({
+  icon,
+  title,
+  defaultOpen = true,
+  badge,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  defaultOpen?: boolean;
+  badge?: React.ReactNode;
+  children: React.ReactNode;
+}) => {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div
+      style={{
+        background: surfaceCard,
+        border: `1px solid ${borderDefault}`,
+        borderRadius: radiusSm,
+        marginBottom: spaceMd,
+        overflow: 'hidden',
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          gap: spaceSm,
+          padding: `${spaceSm}px ${spaceMd}px`,
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+        }}
+      >
+        {icon}
+        <span style={{ color: textPrimary, fontWeight: fontWeightBold, fontSize: fontSizeMd, flex: 1, textAlign: 'left' }}>
+          {title}
+        </span>
+        {badge}
+        {open ? (
+          <DownOutlined style={{ color: textTertiary, fontSize: fontSizeSm, transform: 'rotate(180deg)' }} />
+        ) : (
+          <DownOutlined style={{ color: textTertiary, fontSize: fontSizeSm }} />
+        )}
+      </button>
+      {open && <div style={{ padding: `0 ${spaceMd}px ${spaceMd}px ${spaceMd}px` }}>{children}</div>}
+    </div>
+  );
+};
+
+/** Lưới 2 cột thông tin. */
+const InfoGrid = ({ rows }: { rows: Array<{ label: string; value: React.ReactNode }> }) => (
+  <div
+    style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+      gap: `${spaceMd}px ${spaceXl}px`,
+    }}
+  >
+    {rows.map((r) => (
+      <InfoField key={r.label} label={r.label} value={r.value} />
+    ))}
+  </div>
+);
+
 export default function NavigationChannelDetailContent({
   record,
   userMap,
 }: NavigationChannelDetailContentProps) {
-  const r = record;
   const [gisOpen, setGisOpen] = useState(false);
-  const [technicalOpen, setTechnicalOpen] = useState(true);
-  const [announcementOpen, setAnnouncementOpen] = useState(true);
-  const [approvalOpen, setApprovalOpen] = useState(true);
-  const [operationOpen, setOperationOpen] = useState(true);
-  const [maintenanceOpen, setMaintenanceOpen] = useState(true);
-  const [incidentOpen, setIncidentOpen] = useState(true);
 
   const coordinates = useMemo(
     () =>
-      (Array.isArray(r?.coordinates) ? r.coordinates : []).map((c) => ({
+      (Array.isArray(record?.coordinates) ? record.coordinates : []).map((c) => ({
         id: c.id,
         sequenceNo: c.sequenceNo,
         longitude: Number(c.longitude),
         latitude: Number(c.latitude),
       })),
-    [r],
+    [record],
   );
 
   const routeDetails = useMemo(
-    () => (Array.isArray(r?.routeDetails) ? r.routeDetails : []),
-    [r],
+    () => (Array.isArray(record?.routeDetails) ? record.routeDetails : []),
+    [record],
   );
 
   const attachments = useMemo<AttachmentRow[]>(
-    () => (Array.isArray(r?.attachments) ? r.attachments as AttachmentRow[] : []),
-    [r],
+    () => (Array.isArray(record?.attachments) ? record.attachments as AttachmentRow[] : []),
+    [record],
   );
 
   const gisView = useMemo(() => {
@@ -156,13 +239,61 @@ export default function NavigationChannelDetailContent({
   }, [coordinates]);
 
   const actorName = (id?: string | null): string => {
-    if (!id) return '';
-    return userMap?.get(id) || id || '';
+    if (!id) return '—';
+    return userMap?.get(id) || id;
   };
 
-  const provinceName = r.provinceId !== undefined && r.provinceId !== null
-    ? getProvinceNameById(r.provinceId) || ''
-    : '';
+  const provinceName = record.provinceId !== undefined && record.provinceId !== null
+    ? getProvinceNameById(record.provinceId)
+    : undefined;
+
+  // ── Tab 1: Thông tin chung ─────────────────────────────────────────
+  const basicRows = [
+    { label: 'Mã luồng hàng hải', value: record.channelCode || '—' },
+    { label: 'Tên luồng hàng hải', value: record.channelName || '—' },
+    { label: 'Đơn vị quản lý', value: record.orgUnitName || '—' },
+    { label: 'Thuộc cảng biển', value: record.seaportName || '—' },
+    { label: 'Địa điểm (Tỉnh/TP)', value: provinceName || '—' },
+    { label: 'Địa điểm chi tiết', value: record.detailedLocation || '—' },
+    { label: 'Tình trạng', value: <ConditionPill status={record.conditionStatus} /> },
+    { label: 'Trạm quản lý luồng', value: record.managementStation || '—' },
+    { label: 'Số lượng trạm', value: fmtNum(record.stationCount) },
+    { label: 'Số lượng nhân sự tại trạm', value: fmtNum(record.stationStaffCount) },
+    { label: 'Diện tích trạm (m²)', value: fmtNum(record.stationAreaSquareMeters) },
+    { label: 'Số lượng phao', value: fmtNum(record.buoyCount) },
+    { label: 'Số lượng tiêu', value: fmtNum(record.beaconCount) },
+    { label: 'Ghi chú', value: record.notes || '—' },
+  ];
+
+  const technicalRows = [
+    { label: 'Hệ quy chiếu', value: record.coordinateReferenceSystem || '—' },
+    {
+      label: 'Loại đối tượng GIS',
+      value: GEOMETRY_TYPE_MAP[record.geometryType || ''] || record.geometryType || '—',
+    },
+    { label: 'Quy tắc hiển thị', value: record.displayRule || '—' },
+    { label: 'Phạm vi bảo vệ luồng (m)', value: fmtNum(record.protectionScopeMeters) },
+    { label: 'Ghi chú phạm vi bảo vệ', value: record.protectionNotes || '—' },
+    { label: 'Sửa chữa trạm gần nhất', value: fmtMonthYear(record.latestStationRepairMonth) },
+    { label: 'Năm bảo trì gần nhất', value: fmtNum(record.latestMaintenanceYear) },
+    { label: 'KL nạo vét (m³)', value: fmtNum(record.latestDredgingVolumeCubicMeters) },
+  ];
+
+  const announcementRows = [
+    { label: 'Số quyết định công bố', value: record.announcementDecisionNumber || '—' },
+    { label: 'Ngày ra quyết định', value: fmtDate(record.announcementDecisionDate) },
+    { label: 'Đơn vị ra quyết định', value: record.announcementDecisionIssuer || '—' },
+  ];
+
+  const approvalRows = [
+    { label: 'Trạng thái phê duyệt', value: record.approvalStatus ? <ApprovalStatusBadge status={record.approvalStatus} /> : '—' },
+    { label: 'Cán bộ gửi phê duyệt', value: actorName(record.submittedBy) },
+    { label: 'Thời gian gửi phê duyệt', value: fmtDateTime(record.submittedAt) },
+    { label: 'Cán bộ cập nhật cuối', value: actorName(record.updatedBy) },
+    { label: 'Thời gian cập nhật', value: fmtDateTime(record.updatedAt) },
+    { label: 'Cán bộ tạo', value: actorName(record.createdBy) },
+    { label: 'Thời gian tạo', value: fmtDateTime(record.createdAt) },
+  ];
 
   // ── Tab 2: Thông tin vị trí ────────────────────────────────────────
   const coordinateColumns: ColumnsType<NavigationChannelCoordinateResponse> = [
@@ -211,10 +342,10 @@ export default function NavigationChannelDetailContent({
       dataIndex: 'fileName',
       width: 320,
       render: (name: string) => (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: '100%' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: spaceXs, maxWidth: '100%' }}>
           <FileOutlined style={{ color: actionPrimary }} />
           <Tooltip title={name}>
-            <span style={{ color: textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name || ''}</span>
+            <span style={{ color: textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
           </Tooltip>
         </span>
       ),
@@ -224,7 +355,7 @@ export default function NavigationChannelDetailContent({
       dataIndex: 'fileSize',
       width: 110,
       render: (size?: number) => {
-        if (!size) return '';
+        if (!size) return '—';
         return size >= 1024 * 1024 ? `${(size / (1024 * 1024)).toFixed(2)} MB` : `${Math.round(size / 1024)} KB`;
       },
     },
@@ -244,27 +375,27 @@ export default function NavigationChannelDetailContent({
 
   // ── Tab 4: Tuyến luồng ─────────────────────────────────────────────
   const routeColumns: ColumnsType<ChannelRouteDetailResponse> = [
-    { title: 'STT', dataIndex: 'sequenceNo', width: 50, align: 'center', render: (_: unknown, __: unknown, i: number) => i + 1 },
-    { title: 'Phân loại tuyến', dataIndex: 'routeClassification', width: 140, render: (v?: string) => v || '' },
+    { title: 'STT', dataIndex: 'sequenceNo', width: 50, align: 'center' },
+    { title: 'Phân loại tuyến', dataIndex: 'routeClassification', width: 140, render: (v?: string) => v || '—' },
     {
       title: 'Mã tuyến',
       dataIndex: 'routeCode',
       width: 120,
-      render: (v?: string) => <span style={{ fontWeight: fontWeightMedium, color: textPrimary }}>{v || ''}</span>,
+      render: (v?: string) => <span style={{ fontWeight: fontWeightMedium, color: textPrimary }}>{v || '—'}</span>,
     },
     {
       title: 'Tên tuyến luồng',
       dataIndex: 'routeName',
       width: 200,
-      render: (v?: string) => <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{v || ''}</span>,
+      render: (v?: string) => <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{v || '—'}</span>,
     },
     {
       title: 'Loại tuyến',
       dataIndex: 'routeType',
       width: 120,
-      render: (v?: number) => (v === undefined || v === null ? '' : ROUTE_TYPE_MAP[v] || ''),
+      render: (v?: number) => (v === undefined || v === null ? '—' : ROUTE_TYPE_MAP[v] || '—'),
     },
-    { title: 'Cấp luồng', dataIndex: 'routeGrade', width: 100, render: (v?: number) => (v === undefined || v === null ? '' : String(v)) },
+    { title: 'Cấp luồng', dataIndex: 'routeGrade', width: 100, render: (v?: number) => (v === undefined || v === null ? '—' : String(v)) },
     {
       title: 'Chiều dài (km)',
       dataIndex: 'channelLengthKilometers',
@@ -307,7 +438,7 @@ export default function NavigationChannelDetailContent({
       title: 'Vị trí vũng quay tàu',
       dataIndex: 'turningBasinLocation',
       width: 160,
-      render: (v?: string) => v || '',
+      render: (v?: string) => v || '—',
     },
     {
       title: 'Bán kính vũng quay (m)',
@@ -319,79 +450,14 @@ export default function NavigationChannelDetailContent({
   ];
 
   // ── Tab 5: Vận hành & bảo trì ──────────────────────────────────────
-  const operationList = useMemo(() => {
-    if (!r.operationPlanCode && !r.operationPlanName && !r.operationStartDate && !r.operationEndDate) return [];
-    return [{
-      planCode: r.operationPlanCode || '',
-      planName: r.operationPlanName || '',
-      startDate: r.operationStartDate || '',
-      endDate: r.operationEndDate || '',
-    }];
-  }, [r]);
-
-  const maintenanceList = useMemo(() => {
-    if (!r.maintenancePlanCode && !r.maintenancePlanName && !r.maintenanceStartTime && !r.maintenanceEndTime) return [];
-    return [{
-      planCode: r.maintenancePlanCode || '',
-      planName: r.maintenancePlanName || '',
-      startDate: r.maintenanceStartTime || '',
-      endDate: r.maintenanceEndTime || '',
-    }];
-  }, [r]);
-
-  const incidentList = useMemo(() => {
-    if (!r.incidentCode && !r.incidentType && !r.incidentLocation && !r.incidentTime) return [];
-    return [{
-      incidentCode: r.incidentCode || '',
-      incidentType: r.incidentType || '',
-      incidentLocation: r.incidentLocation || '',
-      incidentTime: r.incidentTime || '',
-    }];
-  }, [r]);
+  const hasOperation =
+    record.operationPlanCode || record.operationPlanName || record.operationStartDate || record.operationEndDate;
+  const hasMaintenance =
+    record.maintenancePlanCode || record.maintenancePlanName || record.maintenanceStartTime || record.maintenanceEndTime;
+  const hasIncident = record.incidentCode || record.incidentType || record.incidentLocation || record.incidentTime;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <style>{`
-        .chk-detail-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 0 32px;
-        }
-        .chk-detail-row {
-          display: flex;
-          align-items: baseline;
-          padding: 7px 0;
-          border-bottom: 1px solid #f1f5f9;
-          font-size: 13.5px;
-          min-height: 34px;
-        }
-        .chk-detail-label {
-          color: #64748b;
-          font-weight: 500;
-          font-size: 13px;
-          width: 200px;
-          flex-shrink: 0;
-        }
-        .chk-detail-value {
-          color: #1e293b;
-          font-weight: 500;
-          font-size: 13.5px;
-          flex: 1;
-          word-break: break-word;
-        }
-        .chk-detail-section-toggle {
-          background: none;
-          border: none;
-          cursor: pointer;
-          padding: 8px 0;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          width: 100%;
-          text-align: left;
-        }
-      `}</style>
-
       <Tabs
         defaultActiveKey="general"
         items={[
@@ -399,227 +465,55 @@ export default function NavigationChannelDetailContent({
             key: 'general',
             label: 'Thông tin chung',
             children: (
-              <div style={{ overflowY: 'auto', maxHeight: DRAWER_TABLE_SCROLL_Y.detailView, paddingRight: 4 }}>
-                {/* ── Thông tin cơ bản ── */}
-                <div className="chk-detail-grid">
-                  <div className="chk-detail-row">
-                    <span className="chk-detail-label">Mã luồng hàng hải</span>
-                    <span className="chk-detail-value">
-                      {r.channelCode ? <span style={statusBadgeStyle(actionPrimary)}>{r.channelCode}</span> : ''}
-                    </span>
-                  </div>
-                  <div className="chk-detail-row">
-                    <span className="chk-detail-label">Tên luồng hàng hải</span>
-                    <span className="chk-detail-value" style={{ fontWeight: fontWeightBold }}>{r.channelName || ''}</span>
-                  </div>
-                  <div className="chk-detail-row">
-                    <span className="chk-detail-label">Đơn vị quản lý</span>
-                    <span className="chk-detail-value" style={{ fontWeight: fontWeightBold }}>{r.orgUnitName || ''}</span>
-                  </div>
-                  <div className="chk-detail-row">
-                    <span className="chk-detail-label">Thuộc cảng biển</span>
-                    <span className="chk-detail-value">{r.seaportName || ''}</span>
-                  </div>
-                  <div className="chk-detail-row">
-                    <span className="chk-detail-label">Địa điểm (Tỉnh/TP)</span>
-                    <span className="chk-detail-value">{provinceName}</span>
-                  </div>
-                  <div className="chk-detail-row">
-                    <span className="chk-detail-label">Địa điểm chi tiết</span>
-                    <span className="chk-detail-value">{r.detailedLocation || ''}</span>
-                  </div>
-                  <div className="chk-detail-row">
-                    <span className="chk-detail-label">Tình trạng</span>
-                    <span className="chk-detail-value"><ConditionPill status={r.conditionStatus} /></span>
-                  </div>
-                  <div className="chk-detail-row">
-                    <span className="chk-detail-label">Trạng thái</span>
-                    <span className="chk-detail-value">
-                      {r.approvalStatus ? <ApprovalStatusBadge status={r.approvalStatus} /> : ''}
-                    </span>
-                  </div>
-                  <div className="chk-detail-row">
-                    <span className="chk-detail-label">Trạm quản lý luồng</span>
-                    <span className="chk-detail-value">{r.managementStation || ''}</span>
-                  </div>
-                  <div className="chk-detail-row">
-                    <span className="chk-detail-label">Số lượng trạm</span>
-                    <span className="chk-detail-value">{fmtNum(r.stationCount)}</span>
-                  </div>
-                  <div className="chk-detail-row">
-                    <span className="chk-detail-label">Số lượng nhân sự tại trạm</span>
-                    <span className="chk-detail-value">{fmtNum(r.stationStaffCount)}</span>
-                  </div>
-                  <div className="chk-detail-row">
-                    <span className="chk-detail-label">Diện tích trạm (m²)</span>
-                    <span className="chk-detail-value">{fmtNum(r.stationAreaSquareMeters)}</span>
-                  </div>
-                  <div className="chk-detail-row">
-                    <span className="chk-detail-label">Số lượng phao</span>
-                    <span className="chk-detail-value">{fmtNum(r.buoyCount)}</span>
-                  </div>
-                  <div className="chk-detail-row">
-                    <span className="chk-detail-label">Số lượng tiêu</span>
-                    <span className="chk-detail-value">{fmtNum(r.beaconCount)}</span>
-                  </div>
-                  <div className="chk-detail-row" style={{ gridColumn: 'span 2' }}>
-                    <span className="chk-detail-label">Ghi chú</span>
-                    <span className="chk-detail-value">{r.notes || ''}</span>
-                  </div>
-                </div>
-
-                {/* ── Thông số kỹ thuật & Khai thác ── */}
-                <div style={{ marginTop: 16 }}>
-                  <button type="button" className="chk-detail-section-toggle" onClick={() => setTechnicalOpen(!technicalOpen)}>
-                    <span style={{ color: technicalOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>
-                      {technicalOpen ? '▼' : '▶'} Thông số kỹ thuật & Khai thác
-                    </span>
-                  </button>
-                  {technicalOpen && (
-                    <div className="chk-detail-grid" style={{ marginTop: 4 }}>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Hệ quy chiếu</span>
-                        <span className="chk-detail-value">{r.coordinateReferenceSystem || ''}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Loại đối tượng GIS</span>
-                        <span className="chk-detail-value">{GEOMETRY_TYPE_MAP[r.geometryType || ''] || r.geometryType || ''}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Quy tắc hiển thị</span>
-                        <span className="chk-detail-value">{r.displayRule || ''}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Phạm vi bảo vệ luồng (m)</span>
-                        <span className="chk-detail-value">{fmtNum(r.protectionScopeMeters)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Sửa chữa trạm gần nhất</span>
-                        <span className="chk-detail-value">{fmtMonthYear(r.latestStationRepairMonth)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Năm bảo trì gần nhất</span>
-                        <span className="chk-detail-value">{fmtNum(r.latestMaintenanceYear)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">KL nạo vét (m³)</span>
-                        <span className="chk-detail-value">{fmtNum(r.latestDredgingVolumeCubicMeters)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Ghi chú phạm vi bảo vệ</span>
-                        <span className="chk-detail-value">{r.protectionNotes || ''}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* ── Thông tin công bố mở, đưa vào sử dụng ── */}
-                <div style={{ marginTop: 12 }}>
-                  <button type="button" className="chk-detail-section-toggle" onClick={() => setAnnouncementOpen(!announcementOpen)}>
-                    <span style={{ color: announcementOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>
-                      {announcementOpen ? '▼' : '▶'} Thông tin công bố mở, đưa vào sử dụng
-                    </span>
-                  </button>
-                  {announcementOpen && (
-                    <div className="chk-detail-grid" style={{ marginTop: 4 }}>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Số quyết định công bố</span>
-                        <span className="chk-detail-value">{r.announcementDecisionNumber || ''}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Ngày ra quyết định</span>
-                        <span className="chk-detail-value">{fmtDate(r.announcementDecisionDate)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Đơn vị ra quyết định</span>
-                        <span className="chk-detail-value">{r.announcementDecisionIssuer || ''}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* ── Thông tin phê duyệt ── */}
-                <div style={{ marginTop: 12 }}>
-                  <button type="button" className="chk-detail-section-toggle" onClick={() => setApprovalOpen(!approvalOpen)}>
-                    <span style={{ color: approvalOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>
-                      {approvalOpen ? '▼' : '▶'} Thông tin phê duyệt
-                    </span>
-                  </button>
-                  {approvalOpen && (
-                    <div className="chk-detail-grid" style={{ marginTop: 4 }}>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Cán bộ cập nhật</span>
-                        <span className="chk-detail-value" style={{ fontWeight: fontWeightBold }}>{actorName(r.updatedBy)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Ngày cập nhật</span>
-                        <span className="chk-detail-value">{fmtDateTime(r.updatedAt)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Cán bộ gửi phê duyệt</span>
-                        <span className="chk-detail-value" style={{ fontWeight: fontWeightBold }}>{actorName(r.submittedBy)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Ngày gửi phê duyệt</span>
-                        <span className="chk-detail-value">{fmtDateTime(r.submittedAt)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Cán bộ duyệt cấp Cảng vụ</span>
-                        <span className="chk-detail-value" style={{ fontWeight: fontWeightBold }}>{actorName(r.level1ApprovedBy)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Ngày duyệt cấp Cảng vụ</span>
-                        <span className="chk-detail-value">{fmtDateTime(r.level1ApprovedAt)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Nội dung duyệt cấp Cảng vụ</span>
-                        <span className="chk-detail-value">{r.level1ApprovalContent || ''}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Cán bộ duyệt cấp Cục</span>
-                        <span className="chk-detail-value" style={{ fontWeight: fontWeightBold }}>{actorName(r.level2ApprovedBy)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Ngày duyệt cấp Cục</span>
-                        <span className="chk-detail-value">{fmtDateTime(r.level2ApprovedAt)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Nội dung duyệt cấp Cục</span>
-                        <span className="chk-detail-value">{r.level2ApprovalContent || ''}</span>
-                      </div>
-                      {r.rejectionReason && (
-                        <div className="chk-detail-row" style={{ gridColumn: 'span 2' }}>
-                          <span className="chk-detail-label" style={{ color: statusCritical }}>Lý do từ chối</span>
-                          <span className="chk-detail-value" style={{ color: statusCritical }}>{r.rejectionReason}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+              <div style={{ overflowY: 'auto', maxHeight: DRAWER_TABLE_SCROLL_Y.detailView, paddingRight: spaceXs }}>
+                <Section icon={<BankOutlined style={{ color: actionPrimary }} />} title="Thông tin cơ bản & Quản lý vận hành">
+                  <InfoGrid rows={basicRows} />
+                </Section>
+                <Section icon={<SlidersOutlined style={{ color: actionPrimary }} />} title="Thông số kỹ thuật & Khai thác">
+                  <InfoGrid rows={technicalRows} />
+                </Section>
+                <Section
+                  icon={<FileTextOutlined style={{ color: actionPrimary }} />}
+                  title="Thông tin công bố mở, đưa vào sử dụng"
+                >
+                  <InfoGrid rows={announcementRows} />
+                </Section>
+                <Section
+                  icon={<AuditOutlined style={{ color: actionPrimary }} />}
+                  title="Thông tin phê duyệt"
+                  defaultOpen={false}
+                  badge={
+                    record.approvalStatus ? (
+                      <ApprovalStatusBadge status={record.approvalStatus} size="small" />
+                    ) : undefined
+                  }
+                >
+                  <InfoGrid rows={approvalRows} />
+                </Section>
               </div>
             ),
           },
           {
             key: 'location',
-            label: `Thông tin vị trí (${coordinates.length})`,
+            label: 'Thông tin vị trí',
             children: (
               <div>
-                <div style={{ marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: spaceSm }}>
                   <Button
-                    type="primary"
                     icon={<EnvironmentOutlined />}
                     onClick={() => setGisOpen(true)}
-                    style={{ ...primaryButtonStyle, height: 32, fontSize: fontSizeMd, borderRadius: radiusPill }}
+                    disabled={coordinates.length === 0}
+                    style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 32 }}
                   >
-                    Xem vị trí trên bản đồ chuyên dụng
+                    Xem vị trí trên bản đồ
                   </Button>
                 </div>
-                <DetailTable<NavigationChannelCoordinateResponse>
-                  dataSource={coordinates}
-                  columns={coordinateColumns}
-                  rowKey="id"
+                <DetailTable
                   scrollY={DRAWER_TABLE_SCROLL_Y.withButton}
-                  emptyText="Chưa có dữ liệu tọa độ"
+                  dataSource={coordinates}
+                  rowKey={(r) => String(r.id ?? r.sequenceNo ?? `${r.longitude}-${r.latitude}`)}
+                  columns={coordinateColumns}
+                  emptyText="Chưa có tọa độ GIS"
                 />
               </div>
             ),
@@ -628,111 +522,89 @@ export default function NavigationChannelDetailContent({
             key: 'files',
             label: `File đính kèm (${attachments.length})`,
             children: (
-              <DetailTable<AttachmentRow>
+              <DetailTable
+                scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
                 dataSource={attachments}
+                rowKey={(r) => String(r.id ?? r.fileName)}
                 columns={attachmentColumns}
-                rowKey="id"
-                scrollY={DRAWER_TABLE_SCROLL_Y.pureTable}
                 emptyText="Chưa có tài liệu đính kèm"
               />
             ),
           },
           {
             key: 'routes',
-            label: `Tuyến luồng (${routeDetails.length})`,
+            label: 'Tuyến luồng',
             children: (
-              <DetailTable<ChannelRouteDetailResponse>
+              <DetailTable
+                scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
                 dataSource={routeDetails}
+                rowKey={(r) => String(r.id ?? r.sequenceNo)}
                 columns={routeColumns}
-                rowKey="id"
-                scrollY={DRAWER_TABLE_SCROLL_Y.pureTable}
                 emptyText="Chưa có phân đoạn tuyến luồng"
               />
             ),
           },
           {
-            key: 'operationMaintenance',
+            key: 'operation',
             label: 'Vận hành & bảo trì',
             children: (
-              <div style={{ overflowY: 'auto', maxHeight: DRAWER_TABLE_SCROLL_Y.detailView, paddingRight: 4 }}>
-                {/* ── Kế hoạch vận hành ── */}
-                <div style={{ marginBottom: 16 }}>
-                  <button type="button" className="chk-detail-section-toggle" onClick={() => setOperationOpen(!operationOpen)}>
-                    <span style={{ color: operationOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>
-                      {operationOpen ? '▼' : '▶'} Kế hoạch vận hành
-                    </span>
-                  </button>
-                  {operationOpen && (
-                    <DetailTable
-                      dataSource={operationList}
-                      columns={[
-                        { title: 'STT', width: 50, align: 'center', render: (_: unknown, __: unknown, i: number) => i + 1 },
-                        { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'planCode', render: (v: string) => v || '' },
-                        { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'planName', render: (v: string) => v || '' },
-                        { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'startDate', width: 140, align: 'center', render: (v: string) => fmtDate(v) },
-                        { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'endDate', width: 140, align: 'center', render: (v: string) => fmtDate(v) },
+              <div style={{ overflowY: 'auto', maxHeight: DRAWER_TABLE_SCROLL_Y.detailView, paddingRight: spaceXs }}>
+                <Section icon={<SlidersOutlined style={{ color: actionPrimary }} />} title="Thông tin vận hành khai thác">
+                  {hasOperation ? (
+                    <InfoGrid
+                      rows={[
+                        { label: 'Mã kế hoạch vận hành', value: record.operationPlanCode || '—' },
+                        { label: 'Tên kế hoạch vận hành', value: record.operationPlanName || '—' },
+                        { label: 'Ngày bắt đầu', value: fmtDate(record.operationStartDate) },
+                        { label: 'Ngày kết thúc', value: fmtDate(record.operationEndDate) },
                       ]}
-                      rowKey="planCode"
-                      emptyText="Chưa có dữ liệu kế hoạch vận hành"
                     />
+                  ) : (
+                    <div style={{ color: textTertiary, fontSize: fontSizeMd, padding: `${spaceMd}px 0` }}>Chưa có dữ liệu vận hành khai thác</div>
                   )}
-                </div>
-
-                {/* ── Kế hoạch bảo trì ── */}
-                <div style={{ marginBottom: 16 }}>
-                  <button type="button" className="chk-detail-section-toggle" onClick={() => setMaintenanceOpen(!maintenanceOpen)}>
-                    <span style={{ color: maintenanceOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>
-                      {maintenanceOpen ? '▼' : '▶'} Kế hoạch bảo trì
-                    </span>
-                  </button>
-                  {maintenanceOpen && (
-                    <DetailTable
-                      dataSource={maintenanceList}
-                      columns={[
-                        { title: 'STT', width: 50, align: 'center', render: (_: unknown, __: unknown, i: number) => i + 1 },
-                        { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'planCode', render: (v: string) => v || '' },
-                        { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'planName', render: (v: string) => v || '' },
-                        { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'startDate', width: 140, align: 'center', render: (v: string) => fmtDate(v) },
-                        { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'endDate', width: 140, align: 'center', render: (v: string) => fmtDate(v) },
+                </Section>
+                <Section icon={<BankOutlined style={{ color: actionPrimary }} />} title="Thông tin bảo trì & nạo vét">
+                  {hasMaintenance ? (
+                    <InfoGrid
+                      rows={[
+                        { label: 'Mã kế hoạch bảo trì', value: record.maintenancePlanCode || '—' },
+                        { label: 'Tên kế hoạch bảo trì', value: record.maintenancePlanName || '—' },
+                        { label: 'Năm bảo trì gần nhất', value: fmtNum(record.latestMaintenanceYear) },
+                        { label: 'KL nạo vét (m³)', value: fmtNum(record.latestDredgingVolumeCubicMeters, 'm³') },
+                        { label: 'Thời gian bắt đầu', value: fmtDateTime(record.maintenanceStartTime) },
+                        { label: 'Thời gian kết thúc', value: fmtDateTime(record.maintenanceEndTime) },
                       ]}
-                      rowKey="planCode"
-                      emptyText="Chưa có dữ liệu kế hoạch bảo trì"
                     />
+                  ) : (
+                    <div style={{ color: textTertiary, fontSize: fontSizeMd, padding: `${spaceMd}px 0` }}>Chưa có dữ liệu bảo trì & nạo vét</div>
                   )}
-                </div>
-
-                {/* ── Lịch sử sự cố ── */}
-                <div>
-                  <button type="button" className="chk-detail-section-toggle" onClick={() => setIncidentOpen(!incidentOpen)}>
-                    <span style={{ color: incidentOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>
-                      {incidentOpen ? '▼' : '▶'} Lịch sử sự cố & cảnh báo
-                    </span>
-                  </button>
-                  {incidentOpen && (
-                    <DetailTable
-                      dataSource={incidentList}
-                      columns={[
-                        { title: 'STT', width: 50, align: 'center', render: (_: unknown, __: unknown, i: number) => i + 1 },
-                        { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'code', render: (v: string) => v || '' },
-                        { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'type', render: (v: string) => v || '' },
-                        { title: 'Địa điểm', dataIndex: 'incidentLocation', key: 'location', render: (v: string) => v || '' },
-                        { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 160, align: 'center', render: (v: string) => fmtDateTime(v) },
+                </Section>
+                <Section icon={<AuditOutlined style={{ color: actionPrimary }} />} title="Lịch sử sự cố & cảnh báo">
+                  {hasIncident ? (
+                    <InfoGrid
+                      rows={[
+                        { label: 'Mã sự cố', value: record.incidentCode || '—' },
+                        { label: 'Loại sự cố', value: record.incidentType || '—' },
+                        { label: 'Vị trí sự cố', value: record.incidentLocation || '—' },
+                        { label: 'Thời gian sự cố', value: fmtDateTime(record.incidentTime) },
                       ]}
-                      rowKey="incidentCode"
-                      emptyText="Chưa có ghi nhận sự cố"
                     />
+                  ) : (
+                    <div style={{ color: textTertiary, fontSize: fontSizeMd, padding: `${spaceMd}px 0` }}>Chưa có sự cố nào được ghi nhận</div>
                   )}
-                </div>
+                </Section>
               </div>
             ),
           },
         ]}
+        style={{ flex: 1, minHeight: 0 }}
+        tabBarStyle={{ position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }}
       />
 
-      {/* ── Modal xem vị trí GIS ── */}
+      {/* ── Bản đồ GIS xem vị trí (read-only) ── */}
       <Modal
         title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: spaceSm }}>
             <EnvironmentOutlined style={{ color: actionPrimary }} />
             <span style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: fontSizeLg }}>
               Xem vị trí trên bản đồ chuyên dụng
@@ -756,10 +628,7 @@ export default function NavigationChannelDetailContent({
             defaultGeometryType={(gisView.geometryType as 'POINT' | 'LINE' | 'POLYGON') || 'POINT'}
             disabled
             height={520}
-            value={{
-              geometryType: gisView.geometryType as 'POINT' | 'LINE' | 'POLYGON',
-              coordinates: gisView.coordinates,
-            }}
+            value={{ geometryType: gisView.geometryType as 'POINT' | 'LINE' | 'POLYGON', coordinates: gisView.coordinates }}
           />
         </div>
       </Modal>

@@ -1184,7 +1184,25 @@ export default function NavigationChannelList() {
         open={detailOpen}
         onClose={() => { setDetailOpen(false); setDetailRecord(null); }}
         size={1080}
-        footer={null}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'center', gap: spaceSm }}>
+            {detailRecord && canEditApprovalRecord(detailRecord.approvalStatus, { hasPerm, resource: 'navigationchannel' }) && (
+              <Button
+                type="primary"
+                style={{ borderRadius: radiusPill, height: 38, minWidth: 100 }}
+                onClick={() => { setDetailOpen(false); openModal('edit', detailRecord.id); }}
+              >
+                Chỉnh sửa
+              </Button>
+            )}
+            <Button
+              style={{ borderRadius: radiusPill, height: 38, minWidth: 100 }}
+              onClick={() => { setDetailOpen(false); setDetailRecord(null); }}
+            >
+              Đóng
+            </Button>
+          </div>
+        }
       >
         {detailRecord && <NavigationChannelDetailContent record={detailRecord} userMap={userMap} />}
       </AppDrawer>
