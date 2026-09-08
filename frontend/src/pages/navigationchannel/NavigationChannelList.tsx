@@ -811,14 +811,13 @@ export default function NavigationChannelList() {
 
   // ── Columns (DS scope: #5/#4/#2/#1/#6/#8/#47/#48) ───────────────────
   const columns = useMemo(() => {
-    const orgLabel = (orgUnitId?: string) => orgUnitId || '—';
     const seaportLabel = (seaportId?: string) => {
-      if (!seaportId) return '—';
+      if (!seaportId) return '';
       const p = seaportOptions.find((o) => o.id === seaportId);
       return p ? (p.portCode ? `${p.portCode} - ${p.portName || ''}` : p.portName || seaportId) : seaportId;
     };
     const provinceLabel = (provinceId?: number) =>
-      provinceId != null ? (VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(provinceId))?.label || String(provinceId)) : '—';
+      provinceId != null ? (VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(provinceId))?.label || String(provinceId)) : '';
     return [
       {
         key: 'stt',
@@ -843,10 +842,10 @@ export default function NavigationChannelList() {
               onClick={() => openDetail(record)}
               style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
             >
-              {v || '—'}
+              {v || ''}
             </a>
             <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {record.channelCode || '—'}
+              {record.channelCode || ''}
             </span>
           </div>
         ),
@@ -865,8 +864,8 @@ export default function NavigationChannelList() {
         dataIndex: 'orgUnitId',
         width: 200,
         ellipsis: true,
-        render: (v: string | undefined, record: NavigationChannelResponse) => (
-          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{record.orgUnitName || orgLabel(v)}</span>
+        render: (_: string | undefined, record: NavigationChannelResponse) => (
+          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{record.orgUnitName || ''}</span>
         ),
       },
       {
@@ -883,7 +882,7 @@ export default function NavigationChannelList() {
         width: 150,
         sortable: true,
         render: (v: string | undefined) => {
-          if (!v) return <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>;
+          if (!v) return null;
           const s = CONDITION_STATUS_STYLE_MAP[v] || { label: CONDITION_STATUS_MAP[v as keyof typeof CONDITION_STATUS_MAP] || v, color: textTertiary };
           return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
         },
@@ -893,7 +892,7 @@ export default function NavigationChannelList() {
         label: 'Trạng thái',
         dataIndex: 'approvalStatus',
         width: 160,
-        render: (v: ApprovalStatus) => (v ? <ApprovalStatusBadge status={v} /> : '—'),
+        render: (v: ApprovalStatus) => (v ? <ApprovalStatusBadge status={v} /> : null),
       },
       {
         key: 'updatedAt',
@@ -907,9 +906,9 @@ export default function NavigationChannelList() {
           return (
             <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name || record.updatedBy || ''}>
               <div style={{ fontWeight: fontWeightBold, fontSize: fontSizeMd, color: textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {name || record.updatedBy || '—'}
+                {name || record.updatedBy || ''}
               </div>
-              <div style={{ fontSize: fontSizeSm, color: textTertiary }}>{v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—'}</div>
+              <div style={{ fontSize: fontSizeSm, color: textTertiary }}>{v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : ''}</div>
             </div>
           );
         },
@@ -956,6 +955,16 @@ export default function NavigationChannelList() {
   // ── Filter panel (FilterTableLayout renders the sidebar) ────────────
   const filterContent = (
     <>
+      <style>{`
+        .chk-filter-select.ant-select .ant-select-selector,
+        .chk-filter-select.ant-tree-select .ant-select-selector,
+        .chk-filter-select .ant-select-selector {
+          border-radius: 999px !important;
+          height: 40px !important;
+          display: flex !important;
+          align-items: center !important;
+        }
+      `}</style>
       <div style={{ marginBottom: spaceFormField, marginTop: 16 }}>
         <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Đơn vị quản lý</div>
         <OrgUnitTreeSelect
@@ -963,6 +972,7 @@ export default function NavigationChannelList() {
           placeholder="Chọn đơn vị..."
           allowClear
           showSearch
+          className="chk-filter-select"
           value={filterOrgUnitId}
           onChange={(v) => { setFilterOrgUnitId(v || undefined); setPage(1); }}
           style={filterInputStyle}
@@ -974,6 +984,7 @@ export default function NavigationChannelList() {
           placeholder="Chọn cảng biển..."
           allowClear
           showSearch
+          className="chk-filter-select"
           optionFilterProp="label"
           value={filterSeaportId}
           onChange={(v) => { setFilterSeaportId(v); setPage(1); }}
@@ -1012,6 +1023,7 @@ export default function NavigationChannelList() {
               placeholder="Chọn tỉnh/thành phố..."
               allowClear
               showSearch
+              className="chk-filter-select"
               optionFilterProp="label"
               value={filterProvinceId}
               onChange={(v) => { setFilterProvinceId(v); setPage(1); }}
@@ -1024,6 +1036,7 @@ export default function NavigationChannelList() {
             <Select
               placeholder="Chọn tình trạng"
               allowClear
+              className="chk-filter-select"
               value={filterConditionStatus}
               onChange={(v) => { setFilterConditionStatus(v); setPage(1); }}
               options={CONDITION_STATUS_OPTIONS}
@@ -1036,6 +1049,7 @@ export default function NavigationChannelList() {
               placeholder="Chọn cán bộ cập nhật"
               allowClear
               showSearch
+              className="chk-filter-select"
               value={filterUpdatedBy}
               onChange={(v) => { setFilterUpdatedBy(v || undefined); setPage(1); }}
               options={userOptions}
@@ -1131,7 +1145,7 @@ export default function NavigationChannelList() {
             rowKey="id"
             rowActions={rowActions}
             onSort={handleSort}
-            scroll={{ x: 'max-content', y: 400 }}
+            scroll={{ x: 'max-content' }}
           />
           <div style={{ height: 55, overflow: 'visible', marginBottom: 8 }}>
             <Pagination
@@ -1170,22 +1184,7 @@ export default function NavigationChannelList() {
         open={detailOpen}
         onClose={() => { setDetailOpen(false); setDetailRecord(null); }}
         size={1080}
-        footer={
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: spaceSm }}>
-            {detailRecord && canEditApprovalRecord(detailRecord.approvalStatus, { hasPerm, resource: 'navigationchannel' }) && (
-              <Button
-                type="primary"
-                style={{ borderRadius: radiusPill, height: 38 }}
-                onClick={() => { setDetailOpen(false); openModal('edit', detailRecord.id); }}
-              >
-                Chỉnh sửa
-              </Button>
-            )}
-            <Button style={{ borderRadius: radiusPill, height: 38 }} onClick={() => { setDetailOpen(false); setDetailRecord(null); }}>
-              Đóng
-            </Button>
-          </div>
-        }
+        footer={null}
       >
         {detailRecord && <NavigationChannelDetailContent record={detailRecord} userMap={userMap} />}
       </AppDrawer>
