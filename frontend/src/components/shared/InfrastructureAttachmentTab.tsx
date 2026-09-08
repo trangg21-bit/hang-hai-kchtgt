@@ -1,9 +1,12 @@
-import { Upload, Button } from 'antd';
+import React, { useState } from 'react';
+import { Upload, Button, Modal } from 'antd';
 import {
   InboxOutlined,
   FileOutlined,
+  FileImageOutlined,
   DownloadOutlined,
   DeleteOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import toast from '../ToastNotification';
@@ -25,27 +28,35 @@ export interface InfrastructureAttachmentItem {
   id: string;
   fileName: string;
   fileSize?: number;
+  size?: number;
   fileType?: string;
   uploadedByName?: string;
   uploadedBy?: string;
   uploadedDate?: string;
+  uploadedAt?: string;
   createdAt?: string;
   filePath?: string;
   file?: File;
+  originFileObj?: File;
+  url?: string;
   [key: string]: any;
 }
 
 export interface InfrastructureAttachmentTabProps {
   /** Danh sách tệp đính kèm */
   attachments: InfrastructureAttachmentItem[];
-  /** Chế độ xem chi tiết (chỉ đọc, ẩn khung Upload.Dragger, chỉ hiện nút Tải xuống) */
+  /** Chế độ xem chi tiết (chỉ đọc, ẩn khung Upload.Dragger, chỉ hiện nút Tải xuống / Xem chi tiết) */
   readonly?: boolean;
+  /** Bảng tra cứu tên người dùng theo UUID */
+  userMap?: Map<string, string>;
   /** Callback khi người dùng chọn/kéo thả tải lên tệp mới */
   onUpload?: (file: File) => void | boolean | Promise<any>;
   /** Callback khi người dùng xóa tệp */
   onDelete?: (attachmentId: string) => void | Promise<any>;
   /** Callback khi người dùng nhấn tải xuống tệp */
   onDownload?: (attachmentId: string, fileName: string) => void | Promise<any>;
+  /** Callback xem trước tùy biến */
+  onPreview?: (attachment: InfrastructureAttachmentItem) => void;
   /** Trạng thái đang tải danh sách tệp (lazy load) */
   isLoading?: boolean;
   /** Tùy chọn chiều cao cuộn bảng scrollY (mặc định tự động theo readonly) */
@@ -62,6 +73,16 @@ export interface InfrastructureAttachmentTabProps {
 
 const DEFAULT_ACCEPT = '.pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif';
 const DEFAULT_ALLOWED_EXTS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'];
+
+/**
+ * Kiểm tra xem tệp có phải là định dạng hình ảnh hay không
+ */
+export const isImageFile = (fileName?: string, fileType?: string): boolean => {
+  if (fileType?.startsWith('image/')) return true;
+  if (!fileName) return false;
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'tif', 'tiff'].includes(ext || '');
+};
 
 /**
  * Hàm kiểm tra định dạng và dung lượng tệp đính kèm theo chuẩn hệ thống KCHTGT
@@ -97,14 +118,19 @@ export const formatAttachmentFileSize = (bytes?: number): string => {
 };
 
 /**
- * Component dùng chung cho Tab "File đính kèm" trên tất cả các Drawer Thêm mới, Sửa và Xem chi tiết
+ * Component dùng chung cho Tab "File đính kèm" trên tất cả các Drawer Thêm mới, Sửa và Xem chi tiết.
+ * Quy chuẩn:
+ * - Ảnh (.png, .jpg, .jpeg, .webp, ...): Được xem chi tiết (EyeOutlined mở modal) + Tải xuống.
+ * - File khác (.pdf, .doc, .xls, ...): Chỉ tải xuống (DownloadOutlined).
  */
 export default function InfrastructureAttachmentTab({
   attachments = [],
   readonly = false,
+  userMap,
   onUpload,
   onDelete,
   onDownload,
+  onPreview,
   isLoading = false,
   scrollY,
   multiple = true,
@@ -112,12 +138,36 @@ export default function InfrastructureAttachmentTab({
   accept = DEFAULT_ACCEPT,
   emptyText,
 }: InfrastructureAttachmentTabProps) {
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [previewRecord, setPreviewRecord] = useState<InfrastructureAttachmentItem | null>(null);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string>('');
+
   const handleBeforeUpload = (file: File) => {
     if (!validateAttachmentFile(file, { maxSizeMB })) {
       return false;
     }
     onUpload?.(file);
     return false;
+  };
+
+  const handlePreview = (record: InfrastructureAttachmentItem) => {
+    if (onPreview) {
+      onPreview(record);
+      return;
+    }
+    const rawFile = record.originFileObj || record.file;
+    if (rawFile) {
+      const blobUrl = URL.createObjectURL(rawFile);
+      setPreviewImageUrl(blobUrl);
+    } else if (record.url) {
+      setPreviewImageUrl(record.url);
+    } else if (record.filePath) {
+      setPreviewImageUrl(record.filePath);
+    } else {
+      setPreviewImageUrl('');
+    }
+    setPreviewRecord(record);
+    setPreviewVisible(true);
   };
 
   const effectiveScrollY = scrollY || (readonly ? DRAWER_TABLE_SCROLL_Y.detailView : DRAWER_TABLE_SCROLL_Y.withDragger);
@@ -133,21 +183,39 @@ export default function InfrastructureAttachmentTab({
       dataIndex: 'fileName',
       key: 'fileName',
       render: (name: string, record: InfrastructureAttachmentItem) => {
+        const isImg = isImageFile(name, record.fileType);
+
         if (readonly) {
           return (
             <span
               style={{
                 color: actionPrimary,
-                cursor: onDownload ? 'pointer' : 'default',
-                display: 'block',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
+                maxWidth: '100%',
               }}
-              onClick={() => onDownload?.(record.id, name)}
-              title={name}
+              onClick={() => {
+                if (isImg) {
+                  handlePreview(record);
+                } else {
+                  onDownload?.(record.id, name);
+                }
+              }}
+              title={isImg ? `${name} (Nhấp để xem chi tiết ảnh)` : `${name} (Nhấp để tải xuống)`}
             >
-              {name}
+              {isImg ? (
+                <FileImageOutlined style={{ color: actionPrimary, flexShrink: 0 }} />
+              ) : (
+                <FileOutlined style={{ color: actionPrimary, flexShrink: 0 }} />
+              )}
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {name}
+              </span>
             </span>
           );
         }
@@ -165,10 +233,18 @@ export default function InfrastructureAttachmentTab({
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
+              cursor: isImg ? 'pointer' : 'default',
             }}
-            title={name}
+            onClick={() => {
+              if (isImg) handlePreview(record);
+            }}
+            title={isImg ? `${name} (Nhấp để xem chi tiết ảnh)` : name}
           >
-            <FileOutlined style={{ color: actionPrimary }} />
+            {isImg ? (
+              <FileImageOutlined style={{ color: actionPrimary, flexShrink: 0 }} />
+            ) : (
+              <FileOutlined style={{ color: actionPrimary, flexShrink: 0 }} />
+            )}
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {name}
             </span>
@@ -181,16 +257,20 @@ export default function InfrastructureAttachmentTab({
       dataIndex: 'fileSize',
       width: 120,
       align: 'right' as const,
-      render: (v: number | undefined) => formatAttachmentFileSize(v),
+      render: (v: number | undefined, record: InfrastructureAttachmentItem) => {
+        const size = v ?? record.fileSize ?? record.size ?? record.originFileObj?.size ?? record.file?.size;
+        return formatAttachmentFileSize(size);
+      },
     },
     {
       title: 'Người tải lên',
       dataIndex: 'uploadedByName',
       width: 180,
       render: (v: string | undefined, record: InfrastructureAttachmentItem) => {
-        const raw = v || record.uploadedByName || record.uploadedBy;
-        const isUuid = raw && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw);
-        const displayName = isUuid ? 'Cán bộ quản lý' : (raw || '—');
+        const raw = v || record.uploadedByName || record.uploadedBy || record.uploaderName || record.createdByName || record.createdBy;
+        const resolved = (raw && userMap?.get(raw)) ? userMap.get(raw) : raw;
+        const isUuid = resolved && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolved);
+        const displayName = isUuid ? 'Cán bộ quản lý' : (resolved || '—');
         return (
           <span
             style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
@@ -207,18 +287,36 @@ export default function InfrastructureAttachmentTab({
       width: 160,
       align: 'center' as const,
       render: (v: string | undefined, record: InfrastructureAttachmentItem) => {
-        const dateVal = v || record.createdAt;
+        const dateVal = v || record.uploadedDate || record.uploadedAt || record.createdAt || record.createdDate;
         return dateVal ? dayjs(dateVal).format('DD/MM/YYYY HH:mm') : '—';
       },
     },
     {
       title: 'Thao tác',
-      width: readonly ? 70 : 80,
+      width: readonly ? 90 : 120,
       align: 'center' as const,
       render: (_: unknown, record: InfrastructureAttachmentItem) => {
+        const isImg = isImageFile(record.fileName, record.fileType);
+
         if (readonly) {
           return (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+              {isImg && (
+                <Button
+                  type="text"
+                  icon={<EyeOutlined style={{ fontSize: 16, color: actionPrimary }} />}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    padding: 0,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  onClick={() => handlePreview(record)}
+                  title="Xem chi tiết ảnh"
+                />
+              )}
               <Button
                 type="text"
                 icon={<DownloadOutlined style={{ fontSize: 16, color: actionPrimary }} />}
@@ -239,6 +337,22 @@ export default function InfrastructureAttachmentTab({
 
         return (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+            {isImg && (
+              <Button
+                type="text"
+                icon={<EyeOutlined style={{ fontSize: 16, color: actionPrimary }} />}
+                style={{
+                  width: 32,
+                  height: 32,
+                  padding: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                onClick={() => handlePreview(record)}
+                title="Xem chi tiết ảnh"
+              />
+            )}
             <Button
               type="text"
               icon={<DownloadOutlined style={{ fontSize: 16, color: actionPrimary }} />}
@@ -323,6 +437,61 @@ export default function InfrastructureAttachmentTab({
         rowKey={(r: any) => r.id || r.fileName}
         columns={columns}
       />
+
+      {/* Modal xem chi tiết ảnh */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <FileImageOutlined style={{ color: actionPrimary, fontSize: 18 }} />
+            <span style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd + 1 }}>
+              {previewRecord?.fileName || 'Xem chi tiết hình ảnh'}
+            </span>
+            {previewRecord?.fileSize ? (
+              <span style={{ fontSize: fontSizeSm, color: textTertiary, fontWeight: 'normal' }}>
+                ({formatAttachmentFileSize(previewRecord.fileSize)})
+              </span>
+            ) : null}
+          </div>
+        }
+        open={previewVisible}
+        onCancel={() => setPreviewVisible(false)}
+        footer={[
+          ...(onDownload && previewRecord ? [
+            <Button
+              key="download"
+              icon={<DownloadOutlined />}
+              onClick={() => onDownload(previewRecord.id, previewRecord.fileName)}
+              style={{ borderRadius: 999 }}
+            >
+              Tải xuống
+            </Button>,
+          ] : []),
+          <Button key="close" type="primary" onClick={() => setPreviewVisible(false)} style={{ borderRadius: 999, background: actionPrimary, borderColor: actionPrimary }}>
+            Đóng
+          </Button>,
+        ]}
+        width="min(800px, 90vw)"
+        centered
+        destroyOnClose
+      >
+        <div style={{ textAlign: 'center', padding: '16px 0', minHeight: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', borderRadius: radiusMd }}>
+          {previewImageUrl ? (
+            <img
+              src={previewImageUrl}
+              alt={previewRecord?.fileName || 'Ảnh đính kèm'}
+              style={{
+                maxWidth: '100%',
+                maxHeight: '65vh',
+                objectFit: 'contain',
+                borderRadius: 4,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              }}
+            />
+          ) : (
+            <div style={{ color: textTertiary }}>Đang tải hình ảnh hoặc không có sẵn bản xem trước</div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

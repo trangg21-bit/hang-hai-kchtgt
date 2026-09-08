@@ -2198,6 +2198,9 @@ textarea::placeholder,
   scrollbar-width: thin !important;
   scrollbar-color: #cbd5e1 transparent !important;
 }
+.ant-drawer .ant-drawer-body:not(:has(.ant-tabs)) {
+  padding: 16px 24px !important;
+}
 .ant-drawer .ant-drawer-body::-webkit-scrollbar {
   width: 6px !important;
   display: block !important;
@@ -2213,6 +2216,12 @@ textarea::placeholder,
 .chk-detail-table-card {
   margin-top: 0 !important;
   padding-top: 0 !important;
+}
+.ant-drawer .ant-table-placeholder > td,
+.ant-drawer .ant-table-placeholder .ant-table-cell,
+.chk-detail-table-card .ant-table-placeholder > td,
+.chk-detail-table-card .ant-table-placeholder .ant-table-cell {
+  border-bottom: none !important;
 }
 .ant-drawer .ant-table-wrapper {
   margin-top: 0 !important;

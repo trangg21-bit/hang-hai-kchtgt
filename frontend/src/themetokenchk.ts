@@ -1091,6 +1091,9 @@ textarea.ant-input {
   overflow: hidden !important;
   padding: 0 24px !important;
 }
+.ant-drawer .ant-drawer-body:not(:has(.ant-tabs)) {
+  padding: 16px 24px !important;
+}
 .ant-drawer .ant-drawer-body::-webkit-scrollbar,
 .ant-drawer .ant-tabs-content-holder div::-webkit-scrollbar,
 .ant-drawer .ant-tabs-tabpane div::-webkit-scrollbar {
@@ -1119,6 +1122,12 @@ textarea.ant-input {
 .chk-detail-table-card {
   margin-top: 0 !important;
   padding-top: 0 !important;
+}
+.ant-drawer .ant-table-placeholder > td,
+.ant-drawer .ant-table-placeholder .ant-table-cell,
+.chk-detail-table-card .ant-table-placeholder > td,
+.chk-detail-table-card .ant-table-placeholder .ant-table-cell {
+  border-bottom: none !important;
 }
 .ant-drawer .ant-table-wrapper {
   margin-top: 0 !important;

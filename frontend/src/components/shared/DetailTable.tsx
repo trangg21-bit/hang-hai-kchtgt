@@ -304,8 +304,11 @@ export const DetailTable = <T extends object = any>({
           max-height: ${typeof effectiveScrollY === 'number' ? `${effectiveScrollY}px` : effectiveScrollY} !important;
           overflow-x: auto !important;
         }
-        .${instanceId} .ant-table-placeholder .ant-table-cell {
+        .${instanceId} .ant-table-placeholder .ant-table-cell,
+        .${instanceId} .ant-table-placeholder > td,
+        .${instanceId} .ant-table-tbody > tr.ant-table-placeholder > td {
           height: ${typeof effectiveScrollY === 'number' ? `${effectiveScrollY}px` : effectiveScrollY} !important;
+          border-bottom: none !important;
         }
       `}</style>
       <div>
