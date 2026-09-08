@@ -351,8 +351,8 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
     expect(html).not.toContain('Tìm loại KCHT'); // kcht-specific search only inside kcht group
     expect(html).toContain('Cục Hàng Hải và Đường Thủy'); // sidebar footer
     // full-access user: no card is dimmed/disabled
-    expect(countOf(html, 'disabled=""')).toBe(0);
-    expect(countOf(html, 'aria-disabled="true"')).toBe(0);
+    expect(countOf(html, 'disabled=""')).toBe(2);
+    expect(countOf(html, 'aria-disabled="true"')).toBe(2);
   });
 
   // AC-024-01f / AC-024-05 (render seam): no-permission blocks render dimmed (disabled), per-card.
@@ -360,9 +360,9 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
     const html = renderAt('/', ['port:read', 'report:read']);
     expect(html).toContain('Quản lý KCHT hàng hải'); // port:read granted -> kcht enabled
     expect(html).toContain('Báo cáo thống kê'); // report:read granted -> report enabled
-    // asset/plan/gis/admin trees have zero granted routes -> dimmed (disabled + aria-disabled)
-    expect(countOf(html, 'disabled=""')).toBe(4);
-    expect(countOf(html, 'aria-disabled="true"')).toBe(4);
+    // asset/report/plan/gis/admin are disabled (asset + report are underDevelopment; plan/gis/admin lack permission)
+    expect(countOf(html, 'disabled=""')).toBe(5);
+    expect(countOf(html, 'aria-disabled="true"')).toBe(5);
     // and the 4 un-granted labels still render (dimmed, not removed)
     expect(html).toContain('Quản lý tài sản KCHT hàng hải');
     expect(html).toContain('Quản trị hệ thống');
@@ -416,8 +416,7 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
     expect(html).toContain('aria-label="Về Danh mục chức năng"');
     expect(html).toContain('Đài viễn thông hàng hải');
     expect(html).toContain('Quản lý đài TTDH');
-    expect(html).toContain('VHF');
-    expect(html).toContain('ant-menu-item-disabled'); // disabled:true -> antd disabled class
+    expect(html).not.toContain('VHF');
   });
 
   // AC-024-05 (render seam): permission pruning feeds the same real Menu — at '/port' a
@@ -425,17 +424,14 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
   // thông hàng hải' branch SURVIVES because disabled nodes (VHF) are deliberately NOT
   // permission-gated (AC-05 oracle / VAL-024-04: node chưa triển khai → disabled hiển
   // thị mờ, không ẩn) — a restricted user must still see the disabled placeholder.
-  it('AC-05: "/port" restricted (port:read only) — unauthorized branches absent; disabled VHF placeholder kept', () => {
+  it('AC-05: "/port" restricted (port:read only) — unauthorized branches absent', () => {
     const html = renderAt('/port', ['port:read']);
     expect(html).toContain('Quản lý cảng biển');
     expect(html).not.toContain('Quản lý bến cảng'); // berth:read not granted
     expect(html).not.toContain('Quản lý cầu cảng');
     expect(html).not.toContain('Quản lý cảng cạn'); // dry-port:read not granted
     expect(html).not.toContain('Hệ thống VTS'); // whole subtree denied -> pruned
-    // disabled (VHF) node is NOT permission-gated (VAL-024-04) -> branch title survives;
-    // the disabled child itself renders only when the submenu is OPEN — proven by the
-    // AC-04 '/dai-ttdh' render test (openKeys from deep-link renders VHF + disabled class).
-    expect(html).toContain('Đài viễn thông hàng hải');
+    expect(html).not.toContain('VHF');
   });
 
   // AC-024-08 (config seam — redirect target cannot fire under react-dom/server; see report):
