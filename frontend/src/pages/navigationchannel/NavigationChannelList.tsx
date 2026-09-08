@@ -556,9 +556,17 @@ export default function NavigationChannelList() {
   // ── Detail drawer (NavigationChannelDetailContent — 5 tab read-only) ──
   const [detailRecord, setDetailRecord] = useState<NavigationChannelResponse | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const openDetail = useCallback((record: NavigationChannelResponse) => {
+  const openDetail = useCallback(async (record: NavigationChannelResponse) => {
     setDetailRecord(record);
     setDetailOpen(true);
+    try {
+      const full = await navigationChannelCRUD.getById(record.id);
+      if (full && full.id) {
+        setDetailRecord(full);
+      }
+    } catch {
+      // Fallback giữ nguyên summary record nếu API getById lỗi
+    }
   }, []);
 
   // Map user id → tên hiển thị cho cột "Cán bộ cập nhật" (backend NavigationChannel chưa trả updatedByName như các module khác)
@@ -1184,25 +1192,7 @@ export default function NavigationChannelList() {
         open={detailOpen}
         onClose={() => { setDetailOpen(false); setDetailRecord(null); }}
         size={1080}
-        footer={
-          <div style={{ display: 'flex', justifyContent: 'center', gap: spaceSm }}>
-            {detailRecord && canEditApprovalRecord(detailRecord.approvalStatus, { hasPerm, resource: 'navigationchannel' }) && (
-              <Button
-                type="primary"
-                style={{ borderRadius: radiusPill, height: 38, minWidth: 100 }}
-                onClick={() => { setDetailOpen(false); openModal('edit', detailRecord.id); }}
-              >
-                Chỉnh sửa
-              </Button>
-            )}
-            <Button
-              style={{ borderRadius: radiusPill, height: 38, minWidth: 100 }}
-              onClick={() => { setDetailOpen(false); setDetailRecord(null); }}
-            >
-              Đóng
-            </Button>
-          </div>
-        }
+        footer={null}
       >
         {detailRecord && <NavigationChannelDetailContent record={detailRecord} userMap={userMap} />}
       </AppDrawer>
