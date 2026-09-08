@@ -78,7 +78,7 @@ import {
   fontSizeMd,
   fontSizeLg,
   drawerTabBarStyle,
-  drawerTabContentStyle,
+  drawerFormScrollStyle,
   radiusPill,
   radiusMd,
   surfaceCard,
@@ -1547,7 +1547,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
             key: 'basic-info',
             label: 'Thông tin chung',
             children: (
-              <div style={drawerTabContentStyle}>
+              <div style={drawerFormScrollStyle}>
                 {/* ── Section Card 1: Thông tin cơ bản & Quản lý vận hành ── */}
                 <div style={sectionBoxStyle}>
                   <div style={sectionHeaderStyle}>
@@ -1737,7 +1737,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
             key: 'location',
             label: `Thông tin vị trí (${coordinateList.length})`,
             children: (
-              <div style={drawerTabContentStyle}>
+              <div style={drawerFormScrollStyle}>
                 <div style={{ marginBottom: spaceMd }}>
                   {sectionTitle('Thông tin vị trí')}
                   <Row gutter={[24, 0]}>
@@ -1849,7 +1849,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
             key: 'files',
             label: `File đính kèm (${uploadedFiles.length})`,
             children: (
-              <div style={drawerTabContentStyle}>
+              <div style={drawerFormScrollStyle}>
                 <div style={{ marginBottom: spaceMd }}>
                   {sectionTitle('File đính kèm')}
                   <div style={{ marginBottom: spaceMd }}>
@@ -2011,7 +2011,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
         footer={formFooter}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-          body: { padding: '0 24px 12px 24px' },
+          body: { padding: '0 24px 0 24px', overflow: 'hidden' },
         }}
       >
         {formContent}
