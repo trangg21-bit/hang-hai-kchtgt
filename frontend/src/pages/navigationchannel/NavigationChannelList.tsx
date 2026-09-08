@@ -985,10 +985,9 @@ export default function NavigationChannelList() {
           placeholder="Chọn đơn vị..."
           allowClear
           showSearch
-          className="chk-filter-select"
           value={filterOrgUnitId}
           onChange={(v) => { setFilterOrgUnitId(v || undefined); setPage(1); }}
-          style={filterInputStyle}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
         />
       </div>
       <div style={{ marginBottom: spaceFormField }}>
@@ -999,7 +998,7 @@ export default function NavigationChannelList() {
           value={filterKeyword}
           onChange={(e) => { setFilterKeyword(e.target.value); setPage(1); }}
           onPressEnter={handleFilterApply}
-          style={filterInputStyle}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
         />
       </div>
       <div style={{ marginBottom: spaceFormField }}>
@@ -1007,11 +1006,10 @@ export default function NavigationChannelList() {
         <Select
           placeholder="Chọn tình trạng"
           allowClear
-          className="chk-filter-select"
           value={filterConditionStatus}
           onChange={(v) => { setFilterConditionStatus(v); setPage(1); }}
           options={CONDITION_STATUS_OPTIONS}
-          style={filterInputStyle}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
         />
       </div>
 
@@ -1023,12 +1021,11 @@ export default function NavigationChannelList() {
               placeholder="Chọn cảng biển..."
               allowClear
               showSearch
-              className="chk-filter-select"
               optionFilterProp="label"
               value={filterSeaportId}
               onChange={(v) => { setFilterSeaportId(v); setPage(1); }}
               options={seaportOptions.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : p.portName || p.id }))}
-              style={filterInputStyle}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
             />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
@@ -1039,7 +1036,7 @@ export default function NavigationChannelList() {
               value={filterChannelCode}
               onChange={(e) => { setFilterChannelCode(e.target.value); setPage(1); }}
               onPressEnter={handleFilterApply}
-              style={filterInputStyle}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
             />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
@@ -1048,12 +1045,11 @@ export default function NavigationChannelList() {
               placeholder="Chọn tỉnh/thành phố..."
               allowClear
               showSearch
-              className="chk-filter-select"
               optionFilterProp="label"
               value={filterProvinceId}
               onChange={(v) => { setFilterProvinceId(v); setPage(1); }}
               options={VIETNAM_PROVINCE_OPTIONS}
-              style={filterInputStyle}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
             />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
@@ -1062,11 +1058,10 @@ export default function NavigationChannelList() {
               placeholder="Chọn cán bộ cập nhật"
               allowClear
               showSearch
-              className="chk-filter-select"
               value={filterUpdatedBy}
               onChange={(v) => { setFilterUpdatedBy(v || undefined); setPage(1); }}
               options={userOptions}
-              style={filterInputStyle}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
             />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
@@ -1074,14 +1069,14 @@ export default function NavigationChannelList() {
             <DatePicker.RangePicker
               placeholder={['Từ ngày', 'Đến ngày']}
               format="DD/MM/YYYY"
-              className="chk-filter-select"
+              popupClassName="chk-range-datepicker-popup"
               value={filterUpdatedFrom && filterUpdatedTo ? [dayjs(filterUpdatedFrom), dayjs(filterUpdatedTo)] : null}
               onChange={(range) => {
-                setFilterUpdatedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : '');
-                setFilterUpdatedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : '');
+                setFilterUpdatedFrom(range && range[0] ? range[0].format('YYYY-MM-DD 00:00:00') : '');
+                setFilterUpdatedTo(range && range[1] ? range[1].format('YYYY-MM-DD 23:59:59') : '');
                 setPage(1);
               }}
-              style={filterInputStyle}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
             />
           </div>
         </>
