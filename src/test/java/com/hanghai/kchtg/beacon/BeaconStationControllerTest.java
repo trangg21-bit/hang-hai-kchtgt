@@ -165,7 +165,7 @@ class BeaconStationControllerTest {
                 .andExpect(jsonPath("$.success").value(true));
 
         verify(beaconStationService)
-                .search("Đèn", "DEN", "LIGHTHOUSE", "DRAFT", null, null, null, null, null, null, null, null, null, null, null, null, null);
+                .search("Đèn", "DEN", "LIGHTHOUSE", null, "DRAFT", null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     // ── CREATE ───────────────────────────────────────────────────

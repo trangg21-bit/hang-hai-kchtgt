@@ -78,6 +78,12 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             "/api/v1/org-units",
             "/api/v1/org-units/");
 
+    private static final Set<String> SKIP_PERMISSION_USER_ME_PATHS = Set.of(
+            "/api/users/me",
+            "/api/users/me/",
+            "/api/v1/users/me",
+            "/api/v1/users/me/");
+
     private final PermissionRoleService permissionRoleService;
     private final PermissionRepository permissionRepository;
     private final ObjectMapper objectMapper = new ObjectMapper()
@@ -150,6 +156,11 @@ public class PermissionMiddleware extends OncePerRequestFilter {
         if (path.endsWith("/options") || path.endsWith("/options/") || path.contains("/options")) {
             return true;
         }
+        // Self-profile endpoints: bat ky user da dang nhap deu duoc xem/sua profile cua chinh minh,
+        // khong can quyen quan tri he thong user:read / user:update
+        if (SKIP_PERMISSION_USER_ME_PATHS.contains(path)) {
+            return true;
+        }
         if (HttpMethod.GET.name().equalsIgnoreCase(method)) {
             if (SKIP_PERMISSION_ORG_UNIT_PATHS.contains(path)) {
                 return true;
@@ -159,6 +170,13 @@ public class PermissionMiddleware extends OncePerRequestFilter {
                 return true;
             }
             if (path.startsWith("/api/symbols") || path.startsWith("/api/search")) {
+                return true;
+            }
+            // Các đối tượng bản đồ GIS (line, point, polygon, map-layers) chỉ đọc (đồng bộ SecurityConfig GET permitAll)
+            if (path.startsWith("/api/line-objects") || path.startsWith("/api/v1/line-objects")
+                    || path.startsWith("/api/point-objects") || path.startsWith("/api/v1/point-objects")
+                    || path.startsWith("/api/polygon-objects") || path.startsWith("/api/v1/polygon-objects")
+                    || path.startsWith("/api/map-layers") || path.startsWith("/api/v1/map-layers")) {
                 return true;
             }
         }

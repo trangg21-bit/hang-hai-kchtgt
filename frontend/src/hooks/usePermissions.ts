@@ -124,6 +124,7 @@ const RESOURCE_LABELS: Record<string, string> = {
 };
 
 const HIDDEN_PERMISSIONS = new Set([
+  'admin:all',
   'user:edit',
   'group:edit',
   'user:delete',

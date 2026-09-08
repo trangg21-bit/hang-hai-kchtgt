@@ -370,7 +370,8 @@ export default function VtsSystemForm({
     toast.success('Đã xóa tệp đính kèm');
   };
 
-  const canSaveAndApprove = userPermissions.includes('vts:approvec2');
+  const isCucLevel = (currentUser as any)?.orgUnitLevel === 1 || (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN';
+  const canSaveAndApprove = hasPerm('vts:approvec2') || hasPerm('vtssystem:approvec2') || isCucLevel;
 
   // Load options
   useEffect(() => {

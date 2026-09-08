@@ -310,7 +310,7 @@ class FieldVisibilityServiceTest {
                 User user = new User();
                 user.setId(UUID.randomUUID());
                 UserPermissionOverride override = new UserPermissionOverride();
-                override.setPermissionCode("admin:all");
+                override.setPermissionCode("user:permission");
                 user.setPermissionOverrides(new ArrayList<>(List.of(override)));
                 user.setGroups(new ArrayList<>());
                 return user;

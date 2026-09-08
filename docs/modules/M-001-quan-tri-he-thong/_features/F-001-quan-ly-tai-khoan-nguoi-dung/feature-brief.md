@@ -106,7 +106,7 @@ Hệ thống **không sử dụng Vai trò cố định (Role-based)** nữa. Qu
 | 2 | Có bước phê duyệt không | Có — tài khoản tự đăng ký (F-271) cần `user:approve`; Admin tạo thì ACTIVE ngay |
 | 3 | Lọc cha-con / theo đơn vị | Có — lọc theo đơn vị trực thuộc (orgUnitId, TreeSelect) |
 | 4 | Trường chỉ hiện trong điều kiện nào | Có — trường "Lý do" chỉ hiện khi Khóa/Hủy kích hoạt; không có trường mật khẩu (hệ thống tự gán) |
-| 5 | Quyền riêng | `user:read`, `user:create`, `user:update`, `user:lock`, `user:approve`, `user:manage` |
+| 5 | Quyền riêng | `user:read`, `user:create`, `user:update`, `user:lock`, `user:approve`, `user:manage`, `user:permission` |
 | 6 | Đường dẫn dùng chung không cần đăng nhập | Có — POST `/api/users/pending`, `/api/auth/forgot-password`, `/api/auth/reset-password/{token}` (rate-limited) |
 | 7 | Tải lên tệp | Không |
 | 8 | Giao diện khác mẫu chung | Có — 2 ô tìm kiếm, không có nút Xóa (thay bằng Hủy kích hoạt/Khóa), modal Khóa bắt buộc lý do |
@@ -121,6 +121,8 @@ Hệ thống **không sử dụng Vai trò cố định (Role-based)** nữa. Qu
 | GET | `/api/users/{id}` | Xem chi tiết thông tin tài khoản người dùng | `user:read` |
 | POST | `/api/users` | Tạo mới tài khoản (gửi kèm 9 trường dữ liệu) | `user:create` hoặc `user:manage` |
 | PUT | `/api/users/{id}` | Chỉnh sửa thông tin tài khoản | `user:update` hoặc `user:manage` |
+| GET | `/api/users/{id}/permissions` | Xem danh sách quyền trực tiếp của người dùng | `user:permission` hoặc `user:manage` |
+| PUT | `/api/users/{id}/permissions` | Cập nhật/thay thế danh sách quyền trực tiếp của người dùng | `user:permission` |
 | POST | `/api/users/{id}/lock` | Khóa tài khoản (có lý do) | `user:lock` hoặc `user:manage` |
 | POST | `/api/users/{id}/unlock` | Mở khóa tài khoản | `user:lock` hoặc `user:manage` |
 | PATCH | `/api/users/{id}/status` | Đổi trạng thái tài khoản | `user:lock`, `user:update` hoặc `user:manage` |

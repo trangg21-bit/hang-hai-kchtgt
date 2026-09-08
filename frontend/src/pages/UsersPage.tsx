@@ -97,7 +97,7 @@ export default function UsersPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
 
   const [permissionUser, setPermissionUser] = useState<User | null>(null);
-  const { tree: rawPermissionTree, allKeys: allPermissionKeys, isLoading: permissionCatalogLoading } = usePermissions({ enabled: Boolean(permissionUser) });
+  const { tree: rawPermissionTree, allKeys: allPermissionKeys, isLoading: permissionCatalogLoading } = usePermissions();
   const [selectedPermissionKeys, setSelectedPermissionKeys] = useState<string[]>([]);
   const [appliedPermissionSearch, setAppliedPermissionSearch] = useState('');
   const [permissionLoading, setPermissionLoading] = useState(false);
@@ -310,15 +310,15 @@ export default function UsersPage() {
     try {
       const grants = await userService.getUserPermissions(user.id);
       const rawCodes = grants.map((grant) => typeof grant === 'string' ? grant : grant.permissionCode).filter(Boolean);
-      if (rawCodes.includes('admin:all') || rawCodes.includes('*')) {
-        setSelectedPermissionKeys(allPermissionKeys);
+      if (rawCodes.includes('*')) {
+        setSelectedPermissionKeys(allPermissionKeys.length > 0 ? allPermissionKeys : rawCodes);
       } else {
         setSelectedPermissionKeys(rawCodes);
       }
     } catch (err: any) {
       const fallbackCodes = user.permissionCodes || [];
-      if (fallbackCodes.includes('admin:all') || fallbackCodes.includes('*')) {
-        setSelectedPermissionKeys(allPermissionKeys);
+      if (fallbackCodes.includes('*')) {
+        setSelectedPermissionKeys(allPermissionKeys.length > 0 ? allPermissionKeys : fallbackCodes);
       } else {
         setSelectedPermissionKeys(fallbackCodes);
       }
@@ -331,7 +331,7 @@ export default function UsersPage() {
   useEffect(() => {
     if (permissionUser && allPermissionKeys.length > 0) {
       setSelectedPermissionKeys((prev) => {
-        if (prev.includes('admin:all') || prev.includes('*')) {
+        if (prev.includes('*')) {
           return allPermissionKeys;
         }
         return prev;
@@ -397,7 +397,7 @@ export default function UsersPage() {
       actions.push({ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => setDetailUserId(record.id) });
     }
 
-    if (hasPerm('user:manage')) {
+    if (hasPerm('user:permission') || hasPerm('user:manage')) {
       actions.push({ key: 'permissions', label: 'Phân quyền', icon: <KeyOutlined />, onClick: () => openPermissionModal(record) });
     }
 
@@ -843,7 +843,7 @@ export default function UsersPage() {
                       checked={allPermissionsSelected}
                       indeterminate={!allPermissionsSelected && somePermissionsSelected}
                       disabled={permissionLoading || permissionCatalogLoading || allPermissionKeys.length === 0}
-                      onChange={(event) => setSelectedPermissionKeys(event.target.checked ? allPermissionKeys : [])}
+                      onChange={(event) => setSelectedPermissionKeys(event.target.checked ? [...allPermissionKeys] : [])}
                     >
                       HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI
                     </Checkbox>
@@ -858,12 +858,7 @@ export default function UsersPage() {
                         const keys = Array.isArray(checked) ? checked : checked.checked;
                         const nextMerged = mergePermissionKeys(selectedPermissionKeys, keys.map(String), permissionTreeData)
                           .filter((key) => !key.startsWith('group_'));
-                        const isFull = allPermissionKeys.length > 0 && allPermissionKeys.every((k) => nextMerged.includes(k));
-                        if (!isFull) {
-                          setSelectedPermissionKeys(nextMerged.filter((k) => k !== 'admin:all' && k !== '*'));
-                        } else {
-                          setSelectedPermissionKeys(nextMerged);
-                        }
+                        setSelectedPermissionKeys(nextMerged.filter((k) => k !== '*'));
                       }}
                     />
                   </div>

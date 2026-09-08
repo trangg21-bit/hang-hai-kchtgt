@@ -142,6 +142,8 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
 
   const currentUser = useAuthStore((s: AuthState) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
+  const isCucLevel = (currentUser as any)?.orgUnitLevel === 1 || (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN';
+  const canSaveAndApprove = hasPerm('aissystem:approvec2') || isCucLevel;
 
   const isDetailMode = currentMode === 'detail';
   const isCreateMode = currentMode === 'create';
@@ -363,7 +365,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
     record?.approvalStatus === ApprovalStatus.DRAFT ||
     record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 ||
     record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL2 ||
-    (record?.approvalStatus === ApprovalStatus.APPROVED && hasPerm('aissystem:approvec2'));
+    (record?.approvalStatus === ApprovalStatus.APPROVED && canSaveAndApprove);
 
   const handleUploadAttachment = async (file: File) => {
     if (!isCreateMode && !attachmentsEditable) {
@@ -930,7 +932,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                 >
                   Lưu và gửi phê duyệt
                 </Button>
-                {hasPerm('aissystem:approvec2') && (
+                {canSaveAndApprove && (
                   <Button
                     type="primary"
                     onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
@@ -944,7 +946,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
             ) : (
               <>
                 <Button onClick={handleClose} style={outlineButtonStyle}>Hủy</Button>
-                {record?.approvalStatus === ApprovalStatus.APPROVED && hasPerm('aissystem:approvec2') ? (
+                {record?.approvalStatus === ApprovalStatus.APPROVED && canSaveAndApprove ? (
                   <Button
                     type="primary"
                     onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}

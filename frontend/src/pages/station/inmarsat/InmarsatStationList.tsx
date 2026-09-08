@@ -161,11 +161,11 @@ export const InmarsatStationList = () => {
   const userOrgId = user?.orgUnitId ? String(user.orgUnitId) : undefined;
   const userUnitType = user?.unitType || '';
 
-  const canCreate = hasPermission('coastalstationinmarsat:create') || hasPermission('specialstation:create') || hasPermission('data:create') || hasPermission('admin:all');
+  const canCreate = hasPermission('coastalstationinmarsat:create') || hasPermission('specialstation:create') || hasPermission('data:create');
   const isCucLevel = !userUnitType || userUnitType === 'CHUYEN_VIEN_CUC' || userUnitType === 'LANH_DAO_CUC' || userUnitType === 'CUC' || userUnitType === 'CUC_HANG_HAI' || user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN';
   const isCangVuLevel = userUnitType === 'CVHH' || userUnitType === 'CANG_VU';
-  const canApproveL1 = (hasPermission('coastalstationinmarsat:approvec1') || hasPermission('coastalstationinmarsat:approve') || hasPermission('specialstation:approve') || hasPermission('admin:all')) && (isCangVuLevel || !isCucLevel);
-  const canApproveL2 = (hasPermission('coastalstationinmarsat:approvec2') || hasPermission('coastalstationinmarsat:approve') || hasPermission('specialstation:approvec2') || hasPermission('specialstation:approve') || hasPermission('admin:all')) && isCucLevel;
+  const canApproveL1 = (hasPermission('coastalstationinmarsat:approvec1') || hasPermission('coastalstationinmarsat:approve') || hasPermission('specialstation:approve')) && (isCangVuLevel || !isCucLevel);
+  const canApproveL2 = (hasPermission('coastalstationinmarsat:approvec2') || hasPermission('coastalstationinmarsat:approve') || hasPermission('specialstation:approvec2') || hasPermission('specialstation:approve')) && isCucLevel;
 
   // Load organizations
   useEffect(() => {
@@ -847,14 +847,14 @@ export const InmarsatStationList = () => {
                   const canEditThis = canEditApprovalRecord(rec.approvalStatus, {
                     hasPerm: hasPermission,
                     resource: 'coastalstationinmarsat',
-                    extraUpdatePerms: ['specialstation:update', 'data:update', 'admin:all'],
-                    extraApprovePerms: ['specialstation:approvec2', 'specialstation:approve', 'admin:all'],
+                    extraUpdatePerms: ['specialstation:update', 'data:update'],
+                    extraApprovePerms: ['specialstation:approvec2', 'specialstation:approve'],
                   });
 
                   const canDeleteThis = canDeleteApprovalRecord(rec.approvalStatus, {
                     hasPerm: hasPermission,
                     resource: 'coastalstationinmarsat',
-                    extraDeletePerms: ['specialstation:delete', 'data:delete', 'admin:all'],
+                    extraDeletePerms: ['specialstation:delete', 'data:delete'],
                   });
 
                   const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];

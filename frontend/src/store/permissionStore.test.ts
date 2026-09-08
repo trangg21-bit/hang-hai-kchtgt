@@ -41,14 +41,14 @@ describe('permissionStore Unit Tests', () => {
     expect(store.hasPermission('anything:do')).toBe(false);
   });
 
-  it('should return true when user has admin:all direct permission', () => {
+  it('should return true when user has user:permission direct permission', () => {
     useAuthStore.setState({
-      user: { id: '1', username: 'admin', permissions: ['admin:all'] } as any,
+      user: { id: '1', username: 'admin', permissions: ['user:permission'] } as any,
     });
 
     const store = usePermissionStore.getState();
-    expect(store.hasPermission('user:read')).toBe(true);
-    expect(store.hasPermission('anything:do')).toBe(true);
+    expect(store.hasPermission('user:permission')).toBe(true);
+    expect(store.hasPermission('user:manage')).toBe(false);
   });
 
   it('should return true when user has * wildcard override', () => {

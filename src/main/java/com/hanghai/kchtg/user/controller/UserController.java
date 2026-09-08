@@ -271,7 +271,7 @@ public class UserController {
 
     @PostMapping("/{id}/permissions")
     @AuditLog(module = "USER", action = "GRANT_DIRECT_PERMISSION")
-    @PreAuthorize("@auth.check(authentication, 'user:manage')")
+    @PreAuthorize("@auth.check(authentication, 'user:permission')")
     public ResponseEntity<ApiResponse<UserPermissionOverrideResponse>> grantDirectPermission(
             @PathVariable UUID id, @Valid @RequestBody GrantUserPermissionRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -280,7 +280,7 @@ public class UserController {
 
     @PutMapping("/{id}/permissions")
     @AuditLog(module = "USER", action = "REPLACE_DIRECT_PERMISSIONS")
-    @PreAuthorize("@auth.check(authentication, 'user:manage')")
+    @PreAuthorize("@auth.check(authentication, 'user:permission')")
     public ResponseEntity<ApiResponse<java.util.List<UserPermissionOverrideResponse>>> replaceDirectPermissions(
             @PathVariable UUID id, @RequestBody java.util.List<String> permissionCodes) {
         userPermissionService.replaceDirectPermissions(id, permissionCodes);
@@ -290,7 +290,7 @@ public class UserController {
 
     @DeleteMapping("/{id}/permissions/{permissionCode}")
     @AuditLog(module = "USER", action = "REVOKE_DIRECT_PERMISSION")
-    @PreAuthorize("@auth.check(authentication, 'user:manage')")
+    @PreAuthorize("@auth.check(authentication, 'user:permission')")
     public ResponseEntity<ApiResponse<Void>> revokeDirectPermission(
             @PathVariable UUID id, @PathVariable String permissionCode) {
         userPermissionService.revoke(id, permissionCode);

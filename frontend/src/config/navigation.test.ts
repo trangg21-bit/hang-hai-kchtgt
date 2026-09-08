@@ -165,10 +165,10 @@ describe('navigation.kchtTree — AC-024-03 (28 KCHT types, external matrix)', (
     const byKey = new Map(entries.map((e) => [e.key, e]));
     // Cảng biển → Bến cảng → Cầu cảng
     expect(byKey.get('/pier')?.ancestors).toEqual(['/port', '/berth']);
-    // Cảng biển → Luồng hàng hải → Bến phao (sửa 2026-09-07: khớp ma trận #4)
-    expect(byKey.get('/buoy-berth')?.ancestors).toEqual(['/port', '/navigation-channel']);
+    // Luồng hàng hải → Bến phao
+    expect(byKey.get('/buoy-berth')?.ancestors).toEqual(['/navigation-channel']);
     // Luồng hàng hải → Nhà trạm phao tiêu → Phao tiêu
-    expect(byKey.get('/buoys')?.ancestors).toEqual(['/port', '/navigation-channel', '/buoy-station']);
+    expect(byKey.get('/buoys')?.ancestors).toEqual(['/navigation-channel', '/buoy-station']);
     // Hệ thống VTS (node route '/vts-system') → Trung tâm điều hành VTS → Trạm Radar
     expect(byKey.get('/radar-station')?.ancestors).toEqual(['/vts-system', '/vts-operation-center']);
     expect(byKey.get('/dai-ttdh')?.ancestors).toEqual(['kcht-vienthong']);
@@ -185,7 +185,7 @@ describe('navigation.accessibleTree — AC-024-05', () => {
     // Production-shaped prune: only /pier allowed → only its ancestor chain survives
     const out = accessibleTree(kchtTree, (r) => r === '/pier');
     const outKeys = flatKeysOf(out);
-    expect(outKeys.sort()).toEqual(['/berth', '/pier', '/port', 'kcht-vienthong', 'vhf-disabled']);
+    expect(outKeys.sort()).toEqual(['/berth', '/pier', '/port']);
     // denied route screens must NOT survive alongside the retained disabled VHF
     expect(outKeys).not.toContain('/dai-ttdh');
     expect(outKeys).not.toContain('/dry-port');
@@ -233,7 +233,9 @@ describe('navigation.accessibleTree — AC-024-05', () => {
 
   it('allow-all keeps the whole tree identical (no accidental pruning)', () => {
     const out = accessibleTree(kchtTree, () => true);
-    expect(flatKeysOf(out).sort()).toEqual(flatKeysOf(kchtTree).sort());
+    // hidden nodes (vhf-disabled) are pruned even under allow-all
+    const expectedKeys = flatKeysOf(kchtTree).filter((k) => k !== 'vhf-disabled');
+    expect(flatKeysOf(out).sort()).toEqual(expectedKeys.sort());
   });
 
   it('does NOT mutate its input — deep-frozen tree survives every call', () => {
@@ -322,7 +324,7 @@ describe('navigation.locateRoute — AC-024-06', () => {
     expect(locateRoute(kchtTree, '/pier')).toEqual({ key: '/pier', openKeys: ['/port', '/berth'] });
     expect(locateRoute(kchtTree, '/buoys')).toEqual({
       key: '/buoys',
-      openKeys: ['/port', '/navigation-channel', '/buoy-station'],
+      openKeys: ['/navigation-channel', '/buoy-station'],
     });
     expect(locateRoute(kchtTree, '/station/hanoi')).toEqual({ key: '/station/hanoi', openKeys: ['kcht-vienthong'] });
   });
@@ -333,11 +335,11 @@ describe('navigation.locateRoute — AC-024-06', () => {
     // "bắt đầu bằng" cùng text ('/buoy-berth-extra/7') không được khớp '/buoy-berth'.
     expect(locateRoute(kchtTree, '/navigation-channel/1')).toEqual({
       key: '/navigation-channel',
-      openKeys: ['/port', '/navigation-channel'],
+      openKeys: ['/navigation-channel'],
     });
     expect(locateRoute(kchtTree, '/buoy-berth/7')).toEqual({
       key: '/buoy-berth',
-      openKeys: ['/port', '/navigation-channel'],
+      openKeys: ['/navigation-channel'],
     });
     expect(locateRoute(kchtTree, '/buoy-berth-extra/7')).toBeUndefined();
   });
@@ -380,8 +382,8 @@ describe('navigation.treeNodeLevels — chips C0..C3 depth oracle', () => {
     const levels = treeNodeLevels(kchtTree);
     // Chain evidence khớp locateRoute (external): /port(root) → /berth → /pier
     expect(levels.get('/pier')).toBe(2);
-    // /port → /navigation-channel → /buoy-station → /buoys
-    expect(levels.get('/buoys')).toBe(3);
+    // /navigation-channel (root) → /buoy-station → /buoys
+    expect(levels.get('/buoys')).toBe(2);
     // kcht-vienthong (root) → /station/hanoi
     expect(levels.get('/station/hanoi')).toBe(1);
   });

@@ -31,10 +31,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class UserPermissionService {
 
-    private static final Set<String> PROTECTED_SYSTEM_PERMISSIONS = Set.of(
-            "*", "admin:all", "orgunit:scope_all"
-    );
-
     private final UserRepository userRepository;
     private final PermissionRepository permissionRepository;
     private final UserPermissionOverrideRepository overrideRepository;
@@ -55,8 +51,7 @@ public class UserPermissionService {
     }
 
     public UserPermissionOverrideResponse grant(UUID userId, GrantUserPermissionRequest request) {
-        assertAuthenticated();
-        assertSuperAdmin();
+        assertCanManagePermissions();
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng"));
         assertTargetUserInScope(user);
@@ -100,8 +95,7 @@ public class UserPermissionService {
         if (permissionCodes == null || permissionCodes.isEmpty()) {
             return;
         }
-        assertAuthenticated();
-        assertSuperAdmin();
+        assertCanManagePermissions();
         if (targetUser != null) {
             assertTargetUserInScope(targetUser);
         }
@@ -131,7 +125,7 @@ public class UserPermissionService {
             return false;
         }
         assertAuthenticated();
-        assertSuperAdmin();
+        assertCanManagePermissions();
         assertTargetUserInScope(user);
 
         UUID userId = user.getId();
@@ -152,6 +146,7 @@ public class UserPermissionService {
 
         List<UserPermissionOverride> current = overrideRepository.findActiveByUserId(userId);
         Set<String> currentCodes = current.stream()
+                .filter(override -> override.getDeletedAt() == null)
                 .map(override -> override.getPermissionCode().toLowerCase(Locale.ROOT))
                 .collect(Collectors.toSet());
 
@@ -161,9 +156,6 @@ public class UserPermissionService {
 
         for (UserPermissionOverride override : current) {
             String code = override.getPermissionCode().toLowerCase(Locale.ROOT);
-            if (PROTECTED_SYSTEM_PERMISSIONS.contains(code)) {
-                continue;
-            }
             if (!requested.contains(code)) {
                 assertCanRevokePermission(user, code);
                 override.softDelete(SecurityUtils.getCurrentUserId());
@@ -179,7 +171,7 @@ public class UserPermissionService {
             override.setPermissionCode(code);
             override.setDeletedAt(null);
             override.setDeletedBy(null);
-            override.setReason("Cấp trực tiếp từ hồ sơ người dùng");
+            override.setReason("Cấp quyền người dùng");
             overrideRepository.save(override);
         }
 
@@ -193,7 +185,7 @@ public class UserPermissionService {
      */
     public void replaceDirectPermissions(UUID userId, List<String> permissionCodes) {
         assertAuthenticated();
-        assertSuperAdmin();
+        assertCanManagePermissions();
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng"));
         assertTargetUserInScope(user);
@@ -235,6 +227,7 @@ public class UserPermissionService {
 
         List<UserPermissionOverride> current = overrideRepository.findActiveByUserId(userId);
         Set<String> currentCodes = current.stream()
+                .filter(override -> override.getDeletedAt() == null)
                 .map(override -> override.getPermissionCode().toLowerCase(Locale.ROOT))
                 .collect(Collectors.toSet());
         if (currentCodes.equals(requested)) {
@@ -243,9 +236,6 @@ public class UserPermissionService {
 
         for (UserPermissionOverride override : current) {
             String code = override.getPermissionCode().toLowerCase(Locale.ROOT);
-            if (PROTECTED_SYSTEM_PERMISSIONS.contains(code)) {
-                continue;
-            }
             if (!requested.contains(code)) {
                 override.softDelete(null);
                 overrideRepository.save(override);
@@ -271,7 +261,7 @@ public class UserPermissionService {
 
     public void revoke(UUID userId, String permissionCode) {
         assertAuthenticated();
-        assertSuperAdmin();
+        assertCanManagePermissions();
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng"));
         assertTargetUserInScope(user);
@@ -295,11 +285,21 @@ public class UserPermissionService {
         }
     }
 
-    private void assertSuperAdmin() {
-        if (!SecurityUtils.isElevatedAdministrator()) {
-            throw new AccessDeniedException(
-                    "Chỉ Quản trị viên cấp cao (Super Admin) mới có quyền cấp hoặc thu hồi quyền trực tiếp cho người dùng");
+    private void assertCanManagePermissions() {
+        assertAuthenticated();
+        if (SecurityUtils.isElevatedAdministrator()) {
+            return;
         }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getAuthorities() != null && auth.getAuthorities().stream().anyMatch(a ->
+                "user:permission".equalsIgnoreCase(a.getAuthority())
+                || "ROLE_SUPER_ADMIN".equalsIgnoreCase(a.getAuthority())
+                || "ROLE_SYSTEM_ADMIN".equalsIgnoreCase(a.getAuthority())
+                || "*".equals(a.getAuthority()))) {
+            return;
+        }
+        throw new AccessDeniedException(
+                "Bạn không có quyền phân quyền cho người dùng (yêu cầu quyền user:permission)");
     }
 
     private void assertCanViewPermissions() {
@@ -308,10 +308,10 @@ public class UserPermissionService {
         }
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getAuthorities() != null && auth.getAuthorities().stream().anyMatch(a ->
-                "user:manage".equalsIgnoreCase(a.getAuthority())
+                "user:permission".equalsIgnoreCase(a.getAuthority())
+                || "user:manage".equalsIgnoreCase(a.getAuthority())
                 || "admin:manage".equalsIgnoreCase(a.getAuthority())
-                || "user:read".equalsIgnoreCase(a.getAuthority())
-                || "user:permission".equalsIgnoreCase(a.getAuthority()))) {
+                || "user:read".equalsIgnoreCase(a.getAuthority()))) {
             return;
         }
         throw new AccessDeniedException(
@@ -333,11 +333,11 @@ public class UserPermissionService {
 
     private void assertCanGrantPermission(User targetUser, Set<String> requestedPermissions) {
         assertAuthenticated();
-        assertSuperAdmin();
+        assertCanManagePermissions();
     }
 
     private void assertCanRevokePermission(User targetUser, String permissionCode) {
         assertAuthenticated();
-        assertSuperAdmin();
+        assertCanManagePermissions();
     }
 }

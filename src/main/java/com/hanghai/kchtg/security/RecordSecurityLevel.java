@@ -46,7 +46,7 @@ public enum RecordSecurityLevel {
         if (permissions == null || permissions.isEmpty()) {
             return NORMAL;
         }
-        if (permissions.contains("admin:all") || permissions.contains("*")) {
+        if (permissions.contains("*")) {
             return CONFIDENTIAL;
         }
         // Module specific check

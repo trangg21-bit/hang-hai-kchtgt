@@ -153,7 +153,7 @@ public class User extends BaseEntity implements java.security.Principal {
                     // Group inheritance must never provide a global bypass or
                     // an organisation-scope bypass. Those permissions may only
                     // be granted directly by the system administrator.
-                    .filter(permission -> !Set.of("admin:all", "admin:manage", "*")
+                    .filter(permission -> !Set.of("user:permission", "admin:manage", "*")
                             .contains(permission))
                     .forEach(perms::add);
         }

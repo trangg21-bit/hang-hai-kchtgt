@@ -12,7 +12,7 @@ import InfrastructureAttachmentTab from '../../components/shared/InfrastructureA
 import {
   textTertiary, borderDefault, actionPrimary, statusCritical,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
-  radiusPill, radiusMd, spaceSm, spaceFormField,
+  radiusPill, radiusMd, spaceSm, spaceXs, spaceFormField,
   surfaceCard, readonlyInputStyle, sidebarBg,
   primaryButtonStyle, outlineButtonStyle, drawerTabBarStyle, drawerFormScrollStyle,
 } from '../../themetokenchk';
@@ -99,15 +99,77 @@ const renderDmsGroup = (
   maxDeg: number,
   onChange: (d: number | null, m: number | null, s: number | null) => void,
 ) => {
+  // Chỉ "bắt buộc" khi người dùng đã bắt đầu nhập (ít nhất 1 trong 3 ô có giá trị).
+  const started = dVal != null || mVal != null || sVal != null;
+
+  // 3 cột Độ·Phút·Giây — một nguồn sự thật duy nhất dùng chung cho CẢ hàng input lẫn hàng
+  // message bên dưới (cùng flex basis 1 / 1 / 1.2 và cùng width) để text lỗi nằm đúng dưới ô
+  // của nó và 2 cột (Vĩ độ, Kinh độ) trong bảng luôn thẳng hàng.
+  const inputs = [
+    {
+      key: 'd', base: 'Độ', value: dVal, max: maxDeg,
+      radius: '999px 0 0 999px', unit: '°', unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
+      step: 1,
+      msg: started && dVal == null ? 'Độ bắt buộc' : undefined,
+      onEdit: (v: number | null) => onChange(v, mVal ?? null, sVal ?? null),
+    },
+    {
+      key: 'm', base: 'Phút', value: mVal, max: 59,
+      radius: '0', unit: '\'', unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
+      step: 1,
+      msg: started && mVal == null ? 'Phút bắt buộc' : undefined,
+      onEdit: (v: number | null) => onChange(dVal ?? null, v, sVal ?? null),
+    },
+    {
+      key: 's', base: 'Giây', value: sVal, max: 59.99,
+      radius: '0', unit: '"', unitStyle: dmsUnitEndStyle, basis: '1.2 0 130px', width: 130,
+      step: 0.01, formatter: fmtInputNumber,
+      msg: started && sVal == null ? 'Giây bắt buộc' : undefined,
+      onEdit: (v: number | null) => onChange(dVal ?? null, mVal ?? null, v),
+    },
+  ] as const;
+
+  const inputRow = (
+    <div style={{ display: 'flex', alignItems: 'center', width: '100%', minWidth: 0 }}>
+      {inputs.map((inp) => (
+        <div key={inp.key} style={{ display: 'flex', flex: inp.basis, minWidth: 0, width: inp.width }}>
+          <InputNumber
+            value={inp.value}
+            min={0}
+            max={inp.max}
+            step={inp.step}
+            placeholder={inp.base}
+            formatter={inp.formatter}
+            status={inp.msg ? 'error' : undefined}
+            onFocus={(e) => e.currentTarget.select()}
+            onChange={(raw) => inp.onEdit(raw == null ? null : Number(raw))}
+            style={{ flex: 1, minWidth: 0, borderRadius: inp.radius, height: 32 }}
+            controls={false}
+          />
+          <span style={inp.unitStyle}>{inp.unit}</span>
+        </div>
+      ))}
+    </div>
+  );
+
+  // Hàng message LUÔN có mặt với chiều cao cố định (height 14px) → khi cột Vĩ độ hiện message
+  // còn cột Kinh độ không (hoặc ngược lại), tổng chiều cao 2 ô của nhóm vẫn bằng nhau và 2
+  // input thẳng hàng; chỉ chèn text "X bắt buộc" khi cần.
+  const messageRow = (
+    <div aria-live="polite" style={{ display: 'flex', alignItems: 'flex-start', width: '100%', minWidth: 0, marginTop: spaceXs, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
+      {inputs.map((inp) => (
+        <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
+          {inp.msg && <span role="alert" style={{ color: statusCritical, fontSize: fontSizeSm, whiteSpace: 'nowrap' }}>{inp.msg}</span>}
+        </div>
+      ))}
+    </div>
+  );
+
   return (
-    <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
-      <InputNumber value={dVal} min={0} max={maxDeg} placeholder="Độ" onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(v, mVal ?? null, sVal ?? null)} style={{ flex: 1, minWidth: 0, borderRadius: '999px 0 0 999px', height: 32 }} controls={false} />
-      <span style={dmsUnitStyle}>°</span>
-      <InputNumber value={mVal} min={0} max={59} placeholder="Phút" onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(dVal ?? null, v, sVal ?? null)} style={{ flex: 1, minWidth: 0, height: 32 }} controls={false} />
-      <span style={dmsUnitStyle}>'</span>
-      <InputNumber value={sVal} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber} onFocus={(e) => e.currentTarget.select()} onChange={(v) => onChange(dVal ?? null, mVal ?? null, v)} style={{ flex: 1.2, minWidth: 0, height: 32 }} controls={false} />
-      <span style={dmsUnitEndStyle}>"</span>
-    </Space.Compact>
+    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0 }}>
+      {inputRow}
+      {messageRow}
+    </div>
   );
 };
 
@@ -162,7 +224,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
   const [technicalOpen, setTechnicalOpen] = useState(true);
   const [buoyBerthCodeLoading, setBuoyBerthCodeLoading] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
-  const isSystemAdmin = (currentUser?.permissions?.includes('admin:all') || currentUser?.permissions?.includes('*')) ?? false;
+  const isSystemAdmin = currentUser?.permissions?.includes('*') ?? false;
   const editPortIdRef = useRef<string | undefined>(undefined);
 
   const watchedGeometryType = Form.useWatch('geometryType', form);

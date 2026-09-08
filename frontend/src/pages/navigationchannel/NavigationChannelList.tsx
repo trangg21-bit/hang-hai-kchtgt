@@ -63,6 +63,8 @@ import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import NavigationChannelForm from './NavigationChannelForm';
+import NavigationChannelDetailContent from './NavigationChannelDetailContent';
+import AppDrawer from '../../components/shared/AppDrawer';
 import { canDeleteApprovalRecord, canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 
 // ── #8 Tình trạng — màu badge theo token ─────────────────────────────
@@ -402,7 +404,7 @@ export default function NavigationChannelList() {
   // ── Modal (create / edit / detail) ──────────────────────────────────
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [modalMode, setModalMode] = useState<'create' | 'edit' | 'detail'>('create');
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
 
   // ── Approval / delete / history ─────────────────────────────────────
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -545,10 +547,18 @@ export default function NavigationChannelList() {
     void fetchCounts();
   }, [fetchData, fetchCounts]);
 
-  const openModal = useCallback((mode: 'create' | 'edit' | 'detail', id?: string) => {
+  const openModal = useCallback((mode: 'create' | 'edit', id?: string) => {
     setModalMode(mode);
     setEditingId(id || null);
     setIsModalOpen(true);
+  }, []);
+
+  // ── Detail drawer (NavigationChannelDetailContent — 5 tab read-only) ──
+  const [detailRecord, setDetailRecord] = useState<NavigationChannelResponse | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const openDetail = useCallback((record: NavigationChannelResponse) => {
+    setDetailRecord(record);
+    setDetailOpen(true);
   }, []);
 
   // Map user id → tên hiển thị cho cột "Cán bộ cập nhật" (backend NavigationChannel chưa trả updatedByName như các module khác)
@@ -830,7 +840,7 @@ export default function NavigationChannelList() {
           <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             <a
               title={v || ''}
-              onClick={() => openModal('detail', record.id)}
+              onClick={() => openDetail(record)}
               style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
             >
               {v || '—'}
@@ -905,14 +915,14 @@ export default function NavigationChannelList() {
         },
       },
     ];
-  }, [page, pageSize, seaportOptions, openModal, userMap]);
+  }, [page, pageSize, seaportOptions, openDetail, userMap]);
 
   const rowActions = useCallback(
     (record: NavigationChannelResponse) => {
       const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];
       const st = record.approvalStatus || '';
       if (hasPerm('navigationchannel:read')) {
-        actions.push({ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openModal('detail', record.id) });
+        actions.push({ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetail(record) });
       }
       if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'navigationchannel' })) {
         actions.push({ key: 'edit', label: 'Sửa', icon: icons.edit, onClick: () => openModal('edit', record.id) });
@@ -940,7 +950,7 @@ export default function NavigationChannelList() {
       }
       return actions;
     },
-    [hasPerm, openModal, openDeleteModal, openRejectModal, openHistory],
+    [hasPerm, openModal, openDetail, openDeleteModal, openRejectModal, openHistory],
   );
 
   // ── Filter panel (FilterTableLayout renders the sidebar) ────────────
@@ -1102,6 +1112,7 @@ export default function NavigationChannelList() {
       <FilterTableLayout
         filterContent={filterContent}
         statusTabs={statusTabs}
+        hideFilterToggle={true}
         onStatusTabChange={handleTabChange}
         onFilterApply={handleFilterApply}
         onFilterReset={handleFilterReset}
@@ -1145,6 +1156,39 @@ export default function NavigationChannelList() {
           refreshAfterMutation();
         }}
       />
+
+      {/* ── Detail drawer (5 tab read-only — NavigationChannelDetailContent) ── */}
+      <AppDrawer
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: spaceSm }}>
+            <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>
+              Chi tiết Luồng hàng hải: {detailRecord?.channelName}
+            </span>
+            {detailRecord?.approvalStatus && <ApprovalStatusBadge status={detailRecord.approvalStatus} />}
+          </div>
+        }
+        open={detailOpen}
+        onClose={() => { setDetailOpen(false); setDetailRecord(null); }}
+        size={1080}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: spaceSm }}>
+            {detailRecord && canEditApprovalRecord(detailRecord.approvalStatus, { hasPerm, resource: 'navigationchannel' }) && (
+              <Button
+                type="primary"
+                style={{ borderRadius: radiusPill, height: 38 }}
+                onClick={() => { setDetailOpen(false); openModal('edit', detailRecord.id); }}
+              >
+                Chỉnh sửa
+              </Button>
+            )}
+            <Button style={{ borderRadius: radiusPill, height: 38 }} onClick={() => { setDetailOpen(false); setDetailRecord(null); }}>
+              Đóng
+            </Button>
+          </div>
+        }
+      >
+        {detailRecord && <NavigationChannelDetailContent record={detailRecord} userMap={userMap} />}
+      </AppDrawer>
 
       {/* ── Xác nhận xóa ─────────────────────────────────────────── */}
       <Modal

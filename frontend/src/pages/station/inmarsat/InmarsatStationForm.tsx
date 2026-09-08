@@ -195,7 +195,7 @@ export const InmarsatStationForm: React.FC<InmarsatStationFormProps> = ({
 
   const userOrgId = (user as any)?.orgUnitId ? String((user as any).orgUnitId) : undefined;
   const userUnitType = (user as any)?.unitType || '';
-  const canApproveL2 = hasPermission('coastalstationinmarsat:approvec2') || hasPermission('coastalstationinmarsat:approve') || hasPermission('specialstation:approvec2') || hasPermission('specialstation:approve') || hasPermission('admin:all') || (user as any)?.role === 'SUPER_ADMIN' || (user as any)?.role === 'ADMIN';
+  const canApproveL2 = hasPermission('coastalstationinmarsat:approvec2') || hasPermission('coastalstationinmarsat:approve') || hasPermission('specialstation:approvec2') || hasPermission('specialstation:approve') || (user as any)?.role === 'SUPER_ADMIN' || (user as any)?.role === 'ADMIN';
   const canApproveL1 = hasPermission('coastalstationinmarsat:approvec1') || hasPermission('specialstation:approvec1');
   const canSaveAndApprove = canApproveL2 || canApproveL1;
 

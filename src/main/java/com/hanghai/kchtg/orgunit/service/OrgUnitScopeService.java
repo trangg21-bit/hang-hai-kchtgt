@@ -47,7 +47,7 @@ public class OrgUnitScopeService {
         }
 
         var permissions = currentUser.getAllPermissions();
-        if (permissions.contains(SCOPE_ALL) || permissions.contains("admin:all") || permissions.contains("*")) {
+        if (permissions.contains(SCOPE_ALL) || permissions.contains("*")) {
             return Scope.allScope();
         }
 

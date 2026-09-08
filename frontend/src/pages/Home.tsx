@@ -351,7 +351,8 @@ export default function HomePage() {
       {anyAccessibleBlock && !noSearchMatch && (
         <Row gutter={[spaceLg, spaceMd]}>
           {cards.map((card) => {
-            const locked = !card.home;
+            const isDev = Boolean(card.group.underDevelopment);
+            const locked = isDev || !card.home;
             const isMatch = matchingIds?.has(card.group.id) ?? false;
             const searchMiss = isSearching && !isMatch;
             const dimmed = locked || searchMiss;
@@ -359,9 +360,11 @@ export default function HomePage() {
               <Col key={card.group.id} lg={8} sm={12} xs={24}>
                 <Tooltip
                   title={
-                    locked && !searchMiss
-                      ? 'Chưa được phân quyền — liên hệ quản trị để được cấp quyền truy cập'
-                      : undefined
+                    isDev
+                      ? 'Chức năng đang được phát triển, vui lòng quay lại sau'
+                      : locked && !searchMiss
+                        ? 'Chưa được phân quyền — liên hệ quản trị để được cấp quyền truy cập'
+                        : undefined
                   }
                 >
                   <span style={{ display: 'inline-block', height: '100%', width: '100%' }}>
@@ -370,6 +373,7 @@ export default function HomePage() {
                       className="landing-block-card"
                       disabled={dimmed}
                       onClick={() => {
+                        if (isDev) return;
                         if (!dimmed && card.home) navigate(card.home);
                       }}
                       style={{
@@ -400,8 +404,25 @@ export default function HomePage() {
                       <h3 style={CARD_TITLE_STYLE}>{card.group.label}</h3>
                       <p style={CARD_DESC_STYLE}>{card.group.desc}</p>
                       <div style={CARD_FOOTER_STYLE}>
-                        <span>{card.accessibleCount} chức năng</span>
-                        <RightOutlined aria-hidden="true" style={{ color: textTertiary, fontSize: fontSizeSm }} />
+                        {isDev ? (
+                          <span
+                            style={{
+                              background: '#fef3c7',
+                              borderRadius: '4px',
+                              color: '#d97706',
+                              fontSize: fontSizeSm,
+                              fontWeight: fontWeightMedium,
+                              padding: '2px 8px',
+                            }}
+                          >
+                            Đang phát triển
+                          </span>
+                        ) : (
+                          <>
+                            <span>{card.accessibleCount} chức năng</span>
+                            <RightOutlined aria-hidden="true" style={{ color: textTertiary, fontSize: fontSizeSm }} />
+                          </>
+                        )}
                       </div>
                     </button>
                   </span>

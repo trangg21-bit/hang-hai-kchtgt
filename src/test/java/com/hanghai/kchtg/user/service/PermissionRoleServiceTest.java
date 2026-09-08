@@ -52,7 +52,7 @@ class PermissionRoleServiceTest {
 
     @Test
     void directGlobalPermissionBypassesAllPermissions() {
-        User user = userWithPermission("admin:all");
+        User user = userWithPermission("*");
         when(userRepository.findByIdWithRelations(userId)).thenReturn(Optional.of(user));
 
         assertThat(permissionRoleService.checkPermission(userId, "vts", "delete")).isTrue();

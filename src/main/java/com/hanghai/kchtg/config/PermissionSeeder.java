@@ -64,6 +64,8 @@ public class PermissionSeeder implements CommandLineRunner {
                                 "Khóa hoặc mở khóa tài khoản người dùng");
                 seedPermission(definitions, "user", "approve", "Phê duyệt tài khoản người dùng",
                                 "Phê duyệt hoặc từ chối yêu cầu đăng ký tài khoản người dùng");
+                seedPermission(definitions, "user", "permission", "Phân quyền người dùng",
+                                "Cấp và thu hồi quyền trực tiếp cho tài khoản người dùng");
 
                 // 2. Quản lý cơ cấu tổ chức & đơn vị (Org Unit Management)
                 seedPermission(definitions, "orgunit", "read", "Xem đơn vị", "Xem danh mục và cơ cấu tổ chức đơn vị");

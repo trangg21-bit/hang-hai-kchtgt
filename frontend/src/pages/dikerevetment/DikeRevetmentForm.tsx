@@ -113,7 +113,6 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
   // "Lưu và phê duyệt" chỉ dành cho tài khoản có quyền duyệt cấp Cục (chuẩn VTS / port).
   const canApproveDirect = hasPermissionFromList(userPermissions, 'dikerevetment:approvec2')
     || hasPermissionFromList(userPermissions, 'dikerevetment:approve')
-    || hasPermissionFromList(userPermissions, 'admin:all')
     || hasPermissionFromList(userPermissions, '*');
 
   const isIframe = window.self !== window.top;

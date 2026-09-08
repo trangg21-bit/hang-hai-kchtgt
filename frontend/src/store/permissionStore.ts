@@ -50,7 +50,7 @@ export function normalizePermissionKey(key: string): string {
 /**
  * Quyền hiệu lực trên giao diện là hợp nhất quyền trực tiếp của user và
  * quyền group được Backend đưa vào JWT/profile. Không coi admin:manage là
- * toàn quyền; chỉ admin:all hoặc * mới được bypass.
+ * toàn quyền; chỉ * mới được wildcard bypass.
  */
 export function hasPermissionFromList(grantedPermissions: string[] | undefined, key: string): boolean {
   const normalizedKey = normalizePermissionKey(key);
@@ -67,7 +67,7 @@ export function hasPermissionFromList(grantedPermissions: string[] | undefined, 
     permissionSetCache.set(source, permissions);
   }
 
-  if (permissions.has('*') || permissions.has('admin:all') || permissions.has(normalizedKey)) {
+  if (permissions.has('*') || permissions.has(normalizedKey)) {
     return true;
   }
 

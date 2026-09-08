@@ -100,7 +100,7 @@ import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 export interface NavigationChannelFormProps {
   open?: boolean;
   editId?: string | null;
-  mode?: 'create' | 'edit' | 'detail';
+  mode?: 'create' | 'edit';
   onCancel?: () => void;
   onSuccess?: () => void;
 }
@@ -464,7 +464,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
   const isModalMode = open !== undefined;
   const id = isModalMode ? (editId || undefined) : routeParams.id;
   const isEditMode = isModalMode ? (mode === 'edit') : searchParams.get('mode') === 'edit';
-  const isDetailMode = isModalMode ? (mode === 'detail') : (!!id && !isEditMode);
+  const isDetailMode = !isModalMode && !!id && !isEditMode;
   const isCreateMode = isModalMode ? (mode === 'create') : !id;
 
   const [record, setRecord] = useState<NavigationChannelResponse | null>(null);
