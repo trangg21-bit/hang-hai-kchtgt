@@ -244,7 +244,7 @@ class BeaconStationServiceTest {
             assertThat(result.getApprovalStatus()).isEqualTo("PROPOSED");
 
             verify(beaconStationRepo, atLeastOnce()).save(any());
-            verify(infraHistoryRepo).save(any());
+            verify(infraHistoryRepo, never()).save(any());
             verify(notificationService).sendApprovalNotification(any());
         }
 
@@ -280,6 +280,7 @@ class BeaconStationServiceTest {
 
             assertThat(result.getStatus()).isEqualTo("PENDING_APPROVAL");
             assertThat(result.getApprovalLevel()).isEqualTo(ApprovalLevel.LEVEL_1);
+            verify(infraHistoryRepo).save(any());
         }
 
         @Test

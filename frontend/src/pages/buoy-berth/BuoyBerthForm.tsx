@@ -162,7 +162,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
   const [technicalOpen, setTechnicalOpen] = useState(true);
   const [buoyBerthCodeLoading, setBuoyBerthCodeLoading] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
-  const isSystemAdmin = (currentUser?.permissions?.includes('admin:all') || currentUser?.permissions?.includes('*')) ?? false;
+  const isSystemAdmin = currentUser?.permissions?.includes('*') ?? false;
   const editPortIdRef = useRef<string | undefined>(undefined);
 
   const watchedGeometryType = Form.useWatch('geometryType', form);

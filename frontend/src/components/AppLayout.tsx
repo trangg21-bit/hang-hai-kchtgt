@@ -50,6 +50,7 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/users': 'user:read',
   '/organizations': 'orgunit:read',
   '/groups': 'group:read',
+  '/gis/map': 'data:read',
   '/gis/points': 'data:read',
   '/gis/lines': 'data:read',
   '/gis/polygons': 'data:read',

@@ -66,7 +66,6 @@ public class SecurityUtils {
         return auth.getAuthorities().stream()
                 .anyMatch(a -> "ROLE_SYSTEM_ADMIN".equalsIgnoreCase(a.getAuthority())
                         || "ROLE_SUPER_ADMIN".equalsIgnoreCase(a.getAuthority())
-                        || "admin:all".equalsIgnoreCase(a.getAuthority())
                         || "*".equals(a.getAuthority()));
     }
 }

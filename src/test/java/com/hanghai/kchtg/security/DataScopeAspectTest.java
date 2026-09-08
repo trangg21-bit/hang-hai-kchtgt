@@ -87,7 +87,7 @@ class DataScopeAspectTest {
         adminUser = new User();
         adminUser.setUsername("admin");
         UserPermissionOverride adminPermission = new UserPermissionOverride();
-        adminPermission.setPermissionCode("admin:all");
+        adminPermission.setPermissionCode("user:permission");
         adminUser.setPermissionOverrides(List.of(adminPermission));
 
         // Manually construct aspect to ensure correct mock injection

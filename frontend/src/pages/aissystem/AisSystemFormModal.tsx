@@ -35,6 +35,7 @@ import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import toast from '../../components/ToastNotification';
 import { focusErrorTab } from '../../utils/formValidationHelper';
 import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
 import { colors } from '../../theme';
@@ -157,7 +158,9 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
 }) => {
   const [form] = Form.useForm();
   const currentUser = useAuthStore((s) => s.user);
-  const canSaveAndApprove = (currentUser?.permissions || []).includes('aissystem:approvec2');
+  const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const isCucLevel = (currentUser as any)?.orgUnitLevel === 1 || (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN';
+  const canSaveAndApprove = hasPerm('aissystem:approvec2') || isCucLevel;
 
   const [activeTab, setActiveTab] = useState('basic');
   const [submitting, setSubmitting] = useState(false);

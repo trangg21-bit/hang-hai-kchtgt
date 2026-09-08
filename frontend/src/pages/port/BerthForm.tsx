@@ -118,7 +118,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
   const [announcementOpen, setAnnouncementOpen] = useState(true);
   const [berthCodeLoading, setBerthCodeLoading] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
-  const isSystemAdmin = (currentUser?.permissions?.includes('admin:all') || currentUser?.permissions?.includes('*')) ?? false;
+  const isSystemAdmin = currentUser?.permissions?.includes('*') ?? false;
   const editPortIdRef = useRef<string | undefined>(undefined);
 
   const watchedGeometryType = Form.useWatch('geometryType', form);

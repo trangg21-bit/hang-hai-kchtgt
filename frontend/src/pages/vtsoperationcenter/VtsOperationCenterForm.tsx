@@ -218,6 +218,8 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
 
   const currentUser = useAuthStore((s: AuthState) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
+  const isCucLevel = (currentUser as any)?.orgUnitLevel === 1 || (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN';
+  const canSaveAndApprove = hasPerm('vtsoperationcenter:approvec2') || hasPerm('vts:approvec2') || isCucLevel;
 
   const isDetailMode = currentMode === 'detail';
   const isCreateMode = currentMode === 'create';
@@ -229,7 +231,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
     record?.approvalStatus === ApprovalStatus.DRAFT ||
     record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 ||
     record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL2 ||
-    (record?.approvalStatus === ApprovalStatus.APPROVED && (hasPerm('vtsoperationcenter:approvec2') || hasPerm('vts:approvec2')));
+    (record?.approvalStatus === ApprovalStatus.APPROVED && canSaveAndApprove);
 
   const handleUploadAttachment = async (file: File) => {
     if (!isCreateMode && !attachmentsEditable) {
@@ -1248,7 +1250,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                 >
                   Lưu và gửi phê duyệt
                 </Button>
-                {hasPerm('vtsoperationcenter:approvec2') && (
+                {canSaveAndApprove && (
                   <Button
                     type="primary"
                     onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}

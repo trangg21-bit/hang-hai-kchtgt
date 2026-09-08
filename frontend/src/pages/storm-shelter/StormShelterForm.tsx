@@ -197,7 +197,7 @@ export default forwardRef(function StormShelterForm({ form, id, onFinish, onSubm
   const [technicalOpen, setTechnicalOpen] = useState(true);
   const [stormShelterCodeLoading, setStormShelterCodeLoading] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
-  const isSystemAdmin = (currentUser?.permissions?.includes('admin:all') || currentUser?.permissions?.includes('*')) ?? false;
+  const isSystemAdmin = currentUser?.permissions?.includes('*') ?? false;
   const editPortIdRef = useRef<string | undefined>(undefined);
 
   const watchedGeometryType = Form.useWatch('geometryType', form);

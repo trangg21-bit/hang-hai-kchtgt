@@ -93,7 +93,7 @@ public class CoastalStationInmarsatController {
 
     @GetMapping
     @Operation(summary = "Tìm kiếm phân trang danh sách Đài Inmarsat (F-102)")
-    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
+    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read')")
     public ResponseEntity<Map<String, Object>> search(
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) String keyword,
@@ -136,7 +136,7 @@ public class CoastalStationInmarsatController {
 
     @GetMapping("/counts")
     @Operation(summary = "Thống kê số lượng bản ghi theo tab trạng thái phê duyệt")
-    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
+    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read')")
     public ResponseEntity<Map<String, Long>> getCounts(
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) String keyword,
@@ -146,7 +146,7 @@ public class CoastalStationInmarsatController {
 
     @GetMapping("/generate-code")
     @Operation(summary = "Tự sinh mã Đài Inmarsat (INMARSAT-xxxx)")
-    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:create', 'specialstation:create', 'data:create', 'admin:all')")
+    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:create', 'specialstation:create', 'data:create')")
     public ResponseEntity<Map<String, String>> generateCode() {
         String code = service.generateCode();
         return ResponseEntity.ok(Map.of("code", code));
@@ -154,7 +154,7 @@ public class CoastalStationInmarsatController {
 
     @GetMapping("/{id:[0-9a-fA-F-]{36}}")
     @Operation(summary = "Xem chi tiết Đài Inmarsat (F-102)")
-    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
+    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read')")
     public ResponseEntity<CoastalStationInmarsatResponse> getStationById(@PathVariable UUID id) {
         CoastalStationInmarsat entity = service.getStationById(id);
         return ResponseEntity.ok(service.buildResponse(entity));
@@ -162,7 +162,7 @@ public class CoastalStationInmarsatController {
 
     @PostMapping
     @Operation(summary = "Tạo mới Đài Inmarsat (Lưu tạm) (F-098)")
-    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:create', 'specialstation:create', 'data:create', 'admin:all')")
+    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:create', 'specialstation:create', 'data:create')")
     public ResponseEntity<CoastalStationInmarsatResponse> createStation(
             @Valid @RequestBody CoastalStationInmarsatRequest request) {
         CoastalStationInmarsat created = service.createStation(request);
@@ -171,7 +171,7 @@ public class CoastalStationInmarsatController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Cập nhật thông tin Đài Inmarsat (F-099)")
-    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:update', 'specialstation:update', 'data:update', 'admin:all')")
+    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:update', 'specialstation:update', 'data:update')")
     public ResponseEntity<CoastalStationInmarsatResponse> updateStation(
             @PathVariable UUID id,
             @Valid @RequestBody CoastalStationInmarsatUpdateRequest request) {
@@ -181,7 +181,7 @@ public class CoastalStationInmarsatController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Xóa mềm Đài Inmarsat (F-100)")
-    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:delete', 'specialstation:delete', 'data:delete', 'admin:all')")
+    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:delete', 'specialstation:delete', 'data:delete')")
     public ResponseEntity<Void> deleteStation(@PathVariable UUID id) {
         service.deleteStation(id);
         return ResponseEntity.noContent().build();
@@ -189,7 +189,7 @@ public class CoastalStationInmarsatController {
 
     @PostMapping("/{id}/submit")
     @Operation(summary = "Gửi phê duyệt cấp Cảng vụ/Chi cục (F-101)")
-    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:create', 'coastalstationinmarsat:update', 'specialstation:create', 'specialstation:update', 'data:create', 'admin:all')")
+    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:create', 'coastalstationinmarsat:update', 'specialstation:create', 'specialstation:update', 'data:create')")
     public ResponseEntity<CoastalStationInmarsatResponse> submit(@PathVariable UUID id) {
         CoastalStationInmarsat submitted = service.submit(id);
         return ResponseEntity.ok(service.buildResponse(submitted));
@@ -197,7 +197,7 @@ public class CoastalStationInmarsatController {
 
     @PostMapping("/{id}/approve-l1")
     @Operation(summary = "Phê duyệt cấp 1 (Cảng vụ / Chi cục) Đài Inmarsat (F-101)")
-    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:approvec1', 'coastalstationinmarsat:approve', 'specialstation:approve', 'data:approvec1', 'data:approve', 'admin:all')")
+    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:approvec1', 'coastalstationinmarsat:approve', 'specialstation:approve', 'data:approvec1', 'data:approve')")
     public ResponseEntity<CoastalStationInmarsatResponse> approveLevel1(@PathVariable UUID id) {
         CoastalStationInmarsat approved = service.approveLevel1(id);
         return ResponseEntity.ok(service.buildResponse(approved));
@@ -205,7 +205,7 @@ public class CoastalStationInmarsatController {
 
     @PostMapping("/{id}/approve-l2")
     @Operation(summary = "Phê duyệt cấp 2 (Cục Hàng hải Việt Nam) Đài Inmarsat (F-101)")
-    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:approvec2', 'coastalstationinmarsat:approve', 'specialstation:approve', 'data:approvec2', 'data:approve', 'admin:all')")
+    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:approvec2', 'coastalstationinmarsat:approve', 'specialstation:approve', 'data:approvec2', 'data:approve')")
     public ResponseEntity<CoastalStationInmarsatResponse> approveLevel2(@PathVariable UUID id) {
         CoastalStationInmarsat approved = service.approveLevel2(id);
         return ResponseEntity.ok(service.buildResponse(approved));
@@ -213,7 +213,7 @@ public class CoastalStationInmarsatController {
 
     @PostMapping("/{id}/reject")
     @Operation(summary = "Từ chối phê duyệt Đài Inmarsat kèm lý do (F-101)")
-    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:reject', 'coastalstationinmarsat:approve', 'specialstation:approve', 'data:approve', 'admin:all')")
+    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:reject', 'coastalstationinmarsat:approve', 'specialstation:approve', 'data:approve')")
     public ResponseEntity<CoastalStationInmarsatResponse> reject(
             @PathVariable UUID id,
             @RequestBody CoastalStationInmarsatApprovalRequest request) {
@@ -224,7 +224,7 @@ public class CoastalStationInmarsatController {
 
     @GetMapping("/{id}/history")
     @Operation(summary = "Xem lịch sử thay đổi Đài Inmarsat (F-103)")
-    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
+    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read')")
     public ResponseEntity<List<CoastalStationInmarsatHistoryResponse>> getHistory(
             @PathVariable UUID id,
             @RequestParam(value = "page", required = false) Integer page,
@@ -243,7 +243,7 @@ public class CoastalStationInmarsatController {
 
     // ── Attachment endpoints (InfrastructureAttachment, ref_type INMARSAT_STATION) ──
 
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:create', 'coastalstationinmarsat:update', 'specialstation:create', 'specialstation:update', 'data:create', 'data:update', 'admin:all')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:create', 'coastalstationinmarsat:update', 'specialstation:create', 'specialstation:update', 'data:create', 'data:update')")
     @PostMapping(value = "/{id}/attachments", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Tải lên tài liệu đính kèm")
     public ResponseEntity<com.hanghai.kchtg.common.dto.ApiResponse<List<CoastalStationInmarsatAttachmentResponse>>> uploadAttachments(
@@ -255,7 +255,7 @@ public class CoastalStationInmarsatController {
         return ResponseEntity.ok(com.hanghai.kchtg.common.dto.ApiResponse.success("Tải lên tệp đính kèm thành công", uploaded));
     }
 
-    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
+    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read')")
     @GetMapping("/{id}/attachments")
     @Operation(summary = "Lấy danh sách tài liệu đính kèm")
     public ResponseEntity<com.hanghai.kchtg.common.dto.ApiResponse<List<CoastalStationInmarsatAttachmentResponse>>> listAttachments(
@@ -264,7 +264,7 @@ public class CoastalStationInmarsatController {
         return ResponseEntity.ok(com.hanghai.kchtg.common.dto.ApiResponse.success("Lấy danh sách tệp đính kèm thành công", list));
     }
 
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:update', 'specialstation:update', 'data:update', 'admin:all')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:update', 'specialstation:update', 'data:update')")
     @DeleteMapping("/{id}/attachments/{attId}")
     @Operation(summary = "Xóa tài liệu đính kèm")
     public ResponseEntity<com.hanghai.kchtg.common.dto.ApiResponse<Void>> deleteAttachment(
@@ -276,7 +276,7 @@ public class CoastalStationInmarsatController {
         return ResponseEntity.ok(com.hanghai.kchtg.common.dto.ApiResponse.success("Xóa tệp đính kèm thành công", null));
     }
 
-    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
+    @PreAuthorize("hasAnyAuthority('coastalstationinmarsat:read', 'specialstation:read', 'data:read')")
     @GetMapping("/{id}/attachments/{attId}/download")
     @Operation(summary = "Tải xuống tài liệu đính kèm")
     public ResponseEntity<org.springframework.core.io.Resource> downloadAttachment(
@@ -327,21 +327,21 @@ public class CoastalStationInmarsatController {
     // đều đọc được toàn bộ dữ liệu và — nghiêm trọng hơn — phê duyệt được hồ sơ.
     // Nay gắn quyền đúng như các endpoint chính.
 
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:read', 'specialstation:read', 'data:read')")
     @GetMapping("/list")
     @Operation(summary = "Lấy tất cả đài Inmarsat đang hoạt động (Legacy)")
     public ResponseEntity<List<CoastalStationInmarsat>> getAllStations() {
         return ResponseEntity.ok(service.getAllStations());
     }
 
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:read', 'specialstation:read', 'data:read')")
     @GetMapping("/search")
     @Operation(summary = "Tìm kiếm GIS đài Inmarsat (Legacy)")
     public ResponseEntity<List<CoastalStationInmarsat>> searchStations(@RequestParam String keyword) {
         return ResponseEntity.ok(service.searchStations(keyword));
     }
 
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:read', 'specialstation:read', 'data:read')")
     @GetMapping("/by-device/{code}")
     @Operation(summary = "Tìm đài Inmarsat theo mã thiết bị (Legacy)")
     public ResponseEntity<CoastalStationInmarsat> findByDeviceCode(@PathVariable String code) {
@@ -354,7 +354,7 @@ public class CoastalStationInmarsatController {
      * Duyệt vòng đang mở. Giữ URL cũ cho tích hợp chưa chuyển đổi nhưng nay đòi
      * đúng quyền duyệt như /approve-l1 và /approve-l2.
      */
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:approvec1', 'coastalstationinmarsat:approvec2', 'coastalstationinmarsat:approve', 'specialstation:approve', 'admin:all')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:approvec1', 'coastalstationinmarsat:approvec2', 'coastalstationinmarsat:approve', 'specialstation:approve')")
     @PostMapping("/{id}/approve")
     @Operation(summary = "Phê duyệt Đài Inmarsat (Legacy)")
     public ResponseEntity<CoastalStationInmarsat> approveStation(

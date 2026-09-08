@@ -42,7 +42,7 @@ const { confirm } = modal;
 const drawerProps = { styles: drawerStyles, maskClosable: false };
 
 const STATUS_LABELS: Record<string, string> = { active: 'Sử dụng', inactive: 'Không sử dụng' };
-const NON_INHERITABLE_GROUP_PERMISSIONS = new Set(['admin:all', '*']);
+const NON_INHERITABLE_GROUP_PERMISSIONS = new Set(['user:permission', '*']);
 
 const PermissionSearchBar: FC<{ onSearch: (val: string) => void }> = memo(({ onSearch }) => {
   const [value, setValue] = useState('');

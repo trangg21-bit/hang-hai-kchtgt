@@ -100,7 +100,6 @@ public class DataScopeAspect {
 
         // Kiểm tra xem user có mang vai trò tra cứu toàn quốc hay không
         boolean isNationwide = effectivePermissions.contains(NATIONWIDE_PERMISSION)
-                || effectivePermissions.contains("admin:all")
                 || effectivePermissions.contains("*");
 
         if (isNationwide) {

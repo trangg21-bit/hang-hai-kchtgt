@@ -196,7 +196,7 @@ public class AccessLogInterceptor implements HandlerInterceptor {
             boolean hasAdminPermission = auth.getAuthorities().stream()
                     .map(org.springframework.security.core.GrantedAuthority::getAuthority)
                     .anyMatch(authority -> "*".equals(authority)
-                            || "admin:all".equalsIgnoreCase(authority)
+                            || "user:permission".equalsIgnoreCase(authority)
                             || "admin:manage".equalsIgnoreCase(authority));
 
             if (hasAdminPermission) {
@@ -212,7 +212,7 @@ public class AccessLogInterceptor implements HandlerInterceptor {
             if (reqUser != null) {
                 boolean hasAdminPermission = reqUser.getAllPermissions().stream()
                         .anyMatch(permission -> "*".equals(permission)
-                                || "admin:all".equalsIgnoreCase(permission)
+                                || "user:permission".equalsIgnoreCase(permission)
                                 || "admin:manage".equalsIgnoreCase(permission));
                 if (hasAdminPermission) {
                     user = reqUser;

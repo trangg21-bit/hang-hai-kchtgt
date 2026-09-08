@@ -325,7 +325,7 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
 
   // AC-024-01: '/' renders the 6-block landing INSIDE AppLayout shell (real HomePage component).
   it('AC-01: "/" full-access — 6 block cards (label+desc) inside AppLayout; no group menu; sidebar note only', () => {
-    const html = renderAt('/', ['admin:all']);
+    const html = renderAt('/', ['*']);
     // Landing content (pages/Home.tsx real render)
     expect(html).toContain('Danh mục chức năng');
     expect(html).toContain('Chọn một khối chức năng để tiếp tục.');
@@ -373,7 +373,7 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
   // chips C0..C3 đã bỏ (2026-09-07 — ngôn ngữ nội bộ không phải ngôn ngữ người dùng);
   // VHF disabled leaf inside "Đài viễn thông hàng hải".
   it('AC-02/03/04/07: "/port" — breadcrumb header + expand/collapse + kcht tree; no PHÊ DUYỆT; no C-chips', () => {
-    const html = renderAt('/port', ['admin:all']);
+    const html = renderAt('/port', ['*']);
     // back button — icon-only, enterprise label qua aria/title (không phải câu chữ)
     expect(html).toContain('aria-label="Về Danh mục chức năng"');
     expect(html).toContain('title="Về Danh mục chức năng"');
@@ -400,7 +400,7 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
   // AC-024-03 (render seam): depth-3 chain — deep-link '/pier' opens /port > /berth chain
   // (selectedKeys on the real leaf). AC-024-09: deep-link infers the kcht group.
   it('AC-03/AC-09: "/pier" — depth-3 chain visible and leaf selected (deep-link infers kcht group)', () => {
-    const html = renderAt('/pier', ['admin:all']);
+    const html = renderAt('/pier', ['*']);
     // sidebar is the kcht group (breadcrumb header present) for a deep kcht route
     expect(html).toContain('aria-label="Về Danh mục chức năng"');
     expect(html).toContain('Quản lý cảng biển');
@@ -412,7 +412,7 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
   // AC-024-04 (render seam): '/dai-ttdh' — Đài viễn thông root branch contains VHF as a
   // DISABLED menu item (no route -> not clickable), rendered by the real antd Menu.
   it('AC-04: "/dai-ttdh" — VHF disabled menu item rendered inside Đài viễn thông branch', () => {
-    const html = renderAt('/dai-ttdh', ['admin:all']);
+    const html = renderAt('/dai-ttdh', ['*']);
     expect(html).toContain('aria-label="Về Danh mục chức năng"');
     expect(html).toContain('Đài viễn thông hàng hải');
     expect(html).toContain('Quản lý đài TTDH');
@@ -453,7 +453,7 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
   // mở menu; giữa = MỘT khối (logo 40px + tên hệ thống 1 dòng ellipsis). Không bao giờ
   // 2 logo / 2 title cùng lúc.
   it('H1: sidebarHidden — single centered brand block (logo + one-line title), left title suppressed', () => {
-    const html = renderAt('/port', ['admin:all'], { initialSidebarHidden: true });
+    const html = renderAt('/port', ['*'], { initialSidebarHidden: true });
     const brand = 'HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI';
     // exactly ONE title instance lives in the centered brand span — the left title is gone
     expect(countOf(html, brand)).toBe(1);
@@ -467,7 +467,7 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
   });
 
   it('H2: sidebar visible — left title only, NO centered brand block (no duplication)', () => {
-    const html = renderAt('/port', ['admin:all'], {});
+    const html = renderAt('/port', ['*'], {});
     const brand = 'HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI';
     // visible mode keeps the left title (single occurrence)…
     expect(countOf(html, brand)).toBe(1);

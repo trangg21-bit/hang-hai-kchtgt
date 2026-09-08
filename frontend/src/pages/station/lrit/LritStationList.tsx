@@ -136,7 +136,7 @@ export const LritStationList: React.FC = () => {
   const user = useAuthStore((s: any) => s.user);
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
 
-  const canCreate = hasPerm('coastalstationlrit:create') || hasPerm('specialstation:create') || hasPerm('data:create') || hasPerm('admin:all') || (user as any)?.role === 'SUPER_ADMIN' || (user as any)?.role === 'ADMIN';
+  const canCreate = hasPerm('coastalstationlrit:create') || hasPerm('specialstation:create') || hasPerm('data:create') || (user as any)?.role === 'SUPER_ADMIN' || (user as any)?.role === 'ADMIN';
 
   // Load organizations & symbols
   useEffect(() => {
@@ -534,8 +534,8 @@ export const LritStationList: React.FC = () => {
     const isCreator = Boolean(user?.id && (record.createdBy === user.id || record.createdBy === user.username));
     const isApproverL1 = Boolean(user?.id && (record as any).approverLevel1 && ((record as any).approverLevel1 === user.id || (record as any).approverLevel1 === user.username));
     const isDepartmentLevel = Boolean((user as any)?.role === 'SUPER_ADMIN' || (user as any)?.role === 'ADMIN' || (user as any)?.orgUnitLevel === 1 || (user as any)?.rank === 'DEPARTMENT');
-    const canApproveC1 = hasPerm('coastalstationlrit:approvec1') || hasPerm('specialstation:approvec1') || hasPerm('admin:all') || isDepartmentLevel;
-    const canApproveC2 = hasPerm('coastalstationlrit:approvec2') || hasPerm('coastalstationlrit:approve') || hasPerm('specialstation:approvec2') || hasPerm('specialstation:approve') || hasPerm('admin:all') || isDepartmentLevel;
+    const canApproveC1 = hasPerm('coastalstationlrit:approvec1') || hasPerm('specialstation:approvec1') || isDepartmentLevel;
+    const canApproveC2 = hasPerm('coastalstationlrit:approvec2') || hasPerm('coastalstationlrit:approve') || hasPerm('specialstation:approvec2') || hasPerm('specialstation:approve') || isDepartmentLevel;
     const st = normalizeApprovalStatus(record.approvalStatus);
 
     const actions: any[] = [
@@ -552,7 +552,7 @@ export const LritStationList: React.FC = () => {
       },
     ];
 
-    if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'coastalstationlrit', extraApprovePerms: ['specialstation:approvec2', 'specialstation:approve', 'admin:all'] })) {
+    if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'coastalstationlrit', extraApprovePerms: ['specialstation:approvec2', 'specialstation:approve'] })) {
       actions.push({
         key: 'edit',
         label: 'Chỉnh sửa',
@@ -622,7 +622,7 @@ export const LritStationList: React.FC = () => {
       });
     }
 
-    if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'coastalstationlrit', extraDeletePerms: ['specialstation:delete', 'admin:all'] })) {
+    if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'coastalstationlrit', extraDeletePerms: ['specialstation:delete'] })) {
       actions.push({
         key: 'delete',
         label: 'Xóa',

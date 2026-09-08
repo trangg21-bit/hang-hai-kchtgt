@@ -166,7 +166,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   const [specialOpen, setSpecialOpen] = useState(true);
   const [shipRepairYardCodeLoading, setShipRepairYardCodeLoading] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
-  const isSystemAdmin = (currentUser?.permissions?.includes('admin:all') || currentUser?.permissions?.includes('*')) ?? false;
+  const isSystemAdmin = currentUser?.permissions?.includes('*') ?? false;
   const editPortIdRef = useRef<string | undefined>(undefined);
 
   const watchedGeometryType = Form.useWatch('geometryType', form);
