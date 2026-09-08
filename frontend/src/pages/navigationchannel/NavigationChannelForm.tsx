@@ -19,7 +19,18 @@ import {
   Space,
 } from 'antd';
 import type { UploadFile } from 'antd';
-import { PlusOutlined, DeleteOutlined, FileOutlined, InboxOutlined, EnvironmentOutlined, DownloadOutlined } from '@ant-design/icons';
+import {
+  PlusOutlined,
+  DeleteOutlined,
+  FileOutlined,
+  InboxOutlined,
+  EnvironmentOutlined,
+  DownloadOutlined,
+  BankOutlined,
+  SlidersOutlined,
+  FileTextOutlined,
+  AuditOutlined,
+} from '@ant-design/icons';
 import dayjs from 'dayjs';
 import toast from '../../components/ToastNotification';
 import { navigationChannelCRUD, navigationChannelApproval } from '../../services/navigationChannelService';
@@ -27,6 +38,7 @@ import { organizationService } from '../../services/organizationService';
 import { vtsSystemCRUD } from '../../services/vtsSystemService';
 import { symbolService } from '../../services/symbolService';
 import { userService } from '../../services/userService';
+import { usePermissionStore } from '../../store/permissionStore';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import type {
@@ -66,7 +78,7 @@ import {
   fontSizeMd,
   fontSizeLg,
   drawerTabBarStyle,
-  drawerTabContentStyle,
+  drawerFormScrollStyle,
   radiusPill,
   radiusMd,
   surfaceCard,
@@ -102,7 +114,7 @@ export interface NavigationChannelFormProps {
   editId?: string | null;
   mode?: 'create' | 'edit';
   onCancel?: () => void;
-  onSuccess?: () => void;
+  onSuccess?: (savedRecord?: any) => void;
 }
 
 const trimString = (v: unknown): string | undefined =>
@@ -113,6 +125,34 @@ const ROUTE_TYPE_OPTIONS = [
   { value: 1, label: 'Công cộng' },
   { value: 2, label: 'Chuyên dùng' },
 ];
+
+// ── Style cho thẻ phân nhóm (Section Card) chuẩn Bến cảng ──
+const sectionBoxStyle: React.CSSProperties = {
+  background: '#ffffff',
+  border: '1px solid #e2e8f0',
+  borderRadius: 8,
+  padding: '12px 18px 8px 18px',
+  marginBottom: 14,
+  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+};
+
+const sectionHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginBottom: 10,
+  paddingBottom: 8,
+  borderBottom: '1px solid #f1f5f9',
+};
+
+const sectionTitleStyle: React.CSSProperties = {
+  color: colors.sidebarBg,
+  fontWeight: fontWeightBold,
+  fontSize: fontSizeMd + 0.5,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+};
 
 // ── CHK: label chuẩn (navy, đậm, 13px) ────────────────────────────────
 const labelProps = (text: string) => ({
@@ -457,8 +497,11 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm();
   const submitAfterSaveRef = useRef(false);
+  const saveActionRef = useRef<'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED'>('DRAFT');
   const currentUser = useAuthStore((s) => s.user);
   const userPermissions = currentUser?.permissions || [];
+  const hasPerm = usePermissionStore((s: { hasPermission: (k: string) => boolean }) => s.hasPermission);
+  const canApprove = hasPerm('navigationchannel:approve') || hasPerm('navigationchannel:approve:c1') || hasPerm('navigationchannel:approve:c2') || hasPerm('admin:all');
 
   const isIframe = window.self !== window.top;
   const isModalMode = open !== undefined;
@@ -953,10 +996,17 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
       };
 
       if (isCreateMode) {
-        await navigationChannelCRUD.create(payload);
-        toast.success('Tạo mới thành công');
+        const created = await navigationChannelCRUD.create(payload);
+        const newId = created?.id;
+        if (newId && (saveActionRef.current === 'PENDING_APPROVAL' || saveActionRef.current === 'APPROVED')) {
+          await navigationChannelApproval.submitApproval(newId).catch(() => {});
+          if (saveActionRef.current === 'APPROVED' && canApprove) {
+            await navigationChannelApproval.approveC1(newId, { status: 'APPROVED' }).catch(() => {});
+          }
+        }
+        toast.success(saveActionRef.current === 'PENDING_APPROVAL' ? 'Tạo mới và gửi phê duyệt thành công' : 'Tạo mới thành công');
         if (isModalMode) {
-          onSuccess?.();
+          onSuccess?.(created);
         } else if (isIframe) {
           window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
         } else {
@@ -968,13 +1018,18 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
         if (window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[id] = res;
         }
-        toast.success('Cập nhật thành công');
-        if (shouldSubmitAfterSave) {
-          await navigationChannelApproval.submitApproval(res?.id ?? id);
+        if (saveActionRef.current === 'PENDING_APPROVAL' || shouldSubmitAfterSave) {
+          await navigationChannelApproval.submitApproval(res?.id ?? id).catch(() => {});
           toast.success('Gửi phê duyệt thành công');
+        } else if (saveActionRef.current === 'APPROVED' && canApprove) {
+          await navigationChannelApproval.submitApproval(res?.id ?? id).catch(() => {});
+          await navigationChannelApproval.approveC1(res?.id ?? id, { status: 'APPROVED' }).catch(() => {});
+          toast.success('Phê duyệt thành công');
+        } else {
+          toast.success('Cập nhật thành công');
         }
         if (isModalMode) {
-          onSuccess?.();
+          onSuccess?.(res || { ...payload, id });
         } else if (isIframe) {
           window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
         } else {
@@ -1445,32 +1500,54 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
 
   // ── Create / Edit form (#1-#46) — chuẩn CHK ────────────────────────
   const formFooter = (
-    <div style={{ display: 'flex', justifyContent: 'center', gap: spaceSm }}>
-      <Button
-        type="primary"
-        loading={isSubmitting}
-        onClick={() => form.submit()}
-        style={{ ...primaryButtonStyle, minWidth: 120 }}
-      >
-        {isCreateMode ? 'Tạo mới' : 'Cập nhật'}
-      </Button>
-      {!isCreateMode && isEditMode && record && (record.approvalStatus === 'PROPOSED' || (record.approvalStatus ?? '').startsWith('REJECTED')) && (
+    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: spaceSm, padding: '12px 0' }}>
+      <Space>
+        <Button
+          onClick={isIframe
+            ? () => window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*')
+            : isModalMode ? onCancel : () => navigate('/navigation-channel')}
+          style={{ ...outlineButtonStyle, minWidth: 100 }}
+        >
+          Hủy
+        </Button>
         <Button
           loading={isSubmitting}
-          onClick={() => { submitAfterSaveRef.current = true; form.submit(); }}
-          style={{ ...outlineButtonStyle, minWidth: 140 }}
+          onClick={() => {
+            saveActionRef.current = 'DRAFT';
+            form.setFieldValue('approvalStatus', 'DRAFT');
+            form.submit();
+          }}
+          style={{ ...outlineButtonStyle, minWidth: 100 }}
         >
-          Gửi phê duyệt
+          Lưu tạm
         </Button>
-      )}
-      <Button
-        onClick={isIframe
-          ? () => window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*')
-          : isModalMode ? onCancel : () => navigate('/navigation-channel')}
-        style={{ ...outlineButtonStyle, minWidth: 120 }}
-      >
-        Hủy
-      </Button>
+        <Button
+          type="primary"
+          loading={isSubmitting}
+          onClick={() => {
+            saveActionRef.current = 'PENDING_APPROVAL';
+            form.setFieldValue('approvalStatus', 'PENDING_APPROVAL');
+            form.submit();
+          }}
+          style={{ ...primaryButtonStyle, minWidth: 150 }}
+        >
+          Lưu và gửi phê duyệt
+        </Button>
+        {canApprove && (
+          <Button
+            type="primary"
+            loading={isSubmitting}
+            onClick={() => {
+              saveActionRef.current = 'APPROVED';
+              form.setFieldValue('approvalStatus', 'APPROVED');
+              form.submit();
+            }}
+            style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, minWidth: 150 }}
+          >
+            Lưu và phê duyệt
+          </Button>
+        )}
+      </Space>
     </div>
   );
 
@@ -1486,10 +1563,15 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
             key: 'basic-info',
             label: 'Thông tin chung',
             children: (
-              <div style={drawerTabContentStyle}>
-                {/* Hồ sơ chính */}
-                <div style={{ marginBottom: spaceMd }}>
-                  {sectionTitle('Hồ sơ chính')}
+              <div style={drawerFormScrollStyle}>
+                {/* ── Section Card 1: Thông tin cơ bản & Quản lý vận hành ── */}
+                <div style={sectionBoxStyle}>
+                  <div style={sectionHeaderStyle}>
+                    <div style={sectionTitleStyle}>
+                      <BankOutlined style={{ color: actionPrimary }} />
+                      <span>Thông tin cơ bản & Quản lý vận hành</span>
+                    </div>
+                  </div>
                   <Row gutter={[24, 0]}>
                     <Col span={12}>
                       <Form.Item
@@ -1584,21 +1666,6 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                       </Form.Item>
                     </Col>
                     <Col span={12}>
-                      <Form.Item name="latestStationRepairMonth" {...labelProps('Sửa chữa trạm gần nhất')} style={formFieldStyle}>
-                        <DatePicker picker="month" format="MM/YYYY" placeholder="Chọn tháng/năm" style={{ ...selectStyle, width: '100%' }} />
-                      </Form.Item>
-                    </Col>
-                    <Col span={12}>
-                      <Form.Item name="latestMaintenanceYear" {...labelProps('Năm bảo trì gần nhất')} style={formFieldStyle}>
-                        <DatePicker picker="year" format="YYYY" placeholder="Chọn năm" style={{ ...selectStyle, width: '100%' }} />
-                      </Form.Item>
-                    </Col>
-                    <Col span={12}>
-                      <Form.Item name="latestDredgingVolumeCubicMeters" {...labelProps('Khối lượng nạo vét (m³)')} style={formFieldStyle}>
-                        <InputNumber min={0} placeholder="Nhập khối lượng nạo vét" style={{ ...inputStyle, width: '100%' }} />
-                      </Form.Item>
-                    </Col>
-                    <Col span={12}>
                       <Form.Item name="buoyCount" {...labelProps('Số lượng phao')} style={formFieldStyle}>
                         <InputNumber min={0} placeholder="Nhập số lượng phao" style={{ ...inputStyle, width: '100%' }} />
                       </Form.Item>
@@ -1606,21 +1673,6 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                     <Col span={12}>
                       <Form.Item name="beaconCount" {...labelProps('Số lượng tiêu')} style={formFieldStyle}>
                         <InputNumber min={0} placeholder="Nhập số lượng tiêu" style={{ ...inputStyle, width: '100%' }} />
-                      </Form.Item>
-                    </Col>
-                    <Col span={12}>
-                      <Form.Item name="announcementDecisionNumber" {...labelProps('Quyết định công bố số')} style={formFieldStyle}>
-                        <Input maxLength={100} showCount placeholder="Nhập số quyết định công bố" style={inputStyle} />
-                      </Form.Item>
-                    </Col>
-                    <Col span={12}>
-                      <Form.Item name="announcementDecisionDate" {...labelProps('Ngày ra quyết định công bố')} style={formFieldStyle}>
-                        <DatePicker format="DD/MM/YYYY" placeholder="Chọn ngày" style={{ ...selectStyle, width: '100%' }} />
-                      </Form.Item>
-                    </Col>
-                    <Col span={12}>
-                      <Form.Item name="announcementDecisionIssuer" {...labelProps('Đơn vị ra quyết định công bố')} style={formFieldStyle}>
-                        <Input.TextArea rows={2} maxLength={500} showCount placeholder="Nhập đơn vị ra quyết định" style={{ borderRadius: radiusPill, height: 'auto' }} />
                       </Form.Item>
                     </Col>
                     <Col span={24}>
@@ -1631,26 +1683,14 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                   </Row>
                 </div>
 
-                {/* Tuyến luồng */}
-                <div style={{ marginBottom: spaceMd }}>
-                  {sectionTitle('Tuyến luồng')}
-                  <Button icon={<PlusOutlined />} onClick={addRouteRow} style={{ ...outlineButtonStyle, marginBottom: spaceSm }}>
-                    Thêm tuyến luồng
-                  </Button>
-                  <Table
-                    dataSource={routeRows}
-                    columns={routeColumns}
-                    rowKey={(_, index) => String(index)}
-                    pagination={false}
-                    size="small"
-                    scroll={{ x: 'max-content' }}
-                    locale={{ emptyText: 'Chưa có tuyến luồng nào' }}
-                  />
-                </div>
-
-                {/* Phạm vi bảo vệ luồng */}
-                <div style={{ marginBottom: spaceMd }}>
-                  {sectionTitle('Phạm vi bảo vệ luồng')}
+                {/* ── Section Card 2: Thông số kỹ thuật & Khai thác ── */}
+                <div style={sectionBoxStyle}>
+                  <div style={sectionHeaderStyle}>
+                    <div style={sectionTitleStyle}>
+                      <SlidersOutlined style={{ color: actionPrimary }} />
+                      <span>Thông số kỹ thuật & Khai thác</span>
+                    </div>
+                  </div>
                   <Row gutter={[24, 0]}>
                     <Col span={12}>
                       <Form.Item name="protectionScopeMeters" {...labelProps('Phạm vi bảo vệ luồng (m)')} style={formFieldStyle}>
@@ -1658,8 +1698,50 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                       </Form.Item>
                     </Col>
                     <Col span={12}>
+                      <Form.Item name="latestDredgingVolumeCubicMeters" {...labelProps('Khối lượng nạo vét (m³)')} style={formFieldStyle}>
+                        <InputNumber min={0} placeholder="Nhập khối lượng nạo vét" style={{ ...inputStyle, width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item name="latestStationRepairMonth" {...labelProps('Sửa chữa trạm gần nhất')} style={formFieldStyle}>
+                        <DatePicker picker="month" format="MM/YYYY" placeholder="Chọn tháng/năm" style={{ ...selectStyle, width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item name="latestMaintenanceYear" {...labelProps('Năm bảo trì gần nhất')} style={formFieldStyle}>
+                        <DatePicker picker="year" format="YYYY" placeholder="Chọn năm" style={{ ...selectStyle, width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col span={24}>
                       <Form.Item name="protectionNotes" {...labelProps('Ghi chú phạm vi bảo vệ')} style={formFieldStyle}>
                         <Input.TextArea rows={2} maxLength={500} showCount placeholder="Nhập ghi chú phạm vi bảo vệ" style={{ borderRadius: radiusPill, height: 'auto' }} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                </div>
+
+                {/* ── Section Card 3: Thông tin công bố mở, đưa vào sử dụng ── */}
+                <div style={sectionBoxStyle}>
+                  <div style={sectionHeaderStyle}>
+                    <div style={sectionTitleStyle}>
+                      <FileTextOutlined style={{ color: actionPrimary }} />
+                      <span>Thông tin công bố mở, đưa vào sử dụng</span>
+                    </div>
+                  </div>
+                  <Row gutter={[24, 0]}>
+                    <Col span={12}>
+                      <Form.Item name="announcementDecisionNumber" {...labelProps('Quyết định công bố số')} style={formFieldStyle}>
+                        <Input maxLength={100} showCount placeholder="Nhập số quyết định công bố" style={inputStyle} />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item name="announcementDecisionDate" {...labelProps('Ngày ra quyết định công bố')} style={formFieldStyle}>
+                        <DatePicker format="DD/MM/YYYY" placeholder="Chọn ngày" style={{ ...selectStyle, width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col span={24}>
+                      <Form.Item name="announcementDecisionIssuer" {...labelProps('Đơn vị ra quyết định công bố')} style={formFieldStyle}>
+                        <Input.TextArea rows={2} maxLength={500} showCount placeholder="Nhập đơn vị ra quyết định" style={{ borderRadius: radiusPill, height: 'auto' }} />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -1671,7 +1753,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
             key: 'location',
             label: `Thông tin vị trí (${coordinateList.length})`,
             children: (
-              <div style={drawerTabContentStyle}>
+              <div style={drawerFormScrollStyle}>
                 <div style={{ marginBottom: spaceMd }}>
                   {sectionTitle('Thông tin vị trí')}
                   <Row gutter={[24, 0]}>
@@ -1783,7 +1865,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
             key: 'files',
             label: `File đính kèm (${uploadedFiles.length})`,
             children: (
-              <div style={drawerTabContentStyle}>
+              <div style={drawerFormScrollStyle}>
                 <div style={{ marginBottom: spaceMd }}>
                   {sectionTitle('File đính kèm')}
                   <div style={{ marginBottom: spaceMd }}>
@@ -1883,45 +1965,6 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
               </div>
             ),
           },
-          ...(isCreateMode ? [] : [{
-            key: 'history',
-            label: 'Lịch sử & Phê duyệt',
-            children: (
-              <div style={drawerTabContentStyle}>
-                <div style={{ marginBottom: spaceMd }}>
-                  {sectionTitle('Trạng thái và phê duyệt')}
-                  <div className="chk-detail-grid">
-                    {[
-                      ['Trạng thái', record?.approvalStatus ? <ApprovalStatusBadge status={record.approvalStatus} /> : '—'],
-                      ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{record ? (userMap.get(record.updatedBy || '') || record.updatedBy || '—') : '—'}</span>],
-                      ['Ngày cập nhật', record?.updatedAt ? dayjs(record.updatedAt).format('DD/MM/YYYY HH:mm') : '—'],
-                      ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{record ? (userMap.get(record.submittedBy || '') || record.submittedBy || '—') : '—'}</span>],
-                      ['Ngày gửi phê duyệt', record?.submittedAt ? dayjs(record.submittedAt).format('DD/MM/YYYY HH:mm') : '—'],
-                      ['Cán bộ duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{record ? (userMap.get(record.level1ApprovedBy || '') || record.level1ApprovedBy || '—') : '—'}</span>],
-                      ['Ngày duyệt cấp Cảng vụ/Chi cục', record?.level1ApprovedAt ? dayjs(record.level1ApprovedAt).format('DD/MM/YYYY HH:mm') : '—'],
-                      ['Cán bộ duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{record ? (userMap.get(record.level2ApprovedBy || '') || record.level2ApprovedBy || '—') : '—'}</span>],
-                      ['Ngày duyệt cấp Cục', record?.level2ApprovedAt ? dayjs(record.level2ApprovedAt).format('DD/MM/YYYY HH:mm') : '—'],
-                    ].map(([label, value], i) => (
-                      <div key={i} className="chk-detail-row">
-                        <span className="chk-detail-label">{label}</span>
-                        <span className="chk-detail-value">{value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  {sectionTitle('Lịch sử thay đổi')}
-                  {isLoadingHistory ? (
-                    <div style={{ textAlign: 'center', padding: `${spaceLg}px 0`, color: textTertiary, fontSize: fontSizeMd }}>Đang tải lịch sử...</div>
-                  ) : historyError ? (
-                    <div style={{ textAlign: 'center', padding: `${spaceLg}px 0`, color: statusCritical, fontSize: fontSizeMd }}>{historyError}</div>
-                  ) : (
-                    renderHistoryTimeline(history)
-                  )}
-                </div>
-              </div>
-            ),
-          }]),
         ]}
       />
       {/* Footer — chế độ standalone hiển thị trong form; chế độ modal hiển thị trong footer AppDrawer */}
@@ -1984,7 +2027,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
         footer={formFooter}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-          body: { padding: '0 24px 12px 24px' },
+          body: { padding: '0 24px 0 24px', overflow: 'hidden' },
         }}
       >
         {formContent}

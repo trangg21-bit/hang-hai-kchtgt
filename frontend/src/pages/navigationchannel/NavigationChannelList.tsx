@@ -40,7 +40,6 @@ import {
   cellSubtitleStyle,
   icons,
   colors,
-  filterInputStyle,
   filterLabelStyle,
   drawerProps,
   drawerTitleStyle,
@@ -389,8 +388,9 @@ export default function NavigationChannelList() {
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [sortField, setSortField] = useState<string | undefined>();
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
+  const [sortField, setSortField] = useState<string | undefined>('updatedAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>('desc');
+  const [reloadToken, setReloadToken] = useState(0);
   const [dataSource, setDataSource] = useState<NavigationChannelResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -489,7 +489,7 @@ export default function NavigationChannelList() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, activeTab, filterKeyword, filterChannelCode, filterOrgUnitId, filterSeaportId, filterProvinceId, filterConditionStatus, filterUpdatedFrom, filterUpdatedTo, filterUpdatedBy, sortField, sortOrder]);
+  }, [page, pageSize, activeTab, filterKeyword, filterChannelCode, filterOrgUnitId, filterSeaportId, filterProvinceId, filterConditionStatus, filterUpdatedFrom, filterUpdatedTo, filterUpdatedBy, sortField, sortOrder, reloadToken]);
 
   // ── Tab counts ──────────────────────────────────────────────────────
   const fetchCounts = useCallback(async () => {
@@ -543,9 +543,11 @@ export default function NavigationChannelList() {
   }, []);
 
   const refreshAfterMutation = useCallback(() => {
-    void fetchData();
-    void fetchCounts();
-  }, [fetchData, fetchCounts]);
+    setSortField('updatedAt');
+    setSortOrder('desc');
+    setPage(1);
+    setReloadToken((t) => t + 1);
+  }, []);
 
   const openModal = useCallback((mode: 'create' | 'edit', id?: string) => {
     setModalMode(mode);
@@ -842,6 +844,7 @@ export default function NavigationChannelList() {
         width: 260,
         fixed: 'left' as const,
         sortable: true,
+        sortOrder: sortField === 'channelName' ? (sortOrder === 'asc' ? ('ascend' as const) : ('descend' as const)) : undefined,
         ellipsis: false,
         render: (v: string | undefined, record: NavigationChannelResponse) => (
           <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -889,6 +892,7 @@ export default function NavigationChannelList() {
         dataIndex: 'conditionStatus',
         width: 150,
         sortable: true,
+        sortOrder: sortField === 'conditionStatus' ? (sortOrder === 'asc' ? ('ascend' as const) : ('descend' as const)) : undefined,
         render: (v: string | undefined) => {
           if (!v) return null;
           const s = CONDITION_STATUS_STYLE_MAP[v] || { label: CONDITION_STATUS_MAP[v as keyof typeof CONDITION_STATUS_MAP] || v, color: textTertiary };
@@ -908,6 +912,7 @@ export default function NavigationChannelList() {
         dataIndex: 'updatedAt',
         width: 220,
         sortable: true,
+        sortOrder: sortField === 'updatedAt' ? (sortOrder === 'asc' ? ('ascend' as const) : ('descend' as const)) : undefined,
         ellipsis: false,
         render: (v: string | undefined, record: NavigationChannelResponse) => {
           const name = record.updatedBy ? userMap.get(record.updatedBy) : undefined;
@@ -922,7 +927,7 @@ export default function NavigationChannelList() {
         },
       },
     ];
-  }, [page, pageSize, seaportOptions, openDetail, userMap]);
+  }, [page, pageSize, seaportOptions, openDetail, userMap, sortField, sortOrder]);
 
   const rowActions = useCallback(
     (record: NavigationChannelResponse) => {
@@ -964,8 +969,13 @@ export default function NavigationChannelList() {
   const filterContent = (
     <>
       <style>{`
+        .channel-page-wrapper .ant-select .ant-select-selector,
+        .channel-page-wrapper .ant-tree-select .ant-select-selector,
+        .channel-page-wrapper .ant-picker,
+        .channel-page-wrapper .ant-input,
         .chk-filter-select.ant-select .ant-select-selector,
         .chk-filter-select.ant-tree-select .ant-select-selector,
+        .chk-filter-select.ant-picker,
         .chk-filter-select .ant-select-selector {
           border-radius: 999px !important;
           height: 40px !important;
@@ -980,24 +990,9 @@ export default function NavigationChannelList() {
           placeholder="Chọn đơn vị..."
           allowClear
           showSearch
-          className="chk-filter-select"
           value={filterOrgUnitId}
           onChange={(v) => { setFilterOrgUnitId(v || undefined); setPage(1); }}
-          style={filterInputStyle}
-        />
-      </div>
-      <div style={{ marginBottom: spaceFormField }}>
-        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Thuộc cảng biển</div>
-        <Select
-          placeholder="Chọn cảng biển..."
-          allowClear
-          showSearch
-          className="chk-filter-select"
-          optionFilterProp="label"
-          value={filterSeaportId}
-          onChange={(v) => { setFilterSeaportId(v); setPage(1); }}
-          options={seaportOptions.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : p.portName || p.id }))}
-          style={filterInputStyle}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
         />
       </div>
       <div style={{ marginBottom: spaceFormField }}>
@@ -1008,12 +1003,36 @@ export default function NavigationChannelList() {
           value={filterKeyword}
           onChange={(e) => { setFilterKeyword(e.target.value); setPage(1); }}
           onPressEnter={handleFilterApply}
-          style={filterInputStyle}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+        />
+      </div>
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Tình trạng</div>
+        <Select
+          placeholder="Chọn tình trạng"
+          allowClear
+          value={filterConditionStatus}
+          onChange={(v) => { setFilterConditionStatus(v); setPage(1); }}
+          options={CONDITION_STATUS_OPTIONS}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
         />
       </div>
 
       {filterCollapsed && (
         <>
+          <div style={{ marginBottom: spaceFormField }}>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Thuộc cảng biển</div>
+            <Select
+              placeholder="Chọn cảng biển..."
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              value={filterSeaportId}
+              onChange={(v) => { setFilterSeaportId(v); setPage(1); }}
+              options={seaportOptions.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : p.portName || p.id }))}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+            />
+          </div>
           <div style={{ marginBottom: spaceFormField }}>
             <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Mã luồng</div>
             <Input
@@ -1022,7 +1041,7 @@ export default function NavigationChannelList() {
               value={filterChannelCode}
               onChange={(e) => { setFilterChannelCode(e.target.value); setPage(1); }}
               onPressEnter={handleFilterApply}
-              style={filterInputStyle}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
             />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
@@ -1031,24 +1050,11 @@ export default function NavigationChannelList() {
               placeholder="Chọn tỉnh/thành phố..."
               allowClear
               showSearch
-              className="chk-filter-select"
               optionFilterProp="label"
               value={filterProvinceId}
               onChange={(v) => { setFilterProvinceId(v); setPage(1); }}
               options={VIETNAM_PROVINCE_OPTIONS}
-              style={filterInputStyle}
-            />
-          </div>
-          <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Tình trạng</div>
-            <Select
-              placeholder="Chọn tình trạng"
-              allowClear
-              className="chk-filter-select"
-              value={filterConditionStatus}
-              onChange={(v) => { setFilterConditionStatus(v); setPage(1); }}
-              options={CONDITION_STATUS_OPTIONS}
-              style={filterInputStyle}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
             />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
@@ -1057,11 +1063,10 @@ export default function NavigationChannelList() {
               placeholder="Chọn cán bộ cập nhật"
               allowClear
               showSearch
-              className="chk-filter-select"
               value={filterUpdatedBy}
               onChange={(v) => { setFilterUpdatedBy(v || undefined); setPage(1); }}
               options={userOptions}
-              style={filterInputStyle}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
             />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
@@ -1069,13 +1074,14 @@ export default function NavigationChannelList() {
             <DatePicker.RangePicker
               placeholder={['Từ ngày', 'Đến ngày']}
               format="DD/MM/YYYY"
+              popupClassName="chk-range-datepicker-popup"
               value={filterUpdatedFrom && filterUpdatedTo ? [dayjs(filterUpdatedFrom), dayjs(filterUpdatedTo)] : null}
               onChange={(range) => {
-                setFilterUpdatedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : '');
-                setFilterUpdatedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : '');
+                setFilterUpdatedFrom(range && range[0] ? range[0].format('YYYY-MM-DD 00:00:00') : '');
+                setFilterUpdatedTo(range && range[1] ? range[1].format('YYYY-MM-DD 23:59:59') : '');
                 setPage(1);
               }}
-              style={filterInputStyle}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
             />
           </div>
         </>
@@ -1099,9 +1105,30 @@ export default function NavigationChannelList() {
     [hasPerm, openModal],
   );
 
+  const getSortValue = useCallback((r: any, field: string): string | number => {
+    if (field === 'seaportId') return seaportOptions.find((o) => o.id === r.seaportId)?.portName ?? r.seaportId ?? '';
+    if (field === 'provinceId') return VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(r.provinceId))?.label ?? '';
+    if (field === 'orgUnitId') return r.orgUnitName ?? r.orgUnitId ?? '';
+    if (field === 'updatedAt') return new Date(r.updatedAt || r.createdAt || 0).getTime();
+    if (field === 'submittedAt') return new Date(r.submittedAt || 0).getTime();
+    return r[field] ?? '';
+  }, [seaportOptions]);
+
+  const sortedData = useMemo(() => {
+    return [...dataSource].sort((a: any, b: any) => {
+      if (!sortField) return 0;
+      const aVal = getSortValue(a, sortField);
+      const bVal = getSortValue(b, sortField);
+      const cmp = typeof aVal === 'number' && typeof bVal === 'number'
+        ? aVal - bVal
+        : String(aVal).localeCompare(String(bVal), 'vi');
+      return sortOrder === 'asc' ? cmp : -cmp;
+    });
+  }, [dataSource, sortField, sortOrder, getSortValue]);
+
   const tableData = useMemo(
-    () => dataSource.map((item, idx) => ({ ...item, key: item.id, _rowIndex: (page - 1) * pageSize + idx + 1 })),
-    [dataSource, page, pageSize],
+    () => sortedData.map((item, idx) => ({ ...item, key: item.id, _rowIndex: (page - 1) * pageSize + idx + 1 })),
+    [sortedData, page, pageSize],
   );
 
   // ── orgMap / seaportMap cho timeline lịch sử ────────────────────────
@@ -1125,7 +1152,7 @@ export default function NavigationChannelList() {
 
   return (
     <ThemeTokenProvider tokens={themeTokenChk}>
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+    <div className="channel-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader
         breadcrumb={[{ label: 'KCHT hàng hải' }, { label: 'Luồng hàng hải' }]}
         actions={headerActions}
@@ -1134,7 +1161,7 @@ export default function NavigationChannelList() {
       <FilterTableLayout
         filterContent={filterContent}
         statusTabs={statusTabs}
-        hideFilterToggle={true}
+        hideFilterToggle={false}
         onStatusTabChange={handleTabChange}
         onFilterApply={handleFilterApply}
         onFilterReset={handleFilterReset}
@@ -1172,9 +1199,20 @@ export default function NavigationChannelList() {
         editId={editingId}
         mode={modalMode}
         onCancel={() => { setIsModalOpen(false); setEditingId(null); }}
-        onSuccess={() => {
+        onSuccess={(savedRecord) => {
           setIsModalOpen(false);
           setEditingId(null);
+          setActiveTab('all');
+          setPage(1);
+          setSortField('updatedAt');
+          setSortOrder('desc');
+          if (savedRecord && savedRecord.id) {
+            setDataSource((prev) => {
+              const filtered = prev.filter((item) => item.id !== savedRecord.id);
+              const now = new Date().toISOString();
+              return [{ ...savedRecord, updatedAt: savedRecord.updatedAt || now }, ...filtered];
+            });
+          }
           refreshAfterMutation();
         }}
       />
