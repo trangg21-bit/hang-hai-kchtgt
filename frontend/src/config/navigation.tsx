@@ -26,6 +26,9 @@ import {
   BuildOutlined, BulbOutlined, ToolOutlined, AimOutlined, ExportOutlined, SafetyOutlined,
   TruckOutlined, ApartmentOutlined, BlockOutlined, VideoCameraOutlined,
   MonitorOutlined, FileTextOutlined, PieChartOutlined, RadarChartOutlined, DeploymentUnitOutlined,
+  PlusCircleOutlined, MinusCircleOutlined, AuditOutlined, AppstoreOutlined,
+  WarningOutlined, FileProtectOutlined, PictureOutlined, UserOutlined, TeamOutlined,
+  HistoryOutlined, SyncOutlined,
 } from '@ant-design/icons';
 
 import { landingGroupIcons } from '../themetokenchk';
@@ -39,6 +42,7 @@ export interface NavNode {
   label: string;
   icon?: ReactNode;
   disabled?: boolean;
+  hidden?: boolean;
   note?: string;
   children?: NavNode[];
 }
@@ -49,6 +53,7 @@ export interface NavGroup {
   desc: string;
   icon: ReactNode;
   tree: NavNode[];
+  underDevelopment?: boolean;
 }
 
 const icons = {
@@ -75,6 +80,17 @@ const icons = {
   file: <FileTextOutlined />,
   pie: <PieChartOutlined />,
   radar: <RadarChartOutlined />,
+  plusCircle: <PlusCircleOutlined />,
+  minusCircle: <MinusCircleOutlined />,
+  audit: <AuditOutlined />,
+  appstore: <AppstoreOutlined />,
+  warning: <WarningOutlined />,
+  fileProtect: <FileProtectOutlined />,
+  picture: <PictureOutlined />,
+  user: <UserOutlined />,
+  team: <TeamOutlined />,
+  history: <HistoryOutlined />,
+  sync: <SyncOutlined />,
 };
 
 /* ============ CÂY KCHT — 28 loại theo ma trận cha–con ============ */
@@ -98,26 +114,26 @@ const kchtTree: NavNode[] = [
       { key: '/anchorage', route: '/anchorage', label: 'Quản lý khu neo đậu', icon: icons.compass },
       { key: '/transfer-area', route: '/transfer-area', label: 'Quản lý khu chuyển tải', icon: icons.export },
       { key: '/storm-shelter', route: '/storm-shelter', label: 'Quản lý khu tránh, trú bão', icon: icons.safety },
+    ],
+  },
+  {
+    key: '/navigation-channel',
+    route: '/navigation-channel',
+    label: 'Luồng hàng hải',
+    icon: icons.container,
+    children: [
+      { key: '/buoy-berth', route: '/buoy-berth', label: 'Quản lý bến phao', icon: icons.aim },
       {
-        key: '/navigation-channel',
-        route: '/navigation-channel',
-        label: 'Luồng hàng hải',
-        icon: icons.container,
+        key: '/buoy-station',
+        route: '/buoy-station',
+        label: 'Nhà trạm quản lý vận hành Phao, tiêu',
+        icon: icons.bank,
         children: [
-          { key: '/buoy-berth', route: '/buoy-berth', label: 'Quản lý bến phao', icon: icons.aim },
-          {
-            key: '/buoy-station',
-            route: '/buoy-station',
-            label: 'Nhà trạm quản lý vận hành Phao, tiêu',
-            icon: icons.bank,
-            children: [
-              { key: '/buoys', route: '/buoys', label: 'Quản lý Phao, tiêu', icon: icons.environment },
-            ],
-          },
-          { key: '/beacon-stations', route: '/beacon-stations', label: 'Quản lý Đèn biển và nhà trạm gắn với Đèn biển', icon: icons.bulb },
-          { key: '/dike-revetment', route: '/dike-revetment', label: 'Quản lý đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ', icon: icons.deployment },
+          { key: '/buoys', route: '/buoys', label: 'Quản lý Phao, tiêu', icon: icons.environment },
         ],
       },
+      { key: '/beacon-stations', route: '/beacon-stations', label: 'Quản lý Đèn biển và nhà trạm gắn với Đèn biển', icon: icons.bulb },
+      { key: '/dike-revetment', route: '/dike-revetment', label: 'Quản lý đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ', icon: icons.deployment },
     ],
   },
   { key: '/dry-port', route: '/dry-port', label: 'Quản lý cảng cạn', icon: icons.truck },
@@ -131,9 +147,10 @@ const kchtTree: NavNode[] = [
         key: '/vts-operation-center',
         route: '/vts-operation-center',
         label: 'Trung tâm điều hành VTS',
+        icon: icons.apartment,
         children: [
           { key: '/radar-station', route: '/radar-station', label: 'Quản lý trạm radar', icon: icons.radar },
-          { key: '/ais-system', route: '/ais-system', label: 'Hệ thống trạm bờ AIS' },
+          { key: '/ais-system', route: '/ais-system', label: 'Hệ thống trạm bờ AIS', icon: icons.api },
           { key: '/cctv', route: '/cctv', label: 'Quản lý hệ thống CCTV', icon: icons.video },
           { key: '/scada', route: '/scada', label: 'Quản lý hệ thống SCADA', icon: icons.monitor },
           { key: '/transmission', route: '/transmission', label: 'Quản lý hệ thống truyền dẫn', icon: icons.apartment },
@@ -148,11 +165,11 @@ const kchtTree: NavNode[] = [
     icon: icons.apartment,
     children: [
       { key: '/dai-ttdh', route: '/dai-ttdh', label: 'Quản lý đài TTDH', icon: icons.aim },
-      { key: 'vhf-disabled', label: 'VHF', disabled: true, note: 'Chức năng đang được xây dựng' },
-      { key: '/station/inmarsat', route: '/station/inmarsat', label: 'Đài vệ tinh Inmarsat' },
-      { key: '/station/cospas-sarsat', route: '/station/cospas-sarsat', label: 'Đài Cospas-Sarsat' },
-      { key: '/station/lrit', route: '/station/lrit', label: 'Đài LRIT' },
-      { key: '/station/hanoi', route: '/station/hanoi', label: 'Đài TTXLTT Hà Nội' },
+      { key: 'vhf-disabled', label: 'VHF', disabled: true, hidden: true, note: 'Chức năng đang được xây dựng', icon: icons.radar },
+      { key: '/station/inmarsat', route: '/station/inmarsat', label: 'Đài vệ tinh Inmarsat', icon: icons.global },
+      { key: '/station/cospas-sarsat', route: '/station/cospas-sarsat', label: 'Đài Cospas-Sarsat', icon: icons.safety },
+      { key: '/station/lrit', route: '/station/lrit', label: 'Đài LRIT', icon: icons.compass },
+      { key: '/station/hanoi', route: '/station/hanoi', label: 'Đài TTXLTT Hà Nội', icon: icons.bank },
     ],
   },
 ];
@@ -171,11 +188,12 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Quản lý tài sản KCHT hàng hải',
     desc: 'Tăng, giảm, kiểm kê và khai thác tài sản',
     icon: landingGroupIcons.asset,
+    underDevelopment: true,
     tree: [
-      { key: '/asset/increase', route: '/asset/increase', label: 'Yêu cầu tăng tài sản' },
-      { key: '/asset/decrease', route: '/asset/decrease', label: 'Yêu cầu giảm tài sản' },
-      { key: '/asset/inventory', route: '/asset/inventory', label: 'Kiểm kê tài sản' },
-      { key: '/asset/exploitation', route: '/asset/exploitation', label: 'Khai thác tài sản' },
+      { key: '/asset/increase', route: '/asset/increase', label: 'Yêu cầu tăng tài sản', icon: icons.plusCircle },
+      { key: '/asset/decrease', route: '/asset/decrease', label: 'Yêu cầu giảm tài sản', icon: icons.minusCircle },
+      { key: '/asset/inventory', route: '/asset/inventory', label: 'Kiểm kê tài sản', icon: icons.audit },
+      { key: '/asset/exploitation', route: '/asset/exploitation', label: 'Khai thác tài sản', icon: icons.appstore },
     ],
   },
   {
@@ -184,11 +202,11 @@ export const NAV_GROUPS: NavGroup[] = [
     desc: 'Quy hoạch, văn bản pháp lý và sự cố',
     icon: landingGroupIcons.plan,
     tree: [
-      { key: '/documents/port-planning', route: '/documents/port-planning', label: 'Quy hoạch bến cảng' },
-      { key: '/documents/incidents', route: '/documents/incidents', label: 'Sự cố hàng hải' },
-      { key: '/documents/legal', route: '/documents/legal', label: 'Văn bản pháp lý' },
-      { key: '/documents/operation', route: '/documents/operation', label: 'Thông tin vận hành' },
-      { key: '/documents/maintenance', route: '/documents/maintenance', label: 'Thông tin bảo trì' },
+      { key: '/documents/port-planning', route: '/documents/port-planning', label: 'Quy hoạch bến cảng', icon: icons.build },
+      { key: '/documents/incidents', route: '/documents/incidents', label: 'Sự cố hàng hải', icon: icons.warning },
+      { key: '/documents/legal', route: '/documents/legal', label: 'Văn bản pháp lý', icon: icons.fileProtect },
+      { key: '/documents/operation', route: '/documents/operation', label: 'Thông tin vận hành', icon: icons.dashboard },
+      { key: '/documents/maintenance', route: '/documents/maintenance', label: 'Thông tin bảo trì', icon: icons.tool },
     ],
   },
   {
@@ -197,12 +215,12 @@ export const NAV_GROUPS: NavGroup[] = [
     desc: 'Danh mục đối tượng, lớp bản đồ và biểu tượng',
     icon: landingGroupIcons.gis,
     tree: [
-      { key: '/gis/map', route: '/gis/map', label: 'Quản lý thông tin KCHT hàng hải trên bản đồ' },
-      { key: '/gis/points', route: '/gis/points', label: 'Quản lý danh mục đối tượng điểm' },
-      { key: '/gis/lines', route: '/gis/lines', label: 'Quản lý danh mục đối tượng đường' },
-      { key: '/gis/polygons', route: '/gis/polygons', label: 'Quản lý danh mục đối tượng vùng' },
-      { key: '/gis/layers', route: '/gis/layers', label: 'Quản lý lớp bản đồ' },
-      { key: '/symbols', route: '/symbols', label: 'Quản lý biểu tượng trên bản đồ' },
+      { key: '/gis/map', route: '/gis/map', label: 'Quản lý thông tin KCHT hàng hải trên bản đồ', icon: icons.environment },
+      { key: '/gis/points', route: '/gis/points', label: 'Quản lý danh mục đối tượng điểm', icon: icons.aim },
+      { key: '/gis/lines', route: '/gis/lines', label: 'Quản lý danh mục đối tượng đường', icon: icons.deployment },
+      { key: '/gis/polygons', route: '/gis/polygons', label: 'Quản lý danh mục đối tượng vùng', icon: icons.block },
+      { key: '/gis/layers', route: '/gis/layers', label: 'Quản lý lớp bản đồ', icon: icons.apartment },
+      { key: '/symbols', route: '/symbols', label: 'Quản lý biểu tượng trên bản đồ', icon: icons.picture },
     ],
   },
   {
@@ -210,6 +228,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Báo cáo thống kê',
     desc: 'Dashboard KPI và báo cáo thống kê định kỳ',
     icon: landingGroupIcons.report,
+    underDevelopment: true,
     tree: [
       // 2026-09-06 (M-024 rework): node '/dashboard' ĐÃ GỠ — nội dung KPI không còn trong
       // code (chỉ còn orphan services/dashboardApi của M-022, không có page). Route
@@ -223,14 +242,14 @@ export const NAV_GROUPS: NavGroup[] = [
     desc: 'Người dùng, đơn vị, nhóm, tích hợp và cấu hình',
     icon: landingGroupIcons.admin,
     tree: [
-      { key: '/users', route: '/users', label: 'Quản lý tài khoản người dùng' },
-      { key: '/organizations', route: '/organizations', label: 'Quản lý đơn vị' },
-      { key: '/groups', route: '/groups', label: 'Quản lý nhóm' },
-      { key: '/logs', route: '/logs', label: 'Quản lý log truy cập' },
-      { key: '/history', route: '/history', label: 'Lịch sử thay đổi' },
-      { key: '/interconnect', route: '/interconnect', label: 'Quản lý kết nối liên thông' },
-      { key: '/connections', route: '/connections', label: 'Liên thông dữ liệu' },
-      { key: '/settings', route: '/settings', label: 'Cấu hình hệ thống' },
+      { key: '/users', route: '/users', label: 'Quản lý tài khoản người dùng', icon: icons.user },
+      { key: '/organizations', route: '/organizations', label: 'Quản lý đơn vị', icon: icons.bank },
+      { key: '/groups', route: '/groups', label: 'Quản lý nhóm', icon: icons.team },
+      { key: '/logs', route: '/logs', label: 'Quản lý log truy cập', icon: icons.file },
+      { key: '/history', route: '/history', label: 'Lịch sử thay đổi', icon: icons.history },
+      { key: '/interconnect', route: '/interconnect', label: 'Quản lý kết nối liên thông', icon: icons.api },
+      { key: '/connections', route: '/connections', label: 'Liên thông dữ liệu', icon: icons.sync },
+      { key: '/settings', route: '/settings', label: 'Cấu hình hệ thống', icon: icons.setting },
     ],
   },
 ];
@@ -277,10 +296,11 @@ export function groupOfPath(pathname: string): NavGroup | undefined {
   return hit?.g;
 }
 
-/** Lọc cây theo quyền — giữ node disabled (mờ), bỏ nhánh không còn route truy cập được */
+/** Lọc cây theo quyền — giữ node disabled (mờ), bỏ nhánh không còn route truy cập được, ẩn node hidden */
 export function accessibleTree(nodes: NavNode[], canAccess: (route: string) => boolean): NavNode[] {
   const out: NavNode[] = [];
   for (const n of nodes) {
+    if (n.hidden) continue;
     const children = n.children ? accessibleTree(n.children, canAccess) : undefined;
     const selfOk = !n.route || canAccess(n.route);
     if (n.disabled) {
@@ -296,6 +316,7 @@ export function accessibleTree(nodes: NavNode[], canAccess: (route: string) => b
 
 /** Route đầu tiên trong khối mà user truy cập được (cho card landing) */
 export function firstAccessibleRoute(group: NavGroup, canAccess: (route: string) => boolean): string | undefined {
+  if (group.underDevelopment) return undefined;
   const walk = (nodes: NavNode[]): string | undefined => {
     for (const n of nodes) {
       if (n.route && !n.disabled && canAccess(n.route)) return n.route;

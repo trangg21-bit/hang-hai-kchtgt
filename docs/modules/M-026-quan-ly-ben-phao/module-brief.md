@@ -10,7 +10,7 @@ scope:
   features: []
   depends-on: ["M-002","M-003"]
 metrics:
-  features-in-scope: 6
+  features-in-scope: 7
   primary-service: ""
   total-entities-in-scope: 0
   total-rules-in-scope: 0
@@ -42,6 +42,7 @@ Quản lý Bến phao (buoy berth) thuộc cảng biển — hồ sơ KCHTGT v�
 | F-321 | Phê duyệt Bến phao | planned |
 | F-322 | Xem danh sách & Chi tiết Bến phao | planned |
 | F-323 | Quản lý Bến phao - Lịch sử | planned |
+| F-324 | Cấu hình Vite proxy về IPv4 loopback 127.0.0.1 | planned |
 
 ## Business Rules (scoped)
 
