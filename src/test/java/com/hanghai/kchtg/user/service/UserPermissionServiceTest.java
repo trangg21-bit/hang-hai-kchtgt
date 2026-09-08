@@ -124,7 +124,7 @@ class UserPermissionServiceTest {
 
         assertThatThrownBy(() -> service.grant(targetId, request))
                 .isInstanceOf(AccessDeniedException.class)
-                .hasMessageContaining("Chỉ Quản trị viên cấp cao (Super Admin) mới có quyền cấp hoặc thu hồi quyền trực tiếp");
+                .hasMessageContaining("Bạn không có quyền phân quyền cho người dùng (yêu cầu quyền user:permission)");
     }
 
     @Test
@@ -143,8 +143,8 @@ class UserPermissionServiceTest {
 
         when(userRepository.findById(targetId)).thenReturn(Optional.of(targetUser));
         when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.allScope());
-        when(permissionRepository.findByCode("admin:all")).thenReturn(Optional.of(new Permission()));
-        when(overrideRepository.findByUserIdAndPermissionCode(targetId, "admin:all")).thenReturn(Optional.empty());
+        when(permissionRepository.findByCode("user:permission")).thenReturn(Optional.of(new Permission()));
+        when(overrideRepository.findByUserIdAndPermissionCode(targetId, "user:permission")).thenReturn(Optional.empty());
         when(overrideRepository.save(any(UserPermissionOverride.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -152,10 +152,10 @@ class UserPermissionServiceTest {
                 overrideRepository, permissionCacheService, orgUnitScopeService);
 
         GrantUserPermissionRequest request = new GrantUserPermissionRequest();
-        request.setPermissionCode("admin:all");
+        request.setPermissionCode("user:permission");
 
         var response = service.grant(targetId, request);
-        assertThat(response.getPermissionCode()).isEqualTo("admin:all");
+        assertThat(response.getPermissionCode()).isEqualTo("user:permission");
         verify(permissionCacheService).invalidateCache(targetId);
     }
 
@@ -273,6 +273,43 @@ class UserPermissionServiceTest {
         verify(overrideRepository, never()).save(any());
         verify(userRepository, never()).save(any());
         verify(permissionCacheService, never()).invalidateCache(any());
+    }
+
+    @Test
+    void replaceDirectPermissions_whenCustomSubsetSpecified_shouldRevokeAdminAll() {
+        UUID callerId = UUID.randomUUID();
+        UUID targetId = UUID.randomUUID();
+
+        User superAdmin = new User();
+        superAdmin.setId(callerId);
+        var auth = new UsernamePasswordAuthenticationToken(superAdmin, "n/a",
+                List.of(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        User targetUser = new User();
+        targetUser.setId(targetId);
+        targetUser.setPermissionVersion(1);
+
+        UserPermissionOverride adminAllOverride = new UserPermissionOverride();
+        adminAllOverride.setUser(targetUser);
+        adminAllOverride.setPermissionCode("user:permission");
+
+        Permission userReadPerm = new Permission();
+        userReadPerm.setCode("user:read");
+
+        when(userRepository.findById(targetId)).thenReturn(Optional.of(targetUser));
+        when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.allScope());
+        when(permissionRepository.findByCodeIn(any())).thenReturn(List.of(userReadPerm));
+        when(overrideRepository.findActiveByUserId(targetId)).thenReturn(List.of(adminAllOverride));
+        when(overrideRepository.findByUserIdAndPermissionCode(targetId, "user:read")).thenReturn(Optional.empty());
+
+        new UserPermissionService(userRepository, permissionRepository, overrideRepository, permissionCacheService,
+                orgUnitScopeService).replaceDirectPermissions(targetId, List.of("user:read"));
+
+        assertThat(adminAllOverride.getDeletedAt()).isNotNull();
+        assertThat(targetUser.getPermissionVersion()).isEqualTo(2);
+        verify(overrideRepository).save(adminAllOverride);
+        verify(permissionCacheService).invalidateCache(targetId);
     }
 
     @Test

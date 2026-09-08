@@ -77,7 +77,6 @@ public class EffectivePermissionService {
         if (isSuperAdmin(user)) {
             permissions = new HashSet<>(permissions);
             permissions.add("*");
-            permissions.add("admin:all");
         }
 
         if (permissionCacheService != null) {
@@ -117,13 +116,11 @@ public class EffectivePermissionService {
                 if (isSuperAdmin(loaded)) {
                     computed = new HashSet<>(computed);
                     computed.add("*");
-                    computed.add("admin:all");
                 }
             }
         } else if (isSuperAdmin(user)) {
             computed = new HashSet<>(computed);
             computed.add("*");
-            computed.add("admin:all");
         }
 
         if (user.getId() != null && permissionCacheService != null) {
@@ -154,7 +151,6 @@ public class EffectivePermissionService {
         if (hasSuperAdminAuthority(authorityPermissions)) {
             Set<String> superAdminPerms = new HashSet<>(authorityPermissions);
             superAdminPerms.add("*");
-            superAdminPerms.add("admin:all");
             return superAdminPerms;
         }
 
@@ -164,8 +160,7 @@ public class EffectivePermissionService {
         // request.
         boolean hasPermissionAuthority = authorityPermissions.stream()
                 .anyMatch(permission -> permission.contains(":")
-                        || "*".equals(permission)
-                        || "admin:all".equals(permission));
+                        || "*".equals(permission));
         if (hasPermissionAuthority) {
             return authorityPermissions;
         }
@@ -282,7 +277,7 @@ public class EffectivePermissionService {
             return false;
         }
         Set<String> permissions = user.getAllPermissions();
-        return permissions.contains("*") || permissions.contains("admin:all");
+        return permissions.contains("*");
     }
 
     /**
@@ -301,7 +296,7 @@ public class EffectivePermissionService {
             }
         }
         Set<String> permissions = getEffectivePermissions(authentication);
-        return permissions.contains("*") || permissions.contains("admin:all");
+        return permissions.contains("*");
     }
 
     /**
@@ -317,7 +312,7 @@ public class EffectivePermissionService {
         if (permissions == null || permissions.isEmpty()) {
             return false;
         }
-        if (permissions.contains("*") || permissions.contains("admin:all")) {
+        if (permissions.contains("*")) {
             return true;
         }
 

@@ -41,7 +41,7 @@ public class ApprovalController {
 
     /**
      * GET /api/approvals/pending — Danh sach yeu ca dang ky dang cho phep duyet (phan trang).
-     * @PreAuthorize for user:read or user:approve (including user:manage, admin:all, and Super Admin).
+     * @PreAuthorize for user:read or user:approve (including user:manage, and Super Admin).
      */
     @GetMapping("/pending")
     @PreAuthorize("@auth.check(authentication, 'user:read') or @auth.check(authentication, 'user:approve')")

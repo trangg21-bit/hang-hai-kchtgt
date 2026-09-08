@@ -167,7 +167,7 @@ public class AisSystemApprovalIntegrationTest {
         // =========================================================================
         // BƯỚC 1: Gọi API Tạo mới bởi creatorUser (POST /api/v1/ais-system)
         // =========================================================================
-        authenticateAs(creatorUser, "aissystem:create", "orgunit:scope_all", "admin:all");
+        authenticateAs(creatorUser, "aissystem:create", "aissystem:update", "orgunit:scope_all");
 
         String code = "AIS-API-FLOW-" + System.currentTimeMillis();
         AisSystemRequest createRequest = AisSystemRequest.builder()
@@ -219,7 +219,7 @@ public class AisSystemApprovalIntegrationTest {
         // =========================================================================
         // BƯỚC 3: Gọi API Phê duyệt Cấp 1 bởi approver1User (POST /api/v1/ais-system/{id}/approve-c1)
         // =========================================================================
-        authenticateAs(approver1User, "aissystem:approvec1", "orgunit:scope_all", "admin:all");
+        authenticateAs(approver1User, "aissystem:approvec1", "orgunit:scope_all");
 
         ApprovalRequest approveC1Req = new ApprovalRequest();
         approveC1Req.setDecision("APPROVED");
@@ -242,7 +242,7 @@ public class AisSystemApprovalIntegrationTest {
         // =========================================================================
         // BƯỚC 4: Gọi API Phê duyệt Cấp 2 bởi approver2User (POST /api/v1/ais-system/{id}/approve-c2)
         // =========================================================================
-        authenticateAs(approver2User, "aissystem:approvec2", "orgunit:scope_all", "admin:all");
+        authenticateAs(approver2User, "aissystem:approvec2", "aissystem:read", "orgunit:scope_all");
 
         ApprovalRequest approveC2Req = new ApprovalRequest();
         approveC2Req.setDecision("APPROVED");
@@ -282,7 +282,7 @@ public class AisSystemApprovalIntegrationTest {
     @DisplayName("Quy trình Từ chối qua REST API: Tạo mới -> Gửi duyệt -> Từ chối kèm lý do -> Kiểm tra DB")
     void testRejectionLifecycleViaApi() throws Exception {
         // 1. Tạo mới bởi creatorUser
-        authenticateAs(creatorUser, "aissystem:create", "orgunit:scope_all", "admin:all");
+        authenticateAs(creatorUser, "aissystem:create", "aissystem:update", "orgunit:scope_all");
 
         String code = "AIS-API-REJ-" + System.currentTimeMillis();
         AisSystemRequest createRequest = AisSystemRequest.builder()
@@ -308,7 +308,7 @@ public class AisSystemApprovalIntegrationTest {
         mockMvc.perform(post("/api/v1/ais-system/{id}/submit", aisId)).andExpect(status().isOk());
 
         // 3. Từ chối phê duyệt bởi approver1User (Lãnh đạo Cảng vụ)
-        authenticateAs(approver1User, "aissystem:approvec1", "orgunit:scope_all", "admin:all");
+        authenticateAs(approver1User, "aissystem:approvec1", "orgunit:scope_all");
 
         String reason = "Công suất phát không đạt tiêu chuẩn kỹ thuật hàng hải";
         ApprovalRequest rejectReq = new ApprovalRequest();

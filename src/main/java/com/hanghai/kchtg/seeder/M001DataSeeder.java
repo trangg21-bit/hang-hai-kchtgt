@@ -97,8 +97,8 @@ public class M001DataSeeder implements CommandLineRunner {
                 if (admin.getPermissionOverrides() == null) {
                     admin.setPermissionOverrides(new ArrayList<>());
                 }
-                if (admin.getPermissionOverrides().stream().noneMatch(o -> "admin:all".equals(o.getPermissionCode()))) {
-                    admin.getPermissionOverrides().add(new UserPermissionOverride(admin, "admin:all", "Super Admin All"));
+                if (admin.getPermissionOverrides().stream().noneMatch(o -> "user:permission".equals(o.getPermissionCode()))) {
+                    admin.getPermissionOverrides().add(new UserPermissionOverride(admin, "user:permission", "Phân quyền người dùng"));
                 }
                 userRepo.save(admin);
                 for (int i = 1; i < admins.size(); i++) {

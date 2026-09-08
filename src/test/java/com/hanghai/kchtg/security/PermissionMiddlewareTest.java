@@ -92,6 +92,39 @@ class PermissionMiddlewareTest {
     }
 
     @Test
+    void doFilterInternal_whenUserMeEndpoint_shouldSkip() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/users/me");
+        when(request.getMethod()).thenReturn("GET");
+
+        permissionMiddleware.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+        verifyNoInteractions(permissionRoleService);
+    }
+
+    @Test
+    void doFilterInternal_whenV1UserMeEndpointPut_shouldSkip() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/v1/users/me");
+        when(request.getMethod()).thenReturn("PUT");
+
+        permissionMiddleware.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+        verifyNoInteractions(permissionRoleService);
+    }
+
+    @Test
+    void doFilterInternal_whenLineObjectsGetEndpoint_shouldSkip() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/line-objects/search");
+        when(request.getMethod()).thenReturn("GET");
+
+        permissionMiddleware.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+        verifyNoInteractions(permissionRoleService);
+    }
+
+    @Test
     void doFilterInternal_whenUserNotAuthenticated_shouldWrite403Forbidden() throws Exception {
         when(request.getRequestURI()).thenReturn("/api/v1/users");
         when(request.getMethod()).thenReturn("GET");

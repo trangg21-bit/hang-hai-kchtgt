@@ -45,7 +45,6 @@ public class FieldVisibilityService {
 
     private static final Logger log = LoggerFactory.getLogger(FieldVisibilityService.class);
     private static final String WILDCARD = "*";
-    private static final String ADMIN_ALL = "admin:all";
     private static final String REDIS_KEY_FIELD_POLICIES = "field_policies:active";
     private static final long REDIS_TTL_MINUTES = 30;
 
@@ -134,7 +133,7 @@ public class FieldVisibilityService {
         Set<String> permissions = effectivePermissionService == null
                 ? user.getAllPermissions()
                 : effectivePermissionService.getEffectivePermissions(user);
-        if (permissions.contains(ADMIN_ALL) || permissions.contains(WILDCARD)) {
+        if (permissions.contains(WILDCARD)) {
             return Map.of();
         }
 

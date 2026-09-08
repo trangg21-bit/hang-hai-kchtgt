@@ -10,6 +10,7 @@ import { organizationService } from '../../services/organizationService';
 import { symbolService } from '../../services/symbolService';
 import api from '../../services/api';
 import { lineObjectService } from '../../services/lineObjectService';
+import { userService } from '../../services/userService';
 import { LineObject } from '../../types/lineObject';
 import { useAuthStore } from '../../store/authStore';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
@@ -213,7 +214,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
   const [mooringScopeOpen, setMooringScopeOpen] = useState(true);
 
   const currentUser = useAuthStore((s) => s.user);
-  const isSystemAdmin = (currentUser?.permissions?.includes('admin:all') || currentUser?.permissions?.includes('*')) ?? false;
+  const isSystemAdmin = currentUser?.permissions?.includes('*') ?? false;
 
   const watchedOrgUnitId = Form.useWatch('orgUnitId', form);
   const watchedPortId = Form.useWatch('portId', form);
@@ -242,6 +243,18 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
   };
 
   useEffect(() => { (async () => { setLoadingOrgs(true); try { const r = await organizationService.list({ pageSize: 1000 }); setOrgUnits(r.data || []); } catch {} finally { setLoadingOrgs(false); } })(); }, []);
+  const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await userService.list({ pageSize: 1000 });
+        const users = resp.data || (resp as any).content || [];
+        const map = new Map<string, string>();
+        users.forEach((u: any) => map.set(u.id, u.fullName || u.username || u.id));
+        setUserMap(map);
+      } catch { /* silent */ }
+    })();
+  }, []);
   // Luồng hàng hải = GIS LineObject loại WATERWAY (đã công bố) — giống Bến cảng
   useEffect(() => { lineObjectService.list({ status: 'PUBLISHED', objectType: LineObject.ObjectType.WATERWAY, pageSize: 1000 }).then(r => setWaterwayOptions((r.data || []).map((l: any) => ({ value: l.id, label: l.name || l.code })))).catch(() => {}); }, []);
   // Mặc định Đơn vị quản lý = đơn vị của user đăng nhập (giống Bến cảng)
@@ -283,11 +296,59 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
             return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
           }));
         }
-        try { const fr = await api.get(`/v1/piers/${id}/attachments`); const files = fr.data?.data || []; setUploadedFiles(files.map((a: any) => ({ uid: a.id ?? a.uid, name: a.fileName ?? a.name, size: a.fileSize ?? a.size ?? 0, type: a.fileType ?? '', status: 'done' as const }))); } catch {} } catch { toast.error('Không thể tải thông tin cầu cảng'); } })(); }, [isEdit, id, form]);
+        try {
+          const fr = await api.get(`/v1/piers/${id}/attachments`);
+          const files = fr.data?.data || [];
+          setUploadedFiles(
+            files.map((a: any) => ({
+              ...a,
+              uid: a.id ?? a.uid,
+              name: a.fileName ?? a.name,
+              fileName: a.fileName ?? a.name,
+              size: a.fileSize ?? a.size ?? 0,
+              fileSize: a.fileSize ?? a.size ?? 0,
+              type: a.fileType ?? a.contentType ?? '',
+              fileType: a.fileType ?? a.contentType ?? '',
+              uploadedByName: a.uploadedByName || a.uploaderName || a.uploadedBy,
+              uploadedBy: a.uploadedBy,
+              uploadedDate: a.uploadedDate || a.uploadedAt || a.createdAt,
+              uploadedAt: a.uploadedAt || a.uploadedDate || a.createdAt,
+              createdAt: a.createdAt || a.uploadedAt || a.uploadedDate,
+              status: 'done' as const,
+            }))
+          );
+        } catch {} } catch { toast.error('Không thể tải thông tin cầu cảng'); } })(); }, [isEdit, id, form]);
 
   const handleOrgUnitChange = () => { form.setFieldsValue({ portId: undefined, berthId: undefined, pierCode: undefined }); setCoordinateList([]); };
   const handlePortChange = () => { form.setFieldsValue({ berthId: undefined, pierCode: undefined }); };
-  const handleBeforeUpload = (file: File) => { if (file.size > MAX_FILE_SIZE) { toast.error('Kích thước file tối đa 20MB'); return false; } const ext = file.name.split('.').pop()?.toLowerCase(); if (!ext || !['pdf','doc','docx','xls','xlsx','jpg','jpeg','png','tiff','tif'].includes(ext)) { toast.error('Định dạng không hỗ trợ'); return false; } if (uploadedFiles.length >= MAX_FILE_COUNT) { toast.error('Tối đa 10 file'); return false; } setUploadedFiles((prev) => [...prev, { uid: `${Date.now()}`, name: file.name, size: file.size, type: file.type, status: 'done', originFileObj: file }]); return false; };
+  const handleBeforeUpload = (file: File) => {
+    if (file.size > MAX_FILE_SIZE) { toast.error('Kích thước file tối đa 20MB'); return false; }
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!ext || !['pdf','doc','docx','xls','xlsx','jpg','jpeg','png','tiff','tif'].includes(ext)) { toast.error('Định dạng không hỗ trợ'); return false; }
+    if (uploadedFiles.length >= MAX_FILE_COUNT) { toast.error('Tối đa 10 file'); return false; }
+    const nowIso = dayjs().toISOString();
+    const uploaderName = currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý';
+    setUploadedFiles((prev) => [
+      ...prev,
+      {
+        uid: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        name: file.name,
+        fileName: file.name,
+        size: file.size,
+        fileSize: file.size,
+        type: file.type,
+        fileType: file.type,
+        uploadedByName: uploaderName,
+        uploadedBy: currentUser?.userId || currentUser?.id || uploaderName,
+        uploadedDate: nowIso,
+        uploadedAt: nowIso,
+        createdAt: nowIso,
+        status: 'done',
+        originFileObj: file,
+      },
+    ]);
+    return false;
+  };
 
   const handleRemoveFile = (file: UploadFile) => { setUploadedFiles(prev => prev.filter(x => x.uid !== file.uid)); };
 
@@ -483,11 +544,25 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
       label: `File đính kèm (${uploadedFiles.length})`,
       children: (
         <InfrastructureAttachmentTab
-          attachments={uploadedFiles.map((f) => ({ id: f.uid, fileName: f.name, fileSize: f.size, ...f }))}
+          attachments={uploadedFiles.map((f: any) => ({
+            ...f,
+            id: f.uid || f.id,
+            fileName: f.name || f.fileName,
+            fileSize: f.fileSize ?? f.size ?? f.originFileObj?.size,
+            uploadedByName: f.uploadedByName || (f.uploadedBy ? (userMap.get(f.uploadedBy) || f.uploadedBy) : '') || currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
+            uploadedDate: f.uploadedDate || f.uploadedAt || f.createdAt || dayjs().toISOString(),
+          }))}
           readonly={false}
+          userMap={userMap}
           onUpload={(file) => { handleBeforeUpload(file); return false; }}
           onDelete={(uid) => { handleRemoveFile({ uid } as UploadFile); }}
-          onDownload={(_uid, name) => { toast.info(`Đang tải xuống tệp: ${name}`); }}
+          onDownload={async (uid, name) => {
+            if (isEdit && id) {
+              await pierCRUD.downloadAttachment(id, uid, name);
+            } else {
+              toast.info(`Đang tải xuống tệp: ${name}`);
+            }
+          }}
         />
       ),
     },

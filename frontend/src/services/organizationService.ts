@@ -1,10 +1,5 @@
 import api from "./api";
-import type { PaginatedResponse } from "../types/common";
-import { getProvinceNameById } from "../types/common";
-import { MOCK_ORGANIZATIONS } from './mockData';
-
-const delay = (ms = 500) => new Promise((resolve) => setTimeout(resolve, ms + Math.random() * 200));
-let organizations: Organization[] = [...MOCK_ORGANIZATIONS];
+import { getProvinceNameById, type PaginatedResponse } from "../types/common";
 
 // ============================================================
 // Types
@@ -110,64 +105,7 @@ export function fromApiOperationalStatus(status?: any): Organization["operationa
 // Service -- real API calls
 // ============================================================
 
-/**
- * Compute derived fields that the backend does not return in flat list responses.
- * The backend OrgUnitResponse has: id, name, code, parentId, type, provinceId, detailAddress, phone, createdAt, updatedAt, children.
- * The frontend Organization adds: parentOrgName, level, childCount, contactPerson, contactPhone.
- */
-function mapOrgUnit(
-  item: any,
-  orgMap: Map<string, Organization>
-): Organization {
-  // Compute parentOrgName from flat list
-  const parentOrgName = item.parentId
-    ? orgMap.get(item.parentId)?.name
-    : undefined;
 
-  // Compute level: if item has level > 0 use it; else if parent exists parent.level + 1; else root = 1
-  let level = (item.level && item.level > 0) ? item.level : undefined;
-  if (!level) {
-    if (item.parentId) {
-      const parent = orgMap.get(item.parentId);
-      if (parent && parent.level !== undefined) {
-        level = parent.level + 1;
-      } else {
-        level = 2;
-      }
-    } else {
-      level = 1;
-    }
-  }
-
-  // Compute childCount from flat list
-  let childCount = 0;
-  if (item.children && Array.isArray(item.children)) {
-    childCount = item.children.length;
-  }
-
-  return {
-    id: item.id ?? "",
-    name: item.name ?? "",
-    code: item.code,
-    parentId: item.parentId ? String(item.parentId) : undefined,
-    parentOrgName,
-    level,
-    type: item.type as Organization["type"],
-    description: item.description,
-    provinceId: item.provinceId != null ? Number(item.provinceId) : undefined,
-    provinceName: item.provinceId != null ? getProvinceNameById(Number(item.provinceId)) : undefined,
-    detailAddress: item.detailAddress, phone: item.phone,
-    operationalStatus: fromApiOperationalStatus(item.operationalStatus),
-    rank: item.rank as OrgUnitRankName | undefined,
-    childCount,
-    createdAt: item.createdAt
-      ? new Date(item.createdAt).toISOString()
-      : "",
-    updatedAt: item.updatedAt
-      ? new Date(item.updatedAt).toISOString()
-      : "",
-  };
-}
 
 const getGlobalWindow = (): any => {
   try {

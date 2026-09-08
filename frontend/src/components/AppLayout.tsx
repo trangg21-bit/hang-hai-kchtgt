@@ -31,6 +31,7 @@ import { colors, layout } from '../theme';
 import * as themeTokenChk from '../themetokenchk';
 import { actionPrimary } from '../themetokenchk';
 import { ThemeTokenProvider } from '../context/ThemeTokenContext';
+import LogoutConfirmModal from './shared/LogoutConfirmModal';
 import type { MenuProps } from 'antd';
 import {
   NAV_GROUPS,
@@ -50,6 +51,7 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/users': 'user:read',
   '/organizations': 'orgunit:read',
   '/groups': 'group:read',
+  '/gis/map': 'data:read',
   '/gis/points': 'data:read',
   '/gis/lines': 'data:read',
   '/gis/polygons': 'data:read',
@@ -213,6 +215,8 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
   usePermissionStore((s) => s.permissions);
   const logout = useAuthStore((s) => s.logout);
   const screens = useBreakpoint();
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
   const prevPathnameForOpenRef = useRef(location.pathname);
   useEffect(() => {
@@ -516,8 +520,21 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
 
   const handleUserMenuClick: MenuProps['onClick'] = (e) => {
     if (e.key === 'logout') {
-      logout();
+      setLogoutModalOpen(true);
+    }
+  };
+
+  const handleConfirmLogout = async () => {
+    setLogoutLoading(true);
+    try {
+      await logout();
+      setLogoutModalOpen(false);
       navigate('/login');
+    } catch {
+      setLogoutModalOpen(false);
+      navigate('/login');
+    } finally {
+      setLogoutLoading(false);
     }
   };
 
@@ -946,6 +963,17 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
         </Content>
       </Layout>
     </Layout>
+    <LogoutConfirmModal
+      open={logoutModalOpen}
+      onCancel={() => {
+        if (!logoutLoading) {
+          setLogoutModalOpen(false);
+        }
+      }}
+      onConfirm={handleConfirmLogout}
+      loading={logoutLoading}
+      userName={user?.fullName || user?.username || ''}
+    />
     </>
   );
 }

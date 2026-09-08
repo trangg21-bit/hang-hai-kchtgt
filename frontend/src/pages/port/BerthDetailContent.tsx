@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Tabs, Select, Tooltip, Button, Modal } from 'antd';
 import {
-  FileOutlined, EnvironmentOutlined, EyeOutlined,
+  FileOutlined, FileImageOutlined, EnvironmentOutlined, EyeOutlined, DownloadOutlined,
   BankOutlined, SlidersOutlined, FileTextOutlined, AuditOutlined,
   DownOutlined, RightOutlined,
 } from '@ant-design/icons';
@@ -10,6 +10,8 @@ import { colors, DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { fmtNum } from '../../utils/numFmt';
+import api from '../../services/api';
+import toast from '../../components/ToastNotification';
 import {
   textTertiary, surfaceCard,
   fontSizeSm, fontSizeLg, fontWeightMedium, fontWeightBold,
@@ -21,6 +23,12 @@ const fontSizeMd = 13.5;
 import type { Berth } from '../../types/port';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { pierCRUD } from '../../services/portService';
+
+const isImageFile = (fileName?: string): boolean => {
+  if (!fileName) return false;
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'tif', 'tiff'].includes(ext || '');
+};
 
 export interface BerthDetailContentProps {
   selectedRecord: Berth;
@@ -137,6 +145,50 @@ export default function BerthDetailContent({
   const [incidentOpen, setIncidentOpen] = useState(true);
   const [announcementOpen, setAnnouncementOpen] = useState(true);
   const [approvalOpen, setApprovalOpen] = useState(true);
+
+  // Xem chi tiết ảnh & tải tệp đính kèm
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewImageFile, setPreviewImageFile] = useState<any>(null);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string>('');
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  const handleDownloadFile = async (fileId: string, fileName: string) => {
+    try {
+      const res = await api.get(`/v1/berths/${r.id}/attachments/${fileId}/download`, { responseType: 'blob' });
+      const blob = new Blob([res.data]);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName || 'attachment';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch {
+      toast.error(`Không thể tải xuống tệp: ${fileName}`);
+    }
+  };
+
+  const handlePreviewImage = async (file: any) => {
+    setPreviewImageFile(file);
+    setPreviewImageUrl('');
+    setPreviewModalOpen(true);
+    setPreviewLoading(true);
+    try {
+      if (file.url) {
+        setPreviewImageUrl(file.url);
+      } else {
+        const res = await api.get(`/v1/berths/${r.id}/attachments/${file.id}/download`, { responseType: 'blob' });
+        const blob = new Blob([res.data]);
+        const url = window.URL.createObjectURL(blob);
+        setPreviewImageUrl(url);
+      }
+    } catch {
+      toast.error('Không thể tải hình ảnh để xem chi tiết');
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
 
   // Tải danh sách KCHT khác thuộc bến cảng (cầu cảng) — tải theo cha qua API
   useEffect(() => {
@@ -629,10 +681,81 @@ export default function BerthDetailContent({
                   scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
                   columns={[
                     { title: 'STT', width: 50 },
-                    { title: 'Tên tài liệu', dataIndex: 'fileName', key: 'fileName', render: (v: string) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{v || ''}</span> },
+                    {
+                      title: 'Tên tài liệu',
+                      dataIndex: 'fileName',
+                      key: 'fileName',
+                      render: (v: string, rec: any) => {
+                        const isImg = isImageFile(v);
+                        return (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              cursor: 'pointer',
+                              color: actionPrimary,
+                              fontWeight: fontWeightMedium,
+                            }}
+                            title={isImg ? `${v} (Nhấp để xem chi tiết ảnh)` : `${v} (Nhấp để tải xuống)`}
+                            onClick={() => {
+                              if (isImg) handlePreviewImage(rec);
+                              else handleDownloadFile(rec.id, v);
+                            }}
+                          >
+                            {isImg ? (
+                              <FileImageOutlined style={{ color: actionPrimary, flexShrink: 0 }} />
+                            ) : (
+                              <FileOutlined style={{ color: textTertiary, flexShrink: 0 }} />
+                            )}
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {v || ''}
+                            </span>
+                          </span>
+                        );
+                      },
+                    },
                     { title: 'Dung lượng', dataIndex: 'fileSize', key: 'fileSize', width: 120, align: 'right' as const, render: (v: number) => v ? (v > 1024 * 1024 ? `${(v / (1024 * 1024)).toFixed(2)} MB` : `${(v / 1024).toFixed(1)} KB`) : '' },
                     { title: 'Người tải lên', dataIndex: 'uploadedBy', key: 'uploadedBy', width: 180, render: (v: string) => userMap.get(v) || v || '' },
                     { title: 'Ngày tải lên', dataIndex: 'uploadedAt', key: 'uploadedAt', width: 135, align: 'center' as const, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '' },
+                    {
+                      title: 'Thao tác',
+                      key: 'actions',
+                      width: 90,
+                      align: 'center' as const,
+                      render: (_: any, rec: any) => {
+                        const isImg = isImageFile(rec.fileName);
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                            {isImg ? (
+                              <Tooltip title="Xem chi tiết ảnh">
+                                <Button
+                                  type="text"
+                                  size="small"
+                                  icon={<EyeOutlined style={{ color: actionPrimary, fontSize: 16 }} />}
+                                  onClick={() => handlePreviewImage(rec)}
+                                  style={{ width: 28, height: 28, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                />
+                              </Tooltip>
+                            ) : (
+                              <span style={{ width: 28, height: 28, display: 'inline-block' }} />
+                            )}
+                            <Tooltip title="Tải xuống tệp">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<DownloadOutlined style={{ color: actionPrimary, fontSize: 16 }} />}
+                                onClick={() => handleDownloadFile(rec.id, rec.fileName)}
+                                style={{ width: 28, height: 28, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                              />
+                            </Tooltip>
+                          </div>
+                        );
+                      },
+                    },
                   ]}
                 />
               </div>
@@ -671,7 +794,7 @@ export default function BerthDetailContent({
           {
             key: 'operationMaintenance', label: 'Vận hành & bảo trì',
             children: (
-              <div style={{ paddingTop: 6, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 290px)' }}>
+              <div style={{ paddingTop: 6, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)' }}>
                 {/* ── Section Vận hành ── */}
                 <div style={{ ...sectionBoxStyle, padding: operationOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
                   <div
@@ -840,6 +963,60 @@ export default function BerthDetailContent({
               return undefined;
             })()}
           />
+        </div>
+      </Modal>
+      {/* Modal xem chi tiết ảnh */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <FileImageOutlined style={{ color: actionPrimary, fontSize: 18 }} />
+            <span style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: fontSizeLg }}>
+              {previewImageFile?.fileName || 'Xem chi tiết hình ảnh'}
+            </span>
+            {previewImageFile?.fileSize ? (
+              <span style={{ fontSize: fontSizeSm, color: textTertiary, fontWeight: 'normal' }}>
+                ({previewImageFile.fileSize > 1024 * 1024 ? `${(previewImageFile.fileSize / (1024 * 1024)).toFixed(2)} MB` : `${(previewImageFile.fileSize / 1024).toFixed(1)} KB`})
+              </span>
+            ) : null}
+          </div>
+        }
+        open={previewModalOpen}
+        onCancel={() => setPreviewModalOpen(false)}
+        footer={[
+          <Button
+            key="download"
+            icon={<DownloadOutlined />}
+            onClick={() => previewImageFile && handleDownloadFile(previewImageFile.id, previewImageFile.fileName)}
+            style={{ borderRadius: 999 }}
+          >
+            Tải xuống
+          </Button>,
+          <Button key="close" type="primary" onClick={() => setPreviewModalOpen(false)} style={{ borderRadius: 999, background: actionPrimary, borderColor: actionPrimary }}>
+            Đóng
+          </Button>,
+        ]}
+        width="min(800px, 90vw)"
+        centered
+        destroyOnClose
+      >
+        <div style={{ textAlign: 'center', padding: '16px 0', minHeight: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', borderRadius: 8 }}>
+          {previewLoading ? (
+            <div style={{ color: textTertiary }}>Đang tải hình ảnh...</div>
+          ) : previewImageUrl ? (
+            <img
+              src={previewImageUrl}
+              alt={previewImageFile?.fileName || 'Ảnh đính kèm'}
+              style={{
+                maxWidth: '100%',
+                maxHeight: '65vh',
+                objectFit: 'contain',
+                borderRadius: 4,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              }}
+            />
+          ) : (
+            <div style={{ color: textTertiary }}>Không thể hiển thị hình ảnh</div>
+          )}
         </div>
       </Modal>
     </div>

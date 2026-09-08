@@ -319,7 +319,7 @@ export default function BeaconStationList() {
   // "Lưu và phê duyệt" (duyệt thẳng cấp Cục) chỉ hiện khi tài khoản có quyền duyệt C2
   const canApproveDirect =
     hasPerm('beaconstation:approvec2') || hasPerm('beaconstation:approve')
-    || hasPerm('data:approvec2') || hasPerm('admin:all');
+    || hasPerm('data:approvec2') || hasPerm('*');
 
   // ── Filter state ─────────────────────────────────────────────────
   const [filterName, setFilterName] = useState('');

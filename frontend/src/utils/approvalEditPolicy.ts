@@ -142,7 +142,6 @@ export function canEditApprovalRecord(
     const perms = [
       ...(resource ? [`${resource}:approvec2`, `${resource}:approve`] : []),
       ...extraApprovePerms,
-      'admin:all',
     ];
     return perms.some(checkPerm);
   }
@@ -153,7 +152,6 @@ export function canEditApprovalRecord(
       ...(resource ? [`${resource}:update`, `${resource}:write`] : []),
       ...extraUpdatePerms,
       'data:update',
-      'admin:all',
     ];
     return perms.some(checkPerm);
   }
@@ -225,7 +223,6 @@ export function canDeleteApprovalRecord(
     ...(resource ? [`${resource}:delete`] : []),
     ...extraDeletePerms,
     'data:delete',
-    'admin:all',
   ];
   return perms.some(checkPerm);
 }

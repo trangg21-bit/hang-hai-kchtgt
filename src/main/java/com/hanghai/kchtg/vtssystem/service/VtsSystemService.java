@@ -2047,7 +2047,6 @@ public class VtsSystemService {
                 ? permissionCacheService.getEffectivePermissions(currentUser)
                 : currentUser.getAllPermissions();
         boolean nationwide = permissions.contains("orgunit:scope_all")
-                || permissions.contains("admin:all")
                 || permissions.contains("*");
         if (nationwide) {
             return new DataScopeContext(false, List.of());

@@ -169,7 +169,7 @@ export default function HanoiStationForm({
 
   const isCucLevel = (user as any)?.orgUnitLevel === 1 || (user as any)?.role === 'SUPER_ADMIN';
 
-  const canApproveL2 = hasPermission('coastalstationhaiphong:approvec2') || hasPermission('coastalstationhaiphong:approve') || hasPermission('specialstation:approvec2') || hasPermission('specialstation:approve') || hasPermission('admin:all') || (user as any)?.role === 'SUPER_ADMIN' || (user as any)?.role === 'ADMIN';
+  const canApproveL2 = hasPermission('coastalstationhaiphong:approvec2') || hasPermission('coastalstationhaiphong:approve') || hasPermission('specialstation:approvec2') || hasPermission('specialstation:approve') || (user as any)?.role === 'SUPER_ADMIN' || (user as any)?.role === 'ADMIN';
 
   // Load symbols
   useEffect(() => {

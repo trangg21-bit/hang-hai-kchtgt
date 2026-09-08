@@ -730,6 +730,15 @@ public class BerthService {
                 .stream().map(this::toAttachmentDto).collect(java.util.stream.Collectors.toList());
     }
 
+    public Attachment getAttachment(String entityType, UUID entityId, UUID attachmentId) {
+        Attachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
+        if (!attachment.getEntityId().equals(entityId) || !attachment.getEntityType().equalsIgnoreCase(entityType)) {
+            throw new IllegalArgumentException("File không thuộc entity này");
+        }
+        return attachment;
+    }
+
     @Transactional
     public void deleteAttachment(String entityType, UUID entityId, UUID attachmentId, UUID userId) {
         Attachment attachment = attachmentRepository.findById(attachmentId)

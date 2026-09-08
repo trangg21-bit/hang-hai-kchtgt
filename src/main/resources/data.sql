@@ -27,5 +27,5 @@ VALUES
 -- 2. Core Direct Permission Overrides
 INSERT INTO user_permission_override (id, user_id, permission_code, is_granted, created_at, updated_at)
 VALUES
-  (gen_random_uuid(), '5d6b49e1-2cbe-4b45-8f6a-115f21469be1', 'admin:all', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (gen_random_uuid(), '5d6b49e1-2cbe-4b45-8f6a-115f21469bff', 'admin:all', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (gen_random_uuid(), '5d6b49e1-2cbe-4b45-8f6a-115f21469be1', 'user:permission', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), '5d6b49e1-2cbe-4b45-8f6a-115f21469bff', 'user:permission', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);

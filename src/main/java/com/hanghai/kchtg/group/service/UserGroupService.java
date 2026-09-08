@@ -43,7 +43,7 @@ public class UserGroupService {
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final UUID UNRESTRICTED_SCOPE_PLACEHOLDER = new UUID(0L, 0L);
     private static final Set<String> NON_INHERITABLE_PERMISSIONS = Set.of(
-            "admin:all", "admin:manage", "*");
+            "user:permission", "admin:manage", "*");
 
     private final GroupRepository groupRepository;
     private final GroupMemberRepository groupMemberRepository;

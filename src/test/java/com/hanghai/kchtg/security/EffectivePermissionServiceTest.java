@@ -34,9 +34,9 @@ class EffectivePermissionServiceTest {
     }
 
     @Test
-    @DisplayName("Super admin bypass: '*' and 'admin:all' grant all permissions")
+    @DisplayName("Super admin bypass: '*' grants all permissions")
     void superAdminBypass() {
-        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("admin:all"));
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("*"));
 
         assertTrue(service.checkPermission(userId, "vts", "create"));
         assertTrue(service.checkPermission(userId, "vts", "delete"));

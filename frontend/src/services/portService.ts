@@ -257,6 +257,21 @@ export const berthCRUD = {
   async delete(id: string): Promise<void> {
     await api.delete(`/v1/berths/${id}`);
   },
+
+  async downloadAttachment(berthId: string, attId: string, fileName?: string): Promise<void> {
+    const res = await api.get(`/v1/berths/${berthId}/attachments/${attId}/download`, {
+      responseType: 'blob',
+    });
+    const blob = new Blob([res.data]);
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName || 'attachment';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  },
 };
 
 // ── Pier CRUD ────────────────────────────────────────────────────
@@ -349,6 +364,21 @@ export const pierCRUD = {
 
   async delete(id: string): Promise<void> {
     await api.delete(`/v1/piers/${id}`);
+  },
+
+  async downloadAttachment(pierId: string, attId: string, fileName?: string): Promise<void> {
+    const res = await api.get(`/v1/piers/${pierId}/attachments/${attId}/download`, {
+      responseType: 'blob',
+    });
+    const blob = new Blob([res.data]);
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName || 'attachment';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   },
 };
 

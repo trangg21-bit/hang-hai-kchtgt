@@ -695,7 +695,7 @@ export default function DryPortListPage() {
   const [submitting, setSubmitting] = useState(false);
   const [codeLoading, setCodeLoading] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
-  const isSystemAdmin = currentUser?.permissions?.includes('admin:all') || currentUser?.permissions?.includes('*') || false;
+  const isSystemAdmin = currentUser?.permissions?.includes('*') || false;
   const isAuditViewer = currentUser?.permissions?.includes('admin:manage') || currentUser?.permissions?.includes('admin:operation') || false;
   const actionTypeRef = useRef<'draft' | 'submit' | 'approve' | 'update'>('draft');
   const editCodeRef = useRef<string | undefined>(undefined);

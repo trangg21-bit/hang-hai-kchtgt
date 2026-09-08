@@ -963,7 +963,6 @@ public class UserService {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         boolean hasGroupPerm = auth != null && auth.getAuthorities() != null && auth.getAuthorities().stream()
                 .anyMatch(a -> "groupmember:manage".equals(a.getAuthority())
-                        || "admin:all".equals(a.getAuthority())
                         || "*".equals(a.getAuthority())
                         || "ROLE_SYSTEM_ADMIN".equals(a.getAuthority())
                         || "ROLE_SUPER_ADMIN".equals(a.getAuthority()));

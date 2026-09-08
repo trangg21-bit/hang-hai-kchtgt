@@ -227,7 +227,7 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
   const [waterAreaOpen, setWaterAreaOpen] = useState(true);
   const [anchorageCodeLoading, setAnchorageCodeLoading] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
-  const isSystemAdmin = (currentUser?.permissions?.includes('admin:all') || currentUser?.permissions?.includes('*')) ?? false;
+  const isSystemAdmin = currentUser?.permissions?.includes('*') ?? false;
   const editPortIdRef = useRef<string | undefined>(undefined);
 
   const watchedGeometryType = Form.useWatch('geometryType', form);

@@ -4,7 +4,6 @@ import {
   Modal,
   Input,
   Select,
-  Alert,
   DatePicker,
   Space,
   Typography,
@@ -12,7 +11,6 @@ import {
 } from 'antd';
 import {
   HistoryOutlined,
-  ExclamationCircleOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -92,6 +90,7 @@ import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import { AppDrawer } from '../../components/shared/AppDrawer';
+import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 
 const fontSizeMd = 13.5;
 
@@ -342,7 +341,7 @@ export default function BerthList() {
   // ── Delete confirmation modal ───────────────────────────────────
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletingRecord, setDeletingRecord] = useState<Berth | null>(null);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // ── Reject modal ────────────────────────────────────────────────
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
@@ -396,9 +395,9 @@ export default function BerthList() {
         if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue;
       }
       if (historyFrom || historyTo) {
-        const cd = (r.changedAt || r.createdAt || '').substring(0, 16);
-        if (historyFrom && cd < historyFrom.replace(' ', 'T')) continue;
-        if (historyTo && cd > historyTo.replace(' ', 'T') + ':59') continue;
+        const cd = (r.changedAt || r.createdAt || '');
+        if (historyFrom && cd.substring(0, 10) < historyFrom) continue;
+        if (historyTo && cd.substring(0, 10) > historyTo) continue;
       }
       const ts = r.changedAt || r.createdAt || '';
       const sec = ts ? toSec(ts) : 0;
@@ -712,23 +711,26 @@ export default function BerthList() {
 
   // ── Delete confirmation ─────────────────────────────────────────
   const openDeleteModal = useCallback((record: Berth) => {
-    setDeletingRecord(record); setDeleteConfirmText(''); setDeleteModalOpen(true);
+    setDeletingRecord(record);
+    setDeleteModalOpen(true);
   }, []);
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingRecord) return;
-    const expectedText = (deletingRecord.berthName || 'XÓA').trim().toLowerCase();
-    const input = deleteConfirmText.trim().toLowerCase();
-    if (input !== expectedText && input !== 'xóa') {
-      toast.error('Vui lòng nhập đúng tên bến hoặc gõ "XÓA" để xác nhận'); return;
-    }
+    setDeleteLoading(true);
     try {
       await berthCRUD.delete(deletingRecord.id);
       toast.success('Đã xóa bến cảng');
-      setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText('');
-      void fetchData(); void fetchCounts(managingUnitId);
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Xóa thất bại'); }
-  }, [deletingRecord, deleteConfirmText, fetchData, fetchCounts, managingUnitId]);
+      setDeleteModalOpen(false);
+      setDeletingRecord(null);
+      void fetchData();
+      void fetchCounts(managingUnitId);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
+    } finally {
+      setDeleteLoading(false);
+    }
+  }, [deletingRecord, fetchData, fetchCounts, managingUnitId]);
 
   // ── Approval handlers ───────────────────────────────────────────
   const handleApprove = useCallback(async (record: Berth, content?: string) => {
@@ -816,56 +818,60 @@ export default function BerthList() {
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
       </div>
 
-      {/* ── Toàn bộ bộ lọc hiển thị trực tiếp trên sidebar cuộn dọc 280px ── */}
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
-        <Select placeholder="Chọn cảng biển" allowClear showSearch optionFilterProp="label"
-          value={filterPortId} onChange={(v) => { setFilterPortId(v); setPage(1); }}
-          options={portOptions.map(o => ({ label: o.label, value: o.value }))}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc luồng hàng hải</div>
-        <Select placeholder="Chọn luồng hàng hải" allowClear showSearch optionFilterProp="label"
-          value={filterWaterwayId} onChange={(v) => { setFilterWaterwayId(v); setPage(1); }}
-          options={Array.from(waterwayMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã bến cảng</div>
-        <Input placeholder="Tìm theo mã bến cảng" allowClear value={filterCode}
-          onChange={(e) => { setFilterCode(e.target.value); setPage(1); }}
-          onPressEnter={handleFilterApply} style={{ borderRadius: radiusPill, height: 40 }} />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Loại kết cấu bến cảng</div>
-        <Select placeholder="Chọn loại kết cấu" allowClear value={filterStructureType}
-          onChange={(v) => { setFilterStructureType(v); setPage(1); }}
-          options={STRUCTURE_TYPE_OPTIONS}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Công năng khai thác</div>
-        <Input placeholder="Tìm theo công năng..." allowClear value={filterOperationalFunction}
-          onChange={(e) => { setFilterOperationalFunction(e.target.value); setPage(1); }}
-          style={{ borderRadius: radiusPill, height: 40 }} />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành Phố)</div>
-        <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
-          filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-          value={filterProvince || undefined} onChange={(v) => { setFilterProvince(v || ''); setPage(1); }}
-          options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
-        <DatePicker.RangePicker format="DD/MM/YYYY"
-          placeholder={['Từ ngày', 'Đến ngày']} allowClear popupClassName="chk-range-datepicker-popup"
-          value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
-          onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined); setPage(1); }}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-      </div>
+      {/* ── Bộ lọc nâng cao (ẩn/hiện theo nút toggle) ── */}
+      {filterCollapsed && (
+        <>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
+            <Select placeholder="Chọn cảng biển" allowClear showSearch optionFilterProp="label"
+              value={filterPortId} onChange={(v) => { setFilterPortId(v); setPage(1); }}
+              options={portOptions.map(o => ({ label: o.label, value: o.value }))}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc luồng hàng hải</div>
+            <Select placeholder="Chọn luồng hàng hải" allowClear showSearch optionFilterProp="label"
+              value={filterWaterwayId} onChange={(v) => { setFilterWaterwayId(v); setPage(1); }}
+              options={Array.from(waterwayMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã bến cảng</div>
+            <Input placeholder="Tìm theo mã bến cảng" allowClear value={filterCode}
+              onChange={(e) => { setFilterCode(e.target.value); setPage(1); }}
+              onPressEnter={handleFilterApply} style={{ borderRadius: radiusPill, height: 40 }} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Loại kết cấu bến cảng</div>
+            <Select placeholder="Chọn loại kết cấu" allowClear value={filterStructureType}
+              onChange={(v) => { setFilterStructureType(v); setPage(1); }}
+              options={STRUCTURE_TYPE_OPTIONS}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Công năng khai thác</div>
+            <Input placeholder="Tìm theo công năng..." allowClear value={filterOperationalFunction}
+              onChange={(e) => { setFilterOperationalFunction(e.target.value); setPage(1); }}
+              style={{ borderRadius: radiusPill, height: 40 }} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành Phố)</div>
+            <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
+              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+              value={filterProvince || undefined} onChange={(v) => { setFilterProvince(v || ''); setPage(1); }}
+              options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
+            <DatePicker.RangePicker format="DD/MM/YYYY"
+              placeholder={['Từ ngày', 'Đến ngày']} allowClear popupClassName="chk-range-datepicker-popup"
+              value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
+              onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined); setPage(1); }}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+          </div>
+        </>
+      )}
     </>
   );
 
@@ -1220,8 +1226,8 @@ export default function BerthList() {
         onStatusTabChange={handleTabChange}
         onFilterApply={handleFilterApply}
         onFilterReset={handleFilterReset}
-        hideFilterToggle={true}
-        filterCollapsed={false}
+        filterCollapsed={filterCollapsed}
+        onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
         loading={isLoading}
         error={isError}
         onRetry={() => void fetchData()}
@@ -1311,34 +1317,20 @@ export default function BerthList() {
       </AppDrawer>
 
       {/* ── Delete Confirmation Modal ────────────────────────────── */}
-      <Modal
-        rootClassName="berth-modal-scope"
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận xóa bến cảng</span>}
+      <DeleteConfirmModal
         open={deleteModalOpen}
-        onCancel={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
-        footer={[
-          <Button key="cancel" onClick={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
-          <Button key="delete" type="primary" danger onClick={handleConfirmDelete}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Xác nhận xóa</Button>,
-        ]}
-        width={480}>
-        <div style={{ padding: '8px 0' }}>
-          <Alert message="Hành động này không thể hoàn tác" type="warning" showIcon icon={<ExclamationCircleOutlined />}
-            style={{ marginBottom: spaceFormField, borderRadius: radiusPill }} />
-          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>
-            Vui lòng nhập <strong>tên bến</strong> hoặc gõ <strong>"XÓA"</strong> để xác nhận xóa.
-          </p>
-          {deletingRecord && (
-            <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
-              Bến: <strong style={{ color: textPrimary }}>{deletingRecord.berthName}</strong>
-            </p>
-          )}
-          <Input placeholder="Nhập tên bến hoặc XÓA" value={deleteConfirmText}
-            onChange={(e) => setDeleteConfirmText(e.target.value)} onPressEnter={handleConfirmDelete}
-            style={{ borderRadius: radiusPill, height: 40 }} autoFocus />
-        </div>
-      </Modal>
+        onCancel={() => {
+          if (!deleteLoading) {
+            setDeleteModalOpen(false);
+            setDeletingRecord(null);
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        loading={deleteLoading}
+        itemType="bến cảng"
+        itemName={deletingRecord?.berthName}
+        itemCode={deletingRecord?.berthCode}
+      />
 
       {/* ── Reject Reason Modal ──────────────────────────────────── */}
       <Modal
@@ -1455,7 +1447,7 @@ export default function BerthList() {
         footer={null}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-          body: { padding: '12px 24px 12px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
+          body: { padding: '16px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
         }}>
         <style>{`.history-dt-popup .ant-picker-now-btn { color: ${actionPrimary} !important; }`}</style>
         <div style={{ flexShrink: 0 }}>
@@ -1464,11 +1456,11 @@ export default function BerthList() {
             <Input placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
               onChange={e => setHistorySearch(e.target.value)} style={{ flex: 1, borderRadius: radiusPill, height: 40 }} />
             <DatePicker placeholder="Từ ngày" classNames={{ popup: { root: 'history-dt-popup' } }} value={historyFrom ? dayjs(historyFrom) : null}
-              onChange={d => setHistoryFrom(d ? d.format('YYYY-MM-DD HH:mm') : '')}
-              style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
+              onChange={d => setHistoryFrom(d ? d.format('YYYY-MM-DD') : '')}
+              style={{ width: 140, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY" />
             <DatePicker placeholder="Đến ngày" classNames={{ popup: { root: 'history-dt-popup' } }} value={historyTo ? dayjs(historyTo) : null}
-              onChange={d => setHistoryTo(d ? d.format('YYYY-MM-DD HH:mm') : '')}
-              style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
+              onChange={d => setHistoryTo(d ? d.format('YYYY-MM-DD') : '')}
+              style={{ width: 140, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY" />
             <Button type="primary" icon={<SearchOutlined />} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Tìm kiếm</Button>
           </div>
         )}
