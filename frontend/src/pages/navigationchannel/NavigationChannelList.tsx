@@ -556,9 +556,17 @@ export default function NavigationChannelList() {
   // ── Detail drawer (NavigationChannelDetailContent — 5 tab read-only) ──
   const [detailRecord, setDetailRecord] = useState<NavigationChannelResponse | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const openDetail = useCallback((record: NavigationChannelResponse) => {
+  const openDetail = useCallback(async (record: NavigationChannelResponse) => {
     setDetailRecord(record);
     setDetailOpen(true);
+    try {
+      const full = await navigationChannelCRUD.getById(record.id);
+      if (full && full.id) {
+        setDetailRecord(full);
+      }
+    } catch {
+      // Fallback giữ nguyên summary record nếu API getById lỗi
+    }
   }, []);
 
   // Map user id → tên hiển thị cho cột "Cán bộ cập nhật" (backend NavigationChannel chưa trả updatedByName như các module khác)
