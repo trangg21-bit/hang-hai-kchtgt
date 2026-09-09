@@ -1,11 +1,10 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
-  Button, Modal, Input, Select, Alert, DatePicker,
-  Drawer, Radio, Space, Typography, Form,
+  Button, Modal, Input, Select, DatePicker,
+  Drawer, Space, Typography, Form,
 } from 'antd';
 import {
   HistoryOutlined,
-  ExclamationCircleOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -15,8 +14,7 @@ import { AppDrawer } from '../../components/shared/AppDrawer';
 import ShipRepairYardDetailContent from '../ship-repair-yard/ShipRepairYardDetailContent';
 import { organizationService } from '../../services/organizationService';
 import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
-import { lineObjectService } from '../../services/lineObjectService';
-import { LineObject } from '../../types/lineObject';
+import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import { symbolService } from '../../services/symbolService';
 import api from '../../services/api';
 import { userService } from '../../services/userService';
@@ -24,6 +22,7 @@ import type { Organization } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCES } from '../../types/common';
+import { OPERATIONAL_FUNCTION_OPTIONS, formatOperationalFunction } from '../../constants/operationalFunction';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
@@ -32,8 +31,9 @@ import toast from '../../components/ToastNotification';
 import PierForm from './PierForm';
 import PierDetailContent from './PierDetailContent';
 import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
-import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
+import { canEditApprovalRecord, canDeleteApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import ApprovalModal from '../../components/shared/ApprovalModal';
+import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import * as themeTokenChk from '../../themetokenchk';
 import {
   statusOperational,
@@ -45,7 +45,6 @@ import {
   textSecondary,
   textTertiary,
   borderDefault,
-  fontSizeMd,
   fontSizeLg,
   fontSizeSm,
   fontWeightMedium,
@@ -62,17 +61,20 @@ import {
   historyInfoCardStyle, historyAccentBarStyle, historyInfoTitleStyle,
   historyChangeRowStyle, historyCreateRowStyle, historyFieldLabelStyle,
   historyOldValueStyle, historyNewValueStyle, historyArrowStyle, icons, statusBadgeStyle,
-  cellTitleStyle, cellSubtitleStyle, getRangePickerProps,
+  cellTitleStyle, cellSubtitleStyle, inputStyle,
 } from '../../themetokenchk';
 import { colors } from '../../themetokenchk';
 
+// ── Cỡ chữ 13.5px đồng bộ chuẩn VTS CHK (theo PortListPage) — override thay vì dùng
+// fontSizeMd=13 import từ themetokenchk để mọi cell/table/input/button cao ngang nhau.
+const fontSizeMd = 13.5;
+
 const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   NHAP: { color: statusDraft, label: 'Lưu tạm' }, DRAFT: { color: statusDraft, label: 'Lưu tạm' },
-  PENDING: { color: statusAttention, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  CHO_PHE_DUYET: { color: statusAttention, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  PENDING_APPROVAL: { color: statusAttention, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  APPROVED_LEVEL1: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
+  PENDING: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  CHO_PHE_DUYET: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
   APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
   DA_PHE_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
   REJECTED: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
@@ -88,15 +90,15 @@ const OPERATIONAL_STYLE_MAP: Record<string, { color: string; label: string }> = 
 const TAB_STATUS_LIST = [
   { key: 'all', label: 'Tất cả', color: actionPrimary },
   { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
-  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
-  { key: 'APPROVED_LEVEL2', label: 'Chờ phê duyệt cấp cục', color: statusAttention },
+  { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
+  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp cục', color: statusAttention },
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
   { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
 ];
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
-  all: undefined, DRAFT: 'DRAFT', APPROVED_LEVEL1: 'APPROVED_LEVEL1',
-  APPROVED_LEVEL2: 'APPROVED_LEVEL2', APPROVED: 'APPROVED', REJECTED_LEVEL1: 'REJECTED_LEVEL1', REJECTED_LEVEL2: 'REJECTED_LEVEL2',
+  all: undefined, DRAFT: 'DRAFT', PENDING_APPROVAL: 'PENDING_APPROVAL', APPROVED_LEVEL1: 'APPROVED_LEVEL1',
+  APPROVED: 'APPROVED', REJECTED_LEVEL1: 'REJECTED_LEVEL1', REJECTED_LEVEL2: 'REJECTED_LEVEL2',
 };
 
 const STRUCTURE_TYPE_OPTIONS = [
@@ -109,7 +111,7 @@ const CONSTRUCTION_GRADE_OPTIONS = [
 ];
 
 function formatDate(d: string | null | undefined): string {
-  if (!d) return '—'; try { return dayjs(d).format('DD/MM/YYYY HH:mm:ss'); } catch { return d; }
+  if (!d) return ''; try { return dayjs(d).format('DD/MM/YYYY HH:mm:ss'); } catch { return d; }
 }
 
 const histLabels: Record<string, string> = {
@@ -139,7 +141,8 @@ const histLabels: Record<string, string> = {
 };
 function histField(fn: string): string { return histLabels[fn] || fn; }
 function histVal(fn: string, val: string | null, orgMap?: Map<string, string>, symbolMap?: Map<string, string>, portMap?: Map<string, string>, berthMap?: Map<string, string>, waterwayMap?: Map<string, string>): string {
-  if (!val || val === '(null)' || val === 'null') return '(trống)';
+  if (!val || val === '(null)' || val === 'null' || val === '-' || val === '—' || val === '–') return '';
+  if (fn === 'operationalFunction') return formatOperationalFunction(val, '');
   if (fn === 'orgUnitId' && orgMap) { const f = orgMap.get(val); return f ? f.split(' - ').pop() || f : val; }
   if (fn === 'portId' && portMap) return portMap.get(val) || val;
   if (fn === 'berthId' && berthMap) return berthMap.get(val) || val;
@@ -147,7 +150,7 @@ function histVal(fn: string, val: string | null, orgMap?: Map<string, string>, s
   if (fn === 'navigationChannelId' && waterwayMap) return waterwayMap.get(val) || val;
   if (fn === 'structureType') { const m: Record<string,string> = { '1':'Kết cấu bệ cọc cao', '2':'Kết cấu cường từ', '3':'Kết cấu trọng lực', '4':'Kết cấu khác' }; return m[val] || val; }
   if (fn === 'constructionGrade') { const m: Record<string,string> = { '1':'Cấp đặc biệt', '2':'Cấp 1', '3':'Cấp 2', '4':'Cấp 3', '5':'Cấp 4' }; return m[val] || val; }
-  if (fn === 'approvalStatus') { const m: Record<string,string> = { DRAFT:'Lưu tạm', PENDING:'Chờ phê duyệt cấp Cảng vụ/Chi cục', PENDING_APPROVAL:'Chờ phê duyệt cấp Cảng vụ/Chi cục', APPROVED_LEVEL1:'Chờ phê duyệt cấp cục', APPROVED_LEVEL2:'Chờ phê duyệt cấp cục', APPROVED:'Đã phê duyệt', REJECTED:'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL1:'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL2:'Từ chối cấp cục' }; return m[val?.toUpperCase()] || val; }
+  if (fn === 'approvalStatus') { const m: Record<string,string> = { DRAFT:'Lưu tạm', PENDING:'Chờ phê duyệt cấp Cảng vụ/Chi cục', PENDING_APPROVAL:'Chờ phê duyệt cấp Cảng vụ/Chi cục', APPROVED_LEVEL1:'Chờ phê duyệt cấp cục', APPROVED:'Đã phê duyệt', APPROVED_LEVEL2:'Đã duyệt (lịch sử)', REJECTED:'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL1:'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL2:'Từ chối cấp cục' }; return m[val?.toUpperCase()] || val; }
   if (fn === 'operationalStatus') { const m: Record<string,string> = { OPERATIONAL:'Đang khai thác/vận hành', NOT_YET_OPERATIONAL:'Chưa khai thác/vận hành', SUSPENDED:'Dừng khai thác/vận hành', HIEN_HANH:'Hiện hành', TAM_NGUNG:'Tạm ngừng', DANG_KHAI_THAC:'Đang khai thác/vận hành', CHUA_KHAI_THAC:'Chưa khai thác/vận hành', DUNG_KHAI_THAC:'Dừng khai thác/vận hành' }; return m[val?.toUpperCase()] || val; }
   if (fn === 'pierType') { const m: Record<string,string> = { CONTAINER:'Container', TONG_HOP:'Tổng hợp', HANH_KHACH:'Hành khách', CHUYEN_DUNG_XANG_DAU:'Chuyên dùng xăng dầu', CHUYEN_DUNG_ROI_QUANG:'Chuyên dùng rời/quặng', KHAC:'Khác' }; return m[val?.toUpperCase()] || val; }
   if (fn === 'province') return VIETNAM_PROVINCES[Number(val)-1] || val;
@@ -367,7 +370,7 @@ export default function PierListPage() {
   const [filterWaterwayId, setFilterWaterwayId] = useState<string | undefined>();
   const [filterConstructionGrade, setFilterConstructionGrade] = useState<number | undefined>();
   const [filterStructureType, setFilterStructureType] = useState<number | undefined>();
-  const [filterOperationalFunction, setFilterOperationalFunction] = useState('');
+  const [filterOperationalFunction, setFilterOperationalFunction] = useState<string[]>([]);
   const [filterUpdatedFrom, setFilterUpdatedFrom] = useState<string | undefined>();
   const [filterUpdatedTo, setFilterUpdatedTo] = useState<string | undefined>();
   const [activeTab, setActiveTab] = useState('all');
@@ -394,6 +397,7 @@ export default function PierListPage() {
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
   const [createDrawerVisible, setCreateDrawerVisible] = useState(false);
   const [editPierId, setEditPierId] = useState<string | undefined>();
+  const [editBaseStatus, setEditBaseStatus] = useState<string | undefined>();
   const [createForm] = Form.useForm();
   const pierFormRef = useRef<any>(null);
   const [detailDrawerVisible, setDetailDrawerVisible] = useState(false);
@@ -405,7 +409,7 @@ export default function PierListPage() {
   const [infraDetail, setInfraDetail] = useState<{ type: string; record: any } | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletingRecord, setDeletingRecord] = useState<Pier | null>(null);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectingRecord, setRejectingRecord] = useState<Pier | null>(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -420,29 +424,37 @@ export default function PierListPage() {
   const [historyTarget, setHistoryTarget] = useState<Pier | null>(null);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [historySearchInput, setHistorySearchInput] = useState('');
-  const [historySearch, setHistorySearch] = useState('');
-  const [historyFrom, setHistoryFrom] = useState('');
-  const [historyTo, setHistoryTo] = useState('');
-  const [historyMode, setHistoryMode] = useState<'current' | 'all'>('current');
-  const [historyEntityNames, setHistoryEntityNames] = useState<Record<string, string>>({});
-  const [historyEntityFilter, setHistoryEntityFilter] = useState('');
+  const [historyFilters, setHistoryFilters] = useState<{ keyword: string; fromDate?: string; toDate?: string }>({ keyword: '' });
 
-  const historyGroupCount = useMemo(() => {
-    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...(Array.isArray(historyRecords) ? historyRecords : [])].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
-    const groups: { tsSec: number; actor: string }[] = [];
-    for (const r of sorted) {
-      const ts = historyTimestamp(r);
-      const sec = ts ? toSec(ts) : 0;
-      const actor = historyActor(r);
-      const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === actor) continue;
-      groups.push({ tsSec: sec, actor });
-    }
-    return groups.length;
-  }, [historyRecords]);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const filteredHistory = useMemo(() => {
+    const q = (historyFilters.keyword || '').trim().toLowerCase();
+    const from = historyFilters.fromDate || '';
+    const to = historyFilters.toDate || '';
+    return (Array.isArray(historyRecords) ? historyRecords : []).filter((r: any) => {
+      if (q) {
+        const fn = String(r?.fieldName || r?.changedField || '').toLowerCase();
+        const label = histField(fn) || fn;
+        const rawHits = [fn, label, r?.oldValue, r?.newValue, r?.previousValue, r?.value, r?.reason, r?.ghiChu, r?.note]
+          .filter((v) => v !== null && v !== undefined)
+          .map((v) => String(v).toLowerCase());
+        const resolvedOld = histVal(fn, r?.oldValue, orgMap, symbolMap, portMap, historyBerthMap, waterwayMap);
+        const resolvedNew = histVal(fn, r?.newValue, orgMap, symbolMap, portMap, historyBerthMap, waterwayMap);
+        if (resolvedOld) rawHits.push(String(resolvedOld).toLowerCase());
+        if (resolvedNew) rawHits.push(String(resolvedNew).toLowerCase());
+        if (!rawHits.some((text) => text.includes(q))) return false;
+      }
+      if (from || to) {
+        const ts = r?.changedAt || r?.createdAt || r?.approvedDate || '';
+        const day = ts ? dayjs(ts).format('YYYY-MM-DD') : '';
+        if (!day) return false;
+        if (from && day < from) return false;
+        if (to && day > to) return false;
+      }
+      return true;
+    });
+  }, [historyRecords, historyFilters, orgMap, symbolMap, portMap, historyBerthMap, waterwayMap]);
+  const hasActiveHistoryFilter = !!(historyFilters.keyword?.trim() || historyFilters.fromDate || historyFilters.toDate);
+
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   const appliedFiltersRef = useRef<{
     orgUnit?: string; search: string; pierName: string; pierCode: string; berthId?: string; portId?: string; pierType?: string;
@@ -453,8 +465,7 @@ export default function PierListPage() {
 
   const openHistory = useCallback(async (r: Pier) => {
     setHistoryTarget(r); setHistoryOpen(true); setHistoryLoading(true); setHistoryRecords([]);
-    setHistorySearchInput(''); setHistorySearch(''); setHistoryFrom(''); setHistoryTo('');
-    setHistoryMode('current');
+    setHistoryFilters({ keyword: '' });
     try {
       const res = await api.get(`/v1/piers/${r.id}/history`);
       const d = res.data?.data; setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory.filter((r: any) => r.fieldName !== 'CREATE') : []);
@@ -467,24 +478,8 @@ export default function PierListPage() {
     const safeRecords = Array.isArray(records) ? records : [];
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
     const sorted = [...safeRecords].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
-    const q = historySearch.toLowerCase().trim();
     const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
     for (const r of sorted) {
-      if (q) {
-        const fn = (r.fieldName || '').toLowerCase();
-        const ov = (r.oldValue || '').toLowerCase();
-        const nv = (r.newValue || '').toLowerCase();
-        const lb = histField(r.fieldName || '').toLowerCase();
-        const od = histVal(r.fieldName, r.oldValue, orgMap, symbolMap, portMap, historyBerthMap, waterwayMap).toLowerCase();
-        const nd = histVal(r.fieldName, r.newValue, orgMap, symbolMap, portMap, historyBerthMap, waterwayMap).toLowerCase();
-        if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue;
-      }
-      if (historyEntityFilter && r.entityId !== historyEntityFilter) continue;
-      if (historyFrom || historyTo) {
-        const cd = (r.changedAt || r.createdAt || '').substring(0, 16);
-        if (historyFrom && cd < historyFrom.replace(' ', 'T')) continue;
-        if (historyTo && cd > historyTo.replace(' ', 'T') + ':59') continue;
-      }
       const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
       const actor = historyActor(r);
@@ -498,10 +493,10 @@ export default function PierListPage() {
     if (groups.length === 0) return (
       <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
         <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-        <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{q || historyFrom || historyTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div>
+        <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{hasActiveHistoryFilter ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div>
       </div>
     );
-    const fmtTime = (ts: string) => { const d = new Date(ts); return `${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`; };
+    const fmtTime = (ts: string) => { try { return dayjs(ts).format('HH:mm DD/MM/YYYY'); } catch { return ts || '—'; } };
     return (
       <div>{groups.map((g, gi) => {
         const rec0 = g.items[0] || {};
@@ -524,6 +519,10 @@ export default function PierListPage() {
             if (t === '[]') return 'Không có';
             const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
             return `${parts.length} hạng mục`;
+          }
+          if (fn === 'operationalFunction') {
+            const mapped = formatOperationalFunction(raw, '');
+            return mapped || null;
           }
           if (/^-?\d+(\.\d+)?$/.test(t)) {
             const n = Number(t);
@@ -578,18 +577,21 @@ export default function PierListPage() {
                   }
                   return null;
                 };
-                const renderVal = (rawVal: string | null, fmtVal: string | null) => renderCell(rawVal) ?? (fmtVal != null ? renderHistoryValueTag(fn, fmtVal) : <span style={{ color: textTertiary }}>—</span>);
+                const renderVal = (rawVal: string | null, fmtVal: string | null) => {
+                  if (!fmtVal || fmtVal === '—' || fmtVal === '-' || fmtVal === '–' || fmtVal === '(null)' || fmtVal === 'null') return '';
+                  return renderCell(rawVal) ?? renderHistoryValueTag(fn, fmtVal);
+                };
                 return isCreate ? (
                   <div key={`${fn}-${ri}`} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                    <div style={historyFieldLabelStyle}>{fn ? `${histField(fn)}:` : '—'}</div>
-                    <span title={nv ?? '—'} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
+                    <div style={historyFieldLabelStyle}>{fn ? `${histField(fn)}:` : ''}</div>
+                    <span title={nv ?? ''} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
                   </div>
                 ) : (
                   <div key={`${fn}-${ri}`} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                    <div style={historyFieldLabelStyle}>{fn ? `${histField(fn)}:` : '—'}</div>
-                    <span title={ov ?? '—'} style={historyOldValueStyle}>{renderVal(change.oldValue, ov)}</span>
+                    <div style={historyFieldLabelStyle}>{fn ? `${histField(fn)}:` : ''}</div>
+                    <span title={ov ?? ''} style={historyOldValueStyle}>{renderVal(change.oldValue, ov)}</span>
                     <span style={historyArrowStyle}>→</span>
-                    <span title={nv ?? '—'} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
+                    <span title={nv ?? ''} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
                   </div>
                 );
               })}</div> : (
@@ -616,7 +618,6 @@ export default function PierListPage() {
   useEffect(() => {
     if (orgUnit !== undefined && !initialLoadDone) {
       setInitialLoadDone(true);
-      setRefreshKey(k => k + 1);
     }
   }, [orgUnit, initialLoadDone]);
 
@@ -629,8 +630,8 @@ export default function PierListPage() {
   }, []);
 
   useEffect(() => {
-    lineObjectService.list({ status: 'PUBLISHED', objectType: LineObject.ObjectType.WATERWAY, pageSize: 1000 })
-      .then((r: any) => { const m = new Map<string, string>(); (r.data || []).forEach((l: any) => { m.set(l.id, l.name || l.code); }); setWaterwayMap(m); })
+    navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
+      .then((r) => { const m = new Map<string, string>(); r.items.forEach(n => { m.set(n.id, n.channelName || n.channelCode || ''); }); setWaterwayMap(m); })
       .catch(() => {});
   }, []);
 
@@ -647,55 +648,47 @@ export default function PierListPage() {
 
   const fetchData = useCallback(async () => {
     setIsLoading(true); setIsError(false); setError(null);
-    const f = appliedFiltersRef.current;
-    console.log('fetchData called with:', { orgUnit: f.orgUnit, search: f.search, berthId: f.berthId, portId: f.portId, province: f.province, status: f.operationalStatus, approval: f.approvalStatus, activeTab, page, pageSize });
     try {
       const r = await pierCRUD.search({
-        orgUnitId: (f.orgUnit && f.orgUnit !== '__all__') ? f.orgUnit : undefined,
-        pierName: f.pierName.trim() || undefined,
-        pierCode: f.pierCode.trim() || undefined,
-        berthId: f.berthId,
-        portId: f.portId || undefined,
-        pierType: f.pierType,
-        province: f.province || undefined,
-        status: f.operationalStatus,
+        orgUnitId: (orgUnit && orgUnit !== '__all__') ? orgUnit : undefined,
+        pierName: pierNameInput.trim() || undefined,
+        pierCode: pierCodeInput.trim() || undefined,
+        berthId: filterBerthId,
+        portId: filterPortId || undefined,
+        pierType: filterPierType,
+        province: filterProvince || undefined,
+        status: filterOperationalStatus,
         approvalStatus: TAB_QUERY_MAP[activeTab],
-        navigationChannelId: f.waterwayId,
-        constructionGrade: f.constructionGrade,
-        structureType: f.structureType,
-        operationalFunction: f.operationalFunction || undefined,
-        updatedFrom: f.updatedFrom,
-        updatedTo: f.updatedTo,
+        navigationChannelId: filterWaterwayId,
+        constructionGrade: filterConstructionGrade,
+        structureType: filterStructureType,
+        operationalFunction: filterOperationalFunction && filterOperationalFunction.length > 0 ? filterOperationalFunction.join(',') : undefined,
+        updatedFrom: filterUpdatedFrom,
+        updatedTo: filterUpdatedTo,
         page, pageSize,
       });
       setDataSource(r.data); setTotal(r.total);
     } catch (ex: unknown) { setIsError(true); setError(ex instanceof Error ? ex : new Error('Không thể tải danh sách cầu cảng')); }
     finally { setIsLoading(false); }
-  }, [activeTab, page, pageSize, refreshKey]);
+  }, [orgUnit, pierNameInput, pierCodeInput, filterBerthId, filterPortId, filterPierType, filterProvince, filterOperationalStatus,
+    filterWaterwayId, filterConstructionGrade, filterStructureType, filterOperationalFunction, filterUpdatedFrom, filterUpdatedTo,
+    activeTab, page, pageSize]);
 
   useEffect(() => { if (initialLoadDone) void fetchData(); }, [fetchData, initialLoadDone]);
   useEffect(() => { void fetchCounts(orgUnit); }, [orgUnit, fetchCounts]);
 
   const handleFilterApply = useCallback(() => {
-    appliedFiltersRef.current = {
-      orgUnit, search: '', pierName: pierNameInput, pierCode: pierCodeInput, berthId: filterBerthId, portId: filterPortId, pierType: filterPierType,
-      province: filterProvince, operationalStatus: filterOperationalStatus,
-      waterwayId: filterWaterwayId, constructionGrade: filterConstructionGrade, structureType: filterStructureType,
-      operationalFunction: filterOperationalFunction, updatedFrom: filterUpdatedFrom, updatedTo: filterUpdatedTo,
-    };
     setPage(1);
-    setRefreshKey(k => k + 1);
-  }, [pierNameInput, pierCodeInput, orgUnit, filterBerthId, filterPortId, filterPierType, filterProvince, filterOperationalStatus,
-    filterWaterwayId, filterConstructionGrade, filterStructureType, filterOperationalFunction, filterUpdatedFrom, filterUpdatedTo]);
+  }, []);
+
   const handleFilterReset = useCallback(() => {
     const oid = defaultOrgUnitRef.current || '__all__';
-    appliedFiltersRef.current = { orgUnit: oid, search: '', pierName: '', pierCode: '', berthId: undefined, portId: undefined, pierType: undefined, province: undefined, operationalStatus: undefined, waterwayId: undefined, constructionGrade: undefined, structureType: undefined, operationalFunction: '', updatedFrom: undefined, updatedTo: undefined };
     setOrgUnit(oid); setPierNameInput(''); setPierCodeInput('');
     setFilterPortId(undefined); setFilterBerthId(undefined); setFilterPierType(undefined);
     setFilterProvince(undefined); setFilterOperationalStatus(undefined);
     setFilterWaterwayId(undefined); setFilterConstructionGrade(undefined); setFilterStructureType(undefined);
     setFilterOperationalFunction(''); setFilterUpdatedFrom(undefined); setFilterUpdatedTo(undefined);
-    setActiveTab('all'); setPage(1); setRefreshKey(k => k + 1);
+    setActiveTab('all'); setPage(1);
   }, []);
   const handleTabChange = useCallback((key: string) => { setActiveTab(key); setPage(1); }, []);
 
@@ -721,19 +714,38 @@ export default function PierListPage() {
 
   const dd2dms = (dd: number) => { if (dd == null || isNaN(dd)) return { d: 0, m: 0, s: 0 }; const a = Math.abs(dd); return { d: Math.floor(a), m: Math.floor((a - Math.floor(a)) * 60), s: +((a - Math.floor(a) - Math.floor((a - Math.floor(a)) * 60) / 60) * 3600).toFixed(2) }; };
 
-  const openDeleteModal = useCallback((record: Pier) => { setDeletingRecord(record); setDeleteConfirmText(''); setDeleteModalOpen(true); }, []);
+  const openDeleteModal = useCallback((record: Pier) => {
+    setDeletingRecord(record);
+    setDeleteModalOpen(true);
+  }, []);
+
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingRecord) return;
-    const expectedText = (deletingRecord.pierName || 'XÓA').trim().toLowerCase();
-    const input = deleteConfirmText.trim().toLowerCase();
-    if (input !== expectedText && input !== 'xóa') { toast.error('Vui lòng nhập đúng tên cầu hoặc gõ "XÓA" để xác nhận'); return; }
-    try { await pierCRUD.delete(deletingRecord.id); toast.success('Đã xóa cầu cảng'); setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); void fetchData(); void fetchCounts(orgUnit); }
-    catch (ex: unknown) { toast.error(ex instanceof Error ? ex.message : 'Xóa thất bại'); }
-  }, [deletingRecord, deleteConfirmText, fetchData, fetchCounts, orgUnit]);
+    setDeleteLoading(true);
+    try {
+      await pierCRUD.delete(deletingRecord.id);
+      toast.success('Đã xóa cầu cảng');
+      setDeleteModalOpen(false);
+      setDeletingRecord(null);
+      void fetchData();
+      void fetchCounts(orgUnit);
+    } catch (ex: unknown) {
+      toast.error(ex instanceof Error ? ex.message : 'Xóa thất bại');
+    } finally {
+      setDeleteLoading(false);
+    }
+  }, [deletingRecord, fetchData, fetchCounts, orgUnit]);
 
   const handleApprove = useCallback(async (record: Pier, content?: string) => {
-    const cap = record.approvalStatus === 'APPROVED_LEVEL2' ? 'CUC' : 'CANG_VU';
-    try { await pierApproval.approve(record.id, cap, content); toast.success(cap === 'CUC' ? 'Đã phê duyệt cấp Cục' : 'Đã phê duyệt cấp Cảng vụ'); setApproveModalOpen(false); setApprovingRecord(null); void fetchData(); void fetchCounts(orgUnit); }
+    try {
+      if (record.approvalStatus === 'PENDING_APPROVAL') {
+        await pierApproval.approveC1(record.id, content);
+      } else {
+        await pierApproval.approveC2(record.id, content);
+      }
+      toast.success(record.approvalStatus === 'PENDING_APPROVAL' ? 'Đã phê duyệt cấp Cảng vụ/Chi cục' : 'Đã phê duyệt cấp Cục');
+      setApproveModalOpen(false); setApprovingRecord(null); void fetchData(); void fetchCounts(orgUnit);
+    }
     catch (ex: unknown) { toast.error(ex instanceof Error ? ex.message : 'Phê duyệt thất bại'); }
   }, [fetchData, fetchCounts, orgUnit]);
 
@@ -747,12 +759,12 @@ export default function PierListPage() {
   const openRejectModal = useCallback((record: Pier) => { setRejectingRecord(record); setRejectReason(''); setRejectError(''); setRejectModalOpen(true); }, []);
   const handleConfirmReject = useCallback(async () => {
     if (!rejectingRecord) return;
-    if (!rejectReason || rejectReason.trim().length < 10) {
-      setRejectError('Lý do từ chối phải có ít nhất 10 ký tự');
+    if (!rejectReason || !rejectReason.trim()) {
+      setRejectError('Vui lòng nhập lý do từ chối');
       return;
     }
     try {
-      await pierApproval.reject(rejectingRecord.id, rejectingRecord.approvalStatus === 'APPROVED_LEVEL2' ? 'CUC' : 'CANG_VU', rejectReason.trim());
+      await pierApproval.rejectStage(rejectingRecord.id, rejectReason.trim());
       toast.success('Từ chối thành công');
       setRejectModalOpen(false);
       setRejectingRecord(null);
@@ -835,8 +847,8 @@ export default function PierListPage() {
         </div>
         <div style={{ marginBottom: 12 }}>
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Công năng khai thác</div>
-          <Input style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Tìm theo công năng..." allowClear
-            value={filterOperationalFunction} onChange={e => setFilterOperationalFunction(e.target.value)} />
+          <Select mode="multiple" style={{ width: '100%', borderRadius: radiusPill, fontSize: fontSizeMd }} allowClear showSearch optionFilterProp="label" maxTagCount="responsive" placeholder="Công năng khai thác"
+            options={OPERATIONAL_FUNCTION_OPTIONS} value={filterOperationalFunction} onChange={v => setFilterOperationalFunction(v || [])} />
         </div>
         <div style={{ marginBottom: 12 }}>
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm</div>
@@ -862,12 +874,17 @@ export default function PierListPage() {
     const actions: any[] = [{ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) }];
     const st = record.approvalStatus || '';
     const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'pier', extraApprovePerms: ['pier:approve'] });
-    if (editable) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => { setEditPierId(record.id); setCreateDrawerVisible(true); } });
+    if (editable) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => { setEditPierId(record.id); setEditBaseStatus(record.approvalStatus); setCreateDrawerVisible(true); } });
     if (['DRAFT','NHAP'].includes(st) && hasPerm('pier:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => handleSubmitApproval(record) });
+    if (['REJECTED_LEVEL1','REJECTED_LEVEL2'].includes(st) && hasPerm('pier:update')) actions.push({ key: 'resubmit', label: 'Gửi lại phê duyệt', icon: icons.submit, onClick: () => handleSubmitApproval(record) });
     if (hasPerm('pier:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
-    if (hasPerm('pier:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) {
-      actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
-      actions.push({ key: 'reject', label: 'Từ chối', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
+    if (hasPerm('pier:approvec1') && st === 'PENDING_APPROVAL') {
+      actions.push({ key: 'approve_c1', label: 'Phê duyệt cấp Cảng vụ/Chi cục', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
+      actions.push({ key: 'reject_c1', label: 'Từ chối cấp Cảng vụ/Chi cục', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
+    }
+    if (hasPerm('pier:approvec2') && st === 'APPROVED_LEVEL1') {
+      actions.push({ key: 'approve_c2', label: 'Phê duyệt cấp Cục', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
+      actions.push({ key: 'reject_c2', label: 'Từ chối cấp Cục', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
     }
     if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'pier' })) actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => openDeleteModal(record) });
     return actions;
@@ -877,26 +894,44 @@ export default function PierListPage() {
     if (!isAuditViewer) return [];
     return [
       { label: 'Cán bộ gửi Phê duyệt', dataIndex: 'submittedForApprovalAt', key: 'submittedForApprovalAt', width: 230, sortable: true,
-        render: (v: string | null, record: Pier) => (
-          <div>
-            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.submittedForApprovalBy || '') || record.submittedForApprovalBy || '—'}</span><br />
-            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
-          </div>
-        ) },
+        render: (v: string | null, record: Pier) => {
+          const name = userMap.get(record.submittedForApprovalBy || '') || record.submittedForApprovalBy || '';
+          const date = formatDate(v);
+          if (!name && !date) return '';
+          return (
+            <div>
+              {name && <span style={{ fontWeight: fontWeightBold }}>{name}</span>}
+              {name && date && <br />}
+              {date && <span style={{ opacity: 0.85 }}>{date}</span>}
+            </div>
+          );
+        } },
       { label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'portAuthorityApprovedAt', key: 'portAuthorityApprovedAt', width: 350, sortable: true,
-        render: (v: string | null, record: Pier) => (
-          <div>
-            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.portAuthorityApprovedBy || '') || record.portAuthorityApprovedBy || '—'}</span><br />
-            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
-          </div>
-        ) },
+        render: (v: string | null, record: Pier) => {
+          const name = userMap.get(record.portAuthorityApprovedBy || '') || record.portAuthorityApprovedBy || '';
+          const date = formatDate(v);
+          if (!name && !date) return '';
+          return (
+            <div>
+              {name && <span style={{ fontWeight: fontWeightBold }}>{name}</span>}
+              {name && date && <br />}
+              {date && <span style={{ opacity: 0.85 }}>{date}</span>}
+            </div>
+          );
+        } },
       { label: 'Cán bộ phê duyệt cấp Cục', dataIndex: 'departmentApprovedAt', key: 'departmentApprovedAt', width: 260, sortable: true,
-        render: (v: string | null, record: Pier) => (
-          <div>
-            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.departmentApprovedBy || '') || record.departmentApprovedBy || '—'}</span><br />
-            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
-          </div>
-        ) },
+        render: (v: string | null, record: Pier) => {
+          const name = userMap.get(record.departmentApprovedBy || '') || record.departmentApprovedBy || '';
+          const date = formatDate(v);
+          if (!name && !date) return '';
+          return (
+            <div>
+              {name && <span style={{ fontWeight: fontWeightBold }}>{name}</span>}
+              {name && date && <br />}
+              {date && <span style={{ opacity: 0.85 }}>{date}</span>}
+            </div>
+          );
+        } },
     ];
   }, [isAuditViewer, userMap]);
 
@@ -917,37 +952,37 @@ export default function PierListPage() {
     { label: <span>Tên/Mã cầu cảng</span>, dataIndex: 'pierName', key: 'pierName', width: 210, fixed: 'left' as const, sortable: true, ellipsis: false,
       render: (v: string, record: Pier) => (
         <div>
-          <a title={v || '—'} onClick={(e) => { e.stopPropagation(); openDetailDrawer(record); }} style={{ ...cellTitleStyle, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}>{v || '—'}</a>
-          <span style={{ ...cellSubtitleStyle, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{record.pierCode || '—'}</span>
+          <a title={v || ''} onClick={(e) => { e.stopPropagation(); openDetailDrawer(record); }} style={{ ...cellTitleStyle, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}>{v || ''}</a>
+          <span style={{ ...cellSubtitleStyle, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{record.pierCode || ''}</span>
         </div>
       ) },
     { label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', key: 'orgUnitId', width: 260, sortable: true,
-      render: (v: string | null, r: Pier) => <span style={{ fontWeight: fontWeightBold }}>{resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(v || '') || '—'}</span> },
+      render: (v: string | null, r: Pier) => <span style={{ fontWeight: fontWeightBold }}>{resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(v || '') || ''}</span> },
     { label: 'Loại kết cấu cầu cảng', dataIndex: 'structureType', key: 'structureType', width: 240, sortable: true,
-      render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v != null ? (STRUCTURE_TYPE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : '—'}</span> },
+      render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v != null ? (STRUCTURE_TYPE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : ''}</span> },
     { label: 'Thuộc cảng biển', dataIndex: 'portId', key: 'portId', width: 200, sortable: true,
-      render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{portMap.get(v || '') || v || '—'}</span> },
+      render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{portMap.get(v || '') || v || ''}</span> },
     { label: 'Thuộc bến cảng', dataIndex: 'berthName', key: 'berthName', width: 210, sortable: true,
-      render: (v: string, r: Pier) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || r.tenBenCang || berthOptions.find(b => b.value === r.berthId)?.label || r.berthId || '—'}</span> },
+      render: (v: string, r: Pier) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || r.tenBenCang || berthOptions.find(b => b.value === r.berthId)?.label || r.berthId || ''}</span> },
     { label: 'Thuộc luồng hàng hải', dataIndex: 'navigationChannelId', key: 'navigationChannelId', width: 280, ellipsis: true, sortable: true,
-      render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v ? (waterwayMap.get(v) || v) : '—'}</span> },
+      render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v ? (waterwayMap.get(v) || v) : ''}</span> },
     { label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'province', key: 'province', width: 250, sortable: true,
-      render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
+      render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || ''}</span> },
     { label: 'Phân cấp công trình', dataIndex: 'constructionGrade', key: 'constructionGrade', width: 220, sortable: true,
-      render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v != null ? (CONSTRUCTION_GRADE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : '—'}</span> },
+      render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v != null ? (CONSTRUCTION_GRADE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : ''}</span> },
     { label: 'Công năng khai thác', dataIndex: 'operationalFunction', key: 'operationalFunction', width: 240, ellipsis: true, sortable: true,
-      render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
+      render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{formatOperationalFunction(v, '')}</span> },
     { label: 'Tình trạng', dataIndex: 'operationalStatus', key: 'operationalStatus', width: 190, sortable: true,
-      render: (v: string) => { const b = v && OPERATIONAL_STYLE_MAP[v]; return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>; } },
+      render: (v: string) => { const b = v && OPERATIONAL_STYLE_MAP[v]; return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : null; } },
     { label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 260, sortable: true,
       render: (v: string) => {
         const s = v && (APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v.toUpperCase()]);
-        return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>;
+        return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : null;
       } },
     { label: 'Cán bộ cập nhật', dataIndex: 'updatedAt', key: 'updatedAt', width: 200, sortable: true,
       render: (v: string, record: Pier) => (
         <div>
-          <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.updatedBy || '') || record.updatedBy || '—'}</span><br />
+          <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.updatedBy || '') || record.updatedBy || ''}</span><br />
           <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
         </div>
       ) },
@@ -967,8 +1002,129 @@ export default function PierListPage() {
   }, [hasPerm]);
 
   return (
-    <ThemeTokenProvider tokens={themeTokenChk as unknown as ThemeToken}>
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+    <ThemeTokenProvider tokens={{ ...themeTokenChk, fontSizeMd } as unknown as ThemeToken}>
+    <div className="pier-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      <style>{`
+        .pier-page-wrapper,
+        .pier-page-wrapper .ant-table,
+        .pier-page-wrapper .ant-table-cell,
+        .pier-page-wrapper .ant-table-thead > tr > th,
+        .pier-page-wrapper .ant-table-tbody > tr > td,
+        .pier-page-wrapper .ant-input,
+        .pier-page-wrapper .ant-select,
+        .pier-page-wrapper .ant-select-selection-item,
+        .pier-page-wrapper .ant-select-item-option-content,
+        .pier-page-wrapper .ant-picker,
+        .pier-page-wrapper .ant-picker-input > input,
+        .pier-page-wrapper .ant-btn,
+        .pier-page-wrapper .ant-pagination,
+        .pier-page-wrapper .ant-pagination-item,
+        .pier-page-wrapper .ant-pagination-total-text,
+        .pier-page-wrapper .ant-breadcrumb,
+        .pier-page-wrapper .ant-form-item-label > label,
+        .pier-page-wrapper .ant-tabs-tab,
+        .pier-page-wrapper .pier-drawer-scope,
+        .pier-page-wrapper .pier-drawer-scope .ant-drawer-content,
+        .pier-page-wrapper .pier-drawer-scope .ant-tabs-tab,
+        .pier-page-wrapper .pier-drawer-scope .ant-input,
+        .pier-page-wrapper .pier-drawer-scope .ant-select,
+        .pier-page-wrapper .pier-drawer-scope .ant-btn,
+        .pier-page-wrapper .pier-drawer-scope .ant-table,
+        .pier-page-wrapper .pier-drawer-scope .ant-table-cell,
+        .pier-page-wrapper .pier-drawer-scope .ant-table-thead > tr > th,
+        .pier-page-wrapper .pier-drawer-scope .ant-form-item-label > label {
+          font-size: 13.5px !important;
+        }
+        /* ── Drawer tạo/sửa/chi tiết (antd Drawer render panel ở body portal, ngoài .pier-page-wrapper) ── */
+        .pier-drawer-scope,
+        .pier-drawer-scope .ant-drawer-content,
+        .pier-drawer-scope .ant-tabs-tab,
+        .pier-drawer-scope .ant-drawer-content .ant-form-item-label > label,
+        .pier-drawer-scope .chk-detail-label,
+        .pier-drawer-scope .chk-detail-value,
+        .pier-drawer-scope .ant-table,
+        .pier-drawer-scope .ant-table-cell,
+        .pier-drawer-scope .ant-table-thead > tr > th,
+        .pier-drawer-scope .ant-table-tbody > tr > td,
+        .pier-drawer-scope .ant-input,
+        .pier-drawer-scope .ant-select,
+        .pier-drawer-scope .ant-btn {
+          font-size: 13.5px !important;
+        }
+        .pier-page-wrapper div:has(> button[aria-pressed]) {
+          display: flex !important;
+          flex-wrap: nowrap !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          justify-content: safe center !important;
+          align-items: center !important;
+          scrollbar-width: thin !important;
+          scrollbar-color: #cbd5e1 #f8fafc !important;
+          padding: 2px 16px 6px 16px !important;
+          gap: 20px !important;
+        }
+        .pier-page-wrapper div:has(> button[aria-pressed]) > button {
+          white-space: nowrap !important;
+          flex-shrink: 0 !important;
+          cursor: pointer !important;
+        }
+        .pier-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
+          height: 6px !important;
+          display: block !important;
+        }
+        .pier-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
+          background: #f1f5f9 !important;
+          border-radius: 999px !important;
+        }
+        .pier-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
+          background: #cbd5e1 !important;
+          border-radius: 999px !important;
+        }
+        .pier-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8 !important;
+        }
+        /* ── Responsive Drawers: Không tràn viền khi màn hình nhỏ / zoom cao (đồng bộ Cảng biển) ── */
+        .pier-drawer-scope .ant-drawer-content-wrapper {
+          max-width: 100vw !important;
+        }
+        @media (max-width: 1024px) {
+          .pier-drawer-scope .chk-detail-grid {
+            grid-template-columns: 1fr !important;
+            column-gap: 0 !important;
+          }
+          .pier-drawer-scope .chk-detail-row--full {
+            grid-column: 1 !important;
+          }
+        }
+        @media (max-width: 640px) {
+          .pier-drawer-scope .chk-detail-row {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 4px !important;
+            padding: 8px 0 !important;
+          }
+          .pier-drawer-scope .chk-detail-label {
+            width: 100% !important;
+          }
+          .pier-drawer-scope .chk-detail-value {
+            width: 100% !important;
+          }
+        }
+        /* Label dài (2 dòng) đủ chỗ, KHÔNG mất chữ, label 1 dòng nằm sát đỉnh:
+           dành min-height cho khung .ant-form-item-label (chữ label con canh top bằng align-items:flex-start),
+           không ép cao lên chính <label> để tránh chữ bị căn giữa lệch dòng trên/dưới. */
+        .pier-drawer-scope .ant-form-item.cn-op-2line-label .ant-form-item-label {
+          height: auto !important;
+          min-height: 44px !important;
+          align-items: flex-start !important;
+        }
+        .pier-drawer-scope .ant-form-item.cn-op-2line-label .ant-form-item-label > label {
+          height: auto !important;
+          white-space: normal !important;
+          line-height: 1.45 !important;
+          overflow-wrap: break-word;
+        }
+      `}</style>
       <ScreenHeader breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý cầu cảng' }]}
         actions={headerActions} />
       <FilterTableLayout filterContent={filterContent}
@@ -982,11 +1138,21 @@ export default function PierListPage() {
         <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
       </FilterTableLayout>
 
-      <Drawer {...drawerProps} title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editPierId ? 'Chỉnh sửa thông tin Cầu cảng' : 'Thêm mới Cầu cảng'}</span>} open={createDrawerVisible} destroyOnHidden
+      <Drawer {...drawerProps} rootClassName="pier-drawer-scope" className="pier-drawer-scope" width="min(920px, 96vw)" title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editPierId ? 'Chỉnh sửa thông tin Cầu cảng' : 'Thêm mới Cầu cảng'}</span>} open={createDrawerVisible} destroyOnHidden
         onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
-        afterOpenChange={(open) => { if (!open) setEditPierId(undefined); }}
+        afterOpenChange={(open) => { if (!open) { setEditPierId(undefined); setEditBaseStatus(undefined); } }}
         extra={<Button type="text" onClick={() => { setCreateDrawerVisible(false); createForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
-        footer={<div style={drawerFooterStyle}>{editPierId ? <Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); pierFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button> : <><Button htmlType="button" onClick={() => { setActionType('draft'); pierFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button><Button htmlType="button" type="primary" onClick={() => { setActionType('submit'); pierFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button><Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); pierFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button></>}</div>}
+        footer={<div style={drawerFooterStyle}>{(() => {
+          const st = !editPierId ? 'DRAFT' : (editBaseStatus ? normalizeApprovalStatus(editBaseStatus) : 'DRAFT');
+          if (st === 'APPROVED') {
+            return <Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); pierFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>;
+          }
+          if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2') {
+            return <Button htmlType="button" type="primary" onClick={() => { setActionType('submit'); pierFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>;
+          }
+          // Lưu tạm hoặc tạo mới: 3 nút.
+          return <><Button htmlType="button" onClick={() => { setActionType('draft'); pierFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button><Button htmlType="button" type="primary" onClick={() => { setActionType('submit'); pierFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button><Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); pierFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button></>;
+        })()}</div>}
         styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }}>
         <Form form={createForm} layout="vertical">
           <style>{requiredMarkStyle}</style>
@@ -994,7 +1160,7 @@ export default function PierListPage() {
         </Form>
       </Drawer>
 
-      <Drawer {...drawerProps} size={1000} title={<span style={drawerTitleStyle}>Chi tiết cầu cảng{detailRecord ? ` - ${detailRecord.pierName}` : ''}</span>} open={detailDrawerVisible}
+      <Drawer {...drawerProps} rootClassName="pier-drawer-scope" className="pier-drawer-scope" size={1000} title={<span style={drawerTitleStyle}>Chi tiết cầu cảng{detailRecord ? ` - ${detailRecord.pierName}` : ''}</span>} open={detailDrawerVisible}
         onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); setBerthDetail(null); }}
         extra={<Button type="text" onClick={() => { setDetailDrawerVisible(false); setDetailRecord(null); setBerthDetail(null); }} style={drawerCloseBtnStyle}>✕</Button>}
         styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }} footer={null}>
@@ -1004,6 +1170,8 @@ export default function PierListPage() {
       {/* ── Chi tiết kết cấu hạ tầng (Cơ sở sửa chữa, đóng tàu) — drawer lồng 950 ── */}
       <AppDrawer
         size={950}
+        rootClassName="pier-drawer-scope"
+        className="pier-drawer-scope"
         title={<span style={drawerTitleStyle}>Chi tiết kết cấu hạ tầng{infraDetail?.record ? ` - ${infraDetail.record.shipRepairYardName || ''}` : ''}</span>}
         open={!!infraDetail}
         onClose={() => setInfraDetail(null)}
@@ -1029,31 +1197,21 @@ export default function PierListPage() {
         ) : null}
       </AppDrawer>
 
-      <Modal title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận xóa cầu cảng</span>} open={deleteModalOpen}
-        onCancel={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
-        footer={[
-          <Button key="cancel" onClick={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
-          <Button key="delete" type="primary" danger onClick={handleConfirmDelete}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Xác nhận xóa</Button>,
-        ]}
-        width={480}>
-        <div style={{ padding: '8px 0' }}>
-          <Alert message="Hành động này không thể hoàn tác" type="warning" showIcon icon={<ExclamationCircleOutlined />}
-            style={{ marginBottom: spaceFormField, borderRadius: radiusPill }} />
-          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>
-            Vui lòng nhập <strong>tên cầu</strong> hoặc gõ <strong>"XÓA"</strong> để xác nhận xóa.
-          </p>
-          {deletingRecord && (
-            <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
-              Cầu cảng: <strong style={{ color: textPrimary }}>{deletingRecord.pierName}</strong>
-            </p>
-          )}
-          <Input placeholder="Nhập tên cầu hoặc XÓA" value={deleteConfirmText}
-            onChange={(e) => setDeleteConfirmText(e.target.value)} onPressEnter={handleConfirmDelete}
-            style={{ borderRadius: radiusPill, height: 40 }} autoFocus />
-        </div>
-      </Modal>
+      {/* Xóa cầu cảng — giống Bến cảng (DeleteConfirmModal) */}
+      <DeleteConfirmModal
+        open={deleteModalOpen}
+        onCancel={() => {
+          if (!deleteLoading) {
+            setDeleteModalOpen(false);
+            setDeletingRecord(null);
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        loading={deleteLoading}
+        itemType="cầu cảng"
+        itemName={deletingRecord?.pierName}
+        itemCode={deletingRecord?.pierCode}
+      />
 
       <Modal styles={{ mask: { background: 'rgba(0, 0, 0, 0.4)' } }} title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Từ chối phê duyệt</span>}
         open={rejectModalOpen} onCancel={() => { setRejectModalOpen(false); setRejectingRecord(null); setRejectReason(''); setRejectError(''); }}
@@ -1069,13 +1227,8 @@ export default function PierListPage() {
           {rejectingRecord && <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}><strong style={{ color: textPrimary }}>{rejectingRecord.pierCode} — {rejectingRecord.pierName}</strong></p>}
           <Input.TextArea placeholder="Nhập lý do từ chối..." value={rejectReason}
             onChange={(e) => { setRejectReason(e.target.value); setRejectError(''); }}
-            rows={3} maxLength={500} showCount style={{ borderRadius: 8, fontSize: fontSizeMd, borderColor: rejectError ? statusCritical : undefined }} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-            {rejectError ? <span style={{ color: statusCritical, fontSize: fontSizeMd }}>{rejectError}</span> : <span />}
-            <span style={{ color: rejectReason.trim().length < 10 ? statusCritical : textTertiary, fontSize: fontSizeMd }}>
-              {rejectReason.length}/10
-            </span>
-          </div>
+            rows={3} maxLength={500} style={{ borderRadius: 8, fontSize: fontSizeMd, borderColor: rejectError ? statusCritical : undefined }} />
+          {rejectError ? <div style={{ marginTop: 4 }}><span style={{ color: statusCritical, fontSize: fontSizeMd }}>{rejectError}</span></div> : null}
         </div>
       </Modal>
 
@@ -1099,98 +1252,89 @@ export default function PierListPage() {
       {/* ── Approve Modal (chuẩn VTS CHK) ─────────────────────────── */}
       <ApprovalModal
         visible={approveModalOpen}
-        level={approvingRecord?.approvalStatus === 'APPROVED_LEVEL2' ? 'c2' : 'c1'}
+        level={approvingRecord?.approvalStatus === 'APPROVED_LEVEL1' ? 'c2' : 'c1'}
         onConfirm={(content) => { if (approvingRecord) handleApprove(approvingRecord, content); }}
         onCancel={() => { setApproveModalOpen(false); setApprovingRecord(null); }}
       />
 
-      <Drawer
-        {...drawerProps}
-        size={880}
+      {/* ── History drawer (timeline theo chuẩn quản lý Cảng biển) ── */}
+      <AppDrawer
+        width="min(880px, 96vw)"
+        rootClassName="pier-drawer-scope"
+        className="pier-drawer-scope"
         mask
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
             <Space size={spaceSm} style={{ alignItems: 'center' }}>
               <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
               <span style={drawerTitleStyle}>
-                {historyMode === 'all' ? 'Tất cả lịch sử thay đổi — Cầu cảng' : (historyTarget ? `Lịch sử thay đổi — ${historyTarget.pierName}` : 'Lịch sử thay đổi')}
+                Lịch sử thay đổi — {historyTarget?.pierName || historyTarget?.pierCode || ''}
               </span>
-              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyGroupCount}</span>
+              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
+                Tổng cộng {Array.isArray(filteredHistory) ? filteredHistory.length : 0}
+              </span>
             </Space>
           </div>
         }
         open={historyOpen}
         onClose={() => setHistoryOpen(false)}
-        extra={<Button type="text" onClick={() => setHistoryOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
         footer={null}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-          body: { padding: '12px 24px 12px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
+          body: { padding: '16px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
         }}>
         <style>{`.history-dt-popup .ant-picker-now-btn { color: ${actionPrimary} !important; }`}</style>
         <div style={{ flexShrink: 0 }}>
-        {!historyLoading && (
-          <div style={{ display: 'none' }}>
-            <Radio.Group value={historyMode} size="middle" style={{ display: 'flex', width: '100%', borderBottom: `1px solid ${borderDefault}` }}
-              onChange={async e => { const mode = e.target.value; setHistoryMode(mode); setHistoryLoading(true); setHistoryRecords([]); if (mode === 'all') { try { const res = await api.get('/v1/piers/history/all'); const d = res.data?.data; setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory.filter((r: any) => r.fieldName !== 'CREATE') : []); setHistoryEntityNames(d?.entityNames || {}); } catch { toast.error('Không thể tải lịch sử'); } finally { setHistoryLoading(false); } } else { try { const res = await api.get(`/v1/piers/${historyTarget?.id}/history`); const d = res.data?.data; setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory.filter((r: any) => r.fieldName !== 'CREATE') : []); } catch { toast.error('Không thể tải lịch sử'); } finally { setHistoryLoading(false); } } }}>
-              <Radio.Button value="current" style={{ fontWeight: fontWeightBold, color: historyMode !== 'current' ? textSecondary : actionPrimary }}>Bản ghi hiện tại</Radio.Button>
-              <Radio.Button value="all" style={{ fontWeight: fontWeightBold, color: historyMode !== 'all' ? textSecondary : actionPrimary }}>Tất cả bản ghi</Radio.Button>
-            </Radio.Group>
-          </div>
-        )}
-        {!historyLoading && (
-          <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
-            <Input
-              placeholder="Tìm kiếm nội dung thay đổi..."
-              allowClear
-              value={historySearchInput}
-              onChange={(e) => {
-                const val = e.target.value;
-                setHistorySearchInput(val);
-                if (!val) setHistorySearch('');
-              }}
-              onPressEnter={() => setHistorySearch(historySearchInput.trim())}
-              style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
-            />
-            {historyMode === 'all' && <Select placeholder="Chọn cầu cảng" allowClear showSearch value={historyEntityFilter || undefined}
-              onChange={v => setHistoryEntityFilter(v || '')}
-              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-              style={{ width: 200, borderRadius: radiusPill, height: 40 }}
-              options={Object.entries(historyEntityNames).map(([id, name]) => ({ value: id, label: name }))} />}
-            <DatePicker.RangePicker
-              {...getRangePickerProps({
-                value: (historyFrom && historyTo)
-                  ? [dayjs(historyFrom), dayjs(historyTo)]
-                  : (historyFrom ? [dayjs(historyFrom), null] : (historyTo ? [null, dayjs(historyTo)] : null)),
-                onChange: (dates: any) => {
-                  if (!dates || dates.length === 0 || (!dates[0] && !dates[1])) {
-                    setHistoryFrom('');
-                    setHistoryTo('');
-                  } else {
-                    setHistoryFrom(dates[0] ? dates[0].startOf('day').format('YYYY-MM-DD HH:mm') : '');
-                    setHistoryTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DD HH:mm') : '');
-                  }
-                },
-                style: { width: 280, borderRadius: radiusPill, height: 40 },
-              })}
-            />
-            <Button
-              type="primary"
-              icon={<SearchOutlined />}
-              onClick={() => setHistorySearch(historySearchInput.trim())}
-              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}
-            >
-              Tìm kiếm
-            </Button>
-          </div>
-        )}
+          {!historyLoading && (
+            <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
+              <Input
+                placeholder="Tìm kiếm nội dung thay đổi..."
+                allowClear
+                value={historyFilters.keyword || ''}
+                onChange={(e) => setHistoryFilters((p) => ({ ...p, keyword: e.target.value }))}
+                style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
+              />
+              <DatePicker
+                placeholder="Từ ngày"
+                classNames={{ popup: { root: 'history-dt-popup' } }}
+                value={historyFilters.fromDate ? dayjs(historyFilters.fromDate) : null}
+                onChange={(d) => setHistoryFilters((p) => ({ ...p, fromDate: d ? d.format('YYYY-MM-DD') : '' }))}
+                style={{ width: 140, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY"
+              />
+              <DatePicker
+                placeholder="Đến ngày"
+                classNames={{ popup: { root: 'history-dt-popup' } }}
+                value={historyFilters.toDate ? dayjs(historyFilters.toDate) : null}
+                onChange={(d) => setHistoryFilters((p) => ({ ...p, toDate: d ? d.format('YYYY-MM-DD') : '' }))}
+                style={{ width: 140, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY"
+              />
+              <Button type="primary" icon={<SearchOutlined />} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}
+                onClick={() => { /* Lọc real-time theo từng thao tác nhập/chọn — giống Cảng biển */ }}>
+                Tìm kiếm
+              </Button>
+            </div>
+          )}
         </div>
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-        {historyLoading ? <LoadingSkeleton rows={5} /> : historyRecords.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div></div>
-        ) : renderPierHistoryTimeline(historyRecords)}
+          {historyLoading ? (
+            <div style={{ padding: `${spaceMd}px 0` }}>
+              <LoadingSkeleton rows={5} />
+            </div>
+          ) : historyRecords.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
+              <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+              <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
+            </div>
+          ) : hasActiveHistoryFilter && filteredHistory.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
+              <SearchOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+              <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Không tìm thấy kết quả phù hợp</div>
+            </div>
+          ) : (
+            renderPierHistoryTimeline(filteredHistory)
+          )}
         </div>
-      </Drawer>
+      </AppDrawer>
     </div>
     </ThemeTokenProvider>
   );

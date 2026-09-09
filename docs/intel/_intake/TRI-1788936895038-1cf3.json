@@ -1,0 +1,67 @@
+{
+  "triage_id": "TRI-1788936895038-1cf3",
+  "created_at": 1788936895038,
+  "request_summary": "Giải quyết xung đột git conflict markers trong PierForm.tsx và BuoyBerthForm.tsx",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/buoy-berth/BuoyBerthForm.tsx",
+      "frontend/src/pages/port/PierForm.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/buoy-berth/BuoyBerthForm.tsx",
+      "frontend/src/pages/port/PierForm.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 1 package(s) / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn hình Tạo/Sửa Cầu cảng và Bến phao",
+  "blast_radius": 2,
+  "done_oracle": "Xóa triệt để các conflict markers (<<<<<<<, =======, >>>>>>>) và giải quyết xung đột mã nguồn trong PierForm.tsx và BuoyBerthForm.tsx, npm run build thành công 100%",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "frontend",
+      "timeout_ms": 30000
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "d21414a40166754fca89fb17a7155f285524a98c",
+    "dirty": true,
+    "captured_at": 1788936895318
+  },
+  "owner_candidates": [
+    {
+      "module_id": "M-026",
+      "slug": "quan-ly-ben-phao",
+      "overlap": 1,
+      "total": 2
+    },
+    {
+      "module_id": "M-1025",
+      "slug": "berth-chk-ui-sync",
+      "overlap": 1,
+      "total": 2
+    },
+    {
+      "module_id": "M-1026",
+      "slug": "port-chk-ui-sync",
+      "overlap": 1,
+      "total": 2
+    }
+  ],
+  "budget": {
+    "wall_clock_ms": 1320000,
+    "turns": 54,
+    "turns_used": 151
+  }
+}

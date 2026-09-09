@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Tabs, Collapse, Drawer, Button, Modal } from 'antd';
+import { useState } from 'react';
+import { Tabs, Drawer, Button, Modal } from 'antd';
 import { FileOutlined, EyeOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { detailLabelStyle } from '../../components/detail-drawer/detailSkin';
 import { colors } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -14,7 +15,6 @@ import {
 } from '../../themetokenchk';
 import type { TransferArea } from '../../types/port';
 import { VIETNAM_PROVINCES } from '../../types/common';
-import api from '../../services/api';
 
 export interface TransferAreaDetailContentProps {
   selectedRecord: TransferArea;
@@ -32,7 +32,6 @@ export interface TransferAreaDetailContentProps {
   incidentList?: any[];
 }
 
-const detailLabelStyle: React.CSSProperties = { color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd };
 
 const OPERATIONAL_FUNCTIONS_LABEL_MAP: Record<string, string> = {
   CONTAINER: 'Hàng Container',
@@ -115,29 +114,9 @@ export default function TransferAreaDetailContent({
   const [operationOpen, setOperationOpen] = useState(true);
   const [maintenanceOpen, setMaintenanceOpen] = useState(true);
   const [incidentOpen, setIncidentOpen] = useState(true);
-  const [approvalLogs, setApprovalLogs] = useState<any[]>([]);
-  const [changeHistory, setChangeHistory] = useState<any[]>([]);
   const [viewingWaterArea, setViewingWaterArea] = useState<any | null>(null);
   const [gisModalOpen, setGisModalOpen] = useState(false);
-  const [, setLoading] = useState(true);
-
-  const loadDetailData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await api.get(`/v1/transfer-area/${selectedRecord.id}/history`);
-      const data = res.data?.data || res.data || {};
-      setChangeHistory(Array.isArray(data?.changeHistory) ? data.changeHistory : []);
-      setApprovalLogs(Array.isArray(data?.approvalLog) ? data.approvalLog : []);
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedRecord.id]);
-
-  useEffect(() => {
-    loadDetailData();
-  }, [loadDetailData]);
+  const [approvalOpen, setApprovalOpen] = useState(true);
 
   return (
     <>
@@ -249,6 +228,31 @@ export default function TransferAreaDetailContent({
                       { title: 'Thao tác', key: 'actions', width: 100, align: 'center' as const, render: (_: any, rec: any) => <Button type="text" size="small" icon={<EyeOutlined style={{ color: actionPrimary }} />} onClick={() => setViewingWaterArea(rec)} /> },
                     ]}
                   />
+                </div>
+              )}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setApprovalOpen(!approvalOpen)}>
+                <span style={{ color: approvalOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{approvalOpen ? '▼' : '▶'} Thông tin phê duyệt</span>
+              </button>
+              {approvalOpen && (
+                <div className="chk-detail-grid" style={{ marginTop: 4 }}>
+                  {[
+                    ['Trạng thái', r.approvalStatus && approvalStyleMap[r.approvalStatus] ? <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>{approvalStyleMap[r.approvalStatus].label}</span> : '—'],
+                    ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.updatedBy || '') || r.updatedBy || '—'}</span>],
+                    ['Ngày cập nhật', fmtDateTime(r.updatedAt)],
+                    ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.submittedForApprovalBy || '') || r.submittedForApprovalBy || '—'}</span>],
+                    ['Ngày gửi phê duyệt', fmtDateTime(r.submittedForApprovalAt)],
+                    ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.portAuthorityApprovedBy || '') || r.portAuthorityApprovedBy || '—'}</span>],
+                    ['Ngày phê duyệt cấp Cảng vụ/Chi cục', fmtDateTime(r.portAuthorityApprovedAt)],
+                    ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.departmentApprovedBy || '') || r.departmentApprovedBy || '—'}</span>],
+                    ['Ngày phê duyệt cấp Cục', fmtDateTime(r.departmentApprovedAt)],
+                    ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.portAuthorityApprovalContent || '—'],
+                    ['Nội dung phê duyệt cấp Cục', r.departmentApprovalContent || '—'],
+                  ].map(([label, value], i) => (
+                    <div key={i} className="chk-detail-row">
+                      <span className="chk-detail-label">{label}</span>
+                      <span className="chk-detail-value">{value}</span>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -391,97 +395,7 @@ export default function TransferAreaDetailContent({
             </div>
           ),
         },
-        {
-          key: 'system', label: 'Xử lý & theo dõi',
-          children: (
-            <div style={{ paddingTop: 3 }}>
-              <div className="chk-detail-grid">
-                {[
-                  ['Trạng thái', r.approvalStatus && approvalStyleMap[r.approvalStatus] ? <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>{approvalStyleMap[r.approvalStatus].label}</span> : '—'],
-                  ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.updatedBy || '') || r.updatedBy || '—'}</span>],
-                  ['Ngày cập nhật', fmtDateTime(r.updatedAt)],
-                  ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.submittedForApprovalBy || '') || r.submittedForApprovalBy || '—'}</span>],
-                  ['Ngày gửi phê duyệt', fmtDateTime(r.submittedForApprovalAt)],
-                  ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.portAuthorityApprovedBy || '') || r.portAuthorityApprovedBy || '—'}</span>],
-                  ['Ngày phê duyệt cấp Cảng vụ/Chi cục', fmtDateTime(r.portAuthorityApprovedAt)],
-                  ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.departmentApprovedBy || '') || r.departmentApprovedBy || '—'}</span>],
-                  ['Ngày phê duyệt cấp Cục', fmtDateTime(r.departmentApprovedAt)],
-                  ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.portAuthorityApprovalContent || '—'],
-                  ['Nội dung phê duyệt cấp Cục', r.departmentApprovalContent || '—'],
-                ].map(([label, value], i) => (
-                  <div key={i} className="chk-detail-row" style={label === 'Trạng thái' ? { gridColumn: '1 / -1' } : undefined}>
-                    <span className="chk-detail-label">{label}</span>
-                    <span className="chk-detail-value">{value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ),
-        },
-        ...(approvalLogs.length > 0 ? [{
-          key: 'approval', label: `Phê duyệt (${approvalLogs.length})`,
-          children: (
-            <Collapse defaultActiveKey={[0]} style={{ margin: spaceMd }}>
-              {approvalLogs.map((log, idx) => (
-                <Collapse.Panel key={idx} header={`Lý ${idx + 1}`}>
-                  <div style={{ marginBottom: spaceMd }}>
-                    <div style={{ ...detailLabelStyle, marginBottom: spaceSm }}>Cấp phê duyệt</div>
-                    <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{log.level || '—'}</span>
-                  </div>
-                  <div style={{ marginBottom: spaceMd }}>
-                    <div style={{ ...detailLabelStyle, marginBottom: spaceSm }}>Người phê duyệt</div>
-                    <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{userMap.get(log.approvedBy) || log.approvedBy || '—'}</span>
-                  </div>
-                  <div style={{ marginBottom: spaceMd }}>
-                    <div style={{ ...detailLabelStyle, marginBottom: spaceSm }}>Thời gian</div>
-                    <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{fmtDateTime(log.approvedAt)}</span>
-                  </div>
-                  <div style={{ marginBottom: spaceMd }}>
-                    <div style={{ ...detailLabelStyle, marginBottom: spaceSm }}>Nội dung</div>
-                    <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{log.content || '—'}</span>
-                  </div>
-                  {log.rejectionReason && (
-                    <div style={{ marginBottom: spaceMd }}>
-                      <div style={{ ...detailLabelStyle, marginBottom: spaceSm, color: statusCritical }}>Lý do từ chối</div>
-                      <span style={{ fontSize: fontSizeMd, color: statusCritical }}>{log.rejectionReason}</span>
-                    </div>
-                  )}
-                </Collapse.Panel>
-              ))}
-            </Collapse>
-          ),
-        }] : []),
-        ...(changeHistory.length > 0 ? [{
-          key: 'history', label: `Thay đổi (${changeHistory.length})`,
-          children: (
-            <Collapse defaultActiveKey={[0]} style={{ margin: spaceMd }}>
-              {changeHistory.map((change, idx) => (
-                <Collapse.Panel key={idx} header={`Thay đổi ${idx + 1}`}>
-                  <div style={{ marginBottom: spaceMd }}>
-                    <div style={{ ...detailLabelStyle, marginBottom: spaceSm }}>Trường thay đổi</div>
-                    <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{change.changedField || change.fieldName || '—'}</span>
-                  </div>
-                  <div style={{ marginBottom: spaceMd }}>
-                    <div style={{ ...detailLabelStyle, marginBottom: spaceSm }}>Giá trị cũ</div>
-                    <span style={{ fontSize: fontSizeMd, color: textTertiary }}>{change.previousValue ?? change.oldValue ?? '—'}</span>
-                  </div>
-                  <div style={{ marginBottom: spaceMd }}>
-                    <div style={{ ...detailLabelStyle, marginBottom: spaceSm }}>Giá trị mới</div>
-                    <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{change.newValue || '—'}</span>
-                  </div>
-                  <div style={{ marginBottom: spaceMd }}>
-                    <div style={{ ...detailLabelStyle, marginBottom: spaceSm }}>Thời gian</div>
-                    <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{fmtDateTime(change.approvedDate || change.changedAt)}</span>
-                  </div>
-                  <div style={{ marginBottom: spaceMd }}>
-                    <div style={{ ...detailLabelStyle, marginBottom: spaceSm }}>Người thay đổi</div>
-                    <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{userMap.get(change.approvedBy || change.changedBy || '') || change.approvedBy || change.changedBy || '—'}</span>
-                  </div>
-                </Collapse.Panel>
-              ))}
-            </Collapse>
-          ),
-        }] : []),
+
       ]}
     />
 
