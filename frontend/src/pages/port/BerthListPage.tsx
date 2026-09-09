@@ -31,7 +31,6 @@ import { lineObjectService } from '../../services/lineObjectService';
 import { LineObject } from '../../types/lineObject';
 import type { Organization } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
-import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { ScreenHeader, DataTable, type ScreenHeaderAction } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
@@ -262,8 +261,6 @@ export default function BerthList() {
     && !!linkedRecordId;
   const isEmbeddedDetail = isEmbeddedAction && linkedAction === 'detail';
   const hasPerm = usePermissionStore((s: { hasPermission: (key: string) => boolean }) => s.hasPermission);
-  const userPermissions = useAuthStore((s) => s.user?.permissions) || [];
-  const isAuditViewer = userPermissions.includes('admin:manage') || userPermissions.includes('admin:operation');
 
   // ── Filter state ─────────────────────────────────────────────────
   const [managingUnitId, setManagingUnitId] = useState<string | undefined>();
@@ -1029,15 +1026,8 @@ export default function BerthList() {
         } },
     ];
 
-    // Audit columns — only for Admin Cục / admin-operation (BR-018-05)
-    const auditColumns: any[] = isAuditViewer ? [
-      { key: 'updatedAt', label: <span>Cán bộ cập nhật</span>, dataIndex: 'updatedAt', width: 200, sortable: true, sortOrder,
-        render: (v: string | null, record: Berth) => (
-          <div>
-            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.updatedBy || '') || record.updatedBy || '—'}</span><br />
-            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
-          </div>
-        ) },
+    // Audit columns (F-018 TKCT)
+    const auditColumns: any[] = [
       { key: 'submittedForApprovalAt', label: <span>Cán bộ gửi Phê duyệt</span>, dataIndex: 'submittedForApprovalAt', width: 210, sortable: true, sortOrder,
         render: (v: string | null, record: Berth) => (
           <div>
@@ -1063,7 +1053,7 @@ export default function BerthList() {
         ) },
       { key: 'departmentApprovalContent', label: 'Nội dung phê duyệt cấp Cục', dataIndex: 'departmentApprovalContent', width: 280, sortable: true, sortOrder,
         render: (v: string | null) => v || '—' },
-    ] : [];
+    ];
 
     const tailColumns: any[] = [
       { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 260, sortable: true, sortOrder, ellipsis: false,
@@ -1075,7 +1065,7 @@ export default function BerthList() {
           const s = APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v?.toUpperCase()] || { color: textTertiary, label: v || '—' };
           return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
         } },
-      ...(!isAuditViewer ? [{
+      {
         key: 'updatedAt',
         label: 'Cán bộ cập nhật',
         dataIndex: 'updatedAt',
@@ -1094,7 +1084,7 @@ export default function BerthList() {
             </div>
           </div>
         ),
-      }] : []),
+      },
     ];
 
     const allColumns = [...baseColumns, ...tailColumns, ...auditColumns];
@@ -1102,7 +1092,7 @@ export default function BerthList() {
       ...col,
       sortOrder: col.sortable && col.key === sortField ? sortOrder : undefined,
     }));
-  }, [page, pageSize, portOptions, organizations, orgMap, userMap, waterwayMap, sortField, sortOrder, isAuditViewer, openDetailDrawer]);
+  }, [page, pageSize, portOptions, organizations, orgMap, userMap, waterwayMap, sortField, sortOrder, openDetailDrawer]);
 
   // ── Detail drawer content ────────────────────────────────────────
   const openPierDetail = useCallback(async (id: string) => {

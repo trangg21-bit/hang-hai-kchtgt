@@ -21,7 +21,6 @@ import api from '../../services/api';
 import { userService } from '../../services/userService';
 import type { Organization } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
-import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { OPERATIONAL_FUNCTION_OPTIONS, formatOperationalFunction } from '../../constants/operationalFunction';
 import { ScreenHeader, DataTable } from '../../components/list-view';
@@ -362,8 +361,6 @@ export default function PierListPage() {
     && (linkedAction === 'detail' || linkedAction === 'edit')
     && !!linkedRecordId;
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
-  const userPermissions = useAuthStore((s) => s.user?.permissions) || [];
-  const isAuditViewer = userPermissions.includes('admin:manage') || userPermissions.includes('admin:operation');
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const [orgUnit, setOrgUnit] = useState<string | undefined>(undefined);
   const [pierNameInput, setPierNameInput] = useState('');
@@ -937,7 +934,6 @@ export default function PierListPage() {
   }, [hasPerm, openDetailDrawer, openHistory, handleSubmitApproval, openRejectModal, openDeleteModal]);
 
   const auditColumns = useMemo(() => {
-    if (!isAuditViewer) return [];
     return [
       { label: 'Cán bộ gửi Phê duyệt', dataIndex: 'submittedForApprovalAt', key: 'submittedForApprovalAt', width: 230, sortable: true,
         render: (v: string | null, record: Pier) => {
@@ -979,7 +975,7 @@ export default function PierListPage() {
           );
         } },
     ];
-  }, [isAuditViewer, userMap]);
+  }, [userMap]);
 
   // Giá trị sort theo cột hiển thị (map id → label) để click header cột nào cũng sort đúng thứ tự nhìn thấy
   const getSortValue = useCallback((r: any, field: string): string | number => {
