@@ -186,8 +186,8 @@ export const DIKE_REVETMENT_TYPE_LABELS: Record<DikeRevetmentType, string> = {
 export const DIKE_REVETMENT_STATUS_LABELS: Record<string, string> = {
   DRAFT: 'Lưu tạm',
   PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-  APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục',
+  APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục',
   APPROVED: 'Đã phê duyệt',
   REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
-  REJECTED_LEVEL2: 'Từ chối cấp Cục',
+  REJECTED_LEVEL2: 'Từ chối cấp cục',
 };

@@ -232,6 +232,12 @@ public class VtsAssistService {
     boolean includeAll = scope.unrestricted();
     Collection<UUID> orgUnitIds = scope.orgUnitIds();
 
+    // Trim khoảng trắng thừa đầu/cuối của giá trị nhập trên filter dạng text (tên/mã/từ khóa)
+    // để tìm kiếm tương đối (LIKE %...%) không bỏ sót khi người dùng gõ lẫn khoảng trắng.
+    deviceCode = (deviceCode == null || deviceCode.isBlank()) ? null : deviceCode.trim();
+    deviceName = (deviceName == null || deviceName.isBlank()) ? null : deviceName.trim();
+    search = (search == null || search.isBlank()) ? null : search.trim();
+
     Sort sort = buildSort(sortBy, sortOrder);
     Pageable pageable = PageRequest.of(Math.max(0, page), Math.min(size, 100), sort);
 

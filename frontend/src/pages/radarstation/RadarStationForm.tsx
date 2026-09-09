@@ -44,9 +44,35 @@ import RejectionModal from '../../components/shared/RejectionModal';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
-import { colors, fontWeightBold, fontSizeLg, fontSizeMd, spaceFormField, radiusLg, radiusPill, borderDefault, textTertiary, textPrimary, surfaceCard, outlineButtonStyle, primaryButtonStyle, statusBadgeStyle, statusDraft, statusAttention, statusOperational, statusCritical, statusInfo, inputStyle, selectStyle } from '../../themetokenchk';
+import { colors, fontWeightBold, fontSizeLg, spaceFormField, radiusLg, radiusPill, borderDefault, textTertiary, textPrimary, surfaceCard, outlineButtonStyle, primaryButtonStyle, statusBadgeStyle, statusDraft, statusAttention, statusOperational, statusCritical, statusInfo, inputStyle, selectStyle } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+
+// Cỡ chữ chuẩn 13.5px cho màn trạm radar (tạo/mở chi tiết) — thay token fontSizeMd=13 của themetokenchk,
+// mirror chuẩn BerthListPage để mọi text/label dùng fontSizeMd hiển thị 13.5px.
+const fontSizeMd = 13.5;
+const radarFormTokens = { ...themeTokenChk, fontSizeMd: 13.5 };
+const formScopeFontCss = `
+  .radar-form-scope .ant-table,
+  .radar-form-scope .ant-table-cell,
+  .radar-form-scope .ant-table-thead > tr > th,
+  .radar-form-scope .ant-table-tbody > tr > td,
+  .radar-form-scope .ant-input,
+  .radar-form-scope .ant-input-affix-wrapper,
+  .radar-form-scope .ant-select,
+  .radar-form-scope .ant-select-selection-item,
+  .radar-form-scope .ant-select-item-option-content,
+  .radar-form-scope .ant-picker,
+  .radar-form-scope .ant-picker-input > input,
+  .radar-form-scope .ant-btn,
+  .radar-form-scope .ant-breadcrumb,
+  .radar-form-scope .ant-form-item-label > label,
+  .radar-form-scope .ant-tabs-tab,
+  .radar-form-scope .chk-detail-label,
+  .radar-form-scope .chk-detail-value {
+    font-size: 13.5px !important;
+  }
+`;
 
 export interface RadarStationFormProps {
   open?: boolean;
@@ -897,9 +923,12 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   // ── Modal (chế độ dùng chung từ danh sách) ──────────────────────────
   if (isModalMode) {
     return (
-      <ThemeTokenProvider tokens={themeTokenChk}>
+      <ThemeTokenProvider tokens={radarFormTokens}>
       <>
+        <style>{formScopeFontCss}</style>
         <Modal
+          rootClassName="radar-form-scope"
+          className="radar-form-scope"
           title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{title}</span>}
           open={open}
           onCancel={onCancel}
@@ -978,8 +1007,9 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   ];
 
   return (
-    <ThemeTokenProvider tokens={themeTokenChk}>
-    <div style={{ padding: '24px' }}>
+    <ThemeTokenProvider tokens={radarFormTokens}>
+    <div className="radar-form-scope" style={{ padding: '24px' }}>
+      <style>{formScopeFontCss}</style>
       {!isIframe && <Breadcrumb items={breadcrumbs} style={{ marginBottom: 16 }} />}
       <div style={{ background: surfaceCard, borderRadius: radiusLg, padding: '16px 24px' }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg, marginBottom: 8 }}>

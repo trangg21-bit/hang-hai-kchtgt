@@ -648,7 +648,7 @@ textarea.ant-input {
   padding: 0 12px !important;
   height: 40px !important;
 }
-.${scope} .ant-input-number:not(.ant-space-compact *) { border-radius: 999px !important; }
+.${scope} .ant-input-number:not(.ant-space-compact *):not(.ant-table *) { border-radius: 999px !important; }
 .${scope} .ant-space-compact > .ant-input-number,
 .${scope} .ant-space-compact > .ant-input-number-affix-wrapper {
   border-top-left-radius: 6px !important;

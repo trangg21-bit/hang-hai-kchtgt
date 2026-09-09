@@ -434,7 +434,7 @@ public class RadarStationService {
     public Map<String, Long> getTabCounts(UUID orgUnitId, String keyword, String conditionStatus) {
         Scope scope = resolveEffectiveScope(orgUnitId);
         String keywordPattern = (keyword != null && !keyword.trim().isEmpty())
-                ? "%" + keyword.trim().toLowerCase() + "%"
+                ? "%" + normalizeSearchKeyword(keyword) + "%"
                 : null;
         List<Object[]> rows = repository.countByApprovalStatus(
                 !scope.unrestricted(), scope.orgUnitIds(), orgUnitId, keywordPattern, conditionStatus);
@@ -478,10 +478,10 @@ public class RadarStationService {
                                                    Pageable pageable) {
         Scope scope = resolveEffectiveScope(orgUnitId);
         String keywordPattern = (keyword != null && !keyword.trim().isEmpty())
-                ? "%" + keyword.trim().toLowerCase() + "%"
+                ? "%" + normalizeSearchKeyword(keyword) + "%"
                 : null;
         String codePattern = (code != null && !code.trim().isEmpty())
-                ? "%" + code.trim().toLowerCase() + "%"
+                ? "%" + normalizeSearchKeyword(code) + "%"
                 : null;
         ApprovalStatus statusEnum = (approvalStatusStr != null && !approvalStatusStr.trim().isEmpty())
                 ? ApprovalStatus.fromString(approvalStatusStr)

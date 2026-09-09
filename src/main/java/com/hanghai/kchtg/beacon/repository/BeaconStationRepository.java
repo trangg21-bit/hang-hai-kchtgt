@@ -29,10 +29,10 @@ public interface BeaconStationRepository extends JpaRepository<BeaconStation, UU
     List<BeaconStation> findByCodeContainingIgnoreCase(String code);
 
     @Query("SELECT b FROM BeaconStation b WHERE " +
-           "(:name IS NULL OR LOWER(b.name) LIKE LOWER(CONCAT('%', cast(:name as string), '%'))) AND " +
-           "(:code IS NULL OR LOWER(b.code) LIKE LOWER(CONCAT('%', cast(:code as string), '%'))) AND " +
+           "(:name IS NULL OR CAST(function('immutable_unaccent', LOWER(b.name)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:name AS string), '%'))) AS string)) AND " +
+           "(:code IS NULL OR CAST(function('immutable_unaccent', LOWER(b.code)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:code AS string), '%'))) AS string)) AND " +
            "(:type IS NULL OR b.type = :type) AND " +
-           "(:primaryLightModel IS NULL OR LOWER(b.primaryLightModel) LIKE LOWER(CONCAT('%', CAST(:primaryLightModel AS string), '%'))) AND " +
+           "(:primaryLightModel IS NULL OR CAST(function('immutable_unaccent', LOWER(b.primaryLightModel)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:primaryLightModel AS string), '%'))) AS string)) AND " +
            "(:status IS NULL OR b.status = :status) AND " +
            "(:unitId IS NULL OR b.unitId = :unitId) AND " +
            "(:seaportId IS NULL OR b.seaportId = :seaportId) AND " +
@@ -67,10 +67,10 @@ public interface BeaconStationRepository extends JpaRepository<BeaconStation, UU
     );
 
     @Query("SELECT b FROM BeaconStation b WHERE " +
-           "(:name IS NULL OR LOWER(b.name) LIKE LOWER(CONCAT('%', cast(:name as string), '%'))) AND " +
-           "(:code IS NULL OR LOWER(b.code) LIKE LOWER(CONCAT('%', cast(:code as string), '%'))) AND " +
+           "(:name IS NULL OR CAST(function('immutable_unaccent', LOWER(b.name)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:name AS string), '%'))) AS string)) AND " +
+           "(:code IS NULL OR CAST(function('immutable_unaccent', LOWER(b.code)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:code AS string), '%'))) AS string)) AND " +
            "(:type IS NULL OR b.type = :type) AND " +
-           "(:primaryLightModel IS NULL OR LOWER(b.primaryLightModel) LIKE LOWER(CONCAT('%', CAST(:primaryLightModel AS string), '%'))) AND " +
+           "(:primaryLightModel IS NULL OR CAST(function('immutable_unaccent', LOWER(b.primaryLightModel)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:primaryLightModel AS string), '%'))) AS string)) AND " +
            "(:status IS NULL OR b.status = :status) AND " +
            "(:unitId IS NULL OR b.unitId = :unitId) AND " +
            "(:seaportId IS NULL OR b.seaportId = :seaportId) AND " +

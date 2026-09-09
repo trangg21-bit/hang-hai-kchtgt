@@ -85,7 +85,7 @@ export default function ApprovalStatusBadge({ status, size = 'default', labelOve
     <span
       style={{
         ...t.statusBadgeStyle(config.color),
-        ...(size === 'small' ? { padding: '1px 8px', fontSize: t.fontSizeMd - 1 } : null),
+        ...(size === 'small' ? { padding: '1px 8px', fontSize: t.fontSizeMd - 1 } : { fontSize: 13 }),
       }}
     >
       {config.label}

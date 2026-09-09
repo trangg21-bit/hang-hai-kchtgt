@@ -1,39 +1,36 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { fmtNum } from "../../utils/numFmt";
-import { parseWktToCoordinates, serializeCoordinatesToWkt, adjustCoordinateListForGeometry, ddToDms } from "../../utils/gisGeometry";
+import { parseWktToCoordinates, ddToDms } from "../../utils/gisGeometry";
 import { usePermissionStore } from "../../store/permissionStore";
 import {
   Alert,
   Button,
-  Checkbox,
   DatePicker,
   Space,
-  Tag,
-  Row,
-  Col,
   Input,
   Select,
   Modal,
   Form,
-  InputNumber,
   Typography,
-  Drawer,
 } from "antd";
 import { OrgUnitTreeSelect } from "../../components/org-unit";
 import {
   PlusOutlined,
   SearchOutlined,
-  DeleteOutlined,
   HistoryOutlined,
   ExclamationCircleOutlined,
   EnvironmentOutlined,
+  BankOutlined,
+  SlidersOutlined,
+  AuditOutlined,
+  DownOutlined,
+  RightOutlined,
 } from "@ant-design/icons";
 import { Tabs } from "antd";
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from "../../components/shared/InfrastructureAttachmentTab";
 import GisLocationSelector from "../../components/gis/GisLocationSelector";
 import { DetailTable } from "../../components/shared/DetailTable";
 import { useSearchParams } from "react-router-dom";
-import { DEFAULT_OPERATING_ORGANIZATIONS } from "../operatingOrganizationsData";
 import {
   fetchTransmissionList,
   fetchTransmissionById,
@@ -41,25 +38,23 @@ import {
   submitTransmission,
   approveTransmissionC1,
   approveTransmissionC2,
-  createTransmission,
-  updateTransmission,
-  generateTransmissionCode,
   fetchTransmissionHistory,
   fetchTransmissionAttachments,
-  uploadTransmissionAttachment,
-  deleteTransmissionAttachment,
   downloadTransmissionAttachment,
+  generateTransmissionCode,
 } from "./api";
+import TransmissionForm, { type TransmissionFormRef } from "./TransmissionForm";
 import {
   OPERATIONAL_STATUS_OPTIONS,
 } from "./schema";
-import type { TransmissionResponse, ApprovalRequest, CreateTransmissionRequest } from "./types";
+import type { TransmissionResponse, ApprovalRequest } from "./types";
 import toast from "../../components/ToastNotification";
 import ApprovalModal from "../../components/shared/ApprovalModal";
+import { AppDrawer } from "../../components/shared/AppDrawer";
 import { canEditApprovalRecord, canDeleteApprovalRecord } from "../../utils/approvalEditPolicy";
 import { cellTitleStyle, cellSubtitleStyle } from "../../themetokenchk";
 import * as themeTokenChk from "../../themetokenchk";
-import { ThemeTokenProvider, THEME_SCOPE_CLASS } from "../../context/ThemeTokenContext";
+import { ThemeTokenProvider } from "../../context/ThemeTokenContext";
 import { useAuthStore } from "../../store/authStore";
 import { deduplicateAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
 import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
@@ -67,12 +62,14 @@ import EmptyState from "../../components/EmptyState";
 import LoadingSkeleton from "../../components/LoadingSkeleton";
 import { VIETNAM_PROVINCES } from "../../types/common";
 import api from "../api";
+import { userService } from "../userService";
 import type { Symbol as MapSymbolType } from "../symbolService";
 import {
   ScreenHeader,
   DataTable,
   Pagination,
   FilterTableLayout,
+  SidebarFilterField,
 } from "../../components/list-view";
 
 /** Map unitOfMeasure code (Integer) → label cho hiển thị */
@@ -110,11 +107,6 @@ function formatUnitOfMeasure(code: number | null | undefined): string {
   return code != null && UOM_LABELS[code] ? UOM_LABELS[code] : '—';
 }
 
-// ── labelProps — matches PortFormContent.tsx ────────────────
-const labelProps = (text: string) => ({
-  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
-});
-
 import {
   colors,
   fontSizeMd,
@@ -132,14 +124,12 @@ import {
   actionPrimary,
   borderDefault,
   surfaceCard,
-  surfacePage,
   radiusPill,
-  radiusSm,
+  fontSizeCellTitle,
   fontSans,
   spaceMd,
   spaceFormField,
   spaceSm,
-  spaceLg,
   spaceXs,
   spaceXl,
   DRAWER_TABLE_SCROLL_Y,
@@ -147,31 +137,36 @@ import {
   drawerTitleStyle,
   drawerCloseBtnStyle,
   drawerFooterStyle,
-  drawerGisControlBoxStyle,
-  readonlyInputStyle,
-  selectStyle,
-  inputStyle,
   primaryButtonStyle,
   outlineButtonStyle,
   requiredMarkStyle,
   statusBadgeStyle,
-  getRangePickerProps,
   icons,
   statusInfo,
-  tableHeaderBg,
+  historyGroupGridStyle,
+  historyTimeStyle,
+  historyMetaRowStyle,
+  historyInfoCardStyle,
+  historyAccentBarStyle,
+  historyInfoTitleStyle,
+  historyChangeRowStyle,
+  historyCreateRowStyle,
+  historyFieldLabelStyle,
+  historyOldValueStyle,
+  historyNewValueStyle,
+  historyArrowStyle,
 } from "../../themetokenchk";
 import dayjs from "dayjs";
 
-const { Text } = Typography;
 
 // ── Trạng thái phê duyệt 2 cấp (C1 Cảng vụ → C2 Cục) — đồng bộ /vts-system ──
 const APPROVAL_STATUS_MAP: Record<string, string> = {
   DRAFT: 'Lưu tạm',
-  PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
-  APPROVED_LEVEL1: 'Chờ Cục duyệt',
-  APPROVED: 'Đã duyệt',
-  REJECTED_LEVEL1: 'Cảng vụ trả về',
-  REJECTED_LEVEL2: 'Cục trả về',
+  PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+  APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục',
+  APPROVED: 'Đã phê duyệt',
+  REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
+  REJECTED_LEVEL2: 'Từ chối cấp cục',
 };
 
 const APPROVAL_COLOR: Record<string, string> = {
@@ -207,7 +202,7 @@ function renderTransmissionStatusBadge(b: { color: string; label: string }) {
   if (b.color === 'green') c = statusOperational;
   else if (b.color === 'red') c = statusCritical;
   else if (b.color === 'orange') c = statusAttention;
-  return <span style={statusBadgeStyle(c)}>{b.label}</span>;
+  return <span className="kcht-cell-badge" style={statusBadgeStyle(c)}>{b.label}</span>;
 }
 
 /** Badge trạng thái phê duyệt 2 cấp — dùng APPROVAL_STATUS_MAP + APPROVAL_COLOR (quy chuẩn AGENTS.md) */
@@ -215,15 +210,9 @@ function renderApprovalBadge(status: string | null | undefined) {
   if (!status) return <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>;
   const display = APPROVAL_STATUS_MAP[status] || status;
   const color = APPROVAL_COLOR[status] || textTertiary;
-  return <span style={statusBadgeStyle(color)}>{display}</span>;
+  return <span className="kcht-cell-badge" style={statusBadgeStyle(color)}>{display}</span>;
 }
 
-const textAreaStyle: React.CSSProperties = {
-  borderRadius: radiusPill,
-  resize: 'none' as const,
-  padding: '12px 16px',
-  fontFamily: fontSans,
-};
 
 const tableValueStyle: React.CSSProperties = {
   fontSize: fontSizeMd,
@@ -235,9 +224,33 @@ const tableMetaStyle: React.CSSProperties = {
   color: textPrimary,
 };
 
-// Normalize form geometryType ('POINT' | 'LINE' | 'POLYGON') — fallback POINT khi chưa chọn
-const normalizeGeometryType = (value: unknown): 'POINT' | 'LINE' | 'POLYGON' =>
-  value === 'LINE' || value === 'POLYGON' ? value : 'POINT';
+// ── Card/section trong Drawer Xem chi tiết — đồng bộ chuẩn /berth (BerthDetailContent) ──
+const transmissionDetailSectionBoxStyle: React.CSSProperties = {
+  background: '#ffffff',
+  border: '1px solid #e2e8f0',
+  borderRadius: 8,
+  padding: '12px 18px 8px 18px',
+  marginBottom: 14,
+  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+};
+
+const transmissionDetailSectionHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginBottom: 10,
+  paddingBottom: 8,
+  borderBottom: '1px solid #f1f5f9',
+};
+
+const transmissionDetailSectionTitleStyle: React.CSSProperties = {
+  color: colors.sidebarBg,
+  fontWeight: fontWeightBold,
+  fontSize: fontSizeCellTitle,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+};
 
 /** Suy luận loại hình học từ WKT khi response không trả geometryType chuẩn */
 const inferGeometryTypeFromWkt = (wkt?: string | null): 'POINT' | 'LINE' | 'POLYGON' => {
@@ -249,178 +262,6 @@ const inferGeometryTypeFromWkt = (wkt?: string | null): 'POINT' | 'LINE' | 'POLY
   return 'POINT';
 };
 
-type TransmissionGpsRow = { latitude: number | null; longitude: number | null };
-
-/**
- * Tab GIS 'Thông tin vị trí' trong Drawer Tạo mới/Chỉnh sửa — chuẩn /vts-operation-center:
- * khung drawerGisControlBoxStyle (Loại đối tượng/Biểu tượng/Hệ quy chiếu/Quy tắc hiển thị)
- * + thanh 'Tọa độ' + DetailTable DMS (DRAWER_TABLE_SCROLL_Y.withGisForm).
- * Dùng chung 2 chế độ create/update (props phân biệt state + handler của từng form).
- */
-function TransmissionGisTab({
-  geometryType,
-  rows,
-  symbols,
-  renderDms,
-  onAddRow,
-  onDeleteRow,
-  onOpenMap,
-}: {
-  geometryType?: string | null;
-  rows: TransmissionGpsRow[];
-  symbols: MapSymbolType[];
-  renderDms: (index: number, field: 'latitude' | 'longitude', row: TransmissionGpsRow) => React.ReactNode;
-  onAddRow: () => void;
-  onDeleteRow: (index: number) => void;
-  onOpenMap: () => void;
-}) {
-  const geom = normalizeGeometryType(geometryType);
-  const isPoint = geom === 'POINT';
-  const minCount = geom === 'POLYGON' ? 3 : geom === 'LINE' ? 2 : 1;
-  // POINT chỉ hiển thị đúng 1 dòng đầu (slice(0,1)); LINE/POLYGON hiện toàn bộ
-  const shown = (isPoint ? rows.slice(0, 1) : rows).map((c, i) => ({ ...c, _idx: i }));
-  const gisLabel = (text: string) => (
-    <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '18px' }}>{text}</span>
-  );
-  return (
-    <div>
-      <div style={drawerGisControlBoxStyle}>
-        <Row gutter={[24, 0]} style={{ height: 68, marginBottom: 8 }}>
-          <Col span={12}>
-            <Form.Item label={gisLabel('Loại đối tượng')} name="geometryType" style={{ marginBottom: 0 }}>
-              <Select
-                placeholder="Chọn loại đối tượng"
-                allowClear
-                options={[
-                  { value: 'POINT', label: 'Đối tượng điểm' },
-                  { value: 'LINE', label: 'Đối tượng đường' },
-                  { value: 'POLYGON', label: 'Đối tượng vùng' },
-                ]}
-                style={{ ...selectStyle, height: 38 }}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item label={gisLabel('Biểu tượng')} name="mapSymbolId" style={{ marginBottom: 0 }}>
-              <Select
-                placeholder="Chọn biểu tượng bản đồ"
-                allowClear
-                showSearch
-                optionFilterProp="label"
-                disabled={!geometryType}
-                style={{ ...selectStyle, height: 38 }}
-              >
-                {symbols.map((sym) => (
-                  <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
-                    <Space size={6} style={{ display: 'inline-flex', alignItems: 'center' }}>
-                      {sym.image ? (
-                        <img
-                          src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`}
-                          alt={sym.name}
-                          style={{ width: 16, height: 16, objectFit: 'contain', verticalAlign: 'middle' }}
-                        />
-                      ) : (
-                        <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: actionPrimary }} />
-                      )}
-                      <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
-                    </Space>
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-        </Row>
-        <Row gutter={[24, 0]} style={{ height: 68, marginBottom: 8 }}>
-          <Col span={12}>
-            <Form.Item label={gisLabel('Hệ quy chiếu')} name="coordinateSystem" style={{ marginBottom: 0 }}>
-              <Select
-                placeholder="Chọn hệ quy chiếu"
-                options={[
-                  { value: 1, label: 'WGS-84' },
-                  { value: 2, label: 'VN-2000' },
-                ]}
-                style={{ ...selectStyle, height: 38 }}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item label={gisLabel('Quy tắc hiển thị')} name="displayRule" style={{ marginBottom: 0 }}>
-              <Input disabled style={{ ...readonlyInputStyle, borderRadius: radiusPill, height: 38 }} />
-            </Form.Item>
-          </Col>
-        </Row>
-        <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32, boxSizing: 'border-box' }}>
-          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
-            Tọa độ
-          </span>
-          <Space>
-            <Button
-              icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
-              onClick={onOpenMap}
-              style={{ borderRadius: radiusPill, height: 32, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 6, borderColor: actionPrimary, color: actionPrimary }}
-            >
-              Chọn vị trí trên bản đồ
-            </Button>
-            {!isPoint && rows.length > 0 && (
-              <Button type="primary" icon={<PlusOutlined />} onClick={onAddRow} style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 32 }}>
-                Thêm tọa độ
-              </Button>
-            )}
-          </Space>
-        </div>
-      </div>
-      <DetailTable
-        scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
-        dataSource={shown}
-        emptyText="Chưa có tọa độ nào"
-        rowKey="_idx"
-        columns={[
-          {
-            title: 'STT',
-            key: 'stt',
-            width: 60,
-            align: 'center',
-            render: (_: any, __: any, i: number) => (
-              <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>
-            ),
-          },
-          {
-            title: 'Vĩ độ (N)',
-            key: 'lat',
-            render: (_: any, r: any) => renderDms(r._idx, 'latitude', r),
-          },
-          {
-            title: 'Kinh độ (E)',
-            key: 'lng',
-            render: (_: any, r: any) => renderDms(r._idx, 'longitude', r),
-          },
-          {
-            title: '',
-            key: 'actions',
-            width: 50,
-            align: 'center' as const,
-            render: (_: any, r: any) => {
-              if (isPoint) return null;
-              // Chỉ cho xóa khi còn trên số điểm tối thiểu (LINE 2 / POLYGON 3)
-              if (rows.length <= minCount) return null;
-              return (
-                <Button
-                  type="text"
-                  danger
-                  size="small"
-                  icon={<DeleteOutlined style={{ fontSize: 16 }} />}
-                  style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                  onClick={() => onDeleteRow(r._idx)}
-                  title="Xóa tọa độ"
-                />
-              );
-            },
-          },
-        ]}
-      />
-    </div>
-  );
-}
 
 const TransmissionListPage = () => {
   const [searchParams] = useSearchParams();
@@ -476,7 +317,9 @@ const TransmissionListPage = () => {
         fetchTransmissionList({
           page: 0,
           size: 1,
-          orgUnitId: filterValues.orgUnitId || undefined,
+          orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__'
+                          ? filterValues.orgUnitId
+                          : undefined),
           approvalStatus: s.status,
         })
       )
@@ -486,7 +329,7 @@ const TransmissionListPage = () => {
       counts[statuses[i].key] = r.status === "fulfilled" ? (r.value?.totalElements ?? 0) : 0;
     });
     setTabCounts(counts);
-    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã duyệt + Từ chối (Cảng vụ trả về + Cục trả về)
+    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục)
     setTotalAll(
       counts.DRAFT +
         counts.PENDING_APPROVAL +
@@ -580,39 +423,29 @@ const TransmissionListPage = () => {
     fetchVtsOperationCenters();
   }, [fetchVtsOperationCenters]);
 
-  // Đơn vị khai thác — từ bảng operating_organizations (endpoint chung)
-  const [operatingOrganizationOptions, setOperatingOrganizationOptions] = useState<
-    { label: string; value: string }[]
-  >([]);
-  const [loadingOperatingOrgs, setLoadingOperatingOrgs] = useState(false);
-
-  const fetchOperatingOrganizations = useCallback(async () => {
-    setLoadingOperatingOrgs(true);
-    try {
-      const res = await api.get("/common/options/operating-organizations");
-      const items = res.data?.data;
-      const list: Array<{ id: string; name?: string; code?: string }> =
-        Array.isArray(items) && items.length > 0 ? items : DEFAULT_OPERATING_ORGANIZATIONS;
-      setOperatingOrganizationOptions(
-        list.map((s) => ({ label: s.name || s.code || s.id, value: s.id }))
-      );
-    } catch (error) {
-      console.error("Lỗi tải danh sách đơn vị khai thác:", error);
-      setOperatingOrganizationOptions(
-        DEFAULT_OPERATING_ORGANIZATIONS.map((s) => ({ label: s.name, value: s.id }))
-      );
-    } finally {
-      setLoadingOperatingOrgs(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchOperatingOrganizations();
-  }, [fetchOperatingOrganizations]);
-
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [detailFiles, setDetailFiles] = useState<InfrastructureAttachmentItem[]>([]);
   const [detailFilesLoading, setDetailFilesLoading] = useState(false);
+
+  // ── Danh bạ người dùng → map UUID sang tên cho cột "Người tải lên" (chuẩn /berth, /beacon-stations) ──
+  const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
+  useEffect(() => {
+    let disposed = false;
+    (async () => {
+      try {
+        const resp = await userService.list({ pageSize: 1000 });
+        const users = resp.data || (resp as any).content || [];
+        if (disposed) return;
+        const next = new Map<string, string>();
+        users.forEach((u: any) => next.set(u.id, u.fullName || u.username || u.id));
+        setUserMap(next);
+      } catch {
+        /* giữ map rỗng nếu không lấy được danh bạ */
+      }
+    })();
+    return () => { disposed = true; };
+  }, []);
+
   const [selectedRecord, setSelectedRecord] = useState<TransmissionResponse | null>(
     null
   );
@@ -626,7 +459,7 @@ const TransmissionListPage = () => {
   // Reject modal
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<TransmissionResponse | null>(null);
-  const [rejectForm] = Form.useForm();
+  const [rejectReason, setRejectReason] = useState("");
   const [rejectLoading, setRejectLoading] = useState(false);
   const [rejectLevel, setRejectLevel] = useState<'c1' | 'c2'>('c1');
 
@@ -635,205 +468,44 @@ const TransmissionListPage = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
-  // Create modal
+  // Create drawer
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createForm] = Form.useForm();
-  const [createLoading, setCreateLoading] = useState(false);
-  const [deviceCodeLoading, setDeviceCodeLoading] = useState(false);
-  // Hành động footer create (chuẩn VTS): Lưu tạm / Lưu và gửi phê duyệt / Lưu và phê duyệt
-  const [createActionType, setCreateActionType] = useState<'draft' | 'submit' | 'approve'>('draft');
-  const createActionTypeRef = useRef<'draft' | 'submit' | 'approve'>('draft');
+  const createFormRef = useRef<TransmissionFormRef>(null);
 
-  // Reactive watch for attached infrastructure dropdown
-  const createAttachedType = Form.useWatch('attachedInfrastructureType', createForm);
-  const createGeometryType = Form.useWatch('geometryType', createForm);
-
-  // GPS coordinates for create drawer (chuẩn /vts-operation-center: decimal latitude/longitude)
-  const [gpsCoordList, setGpsCoordList] = useState<TransmissionGpsRow[]>([]);
-
-  // Attachments state (chuẩn InfrastructureAttachmentTab — upload thực hiện lúc submit)
-  const [createAttachments, setCreateAttachments] = useState<InfrastructureAttachmentItem[]>([]);
-  const [createPendingFiles, setCreatePendingFiles] = useState<File[]>([]);
-  const [updateAttachments, setUpdateAttachments] = useState<InfrastructureAttachmentItem[]>([]);
-  const [updatePendingFiles, setUpdatePendingFiles] = useState<File[]>([]);
-  const [updatePendingDeleted, setUpdatePendingDeleted] = useState<Array<{ id: string; fileName: string }>>([]);
-  // Modal bản đồ GIS dùng chung: 'create' | 'update' (chọn tọa độ) | 'detail' (chỉ xem)
-  const [mapScope, setMapScope] = useState<'create' | 'update' | 'detail' | null>(null);
-
-  // Update modal
+  // Update drawer
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [updateTarget, setUpdateTarget] = useState<TransmissionResponse | null>(null);
   const [updateForm] = Form.useForm();
-  const [updateLoading, setUpdateLoading] = useState(false);
-  // Hành động footer update (chuẩn VTS): Lưu tạm / Lưu và gửi phê duyệt / Lưu và phê duyệt
-  const [updateActionType, setUpdateActionType] = useState<'draft' | 'submit' | 'approve'>('draft');
-  const updateActionTypeRef = useRef<'draft' | 'submit' | 'approve'>('draft');
+  const editFormRef = useRef<TransmissionFormRef>(null);
+
+  const handleOpenCreate = useCallback(() => {
+    createForm.resetFields();
+    createForm.setFieldsValue({ operationalStatus: 1 });
+    setCreateModalOpen(true);
+    void generateTransmissionCode()
+      .then((code) => {
+        if (code) {
+          createForm.setFieldsValue({ deviceCode: code });
+        }
+      })
+      .catch(() => {});
+  }, [createForm]);
+
+  // Submit action & loading
+  const actionTypeRef = useRef<'draft' | 'submit' | 'approve'>('draft');
+  const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve'>('draft');
+  const [submitting, setSubmitting] = useState(false);
 
   // "Lưu và phê duyệt" chỉ dành cho tài khoản có quyền duyệt cấp Cục (chuẩn VTS).
   const canSaveAndApprove = !!hasPerm?.("transmission:approvec2");
 
-  // Reactive watch for attached infrastructure dropdown
-  const updateAttachedType = Form.useWatch('attachedInfrastructureType', updateForm);
-  const updateGeometryType = Form.useWatch('geometryType', updateForm);
-
-  // GPS coordinates for edit drawer (chuẩn /vts-operation-center: decimal latitude/longitude)
-  const [updateGpsCoordList, setUpdateGpsCoordList] = useState<TransmissionGpsRow[]>([]);
-
-  // Auto-fill Hệ quy chiếu + Quy tắc hiển thị + GPS khi chọn Loại đối tượng
-  // (giống /vts-operation-center: adjustCoordinateListForGeometry bảo toàn các điểm đã nhập)
-  useEffect(() => {
-    if (!createGeometryType) {
-      createForm.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined });
-      setGpsCoordList([]);
-      return;
-    }
-    createForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
-    setGpsCoordList((prev) => adjustCoordinateListForGeometry(prev, String(createGeometryType)));
-  }, [createGeometryType, createForm]);
-
-  const prevUpdateGeometryType = useRef<string | null>(null);
-  useEffect(() => {
-    const hadSelection = prevUpdateGeometryType.current != null;
-    prevUpdateGeometryType.current = (updateGeometryType as string | null) ?? null;
-    if (!updateGeometryType) {
-      setUpdateGpsCoordList([]);
-      if (hadSelection) {
-        updateForm.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined });
-      }
-      return;
-    }
-    updateForm.setFieldsValue({ displayRule: 'Độ, phút, giây (DMS)' });
-    if (updateForm.getFieldValue('coordinateSystem') == null) {
-      updateForm.setFieldsValue({ coordinateSystem: 1 });
-    }
-    setUpdateGpsCoordList((prev) => adjustCoordinateListForGeometry(prev, String(updateGeometryType)));
-  }, [updateGeometryType, updateForm]);
-
-  // ── GPS DMS editing helpers (chuẩn /vts-operation-center) ────────────
-  const updateGpsPoint = (
-    setList: React.Dispatch<React.SetStateAction<TransmissionGpsRow[]>>,
-    index: number,
-    field: 'latitude' | 'longitude',
-    dVal: number | null,
-    mVal: number | null,
-    sVal: number | null,
-  ) => {
-    const d = dVal ?? 0;
-    const m = mVal ?? 0;
-    const s = sVal ?? 0;
-    const dMax = field === 'latitude' ? 90 : 180;
-    const dClamped = Math.min(dMax, Math.max(0, d));
-    const mClamped = Math.min(59, Math.max(0, m));
-    const sClamped = Math.min(59.9999, Math.max(0, s));
-    const decimal = dClamped + mClamped / 60 + sClamped / 3600;
-    setList((prev) => {
-      const next = [...prev];
-      next[index] = { ...next[index], [field]: decimal };
-      return next;
-    });
-  };
-
-  const renderGpsDmsEditor = (
-    setList: React.Dispatch<React.SetStateAction<TransmissionGpsRow[]>>,
-    index: number,
-    field: 'latitude' | 'longitude',
-    row: TransmissionGpsRow,
-  ) => {
-    const value = field === 'latitude' ? (row.latitude ?? 0) : (row.longitude ?? 0);
-    const dms = ddToDms(value);
-    const maxD = field === 'latitude' ? 90 : 180;
-    return (
-      <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
-        <InputNumber
-          value={dms.d}
-          min={0}
-          max={maxD}
-          precision={0}
-          placeholder="Độ"
-          controls={false}
-          onFocus={(e) => e.currentTarget.select()}
-          onChange={(x) => updateGpsPoint(setList, index, field, x, dms.m, dms.s)}
-          style={{ flex: 1, minWidth: 0, textAlign: 'center' }}
-        />
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: tableHeaderBg, border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span>
-        <InputNumber
-          value={dms.m}
-          min={0}
-          max={59}
-          precision={0}
-          placeholder="Phút"
-          controls={false}
-          onFocus={(e) => e.currentTarget.select()}
-          onChange={(x) => updateGpsPoint(setList, index, field, dms.d, x, dms.s)}
-          style={{ flex: 1, minWidth: 0, textAlign: 'center' }}
-        />
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: tableHeaderBg, border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span>
-        <InputNumber
-          value={dms.s}
-          min={0}
-          max={59.9999}
-          step={0.01}
-          placeholder="Giây"
-          controls={false}
-          onFocus={(e) => e.currentTarget.select()}
-          onChange={(x) => updateGpsPoint(setList, index, field, dms.d, dms.m, x)}
-          style={{ flex: 1.2, minWidth: 0, textAlign: 'center' }}
-        />
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: tableHeaderBg, border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span>
-      </Space.Compact>
-    );
-  };
-
-  // ── Attachments helpers (chuẩn InfrastructureAttachmentTab /vts-operation-center) ──
-  const handleAttachmentUpload = (
-    list: InfrastructureAttachmentItem[],
-    setList: React.Dispatch<React.SetStateAction<InfrastructureAttachmentItem[]>>,
-    setPending: React.Dispatch<React.SetStateAction<File[]>>,
-  ) => (file: File) => {
-    if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB theo quy định'); return false; }
-    const ext = file.name.split('.').pop()?.toLowerCase();
-    if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) {
-      toast.error('Định dạng không hỗ trợ (chỉ chấp nhận PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF)');
-      return false;
-    }
-    if (list.length >= 10) { toast.error('Số lượng tệp đính kèm tối đa là 10 tệp'); return false; }
-    const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    const item: InfrastructureAttachmentItem = {
-      id: tempId,
-      fileName: file.name,
-      fileSize: file.size,
-      uploadedByName: currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
-      uploadedDate: new Date().toISOString(),
-    };
-    setPending((prev) => [...prev, file]);
-    setList((prev) => [...prev, item]);
-    toast.success(`Đã thêm tệp ${file.name}`);
-    return false;
-  };
-
-  const handleAttachmentDelete = (
-    list: InfrastructureAttachmentItem[],
-    setList: React.Dispatch<React.SetStateAction<InfrastructureAttachmentItem[]>>,
-    setPending: React.Dispatch<React.SetStateAction<File[]>>,
-    setPendingDeleted?: React.Dispatch<React.SetStateAction<Array<{ id: string; fileName: string }>>>,
-  ) => (attId: string) => {
-    const idx = list.findIndex((a) => a.id === attId);
-    const isTemp = String(attId).startsWith('temp_');
-    if (isTemp && idx >= 0) {
-      setPending((prev) => prev.filter((_, i) => i !== idx));
-    } else if (!isTemp) {
-      const target = list.find((a) => a.id === attId);
-      if (target && setPendingDeleted) {
-        setPendingDeleted((prev) => [...prev, { id: attId, fileName: target.fileName }]);
-      }
-    }
-    setList((prev) => prev.filter((a) => a.id !== attId));
-    toast.success('Đã xóa tệp đính kèm');
-  };
+  // Modal bản đồ GIS xem chi tiết
+  const [mapScope, setMapScope] = useState<'detail' | null>(null);
 
   const handleDownloadAttachmentItem = useCallback(async (attId: string, fileName?: string) => {
     const downloadName = fileName || 'file';
-    const targetId = selectedRecord?.id || updateTarget?.id;
+    const targetId = selectedRecord?.id;
     if (!targetId) {
       toast.error('Không thể tải xuống tệp đính kèm');
       return;
@@ -843,41 +515,60 @@ const TransmissionListPage = () => {
     } catch {
       toast.error('Không thể tải xuống tệp đính kèm');
     }
-  }, [selectedRecord?.id, updateTarget?.id]);
+  }, [selectedRecord?.id]);
 
-  // ── Map modal GIS (chuẩn /vts-operation-center: 90vw GisLocationSelector) ──
-  const mapGeometryType = mapScope === 'create' ? (String(createGeometryType || '') || 'POINT')
-    : mapScope === 'update' ? (String(updateGeometryType || '') || 'POINT')
-    : selectedRecord
-      ? (selectedRecord.geometryType && ['POINT', 'LINE', 'POLYGON'].includes(selectedRecord.geometryType)
-        ? selectedRecord.geometryType
-        : inferGeometryTypeFromWkt(selectedRecord.coordinates))
-      : 'POINT';
-  const mapWkt = mapScope === 'create' ? serializeCoordinatesToWkt(gpsCoordList, mapGeometryType)
-    : mapScope === 'update' ? serializeCoordinatesToWkt(updateGpsCoordList, mapGeometryType)
-    : (selectedRecord?.coordinates || '');
+  // ── Map modal GIS chi tiết (chuẩn /berth: 90vw GisLocationSelector) ──
+  const mapGeometryType = selectedRecord
+    ? (selectedRecord.geometryType && ['POINT', 'LINE', 'POLYGON'].includes(selectedRecord.geometryType)
+      ? selectedRecord.geometryType
+      : inferGeometryTypeFromWkt(selectedRecord.coordinates))
+    : 'POINT';
+  const mapWkt = selectedRecord?.coordinates || '';
 
   // Submissions
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
-  const [submitContent, setSubmitContent] = useState("");
   const [submittingRecord, setSubmittingRecord] = useState<TransmissionResponse | null>(
     null
   );
   const [submitLoading, setSubmitLoading] = useState(false);
 
-  // ── History state ─────────────────────────────────────────────────────
-  const [historyModalVisible, setHistoryModalVisible] = useState(false);
+  // ── History modal (chuẩn /berth) ──────────────────────────────────
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyTarget, setHistoryTarget] = useState<TransmissionResponse | null>(null);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
-  const [historyEntityName, setHistoryEntityName] = useState('');
-  const [loadingHistory, setLoadingHistory] = useState(false);
-  const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
-  const [hasMoreHistory, setHasMoreHistory] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
-  const [historySearchInput, setHistorySearchInput] = useState('');
-  const [historyDateFrom, setHistoryDateFrom] = useState<string>('');
-  const [historyDateTo, setHistoryDateTo] = useState<string>('');
-  const [historyPage, setHistoryPage] = useState(0);
-  const [historyReloadToken, setHistoryReloadToken] = useState(0);
+  const [historyFrom, setHistoryFrom] = useState('');
+  const [historyTo, setHistoryTo] = useState('');
+
+  const historyFieldCount = useMemo(
+    () => (Array.isArray(historyRecords) ? historyRecords : []).length,
+    [historyRecords]
+  );
+
+  const openHistory = useCallback(async (r: TransmissionResponse) => {
+    setHistoryTarget(r);
+    setHistoryOpen(true);
+    setHistoryLoading(true);
+    setHistoryRecords([]);
+    setHistorySearch('');
+    setHistoryFrom('');
+    setHistoryTo('');
+    try {
+      const list = await fetchTransmissionHistory(r.id);
+      setHistoryRecords(Array.isArray(list) ? list : []);
+    } catch {
+      toast.error('Không thể tải lịch sử');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  const [detailsSpecsOpen, setDetailsSpecsOpen] = useState(true);
+  const [detailApprovalOpen, setDetailApprovalOpen] = useState(true);
+  const [operationCardOpen, setOperationCardOpen] = useState(true);
+  const [maintenanceCardOpen, setMaintenanceCardOpen] = useState(true);
+  const [incidentCardOpen, setIncidentCardOpen] = useState(true);
 
   // ── History map helpers ────────────────────────────────────────
   const symbolMap = useMemo(() => {
@@ -921,10 +612,10 @@ const TransmissionListPage = () => {
       const renderInfoStack = (name: string | null | undefined, date: string | null | undefined) => (
         <div style={{ lineHeight: "1.35", overflow: "hidden" }}>
           <div
-            title={name || "—"}
+            title={name || null}
             style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
           >
-            {name || "—"}
+            {name || null}
           </div>
           <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: "nowrap" }}>
             {date ? dayjs(date).format("DD/MM/YYYY HH:mm:ss") : "—"}
@@ -958,16 +649,17 @@ const TransmissionListPage = () => {
           <div style={{ minWidth: 0 }}>
             <button
               type="button"
+              className="kcht-cell-title"
               onClick={() => {
                 setSelectedRecord(record);
                 setDetailDrawerOpen(true);
               }}
               style={{ ...cellTitleStyle, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", width: "100%" }}
-              title={val || "—"}
+              title={val || null}
             >
-              {val || "—"}
+              {val || null}
             </button>
-            <span style={{ ...cellSubtitleStyle }}>{record.deviceCode || "—"}</span>
+            <span className="kcht-cell-code" style={{ ...cellSubtitleStyle }}>{record.deviceCode || null}</span>
           </div>
         ),
       },
@@ -977,7 +669,7 @@ const TransmissionListPage = () => {
         dataIndex: "orgUnitName",
         width: 260,
         render: (val: string) => (
-          <span style={{ ...tableMetaStyle, fontWeight: fontWeightBold }}>{val || "—"}</span>
+          <span style={{ ...tableMetaStyle, fontWeight: fontWeightBold }}>{val || null}</span>
         ),
       },
       {
@@ -986,7 +678,7 @@ const TransmissionListPage = () => {
         dataIndex: "attachedInfrastructureName",
         width: 280,
         render: (val: string) => (
-          <span style={tableMetaStyle}>{val || "—"}</span>
+          <span style={tableMetaStyle}>{val || null}</span>
         ),
       },
       {
@@ -995,7 +687,7 @@ const TransmissionListPage = () => {
         dataIndex: "operatingUnitName",
         width: 260,
         render: (val: string) => (
-          <span style={tableMetaStyle}>{val || "—"}</span>
+          <span style={tableMetaStyle}>{val || null}</span>
         ),
       },
       {
@@ -1005,7 +697,7 @@ const TransmissionListPage = () => {
         width: 220,
         ellipsis: false,
         render: (val: string) => (
-          <span style={tableMetaStyle}>{val || "—"}</span>
+          <span style={tableMetaStyle}>{val || null}</span>
         ),
       },
       {
@@ -1039,7 +731,7 @@ const TransmissionListPage = () => {
         align: "center" as const,
         ellipsis: false,
         render: (val: number) => (
-          <span style={tableMetaStyle}>{val || "—"}</span>
+          <span style={tableMetaStyle}>{val || null}</span>
         ),
       },
       {
@@ -1166,11 +858,11 @@ const TransmissionListPage = () => {
       };
       const m: Record<string, string> = {
         DRAFT: 'Lưu tạm',
-        PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
-        APPROVED_LEVEL1: 'Chờ Cục duyệt',
-        APPROVED: 'Đã duyệt',
-        REJECTED_LEVEL1: 'Cảng vụ trả về',
-        REJECTED_LEVEL2: 'Cục trả về',
+        PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+        APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục',
+        APPROVED: 'Đã phê duyệt',
+        REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
+        REJECTED_LEVEL2: 'Từ chối cấp cục',
       };
       const norm = ALIAS[String(val || '').trim().toUpperCase()] || String(val || '').trim().toUpperCase();
       return m[norm] || val;
@@ -1194,12 +886,10 @@ const TransmissionListPage = () => {
       return m[String(val)] || val;
     }
     if (fn === 'changedAt' || fn === 'createdAt') {
-      try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
+  try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
     }
     return val;
   }
-
-  const HISTORY_PAGE_SIZE = 20;
 
   const historyTimestamp = (item: any): string =>
     item.approvedDate || item.changedAt || item.createdAt || '';
@@ -1218,121 +908,85 @@ const TransmissionListPage = () => {
     return raw || '—';
   };
 
-  const resolveHistoryActionMeta = (item: any): { label: string; color: string; bg: string } => {
+  const resolveHistoryActionMeta = (group: any, changes: any[]): { label: string; color: string; bg: string } => {
+    const item = group.items?.[0] || {};
     const rawStatus = String(item?.status ?? item?.action ?? '').toUpperCase();
-    const rawReason = String(item?.reason ?? '').toLowerCase();
-    const rawField = String(item?.changedField ?? item?.fieldName ?? '').toLowerCase();
+    const rawReason = String(item?.reason ?? item?.ghiChu ?? item?.note ?? '').toLowerCase();
+    const level = Number(item?.approvalLevel || 0);
+
     if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
-      return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}15` };
+      return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
     }
-    if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || (rawField.includes('đính kèm') && rawReason.includes('tải'))) {
-      return { label: 'Tải lên tệp', color: statusInfo, bg: `${statusInfo}15` };
+
+    if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len')) {
+      return { label: 'Tải lên tệp', color: statusInfo, bg: `${statusInfo}18` };
     }
     if (rawStatus === 'ATTACHMENT_DELETED' || rawReason.includes('xóa tài liệu') || rawReason.includes('xoa tai lieu') || rawReason.includes('xóa tệp')) {
-      return { label: 'Xóa tệp', color: statusAttention, bg: `${statusAttention}15` };
-    }
-    // Xóa bản ghi (soft delete)
-    if (rawStatus === 'DELETED' || rawStatus === 'ARCHIVED' || rawStatus === 'DELETE' || rawReason.includes('xóa bản ghi') || rawReason.includes('xoa ban ghi')) {
-      return { label: 'Xóa', color: textTertiary, bg: `${textTertiary}15` };
+      return { label: 'Xóa tệp', color: statusAttention, bg: `${statusAttention}18` };
     }
 
-    // Gửi phê duyệt — kiểm tra trước nhánh phê duyệt (lý do gửi có thể chứa từ "phê duyệt")
-    if (rawStatus === 'SUBMITTED' || rawStatus === 'PROPOSED' || rawStatus === 'PENDING' || rawStatus === 'PENDING_APPROVAL' || rawReason.includes('gửi phê duyệt') || rawReason.includes('gui phe duyet') || rawReason.includes('trình duyệt') || rawReason.includes('trinh duyet')) {
-      return { label: 'Gửi phê duyệt', color: statusAttention, bg: `${statusAttention}15` };
+    if (rawStatus === 'UPDATED' || rawStatus === 'UPDATE' || rawStatus === 'EDIT' || rawReason.includes('cập nhật') || rawReason.includes('chỉnh sửa') || rawReason.includes('cap nhat')) {
+      return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
     }
 
-    // Từ chối — phân biệt cấp (Cảng vụ/Chi cục = vòng 1, Cục = vòng 2)
-    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawStatus === 'REJECTED_LEVEL1' || rawStatus === 'REJECTED_LEVEL2' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
-      const levelRaw = String(item?.approvalLevel ?? '').toUpperCase();
-      const isLevel2 = levelRaw === '2' || levelRaw.includes('LEVEL_2') || levelRaw === 'C2' || levelRaw.includes('CUC');
-      const isLevel1 = levelRaw === '1' || levelRaw.includes('LEVEL_1') || levelRaw === 'C1' || levelRaw.includes('CANG_VU');
-      if (rawStatus === 'REJECTED_LEVEL2' || isLevel2 || rawReason.includes('cấp cục') || rawReason.includes('cap cuc')) {
-        return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}15` };
+    // Ưu tiên lý do ghi sẵn cho hành động duyệt/từ chối (chuẩn VTS CHK)
+    if (rawReason.includes('phê duyệt cấp cảng vụ') || rawReason.includes('phe duyet cap cang vu')) {
+      return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
+    }
+    if (rawReason.includes('phê duyệt cấp cục') || rawReason.includes('phe duyet cap cuc')) {
+      return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
+    }
+    if (rawReason.includes('từ chối cấp cảng vụ') || rawReason.includes('tu choi cap cang vu')) {
+      return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
+    }
+    if (rawReason.includes('từ chối cấp cục') || rawReason.includes('tu choi cap cuc')) {
+      return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
+    }
+
+    const approvalChange = changes.find((c: any) => {
+      const k = (c.field || '').toLowerCase();
+      return k === 'approvalstatus' || k === 'trang thai phe duyet';
+    });
+
+    if (approvalChange) {
+      const nv = String(approvalChange.newValue || '').toLowerCase();
+      if (nv.includes('rejected_level1') || (nv.includes('tra ve') && nv.includes('cang vu'))) {
+        return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
       }
-      if (rawStatus === 'REJECTED_LEVEL1' || isLevel1 || rawReason.includes('cấp cảng vụ') || rawReason.includes('cap cang vu') || rawReason.includes('chi cục')) {
-        return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}15` };
+      if (nv.includes('rejected_level2') || (nv.includes('tra ve') && nv.includes('cuc'))) {
+        return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
       }
-      return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}15` };
+      if (nv.includes('approved_level1') || nv.includes('cuc duyet') || nv === 'cho cuc duyet') {
+        return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
+      }
+      if (nv === 'da duyet' || nv.includes('approved')) {
+        return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
+      }
+      if (nv.includes('tu choi') || nv.includes('rejected')) {
+        return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
+      }
+      if (nv.includes('cho cang vu duyet') || nv.includes('pending') || nv.includes('proposed') || nv.includes('luu tam') || nv.includes('nhap')) {
+        return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
+      }
     }
 
-    // Phê duyệt — phân biệt cấp (C1 Cảng vụ/Chi cục → C2 Cục)
-    if (rawStatus === 'APPROVED' || rawStatus === 'APPROVE' || rawStatus === 'APPROVED_LEVEL1' || rawStatus === 'APPROVED_LEVEL2') {
-      const levelRaw2 = String(item?.approvalLevel ?? '').toUpperCase();
-      const isL2 = levelRaw2 === '2' || levelRaw2.includes('LEVEL_2') || levelRaw2 === 'C2' || levelRaw2.includes('CUC');
-      const isL1 = levelRaw2 === '1' || levelRaw2.includes('LEVEL_1') || levelRaw2 === 'C1' || levelRaw2.includes('CANG_VU');
-      if (rawStatus === 'APPROVED' || rawStatus === 'APPROVED_LEVEL2' || isL2) {
-        return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}15` };
-      }
-      if (rawStatus === 'APPROVED_LEVEL1' || isL1) {
-        return { label: 'Phê duyệt cấp Cảng vụ', color: statusInfo, bg: `${statusInfo}15` };
-      }
-      return { label: 'Phê duyệt', color: statusOperational, bg: `${statusOperational}15` };
+    if (level === 1 || String(item?.approvalLevel).includes('LEVEL_1') || String(item?.approvalLevel).includes('C1')) {
+      return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
+    }
+    if (level === 2 || String(item?.approvalLevel).includes('LEVEL_2') || String(item?.approvalLevel).includes('C2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
+      return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
+    }
+    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi')) {
+      return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
+    }
+    if (rawStatus === 'SUBMITTED' || rawStatus === 'PENDING' || rawReason.includes('trình duyệt') || rawReason.includes('trinh duyet') || rawReason.includes('gửi phê duyệt')) {
+      return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
+    }
+    if (rawStatus === 'DELETED' || rawStatus === 'DELETE' || rawStatus === 'SOFT_DELETE' || rawReason.includes('xóa') || rawReason.includes('xoa')) {
+      return { label: 'Xóa', color: '#64748b', bg: '#64748b18' };
     }
 
-    if (rawStatus === 'UPDATED' || rawStatus === 'UPDATE' || rawStatus === 'EDIT' || rawReason.includes('cập nhật') || rawReason.includes('cap nhat')) {
-      return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}15` };
-    }
-    return { label: 'Chỉnh sửa', color: actionPrimary, bg: `${actionPrimary}15` };
-  };
-
-  useEffect(() => {
-    if (!historyModalVisible || !selectedRecord) return;
-    let cancelled = false;
-    const timer = window.setTimeout(async () => {
-      setLoadingHistory(true);
-      setLoadingMoreHistory(false);
-      setHasMoreHistory(true);
-      setHistoryRecords([]);
-      setHistoryPage(0);
-      try {
-        const history = await fetchTransmissionHistory(selectedRecord.id, 0, HISTORY_PAGE_SIZE, {
-          keyword: historySearch,
-          fromDate: historyDateFrom,
-          toDate: historyDateTo,
-        });
-        if (cancelled) return;
-        const items = history || [];
-        setHistoryRecords(items);
-        setHasMoreHistory(items.length === HISTORY_PAGE_SIZE);
-      } catch {
-        if (!cancelled) toast.error('Không thể tải lịch sử');
-      } finally {
-        if (!cancelled) setLoadingHistory(false);
-      }
-    }, historySearch.trim() ? 300 : 0);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [historyModalVisible, selectedRecord?.id, historySearch, historyDateFrom, historyDateTo, historyReloadToken]);
-
-  const loadMoreHistory = async () => {
-    if (!selectedRecord || loadingHistory || loadingMoreHistory || !hasMoreHistory) return;
-    setLoadingMoreHistory(true);
-    try {
-      const nextPage = historyPage + 1;
-      const history = await fetchTransmissionHistory(selectedRecord.id, nextPage, HISTORY_PAGE_SIZE, {
-        keyword: historySearch,
-        fromDate: historyDateFrom,
-        toDate: historyDateTo,
-      });
-      if (history && history.length > 0) {
-        setHistoryRecords((prev) => [...prev, ...history]);
-      }
-      setHistoryPage(nextPage);
-      setHasMoreHistory((history || []).length === HISTORY_PAGE_SIZE);
-    } catch {
-      /* ignore */
-    } finally {
-      setLoadingMoreHistory(false);
-    }
-  };
-
-  const handleHistoryScroll = (e: any) => {
-    const el = e.currentTarget;
-    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) {
-      loadMoreHistory();
-    }
+    return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
   };
 
   const HISTORY_FIELD_ORDER = [
@@ -1352,37 +1006,44 @@ const TransmissionListPage = () => {
         new Date(historyTimestamp(a) || 0).getTime()
     );
     const q = historySearch.toLowerCase().trim();
-
-    // Chuẩn /vts-operation-center: gộp nhóm theo ĐÚNG giây (một lần Lưu ghi nhiều dòng cùng
-    // thời điểm) và merge liên tiếp các hành động dạng update (UPDATED/đính kèm) cùng người dùng.
-    const isUpdateAction = (status: string, reason?: string) => {
-      const s = String(status || '').toUpperCase();
-      const r = String(reason || '').toLowerCase();
-      return s === 'UPDATED' || s === 'UPDATE' || s === 'EDIT' || s === 'ATTACHMENT_UPLOADED' || s === 'ATTACHMENT_DELETED'
-        || r.includes('cập nhật') || r.includes('chỉnh sửa') || r.includes('tải lên') || r.includes('xóa tệp') || r.includes('xóa tài liệu');
-    };
-
-    const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
+    const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
 
     for (const r of sorted) {
+      if (q) {
+        const fn = (historyField(r) || '').toLowerCase();
+        const ov = (historyOldValue(r) || '').toLowerCase();
+        const nv = (historyNewValue(r) || '').toLowerCase();
+        const lb = historyFieldName(historyField(r) || '').toLowerCase();
+        const od = historyFieldValue(historyField(r), historyOldValue(r), orgMap, symbolMap).toLowerCase();
+        const nd = historyFieldValue(historyField(r), historyNewValue(r), orgMap, symbolMap).toLowerCase();
+        if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue;
+      }
+      if (historyDateFrom || historyDateTo) {
+        const cd = historyTimestamp(r);
+        if (historyDateFrom && cd.substring(0, 10) < historyDateFrom) continue;
+        if (historyDateTo && cd.substring(0, 10) > historyDateTo) continue;
+      }
       const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
       const prev = groups[groups.length - 1];
       const actor = historyActor(r);
-      const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
-      const isSameGroup = prev && prev.tsSec === sec && prev.actor === actor && (prev.status === r.status || isBothUpdate);
-      if (isSameGroup)
+      if (prev && prev.tsSec === sec && prev.actor === actor) {
         prev.items.push(r);
-      else groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
+      } else {
+        groups.push({ tsSec: sec, ts, actor, items: [r] });
+      }
     }
 
-    if (groups.length === 0)
+    if (groups.length === 0) {
       return (
         <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
           <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-          <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{q || historyDateFrom || historyDateTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div>
+          <div style={{ color: textTertiary, fontSize: fontSizeMd }}>
+            {q || historyDateFrom || historyDateTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}
+          </div>
         </div>
       );
+    }
 
     const fmtTime = (ts: string) => {
       const d = new Date(ts);
@@ -1396,19 +1057,15 @@ const TransmissionListPage = () => {
           const orgId = rec0.orgUnitId || selectedRecord?.orgUnitId;
           const orgName = orgId ? orgMap.get(orgId) : undefined;
           const unitName =
-            rec0.orgUnitName ||
-            (orgName ? orgName.split(' - ').pop() || orgName : undefined) ||
-            rec0.unitName ||
+            (orgName ? (orgName.split(' - ').pop() || orgName) : (rec0.orgUnitName || rec0.unitName)) ||
             selectedRecord?.orgUnitName ||
-            'Cục Hàng hải Việt Nam';
-          // Chuẩn /vts-operation-center: dedup thay đổi đính kèm (upload/delete cùng lúc).
+            '—';
           const changes = deduplicateAttachmentHistoryChanges(
             g.items.flatMap((item: any) => {
               const fn = historyField(item);
               return fn ? [{ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) }] : [];
             })
           );
-          const actionMeta = resolveHistoryActionMeta(g.items[0] || {});
           const isCreate = changes.every(
             (c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === ''
           );
@@ -1420,12 +1077,12 @@ const TransmissionListPage = () => {
               return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
             })
             .filter(
-              (c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments'
+              (c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments' && c.field !== 'spatialId'
             );
 
           const formatHistoryValue = (fn: string, raw: string | null) => {
             if (raw === null || raw === '(null)' || raw === '') return null;
-            // GIS: nhãn loại đối tượng + tọa độ DMS nhiều dòng (chuẩn /cctv).
+            // GIS: nhãn loại đối tượng + tọa độ DMS nhiều dòng (chuẩn /cctv)
             const gisKey = String(fn || '').toLowerCase();
             if (gisKey.includes('loai doi tuong') || gisKey.includes('loại đối tượng') || gisKey.includes('geometrytype')) {
               return gisGeometryTypeLabel(raw);
@@ -1441,48 +1098,53 @@ const TransmissionListPage = () => {
               return `${parts.length} công trình hạ tầng`;
             }
             if (/^-?\d+(\.\d+)?$/.test(t)) {
-              const n = Number(t);
-              return Number.isInteger(n) ? String(n) : t;
+              return fmtNum(t);
             }
             return historyFieldValue(fn, raw, orgMap, symbolMap);
           };
 
           if (orderedChanges.length === 0) return null;
+          const am = resolveHistoryActionMeta(g, changes);
+          const barColor = am.color;
 
           return (
-            <div
-              key={gi}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'minmax(310px, 0.38fr) minmax(0, 1fr)',
-                gap: spaceLg,
-                alignItems: 'start',
-                marginBottom: gi < groups.length - 1 ? spaceMd : 0,
-              }}
-            >
+            <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
               <div style={{ minWidth: 0, paddingTop: spaceXs }}>
-                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: spaceSm, marginBottom: spaceXs }}>
-                  <Typography.Text style={{ display: 'block', fontSize: fontSizeLg - 1, color: textPrimary, fontWeight: fontWeightBold, lineHeight: 1.5, whiteSpace: 'nowrap' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
+                  <Typography.Text style={historyTimeStyle}>
                     {g.ts ? fmtTime(g.ts) : '—'}
                   </Typography.Text>
                   <span style={{ flexShrink: 0 }}>
-                    <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: actionMeta.bg, color: actionMeta.color, whiteSpace: 'nowrap' }}>
-                      {actionMeta.label}
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        padding: '2px 10px',
+                        borderRadius: 999,
+                        fontSize: fontSizeSm + 1,
+                        fontWeight: fontWeightMedium,
+                        background: am.bg,
+                        color: am.color,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {am.label}
                     </span>
                   </span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: spaceXs }}>
-                  <Typography.Text style={{ display: 'block', fontSize: fontSizeSm + 1, color: textSecondary, fontWeight: fontWeightMedium, lineHeight: 1.4 }}>
-                    Người cập nhật: <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{g.actor || '—'}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
+                  <Typography.Text style={historyMetaRowStyle}>
+                    Người cập nhật: {g.actor || '—'}
                   </Typography.Text>
-                  <Typography.Text style={{ display: 'block', fontSize: fontSizeSm + 1, color: textSecondary, fontWeight: fontWeightMedium, lineHeight: 1.4 }}>
-                    Đơn vị: <span style={{ color: textPrimary }}>{unitName}</span>
+                  <Typography.Text style={historyMetaRowStyle}>
+                    Đơn vị: {unitName}
                   </Typography.Text>
                 </div>
               </div>
-              <div style={{ position: 'relative', minWidth: 0, background: surfacePage, borderRadius: radiusSm, padding: `${spaceMd}px ${spaceLg}px`, paddingLeft: spaceLg, overflow: 'hidden', border: `1px solid ${borderDefault}` }}>
-                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: spaceXs, background: `linear-gradient(180deg, ${actionMeta.color} 0%, ${actionMeta.color}40 100%)` }} />
-                <Typography.Text style={{ display: 'block', color: colors.sidebarBg, fontSize: fontSizeMd, fontWeight: fontWeightBold, marginBottom: spaceSm }}>{informationTitle}</Typography.Text>
+              <div style={historyInfoCardStyle}>
+                <div style={historyAccentBarStyle(barColor)} />
+                <Typography.Text style={historyInfoTitleStyle}>
+                  {informationTitle}
+                </Typography.Text>
                 {orderedChanges.length > 0 ? (
                   <div>
                     {orderedChanges.map((change, ri: number) => {
@@ -1495,13 +1157,7 @@ const TransmissionListPage = () => {
                           const name = symbolMap.get(rawVal) || rawVal;
                           return (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                              {img ? (
-                                <img
-                                  src={img}
-                                  alt=""
-                                  style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }}
-                                />
-                              ) : null}
+                              {img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}
                               {name}
                             </span>
                           );
@@ -1509,48 +1165,22 @@ const TransmissionListPage = () => {
                         return null;
                       };
                       return isCreate ? (
-                        <div
-                          key={`${fn}-${ri}`}
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: '170px minmax(100px, 1fr)',
-                            alignItems: 'flex-start',
-                            gap: spaceSm,
-                            fontSize: fontSizeMd,
-                            lineHeight: 1.6,
-                            padding: '3px 0',
-                          }}
-                        >
-                          <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>
-                            {fn ? `${historyFieldName(fn)}:` : '—'}
-                          </div>
-                          <div title={nv ?? '—'} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word', color: textPrimary, ...(isGisHistoryField(fn) ? { whiteSpace: 'pre-line' as const, lineHeight: 1.5 } : {}) }}>
-                            {renderCell(change.newValue) ?? nv ?? '—'}
-                          </div>
+                        <div key={`${fn}-${ri}`} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
+                          <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
+                          <span title={nv ?? '—'} style={{ ...historyNewValueStyle, ...(isGisHistoryField(fn) ? { whiteSpace: 'pre-line', lineHeight: 1.5 } : {}) }}>
+                            {renderCell(change.newValue) ?? (nv ?? '—')}
+                          </span>
                         </div>
                       ) : (
-                        <div
-                          key={`${fn}-${ri}`}
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: '170px minmax(100px, 1fr) 24px minmax(100px, 1fr)',
-                            alignItems: 'flex-start',
-                            gap: spaceSm,
-                            fontSize: fontSizeMd,
-                            lineHeight: 1.6,
-                            padding: '3px 0',
-                          }}
-                        >
-                          <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>
-                            {fn ? `${historyFieldName(fn)}:` : '—'}
-                          </div>
-                          <div title={ov ?? '—'} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word', color: textPrimary, ...(isGisHistoryField(fn) ? { whiteSpace: 'pre-line' as const, lineHeight: 1.5 } : {}) }}>
-                            {renderCell(change.oldValue) ?? ov ?? '—'}
-                          </div>
-                          <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>→</div>
-                          <div title={nv ?? '—'} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word', color: textPrimary, ...(isGisHistoryField(fn) ? { whiteSpace: 'pre-line' as const, lineHeight: 1.5 } : {}) }}>
-                            {renderCell(change.newValue) ?? nv ?? '—'}
-                          </div>
+                        <div key={`${fn}-${ri}`} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
+                          <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
+                          <span title={ov ?? '—'} style={{ ...historyOldValueStyle, ...(isGisHistoryField(fn) ? { whiteSpace: 'pre-line', lineHeight: 1.5 } : {}) }}>
+                            {renderCell(change.oldValue) ?? (ov ?? '—')}
+                          </span>
+                          <span style={historyArrowStyle}>→</span>
+                          <span title={nv ?? '—'} style={{ ...historyNewValueStyle, ...(isGisHistoryField(fn) ? { whiteSpace: 'pre-line', lineHeight: 1.5 } : {}) }}>
+                            {renderCell(change.newValue) ?? (nv ?? '—')}
+                          </span>
                         </div>
                       );
                     })}
@@ -1570,49 +1200,8 @@ const TransmissionListPage = () => {
 
   const openUpdateDrawer = useCallback((record: TransmissionResponse) => {
     setUpdateTarget(record);
-    setUpdateAttachments([]);
-    setUpdatePendingFiles([]);
-    setUpdatePendingDeleted([]);
-    void fetchTransmissionAttachments(record.id).then((list: any[]) => {
-      setUpdateAttachments(Array.isArray(list)
-        ? list.map((a: any) => ({
-            id: String(a.id),
-            fileName: a.fileName || a.name || '—',
-            fileSize: a.fileSize,
-            uploadedByName: a.uploadedByName || a.uploadedBy,
-            uploadedDate: a.uploadedDate || a.createdAt,
-          }))
-        : []);
-    }).catch(() => { /* ignore */ });
-    // Convert operationalStatus từ string enum (backend @JsonValue) sang số (frontend dropdown)
-    const safeRecord = {
-      ...record,
-      operationalStatus: record.operationalStatus != null
-        ? (() => {
-            switch (record.operationalStatus) {
-              case "NOT_YET_OPERATIONAL": return 0;
-              case "OPERATIONAL": return 1;
-              case "SUSPENDED": return 2;
-              default: {
-                const num = Number(record.operationalStatus);
-                return num >= 0 && num <= 2 ? num : 1;
-              }
-            }
-          })()
-        : null,
-    };
-    updateForm.setFieldsValue(safeRecord);
-    // Preload tọa độ từ WKT trước khi mở Edit (chuẩn /vts-operation-center):
-    // nếu không nạp trước, danh sách tọa độ rỗng → lưu sẽ làm mất geometry.
-    const geomRaw = record.geometryType;
-    const geomValue = (geomRaw === 'POINT' || geomRaw === 'LINE' || geomRaw === 'POLYGON')
-      ? geomRaw
-      : inferGeometryTypeFromWkt(record.coordinates);
-    const preloadedPts = parseWktToCoordinates(record.coordinates || undefined);
-    updateForm.setFieldsValue({ geometryType: geomValue, coordinateSystem: safeRecord.coordinateSystem ?? 1 });
-    setUpdateGpsCoordList(adjustCoordinateListForGeometry(preloadedPts, geomValue));
     setUpdateModalOpen(true);
-  }, [updateForm, setUpdateGpsCoordList, setUpdateModalOpen, setUpdateTarget, setUpdateAttachments, setUpdatePendingFiles, setUpdatePendingDeleted]);
+  }, []);
 
   useEffect(() => {
     if (!isMapLinkedView || !linkedRecordId || !linkedAction) return;
@@ -1654,66 +1243,17 @@ const TransmissionListPage = () => {
           onClick: () => {
             setSelectedRecord(record);
             setDetailDrawerOpen(true);
-            setDetailFiles([]);
-            setDetailFilesLoading(true);
-            void fetchTransmissionAttachments(record.id).then((list: any[]) => {
-              setDetailFiles(Array.isArray(list) ? list : []);
-            }).catch(() => setDetailFiles([])).finally(() => setDetailFilesLoading(false));
           },
         },
       ];
 
-      // Chỉnh sửa theo policy chuẩn KCHT (approvalEditPolicy): Lưu tạm / Bị trả về / Đã duyệt
+      // Chỉnh sửa theo policy chuẩn KCHT (approvalEditPolicy): Lưu tạm / Bị trả về / Đã phê duyệt
       if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: "transmission" })) {
         actions.push({
           key: "edit",
           label: "Chỉnh sửa",
           icon: icons.edit,
-          onClick: () => {
-            setUpdateTarget(record);
-            setUpdateAttachments([]);
-            setUpdatePendingFiles([]);
-            setUpdatePendingDeleted([]);
-            void fetchTransmissionAttachments(record.id).then((list: any[]) => {
-              setUpdateAttachments(Array.isArray(list)
-                ? list.map((a: any) => ({
-                    id: String(a.id),
-                    fileName: a.fileName || a.name || '—',
-                    fileSize: a.fileSize,
-                    uploadedByName: a.uploadedByName || a.uploadedBy,
-                    uploadedDate: a.uploadedDate || a.createdAt,
-                  }))
-                : []);
-            }).catch(() => { /* ignore */ });
-            // Convert operationalStatus từ string enum (backend @JsonValue) sang số (frontend dropdown)
-            const safeRecord = {
-              ...record,
-              operationalStatus: record.operationalStatus != null
-                ? (() => {
-                    switch (record.operationalStatus) {
-                      case "NOT_YET_OPERATIONAL": return 0;
-                      case "OPERATIONAL": return 1;
-                      case "SUSPENDED": return 2;
-                      default: {
-                        const num = Number(record.operationalStatus);
-                        return num >= 0 && num <= 2 ? num : 1;
-                      }
-                    }
-                  })()
-                : null,
-            };
-            updateForm.setFieldsValue(safeRecord);
-            // Preload tọa độ từ WKT trước khi mở Edit (chuẩn /vts-operation-center):
-            // nếu không nạp trước, danh sách tọa độ rỗng → lưu sẽ làm mất geometry.
-            const geomRaw = record.geometryType;
-            const geomValue = (geomRaw === 'POINT' || geomRaw === 'LINE' || geomRaw === 'POLYGON')
-              ? geomRaw
-              : inferGeometryTypeFromWkt(record.coordinates);
-            const preloadedPts = parseWktToCoordinates(record.coordinates || undefined);
-            updateForm.setFieldsValue({ geometryType: geomValue, coordinateSystem: safeRecord.coordinateSystem ?? 1 });
-            setUpdateGpsCoordList(adjustCoordinateListForGeometry(preloadedPts, geomValue));
-            setUpdateModalOpen(true);
-          },
+          onClick: () => openUpdateDrawer(record),
         });
       }
 
@@ -1722,19 +1262,7 @@ const TransmissionListPage = () => {
         key: "history",
         label: "Lịch sử",
         icon: icons.history,
-        onClick: () => {
-          setSelectedRecord(record);
-          setHistoryEntityName(record.deviceName || '');
-          setHistoryModalVisible(true);
-          setHistoryRecords([]);
-          setLoadingHistory(false);
-          setLoadingMoreHistory(false);
-          setHasMoreHistory(true);
-          setHistorySearch('');
-          setHistoryDateFrom('');
-          setHistoryDateTo('');
-          setHistoryPage(0);
-        },
+        onClick: () => openHistory(record),
       });
 
       // DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2 + transmission:update → Gửi phê duyệt (submitTransmission)
@@ -1750,7 +1278,6 @@ const TransmissionListPage = () => {
           icon: icons.submit,
           onClick: () => {
             setSubmittingRecord(record);
-            setSubmitContent("");
             setSubmitModalOpen(true);
           },
         });
@@ -1780,6 +1307,7 @@ const TransmissionListPage = () => {
           onClick: () => {
             setRejectTarget(record);
             setRejectLevel("c1");
+            setRejectReason("");
             setRejectModalOpen(true);
           },
         });
@@ -1809,6 +1337,7 @@ const TransmissionListPage = () => {
           onClick: () => {
             setRejectTarget(record);
             setRejectLevel("c2");
+            setRejectReason("");
             setRejectModalOpen(true);
           },
         });
@@ -1830,7 +1359,7 @@ const TransmissionListPage = () => {
 
       return actions;
     },
-    [updateForm, hasPerm, currentUser]
+    [updateForm, hasPerm, currentUser, openHistory]
   );
 
   const fetchData = useCallback(async () => {
@@ -1842,7 +1371,9 @@ const TransmissionListPage = () => {
       const result = await fetchTransmissionList({
         page: safePage,
         size: safeSize,
-        orgUnitId: filterValues.orgUnitId || undefined,
+        orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__'
+                          ? filterValues.orgUnitId
+                          : undefined),
         search: filterValues.deviceCode || filterValues.deviceName || undefined,
         deviceCode: filterValues.deviceCode || undefined,
         deviceName: filterValues.deviceName || undefined,
@@ -1962,17 +1493,17 @@ const TransmissionListPage = () => {
   }, [deleteTarget, deleteConfirmText, fetchData, fetchTabCounts]);
 
   const handleApprove = useCallback(
-    async (content: string) => {
+    async (content?: string) => {
       if (!approveTarget) return;
       setApproveLoading(true);
       try {
-        const payload: ApprovalRequest = { decision: "APPROVED", reason: content };
+        const payload: ApprovalRequest = { decision: "APPROVED", reason: content?.trim() || undefined };
         if (approveLevel === "c1") {
           await approveTransmissionC1(approveTarget.id, payload);
-          toast.success("Phê duyệt cấp 1 thành công");
+          toast.success("Phê duyệt cấp Cảng vụ thành công");
         } else {
           await approveTransmissionC2(approveTarget.id, payload);
-          toast.success("Phê duyệt cấp 2 thành công");
+          toast.success("Phê duyệt cấp Cục thành công");
         }
         setApproveTarget(null);
         setApproveModalOpen(false);
@@ -1989,22 +1520,28 @@ const TransmissionListPage = () => {
 
   const handleReject = useCallback(async () => {
     if (!rejectTarget) return;
-    let reason: string;
-    try {
-      ({ reason } = await rejectForm.validateFields());
-    } catch {
-      // Form rules đã hiển thị lỗi inline: lý do từ chối tối thiểu 10 ký tự
+    const reason = rejectReason.trim();
+    if (!reason) {
+      toast.error("Vui lòng nhập lý do từ chối");
+      return;
+    }
+    if (reason.length < 10) {
+      toast.error("Lý do từ chối tối thiểu 10 ký tự");
+      return;
+    }
+    if (reason.length > 500) {
+      toast.error("Lý do từ chối tối đa 500 ký tự");
       return;
     }
     setRejectLoading(true);
     try {
-      const payload: ApprovalRequest = { decision: "REJECTED", reason: String(reason || "").trim() };
+      const payload: ApprovalRequest = { decision: "REJECTED", reason };
       if (rejectLevel === "c1") await approveTransmissionC1(rejectTarget.id, payload);
       else await approveTransmissionC2(rejectTarget.id, payload);
-      toast.success("Từ chối thành công");
+      toast.success("Từ chối phê duyệt thành công");
       setRejectTarget(null);
       setRejectModalOpen(false);
-      rejectForm.resetFields();
+      setRejectReason("");
       fetchData();
       fetchTabCounts();
     } catch (error: unknown) {
@@ -2012,127 +1549,40 @@ const TransmissionListPage = () => {
     } finally {
       setRejectLoading(false);
     }
-  }, [rejectTarget, rejectLevel, rejectForm, fetchData, fetchTabCounts]);
+  }, [rejectTarget, rejectLevel, rejectReason, fetchData, fetchTabCounts]);
 
-  const handleCreate = useCallback(
-    async (values: Record<string, unknown>) => {
-      setCreateLoading(true);
-      try {
-        // Build WKT từ GPS state (chuẩn /vts-operation-center: serializeCoordinatesToWkt)
-        const createGeomType = normalizeGeometryType(values.geometryType);
-        const coordinates = serializeCoordinatesToWkt(gpsCoordList, createGeomType);
-
-        const payload = {
-          ...values,
-          deviceCode: values.deviceCode || (await generateTransmissionCode()),
-          operationalStatus: values.operationalStatus ?? 1,
-          geometryType: createGeomType,
-          coordinates: coordinates || undefined,
-          // Cột display_rule là INT; chuỗi 'Độ, phút, giây (DMS)' chỉ để hiển thị (giống /port, /pier)
-          displayRule: values.displayRule != null ? Number(values.displayRule) || null : undefined,
-        } as CreateTransmissionRequest;
-        // Chuẩn VTS: tạo theo hành động footer — draft/submit/approve
-        // (backend resolveCreateApprovalStatus: DRAFT / PENDING_APPROVAL / APPROVED)
-        const currentAction = createActionTypeRef.current;
-        const created = await createTransmission({
-          ...payload,
-          action: currentAction === 'draft' ? 'draft' : currentAction === 'submit' ? 'submit' : 'approve',
-        });
-        if (created?.id && createPendingFiles.length > 0) {
-          for (const f of createPendingFiles) {
-            await uploadTransmissionAttachment(created.id, f);
-          }
-        }
-        toast.success(
-          currentAction === 'draft'
-            ? 'Lưu tạm hệ thống truyền dẫn thành công'
-            : currentAction === 'submit'
-              ? 'Lưu và gửi phê duyệt thành công'
-              : 'Lưu và phê duyệt thành công'
+  useEffect(() => {
+    if (!selectedRecord?.id) {
+      setDetailFiles([]);
+      return;
+    }
+    setDetailFilesLoading(true);
+    fetchTransmissionAttachments(selectedRecord.id)
+      .then((list) => {
+        setDetailFiles(
+          Array.isArray(list)
+            ? list.map((a: any) => ({
+                id: String(a.id),
+                fileName: a.fileName || a.name || '—',
+                fileSize: a.fileSize,
+                uploadedByName: a.uploadedByName || a.uploadedBy,
+                uploadedDate: a.uploadedDate || a.createdAt,
+              }))
+            : [],
         );
-        setCreateModalOpen(false);
-        createForm.resetFields();
-        setGpsCoordList([]);
-        setCreateAttachments([]);
-        setCreatePendingFiles([]);
-        fetchData();
-        fetchTabCounts();
-      } catch (error: unknown) {
-        console.error("[transmission] create error", error); // toast toàn cục đã xử lý ở interceptor api.ts
-      } finally {
-        setCreateLoading(false);
-      }
-    },
-    [createForm, fetchData, fetchTabCounts, gpsCoordList, createPendingFiles]
-  );
-
-  const handleUpdate = useCallback(
-    async (values: Record<string, unknown>) => {
-      if (!updateTarget) return;
-      setUpdateLoading(true);
-      try {
-        // Build WKT từ GPS state (chuẩn /vts-operation-center: serializeCoordinatesToWkt)
-        const updateGeomType = normalizeGeometryType(updateGeometryType);
-        const coordinates = serializeCoordinatesToWkt(updateGpsCoordList, updateGeomType);
-
-        // Chuẩn VTS: Lưu tạm (chỉ update) / Lưu và gửi phê duyệt (update + submit) /
-        // Lưu và phê duyệt (update + giữ Đã duyệt — T12 backend)
-        const currentAction = updateActionTypeRef.current;
-        await updateTransmission({
-          id: updateTarget.id,
-          ...values,
-          geometryType: updateGeomType,
-          coordinates: coordinates || undefined,
-          // Cột display_rule là INT; chuỗi 'Độ, phút, giây (DMS)' chỉ để hiển thị (giống /port, /pier)
-          displayRule: values.displayRule != null ? Number(values.displayRule) || null : undefined,
-          ...(currentAction === 'approve' ? { approvalStatus: 'APPROVED' } : {}),
-        });
-        if (updatePendingFiles.length > 0) {
-          for (const f of updatePendingFiles) {
-            await uploadTransmissionAttachment(updateTarget.id, f);
-          }
-        }
-        if (updatePendingDeleted.length > 0) {
-          for (const d of updatePendingDeleted) {
-            await deleteTransmissionAttachment(updateTarget.id, d.id);
-          }
-        }
-        if (currentAction === 'submit') {
-          await submitTransmission(updateTarget.id);
-        }
-        toast.success(
-          currentAction === 'draft'
-            ? 'Lưu tạm hệ thống truyền dẫn thành công'
-            : currentAction === 'submit'
-              ? 'Lưu và gửi phê duyệt thành công'
-              : 'Lưu và phê duyệt thành công'
-        );
-        setUpdateModalOpen(false);
-        setUpdateTarget(null);
-        setUpdateGpsCoordList([]);
-        setUpdateAttachments([]);
-        setUpdatePendingFiles([]);
-        setUpdatePendingDeleted([]);
-        fetchData();
-        fetchTabCounts();
-      } catch (error: unknown) {
-        console.error("[transmission] update error", error); // toast toàn cục đã xử lý ở interceptor api.ts
-      } finally {
-        setUpdateLoading(false);
-      }
-    },
-    [updateTarget, fetchData, fetchTabCounts, updateGpsCoordList, updateGeometryType, updatePendingFiles, updatePendingDeleted]
-  );
+      })
+      .catch(() => setDetailFiles([]))
+      .finally(() => setDetailFilesLoading(false));
+  }, [selectedRecord?.id]);
 
   const handleConfirmSubmit = useCallback(async () => {
     if (!submittingRecord) return;
     setSubmitLoading(true);
     try {
-      await submitTransmission(submittingRecord.id, submitContent.trim() || undefined);
+      await submitTransmission(submittingRecord.id);
       toast.success("Gửi phê duyệt thành công");
       setSubmitModalOpen(false);
       setSubmittingRecord(null);
-      setSubmitContent("");
       fetchData();
       fetchTabCounts();
     } catch (error: unknown) {
@@ -2140,12 +1590,255 @@ const TransmissionListPage = () => {
     } finally {
       setSubmitLoading(false);
     }
-  }, [submittingRecord, submitContent, fetchData, fetchTabCounts]);
+  }, [submittingRecord, fetchData, fetchTabCounts]);
+
+  const CHK_FILTER_LABEL = { ...themeTokenChk.filterLabelStyle, fontSize: 13.5 };
 
   return (
     <>
-      <ThemeTokenProvider tokens={themeTokenChk}>
-      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+      <ThemeTokenProvider tokens={{ ...themeTokenChk, fontSizeMd: 13.5, filterLabelStyle: CHK_FILTER_LABEL }}>
+      <div className="transmission-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <style>{`
+        .transmission-page-wrapper div:has(> button[aria-pressed]) {
+          display: flex !important;
+          flex-wrap: nowrap !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          justify-content: safe center !important;
+          align-items: center !important;
+          gap: 20px !important;
+          padding: 2px 16px 6px 16px !important;
+          gap: 20px !important;
+          scrollbar-width: thin !important;
+          scrollbar-color: #cbd5e1 #f8fafc !important;
+          scroll-behavior: smooth !important;
+          -webkit-overflow-scrolling: touch !important;
+        }
+        .transmission-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar { height: 6px !important; display: block !important; }
+        .transmission-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track { background: #f1f5f9 !important; border-radius: 999px !important; }
+        .transmission-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb { background: #cbd5e1 !important; border-radius: 999px !important; }
+        .transmission-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover { background: #94a3b8 !important; }
+        .transmission-page-wrapper div:has(> button[aria-pressed]) > button { white-space: nowrap !important; flex-shrink: 0 !important; cursor: pointer !important; flex: 0 0 auto; }
+
+        /* ── Cỡ chữ 13.5px chuẩn: bảng + popup/drawer con (port đầy đủ từ /cctv ≡ /berth) ── */
+        /* ── Breadcrumb title (màn /transmission): "Trang chủ" 14px, "Quản lý hệ thống truyền dẫn" 16px —
+           khóa cỡ 14/16 trên span tiêu đề, thắng cả ép 13.5px của font trang bên dưới ── */
+        .transmission-page-wrapper .ant-breadcrumb .ant-breadcrumb-item:not(:last-child) > .ant-breadcrumb-link > span { font-size: 14px !important; }
+        .transmission-page-wrapper .ant-breadcrumb .ant-breadcrumb-item:last-child > .ant-breadcrumb-link > span { font-size: 16px !important; }
+        .transmission-page-wrapper .ant-table,
+        .transmission-page-wrapper .ant-table-cell,
+        .transmission-page-wrapper .ant-table-thead > tr > th,
+        .transmission-page-wrapper .ant-table-tbody > tr > td,
+        .transmission-page-wrapper .ant-pagination-item,
+        .transmission-page-wrapper .ant-pagination-total-text,
+        .transmission-page-wrapper .ant-breadcrumb,
+        .transmission-page-wrapper .list-view-table .ant-table-cell,
+        .transmission-drawer-scope,
+        .transmission-drawer-scope .ant-drawer-content,
+        .transmission-drawer-scope .ant-tabs-tab,
+        .transmission-drawer-scope .chk-detail-label,
+        .transmission-drawer-scope .chk-detail-value,
+        .transmission-drawer-scope .ant-table,
+        .transmission-drawer-scope .ant-table-cell,
+        .transmission-drawer-scope .list-view-table .ant-table-cell,
+        .transmission-drawer-scope .ant-table-thead > tr > th,
+        .transmission-drawer-scope .ant-btn,
+        .transmission-drawer-scope .ant-select,
+        .transmission-drawer-scope .ant-select .ant-select-selection-item,
+        .transmission-drawer-scope .ant-input,
+        .transmission-drawer-scope .ant-picker,
+        .transmission-drawer-scope .ant-form-item-label > label,
+        .transmission-modal-scope,
+        .transmission-modal-scope .ant-modal-content,
+        .transmission-modal-scope .ant-modal-title,
+        .transmission-modal-scope .ant-btn,
+        .transmission-modal-scope .ant-input,
+        .transmission-modal-scope .ant-modal-body p,
+        .transmission-modal-scope .ant-modal-body > p,
+        .transmission-modal-scope .chk-detail-label,
+        .transmission-modal-scope .chk-detail-value {
+          font-size: 13.5px !important;
+        }
+        .transmission-drawer-scope .chk-detail-label,
+        .transmission-modal-scope .chk-detail-label,
+        .transmission-drawer-scope .chk-detail-value,
+        .transmission-modal-scope .chk-detail-value {
+          font-size: 13.5px !important;
+        }
+
+
+        /* ── KẸP CỨNG 13.5px (port chuẩn /cctv) — nâng MỌI text/label còn để 13px trong phạm vi /transmission ── */
+        .transmission-page-wrapper.transmission-page-wrapper,
+        .transmission-page-wrapper.transmission-page-wrapper div,
+        .transmission-page-wrapper.transmission-page-wrapper span,
+        .transmission-page-wrapper.transmission-page-wrapper p,
+        .transmission-page-wrapper.transmission-page-wrapper label,
+        .transmission-page-wrapper.transmission-page-wrapper li,
+        .transmission-page-wrapper.transmission-page-wrapper a,
+        .transmission-page-wrapper.transmission-page-wrapper button:not(.anticon),
+        .transmission-page-wrapper.transmission-page-wrapper .ant-table-cell,
+        .transmission-page-wrapper.transmission-page-wrapper .ant-table-thead > tr > th,
+        .transmission-page-wrapper.transmission-page-wrapper .ant-table-tbody > tr > td,
+        .transmission-drawer-scope.transmission-drawer-scope .chk-detail-row .chk-detail-label,
+        .transmission-drawer-scope.transmission-drawer-scope .chk-detail-row .chk-detail-value,
+        .transmission-modal-scope.transmission-modal-scope .chk-detail-row .chk-detail-label,
+        .transmission-modal-scope.transmission-modal-scope .chk-detail-row .chk-detail-value {
+          font-size: 13.5px !important;
+        }
+        /* ── Thu nhỏ icon DropdownList (mũi tên xổ + nút xóa) về kích thước compact chuẩn ── */
+        .transmission-page-wrapper .ant-select .ant-select-suffix,
+        .transmission-page-wrapper .ant-select .ant-select-clear {
+          font-size: 10px !important;
+          line-height: 1 !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+        }
+        .transmission-page-wrapper .ant-select .ant-select-suffix .anticon,
+        .transmission-page-wrapper .ant-select .ant-select-clear .anticon {
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          line-height: 1 !important;
+        }
+        .transmission-page-wrapper .ant-select .ant-select-suffix svg,
+        .transmission-page-wrapper .ant-select .ant-select-clear svg {
+          font-size: 10px !important;
+          width: 10px !important;
+          height: 10px !important;
+          display: block !important;
+        }
+        /* Chuẩn cỡ chữ giá trị trong bảng: tên 14 / mã 12 / badge 13 / còn lại 13.5 (+StatusTab text 13) */
+        .transmission-page-wrapper.transmission-page-wrapper .ant-table-row .kcht-cell-title.kcht-cell-title { font-size: 14px !important; }
+        .transmission-page-wrapper.transmission-page-wrapper .kcht-cell-code { font-size: 12px !important; }
+        .transmission-page-wrapper.transmission-page-wrapper .kcht-cell-badge { font-size: 13px !important; }
+        .transmission-page-wrapper.transmission-page-wrapper button[aria-pressed] span { font-size: 13px !important; }
+        /* Tiêu đề card (Section header) trong Drawer Xem chi tiết — 14px như /cctv */
+        .transmission-drawer-scope.transmission-drawer-scope .transmission-section-card-title { font-size: 14px !important; }
+        /* Mũi tên đóng/mở (chevron) trong Drawer Xem chi tiết — cố định 12px như /berth và /cctv */
+        .transmission-drawer-scope .anticon-down,
+        .transmission-drawer-scope .anticon-right {
+          font-size: 12px !important;
+        }
+        .transmission-drawer-scope .anticon-down svg,
+        .transmission-drawer-scope .anticon-right svg {
+          width: 12px !important;
+          height: 12px !important;
+        }
+
+        /* ── Grid 2 cột & nhãn đồng bộ chuẩn /berth (BerthDetailContent) ── */
+        .transmission-drawer-scope .chk-detail-grid {
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+          column-gap: 28px !important;
+          row-gap: 0 !important;
+        }
+        .transmission-drawer-scope .chk-detail-row {
+          display: flex !important;
+          align-items: flex-start !important;
+          min-height: 36px !important;
+          padding: 7px 0 !important;
+          border-bottom: 1px solid #f1f5f9 !important;
+          line-height: 1.5 !important;
+          gap: 10px !important;
+        }
+        .transmission-drawer-scope .chk-detail-row:last-child {
+          border-bottom: none !important;
+        }
+        .transmission-drawer-scope .chk-detail-row--full {
+          grid-column: 1 / -1 !important;
+        }
+        .transmission-drawer-scope .chk-detail-row .chk-detail-label,
+        .transmission-drawer-scope .chk-detail-label {
+          width: 215px !important;
+          min-width: 215px !important;
+          max-width: 215px !important;
+          flex-shrink: 0 !important;
+          color: ${colors.sidebarBg} !important;
+          font-weight: 600 !important;
+          font-size: 13.5px !important;
+          text-align: left !important;
+          line-height: 1.5 !important;
+        }
+        .transmission-drawer-scope .chk-detail-row .sec-col1-label,
+        .transmission-drawer-scope .sec-col1-label {
+          width: 215px !important;
+          min-width: 215px !important;
+          max-width: 215px !important;
+          flex-shrink: 0 !important;
+        }
+        .transmission-drawer-scope .chk-detail-row .sec-col2-label,
+        .transmission-drawer-scope .sec-col2-label {
+          width: 250px !important;
+          min-width: 250px !important;
+          max-width: 250px !important;
+          flex-shrink: 0 !important;
+        }
+        .transmission-drawer-scope .chk-detail-row .sec-full-label,
+        .transmission-drawer-scope .sec-full-label {
+          width: 215px !important;
+          min-width: 215px !important;
+          max-width: 215px !important;
+          flex-shrink: 0 !important;
+        }
+        .transmission-drawer-scope .chk-detail-label::after {
+          content: ':' !important;
+          margin-left: 1px !important;
+          margin-right: 4px !important;
+        }
+        .transmission-drawer-scope .chk-detail-value {
+          color: #1e293b !important;
+          font-size: 13.5px !important;
+          flex: 1 !important;
+          min-width: 0 !important;
+          text-align: left !important;
+          line-height: 1.5 !important;
+          word-break: break-word !important;
+        }
+        @media (max-width: 960px) {
+          .transmission-drawer-scope .chk-detail-grid {
+            grid-template-columns: 1fr !important;
+            column-gap: 0 !important;
+          }
+          .transmission-drawer-scope .chk-detail-row--full {
+            grid-column: 1 !important;
+          }
+          .transmission-drawer-scope .chk-detail-row .chk-detail-label,
+          .transmission-drawer-scope .chk-detail-label,
+          .transmission-drawer-scope .sec-col1-label,
+          .transmission-drawer-scope .sec-col2-label,
+          .transmission-drawer-scope .sec-full-label {
+            width: 250px !important;
+            min-width: 250px !important;
+            max-width: 250px !important;
+          }
+        }
+        @media (max-width: 640px) {
+          .transmission-drawer-scope .chk-detail-row {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 3px !important;
+            padding: 6px 0 !important;
+          }
+          .transmission-drawer-scope .chk-detail-row .chk-detail-label,
+          .transmission-drawer-scope .chk-detail-label,
+          .transmission-drawer-scope .sec-col1-label,
+          .transmission-drawer-scope .sec-col2-label,
+          .transmission-drawer-scope .sec-full-label {
+            width: 100% !important;
+            min-width: 100% !important;
+            max-width: 100% !important;
+          }
+          .transmission-drawer-scope .chk-detail-value {
+            width: 100% !important;
+          }
+        }
+        /* ── Bảng tọa độ GPS: giữ nguyên style ghép viên thuốc (Độ 999px 0 0 999px, Phút/Giây 0) ── */
+        .transmission-drawer-scope .ant-table .ant-input-number,
+        .theme-token-scope .ant-table .ant-input-number {
+          border-radius: inherit;
+        }
+      `}</style>
       <ScreenHeader
         breadcrumb={[
           { label: "Trang chủ", path: "/" },
@@ -2158,17 +1851,7 @@ const TransmissionListPage = () => {
                 label: "Thêm mới",
                 icon: <PlusOutlined />,
                 variant: "primary" as const,
-                onClick: () => {
-                  setCreateAttachments([]);
-                  setCreatePendingFiles([]);
-                  setCreateModalOpen(true);
-                  // Sinh trước mã thiết bị để hiển thị preview (giống Mã cảng biển /port)
-                  setDeviceCodeLoading(true);
-                  generateTransmissionCode()
-                    .then((code) => { if (code) createForm.setFieldsValue({ deviceCode: code }); })
-                    .catch(() => { createForm.setFieldsValue({ deviceCode: '' }); /* Backend tự sinh khi lưu */ })
-                    .finally(() => setDeviceCodeLoading(false));
-                },
+                onClick: handleOpenCreate,
               }
             : null,
         ].filter(Boolean) as Array<{ key: string; label: string; icon?: React.ReactNode; variant?: 'primary' | 'outline' | 'subtle' | 'default'; onClick: () => void }>}
@@ -2185,12 +1868,11 @@ const TransmissionListPage = () => {
         onRetry={fetchData}
         filterContent={
           <>
-            {/* ═══ Basic Filters (always visible) ═══ */}
-            <div style={{ marginBottom: 12, marginTop: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>
-                Đơn vị quản lý{" "}
-                <span style={{ color: statusCritical }}>*</span>
-              </div>
+            <SidebarFilterField
+              style={{ marginTop: 12 }}
+              labelGap={spaceSm}
+              label={<span>Đơn vị quản lý <span style={{ color: statusCritical }}>*</span></span>}
+            >
               <OrgUnitTreeSelect
                 organizations={orgUnitOptions}
                 placeholder="Chọn đơn vị"
@@ -2208,9 +1890,9 @@ const TransmissionListPage = () => {
                 loading={loadingOrgs}
                 style={{ borderRadius: radiusPill, height: 40 }}
               />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>Tên thiết bị</div>
+            </SidebarFilterField>
+
+            <SidebarFilterField label="Tên thiết bị" labelGap={spaceSm}>
               <Input placeholder="Tìm theo tên thiết bị..." allowClear
                 value={filterValues.deviceName || ""}
                 onChange={(e) =>
@@ -2221,11 +1903,11 @@ const TransmissionListPage = () => {
                 }
                 onPressEnter={handleFilterApply}
                 style={{ borderRadius: radiusPill, height: 40 }} />
-            </div>
+            </SidebarFilterField>
+
             {filterCollapsed && (
               <>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>Mã thiết bị</div>
+                <SidebarFilterField label="Mã thiết bị" labelGap={spaceSm}>
                   <Input placeholder="Tìm theo mã thiết bị..." allowClear
                     value={filterValues.deviceCode || ""}
                     onChange={(e) =>
@@ -2236,9 +1918,9 @@ const TransmissionListPage = () => {
                     }
                     onPressEnter={handleFilterApply}
                     style={{ borderRadius: radiusPill, height: 40 }} />
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>Tình trạng</div>
+                </SidebarFilterField>
+
+                <SidebarFilterField label="Tình trạng" labelGap={spaceSm}>
                   <Select placeholder="Chọn tình trạng" allowClear
                     value={filterValues.operationalStatus || undefined}
                     onChange={(val) =>
@@ -2249,9 +1931,9 @@ const TransmissionListPage = () => {
                     }
                     options={OPERATIONAL_STATUS_OPTIONS}
                     style={{ width: "100%", borderRadius: radiusPill, height: 40 }} />
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>Thuộc loại hạ tầng</div>
+                </SidebarFilterField>
+
+                <SidebarFilterField label="Thuộc loại hạ tầng" labelGap={spaceSm}>
                   <Select placeholder="Chọn loại hạ tầng" allowClear
                     value={filterValues.attachedInfraType || undefined}
                     onChange={(val) => {
@@ -2264,9 +1946,9 @@ const TransmissionListPage = () => {
                     }}
                     options={attachedInfraTypeOptions}
                     style={{ width: "100%", borderRadius: radiusPill, height: 40 }} />
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>Thuộc hạ tầng</div>
+                </SidebarFilterField>
+
+                <SidebarFilterField label="Thuộc hạ tầng" labelGap={spaceSm}>
                   <Select placeholder={
                     filterValues.attachedInfraType === 2
                         ? "Chọn trạm Radar"
@@ -2285,9 +1967,9 @@ const TransmissionListPage = () => {
                     loading={filterValues.attachedInfraType === 1 ? loadingVtsCenters : filterValues.attachedInfraType === 2 ? loadingRadars : false}
                     disabled={filterValues.attachedInfraType !== 1 && filterValues.attachedInfraType !== 2}
                     style={{ width: "100%", borderRadius: radiusPill, height: 40 }} />
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>Năm đưa vào sử dụng</div>
+                </SidebarFilterField>
+
+                <SidebarFilterField label="Năm đưa vào sử dụng" labelGap={spaceSm}>
                   <Select placeholder="Chọn năm" allowClear
                     value={filterValues.yearOfUse}
                     onChange={(val) =>
@@ -2298,15 +1980,14 @@ const TransmissionListPage = () => {
                     }
                     options={yearOfUseOptions}
                     style={{ width: "100%", borderRadius: radiusPill, height: 40 }} />
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>Ngày cập nhật</div>
+                </SidebarFilterField>
+
+                <SidebarFilterField label="Ngày cập nhật" labelGap={spaceSm}>
                   <DatePicker.RangePicker
                     format="DD/MM/YYYY"
-                    placeholder={["Chọn từ ngày", "Chọn đến ngày"]}
+                    placeholder={["Từ ngày", "Đến ngày"]}
                     allowClear
-                    className="port-range-picker"
-                    popupClassName="range-single-panel"
+                    popupClassName="chk-range-datepicker-popup"
                     value={
                       filterValues.updatedFrom && filterValues.updatedTo
                         ? [
@@ -2322,11 +2003,10 @@ const TransmissionListPage = () => {
                         updatedTo: dates?.[1] ? dates[1].format("YYYY-MM-DD 23:59:59") : undefined,
                       }));
                     }}
-                    style={{ width: "100%", borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} />
-                  <style>{`.port-range-picker .ant-picker-cell-selected .ant-picker-cell-inner{background:${actionPrimary}!important}.port-range-picker .ant-picker-ok button{background:${actionPrimary}!important;border-color:${actionPrimary}!important;border-radius:${radiusPill}px!important}.port-range-picker .ant-picker-time-panel-cell-selected .ant-picker-time-panel-cell-inner{background:${actionPrimary}15!important;color:${actionPrimary}!important}.port-range-picker .ant-picker-today-btn{color:${actionPrimary}!important}.range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child{display:none!important}`}</style>
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>Địa điểm (Tỉnh/Thành phố)</div>
+                    style={{ width: "100%", borderRadius: radiusPill, height: 40 }} />
+                </SidebarFilterField>
+
+                <SidebarFilterField label="Địa điểm (Tỉnh/Thành phố)" labelGap={spaceSm}>
                   <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
                     filterOption={(input, option) =>
                       (option?.label ?? "")
@@ -2342,7 +2022,7 @@ const TransmissionListPage = () => {
                     }
                     options={VIETNAM_PROVINCES.map(p => ({ label: p, value: p }))}
                     style={{ width: "100%", borderRadius: radiusPill, height: 40 }} />
-                </div>
+                </SidebarFilterField>
               </>
             )}
           </>
@@ -2364,21 +2044,21 @@ const TransmissionListPage = () => {
           },
           {
             key: "PENDING_APPROVAL",
-            label: "Chờ Cảng vụ duyệt",
+            label: "Chờ phê duyệt cấp Cảng vụ/Chi cục",
             count: tabCounts["PENDING_APPROVAL"] ?? 0,
             color: statusAttention,
             active: filterValues.approvalStatus === "PENDING_APPROVAL",
           },
           {
             key: "APPROVED_LEVEL1",
-            label: "Chờ Cục duyệt",
+            label: "Chờ phê duyệt cấp cục",
             count: tabCounts["APPROVED_LEVEL1"] ?? 0,
             color: statusInfo,
             active: filterValues.approvalStatus === "APPROVED_LEVEL1",
           },
           {
             key: "APPROVED",
-            label: "Đã duyệt",
+            label: "Đã phê duyệt",
             count: tabCounts["APPROVED"] ?? 0,
             color: statusOperational,
             active: filterValues.approvalStatus === "APPROVED",
@@ -2440,9 +2120,13 @@ const TransmissionListPage = () => {
       </div>
 
       {/* Detail Drawer */}
-      <Drawer
+      <AppDrawer
         {...drawerProps}
-        rootClassName={THEME_SCOPE_CLASS}
+        size={undefined}
+        width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
+        style={{ maxWidth: '96vw' }}
+        rootClassName="transmission-drawer-scope"
+        className="transmission-drawer-scope"
         title={<span style={drawerTitleStyle}>Chi tiết hệ thống truyền dẫn{selectedRecord ? ` - ${selectedRecord.deviceName || selectedRecord.deviceCode || ''}` : ''}</span>}
         open={detailDrawerOpen}
         onClose={() => setDetailDrawerOpen(false)}
@@ -2463,165 +2147,364 @@ const TransmissionListPage = () => {
                 key: "general",
                 label: "Thông tin chung",
                 children: (
-                  <div style={{ paddingTop: 3 }}>
-                    <div className="chk-detail-grid">
-                      {([
-                        { label: 'Mã thiết bị', value: selectedRecord.deviceCode, badge: true },
-                        { label: 'Tên thiết bị', value: selectedRecord.deviceName, bold: true },
-                        { label: 'Đơn vị quản lý', value: selectedRecord.orgUnitName || '—', bold: true },
-                        { label: 'Thuộc TTDH VTS / Trạm Radar', value: selectedRecord.attachedInfrastructureName || '—' },
-                        { label: 'Đơn vị khai thác', value: selectedRecord.operatingUnitName || '—' },
-                        { label: 'Tỉnh / Thành phố', value: selectedRecord.provinceName || '—' },
-                        { label: 'Địa điểm chi tiết', value: selectedRecord.detailedLocation || '—' },
-                        { label: 'Đơn vị tính', value: formatUnitOfMeasure(selectedRecord.unitOfMeasure) },
-                        { label: 'Số lượng', value: <span style={{ color: textPrimary, fontSize: fontSizeMd }}>{fmtNum(selectedRecord.quantity)}</span> },
-                        { label: 'Năm đưa vào sử dụng', value: selectedRecord.yearOfUse ? String(selectedRecord.yearOfUse) : '—' },
-                        { label: 'Tình trạng', value: (() => { const stMap: Record<string, { color: string; label: string }> = { 'NOT_YET_OPERATIONAL': { color: 'orange', label: 'Chưa khai thác/vận hành' }, 'OPERATIONAL': { color: 'green', label: 'Đang khai thác/vận hành' }, 'SUSPENDED': { color: 'red', label: 'Dừng khai thác/vận hành' } }; const st = stMap[String(selectedRecord.operationalStatus || '').toUpperCase()] || { color: textTertiary, label: String(selectedRecord.operationalStatus || '—') }; return renderTransmissionStatusBadge(st); })() },
-                        { label: 'Model', value: selectedRecord.model || '—' },
-                        { label: 'Hãng sản xuất', value: selectedRecord.manufacturer || '—' },
-                        { label: 'Phê duyệt', value: renderApprovalBadge(selectedRecord.approvalStatus) },
-                        { label: 'Thông số kỹ thuật', value: selectedRecord.specifications || '—', fullWidth: true },
-                        { label: 'Thông tin bảo trì', value: selectedRecord.maintenanceInformation || '—', fullWidth: true },
-                        { label: 'Ghi chú', value: selectedRecord.note || '—', fullWidth: true },
-                      ] as Array<{ label: string; value: React.ReactNode; badge?: boolean; bold?: boolean; fullWidth?: boolean }>).map((row) => (
-                        <div key={row.label} className="chk-detail-row" style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
-                          <span className="chk-detail-label">{row.label}</span>
-                          <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', ...(row.bold ? { fontWeight: fontWeightBold } : undefined) }}>
-                            {row.badge ? (
-                              <Tag color={colors.primary} style={{ borderRadius: radiusPill, margin: 0, fontWeight: fontWeightMedium }}>{row.value}</Tag>
-                            ) : row.value}
-                          </span>
+                  <div style={{ paddingTop: 6, paddingRight: 4, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)', minHeight: 350 }}>
+                    {/* ── Section 1: Thông tin cơ bản & Quản lý vận hành (card chuẩn /berth, header cố định — không đóng/mở) ── */}
+                    <div style={transmissionDetailSectionBoxStyle}>
+                      <div style={{ ...transmissionDetailSectionHeaderStyle, borderBottom: '1px solid #f1f5f9' }}>
+                        <div style={transmissionDetailSectionTitleStyle}>
+                          <BankOutlined style={{ color: actionPrimary }} />
+                          <span className="transmission-section-card-title">Thông tin cơ bản & Quản lý vận hành</span>
                         </div>
-                      ))}
+                      </div>
+                      <div className="chk-detail-grid">
+                        {(() => {
+                          let colIndex = 0;
+                          return ([
+                            { label: 'Mã thiết bị', value: selectedRecord.deviceCode || null, badge: true },
+                            { label: 'Tên thiết bị', value: selectedRecord.deviceName || null, bold: true },
+                            { label: 'Đơn vị quản lý', value: selectedRecord.orgUnitName || null, bold: true },
+                            { label: 'Thuộc TTDH VTS / Trạm Radar', value: selectedRecord.attachedInfrastructureName || null },
+                            { label: 'Đơn vị khai thác', value: selectedRecord.operatingUnitName || null },
+                            { label: 'Tỉnh / Thành phố', value: selectedRecord.provinceName || null },
+                            { label: 'Tình trạng', value: (() => { if (!selectedRecord.operationalStatus) return null; const stMap: Record<string, { color: string; label: string }> = { 'NOT_YET_OPERATIONAL': { color: 'orange', label: 'Chưa khai thác/vận hành' }, 'OPERATIONAL': { color: 'green', label: 'Đang khai thác/vận hành' }, 'SUSPENDED': { color: 'red', label: 'Dừng khai thác/vận hành' } }; const st = stMap[String(selectedRecord.operationalStatus).toUpperCase()]; return st ? renderTransmissionStatusBadge(st) : null; })() },
+                            { label: 'Địa điểm chi tiết', value: selectedRecord.detailedLocation || null },
+                          ] as Array<{ label: string; value: React.ReactNode; badge?: boolean; bold?: boolean; fullWidth?: boolean }>).map((row) => {
+                            let labelCls = 'sec-col1-label';
+                            if (row.fullWidth) {
+                              labelCls = 'sec-full-label';
+                              colIndex = 0;
+                            } else {
+                              labelCls = colIndex % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label';
+                              colIndex += 1;
+                            }
+                            return (
+                              <div key={row.label} className={row.fullWidth ? 'chk-detail-row chk-detail-row--full' : 'chk-detail-row'}>
+                                <span className={`chk-detail-label ${labelCls}`}>{row.label}</span>
+                                <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', ...(row.bold ? { fontWeight: fontWeightBold } : undefined) }}>
+                                  {row.badge && row.value ? (
+                                    <span style={statusBadgeStyle(actionPrimary)}>{row.value}</span>
+                                  ) : row.value}
+                                </span>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* ── Section 2: Thông số kỹ thuật (card chuẩn /berth, header bấm để đóng/mở) ── */}
+                    <div style={{ ...transmissionDetailSectionBoxStyle, padding: detailsSpecsOpen ? '12px 18px 8px 18px' : '10px 18px' }}>
+                      <div
+                        onClick={() => setDetailsSpecsOpen(o => !o)}
+                        style={{
+                          ...transmissionDetailSectionHeaderStyle,
+                          marginBottom: detailsSpecsOpen ? 10 : 0,
+                          paddingBottom: detailsSpecsOpen ? 8 : 0,
+                          borderBottom: detailsSpecsOpen ? '1px solid #f1f5f9' : 'none',
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                        }}
+                      >
+                        <div style={transmissionDetailSectionTitleStyle}>
+                          <SlidersOutlined style={{ color: actionPrimary }} />
+                          <span className="transmission-section-card-title">Thông số kỹ thuật</span>
+                        </div>
+                        <span style={{ color: actionPrimary, fontSize: 12, display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
+                          {detailsSpecsOpen ? <DownOutlined /> : <RightOutlined />}
+                        </span>
+                      </div>
+                      {detailsSpecsOpen && (
+                        <div className="chk-detail-grid">
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col1-label">Model</span>
+                            <span className="chk-detail-value">{selectedRecord.model || ''}</span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col2-label">Hãng sản xuất</span>
+                            <span className="chk-detail-value">{selectedRecord.manufacturer || ''}</span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col1-label">Đơn vị tính</span>
+                            <span className="chk-detail-value">
+                              {selectedRecord.unitOfMeasure != null && UOM_LABELS[selectedRecord.unitOfMeasure] ? UOM_LABELS[selectedRecord.unitOfMeasure] : ''}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col2-label">Số lượng</span>
+                            <span className="chk-detail-value">
+                              {selectedRecord.quantity != null ? <span style={{ color: textPrimary, fontSize: fontSizeMd }}>{fmtNum(selectedRecord.quantity)}</span> : ''}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col1-label">Năm đưa vào sử dụng</span>
+                            <span className="chk-detail-value">{selectedRecord.yearOfUse ? String(selectedRecord.yearOfUse) : ''}</span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col2-label" style={{ visibility: 'hidden' }}>Trống</span>
+                            <span className="chk-detail-value" />
+                          </div>
+                          <div className="chk-detail-row chk-detail-row--full">
+                            <span className="chk-detail-label sec-col1-label">Thông số kỹ thuật</span>
+                            <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap' }}>{selectedRecord.specifications || ''}</span>
+                          </div>
+                          <div className="chk-detail-row chk-detail-row--full">
+                            <span className="chk-detail-label sec-col1-label">Thông tin bảo trì</span>
+                            <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap' }}>{selectedRecord.maintenanceInformation || ''}</span>
+                          </div>
+                          <div className="chk-detail-row chk-detail-row--full">
+                            <span className="chk-detail-label sec-col1-label">Ghi chú</span>
+                            <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap' }}>{selectedRecord.note || ''}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ── Section 3: Thông tin phê duyệt (card chuẩn /berth, header bấm để đóng/mở) ── */}
+                    <div style={{ ...transmissionDetailSectionBoxStyle, padding: detailApprovalOpen ? '12px 18px 8px 18px' : '10px 18px' }}>
+                      <div
+                        onClick={() => setDetailApprovalOpen(o => !o)}
+                        style={{
+                          ...transmissionDetailSectionHeaderStyle,
+                          marginBottom: detailApprovalOpen ? 10 : 0,
+                          paddingBottom: detailApprovalOpen ? 8 : 0,
+                          borderBottom: detailApprovalOpen ? '1px solid #f1f5f9' : 'none',
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                        }}
+                      >
+                        <div style={transmissionDetailSectionTitleStyle}>
+                          <AuditOutlined style={{ color: actionPrimary }} />
+                          <span className="transmission-section-card-title">Thông tin phê duyệt</span>
+                        </div>
+                        <span style={{ color: actionPrimary, fontSize: 12, display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
+                          {detailApprovalOpen ? <DownOutlined /> : <RightOutlined />}
+                        </span>
+                      </div>
+                      {detailApprovalOpen && (
+                        <div className="chk-detail-grid">
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col1-label">Trạng thái phê duyệt</span>
+                            <span className="chk-detail-value">
+                              {renderApprovalBadge(selectedRecord.approvalStatus)}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col2-label">Cán bộ cập nhật</span>
+                            <span className="chk-detail-value">
+                              {selectedRecord.updatedByName ? (
+                                <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.updatedByName}</span>
+                              ) : ''}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col1-label">Cán bộ gửi phê duyệt</span>
+                            <span className="chk-detail-value">
+                              {selectedRecord.submittedByName ? (
+                                <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.submittedByName}</span>
+                              ) : ''}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col2-label">Ngày gửi phê duyệt</span>
+                            <span className="chk-detail-value">{selectedRecord.submittedDate ? formatDate(selectedRecord.submittedDate) : ''}</span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
+                            <span className="chk-detail-value">
+                              {selectedRecord.approverLevel1Name ? (
+                                <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.approverLevel1Name}</span>
+                              ) : ''}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
+                            <span className="chk-detail-value">{selectedRecord.approvedDateLevel1 ? formatDate(selectedRecord.approvedDateLevel1) : ''}</span>
+                          </div>
+                          <div className="chk-detail-row chk-detail-row--full">
+                            <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cảng vụ/Chi cục</span>
+                            <span className="chk-detail-value">{selectedRecord.approvalContentLevel1 || ''}</span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cục</span>
+                            <span className="chk-detail-value">
+                              {selectedRecord.approverLevel2Name ? (
+                                <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.approverLevel2Name}</span>
+                              ) : ''}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cục</span>
+                            <span className="chk-detail-value">{selectedRecord.approvedDateLevel2 ? formatDate(selectedRecord.approvedDateLevel2) : ''}</span>
+                          </div>
+                          <div className="chk-detail-row chk-detail-row--full">
+                            <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cục</span>
+                            <span className="chk-detail-value">{selectedRecord.approvalContentLevel2 || ''}</span>
+                          </div>
+                          {selectedRecord.rejectionReason && String(selectedRecord.approvalStatus).toUpperCase().indexOf('REJECT') >= 0 && (
+                            <div className="chk-detail-row chk-detail-row--full">
+                              <span className="chk-detail-label sec-col1-label">Lý do từ chối</span>
+                              <span className="chk-detail-value" style={{ color: statusCritical }}>{selectedRecord.rejectionReason}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ),
               },
               {
                 key: "gis",
-                label: "Thông tin vị trí",
+                label: `Thông tin vị trí (${parseWktToCoordinates(selectedRecord.coordinates || '').length})`,
                 children: (
-                  <DetailTable
-                    scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
-                    dataSource={parseWktToCoordinates(selectedRecord.coordinates || '')}
-                    emptyText="Không có tọa độ"
-                    pageSize={10}
-                    headerNode={
-                      <>
-                        <div className="chk-detail-grid" style={{ marginBottom: 12 }}>
-                          <div className="chk-detail-row">
-                            <span className="chk-detail-label">Loại đối tượng</span>
-                            <span className="chk-detail-value">{selectedRecord.geometryType === 'POINT' ? 'Đối tượng điểm' : selectedRecord.geometryType === 'LINE' ? 'Đối tượng đường' : selectedRecord.geometryType === 'POLYGON' ? 'Đối tượng vùng' : '—'}</span>
+                  <div style={{ paddingTop: 6, paddingRight: 0, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)', minHeight: 350 }}>
+                    <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 18px 8px 18px', marginBottom: 14, boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)' }}>
+                      <style>{`
+                        .transmission-drawer-scope .gis-meta-detail.chk-detail-grid,
+                        .gis-meta-detail.chk-detail-grid {
+                          display: grid !important;
+                          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+                          column-gap: 28px !important;
+                          row-gap: 0 !important;
+                        }
+                        .transmission-drawer-scope .gis-meta-detail .chk-detail-row,
+                        .gis-meta-detail .chk-detail-row {
+                          display: flex !important;
+                          align-items: flex-start !important;
+                          min-height: 36px !important;
+                          padding: 7px 0 !important;
+                          border-bottom: 1px solid #f1f5f9 !important;
+                          line-height: 1.5 !important;
+                          gap: 10px !important;
+                        }
+                        .transmission-drawer-scope .gis-meta-detail .chk-detail-row:last-child,
+                        .gis-meta-detail .chk-detail-row:last-child {
+                          border-bottom: none !important;
+                        }
+                        .transmission-drawer-scope .gis-meta-detail .chk-detail-label,
+                        .gis-meta-detail .chk-detail-label {
+                          width: 215px !important;
+                          min-width: 215px !important;
+                          max-width: 215px !important;
+                          flex-shrink: 0 !important;
+                          color: ${colors.sidebarBg} !important;
+                          font-weight: 600 !important;
+                          font-size: 13.5px !important;
+                          text-align: left !important;
+                          line-height: 1.5 !important;
+                        }
+                        .transmission-drawer-scope .gis-meta-detail .sec-col1-label,
+                        .gis-meta-detail .sec-col1-label {
+                          width: 215px !important;
+                          min-width: 215px !important;
+                          max-width: 215px !important;
+                          flex-shrink: 0 !important;
+                        }
+                        .transmission-drawer-scope .gis-meta-detail .sec-col2-label,
+                        .gis-meta-detail .sec-col2-label {
+                          width: 250px !important;
+                          min-width: 250px !important;
+                          max-width: 250px !important;
+                          flex-shrink: 0 !important;
+                        }
+                        .transmission-drawer-scope .gis-meta-detail .chk-detail-label::after,
+                        .gis-meta-detail .chk-detail-label::after {
+                          content: ':' !important;
+                          margin-left: 1px !important;
+                          margin-right: 4px !important;
+                        }
+                        .transmission-drawer-scope .gis-meta-detail .chk-detail-value,
+                        .gis-meta-detail .chk-detail-value {
+                          color: #1e293b !important;
+                          font-size: 13.5px !important;
+                          flex: 1 !important;
+                          min-width: 0 !important;
+                          text-align: left !important;
+                          line-height: 1.5 !important;
+                          word-break: break-word !important;
+                        }
+                      `}</style>
+                      <div className="chk-detail-grid gis-meta-detail">
+                        {[
+                          {
+                            label: 'Loại đối tượng',
+                            value: selectedRecord.geometryType === 'POINT' ? 'Đối tượng điểm' : selectedRecord.geometryType === 'LINE' ? 'Đối tượng đường' : selectedRecord.geometryType === 'POLYGON' ? 'Đối tượng vùng' : '',
+                          },
+                          {
+                            label: 'Biểu tượng',
+                            value: (() => {
+                              const symId = (selectedRecord as any)?.mapSymbolId || '';
+                              const symName = selectedRecord.mapSymbolName || symbolMap.get(symId) || symId || '';
+                              const symImg = symbolImageMap.get(symId);
+                              return (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                                  {symImg ? <img src={symImg} alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} /> : null}
+                                  {symName}
+                                </span>
+                              );
+                            })(),
+                          },
+                          {
+                            label: 'Hệ quy chiếu',
+                            value: selectedRecord.coordinateSystem === 1 ? 'WGS-84' : selectedRecord.coordinateSystem === 2 ? 'VN-2000' : (selectedRecord.coordinateSystem ? String(selectedRecord.coordinateSystem) : ''),
+                          },
+                          {
+                            label: 'Quy tắc hiển thị',
+                            value: selectedRecord.geometryType || selectedRecord.coordinates ? 'Độ, phút, giây (DMS)' : '',
+                          },
+                        ].map((row, i) => (
+                          <div key={i} className="chk-detail-row">
+                            <span className={`chk-detail-label ${i % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label'}`}>{row.label}</span>
+                            <span className="chk-detail-value">{row.value}</span>
                           </div>
-                          <div className="chk-detail-row"><span className="chk-detail-label">Biểu tượng bản đồ</span><span className="chk-detail-value">{selectedRecord.mapSymbolName || '—'}</span></div>
-                          <div className="chk-detail-row"><span className="chk-detail-label">Hệ quy chiếu</span><span className="chk-detail-value">{selectedRecord.coordinateSystem === 1 ? 'WGS-84' : selectedRecord.coordinateSystem === 2 ? 'VN-2000' : '—'}</span></div>
-                          <div className="chk-detail-row"><span className="chk-detail-label">Quy tắc hiển thị</span><span className="chk-detail-value">{selectedRecord.displayRule != null ? 'Độ, phút, giây (DMS)' : '—'}</span></div>
-                        </div>
-                        <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-                          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px' }}>
-                            Tọa độ GPS
-                          </span>
-                          <Button
-                            type="primary"
-                            icon={<EnvironmentOutlined />}
-                            onClick={() => setMapScope('detail')}
-                            style={{
-                              ...primaryButtonStyle,
-                              height: 32,
-                              fontSize: fontSizeSm,
-                              padding: '0 14px',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 6,
-                            }}
-                          >
-                            Xem vị trí trên bản đồ
-                          </Button>
-                        </div>
-                      </>
-                    }
-                    columns={[
-                      { title: 'STT', width: 60, align: 'center' },
-                      {
-                        title: 'Vĩ độ (Latitude - N)',
-                        key: 'lat',
-                        render: (_v: any, r: any) => {
-                          const dms = ddToDms(r.latitude);
-                          return dms.d !== null && dms.m !== null && dms.s !== null ? `${dms.d}° ${dms.m}' ${dms.s.toFixed(2)}" N` : '—';
-                        },
-                      },
-                      {
-                        title: 'Kinh độ (Longitude - E)',
-                        key: 'lng',
-                        render: (_v: any, r: any) => {
-                          const dms = ddToDms(r.longitude);
-                          return dms.d !== null && dms.m !== null && dms.s !== null ? `${dms.d}° ${dms.m}' ${dms.s.toFixed(2)}" E` : '—';
-                        },
-                      },
-                    ]}
-                  />
-                ),
-              },
-              {
-                key: 'operationMaintenance',
-                label: 'Vận hành & bảo trì',
-                children: (
-                  <div style={{ paddingTop: 3 }}>
-                    <Tabs
-                      size="small"
-                      tabBarStyle={{ marginBottom: 0 }}
-                      items={[
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+                      <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px' }}>
+                        Tọa độ GPS ({parseWktToCoordinates(selectedRecord.coordinates || '').length})
+                      </span>
+                      <Button
+                        icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+                        onClick={() => setMapScope('detail')}
+                        style={{
+                          ...outlineButtonStyle,
+                          height: 32,
+                          fontSize: 13.5,
+                          padding: '0 14px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                      >
+                        Xem vị trí trên bản đồ
+                      </Button>
+                    </div>
+                    <DetailTable
+                      scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
+                      dataSource={parseWktToCoordinates(selectedRecord.coordinates || '')}
+                      emptyText="Chưa có tọa độ GPS nào"
+                      emptyHeightAuto
+                      columns={[
+                        { title: 'STT', width: 50 },
                         {
-                          key: 'operation',
-                          label: 'Thông tin vận hành khai thác',
-                          children: (
-                            <DetailTable
-                              columns={[
-                                { title: 'STT', width: 60 },
-                                { title: 'Mã / Tên kế hoạch', dataIndex: 'planName', key: 'planName', width: 420 },
-                                { title: 'Ngày bắt đầu', dataIndex: 'operationStartDate', key: 'operationStartDate', width: 150, align: 'center' },
-                                { title: 'Ngày kết thúc', dataIndex: 'operationEndDate', key: 'operationEndDate', width: 150, align: 'center' },
-                              ]}
-                              dataSource={[]}
-                              pageSize={10}
-                              emptyText="Chưa có dữ liệu"
-                            />
-                          ),
+                          title: 'Vĩ độ (Latitude - N)',
+                          key: 'lat',
+                          render: (_value: unknown, record: { latitude?: number | null; longitude?: number | null }) => {
+                            const latitudeValue = record.latitude;
+                            if (latitudeValue == null || Number.isNaN(Number(latitudeValue))) return null;
+                            const dms = ddToDms(latitudeValue);
+                            return `${dms.d}° ${dms.m}' ${dms.s}" N`;
+                          },
                         },
                         {
-                          key: 'maintenance',
-                          label: 'Thông tin bảo trì',
-                          children: (
-                            <DetailTable
-                              columns={[
-                                { title: 'STT', width: 60 },
-                                { title: 'Mã / Tên kế hoạch', dataIndex: 'planName', key: 'planName', width: 420 },
-                                { title: 'Ngày bắt đầu', dataIndex: 'maintenanceStartDate', key: 'maintenanceStartDate', width: 150, align: 'center' },
-                                { title: 'Ngày kết thúc', dataIndex: 'maintenanceEndDate', key: 'maintenanceEndDate', width: 150, align: 'center' },
-                              ]}
-                              dataSource={[]}
-                              pageSize={10}
-                              emptyText="Chưa có dữ liệu"
-                            />
-                          ),
-                        },
-                        {
-                          key: 'incident',
-                          label: 'Thông tin sự cố',
-                          children: (
-                            <DetailTable
-                              columns={[
-                                { title: 'STT', width: 60 },
-                                { title: 'Mã / Tên sự cố', dataIndex: 'incidentName', key: 'incidentName', width: 420 },
-                                { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'incidentType', width: 200 },
-                                { title: 'Địa điểm', dataIndex: 'incidentLocation', key: 'incidentLocation', width: 240 },
-                                { title: 'Thời gian', dataIndex: 'incidentTime', key: 'incidentTime', width: 160, align: 'center' },
-                              ]}
-                              dataSource={[]}
-                              pageSize={10}
-                              emptyText="Chưa có dữ liệu"
-                            />
-                          ),
+                          title: 'Kinh độ (Longitude - E)',
+                          key: 'lng',
+                          render: (_value: unknown, record: { latitude?: number | null; longitude?: number | null }) => {
+                            const longitudeValue = record.longitude;
+                            if (longitudeValue == null || Number.isNaN(Number(longitudeValue))) return null;
+                            const dms = ddToDms(longitudeValue);
+                            return `${dms.d}° ${dms.m}' ${dms.s}" E`;
+                          },
                         },
                       ]}
                     />
@@ -2629,123 +2512,236 @@ const TransmissionListPage = () => {
                 ),
               },
               {
-                key: "handlingAndTracking",
-                label: "Xử lý & theo dõi",
+                key: 'files', label: `File đính kèm (${Array.isArray(detailFiles) ? detailFiles.length : 0})`,
                 children: (
-                  <div style={{ paddingTop: 3 }}>
-                    <div className="chk-detail-grid">
-                      {[
-                        { key: 'updatedDate', label: 'Ngày cập nhật', value: selectedRecord.updatedAt ? formatDate(selectedRecord.updatedAt) : '—' },
-                        { key: 'updatedByUser', label: 'Cán bộ cập nhật', value: selectedRecord.updatedByName || '—' },
-                        { key: 'submittedDate', label: 'Ngày gửi phê duyệt', value: selectedRecord.submittedDate ? formatDate(selectedRecord.submittedDate) : '—' },
-                        { key: 'submittedByUser', label: 'Cán bộ gửi phê duyệt', value: selectedRecord.submittedByName || '—' },
-                        { key: 'approvalContentLevel1', label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục', value: selectedRecord.approvalContentLevel1 || '—', fullWidth: true },
-                        { key: 'approvedDateLevel1', label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', value: selectedRecord.approvedDateLevel1 ? formatDate(selectedRecord.approvedDateLevel1) : '—' },
-                        { key: 'approvedByLevel1', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: selectedRecord.approverLevel1Name || '—' },
-                        { key: 'approvalContentLevel2', label: 'Nội dung phê duyệt cấp Cục', value: selectedRecord.approvalContentLevel2 || '—', fullWidth: true },
-                        { key: 'approvedDateLevel2', label: 'Ngày phê duyệt cấp Cục', value: selectedRecord.approvedDateLevel2 ? formatDate(selectedRecord.approvedDateLevel2) : '—' },
-                        { key: 'approvedByLevel2', label: 'Cán bộ phê duyệt cấp Cục', value: selectedRecord.approverLevel2Name || '—' },
-                        { key: 'approvalContentExtra', label: 'Lý do từ chối', value: selectedRecord.rejectionReason || '—', fullWidth: true },
-                        { key: 'status', label: 'Trạng thái', value: renderApprovalBadge(selectedRecord.approvalStatus), fullWidth: true },
-                      ].map((row) => (
-                        <div key={row.key} className="chk-detail-row" style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
-                          <span className="chk-detail-label">{row.label}</span>
-                          <span className="chk-detail-value">{row.value}</span>
-                        </div>
-                      ))}
+                  <div style={{ paddingTop: 6 }} className="transmission-files-table">
+                    <style>{`
+                      .transmission-files-table .ant-table-thead > tr > th {
+                        border-bottom: 1px solid #f1f5f9 !important;
+                        box-shadow: none !important;
+                      }
+                    `}</style>
+                    <div style={{ marginBottom: 8 }}>
+                      <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: 13.5 }}>File đính kèm</span>
                     </div>
+                    <InfrastructureAttachmentTab
+                      attachments={detailFiles}
+                      readonly
+                      readonlyBerthLayout
+                      userMap={userMap}
+                      isLoading={detailFilesLoading}
+                      loadReadonlyPreviewImage={(attachmentId) => {
+                        const targetId = selectedRecord?.id || updateTarget?.id;
+                        if (!targetId) return Promise.reject(new Error('Chưa xác định được bản ghi đường truyền để tải ảnh'));
+                        return api.get(`/v1/transmission/${targetId}/attachments/${attachmentId}/download`, { responseType: "blob" })
+                          .then((res: any) => new Blob([res.data]));
+                      }}
+                      onDownload={handleDownloadAttachmentItem}
+                    />
                   </div>
                 ),
               },
               {
-                key: 'files', label: 'File đính kèm',
+                key: 'operationMaintenance',
+                label: 'Vận hành & bảo trì',
                 children: (
-                  <InfrastructureAttachmentTab
-                    attachments={detailFiles}
-                    readonly
-                    isLoading={detailFilesLoading}
-                    onDownload={handleDownloadAttachmentItem}
-                  />
+                  <div style={{ paddingTop: 6, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)' }}>
+                    {/* Card 1 — Thông tin vận hành khai thác */}
+                    <div
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 8,
+                        padding: operationCardOpen ? '12px 18px 12px 18px' : '10px 18px',
+                        marginBottom: 14,
+                        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+                      }}
+                    >
+                      <div
+                        onClick={() => setOperationCardOpen((v) => !v)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          marginBottom: operationCardOpen ? 12 : 0,
+                          paddingBottom: operationCardOpen ? 8 : 0,
+                          borderBottom: operationCardOpen ? '1px solid #f1f5f9' : 'none',
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                        }}
+                      >
+                        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeCellTitle, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <SlidersOutlined style={{ color: actionPrimary }} />
+                          <span className="transmission-section-card-title">Thông tin vận hành khai thác</span>
+                        </div>
+                        <span style={{ color: actionPrimary, fontSize: 12, display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>{operationCardOpen ? <DownOutlined style={{ fontSize: 12 }} /> : <RightOutlined style={{ fontSize: 12 }} />}</span>
+                      </div>
+                      {operationCardOpen && (
+                        <DetailTable
+                          dataSource={[]}
+                          emptyText="Chưa có dữ liệu"
+                          rowKey={(r: any) => r.id || r.planCode || r.code}
+                          scrollY={160}
+                          columns={[
+                            { title: 'STT', width: 50 },
+                            { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '' },
+                            { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '' },
+                            { title: 'Ngày bắt đầu', dataIndex: 'operationStartDate', key: 'operationStart', width: 150, align: 'center' as const, render: (v: string, rec: any) => rec.operationStartDate ? formatDate(rec.operationStartDate) : formatDate(v || rec.start || null) },
+                            { title: 'Ngày kết thúc', dataIndex: 'operationEndDate', key: 'operationEnd', width: 150, align: 'center' as const, render: (v: string, rec: any) => rec.operationEndDate ? formatDate(rec.operationEndDate) : formatDate(v || rec.end || null) },
+                          ]}
+                        />
+                      )}
+                    </div>
+
+                    {/* Card 2 — Thông tin bảo trì */}
+                    <div
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 8,
+                        padding: maintenanceCardOpen ? '12px 18px 12px 18px' : '10px 18px',
+                        marginBottom: 14,
+                        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+                      }}
+                    >
+                      <div
+                        onClick={() => setMaintenanceCardOpen((v) => !v)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          marginBottom: maintenanceCardOpen ? 12 : 0,
+                          paddingBottom: maintenanceCardOpen ? 8 : 0,
+                          borderBottom: maintenanceCardOpen ? '1px solid #f1f5f9' : 'none',
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                        }}
+                      >
+                        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeCellTitle, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <SlidersOutlined style={{ color: actionPrimary }} />
+                          <span className="transmission-section-card-title">Thông tin bảo trì</span>
+                        </div>
+                        <span style={{ color: actionPrimary, fontSize: 12, display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>{maintenanceCardOpen ? <DownOutlined style={{ fontSize: 12 }} /> : <RightOutlined style={{ fontSize: 12 }} />}</span>
+                      </div>
+                      {maintenanceCardOpen && (
+                        <DetailTable
+                          dataSource={[]}
+                          emptyText="Chưa có dữ liệu"
+                          rowKey={(r: any) => r.id || r.planCode || r.code}
+                          scrollY={160}
+                          columns={[
+                            { title: 'STT', width: 50 },
+                            { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '' },
+                            { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '' },
+                            { title: 'Thời gian bắt đầu', dataIndex: 'maintenanceStartDate', key: 'maintenanceStart', width: 150, align: 'center' as const, render: (v: string, rec: any) => rec.maintenanceStartDate ? formatDate(rec.maintenanceStartDate) : formatDate(v || rec.startDate || null) },
+                            { title: 'Thời gian kết thúc', dataIndex: 'maintenanceEndDate', key: 'maintenanceEnd', width: 150, align: 'center' as const, render: (v: string, rec: any) => rec.maintenanceEndDate ? formatDate(rec.maintenanceEndDate) : formatDate(v || rec.endDate || null) },
+                          ]}
+                        />
+                      )}
+                    </div>
+
+                    {/* Card 3 — Thông tin sự cố */}
+                    <div
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 8,
+                        padding: incidentCardOpen ? '12px 18px 12px 18px' : '10px 18px',
+                        marginBottom: 14,
+                        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+                      }}
+                    >
+                      <div
+                        onClick={() => setIncidentCardOpen((v) => !v)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          marginBottom: incidentCardOpen ? 12 : 0,
+                          paddingBottom: incidentCardOpen ? 8 : 0,
+                          borderBottom: incidentCardOpen ? '1px solid #f1f5f9' : 'none',
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                        }}
+                      >
+                        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeCellTitle, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <SlidersOutlined style={{ color: actionPrimary }} />
+                          <span className="transmission-section-card-title">Thông tin sự cố</span>
+                        </div>
+                        <span style={{ color: actionPrimary, fontSize: 12, display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>{incidentCardOpen ? <DownOutlined style={{ fontSize: 12 }} /> : <RightOutlined style={{ fontSize: 12 }} />}</span>
+                      </div>
+                      {incidentCardOpen && (
+                        <DetailTable
+                          dataSource={[]}
+                          emptyText="Chưa có dữ liệu"
+                          rowKey={(r: any) => r.id || r.planCode || r.code}
+                          scrollY={160}
+                          columns={[
+                            { title: 'STT', width: 50 },
+                            { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '' },
+                            { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'type', render: (v: string, rec: any) => v || rec.type || '' },
+                            { title: 'Địa điểm', dataIndex: 'location', key: 'location', render: (v: string) => v || '' },
+                            { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 150, align: 'center' as const, render: (v: string, rec: any) => rec.incidentTime ? formatDate(rec.incidentTime) : formatDate(v || rec.time || null) },
+                          ]}
+                        />
+                      )}
+                    </div>
+                  </div>
                 ),
               },
             ]}
           />
         )}
-      </Drawer>
+      </AppDrawer>
 
-      {/* Modal Chọn/Xem tọa độ GIS trên bản đồ — chuẩn /vts-operation-center (90vw, disabled khi xem chi tiết) */}
+      {/* Modal Xem vị trí GIS trên bản đồ (dành cho Xem chi tiết) */}
       <Modal
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <EnvironmentOutlined style={{ color: actionPrimary }} />
             <span style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: fontSizeLg }}>
-              {mapScope === 'detail' ? 'Xem vị trí trên bản đồ' : 'Chọn tọa độ trên bản đồ'}
+              Xem vị trí trên bản đồ
             </span>
           </div>
         }
-        open={mapScope !== null}
+        open={mapScope === 'detail'}
         onCancel={() => setMapScope(null)}
         destroyOnHidden
         width="90vw"
         style={{ top: 20, maxWidth: '1400px' }}
-        footer={mapScope === 'detail' ? null : [
-          <Button
-            key="ok"
-            type="primary"
-            onClick={() => setMapScope(null)}
-            style={{ ...primaryButtonStyle, height: 36, borderRadius: radiusPill }}
-          >
-            Xác nhận tọa độ
-          </Button>,
-        ]}
+        footer={null}
       >
         <div style={{ padding: '8px 0' }}>
           <GisLocationSelector
             inline
             height={560}
-            disabled={mapScope === 'detail'}
+            disabled
             value={{
               geometryType: mapGeometryType,
               coordinates: mapWkt,
-              symbolId: mapScope === 'update'
-                ? updateForm.getFieldValue('mapSymbolId')
-                : mapScope === 'create'
-                  ? createForm.getFieldValue('mapSymbolId')
-                  : selectedRecord?.mapSymbolId || undefined,
+              symbolId: selectedRecord?.mapSymbolId || undefined,
             }}
             defaultGeometryType={mapGeometryType as any}
-            onChange={(val) => {
-              if (mapScope === 'detail') return;
-              if (val?.coordinates) {
-                const pts = parseWktToCoordinates(val.coordinates);
-                if (pts.length > 0) {
-                  if (mapScope === 'create') setGpsCoordList(pts);
-                  else if (mapScope === 'update') setUpdateGpsCoordList(pts);
-                }
-              }
-              if (val?.geometryType) {
-                if (mapScope === 'create') createForm.setFieldValue('geometryType', val.geometryType);
-                else if (mapScope === 'update') updateForm.setFieldValue('geometryType', val.geometryType);
-              }
-            }}
           />
         </div>
       </Modal>
 
-      {/* Approve Modal — dùng chung 2 cấp (C1 Cảng vụ / C2 Cục) */}
+      {/* Approve Modal — dùng chung 2 cấp (C1 Cảng vụ / C2 Cục) (chuẩn /berth) */}
       <ApprovalModal
         visible={approveModalOpen}
         level={approveLevel}
         loading={approveLoading}
-        onConfirm={handleApprove}
+        onConfirm={(content) => { void handleApprove(content); }}
         onCancel={() => {
           setApproveTarget(null);
           setApproveModalOpen(false);
         }}
       />
 
-      {/* Submit Approval Modal — Gửi phê duyệt (giống màn /port) */}
+      {/* Submit Approval Modal — Gửi phê duyệt (chuẩn /berth) */}
       <Modal
+        rootClassName="transmission-modal-scope"
+        className="transmission-modal-scope"
         title={
           <span
             style={{
@@ -2754,24 +2750,28 @@ const TransmissionListPage = () => {
               fontSize: fontSizeLg,
             }}
           >
-            Xác nhận gửi phê duyệt
+            Xác nhận gửi Cảng vụ phê duyệt
           </span>
         }
         open={submitModalOpen}
         onCancel={() => {
-          setSubmittingRecord(null);
-          setSubmitContent("");
           setSubmitModalOpen(false);
+          setSubmittingRecord(null);
         }}
         footer={[
           <Button
             key="cancel"
             onClick={() => {
-              setSubmittingRecord(null);
-              setSubmitContent("");
               setSubmitModalOpen(false);
+              setSubmittingRecord(null);
             }}
-            style={outlineButtonStyle}
+            style={{
+              borderRadius: radiusPill,
+              height: 40,
+              fontSize: fontSizeMd,
+              borderColor: borderDefault,
+              color: textSecondary,
+            }}
           >
             Hủy
           </Button>,
@@ -2780,7 +2780,13 @@ const TransmissionListPage = () => {
             type="primary"
             onClick={handleConfirmSubmit}
             loading={submitLoading}
-            style={primaryButtonStyle}
+            style={{
+              borderRadius: radiusPill,
+              height: 40,
+              fontSize: fontSizeMd,
+              background: actionPrimary,
+              borderColor: actionPrimary,
+            }}
           >
             Xác nhận
           </Button>,
@@ -2789,26 +2795,15 @@ const TransmissionListPage = () => {
       >
         <div style={{ padding: "8px 0" }}>
           <p style={{ fontSize: fontSizeMd, color: textPrimary }}>
-            Gửi phê duyệt{" "}
-            <strong>
-              {submittingRecord?.deviceCode} — {submittingRecord?.deviceName}
-            </strong>
-            ?
+            Gửi <strong>{submittingRecord?.deviceCode ? `${submittingRecord.deviceCode} — ` : ''}{submittingRecord?.deviceName}</strong> để Cảng vụ phê duyệt?
           </p>
-          <Input.TextArea
-            value={submitContent}
-            onChange={(e) => setSubmitContent(e.target.value)}
-            placeholder="Nhập nội dung / ý kiến gửi phê duyệt (không bắt buộc)..."
-            rows={3}
-            maxLength={500}
-            showCount
-            style={{ marginTop: spaceSm }}
-          />
         </div>
       </Modal>
 
-      {/* Reject Modal */}
+      {/* Reject Modal (chuẩn /berth) */}
       <Modal
+        rootClassName="transmission-modal-scope"
+        className="transmission-modal-scope"
         title={
           <span
             style={{
@@ -2822,68 +2817,66 @@ const TransmissionListPage = () => {
         }
         open={rejectModalOpen}
         onCancel={() => {
-          setRejectTarget(null);
           setRejectModalOpen(false);
-          rejectForm.resetFields();
+          setRejectTarget(null);
+          setRejectReason("");
         }}
-        footer={null}
+        footer={[
+          <Button
+            key="cancel"
+            onClick={() => {
+              setRejectModalOpen(false);
+              setRejectTarget(null);
+              setRejectReason("");
+            }}
+            style={{
+              borderRadius: radiusPill,
+              height: 40,
+              fontSize: fontSizeMd,
+              borderColor: borderDefault,
+              color: textSecondary,
+            }}
+          >
+            Hủy
+          </Button>,
+          <Button
+            key="reject"
+            type="primary"
+            danger
+            loading={rejectLoading}
+            onClick={handleReject}
+            style={{
+              borderRadius: radiusPill,
+              height: 40,
+              fontSize: fontSizeMd,
+            }}
+          >
+            Xác nhận từ chối
+          </Button>,
+        ]}
         width={480}
       >
-        <Form form={rejectForm} layout="vertical">
-          <Form.Item
-            name="reason"
-            label="Lý do từ chối"
-            rules={[
-              { required: true, message: "Lý do từ chối không được để trống" },
-              { min: 10, message: "Lý do từ chối tối thiểu 10 ký tự" },
-              { max: 500, message: "Lý do từ chối tối đa 500 ký tự" },
-            ]}
-          >
-            <Input.TextArea
-              rows={4}
-              placeholder="Nhập lý do từ chối..."
-              style={{ borderRadius: radiusPill }}
-            />
-          </Form.Item>
-          <Form.Item
-            name="confirmed"
-            rules={[
-              { required: true, message: "Bạn cần xác nhận hành động này" },
-            ]}
-            valuePropName="checked"
-          >
-            <Checkbox>
-              <Text style={{ color: statusCritical }}>
-                Tôi xác nhận từ chối hệ thống truyền dẫn này
-              </Text>
-            </Checkbox>
-          </Form.Item>
-          <div style={{ textAlign: "right", marginTop: spaceMd }}>
-            <Button
-              onClick={() => {
-                setRejectTarget(null);
-                setRejectModalOpen(false);
-                rejectForm.resetFields();
-              }}
-              style={{
-                borderRadius: radiusPill,
-                height: 40,
-                marginRight: spaceSm,
-              }}
-            >
-              Hủy
-            </Button>
-            <Button
-              type="primary"
-              danger
-              loading={rejectLoading}
-              onClick={handleReject}
-              style={pillStyle}
-            >
-              Từ chối
-            </Button>
-          </div>
-        </Form>
+        <div style={{ padding: "8px 0" }}>
+          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>
+            Vui lòng nhập lý do từ chối cho hệ thống truyền dẫn:
+          </p>
+          {rejectTarget && (
+            <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
+              <strong style={{ color: textPrimary }}>
+                {rejectTarget.deviceCode ? `${rejectTarget.deviceCode} — ` : ''}{rejectTarget.deviceName}
+              </strong>
+            </p>
+          )}
+          <Input.TextArea
+            placeholder="Nhập lý do từ chối (tối thiểu 10, tối đa 500 ký tự)..."
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            rows={3}
+            maxLength={500}
+            showCount
+            style={{ borderRadius: 8, fontSize: fontSizeMd }}
+          />
+        </div>
       </Modal>
 
       {/* Delete Modal */}
@@ -2975,51 +2968,39 @@ const TransmissionListPage = () => {
         </div>
       </Modal>
 
-      {/* ── Create Drawer ─────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
-        rootClassName={THEME_SCOPE_CLASS}
-        title={
-          <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
-            Thêm mới hệ thống truyền dẫn
-          </span>
-        }
+            {/* ── Create Drawer (đồng bộ chuẩn /berth) ───────────────────── */}
+      <AppDrawer
+        width="min(920px, 96vw)"
+        rootClassName="transmission-drawer-scope"
+        className="transmission-drawer-scope"
+        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới hệ thống truyền dẫn</span>}
         open={createModalOpen}
+        destroyOnHidden
         onClose={() => {
           setCreateModalOpen(false);
           createForm.resetFields();
-          setGpsCoordList([]);
-          setCreateAttachments([]);
-          setCreatePendingFiles([]);
         }}
-        extra={
-          <Button
-            type="text"
-            onClick={() => {
-              setCreateModalOpen(false);
-              createForm.resetFields();
-              setGpsCoordList([]);
-              setCreateAttachments([]);
-              setCreatePendingFiles([]);
-            }}
-            style={drawerCloseBtnStyle}
-          >
-            ✕
-          </Button>
-        }
         footer={
           <div style={drawerFooterStyle}>
             <Button
-              onClick={() => { createActionTypeRef.current = 'draft'; setCreateActionType('draft'); createForm.submit(); }}
-              loading={createLoading && createActionType === 'draft'}
+              onClick={() => {
+                actionTypeRef.current = 'draft';
+                setActionType('draft');
+                createFormRef.current?.submit('draft');
+              }}
+              loading={submitting && actionType === 'draft'}
               style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
             >
               Lưu tạm
             </Button>
             <Button
               type="primary"
-              onClick={() => { createActionTypeRef.current = 'submit'; setCreateActionType('submit'); createForm.submit(); }}
-              loading={createLoading && createActionType === 'submit'}
+              onClick={() => {
+                actionTypeRef.current = 'submit';
+                setActionType('submit');
+                createFormRef.current?.submit('submit');
+              }}
+              loading={submitting && actionType === 'submit'}
               style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
             >
               Lưu và gửi phê duyệt
@@ -3027,9 +3008,19 @@ const TransmissionListPage = () => {
             {canSaveAndApprove && (
               <Button
                 type="primary"
-                onClick={() => { createActionTypeRef.current = 'approve'; setCreateActionType('approve'); createForm.submit(); }}
-                loading={createLoading && createActionType === 'approve'}
-                style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill, height: 40 }}
+                onClick={() => {
+                  actionTypeRef.current = 'approve';
+                  setActionType('approve');
+                  createFormRef.current?.submit('approve');
+                }}
+                loading={submitting && actionType === 'approve'}
+                style={{
+                  ...primaryButtonStyle,
+                  background: statusOperational,
+                  borderColor: statusOperational,
+                  borderRadius: radiusPill,
+                  height: 40,
+                }}
               >
                 Lưu và phê duyệt
               </Button>
@@ -3037,900 +3028,246 @@ const TransmissionListPage = () => {
           </div>
         }
         styles={{
-          header: {
-            padding: "12px 24px",
-            borderBottom: `1px solid ${borderDefault}`,
-            flexShrink: 0,
-          },
-          body: { padding: "0 24px 12px 24px" },
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '0 24px 12px 24px' },
         }}
+        destroyOnClose
       >
         <style>{requiredMarkStyle}</style>
-        <Form form={createForm} layout="vertical" onFinish={handleCreate}>
-          <Tabs
-            defaultActiveKey="general"
-            tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 100, background: surfaceCard }}
-            items={[
-              {
-                key: 'general',
-                label: 'Thông tin chung',
-                children: (
-                  <div style={{ ...themeTokenChk.drawerFormScrollStyle, paddingTop: spaceMd }}>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="deviceCode"
-                          {...labelProps('Mã thiết bị')}
-                          style={{ marginBottom: spaceFormField }}
-                          tooltip="Mã thiết bị được sinh tự động, không thể chỉnh sửa"
-                        >
-                          <Input
-                            disabled
-                            placeholder={deviceCodeLoading ? 'Đang sinh mã...' : 'Mã tự động'}
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="deviceName"
-                          {...labelProps('Tên thiết bị')}
-                          rules={[
-                            { required: true, message: "Vui lòng nhập tên thiết bị" },
-                            { warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 255 ? Promise.reject(new Error('Đã đạt tối đa 255 ký tự')) : Promise.resolve() },
-                          ]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input
-                            placeholder="Nhập tên thiết bị..."
-                            maxLength={255} showCount
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="orgUnitId"
-                          {...labelProps('Đơn vị quản lý')}
-                          rules={[
-                            { required: true, message: "Vui lòng chọn đơn vị quản lý" },
-                          ]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <OrgUnitTreeSelect
-                            organizations={orgUnitOptions}
-                            placeholder="Chọn đơn vị"
-                            loading={loadingOrgs}
-                            showPath
-                            treeDefaultExpandAll={false}
-                            style={{ ...pillStyle }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="attachedInfrastructureType"
-                          {...labelProps('Thuộc loại hạ tầng')}
-                          rules={[
-                            { required: true, message: "Vui lòng chọn loại hạ tầng" },
-                          ]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            style={{ width: "100%", ...pillStyle }}
-                            placeholder="Chọn loại hạ tầng"
-                            options={attachedInfraTypeOptions}
-                            onChange={(val) => {
-                              createForm.setFieldValue("attachedInfrastructureType", val);
-                              // Reset attachedInfrastructureId khi đổi loại
-                              createForm.setFieldValue("attachedInfrastructureId", undefined);
-                            }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="attachedInfrastructureId"
-                          {...labelProps('Thuộc hạ tầng')}
-                          rules={[
-                            { required: true, message: "Vui lòng chọn hạ tầng" },
-                          ]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            style={{ width: "100%", ...pillStyle }}
-                            placeholder={
-                              createAttachedType === 2
-                                ? "Chọn trạm Radar"
-                                : createAttachedType === 1
-                                  ? "Chọn Trung Tâm Điều Hành VTS"
-                                  : "Chọn loại hạ tầng trước"
-                            }
-                            options={createAttachedType === 1 ? vtsOperationCenterOptions : createAttachedType === 2 ? radarStationOptions : []}
-                            loading={createAttachedType === 1 ? loadingVtsCenters : createAttachedType === 2 ? loadingRadars : false}
-                            disabled={createAttachedType !== 1 && createAttachedType !== 2}
-                            allowClear
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="operatingUnitId"
-                          {...labelProps('Đơn vị khai thác')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            showSearch
-                            placeholder="Chọn đơn vị khai thác"
-                            loading={loadingOperatingOrgs}
-                            style={{ width: "100%", ...pillStyle }}
-                            options={operatingOrganizationOptions}
-                            filterOption={(input: string, option: any) =>
-                              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                            }
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="provinceName"
-                          {...labelProps('Địa điểm (Tỉnh/TP)')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            style={{ width: "100%", ...pillStyle }}
-                            placeholder="Chọn tỉnh/thành phố"
-                            options={VIETNAM_PROVINCES.map(p => ({ label: p, value: p }))}
-                            showSearch
-                            filterOption={(input: string, option: any) =>
-                              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                            }
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="detailedLocation"
-                          {...labelProps('Địa điểm chi tiết')}
-                          rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 500 ? Promise.reject(new Error('Đã đạt tối đa 500 ký tự')) : Promise.resolve() }]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input
-                            maxLength={500} showCount
-                            placeholder="Nhập địa điểm chi tiết..."
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="unitOfMeasure"
-                          {...labelProps('Đơn vị tính')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            placeholder="Chọn đơn vị tính"
-                            options={[
-                              { label: 'Bộ', value: 1 },
-                              { label: 'Bến', value: 2 },
-                              { label: 'Bản quyền', value: 3 },
-                              { label: 'Chiếc', value: 4 },
-                              { label: 'Cổng', value: 5 },
-                              { label: 'Cái', value: 6 },
-                              { label: 'Cột', value: 7 },
-                              { label: 'Cầu', value: 8 },
-                              { label: 'Đường truyền', value: 9 },
-                              { label: 'Héc-ta', value: 10 },
-                              { label: 'Hạng mục', value: 11 },
-                              { label: 'Hệ thống', value: 12 },
-                              { label: 'Kho', value: 13 },
-                              { label: 'Khu', value: 14 },
-                              { label: 'Ki-lô-mét', value: 15 },
-                              { label: 'Mét', value: 16 },
-                              { label: 'Mét vuông', value: 17 },
-                              { label: 'Nhà', value: 18 },
-                              { label: 'Phòng', value: 19 },
-                              { label: 'Phân hệ', value: 20 },
-                              { label: 'Quả', value: 21 },
-                              { label: 'Tuyến', value: 22 },
-                              { label: 'Tấn', value: 23 },
-                              { label: 'Trạm', value: 24 },
-                              { label: 'Tháp', value: 25 },
-                              { label: 'Trụ', value: 26 },
-                              { label: 'VNĐ', value: 27 },
-                            ]}
-                            style={{ width: "100%", ...pillStyle }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="quantity"
-                          {...labelProps('Số lượng')}
-                          rules={[
-                            { required: true, message: "Vui lòng nhập số lượng" },
-                            { type: 'number', min: 1, message: "Số lượng phải > 0" },
-                          ]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <InputNumber
-                            min={1}
-                            style={{ width: "100%", ...pillStyle }}
-                            placeholder="0"
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="yearOfUse"
-                          {...labelProps('Năm đưa vào sử dụng')}
-                          style={{ marginBottom: spaceFormField }}
-                          getValueProps={(v: unknown) => ({ value: v != null ? dayjs(String(v), 'YYYY') : null })}
-                          normalize={(d: unknown) => (dayjs.isDayjs(d) ? dayjs(d).year() : null)}
-                        >
-                          <DatePicker
-                            picker="year"
-                            format="YYYY"
-                            placeholder="Chọn năm đưa vào sử dụng"
-                            style={{ width: "100%", ...pillStyle }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="operationalStatus"
-                          {...labelProps('Tình trạng')}
-                          rules={[
-                            { required: true, message: "Vui lòng chọn tình trạng" },
-                          ]}
-                          initialValue={1}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            placeholder="Chọn tình trạng"
-                            options={OPERATIONAL_STATUS_OPTIONS}
-                            style={{ width: "100%", ...pillStyle }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="model"
-                          {...labelProps('Model')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input
-                            placeholder="Nhập model..."
-                            maxLength={255} showCount
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="manufacturer"
-                          {...labelProps('Hãng sản xuất')}
-                          rules={[{ max: 50, message: "Tối đa 50 ký tự" }]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input
-                            placeholder="Nhập hãng..."
-                            maxLength={50} showCount
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Form.Item
-                      name="specifications"
-                      {...labelProps('Thông số kỹ thuật')}
-                      rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 2000 ? Promise.reject(new Error('Đã đạt tối đa 2000 ký tự')) : Promise.resolve() }]}
-                      style={{ marginBottom: spaceFormField }}
-                    >
-                      <Input.TextArea
-                        rows={3}
-                        placeholder="Nhập thông số kỹ thuật..."
-                        maxLength={2000} showCount
-                        style={themeTokenChk.textAreaStyle}
-                      />
-                    </Form.Item>
-                    <Form.Item
-                      name="maintenanceInformation"
-                      {...labelProps('Thông tin bảo trì')}
-                      rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 2000 ? Promise.reject(new Error('Đã đạt tối đa 2000 ký tự')) : Promise.resolve() }]}
-                      style={{ marginBottom: spaceFormField }}
-                    >
-                      <Input.TextArea
-                        rows={3}
-                        placeholder="Nhập thông tin bảo trì..."
-                        maxLength={2000} showCount
-                        style={themeTokenChk.textAreaStyle}
-                      />
-                    </Form.Item>
-                    <Form.Item
-                      name="note"
-                      {...labelProps('Ghi chú')}
-                      rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 2000 ? Promise.reject(new Error('Đã đạt tối đa 2000 ký tự')) : Promise.resolve() }]}
-                      style={{ marginBottom: 0 }}
-                    >
-                      <Input.TextArea
-                        rows={3}
-                        placeholder="Nhập ghi chú..."
-                        maxLength={2000} showCount
-                        style={themeTokenChk.textAreaStyle}
-                      />
-                    </Form.Item>
-                  </div>
-                ),
-              },
-              {
-                key: 'gis',
-                label: 'Thông tin vị trí',
-                children: (
-                  <div style={{ paddingTop: 16 }}>
-                    <TransmissionGisTab
-                      geometryType={createGeometryType}
-                      rows={gpsCoordList}
-                      symbols={symbols}
-                      renderDms={(idx, field, row) => renderGpsDmsEditor(setGpsCoordList, idx, field, row)}
-                      onAddRow={() => setGpsCoordList((prev) => [...prev, { latitude: null, longitude: null }])}
-                      onDeleteRow={(idx) => setGpsCoordList((p) => p.filter((_, i) => i !== idx))}
-                      onOpenMap={() => setMapScope('create')}
-                    />
-                  </div>
-                ),
-              },
-              {
-                key: 'attachments',
-                label: 'File đính kèm',
-                children: (
-                  <div style={{ ...themeTokenChk.drawerFormScrollStyle, paddingTop: spaceMd }}>
-                    <InfrastructureAttachmentTab
-                      attachments={createAttachments}
-                      onUpload={handleAttachmentUpload(createAttachments, setCreateAttachments, setCreatePendingFiles)}
-                      onDelete={handleAttachmentDelete(createAttachments, setCreateAttachments, setCreatePendingFiles)}
-                    />
-                  </div>
-                ),
-              },
-            ]}
+        <Form form={createForm} layout="vertical" initialValues={{ operationalStatus: 1 }}>
+          <TransmissionForm
+            ref={createFormRef}
+            form={createForm}
+            onFinish={() => {
+              setCreateModalOpen(false);
+              void fetchData();
+              void fetchTabCounts();
+            }}
+            onSubmittingChange={setSubmitting}
           />
         </Form>
-      </Drawer>
+      </AppDrawer>
 
-      {/* ── Edit Drawer ──────────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
-        rootClassName={THEME_SCOPE_CLASS}
+      {/* ── Edit Drawer (đồng bộ chuẩn /berth) ─────────────────────── */}
+      <AppDrawer
+        width="min(920px, 96vw)"
+        rootClassName="transmission-drawer-scope"
+        className="transmission-drawer-scope"
         title={
-          <span style={drawerTitleStyle}>
-            Chỉnh sửa thông tin — {updateTarget?.deviceName || '—'}
+          <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
+            Chỉnh sửa thông tin — {updateTarget?.deviceName || updateTarget?.deviceCode || ''}
           </span>
         }
-        open={updateModalOpen}
+        open={updateModalOpen && !!updateTarget}
         onClose={() => {
           setUpdateModalOpen(false);
           setUpdateTarget(null);
           updateForm.resetFields();
-          setUpdateGpsCoordList([]);
-          setUpdateAttachments([]);
-          setUpdatePendingFiles([]);
-          setUpdatePendingDeleted([]);
         }}
-        extra={
-          <Button
-            type="text"
-            onClick={() => {
-              setUpdateModalOpen(false);
-              setUpdateTarget(null);
-              updateForm.resetFields();
-              setUpdateGpsCoordList([]);
-              setUpdateAttachments([]);
-              setUpdatePendingFiles([]);
-              setUpdatePendingDeleted([]);
-            }}
-            style={drawerCloseBtnStyle}
-          >
-            ✕
-          </Button>
-        }
         footer={
           <div style={drawerFooterStyle}>
-            {updateTarget?.approvalStatus !== 'APPROVED' && (
             <Button
-              onClick={() => { updateActionTypeRef.current = 'draft'; setUpdateActionType('draft'); updateForm.submit(); }}
-              loading={updateLoading && updateActionType === 'draft'}
+              onClick={() => {
+                setUpdateModalOpen(false);
+                setUpdateTarget(null);
+                updateForm.resetFields();
+              }}
               style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
             >
-              Lưu tạm
+              Hủy
             </Button>
-            )}
-            {(updateTarget?.approvalStatus === 'DRAFT' || updateTarget?.approvalStatus === 'REJECTED_LEVEL1' || updateTarget?.approvalStatus === 'REJECTED_LEVEL2') && (
-              <Button
-                type="primary"
-                onClick={() => { updateActionTypeRef.current = 'submit'; setUpdateActionType('submit'); updateForm.submit(); }}
-                loading={updateLoading && updateActionType === 'submit'}
-                style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
-              >
-                Lưu và gửi phê duyệt
-              </Button>
-            )}
-            {updateTarget?.approvalStatus === 'APPROVED' && canSaveAndApprove && (
-              <Button
-                type="primary"
-                onClick={() => { updateActionTypeRef.current = 'approve'; setUpdateActionType('approve'); updateForm.submit(); }}
-                loading={updateLoading && updateActionType === 'approve'}
-                style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill, height: 40 }}
-              >
-                Lưu và phê duyệt
-              </Button>
+            {updateTarget && ['APPROVED', 'APPROVED_L2', 'APPROVED_LEVEL2', 'PUBLISHED'].includes(updateTarget.approvalStatus || '') ? (
+              canSaveAndApprove && (
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    actionTypeRef.current = 'approve';
+                    setActionType('approve');
+                    editFormRef.current?.submit('approve');
+                  }}
+                  loading={submitting && actionType === 'approve'}
+                  style={{
+                    ...primaryButtonStyle,
+                    background: statusOperational,
+                    borderColor: statusOperational,
+                    borderRadius: radiusPill,
+                    height: 40,
+                  }}
+                >
+                  Lưu và phê duyệt
+                </Button>
+              )
+            ) : (
+              <>
+                <Button
+                  onClick={() => {
+                    actionTypeRef.current = 'draft';
+                    setActionType('draft');
+                    editFormRef.current?.submit('draft');
+                  }}
+                  loading={submitting && actionType === 'draft'}
+                  style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
+                >
+                  Lưu tạm
+                </Button>
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    actionTypeRef.current = 'submit';
+                    setActionType('submit');
+                    editFormRef.current?.submit('submit');
+                  }}
+                  loading={submitting && actionType === 'submit'}
+                  style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
+                >
+                  Lưu và gửi phê duyệt
+                </Button>
+                {canSaveAndApprove && (
+                  <Button
+                    type="primary"
+                    onClick={() => {
+                      actionTypeRef.current = 'approve';
+                      setActionType('approve');
+                      editFormRef.current?.submit('approve');
+                    }}
+                    loading={submitting && actionType === 'approve'}
+                    style={{
+                      ...primaryButtonStyle,
+                      background: statusOperational,
+                      borderColor: statusOperational,
+                      borderRadius: radiusPill,
+                      height: 40,
+                    }}
+                  >
+                    Lưu và phê duyệt
+                  </Button>
+                )}
+              </>
             )}
           </div>
         }
         styles={{
-          header: {
-            padding: "12px 24px",
-            borderBottom: `1px solid ${borderDefault}`,
-            flexShrink: 0,
-          },
-          body: { padding: "0 24px 12px 24px" },
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '0 24px 12px 24px' },
         }}
       >
-        <style>{requiredMarkStyle}</style>
-        <Form form={updateForm} layout="vertical" onFinish={handleUpdate}>
-          <Tabs
-            defaultActiveKey="general"
-            tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 100, background: surfaceCard }}
-            items={[
-              {
-                key: 'general',
-                label: 'Thông tin chung',
-                children: (
-                  <div style={{ ...themeTokenChk.drawerFormScrollStyle, paddingTop: spaceMd }}>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="deviceCode"
-                          {...labelProps('Mã thiết bị')}
-                          style={{ marginBottom: spaceFormField }}
-                          tooltip="Mã thiết bị được sinh tự động, không thể chỉnh sửa"
-                        >
-                          <Input
-                            disabled
-                            placeholder={deviceCodeLoading ? 'Đang sinh mã...' : 'Mã tự động'}
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="deviceName"
-                          {...labelProps('Tên thiết bị')}
-                          rules={[
-                            { required: true, message: "Vui lòng nhập tên thiết bị" },
-                            { warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 255 ? Promise.reject(new Error('Đã đạt tối đa 255 ký tự')) : Promise.resolve() },
-                          ]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input
-                            maxLength={255} showCount
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="orgUnitId"
-                          {...labelProps('Đơn vị quản lý')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <OrgUnitTreeSelect
-                            organizations={orgUnitOptions}
-                            placeholder="Chọn đơn vị"
-                            loading={loadingOrgs}
-                            showPath
-                            treeDefaultExpandAll={false}
-                            disabled
-                            style={{ ...pillStyle }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="attachedInfrastructureType"
-                          {...labelProps('Thuộc loại hạ tầng')}
-                          rules={[
-                            { required: true, message: "Vui lòng chọn loại hạ tầng" },
-                          ]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            style={{ width: "100%", ...pillStyle }}
-                            placeholder="Chọn loại hạ tầng"
-                            options={attachedInfraTypeOptions}
-                            onChange={(val) => {
-                              updateForm.setFieldValue("attachedInfrastructureType", val);
-                              updateForm.setFieldValue("attachedInfrastructureId", undefined);
-                            }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="attachedInfrastructureId"
-                          {...labelProps('Thuộc hạ tầng')}
-                          rules={[
-                            { required: true, message: "Vui lòng chọn hạ tầng" },
-                          ]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            style={{ width: "100%", ...pillStyle }}
-                            placeholder={
-                              updateAttachedType === 2
-                                ? "Chọn trạm Radar"
-                                : updateAttachedType === 1
-                                  ? "Chọn Trung Tâm Điều Hành VTS"
-                                  : "Chọn loại hạ tầng trước"
-                            }
-                            options={updateAttachedType === 1 ? vtsOperationCenterOptions : updateAttachedType === 2 ? radarStationOptions : []}
-                            loading={updateAttachedType === 1 ? loadingVtsCenters : updateAttachedType === 2 ? loadingRadars : false}
-                            disabled={updateAttachedType !== 1 && updateAttachedType !== 2}
-                            allowClear
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="operatingUnitId"
-                          {...labelProps('Đơn vị khai thác')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            showSearch
-                            placeholder="Chọn đơn vị khai thác"
-                            loading={loadingOperatingOrgs}
-                            style={{ width: "100%", ...pillStyle }}
-                            options={operatingOrganizationOptions}
-                            filterOption={(input: string, option: any) =>
-                              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                            }
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="provinceName"
-                          {...labelProps('Địa điểm (Tỉnh/TP)')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            style={{ width: "100%", ...pillStyle }}
-                            placeholder="Chọn tỉnh/thành phố"
-                            options={VIETNAM_PROVINCES.map(p => ({ label: p, value: p }))}
-                            showSearch
-                            filterOption={(input: string, option: any) =>
-                              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                            }
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="detailedLocation"
-                          {...labelProps('Địa điểm chi tiết')}
-                          rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 500 ? Promise.reject(new Error('Đã đạt tối đa 500 ký tự')) : Promise.resolve() }]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input
-                            maxLength={500} showCount
-                            placeholder="Nhập địa điểm chi tiết..."
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="unitOfMeasure"
-                          {...labelProps('Đơn vị tính')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            placeholder="Chọn đơn vị tính"
-                            options={[
-                              { label: 'Bộ', value: 1 },
-                              { label: 'Bến', value: 2 },
-                              { label: 'Bản quyền', value: 3 },
-                              { label: 'Chiếc', value: 4 },
-                              { label: 'Cổng', value: 5 },
-                              { label: 'Cái', value: 6 },
-                              { label: 'Cột', value: 7 },
-                              { label: 'Cầu', value: 8 },
-                              { label: 'Đường truyền', value: 9 },
-                              { label: 'Héc-ta', value: 10 },
-                              { label: 'Hạng mục', value: 11 },
-                              { label: 'Hệ thống', value: 12 },
-                              { label: 'Kho', value: 13 },
-                              { label: 'Khu', value: 14 },
-                              { label: 'Ki-lô-mét', value: 15 },
-                              { label: 'Mét', value: 16 },
-                              { label: 'Mét vuông', value: 17 },
-                              { label: 'Nhà', value: 18 },
-                              { label: 'Phòng', value: 19 },
-                              { label: 'Phân hệ', value: 20 },
-                              { label: 'Quả', value: 21 },
-                              { label: 'Tuyến', value: 22 },
-                              { label: 'Tấn', value: 23 },
-                              { label: 'Trạm', value: 24 },
-                              { label: 'Tháp', value: 25 },
-                              { label: 'Trụ', value: 26 },
-                              { label: 'VNĐ', value: 27 },
-                            ]}
-                            style={{ width: "100%", ...pillStyle }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="quantity"
-                          {...labelProps('Số lượng')}
-                          rules={[
-                            { required: true, message: "Vui lòng nhập số lượng" },
-                            { type: 'number', min: 1, message: "Số lượng phải > 0" },
-                          ]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <InputNumber
-                            min={1}
-                            style={{ width: "100%", ...pillStyle }}
-                            placeholder="0"
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="yearOfUse"
-                          {...labelProps('Năm đưa vào sử dụng')}
-                          style={{ marginBottom: spaceFormField }}
-                          getValueProps={(v: unknown) => ({ value: v != null ? dayjs(String(v), 'YYYY') : null })}
-                          normalize={(d: unknown) => (dayjs.isDayjs(d) ? dayjs(d).year() : null)}
-                        >
-                          <DatePicker
-                            picker="year"
-                            format="YYYY"
-                            placeholder="Chọn năm đưa vào sử dụng"
-                            style={{ width: "100%", ...pillStyle }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="operationalStatus"
-                          {...labelProps('Tình trạng')}
-                          rules={[
-                            { required: true, message: "Vui lòng chọn tình trạng" },
-                          ]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            placeholder="Chọn tình trạng"
-                            options={OPERATIONAL_STATUS_OPTIONS}
-                            style={{ width: "100%", ...pillStyle }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="model"
-                          {...labelProps('Model')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input
-                            maxLength={255} showCount
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="manufacturer"
-                          {...labelProps('Hãng sản xuất')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input
-                            maxLength={50} showCount
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Form.Item
-                      name="specifications"
-                      {...labelProps('Thông số kỹ thuật')}
-                      rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 2000 ? Promise.reject(new Error('Đã đạt tối đa 2000 ký tự')) : Promise.resolve() }]}
-                      style={{ marginBottom: spaceFormField }}
-                    >
-                      <Input.TextArea
-                        rows={3}
-                        placeholder="Nhập thông số kỹ thuật..."
-                        maxLength={2000} showCount
-                        style={themeTokenChk.textAreaStyle}
-                      />
-                    </Form.Item>
-                    <Form.Item
-                      name="maintenanceInformation"
-                      {...labelProps('Thông tin bảo trì')}
-                      rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 2000 ? Promise.reject(new Error('Đã đạt tối đa 2000 ký tự')) : Promise.resolve() }]}
-                      style={{ marginBottom: spaceFormField }}
-                    >
-                      <Input.TextArea
-                        rows={3}
-                        placeholder="Nhập thông tin bảo trì..."
-                        maxLength={2000} showCount
-                        style={themeTokenChk.textAreaStyle}
-                      />
-                    </Form.Item>
-                    <Form.Item
-                      name="note"
-                      {...labelProps('Ghi chú')}
-                      rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 2000 ? Promise.reject(new Error('Đã đạt tối đa 2000 ký tự')) : Promise.resolve() }]}
-                      style={{ marginBottom: 0 }}
-                    >
-                      <Input.TextArea
-                        rows={3}
-                        placeholder="Nhập ghi chú..."
-                        maxLength={2000} showCount
-                        style={themeTokenChk.textAreaStyle}
-                      />
-                    </Form.Item>
-                  </div>
-                ),
-              },
-              {
-                key: 'gis',
-                label: 'Thông tin vị trí',
-                children: (
-                  <div style={{ paddingTop: 16 }}>
-                    <TransmissionGisTab
-                      geometryType={updateGeometryType}
-                      rows={updateGpsCoordList}
-                      symbols={symbols}
-                      renderDms={(idx, field, row) => renderGpsDmsEditor(setUpdateGpsCoordList, idx, field, row)}
-                      onAddRow={() => setUpdateGpsCoordList((prev) => [...prev, { latitude: null, longitude: null }])}
-                      onDeleteRow={(idx) => setUpdateGpsCoordList((p) => p.filter((_, i) => i !== idx))}
-                      onOpenMap={() => setMapScope('update')}
-                    />
-                  </div>
-                ),
-              },
-              {
-                key: 'attachments',
-                label: 'File đính kèm',
-                children: (
-                  <div style={{ ...themeTokenChk.drawerFormScrollStyle, paddingTop: spaceMd }}>
-                    <InfrastructureAttachmentTab
-                      attachments={updateAttachments}
-                      onUpload={handleAttachmentUpload(updateAttachments, setUpdateAttachments, setUpdatePendingFiles)}
-                      onDelete={handleAttachmentDelete(updateAttachments, setUpdateAttachments, setUpdatePendingFiles, setUpdatePendingDeleted)}
-                      onDownload={handleDownloadAttachmentItem}
-                    />
-                  </div>
-                ),
-              },
-            ]}
-          />
-        </Form>
-      </Drawer>
+        {updateTarget && (
+          <>
+            <style>{requiredMarkStyle}</style>
+            <Form form={updateForm} layout="vertical" initialValues={{}}>
+              <TransmissionForm
+                ref={editFormRef}
+                form={updateForm}
+                id={updateTarget.id}
+                initialData={updateTarget}
+                onFinish={() => {
+                  setUpdateModalOpen(false);
+                  setUpdateTarget(null);
+                  void fetchData();
+                  void fetchTabCounts();
+                }}
+                onSubmittingChange={setSubmitting}
+              />
+            </Form>
+          </>
+        )}
+      </AppDrawer>
 
-      {/* ── History Drawer ─────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
-        rootClassName={THEME_SCOPE_CLASS}
-        size={isIframeModal ? '100%' : 960}
+{/* ── History Drawer (đồng bộ chuẩn /berth) ─────────────────── */}
+      <AppDrawer
+        width={isIframeModal ? '100%' : 'min(880px, 96vw)'}
+        rootClassName="transmission-drawer-scope"
+        className="transmission-drawer-scope"
         mask={!isIframeModal}
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
             <Space size={spaceSm} style={{ alignItems: 'center' }}>
               <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
               <span style={drawerTitleStyle}>
-                {historyEntityName ? `Lịch sử thay đổi — ${historyEntityName}` : 'Lịch sử thay đổi'}
+                {historyTarget ? `Lịch sử thay đổi — ${historyTarget.deviceName || historyTarget.deviceCode || ''}` : 'Lịch sử thay đổi'}
               </span>
-              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: radiusSm, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                {/* Nhật ký nạp theo trang nên đây là số đã tải, không phải tổng (chuẩn /vts-operation-center). */}
-                {`Đã tải ${historyRecords.length}`}
+              <span
+                style={{
+                  display: 'inline-flex',
+                  padding: '2px 10px',
+                  borderRadius: 999,
+                  fontSize: fontSizeLg - 1,
+                  fontWeight: fontWeightBold,
+                  background: `${colors.sidebarBg}15`,
+                  color: colors.sidebarBg,
+                  lineHeight: '20px',
+                }}
+              >
+                Tổng cộng {historyFieldCount}
               </span>
             </Space>
           </div>
         }
-        open={historyModalVisible}
-        onClose={() => setHistoryModalVisible(false)}
-        extra={<Button type="text" onClick={() => setHistoryModalVisible(false)} style={drawerCloseBtnStyle}>✕</Button>}
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
         footer={null}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-          body: { padding: '12px 24px 12px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
+          body: { padding: '16px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
         }}>
-        <div style={{ display: 'flex', gap: spaceSm, alignItems: 'center', paddingBottom: spaceMd }}>
-          <Input
-            placeholder="Tìm kiếm nội dung thay đổi..."
-            allowClear
-            value={historySearchInput}
-            onChange={(e) => {
-              const val = e.target.value;
-              setHistorySearchInput(val);
-              if (!val) setHistorySearch('');
-            }}
-            onPressEnter={() => {
-              setHistorySearch(historySearchInput.trim());
-              setHistoryReloadToken((t) => t + 1);
-            }}
-            style={{ ...inputStyle, flex: 1 }}
-          />
-          <DatePicker.RangePicker
-            {...getRangePickerProps({
-              value: (historyDateFrom && historyDateTo)
-                ? [dayjs(historyDateFrom), dayjs(historyDateTo)]
-                : (historyDateFrom ? [dayjs(historyDateFrom), null] : (historyDateTo ? [null, dayjs(historyDateTo)] : null)),
-              onChange: (dates: any) => {
-                if (!dates || dates.length === 0 || (!dates[0] && !dates[1])) {
-                  setHistoryDateFrom('');
-                  setHistoryDateTo('');
-                } else {
-                  setHistoryDateFrom(dates[0] ? dates[0].startOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
-                  setHistoryDateTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss') : '');
-                }
-              },
-              style: { ...inputStyle, width: 280 },
-            })}
-          />
-          <Button
-            type="primary"
-            icon={<SearchOutlined />}
-            loading={loadingHistory}
-            onClick={() => {
-              setHistorySearch(historySearchInput.trim());
-              setHistoryReloadToken((t) => t + 1);
-            }}
-            style={primaryButtonStyle}
-          >
-            Tìm kiếm
-          </Button>
-        </div>
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>
-          {loadingHistory && historyRecords.length === 0 ? <LoadingSkeleton rows={5} /> : historyRecords.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>{historySearch || historyDateFrom || historyDateTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div></div>
-          ) : (
-            <>
-              {renderTransmissionHistoryTimeline(historyRecords)}
-              {loadingMoreHistory && <div style={{ textAlign: 'center', padding: `${spaceMd}px 0`, color: textTertiary, fontSize: fontSizeMd }}>Đang tải thêm...</div>}
-            </>
+        <style>{`.history-dt-popup .ant-picker-now-btn { color: ${actionPrimary} !important; }`}</style>
+        <div style={{ flexShrink: 0 }}>
+          {!historyLoading && (
+            <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
+              <Input
+                placeholder="Tìm kiếm nội dung thay đổi..."
+                allowClear
+                value={historySearch}
+                onChange={(e) => setHistorySearch(e.target.value)}
+                style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
+              />
+              <DatePicker
+                placeholder="Từ ngày"
+                classNames={{ popup: { root: 'history-dt-popup' } }}
+                value={historyFrom ? dayjs(historyFrom) : null}
+                onChange={(d) => setHistoryFrom(d ? d.format('YYYY-MM-DD') : '')}
+                style={{ width: 140, borderRadius: radiusPill, height: 40 }}
+                format="DD/MM/YYYY"
+              />
+              <DatePicker
+                placeholder="Đến ngày"
+                classNames={{ popup: { root: 'history-dt-popup' } }}
+                value={historyTo ? dayjs(historyTo) : null}
+                onChange={(d) => setHistoryTo(d ? d.format('YYYY-MM-DD') : '')}
+                style={{ width: 140, borderRadius: radiusPill, height: 40 }}
+                format="DD/MM/YYYY"
+              />
+              <Button
+                type="primary"
+                icon={<SearchOutlined />}
+                style={{
+                  borderRadius: radiusPill,
+                  height: 40,
+                  fontSize: fontSizeMd,
+                  background: actionPrimary,
+                  borderColor: actionPrimary,
+                }}
+              >
+                Tìm kiếm
+              </Button>
+            </div>
           )}
         </div>
-      </Drawer>
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+          {historyLoading ? (
+            <LoadingSkeleton rows={5} />
+          ) : historyRecords.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
+              <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+              <div style={{ color: textTertiary, fontSize: fontSizeMd }}>
+                Chưa có thay đổi nào được ghi nhận
+              </div>
+            </div>
+          ) : (
+            renderTransmissionHistoryTimeline(historyRecords)
+          )}
+        </div>
+      </AppDrawer>
       </ThemeTokenProvider>
     </>
   );
