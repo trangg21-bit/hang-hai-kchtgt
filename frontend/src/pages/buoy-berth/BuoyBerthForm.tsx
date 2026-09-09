@@ -5,8 +5,11 @@ import {
   Button, Space, DatePicker, Modal,
 } from 'antd';
 import type { UploadFile } from 'antd';
-import { PlusOutlined, DeleteOutlined, EnvironmentOutlined } from '@ant-design/icons';
-import { colors, DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
+import {
+  PlusOutlined, DeleteOutlined, EnvironmentOutlined,
+  BankOutlined, SlidersOutlined, FileTextOutlined, DownOutlined, RightOutlined,
+} from '@ant-design/icons';
+import { colors, DRAWER_TABLE_SCROLL_Y, getDatePickerProps } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import {
@@ -40,6 +43,31 @@ const labelProps = (text: string) => ({
 const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
+
+const sectionBoxStyle: React.CSSProperties = {
+  background: '#ffffff',
+  border: '1px solid #e2e8f0',
+  borderRadius: radiusMd,
+  padding: '14px 18px 10px 18px',
+  marginBottom: 14,
+  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+};
+const sectionHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginBottom: spaceFormField,
+  paddingBottom: spaceSm,
+  borderBottom: '1px solid #f1f5f9',
+};
+const sectionTitleStyle: React.CSSProperties = {
+  color: colors.sidebarBg,
+  fontWeight: fontWeightBold,
+  fontSize: fontSizeMd + 0.5,
+  display: 'flex',
+  alignItems: 'center',
+  gap: spaceSm,
+};
 
 const OPERATIONAL_STATUS_OPTIONS = [
   { value: 'OPERATIONAL', label: 'Đang khai thác/vận hành' },
@@ -477,346 +505,369 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
   }, [form, isEdit, id, onFinish, onSubmittingChange, coordinateList, uploadedFiles]);
 
   const tabItems = [
-    // Tab 1: Thông tin chung
     { key: 'general', label: 'Thông tin chung', children: (<div style={drawerFormScrollStyle}>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị quản lý không được để trống' }]}>
-            <OrgUnitTreeSelect organizations={orgUnits} placeholder="Chọn đơn vị quản lý..." loading={loadingOrgs} disabled={isEdit || !isSystemAdmin} showPath treeDefaultExpandAll={false} onChange={handleOrgUnitChange} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="portId" {...labelProps('Thuộc cảng biển')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Thuộc cảng biển không được để trống' }]}>
-            <Select placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : portOptions.length === 0 && !loadingPorts ? 'Không có cảng biển thuộc đơn vị quản lý' : 'Chọn cảng biển...'}
-              loading={loadingPorts} disabled={!watchedOrgUnitId || (portOptions.length === 0 && !loadingPorts)} options={portOptions}
-              showSearch optionFilterProp="label" notFoundContent="Không có cảng biển thuộc đơn vị quản lý" style={selectStyle} />
-          </Form.Item>
-        </Col>
-      </Row>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item name="operatingOrgId" {...labelProps('Đơn vị khai thác')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị khai thác không được để trống' }]}>
-            <Select placeholder="Chọn đơn vị khai thác..." options={operatingOrgs.map(o => ({ value: o.id, label: o.name }))} showSearch optionFilterProp="label" allowClear style={selectStyle} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="waterwayId" {...labelProps('Thuộc luồng hàng hải')} style={{ marginBottom: spaceFormField }}>
-            <Select placeholder="Chọn luồng hàng hải..." options={waterwayOptions} showSearch allowClear optionFilterProp="label" style={selectStyle} />
-          </Form.Item>
-        </Col>
-      </Row>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item name="buoyBerthCode" {...labelProps('Mã bến phao')} style={{ marginBottom: spaceFormField }}>
-            <Input disabled placeholder={buoyBerthCodeLoading ? 'Đang sinh mã...' : watchedPortId ? 'Mã tự sinh (tự động theo mã cảng biển)' : 'Chọn Cảng biển để sinh mã'} style={readonlyInputStyle} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="buoyBerthName" {...labelProps('Tên bến phao')} style={{ marginBottom: spaceFormField }}
-            rules={[{ required: true, message: 'Tên bến phao không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}
-            validateStatus={atMax.buoyBerthName ? 'error' : undefined} help={atMax.buoyBerthName ? 'Đã đạt tối đa 255 ký tự' : undefined}>
-            <Input placeholder="Nhập tên bến phao" maxLength={255} showCount style={inputStyle} />
-          </Form.Item>
-        </Col>
-      </Row>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành phố)')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Địa điểm (Tỉnh/Thành phố) không được để trống' }]}>
-            <Select placeholder="Chọn địa điểm" showSearch optionFilterProp="label"
-              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-              options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))} style={selectStyle} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="detailedLocation" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }}
-            validateStatus={atMax.detailedLocation ? 'error' : undefined} help={atMax.detailedLocation ? 'Đã đạt tối đa 500 ký tự' : undefined}>
-            <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
-          </Form.Item>
-        </Col>
-      </Row>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item name="classification" {...labelProps('Phân cấp công trình')} style={{ marginBottom: spaceFormField }}>
-            <Select placeholder="Chọn phân cấp công trình" options={BUOY_BERTH_CLASSIFICATION_OPTIONS} showSearch allowClear optionFilterProp="label" style={selectStyle} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} required style={{ marginBottom: spaceFormField }} initialValue="OPERATIONAL" rules={[{ required: true, message: 'Tình trạng không được để trống' }]}>
-            <Select placeholder="Chọn tình trạng" options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />
-          </Form.Item>
-        </Col>
-      </Row>
-      <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, marginBottom: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setTechnicalOpen(!technicalOpen)}>
-        <span style={{ color: technicalOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{technicalOpen ? '▼' : '▶'} Thông tin kỹ thuật & đăng kiểm</span>
-      </button>
-      {technicalOpen && (<div>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item name="currentWaterDepth" {...labelProps('Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)')} style={{ marginBottom: spaceFormField }}
-            validateStatus={atMax.currentWaterDepth ? 'error' : undefined} help={atMax.currentWaterDepth ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-            <InputNumber min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="bottomElevationDesign" {...labelProps('Cao độ đáy bến thiết kế')} style={{ marginBottom: spaceFormField }}
-            validateStatus={atMax.bottomElevationDesign ? 'error' : undefined} help={atMax.bottomElevationDesign ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-            <InputNumber step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
-          </Form.Item>
-        </Col>
-      </Row>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item name="maxVesselDWT" {...labelProps('Cỡ tàu khai thác theo công bố (DWT)')} style={{ marginBottom: spaceFormField }}
-            validateStatus={atMax.maxVesselDWT ? 'error' : undefined} help={atMax.maxVesselDWT ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-            <InputNumber min={0} placeholder="0" maxLength={20} style={numberInputStyle} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="plannedVesselDWT" {...labelProps('Cỡ tàu khai thác theo quy hoạch')} style={{ marginBottom: spaceFormField }}
-            validateStatus={atMax.plannedVesselDWT ? 'error' : undefined} help={atMax.plannedVesselDWT ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-            <InputNumber min={0} placeholder="0" maxLength={20} style={numberInputStyle} />
-          </Form.Item>
-        </Col>
-      </Row>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item name="lastInspectionDate" {...labelProps('Thời điểm đã đăng kiểm gần nhất')} style={{ marginBottom: spaceFormField }}>
-            <DatePicker picker="month" placeholder="Chọn tháng/năm..." format="MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="nextInspectionDate" {...labelProps('Thời điểm đăng kiểm tiếp theo')} style={{ marginBottom: spaceFormField }}>
-            <DatePicker placeholder="Chọn ngày..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-          </Form.Item>
-        </Col>
-      </Row>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item name="operationExpiryDate" {...labelProps('Thời hạn khai thác')} style={{ marginBottom: spaceFormField }}>
-            <DatePicker placeholder="Chọn ngày..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="designCapacity" {...labelProps('Năng lực thông qua thiết kế')} style={{ marginBottom: spaceFormField }}
-            validateStatus={atMax.designCapacity ? 'error' : undefined} help={atMax.designCapacity ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-            <InputNumber min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
-          </Form.Item>
-        </Col>
-      </Row>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item name="activeBuoyBerthCount" {...labelProps('Số lượng bến phao đang khai thác')} style={{ marginBottom: spaceFormField }}
-            validateStatus={atMax.activeBuoyBerthCount ? 'error' : undefined} help={atMax.activeBuoyBerthCount ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-            <InputNumber min={0} placeholder="0" maxLength={20} style={numberInputStyle} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="publishedBuoyBerthCount" {...labelProps('Số lượng bến phao đã công bố')} style={{ marginBottom: spaceFormField }}
-            validateStatus={atMax.publishedBuoyBerthCount ? 'error' : undefined} help={atMax.publishedBuoyBerthCount ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-            <InputNumber min={0} placeholder="0" maxLength={20} style={numberInputStyle} />
-          </Form.Item>
-        </Col>
-      </Row>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item name="underInvestmentBuoyBerthCount" {...labelProps('Số lượng bến phao đang được thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }}
-            validateStatus={atMax.underInvestmentBuoyBerthCount ? 'error' : undefined} help={atMax.underInvestmentBuoyBerthCount ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-            <InputNumber min={0} placeholder="0" maxLength={20} style={numberInputStyle} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="cargoThroughput" {...labelProps('Sản lượng hàng thông qua')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Sản lượng hàng thông qua không được để trống' }]}
-            validateStatus={atMax.cargoThroughput ? 'error' : undefined} help={atMax.cargoThroughput ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-            <InputNumber min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
-          </Form.Item>
-        </Col>
-      </Row>
-      </div>)}
-      {/* ── Toggle: Thông tin công bố mở, đưa vào sử dụng (gom vào tab Thông tin chung) ── */}
-      <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setAnnouncementOpen(!announcementOpen)}>
-        <span style={{ color: announcementOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{announcementOpen ? '▼' : '▶'} Thông tin công bố mở, đưa vào sử dụng</span>
-      </button>
-      {announcementOpen && (<div style={{ marginTop: spaceFormField }}>
+      {/* Box 1: Thông tin cơ bản & Quản lý vận hành */}
+      <div style={sectionBoxStyle}>
+        <div style={sectionHeaderStyle}>
+          <div style={sectionTitleStyle}>
+            <BankOutlined style={{ color: actionPrimary }} />
+            <span>Thông tin cơ bản & Quản lý vận hành</span>
+          </div>
+        </div>
         <Row gutter={[24, 0]}>
           <Col span={12}>
-            <Form.Item name="openingAnnouncementDate" {...labelProps('Thời điểm công bố mở, đưa ra sử dụng')} style={{ marginBottom: spaceFormField }}>
-              <DatePicker placeholder="Chọn thời điểm..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            <Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị quản lý không được để trống' }]}>
+              <OrgUnitTreeSelect organizations={orgUnits} placeholder="Chọn đơn vị quản lý..." loading={loadingOrgs} disabled={isEdit || !isSystemAdmin} showPath treeDefaultExpandAll={false} onChange={handleOrgUnitChange} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="portId" {...labelProps('Thuộc cảng biển')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Thuộc cảng biển không được để trống' }]}>
+              <Select placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : portOptions.length === 0 && !loadingPorts ? 'Không có cảng biển thuộc đơn vị quản lý' : 'Chọn cảng biển...'}
+                loading={loadingPorts} disabled={!watchedOrgUnitId || (portOptions.length === 0 && !loadingPorts)} options={portOptions}
+                showSearch optionFilterProp="label" notFoundContent="Không có cảng biển thuộc đơn vị quản lý" style={selectStyle} />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={[24, 0]}>
+          <Col span={12}>
+            <Form.Item name="operatingOrgId" {...labelProps('Đơn vị khai thác')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị khai thác không được để trống' }]}>
+              <Select placeholder="Chọn đơn vị khai thác..." options={operatingOrgs.map(o => ({ value: o.id, label: o.name }))} showSearch optionFilterProp="label" allowClear style={selectStyle} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="waterwayId" {...labelProps('Thuộc luồng hàng hải')} style={{ marginBottom: spaceFormField }}>
+              <Select placeholder="Chọn luồng hàng hải..." options={waterwayOptions} showSearch allowClear optionFilterProp="label" style={selectStyle} />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={[24, 0]}>
+          <Col span={12}>
+            <Form.Item name="buoyBerthCode" {...labelProps('Mã bến phao')} style={{ marginBottom: spaceFormField }}>
+              <Input disabled placeholder={buoyBerthCodeLoading ? 'Đang sinh mã...' : watchedPortId ? 'Mã tự sinh (tự động theo mã cảng biển)' : 'Chọn Cảng biển để sinh mã'} style={readonlyInputStyle} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="buoyBerthName" {...labelProps('Tên bến phao')} style={{ marginBottom: spaceFormField }}
+              rules={[{ required: true, message: 'Tên bến phao không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}
+              validateStatus={atMax.buoyBerthName ? 'error' : undefined} help={atMax.buoyBerthName ? 'Đã đạt tối đa 255 ký tự' : undefined}>
+              <Input placeholder="Nhập tên bến phao" maxLength={255} showCount style={inputStyle} />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={[24, 0]}>
+          <Col span={12}>
+            <Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành phố)')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Địa điểm (Tỉnh/Thành phố) không được để trống' }]}>
+              <Select placeholder="Chọn địa điểm" showSearch optionFilterProp="label"
+                filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))} style={selectStyle} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} required style={{ marginBottom: spaceFormField }} initialValue="OPERATIONAL" rules={[{ required: true, message: 'Tình trạng không được để trống' }]}>
+              <Select placeholder="Chọn tình trạng" options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />
             </Form.Item>
           </Col>
         </Row>
         <Row gutter={[24, 0]}>
           <Col span={24}>
-            <Form.Item name="publicDecision" {...labelProps('Quyết định công bố/ Văn bản cho phép khai thác')} style={{ marginBottom: spaceFormField }}
-              validateStatus={atMax.publicDecision ? 'error' : undefined} help={atMax.publicDecision ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
-              <Input.TextArea rows={1} autoSize={{ minRows: 1 }} placeholder="Nhập quyết định công bố" maxLength={2000} showCount style={{ borderRadius: radiusPill, height: 'auto' }} />
+            <Form.Item name="detailedLocation" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }}
+              validateStatus={atMax.detailedLocation ? 'error' : undefined} help={atMax.detailedLocation ? 'Đã đạt tối đa 500 ký tự' : undefined}>
+              <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
             </Form.Item>
           </Col>
         </Row>
-        <Row gutter={[24, 0]}>
-          <Col span={24}>
-            <Form.Item name="investmentAgreement" {...labelProps('Văn bản thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }}
-              validateStatus={atMax.investmentAgreement ? 'error' : undefined} help={atMax.investmentAgreement ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
-              <Input.TextArea rows={1} autoSize={{ minRows: 1 }} placeholder="Nhập văn bản thỏa thuận" maxLength={2000} showCount style={{ borderRadius: radiusPill, height: 'auto' }} />
-            </Form.Item>
-          </Col>
-        </Row>
-      </div>)}
-
-      {/* ── Toggle: Thông tin phạm vi khu nước neo buộc tàu (gom vào tab Thông tin chung) ── */}
-      <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setMooringScopeOpen(!mooringScopeOpen)}>
-        <span style={{ color: mooringScopeOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{mooringScopeOpen ? '▼' : '▶'} Thông tin phạm vi khu nước neo buộc tàu</span>
-      </button>
-      {mooringScopeOpen && (<div style={{ marginTop: spaceFormField }}>
-        <Form.Item name="mooringWaterAreaScope" {...labelProps('Phạm vi khu nước neo buộc tàu')} style={{ marginBottom: spaceFormField }}
-          validateStatus={atMax.mooringWaterAreaScope ? 'error' : undefined} help={atMax.mooringWaterAreaScope ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
-          <Input.TextArea rows={3} maxLength={2000} showCount placeholder="Nhập phạm vi khu nước neo buộc tàu" style={{ borderRadius: radiusPill, height: 'auto' }} />
-        </Form.Item>
-      </div>)}
-    </div>) },
-    // Tab 3: Thông tin vị trí (giống hệt Berth)
-    { key: 'location', label: 'Thông tin vị trí', children: (<div style={drawerFormScrollStyle}>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
-            <Select placeholder="Chọn loại đối tượng" allowClear options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="mapSymbolId" {...labelProps('Biểu tượng')} style={{ marginBottom: spaceFormField }}>
-            <Select placeholder="Chọn biểu tượng bản đồ" allowClear showSearch optionFilterProp="label" disabled={!watchedGeometryType} style={selectStyle}>
-              {symbols.map(sym => (
-                <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
-                  <Space>
-                    {sym.image && <img src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`} alt={sym.name} style={{ width: 20, height: 20, objectFit: 'contain' }} />}
-                    <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
-                  </Space>
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Col>
-      </Row>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item name="coordinateSystem" {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }}>
-            <Select placeholder="Chọn hệ quy chiếu" disabled style={selectStyle} options={COORD_SYS_OPTIONS} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="displayRule" {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }}>
-            <Input placeholder="Chọn quy tắc hiển thị" maxLength={255} disabled style={readonlyInputStyle} />
-          </Form.Item>
-        </Col>
-      </Row>
-      <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-        <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
-          Tọa độ GPS ({coordinateList.length})
-        </span>
-        <Space size={8}>
-          <Button
-            icon={<EnvironmentOutlined style={{ color: !watchedGeometryType ? undefined : actionPrimary }} />}
-            onClick={() => setGisModalOpen(true)}
-            disabled={!watchedGeometryType}
-            style={!watchedGeometryType ? {
-              height: 32,
-              fontSize: fontSizeSm,
-              padding: '0 14px',
-              borderRadius: radiusPill,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              opacity: 0.6,
-              cursor: 'not-allowed',
-            } : {
-              ...outlineButtonStyle,
-              height: 32,
-              fontSize: fontSizeSm,
-              padding: '0 14px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-            }}
-          >
-            Chọn tọa độ trên bản đồ
-          </Button>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={addGpsPoint}
-            disabled={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)}
-            style={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1) ? {
-              height: 32,
-              fontSize: fontSizeSm,
-              padding: '0 14px',
-              borderRadius: radiusPill,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              background: '#f5f5f5',
-              borderColor: '#d9d9d9',
-              color: 'rgba(0, 0, 0, 0.25)',
-              cursor: 'not-allowed',
-            } : {
-              ...primaryButtonStyle,
-              height: 32,
-              fontSize: fontSizeSm,
-              padding: '0 14px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-            }}
-            title={watchedGeometryType === 'POINT' && coordinateList.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 tọa độ GPS' : undefined}
-          >
-            Thêm tọa độ
-          </Button>
-        </Space>
       </div>
-      {coordinateList.length === 0 ? (
-        <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
-          <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block' }}>Chưa có tọa độ nào.</span>
+
+      {/* Box 2: Thông số kỹ thuật & Năng lực khai thác */}
+      <div style={sectionBoxStyle}>
+        <div style={sectionHeaderStyle}>
+          <div style={sectionTitleStyle}>
+            <SlidersOutlined style={{ color: actionPrimary }} />
+            <span>Thông số kỹ thuật & Năng lực khai thác</span>
+          </div>
         </div>
-      ) : (
-        <>
-        {gpsError && (
-          <div style={{ marginBottom: spaceSm, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ color: statusCritical, fontSize: fontSizeMd, flex: 1 }}>⚠ {gpsError}</span>
+        <Row gutter={[24, 0]}>
+          <Col span={12}>
+            <Form.Item name="classification" {...labelProps('Phân cấp công trình')} style={{ marginBottom: spaceFormField }}>
+              <Select placeholder="Chọn phân cấp công trình" options={BUOY_BERTH_CLASSIFICATION_OPTIONS} showSearch allowClear optionFilterProp="label" style={selectStyle} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="currentWaterDepth" {...labelProps('Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)')} style={{ marginBottom: spaceFormField }}
+              validateStatus={atMax.currentWaterDepth ? 'error' : undefined} help={atMax.currentWaterDepth ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+              <InputNumber min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={[24, 0]}>
+          <Col span={12}>
+            <Form.Item name="bottomElevationDesign" {...labelProps('Cao độ đáy bến thiết kế')} style={{ marginBottom: spaceFormField }}
+              validateStatus={atMax.bottomElevationDesign ? 'error' : undefined} help={atMax.bottomElevationDesign ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+              <InputNumber step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="maxVesselDWT" {...labelProps('Cỡ tàu khai thác theo công bố (DWT)')} style={{ marginBottom: spaceFormField }}
+              validateStatus={atMax.maxVesselDWT ? 'error' : undefined} help={atMax.maxVesselDWT ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+              <InputNumber min={0} placeholder="0" maxLength={20} style={numberInputStyle} />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={[24, 0]}>
+          <Col span={12}>
+            <Form.Item name="plannedVesselDWT" {...labelProps('Cỡ tàu khai thác theo quy hoạch')} style={{ marginBottom: spaceFormField }}
+              validateStatus={atMax.plannedVesselDWT ? 'error' : undefined} help={atMax.plannedVesselDWT ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+              <InputNumber min={0} placeholder="0" maxLength={20} style={numberInputStyle} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="lastInspectionDate" {...labelProps('Thời điểm đã đăng kiểm gần nhất')} style={{ marginBottom: spaceFormField }}>
+              <DatePicker picker="month" placeholder="Chọn tháng/năm..." format="MM/YYYY" {...getDatePickerProps({ width: '100%', borderRadius: radiusPill, height: 40 })} />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={[24, 0]}>
+          <Col span={12}>
+            <Form.Item name="nextInspectionDate" {...labelProps('Thời điểm đăng kiểm tiếp theo')} style={{ marginBottom: spaceFormField }}>
+              <DatePicker placeholder="Chọn ngày..." format="DD/MM/YYYY" {...getDatePickerProps({ width: '100%', borderRadius: radiusPill, height: 40 })} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="operationExpiryDate" {...labelProps('Thời hạn khai thác')} style={{ marginBottom: spaceFormField }}>
+              <DatePicker placeholder="Chọn ngày..." format="DD/MM/YYYY" {...getDatePickerProps({ width: '100%', borderRadius: radiusPill, height: 40 })} />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={[24, 0]}>
+          <Col span={12}>
+            <Form.Item name="designCapacity" {...labelProps('Năng lực thông qua thiết kế')} style={{ marginBottom: spaceFormField }}
+              validateStatus={atMax.designCapacity ? 'error' : undefined} help={atMax.designCapacity ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+              <InputNumber min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="activeBuoyBerthCount" {...labelProps('Số lượng bến phao đang khai thác')} style={{ marginBottom: spaceFormField }}
+              validateStatus={atMax.activeBuoyBerthCount ? 'error' : undefined} help={atMax.activeBuoyBerthCount ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+              <InputNumber min={0} placeholder="0" maxLength={20} style={numberInputStyle} />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={[24, 0]}>
+          <Col span={12}>
+            <Form.Item name="publishedBuoyBerthCount" {...labelProps('Số lượng bến phao đã công bố')} style={{ marginBottom: spaceFormField }}
+              validateStatus={atMax.publishedBuoyBerthCount ? 'error' : undefined} help={atMax.publishedBuoyBerthCount ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+              <InputNumber min={0} placeholder="0" maxLength={20} style={numberInputStyle} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="underInvestmentBuoyBerthCount" {...labelProps('Số lượng bến phao đang được thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }}
+              validateStatus={atMax.underInvestmentBuoyBerthCount ? 'error' : undefined} help={atMax.underInvestmentBuoyBerthCount ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+              <InputNumber min={0} placeholder="0" maxLength={20} style={numberInputStyle} />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={[24, 0]}>
+          <Col span={12}>
+            <Form.Item name="cargoThroughput" {...labelProps('Sản lượng hàng thông qua')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Sản lượng hàng thông qua không được để trống' }]}
+              validateStatus={atMax.cargoThroughput ? 'error' : undefined} help={atMax.cargoThroughput ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+              <InputNumber min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
+            </Form.Item>
+          </Col>
+        </Row>
+      </div>
+
+      {/* Box 3: Thông tin công bố mở, đưa vào sử dụng */}
+      <div style={sectionBoxStyle}>
+        <div
+          onClick={() => setAnnouncementOpen(!announcementOpen)}
+          style={{
+            ...sectionHeaderStyle,
+            marginBottom: announcementOpen ? spaceFormField : 0,
+            paddingBottom: announcementOpen ? spaceSm : 0,
+            borderBottom: announcementOpen ? sectionHeaderStyle.borderBottom : 'none',
+            cursor: 'pointer',
+            userSelect: 'none',
+          }}
+        >
+          <div style={sectionTitleStyle}>
+            <FileTextOutlined style={{ color: actionPrimary }} />
+            <span>Thông tin công bố mở, đưa vào sử dụng</span>
+          </div>
+          {announcementOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
+        </div>
+        {announcementOpen && (
+          <div>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item name="openingAnnouncementDate" {...labelProps('Thời điểm công bố mở, đưa ra sử dụng')} style={{ marginBottom: spaceFormField }}>
+                  <DatePicker placeholder="Chọn thời điểm..." format="DD/MM/YYYY" {...getDatePickerProps({ width: '100%', borderRadius: radiusPill, height: 40 })} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="publicDecision" {...labelProps('Quyết định công bố/ Văn bản cho phép khai thác')} style={{ marginBottom: spaceFormField }}
+                  validateStatus={atMax.publicDecision ? 'error' : undefined} help={atMax.publicDecision ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
+                  <Input.TextArea rows={1} autoSize={{ minRows: 1 }} placeholder="Nhập quyết định công bố" maxLength={2000} showCount style={{ borderRadius: radiusPill, height: 'auto' }} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={24}>
+                <Form.Item name="investmentAgreement" {...labelProps('Văn bản thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }}
+                  validateStatus={atMax.investmentAgreement ? 'error' : undefined} help={atMax.investmentAgreement ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
+                  <Input.TextArea rows={1} autoSize={{ minRows: 1 }} placeholder="Nhập văn bản thỏa thuận" maxLength={2000} showCount style={{ borderRadius: radiusPill, height: 'auto' }} />
+                </Form.Item>
+              </Col>
+            </Row>
           </div>
         )}
-        <DetailTable
-          size="small"
-          scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
-          dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))}
-          rowKey={(r: any, idx?: number) => r._idx ?? String(idx)}
-          emptyText="Chưa có tọa độ GPS nào"
-          columns={[
-            {
-              title: 'STT',
-              width: 60,
-              align: 'center' as const,
-              render: (_v: any, _r: any, idx: number) => (gpsPage - 1) * 10 + idx + 1,
-            },
-            {
-              title: 'Vĩ độ (Latitude - N)',
-              key: 'lat',
-              render: (_v: any, record: any) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
-            },
-            {
-              title: 'Kinh độ (Longitude - E)',
-              key: 'lng',
-              render: (_v: any, record: any) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
-            },
-            {
-              title: '',
-              width: 50,
-              align: 'center' as const,
-              render: (_v: any, record: any) => (
-                <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeCoordinate(record._idx)} />
-              ),
-            },
-          ]}
-        />
-        </>
-      )}
+      </div>
+
+      {/* Box 4: Thông tin phạm vi khu nước neo buộc tàu */}
+      <div style={sectionBoxStyle}>
+        <div
+          onClick={() => setMooringScopeOpen(!mooringScopeOpen)}
+          style={{
+            ...sectionHeaderStyle,
+            marginBottom: mooringScopeOpen ? spaceFormField : 0,
+            paddingBottom: mooringScopeOpen ? spaceSm : 0,
+            borderBottom: mooringScopeOpen ? sectionHeaderStyle.borderBottom : 'none',
+            cursor: 'pointer',
+            userSelect: 'none',
+          }}
+        >
+          <div style={sectionTitleStyle}>
+            <FileTextOutlined style={{ color: actionPrimary }} />
+            <span>Thông tin phạm vi khu nước neo buộc tàu</span>
+          </div>
+          {mooringScopeOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
+        </div>
+        {mooringScopeOpen && (
+          <div>
+            <Form.Item name="mooringWaterAreaScope" {...labelProps('Phạm vi khu nước neo buộc tàu')} style={{ marginBottom: spaceFormField }}
+              validateStatus={atMax.mooringWaterAreaScope ? 'error' : undefined} help={atMax.mooringWaterAreaScope ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
+              <Input.TextArea rows={3} maxLength={2000} showCount placeholder="Nhập phạm vi khu nước neo buộc tàu" style={{ borderRadius: radiusPill, height: 'auto' }} />
+            </Form.Item>
+          </div>
+        )}
+      </div>
+    </div>) },
+    // Tab 2: Thông tin vị trí
+    { key: 'location', label: `Thông tin vị trí (${coordinateList.length})`, children: (<div style={drawerFormScrollStyle}>
+      <div style={sectionBoxStyle}>
+        <div style={sectionHeaderStyle}>
+          <div style={sectionTitleStyle}>
+            <EnvironmentOutlined style={{ color: actionPrimary }} />
+            <span>Thông số đối tượng bản đồ</span>
+          </div>
+        </div>
+        <Row gutter={[24, 0]}>
+          <Col span={12}>
+            <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
+              <Select placeholder="Chọn loại đối tượng" allowClear options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="mapSymbolId" {...labelProps('Biểu tượng')} style={{ marginBottom: spaceFormField }}>
+              <Select placeholder="Chọn biểu tượng bản đồ" allowClear showSearch optionFilterProp="label" disabled={!watchedGeometryType} style={selectStyle}>
+                {symbols.map(sym => (
+                  <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
+                    <Space>
+                      {sym.image && <img src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`} alt={sym.name} style={{ width: 20, height: 20, objectFit: 'contain' }} />}
+                      <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
+                    </Space>
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={[24, 0]}>
+          <Col span={12}>
+            <Form.Item name="coordinateSystem" {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }}>
+              <Select placeholder="Chọn hệ quy chiếu" disabled style={selectStyle} options={COORD_SYS_OPTIONS} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="displayRule" {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }}>
+              <Input placeholder="Chọn quy tắc hiển thị" maxLength={255} disabled style={readonlyInputStyle} />
+            </Form.Item>
+          </Col>
+        </Row>
+      </div>
+
+      <div style={sectionBoxStyle}>
+        <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+          <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
+            Tọa độ GPS ({coordinateList.length})
+          </span>
+          <Space size={8}>
+            <Button
+              icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+              onClick={() => setGisModalOpen(true)}
+              disabled={!watchedGeometryType}
+              style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            >
+              Chọn tọa độ trên bản đồ
+            </Button>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={addGpsPoint}
+              disabled={!watchedGeometryType}
+              style={{ ...primaryButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            >
+              Thêm tọa độ
+            </Button>
+          </Space>
+        </div>
+        {coordinateList.length === 0 ? (
+          <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
+            <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có tọa độ nào.</span>
+            <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!watchedGeometryType} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
+          </div>
+        ) : (
+          <>
+          {gpsError && (
+            <div style={{ marginBottom: spaceSm, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ color: statusCritical, fontSize: fontSizeMd, flex: 1 }}>⚠ {gpsError}</span>
+            </div>
+          )}
+          <DetailTable
+            size="small"
+            scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
+            dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))}
+            rowKey={(r: any, idx?: number) => r._idx ?? String(idx)}
+            emptyText="Chưa có tọa độ GPS nào"
+            columns={[
+              {
+                title: 'STT',
+                width: 60,
+                align: 'center' as const,
+                render: (_v: any, _r: any, idx: number) => (gpsPage - 1) * 10 + idx + 1,
+              },
+              {
+                title: 'Vĩ độ (Latitude - N)',
+                key: 'lat',
+                render: (_v: any, record: any) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
+              },
+              {
+                title: 'Kinh độ (Longitude - E)',
+                key: 'lng',
+                render: (_v: any, record: any) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
+              },
+              {
+                title: '',
+                width: 50,
+                align: 'center' as const,
+                render: (_v: any, record: any) => (
+                  <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeCoordinate(record._idx)} />
+                ),
+              },
+            ]}
+          />
+          </>
+        )}
+      </div>
     </div>) },
     // Tab 5: File đính kèm (chuẩn VTS CHK — InfrastructureAttachmentTab)
     { key: 'files', label: 'File đính kèm', children: (

@@ -87,6 +87,8 @@ columns={[
 | 4 | **Độ thập phân** | `180px` | ~21% | `left` | Format `106.123456, 20.123456` |
 | 5 | **Thao tác** | `60px` | ~7% | `center` | Nút xóa điểm |
 
+Trong bảng nhập tọa độ DMS của Bến cảng, nút xóa phải thẳng tâm với hàng ô nhập, không căn giữa cả phần thông báo lỗi bên dưới. Ô thao tác dùng `onCell` với `verticalAlign: 'top'`; nút có chiều cao bằng ô nhập DMS. Kiểm tra cả khi tọa độ trống và khi xuất hiện thông báo thiếu Độ/Phút/Giây.
+
 ---
 
 ## 3. Tự động hóa qua `DetailTable`

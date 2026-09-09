@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { PERMISSIONS } from '../../constants/permissions';
 import {
-  Alert,
   Button,
   Tag,
   Input,
@@ -9,14 +8,17 @@ import {
   Modal,
   Form,
   Typography,
-  Descriptions,
+  Space,
+  Skeleton,
   DatePicker,
+  Descriptions,
 } from 'antd';
 import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
 import {
   PlusOutlined,
   DownloadOutlined,
-  ExclamationCircleOutlined,
+  HistoryOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
 import { berthCRUD, waterZoneCRUD, pierCRUD } from '../../services/portService';
@@ -44,6 +46,29 @@ import { organizationService } from '../../services/organizationService';
 import { documentApi } from '../../app/document/api';
 import DocumentUploadModal from '../../app/document/DocumentUploadModal';
 import api from '../../services/api';
+
+// ── Helper file đính kèm Cảng biển (store attachment thật — giống Bến cảng) ──
+// Cảng biển hiện đã có /v1/ports/{id}/attachments (AttachmentDto: id/fileName/fileSize/
+// uploadedBy/uploadedAt, file thật trên đĩa) + try/catch chống lỗi. Không dùng kênh
+// Document (/v1/documents/entity/port) nữa vì dòng đó lưu dạng storageKey/createdAt
+// (stub) làm "Ngày tải lên" trống và thao tác tải/xem không hoạt động.
+async function fetchPortAttachmentList(portId: string): Promise<any[]> {
+  try {
+    const res = await api.get(`/v1/ports/${portId}/attachments`);
+    return res?.data?.data ?? [];
+  } catch {
+    return [];
+  }
+}
+
+async function uploadPortAttachments(portId: string, files: any[]): Promise<number> {
+  const newFiles = (files || []).filter((f: any) => f && f.originFileObj);
+  if (newFiles.length === 0) return 0;
+  const formData = new FormData();
+  newFiles.forEach((f: any) => formData.append('files', f.originFileObj as File));
+  await api.post(`/v1/ports/${portId}/attachments`, formData, { headers: { 'Content-Type': undefined } });
+  return newFiles.length;
+}
 import dayjs from 'dayjs';
 import { symbolService } from '../symbolService';
 import { VIETNAM_PROVINCES } from '../../types/common';
@@ -62,31 +87,266 @@ import {
   borderDefault,
   spaceMd,
   spaceSm,
-  fontSizeMd,
   fontSizeLg,
+  fontSizeSm,
   fontWeightBold,
+  fontWeightMedium,
   spaceFormField,
   radiusPill,
+  spaceXs,
+  spaceLg,
+  spaceXl,
+  radiusSm,
   drawerTitleStyle,
   drawerFooterStyle,
   primaryButtonStyle,
   outlineButtonStyle,
   requiredMarkStyle,
+  cellTitleStyle,
   icons,
 } from '../../themetokenchk';
 import { usePermissionStore } from '../../store/permissionStore';
 import { colors } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
+// Bảng/Button/nút toàn màn Cảng biển đồng bộ font 13.5px như Bến cảng (mặc định themeTokenChk = 13).
+
+// ── Cỡ chữ 13.5px đồng bộ dòng với màn Bến cảng (BerthListPage const fontSizeMd = 13.5) ──
+// Không dùng fontSizeMd=13 import từ themetokenchk để mọi cell trong list cao ngang nhau.
+const fontSizeMd = 13.5;
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
+import {
+  historyGroupGridStyle,
+  historyTimeStyle,
+  historyMetaRowStyle,
+  historyInfoCardStyle,
+  historyAccentBarStyle,
+  historyFieldLabelStyle,
+  historyOldValueStyle,
+  historyNewValueStyle,
+  historyArrowStyle,
+  historyInfoTitleStyle,
+  historyChangeRowStyle,
+  historyCreateRowStyle,
+} from '../../themetokenchk';
 import ApprovalModal from '../../components/shared/ApprovalModal';
-import CommonHistoryDrawer from '../../components/shared/CommonHistoryDrawer';
+import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import PortForm from './PortForm';
 import PortDetailContent from './PortDetailContent';
 
+// ── Render lịch sử thay đổi (giống màn Bến cảng) ─────────────────────
+// Nhóm các thay đổi theo cùng thời điểm (đến giây) + người thao tác thành 1 card,
+// cột trái: mốc thời gian + pill hành động; cột phải: info-card có vạch accent,
+// tiêu đề 'Thông tin thêm mới'/'Thông tin thay đổi', từng dòng field cũ → mới.
+type PortHistKind = { isCreate: boolean; label: string; color: string; bg: string };
+
+function portHistActionMeta(field: string, rows: { field: string; oldValue: string | null; newValue: string | null }[]): PortHistKind {
+  const lb = (field || '').toLowerCase();
+  const nv = String(rows.find((x) => x.field.toLowerCase() === lb)?.newValue ?? (rows[0]?.field || '')).toLowerCase();
+  if (!rows.some((x) => x.oldValue != null)) {
+    return { isCreate: true, label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
+  }
+  if (nv.includes('phê duyệt') || nv.includes('phe duyet') || nv.includes('approved')) {
+    return { isCreate: false, label: 'Phê duyệt', color: statusOperational, bg: `${statusOperational}18` };
+  }
+  if (nv.includes('từ chối') || nv.includes('tu choi') || nv.includes('rejected')) {
+    return { isCreate: false, label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
+  }
+  if (nv.includes('trình duyệt') || nv.includes('trinh duyet') || nv.includes('pending')) {
+    return { isCreate: false, label: 'Trình duyệt', color: '#EDA100', bg: '#EDA10018' };
+  }
+  if (nv.includes('xóa') || nv.includes('xoa') || nv.includes('deleted')) {
+    return { isCreate: false, label: 'Xóa', color: textTertiary, bg: `${textTertiary}18` };
+  }
+  return { isCreate: false, label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
+}
+
+function fmtPortHistoryThousands(s: string): string {
+  const t = s.trim();
+  if (!/^-?\d+(\.\d+)?$/.test(t)) return s;
+  const n = Number(t);
+  if (!Number.isFinite(n)) return s;
+  return n.toLocaleString('en-US', { maximumFractionDigits: 6 });
+}
+
+function portHistRowValue(r: any, side: 'old' | 'new', orgMap: Map<string, string>, symbolMap: Map<string, string>): string | null {
+  const raw = side === 'old' ? (r.oldValue ?? r.previousValue) : (r.newValue ?? r.value);
+  if (raw === null || raw === undefined) return null;
+  const s = String(raw);
+  if (s === 'null' || s === 'undefined' || s === '') return null;
+  const field = r.changedField ?? r.fieldName ?? '';
+  if (field === 'orgUnitId') return orgMap.get(s) || s;
+  if (side === 'old' && field === 'mapSymbolId') return undefined as unknown as string;
+  const resolved = resolvePortHistoryValue(field, raw, orgMap, symbolMap);
+  return (resolved ?? fmtPortHistoryThousands(s));
+}
+
+function renderPortHistCards(records: any[], orgMap: Map<string, string>, symbolMap: Map<string, string>, symbolImageMap: Map<string, string>) {
+  const timeFmt = (tsRaw?: string | null) => {
+    try { return tsRaw ? dayjs(tsRaw).format('HH:mm DD/MM/YYYY') : '—'; } catch { return tsRaw || '—'; }
+  };
+  const norm = (v: string | null): string | null => {
+    if (v === null || v === undefined) return null;
+    const s = String(v);
+    if (s === 'null' || s === '(null)' || s === 'undefined' || s === '') return null;
+    return s;
+  };
+  const unitName = (r: any): string => {
+    const display = orgMap.get(String(r?.orgUnitId ?? ''));
+    if (display) {
+      const i = display.indexOf(' - ');
+      return i >= 0 ? display.slice(i + 3) : display;
+    }
+    return (r?.orgUnitName || r?.unitName) || '—';
+  };
+  const fieldLabel = (fn: string): string => PORT_HISTORY_FIELD_LABELS[fn] || fn;
+
+  const GROUP_ORDER = ['createEntity', 'portCode', 'portName', 'portGroup', 'portClass', 'province', 'coordinates', 'mapSymbolId', 'geometryType', 'coordinateSystem', 'displayRule', 'maxVesselCapacity', 'area', 'totalBerths', 'totalAnchoragesTransshipment', 'remarks', 'orgUnitId'];
+
+  const sorted = [...(records || [])].sort((a, b) => {
+    // API Cảng biển (HistoryEntry) trả approvedDate; fallback đủ khóa giống Bến cảng.
+    const at = a.changedAt || a.createdAt || a.approvedDate || '';
+    const bt = b.changedAt || b.createdAt || b.approvedDate || '';
+    return String(bt) < String(at) ? -1 : String(bt) > String(at) ? 1 : 0;
+  });
+  const groups: { ts: string; actor: string; items: any[] }[] = [];
+  for (const r of sorted) {
+    const ts = r.changedAt || r.createdAt || r.approvedDate || '';
+    // Gom nhóm theo đúng logic Bến cảng: theo GIÂY (tsSec) + actor, mỗi nhóm giữ ts ISO để hiển thị.
+    const tsMs = ts ? Math.floor(new Date(ts).getTime() / 1000) || 0 : 0;
+    const actor = String(r.changedBy ?? r.createdBy ?? r.approvedBy ?? r.actorName ?? '');
+    const g = groups[groups.length - 1];
+    if (g && g.tsMs === tsMs && g.actor === actor) {
+      g.items.push(r);
+    } else {
+      groups.push({ tsMs: tsMs, actor, items: [r] });
+    }
+  }
+
+  return groups.map((g, gi) => {
+    const rows = g.items.map((it) => {
+      const fn = it.changedField ?? it.fieldName ?? '';
+      const oldV = norm(it.oldValue ?? it.previousValue);
+      const newV = norm(it.newValue ?? it.value);
+      return { rowId: String(it.id ?? `${String(it.changedAt ?? '')}-${String(it.changedField ?? it.fieldName ?? '')}`), field: fn, oldValue: oldV, newValue: newV };
+    });
+    // Xác định "thêm mới"/hành động theo chuẩn semantic — dùng hàm có sẵn portHistActionMeta,
+    // giống Bến cảng (badge phân biệt Phê duyệt/Từ chối/Trình duyệt/Xóa/Cập nhật theo rows).
+    // Bản ghi đại diện của mốc nhóm (dùng cho "Người cập nhật"/đơn vị trong node).
+    const meta = g.items?.[0] || {};
+    const kind = portHistActionMeta('', rows);
+    // isCreate (tiêu đề "Thông tin thêm mới/thay đổi", nhánh render dòng) lấy từ kết quả hàm chuẩn.
+    const isCreate = kind.isCreate;
+    const barColor = actionPrimary;
+    const accent = historyAccentBarStyle(barColor);
+    const paintValue = (fn: string, rawV: string | null) => {
+      if (rawV === null) return null;
+      if (fn === 'orgUnitId') {
+        const full = orgMap.get(String(rawV));
+        if (full) {
+          const i = full.indexOf(' - ');
+          return i >= 0 ? full.slice(i + 3) : full;
+        }
+        return String(rawV);
+      }
+      if (fn === 'mapSymbolId') {
+        const img = symbolImageMap.get(rawV);
+        const nm = symbolMap.get(rawV) || rawV;
+        return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}{nm}</span>;
+      }
+      // Danh sách công trình KCHT do BE nén thành text "Tên (SL), Tên (SL)…" (field
+      // ghi literal "Công trình KCHT trực thuộc"). Chuyển sang hiển thị rõ: mỗi công trình
+      // 1 dòng dạng "Tên: Số lượng SL" thay vì nén (SL) khó đọc.
+      if ((fn === 'Công trình KCHT trực thuộc' || fn === 'Danh sách hạ tầng' || fn === 'infrastructureList') && rawV) {
+        const lines = String(rawV)
+          .split(/\s*,\s*/)
+          .map((seg) => seg.trim())
+          .filter(Boolean)
+          .map((seg) => {
+            const m = seg.match(/^(.*?)\s*\(\s*([\d.]+)\s*\)\s*$/);
+            if (m) return { label: m[1].trim() || seg, qty: m[2] };
+            return { label: seg, qty: '' };
+          })
+          .filter((x) => x.label && x.label !== '(null)' && x.label !== 'null');
+        if (lines.length > 0) {
+          return (
+            <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2, lineHeight: '20px' }}>
+              {lines.map((x, i) => (
+                <span key={i}>Tên: {x.label}, Số lượng: {x.qty || '—'}</span>
+              ))}
+            </span>
+          );
+        }
+      }
+      const resolved = resolvePortHistoryValue(fn, rawV, orgMap, symbolMap);
+      return resolved ?? fmtPortHistoryThousands(String(rawV));
+    };
+    const ordered = [...rows].sort((a, b) => {
+      const ia = GROUP_ORDER.indexOf(a.field); const ib = GROUP_ORDER.indexOf(b.field);
+      return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+    });
+    return (
+      <div key={g.tsMs !== 0 && g.tsMs ? `g-${g.tsMs}-${g.actor}` : `gi-${gi}`} style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
+        <div style={{ minWidth: 0, paddingTop: spaceXs }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
+            <Typography.Text style={historyTimeStyle}>{g.items[0]?.changedAt || g.items[0]?.createdAt || g.items[0]?.approvedDate ? dayjs(g.items[0]?.changedAt || g.items[0]?.createdAt || g.items[0]?.approvedDate).format('HH:mm DD/MM/YYYY') : '—'}</Typography.Text>
+            <span style={{ flexShrink: 0 }}>
+              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: `${kind.color}18`, color: kind.color, whiteSpace: 'nowrap' }}>{kind.label}</span>
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
+            <Typography.Text style={historyMetaRowStyle}>Người cập nhật: {meta.changedBy ? String(meta.changedBy) : meta.createdBy ? String(meta.createdBy) : g.actor ? g.actor : '—'}</Typography.Text>
+            <Typography.Text style={historyMetaRowStyle}>Đơn vị: {unitName(g.items[0])}</Typography.Text>
+          </div>
+        </div>
+        <div style={historyInfoCardStyle}>
+          <div style={accent} />
+          <Typography.Text style={historyInfoTitleStyle}>{isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:'}</Typography.Text>
+          {ordered.filter((x) => !(x.field === 'spatialId' || x.field === 'infrastructureList' || x.field === 'attachments')).length === 0 ? (
+            <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có thông tin chi tiết</Typography.Text>
+          ) : (
+            ordered.filter((x) => !(x.field === 'spatialId' || x.field === 'infrastructureList' || x.field === 'attachments')).map((x, ri) => {
+              const label = `${fieldLabel(x.field)}:`;
+              if (x.field === 'coordinates' || x.field === 'geometryType') {
+                return (
+                  <div key={x.rowId} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
+                    <Typography.Text style={historyFieldLabelStyle}>{label}</Typography.Text>
+                    <Typography.Text style={historyNewValueStyle}>Cập nhật tọa độ / ranh giới</Typography.Text>
+                  </div>
+                );
+              }
+              if (isCreate) {
+                return (
+                  <div key={x.rowId} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
+                    <Typography.Text style={historyFieldLabelStyle}>{label}</Typography.Text>
+                    <Typography.Text style={historyNewValueStyle} title={typeof (x.newValue ?? '') === 'string' ? x.newValue as unknown as string : undefined}>{x.newValue !== null && x.newValue !== '' && x.newValue !== '—' && x.newValue !== '-' ? <>{paintValue(x.field, x.newValue)}</> : ''}</Typography.Text>
+                  </div>
+                );
+              }
+              return (
+                <div key={x.rowId} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
+                  <Typography.Text style={historyFieldLabelStyle}>{label}</Typography.Text>
+                  <Typography.Text style={historyOldValueStyle} title={x.oldValue !== null && x.oldValue !== '' && x.oldValue !== '—' && x.oldValue !== '-' ? String(x.oldValue) : undefined}>{x.oldValue !== null && x.oldValue !== '' && x.oldValue !== '—' && x.oldValue !== '-' ? <>{paintValue(x.field, x.oldValue)}</> : ''}</Typography.Text>
+                  <Typography.Text style={historyArrowStyle}>→</Typography.Text>
+                  <Typography.Text style={historyNewValueStyle} title={typeof (x.newValue ?? '') === 'string' ? x.newValue as unknown as string : undefined}>{x.newValue !== null && x.newValue !== '' && x.newValue !== '—' && x.newValue !== '-' ? <>{paintValue(x.field, x.newValue)}</> : ''}</Typography.Text>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    );
+  });
+}
+
 // ── Helper: format date ─────────────────────────────────────────────
+
+// Font sàn của bộ lọc Cảng biển — đồng bộ 13.5px với bộ lọc Bến cảng (BerthListPage).
+// Chỉ áp dụng cho nhãn + control trong sidebar lọc; không ảnh hưởng table/drawer/modal khác.
+const filterFontSize = 13.5;
 
 // ── DMS conversion helpers ────────────────────────────────────────
 
@@ -100,6 +360,7 @@ const HISTORY_PAGE_SIZE = 20;
 
 const PORT_HISTORY_FIELD_LABELS: Record<string, string> = {
   portCode: 'Mã cảng biển',
+  orgUnitId: 'Đơn vị quản lý',
   portName: 'Tên cảng biển',
   province: 'Địa điểm (Tỉnh/Thành Phố)',
   provinceId: 'Địa điểm (Tỉnh/Thành Phố)',
@@ -109,6 +370,7 @@ const PORT_HISTORY_FIELD_LABELS: Record<string, string> = {
   portClass: 'Phân cấp cảng biển',
   coordinateSystem: 'Hệ quy chiếu tọa độ',
   displayRule: 'Quy tắc hiển thị',
+  detailedLocation: 'Địa điểm chi tiết',
   mapSymbolId: 'Biểu tượng',
   spatialId: 'Vị trí không gian',
   coordinates: 'Tọa độ GPS',
@@ -480,7 +742,7 @@ export default function PortListPage() {
     return () => { cancelled = true; };
   }, [selectedRecord?.id]);
 
-  // ── History drawer state (chuẩn VTS: server-side lọc + phân trang) ──
+  // ── History drawer state (lọc real-time tại chỗ — giống Bến cảng) ──
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
@@ -490,7 +752,7 @@ export default function PortListPage() {
 
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<CangBienResponse | null>(null);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Reject modal
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
@@ -576,6 +838,8 @@ export default function PortListPage() {
   const [updateForm] = Form.useForm();
   const [updateTabKey, setUpdateTabKey] = useState('general');
   const [submitting, setSubmitting] = useState(false);
+  // Cờ đã bấm Lưu/Lưu và phê duyệt (2 form create/update) — bật message "bắt buộc" dưới ô DMS khi validation lỗi.
+
   const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve'>('submit');
   const actionTypeRef = useRef<'draft' | 'submit' | 'approve'>('submit');
   const editActionRef = useRef<'draft' | 'approve'>('approve');
@@ -603,6 +867,36 @@ export default function PortListPage() {
     orgUnits.forEach((o: any) => map.set(o.id, o.code ? `${o.code} - ${o.name}` : o.name));
     return map;
   }, [orgUnits]);
+
+  // Lọc lịch sử thay đổi real-time trên TẤT CẢ bản ghi đã nạp (không reload server khi sửa filter),
+  // theo hành vi màn "Lịch sử thay đổi" của Bến cảng: từ khóa đối chiếu trên nhãn & giá trị hiển thị
+  // (raw + phân giải orgUnit/phân cấp/biểu tượng), khoảng ngày so trên dấu mốc thay đổi.
+  const filteredHistory = useMemo(() => {
+    const q = (historyFilters.keyword || '').trim().toLowerCase();
+    const from = historyFilters.fromDate || '';
+    const to = historyFilters.toDate || '';
+    return (Array.isArray(historyRecords) ? historyRecords : []).filter((r: any) => {
+      if (q) {
+        const fn = String(r?.changedField ?? r?.fieldName ?? '');
+        const label = translateFieldName(fn) || fn;
+        const rawHits = [fn, label, r?.oldValue, r?.newValue, r?.previousValue, r?.value, r?.reason]
+          .filter((v) => v !== null && v !== undefined)
+          .map((v) => String(v).toLowerCase());
+        const resOld = resolvePortHistoryValue(fn, r?.oldValue ?? r?.previousValue ?? '', orgMap, symbolMap);
+        const resNew = resolvePortHistoryValue(fn, r?.newValue ?? r?.value ?? '', orgMap, symbolMap);
+        if (!rawHits.some((s) => s.includes(q)) && !(resOld && resOld.toLowerCase().includes(q)) && !(resNew && resNew.toLowerCase().includes(q))) return false;
+      }
+      if (from || to) {
+        const ts = String(r?.changedAt || r?.createdAt || r?.approvedDate || '');
+        const d = ts.substring(0, 10);
+        if (from && d < from) return false;
+        if (to && d > to) return false;
+      }
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historyRecords, historyFilters, orgMap, symbolMap]);
+  const hasActiveHistoryFilter = !!(historyFilters.keyword?.trim() || historyFilters.fromDate || historyFilters.toDate);
 
   const handleFilterApply = useCallback(() => {
     setFilterName((filterValues.portName || '').trim());
@@ -632,6 +926,17 @@ export default function PortListPage() {
     setActiveStatusTab('');
     setPage(1);
   }, []);
+
+  // Lọc live như Bến cảng: chọn/thay đổi bất cứ ô điều kiện nào trong sidebar là lọc ngay
+  // (lắng nghe filterValues → forward sang các biến thật trong handleFilterApply → setPage(1)).
+  const filterValuesRef = useRef(filterValues);
+  useEffect(() => {
+    if (filterValuesRef.current !== filterValues) {
+      filterValuesRef.current = filterValues;
+      handleFilterApply();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterValues]);
 
   const closeUpdateModal = useCallback(() => {
     setUpdateModalVisible(false);
@@ -666,8 +971,8 @@ export default function PortListPage() {
           const data = cached || await fetchCangBienById(id);
           setSelectedRecord(data);
           if (action === 'detail') {
-            const fileRes = await documentApi.listByEntity('port', id, { page: 1, size: 20 });
-            setDetailFiles(fileRes.data || []);
+            const rows = await fetchPortAttachmentList(id);
+            setDetailFiles(rows);
             setDetailModalVisible(true);
           } else if (action === 'edit') {
             updateForm.setFieldsValue({
@@ -707,8 +1012,13 @@ export default function PortListPage() {
             setInfraList(((data as any).infrastructureList || []).map((i: any) => ({ stt: i.stt, infraName: i.infraName, quantity: i.quantity })));
             // Load attachments via API
             try {
-              const attRes = await documentApi.listByEntity('port', id, { page: 1, size: 20 });
-              setUploadFileList((attRes.data || []).map((a: any) => ({ uid: a.id, name: a.fileName, size: a.fileSize, status: 'done' as const })));
+              const attRows = await fetchPortAttachmentList(id);
+              setUploadFileList(attRows.map((a: any) => ({
+                uid: a.id, name: a.fileName, size: a.fileSize, status: 'done' as const,
+                uploadedBy: a.uploadedBy, uploadedAt: a.uploadedAt,
+                uploadedDate: a.uploadedDate || a.uploadedAt,
+                uploadedByName: ((a.uploadedBy && userMap.get(a.uploadedBy)) || a.uploadedByName) ?? undefined,
+              })));
             } catch { setUploadFileList([]); }
             // Parse coordinates from API response (coordinateList array, WKT string, or single lat/lng)
             const wktCoords: string = data.coordinates || '';
@@ -910,6 +1220,28 @@ export default function PortListPage() {
       }
     }
 
+    // Đối tượng điểm (POINT) chỉ cho phép đúng 1 tọa độ GPS — nếu nhiều hơn thì chặn & báo.
+    if (values.geometryType === 'POINT') {
+      const validPointCount = gpsCoordList.filter(c => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null)).length;
+      if (validPointCount > 1) {
+        toast.error('Loại đối tượng điểm chỉ cho phép 1 tọa độ GPS');
+        return;
+      }
+    }
+
+    // Tọa độ GPS: nếu 1 hàng đã bắt đầu nhập nhưng ô con (Độ/Phút/Giây của Vĩ hoặc Kinh) chưa đủ → chặn & báo khi ấn Lưu
+    const partial = gpsCoordList.find((c) => {
+      const latSet = c.latD != null || c.latM != null || c.latS != null;
+      const lngSet = c.lngD != null || c.lngM != null || c.lngS != null;
+      const latFull = c.latD != null && c.latM != null && c.latS != null;
+      const lngFull = c.lngD != null && c.lngM != null && c.lngS != null;
+      return (latSet && !latFull) || (lngSet && !lngFull);
+    });
+    if (partial) {
+      toast.error('Chưa nhập đủ Độ/Phút/Giây cho một tọa độ GPS trong tab Thông tin vị trí');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const coordinateList: Array<{ latitude: number; longitude: number }> = gpsCoordList
@@ -998,16 +1330,10 @@ export default function PortListPage() {
       // Upload files after port created successfully
       if (createdPortId && uploadFileList.length > 0) {
         let uploaded = 0;
-        for (const f of uploadFileList) {
-          if (!f.originFileObj) continue; // skip existing attachments
-          try {
-            const formData = new FormData();
-            formData.append('file', f.originFileObj as File);
-            await api.post(`/v1/documents/upload/port/${createdPortId}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-            uploaded++;
-          } catch { /* non-blocking */ }
-        }
-        if (uploaded > 0) toast.success(`Đã tải lên ${uploaded} tệp đính kèm`);
+        try {
+          const uploaded = await uploadPortAttachments(createdPortId, uploadFileList);
+          if (uploaded > 0) toast.success(`Đã tải lên ${uploaded} tệp đính kèm`);
+        } catch { /* non-blocking */ }
       }
 
       fetchData();
@@ -1041,6 +1367,15 @@ export default function PortListPage() {
     try {
       const n = (v: unknown): number | undefined =>
         v != null && !Number.isNaN(v as number) ? Number(v) : undefined;
+
+      // Đối tượng điểm (POINT) chỉ cho phép đúng 1 tọa độ GPS — nếu nhiều hơn thì chặn & báo.
+      if (values.geometryType === 'POINT') {
+        const validPointCount = gpsCoordList.filter(c => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null)).length;
+        if (validPointCount > 1) {
+          toast.error('Loại đối tượng điểm chỉ cho phép 1 tọa độ GPS');
+          return;
+        }
+      }
 
       const coordinateList: Array<{ latitude: number; longitude: number }> = gpsCoordList
         .filter(c => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null))
@@ -1097,16 +1432,10 @@ export default function PortListPage() {
       // Upload files after port updated
       if (selectedRecord?.id && uploadFileList.length > 0) {
         let uploaded = 0;
-        for (const f of uploadFileList) {
-          if (!f.originFileObj) continue; // skip existing attachments
-          try {
-            const formData = new FormData();
-            formData.append('file', f.originFileObj as File);
-            await api.post(`/v1/documents/upload/port/${selectedRecord.id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-            uploaded++;
-          } catch { /* non-blocking */ }
-        }
-        if (uploaded > 0) toast.success(`Đã tải lên ${uploaded} tệp đính kèm`);
+        try {
+          const uploaded = await uploadPortAttachments(selectedRecord.id, uploadFileList);
+          if (uploaded > 0) toast.success(`Đã tải lên ${uploaded} tệp đính kèm`);
+        } catch { /* non-blocking */ }
       }
       closeUpdateModal();
       if (!isIframeModal) {
@@ -1167,33 +1496,25 @@ export default function PortListPage() {
   useEffect(() => { if (!isIframeModal && orgUnitReady) void fetchData(); }, [fetchData, isIframeModal, orgUnitReady]);
   useEffect(() => { if (!isIframeModal && orgUnitReady) void fetchTabCounts(); }, [fetchTabCounts, isIframeModal, orgUnitReady]);
 
-  const handleDelete = useCallback(
-    (record: CangBienResponse) => {
-      setDeleteTarget(record);
-      setDeleteConfirmText('');
-    },
-    [],
-  );
+  const handleDelete = useCallback((record: CangBienResponse) => {
+    setDeleteTarget(record);
+  }, []);
 
-  const handleDeleteConfirm = async () => {
+  const handleConfirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
-    const expected = (deleteTarget.portName || '').trim().toLowerCase();
-    const input = deleteConfirmText.trim().toLowerCase();
-    if (input !== expected && input !== 'xóa') {
-      toast.error('Vui lòng nhập đúng tên cảng hoặc gõ "XÓA" để xác nhận');
-      return;
-    }
+    setDeleteLoading(true);
     try {
       await deleteCangBien(deleteTarget.id);
-      toast.success('Đã xóa thành công');
+      toast.success('Đã xóa cảng biển');
       setDeleteTarget(null);
-      setDeleteConfirmText('');
       fetchData();
       fetchTabCounts();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Xóa thất bại');
+    } finally {
+      setDeleteLoading(false);
     }
-  };
+  }, [deleteTarget, fetchData, fetchTabCounts]);
 
   const handleApprove = useCallback(
     (record: CangBienResponse) => {
@@ -1271,7 +1592,7 @@ export default function PortListPage() {
   }, []);
 
   const getPortGroupLabel = (val: number | null): string => {
-    if (!val) return '—';
+    if (!val) return '';
     return `Nhóm ${val}`;
   };
 
@@ -1286,8 +1607,8 @@ export default function PortListPage() {
     } catch {
       toast.error('Không thể tải thông tin chi tiết cảng biển');
     }
-    documentApi.listByEntity('port', record.id, { page: 1, size: 20 })
-      .then((res) => setDetailFiles(res.data || []))
+    fetchPortAttachmentList(record.id)
+      .then((rows) => setDetailFiles(rows))
       .catch(() => setDetailFiles([]));
   }, []);
 
@@ -1355,8 +1676,13 @@ export default function PortListPage() {
               // Load infrastructure & attachments for edit
               setInfraList(((data as any).infrastructureList || []).map((i: any) => ({ stt: i.stt, infraName: i.infraName, quantity: i.quantity })));
               try {
-                const attRes = await documentApi.listByEntity('port', record.id, { page: 1, size: 20 });
-                setUploadFileList((attRes.data || []).map((a: any) => ({ uid: a.id, name: a.fileName, size: a.fileSize, status: 'done' as const })));
+                const attRows = await fetchPortAttachmentList(record.id);
+                setUploadFileList(attRows.map((a: any) => ({
+                uid: a.id, name: a.fileName, size: a.fileSize, status: 'done' as const,
+                uploadedBy: a.uploadedBy, uploadedAt: a.uploadedAt,
+                uploadedDate: a.uploadedDate || a.uploadedAt,
+                uploadedByName: ((a.uploadedBy && userMap.get(a.uploadedBy)) || a.uploadedByName) ?? undefined,
+              })));
               } catch { setUploadFileList([]); }
               // Parse coordinates from API response
               const wktCoords2: string = data.coordinates || '';
@@ -1471,8 +1797,9 @@ export default function PortListPage() {
         sortOrder: sortField === 'portName' ? sortOrder : null,
         render: (v: string, record: CangBienResponse) => (
           <a
+            title={v}
             onClick={() => openDetail(record)}
-            style={{ fontWeight: fontWeightBold, color: 'inherit', cursor: 'pointer' }}
+            style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
           >
             {v}
           </a>
@@ -1488,7 +1815,7 @@ export default function PortListPage() {
         sortOrder: sortField === 'orgUnitId' ? sortOrder : null,
         render: (_v: string | null, record: CangBienResponse) => {
           const level2 = record.orgUnitId ? orgLevel2Map.get(record.orgUnitId) : undefined;
-          return <span style={{ fontWeight: fontWeightBold }}>{level2 || record.orgUnitName || _v || '—'}</span>;
+          return <span style={{ fontWeight: fontWeightBold }}>{level2 || record.orgUnitName || _v || ''}</span>;
         },
       },
       {
@@ -1507,7 +1834,7 @@ export default function PortListPage() {
         width: 250,
         sortable: true,
         sortOrder: sortField === 'portClass' ? sortOrder : null,
-        render: (v: number | null) => v != null ? (v === 5 ? 'Cấp đặc biệt' : `Cấp ${v}`) : '—',
+        render: (v: number | null) => v != null ? (v === 5 ? 'Cấp đặc biệt' : `Cấp ${v}`) : '',
       },
       {
         key: 'province',
@@ -1517,7 +1844,7 @@ export default function PortListPage() {
         ellipsis: false,
         sortable: true,
         sortOrder: sortField === 'province' ? sortOrder : null,
-        render: (v: string | null) => v || '—',
+        render: (v: string | null) => v || '',
       },
       {
         key: 'approvalStatus',
@@ -1535,9 +1862,9 @@ export default function PortListPage() {
         width: 190,
         ellipsis: false,
         sortable: true,
-        sortOrder: sortField === 'updatedBy' ? sortOrder : null,
+        sortOrder: sortField === 'updatedByName' ? sortOrder : null,
         render: (v: string | null, record: CangBienResponse) => {
-          const name = v || record.updatedByName || (record as any).createdByName || '—';
+          const name = v || record.updatedByName || (record as any).createdByName || '';
           const date = record.updatedAt || (record as any).createdAt;
           return (
             <div style={{ lineHeight: '1.35' }}>
@@ -1545,7 +1872,7 @@ export default function PortListPage() {
                 {name}
               </div>
               <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
-                {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+                {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : ''}
               </div>
             </div>
           );
@@ -1567,15 +1894,23 @@ export default function PortListPage() {
       setHistoryRecords([]);
       setHistoryPage(0);
       try {
-        const history = await fetchportHistory(selectedRecord.id, 0, HISTORY_PAGE_SIZE, {
-          keyword: historyFilters.keyword || undefined,
-          fromDate: historyFilters.fromDate || undefined,
-          toDate: historyFilters.toDate || undefined,
-        });
+        // Nạp TOÀN BỘ lịch sử (không lọc/phân trang server) một lần khi mở drawer.
+        // Việc lọc từ khóa/khoảng ngày được làm real-time tại chỗ trên dữ liệu đã nạp
+        // (giống màn "Lịch sử thay đổi" của Bến cảng) — không reload server mỗi lần set filter.
+        const all: any[] = [];
+        let page = 0;
+        while (!cancelled) {
+          const history = await fetchportHistory(selectedRecord.id, page, HISTORY_PAGE_SIZE);
+          if (cancelled) break;
+          const batch = (history || []).filter((r: any) => r && !['spatialId', 'infrastructureList', 'attachments'].includes(r.changedField));
+          all.push(...batch);
+          if (!history || history.length < HISTORY_PAGE_SIZE) break;
+          page += 1;
+        }
         if (cancelled) return;
-        const items = (history || []).filter((r: any) => r && !['spatialId', 'infrastructureList', 'attachments'].includes(r.changedField));
-        setHistoryRecords(items);
-        setHasMoreHistory(items.length === HISTORY_PAGE_SIZE);
+        setHistoryRecords(all);
+        setHistoryPage(page);
+        setHasMoreHistory(false);
       } catch {
         if (!cancelled) toast.error('Không thể tải lịch sử');
       } finally {
@@ -1585,18 +1920,14 @@ export default function PortListPage() {
     return () => {
       cancelled = true;
     };
-  }, [historyModalOpen, selectedRecord?.id, historyFilters]);
+  }, [historyModalOpen, selectedRecord?.id]);
 
   const loadMoreHistory = async () => {
     if (!selectedRecord || loadingHistory || loadingMoreHistory || !hasMoreHistory) return;
     setLoadingMoreHistory(true);
     try {
       const nextPage = historyPage + 1;
-      const history = await fetchportHistory(selectedRecord.id, nextPage, HISTORY_PAGE_SIZE, {
-        keyword: historyFilters.keyword || undefined,
-        fromDate: historyFilters.fromDate || undefined,
-        toDate: historyFilters.toDate || undefined,
-      });
+      const history = await fetchportHistory(selectedRecord.id, nextPage, HISTORY_PAGE_SIZE);
       if (history && history.length > 0) {
         const filteredMore = history.filter((r: any) => r && !['spatialId', 'infrastructureList', 'attachments'].includes(r.changedField));
         setHistoryRecords(prev => [...prev, ...filteredMore]);
@@ -1612,10 +1943,117 @@ export default function PortListPage() {
 
   // ── Render ───────────────────────────────────────────────────────
   return (
-    <ThemeTokenProvider tokens={themeTokenChk}>
+    <ThemeTokenProvider tokens={{ ...themeTokenChk, fontSizeMd: 13.5 }}>
     <>
       {!isIframeModal && (
-        <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+        <div className="port-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+          <style>{`
+            .port-page-wrapper,
+            .port-page-wrapper .ant-table,
+            .port-page-wrapper .ant-table-cell,
+            .port-page-wrapper .ant-table-thead > tr > th,
+            .port-page-wrapper .ant-table-tbody > tr > td,
+            .port-page-wrapper .ant-input,
+            .port-page-wrapper .ant-select,
+            .port-page-wrapper .ant-select-selection-item,
+            .port-page-wrapper .ant-select-item-option-content,
+            .port-page-wrapper .ant-picker,
+            .port-page-wrapper .ant-picker-input > input,
+            .port-page-wrapper .ant-btn,
+            .port-page-wrapper .ant-pagination,
+            .port-page-wrapper .ant-pagination-item,
+            .port-page-wrapper .ant-pagination-total-text,
+            .port-page-wrapper .ant-breadcrumb,
+            .port-page-wrapper .ant-form-item-label > label,
+            .port-page-wrapper .ant-tabs-tab,
+            .port-page-wrapper .port-drawer-scope,
+            .port-page-wrapper .port-drawer-scope .ant-drawer-content,
+            .port-page-wrapper .port-drawer-scope .ant-tabs-tab,
+            .port-page-wrapper .port-drawer-scope .ant-input,
+            .port-page-wrapper .port-drawer-scope .ant-select,
+            .port-page-wrapper .port-drawer-scope .ant-btn,
+            .port-page-wrapper .port-drawer-scope .ant-table,
+            .port-page-wrapper .port-drawer-scope .ant-table-cell,
+            .port-page-wrapper .port-drawer-scope .ant-table-thead > tr > th,
+            .port-page-wrapper .port-drawer-scope .ant-form-item-label > label {
+              font-size: 13.5px !important;
+            }
+            /* ── Drawer tạo/sửa (antd Drawer render panel ở body portal, ngoài .port-page-wrapper) ── */
+            .port-drawer-scope,
+            .port-drawer-scope .ant-drawer-content,
+            .port-drawer-scope .ant-tabs-tab,
+            .port-drawer-scope .ant-drawer-content .ant-form-item-label > label,
+            .port-drawer-scope .chk-detail-label,
+            .port-drawer-scope .chk-detail-value,
+            .port-drawer-scope .ant-table,
+            .port-drawer-scope .ant-table-cell,
+            .port-drawer-scope .ant-table-thead > tr > th,
+            .port-drawer-scope .ant-table-tbody > tr > td,
+            .port-drawer-scope .ant-input,
+            .port-drawer-scope .ant-select,
+            .port-drawer-scope .ant-btn {
+              font-size: 13.5px !important;
+            }
+            .port-page-wrapper div:has(> button[aria-pressed]) {
+              display: flex !important;
+              flex-wrap: nowrap !important;
+              overflow-x: auto !important;
+              overflow-y: hidden !important;
+              justify-content: safe center !important;
+              align-items: center !important;
+              scrollbar-width: thin !important;
+              scrollbar-color: #cbd5e1 #f8fafc !important;
+              padding: 2px 16px 6px 16px !important;
+              gap: 20px !important;
+            }
+            .port-page-wrapper div:has(> button[aria-pressed]) > button {
+              white-space: nowrap !important;
+              flex-shrink: 0 !important;
+              cursor: pointer !important;
+            }
+            .port-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
+              height: 6px !important;
+              display: block !important;
+            }
+            .port-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
+              background: #f1f5f9 !important;
+              border-radius: 999px !important;
+            }
+            .port-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
+              background: #cbd5e1 !important;
+              border-radius: 999px !important;
+            }
+            .port-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
+              background: #94a3b8 !important;
+            }
+            /* ── Responsive Drawers: Không tràn viền khi màn hình nhỏ / zoom cao (đồng bộ Bến cảng) ── */
+            .port-drawer-scope .ant-drawer-content-wrapper {
+              max-width: 100vw !important;
+            }
+            @media (max-width: 1024px) {
+              .port-drawer-scope .chk-detail-grid {
+                grid-template-columns: 1fr !important;
+                column-gap: 0 !important;
+              }
+              .port-drawer-scope .chk-detail-row--full {
+                grid-column: 1 !important;
+              }
+            }
+            @media (max-width: 640px) {
+              .port-drawer-scope .chk-detail-row {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 4px !important;
+                padding: 8px 0 !important;
+              }
+              .port-drawer-scope .chk-detail-label {
+                width: 100% !important;
+              }
+              .port-drawer-scope .chk-detail-value {
+                width: 100% !important;
+              }
+            }
+          `}</style>
           <ScreenHeader
             breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý cảng biển' }]}
             actions={[
@@ -1642,7 +2080,7 @@ export default function PortListPage() {
             onRetry={fetchData}
             filterContent={<>
               <div style={{ marginBottom: 12, marginTop: spaceMd }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: filterFontSize, marginBottom: spaceSm }}>
                   Đơn vị quản lý
                 </div>
                 <OrgUnitTreeSelect
@@ -1657,7 +2095,7 @@ export default function PortListPage() {
                 />
               </div>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên cảng biển</div>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: filterFontSize, marginBottom: spaceSm }}>Tên cảng biển</div>
                 <Input placeholder="Tìm theo tên cảng biển..." allowClear
                   value={filterValues.portName || ''}
                   onChange={(e) => setFilterValues((prev) => ({ ...prev, portName: e.target.value }))}
@@ -1665,7 +2103,7 @@ export default function PortListPage() {
                   style={{ borderRadius: radiusPill, height: 40 }} />
               </div>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân cấp cảng biển</div>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: filterFontSize, marginBottom: spaceSm }}>Phân cấp cảng biển</div>
                 <Select placeholder="Chọn phân cấp" allowClear
                   value={filterValues.portClass || undefined}
                   onChange={(val) => setFilterValues((prev) => ({ ...prev, portClass: val }))}
@@ -1674,7 +2112,7 @@ export default function PortListPage() {
               </div>
               {filterCollapsed && (<>
                 <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Nhóm cảng biển</div>
+                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: filterFontSize, marginBottom: spaceSm }}>Nhóm cảng biển</div>
                   <Select placeholder="Chọn nhóm" allowClear
                     value={filterValues.portGroup || undefined}
                     onChange={(val) => setFilterValues((prev) => ({ ...prev, portGroup: val }))}
@@ -1682,7 +2120,7 @@ export default function PortListPage() {
                     style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
                 </div>
                 <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã cảng biển</div>
+                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: filterFontSize, marginBottom: spaceSm }}>Mã cảng biển</div>
                   <Input placeholder="Tìm theo mã cảng biển..." allowClear
                     value={filterValues.portCode || ''}
                     onChange={(e) => setFilterValues((prev) => ({ ...prev, portCode: e.target.value }))}
@@ -1690,7 +2128,7 @@ export default function PortListPage() {
                     style={{ borderRadius: radiusPill, height: 40 }} />
                 </div>
                 <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành phố)</div>
+                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: filterFontSize, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành phố)</div>
                   <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
                     filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
                     value={filterValues.province || undefined}
@@ -1699,12 +2137,12 @@ export default function PortListPage() {
                     style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
                 </div>
                 <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
+                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: filterFontSize, marginBottom: spaceSm }}>Ngày cập nhật</div>
                   <DatePicker.RangePicker format="DD/MM/YYYY"
                     placeholder={['Từ ngày', 'Đến ngày']} allowClear className="port-range-picker" classNames={{ popup: { root: 'range-single-panel' } }}
                     value={[filterValues.updatedFrom ? dayjs(filterValues.updatedFrom) : null, filterValues.updatedTo ? dayjs(filterValues.updatedTo) : null]}
                     onChange={(dates) => setFilterValues((prev) => ({ ...prev, updatedFrom: dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined, updatedTo: dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined }))}
-                    style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} />
+                    style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: filterFontSize }} />
                 </div>
                 <style>{`.port-range-picker .ant-picker-cell-selected .ant-picker-cell-inner{background:${actionPrimary}!important}.port-range-picker .ant-picker-ok button{background:${actionPrimary}!important;border-color:${actionPrimary}!important;border-radius:${radiusPill}px!important}.port-range-picker .ant-picker-time-panel-cell-selected .ant-picker-time-panel-cell-inner{background:${actionPrimary}15!important;color:${actionPrimary}!important}.port-range-picker .ant-picker-today-btn{color:${actionPrimary}!important}.range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child{display:none!important}`}</style>
               </>)}
@@ -1726,7 +2164,13 @@ export default function PortListPage() {
                 if (!sortField) return 0;
                 const resolve = (r: any) => {
                   if (sortField === 'orgUnitId') return orgLevel2Map.get(r.orgUnitId) ?? r.orgUnitName ?? '';
-                  if (sortField === 'updatedBy') return r.updatedByName ?? '';
+                  // Cột "Cán bộ cập nhật" — nhấn sort phải sắp theo THỜI GIAN cập nhật (mới nhất/cũ nhất),
+                  // chứ không phải theo tên cán bộ. DataTable đánh dấu cột theo dataKey = dataIndex = 'updatedByName'
+                  // (khác col.key 'updatedBy') — phải so sánh đúng 'updatedByName' thì vòng lặp asc→desc→… mới chạy tiếp.
+                  if (sortField === 'updatedByName') {
+                    const t = r.updatedAt || r.createdAt;
+                    return t ? new Date(t).getTime() : 0;
+                  }
                   if (sortField === 'approvalStatus') {
                     const rank: Record<string, number> = { DRAFT: 1, PROPOSED: 1, PENDING: 2, PENDING_APPROVAL: 2, APPROVED: 3, REJECTED: 4 };
                     return rank[String(r.approvalStatus || '').toUpperCase()] ?? 99;
@@ -1754,9 +2198,13 @@ export default function PortListPage() {
         <AppDrawer
           title={
             <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
-              Thêm mới cảng biển
+              Thêm mới Cảng biển
             </span>
           }
+          width="min(920px, 96vw)"
+          rootClassName="port-drawer-scope"
+          className="port-drawer-scope"
+          destroyOnHidden
           open={createModalVisible}
           onClose={() => { setCreateModalVisible(false); setInfraList([]); setUploadFileList([]); setGpsCoordList([]); createForm.resetFields(); }}
           footer={
@@ -1811,6 +2259,7 @@ export default function PortListPage() {
             addGpsPoint={addGpsPoint}
             removeGpsPoint={removeGpsPoint}
             updateGpsPoint={updateGpsPoint}
+            setGpsCoordList={setGpsCoordList}
             infraList={infraList}
             addInfra={addInfra}
             removeInfra={removeInfra}
@@ -1818,6 +2267,7 @@ export default function PortListPage() {
             updateInfraQty={updateInfraQty}
             uploadFileList={uploadFileList}
             setUploadFileList={setUploadFileList}
+            userMap={userMap}
             onFinish={handleCreateFinish}
             onFinishFailed={jumpToTabWithError(setCreateTabKey)}
           />
@@ -1830,7 +2280,7 @@ export default function PortListPage() {
           size={isIframeModal ? '100%' : 1000}
           mask={!isIframeModal}
           title={
-            <span style={drawerTitleStyle}>
+            <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
               {selectedRecord
                 ? `Chỉnh sửa thông tin — ${selectedRecord.portName}`
                 : 'Chỉnh sửa thông tin cảng biển'}
@@ -1864,6 +2314,7 @@ export default function PortListPage() {
             addGpsPoint={addGpsPoint}
             removeGpsPoint={removeGpsPoint}
             updateGpsPoint={updateGpsPoint}
+            setGpsCoordList={setGpsCoordList}
             infraList={infraList}
             addInfra={addInfra}
             removeInfra={removeInfra}
@@ -1871,6 +2322,8 @@ export default function PortListPage() {
             updateInfraQty={updateInfraQty}
             uploadFileList={uploadFileList}
             setUploadFileList={setUploadFileList}
+            recordId={selectedRecord?.id}
+            userMap={userMap}
             onFinish={handleUpdateFinish}
             onFinishFailed={jumpToTabWithError(setUpdateTabKey)}
             activeTabKey={updateTabKey}
@@ -1998,20 +2451,88 @@ export default function PortListPage() {
         ) : null}
       </AppDrawer>
 
-      {/* ── History drawer (chuẩn VTS: server-side lọc + phân trang) ── */}
-      <CommonHistoryDrawer
+      {/* ── History drawer (timeline theo chuẩn màn Bến cảng) ── */}
+      <AppDrawer
+        width="min(880px, 96vw)"
+        rootClassName="port-drawer-scope"
+        className="port-drawer-scope"
+        mask
+        title={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <Space size={spaceSm} style={{ alignItems: 'center' }}>
+              <HistoryOutlined style={{ fontSize: fontSizeLg, color: colors.sidebarBg }} />
+              <span style={drawerTitleStyle}>
+                Lịch sử thay đổi — {selectedRecord?.portName || selectedRecord?.portCode || ''}
+              </span>
+              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
+                Tổng cộng {Array.isArray(filteredHistory) ? filteredHistory.length : 0}
+              </span>
+            </Space>
+          </div>
+        }
         open={historyModalOpen}
         onClose={() => setHistoryModalOpen(false)}
-        entityName={selectedRecord?.portName || selectedRecord?.portCode}
-        records={historyRecords}
-        loading={loadingHistory}
-        serverFiltered
-        onFilterChange={setHistoryFilters}
-        onLoadMore={loadMoreHistory}
-        loadingMore={loadingMoreHistory}
-        fieldLabelMap={PORT_HISTORY_FIELD_LABELS}
-        formatValue={(field, value) => resolvePortHistoryValue(field, value, orgMap, symbolMap)}
-      />
+        footer={null}
+        styles={{
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '16px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
+        }}
+      >
+        <style>{`.history-dt-popup .ant-picker-now-btn { color: ${actionPrimary} !important; }`}</style>
+        <div style={{ flexShrink: 0 }}>
+          {!loadingHistory && (
+            <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
+              <Input
+                placeholder="Tìm kiếm nội dung thay đổi..."
+                allowClear
+                value={historyFilters.keyword || ''}
+                onChange={(e) => setHistoryFilters((p) => ({ ...p, keyword: e.target.value }))}
+                style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
+              />
+              <DatePicker
+                placeholder="Từ ngày"
+                classNames={{ popup: { root: 'history-dt-popup' } }}
+                value={historyFilters.fromDate ? dayjs(historyFilters.fromDate) : null}
+                onChange={(d) => setHistoryFilters((p) => ({ ...p, fromDate: d ? d.format('YYYY-MM-DD') : '' }))}
+                style={{ width: 140, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY"
+              />
+              <DatePicker
+                placeholder="Đến ngày"
+                classNames={{ popup: { root: 'history-dt-popup' } }}
+                value={historyFilters.toDate ? dayjs(historyFilters.toDate) : null}
+                onChange={(d) => setHistoryFilters((p) => ({ ...p, toDate: d ? d.format('YYYY-MM-DD') : '' }))}
+                style={{ width: 140, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY"
+              />
+              <Button type="primary" icon={<SearchOutlined />} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}
+                onClick={() => { /* Lọc real-time theo từng thao tác nhập/chọn — giống Bến cảng */ }}>
+                Tìm kiếm
+              </Button>
+            </div>
+          )}
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+          {loadingHistory ? (
+            <div style={{ padding: `${spaceMd}px 0` }}>
+              <LoadingSkeleton rows={5} />
+            </div>
+          ) : historyRecords.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
+              <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+              <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
+            </div>
+          ) : hasActiveHistoryFilter && filteredHistory.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
+              <SearchOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+              <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Không tìm thấy kết quả phù hợp</div>
+            </div>
+          ) : (
+            renderPortHistCards(filteredHistory, orgMap, symbolMap, new Map())
+          )}
+          {loadingMoreHistory && (
+            <div style={{ padding: spaceMd, textAlign: 'center', color: textTertiary, fontSize: fontSizeMd }}>Đang tải thêm…</div>
+          )}
+        </div>
+      </AppDrawer>
 
       {selectedRecord && (
         <DocumentUploadModal
@@ -2056,38 +2577,20 @@ export default function PortListPage() {
         </div>
       </Modal>
 
-      {/* Delete confirmation modal */}
-      <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận xóa cảng biển</span>}
+      {/* Xóa cảng biển — giống Bến cảng (DeleteConfirmModal) */}
+      <DeleteConfirmModal
         open={!!deleteTarget}
         onCancel={() => {
-          setDeleteTarget(null);
-          setDeleteConfirmText('');
+          if (!deleteLoading) {
+            setDeleteTarget(null);
+          }
         }}
-        footer={[
-          <Button key="cancel" onClick={() => { setDeleteTarget(null); setDeleteConfirmText(''); }}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
-          <Button key="delete" type="primary" danger onClick={handleDeleteConfirm}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Xác nhận xóa</Button>,
-        ]}
-        width={480}
-      >
-        <div style={{ padding: '8px 0' }}>
-          <Alert message="Hành động này không thể hoàn tác" type="warning" showIcon icon={<ExclamationCircleOutlined />}
-            style={{ marginBottom: spaceFormField, borderRadius: radiusPill }} />
-          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>
-            Vui lòng nhập <strong>tên cảng</strong> hoặc gõ <strong>"XÓA"</strong> để xác nhận xóa.
-          </p>
-          {deleteTarget && (
-            <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
-              Cảng: <strong style={{ color: textPrimary }}>{deleteTarget.portName}</strong>
-            </p>
-          )}
-          <Input placeholder="Nhập tên cảng hoặc XÓA" value={deleteConfirmText}
-            onChange={(e) => setDeleteConfirmText(e.target.value)} onPressEnter={handleDeleteConfirm}
-            style={{ borderRadius: radiusPill, height: 40 }} autoFocus />
-        </div>
-      </Modal>
+        onConfirm={handleConfirmDelete}
+        loading={deleteLoading}
+        itemType="cảng biển"
+        itemName={deleteTarget?.portName}
+        itemCode={deleteTarget?.portCode}
+      />
     </>
     </ThemeTokenProvider>
   );

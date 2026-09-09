@@ -160,6 +160,8 @@ export default function ListPage() {
 
 ## Form/Modal Pattern
 
+Trong Drawer chi tiết Bến cảng, tiêu đề toggle **Thông tin phê duyệt** chỉ hiển thị icon, tên mục và mũi tên đóng/mở. Badge trạng thái chỉ hiển thị tại trường **Trạng thái phê duyệt** trong nội dung, không lặp lại cạnh tiêu đề.
+
 ### Code Skeleton
 
 ```tsx

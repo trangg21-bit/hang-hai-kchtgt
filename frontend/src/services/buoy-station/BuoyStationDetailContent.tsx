@@ -4,6 +4,7 @@
 
 import React, { useState } from 'react';
 import { Tabs, Button, Modal } from 'antd';
+import dayjs from 'dayjs';
 import {
   FileOutlined, EnvironmentOutlined, BankOutlined, SlidersOutlined,
   AuditOutlined, DownOutlined, RightOutlined,
@@ -26,6 +27,7 @@ import InfrastructureAttachmentTab from '../../components/shared/InfrastructureA
 import toast from '../../components/ToastNotification';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import { detailLabelStyle } from '../../components/detail-drawer/detailSkin';
 
 // ── Style badge Tình trạng (giống Quản lý phao tiêu) ─────────────────
 const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
@@ -34,7 +36,6 @@ const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
   'Dừng khai thác/vận hành': { color: statusCritical, label: 'Dừng khai thác/vận hành' },
 };
 
-const detailLabelStyle: React.CSSProperties = { color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd };
 
 // Style cho thẻ phân nhóm (Section Card) đồng bộ với màn Quản lý bến cảng
 const sectionBoxStyle: React.CSSProperties = {
@@ -99,25 +100,6 @@ export interface BuoyStationDetailContentProps {
   symbolImageMap: Map<string, string>;
 }
 
-function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return '—';
-  try {
-    return new Date(dateStr).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  } catch {
-    return dateStr;
-  }
-}
-
-function formatDateTime(dateStr: string | null | undefined): string {
-  if (!dateStr) return '—';
-  try {
-    const d = new Date(dateStr);
-    return `${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })} ${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
-  } catch {
-    return dateStr;
-  }
-}
-
 function parseGisCoordinates(record: any): Array<{ lat: number; lng: number }> {
   const wkt = record?.coordinates;
   const out: Array<{ lat: number; lng: number }> = [];
@@ -154,6 +136,9 @@ function parseGisCoordinates(record: any): Array<{ lat: number; lng: number }> {
   return out;
 }
 
+const formatDate = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY') : '—');
+const formatDateTime = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—');
+
 export default function BuoyStationDetailContent({
   selectedRecord,
   orgUnits,
@@ -174,7 +159,6 @@ export default function BuoyStationDetailContent({
   const [maintenanceOpen, setMaintenanceOpen] = useState(true);
   const [incidentOpen, setIncidentOpen] = useState(true);
   const [approvalOpen, setApprovalOpen] = useState(true);
-
   const orgName = (id: string | undefined) => (id ? (orgUnits.find((o) => o.id === id)?.name || id) : '—');
   const userName = (id: string | number | undefined | null, fallbackName?: string | null) =>
     formatUserDisplayName(id != null ? String(id) : null, fallbackName, userMap);
@@ -280,10 +264,16 @@ export default function BuoyStationDetailContent({
                       {APPROVAL_STYLE_MAP[r.status].label}
                     </span>
                   ) : '—'],
-                  ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userName(r.updatedBy, r.updatedByName || r.createdByName)}</span>],
+                  ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{r.updatedByName || userName(r.updatedBy, r.createdByName)}</span>],
+                  ['Ngày cập nhật', formatDateTime(r.updatedAt)],
                   ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userName(r.sentApprovedBy)}</span>],
+                  ['Ngày gửi phê duyệt', formatDateTime(r.sentApprovedDate)],
                   ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level1ApprovedBy)}</span>],
+                  ['Ngày phê duyệt cấp Cảng vụ/Chi cục', formatDateTime(r.level1ApprovedDate)],
+                  ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.level1ApprovalContent || '—'],
                   ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level2ApprovedBy)}</span>],
+                  ['Ngày phê duyệt cấp Cục', formatDateTime(r.level2ApprovedDate)],
+                  ['Nội dung phê duyệt cấp Cục', r.level2ApprovalContent || '—'],
                 ])}
               </div>
             </div>
@@ -420,34 +410,6 @@ export default function BuoyStationDetailContent({
                   ]}
                 />
               )}
-            </div>
-          ),
-        },
-        {
-          key: 'system',
-          label: 'Xử lý & theo dõi',
-          children: (
-            <div style={{ paddingTop: 3 }}>
-              <div className="chk-detail-grid">
-                {[
-                  ['Trạng thái', statusBadge],
-                  ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{r.updatedByName || '—'}</span>],
-                  ['Ngày cập nhật', formatDateTime(r.updatedAt)],
-                  ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userName(r.sentApprovedBy)}</span>],
-                  ['Ngày gửi phê duyệt', formatDateTime(r.sentApprovedDate)],
-                  ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level1ApprovedBy)}</span>],
-                  ['Ngày phê duyệt cấp Cảng vụ/Chi cục', formatDateTime(r.level1ApprovedDate)],
-                  ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level2ApprovedBy)}</span>],
-                  ['Ngày phê duyệt cấp Cục', formatDateTime(r.level2ApprovedDate)],
-                  ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.level1ApprovalContent || '—'],
-                  ['Nội dung phê duyệt cấp Cục', r.level2ApprovalContent || '—'],
-                ].map(([label, value], i) => (
-                  <div key={i} className="chk-detail-row" style={label === 'Trạng thái' ? { gridColumn: '1 / -1' } : undefined}>
-                    <span className="chk-detail-label">{label}</span>
-                    <span className="chk-detail-value">{value}</span>
-                  </div>
-                ))}
-              </div>
             </div>
           ),
         },

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Tabs, Button, Modal } from 'antd';
 import {
   FileOutlined, EnvironmentOutlined,
@@ -6,6 +6,7 @@ import {
   DownOutlined, RightOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { detailLabelStyle } from '../../components/detail-drawer/detailSkin';
 import { colors } from '../../themetokenchk';
 import {
   textTertiary, surfaceCard,
@@ -64,8 +65,6 @@ const sectionTitleStyle: React.CSSProperties = {
   alignItems: 'center',
   gap: 8,
 };
-
-const detailLabelStyle: React.CSSProperties = { color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd };
 
 // Parse tọa độ GPS: ưu tiên WKT qua parseWktToCoordinates; fallback sang latitude/longitude
 const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> => {

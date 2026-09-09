@@ -7,7 +7,7 @@ status: proposed
 classification: local
 priority: high
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-09-04T00:00:00Z
+last-updated: 2026-09-08T00:00:00Z
 locked-fields: []
 consumed_by_modules: []
 ---
@@ -31,7 +31,10 @@ Người dùng truy cập giao diện bản đồ GIS và chọn mục tra cứu
 - Checkbox của mọi kết quả luôn phải cho phép chọn và bỏ chọn, kể cả bản ghi thiếu tọa độ hoặc có đỉnh tọa độ không hợp lệ, để thao tác Chọn tất cả/Bỏ chọn tất cả hoạt động nhất quán. Hình học có bất kỳ đỉnh nào ngoài vùng bản đồ Việt Nam, thiếu tọa độ hoặc không hợp lệ thì vẫn được giữ trạng thái chọn trong bảng nhưng không được vẽ; hệ thống phải cảnh báo để người dùng cập nhật lại tọa độ. Form CCTV phải chặn lưu mới/cập nhật cho đến khi nhập đủ tọa độ hợp lệ theo loại hình học.
 - Người dùng có thể click vào marker điểm hoặc bất kỳ vị trí hợp lệ trên đường/vùng để xem thông tin tóm tắt trong popup. Nếu KCHT chồng lên quy hoạch cảng biển hoặc có nhiều KCHT cùng vị trí, hệ thống hiển thị danh sách nguồn/đối tượng để người dùng chọn; cả hai loại dữ liệu đều phải truy cập được, không phụ thuộc thứ tự lớp hiển thị.
 - Khi mới mở màn hình, bộ lọc Đơn vị quản lý giữ giá trị "Tất cả đơn vị" như logic cũ và hệ thống tự tải danh sách KCHT thuộc phạm vi quyền của tài khoản. Sau khi Đặt lại, hệ thống khôi phục "Tất cả đơn vị" và tự tải lại danh sách. Lớp Quy hoạch cảng biển vẫn được điều khiển độc lập trong Quản lý lớp bản đồ.
-- Bộ lọc Loại kết cấu hạ tầng hỗ trợ chọn nhiều nhưng luôn giữ một dòng; tối đa hai thẻ được hiển thị trực tiếp, phần còn lại thu gọn thành `+N` và có nội dung đầy đủ khi hover.
+- Theo ticket #102, bộ lọc Loại kết cấu hạ tầng hiển thị đầy đủ các thẻ đã chọn và tự xuống dòng khi hết chiều ngang; ô chọn tự tăng chiều cao, không giới hạn hai thẻ, không rút gọn tên hay gom thành `+N`.
+- Bộ lọc Địa điểm (Tỉnh/Thành phố) có nút xóa lựa chọn; sau khi xóa và bấm Tìm kiếm, truy vấn không còn giới hạn theo tỉnh/thành phố.
+- Phân trang tra cứu có các lựa chọn 20, 50, 100 và 5.000 bản ghi/trang; API `/api/v1/kchtgis/kchtgis_155/search` cho phép tối đa 5.000 bản ghi/trang. Khi đổi số bản ghi/trang, quay về trang đầu. Cột STT hiển thị đầy đủ số thứ tự liên tục qua các trang, không cắt thành dấu ba chấm.
+- Popup và thao tác Xem/Sửa phải định tuyến theo mã `infrastructureType` do API trả về cho đủ 28 loại KCHT, không suy đoán từ tên hiển thị. Năm loại dễ nhầm phải được tách riêng: Vùng nước gọi `/api/v1/water-zones/{id}`, Khu neo đậu gọi `/api/v1/anchorage/{id}`, Khu chuyển tải gọi `/api/v1/transfer-area/{id}`, Khu tránh trú bão gọi `/api/v1/storm-shelter/{id}` và Bến phao gọi `/api/v1/buoy-berth/{id}`. Khi mở từ bản đồ, cửa sổ nhúng phải tự tải đúng bản ghi và hiển thị Drawer Xem/Sửa tương ứng; không được che màn hình bằng một khung trắng. Drawer nhúng phải chiếm trọn chiều ngang vùng hiển thị, không để thừa dải nền ở mép phải. Những loại chưa có Drawer hỗ trợ mở trực tiếp từ URL phải hiển thị nội dung chi tiết lấy từ đúng API ngay trong cửa sổ GIS thay vì mở trang danh sách hoặc khung rỗng. Danh sách, nhãn và thứ tự trường trong popup của từng loại KCHT phải khớp cấu hình `map-popup.tsx` của VMD cũ; trường không có dữ liệu vẫn giữ đúng dòng trống và tuyệt đối không tự nối thêm trường kỹ thuật từ phản hồi API. Bảng kết quả trên 100 bản ghi dùng hiển thị ảo để chỉ dựng các hàng trong vùng nhìn thấy. Theo cơ chế tải số lượng lớn của VMD, marker được dựng bằng Leaflet theo lô 350 bản ghi, cache biểu tượng theo mã, nhường luồng cho trình duyệt giữa các lô và hủy tiến trình cũ khi lựa chọn thay đổi. Tập marker giữ nguyên qua thao tác zoom; bản đồ không dựng lại toàn bộ marker sau mỗi lần thay đổi mức phóng. Khi chọn trên 500 bản ghi, bản đồ dùng khung nhìn toàn Việt Nam thay vì phân tích lại toàn bộ tọa độ để tính vùng bao. Sau khi tải toàn bộ kết quả được chọn, hệ thống chỉ hiển thị duy nhất thông báo `Đã tải xong {số lượng} kết cấu hạ tầng trên bản đồ.`, không hiển thị thêm cảnh báo danh sách bản ghi thiếu hoặc sai tọa độ trong thao tác tải hàng loạt.
 - Bảng kết quả dùng cỡ chữ nội dung chuẩn; nhóm phóng to, thu nhỏ và toàn màn hình nằm dọc ở góc phải. Nhóm vẽ nhanh đa giác, vùng tròn và chỉnh sửa nằm ở góc trái dưới, không bị panel tra cứu che.
 - Click chuột phải trên bản đồ hiển thị kinh độ, vĩ độ, mức thu phóng và cho phép sao chép đường dẫn mở lại đúng vị trí đó.
 - Popup Quy hoạch cảng biển ưu tiên chiều ngang để hạn chế xuống dòng, dùng cỡ chữ nội dung chuẩn 13px và tiêu đề 15px; không lặp nhãn loại đối tượng và chỉ cuộn khi nội dung vượt quá vùng hiển thị.
@@ -75,7 +78,7 @@ Người dùng truy cập giao diện bản đồ GIS và chọn mục tra cứu
 1. Kết quả tìm kiếm phải được sắp xếp theo mức độ phù hợp (match score) giảm dần.
 2. Marker điểm và hình học đường/vùng trên bản đồ phải được mã màu theo tình trạng: xanh (tốt), vàng (bình thường), đỏ (kém).
 3. Tìm kiếm không phân biệt chữ hoa/thường và hỗ trợ tìm kiếm tiếng Việt có dấu.
-4. Kết quả tra cứu không được vượt quá 1000 bản ghi trong một lần tìm kiếm.
+4. Kết quả tra cứu không được vượt quá 5.000 bản ghi trong một lần tìm kiếm.
 5. Bộ lọc yêu thích chỉ được lưu tối đa 10 bộ lọc cho mỗi người dùng.
 
 ## Testing Strategy

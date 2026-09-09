@@ -27,6 +27,11 @@ import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.port.service.PortCacheService;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
@@ -85,6 +90,7 @@ public class PortService {
     private final PortCacheService portCacheService;
     private final OrgUnitCacheService orgUnitCacheService;
     private final OrgUnitScopeService orgUnitScopeService;
+    private final InfrastructureHistoryRepository historyRepository;
 
     @Value("${app.upload.attachment-path:uploads/port-attachments}")
     private String uploadPath;
@@ -1050,6 +1056,7 @@ public class PortService {
             String sp = filePath.toString();
             Attachment a = new Attachment(); a.setEntityType("PORT"); a.setEntityId(portId); a.setFileName(fn); a.setFilePath(sp); a.setFileSize(f.getSize()); a.setContentType(f.getContentType()); a.setUploadedBy(userId);
             saved.add(attachmentRepository.save(a));
+            recordAttachmentHistory(portId, userId, fn, InfrastructureHistoryStatus.ATTACHMENT_UPLOADED);
         }
         return saved.stream().map(this::toAttachmentDto2).collect(Collectors.toList());
     }
@@ -1064,11 +1071,57 @@ public class PortService {
         Attachment a = attachmentRepository.findById(attId).orElseThrow(() -> new EntityNotFoundException("Không tìm thấy: " + attId));
         try { java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(a.getFilePath())); } catch (Exception e) { log.warn("Xóa thất bại: {}", a.getFilePath()); }
         attachmentRepository.delete(a);
+        recordAttachmentHistory(portId, userId, a.getFileName(), InfrastructureHistoryStatus.ATTACHMENT_DELETED);
+    }
+
+    /**
+     * Truy xuất một tệp đính kèm của Cảng biển (PORT) để phục vụ tải xuống.
+     * Phản ánh {@code ...BerthService.getAttachment("BERTH", ...)} để Cảng biển
+     * dùng đúng cơ chế file đính kèm như Bến cảng.
+     */
+    public Attachment getAttachmentGeneric(UUID portId, UUID attId) {
+        Attachment a = attachmentRepository.findById(attId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file đính kèm: " + attId));
+        boolean owned = a.getEntityType() != null && a.getEntityType().equals("PORT") && portId.equals(a.getEntityId());
+        if (!owned) {
+            throw new EntityNotFoundException("File đính kèm không thuộc Cảng biển này");
+        }
+        return a;
     }
 
     private AttachmentDto toAttachmentDto2(Attachment e) {
         AttachmentDto d = new AttachmentDto(); d.setId(e.getId()); d.setEntityType(e.getEntityType()); d.setEntityId(e.getEntityId());
         d.setFileName(e.getFileName()); d.setFilePath(e.getFilePath()); d.setFileSize(e.getFileSize()); d.setContentType(e.getContentType());
         d.setUploadedBy(e.getUploadedBy()); d.setUploadedAt(e.getUploadedAt()); return d;
+    }
+
+    /**
+     * Ghi lịch sử thao tác file đính kèm vào infrastructure_history (refType=SEAPORT) —
+     * mirror Cctv/Berth: chỉ ghi khi Cảng biển đang ở trạng thái ĐÃ DUYỆT.
+     * changedField lưu nhãn tiếng Việt "Tài liệu đính kèm" để drawer Lịch sử hiển thị đúng.
+     */
+    private void recordAttachmentHistory(UUID portId, UUID userId, String fileName,
+            InfrastructureHistoryStatus status) {
+        if (userId == null) return;
+        Port port = portRepository.findById(portId).orElse(null);
+        if (port == null) return;
+        boolean approved = port.getApprovalStatus() == ApprovalStatus.APPROVED
+                || port.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+        if (!approved) return;
+        boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
+        historyRepository.save(InfrastructureHistory.builder()
+                .refId(portId)
+                .refType(InfrastructureType.SEAPORT)
+                .approvalLevel(ApprovalLevel.LEVEL_0)
+                .status(status)
+                .approvedBy(userId)
+                .approvedDate(java.time.LocalDateTime.now())
+                .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + fileName)
+                .changedField("Tài liệu đính kèm")
+                .previousValue(uploaded ? "—" : fileName)
+                .newValue(uploaded ? fileName : "—")
+                .build());
+        log.info("[PortService] Đã ghi lịch sử {} file đính kèm của Cảng biển [{}]: {}",
+                uploaded ? "tải lên" : "xóa", portId, fileName);
     }
 }

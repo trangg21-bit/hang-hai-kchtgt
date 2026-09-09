@@ -1,19 +1,25 @@
 import React, { useState } from 'react';
 import { Tabs, Button, Modal } from 'antd';
 import {
-  FileOutlined, EnvironmentOutlined,
+  EnvironmentOutlined,
   BankOutlined, SlidersOutlined, AuditOutlined,
   DownOutlined, RightOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import {
+  detailLabelStyle,
+  sectionBoxStyle,
+  sectionHeaderStyle,
+  sectionTitleStyle,
+} from '../../components/detail-drawer/detailSkin';
 import { colors } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import {
-  textTertiary, surfaceCard,
-  fontSizeSm, fontSizeLg, fontWeightBold,
+  surfaceCard,
+  fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
   spaceSm, spaceMd, spaceFormField, actionPrimary,
   statusOperational, statusAttention, statusCritical,
   statusBadgeStyle, outlineButtonStyle, primaryButtonStyle,
@@ -22,54 +28,6 @@ import {
 import type { ShipRepairYard } from '../../types/port';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { parseWktToCoordinates } from '../../utils/gisGeometry';
-
-const fontSizeMd = 13.5;
-
-export interface ShipRepairYardDetailContentProps {
-  selectedRecord: ShipRepairYard;
-  orgMap: Map<string, string>;
-  organizations?: Array<{ id: string; name: string; parentId?: string }>;
-  symbolMap: Map<string, string>;
-  symbolImageMap: Map<string, string>;
-  portOptions: Array<{ value: string; label: string }>;
-  pierOptions?: Array<{ value: string; label: string }>;
-  userMap: Map<string, string>;
-  detailFiles: any[];
-  ddToDms: (dd: number) => { d: number; m: number; s: number };
-  approvalStyleMap: Record<string, { color: string; label: string }>;
-  operationPlanList?: any[];
-  maintenancePlanList?: any[];
-  incidentList?: any[];
-}
-
-const sectionBoxStyle: React.CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid #e2e8f0',
-  borderRadius: 8,
-  padding: '12px 18px 8px 18px',
-  marginBottom: 14,
-  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
-};
-
-const sectionHeaderStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  marginBottom: 10,
-  paddingBottom: 8,
-  borderBottom: '1px solid #f1f5f9',
-};
-
-const sectionTitleStyle: React.CSSProperties = {
-  color: colors.sidebarBg,
-  fontWeight: fontWeightBold,
-  fontSize: fontSizeMd + 0.5,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-};
-
-const detailLabelStyle: React.CSSProperties = { color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd };
 
 const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> => {
   const out = parseWktToCoordinates(record?.coordinates)
@@ -103,6 +61,7 @@ export default function ShipRepairYardDetailContent({
   const [maintenanceOpen, setMaintenanceOpen] = useState(true);
   const [incidentOpen, setIncidentOpen] = useState(true);
   const [gisModalOpen, setGisModalOpen] = useState(false);
+
 
   return (
     <div className="ship-repair-yard-detail-content-wrapper">

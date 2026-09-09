@@ -941,6 +941,21 @@ const normalizePopupLabel = (label: string) => label
   .replace(/\s+/g, ' ')
   .trim();
 
+const getPopupValueByPath = (data: Record<string, unknown>, path: string): unknown => {
+  const directValue = path.split('.').reduce<unknown>((value, key) => {
+    if (!value || typeof value !== 'object') return undefined;
+    return (value as Record<string, unknown>)[key];
+  }, data);
+  if (directValue !== undefined && directValue !== null) return directValue;
+  if (!path.includes('.')) {
+    const legacyDetails = data.zobjDataSub;
+    if (legacyDetails && typeof legacyDetails === 'object') {
+      return (legacyDetails as Record<string, unknown>)[path];
+    }
+  }
+  return undefined;
+};
+
 const resolveVmdPopupFields = (
   infrastructureType: string,
   displayType: string,
@@ -952,7 +967,6 @@ const resolveVmdPopupFields = (
   const currentFieldsByLabel = new Map(
     getOrderedKeysAndLabels(displayType).map((field) => [normalizePopupLabel(field.label), field.key]),
   );
-  const dataKeys = new Set(Object.keys(data));
   const genericCodeKeys = ['code', 'portCode', 'berthCode', 'pierCode', 'dryPortCode', 'waterZoneCode', 'buoyBerthCode', 'anchorageCode', 'transferAreaCode', 'stormShelterCode', 'facilityCode', 'beaconCode', 'systemCode'];
   const genericNameKeys = ['name', 'portName', 'berthName', 'pierName', 'dryPortName', 'waterZoneName', 'buoyBerthName', 'anchorageName', 'transferAreaName', 'stormShelterName', 'facilityName', 'beaconName', 'systemName'];
   const commonAliases: Record<string, string[]> = {
@@ -981,7 +995,9 @@ const resolveVmdPopupFields = (
       ...(normalizedLabel.startsWith('mã ') ? genericCodeKeys : []),
       ...(normalizedLabel.startsWith('tên ') ? genericNameKeys : []),
     ].filter((key): key is string => !!key);
-    const resolvedKey = candidates.find((key) => dataKeys.has(key)) || candidates[0] || legacyLeafKey;
+    const resolvedKey = candidates.find((key) => getPopupValueByPath(data, key) !== undefined)
+      || candidates[0]
+      || legacyLeafKey;
     return { ...field, key: resolvedKey };
   });
 };
@@ -1441,8 +1457,9 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
 
       if (customOrdered.length > 0) {
         customOrdered.forEach(({ key: k, label, type: fieldType }) => {
-          const valExists = data[k] !== undefined && data[k] !== null && data[k] !== '';
-          let val = valExists ? data[k] : '';
+          const rawValue = getPopupValueByPath(data, k);
+          const valExists = rawValue !== undefined && rawValue !== null && rawValue !== '';
+          let val = valExists ? rawValue : '';
           
           if (['orgUnitId', 'orgName', 'orgUnitName', 'unitId', 'donViQuanLy', 'unitName'].includes(k)) {
             val = orgUnitNameResolved || val;

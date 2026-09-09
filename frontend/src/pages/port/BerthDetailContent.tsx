@@ -592,8 +592,8 @@ export default function BerthDetailContent({
           {
             key: 'gis', label: `Thông tin vị trí (${parseGisCoordinates(r).length})`,
             children: (
-              <div style={{ paddingTop: 6, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)', minHeight: 350 }}>
-                <div style={sectionBoxStyle}>
+              <div style={{ paddingTop: 6 }}>
+                <div style={{ ...sectionBoxStyle, marginBottom: 12 }}>
                   <div className="chk-detail-grid">
                     {[
                       { label: 'Loại đối tượng', value: ({ POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' } as Record<string, string>)[(r as any).geometryType || ''] || (r as any).geometryType || '' },
@@ -608,35 +608,33 @@ export default function BerthDetailContent({
                     ))}
                   </div>
                 </div>
-                <div style={{ marginTop: spaceMd }}>
-                  <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-                    <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
-                      Tọa độ GPS ({parseGisCoordinates(r).length})
-                    </span>
-                    <Button
-                      icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
-                      onClick={() => setGisModalOpen(true)}
-                      style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                    >
-                      Xem vị trí trên bản đồ
-                    </Button>
-                  </div>
-                  {(() => {
-                    const pts = parseGisCoordinates(r);
-                    return (
-                      <DetailTable
-                        dataSource={pts.map((p) => ({ ...p }))}
-                        emptyText="Chưa có tọa độ GPS nào"
-                        scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
-                        columns={[
-                          { title: 'STT', width: 50 },
-                          { title: 'Vĩ độ (Latitude - N)', key: 'lat', render: (_v: any, rec: any) => { const dms = ddToDms(rec.lat); return `${dms.d}° ${dms.m}' ${dms.s}" N`; } },
-                          { title: 'Kinh độ (Longitude - E)', key: 'lng', render: (_v: any, rec: any) => { const dms = ddToDms(rec.lng); return `${dms.d}° ${dms.m}' ${dms.s}" E`; } },
-                        ]}
-                      />
-                    );
-                  })()}
+                <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+                  <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
+                    Tọa độ GPS ({parseGisCoordinates(r).length})
+                  </span>
+                  <Button
+                    icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+                    onClick={() => setGisModalOpen(true)}
+                    style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  >
+                    Xem vị trí trên bản đồ
+                  </Button>
                 </div>
+                {(() => {
+                  const pts = parseGisCoordinates(r);
+                  return (
+                    <DetailTable
+                      dataSource={pts.map((p) => ({ ...p }))}
+                      emptyText="Chưa có tọa độ GPS nào"
+                      scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
+                      columns={[
+                        { title: 'STT', width: 50 },
+                        { title: 'Vĩ độ (Latitude - N)', key: 'lat', render: (_v: any, rec: any) => { const dms = ddToDms(rec.lat); return `${dms.d}° ${dms.m}' ${dms.s}" N`; } },
+                        { title: 'Kinh độ (Longitude - E)', key: 'lng', render: (_v: any, rec: any) => { const dms = ddToDms(rec.lng); return `${dms.d}° ${dms.m}' ${dms.s}" E`; } },
+                      ]}
+                    />
+                  );
+                })()}
               </div>
             ),
           },

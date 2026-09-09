@@ -1,30 +1,40 @@
-import { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react';
-import { Tabs, Row, Col, Input, Select, InputNumber, DatePicker, Switch, Form, Space, Button, Modal } from 'antd';
+import { useState, useEffect, useMemo, forwardRef, useImperativeHandle, useCallback } from 'react';
+import { Tabs, Row, Col, Input, Select, InputNumber, DatePicker, Form, Space, Button, Modal, type InputNumberProps } from 'antd';
 import DetailTable from '../../components/shared/DetailTable';
-import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
-import { PlusOutlined, DeleteOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+import {
+  PlusOutlined,
+  DeleteOutlined,
+  EnvironmentOutlined,
+  BankOutlined,
+  SlidersOutlined,
+  FileTextOutlined,
+  DownOutlined,
+  RightOutlined,
+} from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { pierCRUD, portCRUD, berthCRUD } from '../../services/portService';
 import type { Pier } from '../../types/port';
 import { organizationService } from '../../services/organizationService';
 import { symbolService } from '../../services/symbolService';
 import api from '../../services/api';
-import { lineObjectService } from '../../services/lineObjectService';
+import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import { userService } from '../../services/userService';
-import { LineObject } from '../../types/lineObject';
 import { useAuthStore } from '../../store/authStore';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { VIETNAM_PROVINCES } from '../../types/common';
+import { OPERATIONAL_FUNCTION_OPTIONS, splitOperationalFunctionCodes } from '../../constants/operationalFunction';
 import toast from '../../components/ToastNotification';
 import { fmtInputNumber } from '../../utils/numFmt';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import { colors, DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
+import { DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import {
-  textTertiary, borderDefault, actionPrimary, statusCritical,
+  textSecondary, textTertiary, borderDefault, actionPrimary, statusCritical,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
   radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField,
-  surfaceCard, readonlyInputStyle, sidebarBg,
+  surfaceCard, readonlyInputStyle, sidebarBg, textAreaStyle,
   primaryButtonStyle, outlineButtonStyle, drawerTabBarStyle, drawerFormScrollStyle,
+  getDatePickerProps,
 } from '../../themetokenchk';
 
 type SaveAction = 'DRAFT' | 'SUBMIT' | 'SAVE_AND_APPROVE' | 'APPROVED' | 'UPDATE';
@@ -33,11 +43,37 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const MAX_FILE_COUNT = 10;
 
 const labelProps = (text: string) => ({
-  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
+  label: <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
 });
 
-const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, fontSize: fontSizeMd };
-const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, width: '100%' };
+// Màn Cảng biển dùng font 13.5px cho phần tiêu đề/chỉ số trong drawer.
+const portFormFontSizeMd = 13.5;
+const sectionBoxStyle: React.CSSProperties = {
+  background: '#ffffff',
+  border: '1px solid #e2e8f0',
+  borderRadius: radiusMd,
+  padding: '14px 18px 10px 18px',
+  marginBottom: 14,
+  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+};
+const sectionHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginBottom: spaceFormField,
+  paddingBottom: spaceSm,
+  borderBottom: '1px solid #f1f5f9',
+};
+const sectionTitleStyle: React.CSSProperties = {
+  color: sidebarBg,
+  fontWeight: fontWeightBold,
+  fontSize: portFormFontSizeMd + 0.5,
+  display: 'flex',
+  alignItems: 'center',
+  gap: spaceSm,
+};
+const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
+const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 
 const OPERATIONAL_STATUS_OPTIONS = [{ value: 'OPERATIONAL', label: 'Đang khai thác/vận hành' }, { value: 'NOT_YET_OPERATIONAL', label: 'Chưa khai thác/vận hành' }, { value: 'SUSPENDED', label: 'Dừng khai thác/vận hành' }];
 // Loại kết cấu cầu cảng dùng chung danh mục với bến cảng (LOAI_KET_CAU_BC_CC)
@@ -67,7 +103,22 @@ const parseMonthYear = (s?: string | null) => {
   return dayjs(`${y}-${String(m).padStart(2, '0')}-01`);
 };
 const fmtMonthYear = (d: any) => (d ? dayjs(d).format('MM/YYYY') : undefined);
-const numberStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, width: '100%' };
+const numberStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
+type NumberInputWithCountProps = InputNumberProps<number> & { maxLength: number };
+
+/** Cùng hiển thị bộ đếm số (0/n) và giới hạn như các chỉ số ở form Cảng biển. */
+function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
+  const count = String(value ?? '').length;
+
+  return (
+    <InputNumber
+      {...inputProps}
+      value={value}
+      maxLength={maxLength}
+      suffix={<span aria-label={`${count} trên ${maxLength} ký tự`} style={{ color: textSecondary, fontSize: portFormFontSizeMd }}>{count}/{maxLength}</span>}
+    />
+  );
+}
 
 // Parse WKT (coordinates) từ backend — hỗ trợ POINT/MULTIPOINT/LINESTRING/POLYGON (chuẩn VTS CHK)
 const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
@@ -144,7 +195,7 @@ const renderDmsGroup = (
   ] as const;
 
   const inputRow = (
-    <div style={{ display: 'flex', alignItems: 'center', width: '100%', minWidth: 0 }}>
+    <div style={{ display: 'inline-flex', flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'center', maxWidth: '100%', minWidth: 0 }}>
       {inputs.map((inp) => (
         <div key={inp.key} style={{ display: 'flex', flex: inp.basis, minWidth: 0, width: inp.width }}>
           <InputNumber
@@ -170,7 +221,7 @@ const renderDmsGroup = (
   // còn cột Kinh độ không (hoặc ngược lại), tổng chiều cao 2 ô của nhóm vẫn bằng nhau và 2
   // input thẳng hàng; chỉ chèn text "X bắt buộc" khi cần.
   const messageRow = (
-    <div aria-live="polite" style={{ display: 'flex', alignItems: 'flex-start', width: '100%', minWidth: 0, marginTop: spaceXs, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
+    <div aria-live="polite" style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-start', width: 'fit-content', maxWidth: '100%', minWidth: 0, marginTop: spaceXs, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
       {inputs.map((inp) => (
         <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
           {inp.msg && <span role="alert" style={{ color: statusCritical, fontSize: fontSizeSm, whiteSpace: 'nowrap' }}>{inp.msg}</span>}
@@ -180,7 +231,7 @@ const renderDmsGroup = (
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', minWidth: 0 }}>
       {inputRow}
       {messageRow}
     </div>
@@ -221,6 +272,25 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
   const watchedGeometryType = Form.useWatch('geometryType', form);
   const hasCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null));
   const hasLocation = Boolean(watchedGeometryType || hasCoordinates);
+  const watchedOperationalFunction = Form.useWatch('operationalFunction', form);
+
+  // Hiển thị trường hợp bản ghi cũ chưa chuẩn hóa (token giá trị tự do không nằm trong option)
+  // → vẫn hiển thị tag của token đó; phần lựa chọn MỚI bị giới hạn bởi OPERATIONAL_FUNCTION_OPTIONS.
+  const operationalFnOptions = useMemo(() => {
+    const current: unknown = watchedOperationalFunction;
+    const tokenList: string[] = Array.isArray(current)
+      ? current
+      : splitOperationalFunctionCodes(current as string | null | undefined);
+    const extraTokens = tokenList.filter(
+      (t) => t && !OPERATIONAL_FUNCTION_OPTIONS.some((o) => o.value === t),
+    );
+    if (extraTokens.length === 0) return OPERATIONAL_FUNCTION_OPTIONS;
+    return [
+      ...extraTokens.map((t) => ({ value: t, label: t })),
+      ...OPERATIONAL_FUNCTION_OPTIONS,
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedOperationalFunction]);
 
   /** true khi field đã đạt đủ max ký tự — bật viền đỏ ô nhập + message bên dưới. */
   const useMaxReached = (name: string, max: number): boolean => {
@@ -241,6 +311,9 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
     investmentAgreementPierCount: useMaxReached('investmentAgreementPierCount', 5),
     cargoThroughput: useMaxReached('cargoThroughput', 20),
     documentNumber: useMaxReached('documentNumber', 20),
+    openingDecision: useMaxReached('openingDecision', 2000),
+    investmentAgreementDoc: useMaxReached('investmentAgreementDoc', 2000),
+    waterAreaNeutralScope: useMaxReached('waterAreaNeutralScope', 2000),
   };
 
   useEffect(() => { (async () => { setLoadingOrgs(true); try { const r = await organizationService.list({ pageSize: 1000 }); setOrgUnits(r.data || []); } catch {} finally { setLoadingOrgs(false); } })(); }, []);
@@ -256,10 +329,31 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
       } catch { /* silent */ }
     })();
   }, []);
-  // Luồng hàng hải = GIS LineObject loại WATERWAY (đã công bố) — giống Bến cảng
-  useEffect(() => { lineObjectService.list({ status: 'PUBLISHED', objectType: LineObject.ObjectType.WATERWAY, pageSize: 1000 }).then(r => setWaterwayOptions((r.data || []).map((l: any) => ({ value: l.id, label: l.name || l.code })))).catch(() => {}); }, []);
-  // Mặc định Đơn vị quản lý = đơn vị của user đăng nhập (giống Bến cảng)
-  useEffect(() => { if (!isSystemAdmin && !isEdit) { api.get('/users/me').then(r => { const p = r.data?.data ?? r.data; if (p?.orgUnitId) form.setFieldsValue({ orgUnitId: p.orgUnitId }); }).catch(() => {}); } }, [isSystemAdmin, isEdit, form]);
+  const mappedAttachments = useMemo<InfrastructureAttachmentItem[]>(() =>
+    uploadedFiles.map((file) => {
+      const attachment = file as typeof file & Record<string, unknown>;
+      const uploadedBy = typeof attachment.uploadedBy === 'string' ? attachment.uploadedBy : undefined;
+      const uploadedByName = typeof attachment.uploadedByName === 'string'
+        ? attachment.uploadedByName
+        : uploadedBy ? userMap.get(uploadedBy) : undefined;
+      return {
+        ...attachment,
+        id: file.uid,
+        fileName: file.name,
+        fileSize: file.size,
+        file: file.originFileObj,
+        ...(uploadedByName ? { uploadedByName } : {}),
+      };
+    }),
+    [uploadedFiles, userMap],
+  );
+  // Luồng hàng hải lấy từ module Luồng hàng hải (/navigation-channel) đã được duyệt — không dùng GIS LineObject
+  useEffect(() => {
+    navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
+      .then(r => setWaterwayOptions((r.items || []).map(n => ({ value: n.id, label: n.channelName || n.channelCode || '' }))))
+      .catch(() => {});
+  }, []);
+  // Đơn vị quản lý KHÔNG tự điền sẵn — để người dùng chủ động chọn từ cây đơn vị (không mặc định 1 giá trị).
   useEffect(() => { if (!watchedOrgUnitId) { setPortOptions([]); return; } (async () => { setLoadingPorts(true); try { const r = await portCRUD.findAll({ orgUnitId: watchedOrgUnitId, approvalStatus: 'APPROVED', page: 1, size: 1000 }); setPortOptions((r.data || []).map((p: any) => ({ value: p.id, label: p.portName }))); } catch {} finally { setLoadingPorts(false); } })(); }, [watchedOrgUnitId]);
   useEffect(() => { if (!watchedPortId) { setBerthOptions([]); return; } (async () => { setLoadingBerths(true); try { const r = await berthCRUD.search({ portId: watchedPortId, approvalStatus: 'APPROVED', page: 1, pageSize: 1000 }); setBerthOptions((r.data || []).map((b: any) => ({ value: b.id, label: b.berthName }))); } catch {} finally { setLoadingBerths(false); } })(); }, [watchedPortId]);
   useEffect(() => { if (!watchedBerthId || isEdit) return; setPierCodeLoading(true); (async () => { try { const res = await api.get('/v1/piers/generate-code', { params: { berthId: watchedBerthId } }); const code = res.data?.data?.pierCode ?? res.data?.data; if (code) form.setFieldsValue({ pierCode: code }); } catch {} finally { setPierCodeLoading(false); } })(); }, [watchedBerthId, isEdit, form]);
@@ -289,7 +383,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
       });
     }
   }, [watchedGeometryType]);
-  useEffect(() => { if (!isEdit || !id) return; (async () => { try { const d: Pier = await pierCRUD.findById(id); form.setFieldsValue({ orgUnitId: d.orgUnitId, portId: d.portId, berthId: d.berthId, navigationChannelId: d.navigationChannelId, pierCode: d.pierCode, pierName: d.pierName, length: d.length, width: d.width, operationalFunction: d.operationalFunction, operationalStatus: d.operationalStatus, province: d.province, detailedLocation: d.detailedLocation, constructionGrade: d.constructionGrade, structureType: d.structureType, currentWaterDepth: d.currentWaterDepth, designBedElevation: d.designBedElevation, publishedVesselDWT: d.publishedVesselDWT, maintenanceApprovalDate: parseMonthYear(d.maintenanceApprovalDate), safetyAssessmentDate: parseMonthYear(d.safetyAssessmentDate), lastInspectionDate: parseMonthYear(d.lastInspectionDate), operatingPierCount: d.operatingPierCount, publishedPierCount: d.publishedPierCount, investmentAgreementPierCount: d.investmentAgreementPierCount, cargoThroughput: d.cargoThroughput, receivesLargeVessel: d.receivesLargeVessel, documentNumber: d.documentNumber, documentDate: d.documentDate ? dayjs(d.documentDate) : undefined, openingAnnouncementDate: d.openingAnnouncementDate ? dayjs(d.openingAnnouncementDate) : undefined, openingDecision: d.openingDecision, investmentAgreementDoc: d.investmentAgreementDoc, waterAreaNeutralScope: d.waterAreaNeutralScope, geometryType: d.geometryType || undefined, mapSymbolId: d.mapSymbolId || d.bieuTuongId, coordinateSystem: d.geometryType ? (d as any).coordinateSystem : undefined, displayRule: (d as any).displayRule });
+  useEffect(() => { if (!isEdit || !id) return; (async () => { try { const d: Pier = await pierCRUD.findById(id); form.setFieldsValue({ orgUnitId: d.orgUnitId, portId: d.portId, berthId: d.berthId, navigationChannelId: d.navigationChannelId, pierCode: d.pierCode, pierName: d.pierName, length: d.length, width: d.width, operationalFunction: splitOperationalFunctionCodes(d.operationalFunction), operationalStatus: d.operationalStatus, province: d.province, detailedLocation: d.detailedLocation, constructionGrade: d.constructionGrade, structureType: d.structureType, currentWaterDepth: d.currentWaterDepth, designBedElevation: d.designBedElevation, publishedVesselDWT: d.publishedVesselDWT, maintenanceApprovalDate: parseMonthYear(d.maintenanceApprovalDate), safetyAssessmentDate: parseMonthYear(d.safetyAssessmentDate), lastInspectionDate: parseMonthYear(d.lastInspectionDate), operatingPierCount: d.operatingPierCount, publishedPierCount: d.publishedPierCount, investmentAgreementPierCount: d.investmentAgreementPierCount, cargoThroughput: d.cargoThroughput, receivesLargeVessel: d.receivesLargeVessel, documentNumber: d.documentNumber, documentDate: d.documentDate ? dayjs(d.documentDate) : undefined, openingAnnouncementDate: d.openingAnnouncementDate ? dayjs(d.openingAnnouncementDate) : undefined, openingDecision: d.openingDecision, investmentAgreementDoc: d.investmentAgreementDoc, waterAreaNeutralScope: d.waterAreaNeutralScope, geometryType: d.geometryType || undefined, mapSymbolId: d.mapSymbolId || d.bieuTuongId, coordinateSystem: d.geometryType ? (d as any).coordinateSystem : undefined, displayRule: (d as any).displayRule });
         const pts = d.coordinates ? parseGisCoordinates({ geometryType: d.geometryType, coordinates: d.coordinates }) : [];
         if (pts.length > 0) {
           setCoordinateList(pts.map(c => {
@@ -320,6 +414,36 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
             }))
           );
         } catch {} } catch { toast.error('Không thể tải thông tin cầu cảng'); } })(); }, [isEdit, id, form]);
+
+  const triggerBlobDownload = (data: BlobPart | undefined, downloadName: string) => {
+    if (!data) return false;
+    const url = window.URL.createObjectURL(new Blob([data], { type: 'application/octet-stream' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = downloadName || 'attachment';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    return true;
+  };
+
+  const handleDownloadAttachment = (uid: string, name?: string) => {
+    const attachment = uploadedFiles.find((file: any) => file.uid === uid || file.id === uid);
+    if (attachment?.originFileObj) {
+      triggerBlobDownload(attachment.originFileObj, name || attachment.originFileObj.name);
+      return;
+    }
+    if (!id) {
+      toast.info(`Đang tải xuống tệp: ${name}`);
+      return;
+    }
+    api.get(`/v1/piers/${id}/attachments/${uid}/download`, { responseType: 'blob' })
+      .then((response) => {
+        if (!triggerBlobDownload(response.data, name || 'attachment')) toast.error('Không thể tải xuống tệp đính kèm');
+      })
+      .catch(() => toast.error('Không thể tải xuống tệp đính kèm'));
+  };
 
   const handleOrgUnitChange = () => { form.setFieldsValue({ portId: undefined, berthId: undefined, pierCode: undefined }); setCoordinateList([]); };
   const handlePortChange = () => { form.setFieldsValue({ berthId: undefined, pierCode: undefined }); };
@@ -415,11 +539,18 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
 
     onSubmittingChange?.(true);
     try {
-      const payload: Record<string, unknown> = { pierCode: vals.pierCode?.trim(), pierName: vals.pierName?.trim(), berthId: vals.berthId, portId: vals.portId || undefined, navigationChannelId: vals.navigationChannelId || undefined, length: vals.length != null ? Number(vals.length) : undefined, width: vals.width != null ? Number(vals.width) : undefined, operationalFunction: vals.operationalFunction || undefined, operationalStatus: vals.operationalStatus || undefined, province: vals.province || undefined, detailedLocation: vals.detailedLocation || undefined, constructionGrade: vals.constructionGrade ?? undefined, structureType: vals.structureType ?? undefined, currentWaterDepth: vals.currentWaterDepth || undefined, designBedElevation: vals.designBedElevation || undefined, publishedVesselDWT: vals.publishedVesselDWT || undefined, maintenanceApprovalDate: fmtMonthYear(vals.maintenanceApprovalDate), safetyAssessmentDate: fmtMonthYear(vals.safetyAssessmentDate), lastInspectionDate: fmtMonthYear(vals.lastInspectionDate), operatingPierCount: vals.operatingPierCount ?? undefined, publishedPierCount: vals.publishedPierCount ?? undefined, investmentAgreementPierCount: vals.investmentAgreementPierCount ?? undefined, cargoThroughput: vals.cargoThroughput != null ? Number(vals.cargoThroughput) : undefined, receivesLargeVessel: vals.receivesLargeVessel ?? undefined, documentNumber: vals.documentNumber || undefined, documentDate: vals.documentDate ? dayjs(vals.documentDate).format('YYYY-MM-DD') : undefined, openingAnnouncementDate: vals.openingAnnouncementDate ? dayjs(vals.openingAnnouncementDate).format('YYYY-MM-DD') : undefined, openingDecision: vals.openingDecision || undefined, investmentAgreementDoc: vals.investmentAgreementDoc || undefined, waterAreaNeutralScope: vals.waterAreaNeutralScope || undefined, geometryType: vals.geometryType || undefined, mapSymbolId: vals.mapSymbolId || undefined, coordinateSystem: vals.coordinateSystem, displayRule: vals.displayRule };
-      (payload as any).latitude = validCoords.length > 0 ? validCoords[0].latitude : undefined;
-      (payload as any).longitude = validCoords.length > 0 ? validCoords[0].longitude : undefined;
-      (payload as any).coordinates = wktCoordinates || undefined;
-
+      const payload: Record<string, unknown> = { pierCode: vals.pierCode?.trim(), pierName: vals.pierName?.trim(), berthId: vals.berthId, portId: vals.portId || undefined, navigationChannelId: vals.navigationChannelId || undefined, length: vals.length != null ? Number(vals.length) : undefined, width: vals.width != null ? Number(vals.width) : undefined, operationalFunction: Array.isArray(vals.operationalFunction) ? (vals.operationalFunction.length > 0 ? vals.operationalFunction.join(',') : undefined) : (vals.operationalFunction || undefined), operationalStatus: vals.operationalStatus || undefined, province: vals.province || undefined, detailedLocation: vals.detailedLocation || undefined, constructionGrade: vals.constructionGrade ?? undefined, structureType: vals.structureType ?? undefined, currentWaterDepth: vals.currentWaterDepth || undefined, designBedElevation: vals.designBedElevation || undefined, publishedVesselDWT: vals.publishedVesselDWT || undefined, maintenanceApprovalDate: fmtMonthYear(vals.maintenanceApprovalDate), safetyAssessmentDate: fmtMonthYear(vals.safetyAssessmentDate), lastInspectionDate: fmtMonthYear(vals.lastInspectionDate), operatingPierCount: vals.operatingPierCount ?? undefined, publishedPierCount: vals.publishedPierCount ?? undefined, investmentAgreementPierCount: vals.investmentAgreementPierCount ?? undefined, cargoThroughput: vals.cargoThroughput != null ? Number(vals.cargoThroughput) : undefined, receivesLargeVessel: vals.receivesLargeVessel ?? undefined, documentNumber: vals.documentNumber || undefined, documentDate: vals.documentDate ? dayjs(vals.documentDate).format('YYYY-MM-DD') : undefined, openingAnnouncementDate: vals.openingAnnouncementDate ? dayjs(vals.openingAnnouncementDate).format('YYYY-MM-DD') : undefined, openingDecision: vals.openingDecision || undefined, investmentAgreementDoc: vals.investmentAgreementDoc || undefined, waterAreaNeutralScope: vals.waterAreaNeutralScope || undefined, geometryType: vals.geometryType || undefined, mapSymbolId: vals.mapSymbolId || undefined, coordinateSystem: vals.coordinateSystem, displayRule: vals.displayRule };
+      // Process GPS coordinates into WKT format (chuẩn VTS CHK — giống Bến phao)
+      (payload as any).latitude = manualCoords.length > 0 ? manualCoords[0].latitude : undefined;
+      (payload as any).longitude = manualCoords.length > 0 ? manualCoords[0].longitude : undefined;
+      (payload as any).coordinates = (() => {
+        if (manualCoords.length === 0) return undefined;
+        if (manualCoords.length === 1) return `POINT(${manualCoords[0].longitude} ${manualCoords[0].latitude})`;
+        const geom = vals.geometryType;
+        if (geom === 'LINE') return `LINESTRING(${manualCoords.map(c => `${c.longitude} ${c.latitude}`).join(',')})`;
+        if (geom === 'POLYGON') return `POLYGON((${[...manualCoords, manualCoords[0]].map(c => `${c.longitude} ${c.latitude}`).join(',')}))`;
+        return `MULTIPOINT(${manualCoords.map(c => `(${c.longitude} ${c.latitude})`).join(',')})`;
+      })();
       if (saveAction !== 'UPDATE') (payload as any).saveAction = saveAction;
       Object.keys(payload).forEach((k) => { if (payload[k] === undefined) delete payload[k]; });
       let createdId: string | undefined;
@@ -437,89 +568,114 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
   useImperativeHandle(ref, () => ({ submit: (saveAction: SaveAction) => handleSave(saveAction) }), [handleSave]);
 
   const tabItems = [
-    // Tab 1: Thông tin chung
+    // Tab 1: Thông tin chung — cùng cấu trúc section card với Cảng biển.
     { key: 'general', label: 'Thông tin chung', children: (<div style={drawerFormScrollStyle}>
-      <Row gutter={[24, 0]}><Col span={12}><Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]} style={{ marginBottom: spaceFormField }}><OrgUnitTreeSelect organizations={orgUnits} placeholder="Chọn đơn vị quản lý..." loading={loadingOrgs} disabled={isEdit || !isSystemAdmin} showPath treeDefaultExpandAll={false} onChange={handleOrgUnitChange} /></Form.Item></Col><Col span={12}><Form.Item name="portId" {...labelProps('Thuộc cảng biển')} required rules={[{ required: true, message: 'Cảng biển là bắt buộc' }]} style={{ marginBottom: spaceFormField }}><Select placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : portOptions.length === 0 && !loadingPorts ? 'Không có cảng biển thuộc đơn vị quản lý' : 'Chọn cảng biển...'} loading={loadingPorts} disabled={!watchedOrgUnitId || (portOptions.length === 0 && !loadingPorts)} options={portOptions} showSearch optionFilterProp="label" notFoundContent="Không có cảng biển thuộc đơn vị quản lý" onChange={handlePortChange} style={selectStyle} /></Form.Item></Col></Row>
+      <div style={sectionBoxStyle}>
+        <div style={sectionHeaderStyle}>
+          <div style={sectionTitleStyle}>
+            <BankOutlined style={{ color: actionPrimary }} />
+            <span>Thông tin cơ bản & Quản lý vận hành</span>
+          </div>
+        </div>
+      <Row gutter={[24, 0]}><Col span={12}><Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]} style={{ marginBottom: spaceFormField }}><OrgUnitTreeSelect organizations={orgUnits} placeholder="Chọn đơn vị quản lý" loading={loadingOrgs} disabled={isEdit} showPath treeDefaultExpandAll={false} onChange={handleOrgUnitChange} /></Form.Item></Col><Col span={12}><Form.Item name="portId" {...labelProps('Thuộc cảng biển')} required rules={[{ required: true, message: 'Cảng biển là bắt buộc' }]} style={{ marginBottom: spaceFormField }}><Select placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : portOptions.length === 0 && !loadingPorts ? 'Không có cảng biển thuộc đơn vị quản lý' : 'Chọn cảng biển...'} loading={loadingPorts} disabled={isEdit || !watchedOrgUnitId || (portOptions.length === 0 && !loadingPorts)} options={portOptions} showSearch optionFilterProp="label" notFoundContent="Không có cảng biển thuộc đơn vị quản lý" onChange={handlePortChange} style={selectStyle} /></Form.Item></Col></Row>
       <Row gutter={[24, 0]}><Col span={12}><Form.Item name="berthId" {...labelProps('Thuộc bến cảng')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Bến cảng là bắt buộc' }]}><Select placeholder={!watchedPortId ? 'Vui lòng chọn cảng biển trước' : berthOptions.length === 0 && !loadingBerths ? 'Không có bến cảng thuộc cảng biển' : 'Chọn bến cảng...'} loading={loadingBerths} disabled={!watchedPortId || (berthOptions.length === 0 && !loadingBerths)} options={berthOptions} showSearch optionFilterProp="label" notFoundContent="Không có bến cảng thuộc cảng biển" style={selectStyle} /></Form.Item></Col><Col span={12}><Form.Item name="navigationChannelId" {...labelProps('Thuộc luồng hàng hải')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn luồng hàng hải..." options={waterwayOptions} showSearch allowClear optionFilterProp="label" style={selectStyle} /></Form.Item></Col></Row>
       <Row gutter={[24, 0]}><Col span={12}><Form.Item name="pierCode" {...labelProps('Mã cầu cảng')} style={{ marginBottom: spaceFormField }} tooltip="Mã được sinh tự động"><Input disabled placeholder={pierCodeLoading ? 'Đang sinh mã...' : watchedBerthId ? 'Mã tự động' : 'Chọn Bến để sinh mã'} style={readonlyInputStyle} /></Form.Item></Col><Col span={12}><Form.Item name="pierName" {...labelProps('Tên cầu cảng')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true }, { max: 255 }]} validateStatus={atMax.pierName ? 'error' : undefined} help={atMax.pierName ? 'Đã đạt tối đa 255 ký tự' : undefined}><Input placeholder="Nhập tên cầu cảng" maxLength={255} showCount style={inputStyle} /></Form.Item></Col></Row>
       <Row gutter={[24, 0]}><Col span={12}><Form.Item name="province" {...labelProps('Địa điểm (Tỉnh/Thành Phố)')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn tỉnh/thành phố' }]}><Select showSearch placeholder="Chọn địa điểm" filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())} options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))} style={selectStyle} /></Form.Item></Col><Col span={12}><Form.Item name="detailedLocation" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.detailedLocation ? 'error' : undefined} help={atMax.detailedLocation ? 'Đã đạt tối đa 500 ký tự' : undefined}><Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} /></Form.Item></Col></Row>
       <Row gutter={[24, 0]}><Col span={12}><Form.Item name="constructionGrade" {...labelProps('Phân cấp công trình')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn phân cấp công trình" allowClear options={CONSTRUCTION_GRADE_OPTIONS} style={selectStyle} /></Form.Item></Col><Col span={12}><Form.Item name="structureType" {...labelProps('Loại kết cấu cầu cảng')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn loại kết cấu" options={STRUCTURE_TYPE_OPTIONS} style={selectStyle} /></Form.Item></Col></Row>
-      <Row gutter={[24, 0]}><Col span={12}><Form.Item name="operationalFunction" {...labelProps('Công năng khai thác')} style={{ marginBottom: spaceFormField }}><Input placeholder="Nhập công năng khai thác" maxLength={255} showCount style={inputStyle} /></Form.Item></Col><Col span={12}><Form.Item name="operationalStatus" {...labelProps('Tình trạng')} style={{ marginBottom: spaceFormField }} initialValue="NOT_YET_OPERATIONAL" rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}><Select placeholder="Chọn tình trạng" options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} /></Form.Item></Col></Row>
+      <Row gutter={[24, 0]}><Col span={12}><Form.Item name="operationalFunction" {...labelProps('Công năng khai thác')} style={{ marginBottom: spaceFormField }}><Select mode="multiple" showSearch allowClear placeholder="Công năng khai thác" optionFilterProp="label" options={operationalFnOptions} style={{ borderRadius: radiusPill }} maxTagCount="responsive" /></Form.Item></Col><Col span={12}><Form.Item name="operationalStatus" {...labelProps('Tình trạng')} style={{ marginBottom: spaceFormField }} initialValue="NOT_YET_OPERATIONAL" rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}><Select placeholder="Chọn tình trạng" options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} /></Form.Item></Col></Row>
+      </div>
 
-      {/* ── Toggle: Chỉ số tổng hợp (gom vào tab Thông tin chung) ── */}
-      <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setIndicatorOpen(!indicatorOpen)}>
-        <span style={{ color: indicatorOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{indicatorOpen ? '▼' : '▶'} Chỉ số tổng hợp</span>
-      </button>
-      {indicatorOpen && (<div style={{ marginTop: spaceFormField }}>
-        <Row gutter={[24, 0]}><Col span={12}><Form.Item name="length" {...labelProps('Chiều dài (m)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.length ? 'error' : undefined} help={atMax.length ? 'Đã đạt tối đa 20 ký tự' : undefined}><InputNumber min={0.01} max={500} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} /></Form.Item></Col><Col span={12}><Form.Item name="width" {...labelProps('Chiều rộng (m)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.width ? 'error' : undefined} help={atMax.width ? 'Đã đạt tối đa 20 ký tự' : undefined}><InputNumber min={0.01} max={500} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} /></Form.Item></Col></Row>
-        <Row gutter={[24, 0]}><Col span={12}><Form.Item name="currentWaterDepth" {...labelProps('Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.currentWaterDepth ? 'error' : undefined} help={atMax.currentWaterDepth ? 'Đã đạt tối đa 20 ký tự' : undefined}><InputNumber min={0} max={100} step={0.1} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} /></Form.Item></Col><Col span={12}><Form.Item name="designBedElevation" {...labelProps('Cao độ đáy bến thiết kế')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.designBedElevation ? 'error' : undefined} help={atMax.designBedElevation ? 'Đã đạt tối đa 20 ký tự' : undefined}><InputNumber min={0} max={100} step={0.1} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} /></Form.Item></Col></Row>
-        <Row gutter={[24, 0]}><Col span={12}><Form.Item name="publishedVesselDWT" {...labelProps('Cỡ tàu khai thác theo công bố (DWT)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.publishedVesselDWT ? 'error' : undefined} help={atMax.publishedVesselDWT ? 'Đã đạt tối đa 20 ký tự' : undefined}><InputNumber min={0} max={999999} maxLength={20} placeholder="0" style={numberStyle} /></Form.Item></Col><Col span={12}><Form.Item name="lastInspectionDate" {...labelProps('Thời điểm kiểm định gần nhất')} style={{ marginBottom: spaceFormField }}><DatePicker picker="month" format="MM/YYYY" placeholder="Chọn tháng/năm" style={selectStyle} /></Form.Item></Col></Row>
-        <Row gutter={[24, 0]}><Col span={12}><Form.Item name="maintenanceApprovalDate" {...labelProps('Thời điểm phê duyệt quy trình bảo trì công trình')} style={{ marginBottom: spaceFormField }}><DatePicker picker="month" format="MM/YYYY" placeholder="Chọn tháng/năm" style={selectStyle} /></Form.Item></Col><Col span={12}><Form.Item name="safetyAssessmentDate" {...labelProps('Thời điểm được chấp thuận hồ sơ báo cáo đánh giá ATCT (gần nhất)')} style={{ marginBottom: spaceFormField }}><DatePicker picker="month" format="MM/YYYY" placeholder="Chọn tháng/năm" style={selectStyle} /></Form.Item></Col></Row>
-        <Row gutter={[24, 0]}><Col span={12}><Form.Item name="operatingPierCount" {...labelProps('Số lượng cầu cảng đang khai thác')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.operatingPierCount ? 'error' : undefined} help={atMax.operatingPierCount ? 'Đã đạt tối đa 5 ký tự' : undefined}><InputNumber min={0} max={99999} maxLength={5} placeholder="0" style={numberStyle} /></Form.Item></Col><Col span={12}><Form.Item name="publishedPierCount" {...labelProps('Số lượng cầu cảng đã công bố')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.publishedPierCount ? 'error' : undefined} help={atMax.publishedPierCount ? 'Đã đạt tối đa 5 ký tự' : undefined}><InputNumber min={0} max={99999} maxLength={5} placeholder="0" style={numberStyle} /></Form.Item></Col></Row>
-        <Row gutter={[24, 0]}><Col span={12}><Form.Item name="investmentAgreementPierCount" {...labelProps('Số lượng cầu cảng đang được thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.investmentAgreementPierCount ? 'error' : undefined} help={atMax.investmentAgreementPierCount ? 'Đã đạt tối đa 5 ký tự' : undefined}><InputNumber min={0} max={99999} maxLength={5} placeholder="0" style={numberStyle} /></Form.Item></Col><Col span={12}><Form.Item name="cargoThroughput" {...labelProps('Sản lượng hàng thông qua')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.cargoThroughput ? 'error' : undefined} help={atMax.cargoThroughput ? 'Đã đạt tối đa 20 ký tự' : undefined}><InputNumber min={0} max={999999999} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} /></Form.Item></Col></Row>
-        <Row gutter={[24, 0]}><Col span={12}><Form.Item name="receivesLargeVessel" {...labelProps('Tiếp nhận tàu có trọng tải lớn hơn thông số tại quyết định công bố')} style={{ marginBottom: spaceFormField }} valuePropName="checked"><Switch /></Form.Item></Col></Row>
+      <div style={sectionBoxStyle}>
+      <div onClick={() => setIndicatorOpen(!indicatorOpen)} style={{ ...sectionHeaderStyle, cursor: 'pointer', userSelect: 'none', marginBottom: indicatorOpen ? spaceSm : 0, paddingBottom: indicatorOpen ? spaceSm : 0, borderBottom: indicatorOpen ? sectionHeaderStyle.borderBottom : 'none' }}>
+        <div style={sectionTitleStyle}><SlidersOutlined style={{ color: actionPrimary }} /><span>Thông số kỹ thuật & Năng lực khai thác</span></div>
+        <span style={{ color: actionPrimary, fontSize: fontSizeSm }}>{indicatorOpen ? <DownOutlined /> : <RightOutlined />}</span>
+      </div>
+      {indicatorOpen && (<div>
+        <Row gutter={[24, 0]}><Col span={12}><Form.Item name="length" {...labelProps('Chiều dài (m)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.length ? 'error' : undefined} help={atMax.length ? 'Đã đạt tối đa 20 ký tự' : undefined}><NumberInputWithCount min={0.01} max={500} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} /></Form.Item></Col><Col span={12}><Form.Item name="width" {...labelProps('Chiều rộng (m)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.width ? 'error' : undefined} help={atMax.width ? 'Đã đạt tối đa 20 ký tự' : undefined}><NumberInputWithCount min={0.01} max={500} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} /></Form.Item></Col></Row>
+        <Row gutter={[24, 0]}><Col span={12}><Form.Item name="currentWaterDepth" {...labelProps('Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.currentWaterDepth ? 'error' : undefined} help={atMax.currentWaterDepth ? 'Đã đạt tối đa 20 ký tự' : undefined}><NumberInputWithCount min={0} max={100} step={0.1} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} /></Form.Item></Col><Col span={12}><Form.Item name="designBedElevation" {...labelProps('Cao độ đáy bến thiết kế')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.designBedElevation ? 'error' : undefined} help={atMax.designBedElevation ? 'Đã đạt tối đa 20 ký tự' : undefined}><NumberInputWithCount min={0} max={100} step={0.1} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} /></Form.Item></Col></Row>
+        <Row gutter={[24, 0]}><Col span={12}><Form.Item name="publishedVesselDWT" {...labelProps('Cỡ tàu khai thác theo công bố (DWT)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.publishedVesselDWT ? 'error' : undefined} help={atMax.publishedVesselDWT ? 'Đã đạt tối đa 20 ký tự' : undefined}><NumberInputWithCount min={0} max={999999} maxLength={20} placeholder="0" style={numberStyle} /></Form.Item></Col><Col span={12}><Form.Item name="lastInspectionDate" {...labelProps('Thời điểm kiểm định gần nhất')} style={{ marginBottom: spaceFormField }}><DatePicker {...getDatePickerProps({ picker: 'month', format: 'MM/YYYY', placeholder: 'Chọn tháng/năm', style: selectStyle })} /></Form.Item></Col></Row>
+        <Row gutter={[24, 0]}><Col span={12}><Form.Item name="maintenanceApprovalDate" className="cn-op-2line-label" {...labelProps('Thời điểm phê duyệt quy trình bảo trì công trình')} style={{ marginBottom: spaceFormField }}><DatePicker {...getDatePickerProps({ picker: 'month', format: 'MM/YYYY', placeholder: 'Chọn tháng/năm', style: selectStyle })} /></Form.Item></Col><Col span={12}><Form.Item name="safetyAssessmentDate" className="cn-op-2line-label" {...labelProps('Thời điểm được chấp thuận hồ sơ báo cáo đánh giá ATCT (gần nhất)')} style={{ marginBottom: spaceFormField }}><DatePicker {...getDatePickerProps({ picker: 'month', format: 'MM/YYYY', placeholder: 'Chọn tháng/năm', style: selectStyle })} /></Form.Item></Col></Row>
+        <Row gutter={[24, 0]}><Col span={12}><Form.Item name="operatingPierCount" {...labelProps('Số lượng cầu cảng đang khai thác')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.operatingPierCount ? 'error' : undefined} help={atMax.operatingPierCount ? 'Đã đạt tối đa 5 ký tự' : undefined}><NumberInputWithCount min={0} max={99999} maxLength={5} placeholder="0" style={numberStyle} /></Form.Item></Col><Col span={12}><Form.Item name="publishedPierCount" {...labelProps('Số lượng cầu cảng đã công bố')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.publishedPierCount ? 'error' : undefined} help={atMax.publishedPierCount ? 'Đã đạt tối đa 5 ký tự' : undefined}><NumberInputWithCount min={0} max={99999} maxLength={5} placeholder="0" style={numberStyle} /></Form.Item></Col></Row>
+        <Row gutter={[24, 0]}><Col span={12}><Form.Item name="investmentAgreementPierCount" {...labelProps('Số lượng cầu cảng đang được thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.investmentAgreementPierCount ? 'error' : undefined} help={atMax.investmentAgreementPierCount ? 'Đã đạt tối đa 5 ký tự' : undefined}><NumberInputWithCount min={0} max={99999} maxLength={5} placeholder="0" style={numberStyle} /></Form.Item></Col><Col span={12}><Form.Item name="cargoThroughput" {...labelProps('Sản lượng hàng thông qua')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.cargoThroughput ? 'error' : undefined} help={atMax.cargoThroughput ? 'Đã đạt tối đa 20 ký tự' : undefined}><NumberInputWithCount min={0} max={999999999} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} /></Form.Item></Col></Row>
+        <Row gutter={[24, 0]}><Col span={12}><Form.Item name="receivesLargeVessel" className="cn-op-2line-label" {...labelProps('Tiếp nhận tàu có trọng tải lớn hơn thông số tại quyết định công bố')} style={{ marginBottom: spaceFormField }}><Select allowClear placeholder="Chọn tiếp nhận tàu có trọng tải lớn hơn thông số ..." options={[{ value: true, label: 'Có' }, { value: false, label: 'Không' }]} style={selectStyle} /></Form.Item></Col></Row>
       </div>)}
+      </div>
 
-      {/* ── Toggle: Thông tin phương án bảo đảm ATHH đã duyệt (gom vào tab Thông tin chung) ── */}
-      <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setAthhPlanOpen(!athhPlanOpen)}>
-        <span style={{ color: athhPlanOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{athhPlanOpen ? '▼' : '▶'} Thông tin phương án bảo đảm ATHH đã duyệt</span>
-      </button>
-      {athhPlanOpen && (<div style={{ marginTop: spaceFormField }}>
-        <Row gutter={[24, 0]}><Col span={12}><Form.Item name="documentNumber" {...labelProps('Số văn bản')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.documentNumber ? 'error' : undefined} help={atMax.documentNumber ? 'Đã đạt tối đa 20 ký tự' : undefined}><Input placeholder="Nhập số văn bản" maxLength={20} showCount style={inputStyle} /></Form.Item></Col><Col span={12}><Form.Item name="documentDate" {...labelProps('Ngày văn bản')} style={{ marginBottom: spaceFormField }}><DatePicker placeholder="Chọn ngày" format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Form.Item></Col></Row>
+      <div style={sectionBoxStyle}>
+      <div onClick={() => setAthhPlanOpen(!athhPlanOpen)} style={{ ...sectionHeaderStyle, cursor: 'pointer', userSelect: 'none', marginBottom: athhPlanOpen ? spaceSm : 0, paddingBottom: athhPlanOpen ? spaceSm : 0, borderBottom: athhPlanOpen ? sectionHeaderStyle.borderBottom : 'none' }}>
+        <div style={sectionTitleStyle}><FileTextOutlined style={{ color: actionPrimary }} /><span>Thông tin phương án bảo đảm ATHH đã duyệt</span></div>
+        <span style={{ color: actionPrimary, fontSize: fontSizeSm }}>{athhPlanOpen ? <DownOutlined /> : <RightOutlined />}</span>
+      </div>
+      {athhPlanOpen && (<div>
+        <Row gutter={[24, 0]}><Col span={12}><Form.Item name="documentNumber" {...labelProps('Số văn bản')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.documentNumber ? 'error' : undefined} help={atMax.documentNumber ? 'Đã đạt tối đa 20 ký tự' : undefined}><Input placeholder="Nhập số văn bản" maxLength={20} showCount style={inputStyle} /></Form.Item></Col><Col span={12}><Form.Item name="documentDate" {...labelProps('Ngày văn bản')} style={{ marginBottom: spaceFormField }}><DatePicker {...getDatePickerProps({ placeholder: 'Chọn ngày' })} /></Form.Item></Col></Row>
       </div>)}
+      </div>
 
-      {/* ── Toggle: Thông tin công bố mở, đưa vào sử dụng (gom vào tab Thông tin chung) ── */}
-      <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setAnnouncementOpen(!announcementOpen)}>
-        <span style={{ color: announcementOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{announcementOpen ? '▼' : '▶'} Thông tin công bố mở, đưa vào sử dụng</span>
-      </button>
-      {announcementOpen && (<div style={{ marginTop: spaceFormField }}>
-        <Row gutter={[24, 0]}><Col span={12}><Form.Item name="openingAnnouncementDate" {...labelProps('Thời điểm công bố mở, đưa vào sử dụng')} style={{ marginBottom: spaceFormField }}><DatePicker placeholder="Chọn thời điểm" format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Form.Item></Col></Row>
-        <Row gutter={[24, 0]}><Col span={24}><Form.Item name="openingDecision" {...labelProps('Quyết định công bố/ Văn bản cho phép khai thác')} style={{ marginBottom: spaceFormField }}><Input placeholder="Nhập quyết định" maxLength={2000} showCount style={inputStyle} /></Form.Item></Col></Row>
-        <Row gutter={[24, 0]}><Col span={24}><Form.Item name="investmentAgreementDoc" {...labelProps('Văn bản thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }}><Input placeholder="Nhập văn bản thỏa thuận" maxLength={2000} showCount style={inputStyle} /></Form.Item></Col></Row>
+      <div style={sectionBoxStyle}>
+      <div onClick={() => setAnnouncementOpen(!announcementOpen)} style={{ ...sectionHeaderStyle, cursor: 'pointer', userSelect: 'none', marginBottom: announcementOpen ? spaceSm : 0, paddingBottom: announcementOpen ? spaceSm : 0, borderBottom: announcementOpen ? sectionHeaderStyle.borderBottom : 'none' }}>
+        <div style={sectionTitleStyle}><FileTextOutlined style={{ color: actionPrimary }} /><span>Thông tin công bố mở, đưa vào sử dụng</span></div>
+        <span style={{ color: actionPrimary, fontSize: fontSizeSm }}>{announcementOpen ? <DownOutlined /> : <RightOutlined />}</span>
+      </div>
+      {announcementOpen && (<div>
+        <Row gutter={[24, 0]}><Col span={12}><Form.Item name="openingAnnouncementDate" {...labelProps('Thời điểm công bố mở, đưa vào sử dụng')} style={{ marginBottom: spaceFormField }}><DatePicker {...getDatePickerProps({ placeholder: 'Chọn thời điểm' })} /></Form.Item></Col></Row>
+        <Row gutter={[24, 0]}><Col span={24}><Form.Item name="openingDecision" {...labelProps('Quyết định công bố/ Văn bản cho phép khai thác')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.openingDecision ? 'error' : undefined} help={atMax.openingDecision ? 'Đã đạt tối đa 2000 ký tự' : undefined}><Input.TextArea rows={3} placeholder="Nhập quyết định" maxLength={2000} showCount style={textAreaStyle} /></Form.Item></Col></Row>
+        <Row gutter={[24, 0]}><Col span={24}><Form.Item name="investmentAgreementDoc" {...labelProps('Văn bản thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.investmentAgreementDoc ? 'error' : undefined} help={atMax.investmentAgreementDoc ? 'Đã đạt tối đa 2000 ký tự' : undefined}><Input.TextArea rows={3} placeholder="Nhập văn bản thỏa thuận" maxLength={2000} showCount style={textAreaStyle} /></Form.Item></Col></Row>
       </div>)}
+      </div>
 
-      {/* ── Toggle: Thông tin phạm vi khu nước neo buộc tàu (gom vào tab Thông tin chung) ── */}
-      <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setMooringScopeOpen(!mooringScopeOpen)}>
-        <span style={{ color: mooringScopeOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{mooringScopeOpen ? '▼' : '▶'} Thông tin phạm vi khu nước neo buộc tàu</span>
-      </button>
-      {mooringScopeOpen && (<div style={{ marginTop: spaceFormField }}>
-        <Row gutter={[24, 0]}><Col span={12}><Form.Item name="waterAreaNeutralScope" {...labelProps('Phạm vi khu nước neo buộc tàu')} style={{ marginBottom: spaceFormField }}><Input placeholder="Nhập phạm vi khu nước" maxLength={2000} showCount style={inputStyle} /></Form.Item></Col></Row>
+      <div style={sectionBoxStyle}>
+      <div onClick={() => setMooringScopeOpen(!mooringScopeOpen)} style={{ ...sectionHeaderStyle, cursor: 'pointer', userSelect: 'none', marginBottom: mooringScopeOpen ? spaceSm : 0, paddingBottom: mooringScopeOpen ? spaceSm : 0, borderBottom: mooringScopeOpen ? sectionHeaderStyle.borderBottom : 'none' }}>
+        <div style={sectionTitleStyle}><FileTextOutlined style={{ color: actionPrimary }} /><span>Phạm vi khu nước neo buộc tàu</span></div>
+        <span style={{ color: actionPrimary, fontSize: fontSizeSm }}>{mooringScopeOpen ? <DownOutlined /> : <RightOutlined />}</span>
+      </div>
+      {mooringScopeOpen && (<div>
+        <Row gutter={[24, 0]}><Col span={24}><Form.Item name="waterAreaNeutralScope" {...labelProps('Phạm vi khu nước neo buộc tàu')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.waterAreaNeutralScope ? 'error' : undefined} help={atMax.waterAreaNeutralScope ? 'Đã đạt tối đa 2000 ký tự' : undefined}><Input.TextArea rows={3} placeholder="Nhập phạm vi khu nước" maxLength={2000} showCount style={textAreaStyle} /></Form.Item></Col></Row>
       </div>)}
+      </div>
     </div>) },
-    // Tab 3: Thông tin vị trí
+    // Tab 2: Thông tin vị trí — tách thông số bản đồ và bảng GPS như Cảng biển.
     { key: 'location', label: `Thông tin vị trí (${coordinateList.length})`, children: (<div style={drawerFormScrollStyle}>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item
-            name="geometryType"
-            {...labelProps('Loại đối tượng')}
-            required={hasCoordinates}
-            rules={hasCoordinates ? [{ required: true, message: 'Loại đối tượng là bắt buộc khi có tọa độ' }] : []}
-            style={{ marginBottom: spaceFormField }}
-          >
-            <Select placeholder="Chọn loại đối tượng" allowClear options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            name="mapSymbolId"
-            {...labelProps('Biểu tượng')}
-            required={hasLocation}
-            rules={hasLocation ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
-            style={{ marginBottom: spaceFormField }}
-          >
-            <Select placeholder="Chọn biểu tượng bản đồ" allowClear showSearch optionFilterProp="label" disabled={!watchedGeometryType} loading={loadingSymbols} style={selectStyle}>
-              {symbols.map((sym) => (<Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}><Space>{sym.image && <img src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`} alt={sym.name} style={{ width: 20, height: 20, objectFit: 'contain' }} />}<span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span></Space></Select.Option>))}
-            </Select>
-          </Form.Item>
-        </Col>
-      </Row>
+      <div style={sectionBoxStyle}>
+        <div style={sectionHeaderStyle}>
+          <div style={sectionTitleStyle}>
+            <EnvironmentOutlined style={{ color: actionPrimary }} />
+            <span>Thông số đối tượng bản đồ</span>
+          </div>
+        </div>
+        <Row gutter={[24, 0]}>
+          <Col span={12}>
+            <Form.Item
+              name="geometryType"
+              {...labelProps('Loại đối tượng')}
+              required={hasCoordinates}
+              rules={hasCoordinates ? [{ required: true, message: 'Loại đối tượng là bắt buộc khi có tọa độ' }] : []}
+              style={{ marginBottom: spaceFormField }}
+            >
+              <Select placeholder="Chọn loại đối tượng" allowClear options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              name="mapSymbolId"
+              {...labelProps('Biểu tượng')}
+              required={hasLocation}
+              rules={hasLocation ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
+              style={{ marginBottom: spaceFormField }}
+            >
+              <Select placeholder="Chọn biểu tượng bản đồ" allowClear showSearch optionFilterProp="label" disabled={!watchedGeometryType} loading={loadingSymbols} style={selectStyle}>
+                {symbols.map((sym) => (<Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}><Space>{sym.image && <img src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`} alt={sym.name} style={{ width: 20, height: 20, objectFit: 'contain' }} />}<span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span></Space></Select.Option>))}
+              </Select>
+            </Form.Item>
+          </Col>
+        </Row>
       <Row gutter={[24, 0]}><Col span={12}><Form.Item name="coordinateSystem" {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn hệ quy chiếu" disabled style={selectStyle} options={COORD_SYS_OPTIONS} /></Form.Item></Col><Col span={12}><Form.Item name="displayRule" {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }}><Input placeholder="Chọn quy tắc hiển thị" maxLength={255} disabled style={readonlyInputStyle} /></Form.Item></Col></Row>
+      </div>
+      <div style={sectionBoxStyle}>
       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-        <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
+        <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: portFormFontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
           Tọa độ GPS ({coordinateList.length})
         </span>
-        <Space size={8}>
+        <Space size={spaceSm}>
           <Button
             icon={<EnvironmentOutlined style={{ color: !watchedGeometryType ? undefined : actionPrimary }} />}
             onClick={() => setGisModalOpen(true)}
@@ -531,7 +687,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
               borderRadius: radiusPill,
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 4,
+              gap: spaceXs,
               opacity: 0.6,
               cursor: 'not-allowed',
             } : {
@@ -541,7 +697,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
               padding: '0 14px',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 4,
+              gap: spaceXs,
             }}
           >
             Chọn tọa độ trên bản đồ
@@ -558,7 +714,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
               borderRadius: radiusPill,
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 4,
+              gap: spaceXs,
               background: '#f5f5f5',
               borderColor: '#d9d9d9',
               color: 'rgba(0, 0, 0, 0.25)',
@@ -570,7 +726,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
               padding: '0 14px',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 4,
+              gap: spaceXs,
             }}
             title={watchedGeometryType === 'POINT' && coordinateList.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 tọa độ GPS' : undefined}
           >
@@ -580,7 +736,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
       </div>
       {coordinateList.length === 0 ? (
         <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
-          <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block' }}>Chưa có tọa độ nào.</span>
+          <span style={{ fontSize: portFormFontSizeMd, color: textTertiary, display: 'block' }}>Chưa có tọa độ nào.</span>
         </div>
       ) : (
         <>
@@ -603,12 +759,12 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
               render: (_v: any, _r: any, idx: number) => (gpsPage - 1) * 10 + idx + 1,
             },
             {
-              title: 'Vĩ độ (Latitude - N)',
+              title: <span>Vĩ độ (Latitude - N) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
               key: 'lat',
               render: (_v: any, record: any) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
             },
             {
-              title: 'Kinh độ (Longitude - E)',
+              title: <span>Kinh độ (Longitude - E) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
               key: 'lng',
               render: (_v: any, record: any) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
             },
@@ -616,16 +772,25 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
               title: '',
               width: 50,
               align: 'center' as const,
+              onCell: () => ({ style: { verticalAlign: 'top' } }),
               render: (_v: any, record: any) => (
-                <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeCoordinate(record._idx)} />
+                <Button
+                  type="text"
+                  danger
+                  icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                  onClick={() => removeCoordinate(record._idx)}
+                  style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                  title="Xóa tọa độ"
+                />
               ),
             },
           ]}
         />
         </>
       )}
+      </div>
     </div>) },
-    // Tab 4: File đính kèm
+    // Tab 3: File đính kèm
     {
       key: 'files',
       label: `File đính kèm (${uploadedFiles.length})`,
@@ -643,13 +808,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
           userMap={userMap}
           onUpload={(file) => { handleBeforeUpload(file); return false; }}
           onDelete={(uid) => { handleRemoveFile({ uid } as UploadFile); }}
-          onDownload={async (uid, name) => {
-            if (isEdit && id) {
-              await pierCRUD.downloadAttachment(id, uid, name);
-            } else {
-              toast.info(`Đang tải xuống tệp: ${name}`);
-            }
-          }}
+          onDownload={(uid, name) => { handleDownloadAttachment(uid, name); }}
         />
       ),
     },

@@ -4,10 +4,11 @@
 // Detail grid dùng class chk-detail-* (CSS trong theme), bảng con dùng DetailTable,
 // GIS modal chế độ XEM (disabled) — chuẩn VTS CHK.
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Tabs, Button, Modal } from 'antd';
 import { EnvironmentOutlined, BankOutlined, SlidersOutlined, ThunderboltOutlined, AuditOutlined, DownOutlined, RightOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { detailLabelStyle } from '../../components/detail-drawer/detailSkin';
 import { colors } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
@@ -57,7 +58,6 @@ function formatDateOnly(dateStr: string | null | undefined): string {
   }
 }
 
-const detailLabelStyle: React.CSSProperties = { color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd };
 
 const sectionBoxStyle: React.CSSProperties = {
   background: '#ffffff',
@@ -270,11 +270,15 @@ export default function BuoyDetailContent({
                 {approvalOpen && gridRows([
                   ['Trạng thái phê duyệt', statusBadge],
                   ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userName(r.updatedBy, r.updatedByName || r.createdByName)}</span>],
+                  ['Ngày cập nhật', formatDate(r.updatedAt)],
                   ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userName(r.sentApprovedBy || r.submittedForApprovalBy, (r as any).submittedForApprovalByName)}</span>],
+                  ['Ngày gửi phê duyệt', formatDate(r.submittedForApprovalAt)],
                   ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level1ApprovedBy, (r as any).level1ApprovedByName)}</span>],
+                  ['Ngày phê duyệt cấp Cảng vụ/Chi cục', formatDate(r.level1ApprovedDate)],
                   ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level2ApprovedBy, (r as any).level2ApprovedByName)}</span>],
-                  ['Nội dung phê duyệt cấp 1', r.level1ApprovalContent || '—'],
-                  ['Nội dung phê duyệt cấp 2', r.level2ApprovalContent || '—'],
+                  ['Ngày phê duyệt cấp Cục', formatDate(r.level2ApprovedDate)],
+                  ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.level1ApprovalContent || '—'],
+                  ['Nội dung phê duyệt cấp Cục', r.level2ApprovalContent || '—'],
                 ])}
               </div>
             </div>
@@ -415,33 +419,6 @@ export default function BuoyDetailContent({
               />
                 </div>
               )}
-            </div>
-          ),
-        },
-        {
-          key: 'system', label: 'Xử lý & theo dõi',
-          children: (
-            <div style={{ paddingTop: 3 }}>
-              <div className="chk-detail-grid">
-                {[
-                  ['Trạng thái', statusBadge],
-                  ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userName(r.updatedBy, r.updatedByName || r.createdByName)}</span>],
-                  ['Ngày cập nhật', formatDate(r.updatedAt)],
-                  ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userName(r.submittedForApprovalBy || r.sentApprovedBy, (r as any).submittedForApprovalByName)}</span>],
-                  ['Ngày gửi phê duyệt', formatDate(r.submittedForApprovalAt)],
-                  ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level1ApprovedBy, (r as any).level1ApprovedByName)}</span>],
-                  ['Ngày phê duyệt cấp Cảng vụ/Chi cục', formatDate(r.level1ApprovedDate)],
-                  ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level2ApprovedBy, (r as any).level2ApprovedByName)}</span>],
-                  ['Ngày phê duyệt cấp Cục', formatDate(r.level2ApprovedDate)],
-                  ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.level1ApprovalContent || '—'],
-                  ['Nội dung phê duyệt cấp Cục', r.level2ApprovalContent || '—'],
-                ].map(([label, value], i) => (
-                  <div key={i} className="chk-detail-row" style={label === 'Trạng thái' ? { gridColumn: '1 / -1' } : undefined}>
-                    <span className="chk-detail-label">{label}</span>
-                    <span className="chk-detail-value">{value}</span>
-                  </div>
-                ))}
-              </div>
             </div>
           ),
         },
