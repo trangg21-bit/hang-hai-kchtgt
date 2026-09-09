@@ -1473,10 +1473,15 @@ export default function BuoyListPage() {
       ellipsis: false,
       render: (v: string | null, record: Buoy) => {
         const name = formatUserDisplayName(record.submittedForApprovalBy, (record as any).submittedForApprovalByName, userMap);
+        const cleanName = name === '—' ? '' : name;
+        const date = formatDateTime(v);
+        const cleanDate = date === '—' ? '' : date;
+        if (!cleanName && !cleanDate) return '';
         return (
           <div>
-            <span style={{ fontWeight: fontWeightBold }}>{name}</span><br />
-            <span style={{ opacity: 0.85 }}>{formatDateTime(v)}</span>
+            {cleanName && <span style={{ fontWeight: fontWeightBold }}>{cleanName}</span>}
+            {cleanName && cleanDate && <br />}
+            {cleanDate && <span style={{ opacity: 0.85 }}>{cleanDate}</span>}
           </div>
         );
       },
@@ -1490,10 +1495,15 @@ export default function BuoyListPage() {
       ellipsis: true,
       render: (v: string | null, record: Buoy) => {
         const name = formatUserDisplayName(record.level1ApprovedBy, (record as any).level1ApprovedByName, userMap);
+        const cleanName = name === '—' ? '' : name;
+        const date = formatDateTime(v);
+        const cleanDate = date === '—' ? '' : date;
+        if (!cleanName && !cleanDate) return '';
         return (
           <div>
-            <span style={{ fontWeight: fontWeightBold }}>{name}</span><br />
-            <span style={{ opacity: 0.85 }}>{formatDateTime(v)}</span>
+            {cleanName && <span style={{ fontWeight: fontWeightBold }}>{cleanName}</span>}
+            {cleanName && cleanDate && <br />}
+            {cleanDate && <span style={{ opacity: 0.85 }}>{cleanDate}</span>}
           </div>
         );
       },
@@ -1507,10 +1517,15 @@ export default function BuoyListPage() {
       ellipsis: true,
       render: (v: string | null, record: Buoy) => {
         const name = formatUserDisplayName(record.level2ApprovedBy, (record as any).level2ApprovedByName, userMap);
+        const cleanName = name === '—' ? '' : name;
+        const date = formatDateTime(v);
+        const cleanDate = date === '—' ? '' : date;
+        if (!cleanName && !cleanDate) return '';
         return (
           <div>
-            <span style={{ fontWeight: fontWeightBold }}>{name}</span><br />
-            <span style={{ opacity: 0.85 }}>{formatDateTime(v)}</span>
+            {cleanName && <span style={{ fontWeight: fontWeightBold }}>{cleanName}</span>}
+            {cleanName && cleanDate && <br />}
+            {cleanDate && <span style={{ opacity: 0.85 }}>{cleanDate}</span>}
           </div>
         );
       },

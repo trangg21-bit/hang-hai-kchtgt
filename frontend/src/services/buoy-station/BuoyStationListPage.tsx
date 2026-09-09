@@ -1109,21 +1109,54 @@ export default function BuoyStationListPage() {
     },
     {
       key: 'sentApprovedDate', label: 'Cán bộ gửi phê duyệt', dataIndex: 'sentApprovedDate', width: 210, ellipsis: true, sortable: true,
-      render: (v: string, record: BuoyStationResponse) => (
-        <div><span style={{ fontWeight: fontWeightBold }}>{record.sentApprovedBy != null ? actorName(record.sentApprovedBy) : '—'}</span><br /><span style={{ opacity: 0.85 }}>{fmt(v)}</span></div>
-      ),
+      render: (v: string, record: BuoyStationResponse) => {
+        const name = record.sentApprovedBy != null ? actorName(record.sentApprovedBy) : '';
+        const cleanName = name === '—' ? '' : name;
+        const date = v ? fmt(v) : '';
+        const cleanDate = date === '—' ? '' : date;
+        if (!cleanName && !cleanDate) return '';
+        return (
+          <div>
+            {cleanName && <span style={{ fontWeight: fontWeightBold }}>{cleanName}</span>}
+            {cleanName && cleanDate && <br />}
+            {cleanDate && <span style={{ opacity: 0.85 }}>{cleanDate}</span>}
+          </div>
+        );
+      },
     },
     {
       key: 'level1ApprovedDate', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'level1ApprovedDate', width: 340, ellipsis: true, sortable: true,
-      render: (v: string, record: BuoyStationResponse) => (
-        <div><span style={{ fontWeight: fontWeightBold }}>{record.level1ApprovedBy != null ? actorName(record.level1ApprovedBy) : '—'}</span><br /><span style={{ opacity: 0.85 }}>{fmt(v)}</span></div>
-      ),
+      render: (v: string, record: BuoyStationResponse) => {
+        const name = record.level1ApprovedBy != null ? actorName(record.level1ApprovedBy) : '';
+        const cleanName = name === '—' ? '' : name;
+        const date = v ? fmt(v) : '';
+        const cleanDate = date === '—' ? '' : date;
+        if (!cleanName && !cleanDate) return '';
+        return (
+          <div>
+            {cleanName && <span style={{ fontWeight: fontWeightBold }}>{cleanName}</span>}
+            {cleanName && cleanDate && <br />}
+            {cleanDate && <span style={{ opacity: 0.85 }}>{cleanDate}</span>}
+          </div>
+        );
+      },
     },
     {
       key: 'level2ApprovedDate', label: 'Cán bộ phê duyệt cấp Cục', dataIndex: 'level2ApprovedDate', width: 240, ellipsis: true, sortable: true,
-      render: (v: string, record: BuoyStationResponse) => (
-        <div><span style={{ fontWeight: fontWeightBold }}>{record.level2ApprovedBy != null ? actorName(record.level2ApprovedBy) : '—'}</span><br /><span style={{ opacity: 0.85 }}>{fmt(v)}</span></div>
-      ),
+      render: (v: string, record: BuoyStationResponse) => {
+        const name = record.level2ApprovedBy != null ? actorName(record.level2ApprovedBy) : '';
+        const cleanName = name === '—' ? '' : name;
+        const date = v ? fmt(v) : '';
+        const cleanDate = date === '—' ? '' : date;
+        if (!cleanName && !cleanDate) return '';
+        return (
+          <div>
+            {cleanName && <span style={{ fontWeight: fontWeightBold }}>{cleanName}</span>}
+            {cleanName && cleanDate && <br />}
+            {cleanDate && <span style={{ opacity: 0.85 }}>{cleanDate}</span>}
+          </div>
+        );
+      },
     },
   ].map((col) => ({
     ...col,

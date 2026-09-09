@@ -21,7 +21,6 @@ import api from '../../services/api';
 import { userService } from '../../services/userService';
 import type { Organization } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
-import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { ScreenHeader, DataTable, type ScreenHeaderAction } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
@@ -357,8 +356,6 @@ function renderHistoryValueTag(field: string, val: string | null) {
 
 export default function ShipRepairYardList() {
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
-  const userPermissions = useAuthStore((s: any) => s.user?.permissions) || [];
-  const isAuditViewer = userPermissions.includes('admin:manage') || userPermissions.includes('admin:operation');
   // ── Filter state ─────────────────────────────────────────────────
   const [managingUnitId, setManagingUnitId] = useState<string | undefined>();
   const defaultOrgUnitId = useRef<string | undefined>(undefined);
@@ -1130,8 +1127,8 @@ export default function ShipRepairYardList() {
       },
     ];
 
-    // Audit columns — chỉ hiển thị cho Admin Cục / admin-operation (giống Bến cảng)
-    const auditColumns: any[] = isAuditViewer ? [
+    // Audit columns
+    const auditColumns: any[] = [
       { key: 'updatedAt', label: <span>Cán bộ cập nhật</span>, dataIndex: 'updatedAt', width: 200, sortable: true, sortOrder,
         render: (v: string | null, record: ShipRepairYard) => (
           <div>
@@ -1140,27 +1137,51 @@ export default function ShipRepairYardList() {
           </div>
         ) },
       { key: 'submittedForApprovalAt', label: <span>Cán bộ gửi Phê duyệt</span>, dataIndex: 'submittedForApprovalAt', width: 210, sortable: true, sortOrder,
-        render: (v: string | null, record: ShipRepairYard) => (
-          <div>
-            <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(record.submittedForApprovalBy, (record as any).submittedForApprovalByName, userMap)}</span><br />
-            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
-          </div>
-        ) },
+        render: (v: string | null, record: ShipRepairYard) => {
+          const name = formatUserDisplayName(record.submittedForApprovalBy, (record as any).submittedForApprovalByName, userMap);
+          const date = formatDate(v);
+          const cleanName = name === '—' ? '' : name;
+          const cleanDate = date === '—' ? '' : date;
+          if (!cleanName && !cleanDate) return '';
+          return (
+            <div>
+              {cleanName && <span style={{ fontWeight: fontWeightBold }}>{cleanName}</span>}
+              {cleanName && cleanDate && <br />}
+              {cleanDate && <span style={{ opacity: 0.85 }}>{cleanDate}</span>}
+            </div>
+          );
+        } },
       { key: 'portAuthorityApprovedAt', label: <span>Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>, dataIndex: 'portAuthorityApprovedAt', width: 340, sortable: true, sortOrder,
-        render: (v: string | null, record: ShipRepairYard) => (
-          <div>
-            <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(record.portAuthorityApprovedBy, (record as any).portAuthorityApprovedByName, userMap)}</span><br />
-            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
-          </div>
-        ) },
+        render: (v: string | null, record: ShipRepairYard) => {
+          const name = formatUserDisplayName(record.portAuthorityApprovedBy, (record as any).portAuthorityApprovedByName, userMap);
+          const date = formatDate(v);
+          const cleanName = name === '—' ? '' : name;
+          const cleanDate = date === '—' ? '' : date;
+          if (!cleanName && !cleanDate) return '';
+          return (
+            <div>
+              {cleanName && <span style={{ fontWeight: fontWeightBold }}>{cleanName}</span>}
+              {cleanName && cleanDate && <br />}
+              {cleanDate && <span style={{ opacity: 0.85 }}>{cleanDate}</span>}
+            </div>
+          );
+        } },
       { key: 'departmentApprovedAt', label: <span>Cán bộ phê duyệt cấp Cục</span>, dataIndex: 'departmentApprovedAt', width: 240, sortable: true, sortOrder,
-        render: (v: string | null, record: ShipRepairYard) => (
-          <div>
-            <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(record.departmentApprovedBy, (record as any).departmentApprovedByName, userMap)}</span><br />
-            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
-          </div>
-        ) },
-    ] : [];
+        render: (v: string | null, record: ShipRepairYard) => {
+          const name = formatUserDisplayName(record.departmentApprovedBy, (record as any).departmentApprovedByName, userMap);
+          const date = formatDate(v);
+          const cleanName = name === '—' ? '' : name;
+          const cleanDate = date === '—' ? '' : date;
+          if (!cleanName && !cleanDate) return '';
+          return (
+            <div>
+              {cleanName && <span style={{ fontWeight: fontWeightBold }}>{cleanName}</span>}
+              {cleanName && cleanDate && <br />}
+              {cleanDate && <span style={{ opacity: 0.85 }}>{cleanDate}</span>}
+            </div>
+          );
+        } },
+    ];
 
     const tailColumns: any[] = [
       { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 260, sortable: true, sortOrder,
@@ -1180,7 +1201,6 @@ export default function ShipRepairYardList() {
     organizations,
     orgMap,
     userMap,
-    isAuditViewer,
     page,
     pageSize,
     portOptions,

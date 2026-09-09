@@ -104,6 +104,7 @@ import {
   requiredMarkStyle,
   cellTitleStyle,
   icons,
+  formatUserDisplayName,
 } from '../../themetokenchk';
 import { usePermissionStore } from '../../store/permissionStore';
 import { colors } from '../../themetokenchk';
@@ -1864,22 +1865,22 @@ export default function PortListPage() {
         sortable: true,
         sortOrder: sortField === 'updatedByName' ? sortOrder : null,
         render: (v: string | null, record: CangBienResponse) => {
-          const name = v || record.updatedByName || (record as any).createdByName || '';
+          const name = formatUserDisplayName(record.updatedBy, record.updatedByName, userMap, record.createdBy, (record as any).createdByName);
           const date = record.updatedAt || (record as any).createdAt;
           return (
             <div style={{ lineHeight: '1.35' }}>
-              <div style={{ fontWeight: fontWeightBold, color: '#0F172A', fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {name}
               </div>
               <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
-                {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : ''}
+                {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
               </div>
             </div>
           );
         },
       },
     ],
-    [page, pageSize, getPortGroupLabel, orgLevel2Map, sortField, sortOrder, openDetail],
+    [page, pageSize, getPortGroupLabel, orgLevel2Map, sortField, sortOrder, userMap, openDetail],
   );
 
   // ── History drawer ──────────────────────────────────────────────

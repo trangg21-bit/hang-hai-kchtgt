@@ -472,7 +472,6 @@ export default function DryPortListPage() {
 
   const currentUser = useAuthStore((s) => s.user);
   const isSystemAdmin = currentUser?.permissions?.includes('*') || false;
-  const isAuditViewer = currentUser?.permissions?.includes('admin:manage') || currentUser?.permissions?.includes('admin:operation') || false;
 
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const orgMap = useMemo(() => {
@@ -756,26 +755,24 @@ export default function DryPortListPage() {
       },
     ];
 
-    if (isAuditViewer) {
-      base.push(
-        {
-          key: 'updatedBy', label: 'Cán bộ cập nhật', width: 190, ellipsis: false, sortable: true,
-          sortOrder: sortField === 'updatedBy' ? sortOrder : undefined,
-          render: (_: unknown, record: DryPort) => {
-            const name = formatUserDisplayName(record.updatedBy, (record as any).updatedByName, userMap, record.createdBy, (record as any).createdByName);
-            const date = record.updatedAt || record.createdAt;
-            return (
-              <div style={{ lineHeight: '1.35' }}>
-                <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
-                <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>{date ? formatDate(date) : '—'}</div>
-              </div>
-            );
-          }
-        },
-      );
-    }
+    base.push(
+      {
+        key: 'updatedBy', label: 'Cán bộ cập nhật', width: 190, ellipsis: false, sortable: true,
+        sortOrder: sortField === 'updatedBy' ? sortOrder : undefined,
+        render: (_: unknown, record: DryPort) => {
+          const name = formatUserDisplayName(record.updatedBy, (record as any).updatedByName, userMap, record.createdBy, (record as any).createdByName);
+          const date = record.updatedAt || record.createdAt;
+          return (
+            <div style={{ lineHeight: '1.35' }}>
+              <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
+              <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>{date ? formatDate(date) : '—'}</div>
+            </div>
+          );
+        }
+      },
+    );
     return base;
-  }, [page, pageSize, sortField, sortOrder, isAuditViewer, userMap, openDetailModal]);
+  }, [page, pageSize, sortField, sortOrder, userMap, openDetailModal]);
 
   const rowActions = useCallback((record: DryPort) => {
     const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];
