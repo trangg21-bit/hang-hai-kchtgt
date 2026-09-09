@@ -10,6 +10,7 @@ import { colors, DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { fmtNum } from '../../utils/numFmt';
+import { parseWktToCoordinates } from '../../utils/gisGeometry';
 import api from '../../services/api';
 import toast from '../../components/ToastNotification';
 import {
@@ -83,32 +84,8 @@ const sectionTitleStyle: React.CSSProperties = {
 // Parse tọa độ GPS: ưu tiên WKT (coordinates) từ backend — hỗ trợ POINT/MULTIPOINT/LINESTRING/POLYGON;
 // fallback sang latitude/longitude (backend chỉ parse được cho POINT).
 const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> => {
-  const wkt = record?.coordinates;
-  const out: Array<{ lat: number; lng: number }> = [];
-  if (wkt && typeof wkt === 'string' && wkt.trim()) {
-    try {
-      if (wkt.startsWith('LINESTRING(')) {
-        const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/);
-        if (m) m[1].split(',').forEach((p: string) => { const [lng, lat] = p.trim().split(/\s+/); if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) }); });
-      }
-      if (out.length === 0 && wkt.startsWith('POLYGON((')) {
-        const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/);
-        if (m) {
-          const pts = m[1].split(',').map((p: string) => { const [lng, lat] = p.trim().split(/\s+/); return { lng: Number(lng), lat: Number(lat) }; }).filter(c => !isNaN(c.lat));
-          if (pts.length > 1 && pts[0].lng === pts[pts.length - 1].lng) pts.pop();
-          pts.forEach(p => { out.push(p); });
-        }
-      }
-      if (out.length === 0) {
-        const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/);
-        if (mm) mm[1].split('),(').forEach((pt: string) => { const [lng, lat] = pt.replace(/[()]/g, '').trim().split(/\s+/); if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) }); });
-      }
-      if (out.length === 0) {
-        const pm = wkt.match(/POINT\s*\(([\d.\-]+)\s+([\d.\-]+)\)/);
-        if (pm) out.push({ lng: Number(pm[1]), lat: Number(pm[2]) });
-      }
-    } catch { /* ignore */ }
-  }
+  const out = parseWktToCoordinates(record?.coordinates)
+    .map(({ latitude, longitude }) => ({ lat: latitude, lng: longitude }));
   if (out.length === 0 && record?.latitude != null && record?.longitude != null) {
     out.push({ lat: Number(record.latitude), lng: Number(record.longitude) });
   }

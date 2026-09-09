@@ -36,7 +36,7 @@ import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { LineObject } from '../../types/lineObject';
 import type { Symbol } from '../../services/symbolService';
 import { useAuthStore } from '../../store/authStore';
-import { GEOMETRY_POINT_COUNT, validateDmsCoordinates, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
+import { GEOMETRY_POINT_COUNT, parseWktToCoordinates, validateDmsCoordinates, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
 
 const labelProps = (text: string) => ({
   label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
@@ -85,21 +85,9 @@ const COORD_SYS_OPTIONS = [{ value: 1, label: 'WGS-84' }, { value: 2, label: 'VN
 // Số lượng tọa độ mặc định tương ứng với từng loại đối tượng: điểm → 1, đường → 2, vùng → 3
 
 
-const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
-  const wkt = gisLocation?.coordinates;
-  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
-  try {
-    if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
-    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length-1].longitude) pts.pop(); return pts; } }
-    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    const pm = wkt.match(/POINT\s*\(([\d.\-]+)\s+([\d.\-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
-  } catch { /* ignore */ }
-  return [];
-};
-
 function ddToDms(dd: number | null | undefined): { d: number | null; m: number | null; s: number | null } {
   if (dd == null || isNaN(dd)) return { d: null, m: null, s: null };
-  let abs = Math.abs(dd);
+  const abs = Math.abs(dd);
   let d = Math.floor(abs);
   let mFloat = (abs - d) * 60;
   if (mFloat > 59.999999999) { d += 1; mFloat = 0; }
@@ -138,14 +126,14 @@ const renderDmsGroup = (
     {
       key: 'd', base: 'Độ', value: dVal, max: maxDeg,
       radius: '999px 0 0 999px', unit: '°', unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
-      step: 1,
+      step: 1, formatter: undefined,
       msg: started && dVal == null ? 'Độ bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(v, mVal ?? null, sVal ?? null),
     },
     {
       key: 'm', base: 'Phút', value: mVal, max: 59,
       radius: '0', unit: "'", unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
-      step: 1,
+      step: 1, formatter: undefined,
       msg: started && mVal == null ? 'Phút bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(dVal ?? null, v, sVal ?? null),
     },
@@ -320,7 +308,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
     (async () => {
       try {
         const data: Berth = await berthCRUD.findById(id);
-        const ec = data.coordinates ? parseGisCoordinates({ geometryType: data.geometryType, coordinates: data.coordinates }) : [];
+        const ec = parseWktToCoordinates(data.coordinates);
         setCoordinateList(ec.length > 0 ? ec.map(c => {
           const latDms = ddToDms(c.latitude);
           const lngDms = ddToDms(c.longitude);
@@ -852,7 +840,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
           readonly={false}
           userMap={userMap}
           onUpload={(file) => { handleBeforeUpload(file); return false; }}
-          onDelete={(uid) => { setUploadedFiles((prev) => prev.filter((x) => (x.uid || x.id) !== uid)); }}
+          onDelete={(uid) => { setUploadedFiles((prev) => prev.filter((x) => x.uid !== uid)); }}
           onDownload={async (uid, name) => {
             if (isEdit && id) {
               await berthCRUD.downloadAttachment(id, uid, name);
@@ -908,7 +896,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
             onChange={(val) => {
               if (val?.coordinates) {
                 // Nhận mọi dạng WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — chọn NHIỀU tọa độ trên bản đồ
-                const points = parseGisCoordinates({ geometryType: val.geometryType, coordinates: val.coordinates });
+                const points = parseWktToCoordinates(val.coordinates);
                 if (points.length > 0) {
                   setCoordinateList((prev) => {
                     const existing = prev || [];

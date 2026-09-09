@@ -9,6 +9,7 @@ import {
   isVietnamMapCoordinate,
   normalizeLineCoordinates,
   normalizePolygonCoordinates,
+  parseWktToCoordinates,
   parseWktToCoords,
   resolveMapGeometryLocation,
 } from '../utils/gisGeometry';
@@ -29,6 +30,23 @@ describe('gisGeometry', () => {
       [106, 10],
       [107, 10],
       [107, 11],
+    ]);
+  });
+
+  it('parses coordinate-editor WKT with serializer whitespace', () => {
+    expect(parseWktToCoordinates('LINESTRING (106.7 20.8, 106.9 21.1)')).toEqual([
+      { longitude: 106.7, latitude: 20.8 },
+      { longitude: 106.9, latitude: 21.1 },
+    ]);
+    expect(parseWktToCoordinates('POLYGON ((106 20, 107 20, 107 21, 106 20))')).toEqual([
+      { longitude: 106, latitude: 20 },
+      { longitude: 107, latitude: 20 },
+      { longitude: 107, latitude: 21 },
+    ]);
+    expect(parseWktToCoordinates('MULTIPOINT ((106 20), (107 21), (108 22))')).toEqual([
+      { longitude: 106, latitude: 20 },
+      { longitude: 107, latitude: 21 },
+      { longitude: 108, latitude: 22 },
     ]);
   });
 

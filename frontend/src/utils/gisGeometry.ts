@@ -552,45 +552,21 @@ export const validateDmsCoordinates = (
  */
 export const parseWktToCoordinates = (wkt?: string): { latitude: number; longitude: number }[] => {
   if (!wkt) return [];
-  try {
-    const trimmed = wkt.trim();
-    const upper = trimmed.toUpperCase();
-    if (upper.startsWith('POINT')) {
-      const match = trimmed.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
-      if (match) {
-        return [{ longitude: parseFloat(match[1]), latitude: parseFloat(match[2]) }];
-      }
-    } else if (upper.startsWith('MULTIPOINT')) {
-      const match = trimmed.match(/MULTIPOINT\s*\(([^)]+)\)/i);
-      if (match) {
-        return match[1].split('),(').map((pt) => {
-          const parts = pt.replace(/[()]/g, '').trim().split(/\s+/);
-          return { longitude: parseFloat(parts[0]), latitude: parseFloat(parts[1]) };
-        });
-      }
-    } else if (upper.startsWith('LINESTRING') || upper.startsWith('LINE')) {
-      const match = trimmed.match(/LINESTRING\s*\(([^)]+)\)/i);
-      if (match) {
-        return match[1].split(',').map((pt) => {
-          const parts = pt.trim().split(/\s+/);
-          return { longitude: parseFloat(parts[0]), latitude: parseFloat(parts[1]) };
-        });
-      }
-    } else if (upper.startsWith('POLYGON')) {
-      const match = trimmed.match(/POLYGON\s*\(\(([^)]+)\)\)/i);
-      if (match) {
-        const pts = match[1].split(',').map((pt) => {
-          const parts = pt.trim().split(/\s+/);
-          return { longitude: parseFloat(parts[0]), latitude: parseFloat(parts[1]) };
-        });
-        if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude && pts[0].latitude === pts[pts.length - 1].latitude) {
-          pts.pop();
-        }
-        return pts;
-      }
+  const normalizedWkt = wkt.trim().replace(/^SRID=\d+\s*;/i, '').trim();
+  const coordinates = flattenGeometryCoordinates(parseWktToCoords(normalizedWkt))
+    .map(([longitude, latitude]) => ({ latitude, longitude }));
+
+  // WKT polygon rings repeat the first vertex at the end. The coordinate
+  // editors display only user-entered vertices, so remove that closing copy.
+  if (/^POLYGON\s*\(/i.test(normalizedWkt) && coordinates.length > 1) {
+    const first = coordinates[0];
+    const last = coordinates[coordinates.length - 1];
+    if (first.latitude === last.latitude && first.longitude === last.longitude) {
+      coordinates.pop();
     }
-  } catch {}
-  return [];
+  }
+
+  return coordinates;
 };
 
 /**
