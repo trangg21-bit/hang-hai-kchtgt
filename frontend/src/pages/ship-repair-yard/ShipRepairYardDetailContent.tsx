@@ -494,11 +494,11 @@ export default function ShipRepairYardDetailContent({
                       emptyText="Chưa có dữ liệu"
                       rowKey={(rec: any) => rec.id || rec.planCode || rec.code}
                       columns={[
-                        { title: 'STT', width: 50 },
+                        { title: 'STT', width: 50, align: 'center' as const },
                         { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '—' },
                         { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '—' },
-                        { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'start', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.startTime || rec.start || null) },
-                        { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'end', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.endTime || rec.end || null) },
+                        { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'start', width: 150, align: 'left' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.startTime || rec.start || null) },
+                        { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'end', width: 150, align: 'left' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.endTime || rec.end || null) },
                       ]}
                     />
                   </div>
@@ -514,11 +514,11 @@ export default function ShipRepairYardDetailContent({
                       emptyText="Chưa có dữ liệu"
                       rowKey={(rec: any) => rec.id || rec.planCode || rec.code}
                       columns={[
-                        { title: 'STT', width: 50 },
+                        { title: 'STT', width: 50, align: 'center' as const },
                         { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '—' },
                         { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '—' },
-                        { title: 'Thời gian bắt đầu', dataIndex: 'startTime', key: 'start', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.start || rec.startDate || null) },
-                        { title: 'Thời gian kết thúc', dataIndex: 'endTime', key: 'end', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.end || rec.endDate || null) },
+                        { title: 'Thời gian bắt đầu', dataIndex: 'startTime', key: 'start', width: 150, align: 'left' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.start || rec.startDate || null) },
+                        { title: 'Thời gian kết thúc', dataIndex: 'endTime', key: 'end', width: 150, align: 'left' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.end || rec.endDate || null) },
                       ]}
                     />
                   </div>
@@ -534,11 +534,11 @@ export default function ShipRepairYardDetailContent({
                       emptyText="Chưa có dữ liệu"
                       rowKey={(rec: any) => rec.id || rec.incidentCode || rec.code}
                       columns={[
-                        { title: 'STT', width: 50 },
+                        { title: 'STT', width: 50, align: 'center' as const },
                         { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '—' },
                         { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'type', render: (v: string, rec: any) => v || rec.type || '—' },
                         { title: 'Địa điểm', dataIndex: 'location', key: 'location', render: (v: string) => v || '—' },
-                        { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.time || null) },
+                        { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 150, align: 'left' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.time || null) },
                       ]}
                     />
                   </div>

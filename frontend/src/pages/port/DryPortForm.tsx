@@ -18,6 +18,7 @@ import {
   radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField,
   surfaceCard, readonlyInputStyle,
   primaryButtonStyle, outlineButtonStyle, drawerTabBarStyle, drawerFormScrollStyle,
+  getDatePickerProps,
 } from '../../themetokenchk';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import type { DryPort, SaveAction } from '../../types/port';
@@ -778,7 +779,7 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
                   </Col>
                   <Col span={12}>
                     <Form.Item name="announcementTime" {...labelProps('Thời điểm công bố mở')} style={{ marginBottom: spaceFormField }}>
-                      <DatePicker placeholder="Chọn thời điểm công bố mở" format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                      <DatePicker {...getDatePickerProps({ placeholder: 'Chọn thời điểm công bố mở' })} />
                     </Form.Item>
                   </Col>
                 </Row>

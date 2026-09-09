@@ -18,6 +18,7 @@ import {
   radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField,
   surfaceCard, readonlyInputStyle, sidebarBg,
   primaryButtonStyle, outlineButtonStyle, drawerTabBarStyle, drawerFormScrollStyle,
+  getDatePickerProps,
 } from '../../themetokenchk';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { BERTH_ACTIVITY_STATUS_MAP } from '../../types/port';
@@ -636,7 +637,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="openingAnnouncementDate" {...labelProps('Thời điểm công bố, đưa vào sử dụng')} style={{ marginBottom: spaceFormField }}>
-                  <DatePicker placeholder="Chọn thời điểm..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                  <DatePicker {...getDatePickerProps({ placeholder: 'Chọn thời điểm...' })} />
                 </Form.Item>
               </Col>
             </Row>

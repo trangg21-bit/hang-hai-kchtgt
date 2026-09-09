@@ -94,6 +94,7 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/asset/decrease': 'assetdecrease:manage',
   '/asset/inventory': 'inventoryasset:manage',
   '/asset/exploitation': 'assetexploitation:manage',
+  '/asset/berth': 'infraasset:manage',
   '/navigation-channel': 'navigationchannel:read',
   '/navigation-channel-chk': 'navigationchannel:read',
   '/dike-revetment': 'dikerevetment:read',
@@ -311,6 +312,7 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
       icon: <BankOutlined />,
       label: 'Quản lý tài sản KCHT hàng hải',
       children: [
+        canAccessMenu('/asset/berth') ? { key: '/asset/berth', icon: <BankOutlined />, label: 'Tài sản bến cảng' } : null,
         canAccessMenu('/asset/increase') ? { key: '/asset/increase', icon: <PlusCircleOutlined />, label: 'Yêu cầu tăng tài sản' } : null,
         canAccessMenu('/asset/decrease') ? { key: '/asset/decrease', icon: <MinusCircleOutlined />, label: 'Yêu cầu giảm tài sản' } : null,
         canAccessMenu('/asset/inventory') ? { key: '/asset/inventory', icon: <AuditOutlined />, label: 'Kiểm kê tài sản' } : null,

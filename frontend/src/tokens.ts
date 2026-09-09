@@ -343,11 +343,22 @@ export const requiredMarkStyle =
 /**
  * Helper chuẩn hóa props cho DatePicker (đơn) và RangePicker (khoảng ngày)
  */
-export const getDatePickerProps = (extraProps?: Record<string, any>) => {
-  const { classNames: extraClassNames, getPopupContainer, ...rest } = extraProps || {};
+export const getDatePickerProps = (extraProps?: Record<string, unknown>) => {
+  const { classNames: extraClassNames, getPopupContainer, popupClassName: extraPopupClassName, ...rest } = (extraProps || {}) as {
+    classNames?: { popup?: string | { root?: string } };
+    getPopupContainer?: (trigger: HTMLElement) => HTMLElement;
+    popupClassName?: string;
+    [key: string]: unknown;
+  };
   return {
     format: 'DD/MM/YYYY',
     getPopupContainer: getPopupContainer || ((trigger: HTMLElement) => trigger.closest('.ant-form-item-control-input-content') || trigger.parentElement || document.body),
+    popupClassName: [
+      'chk-form-datepicker-popup',
+      typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
+      typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
+      extraPopupClassName,
+    ].filter(Boolean).join(' '),
     classNames: {
       ...extraClassNames,
       popup: {
@@ -356,6 +367,7 @@ export const getDatePickerProps = (extraProps?: Record<string, any>) => {
           'chk-form-datepicker-popup',
           typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
           typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
+          extraPopupClassName,
         ].filter(Boolean).join(' '),
       },
     },

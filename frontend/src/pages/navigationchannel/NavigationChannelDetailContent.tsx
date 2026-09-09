@@ -914,7 +914,7 @@ export default function NavigationChannelDetailContent({
                       dataIndex: 'fileSize',
                       key: 'fileSize',
                       width: 120,
-                      align: 'right' as const,
+                      align: 'left' as const,
                       render: (size?: number) => {
                         if (!size) return '';
                         return size >= 1024 * 1024 ? `${(size / (1024 * 1024)).toFixed(2)} MB` : `${Math.round(size / 1024)} KB`;
@@ -931,8 +931,8 @@ export default function NavigationChannelDetailContent({
                       title: 'Ngày tải lên',
                       dataIndex: 'uploadedAt',
                       key: 'uploadedAt',
-                      width: 135,
-                      align: 'center' as const,
+                      width: 150,
+                      align: 'left' as const,
                       render: (v?: string) => fmtDateTime(v),
                     },
                     {

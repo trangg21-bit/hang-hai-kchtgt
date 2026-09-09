@@ -3,6 +3,7 @@ package com.hanghai.kchtg.assetmovement.entity;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.*;
@@ -26,6 +27,9 @@ import java.util.UUID;
 public class AssetIncreaseRequest extends BaseEntity {
 
     private UUID assetId;
+
+    @Embedded
+    private AssetValueAdjustmentDetails adjustmentDetails;
 
     @Column(length = 50)
     private InfraAssetType assetType;

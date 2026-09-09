@@ -206,3 +206,16 @@ Route to **engineering-system-architect** for bounded-context review.
 | HIGH | 4 | DTO/entity mismatch, no depreciation, no precondition checks, no multi-level approval |
 | MEDIUM | 5 | No auto-generate lists, no discrepancies, no alerts, no notifications, no auto-return |
 | LOW | 2 | No periodic reports, unicode table name |
+
+## 10. Tài sản bến cảng — ma trận trường QL Tài sản (44→57)
+
+Nguồn chốt trường dữ liệu là sheet `QL Tài sản (44->57)` trong tệp `HH_Tính năng & danh sách các trường thông tin.xlsx`. Màn hình nằm tại menu **Quản lý tài sản KCHT hàng hải → Tài sản bến cảng**, route `/asset/berth`, quyền `infraasset:manage`.
+
+- Danh sách hiển thị đúng các trường được đánh dấu ở cột **Danh sách**: đơn vị quản lý/sử dụng, mã bến cảng, loại/mã/tên tài sản, tình trạng, hiện trạng sử dụng, nhóm tài sản, ngày sử dụng, trạng thái và toàn bộ thông tin người/ngày trong luồng phê duyệt.
+- Sidebar lọc chỉ gồm các trường được đánh dấu ở cột **Bộ lọc**: đơn vị quản lý/sử dụng, mã bến cảng, loại tài sản, mã tài sản, tên tài sản, tình trạng tài sản, trạng thái và khoảng ngày cập nhật.
+- Bố cục danh sách dùng cùng khung với màn **Quản lý bến cảng**: cột `Tên/Mã tài sản` hai dòng được cố định sau STT, người cập nhật/phê duyệt hiển thị cùng ngày giờ trên hai dòng, bảng dùng độ rộng theo tổng cột và phân trang cố định ở đáy.
+- Trạng thái phê duyệt dùng bộ trạng thái chuẩn `DRAFT`, `PENDING_APPROVAL`, `APPROVED_LEVEL1`, `APPROVED`, `REJECTED_LEVEL1`, `REJECTED_LEVEL2`; bản ghi tạo mới mặc định là `DRAFT`.
+- Drawer chi tiết gồm thông tin chung, hồ sơ tài sản, thông tin khấu hao, lịch sử khai thác, lịch sử tăng/giảm nguyên giá và thông tin phê duyệt. Trường chưa có dữ liệu vẫn giữ nhãn và hiển thị `—`.
+- Form tạo mới và sửa dùng cùng ma trận trường; mã tài sản, giá trị còn lại, đơn vị tiền và khấu hao tháng là trường hệ thống tính hoặc gán mặc định.
+- Thao tác dòng mở các form **Khai thác tài sản**, **Tăng nguyên giá** và **Giảm nguyên giá**. Mỗi form chỉ nhận các trường được đánh dấu trong cột nghiệp vụ tương ứng; giá trị trước/sau điều chỉnh là trường chỉ đọc.
+- Dữ liệu tài sản bến cảng dùng `infra_assets.asset_type = PORT_TERMINAL`; các cột nghiệp vụ bổ sung được tạo trong migration `V20260909160000__add_port_terminal_asset_fields.sql`.

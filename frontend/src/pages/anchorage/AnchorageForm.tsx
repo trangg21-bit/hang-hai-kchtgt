@@ -15,6 +15,7 @@ import {
   radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField,
   surfaceCard, readonlyInputStyle, sidebarBg,
   drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, drawerFormScrollStyle, drawerTabBarStyle,
+  getDatePickerProps,
 } from '../../themetokenchk';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import type { SaveAction } from '../../types/port';
@@ -724,7 +725,7 @@ export default forwardRef(function AnchorageForm({ form, id, onFinish, onSubmitt
       <Row gutter={[24, 0]}>
         <Col span={12}>
           <Form.Item name="openingAnnouncementDate" {...labelProps('Thời điểm công bố mở, đưa ra sử dụng')} style={{ marginBottom: spaceFormField }}>
-            <DatePicker placeholder="Chọn thời điểm..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            <DatePicker {...getDatePickerProps({ placeholder: 'Chọn thời điểm...' })} />
           </Form.Item>
         </Col>
       </Row>

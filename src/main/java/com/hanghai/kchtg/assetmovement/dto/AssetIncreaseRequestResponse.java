@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.assetmovement.dto;
 
+import com.hanghai.kchtg.assetmovement.entity.AssetValueAdjustmentDetails;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -25,6 +26,7 @@ public class AssetIncreaseRequestResponse {
     private String reason;
     private String status;
     private String increaseCode;
+    private AssetValueAdjustmentDetails adjustmentDetails;
     private UUID createdBy;
     private String createdByName;
     private LocalDateTime createdAt;

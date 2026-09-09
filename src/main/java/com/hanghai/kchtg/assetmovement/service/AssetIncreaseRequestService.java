@@ -47,6 +47,7 @@ public class AssetIncreaseRequestService {
         UUID currentUserId = getCurrentUserId();
         AssetIncreaseRequest entity = AssetIncreaseRequest.builder()
                 .assetId(request.getAssetId())
+                .adjustmentDetails(request.getAdjustmentDetails())
                 .assetType(null)
                 .description(request.getReason())
                 .status(RequestStatus.PENDING)
@@ -84,6 +85,7 @@ public class AssetIncreaseRequestService {
         if (request.getReason() != null) {
             entity.setDescription(request.getReason());
         }
+        if (request.getAdjustmentDetails() != null) entity.setAdjustmentDetails(request.getAdjustmentDetails());
         UUID currentUserId = getCurrentUserId();
         entity.setUpdatedBy(currentUserId);
 
@@ -116,6 +118,7 @@ public class AssetIncreaseRequestService {
                 taiSan.setStatus(AssetStatus.MANAGED);
                 taiSan.setApprovedBy(currentUserId);
                 taiSan.setApprovedAt(Instant.now());
+                applyApprovedValues(taiSan, entity.getAdjustmentDetails());
                 assetRepository.save(taiSan);
             });
         }
@@ -178,11 +181,28 @@ public class AssetIncreaseRequestService {
                 .reason(entity.getDescription())
                 .status(entity.getStatus() != null ? entity.getStatus().name() : null)
                 .increaseCode(increaseCode)
+                .adjustmentDetails(entity.getAdjustmentDetails())
                 .createdBy(entity.getCreatedBy())
                 .createdByName(createdByName)
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
+    }
+
+    private void applyApprovedValues(com.hanghai.kchtg.assetmovement.entity.InfraAsset asset,
+                                     com.hanghai.kchtg.assetmovement.entity.AssetValueAdjustmentDetails details) {
+        if (details == null) return;
+        if (details.getOriginalValueAfter() != null) asset.setOriginalValue(details.getOriginalValueAfter());
+        if (details.getRemainingValueAfter() != null) asset.setRemainingValue(details.getRemainingValueAfter());
+        if (details.getDeclarationDate() != null) asset.setDeclarationDate(details.getDeclarationDate());
+        if (details.getDepreciationRate() != null) asset.setDepreciationRate(details.getDepreciationRate());
+        if (details.getAssignmentDecisionNumber() != null) asset.setAssignmentDecisionNumber(details.getAssignmentDecisionNumber());
+        if (details.getDepreciationStartDate() != null) asset.setDepreciationStartDate(details.getDepreciationStartDate());
+        if (details.getDepreciationMonths() != null) asset.setDepreciationMonths(details.getDepreciationMonths());
+        if (details.getDepreciationEndDate() != null) asset.setDepreciationEndDate(details.getDepreciationEndDate());
+        if (details.getAccumulatedDepreciation() != null) asset.setAccumulatedDepreciation(details.getAccumulatedDepreciation());
+        if (details.getMonthlyDepreciation() != null) asset.setMonthlyDepreciation(details.getMonthlyDepreciation());
+        if (details.getDisposalMethod() != null) asset.setDisposalMethod(details.getDisposalMethod());
     }
 }
 

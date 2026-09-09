@@ -258,7 +258,7 @@ export default function InfrastructureAttachmentTab({
       title: 'Dung lượng',
       dataIndex: 'fileSize',
       width: 120,
-      align: 'right' as const,
+      align: 'left' as const,
       render: (v: number | undefined, record: InfrastructureAttachmentItem) => {
         const size = v ?? record.fileSize ?? record.size ?? record.originFileObj?.size ?? record.file?.size;
         return formatAttachmentFileSize(size);
@@ -289,7 +289,7 @@ export default function InfrastructureAttachmentTab({
       title: 'Ngày tải lên',
       dataIndex: 'uploadedDate',
       width: 160,
-      align: 'center' as const,
+      align: 'left' as const,
       render: (v: string | undefined, record: InfrastructureAttachmentItem) => {
         const dateVal = v || record.uploadedDate || record.uploadedAt || record.createdAt || record.createdDate
           || (record.originFileObj ? dayjs(record.originFileObj.lastModified).toISOString() : (record.file ? dayjs(record.file.lastModified).toISOString() : dayjs().toISOString()));

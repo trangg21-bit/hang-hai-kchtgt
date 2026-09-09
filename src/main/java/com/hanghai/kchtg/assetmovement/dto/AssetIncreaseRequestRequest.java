@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.assetmovement.dto;
 
+import com.hanghai.kchtg.assetmovement.entity.AssetValueAdjustmentDetails;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -18,4 +19,5 @@ public class AssetIncreaseRequestRequest {
     private String unitOfMeasure;
     private String reason;
     private String increaseCode;
+    private AssetValueAdjustmentDetails adjustmentDetails;
 }

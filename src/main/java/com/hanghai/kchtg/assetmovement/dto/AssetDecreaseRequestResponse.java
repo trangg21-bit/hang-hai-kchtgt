@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.assetmovement.dto;
 
+import com.hanghai.kchtg.assetmovement.entity.AssetValueAdjustmentDetails;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -23,6 +24,7 @@ public class AssetDecreaseRequestResponse {
     private String reason;
     private String status;
     private String decreaseReason;
+    private AssetValueAdjustmentDetails adjustmentDetails;
     private UUID createdBy;
     private String createdByName;
     private LocalDateTime createdAt;

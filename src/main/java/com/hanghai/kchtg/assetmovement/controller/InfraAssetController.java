@@ -5,7 +5,9 @@ import com.hanghai.kchtg.common.entity.EntityFields;
 import com.hanghai.kchtg.assetmovement.dto.InfraAssetRequest;
 import com.hanghai.kchtg.assetmovement.dto.InfraAssetResponse;
 import com.hanghai.kchtg.assetmovement.service.InfraAssetService;
+import com.hanghai.kchtg.assetmovement.entity.InfraAssetType;
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.security.annotation.DataScope;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -15,11 +17,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/asset/infra-assets")
 @RequiredArgsConstructor
+@DataScope
 public class InfraAssetController {
 
     private final InfraAssetService infraAssetService;
@@ -44,13 +48,22 @@ public class InfraAssetController {
     @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
     public ResponseEntity<ApiResponse<Page<InfraAssetResponse>>> findAll(
             @RequestParam(required = false) String assetCode,
-            @RequestParam(required = false) UUID assetTypeId,
-            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String assetName,
+            @RequestParam(required = false) UUID parentOrgUnitId,
+            @RequestParam(required = false) UUID orgUnitId,
+            @RequestParam(required = false) UUID usingOrgUnitId,
+            @RequestParam(required = false) UUID berthId,
+            @RequestParam(required = false) InfraAssetType assetType,
+            @RequestParam(required = false) String assetCondition,
+            @RequestParam(required = false) String approvalStatus,
+            @RequestParam(required = false) LocalDate updatedFrom,
+            @RequestParam(required = false) LocalDate updatedTo,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size,
                 Sort.by(EntityFields.CREATED_AT).descending());
-        Page<InfraAssetResponse> result = infraAssetService.findAll(pageable);
+        Page<InfraAssetResponse> result = infraAssetService.findAll(assetCode, assetName, parentOrgUnitId, orgUnitId,
+                usingOrgUnitId, berthId, assetType, assetCondition, approvalStatus, updatedFrom, updatedTo, pageable);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

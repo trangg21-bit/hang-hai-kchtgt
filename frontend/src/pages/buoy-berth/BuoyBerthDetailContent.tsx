@@ -640,7 +640,7 @@ export default function BuoyBerthDetailContent({
                   emptyText="Chưa có tọa độ GPS nào"
                   scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
                   columns={[
-                    { title: 'STT', width: 50 },
+                    { title: 'STT', width: 50, align: 'center' as const },
                     {
                       title: 'Vĩ độ (Latitude - N)',
                       key: 'lat',
@@ -676,7 +676,7 @@ export default function BuoyBerthDetailContent({
                 emptyText="Chưa có tài liệu đính kèm"
                 scrollY={detailFiles.length === 0 ? undefined : DRAWER_TABLE_SCROLL_Y.detailView}
                 columns={[
-                  { title: 'STT', width: 50 },
+                  { title: 'STT', width: 50, align: 'center' as const },
                   {
                     title: 'Tên tài liệu',
                     dataIndex: 'fileName',
@@ -695,9 +695,9 @@ export default function BuoyBerthDetailContent({
                       );
                     },
                   },
-                  { title: 'Dung lượng', dataIndex: 'fileSize', key: 'fileSize', width: 120, align: 'right' as const, render: (v: number) => v ? (v > 1024 * 1024 ? `${(v / (1024 * 1024)).toFixed(2)} MB` : `${(v / 1024).toFixed(1)} KB`) : '' },
+                  { title: 'Dung lượng', dataIndex: 'fileSize', key: 'fileSize', width: 120, align: 'left' as const, render: (v: number) => v ? (v > 1024 * 1024 ? `${(v / (1024 * 1024)).toFixed(2)} MB` : `${(v / 1024).toFixed(1)} KB`) : '' },
                   { title: 'Người tải lên', dataIndex: 'uploadedBy', key: 'uploadedBy', width: 180, render: (v: string) => userMap.get(v) || v || '' },
-                  { title: 'Ngày tải lên', dataIndex: 'uploadedAt', key: 'uploadedAt', width: 135, align: 'center' as const, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '' },
+                  { title: 'Ngày tải lên', dataIndex: 'uploadedAt', key: 'uploadedAt', width: 150, align: 'left' as const, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '' },
                   {
                     title: 'Thao tác',
                     key: 'actions',
@@ -773,7 +773,7 @@ export default function BuoyBerthDetailContent({
                 rowKey={(rec: any) => rec.id || rec.infraName || rec.name || ''}
                 scrollY={DRAWER_TABLE_SCROLL_Y.withButton}
                 columns={[
-                  { title: 'STT', width: 50 },
+                  { title: 'STT', width: 50, align: 'center' as const },
                   {
                     title: 'Loại kết cấu hạ tầng',
                     dataIndex: 'infraType',
@@ -852,11 +852,11 @@ export default function BuoyBerthDetailContent({
                     rowKey={(rec: any) => rec.id || rec.planCode || rec.code || ''}
                     scrollY={160}
                     columns={[
-                      { title: 'STT', width: 50 },
+                      { title: 'STT', width: 50, align: 'center' as const },
                       { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '' },
                       { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '' },
-                      { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'start', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.startTime || rec.start || null) },
-                      { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'end', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.endTime || rec.end || null) },
+                      { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'start', width: 150, align: 'left' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.startTime || rec.start || null) },
+                      { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'end', width: 150, align: 'left' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.endTime || rec.end || null) },
                     ]}
                   />
                 )}
@@ -888,11 +888,11 @@ export default function BuoyBerthDetailContent({
                     rowKey={(rec: any) => rec.id || rec.planCode || rec.code || ''}
                     scrollY={160}
                     columns={[
-                      { title: 'STT', width: 50 },
+                      { title: 'STT', width: 50, align: 'center' as const },
                       { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '' },
                       { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '' },
-                      { title: 'Thời gian bắt đầu', dataIndex: 'startTime', key: 'start', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.start || rec.startDate || null) },
-                      { title: 'Thời gian kết thúc', dataIndex: 'endTime', key: 'end', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.end || rec.endDate || null) },
+                      { title: 'Thời gian bắt đầu', dataIndex: 'startTime', key: 'start', width: 150, align: 'left' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.start || rec.startDate || null) },
+                      { title: 'Thời gian kết thúc', dataIndex: 'endTime', key: 'end', width: 150, align: 'left' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.end || rec.endDate || null) },
                     ]}
                   />
                 )}
@@ -924,11 +924,11 @@ export default function BuoyBerthDetailContent({
                     rowKey={(rec: any) => rec.id || rec.incidentCode || rec.code || ''}
                     scrollY={160}
                     columns={[
-                      { title: 'STT', width: 50 },
+                      { title: 'STT', width: 50, align: 'center' as const },
                       { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '' },
                       { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'type', render: (v: string, rec: any) => v || rec.type || '' },
                       { title: 'Địa điểm', dataIndex: 'location', key: 'location', render: (v: string) => v || '' },
-                      { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 150, align: 'center' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.time || null) },
+                      { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 150, align: 'left' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.time || null) },
                     ]}
                   />
                 )}

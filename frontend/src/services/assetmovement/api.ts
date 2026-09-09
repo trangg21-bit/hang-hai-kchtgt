@@ -13,6 +13,9 @@ import type {
   AssetExploitationResponse,
   AssetProcessingRecordRequest,
   AssetProcessingRecordResponse,
+  PortTerminalAsset,
+  PortTerminalAssetFilters,
+  PortTerminalAssetPayload,
 } from './types';
 
 // ==========================================
@@ -182,7 +185,7 @@ export async function createHoSoXuLy(payload: AssetProcessingRecordRequest): Pro
 // ==========================================
 // 7. Lưu phê duyệt
 // ==========================================
-export async function fetchApprovalRecordHistory(id: string): Promise<any> {
+export async function fetchApprovalRecordHistory(id: string): Promise<unknown> {
   const res = await api.get(`/v1/asset/approval-records/${id}`);
   return res.data.data;
 }
@@ -193,12 +196,40 @@ export async function fetchApprovalRecordHistory(id: string): Promise<any> {
 export async function fetchInfraAssetList(params?: {
   page?: number;
   size?: number;
-}): Promise<PageResponse<any>> {
+}): Promise<PageResponse<PortTerminalAsset>> {
   const sp = new URLSearchParams();
   if (params?.page !== undefined) sp.set('page', String(params.page));
   if (params?.size !== undefined) sp.set('size', String(params.size));
   const res = await api.get(`/v1/asset/infra-assets?${sp}`);
   return res.data.data;
+}
+
+export async function fetchPortTerminalAssets(params: PortTerminalAssetFilters): Promise<PageResponse<PortTerminalAsset>> {
+  const sp = new URLSearchParams();
+  Object.entries({ ...params, assetType: 'PORT_TERMINAL' }).forEach(([key, value]) => {
+    if (value !== undefined && value !== '') sp.set(key, String(value));
+  });
+  const res = await api.get(`/v1/asset/infra-assets?${sp}`);
+  return res.data.data;
+}
+
+export async function fetchPortTerminalAsset(id: string): Promise<PortTerminalAsset> {
+  const res = await api.get(`/v1/asset/infra-assets/${id}`);
+  return res.data.data;
+}
+
+export async function createPortTerminalAsset(payload: PortTerminalAssetPayload): Promise<PortTerminalAsset> {
+  const res = await api.post('/v1/asset/infra-assets', { ...payload, assetType: 'PORT_TERMINAL' });
+  return res.data.data;
+}
+
+export async function updatePortTerminalAsset(id: string, payload: PortTerminalAssetPayload): Promise<PortTerminalAsset> {
+  const res = await api.put(`/v1/asset/infra-assets/${id}`, { ...payload, assetType: 'PORT_TERMINAL' });
+  return res.data.data;
+}
+
+export async function deletePortTerminalAsset(id: string): Promise<void> {
+  await api.delete(`/v1/asset/infra-assets/${id}`);
 }
 
 export async function approveAssetIncrease(id: string, remarks?: string): Promise<AssetIncreaseResponse> {

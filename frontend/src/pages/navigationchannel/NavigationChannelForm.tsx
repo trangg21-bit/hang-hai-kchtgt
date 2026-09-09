@@ -1371,11 +1371,11 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                     dataSource={record.attachments.map((a) => ({ ...a }))}
                     emptyText="Chưa có tài liệu đính kèm"
                     columns={[
-                      { title: 'STT', width: 50 },
+                      { title: 'STT', width: 50, align: 'center' as const },
                       { title: 'Tên tài liệu', dataIndex: 'fileName', key: 'fileName', render: (v: string) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{v || '—'}</span> },
-                      { title: 'Dung lượng', dataIndex: 'fileSize', key: 'fileSize', width: 120, align: 'right' as const, render: (v: number) => v ? (v > 1024 * 1024 ? `${(v / (1024 * 1024)).toFixed(2)} MB` : `${(v / 1024).toFixed(1)} KB`) : '—' },
+                      { title: 'Dung lượng', dataIndex: 'fileSize', key: 'fileSize', width: 120, align: 'left' as const, render: (v: number) => v ? (v > 1024 * 1024 ? `${(v / (1024 * 1024)).toFixed(2)} MB` : `${(v / 1024).toFixed(1)} KB`) : '—' },
                       { title: 'Người tải lên', dataIndex: 'uploadedBy', key: 'uploadedBy', width: 180, render: (v: string) => userMap.get(v) || v || '—' },
-                      { title: 'Ngày tải lên', dataIndex: 'uploadedAt', key: 'uploadedAt', width: 135, align: 'center' as const, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—' },
+                      { title: 'Ngày tải lên', dataIndex: 'uploadedAt', key: 'uploadedAt', width: 150, align: 'left' as const, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—' },
                     ]}
                   />
                 </div>

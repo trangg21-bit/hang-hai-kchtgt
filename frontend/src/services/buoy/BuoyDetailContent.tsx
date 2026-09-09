@@ -370,11 +370,11 @@ export default function BuoyDetailContent({
                 emptyText="Chưa có dữ liệu"
                 rowKey={(rec: any) => rec.key || rec.operationPlanCode || 'row'}
                 columns={[
-                  { title: 'STT', width: 50 },
+                  { title: 'STT', width: 50, align: 'center' as const },
                   { title: 'Mã kế hoạch', dataIndex: 'operationPlanCode', key: 'operationPlanCode', render: (v: string) => v || '—' },
                   { title: 'Tên kế hoạch', dataIndex: 'operationPlanName', key: 'operationPlanName', render: (v: string) => v || '—' },
-                  { title: 'Ngày bắt đầu', dataIndex: 'operationStartDate', key: 'operationStartDate', width: 150, align: 'center' as const, render: (v: string) => (v && v !== '—' ? formatDate(v) : '—') },
-                  { title: 'Ngày kết thúc', dataIndex: 'operationEndDate', key: 'operationEndDate', width: 150, align: 'center' as const, render: (v: string) => (v && v !== '—' ? formatDate(v) : '—') },
+                  { title: 'Ngày bắt đầu', dataIndex: 'operationStartDate', key: 'operationStartDate', width: 150, align: 'left' as const, render: (v: string) => (v && v !== '—' ? formatDate(v) : '—') },
+                  { title: 'Ngày kết thúc', dataIndex: 'operationEndDate', key: 'operationEndDate', width: 150, align: 'left' as const, render: (v: string) => (v && v !== '—' ? formatDate(v) : '—') },
                 ]}
               />
                 </div>
@@ -390,11 +390,11 @@ export default function BuoyDetailContent({
                 emptyText="Chưa có dữ liệu"
                 rowKey={(rec: any) => rec.key || rec.maintenancePlanCode || 'row'}
                 columns={[
-                  { title: 'STT', width: 50 },
+                  { title: 'STT', width: 50, align: 'center' as const },
                   { title: 'Mã kế hoạch', dataIndex: 'maintenancePlanCode', key: 'maintenancePlanCode', render: (v: string) => v || '—' },
                   { title: 'Tên kế hoạch', dataIndex: 'maintenancePlanName', key: 'maintenancePlanName', render: (v: string) => v || '—' },
-                  { title: 'Thời gian bắt đầu', dataIndex: 'maintenanceStartTime', key: 'maintenanceStartTime', width: 150, align: 'center' as const, render: (v: string) => (v && v !== '—' ? formatDate(v) : '—') },
-                  { title: 'Thời gian kết thúc', dataIndex: 'maintenanceEndTime', key: 'maintenanceEndTime', width: 150, align: 'center' as const, render: (v: string) => (v && v !== '—' ? formatDate(v) : '—') },
+                  { title: 'Thời gian bắt đầu', dataIndex: 'maintenanceStartTime', key: 'maintenanceStartTime', width: 150, align: 'left' as const, render: (v: string) => (v && v !== '—' ? formatDate(v) : '—') },
+                  { title: 'Thời gian kết thúc', dataIndex: 'maintenanceEndTime', key: 'maintenanceEndTime', width: 150, align: 'left' as const, render: (v: string) => (v && v !== '—' ? formatDate(v) : '—') },
                 ]}
               />
                 </div>
@@ -410,11 +410,11 @@ export default function BuoyDetailContent({
                 emptyText="Chưa có dữ liệu"
                 rowKey={(rec: any) => rec.key || rec.incidentCode || 'row'}
                 columns={[
-                  { title: 'STT', width: 50 },
+                  { title: 'STT', width: 50, align: 'center' as const },
                   { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'incidentCode', render: (v: string) => v || '—' },
                   { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'incidentType', render: (v: string) => v || '—' },
                   { title: 'Địa điểm', dataIndex: 'incidentLocation', key: 'incidentLocation', render: (v: string) => v || '—' },
-                  { title: 'Thời gian', dataIndex: 'incidentTime', key: 'incidentTime', width: 150, align: 'center' as const, render: (v: string) => (v && v !== '—' ? formatDate(v) : '—') },
+                  { title: 'Thời gian', dataIndex: 'incidentTime', key: 'incidentTime', width: 150, align: 'left' as const, render: (v: string) => (v && v !== '—' ? formatDate(v) : '—') },
                 ]}
               />
                 </div>

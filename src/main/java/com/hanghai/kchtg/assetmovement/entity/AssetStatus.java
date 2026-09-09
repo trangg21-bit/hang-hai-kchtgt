@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.assetmovement.entity;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum AssetStatus {
@@ -16,8 +17,30 @@ public enum AssetStatus {
         this.value = value;
     }
 
-    @JsonValue
     public int getValue() {
         return value;
+    }
+
+    @JsonCreator
+    public static AssetStatus fromValue(Object input) {
+        if (input == null) return null;
+        String str = input.toString().trim();
+        if (str.matches("^\\d+$")) {
+            int num = Integer.parseInt(str);
+            for (AssetStatus status : values()) {
+                if (status.value == num) return status;
+            }
+        }
+        for (AssetStatus status : values()) {
+            if (status.name().equalsIgnoreCase(str)) {
+                return status;
+            }
+        }
+        throw new IllegalArgumentException("Trạng thái tài sản không hợp lệ: " + input);
+    }
+
+    @JsonValue
+    public String toJson() {
+        return this.name();
     }
 }

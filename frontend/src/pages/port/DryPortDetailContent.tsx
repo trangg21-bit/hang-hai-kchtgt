@@ -603,11 +603,11 @@ export default function DryPortDetailContent({
                       showTotal={(total) => `Tổng cộng ${total}`}
                       rowKey={(rec: any, idx?: number) => rec?.id || rec?.opPlanCode || String(idx)}
                       columns={[
-                        { title: 'STT', width: 50 },
+                        { title: 'STT', width: 50, align: 'center' as const },
                         { title: 'Mã kế hoạch', dataIndex: 'opPlanCode', key: 'opPlanCode', render: (v: string, rec: any) => v || rec.code || '—' },
                         { title: 'Tên kế hoạch', dataIndex: 'opPlanName', key: 'opPlanName', render: (v: string, rec: any) => v || rec.name || '—' },
-                        { title: 'Ngày bắt đầu', dataIndex: 'opStartDate', key: 'opStartDate', width: 150, align: 'center' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.startDate ? dayjs(rec.startDate).format('DD/MM/YYYY HH:mm') : '—') },
-                        { title: 'Ngày kết thúc', dataIndex: 'opEndDate', key: 'opEndDate', width: 150, align: 'center' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.endDate ? dayjs(rec.endDate).format('DD/MM/YYYY HH:mm') : '—') },
+                        { title: 'Ngày bắt đầu', dataIndex: 'opStartDate', key: 'opStartDate', width: 150, align: 'left' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.startDate ? dayjs(rec.startDate).format('DD/MM/YYYY HH:mm') : '—') },
+                        { title: 'Ngày kết thúc', dataIndex: 'opEndDate', key: 'opEndDate', width: 150, align: 'left' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.endDate ? dayjs(rec.endDate).format('DD/MM/YYYY HH:mm') : '—') },
                       ]}
                     />
                   </div>
@@ -624,11 +624,11 @@ export default function DryPortDetailContent({
                       showTotal={(total) => `Tổng cộng ${total}`}
                       rowKey={(rec: any, idx?: number) => rec?.id || rec?.maintCode || String(idx)}
                       columns={[
-                        { title: 'STT', width: 50 },
+                        { title: 'STT', width: 50, align: 'center' as const },
                         { title: 'Mã kế hoạch', dataIndex: 'maintCode', key: 'maintCode', render: (v: string, rec: any) => v || rec.code || '—' },
                         { title: 'Tên kế hoạch', dataIndex: 'maintName', key: 'maintName', render: (v: string, rec: any) => v || rec.name || '—' },
-                        { title: 'Thời gian bắt đầu', dataIndex: 'maintStart', key: 'maintStart', width: 150, align: 'center' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.startTime || rec.start || '—') },
-                        { title: 'Thời gian kết thúc', dataIndex: 'maintEnd', key: 'maintEnd', width: 150, align: 'center' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.endTime || rec.end || '—') },
+                        { title: 'Thời gian bắt đầu', dataIndex: 'maintStart', key: 'maintStart', width: 150, align: 'left' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.startTime || rec.start || '—') },
+                        { title: 'Thời gian kết thúc', dataIndex: 'maintEnd', key: 'maintEnd', width: 150, align: 'left' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.endTime || rec.end || '—') },
                       ]}
                     />
                   </div>
@@ -645,11 +645,11 @@ export default function DryPortDetailContent({
                       showTotal={(total) => `Tổng cộng ${total}`}
                       rowKey={(rec: any, idx?: number) => rec?.id || rec?.incidentCode || String(idx)}
                       columns={[
-                        { title: 'STT', width: 50 },
+                        { title: 'STT', width: 50, align: 'center' as const },
                         { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'incidentCode', render: (v: string, rec: any) => v || rec.code || '—' },
                         { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'incidentType', render: (v: string, rec: any) => v || rec.type || '—' },
                         { title: 'Địa điểm', dataIndex: 'incidentLocation', key: 'incidentLocation', render: (v: string) => v || '—' },
-                        { title: 'Thời gian', dataIndex: 'incidentTime', key: 'incidentTime', width: 150, align: 'center' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.time ? dayjs(rec.time).format('DD/MM/YYYY HH:mm') : '—') },
+                        { title: 'Thời gian', dataIndex: 'incidentTime', key: 'incidentTime', width: 150, align: 'left' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.time ? dayjs(rec.time).format('DD/MM/YYYY HH:mm') : '—') },
                       ]}
                     />
                   </div>

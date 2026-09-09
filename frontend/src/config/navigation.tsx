@@ -186,10 +186,10 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     id: 'asset',
     label: 'Quản lý tài sản KCHT hàng hải',
-    desc: 'Tăng, giảm, kiểm kê và khai thác tài sản',
+    desc: 'Quản lý hồ sơ, biến động, kiểm kê và khai thác tài sản',
     icon: landingGroupIcons.asset,
-    underDevelopment: true,
     tree: [
+      { key: '/asset/berth', route: '/asset/berth', label: 'Tài sản bến cảng', icon: icons.bank },
       { key: '/asset/increase', route: '/asset/increase', label: 'Yêu cầu tăng tài sản', icon: icons.plusCircle },
       { key: '/asset/decrease', route: '/asset/decrease', label: 'Yêu cầu giảm tài sản', icon: icons.minusCircle },
       { key: '/asset/inventory', route: '/asset/inventory', label: 'Kiểm kê tài sản', icon: icons.audit },

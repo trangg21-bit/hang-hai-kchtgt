@@ -458,7 +458,7 @@ export default function PortDetailContent({
                 dataSource={parseGisCoordinates(selectedRecord).map((p) => ({ ...p }))}
                   emptyText="Chưa có tọa độ GPS nào"
                   columns={[
-                    { title: 'STT', width: 50 },
+                    { title: 'STT', width: 50, align: 'center' as const },
                     { title: 'Vĩ độ (Latitude - N)', key: 'lat', render: (_v: any, rec: any) => { const dms = ddToDms(rec.lat); return dms.d !== null ? `${dms.d}° ${dms.m ?? 0}' ${dms.s ?? 0}" N` : ''; } },
                     { title: 'Kinh độ (Longitude - E)', key: 'lng', render: (_v: any, rec: any) => { const dms = ddToDms(rec.lng); return dms.d !== null ? `${dms.d}° ${dms.m ?? 0}' ${dms.s ?? 0}" E` : ''; } },
                   ]}
@@ -479,11 +479,11 @@ export default function PortDetailContent({
                 dataSource={detailFiles.map((f) => ({ ...f }))}
                 emptyText="Chưa có tài liệu đính kèm"
                 columns={[
-                  { title: 'STT', width: 50 },
+                  { title: 'STT', width: 50, align: 'center' as const },
                   { title: 'Tên tài liệu', dataIndex: 'fileName', key: 'fileName', render: (v: string, rec: any) => { const isImg = /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(v || ''); return (<span title={isImg ? `${v} (Nhấp để xem chi tiết ảnh)` : `${v} (Nhấp để tải xuống)`} onClick={() => { if (isImg) openFilePreview(rec); else void downloadAttachment(rec?.id, v); }} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: actionPrimary, fontWeight: fontWeightMedium, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{isImg ? <FileImageOutlined style={{ color: actionPrimary, flexShrink: 0 }} /> : <FileOutlined style={{ color: textTertiary, flexShrink: 0 }} />}<span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v || ''}</span></span>); } },
-                  { title: 'Dung lượng', dataIndex: 'fileSize', key: 'fileSize', width: 120, align: 'right' as const, render: (v: number) => v ? (v > 1024 * 1024 ? `${(v / (1024 * 1024)).toFixed(2)} MB` : `${(v / 1024).toFixed(1)} KB`) : '' },
+                  { title: 'Dung lượng', dataIndex: 'fileSize', key: 'fileSize', width: 120, align: 'left' as const, render: (v: number) => v ? (v > 1024 * 1024 ? `${(v / (1024 * 1024)).toFixed(2)} MB` : `${(v / 1024).toFixed(1)} KB`) : '' },
                   { title: 'Người tải lên', dataIndex: 'uploadedBy', key: 'uploadedBy', width: 180, render: (v: string) => userMap.get(v) || v || '' },
-                  { title: 'Ngày tải lên', dataIndex: 'uploadedAt', key: 'uploadedAt', width: 135, align: 'center' as const, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '' },
+                  { title: 'Ngày tải lên', dataIndex: 'uploadedAt', key: 'uploadedAt', width: 150, align: 'left' as const, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '' },
                   {
                     title: 'Thao tác',
                     key: 'actions',
@@ -539,7 +539,7 @@ export default function PortDetailContent({
                     emptyText="Chưa có dữ liệu"
                     rowKey={(r: any) => r.id || r.name}
                     columns={[
-                      { title: 'STT', width: 50 },
+                      { title: 'STT', width: 50, align: 'center' as const },
                       { title: 'Loại kết cấu hạ tầng', dataIndex: 'typeLabel', key: 'type', render: (v: string, rec: any) => <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{rec.typeLabel || v || ''}</span> },
                       { title: 'Tên kết cấu hạ tầng', dataIndex: 'name', key: 'name', render: (v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: actionPrimary, cursor: 'pointer', fontWeight: fontWeightBold }} onClick={() => openKchtDetail(rec.kchtType, rec.id)}>{v || ''}</span> },
                       { title: 'Thao tác', key: 'actions', width: 100, align: 'center' as const, render: (_v: any, rec: any) => (
@@ -571,7 +571,7 @@ export default function PortDetailContent({
                     emptyText="Chưa có dữ liệu"
                     rowKey={(r: any) => r.stt ?? r.infraName ?? r.name}
                     columns={[
-                      { title: 'STT', width: 50 },
+                      { title: 'STT', width: 50, align: 'center' as const },
                       { title: 'Tên công trình', dataIndex: 'infraName', key: 'name', render: (v: string, rec: any) => v || rec.name || '' },
                       { title: 'Số lượng', dataIndex: 'quantity', key: 'qty', width: 100, align: 'center' as const, render: (v: number) => v ?? '' },
                     ]}
@@ -603,9 +603,9 @@ export default function PortDetailContent({
                     emptyText="Chưa có dữ liệu"
                     rowKey={(r: any) => r?.id || r?.planDecisionNo || r?.planNo || 'row'}
                     columns={[
-                      { title: 'STT', width: 50 },
+                      { title: 'STT', width: 50, align: 'center' as const },
                       { title: 'Số quyết định quy hoạch', dataIndex: 'planDecisionNo', key: 'planNo', render: (v: string, rec: any) => v || rec?.decisionNo || rec?.planNo || '' },
-                      { title: 'Ngày quyết định quy hoạch', dataIndex: 'planDecisionDate', key: 'planDate', width: 320, align: 'center' as const, render: (v: string, rec: any) => dayjs(v || rec?.decisionDate || rec?.planDate).isValid() ? dayjs(v || rec?.decisionDate || rec?.planDate).format('DD/MM/YYYY') : '' },
+                      { title: 'Ngày quyết định quy hoạch', dataIndex: 'planDecisionDate', key: 'planDate', width: 320, align: 'left' as const, render: (v: string, rec: any) => dayjs(v || rec?.decisionDate || rec?.planDate).isValid() ? dayjs(v || rec?.decisionDate || rec?.planDate).format('DD/MM/YYYY') : '' },
                     ]}
                   />
                 )}
@@ -635,11 +635,11 @@ export default function PortDetailContent({
                     emptyText="Chưa có dữ liệu"
                     rowKey={(r: any) => r?.id || r?.opPlanCode || r?.planCode || 'row'}
                     columns={[
-                      { title: 'STT', width: 50 },
+                      { title: 'STT', width: 50, align: 'center' as const },
                       { title: 'Mã kế hoạch', dataIndex: 'opPlanCode', key: 'code', render: (v: string, rec: any) => v || rec?.planCode || (rec?.code ?? '') },
                       { title: 'Tên kế hoạch', dataIndex: 'opPlanName', key: 'name', render: (v: string, rec: any) => v || rec?.planName || (rec?.name ?? '') },
-                      { title: 'Ngày bắt đầu', dataIndex: 'opStartDate', key: 'start', width: 150, align: 'center' as const, render: (v: string, rec: any) => dayjs(v || rec?.planStartDate || rec?.startDate).isValid() ? dayjs(v || rec?.planStartDate || rec?.startDate).format('DD/MM/YYYY') : '' },
-                      { title: 'Ngày kết thúc', dataIndex: 'opEndDate', key: 'end', width: 150, align: 'center' as const, render: (v: string, rec: any) => dayjs(v || rec?.planEndDate || rec?.endDate).isValid() ? dayjs(v || rec?.planEndDate || rec?.endDate).format('DD/MM/YYYY') : '' },
+                      { title: 'Ngày bắt đầu', dataIndex: 'opStartDate', key: 'start', width: 150, align: 'left' as const, render: (v: string, rec: any) => dayjs(v || rec?.planStartDate || rec?.startDate).isValid() ? dayjs(v || rec?.planStartDate || rec?.startDate).format('DD/MM/YYYY') : '' },
+                      { title: 'Ngày kết thúc', dataIndex: 'opEndDate', key: 'end', width: 150, align: 'left' as const, render: (v: string, rec: any) => dayjs(v || rec?.planEndDate || rec?.endDate).isValid() ? dayjs(v || rec?.planEndDate || rec?.endDate).format('DD/MM/YYYY') : '' },
                     ]}
                   />
                 )}
@@ -663,11 +663,11 @@ export default function PortDetailContent({
                     emptyText="Chưa có dữ liệu"
                     rowKey={(r: any) => r?.id || r?.maintCode || r?.planCode || 'row'}
                     columns={[
-                      { title: 'STT', width: 50 },
+                      { title: 'STT', width: 50, align: 'center' as const },
                       { title: 'Mã kế hoạch', dataIndex: 'maintCode', key: 'code', render: (v: string, rec: any) => v || rec?.planCode || (rec?.code ?? '') },
                       { title: 'Tên kế hoạch', dataIndex: 'maintName', key: 'name', render: (v: string, rec: any) => v || rec?.planName || (rec?.name ?? '') },
-                      { title: 'Thời gian bắt đầu', dataIndex: 'maintStart', key: 'start', width: 150, align: 'center' as const, render: (v: string, rec: any) => dayjs(v || rec?.startTime || rec?.startDate).isValid() ? dayjs(v || rec?.startTime || rec?.startDate).format('DD/MM/YYYY') : '' },
-                      { title: 'Thời gian kết thúc', dataIndex: 'maintEnd', key: 'end', width: 150, align: 'center' as const, render: (v: string, rec: any) => dayjs(v || rec?.endTime || rec?.endDate).isValid() ? dayjs(v || rec?.endTime || rec?.endDate).format('DD/MM/YYYY') : '' },
+                      { title: 'Thời gian bắt đầu', dataIndex: 'maintStart', key: 'start', width: 150, align: 'left' as const, render: (v: string, rec: any) => dayjs(v || rec?.startTime || rec?.startDate).isValid() ? dayjs(v || rec?.startTime || rec?.startDate).format('DD/MM/YYYY') : '' },
+                      { title: 'Thời gian kết thúc', dataIndex: 'maintEnd', key: 'end', width: 150, align: 'left' as const, render: (v: string, rec: any) => dayjs(v || rec?.endTime || rec?.endDate).isValid() ? dayjs(v || rec?.endTime || rec?.endDate).format('DD/MM/YYYY') : '' },
                     ]}
                   />
                 )}
@@ -691,11 +691,11 @@ export default function PortDetailContent({
                     emptyText="Chưa có dữ liệu"
                     rowKey={(r: any) => r?.id || r?.incidentCode || 'row'}
                     columns={[
-                      { title: 'STT', width: 50 },
+                      { title: 'STT', width: 50, align: 'center' as const },
                       { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'code', render: (v: string, rec: any) => v || rec?.code || '' },
                       { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'type', render: (v: string, rec: any) => v || rec?.type || '' },
                       { title: 'Địa điểm', dataIndex: 'incidentLocation', key: 'location', render: (v: string, rec: any) => v || rec?.location || '' },
-                      { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 150, align: 'center' as const, render: (v: string, rec: any) => dayjs(v || rec?.time).isValid() ? dayjs(v || rec?.time).format('DD/MM/YYYY') : '' },
+                      { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 150, align: 'left' as const, render: (v: string, rec: any) => dayjs(v || rec?.time).isValid() ? dayjs(v || rec?.time).format('DD/MM/YYYY') : '' },
                     ]}
                   />
                 )}

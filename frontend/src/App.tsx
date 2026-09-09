@@ -89,6 +89,7 @@ const AssetIncreaseList = lazy(() => import('./pages/assetmovement/AssetIncrease
 const AssetDecreaseList = lazy(() => import('./pages/assetmovement/AssetDecreaseList'));
 const InventoryList = lazy(() => import('./pages/assetmovement/InventoryList'));
 const AssetExploitationList = lazy(() => import('./pages/assetmovement/AssetExploitationList'));
+const PortTerminalAssetList = lazy(() => import('./pages/assetmovement/PortTerminalAssetList'));
 const LegalDocumentList = lazy(() => import('./pages/document/LegalDocumentList'));
 const IncidentList = lazy(() => import('./pages/document/IncidentList'));
 const PortPlanningList = lazy(() => import('./pages/document/PortPlanningList'));
@@ -279,6 +280,7 @@ export default function App() {
                 <Route path="/ais-system" element={<PermissionGuard permission="aissystem:read"><AisSystemList /></PermissionGuard>} />
 
                 {/* M-005: Biến động tài sản */}
+                <Route path="/asset/berth" element={<PermissionGuard permission="infraasset:manage"><PortTerminalAssetList /></PermissionGuard>} />
                 <Route path="/asset/increase" element={<PermissionGuard permission="assetincrease:manage"><AssetIncreaseList /></PermissionGuard>} />
                 <Route path="/asset/decrease" element={<PermissionGuard permission="assetdecrease:manage"><AssetDecreaseList /></PermissionGuard>} />
                 <Route path="/asset/inventory" element={<PermissionGuard permission="inventoryasset:manage"><InventoryList /></PermissionGuard>} />

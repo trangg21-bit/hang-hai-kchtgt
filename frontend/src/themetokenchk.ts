@@ -1455,8 +1455,15 @@ textarea.ant-input {
 /* ── DatePicker Dropdown & Calendar Styling ── */
 .ant-picker-dropdown {
   border-radius: 12px !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+  box-shadow: none !important;
+  background: transparent !important;
   z-index: 1200 !important;
+}
+
+.ant-picker-dropdown .ant-picker-panel-container {
+  border-radius: 12px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+  overflow: hidden !important;
 }
 
 .chk-form-datepicker-popup.ant-picker-dropdown {
@@ -1464,9 +1471,9 @@ textarea.ant-input {
   min-width: 100% !important;
   max-width: 100% !important;
   border-radius: 12px !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+  box-shadow: none !important;
   z-index: 1500 !important;
-  background: #ffffff !important;
+  background: transparent !important;
 }
 
 .chk-form-datepicker-popup .ant-picker-panel-container {
@@ -1474,9 +1481,14 @@ textarea.ant-input {
   min-width: 100% !important;
   max-width: 100% !important;
   border-radius: 12px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
   overflow: hidden !important;
   background: #ffffff !important;
   border: 1px solid ${borderDefault} !important;
+}
+
+.chk-form-datepicker-popup .ant-picker-panel-layout {
+  width: 100% !important;
 }
 
 .chk-form-datepicker-popup .ant-picker-panel {
@@ -2091,11 +2103,22 @@ textarea.ant-input {
  * - DatePicker.RangePicker: popupClassName="chk-range-datepicker-popup", kích thước x2 (2 panel cạnh nhau 560px), ô ngày 26px đồng bộ.
  * - DatePicker.RangePicker (Sidebar): popupClassName="chk-sidebar-range-datepicker-popup", kích thước 1 panel ôm trọn thanh Sidebar 280px.
  */
-export const getDatePickerProps = (extraProps?: Record<string, any>) => {
-  const { classNames: extraClassNames, getPopupContainer, ...rest } = extraProps || {};
+export const getDatePickerProps = (extraProps?: Record<string, unknown>) => {
+  const { classNames: extraClassNames, getPopupContainer, popupClassName: extraPopupClassName, ...rest } = (extraProps || {}) as {
+    classNames?: { popup?: string | { root?: string } };
+    getPopupContainer?: (trigger: HTMLElement) => HTMLElement;
+    popupClassName?: string;
+    [key: string]: unknown;
+  };
   return {
     format: 'DD/MM/YYYY',
     getPopupContainer: getPopupContainer || ((trigger: HTMLElement) => trigger.closest('.ant-form-item-control-input-content') || trigger.parentElement || document.body),
+    popupClassName: [
+      'chk-form-datepicker-popup',
+      typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
+      typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
+      extraPopupClassName,
+    ].filter(Boolean).join(' '),
     classNames: {
       ...extraClassNames,
       popup: {
@@ -2104,6 +2127,7 @@ export const getDatePickerProps = (extraProps?: Record<string, any>) => {
           'chk-form-datepicker-popup',
           typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
           typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
+          extraPopupClassName,
         ].filter(Boolean).join(' '),
       },
     },

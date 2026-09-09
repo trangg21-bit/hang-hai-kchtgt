@@ -16,6 +16,7 @@ import {
   surfaceCard, readonlyInputStyle, sidebarBg,
   drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
   primaryButtonStyle, outlineButtonStyle, drawerTabBarStyle, drawerFormScrollStyle,
+  getDatePickerProps,
 } from '../../themetokenchk';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -747,7 +748,7 @@ export default forwardRef(function StormShelterForm({ form, id, onFinish, onSubm
         <Row gutter={[24, 0]}>
           <Col span={12}>
             <Form.Item name="openingAnnouncementDate" {...labelProps('Thời điểm công bố mở, đưa ra sử dụng')} style={{ marginBottom: spaceFormField }}>
-              <DatePicker placeholder="Chọn thời điểm..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+              <DatePicker {...getDatePickerProps({ placeholder: 'Chọn thời điểm...' })} />
             </Form.Item>
           </Col>
         </Row>
