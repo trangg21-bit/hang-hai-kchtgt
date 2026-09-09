@@ -277,10 +277,40 @@ export const clientSideDateSorter = (key: string, fallbackKey?: string) => (a: a
   return aTime - bTime;
 };
 
+/** Kiểm tra chuỗi có phải UUID không */
+export const isUuidString = (val?: string | null): boolean => {
+  if (!val) return false;
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i.test(String(val).trim());
+};
+
+/** Định dạng tên hiển thị người dùng, TUYỆT ĐỐI KHÔNG fallback về ID/UUID */
+export const formatUserDisplayName = (
+  userId?: string | null,
+  userName?: string | null,
+  userMap?: Map<string, string>,
+  fallbackUserId?: string | null,
+  fallbackUserName?: string | null,
+): string => {
+  if (userId && userMap?.has(String(userId))) {
+    const mapped = userMap.get(String(userId));
+    if (mapped && !isUuidString(mapped)) return mapped;
+  }
+  if (userName && !isUuidString(userName)) return userName;
+  if (fallbackUserId && userMap?.has(String(fallbackUserId))) {
+    const mapped = userMap.get(String(fallbackUserId));
+    if (mapped && !isUuidString(mapped)) return mapped;
+  }
+  if (fallbackUserName && !isUuidString(fallbackUserName)) return fallbackUserName;
+  if (userId && !isUuidString(String(userId))) return String(userId);
+  return '—';
+};
+
 /** Hàm so sánh sắp xếp cột Cán bộ cập nhật (ưu tiên Họ và tên A-Z, sau đó theo ngày) */
 export const clientSideUserSorter = (nameKey = 'updatedByName', fallbackNameKey = 'createdByName', dateKey = 'updatedAt', fallbackDateKey = 'createdAt') => (a: any, b: any) => {
-  const nameA = a[nameKey] || (fallbackNameKey ? a[fallbackNameKey] : '') || '';
-  const nameB = b[nameKey] || (fallbackNameKey ? b[fallbackNameKey] : '') || '';
+  const rawA = a[nameKey] || (fallbackNameKey ? a[fallbackNameKey] : '') || '';
+  const rawB = b[nameKey] || (fallbackNameKey ? b[fallbackNameKey] : '') || '';
+  const nameA = !isUuidString(rawA) ? rawA : '';
+  const nameB = !isUuidString(rawB) ? rawB : '';
   const cmp = String(nameA).localeCompare(String(nameB), 'vi');
   if (cmp !== 0) return cmp;
   const timeA = a[dateKey] ? new Date(a[dateKey]).getTime() : (fallbackDateKey && a[fallbackDateKey] ? new Date(a[fallbackDateKey]).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0));

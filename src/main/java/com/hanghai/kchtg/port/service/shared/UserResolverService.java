@@ -22,6 +22,6 @@ public class UserResolverService {
                 .map(u -> (u.getFullName() != null && !u.getFullName().trim().isEmpty())
                         ? u.getFullName()
                         : u.getUsername())
-                .orElse(userId.toString());
+                .orElse(null);
     }
 }

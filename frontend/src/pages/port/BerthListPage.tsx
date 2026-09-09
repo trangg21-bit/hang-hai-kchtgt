@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Button,
   Modal,
@@ -253,6 +254,13 @@ function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; 
 // ── Component ────────────────────────────────────────────────────────
 
 export default function BerthList() {
+  const [searchParams] = useSearchParams();
+  const linkedAction = searchParams.get('action');
+  const linkedRecordId = searchParams.get('id');
+  const isEmbeddedAction = window.self !== window.top
+    && (linkedAction === 'detail' || linkedAction === 'edit')
+    && !!linkedRecordId;
+  const isEmbeddedDetail = isEmbeddedAction && linkedAction === 'detail';
   const hasPerm = usePermissionStore((s: { hasPermission: (key: string) => boolean }) => s.hasPermission);
   const userPermissions = useAuthStore((s) => s.user?.permissions) || [];
   const isAuditViewer = userPermissions.includes('admin:manage') || userPermissions.includes('admin:operation');
@@ -700,6 +708,61 @@ export default function BerthList() {
     } catch { /* keep initial data */ }
     finally { setDetailLoading(false); }
   }, []);
+
+  useEffect(() => {
+    if (!isEmbeddedAction || !linkedRecordId) return;
+    let cancelled = false;
+
+    berthCRUD.findById(linkedRecordId)
+      .then(async (record) => {
+        if (cancelled) return;
+        if (isEmbeddedDetail) {
+          setDetailDrawerVisible(true);
+          setDetailRecord(record);
+          setDetailLoading(true);
+          const files = await api.get(`/v1/berths/${linkedRecordId}/attachments`, { params: { page: 0, size: 50 } })
+            .then((response) => response.data?.data || [])
+            .catch(() => []);
+          if (!cancelled) setDetailFiles(files);
+        } else {
+          setEditBerthId(linkedRecordId);
+          setEditBerthName(record.berthName || '');
+          setEditBerthRecord(record);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          toast.error(error instanceof Error ? error.message : 'Không tải được chi tiết bến cảng');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isEmbeddedAction, isEmbeddedDetail, linkedRecordId]);
+
+  const notifyEmbeddedActionClosed = useCallback(() => {
+    if (isEmbeddedAction) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, window.location.origin);
+    }
+  }, [isEmbeddedAction]);
+
+  const closeDetailDrawer = useCallback(() => {
+    setDetailDrawerVisible(false);
+    setDetailRecord(null);
+    notifyEmbeddedActionClosed();
+  }, [notifyEmbeddedActionClosed]);
+
+  const closeEditDrawer = useCallback(() => {
+    setEditBerthId(undefined);
+    setEditBerthName('');
+    setEditBerthRecord(null);
+    updateForm.resetFields();
+    notifyEmbeddedActionClosed();
+  }, [notifyEmbeddedActionClosed, updateForm]);
 
   const ddToDms = (dd: number): { d: number; m: number; s: number } => {
     if (dd == null || isNaN(dd)) return { d: 0, m: 0, s: 0 };
@@ -1266,7 +1329,7 @@ export default function BerthList() {
         className="berth-drawer-scope"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin — {editBerthName || 'Bến cảng'}</span>}
         open={!!editBerthId}
-        onClose={() => { setEditBerthId(undefined); setEditBerthName(''); setEditBerthRecord(null); updateForm.resetFields(); }}
+        onClose={closeEditDrawer}
         footer={
           <div style={drawerFooterStyle}>
             {(!editBerthRecord?.approvalStatus || ['DRAFT', 'NHAP'].includes(editBerthRecord.approvalStatus.toUpperCase())) && (
@@ -1308,7 +1371,7 @@ export default function BerthList() {
         {editBerthId && (<>
           <style>{requiredMarkStyle}</style>
           <Form form={updateForm} layout="vertical" initialValues={{}}>
-            <BerthForm ref={editBerthFormRef} form={updateForm} id={editBerthId} onFinish={() => { setEditBerthId(undefined); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
+            <BerthForm ref={editBerthFormRef} form={updateForm} id={editBerthId} onFinish={() => { closeEditDrawer(); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
           </Form>
         </>)}
       </AppDrawer>
@@ -1316,12 +1379,12 @@ export default function BerthList() {
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
       <AppDrawer
         width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
-        style={{ maxWidth: '96vw' }}
+        style={{ maxWidth: isEmbeddedAction ? '100%' : '96vw' }}
         rootClassName="berth-drawer-scope"
         className="berth-drawer-scope"
         title={<span style={drawerTitleStyle}>Chi tiết bến cảng{detailRecord ? ` - ${detailRecord.berthName}` : ''}</span>}
         open={detailDrawerVisible}
-        onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); }}
+        onClose={closeDetailDrawer}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
           body: { padding: '0 24px 12px 24px', overflow: 'hidden' },

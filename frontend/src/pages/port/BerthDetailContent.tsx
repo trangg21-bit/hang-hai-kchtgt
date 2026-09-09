@@ -597,7 +597,7 @@ export default function BerthDetailContent({
                   <div className="chk-detail-grid">
                     {[
                       { label: 'Loại đối tượng', value: ({ POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' } as Record<string, string>)[(r as any).geometryType || ''] || (r as any).geometryType || '' },
-                      { label: 'Biểu tượng', value: (() => { const symId = r.mapSymbolId || ''; const symName = symbolMap.get(symId) || symId || ''; const symImg = symbolImageMap.get(symId); return <span style={{ display:'inline-flex',alignItems:'center',gap:8 }}>{symImg ? <img src={symImg} alt="" style={{ width:20,height:20,objectFit:'contain' }} /> : null}{symName}</span>; })() },
+                      { label: 'Biểu tượng', value: (() => { const symId = r.mapSymbolId || ''; const symName = symbolMap.get(symId) || symId || '—'; const symImg = symbolImageMap.get(symId); return <span style={{ display:'inline-flex',alignItems:'center',gap:8 }}>{symImg ? <img src={symImg} alt="" style={{ width:20,height:20,objectFit:'contain' }} /> : null}{symName}</span>; })() },
                       { label: 'Hệ quy chiếu', value: r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : (r.coordinateSystem ? String(r.coordinateSystem) : '') },
                       { label: 'Quy tắc hiển thị', value: ((r as any).geometryType || (r as any).coordinates || (r as any).latitude != null || (r as any).longitude != null) ? 'Độ, phút, giây (DMS)' : '' },
                     ].map((row, i) => (

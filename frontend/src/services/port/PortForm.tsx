@@ -682,10 +682,28 @@ export default function PortForm({
           </span>
           <Space size={8}>
             <Button
-              icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+              icon={<EnvironmentOutlined style={{ color: !geometryType ? undefined : actionPrimary }} />}
               onClick={() => setGisModalOpen(true)}
               disabled={!geometryType}
-              style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              style={!geometryType ? {
+                height: 32,
+                fontSize: fontSizeSm,
+                padding: '0 14px',
+                borderRadius: radiusPill,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                opacity: 0.6,
+                cursor: 'not-allowed',
+              } : {
+                ...outlineButtonStyle,
+                height: 32,
+                fontSize: fontSizeSm,
+                padding: '0 14px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
             >
               Chọn tọa độ trên bản đồ
             </Button>
@@ -693,8 +711,29 @@ export default function PortForm({
               type="primary"
               icon={<PlusOutlined />}
               onClick={addGpsPoint}
-              disabled={!geometryType}
-              style={{ ...primaryButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              disabled={!geometryType || (geometryType === 'POINT' && gpsCoordList.length >= 1)}
+              style={!geometryType || (geometryType === 'POINT' && gpsCoordList.length >= 1) ? {
+                height: 32,
+                fontSize: fontSizeSm,
+                padding: '0 14px',
+                borderRadius: radiusPill,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                background: '#f5f5f5',
+                borderColor: '#d9d9d9',
+                color: 'rgba(0, 0, 0, 0.25)',
+                cursor: 'not-allowed',
+              } : {
+                ...primaryButtonStyle,
+                height: 32,
+                fontSize: fontSizeSm,
+                padding: '0 14px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+              title={geometryType === 'POINT' && gpsCoordList.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 tọa độ GPS' : undefined}
             >
               Thêm tọa độ
             </Button>
@@ -708,12 +747,9 @@ export default function PortForm({
             borderRadius: radiusMd,
             background: surfaceCard,
           }}>
-            <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>
+            <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block' }}>
               Chưa có tọa độ nào.
             </span>
-            <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!geometryType} style={{ borderRadius: radiusPill }}>
-              Thêm tọa độ
-            </Button>
           </div>
         ) : (
           <>

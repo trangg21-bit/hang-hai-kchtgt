@@ -45,17 +45,28 @@ public class DocumentService {
     private static final List<String> ALLOWED_MIME_TYPES = List.of(
             "application/pdf",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/msword",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             "image/jpeg",
             "image/jpg",
-            "image/png"
+            "image/png",
+            "image/webp",
+            "image/tiff"
     );
 
     private static final List<String> ALLOWED_EXTENSIONS = List.of(
             "pdf",
             "docx",
+            "doc",
+            "xls",
+            "xlsx",
             "jpeg",
             "jpg",
-            "png"
+            "png",
+            "webp",
+            "tiff",
+            "tif"
     );
 
     private final DocumentRepository documentRepository;
@@ -285,7 +296,7 @@ public class DocumentService {
         if (!ALLOWED_MIME_TYPES.contains(normalized)) {
             log.warn("[DocumentService] MIME type bị từ chối: {}", contentType);
             throw new IllegalArgumentException(
-                    "Loại file không được hỗ trợ. Chỉ chấp nhận: PDF, DOCX, JPEG, JPG, PNG");
+                    "Loại file không được hỗ trợ. Chỉ chấp nhận: PDF, DOC, DOCX, XLS, XLSX, JPG, JPEG, PNG, WEBP, TIFF");
         }
     }
 

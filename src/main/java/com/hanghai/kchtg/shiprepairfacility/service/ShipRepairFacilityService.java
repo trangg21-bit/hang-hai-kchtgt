@@ -358,7 +358,7 @@ public class ShipRepairFacilityService {
             entry.setApprovalLevel(h.getApprovalLevel());
             entry.setStatus(h.getStatus() != null ? h.getStatus().getCode() : null);
             entry.setApprovedBy(h.getApprovedBy() != null
-                    ? userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
+                    ? userNames.getOrDefault(h.getApprovedBy(), null)
                     : null);
             entry.setApprovedDate(h.getApprovedDate());
             entry.setReason(h.getReason());
@@ -389,7 +389,7 @@ public class ShipRepairFacilityService {
         if (userId == null)
             return null;
         Map<UUID, String> map = resolveUserNames(Collections.singletonList(userId));
-        return map.getOrDefault(userId, userId.toString());
+        return map.getOrDefault(userId, null);
     }
 
     public List<ShipRepairFacilityResponse> search(UUID orgUnitId, String keyword, Integer provinceId,

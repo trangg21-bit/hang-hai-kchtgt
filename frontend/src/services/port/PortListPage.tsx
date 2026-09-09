@@ -1003,7 +1003,7 @@ export default function PortListPage() {
           try {
             const formData = new FormData();
             formData.append('file', f.originFileObj as File);
-            await api.post(`/v1/documents/upload/port/${createdPortId}`, formData, { headers: { 'Content-Type': undefined } });
+            await api.post(`/v1/documents/upload/port/${createdPortId}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
             uploaded++;
           } catch { /* non-blocking */ }
         }
@@ -1102,7 +1102,7 @@ export default function PortListPage() {
           try {
             const formData = new FormData();
             formData.append('file', f.originFileObj as File);
-            await api.post(`/v1/documents/upload/port/${selectedRecord.id}`, formData, { headers: { 'Content-Type': undefined } });
+            await api.post(`/v1/documents/upload/port/${selectedRecord.id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
             uploaded++;
           } catch { /* non-blocking */ }
         }

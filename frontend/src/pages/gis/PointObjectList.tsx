@@ -24,7 +24,7 @@ import { DeleteConfirmModal } from '../../components/shared/DeleteConfirmModal';
 import { CommonHistoryDrawer, type CommonHistoryEntry } from '../../components/shared/CommonHistoryDrawer';
 import PointObjectForm, { type PointObjectFormRef } from './PointObjectForm';
 import PointObjectDetailContent from './PointObjectDetailContent';
-import toast from '../../components/ToastNotification';
+import { userService } from '../../services/userService';
 import {
   actionPrimary,
   statusOperational,
@@ -46,6 +46,8 @@ import {
   surfacePage,
   icons,
   colors,
+  formatUserDisplayName,
+  isUuidString,
 } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
@@ -78,6 +80,7 @@ export default function PointObjectList() {
 
   // ── Reference data ──────────────────────────────────────────────
   const [symbols, setSymbols] = useState<MapSymbolItem[]>([]);
+  const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
 
   // ── Drawer & Modal states ────────────────────────────────────────
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
@@ -106,6 +109,15 @@ export default function PointObjectList() {
   // Load Map Symbols for select dropdown
   useEffect(() => {
     symbolService.list({ pageSize: 1000 }).then((res) => setSymbols(res.data || [])).catch(() => {});
+    userService.list({ pageSize: 1000 }).then((res) => {
+      const users = res.data || (res as any).content || [];
+      const map = new Map<string, string>();
+      users.forEach((u: any) => {
+        const name = u.fullName || u.username || '';
+        if (name && !isUuidString(name)) map.set(u.id, name);
+      });
+      setUserMap(map);
+    }).catch(() => {});
   }, []);
 
   // ── Fetch data ──────────────────────────────────────────────────
@@ -388,7 +400,7 @@ export default function PointObjectList() {
       width: 220,
       ellipsis: false,
       render: (v: string | null, record: SpatialObjectCategory) => {
-        const name = v || record.createdBy || 'SYSTEM';
+        const name = formatUserDisplayName(v, (record as any).updatedByName, userMap, record.createdBy, (record as any).createdByName);
         const date = record.updatedAt || record.createdAt;
         return (
           <div style={{ lineHeight: '1.35' }}>
@@ -444,7 +456,7 @@ export default function PointObjectList() {
         );
       },
     },
-  ], [page, pageSize, symbols, openDetailDrawer]);
+  ], [page, pageSize, symbols, userMap, openDetailDrawer]);
 
   // ── Row Actions ──────────────────────────────────────────────────
   const rowActions = useCallback((record: SpatialObjectCategory) => [
@@ -738,6 +750,7 @@ export default function PointObjectList() {
             <PointObjectDetailContent
               selectedRecord={detailRecord}
               symbols={symbols}
+              userMap={userMap}
             />
           )}
         </AppDrawer>

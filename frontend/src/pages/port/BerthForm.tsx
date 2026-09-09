@@ -240,6 +240,8 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
   const [waterwayOptions, setWaterwayOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [symbols, setSymbols] = useState<Symbol[]>([]);
   const [coordinateList, setCoordinateList] = useState<Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>>([]);
+  const hasCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null));
+  const hasLocation = Boolean(watchedGeometryType || hasCoordinates);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   useEffect(() => {
     (async () => {
@@ -419,6 +421,17 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
     if (!values.operationalStatus) {
       toast.error('Tình trạng là bắt buộc');
       setActiveTabKey('general');
+      return;
+    }
+
+    if (hasLocation && !values.mapSymbolId) {
+      toast.error('Vui lòng chọn biểu tượng bản đồ');
+      setActiveTabKey('location');
+      return;
+    }
+    if (hasCoordinates && !values.geometryType) {
+      toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
+      setActiveTabKey('location');
       return;
     }
 
@@ -626,7 +639,9 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
                   <DatePicker placeholder="Chọn thời điểm..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
                 </Form.Item>
               </Col>
-              <Col span={12}>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={24}>
                 <Form.Item name="openingDecision" {...labelProps('Quyết định công bố/ Văn bản cho phép khai thác')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.openingDecision ? 'error' : undefined} help={atMax.openingDecision ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
                   <Input placeholder="Nhập quyết định công bố" maxLength={2000} showCount style={inputStyle} />
                 </Form.Item>
@@ -659,12 +674,24 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
             </div>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
+                <Form.Item
+                  name="geometryType"
+                  {...labelProps('Loại đối tượng')}
+                  required={hasCoordinates}
+                  rules={hasCoordinates ? [{ required: true, message: 'Loại đối tượng là bắt buộc khi có tọa độ' }] : []}
+                  style={{ marginBottom: spaceFormField }}
+                >
                   <Select placeholder="Chọn loại đối tượng" allowClear options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="mapSymbolId" {...labelProps('Biểu tượng')} style={{ marginBottom: spaceFormField }}>
+                <Form.Item
+                  name="mapSymbolId"
+                  {...labelProps('Biểu tượng')}
+                  required={hasLocation}
+                  rules={hasLocation ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
+                  style={{ marginBottom: spaceFormField }}
+                >
                   <Select placeholder="Chọn biểu tượng bản đồ" allowClear showSearch optionFilterProp="label" disabled={!watchedGeometryType} style={selectStyle}>
                     {symbols.map(sym => (
                       <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>

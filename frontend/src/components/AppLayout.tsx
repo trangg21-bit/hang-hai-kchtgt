@@ -712,7 +712,15 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
     '/berth',
     '/pier',
     '/dry-port',
-    '/water-zone'
+    '/water-zone',
+    '/anchorage',
+    '/ais-system',
+    '/cctv',
+    '/scada',
+    '/transmission',
+    '/vts-assist',
+    '/vts-operation-center',
+    '/station/coastal'
   ].includes(location.pathname);
 
   if (isInIframe) {

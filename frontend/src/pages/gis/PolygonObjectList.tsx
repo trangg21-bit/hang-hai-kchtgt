@@ -24,6 +24,7 @@ import { DeleteConfirmModal } from '../../components/shared/DeleteConfirmModal';
 import { CommonHistoryDrawer, type CommonHistoryEntry } from '../../components/shared/CommonHistoryDrawer';
 import PolygonObjectForm, { type PolygonObjectFormRef } from './PolygonObjectForm';
 import PolygonObjectDetailContent from './PolygonObjectDetailContent';
+import { userService } from '../../services/userService';
 import toast from '../../components/ToastNotification';
 import {
   actionPrimary,
@@ -46,6 +47,8 @@ import {
   surfacePage,
   icons,
   colors,
+  formatUserDisplayName,
+  isUuidString,
 } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
@@ -78,6 +81,7 @@ export default function PolygonObjectList() {
 
   // ── Reference data ──────────────────────────────────────────────
   const [symbols, setSymbols] = useState<MapSymbolItem[]>([]);
+  const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
 
   // ── Drawer & Modal states ────────────────────────────────────────
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
@@ -106,6 +110,20 @@ export default function PolygonObjectList() {
   // Load Map Symbols for select dropdown
   useEffect(() => {
     symbolService.list({ pageSize: 1000 }).then((res) => setSymbols(res.data || [])).catch(() => {});
+  }, []);
+
+  // Load Users for displaying creator/updater names without UUID fallback
+  useEffect(() => {
+    userService.list({ pageSize: 1000 }).then(res => {
+      const map = new Map<string, string>();
+      (res?.items || []).forEach(u => {
+        const humanName = u.fullName || u.username;
+        if (humanName && !isUuidString(humanName)) {
+          map.set(u.id, humanName);
+        }
+      });
+      setUserMap(map);
+    }).catch(() => {});
   }, []);
 
   // ── Fetch data ──────────────────────────────────────────────────
@@ -388,7 +406,7 @@ export default function PolygonObjectList() {
       width: 220,
       ellipsis: false,
       render: (v: string | null, record: SpatialObjectCategory) => {
-        const name = v || record.createdBy || 'SYSTEM';
+        const name = formatUserDisplayName(v, (record as any).updatedByName, userMap, record.createdBy, (record as any).createdByName);
         const date = record.updatedAt || record.createdAt;
         return (
           <div style={{ lineHeight: '1.35' }}>
@@ -444,7 +462,7 @@ export default function PolygonObjectList() {
         );
       },
     },
-  ], [page, pageSize, symbols, openDetailDrawer]);
+  ], [page, pageSize, symbols, userMap, openDetailDrawer]);
 
   // ── Row Actions ──────────────────────────────────────────────────
   const rowActions = useCallback((record: SpatialObjectCategory) => [
@@ -738,6 +756,7 @@ export default function PolygonObjectList() {
             <PolygonObjectDetailContent
               selectedRecord={detailRecord}
               symbols={symbols}
+              userMap={userMap}
             />
           )}
         </AppDrawer>

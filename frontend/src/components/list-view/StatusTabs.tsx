@@ -18,6 +18,12 @@ export interface StatusTabsProps {
 }
 
 const StatusTabs: React.FC<StatusTabsProps> = ({ tabs = [], onChange }) => {
+  const safeTabs: StatusTab[] = Array.isArray(tabs)
+    ? tabs
+    : Array.isArray((tabs as any)?.tabs)
+      ? (tabs as any).tabs
+      : [];
+
   return (
     <div
       style={{
@@ -27,7 +33,7 @@ const StatusTabs: React.FC<StatusTabsProps> = ({ tabs = [], onChange }) => {
         flexWrap: 'wrap',
       }}
     >
-      {tabs.map((tab) => {
+      {safeTabs.map((tab) => {
         const tabColor = tab.color || actionPrimary;
         const isActive = tab.active ?? false;
         return (

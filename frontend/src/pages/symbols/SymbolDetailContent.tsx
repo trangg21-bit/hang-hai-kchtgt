@@ -5,19 +5,16 @@ import {
   AuditOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { colors } from '../../themetokenchk';
+import { colors, statusBadgeStyle } from '../../themetokenchk';
 import {
   actionPrimary,
   statusOperational,
   statusDraft,
-  fontSizeSm,
-  fontWeightMedium,
   fontWeightBold,
-  surfaceCard,
   surfacePage,
   borderDefault,
   radiusMd,
-  radiusPill,
+  formatUserDisplayName,
 } from '../../themetokenchk';
 import type { Symbol } from '../../services/symbolService';
 
@@ -25,13 +22,14 @@ const fontSizeMd = 13.5;
 
 export interface SymbolDetailContentProps {
   selectedRecord: Symbol;
+  userMap?: Map<string, string>;
 }
 
 const sectionBoxStyle: React.CSSProperties = {
   background: '#ffffff',
   border: '1px solid #e2e8f0',
   borderRadius: 8,
-  padding: '14px 18px 10px 18px',
+  padding: '12px 18px 8px 18px',
   marginBottom: 14,
   boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
 };
@@ -40,7 +38,7 @@ const sectionHeaderStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  marginBottom: 12,
+  marginBottom: 10,
   paddingBottom: 8,
   borderBottom: '1px solid #f1f5f9',
 };
@@ -56,19 +54,111 @@ const sectionTitleStyle: React.CSSProperties = {
 
 export const SymbolDetailContent: React.FC<SymbolDetailContentProps> = ({
   selectedRecord,
+  userMap,
 }) => {
   const isOperational = selectedRecord.status === 'active';
   const statusColor = isOperational ? statusOperational : statusDraft;
   const statusLabel = isOperational ? 'Sử dụng' : 'Không sử dụng';
 
   return (
-    <div style={{ paddingBottom: 16 }}>
-      {/* ── Section 1: Hình ảnh biểu tượng ── */}
+    <div className="symbol-detail-content-wrapper">
+      <style>{`
+        .symbol-detail-content-wrapper {
+          overflow-x: hidden !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+        }
+
+        .symbol-detail-content-wrapper,
+        .symbol-detail-content-wrapper .chk-detail-label,
+        .symbol-detail-content-wrapper .chk-detail-value {
+          font-size: 13.5px !important;
+        }
+
+        .symbol-detail-content-wrapper .chk-detail-grid {
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+          column-gap: 28px !important;
+          row-gap: 0 !important;
+        }
+
+        .symbol-detail-content-wrapper .chk-detail-row {
+          display: flex !important;
+          align-items: flex-start !important;
+          min-height: 36px !important;
+          padding: 7px 0 !important;
+          border-bottom: 1px solid #f1f5f9 !important;
+          line-height: 1.5 !important;
+          gap: 10px !important;
+        }
+
+        .symbol-detail-content-wrapper .chk-detail-row:last-child {
+          border-bottom: none !important;
+        }
+
+        .symbol-detail-content-wrapper .chk-detail-row--full {
+          grid-column: 1 / -1 !important;
+        }
+
+        .symbol-detail-content-wrapper .chk-detail-label {
+          width: 200px !important;
+          min-width: 200px !important;
+          max-width: 200px !important;
+          flex-shrink: 0 !important;
+          color: ${colors.sidebarBg} !important;
+          font-weight: 600 !important;
+          font-size: 13.5px !important;
+          text-align: left !important;
+          line-height: 1.5 !important;
+        }
+
+        .symbol-detail-content-wrapper .chk-detail-label::after {
+          content: ':' !important;
+          margin-left: 1px !important;
+          margin-right: 4px !important;
+        }
+
+        .symbol-detail-content-wrapper .chk-detail-value {
+          color: #1e293b !important;
+          font-size: 13.5px !important;
+          flex: 1 !important;
+          min-width: 0 !important;
+          text-align: left !important;
+          line-height: 1.5 !important;
+          word-break: break-word !important;
+        }
+
+        @media (max-width: 960px) {
+          .symbol-detail-content-wrapper .chk-detail-grid {
+            grid-template-columns: 1fr !important;
+            column-gap: 0 !important;
+          }
+          .symbol-detail-content-wrapper .chk-detail-row--full {
+            grid-column: 1 !important;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .symbol-detail-content-wrapper .chk-detail-row {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 3px !important;
+            padding: 6px 0 !important;
+          }
+          .symbol-detail-content-wrapper .chk-detail-label {
+            width: 100% !important;
+            min-width: 100% !important;
+            max-width: 100% !important;
+          }
+        }
+      `}</style>
+
+      {/* ── Section 1: Hình ảnh nhận diện biểu tượng ── */}
       <div style={sectionBoxStyle}>
         <div style={sectionHeaderStyle}>
           <span style={sectionTitleStyle}>
             <PictureOutlined style={{ color: actionPrimary }} />
-            Hình ảnh biểu tượng
+            Hình ảnh & nhận diện biểu tượng
           </span>
         </div>
         <div
@@ -76,15 +166,16 @@ export const SymbolDetailContent: React.FC<SymbolDetailContentProps> = ({
             display: 'flex',
             alignItems: 'center',
             gap: 24,
-            padding: '16px 20px',
-            background: surfaceCard,
+            padding: '14px 18px',
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0',
             borderRadius: radiusMd,
           }}
         >
           <div
             style={{
-              width: 88,
-              height: 88,
+              width: 80,
+              height: 80,
               background: surfacePage,
               border: `1px solid ${borderDefault}`,
               borderRadius: radiusMd,
@@ -106,28 +197,14 @@ export const SymbolDetailContent: React.FC<SymbolDetailContentProps> = ({
             )}
           </div>
           <div>
-            <div style={{ fontSize: fontSizeMd + 2, fontWeight: fontWeightBold, color: colors.sidebarBg, marginBottom: 4 }}>
+            <div style={{ fontSize: 15.5, fontWeight: fontWeightBold, color: colors.sidebarBg, marginBottom: 4 }}>
               {selectedRecord.name}
             </div>
-            <div style={{ fontSize: fontSizeMd, color: colors.textSecondary, marginBottom: 6 }}>
+            <div style={{ fontSize: 13.5, color: colors.textSecondary, marginBottom: 6 }}>
               Mã ký hiệu: <strong>{selectedRecord.code || '—'}</strong>
             </div>
             <div>
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  borderRadius: radiusPill,
-                  padding: '2px 10px',
-                  fontSize: fontSizeSm,
-                  fontWeight: fontWeightMedium,
-                  background: `${statusColor}15`,
-                  border: `1px solid ${statusColor}40`,
-                  color: statusColor,
-                }}
-              >
-                {statusLabel}
-              </span>
+              <span style={statusBadgeStyle(statusColor)}>{statusLabel}</span>
             </div>
           </div>
         </div>
@@ -141,78 +218,36 @@ export const SymbolDetailContent: React.FC<SymbolDetailContentProps> = ({
             Thông tin định danh & mô tả
           </span>
         </div>
-        <div
-          className="chk-detail-grid"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            columnGap: 24,
-            rowGap: 12,
-          }}
-        >
-          <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
-            <div style={{ color: colors.textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>
-              Mã biểu tượng
-            </div>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
-              {selectedRecord.code || '—'}
-            </div>
+        <div className="chk-detail-grid">
+          <div className="chk-detail-row">
+            <span className="chk-detail-label">Mã biểu tượng</span>
+            <span className="chk-detail-value">
+              {selectedRecord.code ? (
+                <span style={statusBadgeStyle(actionPrimary)}>{selectedRecord.code}</span>
+              ) : (
+                '—'
+              )}
+            </span>
           </div>
 
-          <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
-            <div style={{ color: colors.textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>
-              Trạng thái sử dụng
-            </div>
-            <div>
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  borderRadius: radiusPill,
-                  padding: '2px 10px',
-                  fontSize: fontSizeMd,
-                  fontWeight: fontWeightMedium,
-                  background: `${statusColor}15`,
-                  border: `1px solid ${statusColor}40`,
-                  color: statusColor,
-                }}
-              >
-                {statusLabel}
-              </span>
-            </div>
+          <div className="chk-detail-row">
+            <span className="chk-detail-label">Trạng thái sử dụng</span>
+            <span className="chk-detail-value">
+              <span style={statusBadgeStyle(statusColor)}>{statusLabel}</span>
+            </span>
           </div>
 
-          <div
-            style={{
-              gridColumn: '1 / -1',
-              padding: '8px 12px',
-              background: surfaceCard,
-              borderRadius: radiusMd,
-            }}
-          >
-            <div style={{ color: colors.textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>
-              Tên biểu tượng
-            </div>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>
-              {selectedRecord.name}
-            </div>
+          <div className="chk-detail-row chk-detail-row--full">
+            <span className="chk-detail-label">Tên biểu tượng</span>
+            <span className="chk-detail-value" style={{ fontWeight: fontWeightBold, color: colors.sidebarBg }}>
+              {selectedRecord.name || '—'}
+            </span>
           </div>
 
           {selectedRecord.description && (
-            <div
-              style={{
-                gridColumn: '1 / -1',
-                padding: '8px 12px',
-                background: surfaceCard,
-                borderRadius: radiusMd,
-              }}
-            >
-              <div style={{ color: colors.textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>
-                Mô tả chức năng / Công năng biểu tượng
-              </div>
-              <div style={{ color: colors.textPrimary, fontSize: fontSizeMd, lineHeight: 1.5 }}>
-                {selectedRecord.description}
-              </div>
+            <div className="chk-detail-row chk-detail-row--full">
+              <span className="chk-detail-label">Mô tả chức năng</span>
+              <span className="chk-detail-value">{selectedRecord.description}</span>
             </div>
           )}
         </div>
@@ -226,49 +261,39 @@ export const SymbolDetailContent: React.FC<SymbolDetailContentProps> = ({
             Thông tin quản trị hệ thống
           </span>
         </div>
-        <div
-          className="chk-detail-grid"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            columnGap: 24,
-            rowGap: 12,
-          }}
-        >
-          <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
-            <div style={{ color: colors.textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>
-              Cán bộ tạo lập
-            </div>
-            <div style={{ color: colors.textPrimary, fontWeight: fontWeightMedium, fontSize: fontSizeMd }}>
-              {selectedRecord.createdByName || selectedRecord.createdBy || 'SYSTEM'}
-            </div>
+        <div className="chk-detail-grid">
+          <div className="chk-detail-row">
+            <span className="chk-detail-label">Cán bộ tạo lập</span>
+            <span className="chk-detail-value">
+              {formatUserDisplayName(selectedRecord.createdBy, selectedRecord.createdByName, userMap)}
+            </span>
           </div>
 
-          <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
-            <div style={{ color: colors.textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>
-              Thời gian tạo lập
-            </div>
-            <div style={{ color: colors.textPrimary, fontWeight: fontWeightMedium, fontSize: fontSizeMd }}>
+          <div className="chk-detail-row">
+            <span className="chk-detail-label">Thời gian tạo lập</span>
+            <span className="chk-detail-value">
               {selectedRecord.createdAt ? dayjs(selectedRecord.createdAt).format('DD/MM/YYYY HH:mm:ss') : '—'}
-            </div>
+            </span>
           </div>
 
-          <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
-            <div style={{ color: colors.textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>
-              Cán bộ cập nhật gần nhất
-            </div>
-            <div style={{ color: colors.textPrimary, fontWeight: fontWeightMedium, fontSize: fontSizeMd }}>
-              {selectedRecord.updatedByName || selectedRecord.updatedBy || selectedRecord.createdByName || 'SYSTEM'}
-            </div>
+          <div className="chk-detail-row">
+            <span className="chk-detail-label">Cán bộ cập nhật gần nhất</span>
+            <span className="chk-detail-value">
+              {formatUserDisplayName(
+                selectedRecord.updatedBy,
+                selectedRecord.updatedByName,
+                userMap,
+                selectedRecord.createdBy,
+                selectedRecord.createdByName
+              )}
+            </span>
           </div>
 
-          <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
-            <div style={{ color: colors.textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>
-              Thời gian cập nhật gần nhất
-            </div>
-            <div style={{ color: colors.textPrimary, fontWeight: fontWeightMedium, fontSize: fontSizeMd }}>
+          <div className="chk-detail-row">
+            <span className="chk-detail-label">Thời gian cập nhật gần nhất</span>
+            <span className="chk-detail-value">
               {selectedRecord.updatedAt ? dayjs(selectedRecord.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}
-            </div>
+            </span>
           </div>
         </div>
       </div>

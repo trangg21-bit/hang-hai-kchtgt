@@ -974,7 +974,7 @@ export default function DikeRevetmentList() {
             try {
               const formData = new FormData();
               formData.append('files', f.originFileObj as File);
-              await api.post(`/v1/dike-revetment/${savedId}/attachments`, formData, { headers: { 'Content-Type': undefined } });
+              await api.post(`/v1/dike-revetment/${savedId}/attachments`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
               uploaded++;
             } catch { /* non-blocking */ }
           }

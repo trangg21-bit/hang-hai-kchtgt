@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
+import dayjs from 'dayjs';
 import {
   Row, Col, Form, Input, Select, InputNumber, Tabs,
   Button, Space, Modal,
 } from 'antd';
 import type { UploadFile } from 'antd';
-import { PlusOutlined, DeleteOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, EnvironmentOutlined, BankOutlined, SlidersOutlined } from '@ant-design/icons';
 import { colors, DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
@@ -26,6 +27,7 @@ import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { shipRepairYardCRUD, portCRUD, pierCRUD } from '../../services/portService';
 import { symbolService } from '../../services/symbolService';
 import type { Symbol as IconSymbol } from '../../services/symbolService';
+import { userService } from '../../services/userService';
 import { useAuthStore } from '../../store/authStore';
 import { GEOMETRY_POINT_COUNT, validateDmsCoordinates, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
 
@@ -36,6 +38,34 @@ const labelProps = (text: string) => ({
 const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
+
+// Style cho thẻ phân nhóm (Section Card) đồng bộ với BerthForm / BuoyForm
+const sectionBoxStyle: React.CSSProperties = {
+  background: '#ffffff',
+  border: '1px solid #e2e8f0',
+  borderRadius: 8,
+  padding: '14px 18px 10px 18px',
+  marginBottom: 14,
+  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+};
+
+const sectionHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginBottom: 12,
+  paddingBottom: 8,
+  borderBottom: '1px solid #f1f5f9',
+};
+
+const sectionTitleStyle: React.CSSProperties = {
+  color: colors.sidebarBg,
+  fontWeight: fontWeightBold,
+  fontSize: fontSizeMd + 0.5,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+};
 
 const OPERATIONAL_STATUS_OPTIONS = [
   { value: 'OPERATIONAL', label: 'Đang khai thác/vận hành' },
@@ -225,7 +255,6 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   const isEdit = !!id;
   const [, setSubmitting] = useState(false);
   const [activeTabKey, setActiveTabKey] = useState('general');
-  const [specialOpen, setSpecialOpen] = useState(true);
   const [shipRepairYardCodeLoading, setShipRepairYardCodeLoading] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
   const isSystemAdmin = currentUser?.permissions?.includes('*') ?? false;
@@ -257,11 +286,26 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   const [pierOptions, setPierOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [symbols, setSymbols] = useState<IconSymbol[]>([]);
   const [coordinateList, setCoordinateList] = useState<Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>>([]);
+  const hasCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null));
+  const hasLocation = Boolean(watchedGeometryType || hasCoordinates);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const [gpsPage] = useState(1);
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
   const [, setExistingFiles] = useState<any[]>([]);
+  const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await userService.list({ pageSize: 1000 });
+        const users = resp.data || (resp as any).content || [];
+        const map = new Map<string, string>();
+        users.forEach((u: any) => map.set(u.id, u.fullName || u.username || u.id));
+        setUserMap(map);
+      } catch { /* ignore */ }
+    })();
+  }, []);
 
   useEffect(() => { symbolService.list({ page: 1, pageSize: 1000, status: 'active' }).then(r => setSymbols(r.data || [])).catch(() => {}); }, []);
   useEffect(() => { setLoadingOrgs(true); organizationService.list({ pageSize: 1000 }).then(r => setOrgUnits(r.data || [])).catch(() => {}).finally(() => setLoadingOrgs(false)); }, []);
@@ -359,7 +403,28 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
     if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB, vui lòng chọn file khác'); return false; }
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) { toast.error('Định dạng không hỗ trợ'); return false; }
-    setUploadedFiles(p => [...p, { uid: `${Date.now()}`, name: file.name, status: 'done', originFileObj: file as any }]);
+    if (uploadedFiles.length >= 10) { toast.error('Tối đa 10 file'); return false; }
+    const nowIso = dayjs().toISOString();
+    const uploaderName = currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý';
+    setUploadedFiles(p => [
+      ...p,
+      {
+        uid: `rc-upload-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        name: file.name,
+        fileName: file.name,
+        size: file.size,
+        fileSize: file.size,
+        type: file.type,
+        fileType: file.type,
+        uploadedByName: uploaderName,
+        uploadedBy: currentUser?.userId || currentUser?.id || uploaderName,
+        uploadedDate: nowIso,
+        uploadedAt: nowIso,
+        createdAt: nowIso,
+        status: 'done',
+        originFileObj: file as any,
+      } as any,
+    ]);
     return false;
   };
 
@@ -398,6 +463,17 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
     if (!values.operationalStatus) {
       toast.error('Tình trạng là bắt buộc');
       setActiveTabKey('general');
+      return false;
+    }
+
+    if (hasLocation && !values.mapSymbolId) {
+      toast.error('Vui lòng chọn biểu tượng bản đồ');
+      setActiveTabKey('location');
+      return false;
+    }
+    if (hasCoordinates && !values.geometryType) {
+      toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
+      setActiveTabKey('location');
       return false;
     }
 
@@ -468,132 +544,158 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   const tabItems = [
     // Tab 1: Thông tin chung
     { key: 'general', label: 'Thông tin chung', children: (<div style={drawerFormScrollStyle}>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị quản lý không được để trống' }]}>
-            <OrgUnitTreeSelect organizations={orgUnits} placeholder="Chọn đơn vị quản lý..." loading={loadingOrgs} disabled={isEdit || !isSystemAdmin} showPath treeDefaultExpandAll={false} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="portId" {...labelProps('Thuộc cảng biển')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Thuộc cảng biển không được để trống' }]}>
-            <Select placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : portOptions.length === 0 && !loadingPorts ? 'Không có cảng biển thuộc đơn vị quản lý' : 'Chọn cảng biển...'}
-              loading={loadingPorts} disabled={!watchedOrgUnitId || (portOptions.length === 0 && !loadingPorts)} options={portOptions}
-              showSearch optionFilterProp="label" notFoundContent="Không có cảng biển thuộc đơn vị quản lý" style={selectStyle} />
-          </Form.Item>
-        </Col>
-      </Row>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item name="pierId" {...labelProps('Thuộc cầu cảng')} style={{ marginBottom: spaceFormField }}>
-            <Select placeholder={!watchedPortId ? 'Vui lòng chọn cảng biển trước' : pierOptions.length === 0 ? 'Không có cầu cảng được phê duyệt' : 'Chọn cầu cảng...'}
-              disabled={!watchedPortId || pierOptions.length === 0} options={pierOptions} showSearch allowClear optionFilterProp="label" notFoundContent="Không có cầu cảng được phê duyệt" style={selectStyle} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="shipRepairYardCode" {...labelProps('Mã cơ sở sửa chữa, đóng tàu')} style={{ marginBottom: spaceFormField }} tooltip="Mã cơ sở sửa chữa, đóng tàu được sinh tự động">
-            <Input disabled placeholder={shipRepairYardCodeLoading ? 'Đang sinh mã...' : watchedPortId ? 'Mã tự động' : 'Chọn Cảng biển để sinh mã'} style={readonlyInputStyle} />
-          </Form.Item>
-        </Col>
-      </Row>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item name="shipRepairYardName" {...labelProps('Tên cơ sở sửa chữa, đóng tàu')} style={{ marginBottom: spaceFormField }}
-            rules={[{ required: true, message: 'Tên cơ sở sửa chữa, đóng tàu không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}
-            validateStatus={atMax.shipRepairYardName ? 'error' : undefined} help={atMax.shipRepairYardName ? 'Đã đạt tối đa 255 ký tự' : undefined}>
-            <Input placeholder="Nhập tên cơ sở sửa chữa, đóng tàu" maxLength={255} showCount style={inputStyle} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành phố)')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Địa điểm (Tỉnh/Thành phố) không được để trống' }]}>
-            <Select placeholder="Chọn địa điểm" showSearch optionFilterProp="label"
-              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-              options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))} style={selectStyle} />
-          </Form.Item>
-        </Col>
-      </Row>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item name="detailedLocation" {...labelProps('Địa điểm chi tiết')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Địa điểm chi tiết không được để trống' }]}
-            validateStatus={atMax.detailedLocation ? 'error' : undefined} help={atMax.detailedLocation ? 'Đã đạt tối đa 500 ký tự' : undefined}>
-            <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} required style={{ marginBottom: spaceFormField }} initialValue="OPERATIONAL" rules={[{ required: true, message: 'Tình trạng không được để trống' }]}>
-            <Select placeholder="Chọn tình trạng" options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />
-          </Form.Item>
-        </Col>
-      </Row>
-      <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, marginBottom: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setSpecialOpen(!specialOpen)}>
-        <span style={{ color: specialOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{specialOpen ? '▼' : '▶'} Thông tin đặc thù cơ sở sửa chữa, đóng tàu</span>
-      </button>
-      {specialOpen && (<div>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item name="usageFunction" {...labelProps('Công năng sử dụng')} style={{ marginBottom: spaceFormField }}>
-            <Select placeholder="Chọn công năng sử dụng" options={USAGE_FUNCTION_OPTIONS} showSearch allowClear optionFilterProp="label" style={selectStyle} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="workshopArea" {...labelProps('Diện tích nhà xưởng, kho bãi')} style={{ marginBottom: spaceFormField }}
-            validateStatus={atMax.workshopArea ? 'error' : undefined} help={atMax.workshopArea ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-            <InputNumber min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
-          </Form.Item>
-        </Col>
-      </Row>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item name="vesselType" {...labelProps('Loại tàu đóng mới, sửa chữa')} style={{ marginBottom: spaceFormField }}>
-            <Select placeholder="Chọn loại tàu đóng mới, sửa chữa" options={VESSEL_TYPE_OPTIONS} showSearch allowClear optionFilterProp="label" style={selectStyle} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="vesselDwt" {...labelProps('Cỡ tàu')} style={{ marginBottom: spaceFormField }}
-            validateStatus={atMax.vesselDwt ? 'error' : undefined} help={atMax.vesselDwt ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-            <Input placeholder="Nhập cỡ tàu" maxLength={20} showCount style={inputStyle} />
-          </Form.Item>
-        </Col>
-      </Row>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item name="businessType" {...labelProps('Loại hình doanh nghiệp')} style={{ marginBottom: spaceFormField }}>
-            <Select placeholder="Chọn loại hình doanh nghiệp" options={BUSINESS_TYPE_OPTIONS} showSearch allowClear optionFilterProp="label" style={selectStyle} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="activity" {...labelProps('Hoạt động')} style={{ marginBottom: spaceFormField }}>
-            <Select placeholder="Chọn hoạt động" options={ACTIVITY_OPTIONS} showSearch allowClear optionFilterProp="label" style={selectStyle} />
-          </Form.Item>
-        </Col>
-      </Row>
-      <Row gutter={[24, 0]}>
-        <Col span={12}>
-          <Form.Item name="slipwayCount" {...labelProps('Số lượng triền đà')} style={{ marginBottom: spaceFormField }}
-            validateStatus={atMax.slipwayCount ? 'error' : undefined} help={atMax.slipwayCount ? 'Đã đạt tối đa 5 ký tự' : undefined}>
-            <InputNumber min={0} placeholder="0" maxLength={5} style={numberInputStyle} />
-          </Form.Item>
-        </Col>
-      </Row>
-      <Row gutter={[24, 0]}>
-        <Col span={24}>
-          <Form.Item name="remarks" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }}
-            validateStatus={atMax.remarks ? 'error' : undefined} help={atMax.remarks ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
-            <Input.TextArea rows={2} maxLength={2000} showCount placeholder="Nhập ghi chú" style={{ borderRadius: radiusPill, height: 'auto' }} />
-          </Form.Item>
-        </Col>
-      </Row>
-      </div>)}
+      {/* ── Section 1: Thông tin cơ bản & Quản lý vận hành ── */}
+      <div style={sectionBoxStyle}>
+        <div style={sectionHeaderStyle}>
+          <div style={sectionTitleStyle}>
+            <BankOutlined style={{ color: actionPrimary }} />
+            <span>Thông tin cơ bản & Quản lý vận hành</span>
+          </div>
+        </div>
+        <Row gutter={[24, 0]}>
+          <Col span={12}>
+            <Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị quản lý không được để trống' }]}>
+              <OrgUnitTreeSelect organizations={orgUnits} placeholder="Chọn đơn vị quản lý..." loading={loadingOrgs} disabled={isEdit || !isSystemAdmin} showPath treeDefaultExpandAll={false} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="portId" {...labelProps('Thuộc cảng biển')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Thuộc cảng biển không được để trống' }]}>
+              <Select placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : portOptions.length === 0 && !loadingPorts ? 'Không có cảng biển thuộc đơn vị quản lý' : 'Chọn cảng biển...'}
+                loading={loadingPorts} disabled={!watchedOrgUnitId || (portOptions.length === 0 && !loadingPorts)} options={portOptions}
+                showSearch optionFilterProp="label" notFoundContent="Không có cảng biển thuộc đơn vị quản lý" style={selectStyle} />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={[24, 0]}>
+          <Col span={12}>
+            <Form.Item name="pierId" {...labelProps('Thuộc cầu cảng')} style={{ marginBottom: spaceFormField }}>
+              <Select placeholder={!watchedPortId ? 'Vui lòng chọn cảng biển trước' : pierOptions.length === 0 ? 'Không có cầu cảng được phê duyệt' : 'Chọn cầu cảng...'}
+                disabled={!watchedPortId || pierOptions.length === 0} options={pierOptions} showSearch allowClear optionFilterProp="label" notFoundContent="Không có cầu cảng được phê duyệt" style={selectStyle} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="shipRepairYardCode" {...labelProps('Mã cơ sở sửa chữa, đóng tàu')} style={{ marginBottom: spaceFormField }} tooltip="Mã cơ sở sửa chữa, đóng tàu được sinh tự động">
+              <Input disabled placeholder={shipRepairYardCodeLoading ? 'Đang sinh mã...' : watchedPortId ? 'Mã tự động' : 'Chọn Cảng biển để sinh mã'} style={readonlyInputStyle} />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={[24, 0]}>
+          <Col span={12}>
+            <Form.Item name="shipRepairYardName" {...labelProps('Tên cơ sở sửa chữa, đóng tàu')} style={{ marginBottom: spaceFormField }}
+              rules={[{ required: true, message: 'Tên cơ sở sửa chữa, đóng tàu không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}
+              validateStatus={atMax.shipRepairYardName ? 'error' : undefined} help={atMax.shipRepairYardName ? 'Đã đạt tối đa 255 ký tự' : undefined}>
+              <Input placeholder="Nhập tên cơ sở sửa chữa, đóng tàu" maxLength={255} showCount style={inputStyle} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành phố)')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Địa điểm (Tỉnh/Thành phố) không được để trống' }]}>
+              <Select placeholder="Chọn địa điểm" showSearch optionFilterProp="label"
+                filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))} style={selectStyle} />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={[24, 0]}>
+          <Col span={12}>
+            <Form.Item name="detailedLocation" {...labelProps('Địa điểm chi tiết')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Địa điểm chi tiết không được để trống' }]}
+              validateStatus={atMax.detailedLocation ? 'error' : undefined} help={atMax.detailedLocation ? 'Đã đạt tối đa 500 ký tự' : undefined}>
+              <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} required style={{ marginBottom: spaceFormField }} initialValue="OPERATIONAL" rules={[{ required: true, message: 'Tình trạng không được để trống' }]}>
+              <Select placeholder="Chọn tình trạng" options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />
+            </Form.Item>
+          </Col>
+        </Row>
+      </div>
+
+      {/* ── Section 2: Thông tin đặc thù & Năng lực kỹ thuật ── */}
+      <div style={sectionBoxStyle}>
+        <div style={sectionHeaderStyle}>
+          <div style={sectionTitleStyle}>
+            <SlidersOutlined style={{ color: actionPrimary }} />
+            <span>Thông tin đặc thù & Năng lực kỹ thuật</span>
+          </div>
+        </div>
+        <Row gutter={[24, 0]}>
+          <Col span={12}>
+            <Form.Item name="usageFunction" {...labelProps('Công năng sử dụng')} style={{ marginBottom: spaceFormField }}>
+              <Select placeholder="Chọn công năng sử dụng" options={USAGE_FUNCTION_OPTIONS} showSearch allowClear optionFilterProp="label" style={selectStyle} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="workshopArea" {...labelProps('Diện tích nhà xưởng, kho bãi')} style={{ marginBottom: spaceFormField }}
+              validateStatus={atMax.workshopArea ? 'error' : undefined} help={atMax.workshopArea ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+              <InputNumber min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={[24, 0]}>
+          <Col span={12}>
+            <Form.Item name="vesselType" {...labelProps('Loại tàu đóng mới, sửa chữa')} style={{ marginBottom: spaceFormField }}>
+              <Select placeholder="Chọn loại tàu đóng mới, sửa chữa" options={VESSEL_TYPE_OPTIONS} showSearch allowClear optionFilterProp="label" style={selectStyle} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="vesselDwt" {...labelProps('Cỡ tàu')} style={{ marginBottom: spaceFormField }}
+              validateStatus={atMax.vesselDwt ? 'error' : undefined} help={atMax.vesselDwt ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+              <Input placeholder="Nhập cỡ tàu" maxLength={20} showCount style={inputStyle} />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={[24, 0]}>
+          <Col span={12}>
+            <Form.Item name="businessType" {...labelProps('Loại hình doanh nghiệp')} style={{ marginBottom: spaceFormField }}>
+              <Select placeholder="Chọn loại hình doanh nghiệp" options={BUSINESS_TYPE_OPTIONS} showSearch allowClear optionFilterProp="label" style={selectStyle} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="activity" {...labelProps('Hoạt động')} style={{ marginBottom: spaceFormField }}>
+              <Select placeholder="Chọn hoạt động" options={ACTIVITY_OPTIONS} showSearch allowClear optionFilterProp="label" style={selectStyle} />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={[24, 0]}>
+          <Col span={12}>
+            <Form.Item name="slipwayCount" {...labelProps('Số lượng triền đà')} style={{ marginBottom: spaceFormField }}
+              validateStatus={atMax.slipwayCount ? 'error' : undefined} help={atMax.slipwayCount ? 'Đã đạt tối đa 5 ký tự' : undefined}>
+              <InputNumber min={0} placeholder="0" maxLength={5} style={numberInputStyle} />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={[24, 0]}>
+          <Col span={24}>
+            <Form.Item name="remarks" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }}
+              validateStatus={atMax.remarks ? 'error' : undefined} help={atMax.remarks ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
+              <Input.TextArea rows={2} maxLength={2000} showCount placeholder="Nhập ghi chú" style={{ borderRadius: radiusMd, height: 'auto' }} />
+            </Form.Item>
+          </Col>
+        </Row>
+      </div>
     </div>) },
     // Tab 2: Thông tin vị trí
     { key: 'location', label: 'Thông tin vị trí', children: (<div style={drawerFormScrollStyle}>
       <Row gutter={[24, 0]}>
         <Col span={12}>
-          <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
+          <Form.Item
+            name="geometryType"
+            {...labelProps('Loại đối tượng')}
+            required={hasCoordinates}
+            rules={hasCoordinates ? [{ required: true, message: 'Loại đối tượng là bắt buộc khi có tọa độ' }] : []}
+            style={{ marginBottom: spaceFormField }}
+          >
             <Select placeholder="Chọn loại đối tượng" allowClear options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
           </Form.Item>
         </Col>
         <Col span={12}>
-          <Form.Item name="mapSymbolId" {...labelProps('Biểu tượng')} style={{ marginBottom: spaceFormField }}>
+          <Form.Item
+            name="mapSymbolId"
+            {...labelProps('Biểu tượng')}
+            required={hasLocation}
+            rules={hasLocation ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
+            style={{ marginBottom: spaceFormField }}
+          >
             <Select placeholder="Chọn biểu tượng bản đồ" allowClear showSearch optionFilterProp="label" disabled={!watchedGeometryType} style={selectStyle}>
               {symbols.map(sym => (
                 <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
@@ -625,10 +727,28 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
         </span>
         <Space size={8}>
           <Button
-            icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+            icon={<EnvironmentOutlined style={{ color: !watchedGeometryType ? undefined : actionPrimary }} />}
             onClick={() => setGisModalOpen(true)}
             disabled={!watchedGeometryType}
-            style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            style={!watchedGeometryType ? {
+              height: 32,
+              fontSize: fontSizeSm,
+              padding: '0 14px',
+              borderRadius: radiusPill,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              opacity: 0.6,
+              cursor: 'not-allowed',
+            } : {
+              ...outlineButtonStyle,
+              height: 32,
+              fontSize: fontSizeSm,
+              padding: '0 14px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
           >
             Chọn tọa độ trên bản đồ
           </Button>
@@ -637,7 +757,28 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
             icon={<PlusOutlined />}
             onClick={addGpsPoint}
             disabled={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)}
-            style={{ ...primaryButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            style={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1) ? {
+              height: 32,
+              fontSize: fontSizeSm,
+              padding: '0 14px',
+              borderRadius: radiusPill,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              background: '#f5f5f5',
+              borderColor: '#d9d9d9',
+              color: 'rgba(0, 0, 0, 0.25)',
+              cursor: 'not-allowed',
+            } : {
+              ...primaryButtonStyle,
+              height: 32,
+              fontSize: fontSizeSm,
+              padding: '0 14px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+            title={watchedGeometryType === 'POINT' && coordinateList.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 tọa độ GPS' : undefined}
           >
             Thêm tọa độ
           </Button>
@@ -645,8 +786,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
       </div>
       {coordinateList.length === 0 ? (
         <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
-          <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có tọa độ nào.</span>
-          <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
+          <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block' }}>Chưa có tọa độ nào.</span>
         </div>
       ) : (
         <>
@@ -694,13 +834,21 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
     // Tab 3: File đính kèm
     {
       key: 'files',
-      label: 'File đính kèm',
+      label: `File đính kèm (${uploadedFiles.length})`,
       children: (
         <InfrastructureAttachmentTab
-          attachments={uploadedFiles.map((f) => ({ id: f.uid, fileName: f.name, fileSize: f.size, ...f }))}
+          attachments={uploadedFiles.map((f: any) => ({
+            ...f,
+            id: f.uid || f.id,
+            fileName: f.name || f.fileName,
+            fileSize: f.fileSize ?? f.size ?? f.originFileObj?.size,
+            uploadedByName: f.uploadedByName || (f.uploadedBy ? (userMap.get(f.uploadedBy) || f.uploadedBy) : '') || currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
+            uploadedDate: f.uploadedDate || f.uploadedAt || f.createdAt || dayjs().toISOString(),
+          }))}
           readonly={false}
+          userMap={userMap}
           onUpload={(file) => { handleBeforeUpload(file); return false; }}
-          onDelete={(uid) => { setUploadedFiles((prev) => prev.filter((x) => x.uid !== uid)); }}
+          onDelete={(uid) => { setUploadedFiles((prev) => prev.filter((x) => (x.uid || (x as any).id) !== uid)); }}
           onDownload={(_uid, name) => { toast.info(`Đang tải xuống tệp: ${name}`); }}
         />
       ),

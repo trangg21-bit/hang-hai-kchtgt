@@ -5,19 +5,16 @@ import {
   AuditOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { colors } from '../../themetokenchk';
+import { colors, statusBadgeStyle } from '../../themetokenchk';
 import {
   actionPrimary,
   statusOperational,
   statusCritical,
-  fontSizeSm,
-  fontWeightMedium,
   fontWeightBold,
-  surfaceCard,
   surfacePage,
   borderDefault,
   radiusMd,
-  radiusPill,
+  formatUserDisplayName,
 } from '../../themetokenchk';
 import type { SpatialObjectCategory } from '../../services/spatialObjectCategoryService';
 import type { Symbol as MapSymbolItem } from '../../services/symbolService';
@@ -27,13 +24,14 @@ const fontSizeMd = 13.5;
 export interface LineObjectDetailContentProps {
   selectedRecord: SpatialObjectCategory;
   symbols?: MapSymbolItem[];
+  userMap?: Map<string, string>;
 }
 
 const sectionBoxStyle: React.CSSProperties = {
   background: '#ffffff',
   border: '1px solid #e2e8f0',
   borderRadius: 8,
-  padding: '14px 18px 10px 18px',
+  padding: '12px 18px 8px 18px',
   marginBottom: 14,
   boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
 };
@@ -42,7 +40,7 @@ const sectionHeaderStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  marginBottom: 12,
+  marginBottom: 10,
   paddingBottom: 8,
   borderBottom: '1px solid #f1f5f9',
 };
@@ -59,6 +57,7 @@ const sectionTitleStyle: React.CSSProperties = {
 export const LineObjectDetailContent: React.FC<LineObjectDetailContentProps> = ({
   selectedRecord,
   symbols = [],
+  userMap,
 }) => {
   const sym = symbols.find((s) => s.id === selectedRecord.iconId);
   const imgSrc = selectedRecord.iconUrl || sym?.image;
@@ -67,8 +66,99 @@ export const LineObjectDetailContent: React.FC<LineObjectDetailContentProps> = (
   const statusLabel = isOperational ? 'Sử dụng' : 'Khóa';
 
   return (
-    <div style={{ paddingBottom: 16 }}>
-      {/* ── Section 1: Thông tin chung ── */}
+    <div className="line-detail-content-wrapper">
+      <style>{`
+        .line-detail-content-wrapper {
+          overflow-x: hidden !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+        }
+
+        .line-detail-content-wrapper,
+        .line-detail-content-wrapper .chk-detail-label,
+        .line-detail-content-wrapper .chk-detail-value {
+          font-size: 13.5px !important;
+        }
+
+        .line-detail-content-wrapper .chk-detail-grid {
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+          column-gap: 28px !important;
+          row-gap: 0 !important;
+        }
+
+        .line-detail-content-wrapper .chk-detail-row {
+          display: flex !important;
+          align-items: flex-start !important;
+          min-height: 36px !important;
+          padding: 7px 0 !important;
+          border-bottom: 1px solid #f1f5f9 !important;
+          line-height: 1.5 !important;
+          gap: 10px !important;
+        }
+
+        .line-detail-content-wrapper .chk-detail-row:last-child {
+          border-bottom: none !important;
+        }
+
+        .line-detail-content-wrapper .chk-detail-row--full {
+          grid-column: 1 / -1 !important;
+        }
+
+        .line-detail-content-wrapper .chk-detail-label {
+          width: 200px !important;
+          min-width: 200px !important;
+          max-width: 200px !important;
+          flex-shrink: 0 !important;
+          color: ${colors.sidebarBg} !important;
+          font-weight: 600 !important;
+          font-size: 13.5px !important;
+          text-align: left !important;
+          line-height: 1.5 !important;
+        }
+
+        .line-detail-content-wrapper .chk-detail-label::after {
+          content: ':' !important;
+          margin-left: 1px !important;
+          margin-right: 4px !important;
+        }
+
+        .line-detail-content-wrapper .chk-detail-value {
+          color: #1e293b !important;
+          font-size: 13.5px !important;
+          flex: 1 !important;
+          min-width: 0 !important;
+          text-align: left !important;
+          line-height: 1.5 !important;
+          word-break: break-word !important;
+        }
+
+        @media (max-width: 960px) {
+          .line-detail-content-wrapper .chk-detail-grid {
+            grid-template-columns: 1fr !important;
+            column-gap: 0 !important;
+          }
+          .line-detail-content-wrapper .chk-detail-row--full {
+            grid-column: 1 !important;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .line-detail-content-wrapper .chk-detail-row {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 3px !important;
+            padding: 6px 0 !important;
+          }
+          .line-detail-content-wrapper .chk-detail-label {
+            width: 100% !important;
+            min-width: 100% !important;
+            max-width: 100% !important;
+          }
+        }
+      `}</style>
+
+      {/* ── Section 1: Thông tin định danh & phân loại ── */}
       <div style={sectionBoxStyle}>
         <div style={sectionHeaderStyle}>
           <span style={sectionTitleStyle}>
@@ -76,76 +166,54 @@ export const LineObjectDetailContent: React.FC<LineObjectDetailContentProps> = (
             Thông tin định danh & phân loại
           </span>
         </div>
-        <div
-          className="chk-detail-grid"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            columnGap: 24,
-            rowGap: 12,
-          }}
-        >
-          <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
-            <div style={{ color: colors.textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>
-              Mã đối tượng đường
-            </div>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
-              {selectedRecord.code || '—'}
-            </div>
+        <div className="chk-detail-grid">
+          <div className="chk-detail-row">
+            <span className="chk-detail-label">Mã đối tượng đường</span>
+            <span className="chk-detail-value">
+              {selectedRecord.code ? (
+                <span style={statusBadgeStyle(actionPrimary)}>{selectedRecord.code}</span>
+              ) : (
+                '—'
+              )}
+            </span>
           </div>
 
-          <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
-            <div style={{ color: colors.textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>
-              Trạng thái
-            </div>
-            <div>
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  borderRadius: radiusPill,
-                  padding: '2px 10px',
-                  fontSize: fontSizeMd,
-                  fontWeight: fontWeightMedium,
-                  background: `${statusColor}15`,
-                  border: `1px solid ${statusColor}40`,
-                  color: statusColor,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {statusLabel}
-              </span>
-            </div>
+          <div className="chk-detail-row">
+            <span className="chk-detail-label">Trạng thái</span>
+            <span className="chk-detail-value">
+              <span style={statusBadgeStyle(statusColor)}>{statusLabel}</span>
+            </span>
           </div>
 
-          <div
-            style={{
-              gridColumn: '1 / -1',
-              padding: '8px 12px',
-              background: surfaceCard,
-              borderRadius: radiusMd,
-            }}
-          >
-            <div style={{ color: colors.textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>
-              Tên đối tượng đường
-            </div>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>
-              {selectedRecord.name}
-            </div>
+          <div className="chk-detail-row chk-detail-row--full">
+            <span className="chk-detail-label">Tên đối tượng đường</span>
+            <span className="chk-detail-value" style={{ fontWeight: fontWeightBold, color: colors.sidebarBg }}>
+              {selectedRecord.name || '—'}
+            </span>
           </div>
 
-          <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
-            <div style={{ color: colors.textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>
-              Loại hình học GIS
-            </div>
-            <div style={{ color: colors.textPrimary, fontWeight: fontWeightMedium, fontSize: fontSizeMd }}>
-              Đối tượng đường (Line)
-            </div>
+          <div className="chk-detail-row">
+            <span className="chk-detail-label">Loại hình học GIS</span>
+            <span className="chk-detail-value">Đối tượng đường (Line)</span>
           </div>
+
+          <div className="chk-detail-row">
+            <span className="chk-detail-label">Ký hiệu bản đồ</span>
+            <span className="chk-detail-value">
+              {sym ? `${sym.name} (${sym.code})` : selectedRecord.iconId ? 'Đã gán biểu tượng' : '—'}
+            </span>
+          </div>
+
+          {selectedRecord.description && (
+            <div className="chk-detail-row chk-detail-row--full">
+              <span className="chk-detail-label">Mô tả chức năng</span>
+              <span className="chk-detail-value">{selectedRecord.description}</span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* ── Section 2: Cấu hình biểu tượng bản đồ ── */}
+      {/* ── Section 2: Biểu tượng thể hiện trên bản đồ ── */}
       <div style={sectionBoxStyle}>
         <div style={sectionHeaderStyle}>
           <span style={sectionTitleStyle}>
@@ -159,7 +227,8 @@ export const LineObjectDetailContent: React.FC<LineObjectDetailContentProps> = (
             alignItems: 'center',
             gap: 20,
             padding: '12px 16px',
-            background: surfaceCard,
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0',
             borderRadius: radiusMd,
           }}
         >
@@ -188,14 +257,14 @@ export const LineObjectDetailContent: React.FC<LineObjectDetailContentProps> = (
             )}
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: fontSizeSm, color: colors.textSecondary, marginBottom: 2 }}>
+            <div style={{ fontSize: 13.5, color: colors.textSecondary, marginBottom: 2 }}>
               Biểu tượng liên kết
             </div>
-            <div style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg }}>
+            <div style={{ fontSize: 14.5, fontWeight: fontWeightBold, color: colors.sidebarBg }}>
               {sym ? `${sym.name} (${sym.code})` : selectedRecord.iconId ? 'Đã liên kết biểu tượng' : 'Chưa gán biểu tượng'}
             </div>
             {sym?.category && (
-              <div style={{ fontSize: fontSizeSm, color: colors.textTertiary, marginTop: 2 }}>
+              <div style={{ fontSize: 13.5, color: colors.textTertiary, marginTop: 2 }}>
                 Phân loại: {sym.category}
               </div>
             )}
@@ -211,44 +280,36 @@ export const LineObjectDetailContent: React.FC<LineObjectDetailContentProps> = (
             Thông tin quản trị hệ thống
           </span>
         </div>
-        <div
-          className="chk-detail-grid"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            columnGap: 24,
-            rowGap: 12,
-          }}
-        >
-          <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
-            <div style={{ color: colors.textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>
-              Cán bộ cập nhật gần nhất
-            </div>
-            <div style={{ color: colors.textPrimary, fontWeight: fontWeightMedium, fontSize: fontSizeMd }}>
-              {selectedRecord.updatedBy || selectedRecord.createdBy || 'SYSTEM'}
-            </div>
+        <div className="chk-detail-grid">
+          <div className="chk-detail-row">
+            <span className="chk-detail-label">Cán bộ cập nhật gần nhất</span>
+            <span className="chk-detail-value">
+              {formatUserDisplayName(
+                selectedRecord.updatedBy,
+                (selectedRecord as any).updatedByName,
+                userMap,
+                selectedRecord.createdBy,
+                (selectedRecord as any).createdByName
+              )}
+            </span>
           </div>
 
-          <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
-            <div style={{ color: colors.textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>
-              Thời gian cập nhật gần nhất
-            </div>
-            <div style={{ color: colors.textPrimary, fontWeight: fontWeightMedium, fontSize: fontSizeMd }}>
+          <div className="chk-detail-row">
+            <span className="chk-detail-label">Thời gian cập nhật gần nhất</span>
+            <span className="chk-detail-value">
               {selectedRecord.updatedAt
                 ? dayjs(selectedRecord.updatedAt).format('DD/MM/YYYY HH:mm:ss')
                 : selectedRecord.createdAt
                 ? dayjs(selectedRecord.createdAt).format('DD/MM/YYYY HH:mm:ss')
                 : '—'}
-            </div>
+            </span>
           </div>
 
-          <div style={{ padding: '8px 12px', background: surfaceCard, borderRadius: radiusMd }}>
-            <div style={{ color: colors.textSecondary, fontSize: fontSizeSm, marginBottom: 4 }}>
-              Thời gian tạo lập
-            </div>
-            <div style={{ color: colors.textPrimary, fontWeight: fontWeightMedium, fontSize: fontSizeMd }}>
+          <div className="chk-detail-row">
+            <span className="chk-detail-label">Thời gian tạo lập</span>
+            <span className="chk-detail-value">
               {selectedRecord.createdAt ? dayjs(selectedRecord.createdAt).format('DD/MM/YYYY HH:mm:ss') : '—'}
-            </div>
+            </span>
           </div>
         </div>
       </div>

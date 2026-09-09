@@ -750,7 +750,9 @@ export default forwardRef(function StormShelterForm({ form, id, onFinish, onSubm
               <DatePicker placeholder="Chọn thời điểm..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
           </Col>
-          <Col span={12}>
+        </Row>
+        <Row gutter={[24, 0]}>
+          <Col span={24}>
             <Form.Item name="publicDecision" {...labelProps('Quyết định công bố/ Văn bản cho phép khai thác')} style={{ marginBottom: spaceFormField }}
               validateStatus={atMax.publicDecision ? 'error' : undefined} help={atMax.publicDecision ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
               <Input placeholder="Nhập quyết định công bố" maxLength={2000} showCount style={{ borderRadius: radiusPill, height: 40 }} />
@@ -758,7 +760,7 @@ export default forwardRef(function StormShelterForm({ form, id, onFinish, onSubm
           </Col>
         </Row>
         <Row gutter={[24, 0]}>
-          <Col span={12}>
+          <Col span={24}>
             <Form.Item name="investmentAgreement" {...labelProps('Văn bản thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }}
               validateStatus={atMax.investmentAgreement ? 'error' : undefined} help={atMax.investmentAgreement ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
               <Input placeholder="Nhập văn bản thỏa thuận" maxLength={2000} showCount style={{ borderRadius: radiusPill, height: 40 }} />
@@ -843,10 +845,28 @@ export default forwardRef(function StormShelterForm({ form, id, onFinish, onSubm
         </span>
         <Space size={8}>
           <Button
-            icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+            icon={<EnvironmentOutlined style={{ color: !watchedGeometryType ? undefined : actionPrimary }} />}
             onClick={() => setGisModalOpen(true)}
             disabled={!watchedGeometryType}
-            style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            style={!watchedGeometryType ? {
+              height: 32,
+              fontSize: fontSizeSm,
+              padding: '0 14px',
+              borderRadius: radiusPill,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              opacity: 0.6,
+              cursor: 'not-allowed',
+            } : {
+              ...outlineButtonStyle,
+              height: 32,
+              fontSize: fontSizeSm,
+              padding: '0 14px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
           >
             Chọn tọa độ trên bản đồ
           </Button>
@@ -854,8 +874,29 @@ export default forwardRef(function StormShelterForm({ form, id, onFinish, onSubm
             type="primary"
             icon={<PlusOutlined />}
             onClick={addGpsPoint}
-            disabled={!watchedGeometryType}
-            style={{ ...primaryButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            disabled={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)}
+            style={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1) ? {
+              height: 32,
+              fontSize: fontSizeSm,
+              padding: '0 14px',
+              borderRadius: radiusPill,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              background: '#f5f5f5',
+              borderColor: '#d9d9d9',
+              color: 'rgba(0, 0, 0, 0.25)',
+              cursor: 'not-allowed',
+            } : {
+              ...primaryButtonStyle,
+              height: 32,
+              fontSize: fontSizeSm,
+              padding: '0 14px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+            title={watchedGeometryType === 'POINT' && coordinateList.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 tọa độ GPS' : undefined}
           >
             Thêm tọa độ
           </Button>
@@ -863,8 +904,7 @@ export default forwardRef(function StormShelterForm({ form, id, onFinish, onSubm
       </div>
       {coordinateList.length === 0 ? (
         <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
-          <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có tọa độ nào.</span>
-          <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!watchedGeometryType} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
+          <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block' }}>Chưa có tọa độ nào.</span>
         </div>
       ) : (
         <>

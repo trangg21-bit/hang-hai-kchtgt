@@ -4,7 +4,10 @@
 
 import React, { useState } from 'react';
 import { Tabs, Button, Modal } from 'antd';
-import { FileOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import {
+  FileOutlined, EnvironmentOutlined, BankOutlined, SlidersOutlined,
+  AuditOutlined, DownOutlined, RightOutlined,
+} from '@ant-design/icons';
 import type { BuoyStationResponse, StationBuoySummary } from './types';
 import {
   GEO_MAP, COORD_MAP, APPROVAL_STYLE_MAP,
@@ -15,9 +18,12 @@ import {
   fontSizeMd, fontSizeSm, fontSizeLg, fontWeightBold,
   spaceSm, spaceMd, spaceFormField, statusBadgeStyle,
   outlineButtonStyle, primaryButtonStyle,
+  formatUserDisplayName, isUuidString,
 } from '../../themetokenchk';
 import type { OrgUnitTreeOption } from '../../components/org-unit';
 import DetailTable from '../../components/shared/DetailTable';
+import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import toast from '../../components/ToastNotification';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 
@@ -29,6 +35,34 @@ const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
 };
 
 const detailLabelStyle: React.CSSProperties = { color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd };
+
+// Style cho thẻ phân nhóm (Section Card) đồng bộ với màn Quản lý bến cảng
+const sectionBoxStyle: React.CSSProperties = {
+  background: '#ffffff',
+  border: '1px solid #e2e8f0',
+  borderRadius: 8,
+  padding: '12px 18px 8px 18px',
+  marginBottom: 14,
+  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+};
+
+const sectionHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginBottom: 10,
+  paddingBottom: 8,
+  borderBottom: '1px solid #f1f5f9',
+};
+
+const sectionTitleStyle: React.CSSProperties = {
+  color: colors.sidebarBg,
+  fontWeight: fontWeightBold,
+  fontSize: fontSizeMd + 0.5,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+};
 
 // Bảng con trong tab chi tiết: DetailTable (chuẩn VTS CHK — header xám, phân trang antd, "Tổng cộng N")
 function DetailTabTable({ title, dataSource, emptyText, columns }: {
@@ -139,11 +173,11 @@ export default function BuoyStationDetailContent({
   const [operationOpen, setOperationOpen] = useState(true);
   const [maintenanceOpen, setMaintenanceOpen] = useState(true);
   const [incidentOpen, setIncidentOpen] = useState(true);
-  const [indexOpen, setIndexOpen] = useState(true);
+  const [approvalOpen, setApprovalOpen] = useState(true);
 
   const orgName = (id: string | undefined) => (id ? (orgUnits.find((o) => o.id === id)?.name || id) : '—');
-  const userName = (id: string | number | undefined | null) =>
-    id != null ? (userMap.get(String(id)) || String(id)) : '—';
+  const userName = (id: string | number | undefined | null, fallbackName?: string | null) =>
+    formatUserDisplayName(id != null ? String(id) : null, fallbackName, userMap);
 
   const statusBadge = (() => {
     const b = APPROVAL_STYLE_MAP[r.status || ''] || { color: textTertiary, label: r.status || '—' };
@@ -176,33 +210,82 @@ export default function BuoyStationDetailContent({
           label: 'Thông tin chung',
           children: (
             <div style={{ paddingTop: 3 }}>
-              {gridRows([
-                ['Mã nhà trạm', <span style={statusBadgeStyle(actionPrimary)}>{r.code || '—'}</span>],
-                ['Tên nhà trạm', <span style={{ fontWeight: fontWeightBold }}>{r.name || '—'}</span>],
-                ['Đơn vị quản lý', (() => {
-                    const name = orgUnits.find((o) => o.id === r.unitId)?.name || r.unitId || '—';
-                    return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
-                  })()],
-                ['Đơn vị khai thác', <span style={{ fontWeight: fontWeightBold }}>{DEFAULT_OPERATING_ORGANIZATIONS.find(o => o.id === r.operatingOrgId)?.name || r.operatingOrgId || '—'}</span>],
-                ['Thuộc cảng biển', r.portId ? (portMap.get(r.portId) || r.portId) : '—'],
-                ['Thuộc luồng hàng hải', r.waterwayId ? (waterwayMap.get(r.waterwayId) || r.waterwayId) : '—'],
-                ['Tuyến luồng hàng hải', r.waterwayRouteId ? (routeMap.get(r.waterwayRouteId) || r.waterwayRouteId) : '—'],
-                ['Địa điểm (Tỉnh/Thành Phố)', r.province || '—'],
-                ['Địa điểm chi tiết', r.address || '—'],
-                ['Thời điểm xây dựng', formatDate(r.constructionDate)],
-                ['Tình trạng', (() => { const s = CONDITION_STYLE[r.condition || ''] || { color: textTertiary, label: r.condition || '—' }; return <span style={statusBadgeStyle(s.color)}>{s.label}</span>; })()],
-              ])}
-              {/* ── Toggle: Chỉ số tổng hợp (giống bến phao — BuoyBerthDetailContent) ── */}
-              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setIndexOpen(!indexOpen)}>
-                <span style={{ color: indexOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{indexOpen ? '▼' : '▶'} Chỉ số tổng hợp</span>
-              </button>
-              {indexOpen && gridRows([
-                ['Tổng diện tích (m²)', r.totalArea != null ? r.totalArea : '—'],
-                ['Diện tích sử dụng (m²)', r.usableArea != null ? r.usableArea : '—'],
-                ['Số lượng nhân sự bố trí', r.staffCount != null ? r.staffCount : '—'],
-                ['Năm bảo trì gần nhất', r.lastMaintenanceYear != null ? r.lastMaintenanceYear : '—'],
-                ['Ghi chú', r.note || '—'],
-              ])}
+              {/* ── Section 1: Thông tin cơ bản & Quản lý vận hành ── */}
+              <div style={sectionBoxStyle}>
+                <div style={sectionHeaderStyle}>
+                  <div style={sectionTitleStyle}>
+                    <BankOutlined style={{ color: actionPrimary }} />
+                    <span>Thông tin cơ bản & Quản lý vận hành</span>
+                  </div>
+                </div>
+                {gridRows([
+                  ['Mã nhà trạm', <span style={statusBadgeStyle(actionPrimary)}>{r.code || '—'}</span>],
+                  ['Tên nhà trạm', <span style={{ fontWeight: fontWeightBold }}>{r.name || '—'}</span>],
+                  ['Đơn vị quản lý', (() => {
+                      const name = orgUnits.find((o) => o.id === r.unitId)?.name || r.unitId || '—';
+                      return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
+                    })()],
+                  ['Đơn vị khai thác', <span style={{ fontWeight: fontWeightBold }}>{DEFAULT_OPERATING_ORGANIZATIONS.find(o => o.id === r.operatingOrgId)?.name || r.operatingOrgId || '—'}</span>],
+                  ['Thuộc cảng biển', r.portId ? (portMap.get(r.portId) || r.portId) : '—'],
+                  ['Thuộc luồng hàng hải', r.waterwayId ? (waterwayMap.get(r.waterwayId) || r.waterwayId) : '—'],
+                  ['Tuyến luồng hàng hải', r.waterwayRouteId ? (routeMap.get(r.waterwayRouteId) || r.waterwayRouteId) : '—'],
+                  ['Địa điểm (Tỉnh/Thành Phố)', r.province || '—'],
+                  ['Địa điểm chi tiết', r.address || '—'],
+                  ['Thời điểm xây dựng', formatDate(r.constructionDate)],
+                  ['Tình trạng', (() => { const s = CONDITION_STYLE[r.condition || ''] || { color: textTertiary, label: r.condition || '—' }; return <span style={statusBadgeStyle(s.color)}>{s.label}</span>; })()],
+                ])}
+              </div>
+
+              {/* ── Section 2: Thông số kỹ thuật & Quy mô ── */}
+              <div style={sectionBoxStyle}>
+                <div style={sectionHeaderStyle}>
+                  <div style={sectionTitleStyle}>
+                    <SlidersOutlined style={{ color: actionPrimary }} />
+                    <span>Thông số kỹ thuật & Quy mô</span>
+                  </div>
+                </div>
+                {gridRows([
+                  ['Tổng diện tích (m²)', r.totalArea != null ? r.totalArea : '—'],
+                  ['Diện tích sử dụng (m²)', r.usableArea != null ? r.usableArea : '—'],
+                  ['Số lượng nhân sự bố trí', r.staffCount != null ? r.staffCount : '—'],
+                  ['Năm bảo trì gần nhất', r.lastMaintenanceYear != null ? r.lastMaintenanceYear : '—'],
+                  ['Ghi chú', r.note || '—'],
+                ])}
+              </div>
+
+              {/* ── Section 3: Thông tin phê duyệt (Toggle chuẩn AGENTS.md) ── */}
+              <div style={{ ...sectionBoxStyle, padding: approvalOpen ? '12px 18px 8px 18px' : '10px 18px' }}>
+                <div
+                  onClick={() => setApprovalOpen(!approvalOpen)}
+                  style={{
+                    ...sectionHeaderStyle,
+                    marginBottom: approvalOpen ? 10 : 0,
+                    paddingBottom: approvalOpen ? 8 : 0,
+                    borderBottom: approvalOpen ? '1px solid #f1f5f9' : 'none',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                  }}
+                >
+                  <div style={sectionTitleStyle}>
+                    <AuditOutlined style={{ color: actionPrimary }} />
+                    <span>Thông tin phê duyệt</span>
+                  </div>
+                  <span style={{ color: actionPrimary, fontSize: 12 }}>
+                    {approvalOpen ? <DownOutlined /> : <RightOutlined />}
+                  </span>
+                </div>
+                {approvalOpen && gridRows([
+                  ['Trạng thái phê duyệt', r.status && APPROVAL_STYLE_MAP[r.status] ? (
+                    <span style={statusBadgeStyle(APPROVAL_STYLE_MAP[r.status].color)}>
+                      {APPROVAL_STYLE_MAP[r.status].label}
+                    </span>
+                  ) : '—'],
+                  ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userName(r.updatedBy, r.updatedByName || r.createdByName)}</span>],
+                  ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userName(r.sentApprovedBy)}</span>],
+                  ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level1ApprovedBy)}</span>],
+                  ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level2ApprovedBy)}</span>],
+                ])}
+              </div>
             </div>
           ),
         },
@@ -245,23 +328,23 @@ export default function BuoyStationDetailContent({
         },
         {
           key: 'files',
-          label: 'File đính kèm',
+          label: `File đính kèm (${detailFiles.length})`,
           children: (
-            <div style={{ paddingTop: 3 }}>
-              <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
-                <span style={detailLabelStyle}>File đính kèm</span>
-              </div>
-              <DetailTable
-                dataSource={detailFiles.map((f) => ({ ...f }))}
-                emptyText="Không có tài liệu đính kèm"
-                showTotal={(total) => `Tổng cộng ${total}`}
-                columns={[
-                  { title: 'STT', width: 50 },
-                  { title: 'Tên tài liệu', dataIndex: 'fileName', key: 'fileName', render: (v: string) => <span title={v} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{v || '—'}</span> },
-                  { title: 'Dung lượng', dataIndex: 'fileSize', key: 'fileSize', width: 120, align: 'right' as const, render: (v: number) => v != null ? (v > 1024 * 1024 ? `${(v / (1024 * 1024)).toFixed(2)} MB` : `${(v / 1024).toFixed(1)} KB`) : '—' },
-                  { title: 'Người tải lên', key: 'uploadedBy', width: 180, render: (_v: any, rec: any) => rec.uploadedBy ? (userMap.get(String(rec.uploadedBy)) || rec.uploadedBy) : '—' },
-                  { title: 'Ngày tải lên', key: 'uploadedAt', width: 160, align: 'center' as const, render: (_v: any, rec: any) => rec.uploadedAt ? formatDateTime(rec.uploadedAt) : '—' },
-                ]}
+            <div style={{ paddingTop: 6 }}>
+              <InfrastructureAttachmentTab
+                attachments={detailFiles.map((f: any) => ({
+                  ...f,
+                  id: f.id || f.uid,
+                  fileName: f.fileName || f.name,
+                  fileSize: f.fileSize ?? f.size,
+                  uploadedByName: (!isUuidString(f.uploadedByName) ? f.uploadedByName : '') || (f.uploadedBy ? userMap.get(String(f.uploadedBy)) : '') || 'Cán bộ quản lý',
+                  uploadedDate: f.uploadedDate || f.uploadedAt || f.createdAt,
+                }))}
+                readonly={true}
+                userMap={userMap}
+                onDownload={(_id, name) => {
+                  toast.info(`Đang tải xuống tệp: ${name}`);
+                }}
               />
             </div>
           ),

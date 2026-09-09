@@ -1,11 +1,10 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
-  Button, Modal, Input, Select, Alert, DatePicker,
-  Drawer, Radio, Space, Typography, Form,
+  Button, Modal, Input, Select, DatePicker,
+  Radio, Space, Typography, Form,
 } from 'antd';
 import {
   HistoryOutlined,
-  ExclamationCircleOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -29,6 +28,8 @@ import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import toast from '../../components/ToastNotification';
+import AppDrawer from '../../components/shared/AppDrawer';
+import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import ShipRepairYardForm from './ShipRepairYardForm';
 import ShipRepairYardDetailContent from './ShipRepairYardDetailContent';
 import {
@@ -51,13 +52,14 @@ import {
   spaceXs,
   spaceXl,
   spaceFormField,
-  drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
+  drawerTitleStyle, drawerFooterStyle,
   primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
   historyGroupGridStyle, historyTimeStyle, historyMetaRowStyle,
   historyInfoCardStyle, historyAccentBarStyle, historyInfoTitleStyle,
   historyChangeRowStyle, historyCreateRowStyle, historyFieldLabelStyle,
   historyOldValueStyle, historyNewValueStyle, historyArrowStyle,
   icons, statusBadgeStyle, cellTitleStyle, cellSubtitleStyle, getRangePickerProps,
+  formatUserDisplayName, isUuidString,
 } from '../../themetokenchk';
 import { colors } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
@@ -441,7 +443,7 @@ export default function ShipRepairYardList() {
   // ── Delete confirmation modal ───────────────────────────────────
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletingRecord, setDeletingRecord] = useState<ShipRepairYard | null>(null);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // ── Reject modal ────────────────────────────────────────────────
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
@@ -671,7 +673,10 @@ export default function ShipRepairYardList() {
         const resp = await userService.list({ pageSize: 1000 });
         const users = resp.data || (resp as any).content || [];
         const map = new Map<string, string>();
-        users.forEach((u: any) => { map.set(u.id, u.fullName || u.username || u.id); });
+        users.forEach((u: any) => {
+          const name = u.fullName || u.username || '';
+          if (name && !isUuidString(name)) map.set(u.id, name);
+        });
         setUserMap(map);
       } catch { console.error('Failed to load users'); }
     })();
@@ -798,23 +803,26 @@ export default function ShipRepairYardList() {
 
   // ── Delete confirmation ─────────────────────────────────────────
   const openDeleteModal = useCallback((record: ShipRepairYard) => {
-    setDeletingRecord(record); setDeleteConfirmText(''); setDeleteModalOpen(true);
+    setDeletingRecord(record);
+    setDeleteModalOpen(true);
   }, []);
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingRecord) return;
-    const expectedText = (deletingRecord.shipRepairYardName || 'XÓA').trim().toLowerCase();
-    const input = deleteConfirmText.trim().toLowerCase();
-    if (input !== expectedText && input !== 'xóa') {
-      toast.error('Vui lòng nhập đúng tên cơ sở sửa chữa, đóng tàu hoặc gõ "XÓA" để xác nhận'); return;
-    }
+    setDeleteLoading(true);
     try {
       await shipRepairYardCRUD.delete(deletingRecord.id);
       toast.success('Đã xóa cơ sở sửa chữa, đóng tàu');
-      setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText('');
-      void fetchData(); void fetchCounts(managingUnitId);
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Xóa thất bại'); }
-  }, [deletingRecord, deleteConfirmText, fetchData, fetchCounts, managingUnitId]);
+      setDeleteModalOpen(false);
+      setDeletingRecord(null);
+      void fetchData();
+      void fetchCounts(managingUnitId);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
+    } finally {
+      setDeleteLoading(false);
+    }
+  }, [deletingRecord, fetchData, fetchCounts, managingUnitId]);
 
   // ── Approval handlers ───────────────────────────────────────────
   const handleApprove = useCallback(async (record: ShipRepairYard, content?: string) => {
@@ -1127,28 +1135,28 @@ export default function ShipRepairYardList() {
       { key: 'updatedAt', label: <span>Cán bộ cập nhật</span>, dataIndex: 'updatedAt', width: 200, sortable: true, sortOrder,
         render: (v: string | null, record: ShipRepairYard) => (
           <div>
-            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.updatedBy || '') || record.updatedBy || '—'}</span><br />
+            <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(record.updatedBy, (record as any).updatedByName, userMap, record.createdBy, (record as any).createdByName)}</span><br />
             <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
           </div>
         ) },
       { key: 'submittedForApprovalAt', label: <span>Cán bộ gửi Phê duyệt</span>, dataIndex: 'submittedForApprovalAt', width: 210, sortable: true, sortOrder,
         render: (v: string | null, record: ShipRepairYard) => (
           <div>
-            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.submittedForApprovalBy || '') || record.submittedForApprovalBy || '—'}</span><br />
+            <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(record.submittedForApprovalBy, (record as any).submittedForApprovalByName, userMap)}</span><br />
             <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
           </div>
         ) },
       { key: 'portAuthorityApprovedAt', label: <span>Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>, dataIndex: 'portAuthorityApprovedAt', width: 340, sortable: true, sortOrder,
         render: (v: string | null, record: ShipRepairYard) => (
           <div>
-            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.portAuthorityApprovedBy || '') || record.portAuthorityApprovedBy || '—'}</span><br />
+            <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(record.portAuthorityApprovedBy, (record as any).portAuthorityApprovedByName, userMap)}</span><br />
             <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
           </div>
         ) },
       { key: 'departmentApprovedAt', label: <span>Cán bộ phê duyệt cấp Cục</span>, dataIndex: 'departmentApprovedAt', width: 240, sortable: true, sortOrder,
         render: (v: string | null, record: ShipRepairYard) => (
           <div>
-            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.departmentApprovedBy || '') || record.departmentApprovedBy || '—'}</span><br />
+            <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(record.departmentApprovedBy, (record as any).departmentApprovedByName, userMap)}</span><br />
             <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
           </div>
         ) },
@@ -1218,8 +1226,52 @@ export default function ShipRepairYardList() {
 
   return (
     <ThemeTokenProvider tokens={themeTokenChk as unknown as ThemeToken}>
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
-      <style>{`.range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }`}</style>
+    <div className="ship-repair-yard-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      <style>{`
+        .range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }
+
+        .ship-repair-yard-page-wrapper,
+        .ship-repair-yard-page-wrapper .ant-table,
+        .ship-repair-yard-page-wrapper .ant-table-cell,
+        .ship-repair-yard-page-wrapper .ant-table-thead > tr > th,
+        .ship-repair-yard-page-wrapper .ant-tabs-tab,
+        .ship-repair-yard-page-wrapper .ant-btn,
+        .ship-repair-yard-page-wrapper .ant-input,
+        .ship-repair-yard-page-wrapper .ant-select,
+        .ship-repair-yard-page-wrapper .ant-select-selection-item,
+        .ship-repair-yard-page-wrapper .ant-select-item,
+        .ship-repair-yard-page-wrapper .ant-pagination,
+        .ship-repair-yard-drawer-scope,
+        .ship-repair-yard-drawer-scope .ant-drawer-title,
+        .ship-repair-yard-drawer-scope .ant-tabs-tab,
+        .ship-repair-yard-drawer-scope .ant-btn,
+        .ship-repair-yard-drawer-scope .ant-input,
+        .ship-repair-yard-drawer-scope .ant-select,
+        .ship-repair-yard-drawer-scope .ant-table,
+        .ship-repair-yard-drawer-scope .ant-form-item-label > label,
+        .ship-repair-yard-modal-scope,
+        .ship-repair-yard-modal-scope .ant-modal-title,
+        .ship-repair-yard-modal-scope .ant-btn,
+        .ship-repair-yard-modal-scope .ant-input,
+        .ship-repair-yard-modal-scope .ant-form-item-label > label {
+          font-size: 13.5px !important;
+        }
+
+        .ship-repair-yard-page-wrapper div:has(> button[aria-pressed]) {
+          justify-content: center !important;
+          overflow-x: auto !important;
+          max-width: 100% !important;
+          padding-bottom: 2px !important;
+          scroll-behavior: smooth !important;
+        }
+        .ship-repair-yard-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
+          height: 4px;
+        }
+        .ship-repair-yard-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 4px;
+        }
+      `}</style>
       <ScreenHeader
         breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý cơ sở sửa chữa, đóng tàu' }]}
         actions={headerActions}
@@ -1249,13 +1301,14 @@ export default function ShipRepairYardList() {
       </FilterTableLayout>
 
       {/* ── Create Drawer ──────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
+        width="min(920px, 96vw)"
+        rootClassName="ship-repair-yard-drawer-scope"
+        className="ship-repair-yard-drawer-scope"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới Cơ sở sửa chữa, đóng tàu</span>}
         open={createDrawerVisible}
         destroyOnHidden
         onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
-        extra={<Button type="text" onClick={() => { setCreateDrawerVisible(false); createForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
           <div style={drawerFooterStyle}>
             <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); shipRepairYardFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button>
@@ -1273,15 +1326,16 @@ export default function ShipRepairYardList() {
         <Form form={createForm} layout="vertical" initialValues={{}}>
           <ShipRepairYardForm ref={shipRepairYardFormRef} form={createForm} onFinish={() => { setCreateDrawerVisible(false); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
         </Form>
-      </Drawer>
+      </AppDrawer>
 
       {/* ── Edit Drawer ────────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
+        width="min(920px, 96vw)"
+        rootClassName="ship-repair-yard-drawer-scope"
+        className="ship-repair-yard-drawer-scope"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin — {editShipRepairYardName || 'Cơ sở sửa chữa, đóng tàu'}</span>}
         open={!!editShipRepairYardId}
         onClose={() => { setEditShipRepairYardId(undefined); setEditShipRepairYardName(''); updateForm.resetFields(); }}
-        extra={<Button type="text" onClick={() => { setEditShipRepairYardId(undefined); setEditShipRepairYardName(''); updateForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
           <div style={drawerFooterStyle}>
             <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); editShipRepairYardFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
@@ -1298,56 +1352,44 @@ export default function ShipRepairYardList() {
             <ShipRepairYardForm ref={editShipRepairYardFormRef} form={updateForm} id={editShipRepairYardId} onFinish={() => { setEditShipRepairYardId(undefined); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
           </Form>
         </>)}
-      </Drawer>
+      </AppDrawer>
 
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
-        width={1000}
+      <AppDrawer
+        width="min(1000px, 96vw)"
+        rootClassName="ship-repair-yard-drawer-scope"
+        className="ship-repair-yard-drawer-scope"
         title={<span style={drawerTitleStyle}>Chi tiết cơ sở sửa chữa, đóng tàu{detailRecord ? ` - ${detailRecord.shipRepairYardName}` : ''}</span>}
         open={detailDrawerVisible}
         onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); }}
-        extra={<Button type="text" onClick={() => { setDetailDrawerVisible(false); setDetailRecord(null); }} style={drawerCloseBtnStyle}>✕</Button>}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-          body: { padding: '0 24px 12px 24px' },
+          body: { padding: '0 24px 12px 24px', overflow: 'hidden' },
         }}
         footer={null}
       >
         {renderDetailContent()}
-      </Drawer>
+      </AppDrawer>
 
       {/* ── Delete Confirmation Modal ────────────────────────────── */}
-      <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận xóa cơ sở sửa chữa, đóng tàu</span>}
+      <DeleteConfirmModal
         open={deleteModalOpen}
-        onCancel={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
-        footer={[
-          <Button key="cancel" onClick={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
-          <Button key="delete" type="primary" danger onClick={handleConfirmDelete}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Xác nhận xóa</Button>,
-        ]}
-        width={480}>
-        <div style={{ padding: '8px 0' }}>
-          <Alert message="Hành động này không thể hoàn tác" type="warning" showIcon icon={<ExclamationCircleOutlined />}
-            style={{ marginBottom: spaceFormField, borderRadius: radiusPill }} />
-          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>
-            Vui lòng nhập <strong>tên cơ sở sửa chữa, đóng tàu</strong> hoặc gõ <strong>"XÓA"</strong> để xác nhận xóa.
-          </p>
-          {deletingRecord && (
-            <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
-              Cơ sở sửa chữa, đóng tàu: <strong style={{ color: textPrimary }}>{deletingRecord.shipRepairYardName}</strong>
-            </p>
-          )}
-          <Input placeholder="Nhập tên cơ sở sửa chữa, đóng tàu hoặc XÓA" value={deleteConfirmText}
-            onChange={(e) => setDeleteConfirmText(e.target.value)} onPressEnter={handleConfirmDelete}
-            style={{ borderRadius: radiusPill, height: 40 }} autoFocus />
-        </div>
-      </Modal>
+        onCancel={() => {
+          if (!deleteLoading) {
+            setDeleteModalOpen(false);
+            setDeletingRecord(null);
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        loading={deleteLoading}
+        itemType="cơ sở sửa chữa, đóng tàu"
+        itemName={deletingRecord?.shipRepairYardName}
+        itemCode={deletingRecord?.shipRepairYardCode}
+      />
 
       {/* ── Reject Reason Modal ──────────────────────────────────── */}
       <Modal
+        rootClassName="ship-repair-yard-modal-scope"
         title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Từ chối phê duyệt</span>}
         open={rejectModalOpen}
         onCancel={() => { setRejectModalOpen(false); setRejectingRecord(null); setRejectReason(''); }}
@@ -1373,6 +1415,7 @@ export default function ShipRepairYardList() {
 
       {/* ── Submit Modal ──────────────────────────────────────────── */}
       <Modal
+        rootClassName="ship-repair-yard-modal-scope"
         title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận gửi Cảng vụ phê duyệt</span>}
         open={submitModalOpen}
         onCancel={() => { setSubmitModalOpen(false); setSubmittingRecord(null); }}
@@ -1399,9 +1442,10 @@ export default function ShipRepairYardList() {
       />
 
       {/* ── History Drawer ──────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
-        size={880}
+      <AppDrawer
+        width="min(880px, 96vw)"
+        rootClassName="ship-repair-yard-drawer-scope"
+        className="ship-repair-yard-drawer-scope"
         mask
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
@@ -1416,7 +1460,6 @@ export default function ShipRepairYardList() {
         }
         open={historyOpen}
         onClose={() => setHistoryOpen(false)}
-        extra={<Button type="text" onClick={() => setHistoryOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
         footer={null}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -1484,7 +1527,7 @@ export default function ShipRepairYardList() {
           <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div></div>
         ) : renderShipRepairYardHistoryTimeline(historyRecords)}
         </div>
-      </Drawer>
+      </AppDrawer>
     </div>
     </ThemeTokenProvider>
   );

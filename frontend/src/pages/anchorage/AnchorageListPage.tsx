@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Button, Modal, Input, Select, Alert, DatePicker,
   Drawer, Space, Typography, Form,
@@ -444,6 +445,13 @@ function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, 
 // ── Component ────────────────────────────────────────────────────────
 
 export default function AnchorageList() {
+  const [searchParams] = useSearchParams();
+  const linkedAction = searchParams.get('action');
+  const linkedRecordId = searchParams.get('id');
+  const isEmbeddedAction = window.self !== window.top
+    && (linkedAction === 'detail' || linkedAction === 'edit')
+    && !!linkedRecordId;
+  const isEmbeddedDetail = isEmbeddedAction && linkedAction === 'detail';
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const userPermissions = useAuthStore((s: any) => s.user?.permissions) || [];
   const isAuditViewer = userPermissions.includes('admin:manage') || userPermissions.includes('admin:operation');
@@ -928,6 +936,62 @@ export default function AnchorageList() {
     } catch { /* keep initial data */ }
     finally { setDetailLoading(false); }
   }, []);
+
+  useEffect(() => {
+    if (!isEmbeddedDetail || !linkedRecordId) return;
+    let cancelled = false;
+
+    setDetailDrawerVisible(true);
+    setDetailLoading(true);
+    Promise.all([
+      anchorageCRUD.findById(linkedRecordId),
+      api.get(`/v1/anchorage/${linkedRecordId}/attachments`, { params: { page: 0, size: 50 } })
+        .then((response) => response.data?.data || [])
+        .catch(() => []),
+    ])
+      .then(([record, files]) => {
+        if (cancelled) return;
+        setDetailRecord(record);
+        setDetailFiles(files);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          toast.error(error instanceof Error ? error.message : 'Không tải được chi tiết khu neo đậu');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isEmbeddedDetail, linkedRecordId]);
+
+  useEffect(() => {
+    if (isEmbeddedAction && linkedAction === 'edit' && linkedRecordId) {
+      setEditAnchorageId(linkedRecordId);
+    }
+  }, [isEmbeddedAction, linkedAction, linkedRecordId]);
+
+  const notifyEmbeddedActionClosed = useCallback(() => {
+    if (isEmbeddedAction) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, window.location.origin);
+    }
+  }, [isEmbeddedAction]);
+
+  const closeDetailDrawer = useCallback(() => {
+    setDetailDrawerVisible(false);
+    setDetailRecord(null);
+    notifyEmbeddedActionClosed();
+  }, [notifyEmbeddedActionClosed]);
+
+  const closeEditDrawer = useCallback(() => {
+    setEditAnchorageId(undefined);
+    setEditAnchorageName('');
+    updateForm.resetFields();
+    notifyEmbeddedActionClosed();
+  }, [notifyEmbeddedActionClosed, updateForm]);
 
   // ── Delete confirmation ─────────────────────────────────────────
   const openDeleteModal = useCallback((record: Anchorage) => {
@@ -1440,8 +1504,8 @@ export default function AnchorageList() {
         {...drawerProps}
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin — {editAnchorageName || 'Khu neo đậu'}</span>}
         open={!!editAnchorageId}
-        onClose={() => { setEditAnchorageId(undefined); setEditAnchorageName(''); updateForm.resetFields(); }}
-        extra={<Button type="text" onClick={() => { setEditAnchorageId(undefined); setEditAnchorageName(''); updateForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
+        onClose={closeEditDrawer}
+        extra={<Button type="text" onClick={closeEditDrawer} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
           <div style={drawerFooterStyle}>
             <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); editAnchorageFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
@@ -1455,7 +1519,7 @@ export default function AnchorageList() {
         {editAnchorageId && (<>
           <style>{requiredMarkStyle}</style>
           <Form form={updateForm} layout="vertical" initialValues={{}}>
-            <AnchorageForm ref={editAnchorageFormRef} form={updateForm} id={editAnchorageId} onFinish={() => { setEditAnchorageId(undefined); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
+            <AnchorageForm ref={editAnchorageFormRef} form={updateForm} id={editAnchorageId} onFinish={() => { closeEditDrawer(); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
           </Form>
         </>)}
       </Drawer>
@@ -1466,8 +1530,8 @@ export default function AnchorageList() {
         width={950}
         title={<span style={drawerTitleStyle}>Chi tiết khu neo đậu{detailRecord ? ` - ${detailRecord.anchorageName}` : ''}</span>}
         open={detailDrawerVisible}
-        onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); }}
-        extra={<Button type="text" onClick={() => { setDetailDrawerVisible(false); setDetailRecord(null); }} style={drawerCloseBtnStyle}>✕</Button>}
+        onClose={closeDetailDrawer}
+        extra={<Button type="text" onClick={closeDetailDrawer} style={drawerCloseBtnStyle}>✕</Button>}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
           body: { padding: '0 24px 12px 24px' },

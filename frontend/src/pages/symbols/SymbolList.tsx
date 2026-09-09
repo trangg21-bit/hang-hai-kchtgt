@@ -23,6 +23,7 @@ import { DeleteConfirmModal } from '../../components/shared/DeleteConfirmModal';
 import { CommonHistoryDrawer, type CommonHistoryEntry } from '../../components/shared/CommonHistoryDrawer';
 import SymbolForm, { type SymbolFormRef } from './SymbolForm';
 import SymbolDetailContent from './SymbolDetailContent';
+import { userService } from '../../services/userService';
 import toast from '../../components/ToastNotification';
 import {
   actionPrimary,
@@ -45,6 +46,8 @@ import {
   surfacePage,
   icons,
   colors,
+  formatUserDisplayName,
+  isUuidString,
 } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
@@ -70,6 +73,7 @@ export default function SymbolList() {
   const [total, setTotal] = useState(0);
   const [dataSource, setDataSource] = useState<Symbol[]>([]);
   const [allSymbols, setAllSymbols] = useState<Symbol[]>([]);
+  const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -133,6 +137,20 @@ export default function SymbolList() {
       void fetchData();
     });
   }, [fetchData]);
+
+  // Load Users for displaying creator/updater names without UUID fallback
+  useEffect(() => {
+    userService.list({ pageSize: 1000 }).then(res => {
+      const map = new Map<string, string>();
+      (res?.items || []).forEach(u => {
+        const humanName = u.fullName || u.username;
+        if (humanName && !isUuidString(humanName)) {
+          map.set(u.id, humanName);
+        }
+      });
+      setUserMap(map);
+    }).catch(() => {});
+  }, []);
 
   // Tab counts
   const tabCounts = useMemo(() => {
@@ -364,7 +382,7 @@ export default function SymbolList() {
       width: 220,
       ellipsis: false,
       render: (_: unknown, record: Symbol) => {
-        const name = record.updatedByName || record.updatedBy || record.createdByName || record.createdBy || 'SYSTEM';
+        const name = formatUserDisplayName(record.updatedBy, record.updatedByName, userMap, record.createdBy, record.createdByName);
         const date = record.updatedAt || record.createdAt;
         return (
           <div style={{ lineHeight: '1.35' }}>
@@ -420,7 +438,7 @@ export default function SymbolList() {
         );
       },
     },
-  ], [page, pageSize, openDetailDrawer]);
+  ], [page, pageSize, userMap, openDetailDrawer]);
 
   // ── Row Actions ──────────────────────────────────────────────────
   const rowActions = useCallback((record: Symbol) => [
@@ -690,7 +708,7 @@ export default function SymbolList() {
           }}
         >
           {detailRecord && (
-            <SymbolDetailContent selectedRecord={detailRecord} />
+            <SymbolDetailContent selectedRecord={detailRecord} userMap={userMap} />
           )}
         </AppDrawer>
 

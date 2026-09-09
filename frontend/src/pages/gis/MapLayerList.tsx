@@ -28,6 +28,7 @@ import { DeleteConfirmModal } from '../../components/shared/DeleteConfirmModal';
 import { CommonHistoryDrawer, type CommonHistoryEntry } from '../../components/shared/CommonHistoryDrawer';
 import MapLayerForm, { type MapLayerFormRef } from './MapLayerForm';
 import MapLayerDetailContent from './MapLayerDetailContent';
+import { userService } from '../../services/userService';
 import toast from '../../components/ToastNotification';
 import {
   actionPrimary,
@@ -48,6 +49,7 @@ import {
   outlineButtonStyle,
   icons,
   colors,
+  isUuidString,
 } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
@@ -91,6 +93,7 @@ export default function MapLayerList() {
   const [total, setTotal] = useState(0);
   const [dataSource, setDataSource] = useState<MapLayer[]>([]);
   const [allLayers, setAllLayers] = useState<MapLayer[]>([]);
+  const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -156,6 +159,20 @@ export default function MapLayerList() {
       void fetchData();
     });
   }, [fetchData]);
+
+  // Load Users for displaying creator/updater names without UUID fallback
+  useEffect(() => {
+    userService.list({ pageSize: 1000 }).then(res => {
+      const map = new Map<string, string>();
+      (res?.items || []).forEach(u => {
+        const humanName = u.fullName || u.username;
+        if (humanName && !isUuidString(humanName)) {
+          map.set(u.id, humanName);
+        }
+      });
+      setUserMap(map);
+    }).catch(() => {});
+  }, []);
 
   // Tab counts
   const tabCounts = useMemo(() => {
@@ -783,7 +800,7 @@ export default function MapLayerList() {
           }}
         >
           {detailRecord && (
-            <MapLayerDetailContent selectedRecord={detailRecord} />
+            <MapLayerDetailContent selectedRecord={detailRecord} userMap={userMap} />
           )}
         </AppDrawer>
 

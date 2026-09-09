@@ -18,7 +18,6 @@ import {
 import type { UploadFile } from 'antd';
 import {
   HistoryOutlined,
-  ExclamationCircleOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -105,6 +104,8 @@ import {
   cellSubtitleStyle,
   colors,
   getRangePickerProps,
+  formatUserDisplayName,
+  isUuidString,
 } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
@@ -112,6 +113,7 @@ import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-un
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import { AppDrawer } from '../../components/shared/AppDrawer';
+import { DeleteConfirmModal } from '../../components/shared/DeleteConfirmModal';
 
 // ── Style badge Tình trạng (giống Quản lý phao tiêu) ─────────────────
 const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
@@ -422,7 +424,7 @@ export default function BuoyStationListPage() {
   // ── Delete / Reject / Approve Modals ──────────────────────────────
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deletingRecord, setDeletingRecord] = useState<BuoyStationResponse | null>(null);
-  const [deleteText, setDeleteText] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectingRecord, setRejectingRecord] = useState<BuoyStationResponse | null>(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -498,7 +500,10 @@ export default function BuoyStationListPage() {
         const r = await userService.list({ pageSize: 1000 });
         const u = r.data || (r as any).content || [];
         const m = new Map<string, string>();
-        u.forEach((x: any) => { m.set(x.id, x.fullName || x.username || x.id); });
+        u.forEach((x: any) => {
+          const name = x.fullName || x.username || '';
+          if (name && !isUuidString(name)) m.set(x.id, name);
+        });
         setUserMap(m);
       } catch { /* */ }
     })();
@@ -747,7 +752,7 @@ export default function BuoyStationListPage() {
     if (fn === 'waterwayId') return waterwayMap.get(val) || val;
     if (fn === 'waterwayRouteId') return routeMap.get(val) || val;
     if (fn === 'icon') return symbolMap.get(val) || val;
-    if (fn === 'sentApprovedBy' || fn === 'approvedBy' || fn === 'level1ApprovedBy' || fn === 'level2ApprovedBy' || fn === 'createdBy' || fn === 'updatedBy') return userMap.get(val) || val;
+    if (fn === 'sentApprovedBy' || fn === 'approvedBy' || fn === 'level1ApprovedBy' || fn === 'level2ApprovedBy' || fn === 'createdBy' || fn === 'updatedBy') return formatUserDisplayName(val, null, userMap);
     if (fn === 'constructionDate' || fn === 'lastInspectionDate' || fn === 'nextInspectionDate' || fn === 'lastRepairDate') {
       try { return dayjs(val).format('DD/MM/YYYY'); } catch { return val; }
     }
@@ -759,7 +764,7 @@ export default function BuoyStationListPage() {
 
   const actorName = useCallback((actor: string | undefined) => {
     if (!actor) return '—';
-    return userMap.get(String(actor)) || actor;
+    return formatUserDisplayName(actor, null, userMap);
   }, [userMap]);
 
   // ── Lịch sử: lọc client-side + cuộn vô hạn 10/trang (giữ NGUYÊN API fetchBuoyStationHistory — chỉ đổi render) ──
@@ -933,24 +938,25 @@ export default function BuoyStationListPage() {
 
   // ── Delete / Approve / Reject handlers ────────────────────────────
   const openDelete = useCallback((r: BuoyStationResponse) => {
-    setDeletingRecord(r); setDeleteText(''); setDeleteOpen(true);
+    setDeletingRecord(r);
+    setDeleteOpen(true);
   }, []);
 
   const confirmDelete = useCallback(async () => {
     if (!deletingRecord) return;
-    const expected = (deletingRecord.name || 'XÓA').trim().toLowerCase();
-    const input = deleteText.trim().toLowerCase();
-    if (input !== expected && input !== 'xóa') {
-      toast.error('Vui lòng nhập đúng tên nhà trạm phao tiêu hoặc gõ "XÓA" để xác nhận');
-      return;
-    }
+    setDeleteLoading(true);
     try {
       await deleteBuoyStation(deletingRecord.id);
       toast.success('Đã xóa nhà trạm phao tiêu');
-      setDeleteOpen(false); setDeletingRecord(null); setDeleteText('');
+      setDeleteOpen(false);
+      setDeletingRecord(null);
       void fetchData();
-    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Xóa thất bại'); }
-  }, [deletingRecord, deleteText, fetchData]);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Xóa thất bại');
+    } finally {
+      setDeleteLoading(false);
+    }
+  }, [deletingRecord, fetchData]);
 
   const openSubmit = useCallback((r: BuoyStationResponse) => {
     setSubmittingRecord(r); setSubmitOpen(true);
@@ -1094,9 +1100,12 @@ export default function BuoyStationListPage() {
     },
     {
       key: 'updatedAt', label: 'Cán bộ cập nhật', dataIndex: 'updatedAt', width: 200, ellipsis: true, sortable: true,
-      render: (v: string, record: BuoyStationResponse) => (
-        <div><span style={{ fontWeight: fontWeightBold }}>{record.updatedByName || record.createdByName || '—'}</span><br /><span style={{ opacity: 0.85 }}>{fmt(v)}</span></div>
-      ),
+      render: (v: string, record: BuoyStationResponse) => {
+        const name = formatUserDisplayName(record.updatedBy, record.updatedByName, userMap, record.createdBy, record.createdByName);
+        return (
+          <div><span style={{ fontWeight: fontWeightBold }}>{name}</span><br /><span style={{ opacity: 0.85 }}>{fmt(v)}</span></div>
+        );
+      },
     },
     {
       key: 'sentApprovedDate', label: 'Cán bộ gửi phê duyệt', dataIndex: 'sentApprovedDate', width: 210, ellipsis: true, sortable: true,
@@ -1151,8 +1160,82 @@ export default function BuoyStationListPage() {
   // ── Render ────────────────────────────────────────────────────────
   return (
     <ThemeTokenProvider tokens={themeTokenChk}>
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
-      <style>{`.buoy-station-filter .ant-select-selector { border-radius: 999px !important; } .buoy-station-filter .ant-select-selection-item { border-radius: 999px !important; } .range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }`}</style>
+    <div className="buoy-station-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      <style>{`
+        .range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }
+
+        /* ── Cỡ chữ 13.5px chuẩn toàn màn Nhà trạm Phao, tiêu & các popup/drawer con ── */
+        .buoy-station-page-wrapper,
+        .buoy-station-page-wrapper .ant-table,
+        .buoy-station-page-wrapper .ant-table-cell,
+        .buoy-station-page-wrapper .ant-table-thead > tr > th,
+        .buoy-station-page-wrapper .ant-table-tbody > tr > td,
+        .buoy-station-page-wrapper .ant-input,
+        .buoy-station-page-wrapper .ant-select,
+        .buoy-station-page-wrapper .ant-select-selection-item,
+        .buoy-station-page-wrapper .ant-select-item-option-content,
+        .buoy-station-page-wrapper .ant-picker,
+        .buoy-station-page-wrapper .ant-picker-input > input,
+        .buoy-station-page-wrapper .ant-btn,
+        .buoy-station-page-wrapper .ant-pagination,
+        .buoy-station-page-wrapper .ant-pagination-item,
+        .buoy-station-page-wrapper .ant-pagination-total-text,
+        .buoy-station-page-wrapper .ant-breadcrumb,
+        .buoy-station-page-wrapper .ant-form-item-label > label,
+        .buoy-station-drawer-scope,
+        .buoy-station-drawer-scope .ant-drawer-content,
+        .buoy-station-drawer-scope .ant-tabs-tab,
+        .buoy-station-drawer-scope .chk-detail-label,
+        .buoy-station-drawer-scope .chk-detail-value,
+        .buoy-station-drawer-scope .ant-table,
+        .buoy-station-drawer-scope .ant-table-cell,
+        .buoy-station-drawer-scope .ant-table-thead > tr > th,
+        .buoy-station-drawer-scope .ant-btn,
+        .buoy-station-drawer-scope .ant-select,
+        .buoy-station-drawer-scope .ant-input,
+        .buoy-station-drawer-scope .ant-form-item-label > label,
+        .buoy-station-modal-scope,
+        .buoy-station-modal-scope .ant-modal-content,
+        .buoy-station-modal-scope .ant-btn,
+        .buoy-station-modal-scope .ant-input {
+          font-size: 13.5px !important;
+        }
+
+        /* ── Responsive StatusTabs: Căn giữa khi đủ chỗ, thanh cuộn ngang khi tràn màn hình ── */
+        .buoy-station-page-wrapper div:has(> button[aria-pressed]) {
+          display: flex !important;
+          flex-wrap: nowrap !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          justify-content: center !important;
+          justify-content: safe center !important;
+          align-items: center !important;
+          scrollbar-width: thin !important;
+          scrollbar-color: #cbd5e1 #f8fafc !important;
+          scroll-behavior: smooth !important;
+          -webkit-overflow-scrolling: touch !important;
+          padding: 2px 16px 6px 16px !important;
+          gap: 20px !important;
+        }
+        .buoy-station-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
+          height: 6px !important;
+          display: block !important;
+        }
+        .buoy-station-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
+          background: #f1f5f9 !important;
+          border-radius: 999px !important;
+        }
+        .buoy-station-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
+          background: #cbd5e1 !important;
+          border-radius: 999px !important;
+        }
+        .buoy-station-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8 !important;
+        }
+        .buoy-station-page-wrapper div:has(> button[aria-pressed]) > button {
+          flex-shrink: 0 !important;
+        }
+      `}</style>
       <ScreenHeader
         breadcrumb={[{ label: 'Báo hiệu hàng hải' }, { label: 'Nhà trạm Phao, tiêu' }]}
         actions={[{ key: 'create', label: 'Thêm mới', variant: 'primary' as const, icon: icons.create, onClick: openCreate }]}
@@ -1288,7 +1371,9 @@ export default function BuoyStationListPage() {
 
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
       <AppDrawer
-        size={1000}
+        width="min(1000px, 96vw)"
+        rootClassName="buoy-station-drawer-scope"
+        className="buoy-station-drawer-scope"
         title={<span style={drawerTitleStyle}>{detailRecord ? `Chi tiết thông tin nhà trạm quản lý vận hành phao, tiêu - ${detailRecord.name}` : 'Chi tiết thông tin nhà trạm quản lý vận hành phao, tiêu'}</span>}
         open={detailOpen}
         onClose={closeDetail}
@@ -1318,7 +1403,9 @@ export default function BuoyStationListPage() {
 
       {/* ── Buoy Detail Drawer (nested — đè lên chi tiết nhà trạm) ── */}
       <AppDrawer
-        size={950}
+        width="min(950px, 96vw)"
+        rootClassName="buoy-station-drawer-scope"
+        className="buoy-station-drawer-scope"
         title={<span style={drawerTitleStyle}>{viewBuoyRecord ? `Chi tiết phao tiêu - ${viewBuoyRecord.name}` : 'Chi tiết phao tiêu'}</span>}
         open={viewBuoyOpen}
         onClose={() => setViewBuoyOpen(false)}
@@ -1341,7 +1428,9 @@ export default function BuoyStationListPage() {
 
       {/* ── History Drawer ─────────────────────────────────────────── */}
       <AppDrawer
-        size={880 as any}
+        width="min(880px, 96vw)"
+        rootClassName="buoy-station-drawer-scope"
+        className="buoy-station-drawer-scope"
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
             <Space size={spaceSm} style={{ alignItems: 'center' }}>
@@ -1433,26 +1522,24 @@ export default function BuoyStationListPage() {
       </AppDrawer>
 
       {/* ── Delete Modal ───────────────────────────────────────────── */}
-      <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận xóa nhà trạm phao tiêu</span>}
+      <DeleteConfirmModal
         open={deleteOpen}
-        onCancel={() => { setDeleteOpen(false); setDeletingRecord(null); setDeleteText(''); }}
-        width={480}
-        footer={[
-          <Button key="cancel" onClick={() => { setDeleteOpen(false); setDeletingRecord(null); setDeleteText(''); }} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
-          <Button key="del" type="primary" danger onClick={confirmDelete} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Xác nhận xóa</Button>,
-        ]}
-      >
-        <div style={{ padding: '8px 0' }}>
-          <Alert message="Hành động này không thể hoàn tác" type="warning" showIcon icon={<ExclamationCircleOutlined />} style={{ marginBottom: spaceFormField, borderRadius: radiusPill }} />
-          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>Vui lòng nhập <strong>tên nhà trạm</strong> hoặc gõ <strong>"XÓA"</strong> để xác nhận xóa.</p>
-          {deletingRecord && <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>Nhà trạm: <strong style={{ color: textPrimary }}>{deletingRecord.name}</strong></p>}
-          <Input placeholder="Nhập tên nhà trạm hoặc XÓA" value={deleteText} onChange={(e) => setDeleteText(e.target.value)} onPressEnter={confirmDelete} style={{ borderRadius: radiusPill, height: 40 }} autoFocus />
-        </div>
-      </Modal>
+        onCancel={() => {
+          if (!deleteLoading) {
+            setDeleteOpen(false);
+            setDeletingRecord(null);
+          }
+        }}
+        onConfirm={confirmDelete}
+        loading={deleteLoading}
+        itemType="nhà trạm phao tiêu"
+        itemName={deletingRecord?.name}
+        itemCode={deletingRecord?.code}
+      />
 
       {/* ── Submit Approval Modal ──────────────────────────────────── */}
       <Modal
+        rootClassName="buoy-station-modal-scope"
         title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận gửi Cảng vụ phê duyệt</span>}
         open={submitOpen}
         onCancel={() => { setSubmitOpen(false); setSubmittingRecord(null); }}
@@ -1479,6 +1566,7 @@ export default function BuoyStationListPage() {
 
       {/* ── Reject Modal ───────────────────────────────────────────── */}
       <Modal
+        rootClassName="buoy-station-modal-scope"
         title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Từ chối phê duyệt</span>}
         open={rejectOpen}
         onCancel={() => { setRejectOpen(false); setRejectingRecord(null); }}
@@ -1497,13 +1585,15 @@ export default function BuoyStationListPage() {
 
       {/* ── Create Drawer ──────────────────────────────────────────── */}
       <AppDrawer
+        width="min(920px, 96vw)"
+        rootClassName="buoy-station-drawer-scope"
+        className="buoy-station-drawer-scope"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới thông tin nhà trạm quản lý vận hành phao, tiêu</span>}
         open={createOpen}
         onClose={() => { setCreateOpen(false); setCreateUploaded([]); setCreateExisting([]); createForm.resetFields(); }}
         footer={
           <>
-
-          <Button onClick={() => createFormRef.current?.submit('DRAFT')} style={outlineButtonStyle}>Lưu tạm</Button>
+            <Button onClick={() => createFormRef.current?.submit('DRAFT')} style={outlineButtonStyle}>Lưu tạm</Button>
             <Button type="primary" onClick={() => createFormRef.current?.submit('SUBMIT')} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>
             <Button type="primary" onClick={() => createFormRef.current?.submit('APPROVED')} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
           </>
@@ -1517,6 +1607,9 @@ export default function BuoyStationListPage() {
 
       {/* ── Edit Drawer ────────────────────────────────────────────── */}
       <AppDrawer
+        width="min(920px, 96vw)"
+        rootClassName="buoy-station-drawer-scope"
+        className="buoy-station-drawer-scope"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin nhà trạm quản lý vận hành phao, tiêu — {editRecord ? editRecord.name : 'Nhà trạm quản lý vận hành phao, tiêu'}</span>}
         open={editOpen}
         onClose={() => { setEditOpen(false); setEditRecord(null); setEditUploaded([]); setEditExisting([]); editForm.resetFields(); }}

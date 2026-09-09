@@ -958,43 +958,69 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
             <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
               Tọa độ
             </span>
-            <Space>
+            <Space size={8}>
               <Button
-                type="dashed"
-                size="small"
-                icon={<EnvironmentOutlined />}
+                icon={<EnvironmentOutlined style={{ color: !watchedGeom ? undefined : actionPrimary }} />}
                 disabled={!watchedGeom}
                 onClick={() => setMapModalOpen(true)}
-                style={{ borderRadius: radiusPill }}
+                style={!watchedGeom ? {
+                  height: 32,
+                  fontSize: fontSizeSm,
+                  padding: '0 14px',
+                  borderRadius: radiusPill,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  opacity: 0.6,
+                  cursor: 'not-allowed',
+                } : {
+                  ...outlineButtonStyle,
+                  height: 32,
+                  fontSize: fontSizeSm,
+                  padding: '0 14px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
               >
                 Chọn vị trí trên bản đồ
               </Button>
-              {watchedGeom && watchedGeom !== 'POINT' && (
-                <Button
-                  type="dashed"
-                  size="small"
-                  icon={<PlusOutlined />}
-                  onClick={() => setCoordinateList((p) => [...p, { latitude: null, longitude: null }])}
-                  style={{ borderRadius: radiusPill }}
-                >
-                  Thêm tọa độ
-                </Button>
-              )}
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => setCoordinateList((p) => [...p, { latitude: null, longitude: null }])}
+                disabled={!watchedGeom || (watchedGeom === 'POINT' && coordinateList.length >= 1)}
+                style={!watchedGeom || (watchedGeom === 'POINT' && coordinateList.length >= 1) ? {
+                  height: 32,
+                  fontSize: fontSizeSm,
+                  padding: '0 14px',
+                  borderRadius: radiusPill,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  background: '#f5f5f5',
+                  borderColor: '#d9d9d9',
+                  color: 'rgba(0, 0, 0, 0.25)',
+                  cursor: 'not-allowed',
+                } : {
+                  ...primaryButtonStyle,
+                  height: 32,
+                  fontSize: fontSizeSm,
+                  padding: '0 14px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+                title={watchedGeom === 'POINT' && coordinateList.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 tọa độ GPS' : undefined}
+              >
+                Thêm tọa độ
+              </Button>
             </Space>
           </div>
 
           {coordinateList.length === 0 ? (
             <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: 20, background: surfaceCard }}>
-              <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có tọa độ nào.</span>
-              <Button
-                type="dashed"
-                icon={<PlusOutlined />}
-                disabled={!watchedGeom}
-                onClick={() => setCoordinateList([{ latitude: null, longitude: null }])}
-                style={{ borderRadius: radiusPill }}
-              >
-                Thêm tọa độ
-              </Button>
+              <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block' }}>Chưa có tọa độ nào.</span>
             </div>
           ) : (
             <DetailTable

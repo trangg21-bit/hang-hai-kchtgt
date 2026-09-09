@@ -2,12 +2,14 @@
 // No fetch, no routing. 3 Tabs: Thông tin chung / Thông tin vị trí / File đính kèm.
 
 import React, { useState } from 'react';
+import dayjs from 'dayjs';
+import { useAuthStore } from '../../store/authStore';
 import {
   Row, Col, Form, Input, InputNumber, Select, DatePicker, Button, Tabs,
   Table, message, Space, Modal,
 } from 'antd';
 import type { UploadFile, UploadProps } from 'antd';
-import { DeleteOutlined, PlusOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import { DeleteOutlined, PlusOutlined, EnvironmentOutlined, BankOutlined, SlidersOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { colors } from '../../themetokenchk';
 import {
   textTertiary, sidebarBg, statusCritical, actionPrimary,
@@ -41,6 +43,30 @@ const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 }
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 const datePickerStyle: React.CSSProperties = { width: '100%', borderRadius: radiusPill, height: 40 };
+
+const sectionBoxStyle: React.CSSProperties = {
+  background: '#ffffff',
+  border: `1px solid ${borderDefault}`,
+  borderRadius: 8,
+  padding: '16px 20px',
+  marginBottom: 16,
+};
+
+const sectionHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  marginBottom: 16,
+  paddingBottom: 8,
+  borderBottom: `1px solid ${borderDefault}`,
+};
+
+const sectionTitleStyle: React.CSSProperties = {
+  fontSize: fontSizeMd,
+  fontWeight: fontWeightBold,
+  color: colors.sidebarBg,
+};
+
 const parseInteger = (v: string | undefined): number => {
   const intPart = (v ?? '').replace(/,/g, '').split('.')[0];
   return intPart === '' ? 0 : Number(intPart);
@@ -209,6 +235,7 @@ export default function BuoyFormContent({
   uploadFileList,
   setUploadFileList,
   symbols,
+  userMap,
   geometryType,
   gpsCoordList,
   gpsError,
@@ -222,12 +249,11 @@ export default function BuoyFormContent({
   currentStationId,
   selectedUnitId,
 }: BuoyFormContentProps) {
+  const currentUser = useAuthStore((s) => s.user);
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const [gpsPage, setGpsPage] = useState(1);
-  // Cụm toggle ▼/▶ trong tab Thông tin chung (mặc định MỞ) — pattern BuoyBerthForm announcementOpen
-  const [summaryOpen, setSummaryOpen] = useState(true);
-  const [timingOpen, setTimingOpen] = useState(true);
-  const [lightOpen, setLightOpen] = useState(true);
+  const hasCoordinates = (gpsCoordList || []).some((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null));
+  const hasLocation = Boolean(geometryType || hasCoordinates);
   const atMax = {
     name: useMaxReached('name', 255),
     locationDetail: useMaxReached('locationDetail', 500),
@@ -260,11 +286,21 @@ export default function BuoyFormContent({
       message.error('Chỉ được upload tối đa 10 file');
       return false;
     }
-    const uploadFile: UploadFile = {
+    const nowIso = dayjs().toISOString();
+    const uploaderName = currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý';
+    const uploadFile: any = {
       uid: `-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       name: file.name,
+      fileName: file.name,
       size: file.size,
+      fileSize: file.size,
       type: file.type,
+      fileType: file.type,
+      uploadedByName: uploaderName,
+      uploadedBy: currentUser?.userId || currentUser?.id || uploaderName,
+      uploadedDate: nowIso,
+      uploadedAt: nowIso,
+      createdAt: nowIso,
       status: 'done',
       originFileObj: file,
     };
@@ -278,131 +314,144 @@ export default function BuoyFormContent({
       label: 'Thông tin chung',
       children: (
         <div style={drawerFormScrollStyle}>
-          <Row gutter={[24, 0]}>
-            <Col span={12}>
-              <Form.Item
-                name="unitId"
-                {...labelProps('Đơn vị quản lý')}
-                required={!isEdit}
-                style={{ marginBottom: spaceFormField }}
-                rules={!isEdit ? [{ required: true, message: 'Đơn vị quản lý là bắt buộc khi thêm mới' }] : []}
-              >
-                <OrgUnitTreeSelect
-                  organizations={orgUnits}
-                  placeholder="Chọn Đơn vị quản lý"
-                  loading={loadingOrgs}
-                  showPath
-                  allowClear
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="buoyStationId"
-                {...labelProps('Thuộc nhà trạm quản lý vận hành phao, tiêu')}
-                required={!isEdit}
-                style={{ marginBottom: spaceFormField }}
-                tooltip={!selectedUnitId ? 'Vui lòng chọn Đơn vị quản lý trước' : (isEdit && !!currentStationId ? 'Phao tiêu đã thuộc nhà trạm này — không thể đổi nhà trạm quản lý vận hành' : undefined)}
-                rules={!isEdit ? [{ required: true, message: 'Thuộc nhà trạm quản lý vận hành phao, tiêu là bắt buộc' }] : []}
-              >
-                <Select
-                  placeholder={!selectedUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : (buoyStations.length === 0 && !loadingStations ? 'Không có nhà trạm đã phê duyệt thuộc đơn vị quản lý' : 'Chọn Thuộc nhà trạm quản lý vận hành phao, tiêu')}
-                  loading={loadingStations}
-                  disabled={!selectedUnitId || (buoyStations.length === 0 && !loadingStations) || (isEdit && !!currentStationId)}
-                  options={buoyStations.map((s) => ({ value: s.id, label: s.name }))}
-                  showSearch
-                  filterOption={(input, option) => (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())}
-                  notFoundContent="Không có nhà trạm đã phê duyệt thuộc đơn vị quản lý"
-                  onChange={onStationChange}
-                  style={selectStyle}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={[24, 0]}>
-            <Col span={12}>
-              <Form.Item
-                name="classification"
-                {...labelProps('Phân loại')}
-                required
-                style={{ marginBottom: spaceFormField }}
-                rules={[{ required: true, message: 'Vui lòng chọn phân loại' }]}
-              >
-                <Select placeholder="Chọn Phân loại" options={CLASSIFICATION_OPTIONS} style={selectStyle} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="classificationBuoy" {...labelProps('Phân loại phao')} style={{ marginBottom: spaceFormField }}>
-                <Select placeholder="Chọn Phân loại phao" options={CLASSIFICATION_BUOY_OPTIONS} allowClear style={selectStyle} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={[24, 0]}>
-            <Col span={12}>
-              <Form.Item name="classificationMark" {...labelProps('Phân loại tiêu')} style={{ marginBottom: spaceFormField }}>
-                <Select placeholder="Chọn Phân loại tiêu" options={CLASSIFICATION_MARK_OPTIONS} allowClear style={selectStyle} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="code"
-                {...labelProps('Mã phao, tiêu')}
-                style={{ marginBottom: spaceFormField }}
-                tooltip={!isEdit ? 'Mã tự sinh theo {mã nhà trạm}-PT-{seq}, không thể chỉnh sửa' : undefined}
-                rules={!isEdit ? [{ max: 50, message: 'Tối đa 50 ký tự' }] : []}
-              >
-                <Input
-                  disabled
-                  placeholder={isEdit ? undefined : (codeLoading ? 'Đang sinh mã...' : 'Mã tự động')}
-                  maxLength={50}
-                  style={readonlyInputStyle}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={[24, 0]}>
-            <Col span={12}>
-              <Form.Item
-                name="name"
-                {...labelProps('Tên phao, tiêu')}
-                required
-                style={{ marginBottom: spaceFormField }}
-                rules={[{ required: true, message: 'Tên phao tiêu không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}
-                validateStatus={atMax.name ? 'error' : undefined} help={atMax.name ? 'Đã đạt tối đa 255 ký tự' : undefined}
-              >
-                <Input placeholder="Nhập Tên phao, tiêu" maxLength={255} showCount style={inputStyle} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành Phố)')} style={{ marginBottom: spaceFormField }}>
-                <Select placeholder="Chọn Địa điểm (Tỉnh/Thành Phố)" options={VIETNAM_PROVINCE_OPTIONS} showSearch allowClear style={selectStyle} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={[24, 0]}>
-            <Col span={12}>
-              <Form.Item name="locationDetail" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.locationDetail ? 'error' : undefined} help={atMax.locationDetail ? 'Đã đạt tối đa 500 ký tự' : undefined}>
-                <Input placeholder="Nhập Địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="condition"
-                {...labelProps('Tình trạng')}
-                required
-                style={{ marginBottom: spaceFormField }}
-                initialValue="Chưa khai thác/vận hành"
-                rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
-              >
-                <Select placeholder="Chọn Tình trạng" options={CONDITION_OPTIONS} style={selectStyle} />
-              </Form.Item>
-            </Col>
-          </Row>
-          {/* ── Toggle: Chỉ số tổng hợp (mặc định MỞ) ── */}
-          <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setSummaryOpen(!summaryOpen)}>
-            <span style={{ color: summaryOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{summaryOpen ? '▼' : '▶'} Chỉ số tổng hợp</span>
-          </button>
-          {summaryOpen && (<div style={{ marginTop: spaceFormField }}>
+          {/* ── Section 1: Thông tin cơ bản & Quản lý vận hành ── */}
+          <div style={sectionBoxStyle}>
+            <div style={sectionHeaderStyle}>
+              <div style={sectionTitleStyle}>
+                <BankOutlined style={{ color: actionPrimary }} />
+                <span style={{ marginLeft: 8 }}>Thông tin cơ bản & Quản lý vận hành</span>
+              </div>
+            </div>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item
+                  name="unitId"
+                  {...labelProps('Đơn vị quản lý')}
+                  required={!isEdit}
+                  style={{ marginBottom: spaceFormField }}
+                  rules={!isEdit ? [{ required: true, message: 'Đơn vị quản lý là bắt buộc khi thêm mới' }] : []}
+                >
+                  <OrgUnitTreeSelect
+                    organizations={orgUnits}
+                    placeholder="Chọn Đơn vị quản lý"
+                    loading={loadingOrgs}
+                    showPath
+                    allowClear
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="buoyStationId"
+                  {...labelProps('Thuộc nhà trạm quản lý vận hành phao, tiêu')}
+                  required={!isEdit}
+                  style={{ marginBottom: spaceFormField }}
+                  tooltip={!selectedUnitId ? 'Vui lòng chọn Đơn vị quản lý trước' : (isEdit && !!currentStationId ? 'Phao tiêu đã thuộc nhà trạm này — không thể đổi nhà trạm quản lý vận hành' : undefined)}
+                  rules={!isEdit ? [{ required: true, message: 'Thuộc nhà trạm quản lý vận hành phao, tiêu là bắt buộc' }] : []}
+                >
+                  <Select
+                    placeholder={!selectedUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : (buoyStations.length === 0 && !loadingStations ? 'Không có nhà trạm đã phê duyệt thuộc đơn vị quản lý' : 'Chọn Thuộc nhà trạm quản lý vận hành phao, tiêu')}
+                    loading={loadingStations}
+                    disabled={!selectedUnitId || (buoyStations.length === 0 && !loadingStations) || (isEdit && !!currentStationId)}
+                    options={buoyStations.map((s) => ({ value: s.id, label: s.name }))}
+                    showSearch
+                    filterOption={(input, option) => (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())}
+                    notFoundContent="Không có nhà trạm đã phê duyệt thuộc đơn vị quản lý"
+                    onChange={onStationChange}
+                    style={selectStyle}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item
+                  name="classification"
+                  {...labelProps('Phân loại')}
+                  required
+                  style={{ marginBottom: spaceFormField }}
+                  rules={[{ required: true, message: 'Vui lòng chọn phân loại' }]}
+                >
+                  <Select placeholder="Chọn Phân loại" options={CLASSIFICATION_OPTIONS} style={selectStyle} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="classificationBuoy" {...labelProps('Phân loại phao')} style={{ marginBottom: spaceFormField }}>
+                  <Select placeholder="Chọn Phân loại phao" options={CLASSIFICATION_BUOY_OPTIONS} allowClear style={selectStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item name="classificationMark" {...labelProps('Phân loại tiêu')} style={{ marginBottom: spaceFormField }}>
+                  <Select placeholder="Chọn Phân loại tiêu" options={CLASSIFICATION_MARK_OPTIONS} allowClear style={selectStyle} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="code"
+                  {...labelProps('Mã phao, tiêu')}
+                  style={{ marginBottom: spaceFormField }}
+                  tooltip={!isEdit ? 'Mã tự sinh theo {mã nhà trạm}-PT-{seq}, không thể chỉnh sửa' : undefined}
+                  rules={!isEdit ? [{ max: 50, message: 'Tối đa 50 ký tự' }] : []}
+                >
+                  <Input
+                    disabled
+                    placeholder={isEdit ? undefined : (codeLoading ? 'Đang sinh mã...' : 'Mã tự động')}
+                    maxLength={50}
+                    style={readonlyInputStyle}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item
+                  name="name"
+                  {...labelProps('Tên phao, tiêu')}
+                  required
+                  style={{ marginBottom: spaceFormField }}
+                  rules={[{ required: true, message: 'Tên phao tiêu không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}
+                  validateStatus={atMax.name ? 'error' : undefined} help={atMax.name ? 'Đã đạt tối đa 255 ký tự' : undefined}
+                >
+                  <Input placeholder="Nhập Tên phao, tiêu" maxLength={255} showCount style={inputStyle} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành Phố)')} style={{ marginBottom: spaceFormField }}>
+                  <Select placeholder="Chọn Địa điểm (Tỉnh/Thành Phố)" options={VIETNAM_PROVINCE_OPTIONS} showSearch allowClear style={selectStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item name="locationDetail" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.locationDetail ? 'error' : undefined} help={atMax.locationDetail ? 'Đã đạt tối đa 500 ký tự' : undefined}>
+                  <Input placeholder="Nhập Địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="condition"
+                  {...labelProps('Tình trạng')}
+                  required
+                  style={{ marginBottom: spaceFormField }}
+                  initialValue="Chưa khai thác/vận hành"
+                  rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
+                >
+                  <Select placeholder="Chọn Tình trạng" options={CONDITION_OPTIONS} style={selectStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+          </div>
+
+          {/* ── Section 2: Thông số kỹ thuật & Quy mô thân phao / tháp đèn ── */}
+          <div style={sectionBoxStyle}>
+            <div style={sectionHeaderStyle}>
+              <div style={sectionTitleStyle}>
+                <SlidersOutlined style={{ color: actionPrimary }} />
+                <span style={{ marginLeft: 8 }}>Thông số kỹ thuật & Quy mô thân phao / tháp đèn</span>
+              </div>
+            </div>
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="shape" {...labelProps('Hình dạng')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.shape ? 'error' : undefined} help={atMax.shape ? 'Đã đạt tối đa 500 ký tự' : undefined}>
@@ -490,25 +539,16 @@ export default function BuoyFormContent({
                 </Form.Item>
               </Col>
             </Row>
-          </div>)}
-          {/* ── Toggle: Thời điểm (mặc định MỞ) — 'Thời điểm sửa chữa gần nhất' chỉ hiển thị ở chi tiết ── */}
-          <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setTimingOpen(!timingOpen)}>
-            <span style={{ color: timingOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{timingOpen ? '▼' : '▶'} Thời điểm</span>
-          </button>
-          {timingOpen && (<div style={{ marginTop: spaceFormField }}>
-            <Row gutter={[24, 0]}>
-              <Col span={12}>
-                <Form.Item name="commissionedDate" {...labelProps('Thời điểm đưa vào sử dụng')} style={{ marginBottom: spaceFormField }}>
-                  <DatePicker placeholder="Chọn Thời điểm đưa vào sử dụng" format="DD/MM/YYYY" popupClassName="buoy-date-picker" style={datePickerStyle} />
-                </Form.Item>
-              </Col>
-            </Row>
-          </div>)}
-          {/* ── Toggle: Đặc tính ánh sáng (mặc định MỞ) — gom từ tab riêng ── */}
-          <button type="button" style={{ cursor: 'pointer', marginTop: spaceFormField, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setLightOpen(!lightOpen)}>
-            <span style={{ color: lightOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{lightOpen ? '▼' : '▶'} Đặc tính ánh sáng</span>
-          </button>
-          {lightOpen && (<div style={{ marginTop: spaceFormField }}>
+          </div>
+
+          {/* ── Section 3: Đặc tính ánh sáng & Thời gian vận hành ── */}
+          <div style={sectionBoxStyle}>
+            <div style={sectionHeaderStyle}>
+              <div style={sectionTitleStyle}>
+                <ThunderboltOutlined style={{ color: actionPrimary }} />
+                <span style={{ marginLeft: 8 }}>Đặc tính ánh sáng & Thời gian vận hành</span>
+              </div>
+            </div>
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="lightColor" {...labelProps('Màu sắc')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.lightColor ? 'error' : undefined} help={atMax.lightColor ? 'Đã đạt tối đa 50 ký tự' : undefined}>
@@ -527,8 +567,13 @@ export default function BuoyFormContent({
                   <Input placeholder="Nhập Chu kỳ" maxLength={50} showCount style={inputStyle} />
                 </Form.Item>
               </Col>
+              <Col span={12}>
+                <Form.Item name="commissionedDate" {...labelProps('Thời điểm đưa vào sử dụng')} style={{ marginBottom: spaceFormField }}>
+                  <DatePicker placeholder="Chọn Thời điểm đưa vào sử dụng" format="DD/MM/YYYY" popupClassName="buoy-date-picker" style={datePickerStyle} />
+                </Form.Item>
+              </Col>
             </Row>
-          </div>)}
+          </div>
         </div>
       ),
     },
@@ -539,12 +584,24 @@ export default function BuoyFormContent({
         <div style={drawerFormScrollStyle}>
           <Row gutter={[24, 0]}>
             <Col span={12}>
-              <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
+              <Form.Item
+                name="geometryType"
+                {...labelProps('Loại đối tượng')}
+                required={hasCoordinates}
+                rules={hasCoordinates ? [{ required: true, message: 'Loại đối tượng là bắt buộc khi có tọa độ' }] : []}
+                style={{ marginBottom: spaceFormField }}
+              >
                 <Select placeholder="Chọn Loại đối tượng" allowClear options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="mapSymbolId" {...labelProps('Biểu tượng')} style={{ marginBottom: spaceFormField }}>
+              <Form.Item
+                name="mapSymbolId"
+                {...labelProps('Biểu tượng')}
+                required={hasLocation}
+                rules={hasLocation ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
+                style={{ marginBottom: spaceFormField }}
+              >
                 <Select placeholder="Chọn Biểu tượng" allowClear showSearch optionFilterProp="label"
                   disabled={!geometryType} style={selectStyle}>
                   {symbols.map((sym) => (
@@ -578,10 +635,28 @@ export default function BuoyFormContent({
             </span>
             <Space size={8}>
               <Button
-                icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+                icon={<EnvironmentOutlined style={{ color: !geometryType ? undefined : actionPrimary }} />}
                 onClick={() => setGisModalOpen(true)}
                 disabled={!geometryType}
-                style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                style={!geometryType ? {
+                  height: 32,
+                  fontSize: fontSizeSm,
+                  padding: '0 14px',
+                  borderRadius: radiusPill,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  opacity: 0.6,
+                  cursor: 'not-allowed',
+                } : {
+                  ...outlineButtonStyle,
+                  height: 32,
+                  fontSize: fontSizeSm,
+                  padding: '0 14px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
               >
                 Chọn tọa độ trên bản đồ
               </Button>
@@ -589,8 +664,29 @@ export default function BuoyFormContent({
                 type="primary"
                 icon={<PlusOutlined />}
                 onClick={addGpsPoint}
-                disabled={!geometryType}
-                style={{ ...primaryButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                disabled={!geometryType || (geometryType === 'POINT' && gpsCoordList.length >= 1)}
+                style={!geometryType || (geometryType === 'POINT' && gpsCoordList.length >= 1) ? {
+                  height: 32,
+                  fontSize: fontSizeSm,
+                  padding: '0 14px',
+                  borderRadius: radiusPill,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  background: '#f5f5f5',
+                  borderColor: '#d9d9d9',
+                  color: 'rgba(0, 0, 0, 0.25)',
+                  cursor: 'not-allowed',
+                } : {
+                  ...primaryButtonStyle,
+                  height: 32,
+                  fontSize: fontSizeSm,
+                  padding: '0 14px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+                title={geometryType === 'POINT' && gpsCoordList.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 tọa độ GPS' : undefined}
               >
                 Thêm tọa độ
               </Button>
@@ -598,8 +694,7 @@ export default function BuoyFormContent({
           </div>
           {gpsCoordList.length === 0 ? (
             <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
-              <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có tọa độ nào.</span>
-              <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!geometryType} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
+              <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block' }}>Chưa có tọa độ nào.</span>
             </div>
           ) : (
             <>
@@ -659,10 +754,18 @@ export default function BuoyFormContent({
       label: `File đính kèm (${uploadFileList.length})`,
       children: (
         <InfrastructureAttachmentTab
-          attachments={uploadFileList.map((f) => ({ id: f.uid, fileName: f.name, fileSize: f.size, ...f }))}
+          attachments={uploadFileList.map((f: any) => ({
+            ...f,
+            id: f.uid || f.id,
+            fileName: f.name || f.fileName,
+            fileSize: f.fileSize ?? f.size ?? f.originFileObj?.size,
+            uploadedByName: f.uploadedByName || (f.uploadedBy ? (userMap?.get(f.uploadedBy) || f.uploadedBy) : '') || currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
+            uploadedDate: f.uploadedDate || f.uploadedAt || f.createdAt || dayjs().toISOString(),
+          }))}
           readonly={false}
+          userMap={userMap}
           onUpload={(file) => { handleBeforeUpload(file); return false; }}
-          onDelete={(uid) => { setUploadFileList((prev) => prev.filter((x) => x.uid !== uid)); }}
+          onDelete={(uid) => { setUploadFileList((prev) => prev.filter((x) => (x.uid || (x as any).id) !== uid)); }}
           onDownload={(_uid, name) => { toast.info(`Đang tải xuống tệp: ${name}`); }}
         />
       ),

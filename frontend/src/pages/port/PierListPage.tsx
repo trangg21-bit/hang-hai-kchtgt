@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Button, Modal, Input, Select, Alert, DatePicker,
   Drawer, Radio, Space, Typography, Form,
@@ -351,6 +352,12 @@ function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; 
 }
 
 export default function PierListPage() {
+  const [searchParams] = useSearchParams();
+  const linkedAction = searchParams.get('action');
+  const linkedRecordId = searchParams.get('id');
+  const isEmbeddedAction = window.self !== window.top
+    && (linkedAction === 'detail' || linkedAction === 'edit')
+    && !!linkedRecordId;
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const userPermissions = useAuthStore((s) => s.user?.permissions) || [];
   const isAuditViewer = userPermissions.includes('admin:manage') || userPermissions.includes('admin:operation');
@@ -711,6 +718,45 @@ export default function PierListPage() {
     } catch { setInfrastructureList([]); }
   }, []);
 
+  useEffect(() => {
+    if (!isEmbeddedAction || !linkedRecordId) return;
+    let cancelled = false;
+    pierCRUD.findById(linkedRecordId)
+      .then((record) => {
+        if (cancelled) return;
+        if (linkedAction === 'detail') {
+          void openDetailDrawer(record);
+        } else {
+          setEditPierId(linkedRecordId);
+          setCreateDrawerVisible(true);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) toast.error(error instanceof Error ? error.message : 'Không tải được chi tiết cầu cảng');
+      });
+    return () => { cancelled = true; };
+  }, [isEmbeddedAction, linkedAction, linkedRecordId, openDetailDrawer]);
+
+  const notifyEmbeddedActionClosed = useCallback(() => {
+    if (isEmbeddedAction) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, window.location.origin);
+    }
+  }, [isEmbeddedAction]);
+
+  const closeFormDrawer = useCallback(() => {
+    setCreateDrawerVisible(false);
+    setEditPierId(undefined);
+    createForm.resetFields();
+    notifyEmbeddedActionClosed();
+  }, [createForm, notifyEmbeddedActionClosed]);
+
+  const closeDetailDrawer = useCallback(() => {
+    setDetailDrawerVisible(false);
+    setDetailRecord(null);
+    setBerthDetail(null);
+    notifyEmbeddedActionClosed();
+  }, [notifyEmbeddedActionClosed]);
+
   // ── Chi tiết kết cấu hạ tầng (Cơ sở sửa chữa, đóng tàu) — drawer lồng 950 như bến phao ──
   const openInfraDetail = useCallback(async (id: string) => {
     try {
@@ -983,19 +1029,19 @@ export default function PierListPage() {
       </FilterTableLayout>
 
       <Drawer {...drawerProps} title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editPierId ? 'Chỉnh sửa thông tin Cầu cảng' : 'Thêm mới Cầu cảng'}</span>} open={createDrawerVisible} destroyOnHidden
-        onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
+        onClose={closeFormDrawer}
         afterOpenChange={(open) => { if (!open) setEditPierId(undefined); }}
         extra={<Button type="text" onClick={() => { setCreateDrawerVisible(false); createForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
         footer={<div style={drawerFooterStyle}>{editPierId ? <Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); pierFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button> : <><Button htmlType="button" onClick={() => { setActionType('draft'); pierFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button><Button htmlType="button" type="primary" onClick={() => { setActionType('submit'); pierFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button><Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); pierFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button></>}</div>}
         styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }}>
         <Form form={createForm} layout="vertical">
           <style>{requiredMarkStyle}</style>
-          <PierForm ref={pierFormRef} form={createForm} id={editPierId} onFinish={() => { setCreateDrawerVisible(false); void fetchData(); void fetchCounts(orgUnit); }} onSubmittingChange={setSubmitting} />
+          <PierForm ref={pierFormRef} form={createForm} id={editPierId} onFinish={() => { closeFormDrawer(); void fetchData(); void fetchCounts(orgUnit); }} onSubmittingChange={setSubmitting} />
         </Form>
       </Drawer>
 
       <Drawer {...drawerProps} size={1000} title={<span style={drawerTitleStyle}>Chi tiết cầu cảng{detailRecord ? ` - ${detailRecord.pierName}` : ''}</span>} open={detailDrawerVisible}
-        onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); setBerthDetail(null); }}
+        onClose={closeDetailDrawer}
         extra={<Button type="text" onClick={() => { setDetailDrawerVisible(false); setDetailRecord(null); setBerthDetail(null); }} style={drawerCloseBtnStyle}>✕</Button>}
         styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }} footer={null}>
         {detailRecord && <PierDetailContent selectedRecord={detailRecord} orgMap={orgMap} portMap={portMap} berthOptions={berthOptions} symbolMap={symbolMap} symbolImageMap={symbolImageMap} detailFiles={detailFiles} ddToDms={dd2dms} approvalStyleMap={APPROVAL_STYLE_MAP} operationalStyleMap={OPERATIONAL_STYLE_MAP} userMap={userMap} waterwayMap={waterwayMap} berthDetail={berthDetail} organizations={organizations} infrastructureList={infrastructureList} onViewInfraDetail={openInfraDetail} operationPlanList={(detailRecord as any)?.operationPlanList} maintenancePlanList={(detailRecord as any)?.maintenancePlanList} incidentList={(detailRecord as any)?.incidentList} />}

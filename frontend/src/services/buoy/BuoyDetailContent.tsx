@@ -6,18 +6,21 @@
 
 import React, { useState } from 'react';
 import { Tabs, Button, Modal } from 'antd';
-import { FileOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import { EnvironmentOutlined, BankOutlined, SlidersOutlined, ThunderboltOutlined, AuditOutlined, DownOutlined, RightOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { colors } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
+import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import toast from '../../components/ToastNotification';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type { OrgUnitTreeOption } from '../../components/org-unit';
 import {
-  textTertiary, surfaceCard,
+  textTertiary, surfaceCard, borderDefault,
   actionPrimary, statusOperational, statusAttention, statusCritical,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
   spaceSm, spaceMd, spaceFormField,
   statusBadgeStyle, outlineButtonStyle, primaryButtonStyle,
+  formatUserDisplayName, isUuidString,
 } from '../../themetokenchk';
 import {
   SHAPE_LABEL_MAP,
@@ -55,6 +58,44 @@ function formatDateOnly(dateStr: string | null | undefined): string {
 }
 
 const detailLabelStyle: React.CSSProperties = { color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd };
+
+const sectionBoxStyle: React.CSSProperties = {
+  background: '#ffffff',
+  border: `1px solid ${borderDefault}`,
+  borderRadius: 8,
+  padding: '16px 20px',
+  marginBottom: 16,
+};
+
+const sectionHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 8,
+  marginBottom: 16,
+  paddingBottom: 8,
+  borderBottom: `1px solid ${borderDefault}`,
+};
+
+const sectionTitleStyle: React.CSSProperties = {
+  fontSize: fontSizeMd,
+  fontWeight: fontWeightBold,
+  color: colors.sidebarBg,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+};
+
+const gridRows = (rows: Array<[string, React.ReactNode]>) => (
+  <div className="chk-detail-grid">
+    {rows.map(([label, value], i) => (
+      <div key={i} className="chk-detail-row">
+        <span className="chk-detail-label">{label}</span>
+        <span className="chk-detail-value">{value}</span>
+      </div>
+    ))}
+  </div>
+);
 
 // Parse tọa độ GPS: ưu tiên WKT (coordinates) — POINT/MULTIPOINT từ form Phao tiêu;
 // fallback sang latitude/longitude (giống BuoyBerthDetailContent).
@@ -116,11 +157,9 @@ export default function BuoyDetailContent({
   const [maintenanceOpen, setMaintenanceOpen] = useState(true);
   const [incidentOpen, setIncidentOpen] = useState(true);
   const [gisModalOpen, setGisModalOpen] = useState(false);
-  const [indicatorOpen, setIndicatorOpen] = useState(true);
-  const [timingOpen, setTimingOpen] = useState(true);
-  const [lightCharOpen, setLightCharOpen] = useState(true);
-  const userName = (id: number | string | undefined | null) =>
-    id != null ? (userMap.get(String(id)) || String(id)) : '—';
+  const [approvalOpen, setApprovalOpen] = useState(true);
+  const userName = (id: number | string | undefined | null, fallbackName?: string | null) =>
+    formatUserDisplayName(id != null ? String(id) : null, fallbackName, userMap);
   const provinceName = (id: number | undefined | null) =>
     id != null ? (VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(id))?.label || String(id)) : '—';
   const statusBadge = (() => {
@@ -141,14 +180,21 @@ export default function BuoyDetailContent({
           key: 'general', label: 'Thông tin chung',
           children: (
             <div style={{ paddingTop: 3 }}>
-              <div className="chk-detail-grid">
-                {[
+              {/* ── Section 1: Thông tin cơ bản & Quản lý vận hành ── */}
+              <div style={sectionBoxStyle}>
+                <div style={sectionHeaderStyle}>
+                  <div style={sectionTitleStyle}>
+                    <BankOutlined style={{ color: actionPrimary }} />
+                    <span>Thông tin cơ bản & Quản lý vận hành</span>
+                  </div>
+                </div>
+                {gridRows([
                   ['Mã phao tiêu', <span style={statusBadgeStyle(actionPrimary)}>{r.code || '—'}</span>],
                   ['Tên phao tiêu', <span style={{ fontWeight: fontWeightBold }}>{r.name || '—'}</span>],
                   ['Đơn vị quản lý', (() => {
                     const name = orgUnits.find((o) => o.id === r.unitId)?.name || r.unitId || '—';
                     return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
-                  })(),],
+                  })()],
                   ['Thuộc nhà trạm quản lý vận hành phao, tiêu', r.buoyStationName || '—'],
                   ['Phân loại', r.classification || '—'],
                   ['Phân loại phao', r.classificationBuoy || '—'],
@@ -156,78 +202,81 @@ export default function BuoyDetailContent({
                   ['Địa điểm (Tỉnh/Thành Phố)', provinceName(r.provinceId)],
                   ['Địa điểm chi tiết', r.locationDetail || '—'],
                   ['Tình trạng', (() => { const s = CONDITION_STYLE[r.condition || ''] || { color: textTertiary, label: r.condition || '—' }; return <span style={statusBadgeStyle(s.color)}>{s.label}</span>; })()],
-                ].map(([label, value], i) => (
-                  <div key={i} className="chk-detail-row">
-                    <span className="chk-detail-label">{label}</span>
-                    <span className="chk-detail-value">{value}</span>
-                  </div>
-                ))}
+                ])}
               </div>
 
-              {/* ── Toggle: Chỉ số tổng hợp (giống bến phao) ── */}
-              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setIndicatorOpen(!indicatorOpen)}>
-                <span style={{ color: indicatorOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{indicatorOpen ? '▼' : '▶'} Chỉ số tổng hợp</span>
-              </button>
-              {indicatorOpen && (
-                <div className="chk-detail-grid">
-                  {[
-                    ['Hình dạng', r.shape ? (SHAPE_LABEL_MAP[r.shape] || r.shape) : '—'],
-                    ['Kết cấu', r.structure || '—'],
-                    ['Diện tích m²', r.area != null ? r.area : '—'],
-                    ['Chiều cao thân phao m', r.bodyHeight != null ? r.bodyHeight : '—'],
-                    ['Đường kính phao m', r.diameter != null ? r.diameter : '—'],
-                    ['Đèn biển', r.beaconLight || '—'],
-                    ['Chiều cao tháp đèn', r.towerHeight != null ? r.towerHeight : '—'],
-                    ['Chiều cao tâm sáng', r.lightHeight != null ? r.lightHeight : '—'],
-                    ['Chủng loại đèn', r.lightModel || '—'],
-                    ['Màu sắc bên ngoài tháp đèn', r.towerColor || '—'],
-                    ['Nguồn cung cấp năng lượng', r.powerSupply || '—'],
-                    ['Phạm vi chiếu sáng', r.range != null ? `${r.range} hải lý` : '—'],
-                  ].map(([label, value], i) => (
-                    <div key={i} className="chk-detail-row">
-                      <span className="chk-detail-label">{label}</span>
-                      <span className="chk-detail-value">{value}</span>
-                    </div>
-                  ))}
+              {/* ── Section 2: Thông số kỹ thuật & Quy mô thân phao / tháp đèn ── */}
+              <div style={sectionBoxStyle}>
+                <div style={sectionHeaderStyle}>
+                  <div style={sectionTitleStyle}>
+                    <SlidersOutlined style={{ color: actionPrimary }} />
+                    <span>Thông số kỹ thuật & Quy mô thân phao / tháp đèn</span>
+                  </div>
                 </div>
-              )}
+                {gridRows([
+                  ['Hình dạng', r.shape ? (SHAPE_LABEL_MAP[r.shape] || r.shape) : '—'],
+                  ['Kết cấu', r.structure || '—'],
+                  ['Diện tích m²', r.area != null ? r.area : '—'],
+                  ['Chiều cao thân phao m', r.bodyHeight != null ? r.bodyHeight : '—'],
+                  ['Đường kính phao m', r.diameter != null ? r.diameter : '—'],
+                  ['Đèn biển', r.beaconLight || '—'],
+                  ['Chiều cao tháp đèn', r.towerHeight != null ? r.towerHeight : '—'],
+                  ['Chiều cao tâm sáng', r.lightHeight != null ? r.lightHeight : '—'],
+                  ['Chủng loại đèn', r.lightModel || '—'],
+                  ['Màu sắc bên ngoài tháp đèn', r.towerColor || '—'],
+                  ['Nguồn cung cấp năng lượng', r.powerSupply || '—'],
+                  ['Phạm vi chiếu sáng', r.range != null ? `${r.range} hải lý` : '—'],
+                  ['Thời điểm đưa vào sử dụng', formatDateOnly(r.commissionedDate)],
+                  ['Thời điểm sửa chữa gần nhất', formatDateOnly(r.lastRepairDate)],
+                ])}
+              </div>
 
-              {/* ── Toggle: Thời điểm ── */}
-              <button type="button" style={{ cursor: 'pointer', marginTop: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setTimingOpen(!timingOpen)}>
-                <span style={{ color: timingOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{timingOpen ? '▼' : '▶'} Thời điểm</span>
-              </button>
-              {timingOpen && (
-                <div className="chk-detail-grid" style={{ marginTop: 4 }}>
-                  {[
-                    ['Thời điểm đưa vào sử dụng', formatDateOnly(r.commissionedDate)],
-                    ['Thời điểm sửa chữa gần nhất', formatDateOnly(r.lastRepairDate)],
-                  ].map(([label, value], i) => (
-                    <div key={i} className="chk-detail-row">
-                      <span className="chk-detail-label">{label}</span>
-                      <span className="chk-detail-value">{value}</span>
-                    </div>
-                  ))}
+              {/* ── Section 3: Đặc tính ánh sáng ── */}
+              <div style={sectionBoxStyle}>
+                <div style={sectionHeaderStyle}>
+                  <div style={sectionTitleStyle}>
+                    <ThunderboltOutlined style={{ color: actionPrimary }} />
+                    <span>Đặc tính ánh sáng</span>
+                  </div>
                 </div>
-              )}
+                {gridRows([
+                  ['Màu sắc', r.lightColor || r.color || '—'],
+                  ['Kiểu chớp', r.flashType || '—'],
+                  ['Chu kỳ', r.period || '—'],
+                ])}
+              </div>
 
-              {/* ── Toggle: Đặc tính ánh sáng ── */}
-              <button type="button" style={{ cursor: 'pointer', marginTop: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setLightCharOpen(!lightCharOpen)}>
-                <span style={{ color: lightCharOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{lightCharOpen ? '▼' : '▶'} Đặc tính ánh sáng</span>
-              </button>
-              {lightCharOpen && (
-                <div className="chk-detail-grid" style={{ marginTop: 4 }}>
-                  {[
-                    ['Màu sắc', r.lightColor || r.color || '—'],
-                    ['Kiểu chớp', r.flashType || '—'],
-                    ['Chu kỳ', r.period || '—'],
-                  ].map(([label, value], i) => (
-                    <div key={i} className="chk-detail-row">
-                      <span className="chk-detail-label">{label}</span>
-                      <span className="chk-detail-value">{value}</span>
-                    </div>
-                  ))}
+              {/* ── Section 4: Thông tin phê duyệt (Toggle chuẩn AGENTS.md) ── */}
+              <div style={{ ...sectionBoxStyle, padding: approvalOpen ? '12px 18px 8px 18px' : '10px 18px' }}>
+                <div
+                  onClick={() => setApprovalOpen(!approvalOpen)}
+                  style={{
+                    ...sectionHeaderStyle,
+                    marginBottom: approvalOpen ? 10 : 0,
+                    paddingBottom: approvalOpen ? 8 : 0,
+                    borderBottom: approvalOpen ? '1px solid #f1f5f9' : 'none',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                  }}
+                >
+                  <div style={sectionTitleStyle}>
+                    <AuditOutlined style={{ color: actionPrimary }} />
+                    <span>Thông tin phê duyệt</span>
+                  </div>
+                  <span style={{ color: actionPrimary, fontSize: 12 }}>
+                    {approvalOpen ? <DownOutlined /> : <RightOutlined />}
+                  </span>
                 </div>
-              )}
+                {approvalOpen && gridRows([
+                  ['Trạng thái phê duyệt', statusBadge],
+                  ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userName(r.updatedBy, r.updatedByName || r.createdByName)}</span>],
+                  ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userName(r.sentApprovedBy || r.submittedForApprovalBy, (r as any).submittedForApprovalByName)}</span>],
+                  ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level1ApprovedBy, (r as any).level1ApprovedByName)}</span>],
+                  ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level2ApprovedBy, (r as any).level2ApprovedByName)}</span>],
+                  ['Nội dung phê duyệt cấp 1', r.level1ApprovalContent || '—'],
+                  ['Nội dung phê duyệt cấp 2', r.level2ApprovalContent || '—'],
+                ])}
+              </div>
             </div>
           ),
         },
@@ -280,22 +329,24 @@ export default function BuoyDetailContent({
           ),
         },
         {
-          key: 'files', label: `File đính kèm (${detailFiles.length})`,
+          key: 'files',
+          label: `File đính kèm (${detailFiles.length})`,
           children: (
-            <div style={{ paddingTop: 3 }}>
-              <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
-                <span style={detailLabelStyle}>File đính kèm</span>
-              </div>
-              <DetailTable
-                dataSource={detailFiles.map((f) => ({ ...f }))}
-                emptyText="Chưa có tài liệu đính kèm"
-                columns={[
-                  { title: 'STT', width: 50 },
-                  { title: 'Tên tài liệu', dataIndex: 'fileName', key: 'fileName', render: (v: string) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{v || '—'}</span> },
-                  { title: 'Dung lượng', dataIndex: 'fileSize', key: 'fileSize', width: 120, align: 'right' as const, render: (v: number) => v ? (v > 1024 * 1024 ? `${(v / (1024 * 1024)).toFixed(2)} MB` : `${(v / 1024).toFixed(1)} KB`) : '—' },
-                  { title: 'Người tải lên', dataIndex: 'uploadedBy', key: 'uploadedBy', width: 180, render: (v: string) => userMap.get(v) || v || '—' },
-                  { title: 'Ngày tải lên', dataIndex: 'uploadedAt', key: 'uploadedAt', width: 135, align: 'center' as const, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—' },
-                ]}
+            <div style={{ paddingTop: 6 }}>
+              <InfrastructureAttachmentTab
+                attachments={detailFiles.map((f: any) => ({
+                  ...f,
+                  id: f.id || f.uid,
+                  fileName: f.fileName || f.name,
+                  fileSize: f.fileSize ?? f.size,
+                  uploadedByName: (!isUuidString(f.uploadedByName) ? f.uploadedByName : '') || (f.uploadedBy ? userMap.get(String(f.uploadedBy)) : '') || 'Cán bộ quản lý',
+                  uploadedDate: f.uploadedDate || f.uploadedAt || f.createdAt,
+                }))}
+                readonly={true}
+                userMap={userMap}
+                onDownload={(_id, name) => {
+                  toast.info(`Đang tải xuống tệp: ${name}`);
+                }}
               />
             </div>
           ),
@@ -374,13 +425,13 @@ export default function BuoyDetailContent({
               <div className="chk-detail-grid">
                 {[
                   ['Trạng thái', statusBadge],
-                  ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userName(r.updatedBy)}</span>],
+                  ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userName(r.updatedBy, r.updatedByName || r.createdByName)}</span>],
                   ['Ngày cập nhật', formatDate(r.updatedAt)],
-                  ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userName(r.submittedForApprovalBy)}</span>],
+                  ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userName(r.submittedForApprovalBy || r.sentApprovedBy, (r as any).submittedForApprovalByName)}</span>],
                   ['Ngày gửi phê duyệt', formatDate(r.submittedForApprovalAt)],
-                  ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level1ApprovedBy)}</span>],
+                  ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level1ApprovedBy, (r as any).level1ApprovedByName)}</span>],
                   ['Ngày phê duyệt cấp Cảng vụ/Chi cục', formatDate(r.level1ApprovedDate)],
-                  ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level2ApprovedBy)}</span>],
+                  ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level2ApprovedBy, (r as any).level2ApprovedByName)}</span>],
                   ['Ngày phê duyệt cấp Cục', formatDate(r.level2ApprovedDate)],
                   ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.level1ApprovalContent || '—'],
                   ['Nội dung phê duyệt cấp Cục', r.level2ApprovalContent || '—'],

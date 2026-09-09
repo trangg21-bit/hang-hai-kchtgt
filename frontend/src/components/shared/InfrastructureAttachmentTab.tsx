@@ -11,6 +11,7 @@ import {
 import dayjs from 'dayjs';
 import toast from '../ToastNotification';
 import DetailTable from './DetailTable';
+import { useAuthStore } from '../../store/authStore';
 import {
   actionPrimary,
   textPrimary,
@@ -138,6 +139,7 @@ export default function InfrastructureAttachmentTab({
   accept = DEFAULT_ACCEPT,
   emptyText,
 }: InfrastructureAttachmentTabProps) {
+  const currentUser = useAuthStore((s) => s.user);
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewRecord, setPreviewRecord] = useState<InfrastructureAttachmentItem | null>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState<string>('');
@@ -270,7 +272,9 @@ export default function InfrastructureAttachmentTab({
         const raw = v || record.uploadedByName || record.uploadedBy || record.uploaderName || record.createdByName || record.createdBy;
         const resolved = (raw && userMap?.get(raw)) ? userMap.get(raw) : raw;
         const isUuid = resolved && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolved);
-        const displayName = isUuid ? 'Cán bộ quản lý' : (resolved || '—');
+        const displayName = isUuid
+          ? (currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý')
+          : (resolved || currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý');
         return (
           <span
             style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
@@ -287,8 +291,9 @@ export default function InfrastructureAttachmentTab({
       width: 160,
       align: 'center' as const,
       render: (v: string | undefined, record: InfrastructureAttachmentItem) => {
-        const dateVal = v || record.uploadedDate || record.uploadedAt || record.createdAt || record.createdDate;
-        return dateVal ? dayjs(dateVal).format('DD/MM/YYYY HH:mm') : '—';
+        const dateVal = v || record.uploadedDate || record.uploadedAt || record.createdAt || record.createdDate
+          || (record.originFileObj ? dayjs(record.originFileObj.lastModified).toISOString() : (record.file ? dayjs(record.file.lastModified).toISOString() : dayjs().toISOString()));
+        return dateVal ? dayjs(dateVal).format('DD/MM/YYYY HH:mm') : dayjs().format('DD/MM/YYYY HH:mm');
       },
     },
     {
