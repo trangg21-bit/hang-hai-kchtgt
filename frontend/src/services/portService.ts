@@ -609,6 +609,11 @@ export const pierApproval = {
   async reject(id: string, cap: string, lyDo: string): Promise<void> {
     await api.post(`/v1/piers/${id}/reject`, { cap, lyDo });
   },
+
+  // No-cap reject: backend suy vòng bị từ chối từ trạng thái hiện tại (M-1006).
+  async rejectStage(id: string, reason: string): Promise<void> {
+    await api.post(`/v1/piers/${id}/reject`, null, { params: { reason } });
+  },
 };
 
 export const dryPortApproval = {

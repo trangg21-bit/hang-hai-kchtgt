@@ -37,6 +37,7 @@ import BuoyBerthDetailContent from './BuoyBerthDetailContent';
 import AnchorageDetailContent from '../anchorage/AnchorageDetailContent';
 import StormShelterDetailContent from '../storm-shelter/StormShelterDetailContent';
 import { AppDrawer } from '../../components/shared/AppDrawer';
+import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import { BUOY_BERTH_CLASSIFICATION_OPTIONS } from './BuoyBerthForm';
 import {
   statusOperational,
@@ -460,7 +461,7 @@ export default function BuoyBerthList() {
   // ── Delete confirmation modal ───────────────────────────────────
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletingRecord, setDeletingRecord] = useState<BuoyBerth | null>(null);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // ── Reject modal ────────────────────────────────────────────────
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
@@ -878,23 +879,26 @@ export default function BuoyBerthList() {
 
   // ── Delete confirmation ─────────────────────────────────────────
   const openDeleteModal = useCallback((record: BuoyBerth) => {
-    setDeletingRecord(record); setDeleteConfirmText(''); setDeleteModalOpen(true);
+    setDeletingRecord(record);
+    setDeleteModalOpen(true);
   }, []);
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingRecord) return;
-    const expectedText = (deletingRecord.buoyBerthName || 'XÓA').trim().toLowerCase();
-    const input = deleteConfirmText.trim().toLowerCase();
-    if (input !== expectedText && input !== 'xóa') {
-      toast.error('Vui lòng nhập đúng tên bến phao hoặc gõ "XÓA" để xác nhận'); return;
-    }
+    setDeleteLoading(true);
     try {
       await buoyBerthCRUD.delete(deletingRecord.id);
       toast.success('Đã xóa bến phao');
-      setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText('');
-      void fetchData(); void fetchCounts(managingUnitId);
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Xóa thất bại'); }
-  }, [deletingRecord, deleteConfirmText, fetchData, fetchCounts, managingUnitId]);
+      setDeleteModalOpen(false);
+      setDeletingRecord(null);
+      void fetchData();
+      void fetchCounts(managingUnitId);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
+    } finally {
+      setDeleteLoading(false);
+    }
+  }, [deletingRecord, fetchData, fetchCounts, managingUnitId]);
 
   // ── Approval handlers ───────────────────────────────────────────
   const handleApprove = useCallback(async (record: BuoyBerth, content?: string) => {
@@ -1065,11 +1069,19 @@ export default function BuoyBerthList() {
 
         <div style={{ marginBottom: 12 }}>
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
-          <DatePicker.RangePicker format="DD/MM/YYYY"
-            placeholder={['Từ ngày', 'Đến ngày']} allowClear popupClassName="range-single-panel"
+          <DatePicker.RangePicker
+            format="DD/MM/YYYY"
+            placeholder={['Từ ngày', 'Đến ngày']}
+            allowClear
             value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
-            onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined); setPage(1); }}
-            style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            onChange={(dates) => {
+              setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined);
+              setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined);
+              setPage(1);
+            }}
+            style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+            {...getRangePickerProps({ width: '100%', borderRadius: radiusPill, height: 40 })}
+          />
         </div>
 
       </>)}
@@ -1166,7 +1178,7 @@ export default function BuoyBerthList() {
         sortOrder,
         render: (_v: string | null, record: BuoyBerth) => (
           <span style={{ fontWeight: fontWeightBold }}>
-            {orgMap.get(record.orgUnitId || '') || '—'}
+            {resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || record.orgUnitId || '—'}
           </span>
         ),
       },
@@ -1178,6 +1190,15 @@ export default function BuoyBerthList() {
         sortable: true,
         sortOrder,
         render: (v: string | null) => portOptions.find(o => o.value === v)?.label || v || '—',
+      },
+      {
+        key: 'waterwayId',
+        label: 'Thuộc luồng hàng hải',
+        dataIndex: 'waterwayId',
+        width: 280,
+        sortable: true,
+        sortOrder,
+        render: (v: string | null) => (v ? (waterwayMap.get(v) || v) : '—'),
       },
       {
         key: 'provinceId',
@@ -1192,7 +1213,7 @@ export default function BuoyBerthList() {
         key: 'classification',
         label: 'Phân cấp công trình',
         dataIndex: 'classification',
-        width: 200,
+        width: 220,
         sortable: true,
         sortOrder,
         render: (v: string | null) => <span style={{ fontSize: fontSizeMd }}>{v || '—'}</span>,
@@ -1201,7 +1222,7 @@ export default function BuoyBerthList() {
         key: 'operationalStatus',
         label: 'Tình trạng',
         dataIndex: 'operationalStatus',
-        width: 210,
+        width: 190,
         sortable: true,
         sortOrder,
         render: (v: string | null) => {
@@ -1214,17 +1235,24 @@ export default function BuoyBerthList() {
           return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
         },
       },
-    ];
-
-    // Audit columns — chỉ hiển thị cho Admin Cục / admin-operation (giống Bến cảng)
-    const auditColumns: any[] = isAuditViewer ? [
-      { key: 'updatedAt', label: <span>Cán bộ cập nhật</span>, dataIndex: 'updatedAt', width: 200, sortable: true, sortOrder,
+      {
+        key: 'updatedAt',
+        label: <span>Cán bộ cập nhật</span>,
+        dataIndex: 'updatedAt',
+        width: 200,
+        sortable: true,
+        sortOrder,
         render: (v: string | null, record: BuoyBerth) => (
           <div>
             <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.updatedBy || '') || record.updatedBy || '—'}</span><br />
             <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
           </div>
-        ) },
+        ),
+      },
+    ];
+
+    // Audit columns — chỉ hiển thị cho Admin Cục / admin-operation (giống Bến cảng)
+    const auditColumns: any[] = isAuditViewer ? [
       { key: 'submittedForApprovalAt', label: <span>Cán bộ gửi Phê duyệt</span>, dataIndex: 'submittedForApprovalAt', width: 210, sortable: true, sortOrder,
         render: (v: string | null, record: BuoyBerth) => (
           <div>
@@ -1232,14 +1260,14 @@ export default function BuoyBerthList() {
             <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
           </div>
         ) },
-      { key: 'portAuthorityApprovedAt', label: <span>Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>, dataIndex: 'portAuthorityApprovedAt', width: 340, sortable: true, sortOrder,
+      { key: 'portAuthorityApprovedAt', label: <span>Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>, dataIndex: 'portAuthorityApprovedAt', width: 350, sortable: true, sortOrder,
         render: (v: string | null, record: BuoyBerth) => (
           <div>
             <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.portAuthorityApprovedBy || '') || record.portAuthorityApprovedBy || '—'}</span><br />
             <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
           </div>
         ) },
-      { key: 'departmentApprovedAt', label: <span>Cán bộ phê duyệt cấp Cục</span>, dataIndex: 'departmentApprovedAt', width: 240, sortable: true, sortOrder,
+      { key: 'departmentApprovedAt', label: <span>Cán bộ phê duyệt cấp Cục</span>, dataIndex: 'departmentApprovedAt', width: 260, sortable: true, sortOrder,
         render: (v: string | null, record: BuoyBerth) => (
           <div>
             <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.departmentApprovedBy || '') || record.departmentApprovedBy || '—'}</span><br />
@@ -1270,6 +1298,7 @@ export default function BuoyBerthList() {
     page,
     pageSize,
     portOptions,
+    waterwayMap,
     sortField,
     sortOrder,
   ]);
@@ -1291,6 +1320,7 @@ export default function BuoyBerthList() {
       <BuoyBerthDetailContent
         selectedRecord={detailRecord}
         orgMap={orgMap}
+        organizations={organizations}
         symbolMap={symbolMap}
         symbolImageMap={symbolImageMap}
         portOptions={portOptions}
@@ -1311,9 +1341,74 @@ export default function BuoyBerthList() {
   // ── JSX ─────────────────────────────────────────────────────────
 
   return (
-    <ThemeTokenProvider tokens={themeTokenChk}>
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
-      <style>{`.range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }`}</style>
+    <ThemeTokenProvider tokens={{ ...themeTokenChk, fontSizeMd } as unknown as ThemeToken}>
+    <div className="buoy-berth-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      <style>{`
+        .buoy-berth-page-wrapper,
+        .buoy-berth-page-wrapper .ant-table,
+        .buoy-berth-page-wrapper .ant-table-cell,
+        .buoy-berth-page-wrapper .ant-table-thead > tr > th,
+        .buoy-berth-page-wrapper .ant-table-tbody > tr > td,
+        .buoy-berth-page-wrapper .ant-input,
+        .buoy-berth-page-wrapper .ant-select,
+        .buoy-berth-page-wrapper .ant-select-selection-item,
+        .buoy-berth-page-wrapper .ant-select-item-option-content,
+        .buoy-berth-page-wrapper .ant-picker,
+        .buoy-berth-page-wrapper .ant-picker-input > input,
+        .buoy-berth-page-wrapper .ant-btn,
+        .buoy-berth-page-wrapper .ant-pagination,
+        .buoy-berth-page-wrapper .ant-pagination-item,
+        .buoy-berth-page-wrapper .ant-pagination-total-text,
+        .buoy-berth-page-wrapper .ant-breadcrumb,
+        .buoy-berth-page-wrapper .ant-form-item-label > label,
+        .buoy-berth-page-wrapper .ant-tabs-tab,
+        .buoy-berth-page-wrapper .buoy-berth-drawer-scope,
+        .buoy-berth-page-wrapper .buoy-berth-drawer-scope .ant-drawer-content,
+        .buoy-berth-page-wrapper .buoy-berth-drawer-scope .ant-tabs-tab,
+        .buoy-berth-page-wrapper .buoy-berth-drawer-scope .ant-input,
+        .buoy-berth-page-wrapper .buoy-berth-drawer-scope .ant-select,
+        .buoy-berth-page-wrapper .buoy-berth-drawer-scope .ant-btn,
+        .buoy-berth-page-wrapper .buoy-berth-drawer-scope .ant-table,
+        .buoy-berth-page-wrapper .buoy-berth-drawer-scope .ant-table-cell,
+        .buoy-berth-page-wrapper .buoy-berth-drawer-scope .ant-table-thead > tr > th,
+        .buoy-berth-page-wrapper .buoy-berth-drawer-scope .ant-form-item-label > label {
+          font-size: 13.5px !important;
+        }
+        .buoy-berth-page-wrapper div:has(> button[aria-pressed]) {
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          justify-content: safe center !important;
+          align-items: center !important;
+          scrollbar-width: thin !important;
+          scrollbar-color: #cbd5e1 #f8fafc !important;
+          padding: 2px 16px 6px 16px !important;
+          gap: 20px !important;
+        }
+        .buoy-berth-page-wrapper div:has(> button[aria-pressed]) > button {
+          white-space: nowrap !important;
+          flex-shrink: 0 !important;
+          cursor: pointer !important;
+        }
+        .buoy-berth-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
+          height: 6px !important;
+          display: block !important;
+        }
+        .buoy-berth-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
+          background: #f1f5f9 !important;
+          border-radius: 999px !important;
+        }
+        .buoy-berth-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
+          background: #cbd5e1 !important;
+          border-radius: 999px !important;
+        }
+        .buoy-berth-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8 !important;
+        }
+        .buoy-berth-drawer-scope .ant-drawer-content-wrapper {
+          max-width: 100vw !important;
+        }
+        .range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }
+      `}</style>
       <ScreenHeader
         breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý bến phao' }]}
         actions={headerActions}
@@ -1345,6 +1440,9 @@ export default function BuoyBerthList() {
       {/* ── Create Drawer ──────────────────────────────────────────── */}
       <Drawer
         {...drawerProps}
+        rootClassName="buoy-berth-drawer-scope"
+        className="buoy-berth-drawer-scope"
+        width="min(920px, 96vw)"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới Bến phao</span>}
         open={createDrawerVisible}
         destroyOnHidden
@@ -1372,6 +1470,9 @@ export default function BuoyBerthList() {
       {/* ── Edit Drawer ────────────────────────────────────────────── */}
       <Drawer
         {...drawerProps}
+        rootClassName="buoy-berth-drawer-scope"
+        className="buoy-berth-drawer-scope"
+        width="min(920px, 96vw)"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin — {editBuoyBerthName || 'Bến phao'}</span>}
         open={!!editBuoyBerthId}
         onClose={() => { setEditBuoyBerthId(undefined); setEditBuoyBerthName(''); updateForm.resetFields(); }}
@@ -1397,7 +1498,9 @@ export default function BuoyBerthList() {
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
       <Drawer
         {...drawerProps}
-        width={1000}
+        rootClassName="buoy-berth-drawer-scope"
+        className="buoy-berth-drawer-scope"
+        size={1000}
         title={<span style={drawerTitleStyle}>Chi tiết bến phao — {detailRecord?.buoyBerthName || 'Bến phao'}</span>}
         open={detailDrawerVisible}
         onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); setInfrastructureList([]); }}
@@ -1414,6 +1517,8 @@ export default function BuoyBerthList() {
       {/* ── Kết cấu hạ tầng Detail Drawer (Khu neo đậu / Khu tránh, trú bão) — sibling size 950 như bến cảng ── */}
       <AppDrawer
         size={950}
+        rootClassName="buoy-berth-drawer-scope"
+        className="buoy-berth-drawer-scope"
         title={<span style={drawerTitleStyle}>
           {(() => {
             const typeLabel = infraDetail?.type === 'ANCHORAGE' ? 'Khu neo đậu' : infraDetail?.type === 'STORM_SHELTER' ? 'Khu tránh, trú bão' : '';
@@ -1460,33 +1565,20 @@ export default function BuoyBerthList() {
       </AppDrawer>
 
       {/* ── Delete Confirmation Modal ────────────────────────────── */}
-      <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận xóa bến phao</span>}
+      <DeleteConfirmModal
         open={deleteModalOpen}
-        onCancel={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
-        footer={[
-          <Button key="cancel" onClick={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
-          <Button key="delete" type="primary" danger onClick={handleConfirmDelete}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Xác nhận xóa</Button>,
-        ]}
-        width={480}>
-        <div style={{ padding: '8px 0' }}>
-          <Alert message="Hành động này không thể hoàn tác" type="warning" showIcon icon={<ExclamationCircleOutlined />}
-            style={{ marginBottom: spaceFormField, borderRadius: radiusPill }} />
-          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>
-            Vui lòng nhập <strong>tên bến phao</strong> hoặc gõ <strong>"XÓA"</strong> để xác nhận xóa.
-          </p>
-          {deletingRecord && (
-            <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
-              Bến phao: <strong style={{ color: textPrimary }}>{deletingRecord.buoyBerthName}</strong>
-            </p>
-          )}
-          <Input placeholder="Nhập tên bến phao hoặc XÓA" value={deleteConfirmText}
-            onChange={(e) => setDeleteConfirmText(e.target.value)} onPressEnter={handleConfirmDelete}
-            style={{ borderRadius: radiusPill, height: 40 }} autoFocus />
-        </div>
-      </Modal>
+        onCancel={() => {
+          if (!deleteLoading) {
+            setDeleteModalOpen(false);
+            setDeletingRecord(null);
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        loading={deleteLoading}
+        itemType="bến phao"
+        itemName={deletingRecord?.buoyBerthName}
+        itemCode={deletingRecord?.buoyBerthCode}
+      />
 
       {/* ── Reject Reason Modal ──────────────────────────────────── */}
       <Modal

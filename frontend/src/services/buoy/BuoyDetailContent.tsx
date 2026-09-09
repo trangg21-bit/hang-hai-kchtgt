@@ -4,10 +4,11 @@
 // Detail grid dùng class chk-detail-* (CSS trong theme), bảng con dùng DetailTable,
 // GIS modal chế độ XEM (disabled) — chuẩn VTS CHK.
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Tabs, Button, Modal } from 'antd';
 import { FileOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { detailLabelStyle } from '../../components/detail-drawer/detailSkin';
 import { colors } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -54,7 +55,6 @@ function formatDateOnly(dateStr: string | null | undefined): string {
   }
 }
 
-const detailLabelStyle: React.CSSProperties = { color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd };
 
 // Parse tọa độ GPS: ưu tiên WKT (coordinates) — POINT/MULTIPOINT từ form Phao tiêu;
 // fallback sang latitude/longitude (giống BuoyBerthDetailContent).
@@ -119,6 +119,7 @@ export default function BuoyDetailContent({
   const [indicatorOpen, setIndicatorOpen] = useState(true);
   const [timingOpen, setTimingOpen] = useState(true);
   const [lightCharOpen, setLightCharOpen] = useState(true);
+  const [approvalOpen, setApprovalOpen] = useState(true);
   const userName = (id: number | string | undefined | null) =>
     id != null ? (userMap.get(String(id)) || String(id)) : '—';
   const provinceName = (id: number | undefined | null) =>
@@ -222,6 +223,33 @@ export default function BuoyDetailContent({
                     ['Chu kỳ', r.period || '—'],
                   ].map(([label, value], i) => (
                     <div key={i} className="chk-detail-row">
+                      <span className="chk-detail-label">{label}</span>
+                      <span className="chk-detail-value">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Toggle: Thông tin phê duyệt (chuẩn AGENTS.md — để cuối Tab Thông tin chung) ── */}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setApprovalOpen(!approvalOpen)}>
+                <span style={{ color: approvalOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{approvalOpen ? '▼' : '▶'} Thông tin phê duyệt</span>
+              </button>
+              {approvalOpen && (
+                <div className="chk-detail-grid" style={{ marginTop: 4 }}>
+                  {[
+                    ['Trạng thái', statusBadge],
+                    ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userName(r.updatedBy)}</span>],
+                    ['Ngày cập nhật', formatDate(r.updatedAt)],
+                    ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userName(r.submittedForApprovalBy)}</span>],
+                    ['Ngày gửi phê duyệt', formatDate(r.submittedForApprovalAt)],
+                    ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level1ApprovedBy)}</span>],
+                    ['Ngày phê duyệt cấp Cảng vụ/Chi cục', formatDate(r.level1ApprovedDate)],
+                    ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level2ApprovedBy)}</span>],
+                    ['Ngày phê duyệt cấp Cục', formatDate(r.level2ApprovedDate)],
+                    ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.level1ApprovalContent || '—'],
+                    ['Nội dung phê duyệt cấp Cục', r.level2ApprovalContent || '—'],
+                  ].map(([label, value], i) => (
+                    <div key={i} className="chk-detail-row" style={label === 'Trạng thái' ? { gridColumn: '1 / -1' } : undefined}>
                       <span className="chk-detail-label">{label}</span>
                       <span className="chk-detail-value">{value}</span>
                     </div>
@@ -364,33 +392,6 @@ export default function BuoyDetailContent({
               />
                 </div>
               )}
-            </div>
-          ),
-        },
-        {
-          key: 'system', label: 'Xử lý & theo dõi',
-          children: (
-            <div style={{ paddingTop: 3 }}>
-              <div className="chk-detail-grid">
-                {[
-                  ['Trạng thái', statusBadge],
-                  ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userName(r.updatedBy)}</span>],
-                  ['Ngày cập nhật', formatDate(r.updatedAt)],
-                  ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userName(r.submittedForApprovalBy)}</span>],
-                  ['Ngày gửi phê duyệt', formatDate(r.submittedForApprovalAt)],
-                  ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level1ApprovedBy)}</span>],
-                  ['Ngày phê duyệt cấp Cảng vụ/Chi cục', formatDate(r.level1ApprovedDate)],
-                  ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level2ApprovedBy)}</span>],
-                  ['Ngày phê duyệt cấp Cục', formatDate(r.level2ApprovedDate)],
-                  ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.level1ApprovalContent || '—'],
-                  ['Nội dung phê duyệt cấp Cục', r.level2ApprovalContent || '—'],
-                ].map(([label, value], i) => (
-                  <div key={i} className="chk-detail-row" style={label === 'Trạng thái' ? { gridColumn: '1 / -1' } : undefined}>
-                    <span className="chk-detail-label">{label}</span>
-                    <span className="chk-detail-value">{value}</span>
-                  </div>
-                ))}
-              </div>
             </div>
           ),
         },

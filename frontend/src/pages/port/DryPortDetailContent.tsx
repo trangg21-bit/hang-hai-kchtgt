@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Tabs, Button, Modal } from 'antd';
 import { FileOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { detailLabelStyle } from '../../components/detail-drawer/detailSkin';
 import { colors } from '../../themetokenchk';
 import {
   textTertiary, surfaceCard,
@@ -85,7 +86,6 @@ function DryPortRefTable({ title, emptyText, columns, dataSource = [] }: { title
   );
 }
 
-const detailLabelStyle: React.CSSProperties = { color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd };
 
 export default function DryPortDetailContent({
   selectedRecord: r,
@@ -104,7 +104,7 @@ export default function DryPortDetailContent({
   const [incidentOpen, setIncidentOpen] = useState(true);
   // Toggle cụm 'Thông tin công bố' trong tab Thông tin chung (mặc định MỞ — giống Bến phao)
   const [announcementOpen, setAnnouncementOpen] = useState(true);
-  const approvalLabel = approvalStyleMap[r.approvalStatus || '']?.label || r.approvalStatus || '—';
+  const [approvalOpen, setApprovalOpen] = useState(true);
 
   // Bản đồ orgUnitId → tên đơn vị (pattern Bến phao: hiển thị tên đơn vị trực tiếp, không dựng path nhiều cấp)
   const orgMap = useMemo(() => {
@@ -171,6 +171,32 @@ export default function DryPortDetailContent({
                     ['Đơn vị ra quyết định công bố', r.announcementOrg || '—'],
                   ].map(([label, value], i) => (
                     <div key={i} className="chk-detail-row">
+                      <span className="chk-detail-label">{label}</span>
+                      <span className="chk-detail-value">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Toggle: Thông tin phê duyệt (gom vào tab Thông tin chung) ── */}
+              <button type="button" style={{ cursor: 'pointer', marginTop: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setApprovalOpen(!approvalOpen)}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ color: approvalOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{approvalOpen ? '▼' : '▶'} Thông tin phê duyệt</span>
+                  {r.approvalStatus && approvalStyleMap[r.approvalStatus] ? (
+                    <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>{approvalStyleMap[r.approvalStatus].label}</span>
+                  ) : null}
+                </span>
+              </button>
+              {approvalOpen && (
+                <div className="chk-detail-grid" style={{ marginTop: 4 }}>
+                  {([
+                    ['Trạng thái', r.approvalStatus && approvalStyleMap[r.approvalStatus] ? <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>{approvalStyleMap[r.approvalStatus].label}</span> : '—', true],
+                    ['Người tạo', <span key="createdBy" style={{ fontWeight: fontWeightBold }}>{userMap.get(r.createdBy || '') || r.createdBy || '—'}</span>],
+                    ['Ngày tạo', r.createdAt ? dayjs(r.createdAt).format('DD/MM/YYYY HH:mm:ss') : '—'],
+                    ['Cán bộ cập nhật', <span key="updBy" style={{ fontWeight: fontWeightBold }}>{userMap.get(r.updatedBy || '') || r.updatedBy || '—'}</span>],
+                    ['Ngày cập nhật', r.updatedAt ? dayjs(r.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '—'],
+                  ] as any[]).map(([label, value, fullWidth], i) => (
+                    <div key={i} className="chk-detail-row" style={fullWidth ? { gridColumn: '1 / -1' } : undefined}>
                       <span className="chk-detail-label">{label}</span>
                       <span className="chk-detail-value">{value}</span>
                     </div>
@@ -325,27 +351,6 @@ export default function DryPortDetailContent({
                   />
                 </div>
               )}
-            </div>
-          ),
-        },
-        {
-          key: 'system', label: 'Xử lý & theo dõi',
-          children: (
-            <div style={{ paddingTop: 3 }}>
-              <div className="chk-detail-grid">
-                {([
-                  ['Trạng thái', r.approvalStatus && approvalStyleMap[r.approvalStatus] ? <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>{approvalStyleMap[r.approvalStatus].label}</span> : approvalLabel, true],
-                  ['Người tạo', <span key="createdBy" style={{ fontWeight: fontWeightBold }}>{userMap.get(r.createdBy || '') || r.createdBy || '—'}</span>],
-                  ['Ngày tạo', r.createdAt ? dayjs(r.createdAt).format('DD/MM/YYYY HH:mm:ss') : '—'],
-                  ['Cán bộ cập nhật', <span key="updBy" style={{ fontWeight: fontWeightBold }}>{userMap.get(r.updatedBy || '') || r.updatedBy || '—'}</span>],
-                  ['Ngày cập nhật', r.updatedAt ? dayjs(r.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '—'],
-                ] as any[]).map(([label, value, fullWidth], i) => (
-                  <div key={i} className="chk-detail-row" style={fullWidth ? { gridColumn: '1 / -1' } : undefined}>
-                    <span className="chk-detail-label">{label}</span>
-                    <span className="chk-detail-value">{value}</span>
-                  </div>
-                ))}
-              </div>
             </div>
           ),
         },
