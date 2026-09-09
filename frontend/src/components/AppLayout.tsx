@@ -23,7 +23,25 @@ import {
   BankOutlined,
   EnvironmentOutlined,
   BarChartOutlined,
-  CheckCircleOutlined,
+  PlusCircleOutlined,
+  MinusCircleOutlined,
+  AuditOutlined,
+  AppstoreOutlined,
+  WarningOutlined,
+  FileProtectOutlined,
+  PictureOutlined,
+  TeamOutlined,
+  HistoryOutlined,
+  SyncOutlined,
+  ApiOutlined,
+  FileTextOutlined,
+  AimOutlined,
+  DeploymentUnitOutlined,
+  BlockOutlined,
+  ApartmentOutlined,
+  PieChartOutlined,
+  BuildOutlined,
+  ToolOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 import { usePermissionStore } from '../store/permissionStore';
@@ -264,11 +282,13 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
     if (selectedKey) {
       if (selectedKey.startsWith('/asset')) {
         setOpenKeys(['asset-management']);
-      } else if (selectedKey.startsWith('/gis') || selectedKey.startsWith('/documents') || ['/symbols', '/water-zone'].includes(selectedKey)) {
+      } else if (selectedKey.startsWith('/documents')) {
         setOpenKeys(['planning-operation']);
+      } else if (selectedKey.startsWith('/gis') || selectedKey === '/symbols' || selectedKey === '/water-zone') {
+        setOpenKeys(['gis-management']);
       } else if (selectedKey.startsWith('/reports')) {
         setOpenKeys(['reports-parent', 'reports-chung', 'reports-kcht']);
-      } else if (['/users', '/organizations', '/groups', '/logs', '/connections', '/settings', '/interconnect'].includes(selectedKey)) {
+      } else if (['/users', '/organizations', '/groups', '/logs', '/history', '/interconnect', '/connections', '/settings'].includes(selectedKey)) {
         setOpenKeys(['system-admin']);
       }
     }
@@ -282,52 +302,58 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
   const rawMenuItems: MenuProps['items'] = [
     { key: '/', icon: <DashboardOutlined />, label: 'Danh mục chức năng' },
     { type: 'divider' as const },
-    // Nhóm 2 — Quản lý KCHT hàng hải: lá dẫn tới trang Danh mục 28 loại KCHT
+    // Nhóm 1 — Quản lý KCHT hàng hải: lá dẫn tới trang Danh mục 28 loại KCHT
     { key: '/port', icon: <ContainerOutlined />, label: 'Quản lý KCHT hàng hải' },
     { type: 'divider' as const },
-    // Nhóm 3 — Quản lý tài sản KCHT hàng hải
+    // Nhóm 2 — Quản lý tài sản KCHT hàng hải
     {
       key: 'asset-management',
       icon: <BankOutlined />,
       label: 'Quản lý tài sản KCHT hàng hải',
       children: [
-        canAccessMenu('/asset/increase') ? { key: '/asset/increase', label: 'Yêu cầu tăng tài sản' } : null,
-        canAccessMenu('/asset/decrease') ? { key: '/asset/decrease', label: 'Yêu cầu giảm tài sản' } : null,
-        canAccessMenu('/asset/inventory') ? { key: '/asset/inventory', label: 'Kiểm kê tài sản' } : null,
-        canAccessMenu('/asset/exploitation') ? { key: '/asset/exploitation', label: 'Khai thác tài sản' } : null,
+        canAccessMenu('/asset/increase') ? { key: '/asset/increase', icon: <PlusCircleOutlined />, label: 'Yêu cầu tăng tài sản' } : null,
+        canAccessMenu('/asset/decrease') ? { key: '/asset/decrease', icon: <MinusCircleOutlined />, label: 'Yêu cầu giảm tài sản' } : null,
+        canAccessMenu('/asset/inventory') ? { key: '/asset/inventory', icon: <AuditOutlined />, label: 'Kiểm kê tài sản' } : null,
+        canAccessMenu('/asset/exploitation') ? { key: '/asset/exploitation', icon: <AppstoreOutlined />, label: 'Khai thác tài sản' } : null,
       ].filter(Boolean),
     },
     { type: 'divider' as const },
-    // Nhóm 4 — Quản lý quy hoạch & vận hành
+    // Nhóm 3 — Quản lý quy hoạch & vận hành
     {
       key: 'planning-operation',
-      icon: <EnvironmentOutlined />,
+      icon: <FileProtectOutlined />,
       label: 'Quản lý quy hoạch & vận hành',
       children: [
-        canAccessMenu('/gis/points') ? { key: '/gis/points', label: 'Quản lý danh mục đối tượng điểm' } : null,
-        canAccessMenu('/gis/lines') ? { key: '/gis/lines', label: 'Quản lý danh mục đối tượng đường' } : null,
-        canAccessMenu('/gis/polygons') ? { key: '/gis/polygons', label: 'Quản lý danh mục đối tượng vùng' } : null,
-        canAccessMenu('/gis/layers') ? { key: '/gis/layers', label: 'Quản lý lớp bản đồ' } : null,
-        canAccessMenu('/gis/map') ? { key: '/gis/map', label: 'Quản lý thông tin KCHT hàng hải trên bản đồ' } : null,
-        canAccessMenu('/documents/legal') ? { key: '/documents/legal', label: 'Văn bản pháp lý' } : null,
-        canAccessMenu('/documents/incidents') ? { key: '/documents/incidents', label: 'Sự cố hàng hải' } : null,
-        canAccessMenu('/documents/port-planning') ? { key: '/documents/port-planning', label: 'Quy hoạch bến cảng' } : null,
-        canAccessMenu('/documents/operation') ? { key: '/documents/operation', label: 'Thông tin vận hành' } : null,
-        canAccessMenu('/documents/maintenance') ? { key: '/documents/maintenance', label: 'Thông tin bảo trì' } : null,
-        canAccessMenu('/symbols') ? { key: '/symbols', label: 'Quản lý biểu tượng trên bản đồ' } : null,
-        canAccessMenu('/water-zone') ? { key: '/water-zone', label: 'Quản lý vùng nước' } : null,
+        canAccessMenu('/documents/port-planning') ? { key: '/documents/port-planning', icon: <BuildOutlined />, label: 'Quy hoạch bến cảng' } : null,
+        canAccessMenu('/documents/incidents') ? { key: '/documents/incidents', icon: <WarningOutlined />, label: 'Sự cố hàng hải' } : null,
+        canAccessMenu('/documents/legal') ? { key: '/documents/legal', icon: <FileProtectOutlined />, label: 'Văn bản pháp lý' } : null,
+        canAccessMenu('/documents/operation') ? { key: '/documents/operation', icon: <DashboardOutlined />, label: 'Thông tin vận hành' } : null,
+        canAccessMenu('/documents/maintenance') ? { key: '/documents/maintenance', icon: <ToolOutlined />, label: 'Thông tin bảo trì' } : null,
       ].filter(Boolean),
     },
     { type: 'divider' as const },
-    // Nhóm 5 — Phê duyệt (chưa triển khai — lá vô hiệu kèm tooltip)
-    { key: 'approval', icon: <CheckCircleOutlined />, label: 'Phê duyệt', disabled: true, title: 'Chưa triển khai' },
+    // Nhóm 4 — Quản lý KCHT trên nền bản đồ (GIS)
+    {
+      key: 'gis-management',
+      icon: <EnvironmentOutlined />,
+      label: 'Quản lý KCHT trên nền bản đồ (GIS)',
+      children: [
+        canAccessMenu('/gis/map') ? { key: '/gis/map', icon: <EnvironmentOutlined />, label: 'Quản lý thông tin KCHT hàng hải trên bản đồ' } : null,
+        canAccessMenu('/gis/points') ? { key: '/gis/points', icon: <AimOutlined />, label: 'Quản lý danh mục đối tượng điểm' } : null,
+        canAccessMenu('/gis/lines') ? { key: '/gis/lines', icon: <DeploymentUnitOutlined />, label: 'Quản lý danh mục đối tượng đường' } : null,
+        canAccessMenu('/gis/polygons') ? { key: '/gis/polygons', icon: <BlockOutlined />, label: 'Quản lý danh mục đối tượng vùng' } : null,
+        canAccessMenu('/gis/layers') ? { key: '/gis/layers', icon: <ApartmentOutlined />, label: 'Quản lý lớp bản đồ' } : null,
+        canAccessMenu('/symbols') ? { key: '/symbols', icon: <PictureOutlined />, label: 'Quản lý biểu tượng trên bản đồ' } : null,
+      ].filter(Boolean),
+    },
     { type: 'divider' as const },
+    // Nhóm 5 — Báo cáo thống kê
     canAccessMenu('/reports') ? {
       key: 'reports-parent',
       icon: <BarChartOutlined />,
       label: 'Báo cáo thống kê',
       children: [
-        { key: '/reports', label: 'Tất cả báo cáo' },
+        { key: '/reports', icon: <PieChartOutlined />, label: 'Tất cả báo cáo' },
         {
           key: 'reports-chung',
           label: 'Báo cáo thống kê chung',
@@ -432,18 +458,20 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
       ]
     } : null,
     { type: 'divider' as const },
-    // Nhóm 7 — Quản trị hệ thống
+    // Nhóm 6 — Quản trị hệ thống
     {
       key: 'system-admin',
       icon: <SettingOutlined />,
       label: 'Quản trị hệ thống',
       children: [
-        canAccessMenu('/users') ? { key: '/users', label: 'Quản lý tài khoản người dùng' } : null,
-        canAccessMenu('/organizations') ? { key: '/organizations', label: 'Quản lý đơn vị' } : null,
-        canAccessMenu('/groups') ? { key: '/groups', label: 'Quản lý nhóm' } : null,
-        canAccessMenu('/logs') ? { key: '/logs', label: 'Quản lý log truy cập' } : null,
-        canAccessMenu('/connections') ? { key: '/connections', label: 'Liên thông dữ liệu' } : null,
-        canAccessMenu('/settings') ? { key: '/settings', label: 'Cấu hình hệ thống' } : null,
+        canAccessMenu('/users') ? { key: '/users', icon: <UserOutlined />, label: 'Quản lý tài khoản người dùng' } : null,
+        canAccessMenu('/organizations') ? { key: '/organizations', icon: <BankOutlined />, label: 'Quản lý đơn vị' } : null,
+        canAccessMenu('/groups') ? { key: '/groups', icon: <TeamOutlined />, label: 'Quản lý nhóm' } : null,
+        canAccessMenu('/logs') ? { key: '/logs', icon: <FileTextOutlined />, label: 'Quản lý log truy cập' } : null,
+        canAccessMenu('/history') ? { key: '/history', icon: <HistoryOutlined />, label: 'Lịch sử thay đổi' } : null,
+        canAccessMenu('/interconnect') ? { key: '/interconnect', icon: <ApiOutlined />, label: 'Quản lý kết nối liên thông' } : null,
+        canAccessMenu('/connections') ? { key: '/connections', icon: <SyncOutlined />, label: 'Liên thông dữ liệu' } : null,
+        canAccessMenu('/settings') ? { key: '/settings', icon: <SettingOutlined />, label: 'Cấu hình hệ thống' } : null,
       ].filter(Boolean),
     },
   ].filter(Boolean) as MenuProps['items'];
