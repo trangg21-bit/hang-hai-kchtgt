@@ -30,11 +30,9 @@ public class CreatePierRequest {
     private UUID berthId;
 
     @Positive(message = "Chiều dài phải là số dương")
-    @DecimalMax(value = "500.0", message = "Chiều dài không vượt quá 500m")
     private BigDecimal length;
 
     @Positive(message = "Tải trọng thiết kế phải là số dương")
-    @DecimalMax(value = "20.0", message = "Tải trọng thiết kế không vượt quá 20 T/m²")
     private BigDecimal designLoad;
     private PierType pierType;
     private String operationalFunction;
@@ -55,7 +53,6 @@ public class CreatePierRequest {
 
     // ── Spec Group B: Technical ──
     @Positive(message = "Chiều rộng phải là số dương")
-    @DecimalMax(value = "500.0", message = "Chiều rộng không vượt quá 500m")
     private BigDecimal width;                               // #14 - Chiều rộng
     @Size(max = 20, message = "Độ sâu khu nước hiện tại không vượt quá 20 ký tự")
     private String currentWaterDepth;                       // #15
@@ -83,13 +80,13 @@ public class CreatePierRequest {
 
     // ── Spec Group E: ATHH ──
     private Boolean receivesLargeVessel;                    // #25 - 0/1
-    @Size(max = 200, message = "Số văn bản không vượt quá 200 ký tự")
+    @Size(max = 20, message = "Số văn bản không vượt quá 20 ký tự")
     private String documentNumber;                          // #26
     private LocalDate documentDate;                         // #27
 
     // ── Spec Group F: Opening announcement ──
     private LocalDate openingAnnouncementDate;              // #28
-    @Size(max = 200, message = "Quyết định công bố không vượt quá 200 ký tự")
+    @Size(max = 2000, message = "Quyết định công bố không vượt quá 2000 ký tự")
     private String openingDecision;                         // #29
     @Size(max = 2000, message = "Văn bản thỏa thuận đầu tư không vượt quá 2000 ký tự")
     private String investmentAgreementDoc;                  // #30

@@ -475,7 +475,7 @@ export default function PierDetailContent({
                   {athhPlanOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
                 </div>
                 {athhPlanOpen && <div className="chk-detail-grid">
-                  {[['Số văn bản', r.documentNumber || ''], ['Ngày văn bản', formatDateOnly(r.documentDate)]].map(([label, value], index) => (
+                  {[['Số văn bản', r.documentNumber ? formatNumericDisplay(r.documentNumber) : ''], ['Ngày văn bản', formatDateOnly(r.documentDate)]].map(([label, value], index) => (
                     <div key={label} className="chk-detail-row"><span className={`chk-detail-label ${index === 0 ? 'sec-col1-label' : 'sec-col2-label'}`}>{label}</span><span className="chk-detail-value">{value}</span></div>
                   ))}
                 </div>}
@@ -486,15 +486,22 @@ export default function PierDetailContent({
                   <div style={sectionTitleStyle}><FileTextOutlined style={{ color: actionPrimary }} /><span>Thông tin công bố mở, đưa vào sử dụng</span></div>
                   {announcementOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
                 </div>
-                {announcementOpen && <div className="chk-detail-grid">
-                  {[
-                    ['Thời điểm công bố mở, đưa vào sử dụng', formatDateOnly(r.openingAnnouncementDate)],
-                    ['Quyết định công bố/ Văn bản cho phép khai thác', r.openingDecision || ''],
-                    ['Văn bản thỏa thuận đầu tư xây dựng', r.investmentAgreementDoc || ''],
-                  ].map(([label, value], index) => (
-                    <div key={label} className={`chk-detail-row ${index === 2 ? 'chk-detail-row--full' : ''}`}><span className={`chk-detail-label ${index % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label'}`}>{label}</span><span className="chk-detail-value">{value}</span></div>
-                  ))}
-                </div>}
+                {announcementOpen && (
+                  <div className="chk-detail-grid">
+                    <div className="chk-detail-row chk-detail-row--full">
+                      <span className="chk-detail-label sec-col1-label">Thời điểm công bố mở, đưa vào sử dụng</span>
+                      <span className="chk-detail-value">{formatDateOnly(r.openingAnnouncementDate)}</span>
+                    </div>
+                    <div className="chk-detail-row chk-detail-row--full">
+                      <span className="chk-detail-label sec-col1-label">Quyết định công bố/ Văn bản cho phép khai thác</span>
+                      <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{r.openingDecision || ''}</span>
+                    </div>
+                    <div className="chk-detail-row chk-detail-row--full">
+                      <span className="chk-detail-label sec-col1-label">Văn bản thỏa thuận đầu tư xây dựng</span>
+                      <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{r.investmentAgreementDoc || ''}</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div style={{ ...sectionBoxStyle, padding: mooringScopeOpen ? sectionBoxStyle.padding : spaceMd }}>

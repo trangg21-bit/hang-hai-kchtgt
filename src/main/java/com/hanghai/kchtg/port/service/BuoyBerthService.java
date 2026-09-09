@@ -90,7 +90,9 @@ public class BuoyBerthService {
         // RecordSecurityLevel.validateAssignment(secLevel, "buoyberth", SecurityUtils.getCurrentUserPermissions(),
         //         SecurityUtils.isElevatedAdministrator());
 
-        String code = generateBuoyBerthCode(request.getPortId());
+        String code = (request.getBuoyBerthCode() != null && !request.getBuoyBerthCode().trim().isEmpty() && !buoyBerthRepository.existsByBuoyBerthCode(request.getBuoyBerthCode().trim()))
+                ? request.getBuoyBerthCode().trim()
+                : generateBuoyBerthCode(request.getPortId());
 
         BuoyBerth entity = BuoyBerth.builder()
                 // .securityLevel(secLevel)
@@ -164,7 +166,6 @@ public class BuoyBerthService {
 
         Map<String, String> previousValues = new HashMap<>();
         Map<String, String> newValues = new HashMap<>();
-        String prevApprovalLabel = approvalLabel(entity.getApprovalStatus());
         // captureChange(previousValues, newValues, "securityLevel", entity.getSecurityLevel(), request.getSecurityLevel());
         captureChange(previousValues, newValues, "buoyBerthName", entity.getBuoyBerthName(), request.getBuoyBerthName());
         captureChange(previousValues, newValues, "portId", entity.getPortId(), request.getPortId());
@@ -259,40 +260,35 @@ public class BuoyBerthService {
         if (request.getDisplayRule() != null)
             entity.setDisplayRule(request.getDisplayRule());
 
-        if (request.getSaveAction() != null) {
+        if (wasApproved) {
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        } else if (request.getSaveAction() != null) {
             applySaveAction(entity, request.getSaveAction());
-        } else if (entity.getApprovalStatus() == ApprovalStatus.APPROVED) {
-            // Khi chỉnh sửa: "Được phê duyệt" → quay về "Chờ cảng vụ duyệt" (APPROVED_LEVEL1)
-            entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         }
 
         BuoyBerth saved = buoyBerthRepository.save(entity);
         persistGis(saved, request.getGeometryType(), coordinates,
                 request.getLongitude(), request.getLatitude());
-        String newApprovalLabel = approvalLabel(saved.getApprovalStatus());
-        if (!Objects.equals(prevApprovalLabel, newApprovalLabel)) {
-            previousValues.put("approvalStatus", prevApprovalLabel);
-            newValues.put("approvalStatus", newApprovalLabel);
-        }
-        if (!previousValues.isEmpty()) {
-            InfrastructureHistoryStatus histStatus = InfrastructureHistoryStatus.UPDATED;
-            if (previousValues.size() == 1 && previousValues.containsKey("approvalStatus")) {
-                if (saved.getApprovalStatus() == ApprovalStatus.APPROVED) histStatus = InfrastructureHistoryStatus.APPROVED;
-                else if (saved.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1) histStatus = InfrastructureHistoryStatus.PROPOSED;
-                else if (saved.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2) histStatus = InfrastructureHistoryStatus.UNDER_REVIEW;
-                else if (saved.getApprovalStatus() == ApprovalStatus.DRAFT) histStatus = InfrastructureHistoryStatus.DRAFT_SAVED;
+
+        // Chỉ ghi lịch sử thay đổi thuộc tính khi bản ghi ĐÃ ĐƯỢC PHÊ DUYỆT (giống Cầu cảng)
+        // Lưu từng trường thay đổi riêng biệt để tránh vượt quá giới hạn độ dài VARCHAR(255) của changed_field
+        if (wasApproved && !previousValues.isEmpty()) {
+            for (Map.Entry<String, String> entry : previousValues.entrySet()) {
+                String fieldName = entry.getKey();
+                String oldVal = entry.getValue();
+                String newVal = newValues.get(fieldName);
+                historyRepository.save(InfrastructureHistory.builder()
+                        .refId(saved.getId())
+                        .refType(InfrastructureType.BUOY_BERTH)
+                        .approvalLevel(ApprovalLevel.LEVEL_0)
+                        .status(InfrastructureHistoryStatus.UPDATED)
+                        .approvedBy(SecurityUtils.getCurrentUserId())
+                        .reason("Cập nhật thông tin bến phao")
+                        .changedField(fieldName)
+                        .previousValue(oldVal)
+                        .newValue(newVal)
+                        .build());
             }
-            historyRepository.save(InfrastructureHistory.builder()
-                    .refId(saved.getId())
-                    .refType(InfrastructureType.BUOY_BERTH)
-                    .approvalLevel(ApprovalLevel.LEVEL_0)
-                    .status(histStatus)
-                    .approvedBy(SecurityUtils.getCurrentUserId())
-                    .reason("Cập nhật thông tin bến phao")
-                    .changedField(String.join(", ", previousValues.keySet()))
-                    .previousValue(formatHistoryPairs(previousValues))
-                    .newValue(formatHistoryPairs(newValues))
-                    .build());
         }
 
         // Hồ sơ đã duyệt bị chỉnh sửa GIS → ghi 2 dòng lịch sử đọc được:
@@ -348,7 +344,7 @@ public class BuoyBerthService {
                                            String operationalStatus, String approvalStatus,
                                            String updatedFrom, String updatedTo) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("submittedForApprovalAt"),
+        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT),
                 Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus) : null;
@@ -421,7 +417,13 @@ public class BuoyBerthService {
                 } catch (NumberFormatException ignored) {}
             }
         }
-        return prefix + String.format("%03d", maxNum + 1);
+        int nextNum = maxNum + 1;
+        String candidate = prefix + String.format("%03d", nextNum);
+        while (buoyBerthRepository.existsByBuoyBerthCode(candidate)) {
+            nextNum++;
+            candidate = prefix + String.format("%03d", nextNum);
+        }
+        return candidate;
     }
 
     // ── Attachment methods ──────────────────────────────────────────────
@@ -463,26 +465,10 @@ public class BuoyBerthService {
             savedAttachments.add(attachmentRepository.save(attachment));
         }
 
-        // Ghi lịch sử tải lên theo chuẩn Cảng biển — chỉ khi bến phao đã duyệt
-        // (ATTACHMENT_UPLOADED, refType BUOY_BERTH, actor = user thật).
-        BuoyBerth buoyBerth = buoyBerthRepository.findById(entityId).orElse(null);
-        if (buoyBerth != null
-                && (buoyBerth.getApprovalStatus() == ApprovalStatus.APPROVED
-                    || buoyBerth.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2)) {
-            for (Attachment saved : savedAttachments) {
-                String name = saved.getFileName() != null ? saved.getFileName() : "không rõ tên";
-                historyRepository.save(InfrastructureHistory.builder()
-                        .refId(entityId)
-                        .refType(InfrastructureType.BUOY_BERTH)
-                        .approvalLevel(ApprovalLevel.LEVEL_0)
-                        .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
-                        .approvedBy(SecurityUtils.getCurrentUserId())
-                        .reason("Tải lên tài liệu đính kèm: " + name)
-                        .changedField("Tài liệu đính kèm")
-                        .previousValue("—")
-                        .newValue(name)
-                        .build());
-            }
+        // Ghi lịch sử tải lên theo chuẩn Cầu cảng / Cảng biển
+        for (Attachment saved : savedAttachments) {
+            recordBuoyBerthAttachmentHistory(entityId, saved.getFileName(),
+                    InfrastructureHistoryStatus.ATTACHMENT_UPLOADED, userId);
         }
         return savedAttachments.stream().map(this::toAttachmentDto).collect(java.util.stream.Collectors.toList());
     }
@@ -508,24 +494,54 @@ public class BuoyBerthService {
         }
         attachmentRepository.delete(attachment);
 
-        // Chỉ ghi lịch sử xóa file khi bến phao đã duyệt (refType BUOY_BERTH, actor = user thật).
-        BuoyBerth buoyBerth = buoyBerthRepository.findById(entityId).orElse(null);
-        if (buoyBerth != null
-                && (buoyBerth.getApprovalStatus() == ApprovalStatus.APPROVED
-                    || buoyBerth.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2)) {
+        // Ghi lịch sử xóa file theo chuẩn Cầu cảng / Cảng biển
+        recordBuoyBerthAttachmentHistory(entityId, fileName,
+                InfrastructureHistoryStatus.ATTACHMENT_DELETED, userId);
+    }
+
+    /**
+     * Ghi lịch sử thay đổi file đính kèm của Bến phao (chuẩn Cầu cảng/Cảng biển:
+     * status ATTACHMENT_UPLOADED / ATTACHMENT_DELETED, changedField "Tài liệu đính kèm").
+     * Chỉ ghi khi bến phao đã duyệt (APPROVED / APPROVED_LEVEL2).
+     */
+    private void recordBuoyBerthAttachmentHistory(UUID buoyBerthId, String fileName,
+                                                  InfrastructureHistoryStatus status, UUID userId) {
+        try {
+            if (buoyBerthId == null || historyRepository == null) {
+                return;
+            }
+            BuoyBerth buoyBerth = buoyBerthRepository.findById(buoyBerthId).orElse(null);
+            if (buoyBerth == null || (buoyBerth.getApprovalStatus() != ApprovalStatus.APPROVED
+                    && buoyBerth.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL2)) {
+                return;
+            }
             String name = fileName != null ? fileName : "không rõ tên";
+            boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
+            UUID actorId = userId != null ? userId : SecurityUtils.getCurrentUserId();
             historyRepository.save(InfrastructureHistory.builder()
-                    .refId(entityId)
+                    .refId(buoyBerthId)
                     .refType(InfrastructureType.BUOY_BERTH)
                     .approvalLevel(ApprovalLevel.LEVEL_0)
-                    .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
-                    .approvedBy(SecurityUtils.getCurrentUserId())
-                    .reason("Xóa tài liệu đính kèm: " + name)
+                    .status(status)
+                    .approvedBy(actorId)
+                    .approvedDate(LocalDateTime.now())
+                    .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + name)
                     .changedField("Tài liệu đính kèm")
-                    .previousValue(name)
-                    .newValue("—")
+                    .previousValue(uploaded ? "—" : name)
+                    .newValue(uploaded ? name : "—")
                     .build());
+        } catch (Exception e) {
+            log.warn("Không thể ghi lịch sử đính kèm cho bến phao {}: {}", buoyBerthId, e.getMessage());
         }
+    }
+
+    public Attachment getAttachment(String entityType, UUID entityId, UUID attachmentId) {
+        Attachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
+        if (!attachment.getEntityId().equals(entityId)) {
+            throw new IllegalArgumentException("File không thuộc entity này");
+        }
+        return attachment;
     }
 
     private AttachmentDto toAttachmentDto(Attachment entity) {
@@ -640,6 +656,14 @@ public class BuoyBerthService {
                 .orElse(null);
     }
 
+    private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {
+        if (geomType == GisGeometryType.POINT)
+            return GisSpatialObjectType.POINT_OTHER;
+        if (geomType == GisGeometryType.LINE)
+            return GisSpatialObjectType.LINE_OTHER;
+        return GisSpatialObjectType.POLYGON_BUOY_BERTH;
+    }
+
     private void persistGis(BuoyBerth saved, GisGeometryType geometryType, String coordinates,
                             BigDecimal longitude, BigDecimal latitude) {
         String wkt = coordinates;
@@ -648,34 +672,48 @@ public class BuoyBerthService {
         }
         if (wkt != null && !wkt.trim().isEmpty()) {
             GisGeometryType geomType = geometryType != null ? geometryType : GisGeometryType.POINT;
+            GisSpatialObjectType objType = getSpatialObjectType(geomType);
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     saved.getSpatialId(), saved.getBuoyBerthName(), "BUOY_BERTH_" + saved.getBuoyBerthCode(),
-                    geomType, GisSpatialObjectType.POLYGON_BUOY_BERTH, wkt, saved.getId(),
+                    geomType, objType, wkt, saved.getId(),
                     InfrastructureType.BUOY_BERTH);
             saved.setSpatialId(spatialObj.getId());
+            buoyBerthRepository.save(saved);
+        } else if (saved.getSpatialId() != null) {
+            gisSpatialObjectService.delete(saved.getSpatialId());
+            saved.setSpatialId(null);
             buoyBerthRepository.save(saved);
         }
     }
 
     private void applySaveAction(BuoyBerth entity, String action) {
+        String actorId = SecurityUtils.getCurrentUserId() != null
+                ? SecurityUtils.getCurrentUserId().toString() : null;
         switch (action) {
             case "DRAFT":
                 entity.setApprovalStatus(ApprovalStatus.DRAFT);
                 break;
             case "SUBMIT":
-                entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+                entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
                 entity.setSubmittedForApprovalAt(LocalDateTime.now());
-                entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId().toString());
+                entity.setSubmittedForApprovalBy(actorId);
+                entity.setPortAuthorityApprovedAt(null);
+                entity.setPortAuthorityApprovedBy(null);
+                entity.setPortAuthorityApprovalContent(null);
+                entity.setDepartmentApprovedAt(null);
+                entity.setDepartmentApprovedBy(null);
+                entity.setDepartmentApprovalContent(null);
+                entity.setRejectionReason(null);
                 break;
             case "APPROVED":
             case "SAVE_AND_APPROVE":
                 entity.setApprovalStatus(ApprovalStatus.APPROVED);
                 entity.setSubmittedForApprovalAt(LocalDateTime.now());
-                entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId().toString());
+                entity.setSubmittedForApprovalBy(actorId);
                 entity.setPortAuthorityApprovedAt(LocalDateTime.now());
-                entity.setPortAuthorityApprovedBy(SecurityUtils.getCurrentUserId().toString());
+                entity.setPortAuthorityApprovedBy(actorId);
                 entity.setDepartmentApprovedAt(LocalDateTime.now());
-                entity.setDepartmentApprovedBy(SecurityUtils.getCurrentUserId().toString());
+                entity.setDepartmentApprovedBy(actorId);
                 break;
             default:
                 entity.setApprovalStatus(ApprovalStatus.DRAFT);
@@ -692,27 +730,43 @@ public class BuoyBerthService {
         };
     }
 
-    private static String approvalLabel(ApprovalStatus st) {
-        if (st == null) return "";
-        return switch (st) {
-            case APPROVED_LEVEL1 -> "Chờ phê duyệt cấp Cảng vụ/Chi cục";
-            case APPROVED_LEVEL2 -> "Chờ phê duyệt cấp cục";
-            case APPROVED -> "Đã phê duyệt";
-            case REJECTED_LEVEL1 -> "Từ chối cấp Cảng vụ/Chi cục";
-            case REJECTED_LEVEL2 -> "Từ chối cấp cục";
-            case DRAFT -> "Lưu tạm";
-            default -> st.getLabel();
-        };
-    }
-
     private static void captureChange(Map<String, String> prev, Map<String, String> next,
                                       String field, Object oldVal, Object newVal) {
         if (newVal == null) return;
-        String o = oldVal == null ? "(null)" : String.valueOf(oldVal);
-        String n = String.valueOf(newVal);
+        String o = formatCleanNumeric(oldVal);
+        String n = formatCleanNumeric(newVal);
         if (Objects.equals(o, n)) return;
         prev.put(field, o);
         next.put(field, n);
+    }
+
+    private static String formatCleanNumeric(Object val) {
+        if (val == null) return "(null)";
+        if (val instanceof java.math.BigDecimal bd) {
+            java.math.BigDecimal stripped = bd.stripTrailingZeros();
+            if (stripped.scale() < 0) stripped = stripped.setScale(0);
+            String s = stripped.toPlainString();
+            if ("100000000000000000000".equals(s)) {
+                return "99999999999999999999";
+            }
+            return s;
+        }
+        String s = String.valueOf(val);
+        if ("100000000000000000000".equals(s) || s.startsWith("100000000000000000000.")) {
+            return "99999999999999999999";
+        }
+        if (s.contains(".") && s.matches(".*\\.[0-9]+")) {
+            s = s.replaceAll("\\.?0+$", "");
+        }
+        return s;
+    }
+
+    private static java.math.BigDecimal sanitizeMaxNumber(java.math.BigDecimal val) {
+        if (val == null) return null;
+        if (val.compareTo(new java.math.BigDecimal("100000000000000000000")) == 0) {
+            return new java.math.BigDecimal("99999999999999999999");
+        }
+        return val;
     }
 
     private static String formatHistoryPairs(Map<String, String> m) {

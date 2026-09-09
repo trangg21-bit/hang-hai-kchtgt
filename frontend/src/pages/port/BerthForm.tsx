@@ -26,7 +26,7 @@ import type { Berth, SaveAction } from '../../types/port';
 import api from '../../services/api';
 import toast from '../../components/ToastNotification';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
-import { fmtInputNumber } from '../../utils/numFmt';
+import { fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
 import { organizationService } from '../../services/organizationService';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { berthCRUD, portCRUD } from '../../services/portService';
@@ -346,8 +346,8 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
           waterwayId: data.waterwayId, operatingOrgId: data.operatingOrgId,
           provinceId: data.provinceId ? VIETNAM_PROVINCES[data.provinceId - 1] ?? undefined : undefined,
           detailedLocation: data.detailedLocation, structureType: data.structureType, operationalFunction: data.operationalFunction,
-          totalArea: data.totalArea, designThroughput: data.designThroughput, currentThroughput: data.currentThroughput,
-          maxVesselSize: data.maxVesselSize, plannedThroughput: data.plannedThroughput, latestCargoVolume: data.latestCargoVolume,
+          totalArea: normalizeSafeNumber(data.totalArea), designThroughput: normalizeSafeNumber(data.designThroughput), currentThroughput: normalizeSafeNumber(data.currentThroughput),
+          maxVesselSize: normalizeSafeNumber(data.maxVesselSize), plannedThroughput: normalizeSafeNumber(data.plannedThroughput), latestCargoVolume: normalizeSafeNumber(data.latestCargoVolume),
           operationalStatus: data.operationalStatus || undefined,
           openingAnnouncementDate: data.openingAnnouncementDate ? dayjs(data.openingAnnouncementDate) : undefined,
           openingDecision: data.openingDecision, investmentAgreement: data.investmentAgreement,
@@ -530,7 +530,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="berthName" {...labelProps('Tên bến cảng')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Tên bến cảng không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]} validateStatus={atMax.berthName ? 'error' : undefined} help={atMax.berthName ? 'Đã đạt tối đa 255 ký tự' : undefined}>
+                <Form.Item name="berthName" {...labelProps('Tên bến cảng')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Tên bến cảng không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}>
                   <Input placeholder="Nhập tên bến cảng" maxLength={255} showCount style={inputStyle} />
                 </Form.Item>
               </Col>
@@ -602,25 +602,25 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="designThroughput" {...labelProps('Năng lực thông qua thiết kế (tấn/năm)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.designThroughput ? 'error' : undefined} help={atMax.designThroughput ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-                  <InputNumber min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
+                <Form.Item name="designThroughput" {...labelProps('Năng lực thông qua thiết kế (tấn/năm)')} style={{ marginBottom: spaceFormField }}>
+                  <InputNumber stringMode min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="currentThroughput" {...labelProps('Năng lực thông qua hiện trạng (tấn/năm)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.currentThroughput ? 'error' : undefined} help={atMax.currentThroughput ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-                  <InputNumber min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
+                <Form.Item name="currentThroughput" {...labelProps('Năng lực thông qua hiện trạng (tấn/năm)')} style={{ marginBottom: spaceFormField }}>
+                  <InputNumber stringMode min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="plannedThroughput" {...labelProps('Quy hoạch năng lực thông qua (tấn/năm)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.plannedThroughput ? 'error' : undefined} help={atMax.plannedThroughput ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-                  <InputNumber min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
+                <Form.Item name="plannedThroughput" {...labelProps('Quy hoạch năng lực thông qua (tấn/năm)')} style={{ marginBottom: spaceFormField }}>
+                  <InputNumber stringMode min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="latestCargoVolume" {...labelProps('Sản lượng thực tế năm gần nhất (tấn/năm)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.latestCargoVolume ? 'error' : undefined} help={atMax.latestCargoVolume ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-                  <InputNumber min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
+                <Form.Item name="latestCargoVolume" {...labelProps('Sản lượng thực tế năm gần nhất (tấn/năm)')} style={{ marginBottom: spaceFormField }}>
+                  <InputNumber stringMode min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
             </Row>
@@ -640,17 +640,15 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
                   <DatePicker {...getDatePickerProps({ placeholder: 'Chọn thời điểm...' })} />
                 </Form.Item>
               </Col>
-            </Row>
-            <Row gutter={[24, 0]}>
-              <Col span={24}>
-                <Form.Item name="openingDecision" {...labelProps('Quyết định công bố/ Văn bản cho phép khai thác')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.openingDecision ? 'error' : undefined} help={atMax.openingDecision ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
+              <Col span={12}>
+                <Form.Item name="openingDecision" {...labelProps('Quyết định công bố/ Văn bản cho phép khai thác')} style={{ marginBottom: spaceFormField }}>
                   <Input placeholder="Nhập quyết định công bố" maxLength={2000} showCount style={inputStyle} />
                 </Form.Item>
               </Col>
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={24}>
-                <Form.Item name="investmentAgreement" {...labelProps('Văn bản thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.investmentAgreement ? 'error' : undefined} help={atMax.investmentAgreement ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
+                <Form.Item name="investmentAgreement" {...labelProps('Văn bản thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }}>
                   <Input placeholder="Nhập văn bản thỏa thuận" maxLength={2000} showCount style={inputStyle} />
                 </Form.Item>
               </Col>

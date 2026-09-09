@@ -36,6 +36,8 @@ public class PierResponse {
     private UUID spatialId;
     private GisGeometryType geometryType;
     private String coordinates;
+    private BigDecimal latitude;
+    private BigDecimal longitude;
 
     // ── Spec Group A: Basic info ──
     private UUID portId;

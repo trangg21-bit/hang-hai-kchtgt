@@ -37,6 +37,20 @@ public class FieldVisibilityJacksonConfig implements Jackson2ObjectMapperBuilder
     public void customize(Jackson2ObjectMapperBuilder builder) {
         SimpleModule module = new SimpleModule("FieldVisibilityJacksonModule");
         module.setSerializerModifier(new FieldVisibilitySerializerModifier());
+        module.addSerializer(java.math.BigDecimal.class, new com.fasterxml.jackson.databind.JsonSerializer<java.math.BigDecimal>() {
+            @Override
+            public void serialize(java.math.BigDecimal value, JsonGenerator gen, SerializerProvider serializers) throws java.io.IOException {
+                if (value == null) {
+                    gen.writeNull();
+                } else {
+                    java.math.BigDecimal stripped = value.stripTrailingZeros();
+                    if (stripped.scale() < 0) {
+                        stripped = stripped.setScale(0);
+                    }
+                    gen.writeString(stripped.toPlainString());
+                }
+            }
+        });
         builder.modulesToInstall(module);
     }
 

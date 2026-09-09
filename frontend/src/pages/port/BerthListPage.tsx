@@ -31,6 +31,8 @@ import { lineObjectService } from '../../services/lineObjectService';
 import { LineObject } from '../../types/lineObject';
 import type { Organization } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
+import { useAuthStore } from '../../store/authStore';
+import { formatHistoryNumber } from '../../utils/numFmt';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { ScreenHeader, DataTable, type ScreenHeaderAction } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
@@ -441,8 +443,8 @@ export default function BerthList() {
             const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
             return `${parts.length} công trình hạ tầng`;
           }
-          if (/^-?\d+(\.\d+)?$/.test(t)) {
-            return fmtNum(t);
+          if (/^-?\d+(\.\d+)?$/.test(t) || t === '100000000000000000000' || t === '10000000000000000000' || t.includes('100.000.000.000.000.000.000') || t.includes('100,000,000,000,000,000,000')) {
+            return formatHistoryNumber(t);
           }
           return historyFieldValue(fn, raw, orgMap, symbolMap, portMap);
         };

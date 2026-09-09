@@ -6,11 +6,11 @@ import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
-import com.hanghai.kchtg.port.dto.buoyberth.HistoryEntry;
 import com.hanghai.kchtg.port.entity.StormShelterArea;
 import com.hanghai.kchtg.port.repository.StormShelterAreaRepository;
-import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +18,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -29,7 +34,7 @@ import java.util.stream.Collectors;
  * Reject at any level → REJECTED
  * <p>
  * Lịch sử thay đổi ghi vào bảng tập trung {@code infrastructure_history}
- * (refType = STORM_SHELTER_AREA) — cùng cấu trúc ghi/đọc với Bến phao (BuoyBerthApprovalService).
+ * (refType = STORM_SHELTER_AREA) — cùng cấu trúc ghi/đọc với chuẩn Cảng biển/Khu neo đậu.
  * </p>
  */
 @Slf4j
@@ -39,16 +44,16 @@ public class StormShelterAreaApprovalService {
 
     private final StormShelterAreaRepository stormShelterAreaRepository;
     private final InfrastructureHistoryRepository historyRepository;
-    private final UserResolverService userResolverService;
+    private final UserRepository userRepository;
 
     @Transactional
     public void approve(UUID id, String userId, String cap, String content) {
         StormShelterArea entity = stormShelterAreaRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy khu tránh, trú bão với id: " + id));
 
-        String prevLabel = approvalLabel(entity.getApprovalStatus());
         if ("CANG_VU".equals(cap)) {
-            if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1) {
+            if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1
+                    && entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
                 throw new IllegalStateException("Không thể phê duyệt cấp Chi cục: trạng thái hiện tại không hợp lệ");
             }
             entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL2);
@@ -59,7 +64,8 @@ public class StormShelterAreaApprovalService {
                 entity.setPortAuthorityApprovalContent(content.trim());
             }
         } else if ("CUC".equals(cap)) {
-            if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL2) {
+            if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL2
+                    && entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1) {
                 throw new IllegalStateException("Không thể phê duyệt cấp Cục: cần phê duyệt cấp Chi cục trước");
             }
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
@@ -74,16 +80,17 @@ public class StormShelterAreaApprovalService {
 
         stormShelterAreaRepository.save(entity);
 
+        // Ghi sự kiện phê duyệt vào infrastructure_history (changedField = null để getHistory
+        // phân loại vào approvalLog), chuẩn Cảng biển sau migration V20260825162500.
         historyRepository.save(InfrastructureHistory.builder()
                 .refId(entity.getId())
                 .refType(InfrastructureType.STORM_SHELTER_AREA)
                 .approvalLevel("CANG_VU".equals(cap) ? ApprovalLevel.LEVEL_1 : ApprovalLevel.LEVEL_2)
                 .status(InfrastructureHistoryStatus.APPROVED)
                 .approvedBy(SecurityUtils.getCurrentUserId())
-                .reason("CANG_VU".equals(cap) ? "Phê duyệt cấp Cảng vụ" : "Phê duyệt cấp Cục")
-                .changedField("Trạng thái phê duyệt")
-                .previousValue("Trạng thái phê duyệt=" + prevLabel)
-                .newValue("Trạng thái phê duyệt=" + approvalLabel(entity.getApprovalStatus()))
+                .approvedDate(LocalDateTime.now())
+                .reason(("CANG_VU".equals(cap) ? "Phê duyệt cấp Cảng vụ" : "Phê duyệt cấp Cục")
+                        + (content != null && !content.isBlank() ? ": " + content.trim() : ""))
                 .build());
 
         log.info("StormShelterArea [{}] approved by {} at level {}", id, userId, cap);
@@ -94,24 +101,24 @@ public class StormShelterAreaApprovalService {
         StormShelterArea entity = stormShelterAreaRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy khu tránh, trú bão với id: " + id));
 
-        String prevLabel = approvalLabel(entity.getApprovalStatus());
         entity.setApprovalStatus(entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2
                 ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
         entity.setRejectionReason(reason);
 
         stormShelterAreaRepository.save(entity);
 
+        // Ghi sự kiện từ chối vào infrastructure_history (changedField = null để getHistory
+        // phân loại vào approvalLog), chuẩn Cảng biển sau migration V20260825162500.
+        String levelLabel = "CANG_VU".equals(cap) ? "Cảng vụ" : "Cục";
         historyRepository.save(InfrastructureHistory.builder()
                 .refId(entity.getId())
                 .refType(InfrastructureType.STORM_SHELTER_AREA)
                 .approvalLevel("CANG_VU".equals(cap) ? ApprovalLevel.LEVEL_1 : ApprovalLevel.LEVEL_2)
                 .status(InfrastructureHistoryStatus.REJECTED)
                 .approvedBy(SecurityUtils.getCurrentUserId())
-                .reason(("CANG_VU".equals(cap) ? "Từ chối cấp Cảng vụ" : "Từ chối cấp Cục")
+                .approvedDate(LocalDateTime.now())
+                .reason("Từ chối cấp " + levelLabel
                         + (reason != null && !reason.isBlank() ? ": " + reason.trim() : ""))
-                .changedField("Trạng thái phê duyệt")
-                .previousValue("Trạng thái phê duyệt=" + prevLabel)
-                .newValue("Trạng thái phê duyệt=" + approvalLabel(entity.getApprovalStatus()))
                 .build());
 
         log.info("StormShelterArea [{}] rejected by {} at level {}: {}", id, userId, cap, reason);
@@ -122,59 +129,131 @@ public class StormShelterAreaApprovalService {
         StormShelterArea entity = stormShelterAreaRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy khu tránh, trú bão với id: " + id));
 
-        List<InfrastructureHistory> records = historyRepository
-                .findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.STORM_SHELTER_AREA, id);
+        String entityId = id.toString();
+        String entityType = "StormShelterArea";
 
-        java.util.Map<String, Object> result = new java.util.HashMap<>();
-        result.put("entityId", id.toString());
-        result.put("entityType", "StormShelterArea");
-        result.put("currentApprovalStatus", entity.getApprovalStatus());
-        result.put("changeHistory", records.stream().map(this::toHistoryEntry).collect(Collectors.toList()));
-        result.put("entityNames", new java.util.HashMap<String, String>());
-        return result;
+        List<InfrastructureHistory> list =
+                historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.STORM_SHELTER_AREA, id);
+
+        Set<UUID> userIds = list.stream()
+                .map(InfrastructureHistory::getApprovedBy)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<UUID, String> userNameMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(
+                                User::getId,
+                                u -> u.getFullName() != null && !u.getFullName().isBlank() ? u.getFullName() : u.getUsername(),
+                                (a, b) -> a));
+
+        List<Map<String, Object>> changeHistory = list.stream()
+                .map(h -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("entityType", entityType);
+                    m.put("entityId", entityId);
+                    m.put("refId", h.getRefId());
+                    m.put("refType", h.getRefType());
+                    m.put("approvalLevel", h.getApprovalLevel() != null ? h.getApprovalLevel().name() : null);
+                    m.put("status", h.getStatus() != null ? h.getStatus().name() : null);
+                    m.put("fieldName", h.getChangedField() != null ? h.getChangedField() : "Trạng thái");
+                    m.put("changedField", h.getChangedField() != null ? h.getChangedField() : "Trạng thái");
+                    m.put("oldValue", h.getPreviousValue() != null ? h.getPreviousValue() : "");
+                    m.put("previousValue", h.getPreviousValue());
+                    m.put("newValue", h.getNewValue() != null ? h.getNewValue() : "");
+                    m.put("changedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+                    m.put("approvedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : null);
+                    m.put("approvedByName", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : null);
+                    m.put("changedAt", h.getApprovedDate());
+                    m.put("approvedDate", h.getApprovedDate());
+                    m.put("reason", h.getReason());
+                    return m;
+                })
+                .toList();
+
+        List<Map<String, Object>> approvalLog = list.stream()
+                .filter(h -> h.getStatus() != null && h.getChangedField() == null)
+                .map(h -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("entityType", entityType);
+                    m.put("entityId", entityId);
+                    m.put("decision", h.getStatus().name());
+                    m.put("reason", h.getReason() != null ? h.getReason() : "");
+                    m.put("decidedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+                    m.put("decidedAt", h.getApprovedDate());
+                    m.put("cap", h.getApprovalLevel() != null ? h.getApprovalLevel().name() : "");
+                    return m;
+                })
+                .toList();
+
+        return Map.of(
+                "entityId", entityId,
+                "entityType", entityType,
+                "currentApprovalStatus", entity.getApprovalStatus() != null ? entity.getApprovalStatus().name() : "",
+                "changeHistory", changeHistory,
+                "approvalLog", approvalLog,
+                "histories", list
+        );
     }
 
     @Transactional(readOnly = true)
     public java.util.Map<String, Object> getAllHistory() {
-        List<InfrastructureHistory> records = historyRepository
-                .findByRefTypeOrderByApprovedDateDesc(InfrastructureType.STORM_SHELTER_AREA);
+        String entityType = "StormShelterArea";
+        List<InfrastructureHistory> list =
+                historyRepository.findByRefTypeOrderByApprovedDateDesc(InfrastructureType.STORM_SHELTER_AREA);
         java.util.Map<String, String> entityNames = new java.util.HashMap<>();
-        for (InfrastructureHistory h : records) {
-            if (h.getRefId() != null && !entityNames.containsKey(h.getRefId().toString())) {
-                stormShelterAreaRepository.findById(h.getRefId())
-                        .ifPresent(a -> entityNames.put(a.getId().toString(), a.getStormShelterName()));
+        for (InfrastructureHistory logItem : list) {
+            if (logItem.getRefId() != null) {
+                String refIdStr = logItem.getRefId().toString();
+                if (!entityNames.containsKey(refIdStr)) {
+                    try {
+                        stormShelterAreaRepository.findById(logItem.getRefId())
+                                .ifPresent(a -> entityNames.put(refIdStr, a.getStormShelterName()));
+                    } catch (Exception e) {
+                        entityNames.put(refIdStr, refIdStr);
+                    }
+                }
             }
         }
-        return java.util.Map.of(
-                "entityType", "StormShelterArea",
-                "changeHistory", records.stream().map(this::toHistoryEntry).collect(Collectors.toList()),
-                "entityNames", entityNames);
-    }
-
-    private HistoryEntry toHistoryEntry(InfrastructureHistory h) {
-        return HistoryEntry.builder()
-                .id(h.getId())
-                .approvalLevel(h.getApprovalLevel())
-                .status(h.getStatus() != null ? h.getStatus().getCode() : null)
-                .approvedBy(h.getApprovedBy() != null ? userResolverService.resolveName(h.getApprovedBy()) : null)
-                .approvedDate(h.getApprovedDate())
-                .reason(h.getReason())
-                .changedField(h.getChangedField())
-                .previousValue(h.getPreviousValue())
-                .newValue(h.getNewValue())
-                .build();
-    }
-
-    private static String approvalLabel(ApprovalStatus st) {
-        if (st == null) return "";
-        return switch (st) {
-            case APPROVED_LEVEL1 -> "Chờ phê duyệt cấp Cảng vụ/Chi cục";
-            case APPROVED_LEVEL2 -> "Chờ phê duyệt cấp cục";
-            case APPROVED -> "Đã phê duyệt";
-            case REJECTED_LEVEL1 -> "Từ chối cấp Cảng vụ/Chi cục";
-            case REJECTED_LEVEL2 -> "Từ chối cấp cục";
-            case DRAFT -> "Lưu tạm";
-            default -> st.getLabel();
-        };
+        Set<UUID> userIds = list.stream()
+                .map(InfrastructureHistory::getApprovedBy)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> userNameMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(
+                                User::getId,
+                                u -> u.getFullName() != null && !u.getFullName().isBlank() ? u.getFullName() : u.getUsername(),
+                                (a, b) -> a));
+        List<Map<String, Object>> changeHistory = list.stream()
+                .map(h -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("refId", h.getRefId());
+                    m.put("entityId", h.getRefId() != null ? h.getRefId().toString() : null);
+                    m.put("refType", h.getRefType());
+                    m.put("approvalLevel", h.getApprovalLevel());
+                    m.put("status", h.getStatus());
+                    m.put("approvedBy", h.getApprovedBy() != null
+                            ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
+                            : null);
+                    m.put("approvedByName", h.getApprovedBy() != null
+                            ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
+                            : null);
+                    m.put("approvedDate", h.getApprovedDate());
+                    m.put("reason", h.getReason());
+                    m.put("changedField", h.getChangedField() != null ? h.getChangedField() : "Trạng thái");
+                    m.put("fieldName", h.getChangedField() != null ? h.getChangedField() : "Trạng thái");
+                    m.put("previousValue", h.getPreviousValue());
+                    m.put("oldValue", h.getPreviousValue());
+                    m.put("newValue", h.getNewValue());
+                    m.put("changedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+                    m.put("changedAt", h.getApprovedDate());
+                    return m;
+                })
+                .toList();
+        return java.util.Map.of("entityType", entityType, "changeHistory", changeHistory, "entityNames", entityNames, "histories", list);
     }
 }

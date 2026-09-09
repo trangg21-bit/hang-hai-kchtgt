@@ -50,17 +50,17 @@ public class Berth extends BaseEntity implements ApprovableEntity {
     @Column(name = "waterway_id")
     private UUID waterwayId;
 
-    @Column(name = "length", precision = 15, scale = 2)
+    @Column(name = "length", precision = 28, scale = 4)
     private BigDecimal length;
 
-    @Column(name = "width", precision = 15, scale = 2)
+    @Column(name = "width", precision = 28, scale = 4)
     private BigDecimal width;
 
     @Column(name = "berth_type")
     @Convert(converter = BerthTypeConverter.class)
     private BerthType berthType;
 
-    @Column(name = "channel_depth", precision = 10, scale = 2)
+    @Column(name = "channel_depth", precision = 28, scale = 4)
     private BigDecimal channelDepth;
 
     @Column(name = "operational_status")
@@ -119,22 +119,22 @@ public class Berth extends BaseEntity implements ApprovableEntity {
     @Column(name = "operating_org_id")
     private UUID operatingOrgId;
 
-    @Column(name = "total_area", precision = 19, scale = 4)
+    @Column(name = "total_area", precision = 28, scale = 4)
     private BigDecimal totalArea;
 
-    @Column(name = "design_throughput", precision = 19, scale = 4)
+    @Column(name = "design_throughput", precision = 28, scale = 4)
     private BigDecimal designThroughput;
 
-    @Column(name = "current_throughput", precision = 19, scale = 4)
+    @Column(name = "current_throughput", precision = 28, scale = 4)
     private BigDecimal currentThroughput;
 
-    @Column(name = "max_vessel_size", precision = 19, scale = 4)
+    @Column(name = "max_vessel_size", precision = 28, scale = 4)
     private BigDecimal maxVesselSize;
 
-    @Column(name = "planned_throughput", precision = 19, scale = 4)
+    @Column(name = "planned_throughput", precision = 28, scale = 4)
     private BigDecimal plannedThroughput;
 
-    @Column(name = "latest_cargo_volume", precision = 19, scale = 4)
+    @Column(name = "latest_cargo_volume", precision = 28, scale = 4)
     private BigDecimal latestCargoVolume;
 
     @Column(name = "opening_announcement_date")

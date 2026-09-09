@@ -55,10 +55,10 @@ public class Port extends BaseEntity implements ApprovableEntity {
 
 
 
-    @Column(name = "area", precision = 15, scale = 2)
+    @Column(name = "area", precision = 28, scale = 4)
     private BigDecimal area;
 
-    @Column(name = "max_vessel_capacity", precision = 15, scale = 2)
+    @Column(name = "max_vessel_capacity", precision = 28, scale = 4)
     private BigDecimal maxVesselCapacity;
 
     @Column(name = "operational_status")
@@ -131,10 +131,10 @@ public class Port extends BaseEntity implements ApprovableEntity {
     @Column(name = "total_dedicated_channels")
     private Integer totalDedicatedChannels;
 
-    @Column(name = "total_public_channel_length", precision = 19, scale = 4)
+    @Column(name = "total_public_channel_length", precision = 28, scale = 4)
     private BigDecimal totalPublicChannelLength;
 
-    @Column(name = "total_dedicated_channel_length", precision = 19, scale = 4)
+    @Column(name = "total_dedicated_channel_length", precision = 28, scale = 4)
     private BigDecimal totalDedicatedChannelLength;
 
     @Column(name = "total_buoys_beacons")
@@ -143,7 +143,7 @@ public class Port extends BaseEntity implements ApprovableEntity {
     @Column(name = "total_dikes")
     private Integer totalDikes;
 
-    @Column(name = "total_dike_length", precision = 19, scale = 4)
+    @Column(name = "total_dike_length", precision = 28, scale = 4)
     private BigDecimal totalDikeLength;
 
     @Column(name = "total_lighthouses")

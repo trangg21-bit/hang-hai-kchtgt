@@ -59,7 +59,7 @@ const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40,
 const numberInputStyle: React.CSSProperties = { width: '100%', borderRadius: radiusPill, height: 40 };
 const dmsUnitStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, height: 32, fontSize: fontSizeSm, color: textTertiary };
 const dmsUnitEndStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, height: 32, borderRadius: '0 999px 999px 0', fontSize: fontSizeSm, color: textTertiary };
-type NumberInputWithCountProps = InputNumberProps<number> & { maxLength: number };
+type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
 
 /** Hiển thị số ký tự đã nhập để giới hạn 5/20 chữ số của các chỉ số tổng hợp dễ nhận biết. */
 function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
@@ -67,10 +67,11 @@ function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWi
 
   return (
     <InputNumber
+      stringMode
       {...inputProps}
       value={value}
       maxLength={maxLength}
-      suffix={<span aria-label={`${count} trên ${maxLength} ký tự`} style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
+      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
     />
   );
 }
@@ -101,25 +102,25 @@ const renderDmsGroup = (
     {
       key: 'd', base: 'Độ', value: dVal, max: maxDeg,
       radius: '999px 0 0 999px', unit: '°', unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
-      step: 1,
+      step: 1, formatter: undefined as ((value: any) => string) | undefined,
       msg: started && dVal == null ? 'Độ bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(v, mVal ?? null, sVal ?? null),
     },
     {
       key: 'm', base: 'Phút', value: mVal, max: 59,
       radius: '0', unit: '\'', unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
-      step: 1,
+      step: 1, formatter: undefined as ((value: any) => string) | undefined,
       msg: started && mVal == null ? 'Phút bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(dVal ?? null, v, sVal ?? null),
     },
     {
       key: 's', base: 'Giây', value: sVal, max: 59.99,
       radius: '0', unit: '"', unitStyle: dmsUnitEndStyle, basis: '1.2 0 130px', width: 130,
-      step: 0.01, formatter: fmtInputNumber,
+      step: 0.01, formatter: fmtInputNumber as ((value: any) => string) | undefined,
       msg: started && sVal == null ? 'Giây bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(dVal ?? null, mVal ?? null, v),
     },
-  ] as const;
+  ];
 
   const inputRow = (
     <div style={{ display: 'inline-flex', flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'center', maxWidth: '100%', minWidth: 0 }}>
@@ -229,12 +230,15 @@ interface PortInfrastructureEntry {
  *  vì file mới thêm chỉ có { uid, name, size, status, originFileObj }, chưa có id/fileName.
  *  Chỉ chuyển sang InfrastructureAttachmentItem tại mappedAttachments (spread trước, override sau). */
 interface PortUploadFile {
+  id?: string;
   uid: string;
   /** Tên gốc file (mappedAttachments → fileName). */
   name: string;
   size?: number;
   status?: string;
   originFileObj?: File;
+  uploadedByName?: string;
+  uploadedDate?: string;
 }
 
 type IndexedGpsCoordPoint = GpsCoordPoint & { _idx: number };
@@ -312,6 +316,7 @@ export default function PortForm({
   // Theo dõi trực tiếp ô "Loại đối tượng" của form này (chuẩn Bến cảng BerthForm.tsx:222) —
   // nút Tọa độ GPS & ô Biểu tượng disable khi chưa chọn loại đối tượng.
   const watchedGeometryType = Form.useWatch('geometryType', form);
+  const effectiveGeometryType = watchedGeometryType || geometryType;
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const [indicatorOpen, setIndicatorOpen] = useState(true); // Toggle 'Chỉ số tổng hợp' (mặc định MỞ)
   void onGpsPageChange;
@@ -433,7 +438,6 @@ export default function PortForm({
                 { required: true, message: 'Tên cảng không được để trống' },
                 { max: 255, message: 'Tên cảng tối đa 255 ký tự' },
               ]}
-              validateStatus={atMax.portName ? 'error' : undefined} help={atMax.portName ? 'Đã đạt tối đa 255 ký tự' : undefined}
             >
               <Input placeholder="Nhập tên cảng biển" maxLength={255} showCount style={inputStyle} />
             </Form.Item>
@@ -485,9 +489,8 @@ export default function PortForm({
               name="detailedLocation"
               {...labelProps('Địa điểm chi tiết')}
               style={{ marginBottom: spaceFormField }}
-              validateStatus={atMax.detailedLocation ? 'error' : undefined} help={atMax.detailedLocation ? 'Đã đạt tối đa 500 ký tự' : undefined}
             >
-              <Input.TextArea rows={3} placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={textAreaStyle} />
+              <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
             </Form.Item>
           </Col>
         </Row>
@@ -498,7 +501,6 @@ export default function PortForm({
               name="waterAreaScope"
               {...labelProps('Phạm vi vùng nước cảng biển')}
               style={{ marginBottom: spaceFormField }}
-              validateStatus={atMax.waterAreaScope ? 'error' : undefined} help={atMax.waterAreaScope ? 'Đã đạt tối đa 2000 ký tự' : undefined}
             >
               <Input.TextArea rows={3} placeholder="Nhập phạm vi vùng nước" maxLength={2000} showCount style={textAreaStyle} />
             </Form.Item>
@@ -521,7 +523,6 @@ export default function PortForm({
                 name="totalBerths"
                 {...labelProps('Tổng số bến cảng')}
                 style={{ marginBottom: spaceFormField }}
-                validateStatus={atMax.totalBerths ? 'error' : undefined} help={atMax.totalBerths ? 'Đã đạt tối đa 5 ký tự' : undefined}
               >
                 <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
               </Form.Item>
@@ -531,7 +532,6 @@ export default function PortForm({
                 name="totalAnchoragesTransshipment"
                 {...labelProps('Tổng số khu neo đậu, khu chuyển tải')}
                 style={{ marginBottom: spaceFormField }}
-                validateStatus={atMax.totalAnchoragesTransshipment ? 'error' : undefined} help={atMax.totalAnchoragesTransshipment ? 'Đã đạt tối đa 5 ký tự' : undefined}
               >
                 <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
               </Form.Item>
@@ -543,7 +543,6 @@ export default function PortForm({
                 name="totalPublicChannels"
                 {...labelProps('Tổng số tuyến luồng hàng hải công cộng')}
                 style={{ marginBottom: spaceFormField }}
-                validateStatus={atMax.totalPublicChannels ? 'error' : undefined} help={atMax.totalPublicChannels ? 'Đã đạt tối đa 5 ký tự' : undefined}
               >
                 <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
               </Form.Item>
@@ -553,7 +552,6 @@ export default function PortForm({
                 name="totalDedicatedChannels"
                 {...labelProps('Tổng số tuyến luồng hàng hải chuyên dùng')}
                 style={{ marginBottom: spaceFormField }}
-                validateStatus={atMax.totalDedicatedChannels ? 'error' : undefined} help={atMax.totalDedicatedChannels ? 'Đã đạt tối đa 5 ký tự' : undefined}
               >
                 <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
               </Form.Item>
@@ -565,7 +563,6 @@ export default function PortForm({
                 name="totalPublicChannelLength"
                 {...labelProps('Tổng chiều dài luồng hàng hải công cộng (km)')}
                 style={{ marginBottom: spaceFormField }}
-                validateStatus={atMax.totalPublicChannelLength ? 'error' : undefined} help={atMax.totalPublicChannelLength ? 'Đã đạt tối đa 20 ký tự' : undefined}
               >
                 <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
               </Form.Item>
@@ -575,7 +572,6 @@ export default function PortForm({
                 name="totalDedicatedChannelLength"
                 {...labelProps('Tổng chiều dài luồng hàng hải chuyên dùng (km)')}
                 style={{ marginBottom: spaceFormField }}
-                validateStatus={atMax.totalDedicatedChannelLength ? 'error' : undefined} help={atMax.totalDedicatedChannelLength ? 'Đã đạt tối đa 20 ký tự' : undefined}
               >
                 <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
               </Form.Item>
@@ -587,7 +583,6 @@ export default function PortForm({
                 name="totalBuoysBeacons"
                 {...labelProps('Tổng số phao tiêu, báo hiệu hàng hải trên luồng')}
                 style={{ marginBottom: spaceFormField }}
-                validateStatus={atMax.totalBuoysBeacons ? 'error' : undefined} help={atMax.totalBuoysBeacons ? 'Đã đạt tối đa 5 ký tự' : undefined}
               >
                 <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
               </Form.Item>
@@ -597,7 +592,6 @@ export default function PortForm({
                 name="totalDikes"
                 {...labelProps('Tổng số đê, kè')}
                 style={{ marginBottom: spaceFormField }}
-                validateStatus={atMax.totalDikes ? 'error' : undefined} help={atMax.totalDikes ? 'Đã đạt tối đa 5 ký tự' : undefined}
               >
                 <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
               </Form.Item>
@@ -609,7 +603,6 @@ export default function PortForm({
                 name="totalDikeLength"
                 {...labelProps('Tổng chiều dài hệ thống đê, kè (km)')}
                 style={{ marginBottom: spaceFormField }}
-                validateStatus={atMax.totalDikeLength ? 'error' : undefined} help={atMax.totalDikeLength ? 'Đã đạt tối đa 20 ký tự' : undefined}
               >
                 <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
               </Form.Item>
@@ -619,7 +612,6 @@ export default function PortForm({
                 name="totalLighthouses"
                 {...labelProps('Tổng số đèn biển, đăng, tiêu độc lập')}
                 style={{ marginBottom: spaceFormField }}
-                validateStatus={atMax.totalLighthouses ? 'error' : undefined} help={atMax.totalLighthouses ? 'Đã đạt tối đa 5 ký tự' : undefined}
               >
                 <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
               </Form.Item>
@@ -631,7 +623,6 @@ export default function PortForm({
                 name="buoyBerthCount"
                 {...labelProps('Số lượng bến phao')}
                 style={{ marginBottom: spaceFormField }}
-                validateStatus={atMax.buoyBerthCount ? 'error' : undefined} help={atMax.buoyBerthCount ? 'Đã đạt tối đa 5 ký tự' : undefined}
               >
                 <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
               </Form.Item>
@@ -641,7 +632,6 @@ export default function PortForm({
                 name="anchorageCount"
                 {...labelProps('Số lượng khu neo đậu')}
                 style={{ marginBottom: spaceFormField }}
-                validateStatus={atMax.anchorageCount ? 'error' : undefined} help={atMax.anchorageCount ? 'Đã đạt tối đa 5 ký tự' : undefined}
               >
                 <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
               </Form.Item>
@@ -653,7 +643,6 @@ export default function PortForm({
                 name="transshipmentCount"
                 {...labelProps('Số lượng khu chuyển tải')}
                 style={{ marginBottom: spaceFormField }}
-                validateStatus={atMax.transshipmentCount ? 'error' : undefined} help={atMax.transshipmentCount ? 'Đã đạt tối đa 5 ký tự' : undefined}
               >
                 <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
               </Form.Item>
@@ -663,7 +652,6 @@ export default function PortForm({
                 name="otherWaterAreas"
                 {...labelProps('Các khu nước, vùng nước khác')}
                 style={{ marginBottom: spaceFormField }}
-                validateStatus={atMax.otherWaterAreas ? 'error' : undefined} help={atMax.otherWaterAreas ? 'Đã đạt tối đa 2000 ký tự' : undefined}
               >
                 <Input.TextArea rows={3} placeholder="Mô tả" maxLength={2000} showCount style={textAreaStyle} />
               </Form.Item>
@@ -675,7 +663,6 @@ export default function PortForm({
                 name="remarks"
                 {...labelProps('Ghi chú')}
                 style={{ marginBottom: spaceFormField }}
-                validateStatus={atMax.remarks ? 'error' : undefined} help={atMax.remarks ? 'Đã đạt tối đa 2000 ký tự' : undefined}
               >
                 <Input.TextArea rows={3} placeholder="Ghi chú" maxLength={2000} showCount style={textAreaStyle} />
               </Form.Item>
@@ -710,6 +697,19 @@ export default function PortForm({
                   { value: 'POLYGON', label: 'Đối tượng vùng' },
                 ]}
                 style={selectStyle}
+                onChange={(val) => {
+                  if (!val) {
+                    form.setFieldsValue({
+                      mapSymbolId: undefined,
+                      coordinateSystem: undefined,
+                      displayRule: undefined,
+                    });
+                    form.setFields([{ name: 'mapSymbolId', errors: [] }]);
+                    if (setGpsCoordList) {
+                      setGpsCoordList([]);
+                    }
+                  }
+                }}
               />
             </Form.Item>
           </Col>
@@ -717,6 +717,12 @@ export default function PortForm({
             <Form.Item
               name="mapSymbolId"
               {...labelProps('Biểu tượng')}
+              required={!!effectiveGeometryType}
+              rules={
+                effectiveGeometryType
+                  ? [{ required: true, message: 'Biểu tượng là bắt buộc khi đã chọn loại đối tượng' }]
+                  : []
+              }
               style={{ marginBottom: spaceFormField }}
             >
               <Select
@@ -724,7 +730,7 @@ export default function PortForm({
                 allowClear
                 showSearch
                 optionFilterProp="label"
-                disabled={!watchedGeometryType}
+                disabled={!effectiveGeometryType}
                 style={selectStyle}
               >
                 {symbols.map((sym) => (
@@ -785,10 +791,10 @@ export default function PortForm({
           </span>
           <Space size={8}>
             <Button
-              icon={<EnvironmentOutlined style={{ color: !(watchedGeometryType || geometryType) ? undefined : actionPrimary }} />}
+              icon={<EnvironmentOutlined style={{ color: !effectiveGeometryType ? undefined : actionPrimary }} />}
               onClick={() => setGisModalOpen(true)}
-              disabled={!(watchedGeometryType || geometryType)}
-              style={!(watchedGeometryType || geometryType) ? {
+              disabled={!effectiveGeometryType}
+              style={!effectiveGeometryType ? {
                 height: 32,
                 fontSize: fontSizeSm,
                 padding: '0 14px',
@@ -814,8 +820,8 @@ export default function PortForm({
               type="primary"
               icon={<PlusOutlined />}
               onClick={addGpsPoint}
-              disabled={!(watchedGeometryType || geometryType) || ((watchedGeometryType || geometryType) === 'POINT' && gpsCoordList.length >= 1)}
-              style={!(watchedGeometryType || geometryType) || ((watchedGeometryType || geometryType) === 'POINT' && gpsCoordList.length >= 1) ? {
+              disabled={!effectiveGeometryType || (effectiveGeometryType === 'POINT' && gpsCoordList.length >= 1)}
+              style={!effectiveGeometryType || (effectiveGeometryType === 'POINT' && gpsCoordList.length >= 1) ? {
                 height: 32,
                 fontSize: fontSizeSm,
                 padding: '0 14px',
@@ -836,7 +842,7 @@ export default function PortForm({
                 alignItems: 'center',
                 gap: 4,
               }}
-              title={(watchedGeometryType || geometryType) === 'POINT' && gpsCoordList.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 tọa độ GPS' : undefined}
+              title={effectiveGeometryType === 'POINT' && gpsCoordList.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 tọa độ GPS' : undefined}
             >
               Thêm tọa độ
             </Button>
@@ -1109,7 +1115,7 @@ export default function PortForm({
         <div style={{ padding: '8px 0' }}>
           <GisLocationSelector
             inline={true}
-            defaultGeometryType="POINT"
+            defaultGeometryType={(effectiveGeometryType as any) || 'POINT'}
             height={520}
             onChange={(val) => {
               if (val?.coordinates && setGpsCoordList) {

@@ -215,9 +215,6 @@ public class TransferAreaService {
 
         if (request.getSaveAction() != null) {
             applySaveAction(entity, request.getSaveAction());
-        } else if (entity.getApprovalStatus() == ApprovalStatus.APPROVED) {
-            // Khi chỉnh sửa: "Được phê duyệt" → quay về "Chờ cảng vụ duyệt" (APPROVED_LEVEL1)
-            entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         }
 
         boolean wasApproved = snapshot.getApprovalStatus() == ApprovalStatus.APPROVED
@@ -426,6 +423,15 @@ public class TransferAreaService {
                 .stream().map(this::toAttachmentDto).collect(java.util.stream.Collectors.toList());
     }
 
+    public Attachment getAttachment(String entityType, UUID entityId, UUID attachmentId) {
+        Attachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
+        if (!attachment.getEntityId().equals(entityId)) {
+            throw new IllegalArgumentException("File không thuộc entity này");
+        }
+        return attachment;
+    }
+
     @Transactional
     public void deleteAttachment(String entityType, UUID entityId, UUID attachmentId, UUID userId) {
         Attachment attachment = attachmentRepository.findById(attachmentId)
@@ -617,19 +623,23 @@ public class TransferAreaService {
                 entity.setApprovalStatus(ApprovalStatus.DRAFT);
                 break;
             case "SUBMIT":
-                entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+                entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
                 entity.setSubmittedForApprovalAt(LocalDateTime.now());
-                entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId().toString());
+                entity.setSubmittedForApprovalBy(
+                        SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : null);
                 break;
             case "APPROVED":
             case "SAVE_AND_APPROVE":
                 entity.setApprovalStatus(ApprovalStatus.APPROVED);
                 entity.setSubmittedForApprovalAt(LocalDateTime.now());
-                entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId().toString());
+                entity.setSubmittedForApprovalBy(
+                        SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : null);
                 entity.setPortAuthorityApprovedAt(LocalDateTime.now());
-                entity.setPortAuthorityApprovedBy(SecurityUtils.getCurrentUserId().toString());
+                entity.setPortAuthorityApprovedBy(
+                        SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : null);
                 entity.setDepartmentApprovedAt(LocalDateTime.now());
-                entity.setDepartmentApprovedBy(SecurityUtils.getCurrentUserId().toString());
+                entity.setDepartmentApprovedBy(
+                        SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : null);
                 break;
             default:
                 entity.setApprovalStatus(ApprovalStatus.DRAFT);

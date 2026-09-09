@@ -528,10 +528,7 @@ export const validateDmsCoordinates = (
     const geom = String(geometryType).toUpperCase();
     if (geom === 'POINT') {
       if (validCoords.length === 0) {
-        return { valid: false, errorMessage: 'Đối tượng điểm (Point) cần đúng 1 tọa độ GPS hợp lệ', validCoords };
-      }
-      if (validCoords.length > 1) {
-        return { valid: false, errorMessage: 'Đối tượng điểm (Point) chỉ cho phép 1 tọa độ GPS. Vui lòng xóa bớt dòng tọa độ dư thừa.', validCoords };
+        return { valid: false, errorMessage: 'Đối tượng điểm (Point) cần ít nhất 1 tọa độ GPS hợp lệ', validCoords };
       }
     } else if (geom === 'LINE' || geom === 'LINESTRING') {
       if (validCoords.length < 2) {
@@ -580,6 +577,9 @@ export const serializeCoordinatesToWkt = (
   if (valid.length === 0) return '';
   const type = (geomType || 'POINT').toUpperCase();
   if (type === 'POINT' || valid.length === 1) {
+    if (valid.length > 1) {
+      return `MULTIPOINT (${valid.map((c) => `(${c.longitude} ${c.latitude})`).join(', ')})`;
+    }
     return `POINT (${valid[0].longitude} ${valid[0].latitude})`;
   } else if (type === 'LINE' || type === 'LINESTRING') {
     return `LINESTRING (${valid.map((c) => `${c.longitude} ${c.latitude}`).join(', ')})`;

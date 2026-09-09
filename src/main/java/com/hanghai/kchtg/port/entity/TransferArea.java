@@ -122,7 +122,7 @@ public class TransferArea extends BaseEntity {
     @Column(name = "opening_announcement_date")
     private LocalDateTime openingAnnouncementDate;
 
-    @Column(name = "public_decision", length = 500)
+    @Column(name = "public_decision", length = 2000)
     private String publicDecision;
 
     @Column(name = "investment_agreement", columnDefinition = "TEXT")

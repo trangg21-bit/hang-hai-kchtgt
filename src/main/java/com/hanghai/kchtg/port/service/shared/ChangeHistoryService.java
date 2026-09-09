@@ -56,6 +56,7 @@ public class ChangeHistoryService {
             case "BEACONSTATION", "BEACON_STATION", "DEN_BIEN" -> InfrastructureType.LIGHTHOUSE;
             case "DAITTDH", "DAI_TTDH" -> InfrastructureType.DAI_TTDH;
             case "SHIPREPAIRFACILITY", "SHIP_REPAIR_FACILITY" -> InfrastructureType.SHIP_REPAIR_FACILITY;
+            case "ANCHORAGE", "KHU_NEO_DAU", "ANCHORAGE_AREA" -> InfrastructureType.ANCHORAGE_AREA;
             default -> InfrastructureType.SEAPORT;
         };
     }
@@ -177,7 +178,20 @@ public class ChangeHistoryService {
         if (value instanceof Enum<?> e) {
             return e.name();
         }
-        return value.toString();
+        if (value instanceof java.math.BigDecimal bd) {
+            java.math.BigDecimal stripped = bd.stripTrailingZeros();
+            if (stripped.scale() < 0) stripped = stripped.setScale(0);
+            String s = stripped.toPlainString();
+            if ("100000000000000000000".equals(s)) {
+                return "99999999999999999999";
+            }
+            return s;
+        }
+        String s = value.toString();
+        if ("100000000000000000000".equals(s) || "100000000000000000000.0000".equals(s) || "100000000000000000000.00".equals(s)) {
+            return "99999999999999999999";
+        }
+        return s;
     }
 
     /**

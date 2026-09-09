@@ -891,6 +891,33 @@ export const anchorageCRUD = {
   },
 };
 
+export const anchorageApproval = {
+  async submit(id: string): Promise<void> {
+    await anchorageCRUD.update({ id, saveAction: 'SUBMIT' });
+  },
+
+  async approveC1(id: string, content?: string): Promise<void> {
+    await anchorageCRUD.approve(id, 'CANG_VU', content?.trim() || undefined);
+  },
+
+  async approveC2(id: string, content?: string): Promise<void> {
+    await anchorageCRUD.approve(id, 'CUC', content?.trim() || undefined);
+  },
+
+  async approve(id: string, cap: string, content?: string): Promise<void> {
+    await anchorageCRUD.approve(id, cap, content?.trim() || undefined);
+  },
+
+  async reject(id: string, cap: string, lyDo: string): Promise<void> {
+    await anchorageCRUD.reject(id, cap, lyDo);
+  },
+
+  async rejectStage(id: string, reason: string, currentStatus?: string): Promise<void> {
+    const cap = currentStatus === 'APPROVED_LEVEL1' ? 'CUC' : 'CANG_VU';
+    await anchorageCRUD.reject(id, cap, reason);
+  },
+};
+
 // ── Transfer Area (Khu chuyển tải) CRUD ───────────────────────────
 
 export const transferAreaCRUD = {
@@ -1012,6 +1039,48 @@ export const transferAreaCRUD = {
 
   async deleteAttachment(id: string, attId: string): Promise<void> {
     await api.delete(`/v1/transfer-area/${id}/attachments/${attId}`);
+  },
+
+  async downloadAttachment(id: string, attId: string, fileName?: string): Promise<void> {
+    const res = await api.get(`/v1/transfer-area/${id}/attachments/${attId}/download`, {
+      responseType: 'blob',
+    });
+    const blob = new Blob([res.data]);
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName || 'attachment';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  },
+};
+
+export const transferAreaApproval = {
+  async submit(id: string): Promise<void> {
+    await transferAreaCRUD.update({ id, saveAction: 'SUBMIT' });
+  },
+
+  async approveC1(id: string, content?: string): Promise<void> {
+    await transferAreaCRUD.approve(id, 'CANG_VU', content?.trim() || undefined);
+  },
+
+  async approveC2(id: string, content?: string): Promise<void> {
+    await transferAreaCRUD.approve(id, 'CUC', content?.trim() || undefined);
+  },
+
+  async approve(id: string, cap: string, content?: string): Promise<void> {
+    await transferAreaCRUD.approve(id, cap, content?.trim() || undefined);
+  },
+
+  async reject(id: string, cap: string, lyDo: string): Promise<void> {
+    await transferAreaCRUD.reject(id, cap, lyDo);
+  },
+
+  async rejectStage(id: string, reason: string, currentStatus?: string): Promise<void> {
+    const cap = currentStatus === 'APPROVED_LEVEL1' || currentStatus === 'APPROVED_LEVEL2' ? 'CUC' : 'CANG_VU';
+    await transferAreaCRUD.reject(id, cap, reason);
   },
 };
 
@@ -1143,6 +1212,33 @@ export const stormShelterCRUD = {
   },
 };
 
+export const stormShelterApproval = {
+  async submit(id: string): Promise<void> {
+    await stormShelterCRUD.update({ id, saveAction: 'SUBMIT' });
+  },
+
+  async approveC1(id: string, content?: string): Promise<void> {
+    await stormShelterCRUD.approve(id, 'CANG_VU', content?.trim() || undefined);
+  },
+
+  async approveC2(id: string, content?: string): Promise<void> {
+    await stormShelterCRUD.approve(id, 'CUC', content?.trim() || undefined);
+  },
+
+  async approve(id: string, cap: string, content?: string): Promise<void> {
+    await stormShelterCRUD.approve(id, cap, content?.trim() || undefined);
+  },
+
+  async reject(id: string, cap: string, lyDo: string): Promise<void> {
+    await stormShelterCRUD.reject(id, cap, lyDo);
+  },
+
+  async rejectStage(id: string, reason: string, currentStatus?: string): Promise<void> {
+    const cap = (currentStatus === 'APPROVED_LEVEL1' || currentStatus === 'APPROVED_LEVEL2') ? 'CUC' : 'CANG_VU';
+    await stormShelterCRUD.reject(id, cap, reason);
+  },
+};
+
 // ── Buoy Berth (Bến phao) CRUD ─────────────────────────
 
 export const buoyBerthCRUD = {
@@ -1230,6 +1326,10 @@ export const buoyBerthCRUD = {
     return res.data.data;
   },
 
+  async submit(id: string): Promise<void> {
+    await buoyBerthCRUD.update({ id, saveAction: 'SUBMIT' });
+  },
+
   async approve(id: string, cap: string, content?: string): Promise<void> {
     await api.post(`/v1/buoy-berth/${id}/approve`, { cap, content });
   },
@@ -1274,6 +1374,47 @@ export const buoyBerthCRUD = {
 
   async deleteAttachment(id: string, attId: string): Promise<void> {
     await api.delete(`/v1/buoy-berth/${id}/attachments/${attId}`);
+  },
+
+  async downloadAttachment(buoyBerthId: string, attId: string, fileName?: string): Promise<void> {
+    const res = await api.get(`/v1/buoy-berth/${buoyBerthId}/attachments/${attId}/download`, {
+      responseType: 'blob',
+    });
+    const blob = new Blob([res.data]);
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName || 'attachment';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  },
+};
+
+export const buoyBerthApproval = {
+  async submit(id: string): Promise<void> {
+    await buoyBerthCRUD.update({ id, saveAction: 'SUBMIT' });
+  },
+
+  async approveC1(id: string, reason?: string): Promise<void> {
+    await api.post(`/v1/buoy-berth/${id}/approve/c1`, null, { params: { reason } });
+  },
+
+  async approveC2(id: string, reason?: string): Promise<void> {
+    await api.post(`/v1/buoy-berth/${id}/approve/c2`, null, { params: { reason } });
+  },
+
+  async approve(id: string, cap: string, content?: string): Promise<void> {
+    await api.post(`/v1/buoy-berth/${id}/approve`, { cap, content: content?.trim() || undefined });
+  },
+
+  async reject(id: string, cap: string, lyDo: string): Promise<void> {
+    await api.post(`/v1/buoy-berth/${id}/reject`, { cap, lyDo });
+  },
+
+  async rejectStage(id: string, reason: string): Promise<void> {
+    await api.post(`/v1/buoy-berth/${id}/reject`, null, { params: { reason } });
   },
 };
 

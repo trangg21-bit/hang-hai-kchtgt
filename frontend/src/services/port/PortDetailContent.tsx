@@ -6,6 +6,7 @@ import {
   BarChartOutlined, DownOutlined, RightOutlined, AuditOutlined, BankOutlined, SlidersOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import toast from '../../components/ToastNotification';
 import {
   colors, actionPrimary, textTertiary,
   surfaceCard, spaceSm, spaceMd, spaceFormField,
@@ -14,9 +15,6 @@ import {
   statusOperational, statusAttention, statusCritical,
   DRAWER_TABLE_SCROLL_Y,
 } from '../../themetokenchk';
-
-// Berth render chuẩn dùng nền chữ 13.5 (BerthDetailContent:22) — để chữ/tên đề/giá trị khớp bến cảng.
-const fontSizeMd = 13.5;
 import type { CangBienResponse } from './types';
 import { trangThaiPheDuyetBadge } from './schema';
 import { fmtNum } from '../../utils/numFmt';
@@ -27,6 +25,9 @@ import {
   detailLabelStyle, sectionBoxStyle, sectionHeaderStyle, sectionTitleStyle, generalScrollerStyle,
 } from '../../components/detail-drawer/detailSkin';
 import type { Symbol } from '../symbolService';
+
+// Berth render chuẩn dùng nền chữ 13.5 (BerthDetailContent:22) — để chữ/tên đề/giá trị khớp bến cảng.
+const fontSizeMd = 13.5;
 
 // ── Helpers (module-level, đồng bộ PortListPage) ───────────────────
 
@@ -65,7 +66,7 @@ const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> =
         if (mm) mm[1].split('),(').forEach((pt: string) => { const [lng, lat] = pt.replace(/[()]/g, '').trim().split(/\s+/); if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) }); });
       }
       if (out.length === 0) {
-        const pm = wkt.match(/POINT\s*\(([\d.\-]+)\s+([\d.\-]+)\)/);
+        const pm = wkt.match(/POINT\s*\(([\d.-]+)\s+([\d.-]+)\)/);
         if (pm) out.push({ lng: Number(pm[1]), lat: Number(pm[2]) });
       }
     } catch { /* ignore */ }
@@ -404,15 +405,41 @@ export default function PortDetailContent({
                 {approvalOpen && (
                 <div className="chk-detail-grid">
                   {[
-                    ['Trạng thái', (() => { const b = trangThaiPheDuyetBadge(selectedRecord.approvalStatus || ''); let c = textTertiary; if (b.color === 'green') c = statusOperational; else if (b.color === 'red') c = statusCritical; else if (b.color === 'orange') c = statusAttention; else if (b.color === 'blue') c = actionPrimary; return b.label ? <span style={statusBadgeStyle(c)}>{b.label}</span> : ''; })()],
-                    ['Người tạo', selectedRecord.createdByName || selectedRecord.createdBy || ''],
-                    ['Ngày tạo', selectedRecord.createdAt ? dayjs(selectedRecord.createdAt).format('DD/MM/YYYY HH:mm:ss') : ''],
-                    ['Cán bộ cập nhật', selectedRecord.updatedByName || selectedRecord.updatedBy || ''],
-                    ['Ngày cập nhật', selectedRecord.updatedAt ? dayjs(selectedRecord.updatedAt).format('DD/MM/YYYY HH:mm:ss') : ''],
-                  ].map(([label, value], i) => (
-                    <div key={i} className="chk-detail-row">
-                      <span className={`chk-detail-label ${i % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label'}`}>{label}</span>
-                      <span className="chk-detail-value" style={label === 'Người tạo' || label === 'Cán bộ cập nhật' ? { fontWeight: fontWeightBold } : undefined}>{value}</span>
+                    {
+                      label: 'Trạng thái',
+                      value: (() => {
+                        const b = trangThaiPheDuyetBadge(selectedRecord.approvalStatus || '');
+                        let c = textTertiary;
+                        if (b.color === 'green') c = statusOperational;
+                        else if (b.color === 'red') c = statusCritical;
+                        else if (b.color === 'orange') c = statusAttention;
+                        else if (b.color === 'blue') c = actionPrimary;
+                        return b.label ? <span style={statusBadgeStyle(c)}>{b.label}</span> : '';
+                      })(),
+                      fullWidth: true,
+                    },
+                    {
+                      label: 'Cán bộ cập nhật',
+                      value: selectedRecord.updatedByName || (selectedRecord.updatedBy ? (userMap.get(selectedRecord.updatedBy) || selectedRecord.updatedBy) : '') || '',
+                      isCol1: true,
+                      bold: true,
+                    },
+                    {
+                      label: 'Ngày cập nhật',
+                      value: selectedRecord.updatedAt ? dayjs(selectedRecord.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '',
+                      isCol1: false,
+                    },
+                  ].map((row, i) => (
+                    <div
+                      key={i}
+                      className={`chk-detail-row${row.fullWidth ? ' chk-detail-row--full' : ''}`}
+                    >
+                      <span className={`chk-detail-label ${row.fullWidth ? 'sec-full-label' : (row.isCol1 ? 'sec-col1-label' : 'sec-col2-label')}`}>
+                        {row.label}
+                      </span>
+                      <span className="chk-detail-value" style={row.bold ? { fontWeight: fontWeightBold } : undefined}>
+                        {row.value}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -517,18 +544,55 @@ export default function PortDetailContent({
             <div style={{ paddingTop: 6, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)' }}>
               {/* Box 1: Danh sách KCHT thuộc cảng biển (kèm lọc loại) */}
               <div style={{ ...sectionBoxStyle, padding: infraFilterOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
-                <div onClick={() => setInfraFilterOpen(!infraFilterOpen)} style={{ ...sectionHeaderStyle, cursor: 'pointer', userSelect: 'none', marginBottom: infraFilterOpen ? 12 : 0, paddingBottom: infraFilterOpen ? 8 : 0, borderBottom: infraFilterOpen ? '1px solid #f1f5f9' : 'none' }}>
-                  <div style={sectionTitleStyle}>
-                    <SlidersOutlined style={{ color: actionPrimary }} />
-                    <span>Kết cấu hạ tầng thuộc cảng biển</span>
+                <div
+                  onClick={(e) => {
+                    const target = e.target as HTMLElement | null;
+                    if (target?.closest('.chk-infra-filter-container') || target?.closest('.ant-select-dropdown')) {
+                      return;
+                    }
+                    setInfraFilterOpen(!infraFilterOpen);
+                  }}
+                  style={{
+                    ...sectionHeaderStyle,
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    marginBottom: infraFilterOpen ? 12 : 0,
+                    paddingBottom: infraFilterOpen ? 8 : 0,
+                    borderBottom: infraFilterOpen ? '1px solid #f1f5f9' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, flex: 1, minWidth: 0 }}>
+                    <div style={sectionTitleStyle}>
+                      <SlidersOutlined style={{ color: actionPrimary }} />
+                      <span>Kết cấu hạ tầng thuộc cảng biển</span>
+                    </div>
                     {infraFilterOpen && (
-                      <Select allowClear showSearch placeholder="Chọn loại kết cấu hạ tầng" value={infraFilter || undefined}
+                      <div
+                        className="chk-infra-filter-container"
                         onClick={(e) => e.stopPropagation()}
-                        onChange={(v: string | undefined) => setInfraFilter(v || undefined)}
-                        options={KCHT_TYPE_OPTIONS} style={{ width: 240, borderRadius: 999, height: 32, marginLeft: 12 }} />
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        style={{ cursor: 'default' }}
+                      >
+                        <Select
+                          allowClear
+                          showSearch
+                          placeholder="Chọn loại kết cấu hạ tầng"
+                          value={infraFilter || undefined}
+                          onChange={(v: string | undefined) => {
+                            setInfraFilter(v || undefined);
+                            setInfraFilterOpen(true);
+                          }}
+                          options={KCHT_TYPE_OPTIONS}
+                          style={{ width: 240, borderRadius: 999, height: 32, marginLeft: 8 }}
+                        />
+                      </div>
                     )}
                   </div>
-                  <span style={{ color: actionPrimary, fontSize: 12 }}>
+                  <span style={{ color: actionPrimary, fontSize: 12, marginLeft: 8, flexShrink: 0 }}>
                     {infraFilterOpen ? <DownOutlined /> : <RightOutlined />}
                   </span>
                 </div>
@@ -738,7 +802,7 @@ export default function PortDetailContent({
               if (pts.length > 0) {
                 const rawWkt = (selectedRecord as any).coordinates || '';
                 let geom: 'POINT' | 'LINE' | 'POLYGON' = 'POINT';
-                let wkt = '';
+                let wkt: string;
                 if (rawWkt.startsWith('LINESTRING')) {
                   geom = 'LINE';
                   wkt = `LINESTRING(${pts.map(p => `${p.lng} ${p.lat}`).join(', ')})`;
