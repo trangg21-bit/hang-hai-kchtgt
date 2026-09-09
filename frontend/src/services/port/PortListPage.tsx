@@ -9,7 +9,6 @@ import {
   Form,
   Typography,
   Space,
-  Skeleton,
   DatePicker,
   Descriptions,
 } from 'antd';
@@ -21,6 +20,7 @@ import {
   SearchOutlined,
 } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
+import { formatHistoryNumber, normalizeSafeNumber } from '../../utils/numFmt';
 import { berthCRUD, waterZoneCRUD, pierCRUD } from '../../services/portService';
 import BerthDetailContent from '../../pages/port/BerthDetailContent';
 import PierDetailContent from '../../pages/port/PierDetailContent';
@@ -94,9 +94,7 @@ import {
   spaceFormField,
   radiusPill,
   spaceXs,
-  spaceLg,
   spaceXl,
-  radiusSm,
   drawerTitleStyle,
   drawerFooterStyle,
   primaryButtonStyle,
@@ -166,29 +164,10 @@ function portHistActionMeta(field: string, rows: { field: string; oldValue: stri
 }
 
 function fmtPortHistoryThousands(s: string): string {
-  const t = s.trim();
-  if (!/^-?\d+(\.\d+)?$/.test(t)) return s;
-  const n = Number(t);
-  if (!Number.isFinite(n)) return s;
-  return n.toLocaleString('en-US', { maximumFractionDigits: 6 });
-}
-
-function portHistRowValue(r: any, side: 'old' | 'new', orgMap: Map<string, string>, symbolMap: Map<string, string>): string | null {
-  const raw = side === 'old' ? (r.oldValue ?? r.previousValue) : (r.newValue ?? r.value);
-  if (raw === null || raw === undefined) return null;
-  const s = String(raw);
-  if (s === 'null' || s === 'undefined' || s === '') return null;
-  const field = r.changedField ?? r.fieldName ?? '';
-  if (field === 'orgUnitId') return orgMap.get(s) || s;
-  if (side === 'old' && field === 'mapSymbolId') return undefined as unknown as string;
-  const resolved = resolvePortHistoryValue(field, raw, orgMap, symbolMap);
-  return (resolved ?? fmtPortHistoryThousands(s));
+  return formatHistoryNumber(s);
 }
 
 function renderPortHistCards(records: any[], orgMap: Map<string, string>, symbolMap: Map<string, string>, symbolImageMap: Map<string, string>) {
-  const timeFmt = (tsRaw?: string | null) => {
-    try { return tsRaw ? dayjs(tsRaw).format('HH:mm DD/MM/YYYY') : '—'; } catch { return tsRaw || '—'; }
-  };
   const norm = (v: string | null): string | null => {
     if (v === null || v === undefined) return null;
     const s = String(v);
@@ -213,7 +192,7 @@ function renderPortHistCards(records: any[], orgMap: Map<string, string>, symbol
     const bt = b.changedAt || b.createdAt || b.approvedDate || '';
     return String(bt) < String(at) ? -1 : String(bt) > String(at) ? 1 : 0;
   });
-  const groups: { ts: string; actor: string; items: any[] }[] = [];
+  const groups: { tsMs: number; ts: string; actor: string; items: any[] }[] = [];
   for (const r of sorted) {
     const ts = r.changedAt || r.createdAt || r.approvedDate || '';
     // Gom nhóm theo đúng logic Bến cảng: theo GIÂY (tsSec) + actor, mỗi nhóm giữ ts ISO để hiển thị.
@@ -223,7 +202,7 @@ function renderPortHistCards(records: any[], orgMap: Map<string, string>, symbol
     if (g && g.tsMs === tsMs && g.actor === actor) {
       g.items.push(r);
     } else {
-      groups.push({ tsMs: tsMs, actor, items: [r] });
+      groups.push({ tsMs, ts, actor, items: [r] });
     }
   }
 
@@ -994,11 +973,11 @@ export default function PortListPage() {
               tongSoKhuNeoDauChuyenTai: data.totalAnchoragesTransshipment != null ? data.totalAnchoragesTransshipment : undefined,
               tongSoTuyenLuongCongCong: data.totalPublicChannels != null ? data.totalPublicChannels : undefined,
               tongSoTuyenLuongChuyenDung: data.totalDedicatedChannels != null ? data.totalDedicatedChannels : undefined,
-              tongChieuDaiLuongCongCong: data.totalPublicChannelLength != null ? data.totalPublicChannelLength : undefined,
-              tongChieuDaiLuongChuyenDung: data.totalDedicatedChannelLength != null ? data.totalDedicatedChannelLength : undefined,
+              tongChieuDaiLuongCongCong: normalizeSafeNumber(data.totalPublicChannelLength),
+              tongChieuDaiLuongChuyenDung: normalizeSafeNumber(data.totalDedicatedChannelLength),
               tongSoPhaoTieuBaoHieu: data.totalBuoysBeacons != null ? data.totalBuoysBeacons : undefined,
               tongSoDeKe: data.totalDikes != null ? data.totalDikes : undefined,
-              tongChieuDaiDeKe: data.totalDikeLength != null ? data.totalDikeLength : undefined,
+              tongChieuDaiDeKe: normalizeSafeNumber(data.totalDikeLength),
               tongSoDenBienDangTieu: data.totalLighthouses != null ? data.totalLighthouses : undefined,
               quantityBenPhao: data.buoyBerthCount != null ? data.buoyBerthCount : undefined,
               quantityKhuNeoDau: data.anchorageCount != null ? data.anchorageCount : undefined,
@@ -1162,23 +1141,32 @@ export default function PortListPage() {
 
   // Khi chọn loại đối tượng → tự set hệ quy chiếu & quy tắc hiển thị
   useEffect(() => {
-    if (!createGeometryType) return;
+    if (!createGeometryType) {
+      createForm.setFieldsValue({ mapSymbolId: undefined, coordinateSystem: undefined, displayRule: undefined });
+      createForm.setFields([{ name: 'mapSymbolId', errors: [] }]);
+      setGpsCoordList([]);
+      return;
+    }
     createForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
     // Form thêm mới: điểm → 1 tọa độ, đường → 2 tọa độ, vùng → 3 tọa độ
     const count = GEOMETRY_POINT_COUNT[createGeometryType] ?? 0;
     setGpsCoordList(Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null })));
   }, [createGeometryType]);
   useEffect(() => {
-    if (updateGeometryType) {
-      updateForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
-      // Chỉnh sửa: giữ tọa độ đã có, tự thêm dòng trống cho đủ số lượng theo loại đối tượng (điểm → 1, đường → 2, vùng → 3)
-      const count = GEOMETRY_POINT_COUNT[updateGeometryType] ?? 1;
-      setGpsCoordList((prev) => {
-        if (prev.length >= count) return prev;
-        const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
-        return [...prev, ...added];
-      });
+    if (!updateGeometryType) {
+      updateForm.setFieldsValue({ mapSymbolId: undefined, coordinateSystem: undefined, displayRule: undefined });
+      updateForm.setFields([{ name: 'mapSymbolId', errors: [] }]);
+      setGpsCoordList([]);
+      return;
     }
+    updateForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
+    // Chỉnh sửa: giữ tọa độ đã có, tự thêm dòng trống cho đủ số lượng theo loại đối tượng (điểm → 1, đường → 2, vùng → 3)
+    const count = GEOMETRY_POINT_COUNT[updateGeometryType] ?? 1;
+    setGpsCoordList((prev) => {
+      if (prev.length >= count) return prev;
+      const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
+      return [...prev, ...added];
+    });
   }, [updateGeometryType]);
 
   const handleCreateFinish = async (values: Record<string, unknown>) => {
@@ -1204,49 +1192,56 @@ export default function PortListPage() {
     }
 
     if (values.geometryType) {
-      const minCount = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
-      const validCount = gpsCoordList.filter(c => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null)).length;
-      if (validCount < minCount) {
-        toast.error(values.geometryType === 'POLYGON' ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ' : values.geometryType === 'LINE' ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ' : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ');
+      if (!values.mapSymbolId) {
+        setCreateTabKey('gis');
+        createForm.setFields([{ name: ['mapSymbolId'], errors: ['Biểu tượng là bắt buộc khi đã chọn loại đối tượng'] }]);
+        toast.error('Biểu tượng là bắt buộc khi đã chọn loại đối tượng');
         return;
       }
-    }
 
-    if (values.geometryType) {
       const minCount = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
-      const validCount = gpsCoordList.filter(c => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null)).length;
-      if (validCount < minCount) {
-        toast.error(values.geometryType === 'POLYGON' ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ' : values.geometryType === 'LINE' ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ' : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ');
+      const validCoords = gpsCoordList.filter(
+        c => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null
+      );
+
+      if (validCoords.length < minCount) {
+        setCreateTabKey('gis');
+        toast.error(
+          values.geometryType === 'POLYGON'
+            ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ'
+            : values.geometryType === 'LINE'
+            ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ'
+            : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ'
+        );
         return;
       }
-    }
 
-    // Đối tượng điểm (POINT) chỉ cho phép đúng 1 tọa độ GPS — nếu nhiều hơn thì chặn & báo.
-    if (values.geometryType === 'POINT') {
-      const validPointCount = gpsCoordList.filter(c => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null)).length;
-      if (validPointCount > 1) {
+      // Đối tượng điểm (POINT) chỉ cho phép đúng 1 tọa độ GPS — nếu nhiều hơn thì chặn & báo.
+      if (values.geometryType === 'POINT' && validCoords.length > 1) {
+        setCreateTabKey('gis');
         toast.error('Loại đối tượng điểm chỉ cho phép 1 tọa độ GPS');
         return;
       }
-    }
 
-    // Tọa độ GPS: nếu 1 hàng đã bắt đầu nhập nhưng ô con (Độ/Phút/Giây của Vĩ hoặc Kinh) chưa đủ → chặn & báo khi ấn Lưu
-    const partial = gpsCoordList.find((c) => {
-      const latSet = c.latD != null || c.latM != null || c.latS != null;
-      const lngSet = c.lngD != null || c.lngM != null || c.lngS != null;
-      const latFull = c.latD != null && c.latM != null && c.latS != null;
-      const lngFull = c.lngD != null && c.lngM != null && c.lngS != null;
-      return (latSet && !latFull) || (lngSet && !lngFull);
-    });
-    if (partial) {
-      toast.error('Chưa nhập đủ Độ/Phút/Giây cho một tọa độ GPS trong tab Thông tin vị trí');
-      return;
+      // Tọa độ GPS: nếu 1 hàng đã bắt đầu nhập nhưng ô con (Độ/Phút/Giây của Vĩ hoặc Kinh) chưa đủ → chặn & báo khi ấn Lưu
+      const partial = gpsCoordList.find((c) => {
+        const latSet = c.latD != null || c.latM != null || c.latS != null;
+        const lngSet = c.lngD != null || c.lngM != null || c.lngS != null;
+        const latFull = c.latD != null && c.latM != null && c.latS != null;
+        const lngFull = c.lngD != null && c.lngM != null && c.lngS != null;
+        return (latSet && !latFull) || (lngSet && !lngFull);
+      });
+      if (partial) {
+        setCreateTabKey('gis');
+        toast.error('Chưa nhập đủ Độ/Phút/Giây cho một tọa độ GPS trong tab Thông tin vị trí');
+        return;
+      }
     }
 
     setSubmitting(true);
     try {
       const coordinateList: Array<{ latitude: number; longitude: number }> = gpsCoordList
-        .filter(c => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null))
+        .filter(c => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null)
         .map(c => ({ latitude: dmToDd(c.latD, c.latM, c.latS), longitude: dmToDd(c.lngD, c.lngM, c.lngS) }));
 
       // AC-008-09: Kiểm tra trùng tên cảng trong cùng tỉnh (warning, không chặn)
@@ -1364,22 +1359,61 @@ export default function PortListPage() {
 
   const handleUpdateFinish = async (values: Record<string, unknown>) => {
     if (!selectedRecord) return;
+
+    if (values.geometryType) {
+      if (!values.mapSymbolId) {
+        setUpdateTabKey('gis');
+        updateForm.setFields([{ name: ['mapSymbolId'], errors: ['Biểu tượng là bắt buộc khi đã chọn loại đối tượng'] }]);
+        toast.error('Biểu tượng là bắt buộc khi đã chọn loại đối tượng');
+        return;
+      }
+
+      const minCount = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
+      const validCoords = gpsCoordList.filter(
+        c => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null
+      );
+
+      if (validCoords.length < minCount) {
+        setUpdateTabKey('gis');
+        toast.error(
+          values.geometryType === 'POLYGON'
+            ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ'
+            : values.geometryType === 'LINE'
+            ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ'
+            : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ'
+        );
+        return;
+      }
+
+      // Đối tượng điểm (POINT) chỉ cho phép đúng 1 tọa độ GPS — nếu nhiều hơn thì chặn & báo.
+      if (values.geometryType === 'POINT' && validCoords.length > 1) {
+        setUpdateTabKey('gis');
+        toast.error('Loại đối tượng điểm chỉ cho phép 1 tọa độ GPS');
+        return;
+      }
+
+      // Tọa độ GPS: nếu 1 hàng đã bắt đầu nhập nhưng ô con (Độ/Phút/Giây của Vĩ hoặc Kinh) chưa đủ → chặn & báo khi ấn Lưu
+      const partial = gpsCoordList.find((c) => {
+        const latSet = c.latD != null || c.latM != null || c.latS != null;
+        const lngSet = c.lngD != null || c.lngM != null || c.lngS != null;
+        const latFull = c.latD != null && c.latM != null && c.latS != null;
+        const lngFull = c.lngD != null && c.lngM != null && c.lngS != null;
+        return (latSet && !latFull) || (lngSet && !lngFull);
+      });
+      if (partial) {
+        setUpdateTabKey('gis');
+        toast.error('Chưa nhập đủ Độ/Phút/Giây cho một tọa độ GPS trong tab Thông tin vị trí');
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       const n = (v: unknown): number | undefined =>
         v != null && !Number.isNaN(v as number) ? Number(v) : undefined;
 
-      // Đối tượng điểm (POINT) chỉ cho phép đúng 1 tọa độ GPS — nếu nhiều hơn thì chặn & báo.
-      if (values.geometryType === 'POINT') {
-        const validPointCount = gpsCoordList.filter(c => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null)).length;
-        if (validPointCount > 1) {
-          toast.error('Loại đối tượng điểm chỉ cho phép 1 tọa độ GPS');
-          return;
-        }
-      }
-
       const coordinateList: Array<{ latitude: number; longitude: number }> = gpsCoordList
-        .filter(c => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null))
+        .filter(c => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null)
         .map(c => ({ latitude: dmToDd(c.latD, c.latM, c.latS), longitude: dmToDd(c.lngD, c.lngM, c.lngS) }));
 
       const payload = {

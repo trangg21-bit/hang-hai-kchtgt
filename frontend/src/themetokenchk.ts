@@ -264,16 +264,18 @@ export const statusInfo = '#0284C7';
 export const tableSortableByDefault = true;
 
 /** Hàm so sánh hỗ trợ sắp xếp client-side chuỗi tiếng Việt có dấu cho DataTable */
-export const clientSideStringSorter = (key: string, fallbackKey?: string) => (a: any, b: any) => {
+export const clientSideStringSorter = (key: string, fallbackKey?: string) => (a: Record<string, unknown>, b: Record<string, unknown>) => {
   const aVal = a[key] ?? (fallbackKey ? a[fallbackKey] : '') ?? '';
   const bVal = b[key] ?? (fallbackKey ? b[fallbackKey] : '') ?? '';
   return String(aVal).localeCompare(String(bVal), 'vi');
 };
 
 /** Hàm so sánh hỗ trợ sắp xếp client-side thời gian cho DataTable */
-export const clientSideDateSorter = (key: string, fallbackKey?: string) => (a: any, b: any) => {
-  const aTime = a[key] ? new Date(a[key]).getTime() : (fallbackKey && a[fallbackKey] ? new Date(a[fallbackKey]).getTime() : 0);
-  const bTime = b[key] ? new Date(b[key]).getTime() : (fallbackKey && b[fallbackKey] ? new Date(b[fallbackKey]).getTime() : 0);
+export const clientSideDateSorter = (key: string, fallbackKey?: string) => (a: Record<string, unknown>, b: Record<string, unknown>) => {
+  const aVal = a[key] ?? (fallbackKey ? a[fallbackKey] : undefined);
+  const bVal = b[key] ?? (fallbackKey ? b[fallbackKey] : undefined);
+  const aTime = aVal ? new Date(aVal as string | number | Date).getTime() : 0;
+  const bTime = bVal ? new Date(bVal as string | number | Date).getTime() : 0;
   return aTime - bTime;
 };
 
@@ -306,31 +308,33 @@ export const formatUserDisplayName = (
 };
 
 /** Hàm so sánh sắp xếp cột Cán bộ cập nhật (ưu tiên Họ và tên A-Z, sau đó theo ngày) */
-export const clientSideUserSorter = (nameKey = 'updatedByName', fallbackNameKey = 'createdByName', dateKey = 'updatedAt', fallbackDateKey = 'createdAt') => (a: any, b: any) => {
-  const rawA = a[nameKey] || (fallbackNameKey ? a[fallbackNameKey] : '') || '';
-  const rawB = b[nameKey] || (fallbackNameKey ? b[fallbackNameKey] : '') || '';
+export const clientSideUserSorter = (nameKey = 'updatedByName', fallbackNameKey = 'createdByName', dateKey = 'updatedAt', fallbackDateKey = 'createdAt') => (a: Record<string, unknown>, b: Record<string, unknown>) => {
+  const rawA = String(a[nameKey] || (fallbackNameKey ? a[fallbackNameKey] : '') || '');
+  const rawB = String(b[nameKey] || (fallbackNameKey ? b[fallbackNameKey] : '') || '');
   const nameA = !isUuidString(rawA) ? rawA : '';
   const nameB = !isUuidString(rawB) ? rawB : '';
   const cmp = String(nameA).localeCompare(String(nameB), 'vi');
   if (cmp !== 0) return cmp;
-  const timeA = a[dateKey] ? new Date(a[dateKey]).getTime() : (fallbackDateKey && a[fallbackDateKey] ? new Date(a[fallbackDateKey]).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0));
-  const timeB = b[dateKey] ? new Date(b[dateKey]).getTime() : (fallbackDateKey && b[fallbackDateKey] ? new Date(b[fallbackDateKey]).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0));
+  const aDateVal = a[dateKey] ?? (fallbackDateKey ? a[fallbackDateKey] : a.createdAt);
+  const bDateVal = b[dateKey] ?? (fallbackDateKey ? b[fallbackDateKey] : b.createdAt);
+  const timeA = aDateVal ? new Date(aDateVal as string | number | Date).getTime() : 0;
+  const timeB = bDateVal ? new Date(bDateVal as string | number | Date).getTime() : 0;
   return timeA - timeB;
 };
 
 /** Hàm so sánh sắp xếp cột Địa điểm (Tỉnh/TP) */
-export const clientSideProvinceSorter = (nameKey = 'provinceName', idKey = 'provinceId') => (a: any, b: any) => {
-  const valA = a[nameKey] || (a[idKey] ? String(a[idKey]) : '') || '';
-  const valB = b[nameKey] || (b[idKey] ? String(b[idKey]) : '') || '';
+export const clientSideProvinceSorter = (nameKey = 'provinceName', idKey = 'provinceId') => (a: Record<string, unknown>, b: Record<string, unknown>) => {
+  const valA = String(a[nameKey] || (a[idKey] ? String(a[idKey]) : '') || '');
+  const valB = String(b[nameKey] || (b[idKey] ? String(b[idKey]) : '') || '');
   return String(valA).localeCompare(String(valB), 'vi');
 };
 
 /** Hàm so sánh sắp xếp cột Badge / Trạng thái / Tình trạng */
-export const clientSideBadgeSorter = (key: string, labelMap?: Record<string, string>) => (a: any, b: any) => {
-  const rawA = a[key] ?? '';
-  const rawB = b[key] ?? '';
-  const labelA = (labelMap && labelMap[rawA]) ? labelMap[rawA] : (a[`${key}Label`] || String(rawA));
-  const labelB = (labelMap && labelMap[rawB]) ? labelMap[rawB] : (b[`${key}Label`] || String(rawB));
+export const clientSideBadgeSorter = (key: string, labelMap?: Record<string, string>) => (a: Record<string, unknown>, b: Record<string, unknown>) => {
+  const rawA = String(a[key] ?? '');
+  const rawB = String(b[key] ?? '');
+  const labelA = (labelMap && labelMap[rawA]) ? labelMap[rawA] : (String(a[`${key}Label`] || rawA));
+  const labelB = (labelMap && labelMap[rawB]) ? labelMap[rawB] : (String(b[`${key}Label`] || rawB));
   return String(labelA).localeCompare(String(labelB), 'vi');
 };
 
@@ -430,7 +434,7 @@ export const CONDITION_STATUS_COLOR_MAP: Record<string, string> = {
 };
 
 /** Lấy màu ngữ nghĩa chuẩn cho Tình trạng hoạt động (ConditionStatus). */
-export const getConditionStatusColor = (status?: any): string => {
+export const getConditionStatusColor = (status?: unknown): string => {
   if (status == null || status === '' || status === '—') return textSecondary;
   const s = String(status).trim();
   const norm = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
@@ -459,7 +463,7 @@ export const getConditionStatusColor = (status?: any): string => {
 };
 
 /** Lấy nhãn tiếng Việt chuẩn cho Tình trạng hoạt động (ConditionStatus). */
-export const getConditionStatusLabel = (status?: any): string => {
+export const getConditionStatusLabel = (status?: unknown): string => {
   if (status == null || status === '' || status === '—') return '—';
   const s = String(status).trim();
   const norm = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
@@ -484,7 +488,7 @@ export const getConditionStatusLabel = (status?: any): string => {
 };
 
 /** Render Pill Badge chuẩn cho Tình trạng hoạt động (ConditionStatus). */
-export const renderConditionStatusPillBadge = (status?: any): React.ReactNode => {
+export const renderConditionStatusPillBadge = (status?: unknown): React.ReactNode => {
   if (status == null || status === '' || status === '—') return '—';
   const label = getConditionStatusLabel(status);
   const color = getConditionStatusColor(status);
@@ -2104,10 +2108,17 @@ textarea.ant-input {
  * - DatePicker.RangePicker (Sidebar): popupClassName="chk-sidebar-range-datepicker-popup", kích thước 1 panel ôm trọn thanh Sidebar 280px.
  */
 export const getDatePickerProps = (extraProps?: Record<string, unknown>) => {
-  const { classNames: extraClassNames, getPopupContainer, popupClassName: extraPopupClassName, ...rest } = (extraProps || {}) as {
+  const {
+    classNames: extraClassNames,
+    getPopupContainer,
+    popupClassName: extraPopupClassName,
+    style: extraStyle,
+    ...rest
+  } = (extraProps || {}) as {
     classNames?: { popup?: string | { root?: string } };
     getPopupContainer?: (trigger: HTMLElement) => HTMLElement;
     popupClassName?: string;
+    style?: React.CSSProperties;
     [key: string]: unknown;
   };
   return {
@@ -2131,15 +2142,26 @@ export const getDatePickerProps = (extraProps?: Record<string, unknown>) => {
         ].filter(Boolean).join(' '),
       },
     },
-    style: { ...inputStyle, width: '100%' },
+    style: { ...inputStyle, width: '100%', ...(extraStyle as React.CSSProperties) },
     ...rest,
   };
 };
 
-export const getSidebarDatePickerProps = (extraProps?: Record<string, any>) => {
-  const { classNames: extraClassNames, ...rest } = extraProps || {};
+export const getSidebarDatePickerProps = (extraProps?: Record<string, unknown>) => {
+  const { classNames: extraClassNames, popupClassName: extraPopupClassName, style: extraStyle, ...rest } = (extraProps || {}) as {
+    classNames?: { popup?: string | { root?: string } };
+    popupClassName?: string;
+    style?: React.CSSProperties;
+    [key: string]: unknown;
+  };
   return {
     format: 'DD/MM/YYYY',
+    popupClassName: [
+      'chk-sidebar-datepicker-popup',
+      typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
+      typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
+      extraPopupClassName,
+    ].filter(Boolean).join(' '),
     classNames: {
       ...extraClassNames,
       popup: {
@@ -2148,19 +2170,31 @@ export const getSidebarDatePickerProps = (extraProps?: Record<string, any>) => {
           'chk-sidebar-datepicker-popup',
           typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
           typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
+          extraPopupClassName,
         ].filter(Boolean).join(' '),
       },
     },
-    style: { ...inputStyle, width: '100%' },
+    style: { ...inputStyle, width: '100%', ...(extraStyle as React.CSSProperties) },
     ...rest,
   };
 };
 
-export const getRangePickerProps = (extraProps?: Record<string, any>) => {
-  const { classNames: extraClassNames, ...rest } = extraProps || {};
+export const getRangePickerProps = (extraProps?: Record<string, unknown>) => {
+  const { classNames: extraClassNames, popupClassName: extraPopupClassName, style: extraStyle, ...rest } = (extraProps || {}) as {
+    classNames?: { popup?: string | { root?: string } };
+    popupClassName?: string;
+    style?: React.CSSProperties;
+    [key: string]: unknown;
+  };
   return {
     format: 'DD/MM/YYYY',
     placeholder: ['Từ ngày', 'Đến ngày'] as [string, string],
+    popupClassName: [
+      'chk-range-datepicker-popup',
+      typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
+      typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
+      extraPopupClassName,
+    ].filter(Boolean).join(' '),
     classNames: {
       ...extraClassNames,
       popup: {
@@ -2169,19 +2203,31 @@ export const getRangePickerProps = (extraProps?: Record<string, any>) => {
           'chk-range-datepicker-popup',
           typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
           typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
+          extraPopupClassName,
         ].filter(Boolean).join(' '),
       },
     },
-    style: { ...inputStyle, width: '100%' },
+    style: { ...inputStyle, width: '100%', ...(extraStyle as React.CSSProperties) },
     ...rest,
   };
 };
 
-export const getSidebarRangePickerProps = (extraProps?: Record<string, any>) => {
-  const { classNames: extraClassNames, ...rest } = extraProps || {};
+export const getSidebarRangePickerProps = (extraProps?: Record<string, unknown>) => {
+  const { classNames: extraClassNames, popupClassName: extraPopupClassName, style: extraStyle, ...rest } = (extraProps || {}) as {
+    classNames?: { popup?: string | { root?: string } };
+    popupClassName?: string;
+    style?: React.CSSProperties;
+    [key: string]: unknown;
+  };
   return {
     format: 'DD/MM/YYYY',
     placeholder: ['Từ ngày', 'Đến ngày'] as [string, string],
+    popupClassName: [
+      'chk-sidebar-range-datepicker-popup',
+      typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
+      typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
+      extraPopupClassName,
+    ].filter(Boolean).join(' '),
     classNames: {
       ...extraClassNames,
       popup: {
@@ -2190,10 +2236,11 @@ export const getSidebarRangePickerProps = (extraProps?: Record<string, any>) => 
           'chk-sidebar-range-datepicker-popup',
           typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
           typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
+          extraPopupClassName,
         ].filter(Boolean).join(' '),
       },
     },
-    style: { ...inputStyle, width: '100%' },
+    style: { ...inputStyle, width: '100%', ...(extraStyle as React.CSSProperties) },
     ...rest,
   };
 };

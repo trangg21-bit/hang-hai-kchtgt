@@ -455,6 +455,15 @@ public class AnchorageService {
         }
     }
 
+    public Attachment getAttachment(String entityType, UUID entityId, UUID attachmentId) {
+        Attachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
+        if (!attachment.getEntityId().equals(entityId)) {
+            throw new IllegalArgumentException("File không thuộc entity này");
+        }
+        return attachment;
+    }
+
     private AttachmentDto toAttachmentDto(Attachment entity) {
         AttachmentDto dto = new AttachmentDto();
         dto.setId(entity.getId());

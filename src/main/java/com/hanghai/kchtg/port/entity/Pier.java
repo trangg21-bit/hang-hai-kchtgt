@@ -47,10 +47,10 @@ public class Pier extends BaseEntity implements ApprovableEntity {
     @Column(name = "berth_id", nullable = false)
     private UUID berthId;
 
-    @Column(name = "length", precision = 15, scale = 2)
+    @Column(name = "length", precision = 28, scale = 4)
     private BigDecimal length;
 
-    @Column(name = "design_load", precision = 15, scale = 2)
+    @Column(name = "design_load", precision = 28, scale = 4)
     private BigDecimal designLoad;
 
     @Column(name = "pier_type")
@@ -121,7 +121,7 @@ public class Pier extends BaseEntity implements ApprovableEntity {
 
     // ── Spec Group B: Technical ──
 
-    @Column(name = "width", precision = 15, scale = 2)
+    @Column(name = "width", precision = 28, scale = 4)
     private BigDecimal width;                    // #14 - Chiều rộng
 
     @Column(name = "current_water_depth", length = 20)
@@ -155,7 +155,7 @@ public class Pier extends BaseEntity implements ApprovableEntity {
     @Column(name = "investment_agreement_pier_count")
     private Integer investmentAgreementPierCount; // #23
 
-    @Column(name = "cargo_throughput", precision = 15, scale = 2)
+    @Column(name = "cargo_throughput", precision = 28, scale = 4)
     private BigDecimal cargoThroughput;          // #24
 
     // ── Spec Group E: ATHH ──
@@ -174,7 +174,7 @@ public class Pier extends BaseEntity implements ApprovableEntity {
     @Column(name = "opening_announcement_date")
     private LocalDate openingAnnouncementDate;   // #28
 
-    @Column(name = "opening_decision", length = 200)
+    @Column(name = "opening_decision", length = 2000)
     private String openingDecision;              // #29
 
     @Column(name = "investment_agreement_doc", length = 2000)

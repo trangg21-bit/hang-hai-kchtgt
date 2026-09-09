@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.port.entity;
 
+import com.hanghai.kchtg.common.entity.ApprovableEntity;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
@@ -36,7 +37,7 @@ import java.util.UUID;
 @FieldNameConstants
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
 // @org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
-public class BuoyBerth extends BaseEntity {
+public class BuoyBerth extends BaseEntity implements ApprovableEntity {
 
     // @Enumerated(EnumType.ORDINAL)
     // @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
@@ -80,16 +81,16 @@ public class BuoyBerth extends BaseEntity {
 
     // ── Technical & survey (đăng kiểm) fields ─────────────────────────
 
-    @Column(name = "current_water_depth", precision = 10, scale = 2)
+    @Column(name = "current_water_depth", precision = 28, scale = 4)
     private BigDecimal currentWaterDepth;
 
-    @Column(name = "bottom_elevation_design", precision = 10, scale = 2)
+    @Column(name = "bottom_elevation_design", precision = 28, scale = 4)
     private BigDecimal bottomElevationDesign;
 
-    @Column(name = "max_vessel_dwt", precision = 15, scale = 2)
+    @Column(name = "max_vessel_dwt", precision = 28, scale = 4)
     private BigDecimal maxVesselDWT;
 
-    @Column(name = "planned_vessel_dwt", precision = 15, scale = 2)
+    @Column(name = "planned_vessel_dwt", precision = 28, scale = 4)
     private BigDecimal plannedVesselDWT;
 
     @Column(name = "last_inspection_date")
@@ -101,7 +102,7 @@ public class BuoyBerth extends BaseEntity {
     @Column(name = "operation_expiry_date")
     private LocalDate operationExpiryDate;
 
-    @Column(name = "design_capacity", precision = 15, scale = 2)
+    @Column(name = "design_capacity", precision = 28, scale = 4)
     private BigDecimal designCapacity;
 
     @Column(name = "active_buoy_berth_count")
@@ -113,7 +114,7 @@ public class BuoyBerth extends BaseEntity {
     @Column(name = "under_investment_buoy_berth_count")
     private Integer underInvestmentBuoyBerthCount;
 
-    @Column(name = "cargo_throughput", precision = 15, scale = 2)
+    @Column(name = "cargo_throughput", precision = 28, scale = 4)
     private BigDecimal cargoThroughput;
 
     // ── Publication fields ─────────────────────────────────────────────
@@ -121,13 +122,13 @@ public class BuoyBerth extends BaseEntity {
     @Column(name = "opening_announcement_date")
     private LocalDateTime openingAnnouncementDate;
 
-    @Column(name = "public_decision", length = 500)
+    @Column(name = "public_decision", length = 2000)
     private String publicDecision;
 
     @Column(name = "investment_agreement", columnDefinition = "TEXT")
     private String investmentAgreement;
 
-    @Column(name = "mooring_water_area_scope", length = 1000)
+    @Column(name = "mooring_water_area_scope", length = 2000)
     private String mooringWaterAreaScope;
 
     // ── GIS fields ─────────────────────────────────────────────────────
@@ -173,4 +174,68 @@ public class BuoyBerth extends BaseEntity {
 
     @Column(name = "rejection_reason", length = 500)
     private String rejectionReason;
+
+    // ── ApprovableEntity implementation ──────────────────────────────
+
+    @Override
+    public UUID getApproverLevel1() {
+        if (portAuthorityApprovedBy == null) return null;
+        try { return UUID.fromString(portAuthorityApprovedBy); } catch (Exception e) { return null; }
+    }
+
+    @Override
+    public void setApproverLevel1(UUID userId) {
+        this.portAuthorityApprovedBy = userId != null ? userId.toString() : null;
+    }
+
+    @Override
+    public void setApprovedDateLevel1(LocalDateTime date) {
+        this.portAuthorityApprovedAt = date;
+    }
+
+    @Override
+    public UUID getApproverLevel2() {
+        if (departmentApprovedBy == null) return null;
+        try { return UUID.fromString(departmentApprovedBy); } catch (Exception e) { return null; }
+    }
+
+    @Override
+    public void setApproverLevel2(UUID userId) {
+        this.departmentApprovedBy = userId != null ? userId.toString() : null;
+    }
+
+    @Override
+    public void setApprovedDateLevel2(LocalDateTime date) {
+        this.departmentApprovedAt = date;
+    }
+
+    @Override
+    public void setSubmittedAt(LocalDateTime submittedAt) {
+        this.submittedForApprovalAt = submittedAt;
+    }
+
+    @Override
+    public void setSubmittedBy(UUID userId) {
+        this.submittedForApprovalBy = userId != null ? userId.toString() : null;
+    }
+
+    @Override
+    public void setLevel1ApprovalContent(String content) {
+        this.portAuthorityApprovalContent = content;
+    }
+
+    @Override
+    public String getLevel1ApprovalContent() {
+        return this.portAuthorityApprovalContent;
+    }
+
+    @Override
+    public void setLevel2ApprovalContent(String content) {
+        this.departmentApprovalContent = content;
+    }
+
+    @Override
+    public String getLevel2ApprovalContent() {
+        return this.departmentApprovalContent;
+    }
 }

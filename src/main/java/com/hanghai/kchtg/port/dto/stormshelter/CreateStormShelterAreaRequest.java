@@ -73,9 +73,10 @@ public class CreateStormShelterAreaRequest {
 
     private LocalDateTime openingAnnouncementDate;
 
-    @Size(max = 500)
+    @Size(max = 2000, message = "Quyết định công bố không vượt quá 2000 ký tự")
     private String publicDecision;
 
+    @Size(max = 2000, message = "Thỏa thuận thông số, vị trí đầu tư xây dựng không vượt quá 2000 ký tự")
     private String investmentAgreement;
 
     // ── GIS fields ─────────────────────────────────────────────────────

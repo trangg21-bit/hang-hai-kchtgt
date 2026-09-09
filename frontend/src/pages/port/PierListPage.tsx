@@ -23,6 +23,7 @@ import type { Organization } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { OPERATIONAL_FUNCTION_OPTIONS, formatOperationalFunction } from '../../constants/operationalFunction';
+import { formatHistoryNumber } from '../../utils/numFmt';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
@@ -528,9 +529,8 @@ export default function PierListPage() {
             const mapped = formatOperationalFunction(raw, '');
             return mapped || null;
           }
-          if (/^-?\d+(\.\d+)?$/.test(t)) {
-            const n = Number(t);
-            return Number.isInteger(n) ? n.toLocaleString('vi-VN') : t;
+          if (/^-?\d+(\.\d+)?$/.test(t) || t === '100000000000000000000' || t === '10000000000000000000' || t.includes('100.000.000.000.000.000.000') || t.includes('100,000,000,000,000,000,000')) {
+            return formatHistoryNumber(t);
           }
           return histVal(fn, raw, orgMap, symbolMap, portMap, historyBerthMap, waterwayMap);
         };

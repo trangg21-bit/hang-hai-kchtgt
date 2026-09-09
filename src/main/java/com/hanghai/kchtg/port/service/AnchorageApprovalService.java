@@ -87,7 +87,9 @@ public class AnchorageApprovalService {
                 .approvalLevel("CANG_VU".equals(cap) ? ApprovalLevel.LEVEL_1 : ApprovalLevel.LEVEL_2)
                 .status(InfrastructureHistoryStatus.APPROVED)
                 .approvedBy(SecurityUtils.getCurrentUserId())
-                .reason("CANG_VU".equals(cap) ? "Phê duyệt cấp Cảng vụ" : "Phê duyệt cấp Cục")
+                .approvedDate(LocalDateTime.now())
+                .reason(("CANG_VU".equals(cap) ? "Phê duyệt cấp Cảng vụ" : "Phê duyệt cấp Cục")
+                        + (content != null && !content.isBlank() ? ": " + content.trim() : ""))
                 .build());
 
         log.info("Anchorage [{}] approved by {} at level {}", id, userId, cap);
@@ -113,6 +115,7 @@ public class AnchorageApprovalService {
                 .approvalLevel("CANG_VU".equals(cap) ? ApprovalLevel.LEVEL_1 : ApprovalLevel.LEVEL_2)
                 .status(InfrastructureHistoryStatus.REJECTED)
                 .approvedBy(SecurityUtils.getCurrentUserId())
+                .approvedDate(LocalDateTime.now())
                 .reason("Từ chối cấp " + levelLabel
                         + (reason != null && !reason.isBlank() ? ": " + reason.trim() : ""))
                 .build());
@@ -143,17 +146,26 @@ public class AnchorageApprovalService {
                                 (a, b) -> a));
 
         List<Map<String, Object>> changeHistory = list.stream()
-                .filter(h -> h.getChangedField() != null)
                 .map(h -> {
                     Map<String, Object> m = new HashMap<>();
                     m.put("id", h.getId());
                     m.put("entityType", entityType);
                     m.put("entityId", entityId);
-                    m.put("fieldName", h.getChangedField());
+                    m.put("refId", h.getRefId());
+                    m.put("refType", h.getRefType());
+                    m.put("approvalLevel", h.getApprovalLevel() != null ? h.getApprovalLevel().name() : null);
+                    m.put("status", h.getStatus() != null ? h.getStatus().name() : null);
+                    m.put("fieldName", h.getChangedField() != null ? h.getChangedField() : "Trạng thái");
+                    m.put("changedField", h.getChangedField() != null ? h.getChangedField() : "Trạng thái");
                     m.put("oldValue", h.getPreviousValue() != null ? h.getPreviousValue() : "");
+                    m.put("previousValue", h.getPreviousValue());
                     m.put("newValue", h.getNewValue() != null ? h.getNewValue() : "");
                     m.put("changedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+                    m.put("approvedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : null);
+                    m.put("approvedByName", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : null);
                     m.put("changedAt", h.getApprovedDate());
+                    m.put("approvedDate", h.getApprovedDate());
+                    m.put("reason", h.getReason());
                     return m;
                 })
                 .toList();
@@ -179,7 +191,8 @@ public class AnchorageApprovalService {
                 "entityType", entityType,
                 "currentApprovalStatus", entity.getApprovalStatus() != null ? entity.getApprovalStatus().name() : "",
                 "changeHistory", changeHistory,
-                "approvalLog", approvalLog
+                "approvalLog", approvalLog,
+                "histories", list
         );
     }
 
@@ -202,6 +215,43 @@ public class AnchorageApprovalService {
                 }
             }
         }
-        return java.util.Map.of("entityType", entityType, "changeHistory", list, "entityNames", entityNames);
+        Set<UUID> userIds = list.stream()
+                .map(InfrastructureHistory::getApprovedBy)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> userNameMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(
+                                User::getId,
+                                u -> u.getFullName() != null && !u.getFullName().isBlank() ? u.getFullName() : u.getUsername(),
+                                (a, b) -> a));
+        List<Map<String, Object>> changeHistory = list.stream()
+                .map(h -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("refId", h.getRefId());
+                    m.put("entityId", h.getRefId() != null ? h.getRefId().toString() : null);
+                    m.put("refType", h.getRefType());
+                    m.put("approvalLevel", h.getApprovalLevel());
+                    m.put("status", h.getStatus());
+                    m.put("approvedBy", h.getApprovedBy() != null
+                            ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
+                            : null);
+                    m.put("approvedByName", h.getApprovedBy() != null
+                            ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
+                            : null);
+                    m.put("approvedDate", h.getApprovedDate());
+                    m.put("reason", h.getReason());
+                    m.put("changedField", h.getChangedField() != null ? h.getChangedField() : "Trạng thái");
+                    m.put("fieldName", h.getChangedField() != null ? h.getChangedField() : "Trạng thái");
+                    m.put("previousValue", h.getPreviousValue());
+                    m.put("oldValue", h.getPreviousValue());
+                    m.put("newValue", h.getNewValue());
+                    m.put("changedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+                    m.put("changedAt", h.getApprovedDate());
+                    return m;
+                })
+                .toList();
+        return java.util.Map.of("entityType", entityType, "changeHistory", changeHistory, "entityNames", entityNames);
     }
 }

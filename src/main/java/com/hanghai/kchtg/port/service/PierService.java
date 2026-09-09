@@ -37,6 +37,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -634,7 +635,7 @@ public class PierService {
         String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName
                 : userResolverService.resolveName(e.getUpdatedBy() != null ? e.getUpdatedBy() : null);
 
-        return PierResponse.builder()
+        PierResponse response = PierResponse.builder()
                 .id(e.getId())
                 .pierCode(e.getPierCode()).pierName(e.getPierName())
                 .berthId(e.getBerthId())
@@ -694,6 +695,21 @@ public class PierService {
                 .portAuthorityApprovalContent(e.getPortAuthorityApprovalContent())
                 .departmentApprovalContent(e.getDepartmentApprovalContent())
                 .build();
+
+        parseLatLng(coords, response);
+        return response;
+    }
+
+    private void parseLatLng(String coordinates, PierResponse response) {
+        if (coordinates == null || !coordinates.startsWith("POINT(")) return;
+        try {
+            String inner = coordinates.substring(6, coordinates.length() - 1).trim();
+            String[] parts = inner.split("\\s+");
+            if (parts.length == 2) {
+                response.setLongitude(new BigDecimal(parts[0]));
+                response.setLatitude(new BigDecimal(parts[1]));
+            }
+        } catch (Exception ignored) { }
     }
 
     /** Nhãn hiển thị loại hình GIS theo chuẩn VTS CHK (dùng cho lịch sử thay đổi). */

@@ -354,7 +354,6 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
     const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
     // GIỮ tọa độ đã nhập/chọn khi đổi loại đối tượng — chỉ thêm dòng trống cho đủ số lượng
     setCoordinateList((prev) => {
-      if (watchedGeometryType === 'POINT' && prev && prev.length > 1) return prev.slice(0, 1);
       if (!prev || prev.length >= count) return prev;
       const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       return [...prev, ...added];

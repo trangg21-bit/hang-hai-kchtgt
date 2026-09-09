@@ -110,25 +110,59 @@ public class BuoyBerthController {
         return ResponseEntity.ok(ApiResponse.success("Xóa bến phao thành công", null));
     }
 
+    @PostMapping("/{id}/submit")
+    public ResponseEntity<ApiResponse<Void>> submitForApproval(@PathVariable UUID id) {
+        log.info("Submitting BuoyBerth for approval: id={}", id);
+        buoyBerthApprovalService.submit(id, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success("Gửi phê duyệt bến phao thành công", null));
+    }
+
+    @PostMapping("/{id}/approve/c1")
+    public ResponseEntity<ApiResponse<Void>> approveC1(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason) {
+        log.info("Approving BuoyBerth C1: id={}", id);
+        buoyBerthApprovalService.approveC1(id, reason, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cảng vụ/Chi cục thành công", null));
+    }
+
+    @PostMapping("/{id}/approve/c2")
+    public ResponseEntity<ApiResponse<Void>> approveC2(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason) {
+        log.info("Approving BuoyBerth C2: id={}", id);
+        buoyBerthApprovalService.approveC2(id, reason, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", null));
+    }
+
     @PostMapping("/{id}/approve")
-    // @PreAuthorize("@auth.check(authentication, 'buoyberth:approve')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
     public ResponseEntity<ApiResponse<Void>> approve(
             @PathVariable UUID id,
-            @Valid @RequestBody ApproveRequest request,
+            @RequestBody(required = false) ApproveRequest request,
+            @RequestParam(required = false) String reason,
             Authentication authentication) {
-        log.info("Approving BuoyBerth: id={}, cap={}", id, request.getCap());
-        buoyBerthApprovalService.approve(id, authentication.getName(), request.getCap(), request.getContent());
+        String cap = request != null ? request.getCap() : null;
+        String content = request != null ? request.getContent() : reason;
+        String userId = authentication != null ? authentication.getName() : null;
+        log.info("Approving BuoyBerth: id={}, cap={}, content={}", id, cap, content);
+        buoyBerthApprovalService.approve(id, userId, cap, content);
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt bến phao thành công", null));
     }
 
     @PostMapping("/{id}/reject")
-    // @PreAuthorize("@auth.check(authentication, 'buoyberth:approve')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
     public ResponseEntity<ApiResponse<Void>> reject(
             @PathVariable UUID id,
-            @Valid @RequestBody RejectRequest request,
+            @RequestParam(required = false) String reason,
+            @RequestBody(required = false) RejectRequest request,
             Authentication authentication) {
-        log.info("Rejecting BuoyBerth: id={}, cap={}", id, request.getCap());
-        buoyBerthApprovalService.reject(id, authentication.getName(), request.getCap(), request.getLyDo());
+        String finalReason = reason != null ? reason : (request != null ? request.getLyDo() : null);
+        String cap = request != null ? request.getCap() : null;
+        log.info("Rejecting BuoyBerth: id={}, cap={}, reason={}", id, cap, finalReason);
+        if (cap != null) {
+            buoyBerthApprovalService.reject(id, authentication != null ? authentication.getName() : null, cap, finalReason);
+        } else {
+            buoyBerthApprovalService.reject(id, finalReason, SecurityUtils.getCurrentUserId());
+        }
         return ResponseEntity.ok(ApiResponse.success("Từ chối bến phao thành công", null));
     }
 
@@ -187,5 +221,31 @@ public class BuoyBerthController {
         UUID userId = SecurityUtils.getCurrentUserId();
         buoyBerthService.deleteAttachment("BUOY_BERTH", id, attId, userId);
         return ResponseEntity.ok(ApiResponse.success("Xóa file đính kèm thành công", null));
+    }
+
+    @GetMapping("/{id}/attachments/{attId}/download")
+    public ResponseEntity<org.springframework.core.io.Resource> downloadAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId) {
+        com.hanghai.kchtg.port.entity.Attachment attachment = buoyBerthService.getAttachment("BUOY_BERTH", id, attId);
+        java.nio.file.Path path = java.nio.file.Paths.get(attachment.getFilePath()).toAbsolutePath().normalize();
+        if (!java.nio.file.Files.isRegularFile(path)) {
+            return ResponseEntity.notFound().build();
+        }
+        org.springframework.core.io.Resource resource = new org.springframework.core.io.FileSystemResource(path);
+        String contentType;
+        try {
+            contentType = java.nio.file.Files.probeContentType(path);
+        } catch (Exception ignored) {
+            contentType = null;
+        }
+        MediaType mediaType = contentType == null
+                ? MediaType.APPLICATION_OCTET_STREAM
+                : MediaType.parseMediaType(contentType);
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=\"" + attachment.getFileName().replace("\"", "") + "\"")
+                .body(resource);
     }
 }

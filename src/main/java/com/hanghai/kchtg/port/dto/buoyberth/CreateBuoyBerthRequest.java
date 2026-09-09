@@ -79,12 +79,13 @@ public class CreateBuoyBerthRequest {
 
     private LocalDateTime openingAnnouncementDate;
 
-    @Size(max = 500)
+    @Size(max = 2000, message = "Quyết định công bố không vượt quá 2000 ký tự")
     private String publicDecision;
 
+    @Size(max = 2000, message = "Thỏa thuận thông số, vị trí đầu tư xây dựng không vượt quá 2000 ký tự")
     private String investmentAgreement;
 
-    @Size(max = 1000)
+    @Size(max = 2000, message = "Phạm vi vùng nước bến phao không vượt quá 2000 ký tự")
     private String mooringWaterAreaScope;
 
     // ── GIS fields ─────────────────────────────────────────────────────

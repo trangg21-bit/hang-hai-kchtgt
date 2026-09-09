@@ -50,10 +50,13 @@ public class TransferAreaApprovalService {
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy khu chuyển tải với id: " + id));
 
         if ("CANG_VU".equals(cap)) {
-            if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1) {
+            if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL
+                    && entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1
+                    && entity.getApprovalStatus() != ApprovalStatus.PROPOSED
+                    && entity.getApprovalStatus() != ApprovalStatus.DRAFT) {
                 throw new IllegalStateException("Không thể phê duyệt cấp Chi cục: trạng thái hiện tại không hợp lệ");
             }
-            entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL2);
+            entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
             entity.setPortAuthorityApprovedAt(LocalDateTime.now());
             entity.setPortAuthorityApprovedBy(userId);
             entity.setRejectionReason(null);
@@ -61,7 +64,8 @@ public class TransferAreaApprovalService {
                 entity.setPortAuthorityApprovalContent(content.trim());
             }
         } else if ("CUC".equals(cap)) {
-            if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL2) {
+            if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1
+                    && entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL2) {
                 throw new IllegalStateException("Không thể phê duyệt cấp Cục: cần phê duyệt cấp Chi cục trước");
             }
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
@@ -94,8 +98,10 @@ public class TransferAreaApprovalService {
         TransferArea entity = transferAreaRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy khu chuyển tải với id: " + id));
 
-        entity.setApprovalStatus(entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2
-                ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
+        boolean isLevel2 = entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2
+                || "CUC".equalsIgnoreCase(cap);
+        entity.setApprovalStatus(isLevel2 ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
         entity.setRejectionReason(reason);
 
         ApprovalLog approvalLog = ApprovalLog.builder()
