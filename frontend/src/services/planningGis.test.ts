@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEFAULT_GIS_BASE_MAP,
+  DEFAULT_SHOW_ENC,
   DEFAULT_SHOW_PLANNING,
+  getDefaultEncLayerVisibility,
   GIS_LAYER_INTERACTION_POLICY,
   getMapClickResolution,
   getPlanningAciColor,
@@ -15,8 +18,16 @@ import {
 } from '../utils/planningGis';
 
 describe('planningGis', () => {
-  it('shows the port-planning layer by default', () => {
-    expect(DEFAULT_SHOW_PLANNING).toBe(true);
+  it('uses the VMD default map layers', () => {
+    expect(DEFAULT_GIS_BASE_MAP).toBe('google-m');
+    expect(DEFAULT_SHOW_ENC).toBe(true);
+    expect(DEFAULT_SHOW_PLANNING).toBe(false);
+    expect(getDefaultEncLayerVisibility(['ACHARE', 'OBSTRN', 'WRECKS', 'LIGHTS'])).toEqual({
+      ACHARE: true,
+      OBSTRN: false,
+      WRECKS: false,
+      LIGHTS: true,
+    });
   });
 
   it('uses panes only for drawing order while click priority stays centralized', () => {

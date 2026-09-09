@@ -131,8 +131,11 @@ import {
   type MapHitGeometry,
 } from '../../utils/gisGeometry';
 import {
+  DEFAULT_GIS_BASE_MAP,
+  DEFAULT_SHOW_ENC,
   DEFAULT_SHOW_PLANNING,
   GIS_LAYER_INTERACTION_POLICY,
+  getDefaultEncLayerVisibility,
   getMapClickResolution,
   getPlanningFeatureKey,
   getPlanningLeafletColorStyle,
@@ -1966,9 +1969,11 @@ export default function GISChartView() {
   const [features, setFeatures] = useState<ChartFeature[]>([]);
   const [selectedFeature, setSelectedFeature] = useState<ChartFeature | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
-  const [visibleLayers, setVisibleLayers] = useState<Record<string, boolean>>({});
-  const [showChart, setShowChart] = useState(false);
-  const [activeBaseMap, setActiveBaseMap] = useState<(typeof BASE_MAP_OPTIONS)[number]['value']>('google-m');
+  const [visibleLayers, setVisibleLayers] = useState<Record<string, boolean>>(() => (
+    getDefaultEncLayerVisibility(ENC_LAYER_DETAILS.map(({ code }) => code))
+  ));
+  const [showChart, setShowChart] = useState(DEFAULT_SHOW_ENC);
+  const [activeBaseMap, setActiveBaseMap] = useState<(typeof BASE_MAP_OPTIONS)[number]['value']>(DEFAULT_GIS_BASE_MAP);
 
   const uniqueFeatureCodes = useMemo(() => {
     return ENC_LAYER_DETAILS.map((detail) => detail.code);

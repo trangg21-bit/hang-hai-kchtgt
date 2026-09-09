@@ -1,4 +1,14 @@
-export const DEFAULT_SHOW_PLANNING = true;
+export const DEFAULT_GIS_BASE_MAP = 'google-m';
+export const DEFAULT_SHOW_ENC = true;
+export const DEFAULT_SHOW_PLANNING = false;
+export const DEFAULT_HIDDEN_ENC_LAYER_CODES = ['OBSTRN', 'WRECKS'] as const;
+
+export const getDefaultEncLayerVisibility = (
+  layerCodes: readonly string[],
+): Record<string, boolean> => {
+  const hiddenLayerCodes = new Set<string>(DEFAULT_HIDDEN_ENC_LAYER_CODES);
+  return Object.fromEntries(layerCodes.map((code) => [code, !hiddenLayerCodes.has(code)]));
+};
 
 export type MapClickResolution = 'none' | 'planning' | 'kcht' | 'choice';
 
