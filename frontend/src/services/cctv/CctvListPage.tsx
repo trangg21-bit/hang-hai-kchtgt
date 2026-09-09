@@ -2,8 +2,6 @@ import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { fmtNum } from "../../utils/numFmt";
 import {
   parseWktToCoordinates,
-  serializeCoordinatesToWkt,
-  adjustCoordinateListForGeometry,
   ddToDms,
 } from "../../utils/gisGeometry";
 
@@ -14,17 +12,12 @@ import { usePermissionStore } from "../../store/permissionStore";
 import {
   Alert,
   Button,
-  Checkbox,
   DatePicker,
   Space,
-  Tag,
-  Row,
-  Col,
   Input,
   Select,
   Modal,
   Form,
-  InputNumber,
   Typography,
   Drawer,
 } from "antd";
@@ -32,37 +25,36 @@ import { OrgUnitTreeSelect } from "../../components/org-unit";
 import {
   PlusOutlined,
   SearchOutlined,
-  DeleteOutlined,
   HistoryOutlined,
   ExclamationCircleOutlined,
   EnvironmentOutlined,
+  BankOutlined,
+  SlidersOutlined,
+  AuditOutlined,
+  DownOutlined,
+  RightOutlined,
 } from "@ant-design/icons";
 import { Tabs } from "antd";
 import { useSearchParams } from "react-router-dom";
 import {
   fetchCctvList,
-  fetchCctvById,
   deleteCctv,
   submitCctv,
   approveCctvC1,
   approveCctvC2,
-  createCctv,
-  updateCctv,
-  generateCctvCode,
   fetchCctvHistory,
   fetchCctvAttachments,
-  uploadCctvAttachment,
-  deleteCctvAttachment,
   downloadCctvAttachment,
 } from "./api";
 import {
   OPERATIONAL_STATUS_OPTIONS,
-  ATTACHED_INFRA_TYPE_OPTIONS,
 } from "./schema";
-import type { CctvResponse, ApprovalRequest, CreateCctvRequest } from "./types";
+import type { CctvResponse, ApprovalRequest } from "./types";
 import toast from "../../components/ToastNotification";
 import ApprovalModal from "../../components/shared/ApprovalModal";
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from "../../components/shared/InfrastructureAttachmentTab";
+import AppDrawer from "../../components/shared/AppDrawer";
+import CctvForm, { type CctvFormRef } from "./CctvForm";
 import { DetailTable } from "../../components/shared/DetailTable";
 import GisLocationSelector from "../../components/gis/GisLocationSelector";
 import { deduplicateAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
@@ -72,13 +64,14 @@ import EmptyState from "../../components/EmptyState";
 import LoadingSkeleton from "../../components/LoadingSkeleton";
 import { VIETNAM_PROVINCES } from "../../types/common";
 import api from "../api";
-import { DEFAULT_OPERATING_ORGANIZATIONS } from "../operatingOrganizationsData";
+import { userService } from "../userService";
 import type { Symbol as MapSymbolType } from "../symbolService";
 import {
   ScreenHeader,
   DataTable,
   Pagination,
   FilterTableLayout,
+  SidebarFilterField,
 } from "../../components/list-view";
 import { icons } from "../../themetokenchk";
 
@@ -117,14 +110,10 @@ function formatUnitOfMeasure(code: number | null | undefined): string {
   return code != null && UOM_LABELS[code] ? UOM_LABELS[code] : '—';
 }
 
-// ── labelProps — matches PortFormContent.tsx ────────────────
-const labelProps = (text: string) => ({
-  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
-});
-
 import {
   colors,
   DRAWER_TABLE_SCROLL_Y,
+  fontSizeCellTitle,
   fontSizeMd,
   fontSizeLg,
   fontSizeSm,
@@ -143,7 +132,6 @@ import {
   surfaceCard,
   surfacePage,
   radiusPill,
-  radiusMd,
   fontSans,
   spaceMd,
   spaceFormField,
@@ -155,13 +143,9 @@ import {
   drawerTitleStyle,
   drawerCloseBtnStyle,
   drawerFooterStyle,
-  drawerGisControlBoxStyle,
-  readonlyInputStyle,
-  selectStyle,
   primaryButtonStyle,
   outlineButtonStyle,
   requiredMarkStyle,
-  detailSectionTitleStyle,
   statusBadgeStyle,
   radiusSm,
   getRangePickerProps,
@@ -172,16 +156,15 @@ import * as themeTokenChk from "../../themetokenchk";
 import { ThemeTokenProvider, THEME_SCOPE_CLASS } from "../../context/ThemeTokenContext";
 import dayjs from "dayjs";
 
-const { Text } = Typography;
 
 // ── Trạng thái phê duyệt 2 cấp (C1 Cảng vụ → C2 Cục) — đồng bộ /vts-system ──
 const APPROVAL_STATUS_MAP: Record<string, string> = {
   DRAFT: 'Lưu tạm',
-  PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
-  APPROVED_LEVEL1: 'Chờ Cục duyệt',
-  APPROVED: 'Đã duyệt',
-  REJECTED_LEVEL1: 'Cảng vụ trả về',
-  REJECTED_LEVEL2: 'Cục trả về',
+  PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+  APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục',
+  APPROVED: 'Đã phê duyệt',
+  REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
+  REJECTED_LEVEL2: 'Từ chối cấp cục',
 };
 
 const APPROVAL_COLOR: Record<string, string> = {
@@ -195,17 +178,38 @@ const APPROVAL_COLOR: Record<string, string> = {
 
 /* ── Shared list/detail UI tokens — aligned with Port list-view ───────── */
 
-const fieldLabelStyle: React.CSSProperties = {
-  color: colors.sidebarBg,
-  fontWeight: fontWeightBold,
-  fontSize: fontSizeMd,
-  marginBottom: spaceSm,
-};
-
 const pillStyle: React.CSSProperties = {
   borderRadius: radiusPill,
   height: 40,
   fontFamily: fontSans,
+};
+
+// ── Card/section trong Drawer Xem chi tiết — đồng bộ chuẩn /berth (BerthDetailContent) ──
+const cctvDetailSectionBoxStyle: React.CSSProperties = {
+  background: '#ffffff',
+  border: '1px solid #e2e8f0',
+  borderRadius: 8,
+  padding: '12px 18px 8px 18px',
+  marginBottom: 14,
+  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+};
+
+const cctvDetailSectionHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginBottom: 10,
+  paddingBottom: 8,
+  borderBottom: '1px solid #f1f5f9',
+};
+
+const cctvDetailSectionTitleStyle: React.CSSProperties = {
+  color: colors.sidebarBg,
+  fontWeight: fontWeightBold,
+  fontSize: fontSizeCellTitle,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
 };
 
 // ── Detail-page helpers (aligned with PortDetailPage) ────────────────────
@@ -225,27 +229,19 @@ function renderCctvStatusBadge(b: { color: string; label: string }) {
   if (b.color === 'green') c = statusOperational;
   else if (b.color === 'red') c = statusCritical;
   else if (b.color === 'orange') c = statusAttention;
-  return <span style={statusBadgeStyle(c)}>{b.label}</span>;
+  return <span className="kcht-cell-badge" style={statusBadgeStyle(c)}>{b.label}</span>;
 }
 
 /** Badge trạng thái phê duyệt 2 cấp — dùng APPROVAL_STATUS_MAP + APPROVAL_COLOR (quy chuẩn AGENTS.md) */
 function renderApprovalBadge(status: string | null | undefined) {
-  if (!status) return <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>;
+  if (!status) return null;
   const display = APPROVAL_STATUS_MAP[status] || status;
   const color = APPROVAL_COLOR[status] || textTertiary;
-  return <span style={statusBadgeStyle(color)}>{display}</span>;
+  return <span className="kcht-cell-badge" style={statusBadgeStyle(color)}>{display}</span>;
 }
 
 // ── GIS DMS — chuẩn /vts-operation-center: giữ state thập phân, mỗi ô DMS đi qua
 //    MỘT helper recompute từ 3 ô sibling (không ghi đè/mất dữ liệu khi sửa cell) ──
-
-type GpsCoordRow = { lat: number | null; lng: number | null };
-
-const toCanonicalCoordRows = (rows: GpsCoordRow[]): Array<{ latitude: number | null; longitude: number | null }> =>
-  rows.map((r) => ({ latitude: r.lat ?? null, longitude: r.lng ?? null }));
-
-const fromCanonicalCoordRows = (rows: Array<{ latitude: number | null; longitude: number | null }>): GpsCoordRow[] =>
-  rows.map((r) => ({ lat: r.latitude, lng: r.longitude }));
 
 /** Suy luận loại hình học từ chuỗi WKT (dùng khi bản ghi thiếu geometryType). */
 const inferGeometryFromWkt = (wkt?: string | null): 'POINT' | 'LINE' | 'POLYGON' => {
@@ -255,24 +251,18 @@ const inferGeometryFromWkt = (wkt?: string | null): 'POINT' | 'LINE' | 'POLYGON'
   return 'POINT';
 };
 
-/** Recompute d + m/60 + s/3600 từ cả 3 ô DMS sibling (mirror updateGpsPoint reference). */
-const dmsToDecimalValue = (
-  field: 'lat' | 'lng',
-  d: number | null | undefined,
-  m: number | null | undefined,
-  s: number | null | undefined,
-): number | null => {
-  if (d == null && m == null && s == null) return null;
-  const dMax = field === 'lat' ? 90 : 180;
-  const deg = Math.min(dMax, Math.max(0, d ?? 0));
-  const min = Math.min(59, Math.max(0, m ?? 0));
-  const sec = Math.min(59.9999, Math.max(0, s ?? 0));
-  return Number((deg + min / 60 + sec / 3600).toFixed(8));
-};
+interface RawAttachmentItem {
+  id?: string;
+  fileName?: string;
+  fileSize?: number;
+  filePath?: string;
+  uploadedAt?: string;
+  uploadedBy?: string;
+}
 
 /** Map danh sách tệp từ AttachmentDto sang InfrastructureAttachmentItem. */
-const toAttachmentItemList = (list: any[]): InfrastructureAttachmentItem[] =>
-  (Array.isArray(list) ? list : []).map((a: any) => ({
+const toAttachmentItemList = (list: RawAttachmentItem[]): InfrastructureAttachmentItem[] =>
+  (Array.isArray(list) ? list : []).map((a) => ({
     id: a.id,
     fileName: a.fileName,
     fileSize: a.fileSize,
@@ -280,282 +270,6 @@ const toAttachmentItemList = (list: any[]): InfrastructureAttachmentItem[] =>
     uploadedDate: a.uploadedAt,
     uploadedBy: a.uploadedBy,
   }));
-
-/** Ô nhập DMS (Độ/Phút/Giây) dùng chung cho bảng Tọa độ của Tạo mới & Cập nhật. */
-function CctvDmsEditorCell({
-  row,
-  index,
-  field,
-  onUpdatePoint,
-}: {
-  row: GpsCoordRow;
-  index: number;
-  field: 'lat' | 'lng';
-  onUpdatePoint: (index: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => void;
-}) {
-  const value = field === 'lat' ? row.lat : row.lng;
-  const dms = ddToDms(value);
-  const dMax = field === 'lat' ? 90 : 180;
-  const sepStyle = (middle: boolean): React.CSSProperties => ({
-    display: 'inline-flex',
-    alignItems: 'center',
-    padding: '0 6px',
-    background: colors.bodyBg,
-    border: `1px solid ${borderDefault}`,
-    borderLeft: 0,
-    ...(middle ? { borderRight: 0 } : {}),
-    fontSize: fontSizeSm,
-    color: textTertiary,
-    whiteSpace: 'nowrap' as const,
-  });
-  return (
-    <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
-      <InputNumber
-        value={dms.d}
-        min={0}
-        max={dMax}
-        precision={0}
-        placeholder="Độ"
-        controls={false}
-        onFocus={(e) => e.currentTarget.select()}
-        onChange={(x) => onUpdatePoint(index, field, x, dms.m, dms.s)}
-        style={{ flex: 1, minWidth: 0, textAlign: 'center' }}
-      />
-      <span style={sepStyle(true)}>°</span>
-      <InputNumber
-        value={dms.m}
-        min={0}
-        max={59}
-        precision={0}
-        placeholder="Phút"
-        controls={false}
-        onFocus={(e) => e.currentTarget.select()}
-        onChange={(x) => onUpdatePoint(index, field, dms.d, x, dms.s)}
-        style={{ flex: 1, minWidth: 0, textAlign: 'center' }}
-      />
-      <span style={sepStyle(true)}>'</span>
-      <InputNumber
-        value={dms.s}
-        min={0}
-        max={59.9999}
-        step={0.01}
-        placeholder="Giây"
-        controls={false}
-        onFocus={(e) => e.currentTarget.select()}
-        onChange={(x) => onUpdatePoint(index, field, dms.d, dms.m, x)}
-        style={{ flex: 1.2, minWidth: 0, textAlign: 'center' }}
-      />
-      <span style={sepStyle(false)}>{'"'}</span>
-    </Space.Compact>
-  );
-}
-
-/**
- * Tab GIS 'Thông tin vị trí' trong Drawer Tạo mới/Chỉnh sửa — chuẩn /vts-operation-center:
- * khung drawerGisControlBoxStyle (Loại đối tượng/Biểu tượng/Hệ quy chiếu/Quy tắc hiển thị)
- * + thanh 'Tọa độ' + DetailTable DMS (DRAWER_TABLE_SCROLL_Y.withGisForm).
- * Dùng chung 2 chế độ create/edit (props phân biệt state + handler của từng form).
- */
-function CctvGisTab({
-  geometryType,
-  rows,
-  symbols,
-  onAddRow,
-  onUpdatePoint,
-  onDeleteRow,
-  onOpenMap,
-}: {
-  geometryType?: string | null;
-  rows: GpsCoordRow[];
-  symbols: MapSymbolType[];
-  onAddRow: () => void;
-  onUpdatePoint: (index: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => void;
-  onDeleteRow: (index: number) => void;
-  onOpenMap: () => void;
-}) {
-  const geom = normalizeGeometryType(geometryType);
-  const isPoint = geom === 'POINT';
-  const minCount = geom === 'POLYGON' ? 3 : geom === 'LINE' ? 2 : 1;
-  // POINT chỉ hiển thị đúng 1 dòng đầu (slice(0,1)); LINE/POLYGON hiện toàn bộ
-  const shown = (isPoint ? rows.slice(0, 1) : rows).map((c, i) => ({ ...c, _idx: i }));
-  const gisLabel = (text: string) => (
-    <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '18px' }}>{text}</span>
-  );
-  return (
-    <div>
-      <div style={drawerGisControlBoxStyle}>
-        <Row gutter={[24, 0]} style={{ height: 68, marginBottom: 8 }}>
-          <Col span={12}>
-            <Form.Item label={gisLabel('Loại đối tượng')} name="geometryType" style={{ marginBottom: 0 }}>
-              <Select
-                placeholder="Chọn loại đối tượng"
-                allowClear
-                options={[
-                  { value: 'POINT', label: 'Đối tượng điểm' },
-                  { value: 'LINE', label: 'Đối tượng đường' },
-                  { value: 'POLYGON', label: 'Đối tượng vùng' },
-                ]}
-                style={{ ...selectStyle, height: 38 }}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item label={gisLabel('Biểu tượng')} name="mapSymbolId" style={{ marginBottom: 0 }}>
-              <Select
-                placeholder="Chọn biểu tượng bản đồ"
-                allowClear
-                showSearch
-                optionFilterProp="label"
-                disabled={!geometryType}
-                style={{ ...selectStyle, height: 38 }}
-              >
-                {symbols.map((sym) => (
-                  <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
-                    <Space size={6} style={{ display: 'inline-flex', alignItems: 'center' }}>
-                      {sym.image ? (
-                        <img
-                          src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`}
-                          alt={sym.name}
-                          style={{ width: 16, height: 16, objectFit: 'contain', verticalAlign: 'middle' }}
-                        />
-                      ) : (
-                        <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: actionPrimary }} />
-                      )}
-                      <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
-                    </Space>
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-        </Row>
-        <Row gutter={[24, 0]} style={{ height: 68, marginBottom: 8 }}>
-          <Col span={12}>
-            <Form.Item label={gisLabel('Hệ quy chiếu')} name="coordinateSystem" style={{ marginBottom: 0 }}>
-              <Select
-                placeholder="Chọn hệ quy chiếu"
-                options={[
-                  { value: 1, label: 'WGS-84' },
-                  { value: 2, label: 'VN-2000' },
-                ]}
-                style={{ ...selectStyle, height: 38 }}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item label={gisLabel('Quy tắc hiển thị')} name="displayRule" style={{ marginBottom: 0 }}>
-              <Input disabled style={{ ...readonlyInputStyle, borderRadius: radiusPill, height: 38 }} />
-            </Form.Item>
-          </Col>
-        </Row>
-        <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32, boxSizing: 'border-box' }}>
-          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
-            Tọa độ
-          </span>
-          <Space>
-            <Button
-              icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
-              onClick={onOpenMap}
-              style={{ borderRadius: radiusPill, height: 32, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 6, borderColor: actionPrimary, color: actionPrimary }}
-            >
-              Chọn vị trí trên bản đồ
-            </Button>
-            {!isPoint && rows.length > 0 && (
-              <Button type="primary" icon={<PlusOutlined />} onClick={onAddRow} style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 32 }}>
-                Thêm tọa độ
-              </Button>
-            )}
-          </Space>
-        </div>
-      </div>
-      <DetailTable
-        scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
-        dataSource={shown}
-        emptyText="Chưa có tọa độ nào"
-        rowKey="_idx"
-        columns={[
-          {
-            title: 'STT',
-            key: 'stt',
-            width: 60,
-            align: 'center',
-            render: (_: any, __: any, i: number) => (
-              <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>
-            ),
-          },
-          {
-            title: 'Vĩ độ (N)',
-            key: 'lat',
-            render: (_: any, r: any) => <CctvDmsEditorCell row={r} index={r._idx} field="lat" onUpdatePoint={onUpdatePoint} />,
-          },
-          {
-            title: 'Kinh độ (E)',
-            key: 'lng',
-            render: (_: any, r: any) => <CctvDmsEditorCell row={r} index={r._idx} field="lng" onUpdatePoint={onUpdatePoint} />,
-          },
-          {
-            title: '',
-            key: 'actions',
-            width: 50,
-            align: 'center' as const,
-            render: (_: any, r: any) => {
-              if (isPoint) return null;
-              // Chỉ cho xóa khi còn trên số điểm tối thiểu (LINE 2 / POLYGON 3)
-              if (rows.length <= minCount) return null;
-              return (
-                <Button
-                  type="text"
-                  danger
-                  size="small"
-                  icon={<DeleteOutlined style={{ fontSize: 16 }} />}
-                  style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                  onClick={() => onDeleteRow(r._idx)}
-                  title="Xóa tọa độ"
-                />
-              );
-            },
-          },
-        ]}
-      />
-    </div>
-  );
-}
-
-/** Stat card cho chỉ số tổng hợp */
-function CctvStatCard({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
-  return (
-    <Card
-      size="small"
-      style={{
-        border: `0.5px solid ${borderDefault}`,
-        borderRadius: radiusMd,
-        transition: 'box-shadow 0.2s',
-      }}
-      styles={{ body: { padding: `${spaceSm}px ${spaceMd}px` } }}
-      hoverable
-    >
-      <Space size={spaceSm}>
-        {icon && <span style={{ color: actionPrimary, fontSize: fontSizeXl }}>{icon}</span>}
-        <div>
-          <div style={{ color: textPrimary, fontSize: fontSizeMd, fontWeight: fontWeightBold }}>{value}</div>
-          <div style={{ color: textTertiary, fontSize: fontSizeSm }}>{label}</div>
-        </div>
-      </Space>
-    </Card>
-  );
-}
-
-/** Info row cho label+value pairs trong detail */
-function DetailInfoRow({ label, value, full }: { label: string; value: React.ReactNode; full?: boolean }) {
-  return (
-    <Col xs={24} sm={full ? 24 : 12}>
-      <div style={{ marginBottom: spaceMd }}>
-        <Typography.Text style={fieldLabelStyle}>{label}</Typography.Text>
-        <div style={{ color: textPrimary, fontSize: fontSizeMd, fontWeight: fontWeightNormal }}>{value}</div>
-      </div>
-    </Col>
-  );
-}
 
 const tableValueStyle: React.CSSProperties = {
   fontSize: fontSizeMd,
@@ -572,9 +286,13 @@ const CctvListPage = () => {
   const currentUser = useAuthStore((s) => s.user);
   const isIframeModal = window.parent !== window.self;
   const linkedAction = searchParams.get("action");
-  const linkedRecordId = searchParams.get("id");
   const isMapLinkedView = isIframeModal && (linkedAction === "edit" || linkedAction === "detail");
   const [isLoading, setIsLoading] = useState(false);
+  const [detailsSpecsOpen, setDetailsSpecsOpen] = useState(true);
+  const [detailApprovalOpen, setDetailApprovalOpen] = useState(true);
+  const [opRunOpen, setOpRunOpen] = useState(true);
+  const [opMaintOpen, setOpMaintOpen] = useState(true);
+  const [opIncidentOpen, setOpIncidentOpen] = useState(true);
   const [isError, setIsError] = useState<string | null>(null);
   const [data, setData] = useState<CctvResponse[]>([]);
   const [total, setTotal] = useState(0);
@@ -618,7 +336,9 @@ const CctvListPage = () => {
         fetchCctvList({
           page: 0,
           size: 1,
-          orgUnitId: filterValues.orgUnitId || undefined,
+          orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__'
+                          ? filterValues.orgUnitId
+                          : undefined),
           approvalStatus: s.status,
         })
       )
@@ -628,7 +348,7 @@ const CctvListPage = () => {
       counts[statuses[i].key] = r.status === "fulfilled" ? (r.value?.totalElements ?? 0) : 0;
     });
     setTabCounts(counts);
-    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã duyệt + Từ chối (Cảng vụ trả về + Cục trả về)
+    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục)
     setTotalAll(
       counts.DRAFT +
         counts.PENDING_APPROVAL +
@@ -657,104 +377,31 @@ const CctvListPage = () => {
     }));
   }, []);
 
-  // Attached infrastructure type options
-  const attachedInfraTypeOptions = [
-    { label: 'Trung Tâm Điều Hành VTS', value: 1 },
-    { label: 'Trạm Radar', value: 2 },
-  ];
 
-  // Radar station options for dependent dropdown
-  const [radarStationOptions, setRadarStationOptions] = useState<
-    { label: string; value: string }[]
-  >([]);
-  const [loadingRadars, setLoadingRadars] = useState(false);
-
-  const fetchRadarStations = useCallback(async () => {
-    setLoadingRadars(true);
-    try {
-      const res = await api.get("/common/options/radar-stations");
-      const items = res.data?.data;
-      setRadarStationOptions(
-        (Array.isArray(items) ? items : []).map((s: { id: string; stationName?: string; code?: string }) => ({
-          label: s.stationName || s.code || s.id,
-          value: s.id,
-        }))
-      );
-    } catch (error) {
-      console.error("Lỗi tải danh sách trạm Radar:", error);
-      setRadarStationOptions([]);
-    } finally {
-      setLoadingRadars(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchRadarStations();
-  }, [fetchRadarStations]);
-
-  // VTS Operation Center options for dependent dropdown (Thuộc TTDH VTS — loại 1)
-  const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<
-    { label: string; value: string }[]
-  >([]);
-  const [loadingVtsCenters, setLoadingVtsCenters] = useState(false);
-
-  const fetchVtsOperationCenters = useCallback(async () => {
-    setLoadingVtsCenters(true);
-    try {
-      const res = await api.get("/common/options/vts-operation-centers");
-      const items = res.data?.data;
-      setVtsOperationCenterOptions(
-        (Array.isArray(items) ? items : []).map((s: { id: string; name?: string; code?: string }) => ({
-          label: s.name || s.code || s.id,
-          value: s.id,
-        }))
-      );
-    } catch (error) {
-      console.error("Lỗi tải danh sách Trung tâm điều hành VTS:", error);
-      setVtsOperationCenterOptions([]);
-    } finally {
-      setLoadingVtsCenters(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchVtsOperationCenters();
-  }, [fetchVtsOperationCenters]);
-
-  // Đơn vị khai thác — từ bảng operating_organizations (endpoint chung)
-  const [operatingOrganizationOptions, setOperatingOrganizationOptions] = useState<
-    { label: string; value: string }[]
-  >([]);
-  const [loadingOperatingOrgs, setLoadingOperatingOrgs] = useState(false);
-
-  const fetchOperatingOrganizations = useCallback(async () => {
-    setLoadingOperatingOrgs(true);
-    try {
-      const res = await api.get("/common/options/operating-organizations");
-      const items = res.data?.data;
-      const list: Array<{ id: string; name?: string; code?: string }> =
-        Array.isArray(items) && items.length > 0 ? items : DEFAULT_OPERATING_ORGANIZATIONS;
-      setOperatingOrganizationOptions(
-        list.map((s) => ({ label: s.name || s.code || s.id, value: s.id }))
-      );
-    } catch (error) {
-      console.error("Lỗi tải danh sách đơn vị khai thác:", error);
-      setOperatingOrganizationOptions(
-        DEFAULT_OPERATING_ORGANIZATIONS.map((s) => ({ label: s.name, value: s.id }))
-      );
-    } finally {
-      setLoadingOperatingOrgs(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchOperatingOrganizations();
-  }, [fetchOperatingOrganizations]);
 
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<CctvResponse | null>(
     null
   );
+
+  // ── Danh bạ người dùng → map UUID sang tên cho cột "Người tải lên" (chuẩn /berth, /beacon-stations) ──
+  const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
+  useEffect(() => {
+    let disposed = false;
+    (async () => {
+      try {
+        const resp = await userService.list({ pageSize: 1000 });
+        const users = resp.data || (resp as any).content || [];
+        if (disposed) return;
+        const next = new Map<string, string>();
+        users.forEach((u: any) => next.set(u.id, u.fullName || u.username || u.id));
+        setUserMap(next);
+      } catch {
+        /* giữ map rỗng nếu không lấy được danh bạ */
+      }
+    })();
+    return () => { disposed = true; };
+  }, []);
 
   // Approve modal
   const [approveModalOpen, setApproveModalOpen] = useState(false);
@@ -765,7 +412,7 @@ const CctvListPage = () => {
   // Reject modal
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<CctvResponse | null>(null);
-  const [rejectForm] = Form.useForm();
+  const [rejectReason, setRejectReason] = useState("");
   const [rejectLoading, setRejectLoading] = useState(false);
   const [rejectLevel, setRejectLevel] = useState<'c1' | 'c2'>('c1');
 
@@ -777,43 +424,24 @@ const CctvListPage = () => {
   // Create modal
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createForm] = Form.useForm();
-  const [createLoading, setCreateLoading] = useState(false);
-  const [deviceCodeLoading, setDeviceCodeLoading] = useState(false);
-  // Hành động footer create (chuẩn VTS): Lưu tạm / Lưu và gửi phê duyệt / Lưu và phê duyệt
-  const [createActionType, setCreateActionType] = useState<'draft' | 'submit' | 'approve'>('draft');
-  const createActionTypeRef = useRef<'draft' | 'submit' | 'approve'>('draft');
+  const cctvFormRef = useRef<CctvFormRef>(null);
+  const editCctvFormRef = useRef<CctvFormRef>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve'>('draft');
+  const actionTypeRef = useRef<'draft' | 'submit' | 'approve'>('draft');
 
-  // Reactive watch for attached infrastructure dropdown
-  const createAttachedType = Form.useWatch('attachedInfrastructureType', createForm);
-  const createGeometryType = Form.useWatch('geometryType', createForm);
-
-  // GPS coordinates for create drawer
-  const [gpsCoordList, setGpsCoordList] = useState<GpsCoordRow[]>([]);
-  const [uploadFileList, setUploadFileList] = useState<any[]>([]);
   const [attachmentItems, setAttachmentItems] = useState<InfrastructureAttachmentItem[]>([]);
 
-  // ── GIS Map Picker (Chọn tọa độ trên bản đồ) — dùng chung create | edit | detail ──
+  // ── GIS Map Picker (Xem vị trí trên bản đồ cho Chi tiết) ──
   const [gisMapOpen, setGisMapOpen] = useState(false);
-  const [gisMapContext, setGisMapContext] = useState<'create' | 'edit' | 'detail'>('create');
 
   // Update modal
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [updateTarget, setUpdateTarget] = useState<CctvResponse | null>(null);
   const [updateForm] = Form.useForm();
-  const [updateLoading, setUpdateLoading] = useState(false);
-  // Hành động footer update (chuẩn VTS): Lưu tạm / Lưu và gửi phê duyệt / Lưu và phê duyệt
-  const [updateActionType, setUpdateActionType] = useState<'draft' | 'submit' | 'approve'>('draft');
-  const updateActionTypeRef = useRef<'draft' | 'submit' | 'approve'>('draft');
 
   // "Lưu và phê duyệt" chỉ dành cho tài khoản có quyền duyệt cấp Cục (chuẩn VTS).
   const canSaveAndApprove = !!hasPerm?.("cctv:approvec2");
-
-  // Reactive watch for attached infrastructure dropdown
-  const updateAttachedType = Form.useWatch('attachedInfrastructureType', updateForm);
-  const updateGeometryType = Form.useWatch('geometryType', updateForm);
-
-  // GPS coordinates for edit drawer
-  const [updateGpsCoordList, setUpdateGpsCoordList] = useState<GpsCoordRow[]>([]);
 
   // Map-linked view: GIS mở page trong iframe (?action=edit|detail&id=...) — khi đóng
   // drawer phải báo parent (bản đồ) đóng modal KCHT. (Khôi phục định nghĩa từ a05fbe7a)
@@ -823,67 +451,8 @@ const CctvListPage = () => {
     }
   }, [isMapLinkedView]);
 
-  // Auto-fill Hệ quy chiếu + Quy tắc hiển thị khi chọn Loại đối tượng. Danh sách tọa độ
-  // được GIỮ NGUYÊN khi đổi geometryType qua adjustCoordinateListForGeometry
-  // (POINT giữ đỉnh 1, LINE/POLYGON pad/trim theo min) — không reset về {lat:0,lng:0}.
-  useEffect(() => {
-    if (!createGeometryType) {
-      createForm.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined });
-      setGpsCoordList([]);
-      return;
-    }
-    createForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
-    setGpsCoordList((prev) =>
-      fromCanonicalCoordRows(adjustCoordinateListForGeometry(toCanonicalCoordRows(prev), createGeometryType))
-    );
-  }, [createGeometryType, createForm]);
-
-  // Chỉ reset Hệ quy chiếu/Quy tắc hiển thị khi NGƯỜI DÙNG xóa lựa chọn Loại đối tượng,
-  // không reset khi mở modal edit (CctvResponse không trả geometryType → watch luôn undefined khi mở)
-  const prevUpdateGeometryType = useRef<string | null>(null);
-  useEffect(() => {
-    const hadSelection = prevUpdateGeometryType.current != null;
-    prevUpdateGeometryType.current = (updateGeometryType as string | null) ?? null;
-    if (!updateGeometryType) {
-      setUpdateGpsCoordList([]);
-      if (hadSelection) {
-        updateForm.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined });
-      }
-      return;
-    }
-    updateForm.setFieldsValue({ displayRule: 'Độ, phút, giây (DMS)' });
-    if (updateForm.getFieldValue('coordinateSystem') == null) {
-      updateForm.setFieldsValue({ coordinateSystem: 1 });
-    }
-    // Giữ các dòng đã nhập/đã nạp khi đổi loại hình học (không pad {lat:0,lng:0} mù)
-    setUpdateGpsCoordList((prev) =>
-      fromCanonicalCoordRows(adjustCoordinateListForGeometry(toCanonicalCoordRows(prev), updateGeometryType))
-    );
-  }, [updateGeometryType, updateForm]);
-
-  // GPS update-point helpers — mỗi thao tác ô DMS đi qua MỘT helper recompute từ 3 sibling
-  // (mirror updateGpsPoint của /vts-operation-center) → chỉnh sửa cell không mất dữ liệu
-  const updateCreateGpsPoint = useCallback((index: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => {
-    const decimal = dmsToDecimalValue(field, d, m, s);
-    setGpsCoordList((prev) => prev.map((g, idx) => (idx === index ? { ...g, [field]: decimal } : g)));
-  }, []);
-
-  const updateEditGpsPoint = useCallback((index: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => {
-    const decimal = dmsToDecimalValue(field, d, m, s);
-    setUpdateGpsCoordList((prev) => prev.map((g, idx) => (idx === index ? { ...g, [field]: decimal } : g)));
-  }, []);
-
-  const removeCreateGpsRow = useCallback((index: number) => {
-    setGpsCoordList((prev) => prev.filter((_, idx) => idx !== index));
-  }, []);
-
-  const removeEditGpsRow = useCallback((index: number) => {
-    setUpdateGpsCoordList((prev) => prev.filter((_, idx) => idx !== index));
-  }, []);
-
   // Submissions
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
-  const [submitContent, setSubmitContent] = useState("");
   const [submittingRecord, setSubmittingRecord] = useState<CctvResponse | null>(
     null
   );
@@ -906,7 +475,9 @@ const CctvListPage = () => {
   // ── History map helpers ────────────────────────────────────────
   const symbolMap = useMemo(() => {
     const m = new Map<string, string>();
-    (symbols || []).forEach((s) => m.set(s.id, s.name || s.id));
+    (symbols || []).forEach((s) => {
+      if (s.name) m.set(s.id, s.name);
+    });
     return m;
   }, [symbols]);
 
@@ -922,7 +493,7 @@ const CctvListPage = () => {
     const m = new Map<string, string>();
     const build = (items: Array<{ id: string; name: string; parentId?: string; children?: Array<{ id: string; name: string }> }>) => {
       for (const item of items) {
-        m.set(item.id, item.name || item.id);
+        if (item.name) m.set(item.id, item.name);
         if (item.children) build(item.children);
       }
     };
@@ -945,26 +516,30 @@ const CctvListPage = () => {
     setDetailDrawerOpen(true);
     setAttachmentItems([]);
     void fetchCctvAttachments(record.id)
-      .then((list: any[]) => setAttachmentItems(toAttachmentItemList(list)))
+      .then((list: RawAttachmentItem[]) => setAttachmentItems(toAttachmentItemList(list)))
       .catch(() => { /* ignore */ });
   }, []);
 
   const columns = useMemo(
     () => {
       // Cột dạng "Cán bộ/Ngày": dòng 1 = tên (đậm), dòng 2 = ngày (màu phụ)
-      const renderInfoStack = (name: string | null | undefined, date: string | null | undefined) => (
-        <div style={{ lineHeight: "1.35", overflow: "hidden" }}>
-          <div
-            title={name || "—"}
-            style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
-          >
-            {name || "—"}
+      const renderInfoStack = (name: string | null | undefined, date: string | null | undefined) => {
+        const dateText = date ? dayjs(date).format("DD/MM/YYYY HH:mm:ss") : "";
+        if (!name && !date) return null;
+        return (
+          <div style={{ lineHeight: "1.35", overflow: "hidden" }}>
+            <div
+              title={name || undefined}
+              style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+            >
+              {name || null}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: "nowrap" }}>
+              {dateText || null}
+            </div>
           </div>
-          <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: "nowrap" }}>
-            {date ? dayjs(date).format("DD/MM/YYYY HH:mm:ss") : "—"}
-          </div>
-        </div>
-      );
+        );
+      };
       return [
       {
         key: "index",
@@ -992,13 +567,14 @@ const CctvListPage = () => {
           <div style={{ minWidth: 0 }}>
             <button
               type="button"
+              className="kcht-cell-title"
               onClick={() => openViewDetail(record)}
               style={{ ...cellTitleStyle, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", width: "100%" }}
-              title={val || "—"}
+              title={val || null}
             >
-              {val || "—"}
+              {val || null}
             </button>
-            <span style={{ ...cellSubtitleStyle }}>{record.deviceCode || "—"}</span>
+            <span className="kcht-cell-code" style={{ ...cellSubtitleStyle }}>{record.deviceCode || null}</span>
           </div>
         ),
       },
@@ -1008,7 +584,7 @@ const CctvListPage = () => {
         dataIndex: "orgUnitName",
         width: 260,
         render: (val: string) => (
-          <span style={{ ...tableMetaStyle, fontWeight: fontWeightBold }}>{val || "—"}</span>
+          <span style={{ ...tableMetaStyle, fontWeight: fontWeightBold }}>{val || null}</span>
         ),
       },
       {
@@ -1017,7 +593,7 @@ const CctvListPage = () => {
         dataIndex: "attachedInfrastructureName",
         width: 280,
         render: (val: string) => (
-          <span style={tableMetaStyle}>{val || "—"}</span>
+          <span style={tableMetaStyle}>{val || null}</span>
         ),
       },
       {
@@ -1026,7 +602,7 @@ const CctvListPage = () => {
         dataIndex: "operatingUnitName",
         width: 260,
         render: (val: string) => (
-          <span style={tableMetaStyle}>{val || "—"}</span>
+          <span style={tableMetaStyle}>{val || null}</span>
         ),
       },
       {
@@ -1036,7 +612,7 @@ const CctvListPage = () => {
         width: 220,
         ellipsis: false,
         render: (val: string) => (
-          <span style={tableMetaStyle}>{val || "—"}</span>
+          <span style={tableMetaStyle}>{val || null}</span>
         ),
       },
       {
@@ -1045,7 +621,7 @@ const CctvListPage = () => {
         dataIndex: "unitOfMeasure",
         width: 130,
         render: (val: number) => (
-          <span style={tableMetaStyle}>{formatUnitOfMeasure(val)}</span>
+          <span style={tableMetaStyle}>{val != null ? formatUnitOfMeasure(val) : null}</span>
         ),
       },
       {
@@ -1070,7 +646,7 @@ const CctvListPage = () => {
         align: "center" as const,
         ellipsis: false,
         render: (val: number) => (
-          <span style={tableMetaStyle}>{val || "—"}</span>
+          <span style={tableMetaStyle}>{val || null}</span>
         ),
       },
       {
@@ -1117,10 +693,11 @@ const CctvListPage = () => {
           };
           const s = map[String(val || "").toUpperCase()] || {
             color: textTertiary,
-            label: String(val || "—"),
+            label: String(val || ""),
           };
+          if (!s.label) return null;
           return (
-            <span style={statusBadgeStyle(s.color)}>
+            <span className="kcht-cell-badge" style={statusBadgeStyle(s.color)}>
               {s.label}
             </span>
           );
@@ -1180,9 +757,9 @@ const CctvListPage = () => {
     if (!val || val === '(null)' || val === 'null') return '(trống)';
     if (fn === 'orgUnitId' && orgMap) {
       const full = orgMap.get(val);
-      return full ? full.split(' - ').pop() || full : val;
+      return full ? full.split(' - ').pop() || full : '';
     }
-    if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
+    if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || '';
     if (fn === 'approvalStatus') {
       // Mã legacy (dữ liệu cũ) quy đổi về mã chuẩn 7 trạng thái rồi tra nhãn dùng chung.
       const ALIAS: Record<string, string> = {
@@ -1201,11 +778,11 @@ const CctvListPage = () => {
       };
       const m: Record<string, string> = {
         DRAFT: 'Lưu tạm',
-        PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
-        APPROVED_LEVEL1: 'Chờ Cục duyệt',
-        APPROVED: 'Đã duyệt',
-        REJECTED_LEVEL1: 'Cảng vụ trả về',
-        REJECTED_LEVEL2: 'Cục trả về',
+        PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+        APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục',
+        APPROVED: 'Đã phê duyệt',
+        REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
+        REJECTED_LEVEL2: 'Từ chối cấp cục',
       };
       const norm = ALIAS[String(val || '').trim().toUpperCase()] || String(val || '').trim().toUpperCase();
       return m[norm] || val;
@@ -1339,7 +916,7 @@ const CctvListPage = () => {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [historyModalVisible, selectedRecord?.id, historySearch, historyDateFrom, historyDateTo, historyReloadToken]);
+  }, [historyModalVisible, selectedRecord, historySearch, historyDateFrom, historyDateTo, historyReloadToken]);
 
   const loadMoreHistory = async () => {
     if (!selectedRecord || loadingHistory || loadingMoreHistory || !hasMoreHistory) return;
@@ -1429,13 +1006,12 @@ const CctvListPage = () => {
         {groups.map((g, gi) => {
           const rec0 = g.items[0] || {};
           const orgId = rec0.orgUnitId || selectedRecord?.orgUnitId;
-          const orgName = orgId ? orgMap.get(orgId) : undefined;
+          const orgName = orgId ? orgMap.get(orgId) : '';
           const unitName =
             rec0.orgUnitName ||
-            (orgName ? orgName.split(' - ').pop() || orgName : undefined) ||
-            rec0.unitName ||
+            (orgName ? orgName.split(' - ').pop() || orgName : '') ||
             selectedRecord?.orgUnitName ||
-            'Cục Hàng hải Việt Nam';
+            '';
           // Chuẩn /vts-operation-center: dedup thay đổi đính kèm (upload/delete cùng lúc).
           const changes = deduplicateAttachmentHistoryChanges(
             g.items.flatMap((item: any) => {
@@ -1508,7 +1084,7 @@ const CctvListPage = () => {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: spaceXs }}>
                   <Typography.Text style={{ display: 'block', fontSize: fontSizeSm + 1, color: textSecondary, fontWeight: fontWeightMedium, lineHeight: 1.4 }}>
-                    Người cập nhật: <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{g.actor || '—'}</span>
+                    Người cập nhật: <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{g.actor || null}</span>
                   </Typography.Text>
                   <Typography.Text style={{ display: 'block', fontSize: fontSizeSm + 1, color: textSecondary, fontWeight: fontWeightMedium, lineHeight: 1.4 }}>
                     Đơn vị: <span style={{ color: textPrimary }}>{unitName}</span>
@@ -1527,7 +1103,8 @@ const CctvListPage = () => {
                       const renderCell = (rawVal: string | null) => {
                         if (fn === 'mapSymbolId' && rawVal && rawVal !== '(null)') {
                           const img = symbolImageMap.get(rawVal);
-                          const name = symbolMap.get(rawVal) || rawVal;
+                          const name = symbolMap.get(rawVal) || '';
+                          if (!img && !name) return null;
                           return (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                               {img ? (
@@ -1537,14 +1114,14 @@ const CctvListPage = () => {
                                   style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }}
                                 />
                               ) : null}
-                              {name}
+                              {name || null}
                             </span>
                           );
                         }
                         return null;
                       };
                       const renderValueNode = (rawVal: string | null, val: string | null) => {
-                        const node = renderCell(rawVal) ?? val ?? '—';
+                        const node = renderCell(rawVal) ?? val ?? '';
                         return isGisHistoryField(fn) ? (
                           <span style={{ whiteSpace: 'pre-line' as const, lineHeight: 1.5 }}>{node}</span>
                         ) : (
@@ -1623,7 +1200,7 @@ const CctvListPage = () => {
         },
       ];
 
-      // Chỉnh sửa: hồ sơ Đã duyệt chỉ người có quyền phê duyệt cấp Cục (cctv:approvec2) mới sửa được
+      // Chỉnh sửa: hồ sơ Đã phê duyệt chỉ người có quyền phê duyệt cấp Cục (cctv:approvec2) mới sửa được
       // (chuẩn §3.6 + 12 điều vàng #8); các trạng thái khác vẫn mở theo yêu cầu nghiệp vụ 2026-08-26.
       if (record.approvalStatus !== "APPROVED" || canSaveAndApprove) {
         actions.push({
@@ -1632,36 +1209,6 @@ const CctvListPage = () => {
           icon: icons.edit,
           onClick: () => {
             setUpdateTarget(record);
-            setUploadFileList([]);
-            setAttachmentItems([]);
-            void fetchCctvAttachments(record.id).then((list: any[]) => {
-              setAttachmentItems(toAttachmentItemList(list));
-            }).catch(() => { /* ignore */ });
-            // Convert operationalStatus từ string enum (backend @JsonValue) sang số (frontend dropdown)
-            const safeRecord = {
-              ...record,
-              operationalStatus: record.operationalStatus != null
-                ? (() => {
-                    switch (record.operationalStatus) {
-                      case "NOT_YET_OPERATIONAL": return 0;
-                      case "OPERATIONAL": return 1;
-                      case "SUSPENDED": return 2;
-                      default: {
-                        const num = Number(record.operationalStatus);
-                        return num >= 0 && num <= 2 ? num : 1;
-                      }
-                    }
-                  })()
-                : null,
-            };
-            // FIX preload tọa độ: parse WKT khi mở Chỉnh sửa để không mất geometry khi lưu
-            const editGeom = normalizeGeometryType(record.geometryType || inferGeometryFromWkt(record.coordinates));
-            setUpdateGpsCoordList(
-              fromCanonicalCoordRows(
-                adjustCoordinateListForGeometry(parseWktToCoordinates(record.coordinates || undefined), editGeom)
-              )
-            );
-            updateForm.setFieldsValue({ ...safeRecord, geometryType: editGeom });
             setUpdateModalOpen(true);
           },
         });
@@ -1700,7 +1247,6 @@ const CctvListPage = () => {
           icon: icons.submit,
           onClick: () => {
             setSubmittingRecord(record);
-            setSubmitContent("");
             setSubmitModalOpen(true);
           },
         });
@@ -1730,6 +1276,7 @@ const CctvListPage = () => {
           onClick: () => {
             setRejectTarget(record);
             setRejectLevel("c1");
+            setRejectReason("");
             setRejectModalOpen(true);
           },
         });
@@ -1759,6 +1306,7 @@ const CctvListPage = () => {
           onClick: () => {
             setRejectTarget(record);
             setRejectLevel("c2");
+            setRejectReason("");
             setRejectModalOpen(true);
           },
         });
@@ -1780,7 +1328,7 @@ const CctvListPage = () => {
 
       return actions;
     },
-    [updateForm, hasPerm, currentUser, openViewDetail]
+    [hasPerm, currentUser, openViewDetail, canSaveAndApprove]
   );
 
   const fetchData = useCallback(async () => {
@@ -1792,7 +1340,9 @@ const CctvListPage = () => {
       const result = await fetchCctvList({
         page: safePage,
         size: safeSize,
-        orgUnitId: filterValues.orgUnitId || undefined,
+        orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__'
+                          ? filterValues.orgUnitId
+                          : undefined),
         search: filterValues.deviceCode || filterValues.deviceName || undefined,
         deviceCode: filterValues.deviceCode || undefined,
         deviceName: filterValues.deviceName || undefined,
@@ -1909,17 +1459,17 @@ const CctvListPage = () => {
   }, [deleteTarget, deleteConfirmText, fetchData, fetchTabCounts]);
 
   const handleApprove = useCallback(
-    async (content: string) => {
+    async (content?: string) => {
       if (!approveTarget) return;
       setApproveLoading(true);
       try {
-        const payload: ApprovalRequest = { decision: "APPROVED", reason: content };
+        const payload: ApprovalRequest = { decision: "APPROVED", reason: content?.trim() || undefined };
         if (approveLevel === "c1") {
           await approveCctvC1(approveTarget.id, payload);
-          toast.success("Phê duyệt cấp 1 thành công");
+          toast.success("Phê duyệt cấp Cảng vụ thành công");
         } else {
           await approveCctvC2(approveTarget.id, payload);
-          toast.success("Phê duyệt cấp 2 thành công");
+          toast.success("Phê duyệt cấp Cục thành công");
         }
         setApproveTarget(null);
         setApproveModalOpen(false);
@@ -1936,22 +1486,28 @@ const CctvListPage = () => {
 
   const handleReject = useCallback(async () => {
     if (!rejectTarget) return;
-    let reason: string;
-    try {
-      ({ reason } = await rejectForm.validateFields());
-    } catch {
-      // Form rules đã hiển thị lỗi inline: lý do từ chối tối thiểu 10 ký tự
+    const reason = rejectReason.trim();
+    if (!reason) {
+      toast.error("Vui lòng nhập lý do từ chối");
+      return;
+    }
+    if (reason.length < 10) {
+      toast.error("Lý do từ chối tối thiểu 10 ký tự");
+      return;
+    }
+    if (reason.length > 500) {
+      toast.error("Lý do từ chối tối đa 500 ký tự");
       return;
     }
     setRejectLoading(true);
     try {
-      const payload: ApprovalRequest = { decision: "REJECTED", reason: String(reason || "").trim() };
+      const payload: ApprovalRequest = { decision: "REJECTED", reason };
       if (rejectLevel === "c1") await approveCctvC1(rejectTarget.id, payload);
       else await approveCctvC2(rejectTarget.id, payload);
-      toast.success("Từ chối thành công");
+      toast.success("Từ chối phê duyệt thành công");
       setRejectTarget(null);
       setRejectModalOpen(false);
-      rejectForm.resetFields();
+      setRejectReason("");
       fetchData();
       fetchTabCounts();
     } catch (error: unknown) {
@@ -1959,63 +1515,11 @@ const CctvListPage = () => {
     } finally {
       setRejectLoading(false);
     }
-  }, [rejectTarget, rejectLevel, rejectForm, fetchData, fetchTabCounts]);
-
-  // ── File đính kèm (InfrastructureAttachmentTab — chuẩn /vts-operation-center) ──
-  const handleAddAttachmentFile = useCallback((file: File) => {
-    if (attachmentItems.length >= 10) {
-      toast.error('Số lượng tệp đính kèm tối đa là 10 tệp');
-      return false;
-    }
-    const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    setAttachmentItems((prev) => [
-      ...prev,
-      {
-        id: tempId,
-        fileName: file.name,
-        fileSize: file.size,
-        uploadedByName: currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
-        uploadedBy: currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
-        uploadedDate: new Date().toISOString(),
-      },
-    ]);
-    setUploadFileList((prev) => [...prev, { uid: tempId, name: file.name, status: 'done' as const, originFileObj: file }]);
-    toast.success(`Đã thêm tệp ${file.name}`);
-    return false;
-  }, [attachmentItems.length, currentUser]);
-
-  const handleRemoveAttachmentItem = useCallback(async (attId: string) => {
-    const isTemp = String(attId).startsWith('temp_');
-    if (!isTemp && updateTarget?.id) {
-      try {
-        await deleteCctvAttachment(updateTarget.id, attId);
-      } catch {
-        toast.error('Không thể xóa tệp đính kèm');
-        return;
-      }
-    }
-    setAttachmentItems((prev) => prev.filter((a) => a.id !== attId));
-    setUploadFileList((prev) => prev.filter((f) => f.uid !== attId && f.name !== attId));
-    toast.success('Đã xóa tệp đính kèm');
-  }, [updateTarget?.id]);
+  }, [rejectTarget, rejectLevel, rejectReason, fetchData, fetchTabCounts]);
 
   const handleDownloadAttachmentItem = useCallback(async (attId: string, fileName?: string) => {
     const item = attachmentItems.find((a) => a.id === attId);
-    const isTemp = String(attId).startsWith('temp_');
-    const localFile = isTemp ? uploadFileList.find((f) => f.uid === attId) : undefined;
-    const downloadName = fileName || item?.fileName || localFile?.name || 'file';
-    // Tệp chưa upload (đang chờ lưu hồ sơ) → tải blob cục bộ
-    if (localFile?.originFileObj) {
-      const url = URL.createObjectURL(localFile.originFileObj);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = downloadName;
-      a.click();
-      URL.revokeObjectURL(url);
-      return;
-    }
-    // Tệp đã lưu: tải qua endpoint chuẩn giống /vts-operation-center
-    // (GET /v1/cctv/{id}/attachments/{attId}/download → blob).
+    const downloadName = fileName || item?.fileName || 'file';
     const targetId = selectedRecord?.id || updateTarget?.id;
     if (!targetId) {
       toast.error('Không thể tải xuống tệp đính kèm');
@@ -2026,139 +1530,16 @@ const CctvListPage = () => {
     } catch {
       toast.error('Không thể tải xuống tệp đính kèm');
     }
-  }, [attachmentItems, uploadFileList, selectedRecord?.id, updateTarget?.id]);
-
-  // ── GIS Map Picker: đồng bộ coordinateList + geometryType + mapSymbolId live ──
-  const handleGisMapChange = useCallback((val: { geometryType?: string; coordinates?: string; symbolId?: string } | undefined) => {
-    if (gisMapContext === 'detail' || !val) return;
-    const geom = normalizeGeometryType(val.geometryType);
-    const pts = val.coordinates ? parseWktToCoordinates(val.coordinates) : [];
-    if (pts.length > 0) {
-      const rows = fromCanonicalCoordRows(pts);
-      if (gisMapContext === 'create') setGpsCoordList(rows);
-      else setUpdateGpsCoordList(rows);
-    }
-    const activeForm = gisMapContext === 'create' ? createForm : updateForm;
-    activeForm.setFieldValue('geometryType', geom);
-    if (val.symbolId) {
-      const matched = (symbols || []).find((s) => s.id === val.symbolId || s.code === val.symbolId);
-      if (matched) activeForm.setFieldValue('mapSymbolId', matched.id);
-    }
-  }, [gisMapContext, createForm, updateForm, symbols]);
-
-  const handleCreate = useCallback(
-    async (values: Record<string, unknown>) => {
-      setCreateLoading(true);
-      try {
-        // Build WKT từ GPS state (lưu vào gis_spatial_objects qua spatial_id — chuẩn GIS dự án)
-        const createGeomType = normalizeGeometryType(values.geometryType);
-        const coordinates = serializeCoordinatesToWkt(toCanonicalCoordRows(gpsCoordList), createGeomType);
-
-        const payload = {
-          ...values,
-          deviceCode: values.deviceCode || (await generateCctvCode()),
-          operationalStatus: values.operationalStatus,
-          geometryType: createGeomType,
-          coordinates: coordinates || undefined,
-          // Cột display_rule là INT; chuỗi 'Độ, phút, giây (DMS)' chỉ để hiển thị (giống /port, /pier)
-          displayRule: values.displayRule != null ? Number(values.displayRule) || null : undefined,
-        };
-        // Chuẩn VTS: tạo theo hành động footer — draft/submit/approve
-        // (backend resolveCreateApprovalStatus: DRAFT / PENDING_APPROVAL / APPROVED)
-        const currentAction = createActionTypeRef.current;
-        const created = await createCctv({
-          ...payload,
-          action: currentAction === 'draft' ? 'draft' : currentAction === 'submit' ? 'submit' : 'approve',
-        } as unknown as CreateCctvRequest);
-        if (created?.id && uploadFileList.length > 0) {
-          for (const f of uploadFileList) {
-            if (f.originFileObj) await uploadCctvAttachment(created.id, f.originFileObj);
-          }
-        }
-        toast.success(
-          currentAction === 'draft'
-            ? 'Lưu tạm hệ thống CCTV thành công'
-            : currentAction === 'submit'
-              ? 'Lưu và gửi phê duyệt thành công'
-              : 'Lưu và phê duyệt thành công'
-        );
-        setCreateModalOpen(false);
-        createForm.resetFields();
-        setGpsCoordList([]);
-        setUploadFileList([]);
-        setAttachmentItems([]);
-        fetchData();
-        fetchTabCounts();
-      } catch (error: unknown) {
-        console.error("[cctv] create error", error); // toast toàn cục đã xử lý ở interceptor api.ts
-      } finally {
-        setCreateLoading(false);
-      }
-    },
-    [createForm, fetchData, fetchTabCounts, gpsCoordList, uploadFileList]
-  );
-
-  const handleUpdate = useCallback(
-    async (values: Record<string, unknown>) => {
-      if (!updateTarget) return;
-      setUpdateLoading(true);
-      try {
-        // Build WKT từ GPS state (lưu vào gis_spatial_objects qua spatial_id — chuẩn GIS dự án)
-        const updateGeomType = normalizeGeometryType(updateGeometryType);
-        const coordinates = serializeCoordinatesToWkt(toCanonicalCoordRows(updateGpsCoordList), updateGeomType);
-
-        // Chuẩn VTS: Lưu tạm (chỉ update) / Lưu và gửi phê duyệt (update + submit) /
-        // Lưu và phê duyệt (update + giữ Đã duyệt — T12 backend)
-        const currentAction = updateActionTypeRef.current;
-        await updateCctv({
-          id: updateTarget.id,
-          ...values,
-          geometryType: updateGeomType,
-          coordinates: coordinates || undefined,
-          // Cột display_rule là INT; chuỗi 'Độ, phút, giây (DMS)' chỉ để hiển thị (giống /port, /pier)
-          displayRule: values.displayRule != null ? Number(values.displayRule) || null : undefined,
-          ...(currentAction === 'approve' ? { approvalStatus: 'APPROVED' } : {}),
-        });
-        if (uploadFileList.length > 0) {
-          for (const f of uploadFileList) {
-            if (f.originFileObj) await uploadCctvAttachment(updateTarget.id, f.originFileObj);
-          }
-        }
-        if (currentAction === 'submit') {
-          await submitCctv(updateTarget.id);
-        }
-        toast.success(
-          currentAction === 'draft'
-            ? 'Lưu tạm hệ thống CCTV thành công'
-            : currentAction === 'submit'
-              ? 'Lưu và gửi phê duyệt thành công'
-              : 'Lưu và phê duyệt thành công'
-        );
-        setUpdateModalOpen(false);
-        setUpdateTarget(null);
-        setUpdateGpsCoordList([]);
-        setUploadFileList([]);
-        setAttachmentItems([]);
-        fetchData();
-        fetchTabCounts();
-      } catch (error: unknown) {
-        console.error("[cctv] update error", error); // toast toàn cục đã xử lý ở interceptor api.ts
-      } finally {
-        setUpdateLoading(false);
-      }
-    },
-    [updateTarget, fetchData, fetchTabCounts, updateGpsCoordList, uploadFileList, updateGeometryType, closeLinkedDrawer]
-  );
+  }, [attachmentItems, selectedRecord?.id, updateTarget?.id]);
 
   const handleConfirmSubmit = useCallback(async () => {
     if (!submittingRecord) return;
     setSubmitLoading(true);
     try {
-      await submitCctv(submittingRecord.id, submitContent.trim() || undefined);
+      await submitCctv(submittingRecord.id);
       toast.success("Gửi phê duyệt thành công");
       setSubmitModalOpen(false);
       setSubmittingRecord(null);
-      setSubmitContent("");
       fetchData();
       fetchTabCounts();
     } catch (error: unknown) {
@@ -2166,11 +1547,279 @@ const CctvListPage = () => {
     } finally {
       setSubmitLoading(false);
     }
-  }, [submittingRecord, submitContent, fetchData, fetchTabCounts]);
+  }, [submittingRecord, fetchData, fetchTabCounts]);
+
+  const CHK_FILTER_LABEL = { ...themeTokenChk.filterLabelStyle, fontSize: 13.5 };
 
   return (
-    <ThemeTokenProvider tokens={themeTokenChk}>
-      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+    <ThemeTokenProvider tokens={{ ...themeTokenChk, fontSizeMd: 13.5, filterLabelStyle: CHK_FILTER_LABEL }}>
+      <div className="cctv-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <style>{`
+        .cctv-page-wrapper,
+        .cctv-page-wrapper .ant-input,
+        .cctv-page-wrapper .ant-select,
+        .cctv-page-wrapper .ant-select .ant-select-selection-item,
+        .cctv-page-wrapper .ant-select-item-option-content,
+        .cctv-page-wrapper .ant-picker,
+        .cctv-page-wrapper .ant-picker-input > input,
+        .cctv-page-wrapper .ant-btn,
+        .cctv-page-wrapper .ant-pagination,
+        .cctv-page-wrapper .ant-form-item-label > label { font-size: 13.5px !important; }
+        /* ── Responsive StatusTabs: Căn giữa khi đủ chỗ, cuộn ngang khi tràn (chuẩn /berth) ── */
+        .cctv-page-wrapper div:has(> button[aria-pressed]) {
+          display: flex !important;
+          flex-wrap: nowrap !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          justify-content: center !important;
+          justify-content: safe center !important;
+          align-items: center !important;
+          scrollbar-width: thin !important;
+          scrollbar-color: #cbd5e1 #f8fafc !important;
+          scroll-behavior: smooth !important;
+          -webkit-overflow-scrolling: touch !important;
+          padding: 2px 16px 6px 16px !important;
+          gap: 20px !important;
+        }
+        .cctv-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar { height: 6px !important; display: block !important; }
+        .cctv-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track { background: #f1f5f9 !important; border-radius: 999px !important; }
+        .cctv-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb { background: #cbd5e1 !important; border-radius: 999px !important; }
+        .cctv-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover { background: #94a3b8 !important; }
+        .cctv-page-wrapper div:has(> button[aria-pressed]) > button { white-space: nowrap !important; flex-shrink: 0 !important; cursor: pointer !important; }
+
+        /* ── Cỡ chữ 13.5px chuẩn: bảng + popup/drawer con (port đầy đủ từ màn /berth; bao cả nhãn/giá trị khối chk-detail bị theme dùng chung ép 13px) ── */
+        /* ── Breadcrumb title (màn /cctv): "Trang chủ" 14px, "Quản lý hệ thống CCTV" 16px —
+           khóa cỡ 14/16 trên span tiêu đề, thắng cả ép 13.5px của font trang bên dưới ── */
+        .cctv-page-wrapper .ant-breadcrumb .ant-breadcrumb-item:not(:last-child) > .ant-breadcrumb-link > span { font-size: 14px !important; }
+        .cctv-page-wrapper .ant-breadcrumb .ant-breadcrumb-item:last-child > .ant-breadcrumb-link > span { font-size: 16px !important; }
+        .cctv-page-wrapper .ant-table,
+        .cctv-page-wrapper .ant-table-cell,
+        .cctv-page-wrapper .ant-table-thead > tr > th,
+        .cctv-page-wrapper .ant-table-tbody > tr > td,
+        .cctv-page-wrapper .ant-pagination-item,
+        .cctv-page-wrapper .ant-pagination-total-text,
+        .cctv-page-wrapper .ant-breadcrumb,
+        .cctv-page-wrapper .list-view-table .ant-table-cell,
+        .cctv-drawer-scope,
+        .cctv-drawer-scope .ant-drawer-content,
+        .cctv-drawer-scope .ant-tabs-tab,
+        .cctv-drawer-scope .chk-detail-label,
+        .cctv-drawer-scope .chk-detail-value,
+        .cctv-drawer-scope .chk-detail-row > span,
+        .cctv-drawer-scope .ant-table,
+        .cctv-drawer-scope .ant-table-cell,
+        .cctv-drawer-scope .ant-table-thead > tr > th,
+        .cctv-drawer-scope .list-view-table .ant-table-cell,
+        .cctv-drawer-scope .ant-btn,
+        .cctv-drawer-scope .ant-select,
+        .cctv-drawer-scope .ant-select .ant-select-selection-item,
+        .cctv-drawer-scope .ant-select-item-option-content,
+        .cctv-drawer-scope .ant-input,
+        .cctv-drawer-scope .ant-picker,
+        .cctv-drawer-scope .ant-picker-input > input,
+        .cctv-drawer-scope .ant-form-item-label > label,
+        .cctv-modal-scope,
+        .cctv-modal-scope .ant-modal-content,
+        .cctv-modal-scope .ant-modal-title,
+        .cctv-modal-scope .ant-btn,
+        .cctv-modal-scope .ant-input,
+        .cctv-modal-scope .ant-modal-body p,
+        .cctv-modal-scope .ant-modal-body > p,
+        .cctv-modal-scope .chk-detail-label,
+        .cctv-modal-scope .chk-detail-value {
+          font-size: 13.5px !important;
+        }
+
+
+        /* ── KẸP CỨNG 13.5px — nâng MỌI text/label còn để 13px (kể cả inline font-size và chk-detail bị theme nào đó ép 13) chỉ trong phạm vi màn /cctv ── */
+        .cctv-page-wrapper.cctv-page-wrapper,
+        .cctv-page-wrapper.cctv-page-wrapper div,
+        .cctv-page-wrapper.cctv-page-wrapper span,
+        .cctv-page-wrapper.cctv-page-wrapper p,
+        .cctv-page-wrapper.cctv-page-wrapper label,
+        .cctv-page-wrapper.cctv-page-wrapper li,
+        .cctv-page-wrapper.cctv-page-wrapper a,
+        .cctv-page-wrapper.cctv-page-wrapper button:not(.anticon),
+        .cctv-page-wrapper.cctv-page-wrapper .ant-table-cell,
+        .cctv-page-wrapper.cctv-page-wrapper .ant-table-thead > tr > th,
+        .cctv-page-wrapper.cctv-page-wrapper .ant-table-tbody > tr > td,
+        .cctv-drawer-scope.cctv-drawer-scope .chk-detail-row .chk-detail-label,
+        .cctv-drawer-scope.cctv-drawer-scope .chk-detail-row .chk-detail-value,
+        .cctv-drawer-scope.cctv-drawer-scope .ant-table-cell,
+        .cctv-modal-scope.cctv-modal-scope,
+        .cctv-modal-scope.cctv-modal-scope div,
+        .cctv-modal-scope.cctv-modal-scope span,
+        .cctv-modal-scope.cctv-modal-scope p,
+        .cctv-modal-scope.cctv-modal-scope label,
+        .cctv-modal-scope.cctv-modal-scope li,
+        .cctv-modal-scope.cctv-modal-scope a,
+        .cctv-modal-scope.cctv-modal-scope button:not(.anticon),
+        .cctv-modal-scope.cctv-modal-scope .chk-detail-row .chk-detail-label,
+        .cctv-modal-scope.cctv-modal-scope .chk-detail-row .chk-detail-value,
+        .cctv-modal-scope.cctv-modal-scope .ant-table-cell {
+          font-size: 13.5px !important;
+        }
+        /* Thu nhỏ icon DropdownList (mũi tên xổ + nút xóa) về kích thước compact chuẩn */
+        .cctv-page-wrapper .ant-select .ant-select-suffix,
+        .cctv-page-wrapper .ant-select .ant-select-clear {
+          font-size: 10px !important;
+          line-height: 1 !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+        }
+        .cctv-page-wrapper .ant-select .ant-select-suffix .anticon,
+        .cctv-page-wrapper .ant-select .ant-select-clear .anticon {
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          line-height: 1 !important;
+        }
+        .cctv-page-wrapper .ant-select .ant-select-suffix svg,
+        .cctv-page-wrapper .ant-select .ant-select-clear svg {
+          font-size: 10px !important;
+          width: 10px !important;
+          height: 10px !important;
+          display: block !important;
+        }
+        /* Chuẩn cỡ chữ giá trị trong bảng: tên 14 / mã 12 / badge 13 / còn lại 13.5 (+StatusTab text 13) */
+        .cctv-page-wrapper.cctv-page-wrapper .ant-table-row .kcht-cell-title.kcht-cell-title { font-size: 14px !important; }
+        .cctv-page-wrapper.cctv-page-wrapper .kcht-cell-code { font-size: 12px !important; }
+        .cctv-page-wrapper.cctv-page-wrapper .kcht-cell-badge { font-size: 13px !important; }
+        .cctv-page-wrapper.cctv-page-wrapper button[aria-pressed] span { font-size: 13px !important; }
+        /* Divider giữa các dòng của tab "Thông tin chung" — nhạt như /berth (#f1f5f9). Drawer portal ra body nên anchor theo .cctv-drawer-scope */
+        .cctv-drawer-scope.cctv-drawer-scope .chk-detail-row,
+        .cctv-page-wrapper.cctv-page-wrapper .chk-detail-row { border-bottom: 1px solid #f1f5f9 !important; }
+        /* Tiêu đề card (Section header) trong Drawer Xem chi tiết — 14px như /berth (rule clamp 13.5px ở trên không được ép/thắng mục này) */
+        .cctv-drawer-scope.cctv-drawer-scope .cctv-section-card-title,
+        .cctv-page-wrapper.cctv-page-wrapper .cctv-section-card-title { font-size: 14px !important; }
+        /* Mũi tên đóng/mở (chevron) trong Drawer Xem chi tiết — cố định 12px như /berth và /scada */
+        .cctv-drawer-scope .anticon-down,
+        .cctv-drawer-scope .anticon-right {
+          font-size: 12px !important;
+        }
+        .cctv-drawer-scope .anticon-down svg,
+        .cctv-drawer-scope .anticon-right svg {
+          width: 12px !important;
+          height: 12px !important;
+        }
+        /* Tiêu đề Drawer Xem chi tiết — 15px như /berth (drawerTitleStyle = fontSizeLg, thoát khỏi clamp 13.5px phía trên) */
+        .cctv-drawer-scope.cctv-drawer-scope .ant-drawer-title span { font-size: 15px !important; }
+        /* Responsive drawer Xem chi tiết — sao chép chuẩn /berth để không vỡ khi zoom/phóng nhỏ */
+        /* Kẹp wrapper drawer không tràn ngoài viewport khi zoom in (clone rule chuẩn /berth: .berth-drawer-scope .ant-drawer-content-wrapper) */
+        .cctv-drawer-scope .ant-drawer-content-wrapper {
+          max-width: 100vw !important;
+        }
+
+        /* ── Grid 2 cột & nhãn đồng bộ chuẩn /berth (BerthDetailContent) ── */
+        .cctv-drawer-scope .chk-detail-grid {
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+          column-gap: 28px !important;
+          row-gap: 0 !important;
+        }
+        .cctv-drawer-scope .chk-detail-row {
+          display: flex !important;
+          align-items: flex-start !important;
+          min-height: 36px !important;
+          padding: 7px 0 !important;
+          border-bottom: 1px solid #f1f5f9 !important;
+          line-height: 1.5 !important;
+          gap: 10px !important;
+        }
+        .cctv-drawer-scope .chk-detail-row:last-child {
+          border-bottom: none !important;
+        }
+        .cctv-drawer-scope .chk-detail-row--full {
+          grid-column: 1 / -1 !important;
+        }
+        .cctv-drawer-scope .chk-detail-row .chk-detail-label,
+        .cctv-drawer-scope .chk-detail-label {
+          width: 215px !important;
+          min-width: 215px !important;
+          max-width: 215px !important;
+          flex-shrink: 0 !important;
+          color: ${colors.sidebarBg} !important;
+          font-weight: 600 !important;
+          font-size: 13.5px !important;
+          text-align: left !important;
+          line-height: 1.5 !important;
+        }
+        .cctv-drawer-scope .chk-detail-row .sec-col1-label,
+        .cctv-drawer-scope .sec-col1-label {
+          width: 215px !important;
+          min-width: 215px !important;
+          max-width: 215px !important;
+          flex-shrink: 0 !important;
+        }
+        .cctv-drawer-scope .chk-detail-row .sec-col2-label,
+        .cctv-drawer-scope .sec-col2-label {
+          width: 250px !important;
+          min-width: 250px !important;
+          max-width: 250px !important;
+          flex-shrink: 0 !important;
+        }
+        .cctv-drawer-scope .chk-detail-row .sec-full-label,
+        .cctv-drawer-scope .sec-full-label {
+          width: 215px !important;
+          min-width: 215px !important;
+          max-width: 215px !important;
+          flex-shrink: 0 !important;
+        }
+        .cctv-drawer-scope .chk-detail-label::after {
+          content: ':' !important;
+          margin-left: 1px !important;
+          margin-right: 4px !important;
+        }
+        .cctv-drawer-scope .chk-detail-value {
+          color: #1e293b !important;
+          font-size: 13.5px !important;
+          flex: 1 !important;
+          min-width: 0 !important;
+          text-align: left !important;
+          line-height: 1.5 !important;
+          word-break: break-word !important;
+        }
+        @media (max-width: 960px) {
+          .cctv-drawer-scope .chk-detail-grid {
+            grid-template-columns: 1fr !important;
+            column-gap: 0 !important;
+          }
+          .cctv-drawer-scope .chk-detail-row--full {
+            grid-column: 1 !important;
+          }
+          .cctv-drawer-scope .chk-detail-row .chk-detail-label,
+          .cctv-drawer-scope .chk-detail-label,
+          .cctv-drawer-scope .sec-col1-label,
+          .cctv-drawer-scope .sec-col2-label,
+          .cctv-drawer-scope .sec-full-label {
+            width: 250px !important;
+            min-width: 250px !important;
+            max-width: 250px !important;
+          }
+        }
+        @media (max-width: 640px) {
+          .cctv-drawer-scope .chk-detail-row {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 3px !important;
+            padding: 6px 0 !important;
+          }
+          .cctv-drawer-scope .chk-detail-row .chk-detail-label,
+          .cctv-drawer-scope .chk-detail-label,
+          .cctv-drawer-scope .sec-col1-label,
+          .cctv-drawer-scope .sec-col2-label,
+          .cctv-drawer-scope .sec-full-label {
+            width: 100% !important;
+            min-width: 100% !important;
+            max-width: 100% !important;
+          }
+          .cctv-drawer-scope .chk-detail-value {
+            width: 100% !important;
+          }
+        }
+      `}</style>
+
       <ScreenHeader
         breadcrumb={[
           { label: "Trang chủ", path: "/" },
@@ -2184,16 +1833,8 @@ const CctvListPage = () => {
                 icon: <PlusOutlined />,
                 variant: "primary" as const,
                 onClick: () => {
-                  setUploadFileList([]);
-                  setAttachmentItems([]);
-                  setGpsCoordList([]);
+                  createForm.resetFields();
                   setCreateModalOpen(true);
-                  // Sinh trước mã thiết bị để hiển thị preview (giống Mã cảng biển /port)
-                  setDeviceCodeLoading(true);
-                  generateCctvCode()
-                    .then((code) => { if (code) createForm.setFieldsValue({ deviceCode: code }); })
-                    .catch(() => { createForm.setFieldsValue({ deviceCode: '' }); /* Backend tự sinh khi lưu */ })
-                    .finally(() => setDeviceCodeLoading(false));
                 },
               }
             : null,
@@ -2211,12 +1852,11 @@ const CctvListPage = () => {
         onRetry={fetchData}
         filterContent={
           <>
-            {/* ═══ Basic Filters (always visible) ═══ */}
-            <div style={{ marginBottom: 12, marginTop: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>
-                Đơn vị quản lý{" "}
-                <span style={{ color: statusCritical }}>*</span>
-              </div>
+            <SidebarFilterField
+              style={{ marginTop: 12 }}
+              labelGap={spaceSm}
+              label={<span>Đơn vị quản lý <span style={{ color: statusCritical }}>*</span></span>}
+            >
               <OrgUnitTreeSelect
                 organizations={orgUnitOptions}
                 placeholder="Chọn đơn vị"
@@ -2234,9 +1874,9 @@ const CctvListPage = () => {
                 loading={loadingOrgs}
                 style={{ borderRadius: radiusPill, height: 40 }}
               />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>Tên thiết bị</div>
+            </SidebarFilterField>
+
+            <SidebarFilterField label="Tên thiết bị" labelGap={spaceSm}>
               <Input placeholder="Tìm theo tên thiết bị..." allowClear
                 value={filterValues.deviceName || ""}
                 onChange={(e) =>
@@ -2247,11 +1887,11 @@ const CctvListPage = () => {
                 }
                 onPressEnter={handleFilterApply}
                 style={{ borderRadius: radiusPill, height: 40 }} />
-            </div>
+            </SidebarFilterField>
+
             {filterCollapsed && (
               <>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>Mã thiết bị</div>
+                <SidebarFilterField label="Mã thiết bị" labelGap={spaceSm}>
                   <Input placeholder="Tìm theo mã thiết bị..." allowClear
                     value={filterValues.deviceCode || ""}
                     onChange={(e) =>
@@ -2262,9 +1902,9 @@ const CctvListPage = () => {
                     }
                     onPressEnter={handleFilterApply}
                     style={{ borderRadius: radiusPill, height: 40 }} />
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>Tình trạng</div>
+                </SidebarFilterField>
+
+                <SidebarFilterField label="Tình trạng" labelGap={spaceSm}>
                   <Select placeholder="Chọn tình trạng" allowClear
                     value={filterValues.operationalStatus || undefined}
                     onChange={(val) =>
@@ -2275,9 +1915,9 @@ const CctvListPage = () => {
                     }
                     options={OPERATIONAL_STATUS_OPTIONS}
                     style={{ width: "100%", borderRadius: radiusPill, height: 40 }} />
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>Thuộc loại hạ tầng</div>
+                </SidebarFilterField>
+
+                <SidebarFilterField label="Thuộc loại hạ tầng" labelGap={spaceSm}>
                   <Select placeholder="Chọn loại hạ tầng" allowClear
                     value={filterValues.attachedInfraType || undefined}
                     onChange={(val) => {
@@ -2290,9 +1930,9 @@ const CctvListPage = () => {
                     }}
                     options={attachedInfraTypeOptions}
                     style={{ width: "100%", borderRadius: radiusPill, height: 40 }} />
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>Thuộc hạ tầng</div>
+                </SidebarFilterField>
+
+                <SidebarFilterField label="Thuộc hạ tầng" labelGap={spaceSm}>
                   <Select placeholder={
                     filterValues.attachedInfraType === 2
                         ? "Chọn trạm Radar"
@@ -2311,9 +1951,9 @@ const CctvListPage = () => {
                     loading={filterValues.attachedInfraType === 1 ? loadingVtsCenters : filterValues.attachedInfraType === 2 ? loadingRadars : false}
                     disabled={filterValues.attachedInfraType !== 1 && filterValues.attachedInfraType !== 2}
                     style={{ width: "100%", borderRadius: radiusPill, height: 40 }} />
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>Năm đưa vào sử dụng</div>
+                </SidebarFilterField>
+
+                <SidebarFilterField label="Năm đưa vào sử dụng" labelGap={spaceSm}>
                   <Select placeholder="Chọn năm" allowClear
                     value={filterValues.yearOfUse}
                     onChange={(val) =>
@@ -2324,35 +1964,17 @@ const CctvListPage = () => {
                     }
                     options={yearOfUseOptions}
                     style={{ width: "100%", borderRadius: radiusPill, height: 40 }} />
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>Ngày cập nhật</div>
-                  <DatePicker.RangePicker
-                    format="DD/MM/YYYY"
-                    placeholder={["Chọn từ ngày", "Chọn đến ngày"]}
-                    allowClear
-                    className="port-range-picker"
-                    popupClassName="range-single-panel"
-                    value={
-                      filterValues.updatedFrom && filterValues.updatedTo
-                        ? [
-                            dayjs(filterValues.updatedFrom),
-                            dayjs(filterValues.updatedTo),
-                          ]
-                        : null
-                    }
-                    onChange={(dates) => {
-                      setFilterValues((prev) => ({
-                        ...prev,
-                        updatedFrom: dates?.[0] ? dates[0].format("YYYY-MM-DD 00:00:00") : undefined,
-                        updatedTo: dates?.[1] ? dates[1].format("YYYY-MM-DD 23:59:59") : undefined,
-                      }));
-                    }}
-                    style={{ width: "100%", borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} />
-                  <style>{`.port-range-picker .ant-picker-cell-selected .ant-picker-cell-inner{background:${actionPrimary}!important}.port-range-picker .ant-picker-ok button{background:${actionPrimary}!important;border-color:${actionPrimary}!important;border-radius:${radiusPill}px!important}.port-range-picker .ant-picker-time-panel-cell-selected .ant-picker-time-panel-cell-inner{background:${actionPrimary}15!important;color:${actionPrimary}!important}.port-range-picker .ant-picker-today-btn{color:${actionPrimary}!important}.range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child{display:none!important}`}</style>
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>Địa điểm (Tỉnh/Thành phố)</div>
+                </SidebarFilterField>
+
+                <SidebarFilterField label="Ngày cập nhật" labelGap={spaceSm}>
+                  <DatePicker.RangePicker format="DD/MM/YYYY"
+                    placeholder={['Từ ngày', 'Đến ngày']} allowClear popupClassName="chk-range-datepicker-popup"
+                    value={[filterValues.updatedFrom ? dayjs(filterValues.updatedFrom) : null, filterValues.updatedTo ? dayjs(filterValues.updatedTo) : null]}
+                    onChange={(dates) => { setFilterValues(prev => ({ ...prev, updatedFrom: dates?.[0]? dates[0].format('YYYY-MM-DD 00:00:00') : undefined, updatedTo: dates?.[1]? dates[1].format('YYYY-MM-DD 23:59:59') : undefined })); }}
+                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                </SidebarFilterField>
+
+                <SidebarFilterField label="Địa điểm (Tỉnh/Thành phố)" labelGap={spaceSm}>
                   <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
                     filterOption={(input, option) =>
                       (option?.label ?? "")
@@ -2368,7 +1990,7 @@ const CctvListPage = () => {
                     }
                     options={VIETNAM_PROVINCES.map(p => ({ label: p, value: p }))}
                     style={{ width: "100%", borderRadius: radiusPill, height: 40 }} />
-                </div>
+                </SidebarFilterField>
               </>
             )}
           </>
@@ -2390,21 +2012,21 @@ const CctvListPage = () => {
           },
           {
             key: "PENDING_APPROVAL",
-            label: "Chờ Cảng vụ duyệt",
+            label: "Chờ phê duyệt cấp Cảng vụ/Chi cục",
             count: tabCounts["PENDING_APPROVAL"] ?? 0,
             color: statusAttention,
             active: filterValues.approvalStatus === "PENDING_APPROVAL",
           },
           {
             key: "APPROVED_LEVEL1",
-            label: "Chờ Cục duyệt",
+            label: "Chờ phê duyệt cấp cục",
             count: tabCounts["APPROVED_LEVEL1"] ?? 0,
             color: statusInfo,
             active: filterValues.approvalStatus === "APPROVED_LEVEL1",
           },
           {
             key: "APPROVED",
-            label: "Đã duyệt",
+            label: "Đã phê duyệt",
             count: tabCounts["APPROVED"] ?? 0,
             color: statusOperational,
             active: filterValues.approvalStatus === "APPROVED",
@@ -2469,8 +2091,12 @@ const CctvListPage = () => {
       {/* Detail Drawer */}
       <Drawer
         {...drawerProps}
-        rootClassName={THEME_SCOPE_CLASS}
-        title={<span style={drawerTitleStyle}>Chi tiết hệ thống CCTV{selectedRecord ? ` - ${selectedRecord.deviceName || selectedRecord.deviceCode || ''}` : ''}</span>}
+        size={undefined} /* bỏ size '50%' từ drawerProps để antd dùng width bên dưới (khớp chuẩn /berth) */
+        width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
+        style={{ maxWidth: '96vw' }} /* Clone chuẩn /berth (BerthListPage Detail Drawer): inline kẹp 96vw lên wrapper */
+      rootClassName={THEME_SCOPE_CLASS}
+      className="cctv-drawer-scope"
+      title={<span style={drawerTitleStyle}>Chi tiết hệ thống CCTV{selectedRecord ? ` - ${selectedRecord.deviceName || selectedRecord.deviceCode || ''}` : ''}</span>}
         open={detailDrawerOpen}
         onClose={() => {
           setDetailDrawerOpen(false);
@@ -2504,92 +2130,403 @@ const CctvListPage = () => {
                 key: "general",
                 label: "Thông tin chung",
                 children: (
-                  <div style={{ paddingTop: 3 }}>
-                    <div className="chk-detail-grid">
-                      {[
-                        { label: 'Mã thiết bị', value: selectedRecord.deviceCode, badge: true },
-                        { label: 'Tên thiết bị', value: selectedRecord.deviceName, bold: true },
-                        { label: 'Đơn vị quản lý', value: selectedRecord.orgUnitName || '—', bold: true },
-                        { label: 'Thuộc TTDH VTS / Trạm Radar', value: selectedRecord.attachedInfrastructureName || '—' },
-                        { label: 'Đơn vị khai thác', value: selectedRecord.operatingUnitName || '—' },
-                        { label: 'Tỉnh / Thành phố', value: selectedRecord.provinceName || '—' },
-                        { label: 'Địa điểm chi tiết', value: selectedRecord.detailedLocation || '—' },
-                        { label: 'Đơn vị tính', value: formatUnitOfMeasure(selectedRecord.unitOfMeasure) },
-                        { label: 'Số lượng', value: <span style={{ color: textPrimary, fontSize: fontSizeMd }}>{fmtNum(selectedRecord.quantity)}</span> },
-                        { label: 'Năm đưa vào sử dụng', value: selectedRecord.yearOfUse ? String(selectedRecord.yearOfUse) : '—' },
-                        { label: 'Tình trạng', value: (() => { const stMap: Record<string, { color: string; label: string }> = { 'NOT_YET_OPERATIONAL': { color: statusAttention, label: 'Chưa khai thác/vận hành' }, 'OPERATIONAL': { color: statusOperational, label: 'Đang khai thác/vận hành' }, 'SUSPENDED': { color: statusCritical, label: 'Dừng khai thác/vận hành' } }; const st = stMap[String(selectedRecord.operationalStatus || '').toUpperCase()] || { color: textTertiary, label: String(selectedRecord.operationalStatus || '—') }; return <span style={statusBadgeStyle(st.color)}>{st.label}</span>; })() },
-                        { label: 'Model', value: selectedRecord.model || '—' },
-                        { label: 'Hãng sản xuất', value: selectedRecord.manufacturer || '—' },
-                        { label: 'Phê duyệt', value: renderApprovalBadge(selectedRecord.approvalStatus) },
-                        { label: 'Thông số kỹ thuật', value: selectedRecord.specifications || '—', fullWidth: true },
-                        { label: 'Thông tin bảo trì', value: selectedRecord.maintenanceInformation || '—', fullWidth: true },
-                        { label: 'Ghi chú', value: selectedRecord.note || '—', fullWidth: true },
-                      ].map((row) => (
-                        <div key={row.label} className={row.fullWidth ? 'chk-detail-row chk-detail-row--full' : 'chk-detail-row'}>
-                          <span className="chk-detail-label">{row.label}</span>
-                          <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', ...(row.bold ? { fontWeight: fontWeightBold } : undefined) }}>
-                            {row.badge ? (
-                              <Tag color={colors.primary} style={{ borderRadius: radiusPill, margin: 0, fontWeight: fontWeightMedium }}>{row.value}</Tag>
-                            ) : row.value}
-                          </span>
+                  <div style={{ paddingTop: 6, paddingRight: 4, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)', minHeight: 350 }}>
+                    {/* ── Section 1: Thông tin cơ bản & Quản lý vận hành (card chuẩn /berth, header cố định — không đóng/mở) ── */}
+                    <div style={cctvDetailSectionBoxStyle}>
+                      <div style={{ ...cctvDetailSectionHeaderStyle, borderBottom: '1px solid #f1f5f9' }}>
+                        <div style={cctvDetailSectionTitleStyle}>
+                          <BankOutlined style={{ color: actionPrimary }} />
+                          <span className="cctv-section-card-title">Thông tin cơ bản & Quản lý vận hành</span>
                         </div>
-                      ))}
+                      </div>
+                      <div className="chk-detail-grid">
+                        {(() => {
+                          let colIndex = 0;
+                          return ([
+                            { label: 'Mã thiết bị', value: selectedRecord.deviceCode || null, badge: true },
+                            { label: 'Tên thiết bị', value: selectedRecord.deviceName || null, bold: true },
+                            { label: 'Đơn vị quản lý', value: selectedRecord.orgUnitName || null, bold: true },
+                            { label: 'Thuộc TTDH VTS / Trạm Radar', value: selectedRecord.attachedInfrastructureName || null },
+                            { label: 'Đơn vị khai thác', value: selectedRecord.operatingUnitName || null },
+                            { label: 'Tỉnh / Thành phố', value: selectedRecord.provinceName || null },
+                            { label: 'Tình trạng', value: (() => { if (!selectedRecord.operationalStatus) return null; const stMap: Record<string, { color: string; label: string }> = { 'NOT_YET_OPERATIONAL': { color: 'orange', label: 'Chưa khai thác/vận hành' }, 'OPERATIONAL': { color: 'green', label: 'Đang khai thác/vận hành' }, 'SUSPENDED': { color: 'red', label: 'Dừng khai thác/vận hành' } }; const st = stMap[String(selectedRecord.operationalStatus).toUpperCase()]; return st ? renderCctvStatusBadge(st) : null; })() },
+                            { label: 'Địa điểm chi tiết', value: selectedRecord.detailedLocation || null },
+                          ] as Array<{ label: string; value: React.ReactNode; badge?: boolean; bold?: boolean; fullWidth?: boolean }>).map((row) => {
+                            let labelCls: string;
+                            if (row.fullWidth) {
+                              labelCls = 'sec-full-label';
+                              colIndex = 0;
+                            } else {
+                              labelCls = colIndex % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label';
+                              colIndex += 1;
+                            }
+                            return (
+                              <div key={row.label} className={row.fullWidth ? 'chk-detail-row chk-detail-row--full' : 'chk-detail-row'}>
+                                <span className={`chk-detail-label ${labelCls}`}>{row.label}</span>
+                                <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', ...(row.bold ? { fontWeight: fontWeightBold } : undefined) }}>
+                                  {row.badge && row.value ? (
+                                    <span style={statusBadgeStyle(actionPrimary)}>{row.value}</span>
+                                  ) : row.value}
+                                </span>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* ── Section 2: Thông số kỹ thuật (card chuẩn /berth, header bấm để đóng/mở) ── */}
+                    <div style={{ ...cctvDetailSectionBoxStyle, padding: detailsSpecsOpen ? '12px 18px 8px 18px' : '10px 18px' }}>
+                      <div
+                        onClick={() => setDetailsSpecsOpen(o => !o)}
+                        style={{
+                          ...cctvDetailSectionHeaderStyle,
+                          marginBottom: detailsSpecsOpen ? 10 : 0,
+                          paddingBottom: detailsSpecsOpen ? 8 : 0,
+                          borderBottom: detailsSpecsOpen ? '1px solid #f1f5f9' : 'none',
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                        }}
+                      >
+                        <div style={cctvDetailSectionTitleStyle}>
+                          <SlidersOutlined style={{ color: actionPrimary }} />
+                          <span className="cctv-section-card-title">Thông số kỹ thuật</span>
+                        </div>
+                        <span style={{ color: actionPrimary, fontSize: 12, display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
+                          {detailsSpecsOpen ? <DownOutlined /> : <RightOutlined />}
+                        </span>
+                      </div>
+                      {detailsSpecsOpen && (
+                        <div className="chk-detail-grid">
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col1-label">Model</span>
+                            <span className="chk-detail-value">{selectedRecord.model || ''}</span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col2-label">Hãng sản xuất</span>
+                            <span className="chk-detail-value">{selectedRecord.manufacturer || ''}</span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col1-label">Đơn vị tính</span>
+                            <span className="chk-detail-value">
+                              {selectedRecord.unitOfMeasure != null && UOM_LABELS[selectedRecord.unitOfMeasure] ? UOM_LABELS[selectedRecord.unitOfMeasure] : ''}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col2-label">Số lượng</span>
+                            <span className="chk-detail-value">
+                              {selectedRecord.quantity != null ? <span style={{ color: textPrimary, fontSize: fontSizeMd }}>{fmtNum(selectedRecord.quantity)}</span> : ''}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col1-label">Năm đưa vào sử dụng</span>
+                            <span className="chk-detail-value">{selectedRecord.yearOfUse ? String(selectedRecord.yearOfUse) : ''}</span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col2-label" style={{ visibility: 'hidden' }}>Trống</span>
+                            <span className="chk-detail-value" />
+                          </div>
+                          <div className="chk-detail-row chk-detail-row--full">
+                            <span className="chk-detail-label sec-col1-label">Thông số kỹ thuật</span>
+                            <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap' }}>{selectedRecord.specifications || ''}</span>
+                          </div>
+                          <div className="chk-detail-row chk-detail-row--full">
+                            <span className="chk-detail-label sec-col1-label">Thông tin bảo trì</span>
+                            <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap' }}>{selectedRecord.maintenanceInformation || ''}</span>
+                          </div>
+                          <div className="chk-detail-row chk-detail-row--full">
+                            <span className="chk-detail-label sec-col1-label">Ghi chú</span>
+                            <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap' }}>{selectedRecord.note || ''}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ── Section 3: Thông tin phê duyệt (card chuẩn /berth, header bấm để đóng/mở) ── */}
+                    <div style={{ ...cctvDetailSectionBoxStyle, padding: detailApprovalOpen ? '12px 18px 8px 18px' : '10px 18px' }}>
+                      <div
+                        onClick={() => setDetailApprovalOpen(o => !o)}
+                        style={{
+                          ...cctvDetailSectionHeaderStyle,
+                          marginBottom: detailApprovalOpen ? 10 : 0,
+                          paddingBottom: detailApprovalOpen ? 8 : 0,
+                          borderBottom: detailApprovalOpen ? '1px solid #f1f5f9' : 'none',
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                        }}
+                      >
+                        <div style={cctvDetailSectionTitleStyle}>
+                          <AuditOutlined style={{ color: actionPrimary }} />
+                          <span className="cctv-section-card-title">Thông tin phê duyệt</span>
+                        </div>
+                        <span style={{ color: actionPrimary, fontSize: 12, display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
+                          {detailApprovalOpen ? <DownOutlined /> : <RightOutlined />}
+                        </span>
+                      </div>
+                      {detailApprovalOpen && (
+                        <div className="chk-detail-grid">
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col1-label">Trạng thái phê duyệt</span>
+                            <span className="chk-detail-value">
+                              {renderApprovalBadge(selectedRecord.approvalStatus)}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col2-label">Cán bộ cập nhật</span>
+                            <span className="chk-detail-value">
+                              {selectedRecord.updatedByName ? (
+                                <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.updatedByName}</span>
+                              ) : ''}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col1-label">Cán bộ gửi phê duyệt</span>
+                            <span className="chk-detail-value">
+                              {selectedRecord.submittedByName ? (
+                                <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.submittedByName}</span>
+                              ) : ''}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col2-label">Ngày gửi phê duyệt</span>
+                            <span className="chk-detail-value">{selectedRecord.submittedDate ? formatDate(selectedRecord.submittedDate) : ''}</span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
+                            <span className="chk-detail-value">
+                              {selectedRecord.approverLevel1Name ? (
+                                <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.approverLevel1Name}</span>
+                              ) : ''}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
+                            <span className="chk-detail-value">{selectedRecord.approvedDateLevel1 ? formatDate(selectedRecord.approvedDateLevel1) : ''}</span>
+                          </div>
+                          <div className="chk-detail-row chk-detail-row--full">
+                            <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cảng vụ/Chi cục</span>
+                            <span className="chk-detail-value">{selectedRecord.approvalContentLevel1 || ''}</span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cục</span>
+                            <span className="chk-detail-value">
+                              {selectedRecord.approverLevel2Name ? (
+                                <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.approverLevel2Name}</span>
+                              ) : ''}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cục</span>
+                            <span className="chk-detail-value">{selectedRecord.approvedDateLevel2 ? formatDate(selectedRecord.approvedDateLevel2) : ''}</span>
+                          </div>
+                          <div className="chk-detail-row chk-detail-row--full">
+                            <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cục</span>
+                            <span className="chk-detail-value">{selectedRecord.approvalContentLevel2 || ''}</span>
+                          </div>
+                          {selectedRecord.rejectionReason && String(selectedRecord.approvalStatus).toUpperCase().indexOf('REJECT') >= 0 && (
+                            <div className="chk-detail-row chk-detail-row--full">
+                              <span className="chk-detail-label sec-col1-label">Lý do từ chối</span>
+                              <span className="chk-detail-value" style={{ color: statusCritical }}>{selectedRecord.rejectionReason}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ),
               },
               {
                 key: "gis",
-                label: "Thông tin vị trí",
+                label: `Thông tin vị trí (${parseWktToCoordinates((selectedRecord as any)?.coordinates || '').length})`,
                 children: (
-                  <div style={{ paddingTop: 3 }}>
+                  <div style={{ paddingTop: 6, paddingRight: 0, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)', minHeight: 350 }}>
+                    <div style={cctvDetailSectionBoxStyle}>
+                      <style>{`
+                        .cctv-drawer-scope .gis-meta-detail.chk-detail-grid,
+                        .gis-meta-detail.chk-detail-grid {
+                          display: grid !important;
+                          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+                          column-gap: 28px !important;
+                          row-gap: 0 !important;
+                        }
+                        .cctv-drawer-scope .gis-meta-detail .chk-detail-row,
+                        .gis-meta-detail .chk-detail-row {
+                          display: flex !important;
+                          align-items: flex-start !important;
+                          min-height: 36px !important;
+                          padding: 7px 0 !important;
+                          border-bottom: 1px solid #f1f5f9 !important;
+                          line-height: 1.5 !important;
+                          gap: 10px !important;
+                        }
+                        .cctv-drawer-scope .gis-meta-detail .chk-detail-row:last-child,
+                        .gis-meta-detail .chk-detail-row:last-child {
+                          border-bottom: none !important;
+                        }
+                        .cctv-drawer-scope .gis-meta-detail .chk-detail-label,
+                        .gis-meta-detail .chk-detail-label {
+                          width: 215px !important;
+                          min-width: 215px !important;
+                          max-width: 215px !important;
+                          flex-shrink: 0 !important;
+                          color: ${colors.sidebarBg} !important;
+                          font-weight: 600 !important;
+                          font-size: 13.5px !important;
+                          text-align: left !important;
+                          line-height: 1.5 !important;
+                        }
+                        .cctv-drawer-scope .gis-meta-detail .sec-col1-label,
+                        .gis-meta-detail .sec-col1-label {
+                          width: 215px !important;
+                          min-width: 215px !important;
+                          max-width: 215px !important;
+                          flex-shrink: 0 !important;
+                        }
+                        .cctv-drawer-scope .gis-meta-detail .sec-col2-label,
+                        .gis-meta-detail .sec-col2-label {
+                          width: 250px !important;
+                          min-width: 250px !important;
+                          max-width: 250px !important;
+                          flex-shrink: 0 !important;
+                        }
+                        .cctv-drawer-scope .gis-meta-detail .chk-detail-label::after,
+                        .gis-meta-detail .chk-detail-label::after {
+                          content: ':' !important;
+                          margin-left: 1px !important;
+                          margin-right: 4px !important;
+                        }
+                        .cctv-drawer-scope .gis-meta-detail .chk-detail-value,
+                        .gis-meta-detail .chk-detail-value {
+                          color: #1e293b !important;
+                          font-size: 13.5px !important;
+                          flex: 1 !important;
+                          min-width: 0 !important;
+                          text-align: left !important;
+                          line-height: 1.5 !important;
+                          word-break: break-word !important;
+                        }
+                      `}</style>
+                      <div className="chk-detail-grid gis-meta-detail">
+                        {[
+                          {
+                            label: 'Loại đối tượng',
+                            value: (({ POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' } as Record<string, string>)[selectedRecord.geometryType || '']) || null,
+                          },
+                          {
+                            label: 'Biểu tượng',
+                            value: (() => {
+                              const symId = (selectedRecord as any)?.mapSymbolId || '';
+                              const symName =
+                                selectedRecord.mapSymbolName ||
+                                (symId ? symbolMap.get(symId) : '') ||
+                                '';
+                              const symImg = symbolImageMap.get(symId);
+                              if (!symImg && !symName) return null;
+                              return (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                                  {symImg ? <img src={symImg} alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} /> : null}
+                                  {symName || null}
+                                </span>
+                              );
+                            })(),
+                          },
+                          {
+                            label: 'Hệ quy chiếu',
+                            value: selectedRecord.coordinateSystem === 1 ? 'WGS-84' : selectedRecord.coordinateSystem === 2 ? 'VN-2000' : (selectedRecord.coordinateSystem ? String(selectedRecord.coordinateSystem) : ''),
+                          },
+                          {
+                            label: 'Quy tắc hiển thị',
+                            value: selectedRecord.geometryType || selectedRecord.coordinates ? 'Độ, phút, giây (DMS)' : '',
+                          },
+                        ].map((row, i) => (
+                          <div key={i} className="chk-detail-row">
+                            <span className={`chk-detail-label ${i % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label'}`}>{row.label}</span>
+                            <span className="chk-detail-value">{row.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+                      <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px' }}>
+                        Tọa độ GPS ({parseWktToCoordinates((selectedRecord as any)?.coordinates || '').length})
+                      </span>
+                      <Button
+                        icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+                        onClick={() => { setGisMapOpen(true); }}
+                        style={{
+                          ...outlineButtonStyle,
+                          height: 32,
+                          fontSize: 13.5,
+                          padding: '0 14px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                      >
+                        Xem vị trí trên bản đồ
+                      </Button>
+                    </div>
                     <DetailTable
                       scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
                       dataSource={parseWktToCoordinates((selectedRecord as any)?.coordinates || '')}
-                      emptyText="Không có tọa độ"
-                      pageSize={10}
-                      headerNode={
-                        <>
-                          <div className="chk-detail-grid" style={{ marginBottom: 12 }}>
-                            <div className="chk-detail-row"><span className="chk-detail-label">Loại đối tượng</span><span className="chk-detail-value">{selectedRecord.geometryType || '—'}</span></div>
-                            <div className="chk-detail-row"><span className="chk-detail-label">Biểu tượng bản đồ</span><span className="chk-detail-value">{selectedRecord.mapSymbolName || '—'}</span></div>
-                            <div className="chk-detail-row"><span className="chk-detail-label">Hệ quy chiếu</span><span className="chk-detail-value">{selectedRecord.coordinateSystem === 1 ? 'WGS-84' : selectedRecord.coordinateSystem === 2 ? 'VN-2000' : '—'}</span></div>
-                            <div className="chk-detail-row"><span className="chk-detail-label">Quy tắc hiển thị</span><span className="chk-detail-value">{selectedRecord.displayRule != null ? 'Độ, phút, giây (DMS)' : '—'}</span></div>
-                          </div>
-                          <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-                            <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px' }}>
-                              Tọa độ GPS
-                            </span>
-                            <Button
-                              type="primary"
-                              icon={<EnvironmentOutlined />}
-                              onClick={() => { setGisMapContext('detail'); setGisMapOpen(true); }}
-                              style={{ ...primaryButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                            >
-                              Xem vị trí trên bản đồ
-                            </Button>
-                          </div>
-                        </>
-                      }
+                      emptyText="Chưa có tọa độ GPS nào"
+                      emptyHeightAuto
                       columns={[
-                        { title: 'STT', width: 60, align: 'center' as const, render: (_: any, __: any, i: number) => i + 1 },
+                        { title: 'STT', width: 50 },
                         {
                           title: 'Vĩ độ (Latitude - N)',
                           key: 'lat',
-                          render: (_v: any, r: any) => {
-                            const dms = ddToDms(r.latitude);
-                            return dms.d !== null && dms.m !== null && dms.s !== null ? `${dms.d}° ${dms.m}' ${dms.s.toFixed(2)}" N` : '—';
+                          render: (_value: unknown, record: { latitude?: number | null; longitude?: number | null }) => {
+                            const latitudeValue = record.latitude;
+                            if (latitudeValue == null || Number.isNaN(Number(latitudeValue))) return null;
+                            const dms = ddToDms(latitudeValue);
+                            return `${dms.d}° ${dms.m}' ${dms.s}" N`;
                           },
                         },
                         {
                           title: 'Kinh độ (Longitude - E)',
                           key: 'lng',
-                          render: (_v: any, r: any) => {
-                            const dms = ddToDms(r.longitude);
-                            return dms.d !== null && dms.m !== null && dms.s !== null ? `${dms.d}° ${dms.m}' ${dms.s.toFixed(2)}" E` : '—';
+                          render: (_value: unknown, record: { latitude?: number | null; longitude?: number | null }) => {
+                            const longitudeValue = record.longitude;
+                            if (longitudeValue == null || Number.isNaN(Number(longitudeValue))) return null;
+                            const dms = ddToDms(longitudeValue);
+                            return `${dms.d}° ${dms.m}' ${dms.s}" E`;
                           },
                         },
                       ]}
+                    />
+                  </div>
+                ),
+              },
+              {
+                key: "files",
+                label: `File đính kèm (${attachmentItems.length})`,
+                children: (
+                  <div style={{ paddingTop: 6 }} className="cctv-files-table">
+                    <style>{`
+                      .cctv-files-table.cctv-files-table .anticon { font-size: 16px !important; }
+                      .cctv-files-table .ant-table-thead > tr > th {
+                        height: 38px !important;
+                        box-sizing: border-box !important;
+                        border-bottom: 1px solid #f1f5f9 !important;
+                        box-shadow: none !important;
+                      }
+                    `}</style>
+                    <div style={{ marginBottom: 8 }}>
+                      <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: 13.5 }}>File đính kèm</span>
+                    </div>
+                    <InfrastructureAttachmentTab
+                      attachments={attachmentItems}
+                      readonly
+                      readonlyBerthLayout
+                      userMap={userMap}
+                      loadReadonlyPreviewImage={(attachmentId) => {
+                        const targetId = selectedRecord?.id || updateTarget?.id;
+                        if (!targetId) return Promise.reject(new Error('Chưa xác định được bản ghi camera để tải ảnh'));
+                        return api.get(`/v1/cctv/${targetId}/attachments/${attachmentId}/download`, { responseType: "blob" })
+                          .then((res: any) => new Blob([res.data]));
+                      }}
+                      onDownload={handleDownloadAttachmentItem}
                     />
                   </div>
                 ),
@@ -2598,106 +2535,115 @@ const CctvListPage = () => {
                 key: "operationMaintenance",
                 label: "Vận hành & bảo trì",
                 children: (
-                  <div style={{ paddingTop: 3 }}>
-                    <Tabs
-                      defaultActiveKey="op-run"
-                      tabBarStyle={{ marginBottom: 0 }}
-                      items={[
-                        {
-                          key: "op-run",
-                          label: "Thông tin vận hành khai thác",
-                          children: (
-                            <DetailTable
-                              columns={[
-                                { title: 'STT', width: 60, align: 'center' as const },
-                                { title: 'Mã / Tên kế hoạch', dataIndex: 'planName', width: 420 },
-                                { title: 'Ngày bắt đầu', dataIndex: 'planStartDate', width: 150, align: 'center' as const },
-                                { title: 'Ngày kết thúc', dataIndex: 'planEndDate', width: 150, align: 'center' as const },
-                              ]}
-                              dataSource={[]}
-                              pageSize={10}
-                              emptyText="Chưa có dữ liệu"
-                            />
-                          ),
-                        },
-                        {
-                          key: "op-maint",
-                          label: "Thông tin bảo trì",
-                          children: (
-                            <DetailTable
-                              columns={[
-                                { title: 'STT', width: 60, align: 'center' as const },
-                                { title: 'Mã / Tên kế hoạch', dataIndex: 'planName', width: 420 },
-                                { title: 'Ngày bắt đầu', dataIndex: 'planStartDate', width: 150, align: 'center' as const },
-                                { title: 'Ngày kết thúc', dataIndex: 'planEndDate', width: 150, align: 'center' as const },
-                              ]}
-                              dataSource={[]}
-                              pageSize={10}
-                              emptyText="Chưa có dữ liệu"
-                            />
-                          ),
-                        },
-                        {
-                          key: "op-incident",
-                          label: "Thông tin sự cố",
-                          children: (
-                            <DetailTable
-                              columns={[
-                                { title: 'STT', width: 60, align: 'center' as const },
-                                { title: 'Mã / Tên sự cố', dataIndex: 'incidentName', width: 420 },
-                                { title: 'Loại sự cố', dataIndex: 'incidentType', width: 180 },
-                                { title: 'Địa điểm', dataIndex: 'incidentLocation', width: 240 },
-                                { title: 'Thời gian', dataIndex: 'incidentTime', width: 160, align: 'center' as const },
-                              ]}
-                              dataSource={[]}
-                              pageSize={10}
-                              emptyText="Chưa có dữ liệu"
-                            />
-                          ),
-                        },
-                      ]}
-                    />
-                  </div>
-                ),
-              },
-              {
-                key: "handlingAndTracking",
-                label: "Xử lý & theo dõi",
-                children: (
-                  <div style={{ paddingTop: 3 }}>
-                    <div className="chk-detail-grid">
-                      {[
-                        { key: 'updatedDate', label: 'Ngày cập nhật', value: selectedRecord.updatedAt ? formatDate(selectedRecord.updatedAt) : '—' },
-                        { key: 'updatedByUser', label: 'Cán bộ cập nhật', value: selectedRecord.updatedByName || '—' },
-                        { key: 'submittedDate', label: 'Ngày gửi phê duyệt', value: selectedRecord.submittedDate ? formatDate(selectedRecord.submittedDate) : '—' },
-                        { key: 'submittedByUser', label: 'Cán bộ gửi phê duyệt', value: selectedRecord.submittedByName || '—' },
-                        { key: 'approvalContentLevel1', label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục', value: selectedRecord.approvalContentLevel1 || '—', fullWidth: true },
-                        { key: 'approvedDateLevel1', label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', value: selectedRecord.approvedDateLevel1 ? formatDate(selectedRecord.approvedDateLevel1) : '—' },
-                        { key: 'approvedByLevel1', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: selectedRecord.approverLevel1Name || '—' },
-                        { key: 'approvalContentLevel2', label: 'Nội dung phê duyệt cấp Cục', value: selectedRecord.approvalContentLevel2 || '—', fullWidth: true },
-                        { key: 'approvedDateLevel2', label: 'Ngày phê duyệt cấp Cục', value: selectedRecord.approvedDateLevel2 ? formatDate(selectedRecord.approvedDateLevel2) : '—' },
-                        { key: 'approvedByLevel2', label: 'Cán bộ phê duyệt cấp Cục', value: selectedRecord.approverLevel2Name || '—' },
-                        { key: 'approvalContentExtra', label: 'Lý do từ chối', value: selectedRecord.rejectionReason || '—', fullWidth: true },
-                        { key: 'status', label: 'Trạng thái', value: renderApprovalBadge(selectedRecord.approvalStatus), fullWidth: true },
-                      ].map((row) => (
-                        <div key={row.key} className={row.fullWidth ? 'chk-detail-row chk-detail-row--full' : 'chk-detail-row'}>
-                          <span className="chk-detail-label">{row.label}</span>
-                          <span className="chk-detail-value">{row.value}</span>
+                  <div style={{ paddingTop: 6, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)' }}>
+                    {/* ── Section 1: Thông tin vận hành khai thác (card chuẩn /berth, bấm để đóng/mở) ── */}
+                    <div style={{ ...cctvDetailSectionBoxStyle, padding: opRunOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
+                  <div
+                        onClick={() => setOpRunOpen(!opRunOpen)}
+                        style={{
+                          ...cctvDetailSectionHeaderStyle,
+                          marginBottom: opRunOpen ? 12 : 0,
+                          paddingBottom: opRunOpen ? 8 : 0,
+                          borderBottom: opRunOpen ? '1px solid #f1f5f9' : 'none',
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                        }}
+                      >
+                        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <SlidersOutlined style={{ color: actionPrimary }} />
+                          <span className="cctv-section-card-title">Thông tin vận hành khai thác</span>
                         </div>
-                      ))}
+                        <span style={{ color: actionPrimary, fontSize: 12, display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>{opRunOpen ? <DownOutlined style={{ fontSize: 12 }} /> : <RightOutlined style={{ fontSize: 12 }} />}</span>
+                      </div>
+                      {opRunOpen && (
+                        <DetailTable
+                          dataSource={[]}
+                          emptyText="Chưa có dữ liệu"
+                          rowKey={(r: any) => r.id || r.planCode || r.code}
+                          scrollY={160}
+                          columns={[
+                            { title: 'STT', width: 50 },
+                            { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '' },
+                            { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '' },
+                            { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'start', width: 150, align: 'center' as const, render: (v: string, rec: any) => formatDate(v || rec.startTime || rec.start || null) },
+                            { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'end', width: 150, align: 'center' as const, render: (v: string, rec: any) => formatDate(v || rec.endTime || rec.end || null) },
+                          ]}
+                        />
+                      )}
+                    </div>
+
+                    {/* ── Section 2: Thông tin bảo trì (card chuẩn /berth, bấm để đóng/mở) ── */}
+                    <div style={{ ...cctvDetailSectionBoxStyle, padding: opMaintOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
+                      <div
+                        onClick={() => setOpMaintOpen(!opMaintOpen)}
+                        style={{
+                          ...cctvDetailSectionHeaderStyle,
+                          marginBottom: opMaintOpen ? 12 : 0,
+                          paddingBottom: opMaintOpen ? 8 : 0,
+                          borderBottom: opMaintOpen ? '1px solid #f1f5f9' : 'none',
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                        }}
+                      >
+                        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <SlidersOutlined style={{ color: actionPrimary }} />
+                          <span className="cctv-section-card-title">Thông tin bảo trì</span>
+                        </div>
+                        <span style={{ color: actionPrimary, fontSize: 12, display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>{opMaintOpen ? <DownOutlined style={{ fontSize: 12 }} /> : <RightOutlined style={{ fontSize: 12 }} />}</span>
+                      </div>
+                      {opMaintOpen && (
+                        <DetailTable
+                          dataSource={[]}
+                          emptyText="Chưa có dữ liệu"
+                          rowKey={(r: any) => r.id || r.planCode || r.code}
+                          scrollY={160}
+                          columns={[
+                            { title: 'STT', width: 50 },
+                            { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '' },
+                            { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '' },
+                            { title: 'Thời gian bắt đầu', dataIndex: 'startTime', key: 'start', width: 150, align: 'center' as const, render: (v: string, rec: any) => formatDate(v || rec.start || rec.startDate || null) },
+                            { title: 'Thời gian kết thúc', dataIndex: 'endTime', key: 'end', width: 150, align: 'center' as const, render: (v: string, rec: any) => formatDate(v || rec.end || rec.endDate || null) },
+                          ]}
+                        />
+                      )}
+                    </div>
+
+                    {/* ── Section 3: Thông tin sự cố (card chuẩn /berth, bấm để đóng/mở) ── */}
+                    <div style={{ ...cctvDetailSectionBoxStyle, padding: opIncidentOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
+                      <div
+                        onClick={() => setOpIncidentOpen(!opIncidentOpen)}
+                        style={{
+                          ...cctvDetailSectionHeaderStyle,
+                          marginBottom: opIncidentOpen ? 12 : 0,
+                          paddingBottom: opIncidentOpen ? 8 : 0,
+                          borderBottom: opIncidentOpen ? '1px solid #f1f5f9' : 'none',
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                        }}
+                      >
+                        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <SlidersOutlined style={{ color: actionPrimary }} />
+                          <span className="cctv-section-card-title">Thông tin sự cố</span>
+                        </div>
+                        <span style={{ color: actionPrimary, fontSize: 12, display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>{opIncidentOpen ? <DownOutlined style={{ fontSize: 12 }} /> : <RightOutlined style={{ fontSize: 12 }} />}</span>
+                      </div>
+                      {opIncidentOpen && (
+                        <DetailTable
+                          dataSource={[]}
+                          emptyText="Chưa có dữ liệu"
+                          rowKey={(r: any) => r.id || r.planCode || r.code}
+                          scrollY={160}
+                          columns={[
+                            { title: 'STT', width: 50 },
+                            { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '' },
+                            { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'type', render: (v: string, rec: any) => v || rec.type || '' },
+                            { title: 'Địa điểm', dataIndex: 'location', key: 'location', render: (v: string) => v || '' },
+                            { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 150, align: 'center' as const, render: (v: string, rec: any) => formatDate(v || rec.time || null) },
+                          ]}
+                        />
+                      )}
                     </div>
                   </div>
-                ),
-              },
-              {
-                key: "files",
-                label: "File đính kèm",
-                children: (
-                  <InfrastructureAttachmentTab
-                    attachments={attachmentItems}
-                    readonly
-                    onDownload={handleDownloadAttachmentItem}
-                  />
                 ),
               },
             ]}
@@ -2705,20 +2651,22 @@ const CctvListPage = () => {
         )}
       </Drawer>
 
-      {/* Approve Modal — dùng chung 2 cấp (C1 Cảng vụ / C2 Cục) */}
+      {/* Approve Modal — dùng chung 2 cấp (C1 Cảng vụ / C2 Cục) (chuẩn /berth) */}
       <ApprovalModal
         visible={approveModalOpen}
         level={approveLevel}
         loading={approveLoading}
-        onConfirm={handleApprove}
+        onConfirm={(content) => { void handleApprove(content); }}
         onCancel={() => {
           setApproveTarget(null);
           setApproveModalOpen(false);
         }}
       />
 
-      {/* Submit Approval Modal — Gửi phê duyệt (giống màn /port) */}
+      {/* Submit Approval Modal — Gửi phê duyệt (chuẩn /berth) */}
       <Modal
+        rootClassName="cctv-modal-scope"
+        className="cctv-modal-scope"
         title={
           <span
             style={{
@@ -2727,24 +2675,28 @@ const CctvListPage = () => {
               fontSize: fontSizeLg,
             }}
           >
-            Xác nhận gửi phê duyệt
+            Xác nhận gửi Cảng vụ phê duyệt
           </span>
         }
         open={submitModalOpen}
         onCancel={() => {
-          setSubmittingRecord(null);
-          setSubmitContent("");
           setSubmitModalOpen(false);
+          setSubmittingRecord(null);
         }}
         footer={[
           <Button
             key="cancel"
             onClick={() => {
-              setSubmittingRecord(null);
-              setSubmitContent("");
               setSubmitModalOpen(false);
+              setSubmittingRecord(null);
             }}
-            style={outlineButtonStyle}
+            style={{
+              borderRadius: radiusPill,
+              height: 40,
+              fontSize: fontSizeMd,
+              borderColor: borderDefault,
+              color: textSecondary,
+            }}
           >
             Hủy
           </Button>,
@@ -2753,7 +2705,13 @@ const CctvListPage = () => {
             type="primary"
             onClick={handleConfirmSubmit}
             loading={submitLoading}
-            style={primaryButtonStyle}
+            style={{
+              borderRadius: radiusPill,
+              height: 40,
+              fontSize: fontSizeMd,
+              background: actionPrimary,
+              borderColor: actionPrimary,
+            }}
           >
             Xác nhận
           </Button>,
@@ -2762,26 +2720,15 @@ const CctvListPage = () => {
       >
         <div style={{ padding: "8px 0" }}>
           <p style={{ fontSize: fontSizeMd, color: textPrimary }}>
-            Gửi phê duyệt{" "}
-            <strong>
-              {submittingRecord?.deviceCode} — {submittingRecord?.deviceName}
-            </strong>
-            ?
+            Gửi <strong>{submittingRecord?.deviceCode ? `${submittingRecord.deviceCode} — ` : ''}{submittingRecord?.deviceName}</strong> để Cảng vụ phê duyệt?
           </p>
-          <Input.TextArea
-            value={submitContent}
-            onChange={(e) => setSubmitContent(e.target.value)}
-            placeholder="Nhập nội dung / ý kiến gửi phê duyệt (không bắt buộc)..."
-            rows={3}
-            maxLength={500}
-            showCount
-            style={{ marginTop: spaceSm }}
-          />
         </div>
       </Modal>
 
-      {/* Reject Modal */}
+      {/* Reject Modal (chuẩn /berth) */}
       <Modal
+        rootClassName="cctv-modal-scope"
+        className="cctv-modal-scope"
         title={
           <span
             style={{
@@ -2795,72 +2742,71 @@ const CctvListPage = () => {
         }
         open={rejectModalOpen}
         onCancel={() => {
-          setRejectTarget(null);
           setRejectModalOpen(false);
-          rejectForm.resetFields();
+          setRejectTarget(null);
+          setRejectReason("");
         }}
-        footer={null}
+        footer={[
+          <Button
+            key="cancel"
+            onClick={() => {
+              setRejectModalOpen(false);
+              setRejectTarget(null);
+              setRejectReason("");
+            }}
+            style={{
+              borderRadius: radiusPill,
+              height: 40,
+              fontSize: fontSizeMd,
+              borderColor: borderDefault,
+              color: textSecondary,
+            }}
+          >
+            Hủy
+          </Button>,
+          <Button
+            key="reject"
+            type="primary"
+            danger
+            loading={rejectLoading}
+            onClick={handleReject}
+            style={{
+              borderRadius: radiusPill,
+              height: 40,
+              fontSize: fontSizeMd,
+            }}
+          >
+            Xác nhận từ chối
+          </Button>,
+        ]}
         width={480}
       >
-        <Form form={rejectForm} layout="vertical">
-          <Form.Item
-            name="reason"
-            label="Lý do từ chối"
-            rules={[
-              { required: true, message: "Lý do từ chối không được để trống" },
-              { min: 10, message: "Lý do từ chối tối thiểu 10 ký tự" },
-              { max: 500, message: "Lý do từ chối tối đa 500 ký tự" },
-            ]}
-          >
-            <Input.TextArea
-              rows={4}
-              placeholder="Nhập lý do từ chối..."
-              style={{ borderRadius: radiusPill }}
-            />
-          </Form.Item>
-          <Form.Item
-            name="confirmed"
-            rules={[
-              { required: true, message: "Bạn cần xác nhận hành động này" },
-            ]}
-            valuePropName="checked"
-          >
-            <Checkbox>
-              <Text style={{ color: statusCritical }}>
-                Tôi xác nhận từ chối hệ thống CCTV này
-              </Text>
-            </Checkbox>
-          </Form.Item>
-          <div style={{ textAlign: "right", marginTop: spaceMd }}>
-            <Button
-              onClick={() => {
-                setRejectTarget(null);
-                setRejectModalOpen(false);
-                rejectForm.resetFields();
-              }}
-              style={{
-                borderRadius: radiusPill,
-                height: 40,
-                marginRight: spaceSm,
-              }}
-            >
-              Hủy
-            </Button>
-            <Button
-              type="primary"
-              danger
-              loading={rejectLoading}
-              onClick={handleReject}
-              style={pillStyle}
-            >
-              Từ chối
-            </Button>
-          </div>
-        </Form>
+        <div style={{ padding: "8px 0" }}>
+          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>
+            Vui lòng nhập lý do từ chối cho hệ thống CCTV:
+          </p>
+          {rejectTarget && (
+            <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
+              <strong style={{ color: textPrimary }}>
+                {rejectTarget.deviceCode ? `${rejectTarget.deviceCode} — ` : ''}{rejectTarget.deviceName}
+              </strong>
+            </p>
+          )}
+          <Input.TextArea
+            placeholder="Nhập lý do từ chối (tối thiểu 10, tối đa 500 ký tự)..."
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            rows={3}
+            maxLength={500}
+            showCount
+            style={{ borderRadius: 8, fontSize: fontSizeMd }}
+          />
+        </div>
       </Modal>
 
       {/* Delete Modal */}
       <Modal
+        rootClassName="cctv-modal-scope"
         title={
           <span
             style={{
@@ -2950,11 +2896,12 @@ const CctvListPage = () => {
 
       {/* Modal Chọn vị trí trên bản đồ — dùng chung Tạo mới / Cập nhật / Xem chi tiết (chuẩn /vts-operation-center) */}
       <Modal
+        rootClassName="cctv-modal-scope"
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <EnvironmentOutlined style={{ color: actionPrimary }} />
             <span style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: fontSizeLg }}>
-              {gisMapContext === 'detail' ? 'Xem vị trí trên bản đồ' : 'Chọn vị trí & tọa độ trên bản đồ'}
+              Xem vị trí trên bản đồ
             </span>
           </div>
         }
@@ -2963,63 +2910,33 @@ const CctvListPage = () => {
         destroyOnHidden
         width="90vw"
         style={{ top: 20, maxWidth: '1400px' }}
-        footer={
-          gisMapContext === 'detail' ? null : [
-            <Button
-              key="ok"
-              type="primary"
-              onClick={() => {
-                setGisMapOpen(false);
-                toast.success('Đã xác nhận vị trí từ bản đồ');
-              }}
-              style={{ ...primaryButtonStyle, height: 36, borderRadius: radiusPill }}
-            >
-              Xác nhận tọa độ
-            </Button>,
-          ]
-        }
+        footer={null}
       >
         <div style={{ padding: '8px 0' }}>
           <GisLocationSelector
             inline
             height={560}
-            disabled={gisMapContext === 'detail'}
+            disabled={true}
             value={{
               geometryType:
-                gisMapContext === 'edit'
-                  ? normalizeGeometryType(updateGeometryType)
-                  : gisMapContext === 'detail'
-                    ? normalizeGeometryType((selectedRecord as any)?.geometryType || inferGeometryFromWkt((selectedRecord as any)?.coordinates))
-                    : normalizeGeometryType(createGeometryType),
+                normalizeGeometryType((selectedRecord as any)?.geometryType || inferGeometryFromWkt((selectedRecord as any)?.coordinates)),
               coordinates:
-                gisMapContext === 'edit'
-                  ? serializeCoordinatesToWkt(toCanonicalCoordRows(updateGpsCoordList), normalizeGeometryType(updateGeometryType))
-                  : gisMapContext === 'detail'
-                    ? ((selectedRecord as any)?.coordinates || '')
-                    : serializeCoordinatesToWkt(toCanonicalCoordRows(gpsCoordList), normalizeGeometryType(createGeometryType)),
+                (selectedRecord as any)?.coordinates || '',
               symbolId:
-                (gisMapContext === 'edit'
-                  ? updateForm.getFieldValue('mapSymbolId')
-                  : gisMapContext === 'detail'
-                    ? (selectedRecord as any)?.mapSymbolId
-                    : createForm.getFieldValue('mapSymbolId')) || undefined,
+                (selectedRecord as any)?.mapSymbolId || undefined,
             }}
             defaultGeometryType={
-              (gisMapContext === 'edit'
-                ? normalizeGeometryType(updateGeometryType)
-                : gisMapContext === 'detail'
-                  ? normalizeGeometryType((selectedRecord as any)?.geometryType || inferGeometryFromWkt((selectedRecord as any)?.coordinates))
-                  : normalizeGeometryType(createGeometryType)) as 'POINT' | 'LINE' | 'POLYGON'
+              normalizeGeometryType((selectedRecord as any)?.geometryType || inferGeometryFromWkt((selectedRecord as any)?.coordinates)) as 'POINT' | 'LINE' | 'POLYGON'
             }
-            onChange={handleGisMapChange}
           />
         </div>
       </Modal>
 
       {/* ── Create Drawer ─────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
-        rootClassName={THEME_SCOPE_CLASS}
+      <AppDrawer
+        width="min(920px, 96vw)"
+        rootClassName="cctv-drawer-scope"
+        className="cctv-drawer-scope"
         title={
           <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
             Thêm mới hệ thống CCTV
@@ -3029,37 +2946,28 @@ const CctvListPage = () => {
         onClose={() => {
           setCreateModalOpen(false);
           createForm.resetFields();
-          setGpsCoordList([]);
-          setUploadFileList([]);
         }}
-        extra={
-          <Button
-            type="text"
-            onClick={() => {
-              setCreateModalOpen(false);
-              createForm.resetFields();
-              setGpsCoordList([]);
-              setUploadFileList([]);
-              setAttachmentItems([]);
-            }}
-            style={drawerCloseBtnStyle}
-          >
-            ✕
-          </Button>
-        }
         footer={
           <div style={drawerFooterStyle}>
             <Button
-              onClick={() => { createActionTypeRef.current = 'draft'; setCreateActionType('draft'); createForm.submit(); }}
-              loading={createLoading && createActionType === 'draft'}
+              onClick={() => {
+                actionTypeRef.current = 'draft';
+                setActionType('draft');
+                cctvFormRef.current?.submit('DRAFT');
+              }}
+              loading={submitting && actionType === 'draft'}
               style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
             >
               Lưu tạm
             </Button>
             <Button
               type="primary"
-              onClick={() => { createActionTypeRef.current = 'submit'; setCreateActionType('submit'); createForm.submit(); }}
-              loading={createLoading && createActionType === 'submit'}
+              onClick={() => {
+                actionTypeRef.current = 'submit';
+                setActionType('submit');
+                cctvFormRef.current?.submit('SUBMIT');
+              }}
+              loading={submitting && actionType === 'submit'}
               style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
             >
               Lưu và gửi phê duyệt
@@ -3067,9 +2975,19 @@ const CctvListPage = () => {
             {canSaveAndApprove && (
               <Button
                 type="primary"
-                onClick={() => { createActionTypeRef.current = 'approve'; setCreateActionType('approve'); createForm.submit(); }}
-                loading={createLoading && createActionType === 'approve'}
-                style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill, height: 40 }}
+                onClick={() => {
+                  actionTypeRef.current = 'approve';
+                  setActionType('approve');
+                  cctvFormRef.current?.submit('APPROVED');
+                }}
+                loading={submitting && actionType === 'approve'}
+                style={{
+                  ...primaryButtonStyle,
+                  background: statusOperational,
+                  borderColor: statusOperational,
+                  borderRadius: radiusPill,
+                  height: 40,
+                }}
               >
                 Lưu và phê duyệt
               </Button>
@@ -3078,429 +2996,74 @@ const CctvListPage = () => {
         }
         styles={{
           header: {
-            padding: "12px 24px",
+            padding: '12px 24px',
             borderBottom: `1px solid ${borderDefault}`,
             flexShrink: 0,
           },
-          body: { padding: "0 24px 12px 24px" },
+          body: { padding: '0 24px 12px 24px' },
         }}
+        destroyOnClose
       >
         <style>{requiredMarkStyle}</style>
-        <Form form={createForm} layout="vertical" onFinish={handleCreate}>
-          <Tabs
-            defaultActiveKey="general"
-            tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 100, background: surfaceCard }}
-            items={[
-              {
-                key: 'general',
-                label: 'Thông tin chung',
-                children: (
-                  <div style={{ ...themeTokenChk.drawerFormScrollStyle, paddingTop: spaceMd }}>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="deviceCode"
-                          {...labelProps('Mã thiết bị')}
-                          style={{ marginBottom: spaceFormField }}
-                          tooltip="Mã thiết bị được sinh tự động, không thể chỉnh sửa"
-                        >
-                          <Input
-                            disabled
-                            placeholder={deviceCodeLoading ? 'Đang sinh mã...' : 'Mã tự động'}
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="deviceName"
-                          {...labelProps('Tên thiết bị')}
-                          rules={[
-                            { required: true, message: "Vui lòng nhập tên thiết bị" },
-                            { warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 255 ? Promise.reject(new Error('Đã đạt tối đa 255 ký tự')) : Promise.resolve() },
-                          ]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input
-                            placeholder="Nhập tên thiết bị..."
-                            maxLength={255} showCount
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="orgUnitId"
-                          {...labelProps('Đơn vị quản lý')}
-                          rules={[
-                            { required: true, message: "Vui lòng chọn đơn vị quản lý" },
-                          ]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <OrgUnitTreeSelect
-                            organizations={orgUnitOptions}
-                            placeholder="Chọn đơn vị"
-                            loading={loadingOrgs}
-                            showPath
-                            treeDefaultExpandAll={false}
-                            style={{ ...pillStyle }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="attachedInfrastructureType"
-                          {...labelProps('Thuộc loại hạ tầng')}
-                          rules={[
-                            { required: true, message: "Vui lòng chọn loại hạ tầng" },
-                          ]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            style={{ width: "100%", ...pillStyle }}
-                            placeholder="Chọn loại hạ tầng"
-                            options={attachedInfraTypeOptions}
-                            onChange={(val) => {
-                              createForm.setFieldValue("attachedInfrastructureType", val);
-                              // Reset attachedInfrastructureId khi đổi loại
-                              createForm.setFieldValue("attachedInfrastructureId", undefined);
-                            }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="attachedInfrastructureId"
-                          {...labelProps('Thuộc hạ tầng')}
-                          rules={[
-                            { required: true, message: "Vui lòng chọn hạ tầng" },
-                          ]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            style={{ width: "100%", ...pillStyle }}
-                            placeholder={
-                              createAttachedType === 2
-                                ? "Chọn trạm Radar"
-                                : createAttachedType === 1
-                                  ? "Chọn Trung Tâm Điều Hành VTS"
-                                  : "Chọn loại hạ tầng trước"
-                            }
-                            options={createAttachedType === 1 ? vtsOperationCenterOptions : createAttachedType === 2 ? radarStationOptions : []}
-                            loading={createAttachedType === 1 ? loadingVtsCenters : createAttachedType === 2 ? loadingRadars : false}
-                            disabled={createAttachedType !== 1 && createAttachedType !== 2}
-                            allowClear
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="operatingUnitId"
-                          {...labelProps('Đơn vị khai thác')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            showSearch
-                            placeholder="Chọn đơn vị khai thác"
-                            loading={loadingOperatingOrgs}
-                            style={{ width: "100%", ...pillStyle }}
-                            options={operatingOrganizationOptions}
-                            filterOption={(input: string, option: any) =>
-                              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                            }
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="provinceName"
-                          {...labelProps('Địa điểm (Tỉnh/TP)')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            style={{ width: "100%", ...pillStyle }}
-                            placeholder="Chọn tỉnh/thành phố"
-                            options={VIETNAM_PROVINCES.map(p => ({ label: p, value: p }))}
-                            showSearch
-                            filterOption={(input: string, option: any) =>
-                              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                            }
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="detailedLocation"
-                          {...labelProps('Địa điểm chi tiết')}
-                          rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 500 ? Promise.reject(new Error('Đã đạt tối đa 500 ký tự')) : Promise.resolve() }]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input
-                            maxLength={500} showCount
-                            placeholder="Nhập địa điểm chi tiết..."
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="unitOfMeasure"
-                          {...labelProps('Đơn vị tính')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            placeholder="Chọn đơn vị tính"
-                            options={[
-                              { label: 'Bộ', value: 1 },
-                              { label: 'Bến', value: 2 },
-                              { label: 'Bản quyền', value: 3 },
-                              { label: 'Chiếc', value: 4 },
-                              { label: 'Cổng', value: 5 },
-                              { label: 'Cái', value: 6 },
-                              { label: 'Cột', value: 7 },
-                              { label: 'Cầu', value: 8 },
-                              { label: 'Đường truyền', value: 9 },
-                              { label: 'Héc-ta', value: 10 },
-                              { label: 'Hạng mục', value: 11 },
-                              { label: 'Hệ thống', value: 12 },
-                              { label: 'Kho', value: 13 },
-                              { label: 'Khu', value: 14 },
-                              { label: 'Ki-lô-mét', value: 15 },
-                              { label: 'Mét', value: 16 },
-                              { label: 'Mét vuông', value: 17 },
-                              { label: 'Nhà', value: 18 },
-                              { label: 'Phòng', value: 19 },
-                              { label: 'Phân hệ', value: 20 },
-                              { label: 'Quả', value: 21 },
-                              { label: 'Tuyến', value: 22 },
-                              { label: 'Tấn', value: 23 },
-                              { label: 'Trạm', value: 24 },
-                              { label: 'Tháp', value: 25 },
-                              { label: 'Trụ', value: 26 },
-                              { label: 'VNĐ', value: 27 },
-                            ]}
-                            style={{ width: "100%", ...pillStyle }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="quantity"
-                          {...labelProps('Số lượng')}
-                          rules={[
-                            { required: true, message: "Vui lòng nhập số lượng" },
-                            { type: 'number', min: 1, message: "Số lượng phải > 0" },
-                          ]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <InputNumber
-                            min={1}
-                            style={{ width: "100%", ...pillStyle }}
-                            placeholder="0"
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="yearOfUse"
-                          {...labelProps('Năm đưa vào sử dụng')}
-                          style={{ marginBottom: spaceFormField }}
-                          getValueProps={(v: number | null | undefined) => ({ value: v != null && !Number.isNaN(Number(v)) ? dayjs().year(Number(v)) : null })}
-                          getValueFromEvent={(d: { year?: () => number } | null) => (d && typeof d.year === 'function' ? d.year() : null)}
-                        >
-                          <DatePicker
-                            picker="year"
-                            format="YYYY"
-                            placeholder="Chọn năm đưa vào sử dụng"
-                            style={{ width: "100%", ...pillStyle }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="operationalStatus"
-                          {...labelProps('Tình trạng')}
-                          initialValue={1}
-                          rules={[
-                            { required: true, message: "Vui lòng chọn tình trạng" },
-                          ]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            placeholder="Chọn tình trạng"
-                            options={OPERATIONAL_STATUS_OPTIONS}
-                            style={{ width: "100%", ...pillStyle }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="model"
-                          {...labelProps('Model')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input
-                            placeholder="Nhập model..."
-                            maxLength={255} showCount
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="manufacturer"
-                          {...labelProps('Hãng sản xuất')}
-                          rules={[{ max: 50, message: "Tối đa 50 ký tự" }]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input
-                            placeholder="Nhập hãng..."
-                            maxLength={50} showCount
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Form.Item
-                      name="specifications"
-                      {...labelProps('Thông số kỹ thuật')}
-                      rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 2000 ? Promise.reject(new Error('Đã đạt tối đa 2000 ký tự')) : Promise.resolve() }]}
-                      style={{ marginBottom: spaceFormField }}
-                    >
-                      <Input.TextArea
-                        rows={3}
-                        placeholder="Nhập thông số kỹ thuật..."
-                        maxLength={2000} showCount
-                        style={themeTokenChk.textAreaStyle}
-                      />
-                    </Form.Item>
-                    <Form.Item
-                      name="maintenanceInformation"
-                      {...labelProps('Thông tin bảo trì')}
-                      rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 2000 ? Promise.reject(new Error('Đã đạt tối đa 2000 ký tự')) : Promise.resolve() }]}
-                      style={{ marginBottom: spaceFormField }}
-                    >
-                      <Input.TextArea
-                        rows={3}
-                        placeholder="Nhập thông tin bảo trì..."
-                        maxLength={2000} showCount
-                        style={themeTokenChk.textAreaStyle}
-                      />
-                    </Form.Item>
-                    <Form.Item
-                      name="note"
-                      {...labelProps('Ghi chú')}
-                      rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 2000 ? Promise.reject(new Error('Đã đạt tối đa 2000 ký tự')) : Promise.resolve() }]}
-                      style={{ marginBottom: spaceFormField }}
-                    >
-                      <Input.TextArea
-                        rows={3}
-                        placeholder="Nhập ghi chú..."
-                        maxLength={2000} showCount
-                        style={themeTokenChk.textAreaStyle}
-                      />
-                    </Form.Item>
-                  </div>
-                ),
-              },
-              {
-                key: 'gis',
-                label: 'Thông tin vị trí',
-                children: (
-                  <div style={{ paddingTop: 16 }}>
-                    <CctvGisTab
-                      geometryType={createGeometryType}
-                      rows={gpsCoordList}
-                      symbols={symbols}
-                      onAddRow={() => setGpsCoordList((prev) => [...prev, { lat: null, lng: null }])}
-                      onUpdatePoint={updateCreateGpsPoint}
-                      onDeleteRow={removeCreateGpsRow}
-                      onOpenMap={() => { setGisMapContext('create'); setGisMapOpen(true); }}
-                    />
-                  </div>
-                ),
-              },
-              {
-                key: 'attachments',
-                label: 'File đính kèm',
-                children: (
-                  <div style={themeTokenChk.drawerFormScrollStyle}>
-                    <InfrastructureAttachmentTab
-                      attachments={attachmentItems}
-                      onUpload={handleAddAttachmentFile}
-                      onDelete={handleRemoveAttachmentItem}
-                      onDownload={handleDownloadAttachmentItem}
-                    />
-                  </div>
-                ),
-              },
-            ]}
-          />
-        </Form>
-      </Drawer>
+        {createModalOpen && (
+          <Form form={createForm} layout="vertical" initialValues={{}}>
+            <CctvForm
+              ref={cctvFormRef}
+              form={createForm}
+              onFinish={() => {
+                setCreateModalOpen(false);
+                fetchData();
+                fetchTabCounts();
+              }}
+              onSubmittingChange={setSubmitting}
+            />
+          </Form>
+        )}
+      </AppDrawer>
 
       {/* ── Edit Drawer ──────────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
-        rootClassName={THEME_SCOPE_CLASS}
+      <AppDrawer
+        width="min(920px, 96vw)"
+        rootClassName="cctv-drawer-scope"
+        className="cctv-drawer-scope"
         title={
-          <span style={drawerTitleStyle}>
-            Chỉnh sửa thông tin — {updateTarget?.deviceName || '—'}
+          <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
+            Chỉnh sửa thông tin — {updateTarget?.deviceName || 'Hệ thống CCTV'}
           </span>
         }
-        open={updateModalOpen}
+        open={updateModalOpen && !!updateTarget}
         onClose={() => {
           setUpdateModalOpen(false);
           setUpdateTarget(null);
           updateForm.resetFields();
-          setUpdateGpsCoordList([]);
-          setUploadFileList([]);
           closeLinkedDrawer();
         }}
-        extra={
-          <Button
-            type="text"
-            onClick={() => {
-              setUpdateModalOpen(false);
-              setUpdateTarget(null);
-              updateForm.resetFields();
-              setUpdateGpsCoordList([]);
-              setUploadFileList([]);
-              setAttachmentItems([]);
-            }}
-            style={drawerCloseBtnStyle}
-          >
-            ✕
-          </Button>
-        }
         footer={
           <div style={drawerFooterStyle}>
             {updateTarget?.approvalStatus !== 'APPROVED' && (
-            <Button
-              onClick={() => { updateActionTypeRef.current = 'draft'; setUpdateActionType('draft'); updateForm.submit(); }}
-              loading={updateLoading && updateActionType === 'draft'}
-              style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
-            >
-              Lưu tạm
-            </Button>
+              <Button
+                onClick={() => {
+                  actionTypeRef.current = 'draft';
+                  setActionType('draft');
+                  editCctvFormRef.current?.submit('DRAFT');
+                }}
+                loading={submitting && actionType === 'draft'}
+                style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
+              >
+                Lưu tạm
+              </Button>
             )}
-            {(updateTarget?.approvalStatus === 'DRAFT' || updateTarget?.approvalStatus === 'REJECTED_LEVEL1' || updateTarget?.approvalStatus === 'REJECTED_LEVEL2') && (
+            {(updateTarget?.approvalStatus === 'DRAFT' ||
+              updateTarget?.approvalStatus === 'REJECTED_LEVEL1' ||
+              updateTarget?.approvalStatus === 'REJECTED_LEVEL2') && (
               <Button
                 type="primary"
-                onClick={() => { updateActionTypeRef.current = 'submit'; setUpdateActionType('submit'); updateForm.submit(); }}
-                loading={updateLoading && updateActionType === 'submit'}
+                onClick={() => {
+                  actionTypeRef.current = 'submit';
+                  setActionType('submit');
+                  editCctvFormRef.current?.submit('SUBMIT');
+                }}
+                loading={submitting && actionType === 'submit'}
                 style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
               >
                 Lưu và gửi phê duyệt
@@ -3509,9 +3072,19 @@ const CctvListPage = () => {
             {updateTarget?.approvalStatus === 'APPROVED' && canSaveAndApprove && (
               <Button
                 type="primary"
-                onClick={() => { updateActionTypeRef.current = 'approve'; setUpdateActionType('approve'); updateForm.submit(); }}
-                loading={updateLoading && updateActionType === 'approve'}
-                style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill, height: 40 }}
+                onClick={() => {
+                  actionTypeRef.current = 'approve';
+                  setActionType('approve');
+                  editCctvFormRef.current?.submit('APPROVED');
+                }}
+                loading={submitting && actionType === 'approve'}
+                style={{
+                  ...primaryButtonStyle,
+                  background: statusOperational,
+                  borderColor: statusOperational,
+                  borderRadius: radiusPill,
+                  height: 40,
+                }}
               >
                 Lưu và phê duyệt
               </Button>
@@ -3520,377 +3093,41 @@ const CctvListPage = () => {
         }
         styles={{
           header: {
-            padding: "12px 24px",
+            padding: '12px 24px',
             borderBottom: `1px solid ${borderDefault}`,
             flexShrink: 0,
           },
-          body: { padding: "0 24px 12px 24px" },
+          body: { padding: '0 24px 12px 24px' },
         }}
       >
-        <style>{requiredMarkStyle}</style>
-        <Form form={updateForm} layout="vertical" onFinish={handleUpdate}>
-          <Tabs
-            defaultActiveKey="general"
-            tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 100, background: surfaceCard }}
-            items={[
-              {
-                key: 'general',
-                label: 'Thông tin chung',
-                children: (
-                  <div style={{ ...themeTokenChk.drawerFormScrollStyle, paddingTop: spaceMd }}>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="deviceCode"
-                          {...labelProps('Mã thiết bị')}
-                          style={{ marginBottom: spaceFormField }}
-                          tooltip="Mã thiết bị được sinh tự động, không thể chỉnh sửa"
-                        >
-                          <Input
-                            disabled
-                            placeholder={deviceCodeLoading ? 'Đang sinh mã...' : 'Mã tự động'}
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="deviceName"
-                          {...labelProps('Tên thiết bị')}
-                          rules={[
-                            { required: true, message: "Vui lòng nhập tên thiết bị" },
-                            { warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 255 ? Promise.reject(new Error('Đã đạt tối đa 255 ký tự')) : Promise.resolve() },
-                          ]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input
-                            maxLength={255} showCount
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="orgUnitId"
-                          {...labelProps('Đơn vị quản lý')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <OrgUnitTreeSelect
-                            organizations={orgUnitOptions}
-                            placeholder="Chọn đơn vị"
-                            loading={loadingOrgs}
-                            showPath
-                            treeDefaultExpandAll={false}
-                            disabled
-                            style={{ ...pillStyle }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="attachedInfrastructureType"
-                          {...labelProps('Thuộc loại hạ tầng')}
-                          rules={[
-                            { required: true, message: "Vui lòng chọn loại hạ tầng" },
-                          ]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            style={{ width: "100%", ...pillStyle }}
-                            placeholder="Chọn loại hạ tầng"
-                            options={attachedInfraTypeOptions}
-                            onChange={(val) => {
-                              updateForm.setFieldValue("attachedInfrastructureType", val);
-                              updateForm.setFieldValue("attachedInfrastructureId", undefined);
-                            }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="attachedInfrastructureId"
-                          {...labelProps('Thuộc hạ tầng')}
-                          rules={[
-                            { required: true, message: "Vui lòng chọn hạ tầng" },
-                          ]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            style={{ width: "100%", ...pillStyle }}
-                            placeholder={
-                              updateAttachedType === 2
-                                ? "Chọn trạm Radar"
-                                : updateAttachedType === 1
-                                  ? "Chọn Trung Tâm Điều Hành VTS"
-                                  : "Chọn loại hạ tầng trước"
-                            }
-                            options={updateAttachedType === 1 ? vtsOperationCenterOptions : updateAttachedType === 2 ? radarStationOptions : []}
-                            loading={updateAttachedType === 1 ? loadingVtsCenters : updateAttachedType === 2 ? loadingRadars : false}
-                            disabled={updateAttachedType !== 1 && updateAttachedType !== 2}
-                            allowClear
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="operatingUnitId"
-                          {...labelProps('Đơn vị khai thác')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            showSearch
-                            placeholder="Chọn đơn vị khai thác"
-                            loading={loadingOperatingOrgs}
-                            style={{ width: "100%", ...pillStyle }}
-                            options={operatingOrganizationOptions}
-                            filterOption={(input: string, option: any) =>
-                              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                            }
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="provinceName"
-                          {...labelProps('Địa điểm (Tỉnh/TP)')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            style={{ width: "100%", ...pillStyle }}
-                            placeholder="Chọn tỉnh/thành phố"
-                            options={VIETNAM_PROVINCES.map(p => ({ label: p, value: p }))}
-                            showSearch
-                            filterOption={(input: string, option: any) =>
-                              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                            }
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="detailedLocation"
-                          {...labelProps('Địa điểm chi tiết')}
-                          rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 500 ? Promise.reject(new Error('Đã đạt tối đa 500 ký tự')) : Promise.resolve() }]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input
-                            maxLength={500} showCount
-                            placeholder="Nhập địa điểm chi tiết..."
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="unitOfMeasure"
-                          {...labelProps('Đơn vị tính')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            placeholder="Chọn đơn vị tính"
-                            options={[
-                              { label: 'Bộ', value: 1 },
-                              { label: 'Bến', value: 2 },
-                              { label: 'Bản quyền', value: 3 },
-                              { label: 'Chiếc', value: 4 },
-                              { label: 'Cổng', value: 5 },
-                              { label: 'Cái', value: 6 },
-                              { label: 'Cột', value: 7 },
-                              { label: 'Cầu', value: 8 },
-                              { label: 'Đường truyền', value: 9 },
-                              { label: 'Héc-ta', value: 10 },
-                              { label: 'Hạng mục', value: 11 },
-                              { label: 'Hệ thống', value: 12 },
-                              { label: 'Kho', value: 13 },
-                              { label: 'Khu', value: 14 },
-                              { label: 'Ki-lô-mét', value: 15 },
-                              { label: 'Mét', value: 16 },
-                              { label: 'Mét vuông', value: 17 },
-                              { label: 'Nhà', value: 18 },
-                              { label: 'Phòng', value: 19 },
-                              { label: 'Phân hệ', value: 20 },
-                              { label: 'Quả', value: 21 },
-                              { label: 'Tuyến', value: 22 },
-                              { label: 'Tấn', value: 23 },
-                              { label: 'Trạm', value: 24 },
-                              { label: 'Tháp', value: 25 },
-                              { label: 'Trụ', value: 26 },
-                              { label: 'VNĐ', value: 27 },
-                            ]}
-                            style={{ width: "100%", ...pillStyle }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="quantity"
-                          {...labelProps('Số lượng')}
-                          rules={[
-                            { required: true, message: "Vui lòng nhập số lượng" },
-                            { type: 'number', min: 1, message: "Số lượng phải > 0" },
-                          ]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <InputNumber
-                            min={1}
-                            style={{ width: "100%", ...pillStyle }}
-                            placeholder="0"
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="yearOfUse"
-                          {...labelProps('Năm đưa vào sử dụng')}
-                          style={{ marginBottom: spaceFormField }}
-                          getValueProps={(v: number | null | undefined) => ({ value: v != null && !Number.isNaN(Number(v)) ? dayjs().year(Number(v)) : null })}
-                          getValueFromEvent={(d: { year?: () => number } | null) => (d && typeof d.year === 'function' ? d.year() : null)}
-                        >
-                          <DatePicker
-                            picker="year"
-                            format="YYYY"
-                            placeholder="Chọn năm đưa vào sử dụng"
-                            style={{ width: "100%", ...pillStyle }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="operationalStatus"
-                          {...labelProps('Tình trạng')}
-                          rules={[
-                            { required: true, message: "Vui lòng chọn tình trạng" },
-                          ]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Select
-                            placeholder="Chọn tình trạng"
-                            options={OPERATIONAL_STATUS_OPTIONS}
-                            style={{ width: "100%", ...pillStyle }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="model"
-                          {...labelProps('Model')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input
-                            maxLength={255} showCount
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="manufacturer"
-                          {...labelProps('Hãng sản xuất')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input
-                            maxLength={50} showCount
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Form.Item
-                      name="specifications"
-                      {...labelProps('Thông số kỹ thuật')}
-                      rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 2000 ? Promise.reject(new Error('Đã đạt tối đa 2000 ký tự')) : Promise.resolve() }]}
-                      style={{ marginBottom: spaceFormField }}
-                    >
-                      <Input.TextArea
-                        rows={3}
-                        placeholder="Nhập thông số kỹ thuật..."
-                        maxLength={2000} showCount
-                        style={themeTokenChk.textAreaStyle}
-                      />
-                    </Form.Item>
-                    <Form.Item
-                      name="maintenanceInformation"
-                      {...labelProps('Thông tin bảo trì')}
-                      rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 2000 ? Promise.reject(new Error('Đã đạt tối đa 2000 ký tự')) : Promise.resolve() }]}
-                      style={{ marginBottom: spaceFormField }}
-                    >
-                      <Input.TextArea
-                        rows={3}
-                        placeholder="Nhập thông tin bảo trì..."
-                        maxLength={2000} showCount
-                        style={themeTokenChk.textAreaStyle}
-                      />
-                    </Form.Item>
-                    <Form.Item
-                      name="note"
-                      {...labelProps('Ghi chú')}
-                      rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 2000 ? Promise.reject(new Error('Đã đạt tối đa 2000 ký tự')) : Promise.resolve() }]}
-                      style={{ marginBottom: spaceFormField }}
-                    >
-                      <Input.TextArea
-                        rows={3}
-                        placeholder="Nhập ghi chú..."
-                        maxLength={2000} showCount
-                        style={themeTokenChk.textAreaStyle}
-                      />
-                    </Form.Item>
-                  </div>
-                ),
-              },
-              {
-                key: 'gis',
-                label: 'Thông tin vị trí',
-                children: (
-                  <div style={{ paddingTop: 16 }}>
-                    <CctvGisTab
-                      geometryType={updateGeometryType}
-                      rows={updateGpsCoordList}
-                      symbols={symbols}
-                      onAddRow={() => setUpdateGpsCoordList((prev) => [...prev, { lat: null, lng: null }])}
-                      onUpdatePoint={updateEditGpsPoint}
-                      onDeleteRow={removeEditGpsRow}
-                      onOpenMap={() => { setGisMapContext('edit'); setGisMapOpen(true); }}
-                    />
-                  </div>
-                ),
-              },
-              {
-                key: 'attachments',
-                label: 'File đính kèm',
-                children: (
-                  <div style={themeTokenChk.drawerFormScrollStyle}>
-                    <InfrastructureAttachmentTab
-                      attachments={attachmentItems}
-                      readonly={!!updateTarget && updateTarget.approvalStatus === 'APPROVED' && !canSaveAndApprove}
-                      onUpload={handleAddAttachmentFile}
-                      onDelete={handleRemoveAttachmentItem}
-                      onDownload={handleDownloadAttachmentItem}
-                    />
-                  </div>
-                ),
-              },
-            ]}
-          />
-        </Form>
-      </Drawer>
+        {updateTarget?.id && (
+          <>
+            <style>{requiredMarkStyle}</style>
+            <Form form={updateForm} layout="vertical" initialValues={{}}>
+              <CctvForm
+                ref={editCctvFormRef}
+                form={updateForm}
+                id={updateTarget.id}
+                onFinish={() => {
+                  setUpdateModalOpen(false);
+                  setUpdateTarget(null);
+                  fetchData();
+                  fetchTabCounts();
+                  closeLinkedDrawer();
+                }}
+                onSubmittingChange={setSubmitting}
+              />
+            </Form>
+          </>
+        )}
+      </AppDrawer>
 
       {/* ── History Drawer ─────────────────────────────────────── */}
       <Drawer
         {...drawerProps}
-        rootClassName={THEME_SCOPE_CLASS}
-        size={isIframeModal ? '100%' : 960}
+      rootClassName={THEME_SCOPE_CLASS}
+      className="cctv-drawer-scope"
+      size={isIframeModal ? '100%' : 960}
         mask={!isIframeModal}
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>

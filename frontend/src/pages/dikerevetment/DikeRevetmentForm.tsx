@@ -34,7 +34,7 @@ import { useAuthStore } from '../../store/authStore';
 import { hasPermissionFromList } from '../../store/permissionStore';
 import { colors, sidebarBg, detailRowStyle, detailLabelColStyle, detailValueStyle } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
-import { fontWeightBold, fontSizeLg, fontSizeMd, spaceMd, spaceLg, spaceXxl, inputStyle, selectStyle, formFieldStyle, primaryButtonStyle, outlineButtonStyle, dangerButtonStyle, statusOperational, radiusPill } from '../../themetokenchk';
+import { fontWeightBold, fontSizeLg, spaceMd, spaceLg, spaceXxl, inputStyle, selectStyle, formFieldStyle, primaryButtonStyle, outlineButtonStyle, dangerButtonStyle, statusOperational, radiusPill } from '../../themetokenchk';
 import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
@@ -94,7 +94,7 @@ export interface DikeRevetmentFormProps {
 
 export default function DikeRevetmentForm(props: DikeRevetmentFormProps = {}) {
   return (
-    <ThemeTokenProvider tokens={themeTokenChk}>
+    <ThemeTokenProvider tokens={{ ...themeTokenChk, fontSizeMd: 13.5 }}>
       <DikeRevetmentFormInner {...props} />
     </ThemeTokenProvider>
   );
@@ -473,7 +473,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
                 <div style={detailLabelColStyle}>Trạng thái:</div>
                 <div style={detailValueStyle}><ApprovalStatusBadge status={record.approvalStatus} labelOverrides={DIKE_REVETMENT_STATUS_LABELS} /></div>
               </div>
-              <div style={{ gridColumn: '1 / -1', color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginTop: spaceLg }}>Vị trí (GIS)</div>
+              <div style={{ gridColumn: '1 / -1', color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: 13.5, marginTop: spaceLg }}>Vị trí (GIS)</div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Loại đối tượng:</div>
                 <div style={detailValueStyle}>{record.geometryType === 'POINT' ? 'Đối tượng điểm' : record.geometryType === 'LINE' ? 'Đối tượng đường' : record.geometryType === 'POLYGON' ? 'Đối tượng vùng' : '—'}</div>

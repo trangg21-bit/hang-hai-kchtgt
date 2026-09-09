@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Upload, Button, Modal } from 'antd';
 import {
   InboxOutlined,
@@ -58,6 +58,14 @@ export interface InfrastructureAttachmentTabProps {
   onDownload?: (attachmentId: string, fileName: string) => void | Promise<any>;
   /** Callback xem trước tùy biến */
   onPreview?: (attachment: InfrastructureAttachmentItem) => void;
+  /**
+   * Callback nạp dữ liệu hình ảnh để xem chi tiết (chỉ dùng khi chế độ readonly và tệp không có
+   * `url`/`filePath` là đường dẫn HTTP truy cập được). Giống hệt cách màn /berth tải ảnh:
+   * download blob qua endpoint `/{id}/attachments/{attachmentId}/download` rồi objectURL.
+   * Trả về `Blob` (sẽ được objectURL hóa) hoặc chuỗi URL trực tiếp. Nếu không truyền, hành vi
+   * mặc định giữ nguyên như cũ.
+   */
+  loadReadonlyPreviewImage?: (attachmentId: string) => Promise<Blob | string>;
   /** Trạng thái đang tải danh sách tệp (lazy load) */
   isLoading?: boolean;
   /** Tùy chọn chiều cao cuộn bảng scrollY (mặc định tự động theo readonly) */
@@ -70,6 +78,16 @@ export interface InfrastructureAttachmentTabProps {
   accept?: string;
   /** Nội dung thông báo khi bảng rỗng */
   emptyText?: string;
+  /**
+   * Đồng bộ chế độ readonly theo bố cục chuẩn màn /berth (BerthDetailContent):
+   * - Cột STT rộng 50px (thay vì 60px).
+   * - Cột "Ngày tải lên" rộng 135px (thay vì 160px).
+   * - Nút Thao tác (Eye/Download) và ô đệm 28x28px (thay vì 32x32px), dùng size="small".
+   * - Icon tệp KHÔNG phải ảnh hiển thị màu xám textTertiary (thay vì actionPrimary);
+   *   icon ảnh vẫn giữ màu actionPrimary.
+   * Mọi con số đều đọc nguyên văn từ BerthDetailContent.tsx (không kèm ảnh hưởng tới chế độ tải lên).
+   */
+  readonlyBerthLayout?: boolean;
 }
 
 const DEFAULT_ACCEPT = '.pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif';
@@ -138,6 +156,8 @@ export default function InfrastructureAttachmentTab({
   maxSizeMB = 20,
   accept = DEFAULT_ACCEPT,
   emptyText,
+  readonlyBerthLayout = false,
+  loadReadonlyPreviewImage,
 }: InfrastructureAttachmentTabProps) {
   const currentUser = useAuthStore((s) => s.user);
   const [previewVisible, setPreviewVisible] = useState(false);
@@ -152,7 +172,7 @@ export default function InfrastructureAttachmentTab({
     return false;
   };
 
-  const handlePreview = (record: InfrastructureAttachmentItem) => {
+  const handlePreview = async (record: InfrastructureAttachmentItem) => {
     if (onPreview) {
       onPreview(record);
       return;
@@ -163,6 +183,14 @@ export default function InfrastructureAttachmentTab({
       setPreviewImageUrl(blobUrl);
     } else if (record.url) {
       setPreviewImageUrl(record.url);
+    } else if (loadReadonlyPreviewImage && record.id) {
+      try {
+        const data = await loadReadonlyPreviewImage(record.id);
+        const imageSource = data instanceof Blob ? URL.createObjectURL(data) : data;
+        setPreviewImageUrl(imageSource);
+      } catch {
+        setPreviewImageUrl('');
+      }
     } else if (record.filePath) {
       setPreviewImageUrl(record.filePath);
     } else {
@@ -174,10 +202,14 @@ export default function InfrastructureAttachmentTab({
 
   const effectiveScrollY = scrollY || (readonly ? DRAWER_TABLE_SCROLL_Y.detailView : DRAWER_TABLE_SCROLL_Y.withDragger);
 
+  const isBerthReadonlyLayout = readonly && readonlyBerthLayout;
+  /** Hằng số độ rộng nút Thao tác trong chế độ readonly theo chuẩn /berth (đọc từ BerthDetailContent) */
+  const actionControlSize = isBerthReadonlyLayout ? 28 : 32;
+
   const columns = [
     {
       title: 'STT',
-      width: 60,
+      width: isBerthReadonlyLayout ? 50 : 60,
       align: 'center' as const,
     },
     {
@@ -200,6 +232,7 @@ export default function InfrastructureAttachmentTab({
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
                 maxWidth: '100%',
+                ...(isBerthReadonlyLayout ? { fontWeight: fontWeightMedium } : {}),
               }}
               onClick={() => {
                 if (isImg) {
@@ -213,7 +246,7 @@ export default function InfrastructureAttachmentTab({
               {isImg ? (
                 <FileImageOutlined style={{ color: actionPrimary, flexShrink: 0 }} />
               ) : (
-                <FileOutlined style={{ color: actionPrimary, flexShrink: 0 }} />
+                <FileOutlined style={{ color: isBerthReadonlyLayout ? textTertiary : actionPrimary, flexShrink: 0 }} />
               )}
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {name}
@@ -269,8 +302,9 @@ export default function InfrastructureAttachmentTab({
       dataIndex: 'uploadedByName',
       width: 180,
       render: (v: string | undefined, record: InfrastructureAttachmentItem) => {
+        const byUploadedBy = record.uploadedBy ? userMap?.get(record.uploadedBy) : undefined;
         const raw = v || record.uploadedByName || record.uploadedBy || record.uploaderName || record.createdByName || record.createdBy;
-        const resolved = (raw && userMap?.get(raw)) ? userMap.get(raw) : raw;
+        const resolved = byUploadedBy || ((raw && userMap?.get(raw)) ? userMap.get(raw) : raw);
         const isUuid = resolved && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolved);
         const displayName = isUuid
           ? (currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý')
@@ -309,10 +343,11 @@ export default function InfrastructureAttachmentTab({
               {isImg ? (
                 <Button
                   type="text"
+                  size="small"
                   icon={<EyeOutlined style={{ fontSize: 16, color: actionPrimary }} />}
                   style={{
-                    width: 32,
-                    height: 32,
+                    width: actionControlSize,
+                    height: actionControlSize,
                     padding: 0,
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -322,14 +357,15 @@ export default function InfrastructureAttachmentTab({
                   title="Xem chi tiết ảnh"
                 />
               ) : (
-                <span style={{ width: 32, height: 32, display: 'inline-block' }} />
+                <span style={{ width: actionControlSize, height: actionControlSize, display: 'inline-block' }} />
               )}
               <Button
                 type="text"
+                size="small"
                 icon={<DownloadOutlined style={{ fontSize: 16, color: actionPrimary }} />}
                 style={{
-                  width: 32,
-                  height: 32,
+                  width: actionControlSize,
+                  height: actionControlSize,
                   padding: 0,
                   display: 'inline-flex',
                   alignItems: 'center',

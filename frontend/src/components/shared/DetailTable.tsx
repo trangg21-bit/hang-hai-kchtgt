@@ -16,6 +16,8 @@ export interface DetailTableProps<T = any> extends Omit<TableProps<T>, 'paginati
   onPageChange?: (page: number, pageSize?: number) => void;
   headerNode?: React.ReactNode;
   padEmptyRows?: boolean;
+  /** Khi true và dataSource rỗng → thân bảng co theo nội dung thay vì filler cao cố định */
+  emptyHeightAuto?: boolean;
   scrollY?: number | string;
 }
 
@@ -116,6 +118,7 @@ export const DetailTable = <T extends object = any>({
   className,
   style,
   padEmptyRows = false,
+  emptyHeightAuto = false,
   scrollY,
   scroll,
   total,
@@ -188,7 +191,7 @@ export const DetailTable = <T extends object = any>({
             return originalRender(value, record, index);
           }
           if (value === null || value === undefined || value === '') {
-            return '—';
+            return null;
           }
           // Auto-format dates
           if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
@@ -242,7 +245,9 @@ export const DetailTable = <T extends object = any>({
 
 
   const instanceId = useMemo(() => `chk-dt-${Math.random().toString(36).substring(2, 9)}`, []);
-  const effectiveScrollY = scrollY || 'calc(100vh - 330px)';
+  const currentRowCount = Array.isArray(dataSource) ? dataSource.length : 0;
+  const isAutoHeightForEmpty = currentRowCount === 0 && emptyHeightAuto;
+  const effectiveScrollY = isAutoHeightForEmpty ? 'auto' : (scrollY || 'calc(100vh - 330px)');
 
   return (
     <div

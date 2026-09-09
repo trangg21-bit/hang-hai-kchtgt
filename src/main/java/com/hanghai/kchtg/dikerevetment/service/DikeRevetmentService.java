@@ -192,10 +192,10 @@ public class DikeRevetmentService {
                                                    Pageable pageable) {
         Scope scope = resolveEffectiveScope(orgUnitId);
         String keywordPattern = (keyword != null && !keyword.trim().isEmpty())
-                ? "%" + keyword.trim().toLowerCase() + "%"
+                ? "%" + normalizeSearchKeyword(keyword) + "%"
                 : null;
         String codePattern = (code != null && !code.trim().isEmpty())
-                ? "%" + code.trim().toLowerCase() + "%"
+                ? "%" + normalizeSearchKeyword(code) + "%"
                 : null;
         String locationValue = (location != null && !location.trim().isEmpty()) ? location.trim() : null;
         LocalDate commissioningFrom = null;
@@ -216,7 +216,7 @@ public class DikeRevetmentService {
     public Map<String, Long> getTabCounts(UUID orgUnitId, String keyword, String conditionStatus) {
         Scope scope = resolveEffectiveScope(orgUnitId);
         String keywordPattern = (keyword != null && !keyword.trim().isEmpty())
-                ? "%" + keyword.trim().toLowerCase() + "%"
+                ? "%" + normalizeSearchKeyword(keyword) + "%"
                 : null;
         List<Object[]> rows = repo.countByApprovalStatus(
                 !scope.unrestricted(), scope.orgUnitIds(), orgUnitId, keywordPattern, conditionStatus);

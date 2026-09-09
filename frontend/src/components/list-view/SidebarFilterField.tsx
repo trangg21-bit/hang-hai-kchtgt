@@ -7,6 +7,8 @@ export interface SidebarFilterFieldProps {
   /** Control của trường lọc: Input, Select, TreeSelect, RangePicker... */
   children: React.ReactNode;
   style?: React.CSSProperties;
+  /** Khoảng cách dọc giữa nhãn và control. Mặc định 4px (spaceXs). */
+  labelGap?: number;
 }
 
 /**
@@ -16,11 +18,12 @@ export interface SidebarFilterFieldProps {
  * mỗi màn tự viết `<div><div style={filterLabelStyle}>...</div><Control/></div>`
  * rồi trôi dạt sang `fontSizeSm` / `textSecondary` / `spaceMd` khác nhau.
  */
-export default function SidebarFilterField({ label, children, style }: SidebarFilterFieldProps) {
+export default function SidebarFilterField({ label, children, style, labelGap }: SidebarFilterFieldProps) {
   const { filterLabelStyle, spaceFormField, spaceXs } = useThemeToken();
+  const labelGapValue = labelGap ?? spaceXs;
   return (
     <div style={{ marginBottom: spaceFormField, ...style }}>
-      <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>{label}</div>
+      <div style={{ ...filterLabelStyle, marginBottom: labelGapValue }}>{label}</div>
       {children}
     </div>
   );
