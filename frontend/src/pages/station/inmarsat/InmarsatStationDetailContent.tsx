@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Tabs, Button, Tooltip, Modal } from 'antd';
+import { Tabs, Button, Tooltip, Modal, Spin } from 'antd';
 import {
   BankOutlined,
   SlidersOutlined,
@@ -24,8 +24,6 @@ import {
   fontWeightBold,
   fontWeightMedium,
   fontSizeSm,
-  spaceMd,
-  spaceFormField,
   textTertiary,
   statusCritical,
   radiusPill,
@@ -39,7 +37,6 @@ import {
 import { getProvinceNameById } from '../../../types/common';
 import DetailTable from '../../../components/shared/DetailTable';
 import ApprovalStatusBadge from '../../../components/shared/ApprovalStatusBadge';
-import GisLocationSelector from '../../../components/gis/GisLocationSelector';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
 import { parseWktToCoordinates } from '../../../utils/gisGeometry';
@@ -224,7 +221,6 @@ export default function InmarsatStationDetailContent({
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [mapModalOpen, setMapModalOpen] = useState(false);
 
   useEffect(() => {
     if (selectedRecord) {
@@ -1082,19 +1078,7 @@ export default function InmarsatStationDetailContent({
         ]}
       />
 
-      {/* GIS Location Selector Preview Modal */}
-      {mapModalOpen && (
-        <GisLocationSelector
-          open={mapModalOpen}
-          onClose={() => setMapModalOpen(false)}
-          coordinates={record.coordinates}
-          latitude={record.latitude}
-          longitude={record.longitude}
-          geometryType={(record.geometryType || record.objectType || 'POINT') as any}
-          readonly={true}
-          title={`Vị trí GIS — ${record.name || ''}`}
-        />
-      )}
+
 
       {/* Image Preview Modal */}
       {previewImageUrl && (

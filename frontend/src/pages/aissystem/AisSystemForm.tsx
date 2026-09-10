@@ -17,7 +17,6 @@ import AppDrawer from '../../components/shared/AppDrawer';
 import {
   PlusOutlined,
   DeleteOutlined,
-  CloseOutlined,
   EnvironmentOutlined,
   BankOutlined,
   SlidersOutlined,
@@ -38,17 +37,17 @@ import type {
   CreateAisSystemRequest,
   UpdateAisSystemRequest,
 } from '../../types/aisSystem';
-import { UNIT_OF_MEASURE_OPTIONS, UNIT_OF_MEASURE_MAP, UnitOfMeasure } from '../../types/aisSystem';
+import { UNIT_OF_MEASURE_OPTIONS, UnitOfMeasure } from '../../types/aisSystem';
 import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS } from '../../types/vtsSystem';
 import {
-  drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle,
-  drawerTabBarStyle, drawerStyles, drawerFormScrollStyle, drawerGisControlBoxStyle,
+  drawerTitleStyle, primaryButtonStyle, outlineButtonStyle,
+  drawerTabBarStyle, drawerFormScrollStyle,
   spaceFormField, radiusPill, sidebarBg,
-  fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeSm, fontSizeLg,
-  textSecondary, textTertiary, borderDefault,
-  statusCritical, statusOperational, actionPrimary, textAreaStyle,
-  readonlyInputStyle, drawerCloseBtnStyle, inputStyle, selectStyle,
-  DRAWER_TABLE_SCROLL_Y, getDatePickerProps, surfaceCard, spaceMd, spaceSm, spaceXs,
+  fontWeightBold, fontSizeMd, fontSizeSm, fontSizeLg,
+  textTertiary, borderDefault,
+  statusCritical, statusOperational, actionPrimary,
+  readonlyInputStyle, inputStyle, selectStyle,
+  DRAWER_TABLE_SCROLL_Y, getDatePickerProps, spaceXs,
 } from '../../themetokenchk';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
@@ -214,7 +213,6 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
   onCancel,
   onSuccess,
   onClose,
-  onSwitchToEdit,
 }) => {
   const [form] = Form.useForm();
   const [currentMode, setCurrentMode] = useState<'create' | 'edit' | 'detail'>(

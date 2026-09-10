@@ -2140,7 +2140,7 @@ export const getDatePickerProps = (extraProps?: Record<string, unknown>) => {
     classNames: {
       ...extraClassNames,
       popup: {
-        ...extraClassNames?.popup,
+        ...(typeof extraClassNames?.popup === 'object' && extraClassNames?.popup !== null ? extraClassNames.popup : {}),
         root: [
           'chk-form-datepicker-popup',
           typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
@@ -2149,7 +2149,7 @@ export const getDatePickerProps = (extraProps?: Record<string, unknown>) => {
         ].filter(Boolean).join(' '),
       },
     },
-    style: { ...inputStyle, width: '100%', ...(extraStyle as React.CSSProperties) },
+    style: { ...inputStyle, width: '100%', ...(extraStyle as React.CSSProperties) } as React.CSSProperties,
     ...rest,
   };
 };
@@ -2172,7 +2172,7 @@ export const getSidebarDatePickerProps = (extraProps?: Record<string, unknown>) 
     classNames: {
       ...extraClassNames,
       popup: {
-        ...extraClassNames?.popup,
+        ...(typeof extraClassNames?.popup === 'object' && extraClassNames?.popup !== null ? extraClassNames.popup : {}),
         root: [
           'chk-sidebar-datepicker-popup',
           typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
@@ -2181,7 +2181,7 @@ export const getSidebarDatePickerProps = (extraProps?: Record<string, unknown>) 
         ].filter(Boolean).join(' '),
       },
     },
-    style: { ...inputStyle, width: '100%', ...(extraStyle as React.CSSProperties) },
+    style: { ...inputStyle, width: '100%', ...(extraStyle as React.CSSProperties) } as React.CSSProperties,
     ...rest,
   };
 };
@@ -2205,7 +2205,7 @@ export const getRangePickerProps = (extraProps?: Record<string, unknown>) => {
     classNames: {
       ...extraClassNames,
       popup: {
-        ...extraClassNames?.popup,
+        ...(typeof extraClassNames?.popup === 'object' && extraClassNames?.popup !== null ? extraClassNames.popup : {}),
         root: [
           'chk-range-datepicker-popup',
           typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
@@ -2214,7 +2214,7 @@ export const getRangePickerProps = (extraProps?: Record<string, unknown>) => {
         ].filter(Boolean).join(' '),
       },
     },
-    style: { ...inputStyle, width: '100%', ...(extraStyle as React.CSSProperties) },
+    style: { ...inputStyle, width: '100%', ...(extraStyle as React.CSSProperties) } as React.CSSProperties,
     ...rest,
   };
 };
@@ -2238,7 +2238,7 @@ export const getSidebarRangePickerProps = (extraProps?: Record<string, unknown>)
     classNames: {
       ...extraClassNames,
       popup: {
-        ...extraClassNames?.popup,
+        ...(typeof extraClassNames?.popup === 'object' && extraClassNames?.popup !== null ? extraClassNames.popup : {}),
         root: [
           'chk-sidebar-range-datepicker-popup',
           typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
@@ -2247,7 +2247,7 @@ export const getSidebarRangePickerProps = (extraProps?: Record<string, unknown>)
         ].filter(Boolean).join(' '),
       },
     },
-    style: { ...inputStyle, width: '100%', ...(extraStyle as React.CSSProperties) },
+    style: { ...inputStyle, width: '100%', ...(extraStyle as React.CSSProperties) } as React.CSSProperties,
     ...rest,
   };
 };

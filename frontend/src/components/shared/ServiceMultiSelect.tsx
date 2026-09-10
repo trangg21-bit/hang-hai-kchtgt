@@ -17,8 +17,8 @@ export interface ServiceOption {
   label: string;
 }
 
-interface ServiceMultiSelectProps {
-  options: ServiceOption[];
+export interface ServiceMultiSelectProps {
+  options?: ServiceOption[];
   value?: string[];
   onChange?: (value: string[]) => void;
   placeholder?: string;
@@ -81,7 +81,7 @@ const serviceTagRender: SelectProps['tagRender'] = ({ label, value, closable, on
 };
 
 export default function ServiceMultiSelect({
-  options,
+  options = [],
   value,
   onChange,
   placeholder = '\u0043h\u1ecdn d\u1ecbch v\u1ee5 cung c\u1ea5p',

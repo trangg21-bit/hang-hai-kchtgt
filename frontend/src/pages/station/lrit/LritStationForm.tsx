@@ -35,7 +35,7 @@ import { ApprovalStatus, CONDITION_STATUS_OPTIONS } from '../../../types/vtsSyst
 import {
   drawerTitleStyle, primaryButtonStyle, outlineButtonStyle,
   drawerTabBarStyle, drawerFormScrollStyle, DRAWER_TABLE_SCROLL_Y,
-  requiredMarkStyle, spaceFormField, radiusPill, radiusMd, surfaceCard, sidebarBg,
+  requiredMarkStyle, spaceFormField, radiusPill, sidebarBg,
   fontWeightBold, fontSizeMd, fontSizeSm, fontSizeLg,
   borderDefault,
   statusCritical, statusOperational, actionPrimary,
@@ -541,7 +541,7 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
 
         const dmsVal = validateDmsCoordinates(dmsCoordList, geom);
         if (!dmsVal.valid) {
-          setGpsError(dmsVal.error || 'Tọa độ không hợp lệ');
+          setGpsError(dmsVal.errorMessage || dmsVal.error || 'Tọa độ không hợp lệ');
           setActiveTab('location');
           setIsSubmitting(false);
           return;
@@ -770,7 +770,6 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
           <Form
             form={form}
             layout="vertical"
-            requiredMark={requiredMarkStyle}
             onFinish={onFinish}
             onFinishFailed={onFinishFailed}
             style={{ height: '100%', display: 'flex', flexDirection: 'column' }}

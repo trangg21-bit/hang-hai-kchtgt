@@ -38,7 +38,6 @@ import {
 import { getProvinceNameById } from '../../../types/common';
 import DetailTable from '../../../components/shared/DetailTable';
 import ApprovalStatusBadge from '../../../components/shared/ApprovalStatusBadge';
-import GisLocationSelector from '../../../components/gis/GisLocationSelector';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
 import { parseWktToCoordinates } from '../../../utils/gisGeometry';
 
@@ -204,7 +203,6 @@ export const LritStationDetailContent: React.FC<LritStationDetailContentProps> =
   const [attachmentList, setAttachmentList] = useState<any[]>(attachments);
   const [activeTab, setActiveTab] = useState('general');
   const [approvalOpen, setApprovalOpen] = useState(true);
-  const [mapModalOpen, setMapModalOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const [operationOpen, setOperationOpen] = useState(true);
@@ -1011,19 +1009,7 @@ export const LritStationDetailContent: React.FC<LritStationDetailContentProps> =
         ]}
       />
 
-      {/* GIS Location Selector Preview Modal */}
-      {mapModalOpen && (
-        <GisLocationSelector
-          open={mapModalOpen}
-          onClose={() => setMapModalOpen(false)}
-          coordinates={record.coordinates}
-          latitude={record.latitude}
-          longitude={record.longitude}
-          geometryType={(record.geometryType || (record as any).objectType || 'POINT') as any}
-          readonly={true}
-          title={`Vị trí GIS — ${record.name || ''}`}
-        />
-      )}
+
 
       {/* Image Preview Modal */}
       {previewImage && (

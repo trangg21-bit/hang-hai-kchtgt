@@ -102,6 +102,7 @@ export type UpdateHanoiStationRequest = CreateHanoiStationRequest;
 
 export interface HanoiStationListParams {
   keyword?: string;
+  code?: string;
   orgUnitId?: string;
   operatingOrgId?: string;
   provinceId?: number;

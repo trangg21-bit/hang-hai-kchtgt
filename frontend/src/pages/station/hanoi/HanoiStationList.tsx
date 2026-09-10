@@ -12,7 +12,7 @@ import { usePermissionStore, type PermissionState } from '../../../store/permiss
 import { ScreenHeader, DataTable } from '../../../components/list-view';
 import FilterTableLayout from '../../../components/list-view/FilterTableLayout';
 import Pagination from '../../../components/list-view/Pagination';
-import HanoiStationForm, { getOperatingOrgName } from './HanoiStationForm';
+import HanoiStationForm from './HanoiStationForm';
 import ApprovalModal from '../../../components/shared/ApprovalModal';
 import CommonHistoryDrawer, { type CommonHistoryEntry } from '../../../components/shared/CommonHistoryDrawer';
 import ApprovalStatusBadge from '../../../components/shared/ApprovalStatusBadge';
@@ -127,10 +127,6 @@ const formatHistoryValue = (field: string, val: unknown): string => {
 
 export default function HanoiStationList() {
   const [searchParams] = useSearchParams();
-  const linkedAction = searchParams.get('action');
-  const linkedRecordId = searchParams.get('id');
-  const isIframeModal = window.parent !== window.self;
-  const isMapLinkedView = isIframeModal && (linkedAction === 'edit' || linkedAction === 'detail');
   const handledLinkedRecordRef = useRef<string | null>(null);
 
   const currentUser = useAuthStore((s: AuthState) => s.user);
@@ -343,16 +339,13 @@ export default function HanoiStationList() {
     }
 
     try {
-      const res = await hanoiStationService.getHistory(targetId, {
-        page: pageToLoad,
-        size: HISTORY_PAGE_SIZE,
+      const res = await hanoiStationService.getHistory(targetId, pageToLoad, HISTORY_PAGE_SIZE, {
         keyword: filters?.keyword || undefined,
         fromDate: filters?.fromDate || undefined,
         toDate: filters?.toDate || undefined,
       });
 
-      const entries = res.items || [];
-      const totalElements = res.total || 0;
+      const entries = res || [];
 
       const formattedEntries: CommonHistoryEntry[] = entries.map((raw: any) => ({
         id: raw.id || `${raw.timestamp || Date.now()}_${Math.random()}`,
@@ -383,8 +376,7 @@ export default function HanoiStationList() {
       }
 
       setHistoryPage(pageToLoad);
-      const loadedCount = isInitial ? formattedEntries.length : historyRecords.length + formattedEntries.length;
-      setHasMoreHistory(loadedCount < totalElements && entries.length === HISTORY_PAGE_SIZE);
+      setHasMoreHistory(entries.length === HISTORY_PAGE_SIZE);
     } catch {
       toast.error('Không thể tải lịch sử thay đổi');
     } finally {
@@ -815,7 +807,7 @@ export default function HanoiStationList() {
         label: 'Xóa',
         icon: icons.delete,
         danger: true,
-        onClick: () => handleDelete(record),
+        onClick: () => openDeleteModal(record),
       }] : []),
     ];
   };

@@ -34,11 +34,11 @@ import { ApprovalStatus, CONDITION_STATUS_OPTIONS } from '../../../types/vtsSyst
 import {
   drawerTitleStyle, primaryButtonStyle, outlineButtonStyle,
   drawerTabBarStyle, drawerFormScrollStyle, DRAWER_TABLE_SCROLL_Y,
-  requiredMarkStyle, spaceFormField, radiusPill, radiusMd, sidebarBg,
+  requiredMarkStyle, spaceFormField, radiusPill, sidebarBg,
   fontWeightBold, fontSizeMd, fontSizeSm, fontSizeLg,
   textTertiary, borderDefault,
   statusCritical, statusOperational, actionPrimary,
-  readonlyInputStyle, inputStyle, selectStyle, surfaceCard, spaceSm,
+  readonlyInputStyle, inputStyle, selectStyle, spaceSm,
   spaceXs,
 } from '../../../themetokenchk';
 import { fmtInputNumber } from '../../../utils/numFmt';
@@ -61,8 +61,17 @@ import {
   dmsToDd,
 } from '../../../utils/gisGeometry';
 import InmarsatStationDetailContent, { getOperatingOrgName } from './InmarsatStationDetailContent';
-
 export { getOperatingOrgName };
+
+export const INMARSAT_SERVICE_OPTIONS = [
+  { value: 'INMARSAT-C', label: 'INMARSAT-C — Dịch vụ dữ liệu & điện báo hàng hải' },
+  { value: 'EGC', label: 'EGC — Báo gọi nhóm nâng cao (SafetyNET / FleetNET)' },
+  { value: 'GMDSS', label: 'GMDSS — Hệ thống cấp cứu và an toàn hàng hải toàn cầu' },
+  { value: 'SSAS', label: 'SSAS — Báo động an ninh tàu biển' },
+  { value: 'LRIT', label: 'LRIT — Nhận dạng và theo dõi tầm xa' },
+  { value: 'DISTRESS', label: 'DISTRESS — Phát báo nạn khẩn cấp' },
+  { value: 'FLEET_BROADBAND', label: 'FleetBroadband — Thoại & Dữ liệu tốc độ cao' },
+];
 
 export interface InmarsatStationFormProps {
   open?: boolean;
@@ -376,7 +385,7 @@ export default function InmarsatStationForm({
           geometryType: data.geometryType || data.objectType || (dmsPoints.length > 2 ? 'POLYGON' : dmsPoints.length > 1 ? 'LINE' : (dmsPoints.length === 1 ? 'POINT' : undefined)),
           symbolId: data.symbolId || data.symbol || undefined,
           coordinateSystem: (data.geometryType || dmsPoints.length > 0)
-            ? (data.coordinateSystem === 2 || String(data.coordinateSystem).includes('VN-2000') ? 2 : 1)
+            ? (String(data.coordinateSystem) === '2' || String(data.coordinateSystem).includes('VN-2000') ? 2 : 1)
             : undefined,
           displayRule: (data.geometryType || dmsPoints.length > 0) ? (data.displayRule || 'Độ, phút, giây (DMS)') : undefined,
         });
@@ -512,21 +521,19 @@ export default function InmarsatStationForm({
     let mainLng: number | undefined;
 
     if (values.geometryType || coordinateList.length > 0) {
+      const dmsVal = validateDmsCoordinates(coordinateList, geomType);
+      if (!dmsVal.valid) {
+        setGpsError(dmsVal.errorMessage || dmsVal.error || 'Tọa độ không hợp lệ');
+        setTabKey('gis');
+        return;
+      }
+
       for (let i = 0; i < coordinateList.length; i++) {
         const p = coordinateList[i];
-        const hasAny = p.latD != null || p.latM != null || p.latS != null || p.lngD != null || p.lngM != null || p.lngS != null;
-        if (hasAny) {
-          const err = validateDmsCoordinates(p.latD, p.latM, p.latS, p.lngD, p.lngM, p.lngS);
-          if (err) {
-            setGpsError(`Tọa độ dòng ${i + 1}: ${err}`);
-            setTabKey('gis');
-            return;
-          }
-          const lat = dmsToDd(p.latD, p.latM, p.latS);
-          const lng = dmsToDd(p.lngD, p.lngM, p.lngS);
-          if (lat != null && lng != null) {
-            ddPoints.push({ latitude: lat, longitude: lng });
-          }
+        const lat = dmsToDd(p.latD, p.latM, p.latS);
+        const lng = dmsToDd(p.lngD, p.lngM, p.lngS);
+        if (lat != null && lng != null) {
+          ddPoints.push({ latitude: lat, longitude: lng });
         }
       }
 
@@ -910,7 +917,7 @@ export default function InmarsatStationForm({
                               name="services"
                               style={{ marginBottom: spaceFormField }}
                             >
-                              <ServiceMultiSelect />
+                              <ServiceMultiSelect options={INMARSAT_SERVICE_OPTIONS} />
                             </Form.Item>
                           </Col>
                         </Row>

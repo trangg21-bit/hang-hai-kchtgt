@@ -24,8 +24,6 @@ import {
   fontWeightBold,
   fontWeightMedium,
   fontSizeSm,
-  spaceMd,
-  spaceFormField,
   textTertiary,
   statusCritical,
   radiusPill,
@@ -39,7 +37,6 @@ import {
 import { getProvinceNameById } from '../../../types/common';
 import DetailTable from '../../../components/shared/DetailTable';
 import ApprovalStatusBadge from '../../../components/shared/ApprovalStatusBadge';
-import GisLocationSelector from '../../../components/gis/GisLocationSelector';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
 import { parseWktToCoordinates } from '../../../utils/gisGeometry';
 
@@ -95,15 +92,7 @@ const ddToDms = (dd: number | null | undefined): { d: number | null; m: number |
   return { d, m, s };
 };
 
-const formatDms = (d: number | null, m: number | null, s: number | null, direction: 'N' | 'S' | 'E' | 'W'): string => {
-  if (d == null || m == null || s == null) return '—';
-  return `${d}° ${m}' ${s.toFixed(2)}" ${direction}`;
-};
 
-const formatCoordinateDd = (val: number | null | undefined): string => {
-  if (val == null || isNaN(val)) return '—';
-  return Number(val).toFixed(7);
-};
 
 const parseWktToPoints = (record?: HanoiStationItem | null): { lat: number; lng: number }[] => {
   if (!record) return [];
@@ -214,7 +203,6 @@ export const HanoiStationDetailContent: React.FC<HanoiStationDetailContentProps>
   const [attachmentList, setAttachmentList] = useState<any[]>(attachments);
   const [activeTab, setActiveTab] = useState('general');
   const [approvalOpen, setApprovalOpen] = useState(true);
-  const [mapModalOpen, setMapModalOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const [operationOpen, setOperationOpen] = useState(true);
@@ -1004,19 +992,7 @@ export const HanoiStationDetailContent: React.FC<HanoiStationDetailContentProps>
         ]}
       />
 
-      {/* GIS Location Selector Preview Modal */}
-      {mapModalOpen && (
-        <GisLocationSelector
-          open={mapModalOpen}
-          onClose={() => setMapModalOpen(false)}
-          coordinates={record.coordinates}
-          latitude={record.latitude}
-          longitude={record.longitude}
-          geometryType={(record.geometryType || (record as any).objectType || 'POINT') as any}
-          readonly={true}
-          title={`Vị trí GIS — ${record.name || ''}`}
-        />
-      )}
+
 
       {/* Image Preview Modal */}
       {previewImage && (

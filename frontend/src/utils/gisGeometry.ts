@@ -454,6 +454,7 @@ export interface DmsCoordinateItem {
 export interface DmsValidationResult {
   valid: boolean;
   errorMessage?: string;
+  error?: string;
   validCoords: Array<{ latitude: number; longitude: number }>;
 }
 
@@ -489,30 +490,38 @@ export const validateDmsCoordinates = (
       if (c.lngS == null) missing.push('Giây (Kinh độ)');
 
       if (missing.length > 0) {
+        const msg = `Tọa độ GPS dòng ${i + 1} chưa nhập đầy đủ: thiếu ${missing.join(', ')}`;
         return {
           valid: false,
-          errorMessage: `Tọa độ GPS dòng ${i + 1} chưa nhập đầy đủ: thiếu ${missing.join(', ')}`,
+          errorMessage: msg,
+          error: msg,
           validCoords: [],
         };
       }
 
       if (c.latD! < 0 || c.latD! > 90) {
-        return { valid: false, errorMessage: `Tọa độ GPS dòng ${i + 1}: Vĩ độ (Độ) phải trong khoảng 0 - 90`, validCoords: [] };
+        const msg = `Tọa độ GPS dòng ${i + 1}: Vĩ độ (Độ) phải trong khoảng 0 - 90`;
+        return { valid: false, errorMessage: msg, error: msg, validCoords: [] };
       }
       if (c.latM! < 0 || c.latM! > 59) {
-        return { valid: false, errorMessage: `Tọa độ GPS dòng ${i + 1}: Vĩ độ (Phút) phải trong khoảng 0 - 59`, validCoords: [] };
+        const msg = `Tọa độ GPS dòng ${i + 1}: Vĩ độ (Phút) phải trong khoảng 0 - 59`;
+        return { valid: false, errorMessage: msg, error: msg, validCoords: [] };
       }
       if (c.latS! < 0 || c.latS! >= 60) {
-        return { valid: false, errorMessage: `Tọa độ GPS dòng ${i + 1}: Vĩ độ (Giây) phải trong khoảng 0 - 59.99`, validCoords: [] };
+        const msg = `Tọa độ GPS dòng ${i + 1}: Vĩ độ (Giây) phải trong khoảng 0 - 59.99`;
+        return { valid: false, errorMessage: msg, error: msg, validCoords: [] };
       }
       if (c.lngD! < 0 || c.lngD! > 180) {
-        return { valid: false, errorMessage: `Tọa độ GPS dòng ${i + 1}: Kinh độ (Độ) phải trong khoảng 0 - 180`, validCoords: [] };
+        const msg = `Tọa độ GPS dòng ${i + 1}: Kinh độ (Độ) phải trong khoảng 0 - 180`;
+        return { valid: false, errorMessage: msg, error: msg, validCoords: [] };
       }
       if (c.lngM! < 0 || c.lngM! > 59) {
-        return { valid: false, errorMessage: `Tọa độ GPS dòng ${i + 1}: Kinh độ (Phút) phải trong khoảng 0 - 59`, validCoords: [] };
+        const msg = `Tọa độ GPS dòng ${i + 1}: Kinh độ (Phút) phải trong khoảng 0 - 59`;
+        return { valid: false, errorMessage: msg, error: msg, validCoords: [] };
       }
       if (c.lngS! < 0 || c.lngS! >= 60) {
-        return { valid: false, errorMessage: `Tọa độ GPS dòng ${i + 1}: Kinh độ (Giây) phải trong khoảng 0 - 59.99`, validCoords: [] };
+        const msg = `Tọa độ GPS dòng ${i + 1}: Kinh độ (Giây) phải trong khoảng 0 - 59.99`;
+        return { valid: false, errorMessage: msg, error: msg, validCoords: [] };
       }
     }
   }
@@ -528,15 +537,18 @@ export const validateDmsCoordinates = (
     const geom = String(geometryType).toUpperCase();
     if (geom === 'POINT') {
       if (validCoords.length === 0) {
-        return { valid: false, errorMessage: 'Đối tượng điểm (Point) cần ít nhất 1 tọa độ GPS hợp lệ', validCoords };
+        const msg = 'Đối tượng điểm (Point) cần ít nhất 1 tọa độ GPS hợp lệ';
+        return { valid: false, errorMessage: msg, error: msg, validCoords };
       }
     } else if (geom === 'LINE' || geom === 'LINESTRING') {
       if (validCoords.length < 2) {
-        return { valid: false, errorMessage: 'Đối tượng đường (Line) cần ít nhất 2 tọa độ GPS hợp lệ', validCoords };
+        const msg = 'Đối tượng đường (Line) cần ít nhất 2 tọa độ GPS hợp lệ';
+        return { valid: false, errorMessage: msg, error: msg, validCoords };
       }
     } else if (geom === 'POLYGON') {
       if (validCoords.length < 3) {
-        return { valid: false, errorMessage: 'Đối tượng vùng (Polygon) cần ít nhất 3 tọa độ GPS hợp lệ', validCoords };
+        const msg = 'Đối tượng vùng (Polygon) cần ít nhất 3 tọa độ GPS hợp lệ';
+        return { valid: false, errorMessage: msg, error: msg, validCoords };
       }
     }
   }

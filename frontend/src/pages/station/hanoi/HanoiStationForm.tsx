@@ -36,11 +36,11 @@ import { ApprovalStatus, CONDITION_STATUS_OPTIONS } from '../../../types/vtsSyst
 import {
   drawerTitleStyle, primaryButtonStyle, outlineButtonStyle,
   drawerTabBarStyle, drawerFormScrollStyle, DRAWER_TABLE_SCROLL_Y,
-  requiredMarkStyle, spaceFormField, radiusPill, radiusMd, sidebarBg,
+  requiredMarkStyle, spaceFormField, radiusPill, sidebarBg,
   fontWeightBold, fontSizeMd, fontSizeSm, fontSizeLg,
   textTertiary, borderDefault,
   statusCritical, statusOperational, actionPrimary,
-  readonlyInputStyle, inputStyle, selectStyle, surfaceCard, spaceSm,
+  readonlyInputStyle, inputStyle, selectStyle, spaceSm,
   getDatePickerProps,
   spaceXs,
 } from '../../../themetokenchk';
@@ -153,7 +153,6 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
 
   const [attachments, setAttachments] = useState<any[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
-  const [pendingDeletedAttachments, setPendingDeletedAttachments] = useState<string[]>([]);
 
   const [mapModalOpen, setMapModalOpen] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
@@ -324,7 +323,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
       geometryType: data.geometryType || (data as any).objectType || undefined,
       symbolId: data.symbolId || data.symbol || undefined,
       coordinateSystem: data.geometryType
-        ? (data.coordinateSystem === 2 || String(data.coordinateSystem).includes('VN-2000') ? 2 : 1)
+        ? (String(data.coordinateSystem) === '2' || String(data.coordinateSystem).includes('VN-2000') ? 2 : 1)
         : undefined,
       displayRule: data.geometryType ? 'Độ, phút, giây (DMS)' : undefined,
     });
@@ -545,7 +544,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
 
         const dmsVal = validateDmsCoordinates(dmsCoordList, geom);
         if (!dmsVal.valid) {
-          setGpsError(dmsVal.error || 'Tọa độ không hợp lệ');
+          setGpsError(dmsVal.errorMessage || dmsVal.error || 'Tọa độ không hợp lệ');
           setActiveTab('location');
           setIsSubmitting(false);
           return;
@@ -793,7 +792,6 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
           <Form
             form={form}
             layout="vertical"
-            requiredMark={requiredMarkStyle}
             onFinish={onFinish}
             onFinishFailed={onFinishFailed}
             style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
