@@ -31,6 +31,8 @@ import com.hanghai.kchtg.vtsoperationcenter.dto.VtsOperationCenterOptionResponse
 import com.hanghai.kchtg.vtsoperationcenter.dto.VtsOperationCenterRequest;
 import com.hanghai.kchtg.vtsoperationcenter.dto.VtsOperationCenterResponse;
 import com.hanghai.kchtg.vtsoperationcenter.entity.VtsOperationCenter;
+import com.hanghai.kchtg.mapicon.entity.MapSymbol;
+import com.hanghai.kchtg.mapicon.repository.MapSymbolRepository;
 import com.hanghai.kchtg.vtsoperationcenter.repository.VtsOperationCenterRepository;
 import com.hanghai.kchtg.vtssystem.dto.VtsSystemAttachmentResponse;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
@@ -72,6 +74,7 @@ public class VtsOperationCenterService {
     private final VtsSystemRepository vtsSystemRepository;
     private final PortRepository portRepository;
     private final OrgUnitRepository orgUnitRepository;
+    private final MapSymbolRepository mapSymbolRepository;
     private final InfrastructureAttachmentRepository attachmentRepository;
     private final InfrastructureHistoryRepository historyRepository;
     private final UserRepository userRepository;
@@ -1081,6 +1084,19 @@ public class VtsOperationCenterService {
             }
         }
 
+        String symbolName = null;
+        String symbolCode = null;
+        String symbolImage = null;
+        if (entity.getSymbolId() != null) {
+            Optional<MapSymbol> symbolOpt = mapSymbolRepository.findById(entity.getSymbolId());
+            if (symbolOpt.isPresent()) {
+                MapSymbol sym = symbolOpt.get();
+                symbolName = sym.getName();
+                symbolCode = sym.getCode();
+                symbolImage = sym.getImage();
+            }
+        }
+
         return VtsOperationCenterResponse.builder()
                 .id(entity.getId())
                 .code(entity.getCode())
@@ -1100,6 +1116,9 @@ public class VtsOperationCenterService {
                 .geometryType(geometryType)
                 .coordinates(coordinates)
                 .symbolId(entity.getSymbolId())
+                .symbolName(symbolName)
+                .symbolCode(symbolCode)
+                .symbolImage(symbolImage)
                 .approvalStatus(entity.getApprovalStatus())
                 .approvalStatusLabel(entity.getApprovalStatus() != null ? entity.getApprovalStatus().getLabel() : null)
                 .approverLevel1(entity.getApproverLevel1())

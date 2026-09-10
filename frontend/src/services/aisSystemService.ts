@@ -136,20 +136,24 @@ export const aisSystemService = {
     await api.delete(`${BASE_PATH}/${id}`);
   },
 
-  async submit(id: string): Promise<void> {
-    await api.post(`${BASE_PATH}/${id}/submit`);
+  async submit(id: string): Promise<any> {
+    const res = await api.post(`${BASE_PATH}/${id}/submit`);
+    return res.data;
   },
 
-  async approveC1(id: string, decision?: string, reason?: string): Promise<void> {
-    await api.post(`${BASE_PATH}/${id}/approve-c1`, { decision, reason });
+  async approveC1(id: string, decision?: string, reason?: string): Promise<any> {
+    const res = await api.post(`${BASE_PATH}/${id}/approve-c1`, { decision, reason });
+    return res.data;
   },
 
-  async approveC2(id: string, decision?: string, reason?: string): Promise<void> {
-    await api.post(`${BASE_PATH}/${id}/approve-c2`, { decision, reason });
+  async approveC2(id: string, decision?: string, reason?: string): Promise<any> {
+    const res = await api.post(`${BASE_PATH}/${id}/approve-c2`, { decision, reason });
+    return res.data;
   },
 
-  async reject(id: string, reason: string): Promise<void> {
-    await api.post(`${BASE_PATH}/${id}/reject`, { reason });
+  async reject(id: string, reason: string): Promise<any> {
+    const res = await api.post(`${BASE_PATH}/${id}/reject`, { reason });
+    return res.data;
   },
 
   /**

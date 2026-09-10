@@ -37,6 +37,9 @@ public class VtsOperationCenterResponse {
     private GisGeometryType geometryType;
     private String coordinates;
     private UUID symbolId;
+    private String symbolName;
+    private String symbolCode;
+    private String symbolImage;
     private ApprovalStatus approvalStatus;
     private String approvalStatusLabel;
     private UUID approverLevel1;
@@ -83,6 +86,9 @@ public class VtsOperationCenterResponse {
         private GisGeometryType geometryType;
         private String coordinates;
         private UUID symbolId;
+        private String symbolName;
+        private String symbolCode;
+        private String symbolImage;
         private ApprovalStatus approvalStatus;
         private String approvalStatusLabel;
         private UUID approverLevel1;
@@ -124,6 +130,9 @@ public class VtsOperationCenterResponse {
         public Builder geometryType(GisGeometryType geometryType) { this.geometryType = geometryType; return this; }
         public Builder coordinates(String coordinates) { this.coordinates = coordinates; return this; }
         public Builder symbolId(UUID symbolId) { this.symbolId = symbolId; return this; }
+        public Builder symbolName(String symbolName) { this.symbolName = symbolName; return this; }
+        public Builder symbolCode(String symbolCode) { this.symbolCode = symbolCode; return this; }
+        public Builder symbolImage(String symbolImage) { this.symbolImage = symbolImage; return this; }
         public Builder approvalStatus(ApprovalStatus approvalStatus) { this.approvalStatus = approvalStatus; return this; }
         public Builder approvalStatusLabel(String approvalStatusLabel) { this.approvalStatusLabel = approvalStatusLabel; return this; }
         public Builder approverLevel1(UUID approverLevel1) { this.approverLevel1 = approverLevel1; return this; }
@@ -149,7 +158,7 @@ public class VtsOperationCenterResponse {
         public VtsOperationCenterResponse build() {
             return new VtsOperationCenterResponse(id, code, name, vtsSystemId, vtsSystemName, portId, portName,
                     orgUnitId, orgUnitName, provinceId, provinceName, detailedLocation, coverage, conditionStatus,
-                    note, spatialId, geometryType, coordinates, symbolId, approvalStatus, approvalStatusLabel,
+                    note, spatialId, geometryType, coordinates, symbolId, symbolName, symbolCode, symbolImage, approvalStatus, approvalStatusLabel,
                     approverLevel1, approverLevel1Name, approvedDateLevel1, approvalContentLevel1,
                     approverLevel2, approverLevel2Name, approvedDateLevel2, approvalContentLevel2,
                     rejectionReason, submittedAt, submittedBy, submittedByName, createdAt, updatedAt, createdBy, createdByName,

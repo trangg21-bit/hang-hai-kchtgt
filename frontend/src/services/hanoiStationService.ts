@@ -107,26 +107,34 @@ export const hanoiStationService = {
     await api.delete(`${BASE_PATH}/${id}`);
   },
 
-  async submit(id: string): Promise<HanoiStationItem> {
+  async submit(id: string): Promise<HanoiStationItem & { message?: string }> {
     const res = await api.post(`${BASE_PATH}/${id}/submit`);
-    return toSingle<HanoiStationItem>(res.data?.data || res.data) || ({} as HanoiStationItem);
+    const item = toSingle<HanoiStationItem>(res.data?.data || res.data) || ({} as HanoiStationItem);
+    if (res.data?.message) (item as any).message = res.data.message;
+    return item;
   },
 
-  async approveC1(id: string, statusOrContent?: string, maybeContent?: string): Promise<HanoiStationItem> {
+  async approveC1(id: string, statusOrContent?: string, maybeContent?: string): Promise<HanoiStationItem & { message?: string }> {
     const content = maybeContent !== undefined ? maybeContent : statusOrContent;
-    const res = await api.post(`${BASE_PATH}/${id}/approve-c1`, { content: content || 'Đã phê duyệt cấp 1' });
-    return toSingle<HanoiStationItem>(res.data?.data || res.data) || ({} as HanoiStationItem);
+    const res = await api.post(`${BASE_PATH}/${id}/approve-c1`, { content: content || 'Đã phê duyệt' });
+    const item = toSingle<HanoiStationItem>(res.data?.data || res.data) || ({} as HanoiStationItem);
+    if (res.data?.message) (item as any).message = res.data.message;
+    return item;
   },
 
-  async approveC2(id: string, statusOrContent?: string, maybeContent?: string): Promise<HanoiStationItem> {
+  async approveC2(id: string, statusOrContent?: string, maybeContent?: string): Promise<HanoiStationItem & { message?: string }> {
     const content = maybeContent !== undefined ? maybeContent : statusOrContent;
-    const res = await api.post(`${BASE_PATH}/${id}/approve-c2`, { content: content || 'Đã phê duyệt cấp 2' });
-    return toSingle<HanoiStationItem>(res.data?.data || res.data) || ({} as HanoiStationItem);
+    const res = await api.post(`${BASE_PATH}/${id}/approve-c2`, { content: content || 'Đã phê duyệt' });
+    const item = toSingle<HanoiStationItem>(res.data?.data || res.data) || ({} as HanoiStationItem);
+    if (res.data?.message) (item as any).message = res.data.message;
+    return item;
   },
 
-  async reject(id: string, reason: string): Promise<HanoiStationItem> {
+  async reject(id: string, reason: string): Promise<HanoiStationItem & { message?: string }> {
     const res = await api.post(`${BASE_PATH}/${id}/reject`, { reason });
-    return toSingle<HanoiStationItem>(res.data?.data || res.data) || ({} as HanoiStationItem);
+    const item = toSingle<HanoiStationItem>(res.data?.data || res.data) || ({} as HanoiStationItem);
+    if (res.data?.message) (item as any).message = res.data.message;
+    return item;
   },
 
   async approveL1(id: string, statusOrContent?: string, maybeContent?: string): Promise<HanoiStationItem> {

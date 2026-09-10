@@ -292,8 +292,8 @@ export default function HanoiStationList() {
 
   const handleSubmitForApproval = async (record: HanoiStationItem) => {
     try {
-      await hanoiStationService.submit(record.id);
-      toast.success('Gửi phê duyệt thành công');
+      const res = await hanoiStationService.submit(record.id);
+      toast.success(res?.message || 'Gửi phê duyệt thành công');
       statusCountFilterKey.current = null;
       fetchData();
     } catch (err: any) {
@@ -818,11 +818,11 @@ export default function HanoiStationList() {
     if (!approveTargetId) return;
     try {
       if (approveLevel === 'c1') {
-        await hanoiStationService.approveL1(approveTargetId, content);
-        toast.success('Phê duyệt cấp Cảng vụ thành công');
+        const res = await hanoiStationService.approveL1(approveTargetId, content);
+        toast.success(res?.message || 'Phê duyệt cấp Cảng vụ/Chi cục thành công');
       } else {
-        await hanoiStationService.approveL2(approveTargetId, content);
-        toast.success('Phê duyệt cấp Cục thành công');
+        const res = await hanoiStationService.approveL2(approveTargetId, content);
+        toast.success(res?.message || 'Phê duyệt cấp Cục thành công');
       }
       setApproveModalOpen(false);
       statusCountFilterKey.current = null;
@@ -839,8 +839,8 @@ export default function HanoiStationList() {
       return;
     }
     try {
-      await hanoiStationService.reject(rejectTargetId, rejectReason.trim());
-      toast.success('Từ chối phê duyệt thành công');
+      const res = await hanoiStationService.reject(rejectTargetId, rejectReason.trim());
+      toast.success(res?.message || 'Từ chối phê duyệt thành công');
       setRejectModalOpen(false);
       statusCountFilterKey.current = null;
       fetchData();

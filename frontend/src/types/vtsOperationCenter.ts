@@ -33,6 +33,9 @@ export interface VtsOperationCenterResponse {
   geometryType?: string;
   coordinates?: string;
   symbolId?: string;
+  symbolName?: string;
+  symbolCode?: string;
+  symbolImage?: string;
   approvalStatus: ApprovalStatus;
   approvalStatusLabel?: string;
   submittedAt?: string;

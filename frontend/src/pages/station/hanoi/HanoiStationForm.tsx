@@ -232,6 +232,41 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
       });
   }, [open, externalSymbols]);
 
+  useEffect(() => {
+    const symId = record?.symbolId || (initialData as any)?.symbolId;
+    if (symId && !symbols.some((s: any) => String(s.id) === String(symId))) {
+      const fallbackName = (record as any)?.symbolName || (initialData as any)?.symbolName;
+      const fallbackCode = (record as any)?.symbolCode || (initialData as any)?.symbolCode;
+      const fallbackImage = (record as any)?.symbolImage || (initialData as any)?.symbolImage;
+
+      if (fallbackName) {
+        setSymbols((prev) => {
+          if (prev.some((item: any) => String(item.id) === String(symId))) return prev;
+          return [
+            ...prev,
+            { id: String(symId), name: fallbackName, code: fallbackCode, image: fallbackImage }
+          ];
+        });
+      } else {
+        symbolService.getById(String(symId))
+          .then((s) => {
+            if (s) {
+              setSymbols((prev) => {
+                if (prev.some((item: any) => String(item.id) === String(s.id))) return prev;
+                return [...prev, s];
+              });
+            }
+          })
+          .catch(() => {
+            setSymbols((prev) => {
+              if (prev.some((item: any) => String(item.id) === String(symId))) return prev;
+              return [...prev, { id: String(symId), name: 'Biểu tượng đã chọn', code: '', image: '' }];
+            });
+          });
+      }
+    }
+  }, [record?.symbolId, (record as any)?.symbolName, (record as any)?.symbolCode, (record as any)?.symbolImage, initialData, symbols]);
+
   // Load record data or reset for create
   useEffect(() => {
     if (!open) return;
@@ -1164,22 +1199,39 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
                                   normalizeSearchText(String(option?.label || '')).includes(normalizeSearchText(input))
                                 }
                                 style={selectStyle}
-                              >
-                                {symbols.map((sym: any) => (
-                                  <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
-                                    <Space>
-                                      {sym.image && (
+                                options={symbols.map((sym: any) => ({
+                                  value: String(sym.id),
+                                  label: sym.code ? `${sym.name} (${sym.code})` : sym.name,
+                                  image: sym.image,
+                                }))}
+                                optionRender={(option) => (
+                                  <Space>
+                                    {option.data.image && (
+                                      <img
+                                        src={option.data.image.startsWith('data:') ? option.data.image : `data:image/png;base64,${option.data.image}`}
+                                        alt=""
+                                        style={{ width: 20, height: 20, objectFit: 'contain' }}
+                                      />
+                                    )}
+                                    <span>{option.data.label}</span>
+                                  </Space>
+                                )}
+                                labelRender={(props) => {
+                                  const sym = symbols.find((s: any) => String(s.id) === String(props.value));
+                                  return (
+                                    <Space style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                      {sym?.image && (
                                         <img
                                           src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`}
-                                          alt={sym.name}
-                                          style={{ width: 20, height: 20, objectFit: 'contain' }}
+                                          alt=""
+                                          style={{ width: 18, height: 18, objectFit: 'contain' }}
                                         />
                                       )}
-                                      <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
+                                      <span>{sym ? (sym.code ? `${sym.name} (${sym.code})` : sym.name) : props.label}</span>
                                     </Space>
-                                  </Select.Option>
-                                ))}
-                              </Select>
+                                  );
+                                }}
+                              />
                             </Form.Item>
                           </Col>
 

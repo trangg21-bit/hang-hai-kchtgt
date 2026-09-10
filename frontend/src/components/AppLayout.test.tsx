@@ -332,7 +332,7 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
     // 6 blocks, exact label + desc from config/navigation.tsx NAV_GROUPS
     for (const [label, desc] of [
       ['Quản lý KCHT hàng hải', '28 loại KCHT theo phân cấp cha – con'],
-      ['Quản lý tài sản KCHT hàng hải', 'Tăng, giảm, kiểm kê và khai thác tài sản'],
+      ['Quản lý tài sản KCHT hàng hải', 'Quản lý hồ sơ, biến động, kiểm kê và khai thác tài sản'],
       ['Quản lý quy hoạch &amp; vận hành', 'Quy hoạch, văn bản pháp lý và sự cố'],
       // note: raw '&' is HTML-escaped to '&amp;' by react-dom/server
       ['Quản lý KCHT trên nền bản đồ (GIS)', 'Danh mục đối tượng, lớp bản đồ và biểu tượng'],

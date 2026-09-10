@@ -268,12 +268,13 @@ export default function LritStationList() {
   const handleApprove = async (content: string) => {
     if (!approveTargetId) return;
     try {
+      let res: any;
       if (approveLevel === 'c1') {
-        await lritStationService.approveL1(approveTargetId, content);
-        toast.success('Phê duyệt cấp 1 thành công');
+        res = await lritStationService.approveL1(approveTargetId, content);
+        toast.success(res?.message || 'Phê duyệt cấp Cảng vụ/Chi cục thành công');
       } else {
-        await lritStationService.approveL2(approveTargetId, content);
-        toast.success('Phê duyệt cấp 2 thành công');
+        res = await lritStationService.approveL2(approveTargetId, content);
+        toast.success(res?.message || 'Phê duyệt cấp Cục thành công');
       }
       setApproveModalOpen(false);
       refreshList();
@@ -295,12 +296,12 @@ export default function LritStationList() {
     }
     if (!rejectTargetId) return;
     try {
-      await lritStationService.reject(rejectTargetId, rejectReason.trim());
-      toast.success('Đã từ chối hồ sơ');
+      const res: any = await lritStationService.reject(rejectTargetId, rejectReason.trim());
+      toast.success(res?.message || 'Từ chối phê duyệt hồ sơ thành công');
       setRejectModalOpen(false);
       refreshList();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Lỗi từ chối hồ sơ');
+      toast.error(err instanceof Error ? err.message : 'Lỗi từ chối');
     }
   };
 
@@ -641,8 +642,8 @@ export default function LritStationList() {
         icon: icons.submit,
         onClick: async () => {
           try {
-            await lritStationService.submit(record.id);
-            toast.success('Gửi duyệt thành công');
+            const res: any = await lritStationService.submit(record.id);
+            toast.success(res?.message || 'Gửi phê duyệt thành công');
             refreshList();
           } catch (e: unknown) {
             toast.error(e instanceof Error ? e.message : 'Lỗi gửi duyệt');

@@ -140,7 +140,7 @@ export const symbolService = {
   },
 
   async getOptions(): Promise<SymbolOption[]> {
-    if (cachedOptions) {
+    if (cachedOptions && cachedOptions.length > 0) {
       return cachedOptions;
     }
     if (optionsPromise) {
@@ -158,7 +158,9 @@ export const symbolService = {
           code: item.code || '',
           image: item.image || item.hinhAnh || '',
         }));
-        cachedOptions = result;
+        if (result.length > 0) {
+          cachedOptions = result;
+        }
         return result;
       } finally {
         optionsPromise = null;

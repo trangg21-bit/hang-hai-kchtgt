@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.vtssystem.entity;
 
 import com.hanghai.kchtg.common.entity.BaseEntity;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,6 +11,8 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.FieldNameConstants;
 import lombok.experimental.SuperBuilder;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import java.util.UUID;
 
 @Entity
 @Table(name = "vts_zone")
@@ -30,6 +33,15 @@ public class VtsZone extends BaseEntity {
     @Enumerated(EnumType.ORDINAL)
     @Column(name = "condition_status", columnDefinition = "SMALLINT")
     private ConditionStatus conditionStatus;
+
+    @Column(name = "geometry_type")
+    private GisGeometryType geometryType;
+
+    @Column(name = "coordinates", columnDefinition = "TEXT")
+    private String coordinates;
+
+    @Column(name = "spatial_id")
+    private UUID spatialId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "vts_system_id", nullable = false)

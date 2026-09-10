@@ -491,11 +491,11 @@ export function AisSystemList() {
     if (!actionTargetRecord) return;
     try {
       if (approveLevel === 'c1') {
-        await aisSystemService.approveC1(actionTargetRecord.id, 'APPROVED', reason);
-        toast.success('Phê duyệt cấp Cảng vụ/Chi cục thành công');
+        const res = await aisSystemService.approveC1(actionTargetRecord.id, 'APPROVED', reason);
+        toast.success(res?.message || 'Phê duyệt cấp Cảng vụ/Chi cục thành công');
       } else {
-        await aisSystemService.approveC2(actionTargetRecord.id, 'APPROVED', reason);
-        toast.success('Phê duyệt cấp Cục thành công');
+        const res = await aisSystemService.approveC2(actionTargetRecord.id, 'APPROVED', reason);
+        toast.success(res?.message || 'Phê duyệt cấp Cục thành công');
       }
       setApproveModalOpen(false);
       setActionTargetRecord(null);
@@ -519,8 +519,8 @@ export function AisSystemList() {
       return;
     }
     try {
-      await aisSystemService.reject(actionTargetRecord.id, rejectReason.trim());
-      toast.success('Từ chối phê duyệt thành công');
+      const res = await aisSystemService.reject(actionTargetRecord.id, rejectReason.trim());
+      toast.success(res?.message || 'Từ chối phê duyệt hồ sơ thành công');
       setRejectModalOpen(false);
       setActionTargetRecord(null);
       refreshList();
@@ -798,8 +798,8 @@ export function AisSystemList() {
         icon: icons.submit,
         onClick: async () => {
           try {
-            await aisSystemService.submit(record.id);
-            toast.success('Gửi duyệt thành công');
+            const res = await aisSystemService.submit(record.id);
+            toast.success(res?.message || 'Gửi phê duyệt thành công');
             refreshList();
           } catch (e: any) {
             toast.error(e?.response?.data?.message || e?.message || 'Lỗi gửi duyệt');

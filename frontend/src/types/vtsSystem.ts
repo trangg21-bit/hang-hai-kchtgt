@@ -107,6 +107,9 @@ export interface VtsZoneDto {
   code: string;
   name: string;
   conditionStatus?: ConditionStatus;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON' | string;
+  coordinates?: string;
+  spatialId?: string;
 }
 
 export interface CreateVtsSystemRequest {

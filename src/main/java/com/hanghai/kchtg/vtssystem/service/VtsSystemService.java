@@ -237,6 +237,9 @@ public class VtsSystemService {
                 z.setName(dto.getName().trim());
                 z.setConditionStatus(
                         dto.getConditionStatus() != null ? dto.getConditionStatus() : ConditionStatus.OPERATIONAL);
+                z.setGeometryType(dto.getGeometryType());
+                z.setCoordinates(dto.getCoordinates());
+                z.setSpatialId(dto.getSpatialId());
                 z.setCreatedBy(userId);
                 z.setUpdatedBy(userId);
                 z.setVtsSystem(entity);
@@ -446,6 +449,9 @@ public class VtsSystemService {
                 .code(entity.getCode())
                 .name(entity.getName())
                 .conditionStatus(entity.getConditionStatus())
+                .geometryType(entity.getGeometryType())
+                .coordinates(entity.getCoordinates())
+                .spatialId(entity.getSpatialId())
                 .build();
     }
 
@@ -498,6 +504,9 @@ public class VtsSystemService {
                 .name(dto.getName().trim())
                 .conditionStatus(
                         dto.getConditionStatus() != null ? dto.getConditionStatus() : ConditionStatus.OPERATIONAL)
+                .geometryType(dto.getGeometryType())
+                .coordinates(dto.getCoordinates())
+                .spatialId(dto.getSpatialId())
                 .vtsSystem(vtsSystem)
                 .createdBy(effectiveUserId)
                 .updatedBy(effectiveUserId)
@@ -563,6 +572,13 @@ public class VtsSystemService {
         }
         if (dto.getConditionStatus() != null) {
             zone.setConditionStatus(dto.getConditionStatus());
+        }
+        if (dto.getGeometryType() != null) {
+            zone.setGeometryType(dto.getGeometryType());
+        }
+        zone.setCoordinates(dto.getCoordinates());
+        if (dto.getSpatialId() != null) {
+            zone.setSpatialId(dto.getSpatialId());
         }
 
         UUID effectiveUserId = userId != null ? userId : SecurityUtils.getCurrentUserId();
@@ -1078,6 +1094,9 @@ public class VtsSystemService {
                     existing.setCode(code);
                     existing.setName(name);
                     existing.setConditionStatus(status);
+                    existing.setGeometryType(dto.getGeometryType());
+                    existing.setCoordinates(dto.getCoordinates());
+                    existing.setSpatialId(dto.getSpatialId());
                     existing.setUpdatedBy(effectiveUserId);
                 } else {
                     // Newly added zone: do NOT set ID manually (Hibernate/DB will generate UUID on INSERT)
@@ -1086,6 +1105,9 @@ public class VtsSystemService {
                     newZone.setCode(code);
                     newZone.setName(name);
                     newZone.setConditionStatus(status);
+                    newZone.setGeometryType(dto.getGeometryType());
+                    newZone.setCoordinates(dto.getCoordinates());
+                    newZone.setSpatialId(dto.getSpatialId());
                     newZone.setCreatedBy(effectiveUserId);
                     newZone.setUpdatedBy(effectiveUserId);
                     currentZones.add(newZone);

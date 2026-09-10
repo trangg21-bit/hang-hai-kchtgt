@@ -365,12 +365,13 @@ export default function InmarsatStationList() {
   const handleApprove = async () => {
     if (!approveTargetId) return;
     try {
+      let res: any;
       if (approveLevel === 'c1') {
-        await inmarsatStationService.approveL1(approveTargetId);
-        toast.success('Phê duyệt cấp 1 thành công');
+        res = await inmarsatStationService.approveL1(approveTargetId);
+        toast.success(res?.message || 'Phê duyệt cấp Cảng vụ/Chi cục thành công');
       } else {
-        await inmarsatStationService.approveL2(approveTargetId);
-        toast.success('Phê duyệt cấp 2 thành công');
+        res = await inmarsatStationService.approveL2(approveTargetId);
+        toast.success(res?.message || 'Phê duyệt cấp Cục thành công');
       }
       setApproveModalOpen(false);
       refreshList();
@@ -392,8 +393,8 @@ export default function InmarsatStationList() {
     }
     if (!rejectTargetId) return;
     try {
-      await inmarsatStationService.reject(rejectTargetId, rejectReason.trim());
-      toast.success('Đã từ chối');
+      const res: any = await inmarsatStationService.reject(rejectTargetId, rejectReason.trim());
+      toast.success(res?.message || 'Từ chối phê duyệt hồ sơ thành công');
       setRejectModalOpen(false);
       refreshList();
     } catch (err: unknown) {
@@ -702,8 +703,8 @@ export default function InmarsatStationList() {
         icon: icons.submit,
         onClick: async () => {
           try {
-            await inmarsatStationService.submit(record.id);
-            toast.success('Gửi phê duyệt thành công');
+            const res: any = await inmarsatStationService.submit(record.id);
+            toast.success(res?.message || 'Gửi phê duyệt thành công');
             refreshList();
           } catch (err: unknown) {
             toast.error(err instanceof Error ? err.message : 'Lỗi gửi phê duyệt');

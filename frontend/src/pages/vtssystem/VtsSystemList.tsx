@@ -597,9 +597,9 @@ export default function VtsSystemList() {
         icon: icons.submit,
         onClick: async () => {
           try {
-            await vtsSystemApproval.submit(record.id);
+            const res = await vtsSystemApproval.submit(record.id);
             invalidateVtsDetailCache(record.id);
-            toast.success('Gửi phê duyệt thành công');
+            toast.success(res?.message || 'Gửi phê duyệt thành công');
             refreshList();
           } catch (e: unknown) {
             // Interceptor api.ts đã Việt hóa lỗi vào `message`; dùng nó để toast

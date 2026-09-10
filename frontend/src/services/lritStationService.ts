@@ -118,28 +118,36 @@ export const lritStationService = {
     await api.delete(`${BASE_PATH}/${id}`);
   },
 
-  async submit(id: string): Promise<LritStationItem> {
+  async submit(id: string): Promise<LritStationItem & { message?: string }> {
     const res = await api.post(`${BASE_PATH}/${id}/submit`);
-    return toSingle<LritStationItem>(res.data?.data || res.data) || ({} as LritStationItem);
+    const item = toSingle<LritStationItem>(res.data?.data || res.data) || ({} as LritStationItem);
+    if (res.data?.message) (item as any).message = res.data.message;
+    return item;
   },
 
-  async approveC1(id: string, statusOrContent?: string, maybeContent?: string): Promise<LritStationItem> {
+  async approveC1(id: string, statusOrContent?: string, maybeContent?: string): Promise<LritStationItem & { message?: string }> {
     const content = maybeContent !== undefined ? maybeContent : statusOrContent;
     const body = content ? { content } : {};
     const res = await api.post(`${BASE_PATH}/${id}/approve-c1`, body);
-    return toSingle<LritStationItem>(res.data?.data || res.data) || ({} as LritStationItem);
+    const item = toSingle<LritStationItem>(res.data?.data || res.data) || ({} as LritStationItem);
+    if (res.data?.message) (item as any).message = res.data.message;
+    return item;
   },
 
-  async approveC2(id: string, statusOrContent?: string, maybeContent?: string): Promise<LritStationItem> {
+  async approveC2(id: string, statusOrContent?: string, maybeContent?: string): Promise<LritStationItem & { message?: string }> {
     const content = maybeContent !== undefined ? maybeContent : statusOrContent;
     const body = content ? { content } : {};
     const res = await api.post(`${BASE_PATH}/${id}/approve-c2`, body);
-    return toSingle<LritStationItem>(res.data?.data || res.data) || ({} as LritStationItem);
+    const item = toSingle<LritStationItem>(res.data?.data || res.data) || ({} as LritStationItem);
+    if (res.data?.message) (item as any).message = res.data.message;
+    return item;
   },
 
-  async reject(id: string, reason: string): Promise<LritStationItem> {
+  async reject(id: string, reason: string): Promise<LritStationItem & { message?: string }> {
     const res = await api.post(`${BASE_PATH}/${id}/reject`, { reason });
-    return toSingle<LritStationItem>(res.data?.data || res.data) || ({} as LritStationItem);
+    const item = toSingle<LritStationItem>(res.data?.data || res.data) || ({} as LritStationItem);
+    if (res.data?.message) (item as any).message = res.data.message;
+    return item;
   },
 
   async approveL1(id: string, statusOrContent?: string, maybeContent?: string): Promise<LritStationItem> {
